@@ -11,6 +11,10 @@ namespace dash {
 
 // Generic definition of \c dash::global:
 
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class OriginType>
 constexpr OriginType & global(OriginType & origin) {
   return origin;

@@ -9,6 +9,7 @@ namespace dash {
 /**
  * Inverse operation to \c dash::origin.
  *
+ * \concept{DashViewConcept}
  */
 template <class ViewTypeA, class ViewTypeB>
 constexpr auto apply(
@@ -24,10 +25,25 @@ constexpr auto apply(
  * itself if it is not a View type.
  * Inverse operation to \c dash::apply.
  *
+ * \concept{DashViewConcept}
  */
 template <class Viewable>
 constexpr typename Viewable::origin_type &
 origin(const Viewable & v);
+
+/**
+ * View type traits.
+ *
+ * \concept{DashViewConcept}
+ */
+template <class ViewT>
+struct view_traits
+{
+  typedef std::integral_constant<bool, value> is_projection;
+  typedef std::integral_constant<bool, value> is_view;
+  typedef std::integral_constant<bool, value> is_origin;
+  typedef std::integral_constant<bool, value> is_local;
+};
 
 #else // DOXYGEN
 
@@ -99,7 +115,10 @@ namespace detail {
 
 } // namespace detail
 
-
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class ViewableType>
 struct view_traits
 : detail::_view_traits<
@@ -110,6 +129,10 @@ struct view_traits
 // ------------------------------------------------------------------------
 // dash::origin(View)
 
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class ViewT>
 inline typename std::enable_if<
   detail::_is_view<ViewT>::value,
@@ -119,6 +142,10 @@ origin(const ViewT & view) {
   return view.origin();
 }
 
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class ViewT>
 inline typename std::enable_if<
   detail::_is_view<ViewT>::value,
@@ -131,6 +158,10 @@ origin(ViewT & view) {
 // ------------------------------------------------------------------------
 // dash::origin(Container)
 
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class ContainerT>
 constexpr typename std::enable_if<
   !detail::_is_view<ContainerT>::value,
@@ -140,6 +171,10 @@ origin(const ContainerT & container) {
   return container;
 }
 
+/**
+ *
+ * \concept{DashViewConcept}
+ */
 template <class ContainerT>
 inline typename std::enable_if<
   !detail::_is_view<ContainerT>::value,

@@ -15,6 +15,9 @@ namespace dash {
 
 // Sub-space slice, view dimensions maintain origin dimensions
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim = 0,
   class OffsetT >
@@ -25,6 +28,9 @@ sub(
   return ViewSubMod<0, OffsetT>(begin, end);
 }
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim = 0,
   class IndexRangeT >
@@ -37,6 +43,9 @@ sub(
 
 // Sub-space projection, view reduces origin domain by one dimension
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim = 0,
   class OffsetT >
@@ -52,6 +61,9 @@ sub(
 
 // Sub-space slice, view dimensions maintain origin dimensions
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim  = 0,
   class RangeT,

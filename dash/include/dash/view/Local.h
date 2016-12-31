@@ -9,6 +9,9 @@
 
 namespace dash {
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <class ViewType>
 constexpr
 typename std::enable_if<
@@ -19,6 +22,9 @@ local(const ViewType & origin) {
   return origin.local();
 }
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <class ContainerType>
 constexpr
 typename std::enable_if<

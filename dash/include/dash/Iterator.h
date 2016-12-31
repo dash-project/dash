@@ -9,17 +9,19 @@
 #include <iterator>
 
 /**
- * \defgroup  DashIteratorConcept  Multi-dimensional Iterator Concept
+ * \defgroup  DashIteratorConcept  Multidimensional Iterator Concept
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * Definitions for multidimensional iterator expressions.
  *
  * \see DashDimensionalConcept
  * \see DashViewConcept
  * \see DashRangeConcept
  *
  * \see \c dash::view_traits
- *
- * \ingroup DashNDimConcepts
- * \{
- * \par Description
  *
  * \par Expressions
  *
@@ -31,6 +33,10 @@
 
 namespace dash {
 
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class IndexType>
 constexpr typename std::enable_if<
   std::is_integral<IndexType>::value, IndexType >::type
@@ -38,6 +44,10 @@ index(IndexType idx) {
   return idx;
 }
 
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class Iterator>
 constexpr auto index(Iterator it) -> decltype(it.pos()) {
   return it.pos();
@@ -66,6 +76,8 @@ constexpr auto index(Iterator it) -> decltype(it.pos()) {
  * \complexity  O(1)
  *
  * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
  */
 template<
   typename ElementType,
@@ -84,6 +96,12 @@ auto distance(
   return last - first;
 }
 
+/**
+ *
+ * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class T>
 constexpr std::ptrdiff_t distance(T * first, T * last) {
   return std::distance(first, last);
@@ -114,6 +132,8 @@ constexpr std::ptrdiff_t distance(T * first, T * last) {
  * \complexity  O(1)
  *
  * \ingroup     Algorithms
+ * 
+ * \concept{DashIteratorConcept}
  */
 template<typename ElementType>
 dash::default_index_t distance(
@@ -127,6 +147,12 @@ dash::default_index_t distance(
   return gptr_last - gptr_first;
 }
 
+/**
+ *
+ * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <
   class OffsetType >
 constexpr typename std::enable_if<

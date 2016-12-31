@@ -1,27 +1,19 @@
 #ifndef DASH__VIEW_H__INCLUDED
 #define DASH__VIEW_H__INCLUDED
 
-#include <dash/Dimensional.h>
-#include <dash/Cartesian.h>
-
-#include <dash/view/Sub.h>
-#include <dash/view/Local.h>
-#include <dash/view/Global.h>
-#include <dash/view/ViewMod.h>
-#include <dash/view/ViewTraits.h>
-
 /**
- * \defgroup  DashViewConcept  Multi-dimensional View Concept
- *
- * \see DashDimensionalConcept
- * \see DashRangeConcept
- * \see DashIteratorConcept
- *
- * \see \c dash::view_traits
+ * \defgroup  DashViewConcept  Multidimensional View Concept
  *
  * \ingroup DashNDimConcepts
  * \{
  * \par Description
+ *
+ * Definitions for multidimensional view expressions.
+ *
+ * \see DashDimensionalConcept
+ * \see DashRangeConcept
+ * \see DashIteratorConcept
+ * \see \c dash::view_traits
  *
  * \par Expressions
  *
@@ -35,6 +27,16 @@
  *
  * \}
  */
+
+
+#include <dash/Dimensional.h>
+#include <dash/Cartesian.h>
+
+#include <dash/view/Sub.h>
+#include <dash/view/Local.h>
+#include <dash/view/Global.h>
+#include <dash/view/ViewMod.h>
+#include <dash/view/ViewTraits.h>
 
 namespace dash {
 

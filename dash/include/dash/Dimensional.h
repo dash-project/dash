@@ -11,28 +11,33 @@
 #include <sstream>
 
 /**
- * \defgroup  DashNDimConcepts  Multi-dimensional Concepts
+ * \defgroup  DashNDimConcepts  Multidimensional Concepts
  *
  * \ingroup DashConcept
  * \{
  * \par Description
+ *
+ * Concepts supporting multidimensional expressions.
  *
  * \}
  *
  */
 
 /**
- * \defgroup  DashDimensionalConcept  Multi-dimensional Value Concept
- *
- * \see DashIteratorConcept
- * \see DashViewConcept
- * \see DashRangeConcept
- *
- * \see \c dash::view_traits
+ * \defgroup  DashDimensionalConcept  Multidimensional Value Concept
  *
  * \ingroup DashNDimConcepts
  * \{
  * \par Description
+ * 
+ * Definitions for multidimensional value expressions.
+ *
+ * \see DashIteratorConcept
+ * \see DashViewConcept
+ * \see DashRangeConcept
+ * \see DashDimensionalConcept
+ *
+ * \see \c dash::view_traits
  *
  * \par Expressions
  *
