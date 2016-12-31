@@ -13,9 +13,9 @@ template <class ViewType>
 constexpr
 typename std::enable_if<
   dash::view_traits<ViewType>::is_view::value,
-  typename ViewType::local_type &
+  const typename ViewType::local_type &
 >::type
-local(ViewType & origin) {
+local(const ViewType & origin) {
   return origin.local();
 }
 
@@ -25,7 +25,7 @@ typename std::enable_if<
   !dash::view_traits<ContainerType>::is_view::value,
   typename ContainerType::local_type &
 >::type
-local(ContainerType & origin) {
+local(const ContainerType & origin) {
   return origin.local;
 }
 

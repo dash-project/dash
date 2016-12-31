@@ -179,6 +179,10 @@ private:
 }; // class ViewMod
 #endif
 
+// --------------------------------------------------------------------
+// ViewOrigin
+// --------------------------------------------------------------------
+
 /**
  * Monotype for the logical symbol that represents a view origin.
  */
@@ -215,11 +219,20 @@ struct view_traits<ViewOrigin> {
   typedef std::integral_constant<bool, false> is_local;
 };
 
+// --------------------------------------------------------------------
+// ViewLocalMod
+// --------------------------------------------------------------------
 
 template <
   dim_t DimDiff,
   class OriginType = ViewOrigin,
   class IndexType  = typename OriginType::IndexType >
+class ViewLocalMod;
+
+template <
+  dim_t DimDiff,
+  class OriginType,
+  class IndexType >
 class ViewLocalMod
 {
   typedef ViewLocalMod<DimDiff, OriginType, IndexType> self_t;
@@ -255,18 +268,28 @@ public:
     return !(*this == rhs);
   }
 
-  constexpr auto begin() const
-    -> decltype(dash::local(dash::origin(*this))) {
-    return (dash::local(dash::origin(*this))) + _begin;
+  constexpr typename origin_type::local_type & begin() const {
+    return (dash::local(_origin)) + _begin;
   }
 
-  constexpr auto end() const
-    -> decltype(dash::local(dash::origin(*this))) {
-    return (dash::local(dash::origin(*this))) + _end;
+  constexpr typename origin_type::local_type & end() const {
+    return (dash::local(_origin)) + _end;
   }
 
-  constexpr origin_type & origin() const {
+  constexpr const origin_type & origin() const {
     return _origin;
+  }
+
+  inline origin_type & origin() {
+    return _origin;
+  }
+
+  constexpr const local_type & local() const {
+    return *this;
+  }
+
+  inline local_type & local() {
+    return *this;
   }
 
   constexpr index_type size() const {
@@ -275,14 +298,6 @@ public:
   
   constexpr bool empty() const {
     return size() == 0;
-  }
-
-  inline local_type & local() {
-    return *this;
-  }
-
-  constexpr const local_type & local() const {
-    return *this;
   }
 
 private:
@@ -303,11 +318,20 @@ struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
   typedef std::integral_constant<bool, true>           is_local;
 };
 
+// --------------------------------------------------------------------
+// ViewSubMod
+// --------------------------------------------------------------------
 
 template <
   dim_t DimDiff,
   class OriginType = ViewOrigin,
   class IndexType  = typename OriginType::IndexType >
+class ViewSubMod;
+
+template <
+  dim_t DimDiff,
+  class OriginType,
+  class IndexType >
 class ViewSubMod
 {
   typedef ViewSubMod<DimDiff, OriginType, IndexType> self_t;
@@ -357,8 +381,20 @@ public:
     return dash::begin(_origin) + _end;
   }
 
-  constexpr origin_type & origin() const {
+  constexpr const origin_type & origin() const {
     return _origin;
+  }
+
+  inline origin_type & origin() {
+    return _origin;
+  }
+
+  constexpr const local_type & local() const {
+    return _local;
+  }
+
+  inline local_type & local() {
+    return _local;
   }
 
   constexpr index_type size() const {
@@ -367,14 +403,6 @@ public:
   
   constexpr bool empty() const {
     return size() == 0;
-  }
-
-  inline auto local() -> local_type & {
-    return _local;
-  }
-
-  constexpr auto local() const -> const local_type & {
-    return _local;
   }
 
 private:
