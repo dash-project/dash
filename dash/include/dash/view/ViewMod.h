@@ -148,7 +148,7 @@ public:
     return _end;
   }
 
-  constexpr const origin_type & origin() const {
+  constexpr origin_type & origin() const {
     return _origin;
   }
 

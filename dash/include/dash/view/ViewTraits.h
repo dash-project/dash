@@ -23,6 +23,12 @@ struct view_traits<ViewOrigin> {
  * Inverse operation to \c dash::apply.
  *
  */
+
+template <class ViewT>
+const typename ViewT::origin_type & origin(const ViewT & view) {
+  return view.origin();
+}
+
 template <class ViewT>
 typename ViewT::origin_type & origin(ViewT & view) {
   return view.origin();
