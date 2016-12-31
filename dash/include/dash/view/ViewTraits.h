@@ -82,23 +82,57 @@ struct view_traits
     detail::_is_view<ViewableType>::value > {
 };
 
+#ifdef DOXYGEN
+
 /**
+ * Returns a reference to the specified object's origin, or the object
+ * itself if it is not a View type.
  * Inverse operation to \c dash::apply.
  *
  */
+template <class Viewable>
+typename Viewable::origin_type &
+origin(const Viewable & v);
+
+#else
+
 template <class ViewT>
-const typename ViewT::origin_type & origin(const ViewT & view) {
+typename std::enable_if<
+  detail::_is_view<ViewT>::value,
+  const typename ViewT::origin_type &
+>::type
+origin(const ViewT & view) {
   return view.origin();
 }
 
-/**
- * Inverse operation to \c dash::apply.
- *
- */
+template <class ContainerT>
+typename std::enable_if<
+  !detail::_is_view<ContainerT>::value,
+  const ContainerT &
+>::type
+origin(const ContainerT & container) {
+  return container;
+}
+
 template <class ViewT>
-typename ViewT::origin_type & origin(ViewT & view) {
+typename std::enable_if<
+  detail::_is_view<ViewT>::value,
+  typename ViewT::origin_type &
+>::type
+origin(const ViewT & view) {
   return view.origin();
 }
+
+template <class ContainerT>
+typename std::enable_if<
+  !detail::_is_view<ContainerT>::value,
+  ContainerT &
+>::type
+origin(const ContainerT & container) {
+  return container;
+}
+
+#endif
 
 /**
  * Inverse operation to \c dash::origin.

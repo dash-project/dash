@@ -155,12 +155,12 @@ public:
   }
 
   constexpr auto begin() const
-    -> decltype(dash::begin(this->origin())) {
+    -> decltype(dash::begin(dash::origin(*this))) {
     return dash::begin(_origin) + _begin;
   }
 
   constexpr auto end() const
-    -> decltype(dash::begin(this->origin())) {
+    -> decltype(dash::begin(dash::origin(*this))) {
     return dash::begin(_origin) + _end;
   }
 
@@ -265,12 +265,12 @@ public:
   }
 
   constexpr auto begin() const
-    -> decltype(dash::begin(this->origin())) {
+    -> decltype(dash::begin(dash::origin(*this))) {
     return dash::begin(_origin) + _begin;
   }
 
   constexpr auto end() const
-    -> decltype(dash::begin(this->origin())) {
+    -> decltype(dash::begin(dash::origin(*this))) {
     return dash::begin(_origin) + _end;
   }
 
