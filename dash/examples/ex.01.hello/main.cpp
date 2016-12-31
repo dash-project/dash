@@ -1,7 +1,8 @@
 /**
- * \example ex.01.hello\main.cpp
- * A simple "hello world" example in which every unit sends a string to std::cout
- * containing it's \c dash::myid() , the \c dash::size() , the name of the host and it's process id.
+ * \example ex.01.hello/main.cpp
+ * A simple "hello world" example in which every unit sends a string to 
+ * \c std::cout containing it's \c dash::myid() , the \c dash::size(),
+ * the name of the host and it's process id.
  */
 
 #include <unistd.h>
@@ -36,4 +37,6 @@ int main(int argc, char* argv[])
   cout << os.str();
 
   dash::finalize();
+
+  return EXIT_SUCCESS;
 }
