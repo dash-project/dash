@@ -18,7 +18,7 @@ namespace detail {
     template<typename C> static yes test(typename C::origin_type*);
     template<typename C> static no  test(...);
   public:
-    static const bool value = sizeof(test<T>(0)) == sizeof(yes);
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
   };
 
   template <class ViewableType>
@@ -91,16 +91,16 @@ struct view_traits
  *
  */
 template <class Viewable>
-typename Viewable::origin_type &
+constexpr typename Viewable::origin_type &
 origin(const Viewable & v);
 
-#else
+#else // DOXYGEN
 
 // ------------------------------------------------------------------------
 // dash::origin(View)
 
 template <class ViewT>
-typename std::enable_if<
+inline typename std::enable_if<
   detail::_is_view<ViewT>::value,
   const typename ViewT::origin_type &
 >::type
@@ -109,7 +109,7 @@ origin(const ViewT & view) {
 }
 
 template <class ViewT>
-typename std::enable_if<
+inline typename std::enable_if<
   detail::_is_view<ViewT>::value,
   typename ViewT::origin_type &
 >::type
@@ -121,7 +121,7 @@ origin(ViewT & view) {
 // dash::origin(Container)
 
 template <class ContainerT>
-typename std::enable_if<
+constexpr typename std::enable_if<
   !detail::_is_view<ContainerT>::value,
   const ContainerT &
 >::type
@@ -130,7 +130,7 @@ origin(const ContainerT & container) {
 }
 
 template <class ContainerT>
-typename std::enable_if<
+inline typename std::enable_if<
   !detail::_is_view<ContainerT>::value,
   ContainerT &
 >::type
@@ -138,14 +138,14 @@ origin(ContainerT & container) {
   return container;
 }
 
-#endif
+#endif // DOXYGEN
 
 /**
  * Inverse operation to \c dash::origin.
  *
  */
 template <class ViewTypeA, class ViewTypeB>
-auto apply(
+constexpr auto apply(
   ViewTypeA & view_a,
   ViewTypeB & view_b) -> decltype(view_a.apply(view_b)) {
   return view_a.apply(view_b);

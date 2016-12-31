@@ -89,6 +89,10 @@ class Array;
 /**
  * Proxy type representing local access to elements in a \c dash::Array.
  *
+ * \todo  Expression \c dash::index(dash:begin(dash:local(array))) should
+ *        be valid; requires \c dash::LocalArrayRef<T,...>::pointer to
+ *        provide method \c .pos().
+ *
  * \concept{DashArrayConcept}
  */
 template<
@@ -153,7 +157,7 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  inline const_pointer begin() const noexcept {
+  constexpr const_pointer begin() const noexcept {
     return _array->m_lbegin;
   }
 
@@ -167,7 +171,7 @@ public:
   /**
    * Pointer past final local element in the array.
    */
-  inline const_pointer end() const noexcept {
+  constexpr const_pointer end() const noexcept {
     return _array->m_lend;
   }
 
@@ -181,14 +185,14 @@ public:
   /**
    * Number of array elements in local memory.
    */
-  inline size_type size() const noexcept {
+  constexpr size_type size() const noexcept {
     return end() - begin();
   }
 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline value_type operator[](const size_t n) const {
+  constexpr value_type operator[](const size_t n) const {
     return (_array->m_lbegin)[n];
   }
 
@@ -224,7 +228,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const {
+  constexpr const PatternType & pattern() const noexcept {
     return _array->pattern();
   }
 
