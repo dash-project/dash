@@ -30,8 +30,8 @@ int main(int argc, char* argv[])
   array.barrier();
 
   if (myid == 0) {
-    auto sub_0 = dash::sub(block_size * (nunits-1),
-                           block_size * (nunits-1) + block_size,
+    auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
+                           block_size / 2 * (nunits-1) + block_size,
                            array);
     auto sub_1 = dash::sub(2,
                            block_size - 2,
@@ -42,7 +42,14 @@ int main(int argc, char* argv[])
          << "  size:           " << sub_0.size()                    << '\n'
          << endl;
 
-    cout << "sub_1 = sub(<2,-2>, sub_0): \n"
+    cout << "sub_0 values:\n";
+    for (auto i = sub_0.begin(); i != sub_0.end(); ++i) {
+      cout << "  index:" << dash::index(i) << " iterator:" << i << ":"
+                         << static_cast<int>(*i) << '\n';
+    }
+    cout << endl;
+
+    cout << "sub_1 = sub(begin+2, end-2, sub_0): \n"
          << "  index(begin):   " << dash::index(dash::begin(sub_1)) << '\n'
          << "  index(end):     " << dash::index(dash::end(sub_1))   << '\n'
          << "  size:           " << sub_1.size()                    << '\n'
@@ -50,7 +57,8 @@ int main(int argc, char* argv[])
 
     cout << "sub_1 values:\n";
     for (auto i = sub_1.begin(); i != sub_1.end(); ++i) {
-      cout << array[dash::index(i)] << " ";
+      cout << "  index:" << dash::index(i) << " iterator:" << i << ":"
+                         << static_cast<int>(*i) << '\n';
     }
     cout << endl;
   }
