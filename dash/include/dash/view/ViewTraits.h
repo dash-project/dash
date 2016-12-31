@@ -24,46 +24,57 @@ namespace detail {
   template <class ViewableType>
   struct _is_view : has_origin_type<ViewableType> { };
 
-}
+  // ------------------------------------------------------------------------
 
-template <
-  class ViewT,
-  class Enable
-    = typename std::enable_if<detail::_is_view<ViewT>::value, ViewT>::type >
-struct view_traits { };
+  template <
+    class ViewableType,
+    bool  IsView >
+  struct _view_traits { };
 
-template <class ViewT>
-struct view_traits< ViewT, ViewT >
-{
-  /// \note Alternative: specialize struct view_traits for \c (DimDiff := 0)
-  std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
-  std::integral_constant<bool, true>                  is_view;
-  std::integral_constant<bool, false>                 is_origin;
-  std::integral_constant<bool,
-    ViewT::is_local ||
-    ViewT::origin_type::is_local::value >             is_local;
+  /**
+   * Specialization of \c dash::view_traits for view types.
+   */
+  template <class ViewT>
+  struct _view_traits< ViewT, true >
+  {
+    /// \note Alternative: specialize struct view_traits for \c (DimDiff = 0)
+    std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
+    std::integral_constant<bool, true>                  is_view;
+    std::integral_constant<bool, false>                 is_origin;
+    std::integral_constant<bool,
+      ViewT::is_local::value ||
+      ViewT::origin_type::is_local::value >             is_local;
+  };
+
+  /**
+   * Specialization of \c dash::view_traits for container types.
+   */
+  template <class ContainerT>
+  struct _view_traits<ContainerT, false > {
+    /// Whether the view type is a projection (has less dimensions than the
+    /// view's origin type).
+    std::integral_constant<bool, false>                 is_projection;
+    std::integral_constant<bool, false>                 is_view;
+    /// Whether the view type is the view origin.
+    std::integral_constant<bool, true>                  is_origin;
+    /// Whether the view / container type is a local view.
+    /// \note A container type is local if it is identical to its
+    ///       \c local_type
+    std::integral_constant<bool, std::is_same<
+                                   ContainerT,
+                                   typename ContainerT::local_type
+                                 >::value >             is_local;
+  };
+
+} // namespace detail
+
+
+template <class ViewableType>
+struct view_traits
+: detail::_view_traits<
+    ViewableType,
+    detail::_is_view<ViewableType>::value > {
 };
-
-/**
- * Specialization of \c dash::view_traits for container types.
- *
- */
-template <class ContainerT>
-struct view_traits<ContainerT, void> {
-  /// Whether the view type is a projection (has less dimensions than the
-  /// view origin).
-  std::integral_constant<bool, false>                 is_projection;
-  std::integral_constant<bool, false>                 is_view;
-  /// Whether the view type is the view origin.
-  std::integral_constant<bool, true>                  is_origin;
-  /// Whether the view / container type is a local view.
-  /// \note A container type is local if it is identical to its \c local_type
-  std::integral_constant<bool, std::is_same<
-                                 ContainerT,
-                                 typename ContainerT::local_type
-                               >::value >             is_local;
-};
-
 
 /**
  * Inverse operation to \c dash::apply.

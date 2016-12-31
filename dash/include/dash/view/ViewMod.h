@@ -91,7 +91,7 @@ public:
   typedef self_t                 origin_type;
 
 public:
-  constexpr static bool is_local = false;
+  std::integral_constant<bool, false> is_local;
 
 public:
   constexpr const origin_type & origin() const {
@@ -101,9 +101,10 @@ public:
 
 template <>
 struct view_traits<ViewOrigin> {
-  constexpr static bool is_projection = false;
-  constexpr static bool is_origin     = true;
-  constexpr static bool is_local      = false;
+  std::integral_constant<bool, false> is_projection;
+  std::integral_constant<bool, true>  is_view;
+  std::integral_constant<bool, true>  is_origin;
+  std::integral_constant<bool, false> is_local;
 };
 
 
@@ -117,7 +118,8 @@ class ViewLocalMod
 
 public:
   constexpr static dim_t dimdiff  = DimDiff;
-  constexpr static bool  is_local = true;
+
+  std::integral_constant<bool, true> is_local;
 
   typedef OriginType    origin_type;
   typedef IndexType      index_type;
@@ -161,9 +163,10 @@ template <
   class OriginType,
   class IndexType >
 struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
-  constexpr static bool is_projection = (DimDiff != 0);
-  constexpr static bool is_origin     = false;
-  constexpr static bool is_local      = true;
+  std::integral_constant<bool, (DimDiff != 0)> is_projection;
+  std::integral_constant<bool, true>           is_view;
+  std::integral_constant<bool, false>          is_origin;
+  std::integral_constant<bool, true>           is_local;
 };
 
 
@@ -206,8 +209,10 @@ class ViewSubMod
 
 public:
   constexpr static dim_t dimdiff  = DimDiff;
-  constexpr static bool  is_local =
-                            dash::view_traits<OriginType>::is_local::value;
+
+  std::integral_constant<
+    bool,
+    dash::view_traits<OriginType>::is_local::value > is_local;
 
   typedef OriginType                        origin_type;
   typedef IndexType                          index_type;
