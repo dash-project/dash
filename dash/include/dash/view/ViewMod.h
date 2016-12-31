@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/Range.h>
+#include <dash/Iterator.h>
 
 
 /* TODO: Eventually, these probably are not public definitions.
@@ -76,16 +77,13 @@ class ViewOrigin
   typedef ViewOrigin self_t;
 
 public:
-
   typedef dash::default_index_t   index_type;
   typedef self_t                 origin_type;
 
 public:
-
   constexpr const origin_type & origin() const {
     return *this;
   }
-
 };
 
 
@@ -141,6 +139,14 @@ public:
     IndexType    end)
   : _origin(origin), _begin(begin), _end(end)
   { }
+
+  constexpr index_type begin() const {
+    return _begin;
+  }
+
+  constexpr index_type end() const {
+    return _end;
+  }
 
   constexpr const origin_type & origin() const {
     return _origin;
@@ -198,6 +204,14 @@ public:
     _begin = offset;
     _end   = offset;
     return *this;
+  }
+
+  constexpr index_type begin() const {
+    return _begin;
+  }
+
+  constexpr index_type end() const {
+    return _end;
   }
 
   constexpr const origin_type & origin() const {

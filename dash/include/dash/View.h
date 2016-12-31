@@ -43,15 +43,15 @@ public:
     m_begin { container.begin() } {  
   }
 
-  SizeType rank() const {
+  constexpr SizeType rank() const {
     return m_cart.rank();
   }
 
-  SizeType size() const {
+  constexpr SizeType size() const {
     return m_cart.size();
   }
 
-  SizeType extent(dim_t dim) const {
+  constexpr SizeType extent(dim_t dim) const {
     return m_cart.extent(dim);
   }
 
@@ -65,17 +65,20 @@ public:
   // x(), y(), z() accessors 
   // enabled only for the appropriate sizes
   template<dim_t U=NumDimensions>
-  typename std::enable_if<(U>0),SizeType>::type x(SizeType offs) const {
+  constexpr typename std::enable_if<(U>0),SizeType>::type
+  x(SizeType offs) const {
     return m_cart.x(offs);
   }
   
   template<dim_t U=NumDimensions>
-  typename std::enable_if<(U>1),SizeType>::type y(SizeType offs) const {
+  constexpr typename std::enable_if<(U>1),SizeType>::type
+  y(SizeType offs) const {
     return m_cart.y(offs);
   }
   
   template<dim_t U=NumDimensions>
-  typename std::enable_if<(U>2),SizeType>::type z(SizeType offs) const {
+  constexpr typename std::enable_if<(U>2),SizeType>::type
+  z(SizeType offs) const {
     return m_cart.z(offs);
   }
 
@@ -98,8 +101,7 @@ public:
     Args... args) 
   : CartViewBase<Iter, NumDimensions, Arrangement, SizeType>(
       it,
-      args...) {
-  }
+      args...) { }
 
   template<typename Container, typename... Args>
   CartView(
@@ -107,8 +109,7 @@ public:
     Args... args)
   : CartViewBase<Iter, NumDimensions, Arrangement, SizeType>(
       cont,
-      args...) {
-  }
+      args...) { }
 };
 
 } // namespace dash
