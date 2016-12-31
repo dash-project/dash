@@ -136,7 +136,9 @@ public:
   ViewLocalMod() = delete;
 
   ViewLocalMod(OriginType & origin)
-  : _origin(origin)
+  : _origin(origin),
+    _begin(origin._begin),
+    _end(origin._end)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -152,12 +154,14 @@ public:
     return !(*this == rhs);
   }
 
-  constexpr index_type begin() const {
-    return _begin;
+  constexpr auto begin() const
+    -> decltype(dash::begin(this->origin())) {
+    return dash::begin(_origin) + _begin;
   }
 
-  constexpr index_type end() const {
-    return _end;
+  constexpr auto end() const
+    -> decltype(dash::begin(this->origin())) {
+    return dash::begin(_origin) + _end;
   }
 
   constexpr origin_type & origin() const {
@@ -260,12 +264,14 @@ public:
     return !(*this == rhs);
   }
 
-  constexpr index_type begin() const {
-    return _begin;
+  constexpr auto begin() const
+    -> decltype(dash::begin(this->origin())) {
+    return dash::begin(_origin) + _begin;
   }
 
-  constexpr index_type end() const {
-    return _end;
+  constexpr auto end() const
+    -> decltype(dash::begin(this->origin())) {
+    return dash::begin(_origin) + _end;
   }
 
   constexpr origin_type & origin() const {

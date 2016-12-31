@@ -11,7 +11,8 @@ namespace dash {
 
 template <
   class OriginType >
-constexpr typename OriginType::local_type local(OriginType & origin) {
+constexpr typename OriginType::local_type
+local(OriginType & origin) {
   return origin.local();
 }
 
