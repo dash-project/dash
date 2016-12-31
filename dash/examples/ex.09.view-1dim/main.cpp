@@ -30,23 +30,17 @@ int main(int argc, char* argv[])
     auto sub_1 = dash::sub(2,
                            block_size - 2,
                            sub_0);
-    cout << "sub_0 = sub(<block range>, array): " << endl
-         << "  index(begin):   " << dash::index(dash::begin(sub_0)) << endl
-         << "  index(end):     " << dash::index(dash::end(sub_0))   << endl
-         << "  size:           " << sub_0.size()                    << endl
+    cout << "sub_0 = sub(<block range>, array): \n"
+         << "  index(begin):   " << dash::index(dash::begin(sub_0)) << '\n'
+         << "  index(end):     " << dash::index(dash::end(sub_0))   << '\n'
+         << "  size:           " << sub_0.size()                    << '\n'
          << endl;
 
-#if 0
-    cout << "sub_1 = sub(<2,-2>, sub_0): " << endl
-         << "  index(begin):   " << dash::index(dash::begin(sub_1)) << endl
-         << "  index(end):     " << dash::index(dash::end(sub_1))   << endl
-         << "  index(g(begin)):"
-               << dash::index(dash::global(dash::begin(sub_1))) << endl
-         << "  index(g(end)):  "
-               << dash::index(dash::global(dash::end(sub_1)))   << endl
-         << "  size:           " << sub_1.size()                    << endl
+    cout << "sub_1 = sub(<2,-2>, sub_0): \n"
+         << "  index(begin):   " << dash::index(dash::begin(sub_1)) << '\n'
+         << "  index(end):     " << dash::index(dash::end(sub_1))   << '\n'
+         << "  size:           " << sub_1.size()                    << '\n'
          << endl;
-#endif
   }
 
   dash::finalize();
