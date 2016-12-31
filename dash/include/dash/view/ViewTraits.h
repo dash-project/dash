@@ -9,7 +9,7 @@ namespace dash {
 namespace detail {
 
   template<typename T>
-  struct has_origin_type
+  struct _has_origin_type
   {
   private:
     typedef char                      yes;
@@ -22,7 +22,7 @@ namespace detail {
   };
 
   template <class ViewableType>
-  struct _is_view : has_origin_type<ViewableType> { };
+  struct _is_view : _has_origin_type<ViewableType> { };
 
   // ------------------------------------------------------------------------
 
@@ -46,17 +46,17 @@ namespace detail {
     typedef std::integral_constant<bool,
       // either view type is local:
       ViewT::is_local::value ||
-        // or view origin type is a view type ...
-      ( _is_view<origin_type>::value &&
-        // ... and origin type is local:
-        origin_type::is_local::value ) >                        is_local;
+      // or view origin type is local:
+      _view_traits<origin_type,
+                   _is_view<origin_type>::value
+                  >::is_local::value >                          is_local;
   };
 
   /**
    * Specialization of \c dash::view_traits for container types.
    */
   template <class ContainerT>
-  struct _view_traits<ContainerT, false > {
+  struct _view_traits< ContainerT, false > {
     /// Whether the view type is a projection (has less dimensions than the
     /// view's origin type).
     typedef std::integral_constant<bool, false>                 is_projection;
@@ -69,7 +69,7 @@ namespace detail {
     typedef std::integral_constant<bool, std::is_same<
                                    ContainerT,
                                    typename ContainerT::local_type
-                                 >::value >                     is_local;
+                                  >::value >                    is_local;
   };
 
 } // namespace detail

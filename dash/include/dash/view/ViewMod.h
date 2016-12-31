@@ -97,6 +97,14 @@ public:
   constexpr const origin_type & origin() const {
     return *this;
   }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return (this == &rhs);
+  }
+  
+  constexpr bool operator!=(const self_t & rhs) const {
+    return !(*this == rhs);
+  }
 };
 
 template <>
@@ -130,6 +138,19 @@ public:
   ViewLocalMod(OriginType & origin)
   : _origin(origin)
   { }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return (this      == &rhs ||
+            // Note: testing _origin for identity (identical address)
+            //       instead of equality (identical value)
+            (&_origin == &rhs._origin &&
+             _begin   == rhs._begin &&
+             _end     == rhs._end));
+  }
+  
+  constexpr bool operator!=(const self_t & rhs) const {
+    return !(*this == rhs);
+  }
 
   constexpr index_type begin() const {
     return _begin;
@@ -225,6 +246,19 @@ public:
     IndexType    end)
   : _origin(origin), _begin(begin), _end(end)
   { }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return (this      == &rhs ||
+            // Note: testing _origin for identity (identical address)
+            //       instead of equality (identical value)
+            (&_origin == &rhs._origin &&
+             _begin   == rhs._begin &&
+             _end     == rhs._end));
+  }
+  
+  constexpr bool operator!=(const self_t & rhs) const {
+    return !(*this == rhs);
+  }
 
   constexpr index_type begin() const {
     return _begin;

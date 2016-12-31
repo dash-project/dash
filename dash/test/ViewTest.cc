@@ -56,7 +56,8 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
                                      block_gview_outer);
   EXPECT_EQ(block_size - 10 - 10, block_gview_inner.size());
   // Origin of inner view is outer view:
-  EXPECT_EQ(block_gview_outer, block_gview_inner.origin());
+  auto & block_gview_inner_origin = block_gview_inner.origin();
+  EXPECT_EQ(block_gview_outer, block_gview_inner_origin);
 }
 
 TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
