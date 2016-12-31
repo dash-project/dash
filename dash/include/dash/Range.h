@@ -1,31 +1,32 @@
 #ifndef DASH__RANGES_H__INCLUDED
 #define DASH__RANGES_H__INCLUDED
 
+#include <dash/Dimensional.h>
+
 #include <type_traits>
-
-
-namespace dash {
-
-#ifdef DOXYGEN
 
 /**
  * \defgroup  DashRangeConcept  Multi-dimensional Range Concept
  *
+ * \see DashDimensionalConcept
  * \see DashViewConcept
  * \see DashIteratorConcept
  *
- * \ingroup DashConcept
+ * \see \c dash::view_traits
+ *
+ * \ingroup DashNDimConcepts
  * \{
  * \par Description
- * 
- * \par Types
  *
  * \par Expressions
+ *
+ * - \c dash::begin
+ * - \c dash::end
  *
  * \}
  */
 
-#endif // DOXYGEN
+namespace dash {
 
 template <class RangeType>
 constexpr auto begin(RangeType & range) -> decltype(range.begin()) {
@@ -35,18 +36,6 @@ constexpr auto begin(RangeType & range) -> decltype(range.begin()) {
 template <class RangeType>
 constexpr auto end(RangeType & range) -> decltype(range.end()) {
   return range.end();
-}
-
-template <class IndexType>
-constexpr typename std::enable_if<
-  std::is_integral<IndexType>::value, IndexType >::type
-index(IndexType idx) {
-  return idx;
-}
-
-template <class Iterator>
-constexpr auto index(Iterator it) -> decltype(it.pos()) {
-  return it.pos();
 }
 
 } // namespace dash

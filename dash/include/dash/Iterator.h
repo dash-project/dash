@@ -2,13 +2,46 @@
 #define DASH__ITERATOR_H__INCLUDED
 
 #include <dash/Types.h>
+#include <dash/Dimensional.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
 
 #include <iterator>
 
+/**
+ * \defgroup  DashIteratorConcept  Multi-dimensional Iterator Concept
+ *
+ * \see DashDimensionalConcept
+ * \see DashViewConcept
+ * \see DashRangeConcept
+ *
+ * \see \c dash::view_traits
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * \par Expressions
+ *
+ * - \c dash::index
+ * - \c dash::distance
+ *
+ * \}
+ */
 
 namespace dash {
+
+template <class IndexType>
+constexpr typename std::enable_if<
+  std::is_integral<IndexType>::value, IndexType >::type
+index(IndexType idx) {
+  return idx;
+}
+
+template <class Iterator>
+constexpr auto index(Iterator it) -> decltype(it.pos()) {
+  return it.pos();
+}
 
 /**
  * Resolve the number of elements between two global iterators.

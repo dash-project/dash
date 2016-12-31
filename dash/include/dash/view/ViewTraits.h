@@ -6,6 +6,31 @@
 
 namespace dash {
 
+/**
+ * Inverse operation to \c dash::origin.
+ *
+ */
+template <class ViewTypeA, class ViewTypeB>
+constexpr auto apply(
+  ViewTypeA & view_a,
+  ViewTypeB & view_b) -> decltype(view_a.apply(view_b)) {
+  return view_a.apply(view_b);
+}
+
+#ifdef DOXYGEN
+
+/**
+ * Returns a reference to the specified object's origin, or the object
+ * itself if it is not a View type.
+ * Inverse operation to \c dash::apply.
+ *
+ */
+template <class Viewable>
+constexpr typename Viewable::origin_type &
+origin(const Viewable & v);
+
+#else // DOXYGEN
+
 namespace detail {
 
   template<typename T>
@@ -82,20 +107,6 @@ struct view_traits
     detail::_is_view<ViewableType>::value > {
 };
 
-#ifdef DOXYGEN
-
-/**
- * Returns a reference to the specified object's origin, or the object
- * itself if it is not a View type.
- * Inverse operation to \c dash::apply.
- *
- */
-template <class Viewable>
-constexpr typename Viewable::origin_type &
-origin(const Viewable & v);
-
-#else // DOXYGEN
-
 // ------------------------------------------------------------------------
 // dash::origin(View)
 
@@ -139,18 +150,6 @@ origin(ContainerT & container) {
 }
 
 #endif // DOXYGEN
-
-/**
- * Inverse operation to \c dash::origin.
- *
- */
-template <class ViewTypeA, class ViewTypeB>
-constexpr auto apply(
-  ViewTypeA & view_a,
-  ViewTypeB & view_b) -> decltype(view_a.apply(view_b)) {
-  return view_a.apply(view_b);
-}
-
 
 } // namespace dash
 

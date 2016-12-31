@@ -10,6 +10,39 @@
 #include <array>
 #include <sstream>
 
+/**
+ * \defgroup  DashNDimConcepts  Multi-dimensional Concepts
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * \}
+ *
+ */
+
+/**
+ * \defgroup  DashDimensionalConcept  Multi-dimensional Value Concept
+ *
+ * \see DashIteratorConcept
+ * \see DashViewConcept
+ * \see DashRangeConcept
+ *
+ * \see \c dash::view_traits
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * \par Expressions
+ *
+ * - \c dash::ndim
+ * - \c dash::rank
+ * - \c dash::extent
+ *
+ * \}
+ */
+
 namespace dash {
 
 /**
