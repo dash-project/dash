@@ -4,6 +4,7 @@
 #include <dash/Cartesian.h>
 
 #include <dash/view/Sub.h>
+#include <dash/view/Local.h>
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewTraits.h>
 

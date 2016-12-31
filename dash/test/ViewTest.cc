@@ -8,7 +8,7 @@
 #include <array>
 
 
-TEST_F(ViewTest, ArrayBlockedPatternView)
+TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
 {
   int block_size       = 37;
   int array_size       = dash::size() * block_size;
@@ -36,4 +36,54 @@ TEST_F(ViewTest, ArrayBlockedPatternView)
   EXPECT_EQ(block_begin_gidx, view_begin_gidx);
   EXPECT_EQ(block_end_gidx,   view_end_gidx);
 }
+
+TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
+{
+  int block_size       = 37;
+  int blocks_per_unit  = 3;
+  int array_size       = dash::size() * block_size * blocks_per_unit;
+  int block_begin_gidx = block_size * dash::myid();
+  int block_end_gidx   = block_size * (dash::myid() + 1);
+
+  dash::Array<int> a(array_size, dash::BLOCKCYCLIC(block_size));
+
+  // View to global index range of local block:
+  auto block_gview = dash::sub(block_begin_gidx,
+                               block_end_gidx,
+                               a);
+  EXPECT_EQ(block_size, block_gview.size());
+
+  // Origin of block view is array:
+  auto & block_origin = dash::origin(block_gview);
+}
+
+TEST_F(ViewTest, ArrayBlockedPatternLocalView)
+{
+  int block_size       = 37;
+  int array_size       = dash::size() * block_size;
+  int block_begin_gidx = block_size * dash::myid();
+  int block_end_gidx   = block_size * (dash::myid() + 1);
+
+  dash::Array<int> a(array_size);
+
+  // Use case:
+  //
+  //   local(sub(i0,ik, array)
+  //
+
+  // View to global index range of local block:
+  auto block_gview = dash::sub(block_begin_gidx,
+                               block_end_gidx,
+                               a);
+  EXPECT_EQ(block_size, block_gview.size());
+
+  auto block_lview = dash::local(block_gview);
+
+  // Origin of local block view is local array index space:
+  auto & block_lview_origin = dash::origin(block_lview);
+  auto & block_gview_origin = dash::origin(block_lview_origin);
+
+}
+
+
 

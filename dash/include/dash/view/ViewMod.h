@@ -5,6 +5,8 @@
 #include <dash/Range.h>
 #include <dash/Iterator.h>
 
+#include <dash/view/ViewTraits.h>
+
 
 /* TODO: Eventually, these probably are not public definitions.
  *       Move to namespace internal.
@@ -49,6 +51,14 @@
  * class - or vice versa, following the policy pattern with the
  * operation specified as policy:
  *
+ *   template <dim_t DimDiff, class OriginType>
+ *   class ViewMod : OriginType
+ *   {
+ *      // ...
+ *   }
+ *
+ * or:
+ *
  *   template <dim_t DimDiff, class ViewModOperation>
  *   class ViewMod : ViewModOperation
  *   {
@@ -81,9 +91,79 @@ public:
   typedef self_t                 origin_type;
 
 public:
+  constexpr static bool is_local = false;
+
+public:
   constexpr const origin_type & origin() const {
     return *this;
   }
+};
+
+template <>
+struct view_traits<ViewOrigin> {
+  constexpr static bool is_projection = false;
+  constexpr static bool is_origin     = true;
+  constexpr static bool is_local      = false;
+};
+
+
+template <
+  dim_t DimDiff,
+  class OriginType = ViewOrigin,
+  class IndexType  = typename OriginType::IndexType >
+class ViewLocalMod
+{
+  typedef ViewLocalMod<DimDiff, OriginType, IndexType> self_t;
+
+public:
+  constexpr static dim_t dimdiff  = DimDiff;
+  constexpr static bool  is_local = true;
+
+  typedef OriginType    origin_type;
+  typedef IndexType      index_type;
+
+public:
+  ViewLocalMod() = delete;
+
+  ViewLocalMod(OriginType & origin)
+  : _origin(origin)
+  { }
+
+  constexpr index_type begin() const {
+    return _begin;
+  }
+
+  constexpr index_type end() const {
+    return _end;
+  }
+
+  constexpr origin_type & origin() const {
+    return _origin;
+  }
+
+  constexpr index_type size() const {
+    return dash::distance(_begin, _end);
+  }
+  
+  constexpr bool empty() const {
+    return size() == 0;
+  }
+
+private:
+  origin_type & _origin;
+  index_type    _begin;
+  index_type    _end;
+
+}; // class ViewLocalMod
+
+template <
+  dim_t DimDiff,
+  class OriginType,
+  class IndexType >
+struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
+  constexpr static bool is_projection = (DimDiff != 0);
+  constexpr static bool is_origin     = false;
+  constexpr static bool is_local      = true;
 };
 
 
@@ -125,10 +205,13 @@ class ViewSubMod
   typedef ViewSubMod<DimDiff, OriginType, IndexType> self_t;
 
 public:
-  constexpr static dim_t dimdiff = DimDiff;
+  constexpr static dim_t dimdiff  = DimDiff;
+  constexpr static bool  is_local =
+                            dash::view_traits<OriginType>::is_local::value;
 
-  typedef OriginType    origin_type;
-  typedef IndexType      index_type;
+  typedef OriginType                        origin_type;
+  typedef IndexType                          index_type;
+  typedef typename OriginType::local_type    local_type;
 
 public:
   ViewSubMod() = delete;
@@ -158,6 +241,10 @@ public:
   
   constexpr bool empty() const {
     return size() == 0;
+  }
+
+  constexpr local_type local() const {
+    return local_type(*this);
   }
 
 private:

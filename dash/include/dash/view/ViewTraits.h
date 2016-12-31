@@ -1,22 +1,42 @@
 #ifndef DASH__VIEW__VIEW_TRAITS_H__INCLUDED
 #define DASH__VIEW__VIEW_TRAITS_H__INCLUDED
 
-#include <dash/view/ViewMod.h>
+#include <type_traits>
 
 
 namespace dash {
 
-template <class ViewT>
+/**
+ * Specialization of \c dash::view_traits for container types.
+ *
+ */
+template <
+  class ContainerT,
+  class LocalT =
+          typename std::enable_if<
+            !std::is_same<void, ContainerT>::value,
+            typename ContainerT::local_type
+          >::type >
 struct view_traits {
-  // alternative: specialize struct view_traits for DimDiff := 0
-  constexpr static bool is_projection = (ViewT::dimdiff != 0);
-  constexpr static bool is_origin     = false;
+  /// Whether the view type is a projection (has less dimensions than the
+  /// view origin).
+  std::integral_constant<bool, false>                 is_projection;
+  /// Whether the view type is the view origin.
+  std::integral_constant<bool, true>                  is_origin;
+  /// Whether the view / container type is a local view.
+  /// \note A container type is local if it is identical to its \c local_type
+  std::integral_constant<bool, std::is_same<ContainerT, LocalT>::value >
+                                                      is_local;
 };
 
-template <>
-struct view_traits<ViewOrigin> {
-  constexpr static bool is_projection = false;
-  constexpr static bool is_origin     = true;
+template <class ViewT>
+struct view_traits<ViewT, void> {
+  /// \note Alternative: specialize struct view_traits for \c (DimDiff := 0)
+  std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
+  std::integral_constant<bool, false>                 is_origin;
+  std::integral_constant<bool, ViewT::is_local ||
+                               view_traits<typename ViewT::origin_type>
+                                 ::is_local::value >  is_local;
 };
 
 /**
