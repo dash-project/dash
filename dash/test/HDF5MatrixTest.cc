@@ -495,7 +495,9 @@ TEST_F(HDF5MatrixTest, GroupTest)
   verify_matrix(matrix_b, secret[1]);
   verify_matrix(matrix_c, secret[2]);
 }
+#endif
 
+#if 0
 TEST_F(HDF5MatrixTest, DashView)
 {
   int secret = 0;
@@ -503,7 +505,10 @@ TEST_F(HDF5MatrixTest, DashView)
   fill_matrix(matrix2d, secret);
   
   {
-    auto output_view = matrix2d.col(5);
+    auto output_view = dash::sub(0,5, matrix2d);
+    
+    // TODO: Does not work
+    dash::fill(dash::begin(output_view), dash::end(output_view), 5);
 
     // Store View
     dio::OutputStream os(_filename);
@@ -511,13 +516,13 @@ TEST_F(HDF5MatrixTest, DashView)
   }
   
   // Load data into a existing view
-  //auto input_view = matrix2d.col(10);
-  //dio::InputStream is(_filename);
-  //is >> input_view;
+  auto input_view = dash::sub(0,10, matrix2d);
+  dio::InputStream is(_filename);
+  is >> input_view;
   
   // Load data into new matrix
-  //dash::Array<int> matrix1d;
-  //is >> matrix1d;
+  dash::Array<int> matrix1d;
+  is >> matrix1d;
 }
 #endif
 
