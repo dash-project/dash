@@ -4,9 +4,6 @@
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
-#include <chrono>
-
-
 namespace dash {
 namespace io {
 namespace hdf5 {
