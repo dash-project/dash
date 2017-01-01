@@ -21,6 +21,7 @@
 #include <vector>
 #include <list>
 #include <array>
+#include <string>
 #include <sstream>
 #include <typeinfo>
 #include <type_traits>
@@ -87,10 +88,9 @@ private:
     // TODO: check if mapping is regular by checking pattern property
   }
   
-  template < class iterator >
+  template < class ViewType >
   static constexpr bool _is_origin_view(){
-    return !iterator::has_view::value;
-    // TODO: avoid this hack
+    return dash::view_traits<ViewType>::is_origin::value;
   }
 
   static std::vector<std::string> _split_string(
@@ -121,10 +121,10 @@ public:
    * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
- template <typename Container_t>
+ template <typename View_t>
  static void write(
       /// Import data in this Container
-      Container_t &  array,
+      View_t      &  array,
       /// Filename of HDF5 file including extension
       std::string    filename,
       /// HDF5 Dataset in which the data is stored
@@ -133,8 +133,9 @@ public:
       hdf5_options   foptions = _get_fdefaults(),
       /// \cstd::function to convert native type into h5 type
       type_converter_fun_type  to_h5_dt_converter =
-                        get_h5_datatype<typename Container_t::value_type>)
+                        get_h5_datatype<typename dash::view_traits<View_t>::origin_type::value_type>)
   {
+    using Container_t = typename dash::view_traits<View_t>::origin_type;
     using pattern_t = typename Container_t::pattern_type;
     using extent_t  = typename pattern_t::size_type;
     using index_t   = typename Container_t::index_type;
@@ -147,7 +148,6 @@ public:
     static_assert(std::is_same<index_t, typename pattern_t::index_type>::value,
                   "Specified index_t differs from pattern_t::index_type");
 
-    auto pattern             = array.pattern();
     const dash::Team & team  = array.team();
 
     // Map native types to HDF5 types
@@ -241,33 +241,10 @@ public:
 
     // Add Attributes
     if (foptions.store_pattern &&
-        _is_origin_view<typename Container_t::iterator>())
+        _is_origin_view<Container_t>())
     {
       DASH_LOG_DEBUG("store pattern in hdf5 file");
-      auto pat_key = foptions.pattern_metadata_key.c_str();
-      extent_t pattern_spec[ndim * 4];
-
-      // Delete old attribute when overwriting dataset
-      if(foptions.modify_dataset){
-        H5Adelete(h5dset, pat_key);
-      }
-      // Structure is
-      // sizespec, teamspec, blockspec, blocksize
-      for (int i = 0; i < ndim; ++i) {
-        pattern_spec[i]              = pattern.sizespec().extent(i);
-        pattern_spec[i + ndim]       = pattern.teamspec().extent(i);
-        pattern_spec[i + (ndim * 2)] = pattern.blockspec().extent(i);
-        pattern_spec[i + (ndim * 3)] = pattern.blocksize(i);
-      }
-
-      hsize_t attr_len[] = { static_cast<hsize_t> (ndim * 4) };
-      hid_t attrspace = H5Screate_simple(1, attr_len, NULL);
-      hid_t attribute_id = H5Acreate(
-                             h5dset, pat_key, H5T_NATIVE_LONG,
-                             attrspace, H5P_DEFAULT, H5P_DEFAULT);
-      H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
-      H5Aclose(attribute_id);
-      H5Sclose(attrspace);
+      _store_pattern(array, h5dset, foptions);
     }
 
     // Close all
@@ -293,7 +270,7 @@ public:
  template <typename Container_t>
    typename std::enable_if <
     _compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>(),
+    _is_origin_view<Container_t>(),
     void
   >::type
   static read(
@@ -379,40 +356,18 @@ public:
 
     if (!is_alloc                        // not allocated
         && foptions.restore_pattern      // pattern should be restored
-        && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
-      hsize_t attr_len[]  = { ndim * 4};
-      hid_t attrspace      = H5Screate_simple(1, attr_len, NULL);
-      hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
-
-      H5Aread(attribute_id, H5T_NATIVE_LONG, hdf_dash_pattern);
-      H5Aclose(attribute_id);
-      H5Sclose(attrspace);
-
-      for (int i = 0; i < ndim; ++i) {
-        size_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i]);
-        team_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i + ndim]);
-        dist_extents[i]  = dash::TILE(hdf_dash_pattern[i + (ndim * 3)]);
-      }
-      DASH_LOG_DEBUG("Created pattern according to metadata");
-
-      const pattern_t pattern(
-        dash::SizeSpec<ndim>(size_extents),
-        dash::DistributionSpec<ndim>(dist_extents),
-        dash::TeamSpec<ndim>(team_extents),
-        dash::Team::All());
-
-      // Allocate DASH Matrix
-      matrix.allocate(pattern);
-
+        && H5Aexists(h5dset, pat_key))   // hdf5 contains pattern
+    {
+      _restore_pattern(matrix, h5dset, foptions); 
     } else if (is_alloc) {
       DASH_LOG_DEBUG("Matrix already allocated");
       // Check if matrix extents match data extents
-      auto pattern_extents = matrix.pattern().extents();
+      auto container_extents = _get_container_extents(matrix);
       for (int i = 0; i < ndim; ++i) {
         DASH_ASSERT_EQ(
           size_extents[i],
-          pattern_extents[i],
-          "Matrix extents do not match data extents");
+          container_extents.extent[i],
+          "Container extents do not match data extents");
       }
     } else {
       // Auto deduce pattern
@@ -428,11 +383,11 @@ public:
     h5datatype = to_h5_dt_converter();
     internal_type = H5Tcopy(h5datatype);
 
-    // ----------- prepare and read dataset --------------
+    // ----------- prepare and read dataset ------------------
     
     _read_dataset_impl(matrix, h5dset, internal_type);
     
-    // ----------- end prepare and write dataset --------------
+    // ----------- end prepare and read dataset --------------
 
     // Close all
     H5Dclose(h5dset);
@@ -445,7 +400,7 @@ public:
   template< class Container_t >
   typename std::enable_if <
     !(_compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>()),
+    _is_origin_view<Container_t>()),
     void
   >::type
   static read(
@@ -627,6 +582,20 @@ private:
     }
     return fs;
   }
+  
+#if 0
+  // new implementation using view traits
+  template < typename ViewType >
+  const static inline hdf5_filespace_spec<dash::ndim(ViewType)>
+  _get_container_extents(ViewType & container){
+    constexpr auto ndim = dash::ndim(ViewType);
+    hdf5_filespace_spec<ndim> fs;
+    for(int i=0; i<ndim; ++i){
+      fs.extent[i] = dash::extent<i>(container);
+    }
+    return fs;
+  }
+#endif
 
   
   template <
@@ -643,6 +612,108 @@ private:
   static inline void _verify_container_dims(const Container_t & container)
   {return;}
   
+  template < typename Container_t>
+  typename std::enable_if <
+    _is_origin_view<Container_t>(),
+    void
+  >::type
+  static _store_pattern(Container_t &  container,
+                             hid_t          h5dset,
+                             hdf5_options_t & foptions)
+  {
+    using pattern_t = typename Container_t::pattern_type;
+    using extent_t  = typename pattern_t::size_type;
+    constexpr auto ndim = pattern_t::ndim();
+    
+    auto & pattern = container.pattern();
+    
+    auto pat_key = foptions.pattern_metadata_key.c_str();
+    extent_t pattern_spec[ndim * 4];
+
+    // Delete old attribute when overwriting dataset
+    if(foptions.modify_dataset){
+      H5Adelete(h5dset, pat_key);
+    }
+    // Structure is
+    // sizespec, teamspec, blockspec, blocksize
+    for (int i = 0; i < ndim; ++i) {
+      pattern_spec[i]              = pattern.sizespec().extent(i);
+      pattern_spec[i + ndim]       = pattern.teamspec().extent(i);
+      pattern_spec[i + (ndim * 2)] = pattern.blockspec().extent(i);
+      pattern_spec[i + (ndim * 3)] = pattern.blocksize(i);
+    }
+
+    hsize_t attr_len[] = { static_cast<hsize_t> (ndim * 4) };
+    hid_t attrspace = H5Screate_simple(1, attr_len, NULL);
+    hid_t attribute_id = H5Acreate(
+                           h5dset, pat_key, H5T_NATIVE_LONG,
+                           attrspace, H5P_DEFAULT, H5P_DEFAULT);
+    H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
+    H5Aclose(attribute_id);
+    H5Sclose(attrspace);
+  }
+  
+  template < typename Container_t>
+  typename std::enable_if <
+    !_is_origin_view<Container_t>(),
+    void
+  >::type
+  static _store_pattern(Container_t &  container,
+                        hid_t          h5dset,
+                        hdf5_options_t & foptions) { }
+  
+  
+  template < typename Container_t>
+  typename std::enable_if <
+    _is_origin_view<Container_t>(),
+    void
+  >::type
+  static _restore_pattern(Container_t &  container,
+                               hid_t          h5dset,
+                               hdf5_options_t & foptions)
+  {
+    using pattern_t = typename Container_t::pattern_type;
+    using extent_t  = typename pattern_t::size_type;    
+    constexpr auto ndim = pattern_t::ndim();
+
+    std::array<extent_t, ndim>           size_extents;
+    std::array<extent_t, ndim>           team_extents;
+    std::array<dash::Distribution, ndim> dist_extents;
+    extent_t hdf_dash_pattern[ndim * 4];
+
+    hsize_t attr_len[]  = { ndim * 4};
+    hid_t attrspace      = H5Screate_simple(1, attr_len, NULL);
+    hid_t attribute_id  = H5Aopen(h5dset, foptions.pattern_metadata_key.c_str(), H5P_DEFAULT);
+
+    H5Aread(attribute_id, H5T_NATIVE_LONG, hdf_dash_pattern);
+    H5Aclose(attribute_id);
+    H5Sclose(attrspace);
+
+    for (int i = 0; i < ndim; ++i) {
+      size_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i]);
+      team_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i + ndim]);
+      dist_extents[i]  = dash::TILE(hdf_dash_pattern[i + (ndim * 3)]);
+    }
+    DASH_LOG_DEBUG("Created pattern according to metadata");
+
+    const pattern_t pattern(
+      dash::SizeSpec<ndim>(size_extents),
+      dash::DistributionSpec<ndim>(dist_extents),
+      dash::TeamSpec<ndim>(team_extents),
+      dash::Team::All());
+
+    // Allocate DASH Matrix
+    container.allocate(pattern);
+  }
+  
+  template < typename Container_t>
+  typename std::enable_if <
+    !_is_origin_view<Container_t>(),
+    void
+  >::type
+  static _restore_pattern(Container_t &  container,
+                          hid_t          h5dset,
+                          hdf5_options_t & foptions) { }
   
   // -------------------------------------------------------------------------
   // ------------ write dataset implementation specialisations ---------------
@@ -656,8 +727,8 @@ private:
    */
   template< class Container_t >
   typename std::enable_if <
-    _compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>(),
+    _is_origin_view<Container_t>() &&
+    _compatible_pattern<typename Container_t::pattern_type>(),
     void
   >::type
   static _write_dataset_impl(
@@ -677,8 +748,8 @@ private:
    */
   template< class Container_t >
   typename std::enable_if <
-    !(_compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>()),
+    !(_is_origin_view<Container_t>() &&
+      _compatible_pattern<typename Container_t::pattern_type>()),
     void
   >::type
   static _write_dataset_impl(
@@ -727,7 +798,7 @@ private:
   template< class Container_t >
   typename std::enable_if <
     _compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>(),
+    _is_origin_view<Container_t>(),
     void
   >::type
   static inline _read_dataset_impl(
