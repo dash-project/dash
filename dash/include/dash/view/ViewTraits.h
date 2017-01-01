@@ -39,6 +39,8 @@ origin(const Viewable & v);
 template <class ViewT>
 struct view_traits
 {
+  typedef typename ViewT::origin_type         origin_type;
+
   typedef std::integral_constant<bool, value> is_projection;
   typedef std::integral_constant<bool, value> is_view;
   typedef std::integral_constant<bool, value> is_origin;

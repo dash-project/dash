@@ -9,6 +9,11 @@
  * \par Description
  *
  * Definitions for multidimensional view expressions.
+ * A view expression consumes a view object (its origin) and returns a view
+ * object that applies the expression's modification on the consumed origin.
+ *
+ * The result of a view expression satisfies the multidimensional Range
+ * concept.
  *
  * \see DashDimensionalConcept
  * \see DashRangeConcept
@@ -24,6 +29,25 @@
  * - \c dash::apply
  * - \c dash::block
  * - \c dash::blocks
+ *
+ * \par Examples
+ *
+ * \code
+ * auto matrix_rect = dash::sub<0>(10,20,
+ *                    dash::sub<1>(30,40,
+ *                    matrix));
+ *
+ * auto matrix_rect_size = dash::size(matrix_rect);
+ * // -> 10x10 = 100
+ *
+ * auto matrix_rect_begin_gidx = dash::index(dash::begin(matrix_rect));
+ * auto matrix_rect_end_gidx   = dash::index(dash::end(matrix_rect));
+ *
+ * for (auto elem : matrix_rect) {
+ *   // ...
+ * }
+ *
+ * \endcode
  *
  * \}
  */

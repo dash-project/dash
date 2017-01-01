@@ -64,11 +64,15 @@ int main(int argc, char* argv[])
   }
 
   if (myid == 0) {
-#if 0
     auto   v_sub     = dash::sub(3,
                                  block_size - 3,
                                  array);
     auto & v_lsub    = dash::local(v_sub);
+#if 0
+    auto   v_sublsub = dash::sub(2,
+                                 block_size - 2,
+                                 v_lsub);
+#endif
 
     cout << "local(sub(+3,-3, array)): \n"
          << "  begin:   " << dash::begin(v_lsub) << '\n'
@@ -80,18 +84,7 @@ int main(int argc, char* argv[])
                               << static_cast<int>(*i) << '\n';
     }
     cout << endl;
-#endif
   }
-
-#if 0
-    auto   v_sub     = dash::sub(3,
-                                 block_size - 3,
-                                 array);
-    auto & v_lsub    = dash::local(v_sub);
-    auto   v_sublsub = dash::sub(2,
-                                 block_size - 2,
-                                 v_lsub);
-#endif
 
   if (myid == 0) {
     auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
