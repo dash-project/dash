@@ -161,6 +161,10 @@ public:
   constexpr const origin_type & origin() const {
     return _origin;
   }
+  
+  inline Team & team(){
+    return _origin.team();
+  }
 
   constexpr index_type size() const {
     return dash::distance(_begin, _end);
@@ -308,6 +312,10 @@ public:
   inline origin_type & origin() {
     return _origin;
   }
+  
+  inline Team & team(){
+    return _origin.team();
+  }
 
   constexpr const local_type & local() const {
     return *this;
@@ -422,6 +430,10 @@ public:
 
   inline origin_type & origin() {
     return _origin;
+  }
+  
+  inline Team & team(){
+    return _origin.team();
   }
 
   constexpr const local_type & local() const {
