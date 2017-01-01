@@ -433,7 +433,8 @@ public:
    */
   template <
     dim_t ndim>
-  struct hdf5_pattern_spec {
+  class hdf5_pattern_spec {
+  public:
     hsize_t data_dimsf[ndim];
     hsize_t data_dimsm[ndim];
     hsize_t count[ndim];
@@ -441,6 +442,10 @@ public:
     hsize_t offset[ndim];
     hsize_t block[ndim];
     bool    underfilled_blocks;
+
+    hdf5_pattern_spec(){
+      memset(this, 0, sizeof(*this));
+    }
   };
   
   /**
@@ -472,14 +477,7 @@ private:
     return fopt;
   }
   
-  template< dim_t ndim >
-  static const hdf5_pattern_spec<ndim> _get_empty_pattern_spec() {
-    hdf5_pattern_spec<ndim> ts;
-    memset(&ts, 0, sizeof(ts));
-    return ts;
-  }
-
-  /**
+   /**
    * convert a dash pattern into a hdf5 pattern
    * \param pattern_t pattern
    * \return hdf5_pattern_spec<ndim>
@@ -490,8 +488,8 @@ private:
   {
     using index_t = typename pattern_t::index_type;
     constexpr auto ndim = pattern_t::ndim();
-    auto ts = _get_empty_pattern_spec<ndim>();
-    auto ts_empty = _get_empty_pattern_spec<ndim>();
+    hdf5_pattern_spec<ndim> ts;
+    hdf5_pattern_spec<ndim> ts_empty;
     
     ts_empty.underfilled_blocks = true;
 
@@ -528,7 +526,7 @@ private:
   const static inline hdf5_pattern_spec<ndim>
     _get_pattern_hdf_spec_underfilled(const dash::Pattern<ndim, Arr, index_t> & pattern)
   {
-    auto ts = _get_empty_pattern_spec<ndim>();
+    hdf5_pattern_spec<ndim> ts;
     
     for (int i = 0; i < ndim; ++i) {
       auto tilesize    = pattern.blocksize(i);
@@ -552,7 +550,7 @@ private:
       ts.block[i]    = ts.data_dimsm[i];
     }
     if(!ts.underfilled_blocks){
-      return _get_empty_pattern_spec<ndim>();
+      return hdf5_pattern_spec<ndim>();
     }
     return ts;
   }
@@ -560,8 +558,7 @@ private:
   template < class pattern_t >
   const static inline hdf5_pattern_spec<pattern_t::ndim()>
     _get_pattern_hdf_spec_underfilled(const pattern_t & pattern){
-    auto ts = _get_empty_pattern_spec<pattern_t::ndim()>();
-    return ts;
+    return hdf5_pattern_spec<pattern_t::ndim()>();
   }
   
   template < typename value_t >
