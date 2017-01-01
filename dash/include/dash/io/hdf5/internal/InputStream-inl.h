@@ -20,7 +20,6 @@ inline InputStream & operator>> (
 {
     if(is._launch_policy == dash::launch::async){
       is._load_object_impl_async(container);
-      container.barrier();
     } else {
       is._load_object_impl(container);
     }

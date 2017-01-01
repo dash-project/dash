@@ -20,7 +20,6 @@ inline OutputStream & operator<< (
 {
     if(os._launch_policy == dash::launch::async){
       os._store_object_impl_async(container);
-      container.barrier();
     } else {
       os._store_object_impl(container);
     }
