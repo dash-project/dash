@@ -57,6 +57,8 @@ namespace detail {
    */
   template <class ContainerT>
   struct _view_traits< ContainerT, false > {
+    typedef ContainerT                                          origin_type;
+    
     /// Whether the view type is a projection (has less dimensions than the
     /// view's origin type).
     typedef std::integral_constant<bool, false>                 is_projection;
