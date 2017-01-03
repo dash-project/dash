@@ -324,7 +324,8 @@ protected:
       index_type sub_lbegin_gidx = dash::index(dash::begin(origin_sub));
       index_type sub_lend_gidx   = dash::index(dash::end(origin_sub));
       // local index range of sub local view:
-      index_type sub_lbegin_lidx = 3; // dash::index(dash::begin(origin_sub));
+      index_type sub_lbegin_lidx = 3; // dash::index(
+                                      //   dash::begin(origin_sub));
       index_type sub_lend_lidx   = 5; // dash::index(dash::end(origin_sub));
 
       // static polymorphism:

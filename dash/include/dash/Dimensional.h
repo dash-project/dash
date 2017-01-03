@@ -51,6 +51,40 @@
 namespace dash {
 
 /**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr dim_t ndim(const DimensionalType & d) {
+  return d.ndim();
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr dim_t rank(const DimensionalType & d) {
+  return d.rank();
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <dim_t Dim, typename DimensionalType>
+constexpr typename DimensionalType::extent_type
+extent(const DimensionalType & d) {
+  return d.extent(Dim);
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr typename DimensionalType::extent_type
+extent(dim_t dim, const DimensionalType & d) {
+  return d.extent(dim);
+}
+
+/**
  * Base class for dimensional attributes, stores an
  * n-dimensional value with identical type all dimensions.
  *
@@ -99,25 +133,14 @@ public:
   : _values(values) {
   }
 
-  /**
-   * Copy-constructor.
-   */
-  Dimensional(const self_t & other) {
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
-      _values[d] = other._values[d];
-    }
-  }
-
-  self_t & operator=(const self_t & other) {
-    _values = other._values;
-    return *this;
-  }
+  Dimensional(const self_t & other)        = default;
+  self_t & operator=(const self_t & other) = default;
 
   /**
    * Return value with all dimensions as array of \c NumDimensions
    * elements.
    */
-  const std::array<ElementType, NumDimensions> & values() const {
+  constexpr std::array<ElementType, NumDimensions> & values() const {
     return _values;
   }
 
@@ -128,12 +151,10 @@ public:
    * \returns  The value in the given dimension
    */
   ElementType dim(dim_t dimension) const {
-    if (dimension >= NumDimensions) {
-      DASH_THROW(
-        dash::exception::OutOfRange,
-        "Dimension for Dimensional::extent() must be lower than " <<
-        NumDimensions);
-    }
+    DASH_ASSERT_LT(
+      dimension, NumDimensions,
+      "Dimension for Dimensional::extent() must be lower than " <<
+      NumDimensions);
     return _values[dimension];
   }
 
@@ -144,7 +165,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  ElementType operator[](size_t dimension) const {
+  constexpr ElementType operator[](size_t dimension) const {
     return _values[dimension];
   }
 
@@ -163,11 +184,8 @@ public:
   /**
    * Equality comparison operator.
    */
-  inline bool operator==(const self_t & other) const {
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      if (dim(d) != other.dim(d)) return false;
-    }
-    return true;
+  constexpr bool operator==(const self_t & other) const {
+    return this == &other || _values == other._values;
   }
 
   /**
@@ -180,22 +198,21 @@ public:
   /**
    * The number of dimensions of the value.
    */
-  dim_t rank() const {
+  constexpr dim_t rank() const {
     return NumDimensions;
   }
 
   /**
    * The number of dimensions of the value.
    */
-  dim_t ndim() const {
+  constexpr static dim_t ndim() {
     return NumDimensions;
   }
 
 protected:
   /// Prevent default-construction for non-derived types, as initial values
   /// for \c _values have unknown defaults.
-  Dimensional() {
-  }
+  Dimensional() = default;
 };
 
 /**
