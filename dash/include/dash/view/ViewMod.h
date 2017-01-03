@@ -244,17 +244,19 @@ public:
 
 template <>
 struct view_traits<ViewOrigin> {
-  typedef ViewOrigin                          origin_type;
+  typedef ViewOrigin                                         origin_type;
+  typedef ViewOrigin                                           view_type;
+  typedef typename ViewOrigin::index_type                     index_type;
 
-  typedef std::integral_constant<bool, false> is_projection;
-  typedef std::integral_constant<bool, true>  is_view;
-  typedef std::integral_constant<bool, true>  is_origin;
-  typedef std::integral_constant<bool, false> is_local;
+  typedef std::integral_constant<bool, false>              is_projection;
+  typedef std::integral_constant<bool, true>               is_view;
+  typedef std::integral_constant<bool, true>               is_origin;
+  typedef std::integral_constant<bool, false>              is_local;
 };
 
-// --------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // Forward-declaration: ViewSubMod
-// --------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
 template <
   dim_t DimDiff,
@@ -263,9 +265,9 @@ template <
 class ViewSubMod;
 
 
-// --------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // Forward-declaration: ViewLocalMod
-// --------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
 template <
   dim_t DimDiff,
@@ -278,13 +280,14 @@ template <
   class OriginType,
   class IndexType >
 struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
-  typedef OriginType                                   origin_type;
-  typedef IndexType                                     index_type;
+  typedef OriginType                                         origin_type;
+  typedef ViewLocalMod<DimDiff, OriginType, IndexType>         view_type;
+  typedef IndexType                                           index_type;
 
-  typedef std::integral_constant<bool, (DimDiff != 0)> is_projection;
-  typedef std::integral_constant<bool, true>           is_view;
-  typedef std::integral_constant<bool, false>          is_origin;
-  typedef std::integral_constant<bool, true>           is_local;
+  typedef std::integral_constant<bool, (DimDiff != 0)>     is_projection;
+  typedef std::integral_constant<bool, true>               is_view;
+  typedef std::integral_constant<bool, false>              is_origin;
+  typedef std::integral_constant<bool, true>               is_local;
 };
 
 // --------------------------------------------------------------------
@@ -303,64 +306,46 @@ template <
 class ViewLocalModBase<ViewLocalModType, true>
 {
   typedef ViewLocalModBase<ViewLocalModType, true> self_t;
-protected:
-  typedef typename view_traits<ViewLocalModType>::origin_type  origin_type;
-  typedef typename origin_type::index_type                      index_type;
-  typedef ViewSubMod<0, ViewLocalModType, index_type>  view_sub_local_type;
+public:
+  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
+  typedef typename view_traits<ViewLocalModType>::view_type     view_type;
+  typedef typename view_traits<origin_type>::index_type        index_type;
 
   ViewLocalModBase(origin_type & origin_sub)
-  : _origin(origin_sub),
-    _range(const_cast<ViewLocalModType &>(
-             *static_cast<ViewLocalModType *>(this)),
-           3, // sub_lbegin_lidx
-           5) // sub_lend_lidx
-  {
-    // TODO: Wrap this index range calculation in expression template:
-    /*
-      // global index range of origin sub view:
-      index_type sub_begin_gidx  = dash::index(dash::begin(origin_sub));
-      index_type sub_end_gidx    = dash::index(dash::end(origin_sub));
-      // global index range of local view:
-      index_type sub_lbegin_gidx = dash::index(dash::begin(origin_sub));
-      index_type sub_lend_gidx   = dash::index(dash::end(origin_sub));
-      // local index range of sub local view:
-      index_type sub_lbegin_lidx = 3; // dash::index(
-                                      //   dash::begin(origin_sub));
-      index_type sub_lend_lidx   = 5; // dash::index(dash::end(origin_sub));
-
-      // static polymorphism:
-      _range(const_cast<const ViewLocalModType &>(
-               *static_cast<ViewLocalModType *>(this)),
-             sub_lbegin_lidx,
-             sub_lend_lidx)
-
-      // TODO: Generalized variant:
-      //
-      // _range = dash::apply(*this, origin));
-      //                |
-      //                '--> calls this->apply(origin),
-      //                     defined in ViewModBase,
-      //                     returns expression template
-    */
-  }
+  : _origin(origin_sub), _range(*this)
+  { }
 
 public:
-//constexpr typename ViewLocalModType::local_type begin() const {
-  constexpr auto begin() const
-    -> decltype(reinterpret_cast<const ViewLocalModType *>(this)->local()) {
-    return dash::begin(_range);
-  }
+  
+  constexpr view_type & apply() const {
+  /*
+    type of _range is expression template implementing:
 
-//inline typename ViewLocalModType::local_type begin() {
-  inline auto begin()
-    -> decltype(reinterpret_cast<ViewLocalModType *>(this)->local()) {
-    return dash::begin(_range);
+    // global index range of origin sub view:
+    index_type sub_begin_gidx  = dash::index(dash::begin(origin_sub));
+    index_type sub_end_gidx    = dash::index(dash::end(origin_sub));
+    // global index range of local view:
+    index_type sub_lbegin_gidx = dash::index(dash::begin(origin_sub));
+    index_type sub_lend_gidx   = dash::index(dash::end(origin_sub));
+    // local index range of sub local view:
+    index_type sub_lbegin_lidx = 3; // dash::index(
+                                    //   dash::begin(origin_sub));
+    index_type sub_lend_lidx   = 5; // dash::index(
+                                    //   dash::end(origin_sub));
+
+    // static polymorphism:
+    _range = view_type(const_cast<const ViewLocalModType &>(
+                         *static_cast<ViewLocalModType *>(this)),
+                       sub_lbegin_lidx,
+                       sub_lend_lidx);
+  */
+    return _range;
   }
 
 protected:
-  origin_type                 & _origin;
+  origin_type                & _origin;
   // range created by application of this view modifier.
-  view_sub_local_type           _range;
+  view_type                    _range;
 };
 
 // View Local of Origin (array.local.sub)
@@ -368,28 +353,25 @@ template <
   class ViewLocalModType >
 class ViewLocalModBase<ViewLocalModType, false>
 {
-protected:
-  typedef typename view_traits<ViewLocalModType>::origin_type  origin_type;
-  typedef typename origin_type::index_type                      index_type;
+public:
+  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
+  typedef typename view_traits<ViewLocalModType>::view_type     view_type;
+  typedef typename origin_type::index_type                     index_type;
 
   ViewLocalModBase(origin_type & origin)
   : _origin(origin)
   { }
 
 public:
-  constexpr typename origin_type::local_type & begin() const {
-    // TODO: Generalized variant:
+  constexpr view_type & apply() const {
+    // Usage context:
     //
     //   return dash::begin(dash::apply(*this, origin));
     //                            |
     //                            '--> defined in ViewModBase,
     //                                 returns expression template
     //
-    return dash::begin(dash::local(_origin));
-  }
-
-  inline typename origin_type::local_type & begin() {
-    return dash::begin(dash::local(_origin));
+    return dash::local(_origin);
   }
 
 protected:
@@ -401,7 +383,7 @@ template <
   class OriginType,
   class IndexType >
 class ViewLocalMod
-: public ViewLocalModBase<
+: public dash::ViewLocalModBase<
            ViewLocalMod<DimDiff, OriginType, IndexType>,
            dash::view_traits<OriginType>::is_view::value >
 {
@@ -410,14 +392,12 @@ class ViewLocalMod
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
-  typedef std::integral_constant<bool, true> is_local;
+  typedef std::integral_constant<bool, true>  is_local;
 
-  typedef OriginType    origin_type;
-  typedef IndexType      index_type;
-  typedef self_t         local_type;
-
-private:
-  typedef typename origin_type::local_type origin_local_t;
+  typedef OriginType                       origin_type;
+  typedef IndexType                         index_type;
+  typedef self_t                            local_type;
+  typedef typename origin_type::local_type   view_type;
 
 public:
 
@@ -441,12 +421,20 @@ public:
     return !(*this == rhs);
   }
 
-  constexpr typename origin_type::local_type & end() const {
-    return dash::end(dash::local(this->_origin));
+  constexpr view_type & begin() const {
+    return dash::begin(dash::apply(*this)); // , dash::origin(*this)));
   }
 
-  inline typename origin_type::local_type & end() {
-    return dash::end(dash::local(this->_origin));
+  inline view_type & begin() {
+    return dash::begin(dash::apply(*this)); // , dash::origin(*this)));
+  }
+
+  constexpr view_type & end() const {
+    return dash::end(dash::apply(*this)); // , dash::origin(*this)));
+  }
+
+  inline view_type & end() {
+    return dash::end(dash::apply(*this)); // , dash::origin(*this)));
   }
 
   constexpr const origin_type & origin() const {
