@@ -128,7 +128,7 @@ TEST_F(HDF5ArrayTest, AutoGeneratePattern)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -155,7 +155,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -205,7 +205,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "barrier #1");
     dash::barrier();
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     // Important as recreation should create equal pattern
     fopts.store_pattern = true;
 
@@ -245,7 +245,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
     fill_array(array_a);
     dash::barrier();
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -280,7 +280,7 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -314,7 +314,7 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::get_default_options();
+    auto fopts = StoreHDF::hdf5_options();
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);

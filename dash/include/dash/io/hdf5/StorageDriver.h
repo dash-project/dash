@@ -26,6 +26,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include <functional>
+#include <utility>
 
 #ifndef MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
@@ -57,21 +58,21 @@ public:
    *
    * Collective operation.
    */
-  typedef struct hdf5_options_t {
+  struct hdf5_options {
     /// Overwrite HDF5 file if already existing
-    bool          overwrite_file;
+    bool          overwrite_file = true;
     /**
      * Modify an already existing HDF5 dataset.
      * If the dataset is not existing, throws a runtime error
      */
-    bool          modify_dataset;
+    bool          modify_dataset = false;
     /// Store dash pattern characteristics as metadata in HDF5 file
-    bool          store_pattern;
+    bool          store_pattern = true;
     /// Restore pattern from metadata if HDF5 file contains any.
-    bool          restore_pattern;
+    bool          restore_pattern = true;
     /// Metadata attribute key in HDF5 file.
-    std::string   pattern_metadata_key;
-  } hdf5_options;
+    std::string   pattern_metadata_key = "DASH_PATTERN";
+  };
 
   /**
    * test at compile time if pattern is compatible
@@ -130,7 +131,7 @@ public:
       /// HDF5 Dataset in which the data is stored
       std::string    datapath,
       /// options how to open and modify data
-      hdf5_options   foptions = _get_fdefaults(),
+      hdf5_options   foptions = hdf5_options(),
       /// \cstd::function to convert native type into h5 type
       type_converter_fun_type  to_h5_dt_converter =
                         get_h5_datatype<typename dash::view_traits<View_t>::origin_type::value_type>)
@@ -281,7 +282,7 @@ public:
       /// HDF5 Dataset in which the data is stored
       std::string    datapath,
       /// options how to open and modify data
-      hdf5_options   foptions = _get_fdefaults(),
+      hdf5_options   foptions = hdf5_options(),
       /// \cstd::function to convert native type into h5 type
       type_converter_fun_type  to_h5_dt_converter =
                         get_h5_datatype<typename Container_t::value_type>)
@@ -411,41 +412,24 @@ public:
     /// HDF5 Dataset in which the data is stored
     std::string datapath,
     /// options how to open and modify data
-    hdf5_options foptions = _get_fdefaults(),
+    hdf5_options foptions = hdf5_options(),
     /// \cstd::function to convert native type into h5 type
     type_converter_fun_type to_h5_dt_converter =
     get_h5_datatype<typename Container_t::value_type>)
   { }
 
 public:
-  /**
-   * Default file options.
-   *
-   * \return hdf5_options struct
-   */
-  static inline hdf5_options get_default_options()
-  {
-    return _get_fdefaults();
-  }
 
   /**
    * hdf5 pattern specification for parallel IO
    */
   template <
     dim_t ndim>
-  class hdf5_pattern_spec {
-  public:
-    hsize_t data_dimsf[ndim];
-    hsize_t data_dimsm[ndim];
-    hsize_t count[ndim];
-    hsize_t stride[ndim];
-    hsize_t offset[ndim];
-    hsize_t block[ndim];
-    bool    underfilled_blocks;
-
-    hdf5_pattern_spec(){
-      memset(this, 0, sizeof(*this));
-    }
+  struct hdf5_pattern_spec {
+    std::array<hsize_t,ndim> count;
+    std::array<hsize_t,ndim> stride;
+    std::array<hsize_t,ndim> offset;
+    std::array<hsize_t,ndim> block;
   };
   
   /**
@@ -457,6 +441,16 @@ public:
     hsize_t extent[ndim];
   };
   
+  template <
+    dim_t ndim >
+  struct hdf5_hyperslab_spec {
+    hdf5_pattern_spec<ndim>  memory;
+    hdf5_pattern_spec<ndim>  dataset;
+    std::array<hsize_t,ndim> data_extf;
+    std::array<hsize_t,ndim> data_extm;
+    bool underfilled_blocks;
+  };
+  
 
 private:
   
@@ -464,18 +458,6 @@ private:
     READ  = 0x1,
     WRITE = 0x2
   };
-
-  static inline hdf5_options _get_fdefaults()
-  {
-    hdf5_options fopt;
-    fopt.overwrite_file       = true;
-    fopt.modify_dataset       = false;
-    fopt.store_pattern        = true;
-    fopt.restore_pattern      = true;
-    fopt.pattern_metadata_key = "DASH_PATTERN";
-
-    return fopt;
-  }
   
    /**
    * convert a dash pattern into a hdf5 pattern
@@ -483,15 +465,14 @@ private:
    * \return hdf5_pattern_spec<ndim>
    */
   template < class pattern_t >
-  const static inline hdf5_pattern_spec<pattern_t::ndim()>
+  const static inline hdf5_hyperslab_spec<pattern_t::ndim()>
     _get_pattern_hdf_spec(const pattern_t & pattern)
   {
     using index_t = typename pattern_t::index_type;
     constexpr auto ndim = pattern_t::ndim();
-    hdf5_pattern_spec<ndim> ts;
-    hdf5_pattern_spec<ndim> ts_empty;
-    
-    ts_empty.underfilled_blocks = true;
+    hdf5_hyperslab_spec<ndim> hs;
+    auto & ms = hs.memory;
+    auto & ts = hs.dataset;
 
     // setup extends per dimension
     for (int i = 0; i < ndim; ++i) {
@@ -500,19 +481,40 @@ private:
       DASH_LOG_DEBUG("local extent:", dash::myid(), pattern.local_extent(i));
       if(num_tiles == 0){
         // only underfilled blocks
-        return ts_empty;
+        hdf5_hyperslab_spec<ndim> hs_empty;
+        hs_empty.underfilled_blocks = true;
+        return hs_empty;
       }
       
-      ts.data_dimsm[i] = num_tiles * tilesize;
+      hs.data_extm[i] = pattern.local_extent(i);
       // number of tiles in this dimension
       ts.count[i]      = num_tiles;
       ts.offset[i]     = pattern.local_block(0).offset(i);
       ts.block[i]      = tilesize;
       ts.stride[i]     = pattern.teamspec().extent(i) * ts.block[i];
     }
-    return ts;
+    return hs;
   }
-
+  
+   template < dim_t ndim,
+             MemArrange Arr,
+             typename index_t >
+  const static inline hdf5_hyperslab_spec<ndim>
+    _get_pattern_hdf_spec_edges(const dash::Pattern<ndim, Arr, index_t> & pattern) {
+     std::vector<hdf5_pattern_spec<ndim>> specs_filespace;
+     std::vector<hdf5_pattern_spec<ndim>> specs_memspace;
+     int num_edges = 0;
+     for(int i=0; i<ndim; ++i){
+       if(pattern.underfilled_blocksize(i) != 0){
+         num_edges++;
+       }
+     }
+     specs_filespace.resize(num_edges);
+     specs_memspace.resize(num_edges);
+     
+     
+   }
+  
   /**
    * get the layout of the last underfilled block of a dash::BlockPattern
    * if the calling unit does not have any underfilled blocks, a zero size
@@ -523,10 +525,12 @@ private:
   template < dim_t ndim,
              MemArrange Arr,
              typename index_t >
-  const static inline hdf5_pattern_spec<ndim>
+  const static inline hdf5_hyperslab_spec<ndim>
     _get_pattern_hdf_spec_underfilled(const dash::Pattern<ndim, Arr, index_t> & pattern)
   {
-    hdf5_pattern_spec<ndim> ts;
+    hdf5_hyperslab_spec<ndim> hs;
+    auto & ms = hs.memory;
+    auto & ts = hs.dataset;
     
     for (int i = 0; i < ndim; ++i) {
       auto tilesize    = pattern.blocksize(i);
@@ -539,26 +543,26 @@ private:
       
       if(localsize == lfullsize){
         lastblckidx-=1;
-        ts.data_dimsm[i] = lfullsize;
+        hs.data_extm[i] = lfullsize;
       } else {
-        ts.data_dimsm[i] = localsize - lfullsize;
-        ts.underfilled_blocks |= true;
+        hs.data_extm[i] = localsize - lfullsize;
+        hs.underfilled_blocks |= true;
       }
-      ts.stride[i]   = ts.data_dimsm[i];
+      ts.stride[i]   = hs.data_extm[i];
       ts.count[i]    = 1;
       ts.offset[i]   = pattern.local_block(lastblckidx).offset(i);
-      ts.block[i]    = ts.data_dimsm[i];
+      ts.block[i]    = hs.data_extm[i];
     }
-    if(!ts.underfilled_blocks){
-      return hdf5_pattern_spec<ndim>();
+    if(!hs.underfilled_blocks){
+      return hdf5_hyperslab_spec<ndim>();
     }
-    return ts;
+    return hs;
   }
   
   template < class pattern_t >
-  const static inline hdf5_pattern_spec<pattern_t::ndim()>
+  const static inline hdf5_hyperslab_spec<pattern_t::ndim()>
     _get_pattern_hdf_spec_underfilled(const pattern_t & pattern){
-    return hdf5_pattern_spec<pattern_t::ndim()>();
+    return hdf5_hyperslab_spec<pattern_t::ndim()>();
   }
   
   template < typename value_t >
@@ -616,7 +620,7 @@ private:
   >::type
   static _store_pattern(Container_t &  container,
                              hid_t          h5dset,
-                             hdf5_options_t & foptions)
+                             hdf5_options & foptions)
   {
     using pattern_t = typename Container_t::pattern_type;
     using extent_t  = typename pattern_t::size_type;
@@ -657,7 +661,7 @@ private:
   >::type
   static _store_pattern(Container_t &  container,
                         hid_t          h5dset,
-                        hdf5_options_t & foptions) { }
+                        hdf5_options & foptions) { }
   
   
   template < typename Container_t>
@@ -667,7 +671,7 @@ private:
   >::type
   static _restore_pattern(Container_t &  container,
                                hid_t          h5dset,
-                               hdf5_options_t & foptions)
+                               hdf5_options & foptions)
   {
     using pattern_t = typename Container_t::pattern_type;
     using extent_t  = typename pattern_t::size_type;    
@@ -710,7 +714,7 @@ private:
   >::type
   static _restore_pattern(Container_t &  container,
                           hid_t          h5dset,
-                          hdf5_options_t & foptions) { }
+                          hdf5_options & foptions) { }
   
   // -------------------------------------------------------------------------
   // ------------ write dataset implementation specialisations ---------------

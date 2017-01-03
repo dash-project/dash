@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Add dataset temperature to " << FILENAME << endl;
 		}
-		auto fopts = StoreHDF::get_default_options();
+		StoreHDF::hdf5_options fopts;
 		fopts.overwrite_file = false; // Do not overwrite existing file
 
 		StoreHDF::write(array_b, FILENAME, "temperature", fopts);
@@ -115,7 +115,7 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Modify " << FILENAME << " / temperature dataset" << endl;
 		}
-		auto fopts = StoreHDF::get_default_options();
+		StoreHDF::hdf5_options fopts;
 		fopts.overwrite_file = false;
 		fopts.modify_dataset = true;
 

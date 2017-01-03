@@ -21,25 +21,34 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   DASH_LOG_DEBUG("Use zero_copy impl");
 
   // get hdf pattern layout
-  auto ts = _get_pattern_hdf_spec(container.pattern());
+  auto hyperslabs_center = _get_pattern_hdf_spec(container.pattern());
+  auto & ms = hyperslabs_center.memory;
+  auto & ts = hyperslabs_center.dataset;
 
   // Create property list for collective writes
   hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
   H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
   hid_t filespace = H5Dget_space(h5dset);
-  hid_t memspace = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+  hid_t memspace = H5Screate_simple(ndim, hyperslabs_center.data_extm.data(), NULL);
 
-  if(ts.underfilled_blocks){
+  if(hyperslabs_center.underfilled_blocks){
     H5Sselect_none(filespace);
   } else {
     H5Sselect_hyperslab(
+                      memspace,
+                      H5S_SELECT_SET,
+                      ms.offset.data(),
+                      ms.stride.data(),
+                      ms.count.data(),
+                      ms.block.data());
+    H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
-                      ts.offset,
-                      ts.stride,
-                      ts.count,
-                      ts.block);
+                      ts.offset.data(),
+                      ts.stride.data(),
+                      ts.count.data(),
+                      ts.block.data());
   }
 
   DASH_LOG_DEBUG("process completely filled blocks");
@@ -50,24 +59,23 @@ void StoreHDF::_process_dataset_impl_zero_copy(
     H5Dread(h5dset, internal_type, memspace, filespace,
            plist_id, container.lbegin());
   }
-  
-  H5Sclose(memspace);
 
   // write underfilled blocks
   // get hdf pattern layout
-  auto ts_rem = _get_pattern_hdf_spec_underfilled(container.pattern());
-  memspace = H5Screate_simple(ndim, ts_rem.data_dimsm, NULL);
+  auto hyperslabs_edges = _get_pattern_hdf_spec_underfilled(container.pattern());
+  auto & ms_edge = hyperslabs_center.memory;
+  auto & ts_edge = hyperslabs_center.dataset;
 
-  if(!ts_rem.underfilled_blocks){
+  if(!hyperslabs_edges.underfilled_blocks){
     H5Sselect_none(filespace);
   } else {
     H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
-                      ts_rem.offset,
-                      ts_rem.stride,
-                      ts_rem.count,
-                      ts_rem.block);
+                      ts_edge.offset.data(),
+                      ts_edge.stride.data(),
+                      ts_edge.count.data(),
+                      ts_edge.block.data());
   }
 
   DASH_LOG_DEBUG("write partially filled blocks");

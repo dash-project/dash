@@ -598,7 +598,7 @@ TEST_F(HDF5MatrixTest, ArrayToMatrix)
     }
 
     // Do not store pattern
-    auto fopts = dio::StoreHDF::get_default_options();
+    auto fopts = dio::StoreHDF::hdf5_options();
     fopts.store_pattern = false;
 
     dio::StoreHDF::write(array, _filename, _dataset);
