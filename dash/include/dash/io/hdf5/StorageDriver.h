@@ -426,10 +426,10 @@ public:
   template <
     dim_t ndim>
   struct hdf5_pattern_spec {
-    std::array<hsize_t,ndim> count;
-    std::array<hsize_t,ndim> stride;
-    std::array<hsize_t,ndim> offset;
-    std::array<hsize_t,ndim> block;
+    std::array<hsize_t,ndim> count {{0}};
+    std::array<hsize_t,ndim> stride {{0}};
+    std::array<hsize_t,ndim> offset {{0}};
+    std::array<hsize_t,ndim> block {{0}};
   };
   
   /**
@@ -438,7 +438,7 @@ public:
   template <
     dim_t ndim >
   struct hdf5_filespace_spec {
-    hsize_t extent[ndim];
+    hsize_t extent[ndim] = {0};
   };
   
   template <
@@ -446,9 +446,9 @@ public:
   struct hdf5_hyperslab_spec {
     hdf5_pattern_spec<ndim>  memory;
     hdf5_pattern_spec<ndim>  dataset;
-    std::array<hsize_t,ndim> data_extf;
-    std::array<hsize_t,ndim> data_extm;
-    bool underfilled_blocks;
+    std::array<hsize_t,ndim> data_extf {{0}};
+    std::array<hsize_t,ndim> data_extm {{0}};
+    bool underfilled_blocks = false;
   };
   
 
@@ -492,6 +492,10 @@ private:
       ts.offset[i]     = pattern.local_block(0).offset(i);
       ts.block[i]      = tilesize;
       ts.stride[i]     = pattern.teamspec().extent(i) * ts.block[i];
+      
+      ms.count[i]      = 1;
+      ms.stride[i]     = 1;
+      ms.block[i]      = tilesize * num_tiles;
     }
     return hs;
   }
@@ -546,7 +550,7 @@ private:
         hs.data_extm[i] = lfullsize;
       } else {
         hs.data_extm[i] = localsize - lfullsize;
-        hs.underfilled_blocks |= true;
+        hs.underfilled_blocks = true;
       }
       ts.stride[i]   = hs.data_extm[i];
       ts.count[i]    = 1;
@@ -554,7 +558,9 @@ private:
       ts.block[i]    = hs.data_extm[i];
     }
     if(!hs.underfilled_blocks){
-      return hdf5_hyperslab_spec<ndim>();
+      auto hs = hdf5_hyperslab_spec<ndim>();
+      DASH_LOG_DEBUG("TEST", hs.dataset.stride[0]);
+      return hs;
     }
     return hs;
   }
