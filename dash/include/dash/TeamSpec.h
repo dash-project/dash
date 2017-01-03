@@ -230,6 +230,10 @@ public:
     _myid(other._myid)
   { }
 
+  /**
+   * Tries to equally distribute the units across the dimensions.
+   * The number of units is determined by the current state of the extents.
+   */
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
