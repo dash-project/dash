@@ -9,7 +9,8 @@ namespace dash {
 
 template <
   class IndexSetType,
-  class ViewType >
+  class ViewType,
+  class IndexSetDomain >
 class IndexSetBase
 {
 public:
@@ -36,7 +37,7 @@ public:
   typedef index_iterator iterator;
 
   IndexSetBase(const ViewType & view)
-  : _domain(view)
+  : _view(view)
   { }
 
   constexpr iterator begin() const {
@@ -49,20 +50,29 @@ public:
   }
 
 protected:
-  constexpr const ViewType & domain() const {
+  constexpr const ViewType & view() const {
+    return _view;
+  }
+  constexpr const IndexSetDomain & domain() const {
     return _domain;
   }
 
 private:
-  const ViewType & _domain;
+  const ViewType       & _view;
+  const IndexSetDomain & _domain;
 };
 
-template <class ViewType>
+template <
+  class ViewType,
+  class IndexSetDomain >
 class IndexSetSub
-: IndexSetBase<IndexSetSub<ViewType>, ViewType>
+: IndexSetBase<
+    IndexSetSub<ViewType, IndexSetDomain>,
+    ViewType,
+    IndexSetDomain >
 {
-  typedef IndexSetSub<ViewType>                                 self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetSub<ViewType, IndexSetDomain>                 self_t;
+  typedef IndexSetBase<self_t, ViewType, IndexSetDomain>        base_t;
 public:
   typedef typename ViewType::index_type                     index_type;
 
@@ -88,12 +98,17 @@ private:
   index_type _domain_end_idx;
 };
 
-template <class ViewType>
+template <
+  class ViewType,
+  class IndexSetDomain >
 class IndexSetLocal
-: IndexSetBase<IndexSetLocal<ViewType>, ViewType>
+: IndexSetBase<
+    IndexSetLocal<ViewType, IndexSetDomain>,
+    ViewType,
+    IndexSetDomain >
 {
-  typedef IndexSetLocal<ViewType>                               self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetLocal<ViewType, IndexSetDomain>               self_t;
+  typedef IndexSetBase<self_t, ViewType, IndexSetDomain>        base_t;
 
   typedef typename dash::view_traits<ViewType>::origin_type   origin_t;
   typedef typename origin_t::pattern_type                    pattern_t;
@@ -106,13 +121,15 @@ public:
 
 private:
   constexpr const pattern_t & pattern() const {
-    return dash::origin(this->domain()).pattern();
+    return dash::origin(this->view()).pattern();
   }
 
 public:
 
   constexpr index_type operator[](index_type image_index) const {
-    return pattern().local_index(image_index);
+    return pattern().local_index(
+                    // this->domain()[0] +
+                       image_index);
   }
 
   constexpr index_type size() const {
