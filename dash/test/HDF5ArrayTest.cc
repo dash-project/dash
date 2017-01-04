@@ -81,7 +81,11 @@ TEST_F(HDF5ArrayTest, StoreLargeDashArray)
 {
   // Pattern for arr2 array
   size_t nunits           = dash::Team::All().size();
+#ifdef DASH_DEBUG
+  size_t tilesize         = 4;
+#else
   size_t tilesize         = 512 * 512;
+#endif
   size_t blocks_per_unit  = 4; //32;
   size_t size             = nunits * tilesize * blocks_per_unit;
   long   mbsize_total     = (size * sizeof(value_t)) / (tilesize);
@@ -280,7 +284,7 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    StoreHDF::hdf5_options fopts;
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
