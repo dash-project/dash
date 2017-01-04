@@ -135,6 +135,7 @@ public:
   /// Type alias for LocalArrayRef<T,I,P>::view_type
   typedef LocalArrayRef<T, IndexType, PatternType>                 View;
   typedef self_t                                             local_type;
+  typedef PatternType                                      pattern_type;
 
 public:
   /**

@@ -315,8 +315,6 @@ public:
   constexpr static dim_t dimdiff = 0;
 
   typedef typename ViewLocalModType::index_type                 index_type;
-  typedef typename dash::view_traits<ViewLocalModType>::domain_type
-                                                               domain_type;
   typedef typename dash::view_traits<ViewLocalModType>::origin_type
                                                                origin_type;
 
@@ -376,18 +374,19 @@ template <
   class ViewLocalModType >
 class ViewLocalModBase<ViewLocalModType, true>
 {
-  typedef ViewLocalModBase<ViewLocalModType, true> self_t;
-
+  typedef ViewLocalModBase<ViewLocalModType, true>                 self_t;
   typedef ViewSubLocalIndexSet<self_t>               image_index_set_type;
 
 public:
   constexpr static dim_t dimdiff = 0;
 
+  typedef std::integral_constant<bool, true>  is_local;
+
   typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
   typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
   typedef typename domain_type::local_type                     local_type;
-  typedef typename view_traits<domain_type>::index_type        index_type;
   typedef image_index_set_type                                 image_type;
+  typedef typename view_traits<domain_type>::index_type        index_type;
 
   ViewLocalModBase(domain_type & domain_sub)
   : _domain(domain_sub), _image_index_set(*this)
@@ -419,8 +418,11 @@ class ViewLocalModBase<ViewLocalModType, false>
 public:
   constexpr static dim_t dimdiff = 0;
 
+  typedef std::integral_constant<bool, true>  is_local;
+
   typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
   typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
+  typedef typename domain_type::local_type                     local_type;
   typedef typename domain_type::local_type                     image_type;
   typedef typename domain_type::index_type                     index_type;
 
@@ -450,13 +452,10 @@ class ViewLocalMod
            ViewLocalMod<DimDiff, DomainType, IndexType>,
            dash::view_traits<DomainType>::is_view::value >
 {
+private:
   typedef ViewLocalMod<DimDiff, DomainType, IndexType> self_t;
 
 public:
-  constexpr static dim_t dimdiff = 0;
-
-  typedef std::integral_constant<bool, true>  is_local;
-
   typedef DomainType                       domain_type;
   typedef IndexType                         index_type;
   typedef self_t                            local_type;
