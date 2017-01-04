@@ -448,7 +448,7 @@ public:
     hdf5_pattern_spec<ndim>  dataset;
     std::array<hsize_t,ndim> data_extf {{0}};
     std::array<hsize_t,ndim> data_extm {{0}};
-    bool underfilled_blocks = false;
+    bool contrib_blocks = false;
   };
   
 
@@ -482,7 +482,7 @@ private:
       if(num_tiles == 0){
         // only underfilled blocks
         hdf5_hyperslab_spec<ndim> hs_empty;
-        hs_empty.underfilled_blocks = true;
+        hs_empty.contrib_blocks = false;
         return hs_empty;
       }
       
@@ -497,6 +497,7 @@ private:
       ms.stride[i]     = 1;
       ms.block[i]      = tilesize * num_tiles;
     }
+    hs.contrib_blocks = true;
     return hs;
   }
   
@@ -556,7 +557,7 @@ private:
               // as each edge is checked seperately (num_edges) only mark
               // dimension as underfilled if current dim = edge dim
               // or if inspecting the bottom right corner
-              hs.underfilled_blocks = true;
+              hs.contrib_blocks = true;
             }
             ts.count[i] = 1;
             // workaround until pattern.local_block(llastblckidx).extent(i); is fixed
@@ -583,11 +584,11 @@ private:
           DASH_LOG_DEBUG("ms.offset", d, i, ms.offset[i]);
           DASH_LOG_DEBUG("ms.stride", d, i, ms.stride[i]);
         }
-        if(hs.underfilled_blocks == true){
-          DASH_LOG_DEBUG("hs.underfilled", d, "true");
+        if(hs.contrib_blocks == true){
+          DASH_LOG_DEBUG("hs.contrib_blocks", d, "true");
         } else {
           hs = hdf5_hyperslab_spec<ndim>();
-          DASH_LOG_DEBUG("hs.underfilled", d, "false");
+          DASH_LOG_DEBUG("hs.contrib_blocks", d, "false");
         }
         
      }
@@ -617,7 +618,7 @@ private:
         hs.data_extm[0] = 0;
         return specs_hyperslab;
       } else {
-        hs.underfilled_blocks = true;
+        hs.contrib_blocks = true;
       }
       DASH_LOG_DEBUG("llastblckidx", llastblckidx);
       ts.count[0]  = 1;

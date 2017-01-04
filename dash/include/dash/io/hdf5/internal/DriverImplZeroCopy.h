@@ -32,7 +32,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   hid_t filespace = H5Dget_space(h5dset);
   hid_t memspace = H5Screate_simple(ndim, hyperslabs_center.data_extm.data(), NULL);
 
-  if(hyperslabs_center.underfilled_blocks){
+  if(!hyperslabs_center.contrib_blocks){
     // this unit holds only underfilled blocks
     H5Sselect_none(filespace);
   } else {
@@ -69,7 +69,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
     auto & ts_edge = hs_edge.dataset;
     memspace = H5Screate_simple(ndim, hs_edge.data_extm.data(), NULL);
 
-    if(!hs_edge.underfilled_blocks){
+    if(!hs_edge.contrib_blocks){
       H5Sselect_none(filespace);
     } else {
       H5Sselect_hyperslab(
