@@ -70,7 +70,6 @@ void StoreHDF::_process_dataset_impl_zero_copy(
     memspace = H5Screate_simple(ndim, hs_edge.data_extm.data(), NULL);
 
     if(!hs_edge.underfilled_blocks){
-      //H5Sselect_none(memspace);
       H5Sselect_none(filespace);
     } else {
       H5Sselect_hyperslab(

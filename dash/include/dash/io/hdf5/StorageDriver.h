@@ -561,7 +561,7 @@ private:
           DASH_LOG_DEBUG("ts.block", d, i, ts.block[i]);
           DASH_LOG_DEBUG("ts.stride", d, i, ts.stride[i]);
           DASH_LOG_DEBUG("ms.count", d, i, ms.count[i]);
-          DASH_LOG_DEBUG("ms.block", d, i, ms.count[i]);
+          DASH_LOG_DEBUG("ms.block", d, i, ms.block[i]);
           DASH_LOG_DEBUG("ms.offset", d, i, ms.offset[i]);
           DASH_LOG_DEBUG("ms.stride", d, i, ms.stride[i]);
         }
@@ -581,36 +581,35 @@ private:
   const static inline std::vector<hdf5_hyperslab_spec<1>>
    _get_pattern_hdf_spec_edges(const dash::Pattern<1, Arr, index_t> & pattern) {
     std::vector<hdf5_hyperslab_spec<1>> specs_hyperslab(1);
-      auto & hs = specs_hyperslab[1];
+      auto & hs = specs_hyperslab[0];
       auto & ts = hs.dataset;
       auto & ms = hs.memory;
 
-      auto tilesize    = pattern.blocksize(0);
       auto localsize   = pattern.local_extent(0);
+      // extent in elements of fully filled blocks
+      auto tilesize    = pattern.blocksize(0);
       // fully filled local blocks
       auto localblocks = localsize / tilesize;
-      // extent in elements of fully filled blocks
       auto lfullsize   = localblocks * tilesize;
-      auto lblockspec  = pattern.local_blockspec();
-      auto lnum_tiles  = lblockspec.extent(0);
-      auto llastblckidx = lnum_tiles-1;
+      auto llastblckidx = localblocks;
 
       hs.data_extm[0] = localsize;
-
       // check if underfilled in this dimension
       if(localsize == lfullsize){
-        return std::vector<hdf5_hyperslab_spec<1>>();
+        hs.data_extm[0] = 0;
+        return specs_hyperslab;
       } else {
-        ts.count[0] = 1;
-        ts.block[0] = localsize - lfullsize;
+        hs.underfilled_blocks = true;
       }
       DASH_LOG_DEBUG("llastblckidx", llastblckidx);
+      ts.count[0]  = 1;
+      ts.block[0] = localsize;
       ts.offset[0]  = pattern.local_block(llastblckidx).offset(0);
       ts.stride[0]  = 1;
 
       ms.count[0]  = 1;
-      ms.block[0]  = ts.block[0];
-      ms.offset[0] = pattern.local_block_local(llastblckidx).offset(0);
+      ms.block[0]  = localsize;
+      ms.offset[0] = 0;
       ms.stride[0] = 1;
 
       DASH_LOG_DEBUG("ts.count", 0, 0, ts.count[0]);
@@ -618,7 +617,7 @@ private:
       DASH_LOG_DEBUG("ts.block", 0, 0, ts.block[0]);
       DASH_LOG_DEBUG("ts.stride", 0, 0, ts.stride[0]);
       DASH_LOG_DEBUG("ms.count", 0, 0, ms.count[0]);
-      DASH_LOG_DEBUG("ms.block", 0, 0, ms.count[0]);
+      DASH_LOG_DEBUG("ms.block", 0, 0, ms.block[0]);
       DASH_LOG_DEBUG("ms.offset", 0, 0, ms.offset[0]);
       DASH_LOG_DEBUG("ms.stride", 0, 0, ms.stride[0]);
     return specs_hyperslab;
@@ -628,55 +627,6 @@ private:
   const static inline std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>
     _get_pattern_hdf_spec_edges(const pattern_t & pattern){
     return std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>();
-  }
-  
-  /**
-   * get the layout of the last underfilled block of a dash::BlockPattern
-   * if the calling unit does not have any underfilled blocks, a zero size
-   * block is returned.
-   * \param pattern_t pattern
-   * \return hdf5_pattern_spec<ndim>
-   */
-  template < dim_t ndim,
-             MemArrange Arr,
-             typename index_t >
-  const static inline hdf5_hyperslab_spec<ndim>
-    _get_pattern_hdf_spec_underfilled(const dash::Pattern<ndim, Arr, index_t> & pattern)
-  {
-    hdf5_hyperslab_spec<ndim> hs;
-    auto & ms = hs.memory;
-    auto & ts = hs.dataset;
-    
-    for (int i = 0; i < ndim; ++i) {
-      auto tilesize    = pattern.blocksize(i);
-      auto localsize   = pattern.local_extent(i);
-      // fully filled local blocks
-      auto localblocks = localsize / tilesize;
-      // extent in elements of fully filled blocks
-      auto lfullsize   = localblocks * tilesize;
-      auto lastblckidx = localblocks;
-      
-      if(localsize == lfullsize){
-        lastblckidx-=1;
-      } else {
-        hs.underfilled_blocks = true;
-      }
-      hs.data_extm[i] = localsize;
-      ts.stride[i]   = 1;
-      ts.count[i]    = 1;
-      ts.offset[i]   = pattern.local_block(lastblckidx).offset(i);
-      ts.block[i]    = hs.data_extm[i];
-    }
-    if(!hs.underfilled_blocks){
-      return hdf5_hyperslab_spec<ndim>();
-    }
-    return hs;
-  }
-  
-  template < class pattern_t >
-  const static inline hdf5_hyperslab_spec<pattern_t::ndim()>
-    _get_pattern_hdf_spec_underfilled(const pattern_t & pattern){
-    return hdf5_hyperslab_spec<pattern_t::ndim()>();
   }
   
   template < typename value_t >
