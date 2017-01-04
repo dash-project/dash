@@ -250,7 +250,7 @@ public:
 template <>
 struct view_traits<ViewOrigin> {
   typedef ViewOrigin                                         domain_type;
-  typedef ViewOrigin                                           view_type;
+  typedef ViewOrigin                                          image_type;
   typedef typename ViewOrigin::index_type                     index_type;
 
   typedef std::integral_constant<bool, false>              is_projection;
@@ -286,7 +286,7 @@ template <
   class IndexType >
 struct view_traits<ViewLocalMod<DimDiff, DomainType, IndexType> > {
   typedef DomainType                                         domain_type;
-  typedef ViewLocalMod<DimDiff, DomainType, IndexType>         view_type;
+  typedef ViewLocalMod<DimDiff, DomainType, IndexType>        image_type;
   typedef IndexType                                           index_type;
 
   typedef std::integral_constant<bool, (DimDiff != 0)>     is_projection;
@@ -374,7 +374,7 @@ class ViewLocalModBase<ViewLocalModType, true>
   typedef ViewLocalModBase<ViewLocalModType, true> self_t;
 public:
   typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
-  typedef typename dash::ViewSubLocalMod<ViewLocalModType>      view_type;
+  typedef typename domain_type::local_type                     image_type;
   typedef typename view_traits<domain_type>::index_type        index_type;
 
   ViewLocalModBase(domain_type & domain_sub)
@@ -383,7 +383,7 @@ public:
 
 public:
   
-  constexpr view_type & apply() const {
+  constexpr image_type & apply() const {
     // e.g. called via
     //   dash::begin(dash::apply(*this))
     return _range;
@@ -392,7 +392,7 @@ public:
 protected:
   domain_type                & _domain;
   // range created by application of this view modifier.
-  view_type                    _range;
+  image_type                   _range;
 };
 
 
@@ -406,7 +406,7 @@ class ViewLocalModBase<ViewLocalModType, false>
 {
 public:
   typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
-  typedef typename domain_type::local_type                      view_type;
+  typedef typename domain_type::local_type                     image_type;
   typedef typename domain_type::index_type                     index_type;
 
   ViewLocalModBase(domain_type & domain)
@@ -414,7 +414,7 @@ public:
   { }
 
 public:
-  constexpr view_type & apply() const {
+  constexpr image_type & apply() const {
     // e.g. called via
     //   dash::begin(dash::apply(*this))
     return dash::local(_domain);
@@ -445,7 +445,7 @@ public:
   typedef DomainType                       domain_type;
   typedef IndexType                         index_type;
   typedef self_t                            local_type;
-  typedef typename domain_type::local_type   view_type;
+  typedef typename domain_type::local_type  image_type;
 
 public:
 
@@ -469,19 +469,19 @@ public:
     return !(*this == rhs);
   }
 
-  constexpr view_type & begin() const {
+  constexpr image_type & begin() const {
     return dash::begin(dash::apply(*this));
   }
 
-  inline view_type & begin() {
+  inline image_type & begin() {
     return dash::begin(dash::apply(*this));
   }
 
-  constexpr view_type & end() const {
+  constexpr image_type & end() const {
     return dash::end(dash::apply(*this));
   }
 
-  inline view_type & end() {
+  inline image_type & end() {
     return dash::end(dash::apply(*this));
   }
 

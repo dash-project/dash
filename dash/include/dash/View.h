@@ -20,6 +20,15 @@
  * \see DashIteratorConcept
  * \see \c dash::view_traits
  *
+ * \par Terminology
+ *
+ * A \b View is a mapping between two index sets, from a \b Domain space to
+ * an \b Image space in the view's codomain.
+ * Views can be chained such that the image obtained from the application of
+ * a view expression can again act as the domain of other views.
+ * The \b Origin of a view is the first domain in the view chain that has not
+ * been created by a view expression.
+ *
  * \par Expressions
  *
  * View Specifier        | Synopsis

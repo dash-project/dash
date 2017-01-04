@@ -87,7 +87,7 @@ namespace detail {
   {
     typedef typename ViewT::domain_type                          domain_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
-    typedef ViewT                                                  view_type;
+    typedef ViewT                                                 image_type;
     typedef typename ViewT::index_type                            index_type;
 
     /// \note Alternative: specialize struct view_traits for \c (DimDiff = 0)
@@ -111,7 +111,7 @@ namespace detail {
   struct _view_traits< ContainerT, false > {
     typedef ContainerT                                           origin_type;
     typedef ContainerT                                           domain_type;
-    typedef ContainerT                                             view_type;
+    typedef ContainerT                                            image_type;
     typedef typename ContainerT::index_type                       index_type;
 
     /// Whether the view type is a projection (has less dimensions than the
