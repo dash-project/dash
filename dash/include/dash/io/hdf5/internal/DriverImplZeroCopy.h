@@ -51,7 +51,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
                       ts.count.data(),
                       ts.block.data());
   }
-
+  
   DASH_LOG_DEBUG("process completely filled blocks");
   if(io_mode == StoreHDF::Mode::WRITE){
     H5Dwrite(h5dset, internal_type, memspace, filespace,
@@ -63,7 +63,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Sclose(memspace);
   
   // TODO: Optimize
-  auto hyperslabs_edges = _get_pattern_hdf_spec_edges(container.pattern());
+  auto hyperslabs_edges = _get_pattern_hdf_spec_boundary(container.pattern());
   for(auto & hs_edge : hyperslabs_edges){
     auto & ms_edge = hs_edge.memory;
     auto & ts_edge = hs_edge.dataset;
@@ -90,7 +90,6 @@ void StoreHDF::_process_dataset_impl_zero_copy(
     }
 
     DASH_LOG_DEBUG("write partially filled blocks");
-
     if(io_mode == StoreHDF::Mode::WRITE){
       H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, (container.lbegin()));

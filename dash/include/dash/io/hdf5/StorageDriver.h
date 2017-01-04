@@ -504,7 +504,7 @@ private:
              MemArrange Arr,
              typename index_t >
   const static inline std::vector<hdf5_hyperslab_spec<ndim>>
-    _get_pattern_hdf_spec_edges(const dash::Pattern<ndim, Arr, index_t> & pattern) {
+    _get_pattern_hdf_spec_boundary(const dash::Pattern<ndim, Arr, index_t> & pattern) {
       std::vector<hdf5_hyperslab_spec<ndim>> specs_hyperslab;
       int num_edges = 0;
       for(int i=0; i<ndim; ++i){
@@ -512,37 +512,55 @@ private:
           num_edges++;
         }
       }
+      if(num_edges == ndim){
+        // also write bottom right corner
+        num_edges++;
+      }
       specs_hyperslab.resize(num_edges);
+      auto & lblockspec = pattern.local_blockspec();
 
-      for(int d=0; d<ndim; ++d){
+      for(int d=0; d<num_edges; ++d){
         auto & hs = specs_hyperslab[d];
         auto & ts = hs.dataset;
         auto & ms = hs.memory;
+        
+        std::array<index_t, ndim> coords {{0}};
+        index_t llastblckidx;
+        
+        if(d < ndim){
+          //edge without corner
+          coords[d] = lblockspec.extent(d)-1;
+          llastblckidx = lblockspec.at(coords);
+        } else {
+          // corner
+          llastblckidx = lblockspec.size()-1;
+        }
 
         for(int i=0; i<ndim; ++i){
-          std::array<index_t, ndim> coords {{0}};
           auto tilesize    = pattern.blocksize(i);
           auto localsize   = pattern.local_extent(i);
           // fully filled local blocks
           auto localblocks = localsize / tilesize;
           // extent in elements of fully filled blocks
           auto lfullsize   = localblocks * tilesize;
-          auto lblockspec  = pattern.local_blockspec();
           auto lnum_tiles  = lblockspec.extent(i);
-
-          coords[i] = lnum_tiles-1;
-          auto llastblckidx = lblockspec.at(coords);
  
           hs.data_extm[i] = localsize;
           
           // check if underfilled in this dimension
           if(localsize == lfullsize){
             ts.count[i] = pattern.local_extent(i) / tilesize;
-            ts.block[i] = localsize;
+            ts.block[i] = tilesize;
           } else {
-            hs.underfilled_blocks = true;
+            if((i == d) || (d == ndim)){
+              // as each edge is checked seperately (num_edges) only mark
+              // dimension as underfilled if current dim = edge dim
+              // or if inspecting the bottom right corner
+              hs.underfilled_blocks = true;
+            }
             ts.count[i] = 1;
-            ts.block[i]    = localsize - lfullsize;
+            // workaround until pattern.local_block(llastblckidx).extent(i); is fixed
+            ts.block[i] = localsize - pattern.local_block_local(llastblckidx).offset(i);
           }
           ts.offset[i]   = pattern.local_block(llastblckidx).offset(i);
           if(lnum_tiles > 1){
@@ -579,7 +597,7 @@ private:
   template <MemArrange Arr,
             typename index_t >
   const static inline std::vector<hdf5_hyperslab_spec<1>>
-   _get_pattern_hdf_spec_edges(const dash::Pattern<1, Arr, index_t> & pattern) {
+   _get_pattern_hdf_spec_boundary(const dash::Pattern<1, Arr, index_t> & pattern) {
     std::vector<hdf5_hyperslab_spec<1>> specs_hyperslab(1);
       auto & hs = specs_hyperslab[0];
       auto & ts = hs.dataset;
@@ -625,7 +643,7 @@ private:
 
   template < class pattern_t >
   const static inline std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>
-    _get_pattern_hdf_spec_edges(const pattern_t & pattern){
+    _get_pattern_hdf_spec_boundary(const pattern_t & pattern){
     return std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>();
   }
   
