@@ -9,12 +9,36 @@ template <
 class IndexSetBase
 {
 public:
-  class index_iterator {
+  typedef typename ViewType::index_type                     index_type;
 
+  class index_iterator {
+  public:
+    index_iterator(
+      const IndexSetType & index_set,
+      index_type           position)
+    : _index_set(index_set), _pos(position)
+    { }
+
+    constexpr index_type operator*() const {
+      return _index_set[_pos];
+    }
+
+  private:
+    const IndexSetType & _index_set;
+    index_type           _pos;
   };
 
 public:
   typedef index_iterator iterator;
+
+  constexpr iterator begin() const {
+    return iterator(*static_cast<const IndexSetType *>(this), 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*static_cast<const IndexSetType *>(this),
+                    static_cast<const IndexSetType *>(this)->size());
+  }
 
 };
 
@@ -26,26 +50,26 @@ class IndexSetSub
   typedef IndexSetBase<self_t, ViewType>                        base_t;
 public:
   typedef typename ViewType::index_type                     index_type;
-  typedef typename base_t::iterator                           iterator;
 
   IndexSetSub(
-    ViewType   & view,
-    index_type   begin,
-    index_type   end)
+    const ViewType   & view,
+    index_type         begin,
+    index_type         end)
   : _domain(view), _domain_begin_idx(begin), _domain_end_idx(end)
   { }
 
-  index_type operator[](index_type image_index) {
+  constexpr index_type operator[](index_type image_index) const {
     return _domain_begin_idx + image_index;
   }
 
-  iterator begin() const;
-  iterator end() const;
+  constexpr index_type size() const {
+    return _domain_end_idx - _domain_begin_idx;
+  }
 
 private:
-  ViewType & _domain;
-  index_type _domain_begin_idx;
-  index_type _domain_end_idx;
+  const ViewType & _domain;
+  index_type       _domain_begin_idx;
+  index_type       _domain_end_idx;
 };
 
 } // namespace dash
