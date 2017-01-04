@@ -5,12 +5,14 @@
 #include <dash/Range.h>
 #include <dash/Iterator.h>
 
+#include <dash/view/IndexSet.h>
+#include <dash/view/ViewTraits.h>
+
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Apply.h>
-#include <dash/view/ViewTraits.h>
 
 
 #ifndef DOXYGEN
@@ -185,36 +187,6 @@ private:
 }; // class ViewMod
 #endif
 
-#ifdef __TODO__
-
-template <class ViewModType>
-class ViewRangeExpression
-{
-
-public:
-
-  ViewRangeExpression(
-    ViewModType      & view_mod)
-  : _view_mod(view_mod)
-  { }
-
-  constexpr auto begin() const -> decltype(_view_mod.apply()) {
-    // lazy evaluation of _range here
-    return _range.begin;
-  }
-
-  constexpr auto end() const -> decltype(_view_mod.apply()) {
-    // lazy evaluation of _range here
-    return _range.end;
-  }
-
-private:
-  ViewModType & _view_mod;
-
-};
-
-#endif
-
 // --------------------------------------------------------------------
 // ViewOrigin
 // --------------------------------------------------------------------
@@ -324,7 +296,7 @@ public:
   { }
 
 private:
-  constexpr typename origin_type::pattern_type & pattern() const {
+  constexpr const typename origin_type::pattern_type & pattern() const {
     return dash::origin(_view_local_mod).pattern();
   }
 
@@ -394,7 +366,7 @@ public:
 
 public:
   
-  constexpr image_type & apply() const {
+  constexpr const image_type & apply() const {
     // e.g. called via
     //   dash::begin(dash::apply(*this))
     return _image_index_set;
@@ -484,6 +456,13 @@ public:
   }
 
   constexpr image_type & begin() const {
+    // return dash::local(_domain)
+    //      + dash::local(dash::begin(_domain))
+    //
+    // return dash::local(dash::begin(_domain) +
+    //                    dash::global(
+    //                      dash::begin(dash::local(_domain))
+    //                    ));
     return dash::begin(dash::apply(*this));
   }
 

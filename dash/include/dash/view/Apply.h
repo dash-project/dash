@@ -10,11 +10,23 @@
 namespace dash {
 
 /**
+ * Inverse operation to \c dash::domain.
+ *
+ * \concept{DashViewConcept}
+ */
+template <class ViewTypeA, class ViewTypeB>
+constexpr auto apply(
+  ViewTypeA & view_a,
+  ViewTypeB & view_b) -> decltype(view_a.apply(view_b)) {
+  return view_a.apply(view_b);
+}
+
+/**
  * \concept{DashViewConcept}
  */
 template <class ViewType>
-constexpr typename view_traits<ViewType>::view_type
-apply(const ViewType & view) {
+constexpr auto apply(
+  const ViewType & view) -> decltype(view.apply()) {
   return view.apply();
 }
 
