@@ -33,9 +33,9 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   hid_t memspace = H5Screate_simple(ndim, hyperslabs_center.data_extm.data(), NULL);
 
   if(hyperslabs_center.underfilled_blocks){
+    // this unit holds only underfilled blocks
     H5Sselect_none(filespace);
   } else {
-    /*
     H5Sselect_hyperslab(
                       memspace,
                       H5S_SELECT_SET,
@@ -43,7 +43,6 @@ void StoreHDF::_process_dataset_impl_zero_copy(
                       ms.stride.data(),
                       ms.count.data(),
                       ms.block.data());
-     * */
     H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
@@ -63,36 +62,45 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   }
   H5Sclose(memspace);
   
-  // write underfilled blocks
-  // get hdf pattern layout
-  auto hyperslabs_edges = _get_pattern_hdf_spec_underfilled(container.pattern());
-  auto & ms_edge = hyperslabs_edges.memory;
-  auto & ts_edge = hyperslabs_edges.dataset;
-  memspace = H5Screate_simple(ndim, hyperslabs_edges.data_extm.data(), NULL);
-  
-  if(!hyperslabs_edges.underfilled_blocks){
-    H5Sselect_none(filespace);
-  } else {
-    H5Sselect_hyperslab(
+  // TODO: Optimize
+  auto hyperslabs_edges = _get_pattern_hdf_spec_edges(container.pattern());
+  for(auto & hs_edge : hyperslabs_edges){
+    auto & ms_edge = hs_edge.memory;
+    auto & ts_edge = hs_edge.dataset;
+    memspace = H5Screate_simple(ndim, hs_edge.data_extm.data(), NULL);
+
+    if(!hs_edge.underfilled_blocks){
+      //H5Sselect_none(memspace);
+      H5Sselect_none(filespace);
+    } else {
+      H5Sselect_hyperslab(
+                      memspace,
+                      H5S_SELECT_SET,
+                      ms_edge.offset.data(),
+                      ms_edge.stride.data(),
+                      ms_edge.count.data(),
+                      ms_edge.block.data());
+      
+      H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
                       ts_edge.offset.data(),
                       ts_edge.stride.data(),
                       ts_edge.count.data(),
                       ts_edge.block.data());
+    }
+
+    DASH_LOG_DEBUG("write partially filled blocks");
+
+    if(io_mode == StoreHDF::Mode::WRITE){
+      H5Dwrite(h5dset, internal_type, memspace, filespace,
+             plist_id, (container.lbegin()));
+    } else {
+      H5Dread(h5dset, internal_type, memspace, filespace,
+             plist_id, (container.lbegin()));
+    }
+    H5Sclose(memspace);
   }
-
-  DASH_LOG_DEBUG("write partially filled blocks");
-
-  if(io_mode == StoreHDF::Mode::WRITE){
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-           plist_id, (container.lbegin()));
-  } else {
-    H5Dread(h5dset, internal_type, memspace, filespace,
-           plist_id, (container.lbegin()));
-  }
-
-  H5Sclose(memspace);
   H5Sclose(filespace);
   H5Pclose(plist_id);
 }
