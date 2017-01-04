@@ -238,6 +238,10 @@ public:
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", size());
+    if(MaxDimensions <= 1) {
+      return;
+    }
+
     SizeType num_units = 1;
     for (auto d = 0; d < MaxDimensions; ++d) {
       num_units *= this->_extents[d];
@@ -245,28 +249,44 @@ public:
     }
     _is_linear = false;
 
-    // Find best surface-to-volume for two-dimensional team:
+    // Find best surface-to-volume:
     auto teamsize_prime_factors = dash::math::factorize(num_units);
-    SizeType surface = 0;
-    for (auto it : teamsize_prime_factors) {
-      DASH_LOG_TRACE("TeamSpec.balance_extents",
-                     "factor:", it.first, "x", it.second);
-      for (auto i = 1; i < it.second + 1; ++i) {
-        SizeType extent_x = it.first * this->_extents[0];
-        SizeType extent_y = num_units / extent_x;
-        SizeType surface_new = (2 * extent_x) + (2 * extent_y);
-        DASH_LOG_TRACE("TeamSpec.balance_extents", "Testing extents",
-                       extent_x, "x", extent_y, " - surface:", surface_new);
-        if (surface == 0 || surface_new < surface) {
-          surface           = surface_new;
-          this->_extents[0] = extent_x;
-          this->_extents[1] = extent_y;
+    auto number_prime_factors = 0;
+    for(auto it : teamsize_prime_factors) {
+      number_prime_factors += it.second;
+    }
+    // Equally distribute factors to extents.
+    // Reverse the order on the last iteration over this->_extents
+    dim_t current_dimension = 0;
+    bool last_iteration = false;
+    for (auto it = teamsize_prime_factors.rbegin(); it != teamsize_prime_factors.rend(); ++it) {
+      DASH_LOG_TRACE("TeamSpec.balance_extents()",
+                     "factor:", it->first, "x", it->second);
+      for (auto i = 1; i < it->second + 1; ++i) {
+        if(MaxDimensions == current_dimension) {
+          if(MaxDimensions <= number_prime_factors) {
+            number_prime_factors -= MaxDimensions;
+            current_dimension = 0;
+          } else {
+            last_iteration = true;
+            --current_dimension;
+          }
+        }
+        this->_extents[current_dimension] *= it->first;
+        if(last_iteration) {
+          --current_dimension;
+        } else {
+          ++current_dimension;
         }
       }
     }
+
     this->resize(this->_extents);
     update_rank();
-    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents ->", this->_extents);
+    if(1 == _rank) {
+      _is_linear = true;
+    }
+    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents() ->", this->_extents);
   }
 
   /**
