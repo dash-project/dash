@@ -1086,6 +1086,14 @@ public:
   {
     return _blockspec;
   }
+  
+  /**
+   * Cartesian arrangement of local pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return _local_blockspec;
+  }
 
   /**
    * Index of block at given global coordinates.
