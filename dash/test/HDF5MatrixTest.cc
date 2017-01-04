@@ -318,7 +318,6 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   verify_matrix(matrix_b, 1);
 }
 
-#if 0
 // Currently not supported, as each unit must have at most
 // one underfilled block
 TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
@@ -331,8 +330,8 @@ TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
   dash::TeamSpec<2> teamspec_2d(team_size, 1);
   teamspec_2d.balance_extents();
 
-  auto block_size_x = 10;
-  auto block_size_y = 15;
+  auto block_size_x = 12;
+  auto block_size_y = 4;
   auto ext_x        = (block_size_x * (teamspec_2d.num_units(0)+1)) - 3;
   auto ext_y        = (block_size_y * (teamspec_2d.num_units(1)+1)) - 1;
 
@@ -367,7 +366,6 @@ TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
   
   verify_matrix(matrix_b);
 }
-#endif
 
 TEST_F(HDF5MatrixTest, MultipleDatasets)
 {

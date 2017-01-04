@@ -3,6 +3,7 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#include <algorithm>
 
 namespace dash {
 namespace io {
@@ -28,15 +29,23 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
   
   // TODO: Optimize
-  auto hyperslabs_edges = _get_pattern_hdf_spec_boundary(container.pattern());
-  hyperslabs_edges.push_back(_get_pattern_hdf_spec(container.pattern()));
+  auto hyperslabs = _get_pattern_hdf_spec_boundary(container.pattern());
+  hyperslabs.push_back(_get_pattern_hdf_spec(container.pattern()));
   
-  for(auto & hs_edge : hyperslabs_edges){
-    auto & ms_edge = hs_edge.memory;
-    auto & ts_edge = hs_edge.dataset;
-    memspace = H5Screate_simple(ndim, hs_edge.data_extm.data(), NULL);
+  // Sort hyperslabs by amount of data contrib.
+  std::sort(hyperslabs.begin(), hyperslabs.end(), 
+    [](const hdf5_hyperslab_spec<ndim> & a, const hdf5_hyperslab_spec<ndim> & b) -> bool
+    { 
+        return a.contrib_data > b.contrib_data;
+    });
+  
+  for(auto & hs : hyperslabs){
+    auto & ms_edge = hs.memory;
+    auto & ts_edge = hs.dataset;
+    memspace = H5Screate_simple(ndim, hs.data_extm.data(), NULL);
+    H5Sselect_none(filespace);
 
-    if(!hs_edge.contrib_blocks){
+    if(!hs.contrib_blocks){
       H5Sselect_none(filespace);
     } else {
       H5Sselect_hyperslab(

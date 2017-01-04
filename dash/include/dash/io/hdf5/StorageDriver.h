@@ -448,7 +448,9 @@ public:
     hdf5_pattern_spec<ndim>  dataset;
     std::array<hsize_t,ndim> data_extf {{0}};
     std::array<hsize_t,ndim> data_extm {{0}};
-    bool contrib_blocks = false;
+    // approx. amount of data this unit contribs in this hyperslab
+    size_t contrib_data   = 0;
+    bool   contrib_blocks = false;
   };
   
 
@@ -496,6 +498,8 @@ private:
       ms.count[i]      = 1;
       ms.stride[i]     = 1;
       ms.block[i]      = tilesize * num_tiles;
+      
+      hs.contrib_data+=ts.count[i]*ts.block[i];
     }
     hs.contrib_blocks = true;
     return hs;
@@ -575,6 +579,8 @@ private:
           ms.offset[i] = pattern.local_block_local(llastblckidx).offset(i);
           ms.stride[i] = 1;
           
+          hs.contrib_data+=ts.count[i]*ts.block[i];
+          
           DASH_LOG_DEBUG("ts.count", d, i, ts.count[i]);
           DASH_LOG_DEBUG("ts.offset", d, i, ts.offset[i]);
           DASH_LOG_DEBUG("ts.block", d, i, ts.block[i]);
@@ -630,6 +636,8 @@ private:
       ms.block[0]  = localsize;
       ms.offset[0] = 0;
       ms.stride[0] = 1;
+      
+      hs.contrib_data+=ts.count[0]*ts.block[0];
 
       DASH_LOG_DEBUG("ts.count", 0, 0, ts.count[0]);
       DASH_LOG_DEBUG("ts.offset", 0, 0, ts.offset[0]);
