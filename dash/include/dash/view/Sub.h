@@ -21,11 +21,11 @@ namespace dash {
 template <
   dim_t SubDim = 0,
   class OffsetT >
-constexpr ViewSubMod<0, OffsetT>
+constexpr ViewSubMod<ViewOrigin, SubDim>
 sub(
     OffsetT begin,
     OffsetT end) {
-  return ViewSubMod<0, OffsetT>(begin, end);
+  return ViewSubMod<ViewOrigin, SubDim>(begin, end);
 }
 
 /**
@@ -34,7 +34,7 @@ sub(
 template <
   dim_t SubDim = 0,
   class IndexRangeT >
-constexpr ViewSubMod<0, typename IndexRangeT::index_type>
+constexpr ViewSubMod<ViewOrigin, SubDim>
 sub(
     IndexRangeT range) {
   return sub<SubDim>(dash::begin(range),
@@ -43,17 +43,19 @@ sub(
 
 // Sub-space projection, view reduces domain by one dimension
 
+#if 0
 /**
  * \concept{DashViewConcept}
  */
 template <
   dim_t SubDim = 0,
   class OffsetT >
-constexpr ViewSubMod<-1, OffsetT>
+constexpr ViewSubMod<ViewOrigin, SubDim>
 sub(
     OffsetT offset) {
-  return ViewSubMod<-1, OffsetT>(offset);
+  return ViewSubMod<ViewOrigin, SubDim>(offset);
 }
+#endif
 
 // -------------------------------------------------------------------------
 // View Proxies (coupled with origin memory / index space):
@@ -66,14 +68,14 @@ sub(
  */
 template <
   dim_t SubDim  = 0,
-  class RangeT,
-  class OffsetT = typename RangeT::index_type >
-constexpr ViewSubMod<0, RangeT, OffsetT>
+  class DomainT,
+  class OffsetT = typename DomainT::index_type >
+constexpr ViewSubMod<DomainT, SubDim>
 sub(
     OffsetT   begin,
     OffsetT   end,
-    RangeT  & domain) {
-  return ViewSubMod<0, RangeT, OffsetT>(
+    DomainT & domain) {
+  return ViewSubMod<DomainT, SubDim>(
            domain,
            begin,
            end);

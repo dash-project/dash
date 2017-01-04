@@ -127,15 +127,21 @@ class ViewOrigin
   typedef ViewOrigin self_t;
 
 public:
-  typedef dash::default_index_t   index_type;
-  typedef self_t                 domain_type;
+  typedef dash::default_index_t                                 index_type;
+  typedef self_t                                               domain_type;
+  typedef IndexSetIdentity<self_t>                          index_set_type;
 
 public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
+
   constexpr const domain_type & domain() const {
     return *this;
+  }
+
+  constexpr index_set_type index_set() const {
+    return IndexSetIdentity<self_t>(*this);
   }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -149,272 +155,151 @@ public:
 
 template <>
 struct view_traits<ViewOrigin> {
-  typedef ViewOrigin                                           origin_type;
-  typedef ViewOrigin                                           domain_type;
-  typedef ViewOrigin                                            image_type;
-  typedef typename ViewOrigin::index_type                       index_type;
+  typedef ViewOrigin                                             origin_type;
+  typedef ViewOrigin                                             domain_type;
+  typedef ViewOrigin                                              image_type;
+  typedef typename ViewOrigin::index_type                         index_type;
+  typedef typename ViewOrigin::index_set_type                 index_set_type;
 
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, true>                 is_origin;
-  typedef std::integral_constant<bool, false>                is_local;
+  typedef std::integral_constant<bool, false>                  is_projection;
+  typedef std::integral_constant<bool, true>                   is_view;
+  typedef std::integral_constant<bool, true>                   is_origin;
+  typedef std::integral_constant<bool, false>                  is_local;
 };
 
+
+
 // ------------------------------------------------------------------------
-// Forward-declaration: ViewSubMod
+// Forward-declarations
 // ------------------------------------------------------------------------
 
 template <
-  dim_t DimDiff,
+  class ViewModType,
+  class DomainType >
+class ViewModBase;
+
+template <
+  class DomainType = ViewOrigin >
+class ViewLocalMod;
+
+template <
   class DomainType = ViewOrigin,
-  class IndexType  = typename DomainType::IndexType >
+  dim_t SubDim     = 0 >
 class ViewSubMod;
 
 
 // ------------------------------------------------------------------------
-// Forward-declaration: ViewLocalMod
+// ViewModBase
 // ------------------------------------------------------------------------
 
-template <
-  dim_t DimDiff,
-  class DomainType = ViewOrigin,
-  class IndexType  = typename DomainType::IndexType >
-class ViewLocalMod;
+template <class ViewModType, class DomainType>
+class ViewModBase
+{
+public:
+  typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::index_type            index_type;
 
-template <
-  dim_t DimDiff,
-  class DomainType,
-  class IndexType >
-struct view_traits<ViewLocalMod<DimDiff, DomainType, IndexType> > {
-  typedef DomainType                                           domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
-  typedef ViewLocalMod<DimDiff, DomainType, IndexType>          image_type;
-  typedef IndexType                                             index_type;
+  ViewModBase() = delete;
 
-  typedef std::integral_constant<bool, (DimDiff != 0)>       is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, true>                 is_local;
+  constexpr ViewModBase(
+    const domain_type    & dom)
+  : _domain(dom)
+  { }
+
+  constexpr bool operator==(const ViewModType & rhs) const {
+    return (static_cast<const ViewModType *>(this) == &rhs ||
+            // Note: testing _domain for identity (identical address)
+            //       instead of equality (identical value)
+            &this->_domain == &rhs._domain);
+  }
+  
+  constexpr bool operator!=(const ViewModType & rhs) const {
+    return !(*(static_cast<const ViewModType *>(this) == rhs));
+  }
+
+  constexpr const domain_type & domain() const {
+    return this->_domain;
+  }
+
+//  inline domain_type & domain() {
+//    return this->_domain;
+//  }
+
+  constexpr index_type size() const {
+    return dash::distance(
+             dash::begin(this_view()),
+             dash::end(this_view()));
+  }
+  
+  constexpr bool empty() const {
+    return size() == 0;
+  }
+
+private:
+  constexpr const ViewModType & this_view() const {
+    return *static_cast<const ViewModType *>(this);
+  }
+
+protected:
+  const domain_type   & _domain;
 };
+
 
 // ------------------------------------------------------------------------
 // ViewLocalMod
 // ------------------------------------------------------------------------
 
 template <
-  class ViewLocalModType >
-class ViewSubLocalIndexSet
-{
-  typedef ViewSubLocalIndexSet<ViewLocalModType> self_t;
-  typedef struct {
-    bool begin_ready = false;
-    bool end_ready   = false;
-  } ready_state;
+  class DomainType >
+struct view_traits<ViewLocalMod<DomainType> > {
+  typedef DomainType                                           domain_type;
+  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef typename domain_type::local_type                      image_type;
+  typedef typename DomainType::index_type                       index_type;
 
-public:
-  constexpr static dim_t dimdiff = 0;
-
-  typedef typename ViewLocalModType::index_type                 index_type;
-  typedef typename dash::view_traits<ViewLocalModType>::origin_type
-                                                               origin_type;
-
-public:
-  ViewSubLocalIndexSet(ViewLocalModType & view_local_mod)
-  : _view_local_mod(view_local_mod)
-  { }
-
-private:
-  constexpr const typename origin_type::pattern_type & pattern() const {
-    return dash::origin(_view_local_mod).pattern();
-  }
-
-public:
-  constexpr index_type begin() const {
-    return pattern().local(
-             std::max<index_type>(
-               dash::begin(_view_local_mod),
-               pattern().global(0)
-             )
-           );
-  }
-
-  constexpr index_type end() const {
-    return pattern().local(
-             std::min<index_type>(
-               dash::end(_view_local_mod),
-               pattern().global(
-                 pattern().local_capacity() - 1
-               ) + 1
-             )
-           );
-  }
-
-private:
-  ViewLocalModType & _view_local_mod;
-  index_type         _begin_index;
-  index_type         _end_index;
-  ready_state        _ready;
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, false>                is_origin;
+  typedef std::integral_constant<bool, true>                 is_local;
 };
 
-// ----------------------------------------------------------------------
-// ViewLocalModBase
-// ----------------------------------------------------------------------
-
 template <
-  class ViewLocalModType,
-  bool  LocalOfSub >
-class ViewLocalModBase;
-
-// ----------------------------------------------------------------------
-// View Local of Sub (array.sub.local)
-//                             |
-//                             '--> non-trivial case, range calculations
-//
-template <
-  class ViewLocalModType >
-class ViewLocalModBase<ViewLocalModType, true>
-{
-  typedef ViewLocalModBase<ViewLocalModType, true>                 self_t;
-  typedef ViewSubLocalIndexSet<self_t>               image_index_set_type;
-
-public:
-  constexpr static dim_t dimdiff = 0;
-
-  typedef std::integral_constant<bool, true>  is_local;
-
-  typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
-  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
-  typedef typename domain_type::local_type                     local_type;
-  typedef image_index_set_type                                 image_type;
-  typedef typename view_traits<domain_type>::index_type        index_type;
-
-  ViewLocalModBase(domain_type & domain_sub)
-  : _domain(domain_sub), _image_index_set(*this)
-  { }
-
-public:
-  
-  constexpr const image_type & apply() const {
-    // e.g. called via
-    //   dash::begin(dash::apply(*this))
-    return _image_index_set;
-  }
-
-protected:
-  domain_type                & _domain;
-  // range created by application of this view modifier.
-  image_index_set_type         _image_index_set;
-};
-
-
-// ----------------------------------------------------------------------
-// View Local of Origin (array.local.sub)
-//                            |
-//                            '--> trivial case
-template <
-  class ViewLocalModType >
-class ViewLocalModBase<ViewLocalModType, false>
-{
-public:
-  constexpr static dim_t dimdiff = 0;
-
-  typedef std::integral_constant<bool, true>  is_local;
-
-  typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
-  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
-  typedef typename domain_type::local_type                     local_type;
-  typedef typename domain_type::local_type                     image_type;
-  typedef typename domain_type::index_type                     index_type;
-
-  ViewLocalModBase(domain_type & domain)
-  : _domain(domain)
-  { }
-
-public:
-  constexpr image_type & apply() const {
-    // e.g. called via
-    //   dash::begin(dash::apply(*this))
-    return dash::local(_domain);
-  }
-
-protected:
-  domain_type & _domain;
-};
-
-// ======================================================================
-
-template <
-  dim_t DimDiff,
-  class DomainType,
-  class IndexType >
+  class DomainType >
 class ViewLocalMod
-: public dash::ViewLocalModBase<
-           ViewLocalMod<DimDiff, DomainType, IndexType>,
-           dash::view_traits<DomainType>::is_view::value >
+: public ViewModBase< ViewLocalMod<DomainType>, DomainType >
 {
+public:
+  typedef DomainType                                             domain_type;
+  typedef typename domain_type::local_type                        image_type;
+  typedef typename view_traits<DomainType>::index_type            index_type;
 private:
-  typedef ViewLocalMod<DimDiff, DomainType, IndexType> self_t;
-
+  typedef ViewLocalMod<DomainType>                                    self_t;
+  typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
 public:
-  typedef DomainType                       domain_type;
-  typedef IndexType                         index_type;
-  typedef self_t                            local_type;
-  typedef typename domain_type::local_type  image_type;
+  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >     index_set_type;
+  typedef typename domain_type::local_type                        local_type;
 
-public:
+  typedef std::integral_constant<bool, true>                        is_local;
 
   ViewLocalMod() = delete;
 
-  ViewLocalMod(DomainType & domain)
-  : ViewLocalModBase<
-      ViewLocalMod<DimDiff, DomainType, IndexType>,
-      dash::view_traits<DomainType>::is_view::value
-    >(domain)
+  constexpr ViewLocalMod(
+    DomainType & domain)
+  : base_t(domain),
+    _index_set(*this)
   { }
 
-  constexpr bool operator==(const self_t & rhs) const {
-    return (this      == &rhs ||
-            // Note: testing _domain for identity (identical address)
-            //       instead of equality (identical value)
-            &this->_domain == &rhs._domain);
-  }
-  
-  constexpr bool operator!=(const self_t & rhs) const {
-    return !(*this == rhs);
+  constexpr const local_type & begin() const {
+    return dash::begin(dash::local(dash::domain(*this))) +
+           *dash::begin(dash::index(*this));
   }
 
-  constexpr image_type & begin() const {
-    // return dash::local(_domain)
-    //      + dash::local(dash::begin(_domain))
-    //
-    // return dash::local(dash::begin(_domain) +
-    //                    dash::global(
-    //                      dash::begin(dash::local(_domain))
-    //                    ));
-    return dash::begin(dash::apply(*this));
+  constexpr const local_type & end() const {
+    return dash::begin(dash::local(dash::domain(*this))) +
+           *dash::end(dash::index(*this));
   }
 
-  inline image_type & begin() {
-    return dash::begin(dash::apply(*this));
-  }
-
-  constexpr image_type & end() const {
-    return dash::end(dash::apply(*this));
-  }
-
-  inline image_type & end() {
-    return dash::end(dash::apply(*this));
-  }
-
-  constexpr domain_type & domain() const {
-    return this->_domain;
-  }
-
-  inline domain_type & domain() {
-    return this->_domain;
-  }
-
-  constexpr local_type & local() const {
+  constexpr const local_type & local() const {
     return *this;
   }
 
@@ -422,89 +307,80 @@ public:
     return *this;
   }
 
-  constexpr index_type size() const {
-    return dash::distance(dash::begin(*this), dash::end(*this));
-  }
-  
-  constexpr bool empty() const {
-    return size() == 0;
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
   }
 
-}; // class ViewLocalMod
+private:
+  index_set_type  _index_set;
+};
 
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // ViewSubMod
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 template <
-  dim_t DimDiff,
   class DomainType,
-  class IndexType >
+  dim_t SubDim >
+struct view_traits<ViewSubMod<DomainType, SubDim> > {
+  typedef DomainType                                           domain_type;
+  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef ViewSubMod<DomainType, SubDim>                        image_type;
+  typedef typename DomainType::index_type                       index_type;
+
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, false>                is_origin;
+  typedef std::integral_constant<bool,
+    view_traits<domain_type>::is_local::value >              is_local;
+};
+
+
+template <
+  class DomainType,
+  dim_t SubDim >
 class ViewSubMod
+: public ViewModBase<
+           ViewSubMod<DomainType, SubDim>,
+           DomainType >
 {
-  typedef ViewSubMod<DimDiff, DomainType, IndexType> self_t;
-
-  template <dim_t DD_, class OT_, class IT_>
-  friend class ViewLocalMod;
-
 public:
-  constexpr static dim_t dimdiff  = DimDiff;
-
-  typedef typename dash::view_traits<DomainType>::is_local is_local;
-
-  typedef DomainType                                      domain_type;
-  typedef IndexType                                        index_type;
-  typedef ViewLocalMod<DimDiff, self_t, IndexType>         local_type;
-
+  typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::index_type            index_type;
+private:
+  typedef ViewSubMod<DomainType, SubDim>                              self_t;
+  typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
 public:
+  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
+  typedef ViewLocalMod<self_t>                                    local_type;
+
+  typedef std::integral_constant<bool, false>                       is_local;
+
   ViewSubMod() = delete;
 
-  ViewSubMod(
+  constexpr ViewSubMod(
     DomainType & domain,
-    IndexType    begin,
-    IndexType    end)
-  : _domain(domain), _begin(begin), _end(end), _local(*this)
+    index_type   begin,
+    index_type   end)
+  : base_t(domain),
+    _index_set(*this, begin, end),
+    _local(*this)
   { }
 
-  constexpr bool operator==(const self_t & rhs) const {
-    return (this      == &rhs ||
-            // Note: testing _domain for identity (identical address)
-            //       instead of equality (identical value)
-            (&_domain == &rhs._domain &&
-             _begin   == rhs._begin &&
-             _end     == rhs._end));
-  }
-  
-  constexpr bool operator!=(const self_t & rhs) const {
-    return !(*this == rhs);
-  }
-
   constexpr auto begin() const
-    -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) + _begin;
-  }
-
-  inline auto begin()
-    -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) + _begin;
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(dash::domain(*this)) +
+           *dash::begin(dash::index(*this));
   }
 
   constexpr auto end() const
-    -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) + _end;
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(dash::domain(*this)) +
+           *dash::end(dash::index(*this));
   }
 
-  inline auto end()
-    -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) + _end;
-  }
-
-  constexpr const domain_type & domain() const {
-    return _domain;
-  }
-
-  inline domain_type & domain() {
-    return _domain;
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
   }
 
   constexpr const local_type & local() const {
@@ -515,21 +391,10 @@ public:
     return _local;
   }
 
-  constexpr index_type size() const {
-    return dash::distance(dash::begin(*this), dash::end(*this));
-  }
-  
-  constexpr bool empty() const {
-    return size() == 0;
-  }
-
 private:
-  domain_type & _domain;
-  index_type    _begin;
-  index_type    _end;
-  local_type    _local;
-
-}; // class ViewSubMod
+  local_type      _local;
+  index_set_type  _index_set;
+};
 
 } // namespace dash
 

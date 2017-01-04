@@ -17,7 +17,7 @@ namespace dash {
  * \concept{DashViewConcept}
  */
 template <class ViewT>
-inline typename std::enable_if<
+constexpr typename std::enable_if<
   dash::view_traits<ViewT>::is_view::value,
   const typename dash::view_traits<ViewT>::domain_type &
 >::type
@@ -25,6 +25,7 @@ domain(const ViewT & view) {
   return view.domain();
 }
 
+#if 0
 /**
  *
  * \concept{DashViewConcept}
@@ -37,6 +38,7 @@ inline typename std::enable_if<
 domain(ViewT & view) {
   return view.domain();
 }
+#endif
 
 // ------------------------------------------------------------------------
 // dash::domain(Container)

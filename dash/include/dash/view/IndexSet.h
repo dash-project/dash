@@ -7,18 +7,24 @@
 
 namespace dash {
 
+template <class ViewType>
+const typename ViewType::index_set_type & index(const ViewType & v) {
+  return v.index_set();
+}
+
+
 template <
   class IndexSetType,
-  class ViewType,
-  class IndexSetDomain >
+  class ViewType >
 class IndexSetBase
 {
 public:
   typedef typename ViewType::index_type                     index_type;
+  typedef typename ViewType::index_set_type                domain_type;
 
   class index_iterator {
   public:
-    index_iterator(
+    constexpr index_iterator(
       const IndexSetType & index_set,
       index_type           position)
     : _index_set(index_set), _pos(position)
@@ -36,7 +42,7 @@ public:
 public:
   typedef index_iterator iterator;
 
-  IndexSetBase(const ViewType & view)
+  constexpr IndexSetBase(const ViewType & view)
   : _view(view)
   { }
 
@@ -49,34 +55,59 @@ public:
                     static_cast<const IndexSetType *>(this)->size());
   }
 
-protected:
   constexpr const ViewType & view() const {
     return _view;
   }
-  constexpr const IndexSetDomain & domain() const {
-    return _domain;
+
+  constexpr const domain_type & domain() const {
+    return dash::index(_view);
   }
 
 private:
-  const ViewType       & _view;
-  const IndexSetDomain & _domain;
+  const ViewType & _view;
 };
 
-template <
-  class ViewType,
-  class IndexSetDomain >
-class IndexSetSub
-: IndexSetBase<
-    IndexSetSub<ViewType, IndexSetDomain>,
-    ViewType,
-    IndexSetDomain >
+
+
+template <class ViewType>
+class IndexSetIdentity
+: public IndexSetBase<
+           IndexSetIdentity<ViewType>,
+           ViewType >
 {
-  typedef IndexSetSub<ViewType, IndexSetDomain>                 self_t;
-  typedef IndexSetBase<self_t, ViewType, IndexSetDomain>        base_t;
+  typedef IndexSetIdentity<ViewType>                            self_t;
+  typedef IndexSetBase<self_t, ViewType>                        base_t;
 public:
   typedef typename ViewType::index_type                     index_type;
 
-  IndexSetSub(
+  constexpr IndexSetIdentity(
+    const ViewType & view)
+  : base_t(view)
+  { }
+
+  constexpr index_type operator[](index_type image_index) const {
+    return image_index;
+  }
+
+  constexpr index_type size() const {
+    return dash::domain(*this).size();
+  }
+};
+
+
+
+template <class ViewType>
+class IndexSetSub
+: public IndexSetBase<
+           IndexSetSub<ViewType>,
+           ViewType >
+{
+  typedef IndexSetSub<ViewType>                                 self_t;
+  typedef IndexSetBase<self_t, ViewType>                        base_t;
+public:
+  typedef typename ViewType::index_type                     index_type;
+
+  constexpr IndexSetSub(
     const ViewType   & view,
     index_type         begin,
     index_type         end)
@@ -98,24 +129,23 @@ private:
   index_type _domain_end_idx;
 };
 
-template <
-  class ViewType,
-  class IndexSetDomain >
+
+
+template <class ViewType>
 class IndexSetLocal
-: IndexSetBase<
-    IndexSetLocal<ViewType, IndexSetDomain>,
-    ViewType,
-    IndexSetDomain >
+: public IndexSetBase<
+           IndexSetLocal<ViewType>,
+           ViewType >
 {
-  typedef IndexSetLocal<ViewType, IndexSetDomain>               self_t;
-  typedef IndexSetBase<self_t, ViewType, IndexSetDomain>        base_t;
+  typedef IndexSetLocal<ViewType>                               self_t;
+  typedef IndexSetBase<self_t, ViewType>                        base_t;
 
   typedef typename dash::view_traits<ViewType>::origin_type   origin_t;
   typedef typename origin_t::pattern_type                    pattern_t;
 public:
   typedef typename ViewType::index_type                     index_type;
 
-  IndexSetLocal(const ViewType & view)
+  constexpr IndexSetLocal(const ViewType & view)
   : base_t(view)
   { }
 

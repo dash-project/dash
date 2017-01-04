@@ -103,7 +103,7 @@ auto distance(
  * \concept{DashIteratorConcept}
  */
 template <class T>
-constexpr std::ptrdiff_t distance(T * first, T * last) {
+constexpr std::ptrdiff_t distance(T * const first, T * const last) {
   return std::distance(first, last);
 }
 
