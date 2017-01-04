@@ -135,64 +135,6 @@ struct view_traits
     detail::_is_view<ViewableType>::value > {
 };
 
-// ------------------------------------------------------------------------
-// dash::origin(View)
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ViewT>
-inline typename std::enable_if<
-  detail::_is_view<ViewT>::value,
-  const typename ViewT::origin_type &
->::type
-origin(const ViewT & view) {
-  return view.origin();
-}
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ViewT>
-inline typename std::enable_if<
-  detail::_is_view<ViewT>::value,
-  typename ViewT::origin_type &
->::type
-origin(ViewT & view) {
-  return view.origin();
-}
-
-// ------------------------------------------------------------------------
-// dash::origin(Container)
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ContainerT>
-constexpr typename std::enable_if<
-  !detail::_is_view<ContainerT>::value,
-  const ContainerT &
->::type
-origin(const ContainerT & container) {
-  return container;
-}
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ContainerT>
-inline typename std::enable_if<
-  !detail::_is_view<ContainerT>::value,
-  ContainerT &
->::type
-origin(ContainerT & container) {
-  return container;
-}
-
 #endif // DOXYGEN
 
 } // namespace dash

@@ -22,11 +22,11 @@
  *
  * \par Expressions
  *
+ * - \c dash::sub
  * - \c dash::local
  * - \c dash::global
- * - \c dash::sub
- * - \c dash::origin
  * - \c dash::apply
+ * - \c dash::origin
  * - \c dash::block
  * - \c dash::blocks
  *
@@ -59,8 +59,12 @@
 #include <dash/view/Sub.h>
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>
+#include <dash/view/Apply.h>
+#include <dash/view/Origin.h>
+
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewTraits.h>
+
 
 namespace dash {
 
