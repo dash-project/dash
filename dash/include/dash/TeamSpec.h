@@ -233,6 +233,13 @@ public:
   /**
    * Tries to equally distribute the units across the dimensions.
    * The number of units is determined by the current state of the extents.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<3> ts({ 21,2,3 }); // extents 21x2x3 == 126 units
+   *   ts.balance_extents();       // extents 7x3x6
+   * \endcode
    */
   void balance_extents()
   {
