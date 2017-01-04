@@ -58,8 +58,8 @@
  * class - or vice versa, following the policy pattern with the
  * operation specified as policy:
  *
- *   template <dim_t DimDiff, class OriginType>
- *   class ViewMod : OriginType
+ *   template <dim_t DimDiff, class DomainType>
+ *   class ViewMod : DomainType
  *   {
  *      // ...
  *   }
@@ -120,19 +120,19 @@ template <
   // the view projection eliminates one dimension of the origin domain
   // difference of dimensionality is \f$(vdim - odim) = -1\f$.
   dim_t DimDiff,
-  class OriginType = ViewOrigin,
-  class IndexType  = typename OriginType::index_type >
+  class DomainType = ViewOrigin,
+  class IndexType  = typename DomainType::index_type >
 class ViewMod
 {
-  typedef ViewMod<DimDiff, OriginType, IndexType> self_t;
+  typedef ViewMod<DimDiff, DomainType, IndexType> self_t;
 
 public:
 
   constexpr static dim_t dimdiff = DimDiff;
 
-  typedef typename dash::view_traits<OriginType>::is_local is_local;
+  typedef typename dash::view_traits<DomainType>::is_local is_local;
 
-  typedef OriginType                                    domain_type;
+  typedef DomainType                                    domain_type;
   typedef IndexType                                      index_type;
 
   typedef ViewLocalMod<0, self_t, index_type>            local_type;
@@ -265,8 +265,8 @@ struct view_traits<ViewOrigin> {
 
 template <
   dim_t DimDiff,
-  class OriginType = ViewOrigin,
-  class IndexType  = typename OriginType::IndexType >
+  class DomainType = ViewOrigin,
+  class IndexType  = typename DomainType::IndexType >
 class ViewSubMod;
 
 
@@ -276,17 +276,17 @@ class ViewSubMod;
 
 template <
   dim_t DimDiff,
-  class OriginType = ViewOrigin,
-  class IndexType  = typename OriginType::IndexType >
+  class DomainType = ViewOrigin,
+  class IndexType  = typename DomainType::IndexType >
 class ViewLocalMod;
 
 template <
   dim_t DimDiff,
-  class OriginType,
+  class DomainType,
   class IndexType >
-struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
-  typedef OriginType                                         domain_type;
-  typedef ViewLocalMod<DimDiff, OriginType, IndexType>         view_type;
+struct view_traits<ViewLocalMod<DimDiff, DomainType, IndexType> > {
+  typedef DomainType                                         domain_type;
+  typedef ViewLocalMod<DimDiff, DomainType, IndexType>         view_type;
   typedef IndexType                                           index_type;
 
   typedef std::integral_constant<bool, (DimDiff != 0)>     is_projection;
@@ -428,21 +428,21 @@ protected:
 
 template <
   dim_t DimDiff,
-  class OriginType,
+  class DomainType,
   class IndexType >
 class ViewLocalMod
 : public dash::ViewLocalModBase<
-           ViewLocalMod<DimDiff, OriginType, IndexType>,
-           dash::view_traits<OriginType>::is_view::value >
+           ViewLocalMod<DimDiff, DomainType, IndexType>,
+           dash::view_traits<DomainType>::is_view::value >
 {
-  typedef ViewLocalMod<DimDiff, OriginType, IndexType> self_t;
+  typedef ViewLocalMod<DimDiff, DomainType, IndexType> self_t;
 
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
   typedef std::integral_constant<bool, true>  is_local;
 
-  typedef OriginType                       domain_type;
+  typedef DomainType                       domain_type;
   typedef IndexType                         index_type;
   typedef self_t                            local_type;
   typedef typename domain_type::local_type   view_type;
@@ -451,10 +451,10 @@ public:
 
   ViewLocalMod() = delete;
 
-  ViewLocalMod(OriginType & domain)
+  ViewLocalMod(DomainType & domain)
   : ViewLocalModBase<
-      ViewLocalMod<DimDiff, OriginType, IndexType>,
-      dash::view_traits<OriginType>::is_view::value
+      ViewLocalMod<DimDiff, DomainType, IndexType>,
+      dash::view_traits<DomainType>::is_view::value
     >(domain)
   { }
 
@@ -517,11 +517,11 @@ public:
 
 template <
   dim_t DimDiff,
-  class OriginType,
+  class DomainType,
   class IndexType >
 class ViewSubMod
 {
-  typedef ViewSubMod<DimDiff, OriginType, IndexType> self_t;
+  typedef ViewSubMod<DimDiff, DomainType, IndexType> self_t;
 
   template <dim_t DD_, class OT_, class IT_>
   friend class ViewLocalMod;
@@ -529,17 +529,17 @@ class ViewSubMod
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
-  typedef typename dash::view_traits<OriginType>::is_local is_local;
+  typedef typename dash::view_traits<DomainType>::is_local is_local;
 
-  typedef OriginType                              domain_type;
-  typedef IndexType                                index_type;
-  typedef ViewSubLocalMod<self_t>                  local_type;
+  typedef DomainType                                      domain_type;
+  typedef IndexType                                        index_type;
+  typedef ViewLocalMod<DimDiff, self_t, IndexType>         local_type;
 
 public:
   ViewSubMod() = delete;
 
   ViewSubMod(
-    OriginType & domain,
+    DomainType & domain,
     IndexType    begin,
     IndexType    end)
   : _domain(domain), _begin(begin), _end(end), _local(*this)

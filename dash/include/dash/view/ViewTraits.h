@@ -40,14 +40,19 @@ template <class ViewT>
 struct view_traits
 {
   typedef typename ViewT::domain_type         domain_type;
+  typedef typename ViewT::origin_type         origin_type;
+  typedef typename ViewT::local_type           local_type;
 
-  typedef std::integral_constant<bool, value> is_projection;
-  typedef std::integral_constant<bool, value> is_view;
   typedef std::integral_constant<bool, value> is_origin;
+  typedef std::integral_constant<bool, value> is_view;
+  typedef std::integral_constant<bool, value> is_projection;
   typedef std::integral_constant<bool, value> is_local;
 };
 
 #else // DOXYGEN
+
+template <class ViewableType>
+struct view_traits;
 
 namespace detail {
 
@@ -80,23 +85,23 @@ namespace detail {
   template <class ViewT>
   struct _view_traits< ViewT, true >
   {
-    typedef typename ViewT::domain_type                         domain_type;
-    typedef typename ViewT::domain_type::origin_type            origin_type;
-    typedef ViewT                                                 view_type;
-    typedef typename ViewT::index_type                           index_type;
+    typedef typename ViewT::domain_type                          domain_type;
+    typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+    typedef ViewT                                                  view_type;
+    typedef typename ViewT::index_type                            index_type;
 
     /// \note Alternative: specialize struct view_traits for \c (DimDiff = 0)
     typedef std::integral_constant<bool,
-                                   (ViewT::dimdiff != 0)>     is_projection;
-    typedef std::integral_constant<bool, true>                is_view;
-    typedef std::integral_constant<bool, false>               is_origin;
+                                   (ViewT::dimdiff != 0)>      is_projection;
+    typedef std::integral_constant<bool, true>                 is_view;
+    typedef std::integral_constant<bool, false>                is_origin;
     typedef std::integral_constant<bool,
       // either view type is local:
       ViewT::is_local::value ||
       // or view domain type is local:
       _view_traits<domain_type,
                    _is_view<domain_type>::value
-                  >::is_local::value >                        is_local;
+                  >::is_local::value >                         is_local;
   };
 
   /**
@@ -104,24 +109,24 @@ namespace detail {
    */
   template <class ContainerT>
   struct _view_traits< ContainerT, false > {
-    typedef ContainerT                                          origin_type;
-    typedef ContainerT                                          domain_type;
-    typedef ContainerT                                            view_type;
-    typedef typename ContainerT::index_type                      index_type;
+    typedef ContainerT                                           origin_type;
+    typedef ContainerT                                           domain_type;
+    typedef ContainerT                                             view_type;
+    typedef typename ContainerT::index_type                       index_type;
 
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
-    typedef std::integral_constant<bool, false>               is_projection;
-    typedef std::integral_constant<bool, false>               is_view;
+    typedef std::integral_constant<bool, false>                is_projection;
+    typedef std::integral_constant<bool, false>                is_view;
     /// Whether the view type is the view domain.
-    typedef std::integral_constant<bool, true>                is_origin;
+    typedef std::integral_constant<bool, true>                 is_origin;
     /// Whether the view / container type is a local view.
     /// \note A container type is local if it is identical to its
     ///       \c local_type
     typedef std::integral_constant<bool, std::is_same<
                                    ContainerT,
                                    typename ContainerT::local_type
-                                  >::value >                  is_local;
+                                  >::value >                   is_local;
   };
 
 } // namespace detail
