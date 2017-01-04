@@ -24,11 +24,11 @@ TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
   EXPECT_EQ(block_size, block_gview.size());
 
   // Origin of block view is array:
-  auto & block_origin = dash::origin(block_gview);
+  auto & block_domain = dash::domain(block_gview);
 
-  EXPECT_EQ(array_size, block_origin.size());
-  EXPECT_EQ(a.begin(),  dash::begin(block_origin));
-  EXPECT_EQ(a.end(),    dash::end(block_origin));
+  EXPECT_EQ(array_size, block_domain.size());
+  EXPECT_EQ(a.begin(),  dash::begin(block_domain));
+  EXPECT_EQ(a.end(),    dash::end(block_domain));
 
   auto view_begin_gidx = dash::index(dash::begin(block_gview));
   auto view_end_gidx   = dash::index(dash::end(block_gview));
@@ -61,13 +61,13 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
             dash::index(dash::end(block_gview_inner)));
 
   // Origin of inner view is outer view:
-  auto & block_gview_inner_origin = dash::origin(block_gview_inner);
-  EXPECT_EQ(block_gview_outer, block_gview_inner_origin);
+  auto & block_gview_inner_domain = dash::domain(block_gview_inner);
+  EXPECT_EQ(block_gview_outer, block_gview_inner_domain);
 
   // Origin of outer view is array:
-  auto & block_gview_outer_origin = dash::origin(block_gview_outer);
-  EXPECT_EQ(a.begin(),  dash::begin(block_gview_outer_origin));
-  EXPECT_EQ(a.end(),    dash::end(block_gview_outer_origin));
+  auto & block_gview_outer_domain = dash::domain(block_gview_outer);
+  EXPECT_EQ(a.begin(),  dash::begin(block_gview_outer_domain));
+  EXPECT_EQ(a.end(),    dash::end(block_gview_outer_domain));
 }
 
 TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
@@ -87,9 +87,9 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   EXPECT_EQ(block_size, block_gview.size());
 
   // Origin of block view is array:
-  auto & block_origin = dash::origin(block_gview);
-  EXPECT_EQ(a.begin(),  dash::begin(block_origin));
-  EXPECT_EQ(a.end(),    dash::end(block_origin));
+  auto & block_domain = dash::domain(block_gview);
+  EXPECT_EQ(a.begin(),  dash::begin(block_domain));
+  EXPECT_EQ(a.end(),    dash::end(block_domain));
 }
 
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
@@ -115,7 +115,7 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   auto block_lview = dash::local(block_gview);
 
   // Origin of local block view is local array index space:
-  auto & block_lview_origin = dash::origin(block_lview);
-  auto & block_gview_origin = dash::origin(block_lview_origin);
+  auto & block_lview_domain = dash::domain(block_lview);
+  auto & block_gview_domain = dash::domain(block_lview_domain);
 }
 

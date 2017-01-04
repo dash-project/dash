@@ -1,17 +1,16 @@
-#ifndef DASH__VIEW__ORIGIN_H__INCLUDED
-#define DASH__VIEW__ORIGIN_H__INCLUDED
+#ifndef DASH__VIEW__DOMAIN_H__INCLUDED
+#define DASH__VIEW__DOMAIN_H__INCLUDED
 
 #include <dash/Types.h>
 #include <dash/Range.h>
 
-#include <dash/view/Domain.h>
 #include <dash/view/ViewTraits.h>
 
 
 namespace dash {
 
 // ------------------------------------------------------------------------
-// dash::origin(View)
+// dash::domain(View)
 
 /**
  *
@@ -20,11 +19,10 @@ namespace dash {
 template <class ViewT>
 inline typename std::enable_if<
   dash::view_traits<ViewT>::is_view::value,
-  const typename dash::view_traits<ViewT>::origin_type &
+  const typename dash::view_traits<ViewT>::domain_type &
 >::type
-origin(const ViewT & view) {
-  // recurse upwards:
-  return dash::origin(dash::domain(view));
+domain(const ViewT & view) {
+  return view.domain();
 }
 
 /**
@@ -34,15 +32,14 @@ origin(const ViewT & view) {
 template <class ViewT>
 inline typename std::enable_if<
   dash::view_traits<ViewT>::is_view::value,
-  typename dash::view_traits<ViewT>::origin_type &
+  typename dash::view_traits<ViewT>::domain_type &
 >::type
-origin(ViewT & view) {
-  // recurse upwards:
-  return dash::origin(dash::domain(view));
+domain(ViewT & view) {
+  return view.domain();
 }
 
 // ------------------------------------------------------------------------
-// dash::origin(Container)
+// dash::domain(Container)
 
 /**
  *
@@ -53,7 +50,7 @@ constexpr typename std::enable_if<
   !dash::view_traits<ContainerT>::is_view::value,
   const ContainerT &
 >::type
-origin(const ContainerT & container) {
+domain(const ContainerT & container) {
   return container;
 }
 
@@ -66,10 +63,10 @@ inline typename std::enable_if<
   !dash::view_traits<ContainerT>::is_view::value,
   ContainerT &
 >::type
-origin(ContainerT & container) {
+domain(ContainerT & container) {
   return container;
 }
 
 } // namespace dash
 
-#endif // DASH__VIEW__ORIGIN_H__INCLUDED
+#endif // DASH__VIEW__DOMAIN_H__INCLUDED

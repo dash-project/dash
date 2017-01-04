@@ -13,7 +13,7 @@ namespace dash {
 // View Modifiers (not coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain origin dimensions
+// Sub-space slice, view dimensions maintain domain dimensions
 
 /**
  * \concept{DashViewConcept}
@@ -41,7 +41,7 @@ sub(
                      dash::end(range));
 }
 
-// Sub-space projection, view reduces origin domain by one dimension
+// Sub-space projection, view reduces domain by one dimension
 
 /**
  * \concept{DashViewConcept}
@@ -59,7 +59,7 @@ sub(
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain origin dimensions
+// Sub-space slice, view dimensions maintain domain dimensions
 
 /**
  * \concept{DashViewConcept}
@@ -72,14 +72,14 @@ constexpr ViewSubMod<0, RangeT, OffsetT>
 sub(
     OffsetT   begin,
     OffsetT   end,
-    RangeT  & origin) {
+    RangeT  & domain) {
   return ViewSubMod<0, RangeT, OffsetT>(
-           origin,
+           domain,
            begin,
            end);
 }
 
-// Sub-space projection, view reduces origin domain by one dimension
+// Sub-space projection, view reduces domain by one dimension
 
 } // namespace dash
 

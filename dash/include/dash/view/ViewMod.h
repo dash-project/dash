@@ -5,8 +5,13 @@
 #include <dash/Range.h>
 #include <dash/Iterator.h>
 
-#include <dash/view/ViewTraits.h>
 #include <dash/view/Local.h>
+#include <dash/view/Global.h>
+#include <dash/view/Origin.h>
+#include <dash/view/Domain.h>
+#include <dash/view/Apply.h>
+#include <dash/view/ViewTraits.h>
+
 
 #ifndef DOXYGEN
 
@@ -102,7 +107,7 @@
  *                                         is passed.
  *
  * TODO: Define dereference operator*() for view types, delegating to
- *       origin::operator* recursively.
+ *       domain::operator* recursively.
  */
 
 
@@ -127,7 +132,7 @@ public:
 
   typedef typename dash::view_traits<OriginType>::is_local is_local;
 
-  typedef OriginType                                    origin_type;
+  typedef OriginType                                    domain_type;
   typedef IndexType                                      index_type;
 
   typedef ViewLocalMod<0, self_t, index_type>            local_type;
@@ -159,8 +164,8 @@ public:
     return _end;
   }
 
-  constexpr const origin_type & origin() const {
-    return _origin;
+  constexpr const domain_type & domain() const {
+    return _domain;
   }
 
   constexpr index_type size() const {
@@ -173,7 +178,7 @@ public:
 
 private:
 
-  origin_type & _origin;
+  domain_type & _domain;
   index_type    _begin;
   index_type    _end;
 
@@ -223,13 +228,13 @@ class ViewOrigin
 
 public:
   typedef dash::default_index_t   index_type;
-  typedef self_t                 origin_type;
+  typedef self_t                 domain_type;
 
 public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
-  constexpr const origin_type & origin() const {
+  constexpr const domain_type & domain() const {
     return *this;
   }
 
@@ -244,7 +249,7 @@ public:
 
 template <>
 struct view_traits<ViewOrigin> {
-  typedef ViewOrigin                                         origin_type;
+  typedef ViewOrigin                                         domain_type;
   typedef ViewOrigin                                           view_type;
   typedef typename ViewOrigin::index_type                     index_type;
 
@@ -280,7 +285,7 @@ template <
   class OriginType,
   class IndexType >
 struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
-  typedef OriginType                                         origin_type;
+  typedef OriginType                                         domain_type;
   typedef ViewLocalMod<DimDiff, OriginType, IndexType>         view_type;
   typedef IndexType                                           index_type;
 
@@ -310,20 +315,20 @@ public:
 
   self_t & apply() {
     if (!_ready) {
-      typename ViewLocalModType::origin_type & origin_sub =
-        dash::origin(_view_local_mod);
+      typename ViewLocalModType::domain_type & domain_sub =
+        dash::domain(_view_local_mod);
 
-      // global index range of origin sub view:
-      index_type sub_begin_gidx  = dash::index(dash::begin(origin_sub));
-      index_type sub_end_gidx    = dash::index(dash::end(origin_sub));
+      // global index range of domain sub view:
+      index_type sub_begin_gidx  = dash::index(dash::begin(domain_sub));
+      index_type sub_end_gidx    = dash::index(dash::end(domain_sub));
       // global index range of local view:
-      index_type sub_lbegin_gidx = dash::index(dash::begin(origin_sub));
-      index_type sub_lend_gidx   = dash::index(dash::end(origin_sub));
+      index_type sub_lbegin_gidx = dash::index(dash::begin(domain_sub));
+      index_type sub_lend_gidx   = dash::index(dash::end(domain_sub));
       // local index range of sub local view:
       index_type sub_lbegin_lidx = 3; // dash::index(
-                                      //   dash::begin(origin_sub));
+                                      //   dash::begin(domain_sub));
       index_type sub_lend_lidx   = 5; // dash::index(
-                                      //   dash::end(origin_sub));
+                                      //   dash::end(domain_sub));
 
       _begin_index = sub_lbegin_lidx;
       _end_index   = sub_lend_lidx;
@@ -368,12 +373,12 @@ class ViewLocalModBase<ViewLocalModType, true>
 {
   typedef ViewLocalModBase<ViewLocalModType, true> self_t;
 public:
-  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
+  typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
   typedef typename dash::ViewSubLocalMod<ViewLocalModType>      view_type;
-  typedef typename view_traits<origin_type>::index_type        index_type;
+  typedef typename view_traits<domain_type>::index_type        index_type;
 
-  ViewLocalModBase(origin_type & origin_sub)
-  : _origin(origin_sub), _range(*this)
+  ViewLocalModBase(domain_type & domain_sub)
+  : _domain(domain_sub), _range(*this)
   { }
 
 public:
@@ -385,7 +390,7 @@ public:
   }
 
 protected:
-  origin_type                & _origin;
+  domain_type                & _domain;
   // range created by application of this view modifier.
   view_type                    _range;
 };
@@ -400,23 +405,23 @@ template <
 class ViewLocalModBase<ViewLocalModType, false>
 {
 public:
-  typedef typename view_traits<ViewLocalModType>::origin_type origin_type;
-  typedef typename origin_type::local_type                      view_type;
-  typedef typename origin_type::index_type                     index_type;
+  typedef typename view_traits<ViewLocalModType>::domain_type domain_type;
+  typedef typename domain_type::local_type                      view_type;
+  typedef typename domain_type::index_type                     index_type;
 
-  ViewLocalModBase(origin_type & origin)
-  : _origin(origin)
+  ViewLocalModBase(domain_type & domain)
+  : _domain(domain)
   { }
 
 public:
   constexpr view_type & apply() const {
     // e.g. called via
     //   dash::begin(dash::apply(*this))
-    return dash::local(_origin);
+    return dash::local(_domain);
   }
 
 protected:
-  origin_type & _origin;
+  domain_type & _domain;
 };
 
 // ======================================================================
@@ -437,27 +442,27 @@ public:
 
   typedef std::integral_constant<bool, true>  is_local;
 
-  typedef OriginType                       origin_type;
+  typedef OriginType                       domain_type;
   typedef IndexType                         index_type;
   typedef self_t                            local_type;
-  typedef typename origin_type::local_type   view_type;
+  typedef typename domain_type::local_type   view_type;
 
 public:
 
   ViewLocalMod() = delete;
 
-  ViewLocalMod(OriginType & origin)
+  ViewLocalMod(OriginType & domain)
   : ViewLocalModBase<
       ViewLocalMod<DimDiff, OriginType, IndexType>,
       dash::view_traits<OriginType>::is_view::value
-    >(origin)
+    >(domain)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
     return (this      == &rhs ||
-            // Note: testing _origin for identity (identical address)
+            // Note: testing _domain for identity (identical address)
             //       instead of equality (identical value)
-            &this->_origin == &rhs._origin);
+            &this->_domain == &rhs._domain);
   }
   
   constexpr bool operator!=(const self_t & rhs) const {
@@ -465,27 +470,27 @@ public:
   }
 
   constexpr view_type & begin() const {
-    return dash::begin(dash::apply(*this)); // , dash::origin(*this)));
+    return dash::begin(dash::apply(*this));
   }
 
   inline view_type & begin() {
-    return dash::begin(dash::apply(*this)); // , dash::origin(*this)));
+    return dash::begin(dash::apply(*this));
   }
 
   constexpr view_type & end() const {
-    return dash::end(dash::apply(*this)); // , dash::origin(*this)));
+    return dash::end(dash::apply(*this));
   }
 
   inline view_type & end() {
-    return dash::end(dash::apply(*this)); // , dash::origin(*this)));
+    return dash::end(dash::apply(*this));
   }
 
-  constexpr const origin_type & origin() const {
-    return this->_origin;
+  constexpr const domain_type & domain() const {
+    return this->_domain;
   }
 
-  inline origin_type & origin() {
-    return this->_origin;
+  inline domain_type & domain() {
+    return this->_domain;
   }
 
   constexpr const local_type & local() const {
@@ -526,7 +531,7 @@ public:
 
   typedef typename dash::view_traits<OriginType>::is_local is_local;
 
-  typedef OriginType                              origin_type;
+  typedef OriginType                              domain_type;
   typedef IndexType                                index_type;
   typedef ViewSubLocalMod<self_t>                  local_type;
 
@@ -534,17 +539,17 @@ public:
   ViewSubMod() = delete;
 
   ViewSubMod(
-    OriginType & origin,
+    OriginType & domain,
     IndexType    begin,
     IndexType    end)
-  : _origin(origin), _begin(begin), _end(end), _local(*this)
+  : _domain(domain), _begin(begin), _end(end), _local(*this)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
     return (this      == &rhs ||
-            // Note: testing _origin for identity (identical address)
+            // Note: testing _domain for identity (identical address)
             //       instead of equality (identical value)
-            (&_origin == &rhs._origin &&
+            (&_domain == &rhs._domain &&
              _begin   == rhs._begin &&
              _end     == rhs._end));
   }
@@ -554,31 +559,31 @@ public:
   }
 
   constexpr auto begin() const
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _begin;
+    -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(_domain) + _begin;
   }
 
   inline auto begin()
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _begin;
+    -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(_domain) + _begin;
   }
 
   constexpr auto end() const
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _end;
+    -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(_domain) + _end;
   }
 
   inline auto end()
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _end;
+    -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(_domain) + _end;
   }
 
-  constexpr const origin_type & origin() const {
-    return _origin;
+  constexpr const domain_type & domain() const {
+    return _domain;
   }
 
-  inline origin_type & origin() {
-    return _origin;
+  inline domain_type & domain() {
+    return _domain;
   }
 
   constexpr const local_type & local() const {
@@ -598,7 +603,7 @@ public:
   }
 
 private:
-  origin_type & _origin;
+  domain_type & _domain;
   index_type    _begin;
   index_type    _end;
   local_type    _local;

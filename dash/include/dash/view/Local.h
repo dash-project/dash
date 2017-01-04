@@ -18,8 +18,8 @@ typename std::enable_if<
   dash::view_traits<ViewType>::is_view::value,
   const typename ViewType::local_type &
 >::type
-local(const ViewType & origin) {
-  return origin.local();
+local(const ViewType & v) {
+  return v.local();
 }
 
 /**
@@ -31,8 +31,8 @@ typename std::enable_if<
   !dash::view_traits<ContainerType>::is_view::value,
   const typename ContainerType::local_type &
 >::type
-local(const ContainerType & origin) {
-  return origin.local;
+local(const ContainerType & c) {
+  return c.local;
 }
 
 } // namespace dash

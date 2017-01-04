@@ -7,7 +7,7 @@
 namespace dash {
 
 /**
- * Inverse operation to \c dash::origin.
+ * Inverse operation to \c dash::domain.
  *
  * \concept{DashViewConcept}
  */
@@ -21,15 +21,15 @@ constexpr auto apply(
 #ifdef DOXYGEN
 
 /**
- * Returns a reference to the specified object's origin, or the object
+ * Returns a reference to the specified object's domain, or the object
  * itself if it is not a View type.
  * Inverse operation to \c dash::apply.
  *
  * \concept{DashViewConcept}
  */
 template <class Viewable>
-constexpr typename Viewable::origin_type &
-origin(const Viewable & v);
+constexpr typename Viewable::domain_type &
+domain(const Viewable & v);
 
 /**
  * View type traits.
@@ -39,7 +39,7 @@ origin(const Viewable & v);
 template <class ViewT>
 struct view_traits
 {
-  typedef typename ViewT::origin_type         origin_type;
+  typedef typename ViewT::domain_type         domain_type;
 
   typedef std::integral_constant<bool, value> is_projection;
   typedef std::integral_constant<bool, value> is_view;
@@ -52,20 +52,20 @@ struct view_traits
 namespace detail {
 
   template<typename T>
-  struct _has_origin_type
+  struct _has_domain_type
   {
   private:
     typedef char                      yes;
     typedef struct { char array[2]; } no;
 
-    template<typename C> static yes test(typename C::origin_type*);
+    template<typename C> static yes test(typename C::domain_type*);
     template<typename C> static no  test(...);
   public:
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
   };
 
   template <class ViewableType>
-  struct _is_view : _has_origin_type<ViewableType> { };
+  struct _is_view : _has_domain_type<ViewableType> { };
 
   // ------------------------------------------------------------------------
 
@@ -80,7 +80,8 @@ namespace detail {
   template <class ViewT>
   struct _view_traits< ViewT, true >
   {
-    typedef typename ViewT::origin_type                         origin_type;
+    typedef typename ViewT::domain_type                         domain_type;
+    typedef typename ViewT::domain_type::origin_type            origin_type;
     typedef ViewT                                                 view_type;
     typedef typename ViewT::index_type                           index_type;
 
@@ -92,9 +93,9 @@ namespace detail {
     typedef std::integral_constant<bool,
       // either view type is local:
       ViewT::is_local::value ||
-      // or view origin type is local:
-      _view_traits<origin_type,
-                   _is_view<origin_type>::value
+      // or view domain type is local:
+      _view_traits<domain_type,
+                   _is_view<domain_type>::value
                   >::is_local::value >                        is_local;
   };
 
@@ -104,14 +105,15 @@ namespace detail {
   template <class ContainerT>
   struct _view_traits< ContainerT, false > {
     typedef ContainerT                                          origin_type;
+    typedef ContainerT                                          domain_type;
     typedef ContainerT                                            view_type;
     typedef typename ContainerT::index_type                      index_type;
 
     /// Whether the view type is a projection (has less dimensions than the
-    /// view's origin type).
+    /// view's domain type).
     typedef std::integral_constant<bool, false>               is_projection;
     typedef std::integral_constant<bool, false>               is_view;
-    /// Whether the view type is the view origin.
+    /// Whether the view type is the view domain.
     typedef std::integral_constant<bool, true>                is_origin;
     /// Whether the view / container type is a local view.
     /// \note A container type is local if it is identical to its
