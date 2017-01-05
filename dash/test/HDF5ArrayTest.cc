@@ -524,6 +524,53 @@ TEST_F(HDF5ArrayTest, AsyncIO)
 
 }
 
+TEST_F(HDF5ArrayTest, PatternConversion)
+{
+  typedef dash::Pattern<1, dash::ROW_MAJOR, long> pattern_t;
+  typedef dash::Array<int, long, pattern_t>       array_t;
+
+  long      extent = 100;
+
+	pattern_t pattern_a(extent, dash::TILE(10));
+	pattern_t pattern_b(extent, dash::TILE(7));
+  array_t   array_a(pattern_a);
+	array_t   array_b(pattern_b);
+
+	// Fill Array
+	fill_array(array_a, 0);
+	fill_array(array_b, 0);
+
+	// Write Array to HDF5 file using defaults
+	{
+		dash::io::hdf5::OutputStream os(_filename);
+		os << dash::io::hdf5::dataset("group/data") << array_a;
+
+		dash::barrier();
+	}
+	// Restore values from HDF5 dataset. Pattern gets reconstructed from
+	// hdf5 metadata
+	{
+		// Use delayed allocation
+		array_t array_c;
+
+		dash::io::hdf5::InputStream is(_filename);
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
+    
+    verify_array(array_c, 0);
+	}
+
+	// Convert between two patterns
+	{
+		// pass allocated array to define custom pattern
+		array_t array_c(pattern_b); // tilesize=7
+
+		dash::io::hdf5::InputStream is(_filename);
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
+    
+    verify_array(array_c, 0);
+	}
+}
+
 // Run this test after all other tests as it changes the team state
 TEST_F(HDF5ArrayTest, TeamSplit)
 {

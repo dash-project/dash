@@ -634,13 +634,14 @@ private:
       }
       DASH_LOG_DEBUG("llastblckidx", llastblckidx);
       ts.count[0]  = 1;
-      ts.block[0] = localsize;
-      ts.offset[0]  = pattern.local_block(llastblckidx).offset(0);
-      ts.stride[0]  = 1;
+      // workaround until pattern.local_block(llastblckidx).extent(i); is fixed
+      ts.block[0]  = localsize - pattern.local_block_local(llastblckidx).offset(0);
+      ts.offset[0] = pattern.local_block(llastblckidx).offset(0);
+      ts.stride[0] = 1;
 
       ms.count[0]  = 1;
-      ms.block[0]  = localsize;
-      ms.offset[0] = 0;
+      ms.block[0]  = ts.block[0];
+      ms.offset[0] = pattern.local_block_local(llastblckidx).offset(0);
       ms.stride[0] = 1;
       
       hs.contrib_data+=ts.count[0]*ts.block[0];
