@@ -343,9 +343,6 @@ public:
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
     std::array<extent_t, ndim>           size_extents;
-    std::array<extent_t, ndim>           team_extents;
-    std::array<dash::Distribution, ndim> dist_extents;
-    extent_t hdf_dash_pattern[ndim * 4];
 
     // set matrix size according to hdf5 dataset dimensions
     for (int i = 0; i < ndim; ++i) {
