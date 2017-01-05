@@ -29,8 +29,8 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
   
   // TODO: Optimize
-  auto hyperslabs = _get_pattern_hdf_spec_boundary(container.pattern());
-  hyperslabs.push_back(_get_pattern_hdf_spec(container.pattern()));
+  auto hyperslabs = _get_hdf_slabs_boundary(container.pattern());
+  hyperslabs.push_back(_get_hdf_slab_center(container.pattern()));
   
   // Sort hyperslabs by amount of data contrib.
   std::sort(hyperslabs.begin(), hyperslabs.end(), 
@@ -65,7 +65,6 @@ void StoreHDF::_process_dataset_impl_zero_copy(
                       ts_edge.block.data());
     }
 
-    DASH_LOG_DEBUG("write partially filled blocks");
     if(io_mode == StoreHDF::Mode::WRITE){
       H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, (container.lbegin()));
