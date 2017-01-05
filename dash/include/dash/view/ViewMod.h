@@ -15,6 +15,10 @@
 #include <dash/view/Apply.h>
 
 
+namespace dash {
+
+} // namespace dash
+
 #ifndef DOXYGEN
 
 /* TODO: Eventually, these probably are not public definitions.
@@ -140,6 +144,10 @@ public:
     return *this;
   }
 
+  inline domain_type & domain() {
+    return *this;
+  }
+
   constexpr index_set_type index_set() const {
     return IndexSetIdentity<self_t>(*this);
   }
@@ -218,12 +226,12 @@ public:
   }
 
   constexpr const domain_type & domain() const {
-    return this->_domain;
+    return _domain;
   }
 
-//  inline domain_type & domain() {
-//    return this->_domain;
-//  }
+  inline domain_type & domain() {
+    return _domain;
+  }
 
   constexpr index_type size() const {
     return dash::distance(
@@ -271,13 +279,15 @@ class ViewLocalMod
 public:
   typedef DomainType                                             domain_type;
   typedef typename domain_type::local_type                        image_type;
+  typedef typename view_traits<DomainType>::origin_type          origin_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
 private:
   typedef ViewLocalMod<DomainType>                                    self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
 public:
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >     index_set_type;
-  typedef typename domain_type::local_type                        local_type;
+//typedef typename domain_type::local_type                        local_type;
+  typedef typename origin_type::local_type                        local_type;
 
   typedef std::integral_constant<bool, true>                        is_local;
 
@@ -289,14 +299,28 @@ public:
     _index_set(*this)
   { }
 
-  constexpr const local_type & begin() const {
-    return dash::begin(dash::local(dash::domain(*this))) +
-           *dash::begin(dash::index(*this));
+  constexpr auto begin() const
+  -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
+    return dash::begin(
+             dash::local(
+               dash::origin(dash::domain(*this))
+             )
+           ) +
+           std::max(
+             *dash::begin(dash::index(*this)),
+             *dash::begin(dash::index(dash::domain(*this))));
   }
 
-  constexpr const local_type & end() const {
-    return dash::begin(dash::local(dash::domain(*this))) +
-           *dash::end(dash::index(*this));
+  constexpr auto end() const
+  -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
+    return dash::begin(
+             dash::local(
+               dash::origin(dash::domain(*this))
+             )
+           ) +
+           std::min(
+             *dash::end(dash::index(*this)),
+             *dash::begin(dash::index(dash::domain(*this))));
   }
 
   constexpr const local_type & local() const {
@@ -364,6 +388,65 @@ public:
     index_type   end)
   : base_t(domain),
     _index_set(*this, begin, end),
+    _local(*this)
+  { }
+
+  constexpr auto begin() const
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(dash::domain(*this)) +
+           *dash::begin(dash::index(*this));
+  }
+
+  constexpr auto end() const
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(dash::domain(*this)) +
+           *dash::end(dash::index(*this));
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
+
+  constexpr const local_type & local() const {
+    return _local;
+  }
+
+  inline local_type & local() {
+    return _local;
+  }
+
+private:
+  local_type      _local;
+  index_set_type  _index_set;
+};
+
+
+template <
+  class DomainType >
+class ViewBlockMod
+: public ViewModBase<
+           ViewBlockMod<DomainType>,
+           DomainType >
+{
+public:
+  typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::index_type            index_type;
+private:
+  typedef ViewBlockMod<DomainType>                                    self_t;
+  typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >         base_t;
+public:
+  typedef dash::IndexSetSub< ViewBlockMod<DomainType> >       index_set_type;
+  typedef ViewLocalMod<self_t>                                    local_type;
+
+  typedef std::integral_constant<bool, false>                       is_local;
+
+  ViewBlockMod() = delete;
+
+  constexpr ViewBlockMod(
+    DomainType & domain,
+    index_type   block_index)
+  : base_t(domain),
+    _index_set(*this, block_index),
     _local(*this)
   { }
 

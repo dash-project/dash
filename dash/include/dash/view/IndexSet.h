@@ -157,9 +157,8 @@ private:
 public:
 
   constexpr index_type operator[](index_type image_index) const {
-    return pattern().local_index(
-                    // this->domain()[0] +
-                       image_index);
+    return pattern().at(this->domain()[0] +
+                        image_index);
   }
 
   constexpr index_type size() const {

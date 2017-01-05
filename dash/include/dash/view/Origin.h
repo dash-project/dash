@@ -1,6 +1,7 @@
 #ifndef DASH__VIEW__ORIGIN_H__INCLUDED
 #define DASH__VIEW__ORIGIN_H__INCLUDED
 
+
 #include <dash/Types.h>
 #include <dash/Range.h>
 
@@ -10,15 +11,29 @@
 
 namespace dash {
 
-// ------------------------------------------------------------------------
-// dash::origin(View)
+#ifdef DOXYGEN
 
 /**
  *
  * \concept{DashViewConcept}
  */
+template <class ContainerT>
+typename dash::view_traits<ContainerT>::origin_type
+origin(const ContainerT & container);
+
+#else
+
+template <class ContainerT>
+constexpr typename std::enable_if<
+  !dash::view_traits<ContainerT>::is_view::value,
+  const typename dash::view_traits<ContainerT>::origin_type &
+>::type
+origin(const ContainerT & container) {
+  return container;
+}
+
 template <class ViewT>
-inline typename std::enable_if<
+constexpr typename std::enable_if<
   dash::view_traits<ViewT>::is_view::value,
   const typename dash::view_traits<ViewT>::origin_type &
 >::type
@@ -27,48 +42,7 @@ origin(const ViewT & view) {
   return dash::origin(dash::domain(view));
 }
 
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ViewT>
-inline typename std::enable_if<
-  dash::view_traits<ViewT>::is_view::value,
-  typename dash::view_traits<ViewT>::origin_type &
->::type
-origin(ViewT & view) {
-  // recurse upwards:
-  return dash::origin(dash::domain(view));
-}
-
-// ------------------------------------------------------------------------
-// dash::origin(Container)
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ContainerT>
-constexpr typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
-  const ContainerT &
->::type
-origin(const ContainerT & container) {
-  return container;
-}
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ContainerT>
-inline typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
-  ContainerT &
->::type
-origin(ContainerT & container) {
-  return container;
-}
+#endif // DOXYGEN
 
 } // namespace dash
 

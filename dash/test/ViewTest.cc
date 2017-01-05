@@ -8,6 +8,21 @@
 #include <array>
 
 
+
+TEST_F(ViewTest, ViewTraits)
+{
+  dash::Array<int> array(dash::size() * 10);
+  auto v_sub = dash::sub(0, 10, array);
+  auto v_loc = dash::local(array);
+
+  static_assert(dash::view_traits<decltype(array)>::is_view::value == false,
+                "view traits for dash::Array not matched");
+  static_assert(dash::view_traits<decltype(v_sub)>::is_view::value == true,
+                "view traits for sub(dash::Array) not matched");
+//static_assert(dash::view_traits<decltype(v_loc)>::is_view::value == true,
+//              "view traits for local(dash::Array) not matched");
+}
+
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
 {
   int block_size       = 37;

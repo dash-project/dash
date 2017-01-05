@@ -25,21 +25,6 @@ domain(const ViewT & view) {
   return view.domain();
 }
 
-#if 0
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ViewT>
-inline typename std::enable_if<
-  dash::view_traits<ViewT>::is_view::value,
-  typename dash::view_traits<ViewT>::domain_type &
->::type
-domain(ViewT & view) {
-  return view.domain();
-}
-#endif
-
 // ------------------------------------------------------------------------
 // dash::domain(Container)
 
@@ -53,19 +38,6 @@ constexpr typename std::enable_if<
   const ContainerT &
 >::type
 domain(const ContainerT & container) {
-  return container;
-}
-
-/**
- *
- * \concept{DashViewConcept}
- */
-template <class ContainerT>
-inline typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
-  ContainerT &
->::type
-domain(ContainerT & container) {
   return container;
 }
 

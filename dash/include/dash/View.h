@@ -64,9 +64,6 @@
  * \}
  */
 
-namespace dash {
-}
-
 #include <dash/view/Sub.h>
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>
@@ -74,6 +71,7 @@ namespace dash {
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
 
+#include <dash/view/IndexSet.h>
 #include <dash/view/CartView.h>
 
 #include <dash/view/ViewMod.h>
