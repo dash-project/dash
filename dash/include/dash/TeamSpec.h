@@ -271,8 +271,8 @@ public:
                      "factor:", it->first, "x", it->second);
       for (auto i = 1; i < it->second + 1; ++i) {
         if(MaxDimensions == current_dimension) {
+          number_prime_factors -= MaxDimensions;
           if(MaxDimensions <= number_prime_factors) {
-            number_prime_factors -= MaxDimensions;
             current_dimension = 0;
           } else {
             last_iteration = true;
