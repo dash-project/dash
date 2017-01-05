@@ -378,16 +378,17 @@ template <
   class DomainType,
   dim_t SubDim >
 struct view_traits<ViewSubMod<DomainType, SubDim> > {
-  typedef DomainType                                           domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
-  typedef ViewSubMod<DomainType, SubDim>                        image_type;
-  typedef typename DomainType::index_type                       index_type;
+  typedef DomainType                                             domain_type;
+  typedef typename dash::view_traits<domain_type>::origin_type   origin_type;
+  typedef ViewSubMod<DomainType, SubDim>                          image_type;
+  typedef typename DomainType::index_type                         index_type;
+  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
 
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
+  typedef std::integral_constant<bool, false>                  is_projection;
+  typedef std::integral_constant<bool, true>                   is_view;
+  typedef std::integral_constant<bool, false>                  is_origin;
   typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
+    view_traits<domain_type>::is_local::value >                is_local;
 };
 
 

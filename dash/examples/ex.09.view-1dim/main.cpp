@@ -42,7 +42,6 @@ int main(int argc, char* argv[])
 
   array.barrier();
 
-#if 1
   for (int u = 0; u <= nunits; u++) {
     if (u <= 2 && myid == u) {
       auto & v_local   = dash::local(array);
@@ -63,36 +62,7 @@ int main(int argc, char* argv[])
     }
     array.barrier();
   }
-#endif
 
-#if 1
-  array.barrier();
-
-  if (myid == 0) {
-    auto   v_sub     = dash::sub(3,
-                                 block_size - 3,
-                                 array);
-    auto & v_lsub    = dash::local(v_sub);
-//  auto   v_sublsub = dash::sub(2,
-//                               block_size - 2,
-//                               v_lsub);
-
-    auto v_lsub_b    = dash::begin(v_lsub);
-
-    cout << "local(sub(+3,-3, array)): \n"
-         << "  begin:   " << v_lsub_b            << '\n'
-         << "  end:     " << dash::end(v_lsub)   << '\n'
-         << "  size:    " << v_lsub.size()       << '\n';
-    cout << "  values:\n";
-    for (auto i = v_lsub.begin(); i != v_lsub.end(); ++i) {
-      cout << "    iterator:" << i << ": "
-                              << static_cast<int>(*i) << '\n';
-    }
-    cout << endl;
-  }
-#endif
-
-#if 1
   if (myid == 0) {
     auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
                            block_size / 2 * (nunits-1) + block_size,
@@ -122,7 +92,32 @@ int main(int argc, char* argv[])
     }
     cout << endl;
   }
-#endif
+
+  if (myid == 0) {
+    auto   v_sub   = dash::sub(1,
+                               block_size - 1,
+                               array);
+    auto & lsub    = dash::local(v_sub);
+//  auto   v_sublsub = dash::sub(2,
+//                               block_size - 2,
+//                               v_lsub);
+
+    auto lsub_b    = dash::begin(lsub);
+    auto lsub_e    = dash::end(lsub);
+    auto lsub_bi   = dash::begin(dash::index(lsub));
+    auto lsub_ei   = dash::end(dash::index(lsub));
+
+    cout << "local(sub(+1,-1, array)): \n"
+         << "  begin:   " << *lsub_bi << ": " << lsub_b << '\n'
+         << "  end:     " << *lsub_ei << ": " << lsub_e << '\n'
+         << "  size:    " << lsub.size()     << '\n';
+    cout << "  values:\n";
+    for (auto i = lsub.begin(); i != lsub.end(); ++i) {
+      cout << "    iterator:" << i << ": "
+                              << static_cast<int>(*i) << '\n';
+    }
+    cout << endl;
+  }
 
   dash::finalize();
 

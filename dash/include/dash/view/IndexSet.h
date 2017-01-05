@@ -43,10 +43,16 @@ template <
 class IndexSetBase
 {
 public:
-  typedef typename ViewType::index_type                      index_type;
-  typedef typename ViewType::index_set_type                 domain_type;
-  typedef typename dash::view_traits<ViewType>::origin_type origin_type;
-  typedef typename origin_type::pattern_type               pattern_type;
+  typedef typename ViewType::index_type
+    index_type;
+  typedef typename dash::view_traits<ViewType>::domain_type
+    view_domain_type;
+  typedef typename dash::view_traits<view_domain_type>::index_set_type
+    domain_type;
+  typedef typename dash::view_traits<ViewType>::origin_type
+    origin_type;
+  typedef typename origin_type::pattern_type
+    pattern_type;
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
@@ -68,7 +74,7 @@ public:
   }
 
   constexpr const domain_type & domain() const {
-    return dash::index(_view);
+    return dash::index(dash::domain(_view));
   }
 
   constexpr const pattern_type & pattern() const {
