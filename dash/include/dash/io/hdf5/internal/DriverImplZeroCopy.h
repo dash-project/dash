@@ -3,6 +3,8 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#include <vector>
+#include <numeric>
 #include <algorithm>
 
 namespace dash {
@@ -32,14 +34,19 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   auto hyperslabs = _get_hdf_slabs_boundary(container.pattern());
   hyperslabs.push_back(_get_hdf_slab_center(container.pattern()));
   
+  // hyperslab data can be quite large => sort indices only
+  std::vector<int> hs_index_set(hyperslabs.size());
+  std::iota(hs_index_set.begin(), hs_index_set.end(), 0);
+  
   // Sort hyperslabs by amount of data contrib.
-  std::sort(hyperslabs.begin(), hyperslabs.end(), 
-    [](const hdf5_hyperslab_spec<ndim> & a, const hdf5_hyperslab_spec<ndim> & b) -> bool
+  std::sort(hs_index_set.begin(), hs_index_set.end(), 
+    [&hyperslabs](const int & a, const int & b) -> bool
     { 
-        return a.contrib_data > b.contrib_data;
+        return hyperslabs[a].contrib_data > hyperslabs[b].contrib_data;
     });
   
-  for(auto & hs : hyperslabs){
+  for(auto & hs_idx : hs_index_set){
+    auto & hs      = hyperslabs[hs_idx];
     auto & ms_edge = hs.memory;
     auto & ts_edge = hs.dataset;
     memspace = H5Screate_simple(ndim, hs.data_extm.data(), NULL);
