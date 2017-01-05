@@ -289,9 +289,10 @@ template <
   class DomainType >
 struct view_traits<ViewLocalMod<DomainType> > {
   typedef DomainType                                           domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename domain_type::local_type                      image_type;
   typedef typename DomainType::index_type                       index_type;
+  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -305,18 +306,18 @@ class ViewLocalMod
 : public ViewModBase< ViewLocalMod<DomainType>, DomainType >
 {
 public:
-  typedef DomainType                                             domain_type;
-  typedef typename domain_type::local_type                        image_type;
-  typedef typename view_traits<DomainType>::origin_type          origin_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename domain_type::local_type                      image_type;
+  typedef typename DomainType::index_type                       index_type;
 private:
-  typedef ViewLocalMod<DomainType>                                    self_t;
-  typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
+  typedef ViewLocalMod<DomainType>                                  self_t;
+  typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
 public:
-  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >     index_set_type;
-  typedef self_t                                                  local_type;
+  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
+  typedef self_t                                                local_type;
 
-  typedef std::integral_constant<bool, true>                        is_local;
+  typedef std::integral_constant<bool, true>                      is_local;
 
   ViewLocalMod() = delete;
 

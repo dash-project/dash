@@ -3,6 +3,7 @@
 
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
+#include <dash/view/Local.h>
 
 
 namespace dash {
@@ -36,6 +37,21 @@ private:
 
 } // namespace detail
 
+// -----------------------------------------------------------------------
+
+template <
+  class IndexSetType,
+  class ViewType >
+class IndexSetBase;
+
+template <
+  class IndexSetType,
+  class ViewType >
+constexpr auto local(
+  const IndexSetBase<IndexSetType, ViewType> & index_set)
+-> decltype(index_set.local()) {
+  return index_set.local();
+}
 
 template <
   class IndexSetType,
@@ -52,10 +68,10 @@ public:
   typedef typename ViewType::local_type
     view_local_type;
   typedef typename dash::view_traits<view_domain_type>::index_set_type
-    domain_type;
+    index_set_domain_type;
   typedef typename origin_type::pattern_type
     pattern_type;
-  typedef typename view_local_type::index_set_type
+  typedef typename dash::view_traits<view_local_type>::index_set_type
     local_type;
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
@@ -77,7 +93,7 @@ public:
     return _view;
   }
 
-  constexpr const domain_type & domain() const {
+  constexpr const index_set_domain_type & domain() const {
     return dash::index(dash::domain(_view));
   }
 
@@ -90,7 +106,17 @@ private:
   const pattern_type & _pattern;
 };
 
+// -----------------------------------------------------------------------
 
+template <class ViewType>
+class IndexSetIdentity;
+
+template <
+  class ViewType >
+constexpr const IndexSetIdentity<ViewType> & local(
+  const IndexSetIdentity<ViewType> & index_set) {
+  return index_set;
+}
 
 template <class ViewType>
 class IndexSetIdentity
@@ -117,7 +143,19 @@ public:
   }
 };
 
+// -----------------------------------------------------------------------
 
+template <
+  class ViewType >
+class IndexSetSub;
+
+template <
+  class ViewType >
+constexpr auto local(
+  const IndexSetSub<ViewType> & index_set)
+-> decltype(index_set.local()) {
+  return index_set.local();
+}
 
 template <class ViewType>
 class IndexSetSub
@@ -158,7 +196,17 @@ private:
   index_type _domain_end_idx;
 };
 
+// -----------------------------------------------------------------------
 
+template <class ViewType>
+class IndexSetLocal;
+
+template <
+  class ViewType >
+constexpr const IndexSetLocal<ViewType> & local(
+  const IndexSetLocal<ViewType> & index_set) {
+  return index_set;
+}
 
 template <class ViewType>
 class IndexSetLocal
