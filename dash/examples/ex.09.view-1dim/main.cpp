@@ -42,6 +42,7 @@ int main(int argc, char* argv[])
 
   array.barrier();
 
+#if 1
   for (int u = 0; u <= nunits; u++) {
     if (u <= 2 && myid == u) {
       auto & v_local   = dash::local(array);
@@ -62,7 +63,9 @@ int main(int argc, char* argv[])
     }
     array.barrier();
   }
+#endif
 
+#if 1
   array.barrier();
 
   if (myid == 0) {
@@ -74,20 +77,22 @@ int main(int argc, char* argv[])
 //                               block_size - 2,
 //                               v_lsub);
 
+    auto v_lsub_b    = dash::begin(v_lsub);
+
     cout << "local(sub(+3,-3, array)): \n"
-         << "  begin:   " << *dash::begin(dash::index(v_lsub)) << '\n'
-         << "  end:     " << *dash::end(dash::index(v_lsub))   << '\n';
-//       << "  size:    " << v_sublsub.size()       << '\n';
-//  cout << "  values:\n";
-//  for (auto i = v_sublsub.begin(); i != v_sublsub.end(); ++i) {
-//    cout << "    iterator:" << i << ": "
-//                            << static_cast<int>(*i) << '\n';
-//  }
+         << "  begin:   " << v_lsub_b            << '\n'
+         << "  end:     " << dash::end(v_lsub)   << '\n'
+         << "  size:    " << v_lsub.size()       << '\n';
+    cout << "  values:\n";
+    for (auto i = v_lsub.begin(); i != v_lsub.end(); ++i) {
+      cout << "    iterator:" << i << ": "
+                              << static_cast<int>(*i) << '\n';
+    }
     cout << endl;
   }
+#endif
 
-#if 0
-
+#if 1
   if (myid == 0) {
     auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
                            block_size / 2 * (nunits-1) + block_size,
@@ -117,7 +122,6 @@ int main(int argc, char* argv[])
     }
     cout << endl;
   }
-
 #endif
 
   dash::finalize();

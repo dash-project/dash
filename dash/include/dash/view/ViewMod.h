@@ -126,6 +126,7 @@ namespace dash {
 /**
  * Monotype for the logical symbol that represents a view origin.
  */
+template <dim_t NDim = 1>
 class ViewOrigin
 {
   typedef ViewOrigin self_t;
@@ -139,6 +140,13 @@ public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
+
+  constexpr ViewOrigin()
+  { }
+
+  constexpr ViewOrigin(std::initializer_list<index_type> extents)
+  : _extents(extents)
+  { }
 
   constexpr const domain_type & domain() const {
     return *this;
@@ -159,15 +167,37 @@ public:
   constexpr bool operator!=(const self_t & rhs) const {
     return !(*this == rhs);
   }
+
+  template <dim_t ExtentDim = 0>
+  constexpr index_type extent() const {
+    return _extents[ExtentDim];
+  }
+  
+  constexpr index_type size() const {
+    return _size<0>();
+  }
+
+private:
+  template <dim_t SizeDim = 0>
+  constexpr index_type _size() const {
+    return extent<SizeDim>() +
+             (SizeDim < NDim
+               ? _size<SizeDim + 1>()
+               : 0);
+  }
+
+
+private:
+  std::array<index_type, NDim> _extents = { };
 };
 
-template <>
-struct view_traits<ViewOrigin> {
-  typedef ViewOrigin                                             origin_type;
-  typedef ViewOrigin                                             domain_type;
-  typedef ViewOrigin                                              image_type;
-  typedef typename ViewOrigin::index_type                         index_type;
-  typedef typename ViewOrigin::index_set_type                 index_set_type;
+template <dim_t NDim>
+struct view_traits<ViewOrigin<NDim>> {
+  typedef ViewOrigin<NDim>                                       origin_type;
+  typedef ViewOrigin<NDim>                                       domain_type;
+  typedef ViewOrigin<NDim>                                        image_type;
+  typedef typename ViewOrigin<NDim>::index_type                   index_type;
+  typedef typename ViewOrigin<NDim>::index_set_type           index_set_type;
 
   typedef std::integral_constant<bool, false>                  is_projection;
   typedef std::integral_constant<bool, true>                   is_view;
@@ -187,11 +217,11 @@ template <
 class ViewModBase;
 
 template <
-  class DomainType = ViewOrigin >
+  class DomainType = ViewOrigin<1> >
 class ViewLocalMod;
 
 template <
-  class DomainType = ViewOrigin,
+  class DomainType = ViewOrigin<1>,
   dim_t SubDim     = 0 >
 class ViewSubMod;
 
@@ -210,7 +240,7 @@ public:
   ViewModBase() = delete;
 
   constexpr ViewModBase(
-    const domain_type    & dom)
+    domain_type    & dom)
   : _domain(dom)
   { }
 
@@ -249,7 +279,7 @@ private:
   }
 
 protected:
-  const domain_type   & _domain;
+  domain_type   & _domain;
 };
 
 
@@ -287,7 +317,8 @@ private:
 public:
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >     index_set_type;
 //typedef typename domain_type::local_type                        local_type;
-  typedef typename origin_type::local_type                        local_type;
+//typedef typename origin_type::local_type                        local_type;
+  typedef self_t                                                  local_type;
 
   typedef std::integral_constant<bool, true>                        is_local;
 
@@ -394,13 +425,13 @@ public:
   constexpr auto begin() const
   -> decltype(dash::begin(dash::domain(*this))) {
     return dash::begin(dash::domain(*this)) +
-           *dash::begin(dash::index(*this));
+             *dash::begin(dash::index(*this));
   }
 
   constexpr auto end() const
   -> decltype(dash::begin(dash::domain(*this))) {
     return dash::begin(dash::domain(*this)) +
-           *dash::end(dash::index(*this));
+             *dash::end(dash::index(*this));
   }
 
   constexpr const index_set_type & index_set() const {
@@ -416,8 +447,8 @@ public:
   }
 
 private:
-  local_type      _local;
   index_set_type  _index_set;
+  local_type      _local;
 };
 
 

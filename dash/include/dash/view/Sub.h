@@ -19,22 +19,24 @@ namespace dash {
  * \concept{DashViewConcept}
  */
 template <
-  dim_t SubDim = 0,
+  dim_t SubDim   = 0,
+  dim_t NViewDim,
   class OffsetT >
-constexpr ViewSubMod<ViewOrigin, SubDim>
+constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
 sub(
     OffsetT begin,
     OffsetT end) {
-  return ViewSubMod<ViewOrigin, SubDim>(begin, end);
+  return ViewSubMod<ViewOrigin<NViewDim>, SubDim>(begin, end);
 }
 
 /**
  * \concept{DashViewConcept}
  */
 template <
-  dim_t SubDim = 0,
+  dim_t SubDim   = 0,
+  dim_t NViewDim,
   class IndexRangeT >
-constexpr ViewSubMod<ViewOrigin, SubDim>
+constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
 sub(
     IndexRangeT range) {
   return sub<SubDim>(dash::begin(range),

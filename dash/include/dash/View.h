@@ -26,8 +26,11 @@
  * an \b Image space in the view's codomain.
  * Views can be chained such that the image obtained from the application of
  * a view expression can again act as the domain of other views.
+ * In effect, a view expression can be understood as a composite function on
+ * an index set.
  * The \b Origin of a view is the first domain in the view chain that has not
- * been created by a view expression.
+ * been created by a view expression; simply put, a view origin is usually a
+ * container.
  *
  * \par Expressions
  *

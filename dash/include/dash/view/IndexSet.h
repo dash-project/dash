@@ -13,6 +13,30 @@ const typename ViewType::index_set_type & index(const ViewType & v) {
 }
 
 
+namespace detail {
+
+template <class IndexSetType>
+class IndexSetIterator {
+  typedef typename IndexSetType::index_type index_type;
+public:
+  constexpr IndexSetIterator(
+    const IndexSetType & index_set,
+    index_type           position)
+  : _index_set(index_set), _pos(position)
+  { }
+
+  constexpr index_type operator*() const {
+    return _index_set[_pos];
+  }
+
+private:
+  const IndexSetType & _index_set;
+  index_type           _pos;
+};
+
+} // namespace detail
+
+
 template <
   class IndexSetType,
   class ViewType >
@@ -22,25 +46,8 @@ public:
   typedef typename ViewType::index_type                     index_type;
   typedef typename ViewType::index_set_type                domain_type;
 
-  class index_iterator {
-  public:
-    constexpr index_iterator(
-      const IndexSetType & index_set,
-      index_type           position)
-    : _index_set(index_set), _pos(position)
-    { }
-
-    constexpr index_type operator*() const {
-      return _index_set[_pos];
-    }
-
-  private:
-    const IndexSetType & _index_set;
-    index_type           _pos;
-  };
-
 public:
-  typedef index_iterator iterator;
+  typedef detail::IndexSetIterator<IndexSetType> iterator;
 
   constexpr IndexSetBase(const ViewType & view)
   : _view(view)
@@ -156,9 +163,12 @@ private:
 
 public:
 
-  constexpr index_type operator[](index_type image_index) const {
-    return pattern().at(this->domain()[0] +
-                        image_index);
+  constexpr index_type operator[](index_type local_index) const {
+    return pattern().global(
+             // domain start index to local index:
+             pattern().at(this->domain()[0]) +
+             // apply specified local offset:
+             local_index);
   }
 
   constexpr index_type size() const {
