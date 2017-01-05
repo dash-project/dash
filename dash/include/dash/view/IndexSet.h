@@ -45,14 +45,18 @@ class IndexSetBase
 public:
   typedef typename ViewType::index_type
     index_type;
-  typedef typename dash::view_traits<ViewType>::domain_type
-    view_domain_type;
-  typedef typename dash::view_traits<view_domain_type>::index_set_type
-    domain_type;
   typedef typename dash::view_traits<ViewType>::origin_type
     origin_type;
+  typedef typename dash::view_traits<ViewType>::domain_type
+    view_domain_type;
+  typedef typename ViewType::local_type
+    view_local_type;
+  typedef typename dash::view_traits<view_domain_type>::index_set_type
+    domain_type;
   typedef typename origin_type::pattern_type
     pattern_type;
+  typedef typename view_local_type::index_set_type
+    local_type;
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
@@ -125,6 +129,8 @@ class IndexSetSub
   typedef IndexSetBase<self_t, ViewType>                        base_t;
 public:
   typedef typename ViewType::index_type                     index_type;
+  typedef typename base_t::view_domain_type           view_domain_type;
+  typedef typename base_t::local_type                       local_type;
 
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -141,6 +147,10 @@ public:
 
   constexpr index_type size() const {
     return _domain_end_idx - _domain_begin_idx;
+  }
+
+  constexpr const local_type & local() const {
+    return dash::index(dash::local(this->view()));
   }
 
 private:
@@ -160,6 +170,7 @@ class IndexSetLocal
   typedef IndexSetBase<self_t, ViewType>                        base_t;
 public:
   typedef typename ViewType::index_type                     index_type;
+  typedef self_t                                            local_type;
 
   constexpr IndexSetLocal(const ViewType & view)
   : base_t(view)
@@ -176,6 +187,10 @@ public:
 
   constexpr index_type size() const {
     return static_cast<index_type>(this->pattern().local_size());
+  }
+
+  constexpr const local_type & local() const {
+    return *this;
   }
 };
 

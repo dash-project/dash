@@ -48,11 +48,15 @@ int main(int argc, char* argv[])
       auto   v_subl    = dash::sub(4,
                                    block_size - 4,
                                    v_local);
+      auto   v_subl_b  = dash::begin(v_subl);
+      auto   v_subl_e  = dash::end(v_subl);
+      auto   v_subl_bi = dash::begin(dash::index(v_subl));
+      auto   v_subl_ei = dash::end(dash::index(v_subl));
 
       cout << "unit " << u << ": sub(+4,-4, local(array))): \n"
-           << "  begin:   " << dash::begin(v_subl) << '\n'
-           << "  end:     " << dash::end(v_subl)   << '\n'
-           << "  size:    " << v_subl.size()       << '\n';
+           << "  begin:   " << *v_subl_bi << ": " << v_subl_b << '\n'
+           << "  end:     " << *v_subl_ei << ": " << v_subl_e << '\n'
+           << "  size:    " << v_subl.size()      << '\n';
       cout << "  values:\n";
       for (auto i = v_subl.begin(); i != v_subl.end(); ++i) {
         cout << "    iterator:" << i << ": "

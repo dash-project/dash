@@ -140,7 +140,6 @@ public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
-
   constexpr ViewOrigin()
   { }
 
@@ -185,7 +184,6 @@ private:
                ? _size<SizeDim + 1>()
                : 0);
   }
-
 
 private:
   std::array<index_type, NDim> _extents = { };
@@ -316,8 +314,6 @@ private:
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
 public:
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >     index_set_type;
-//typedef typename domain_type::local_type                        local_type;
-//typedef typename origin_type::local_type                        local_type;
   typedef self_t                                                  local_type;
 
   typedef std::integral_constant<bool, true>                        is_local;
@@ -339,7 +335,7 @@ public:
            ) +
            std::max(
              *dash::begin(dash::index(*this)),
-             *dash::begin(dash::index(dash::domain(*this))));
+             *dash::begin(dash::local(dash::index(dash::domain(*this)))));
   }
 
   constexpr auto end() const
@@ -351,14 +347,16 @@ public:
            ) +
            std::min(
              *dash::end(dash::index(*this)),
-             *dash::begin(dash::index(dash::domain(*this))));
+             *dash::end(dash::local(dash::index(dash::domain(*this)))));
   }
 
   constexpr const local_type & local() const {
+    // local(local(...)) is idempotent / identity
     return *this;
   }
 
   inline local_type & local() {
+    // local(local(...)) is idempotent / identity
     return *this;
   }
 

@@ -132,5 +132,8 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   // Origin of local block view is local array index space:
   auto & block_lview_domain = dash::domain(block_lview);
   auto & block_gview_domain = dash::domain(block_lview_domain);
+
+  EXPECT_EQ(a.begin(),  dash::begin(block_gview_domain));
+  EXPECT_EQ(a.end(),    dash::end(block_gview_domain));
 }
 
