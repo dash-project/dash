@@ -473,17 +473,25 @@ TEST_F(HDF5ArrayTest, AsyncIO)
 #else
   long lext_x = ext_x*2;
 #endif
+  std::string mpi_impl = dash::util::Config::get<std::string>("DART_MPI_IMPL");
+  
+  if(mpi_impl == "mpich"){
+    SKIP_TEST_MSG("concurrency problems in MPICH");
+  }
+    
   double secret[] = {10, 11, 12};
   {
     dash::Array<double> array_a(ext_x);
     dash::Array<double> array_b(lext_x);
     dash::Array<double> array_c(ext_x);
-
+    
+    // This does not work in mpich, even with a massive amount of barriers
     // Fill
     fill_array(array_a, secret[0]);
     fill_array(array_b, secret[1]);
     fill_array(array_c, secret[2]);
     dash::barrier();
+    // things below work as expected
 
 
     // Currently only works if just one container is passed
@@ -494,7 +502,7 @@ TEST_F(HDF5ArrayTest, AsyncIO)
       << array_b
       << dio::dataset("g1/g2/array_c")
       << array_c;
-    
+
     LOG_MESSAGE("Async OS setup");
     // Do some computation intense work
     os.flush();
