@@ -7,16 +7,15 @@
 #include <libdash.h>
 #include <stdio.h>
 
-class HDF5MatrixTest : public ::testing::Test {
+#include "TestBase.h"
+
+class HDF5MatrixTest : public dash::test::TestBase {
 protected:
-  dash::global_unit_t _dash_id;
-  size_t      _dash_size;
   std::string _filename = "test_matrix.hdf5";
   std::string _dataset  = "data";
+  bool        _preserve;
 
-  HDF5MatrixTest()
-  : _dash_id(0),
-    _dash_size(0) {
+  HDF5MatrixTest() {
     LOG_MESSAGE(">>> Test suite: HDFTest");
   }
 
@@ -25,25 +24,20 @@ protected:
   }
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-    _dash_id   = dash::myid();
-    _dash_size = dash::size();
-    if(_dash_id == 0) {
+    dash::test::TestBase::SetUp();
+    _preserve = dash::util::Config::get<bool>("DASH_HDF5_PRESERVE_FILE");
+    if(dash::myid() == 0) {
         remove(_filename.c_str());
     }
     dash::Team::All().barrier();
-    LOG_MESSAGE("===> Running test case with %d units ...",
-                _dash_size);
   }
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-    if(_dash_id == 0) {
+    if((dash::myid() == 0) && !_preserve) {
         remove(_filename.c_str());
     }
-    LOG_MESSAGE("<=== Finished test case with %d units",
-                _dash_size);
-    dash::finalize();
+    dash::test::TestBase::TearDown();
   }
 };
 
