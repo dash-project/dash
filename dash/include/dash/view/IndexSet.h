@@ -43,14 +43,15 @@ template <
 class IndexSetBase
 {
 public:
-  typedef typename ViewType::index_type                     index_type;
-  typedef typename ViewType::index_set_type                domain_type;
-
+  typedef typename ViewType::index_type                      index_type;
+  typedef typename ViewType::index_set_type                 domain_type;
+  typedef typename dash::view_traits<ViewType>::origin_type origin_type;
+  typedef typename origin_type::pattern_type               pattern_type;
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
   constexpr IndexSetBase(const ViewType & view)
-  : _view(view)
+  : _view(view), _pattern(dash::origin(view).pattern())
   { }
 
   constexpr iterator begin() const {
@@ -70,8 +71,13 @@ public:
     return dash::index(_view);
   }
 
+  constexpr const pattern_type & pattern() const {
+    return _pattern;
+  }
+
 private:
-  const ViewType & _view;
+  const ViewType     & _view;
+  const pattern_type & _pattern;
 };
 
 
@@ -146,9 +152,6 @@ class IndexSetLocal
 {
   typedef IndexSetLocal<ViewType>                               self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
-
-  typedef typename dash::view_traits<ViewType>::origin_type   origin_t;
-  typedef typename origin_t::pattern_type                    pattern_t;
 public:
   typedef typename ViewType::index_type                     index_type;
 
@@ -156,23 +159,17 @@ public:
   : base_t(view)
   { }
 
-private:
-  constexpr const pattern_t & pattern() const {
-    return dash::origin(this->view()).pattern();
-  }
-
 public:
-
   constexpr index_type operator[](index_type local_index) const {
-    return pattern().global(
+    return this->pattern().global(
              // domain start index to local index:
-             pattern().at(this->domain()[0]) +
+             this->pattern().at(this->domain()[0]) +
              // apply specified local offset:
              local_index);
   }
 
   constexpr index_type size() const {
-    return static_cast<index_type>(pattern().local_size());
+    return static_cast<index_type>(this->pattern().local_size());
   }
 };
 
