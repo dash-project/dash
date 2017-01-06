@@ -137,3 +137,26 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   EXPECT_EQ(a.end(),    dash::end(block_gview_domain));
 }
 
+TEST_F(ViewTest, ArrayBlockedPatternViewUnion)
+{
+  int block_size         = 37;
+  int array_size         = dash::size() * block_size;
+
+  int block_a_begin_gidx = (block_size / 2) * (dash::myid() + 0);
+  int block_a_end_gidx   = (block_size / 2) * (dash::myid() + 1);
+  int block_b_begin_gidx = (block_size / 2) * (dash::myid() + 1);
+  int block_b_end_gidx   = (block_size / 2) * (dash::myid() + 2);
+
+  dash::Array<int> a(array_size);
+
+  auto block_a_gview     = dash::sub(block_a_begin_gidx,
+                                     block_a_end_gidx,
+                                     a);
+  auto block_b_gview     = dash::sub(block_b_begin_gidx,
+                                     block_b_end_gidx,
+                                     a);
+  auto block_views_union = dash::set_union({
+                             block_a_gview,
+                             block_b_gview
+                           });
+}

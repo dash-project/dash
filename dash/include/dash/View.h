@@ -73,6 +73,7 @@
 #include <dash/view/Apply.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
+#include <dash/view/SetUnion.h>
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/CartView.h>

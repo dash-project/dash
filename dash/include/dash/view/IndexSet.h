@@ -5,8 +5,6 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Local.h>
 
-#include <dash/internal/Logging.h>
-
 
 namespace dash {
 
