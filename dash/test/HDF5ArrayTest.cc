@@ -41,15 +41,15 @@ template <
 void fill_array(dash::Array<T, IndexT, PatternT> & array, T secret = 0)
 {
   std::function< void(const T &, IndexT)>
-  f = [&array, &secret](T el, IndexT i) {
+  f = [&array, &secret](const T el, IndexT i) {
     auto coords = array.pattern().coords(i);
-    // hack
-    *(array.begin() + i) = coords[0] + secret;
+    array[i] = coords[0] + secret;
   };
   dash::for_each_with_index(
     array.begin(),
     array.end(),
     f);
+  array.barrier();
 }
 
 /**
