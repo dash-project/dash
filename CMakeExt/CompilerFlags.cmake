@@ -5,34 +5,45 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wcast-align -Wcast-qual")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wdisabled-optimization -Wformat=2")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Winit-self -Wmissing-declarations")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-include-dirs")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls") # -Wshadow") 
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch") # -Wundef")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused")
-set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wdeprecated -Wno-float-equal")
+# The following warning options are intentionally not enabled:
+#   -Wmissing-declarations
+#   -Wshadow
 
-set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CC_FLAGS}")
+set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
+    PARENT_SCOPE)
 
-set (DASH_DEVELOPER_CXX_FLAGS
-     "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
-set (DASH_DEVELOPER_CXX_FLAGS
-     "${DASH_DEVELOPER_CXX_FLAGS} -Wold-style-cast -Woverloaded-virtual")
-set (DASH_DEVELOPER_CXX_FLAGS
-     "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
-set (DASH_DEVELOPER_CXX_FLAGS
-     "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
- 
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
+
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wcast-align -Wcast-qual")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wdisabled-optimization -Wformat=2")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Winit-self")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-include-dirs")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch -Wundef")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused -Wnon-virtual-dtor")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wdeprecated -Wno-float-equal")
+
+  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CC_FLAGS}")
+
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wold-style-cast -Woverloaded-virtual")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
+
+endif()
+
 
 set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
 set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
@@ -40,13 +51,13 @@ set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
 if (ENABLE_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
-    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wall -Wextra -Wpedantic")
-    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-unused-function")
-    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-missing-braces")
-    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-format")
-    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-unused-parameter")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
+    set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
     # C++ specific flags:
-    set (CXX_WARN_FLAG "${CC_WARN_FLAG}")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-invalid-offsetof")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-local-typedefs")
   endif()
