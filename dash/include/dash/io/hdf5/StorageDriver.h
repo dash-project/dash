@@ -525,6 +525,11 @@ private:
       }
       specs_hyperslab.resize(num_edges);
       auto & lblockspec = pattern.local_blockspec();
+      
+      if(lblockspec.size() == 0){
+        // unit holds no blocks
+        return specs_hyperslab;
+      }
 
       for(int d=0; d<num_edges; ++d){
         auto & hs = specs_hyperslab[d];
