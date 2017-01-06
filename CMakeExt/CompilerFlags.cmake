@@ -22,24 +22,26 @@ set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
 
 if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
 
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wcast-align -Wcast-qual")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wdisabled-optimization -Wformat")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Winit-self -Wopenmp-simd")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-include-dirs -Wenum-compare")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls -Woverlength-strings")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch -Wundef")
-  set (DASH_DEVELOPER_CC_FLAGS
-			 "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused -Wtrigraphs -Wc99-c11-compat")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wdeprecated -Wno-float-equal")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self -Wopenmp-simd")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wredundant-decls -Woverlength-strings")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=5 -Wswitch -Wundef")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wno-unused -Wtrigraphs")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
 
-  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CC_FLAGS}")
+  # C++-only warning flags
+
+  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
 
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy -Weffc++")
@@ -52,20 +54,16 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
 
   # C-only warning flags
 
+  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-prototypes -Wnested-externs")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-definition")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wtraditional -Wtraditional-conversion")
-  set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-declaration")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wdeclaration-after-statement")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
   set (DASH_DEVELOPER_CC_FLAGS
