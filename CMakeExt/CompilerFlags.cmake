@@ -25,30 +25,51 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wcast-align -Wcast-qual")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wdisabled-optimization -Wformat=2")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wdisabled-optimization -Wformat")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Winit-self")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Winit-self -Wopenmp-simd")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-include-dirs")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls -Woverlength-strings")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch -Wundef")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused -Wnon-virtual-dtor")
+			 "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused -Wtrigraphs -Wc99-c11-compat")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wdeprecated -Wno-float-equal")
 
   set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CC_FLAGS}")
 
   set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy -Weffc++")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wold-style-cast -Woverloaded-virtual")
   set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder")
-  set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
+
+  # C-only warning flags
+
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-prototypes -Wnested-externs")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-definition")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wtraditional -Wtraditional-conversion")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-declaration")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wdeclaration-after-statement")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-prototypes")
 
 endif()
 
