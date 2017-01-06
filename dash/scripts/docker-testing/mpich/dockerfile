@@ -3,16 +3,15 @@ FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
-RUN           apt-get update -y
-RUN           apt-get install -y \
-                  git \
-                  build-essential \
-                  cmake \
-                  uuid-runtime \
+RUN           apt-get update -y    \
+           && apt-get install -y   \
+                  git              \
+                  build-essential  \
+                  libz-dev         \
+                  cmake            \
+                  uuid-runtime     \
                   libhwloc-plugins \
-                  libhwloc-dev \
-                  libmpich-dev \
-                  libhdf5-mpich-dev
+                  libhwloc-dev
 
 # Install PAPI from source
 WORKDIR       /tmp
@@ -26,8 +25,32 @@ RUN           cd papi*/src/                     \
               && make                           \
               && make install
 ENV           PAPI_BASE=/opt/papi
-ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
+
+# MPICH 3.2
+ADD           http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz mpich.tgz
+RUN           tar -xf mpich.tgz
+RUN           cd mpich*                           \
+           && ./configure --prefix=/opt/mpich     \
+                          --enable-threads        \
+                          --disable-fortran       \
+           && make                                \
+           && make install
+ENV           PATH=${PATH}:/opt/mpich/bin
+
+# PHDF5 1.10
+ADD           https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.gz phdf5.tgz
+RUN           tar -xf phdf5.tgz
+RUN           cd hdf5*                        \
+           && CC=/opt/mpich/bin/mpicc         \
+              ./configure --enable-parallel   \
+                          --prefix=/opt/phdf5 \
+           && make                            \
+           && make install
+ENV           HDF5_BASE=/opt/phdf5
+
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/mpich/lib:${HDF5_BASE}/lib
 ENV           VERBOSE_CI='true'
+
 # DEBUG: enable core dumps 
 RUN           ulimit -c unlimited
 
