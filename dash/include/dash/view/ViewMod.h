@@ -143,7 +143,7 @@ public:
   constexpr ViewOrigin()
   { }
 
-  constexpr ViewOrigin(std::initializer_list<index_type> extents)
+  constexpr explicit ViewOrigin(std::initializer_list<index_type> extents)
   : _extents(extents)
   { }
 
@@ -237,7 +237,7 @@ public:
 
   ViewModBase() = delete;
 
-  constexpr ViewModBase(
+  constexpr explicit ViewModBase(
     domain_type    & dom)
   : _domain(dom)
   { }
@@ -321,7 +321,7 @@ public:
 
   ViewLocalMod() = delete;
 
-  constexpr ViewLocalMod(
+  constexpr explicit ViewLocalMod(
     DomainType & domain)
   : base_t(domain),
     _index_set(*this)
@@ -330,25 +330,28 @@ public:
   constexpr auto begin() const
   -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
     return dash::begin(
+             // obtains container's local ref:
              dash::local(
-               dash::origin(dash::domain(*this))
-             )
-           ) +
-           std::max(
-             *dash::begin(dash::index(*this)),
-             *dash::begin(dash::local(dash::index(dash::domain(*this)))));
+               dash::origin(
+                 dash::domain(*this)) ) )
+             // apply domain view:
+           + std::max(
+               *dash::begin(dash::index(*this)),
+               *dash::begin(dash::local(dash::index(dash::domain(*this)))) );
   }
 
   constexpr auto end() const
   -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
     return dash::begin(
+             // obtains container's local ref:
              dash::local(
-               dash::origin(dash::domain(*this))
-             )
-           ) +
-           std::min(
-             *dash::end(dash::index(*this)),
-             *dash::end(dash::local(dash::index(dash::domain(*this)))));
+               dash::origin(
+                 dash::domain(*this)) ) )
+             // apply domain view:
+           + std::min(
+               *dash::end(dash::index(*this)),
+               *dash::end(dash::local(dash::index(dash::domain(*this)))) )
+           - *dash::begin(dash::index(*this));
   }
 
   constexpr const local_type & local() const {

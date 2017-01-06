@@ -5,6 +5,8 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Local.h>
 
+#include <dash/internal/Logging.h>
+
 
 namespace dash {
 
@@ -18,6 +20,7 @@ namespace detail {
 
 template <class IndexSetType>
 class IndexSetIterator {
+  typedef IndexSetIterator<IndexSetType>        self_t;
   typedef typename IndexSetType::index_type index_type;
 public:
   constexpr IndexSetIterator(
@@ -30,6 +33,26 @@ public:
     return _index_set[_pos];
   }
 
+  constexpr self_t operator++(int) const {
+    return self_t(_index_set, _pos+1);
+  }
+
+  constexpr self_t operator--(int) const {
+    return self_t(_index_set, _pos-1);
+  }
+
+  constexpr self_t operator+(int i) const {
+    return self_t(_index_set, _pos+i);
+  }
+
+  constexpr self_t operator-(int i) const {
+    return self_t(_index_set, _pos-i);
+  }
+
+  constexpr index_type pos() const {
+    return _pos;
+  }
+
 private:
   const IndexSetType & _index_set;
   index_type           _pos;
@@ -38,6 +61,20 @@ private:
 } // namespace detail
 
 // -----------------------------------------------------------------------
+
+
+/* NOTE: Local and global mappings of index sets should be implemented
+ *       without IndexSet member functions like this:
+ *
+ *       dash::local(index_set) {
+ *         return dash::index(
+ *                  // map the index set's view to local type, not the
+ *                  // index set itself:
+ *                  dash::local(index_set.view())
+ *                );
+ *
+ */
+
 
 template <
   class IndexSetType,
@@ -76,7 +113,7 @@ public:
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
-  constexpr IndexSetBase(const ViewType & view)
+  constexpr explicit IndexSetBase(const ViewType & view)
   : _view(view), _pattern(dash::origin(view).pattern())
   { }
 
@@ -129,7 +166,7 @@ class IndexSetIdentity
 public:
   typedef typename ViewType::index_type                     index_type;
 
-  constexpr IndexSetIdentity(
+  constexpr explicit IndexSetIdentity(
     const ViewType & view)
   : base_t(view)
   { }
@@ -220,7 +257,7 @@ public:
   typedef typename ViewType::index_type                     index_type;
   typedef self_t                                            local_type;
 
-  constexpr IndexSetLocal(const ViewType & view)
+  constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
   { }
 
