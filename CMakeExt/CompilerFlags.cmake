@@ -33,7 +33,7 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wredundant-decls -Woverlength-strings")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=5 -Wswitch -Wundef")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=5 -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wno-unused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
