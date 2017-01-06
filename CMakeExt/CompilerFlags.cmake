@@ -16,9 +16,9 @@ set (DASH_DEVELOPER_CC_FLAGS
 set (DASH_DEVELOPER_CC_FLAGS
      "${DASH_DEVELOPER_CC_FLAGS}  -Wredundant-decls") # -Wshadow") 
 set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch -Wundef")
+     "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-overflow=5 -Wswitch") # -Wundef")
 set (DASH_DEVELOPER_CC_FLAGS
-     "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused -Wnon-virtual-dtor")
+     "${DASH_DEVELOPER_CC_FLAGS}  -Wno-unused")
 set (DASH_DEVELOPER_CC_FLAGS
      "${DASH_DEVELOPER_CC_FLAGS}  -Wdeprecated -Wno-float-equal")
 
@@ -29,7 +29,7 @@ set (DASH_DEVELOPER_CXX_FLAGS
 set (DASH_DEVELOPER_CXX_FLAGS
      "${DASH_DEVELOPER_CXX_FLAGS} -Wold-style-cast -Woverloaded-virtual")
 set (DASH_DEVELOPER_CXX_FLAGS
-     "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder")
+     "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
 set (DASH_DEVELOPER_CXX_FLAGS
      "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
  
@@ -40,13 +40,13 @@ set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
 if (ENABLE_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
-    set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
+    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wall -Wextra -Wpedantic")
+    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-unused-function")
+    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-missing-braces")
+    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-format")
+    set (CC_WARN_FLAG "${CC_WARN_FLAG} -Wno-unused-parameter")
     # C++ specific flags:
+    set (CXX_WARN_FLAG "${CC_WARN_FLAG}")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-invalid-offsetof")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-local-typedefs")
   endif()
