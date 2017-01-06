@@ -342,15 +342,15 @@ public:
 
   constexpr auto end() const
   -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
-    return dash::begin(
+    return dash::end(
              // obtains container's local ref:
              dash::local(
                dash::origin(
                  dash::domain(*this)) ) )
              // apply domain view:
-           + std::min(
-               *dash::end(dash::index(*this)),
-               *dash::end(dash::local(dash::index(dash::domain(*this)))) )
+//         + std::min(
+//             *dash::end(dash::index(*this)),
+//             *dash::end(dash::local(dash::index(dash::domain(*this)))) )
            - *dash::begin(dash::index(*this));
   }
 

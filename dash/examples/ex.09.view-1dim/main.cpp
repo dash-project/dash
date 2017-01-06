@@ -73,6 +73,8 @@ int main(int argc, char* argv[])
   }
 
   if (myid == 0) {
+    cout << "------------------------------------------------------" << endl;
+
     auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
                            block_size / 2 * (nunits-1) + block_size,
                            array);
@@ -103,6 +105,8 @@ int main(int argc, char* argv[])
   }
 
   if (myid == 0) {
+    cout << "------------------------------------------------------" << endl;
+
     auto   v_sub   = dash::sub(3,
                                block_size - 2,
                                array);
@@ -115,13 +119,14 @@ int main(int argc, char* argv[])
     cout << "sub(3,blocksize-2, array)): \n"
          << "  begin:   " << *v_sub_bi << ": " << v_sub_b << '\n'
          << "  end:     " << *v_sub_ei << ": " << v_sub_e << '\n'
-         << "  size:    " << v_sub.size()
-         << '\n';
+         << "  size:    " << v_sub.size()      << '\n';
+    cout << "  values:\n";
+    for (auto i = v_sub.begin(); i != v_sub.end(); ++i) {
+      cout << "    iterator:" << i << ": "
+                              << static_cast<int>(*i) << '\n';
+    }
 
     auto & lsub    = dash::local(v_sub);
-//  auto   slsub   = dash::sub(0,
-//                             block_size - 3,
-//                             lsub);
 
     auto lsub_b    = dash::begin(lsub);
     auto lsub_e    = dash::end(lsub);
@@ -137,6 +142,24 @@ int main(int argc, char* argv[])
       cout << "    iterator:" << i << ": "
                               << static_cast<int>(*i) << '\n';
     }
+
+    auto slsub     = dash::sub(0,2, lsub);
+
+    auto slsub_b   = dash::begin(slsub);
+    auto slsub_e   = dash::end(slsub);
+    auto slsub_bi  = dash::begin(dash::index(slsub));
+    auto slsub_ei  = dash::end(dash::index(slsub));
+
+    cout << "sub(0,2, local(sub(3,blocksize-2, array)): \n"
+         << "  begin:   " << *slsub_bi << ": " << slsub_b << '\n'
+         << "  end:     " << *slsub_ei << ": " << slsub_e << '\n'
+         << "  size:    " << slsub.size()      << '\n';
+    cout << "  values:\n";
+    for (auto i = slsub.begin(); i != slsub.end(); ++i) {
+      cout << "    iterator:" << i << ": "
+                              << static_cast<int>(*i) << '\n';
+    }
+
     cout << endl;
   }
 
