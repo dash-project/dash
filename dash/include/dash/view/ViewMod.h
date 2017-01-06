@@ -346,12 +346,7 @@ public:
              // obtains container's local ref:
              dash::local(
                dash::origin(
-                 dash::domain(*this)) ) )
-             // apply domain view:
-//         + std::min(
-//             *dash::end(dash::index(*this)),
-//             *dash::end(dash::local(dash::index(dash::domain(*this)))) )
-           - *dash::begin(dash::index(*this));
+                 dash::domain(*this)) ) );
   }
 
   constexpr const local_type & local() const {

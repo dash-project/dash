@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     cout << "------------------------------------------------------" << endl;
 
     auto   v_sub   = dash::sub(3,
-                               block_size - 2,
+                               block_size + 2,
                                array);
 
     auto v_sub_b    = dash::begin(v_sub);
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     auto v_sub_bi   = dash::begin(dash::index(v_sub));
     auto v_sub_ei   = dash::end(dash::index(v_sub));
 
-    cout << "sub(3,blocksize-2, array)): \n"
+    cout << "sub(3,blocksize+2, array)): \n"
          << "  begin:   " << *v_sub_bi << ": " << v_sub_b << '\n'
          << "  end:     " << *v_sub_ei << ": " << v_sub_e << '\n'
          << "  size:    " << v_sub.size()      << '\n';
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     auto lsub_bi   = dash::begin(dash::index(lsub));
     auto lsub_ei   = dash::end(dash::index(lsub));
 
-    cout << "local(sub(3,blocksize-2, array)): \n"
+    cout << "local(sub(3,blocksize+2, array)): \n"
          << "  begin:   " << *lsub_bi << ": " << lsub_b << '\n'
          << "  end:     " << *lsub_ei << ": " << lsub_e << '\n'
          << "  size:    " << lsub.size()      << '\n';
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
     auto slsub_bi  = dash::begin(dash::index(slsub));
     auto slsub_ei  = dash::end(dash::index(slsub));
 
-    cout << "sub(0,2, local(sub(3,blocksize-2, array)): \n"
+    cout << "sub(0,2, local(sub(3,blocksize+2, array)): \n"
          << "  begin:   " << *slsub_bi << ": " << slsub_b << '\n'
          << "  end:     " << *slsub_ei << ": " << slsub_e << '\n'
          << "  size:    " << slsub.size()      << '\n';
