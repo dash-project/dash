@@ -318,8 +318,6 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   verify_matrix(matrix_b, 1);
 }
 
-// Currently not supported, as each unit must have at most
-// one underfilled block
 TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
@@ -360,6 +358,56 @@ TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
 
   // restore to simpler pattern 
   dash::Matrix<int, 2, index_t, pattern_t> matrix_b(ext_x, ext_y);
+  dio::InputStream is(_filename);
+  is >> dio::dataset(_dataset)
+     >> matrix_b;
+  
+  verify_matrix(matrix_b);
+}
+
+TEST_F(HDF5MatrixTest, UnderfilledMultDim)
+{
+  typedef dash::Pattern<3, dash::ROW_MAJOR> pattern_t;
+  typedef typename pattern_t::index_type      index_t;
+  typedef unsigned long                     size_type;
+
+  size_t team_size  = dash::Team::All().size();
+
+  dash::TeamSpec<3> teamspec_3d(team_size, 1, 1);
+  teamspec_3d.balance_extents();
+
+  std::array<size_type,3> block_size{{2,3,4}};
+  std::array<size_type,3> extents = {};
+  for(int i=0; i<extents.size(); ++i){
+    extents[i] = (block_size[i] * teamspec_3d.num_units(i)+1)-i;
+  }
+
+  auto size_spec    = dash::SizeSpec<3,size_type>(extents);
+
+  // Create BlockPattern
+  const pattern_t pattern(
+    size_spec,
+    dash::DistributionSpec<3>(
+      dash::TILE(block_size[0]),
+      dash::TILE(block_size[1]),
+      dash::TILE(block_size[2])),
+    teamspec_3d,
+    dash::Team::All());
+
+  {
+    dash::Matrix<int, 3, index_t, pattern_t> matrix_a;
+    matrix_a.allocate(pattern);
+
+    fill_matrix(matrix_a);
+
+    dio::OutputStream os(_filename);
+    os << dio::dataset(_dataset)
+       << matrix_a;
+  }
+  dash::barrier();
+
+  // restore to simpler pattern 
+  dash::Matrix<int, 3, index_t, pattern_t> matrix_b(size_spec);
   dio::InputStream is(_filename);
   is >> dio::dataset(_dataset)
      >> matrix_b;
