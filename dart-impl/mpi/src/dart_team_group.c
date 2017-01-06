@@ -255,7 +255,7 @@ dart_ret_t dart_group_split(
   MPI_Group_size(g->mpi_group, &size);
 
   if (n > INT_MAX) {
-    DART_LOG_ERROR("dart_group_split: n > INT_MAX", n, *nout);
+    DART_LOG_ERROR("dart_group_split: n:%d > INT_MAX", n);
     return DART_ERR_INVAL;
   }
 

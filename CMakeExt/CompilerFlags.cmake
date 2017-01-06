@@ -5,9 +5,17 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
+
+
 # The following warning options are intentionally not enabled:
-#   -Wmissing-declarations
-#   -Wshadow
+#
+#  ,--------------------------.-------------------------------------------.
+#  | Flag                     | Reason                                    |
+#  :--------------------------+-------------------------------------------:
+#  | -Wmissing-declarations   | Arguably only relevant for code style     |
+#  | -Wshadow                 | Very unlikely to cause unintended effects |
+#  | -Weffc++                 | Spurious false positives                  |
+#  '--------------------------'-------------------------------------------'
 
 set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
     PARENT_SCOPE)
