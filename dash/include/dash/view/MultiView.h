@@ -2,6 +2,8 @@
 #define DASH__VIEW__MULTI_VIEW_H__INCLUDED
 
 #include <dash/Types.h>
+#include <dash/Dimensional.h>
+#include <dash/Cartesian.h>
 
 #include <vector>
 

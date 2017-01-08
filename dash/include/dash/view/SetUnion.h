@@ -1,6 +1,10 @@
 #ifndef DASH__VIEW__UNION_H__INCLUDED
 #define DASH__VIEW__UNION_H__INCLUDED
 
+#include <dash/Types.h>
+#include <dash/Dimensional.h>
+#include <dash/Cartesian.h>
+
 #include <vector>
 
 
