@@ -21,6 +21,12 @@
 #include <unistd.h>
 
 
+namespace dash {
+  // forward-declaration
+  global_unit_t myid();
+}
+
+
 #ifdef DASH_LOG_OUTPUT_STDOUT
 #  define DASH_LOG_OUTPUT_TARGET std::cout
 #else
