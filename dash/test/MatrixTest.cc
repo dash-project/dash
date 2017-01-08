@@ -983,6 +983,38 @@ TEST_F(MatrixTest, UnderfilledPattern)
   matrix_b.allocate(pattern);
 }
 
+/**
+ * Check local extents vs. global extents in 2D matrix with BLOCKED distribution 
+ * pattern and underfilled blocks
+ */
+TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
+{
+  dart_unit_t myid= dash::myid();
+  size_t numunits= dash::Team::All().size();
+
+  dash::TeamSpec<2> teamspec( numunits, 1 );
+  teamspec.balance_extents();
+
+    uint32_t w= 13;
+    uint32_t h= 7;
+
+    auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
+    dash::Matrix<uint32_t, 2> matrix( dash::SizeSpec<2>( h, w ),
+      distspec, dash::Team::All(), teamspec );
+
+    std::array< long int, 2 > corner= matrix.pattern().global( {0,0} );
+    size_t lw= ( corner[1] + matrix.local.extent(1) < w ) ? matrix.local.extent(1) : w - corner[1];
+    size_t lh= ( corner[0] + matrix.local.extent(0) < h ) ? matrix.local.extent(0) : h - corner[0];
+
+    std::cout << "uint " << myid << " thinks local extent is " << 
+        matrix.local.extent(1) << " x " << matrix.local.extent(0) << " but it should be " <<
+        lw << " x " << lh << std::endl;
+
+    EXPECT_TRUE( corner[1] + matrix.local.extent(1) <= w );
+    EXPECT_TRUE( corner[0] + matrix.local.extent(0) <= h );
+}
+
+
 TEST_F(MatrixTest, SimpleConstructor)
 {
   size_t ext_x = dash::size();
