@@ -2,7 +2,7 @@
 #define DASH__TEST__ACCUMULATE_TEST_H_
 
 #include <gtest/gtest.h>
-#include <libdash.h>
+
 #include "TestBase.h"
 
 /**
@@ -27,10 +27,6 @@ protected:
     dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-  }
-
-  virtual void TearDown() {
-    dash::test::TestBase::TearDown();
   }
 };
 

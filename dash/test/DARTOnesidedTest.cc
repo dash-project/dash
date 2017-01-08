@@ -1,7 +1,10 @@
 
-#include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
+
+#include <dash/Array.h>
+#include <dash/Onesided.h>
+
 #include "DARTOnesidedTest.h"
 
 
