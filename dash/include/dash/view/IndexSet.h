@@ -155,7 +155,7 @@ public:
     return _pattern;
   }
 
-private:
+protected:
   const ViewType     & _view;
   const pattern_type & _pattern;
 };
@@ -221,6 +221,7 @@ public:
   typedef typename ViewType::index_type                     index_type;
   typedef typename base_t::view_domain_type           view_domain_type;
   typedef typename base_t::local_type                       local_type;
+  typedef typename base_t::iterator                           iterator;
 
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -276,6 +277,7 @@ class IndexSetLocal
 public:
   typedef typename ViewType::index_type                     index_type;
   typedef self_t                                            local_type;
+  typedef typename base_t::iterator                           iterator;
 
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
@@ -290,11 +292,10 @@ public:
              local_index);
   }
 
-  constexpr index_type size() const {
-    return std::min(
-             static_cast<index_type>(this->pattern().local_size()),
-             static_cast<index_type>(this->pattern().local_size())
-         //  (dash::end(this->view()) - dash::begin(this->view()))
+  inline index_type size() const {
+    return std::min<index_type>(
+             this->pattern().local_size(),
+             this->domain().size()
            );
   }
 

@@ -339,9 +339,7 @@ public:
                dash::origin(
                  dash::domain(*this)) ) )
              // apply domain view:
-           + std::max(
-               *dash::begin(dash::index(*this)),
-               *dash::begin(dash::local(dash::index(dash::domain(*this)))) );
+           + *dash::begin(dash::index(dash::domain(*this)));
   }
 
   constexpr auto end() const
@@ -352,18 +350,7 @@ public:
                dash::origin(
                  dash::domain(*this)) ) )
              // apply domain view:
-           - (
-               0
-         //    *dash::begin(dash::local(dash::index(dash::domain(*this))))
-         //    _index_set.size()
-         //  + *dash::begin(dash::local(dash::index(dash::domain(*this))))
-         //  + *dash::begin(dash::index(dash::domain(*this)))
-             )
-           + (
-         //    *dash::end(dash::local(dash::index(dash::domain(*this))))
-               *dash::begin(dash::local(dash::index(dash::domain(*this))))
-         //  - *dash::begin(dash::index(dash::domain(*this)))
-             );
+           + *dash::end(dash::index(dash::domain(*this)));
   }
 
   constexpr auto operator[](int offset) const
