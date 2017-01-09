@@ -242,8 +242,7 @@ _dump(struct dart_buddy * self, int index, int level) {
 	}
 }
 
-void
-buddy_dump(struct dart_buddy * self) {
+void buddy_dump(struct dart_buddy * self) {
 	_dump(self, 0, 0);
 	printf("\n");
 }
