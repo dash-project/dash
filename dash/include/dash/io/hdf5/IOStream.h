@@ -1,6 +1,8 @@
 #ifndef DASH__IO__HDF5__IOSTREAM_h
 #define DASH__IO__HDF5__IOSTREAM_h
 
+#include <dash/io/IOStream.h>
+
 namespace dash {
 namespace io   {
 namespace hdf5 {

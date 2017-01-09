@@ -2,8 +2,10 @@
 
 #include "HDF5ArrayTest.h"
 
-#include <dash/Array.h>
 #include <dash/io/HDF5.h>
+#include <dash/Array.h>
+#include <dash/algorithm/ForEach.h>
+#include <dash/algorithm/Fill.h>
 
 #include <limits.h>
 #include <unistd.h>
