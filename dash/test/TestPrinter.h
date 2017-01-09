@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <list>
+#include <iostream>
 
 #include <mpi.h>
 

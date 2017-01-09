@@ -146,8 +146,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
   auto l_sub_lblock = dash::local(sub_lblock);
 
-  return;
-
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      *dash::begin(dash::index(sub_lblock)));
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
@@ -161,6 +159,8 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                      *dash::end(dash::index(l_sub_lblock)));
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      l_sub_lblock.size());
+
+  return;
 
   EXPECT_EQ(sub_lblock.size(), l_sub_lblock.size());
 

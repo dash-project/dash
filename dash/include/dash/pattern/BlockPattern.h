@@ -43,7 +43,7 @@ template<
 class Pattern
 {
 public:
-  static constexpr char const * PatternName = "BlockPattern";
+  static constexpr const char PatternName[] = "BlockPattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:

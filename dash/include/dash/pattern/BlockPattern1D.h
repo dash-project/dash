@@ -39,7 +39,7 @@ private:
   static const dim_t NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "BlockPattern1D";
+  static constexpr const char PatternName[] = "BlockPattern1D";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -943,7 +943,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType blocksize(
+  constexpr SizeType blocksize(
     /// The dimension in the pattern
     dim_t dimension) const {
     return _blocksize;
@@ -957,7 +957,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const {
+  constexpr SizeType max_blocksize() const {
     return _blocksize;
   }
 
@@ -967,10 +967,27 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline SizeType local_capacity(
+  constexpr SizeType local_capacity(
     team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_capacity;
+  }
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * specified unit in total.
+   *
+   * \see  blocksize()
+   * \see  local_extent()
+   * \see  local_capacity()
+   *
+   * \see  DashPatternConcept
+   */
+  constexpr SizeType local_size(team_unit_t unit) const
+  {
+    return (unit == _team->myid().id)
+           ? _local_size
+           : initialize_local_extent(unit);
   }
 
   /**
@@ -983,12 +1000,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline SizeType local_size(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
+  constexpr SizeType local_size() const
   {
-    return (unit == UNDEFINED_TEAM_UNIT_ID)
-           ? _local_size
-           : initialize_local_extent(unit);
+    return _local_size;
   }
 
   /**
@@ -996,7 +1010,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType num_units() const {
+  constexpr IndexType num_units() const {
     return _nunits;
   }
 
@@ -1005,7 +1019,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType capacity() const {
+  constexpr IndexType capacity() const {
     return _size;
   }
 
@@ -1014,7 +1028,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType size() const {
+  constexpr IndexType size() const {
     return _size;
   }
 
@@ -1029,7 +1043,7 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const {
+  constexpr const DistributionSpec_t & distspec() const {
     return _distspec;
   }
 
@@ -1038,7 +1052,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const {
+  constexpr SizeSpec_t sizespec() const {
     return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
@@ -1047,7 +1061,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> extents() const {
+  constexpr const std::array<SizeType, NumDimensions> extents() const {
     return std::array<SizeType, 1> {{ _size }};
   }
 
@@ -1057,7 +1071,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const MemoryLayout_t & memory_layout() const {
+  constexpr const MemoryLayout_t & memory_layout() const {
     return _memory_layout;
   }
 
@@ -1086,7 +1100,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> coords(
+  constexpr std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return std::array<IndexType, 1> {{ index }};
   }

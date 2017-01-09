@@ -219,12 +219,9 @@ public:
   /**
    * View at block at given global block offset.
    */
-  self_t block(index_type block_lindex)
+  constexpr self_t block(index_type block_lindex) const
   {
-    DASH_LOG_TRACE("LocalArrayRef.block()", block_lindex);
-    ViewSpec<1> block_view = pattern().local_block(block_lindex);
-    DASH_LOG_TRACE("LocalArrayRef.block >", block_view);
-    return self_t(_array, block_view);
+    return self_t(_array, pattern().local_block(block_lindex));
   }
 
   /**
@@ -555,7 +552,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const {
+  constexpr const PatternType & pattern() const {
     return _arr->pattern();
   }
 
@@ -1015,7 +1012,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  inline const Team & team() const noexcept
+  constexpr const Team & team() const noexcept
   {
     return *m_team;
   }
@@ -1089,7 +1086,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const
+  constexpr const PatternType & pattern() const
   {
     return m_pattern;
   }
