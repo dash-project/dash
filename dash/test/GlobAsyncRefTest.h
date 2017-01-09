@@ -8,12 +8,8 @@
  */
 class GlobAsyncRefTest : public dash::test::TestBase {
 protected:
-  dash::global_unit_t _dash_id;
-  size_t              _dash_size;
 
-  GlobAsyncRefTest()
-  : _dash_id(0),
-    _dash_size(dash::size()) {
+  GlobAsyncRefTest() {
     LOG_MESSAGE(">>> Test suite: GlobAsyncRefTest");
   }
 

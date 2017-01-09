@@ -22,7 +22,7 @@ TEST_F(MatrixTest, OddSize)
     for (size_t j = 0; j < matrix.extent(1); j++) {
       if (matrix(i,j).is_local()) {
         DASH_LOG_TRACE("MatrixText.OddSize", "(", i, ",", j, ")",
-                       "unit:", _dash_id);
+                       "unit:", dash::myid().id);
       }
     }
   }
@@ -35,18 +35,18 @@ TEST_F(MatrixTest, Views)
   const size_t block_size    = block_size_x * block_size_y;
   size_t num_local_blocks_x  = 3;
   size_t num_local_blocks_y  = 2;
-  size_t num_blocks_x        = _dash_size * num_local_blocks_x;
-  size_t num_blocks_y        = _dash_size * num_local_blocks_y;
+  size_t num_blocks_x        = dash::size() * num_local_blocks_x;
+  size_t num_blocks_y        = dash::size() * num_local_blocks_y;
   size_t num_blocks_total    = num_blocks_x * num_blocks_y;
   size_t extent_x            = block_size_x * num_blocks_x;
   size_t extent_y            = block_size_y * num_blocks_y;
   size_t num_elem_total      = extent_x * extent_y;
   // Assuming balanced mapping:
-  size_t num_elem_per_unit   = num_elem_total / _dash_size;
+  size_t num_elem_per_unit   = num_elem_total / dash::size();
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
   LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
-              _dash_size, num_elem_total,
+              dash::size(), num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
   typedef dash::default_index_t                 index_t;
@@ -145,7 +145,7 @@ TEST_F(MatrixTest, SingleWriteMultipleRead)
   ASSERT_EQ(extent_rows, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
   // Fill matrix
-  if(_dash_id == 0) {
+  if(dash::myid().id == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
@@ -194,7 +194,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   ASSERT_EQ(extent_rows, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
   // Fill matrix
-  if(_dash_id == 0) {
+  if(dash::myid().id == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
@@ -249,7 +249,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   ASSERT_EQ(extent_cols, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
   // Fill matrix
-  if(myid == 0) {
+  if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
@@ -307,7 +307,7 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   ASSERT_EQ(extent_rows, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
   // Fill matrix
-  if(myid == 0) {
+  if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
@@ -462,7 +462,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
 TEST_F(MatrixTest, BlockViews)
 {
   typedef int element_t;
-  dash::global_unit_t myid = dash::myid();
+  int    myid        = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -482,7 +482,7 @@ TEST_F(MatrixTest, BlockViews)
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
-  if(myid == 0) {
+  if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t col = 0; col < matrix.extent(0); ++col) {
       for(size_t row = 0; row < matrix.extent(1); ++row) {
@@ -536,7 +536,7 @@ TEST_F(MatrixTest, ViewIteration)
   typedef int                                   element_t;
   typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
-  dash::global_unit_t myid = dash::myid();
+  int    myid        = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -555,7 +555,7 @@ TEST_F(MatrixTest, ViewIteration)
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
-  if(myid == 0) {
+  if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
@@ -625,7 +625,7 @@ TEST_F(MatrixTest, ViewIteration)
 TEST_F(MatrixTest, BlockCopy)
 {
   typedef int element_t;
-  dash::global_unit_t myid = dash::myid();
+  int    myid = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -655,7 +655,7 @@ TEST_F(MatrixTest, BlockCopy)
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
-  if(myid == 0) {
+  if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t col = 0; col < matrix_a.extent(0); ++col) {
       for(size_t row = 0; row < matrix_a.extent(1); ++row) {
@@ -695,7 +695,7 @@ TEST_F(MatrixTest, StorageOrder)
 
   typedef dash::default_index_t index_t;
 
-  if (dash::myid() == 0) {
+  if (dash::myid().id == 0) {
     dash::test::print_pattern_mapping(
       "pattern.row-major.local_index", pat_row, 3,
       [](const decltype(pat_row) & _pattern, int _x, int _y) -> index_t {
@@ -717,8 +717,8 @@ TEST_F(MatrixTest, StorageOrder)
   ASSERT_GT_U(mat_col.local.size(), 0);
 
   for (int i = 0; i < static_cast<int>(mat_row.local.size()); ++i) {
-     mat_row.lbegin()[i] = 1000 * (dash::myid() + 1) + i;
-     mat_col.lbegin()[i] = 1000 * (dash::myid() + 1) + i;
+     mat_row.lbegin()[i] = 1000 * (dash::myid().id + 1) + i;
+     mat_col.lbegin()[i] = 1000 * (dash::myid().id + 1) + i;
   }
 
   dash::barrier();
@@ -927,7 +927,7 @@ TEST_F(MatrixTest, PatternScope)
          team);
     matrix.allocate(pattern);
   }
-  if (dash::myid() == 0) {
+  if (dash::myid().id == 0) {
     matrix[0][0] = 123;
   }
 
@@ -962,7 +962,7 @@ TEST_F(MatrixTest, UnderfilledPattern)
   > matrix_a(size_spec);
 
   // test bottom right corner
-  if (dash::myid() == 0) {
+  if (dash::myid().id == 0) {
     matrix_a[ext_x - 1][ext_y - 1] = 10;
     ASSERT_EQ( matrix_a[ext_x - 1][ext_y - 1], 10 );
   }
@@ -993,7 +993,7 @@ TEST_F(MatrixTest, SimpleConstructor)
   size_t ext_y = 5*dash::size();
   dash::Matrix<int, 2> matrix(ext_x, ext_y);
 
-  dash::fill(matrix.begin(), matrix.end(), dash::myid());
+  dash::fill(matrix.begin(), matrix.end(), dash::myid().id);
 
   matrix.barrier();
 
@@ -1003,7 +1003,7 @@ TEST_F(MatrixTest, SimpleConstructor)
 
 TEST_F(MatrixTest, MatrixLBegin)
 {
-  int myid = dash::myid();
+  int myid = dash::myid().id;
   size_t ext_x = dash::size();
   size_t ext_y = 5*dash::size();
   dash::Matrix<int, 2> matrix(ext_x, ext_y);
@@ -1040,8 +1040,8 @@ TEST_F(MatrixTest, DelayedPatternAllocation)
           team);
     matrix.allocate(pattern);
   }
-  auto id = dash::myid();
-  matrix(id,id) =id;
+  auto id = dash::myid().id;
+  matrix(id,id) = id;
   EXPECT_EQ(id, matrix[id][id]);
 }
 
@@ -1050,7 +1050,7 @@ TEST_F(MatrixTest, CopyRow)
   typedef int value_t;
 
   auto team_size = dash::Team::All().size();
-  auto myid      = dash::Team::All().myid();
+  auto myid      = dash::Team::All().myid().id;
 
   size_t n_lextent = 10;
 

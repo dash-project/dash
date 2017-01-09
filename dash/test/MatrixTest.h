@@ -8,12 +8,8 @@
  */
 class MatrixTest : public dash::test::TestBase {
 protected:
-  size_t _dash_id;
-  size_t _dash_size;
 
-  MatrixTest()
-  : _dash_id(0),
-    _dash_size(0) {
+  MatrixTest() {
     LOG_MESSAGE(">>> Test suite: MatrixTest");
   }
 
