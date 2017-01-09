@@ -92,11 +92,11 @@ typedef enum
 
 
 #if (UINT32_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_UINT
+#  define DART_TYPE_SIZET DART_TYPE_UINT
 #elif (UINT64_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#  define DART_TYPE_SIZET DART_TYPE_LONGLONG
 #else
-#error "Cannot determine DART type for size_t!"
+#  error "Cannot determine DART type for size_t!"
 #endif
 
 

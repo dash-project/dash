@@ -109,18 +109,18 @@ class TestBase : public ::testing::Test {
  protected:
 
   virtual void SetUp() {
-    LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+    LOG_MESSAGE("===> Running test case with %lu units ...", dash::size());
     dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("-==- DASH initialized");
     dash::barrier();
   }
 
   virtual void TearDown() {
-    LOG_MESSAGE("-==- Test case finished at unit %d",       dash::myid().id);
+    LOG_MESSAGE("-==- Test case finished at unit %d",        dash::myid().id);
     dash::Team::All().barrier();
-    LOG_MESSAGE("-==- Finalize DASH at unit %d",            dash::myid().id);
+    LOG_MESSAGE("-==- Finalize DASH at unit %d",             dash::myid().id);
     dash::finalize();
-    LOG_MESSAGE("<=== Finished test case with %d units",    dash::size());
+    LOG_MESSAGE("<=== Finished test case with %lu units",    dash::size());
   }
 };
 
