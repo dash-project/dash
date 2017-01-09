@@ -1,14 +1,12 @@
 #ifdef DASH_ENABLE_HDF5
 
-#include <libdash.h>
+#include "HDF5ArrayTest.h"
+
+#include <dash/Array.h>
+#include <dash/io/HDF5.h>
 
 #include <limits.h>
-#include <gtest/gtest.h>
 #include <unistd.h>
-
-#include "HDF5ArrayTest.h"
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 
 
 typedef int value_t;

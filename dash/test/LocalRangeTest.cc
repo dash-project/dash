@@ -9,6 +9,8 @@
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
 
+#include <iostream>
+
 
 TEST_F(LocalRangeTest, ArrayBlockcyclic)
 {
@@ -21,12 +23,12 @@ TEST_F(LocalRangeTest, ArrayBlockcyclic)
   }
   dash::barrier();
 
-  return;
+  SKIP_TEST_MSG("strided local ranges not implemented yet");
 
   const size_t blocksize        = 3;
   const size_t num_blocks_local = 2;
   const size_t num_elem_local   = num_blocks_local * blocksize;
-  size_t num_elem_total         = _dash_size * num_elem_local;
+  size_t num_elem_total         = dash::size() * num_elem_local;
   // Identical distribution in all ranges:
   dash::Array<int> array(num_elem_total,
                          dash::BLOCKCYCLIC(blocksize));
@@ -52,12 +54,12 @@ TEST_F(LocalRangeTest, ArrayBlockcyclic)
 
 TEST_F(LocalRangeTest, ArrayBlockedWithOffset)
 {
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     return;
   }
 
   const size_t block_size      = 20;
-  const size_t num_elems_total = _dash_size * block_size;
+  const size_t num_elems_total = dash::size() * block_size;
   // Start at global index 5:
   const size_t offset          = 5;
   // Followed by 2.5 blocks:
@@ -95,19 +97,19 @@ TEST_F(LocalRangeTest, View2DimRange)
   const size_t block_size_x  = 3;
   const size_t block_size_y  = 2;
   const size_t block_size    = block_size_x * block_size_y;
-  size_t num_blocks_x        = _dash_size * 2;
-  size_t num_blocks_y        = _dash_size * 2;
+  size_t num_blocks_x        = dash::size() * 2;
+  size_t num_blocks_y        = dash::size() * 2;
   size_t num_blocks_total    = num_blocks_x * num_blocks_y;
   size_t extent_x            = block_size_x * num_blocks_x;
   size_t extent_y            = block_size_y * num_blocks_y;
   size_t num_elem_total      = extent_x * extent_y;
   // Assuming balanced mapping:
-  size_t num_elem_per_unit   = num_elem_total / _dash_size;
+  size_t num_elem_per_unit   = num_elem_total / dash::size();
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
   LOG_MESSAGE("nunits:%ld "
               "elem_total:%ld elem_per_unit:%ld blocks_per_unit:%ld",
-              _dash_size,
+              dash::size(),
               num_elem_total, num_elem_per_unit, num_blocks_per_unit);
 
   typedef int                                            element_t;
@@ -157,8 +159,8 @@ TEST_F(LocalRangeTest, View2DimRange)
                   block_begin.gpos(), block_end.gpos(),
                   block_begin.pos(),  block_end.pos());
       LOG_MESSAGE("Resolving local index range in local block");
-      // Local index range of first local block should return local index range
-      // of block unchanged:
+      // Local index range of first local block should return local index
+      // range of block unchanged:
       auto l_idx_range = dash::local_index_range(
                            block_begin,
                            block_end);

@@ -8,14 +8,8 @@
  */
 class ListTest : public dash::test::TestBase {
 protected:
-  const size_t _dash_id;
-  const size_t _dash_size;
-  const int    _num_elem;
 
-  ListTest()
-  : _dash_id(dash::myid().id),
-    _dash_size(dash::size()),
-    _num_elem(100) {
+  ListTest() {
     LOG_MESSAGE(">>> Test suite: ListTest");
   }
 

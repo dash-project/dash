@@ -8,12 +8,8 @@
  */
 class LocalRangeTest : public dash::test::TestBase {
 protected:
-  const size_t _dash_id;
-  const size_t _dash_size;
 
-  LocalRangeTest()
-  : _dash_id(dash::myid().id),
-    _dash_size(dash::size()) {
+  LocalRangeTest() {
     LOG_MESSAGE(">>> Test suite: LocalRangeTest");
   }
 
