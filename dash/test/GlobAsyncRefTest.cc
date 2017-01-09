@@ -1,7 +1,9 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "GlobAsyncRefTest.h"
+
+#include <dash/GlobAsyncRef.h>
+#include <dash/Array.h>
+
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
   int num_elem_per_unit = 20;

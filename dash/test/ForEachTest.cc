@@ -1,9 +1,14 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "ForEachTest.h"
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+#include <dash/algorithm/ForEach.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/SharedCounter.h>
+
 #include <functional>
 
-#include "TestBase.h"
-#include "ForEachTest.h"
 
 TEST_F(ForEachTest, TestArrayAllInvoked) {
     // Shared variable for total number of invoked callbacks:
