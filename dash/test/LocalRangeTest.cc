@@ -1,8 +1,13 @@
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 #include "LocalRangeTest.h"
+
+#include <dash/algorithm/LocalRange.h>
+#include <dash/util/LocalityJSONPrinter.h>
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+#include <dash/Cartesian.h>
+#include <dash/Distribution.h>
 
 
 TEST_F(LocalRangeTest, ArrayBlockcyclic)

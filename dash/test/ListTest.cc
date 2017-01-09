@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
 
-#include <libdash.h>
+#include "ListTest.h"
+
 #include <dash/List.h>
 
-#include "TestBase.h"
-#include "ListTest.h"
 
 TEST_F(ListTest, Initialization)
 {

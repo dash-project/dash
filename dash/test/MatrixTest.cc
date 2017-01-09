@@ -1,11 +1,15 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
-#include "TestLogHelpers.h"
+
 #include "MatrixTest.h"
+
+#include <dash/Matrix.h>
+#include <dash/Dimensional.h>
+#include <dash/Cartesian.h>
+#include <dash/Distribution.h>
+#include <dash/algorithm/Fill.h>
 
 #include <iostream>
 #include <iomanip>
+
 
 TEST_F(MatrixTest, OddSize)
 {

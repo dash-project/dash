@@ -13,7 +13,7 @@ protected:
 
   GlobAsyncRefTest()
   : _dash_id(0),
-    _dash_size(0) {
+    _dash_size(dash::size()) {
     LOG_MESSAGE(">>> Test suite: GlobAsyncRefTest");
   }
 
