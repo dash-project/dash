@@ -46,7 +46,9 @@ public:
   { }
 
   constexpr index_type operator*() const {
-    return _index_set[_pos];
+    return _pos < _index_set.size()
+              ? _index_set[_pos]
+              : _index_set[_pos-1] + 1;
   }
 
   constexpr self_t operator++(int) const {
@@ -286,10 +288,15 @@ public:
 public:
   constexpr index_type operator[](index_type local_index) const {
     return this->pattern().global(
-             // domain start index to local index:
-             this->pattern().at(this->domain()[0]) +
-             // apply specified local offset:
-             local_index);
+             local_index +
+             // actually only required if local of sub
+             this->pattern().at(
+               std::max<index_type>(
+                 this->pattern().global(0),
+                 this->domain()[0]
+               )
+             )
+           );
   }
 
   inline index_type size() const {

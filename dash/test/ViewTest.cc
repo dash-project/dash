@@ -212,13 +212,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                        l_sub_lblock.size());
 
     EXPECT_EQ(block_size, l_sub_lblock.size());
-
-    return;
-
-    EXPECT_EQ(dash::index(sub_lblock)[0],
-              dash::index(l_sub_lblock)[0]);
-    EXPECT_EQ(dash::index(sub_lblock).size(),
-              dash::index(l_sub_lblock).size());
   }
 }
 
