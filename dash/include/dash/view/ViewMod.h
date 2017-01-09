@@ -345,16 +345,24 @@ public:
   }
 
   constexpr auto end() const
-  -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
+  -> decltype(dash::end(dash::local(dash::origin(dash::domain(*this))))) {
     return dash::begin(
              // obtains container's local ref:
              dash::local(
                dash::origin(
                  dash::domain(*this)) ) )
              // apply domain view:
+           - (
+               0
+         //    *dash::begin(dash::local(dash::index(dash::domain(*this))))
+         //    _index_set.size()
+         //  + *dash::begin(dash::local(dash::index(dash::domain(*this))))
+         //  + *dash::begin(dash::index(dash::domain(*this)))
+             )
            + (
-               *dash::end(dash::index(dash::local(dash::domain(*this))))
-             - *dash::begin(dash::index(dash::local(dash::domain(*this))))
+         //    *dash::end(dash::local(dash::index(dash::domain(*this))))
+               *dash::begin(dash::local(dash::index(dash::domain(*this))))
+         //  - *dash::begin(dash::index(dash::domain(*this)))
              );
   }
 

@@ -9,9 +9,27 @@
 namespace dash {
 
 template <class ViewType>
-const typename ViewType::index_set_type & index(const ViewType & v) {
+class IndexSetIdentity;
+
+
+
+template <class ViewType>
+const typename ViewType::index_set_type &
+index(const ViewType & v) {
   return v.index_set();
 }
+
+#ifdef __TODO__
+template <class ContainerType>
+constexpr
+typename std::enable_if <
+  !dash::view_traits<ContainerType>::is_view::value,
+  IndexSetIdentity<ContainerType>
+>::type
+index(const ContainerType & c) {
+  return IndexSetIdentity<ContainerType>(c);
+}
+#endif
 
 
 namespace detail {
@@ -82,9 +100,10 @@ class IndexSetBase;
 template <
   class IndexSetType,
   class ViewType >
-constexpr auto local(
-  const IndexSetBase<IndexSetType, ViewType> & index_set)
--> decltype(index_set.local()) {
+constexpr auto
+local(
+  const IndexSetBase<IndexSetType, ViewType> & index_set
+) -> decltype(index_set.local()) {
   return index_set.local();
 }
 
@@ -144,12 +163,10 @@ private:
 // -----------------------------------------------------------------------
 
 template <class ViewType>
-class IndexSetIdentity;
-
-template <
-  class ViewType >
-constexpr const IndexSetIdentity<ViewType> & local(
-  const IndexSetIdentity<ViewType> & index_set) {
+constexpr const IndexSetIdentity<ViewType> &
+local(
+  const IndexSetIdentity<ViewType> & index_set
+) {
   return index_set;
 }
 
@@ -184,11 +201,11 @@ template <
   class ViewType >
 class IndexSetSub;
 
-template <
-  class ViewType >
-constexpr auto local(
-  const IndexSetSub<ViewType> & index_set)
--> decltype(index_set.local()) {
+template <class ViewType>
+constexpr auto
+local(
+  const IndexSetSub<ViewType> & index_set
+) -> decltype(index_set.local()) {
   return index_set.local();
 }
 
@@ -219,7 +236,11 @@ public:
   }
 
   constexpr index_type size() const {
-    return _domain_end_idx - _domain_begin_idx;
+    return std::min(
+             (_domain_end_idx - _domain_begin_idx),
+             (_domain_end_idx - _domain_begin_idx)
+         //  (dash::end(this->view()) - dash::begin(this->view()))
+           );
   }
 
   constexpr const local_type & local() const {
@@ -238,7 +259,8 @@ class IndexSetLocal;
 
 template <
   class ViewType >
-constexpr const IndexSetLocal<ViewType> & local(
+constexpr const IndexSetLocal<ViewType> &
+local(
   const IndexSetLocal<ViewType> & index_set) {
   return index_set;
 }
@@ -269,7 +291,11 @@ public:
   }
 
   constexpr index_type size() const {
-    return static_cast<index_type>(this->pattern().local_size());
+    return std::min(
+             static_cast<index_type>(this->pattern().local_size()),
+             static_cast<index_type>(this->pattern().local_size())
+         //  (dash::end(this->view()) - dash::begin(this->view()))
+           );
   }
 
   constexpr const local_type & local() const {
