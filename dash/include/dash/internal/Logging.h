@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iterator>
 #include <cstring>
+#include <string>
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -103,6 +104,8 @@ namespace dash {
 namespace dash {
 namespace internal {
 namespace logging {
+
+std::string demangle(const char * typeid_name);
 
 extern bool _log_enabled;
 
@@ -292,6 +295,18 @@ inline void LogVarWrapper(
 
 } // namespace logging
 } // namespace internal
+
+namespace logging {
+
+template <class T>
+std::string typestr(const T & obj) {
+  return dash::internal::logging::demangle(
+           typeid(obj).name()
+         );
+}
+
+} // namespace logging
+
 } // namespace dash
 
 #endif // DASH__INTERNAL__LOGGING_H_
