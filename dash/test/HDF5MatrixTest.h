@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 
-class HDF5MatrixTest : public ::testing::Test {
+class HDF5MatrixTest : public dash::test::TestBase {
 protected:
   const std::string _filename = "test_matrix.hdf5";
   const std::string _dataset  = "data";

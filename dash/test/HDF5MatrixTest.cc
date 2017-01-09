@@ -9,6 +9,8 @@
 #include <dash/TeamSpec.h>
 
 #include <dash/algorithm/ForEach.h>
+#include <dash/algorithm/SUMMA.h>
+
 #include <dash/pattern/TilePattern.h>
 #include <dash/pattern/MakePattern.h>
 
