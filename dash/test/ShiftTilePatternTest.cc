@@ -101,7 +101,7 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
   size_t extent_y       = team_size * 2 * block_size_y;
   size_t size           = extent_x * extent_y;
   size_t max_per_unit   = size / team_size;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
+  LOG_MESSAGE("e:%u,%u, bs:%u,%u, nu:%u, mpu:%u",
               extent_x, extent_y,
               block_size_x, block_size_y,
               team_size,

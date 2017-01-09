@@ -63,7 +63,7 @@ rm -Rf $BUILD_DIR/*
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_ASSERTIONS=ON \
                         -DENABLE_LT_OPTIMIZATION=OFF \
-                        -DENABLE_COMPILER_WARNINGS=ON \
+                        -DENABLE_DEVELOPER_COMPILER_WARNINGS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
