@@ -339,7 +339,8 @@ public:
                dash::origin(
                  dash::domain(*this)) ) )
              // apply domain view:
-           + *dash::begin(dash::index(dash::domain(*this)));
+    //     + *dash::begin(dash::index(dash::domain(*this)));
+            ;
   }
 
   constexpr auto end() const
@@ -357,6 +358,10 @@ public:
   -> decltype(*(dash::begin(
                  dash::local(dash::origin(dash::domain(*this)))))) {
     return *(this->begin() + offset);
+  }
+
+  constexpr index_type size() const {
+    return _index_set.size();
   }
 
   constexpr const local_type & local() const {
@@ -504,6 +509,10 @@ public:
   -> decltype(dash::begin(dash::domain(*this))) {
     return dash::begin(dash::domain(*this)) +
            *dash::end(dash::index(*this));
+  }
+
+  constexpr index_type size() const {
+    return _index_set.size();
   }
 
   constexpr const index_set_type & index_set() const {
