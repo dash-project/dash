@@ -340,7 +340,7 @@ public:
                  dash::domain(*this)) ) )
              // apply domain view:
     //     + *dash::begin(dash::index(dash::domain(*this)));
-            ;
+           ;
   }
 
   constexpr auto end() const

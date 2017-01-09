@@ -235,14 +235,17 @@ public:
   { }
 
   constexpr index_type operator[](index_type image_index) const {
-    return _domain_begin_idx + image_index;
+//  TODO:
+//  return this->domain()[_domain_begin_idx + image_index];
+    return (_domain_begin_idx + image_index);
   }
 
   constexpr index_type size() const {
-    return std::min(
+    return std::min<index_type>(
              (_domain_end_idx - _domain_begin_idx),
              (_domain_end_idx - _domain_begin_idx)
-         //  (dash::end(this->view()) - dash::begin(this->view()))
+       // TODO:
+       //    this->domain().size()
            );
   }
 
