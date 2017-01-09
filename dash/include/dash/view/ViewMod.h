@@ -331,15 +331,24 @@ public:
     _index_set(*this)
   { }
 
-  constexpr auto begin() const
+  inline auto begin() const
   -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
+
+    DASH_LOG_DEBUG_VAR(
+        "ViewLocalMod.begin",
+        dash::index(dash::local(dash::domain(*this)))[0]);
+    DASH_LOG_DEBUG_VAR(
+        "ViewLocalMod.begin",
+        dash::index(dash::domain(*this))[0]);
+
     return dash::begin(
              // obtains container's local ref:
              dash::local(
                dash::origin(
-                 dash::domain(*this)) ) )
+                 dash::domain(*this)) 
+               )
+             )
              // apply domain view:
-    //     + *dash::begin(dash::index(dash::domain(*this)));
            ;
   }
 
@@ -349,7 +358,9 @@ public:
              // obtains container's local ref:
              dash::local(
                dash::origin(
-                 dash::domain(*this)) ) )
+                 dash::domain(*this))
+               )
+             )
              // apply domain view:
            + *dash::end(dash::index(dash::domain(*this)));
   }
