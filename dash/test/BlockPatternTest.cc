@@ -1,9 +1,14 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "BlockPatternTest.h"
+#include "TestBase.h"
+
+#include <dash/Distribution.h>
+#include <dash/TeamSpec.h>
+
+#include <dash/pattern/BlockPattern.h>
+
 
 TEST_F(BlockPatternTest, SimpleConstructor)
 {

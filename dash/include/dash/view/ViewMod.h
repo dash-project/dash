@@ -253,6 +253,10 @@ public:
     return !(*(static_cast<const ViewModType *>(this) == rhs));
   }
 
+  constexpr bool is_local() const {
+    return view_traits<ViewModType>::is_local::value;
+  }
+
   constexpr const domain_type & domain() const {
     return _domain;
   }
@@ -342,11 +346,22 @@ public:
 
   constexpr auto end() const
   -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
-    return dash::end(
+    return dash::begin(
              // obtains container's local ref:
              dash::local(
                dash::origin(
-                 dash::domain(*this)) ) );
+                 dash::domain(*this)) ) )
+             // apply domain view:
+           + (
+               *dash::end(dash::index(dash::local(dash::domain(*this))))
+             - *dash::begin(dash::index(dash::local(dash::domain(*this))))
+             );
+  }
+
+  constexpr auto operator[](int offset) const
+  -> decltype(*(dash::begin(
+                 dash::local(dash::origin(dash::domain(*this)))))) {
+    return *(this->begin() + offset);
   }
 
   constexpr const local_type & local() const {
@@ -430,6 +445,11 @@ public:
   -> decltype(dash::begin(dash::domain(*this))) {
     return dash::begin(dash::domain(*this)) +
              *dash::end(dash::index(*this));
+  }
+
+  constexpr auto operator[](int offset) const
+  -> decltype(*(dash::begin(dash::domain(*this)))) {
+    return *(this->begin() + offset);
   }
 
   constexpr const index_set_type & index_set() const {

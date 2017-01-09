@@ -1,11 +1,8 @@
 
-#include <gtest/gtest.h>
-#include "TestBase.h"
+#include "DARTOnesidedTest.h"
 
 #include <dash/Array.h>
 #include <dash/Onesided.h>
-
-#include "DARTOnesidedTest.h"
 
 
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)

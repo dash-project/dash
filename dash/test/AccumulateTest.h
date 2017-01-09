@@ -1,8 +1,6 @@
 #ifndef DASH__TEST__ACCUMULATE_TEST_H_
 #define DASH__TEST__ACCUMULATE_TEST_H_
 
-#include <gtest/gtest.h>
-
 #include "TestBase.h"
 
 /**

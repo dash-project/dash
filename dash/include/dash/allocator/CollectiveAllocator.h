@@ -5,8 +5,10 @@
 
 #include <dash/Types.h>
 #include <dash/Team.h>
+#include <dash/GlobPtr.h>
 
 #include <dash/internal/Logging.h>
+#include <dash/internal/StreamConversion.h>
 
 #include <vector>
 #include <algorithm>

@@ -1,10 +1,7 @@
 #ifndef DASH__TEST__AUTOBALANCE_TEST_H_
 #define DASH__TEST__AUTOBALANCE_TEST_H_
 
-#include <gtest/gtest.h>
-
 #include "TestBase.h"
-
 
 /**
  * Test fixture for class dash::Autobalance
