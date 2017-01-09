@@ -1,6 +1,8 @@
 #ifndef DASH__MAKE_PATTERN_H_
 #define DASH__MAKE_PATTERN_H_
 
+#include <dash/Pattern.h>
+
 #include <dash/pattern/PatternProperties.h>
 #include <dash/pattern/BlockPattern.h>
 #include <dash/pattern/TilePattern.h>
