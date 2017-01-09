@@ -243,9 +243,9 @@ public:
   constexpr index_type size() const {
     return std::min<index_type>(
              (_domain_end_idx - _domain_begin_idx),
-             (_domain_end_idx - _domain_begin_idx)
        // TODO:
        //    this->domain().size()
+             (_domain_end_idx - _domain_begin_idx)
            );
   }
 

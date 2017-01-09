@@ -344,12 +344,23 @@ public:
     return dash::begin(
              // obtains container's local ref:
              dash::local(
-               dash::origin(
-                 dash::domain(*this)) 
-               )
+        //     dash::begin(
+                 dash::origin(
+                   *this
+                 )
+        //     ) + _index_set[0]
              )
-             // apply domain view:
-           ;
+           )
+           // apply domain view:
+         + (
+             0
+        //   dash::index(dash::domain(*this))[0]
+        // - dash::local(
+        //     dash::origin(
+        //       *this
+        //     )
+        //   ).size()
+           );
   }
 
   constexpr auto end() const
@@ -358,9 +369,10 @@ public:
              // obtains container's local ref:
              dash::local(
                dash::origin(
-                 dash::domain(*this))
+                 *this
                )
              )
+           )
              // apply domain view:
            + *dash::end(dash::index(dash::domain(*this)));
   }

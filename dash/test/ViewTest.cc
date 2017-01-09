@@ -109,7 +109,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
 
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 {
-  int block_size        = 10;
+  int block_size        = 7;
   int array_size        = dash::size() * block_size;
   int lblock_begin_gidx = block_size * dash::myid();
   int lblock_end_gidx   = lblock_begin_gidx + block_size;
@@ -161,6 +161,11 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                        *dash::end(dash::index(l_sub_lblock)));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        l_sub_lblock.size());
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                       dash::index(l_sub_lblock)[0]);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                       dash::index(l_sub_lblock)[1]);
 
     EXPECT_EQ(sub_lblock.size(), l_sub_lblock.size());
 
