@@ -325,7 +325,7 @@ dart_ret_t dart__base__locality__domain__parent(
     subdomains_prefix[subdomains_prefix_len] = '\0';
   }
   if (subdomains_prefix_len == 0) {
-    *domain_out = (dart_domain_locality_t *)(domain_in);
+    *domain_out = (const dart_domain_locality_t *)(domain_in);
     return DART_OK;
   }
 
@@ -665,7 +665,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                  module_domain->num_units, module_domain->global_index);
 
   DART_LOG_TRACE_ARRAY(
-    "dart__base__locality__domain__create_module_subdomains", "%d",
+    "dart__base__locality__domain__create_module_subdomains", "%lu",
     module_domain->unit_ids, module_domain->num_units);
   /*
    * NOTE: Locality scopes may be heterogeneous but are expected
