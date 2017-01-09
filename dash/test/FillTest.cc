@@ -3,6 +3,7 @@
 
 #include <dash/Array.h>
 #include <dash/algorithm/LocalRange.h>
+#include <dash/algorithm/Fill.h>
 
 #include <array>
 
