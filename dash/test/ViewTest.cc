@@ -164,8 +164,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
   EXPECT_EQ(sub_lblock.size(), l_sub_lblock.size());
 
-  return;
-
   for (int lsi = 0; lsi != l_sub_lblock.size(); lsi++) {
     int l_sub_elem = l_sub_lblock[lsi];
     int sub_elem   = sub_lblock[lsi];

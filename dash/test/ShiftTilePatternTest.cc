@@ -1,9 +1,13 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "ShiftTilePatternTest.h"
+
+#include <dash/pattern/ShiftTilePattern.h>
+
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
+#include <array>
 
 
 TEST_F(ShiftTilePatternTest, Distribute1DimTile)
