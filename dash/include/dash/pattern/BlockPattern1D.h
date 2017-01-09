@@ -39,7 +39,7 @@ private:
   static const dim_t NumDimensions = 1;
 
 public:
-  static constexpr const char PatternName[] = "BlockPattern1D";
+  static constexpr const char * PatternName = "BlockPattern1D";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
