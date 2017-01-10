@@ -16,7 +16,7 @@
 
 namespace dash {
 
-static
+template<typename T>
 std::ostream & operator<<(
   std::ostream & o,
   dart_global_unit_t uid)
@@ -24,7 +24,8 @@ std::ostream & operator<<(
   o << uid.id;
   return o;
 }
-static
+
+template<typename T>
 std::ostream & operator<<(
   std::ostream & o,
   dart_team_unit_t uid)
