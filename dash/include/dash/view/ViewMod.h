@@ -339,23 +339,8 @@ public:
     _index_set(*this)
   { }
 
-  inline auto begin() const
+  constexpr auto begin() const
   -> decltype(dash::begin(dash::local(dash::origin(*this)))) {
-
-    DASH_LOG_DEBUG(
-      "ViewLocalMod.begin",
-      "index(domain)[0]:",
-          dash::index(dash::domain(*this))[0],
-      "index(domain).pre[index(local(domain))[0]]:",
-          dash::index(dash::domain(*this)).pre()[
-            dash::index(dash::local(dash::domain(*this)))[0]
-          ],
-      "index(local(domain)).pre[index(domain)[0]]:",
-          dash::index(dash::local(dash::domain(*this))).pre()[
-            dash::index(dash::domain(*this))[0]
-          ]
-    );
-
     return dash::begin(
              dash::local(
                dash::origin(
@@ -364,9 +349,6 @@ public:
              )
            )
          + dash::index(dash::local(dash::domain(*this))).pre()[
-             dash::index(dash::domain(*this))[0]
-           ]
-         - dash::index(dash::domain(*this)).pre()[
              dash::index(dash::local(dash::domain(*this)))[0]
            ];
   }
@@ -381,10 +363,7 @@ public:
              )
            )
          + dash::index(dash::local(dash::domain(*this))).pre()[
-             *dash::end(dash::index(dash::domain(*this)))
-           ]
-         - dash::index(dash::domain(*this)).pre()[
-             dash::index(dash::local(dash::domain(*this)))[0]
+             *dash::end(dash::index(dash::local(dash::domain(*this))))
            ];
   }
 

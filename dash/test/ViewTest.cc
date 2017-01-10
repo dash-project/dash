@@ -164,11 +164,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        l_sub_lblock.size());
 
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       dash::index(l_sub_lblock)[0]);
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       dash::index(l_sub_lblock)[1]);
-
     EXPECT_EQ(sub_lblock.size(), l_sub_lblock.size());
 
     EXPECT_EQ(dash::index(sub_lblock)[0],
@@ -178,11 +173,10 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
     for (int lsi = 0; lsi != sub_lblock.size(); lsi++) {
       int sub_elem   = sub_lblock[lsi];
-      DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView", sub_elem);
-    }
-    for (int lsi = 0; lsi != l_sub_lblock.size(); lsi++) {
       int l_sub_elem = l_sub_lblock[lsi];
+      DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView", sub_elem);
       DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView", l_sub_elem);
+      EXPECT_EQ(sub_elem, l_sub_elem);
     }
   }
   {
@@ -192,10 +186,10 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     int sub_end_gidx      = lblock_end_gidx;
 
     if (dash::myid() > 0) {
-      sub_begin_gidx -= 2;
+      sub_begin_gidx -= 3;
     }
     if (dash::myid() < dash::size() - 1) {
-      sub_end_gidx   += 2;
+      sub_end_gidx   += 3;
     }
 
     // View to global index range of local block:
