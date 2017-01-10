@@ -199,6 +199,10 @@ public:
     return _pattern;
   }
 
+  constexpr const index_set_domain_type & pre() const {
+    return this->domain();
+  }
+
   /*
    *  dash::index(r(10..100)).step(2)[8]  -> 26
    *  dash::index(r(10..100)).step(-5)[4] -> 80
@@ -263,6 +267,14 @@ local(
 }
 
 template <class ViewType>
+constexpr auto
+global(
+  const IndexSetSub<ViewType> & index_set
+) -> decltype(index_set.global()) {
+  return index_set.global();
+}
+
+template <class ViewType>
 class IndexSetSub
 : public IndexSetBase<
            IndexSetSub<ViewType>,
@@ -276,6 +288,7 @@ public:
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
+  typedef typename base_t::index_set_domain_type index_set_domain_type;
 
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -306,7 +319,7 @@ public:
   }
 
   constexpr const global_type & global() const {
-    return *this;
+    return dash::index(dash::global(this->view()));
   }
 
 private:
@@ -397,11 +410,73 @@ public:
 
 template <
   class ViewType >
+constexpr const IndexSetLocal<ViewType> &
+local(
+  const IndexSetGlobal<ViewType> & index_set) {
+  return index_set.local();
+}
+
+template <
+  class ViewType >
 constexpr const IndexSetGlobal<ViewType> &
 global(
   const IndexSetGlobal<ViewType> & index_set) {
   return index_set;
 }
+
+template <class ViewType>
+class IndexSetGlobal
+: public IndexSetBase<
+           IndexSetGlobal<ViewType>,
+           ViewType >
+{
+  typedef IndexSetGlobal<ViewType>                              self_t;
+  typedef IndexSetBase<self_t, ViewType>                        base_t;
+public:
+  typedef typename ViewType::index_type                     index_type;
+   
+  typedef IndexSetLocal<self_t>                             local_type;
+  typedef self_t                                           global_type;
+  typedef local_type                                     preimage_type;
+
+  typedef typename base_t::iterator                           iterator;
+  
+  typedef dash::local_index_t<index_type>             local_index_type;
+  typedef dash::global_index_t<index_type>           global_index_type;
+  
+  constexpr explicit IndexSetGlobal(const ViewType & view)
+  : base_t(view)
+  { }
+
+public:
+  constexpr local_index_type
+  operator[](global_index_type global_index) const {
+    return {
+             this->pattern().at(
+               global_index
+             )
+           };
+  }
+
+  inline index_type size() const {
+    return std::max<index_type>(
+             this->pattern().size(),
+             this->domain().size()
+           );
+  }
+
+  constexpr const local_type & local() const {
+    return local();
+  }
+
+  constexpr const global_type & global() const {
+    return *this;
+  }
+
+  constexpr const preimage_type & pre() const {
+    return dash::index(dash::local(this->view()));
+  }
+};
 
 } // namespace dash
 
