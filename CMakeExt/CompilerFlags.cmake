@@ -20,10 +20,10 @@
 set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
     PARENT_SCOPE)
 
-set(ENABLE_EFFCXX_COMPILER_WARNINGS ${ENABLE_EFFCXX_COMPILER_WARNINGS}
+set(ENABLE_EXTENDED_COMPILER_WARNINGS ${ENABLE_EXTENDED_COMPILER_WARNINGS}
     PARENT_SCOPE)
 
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
@@ -39,9 +39,6 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
-  # this flag causes warnings on DASH_ASSERT_RETURNS
-#  set (DASH_DEVELOPER_CXX_FLAGS
-#       "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
 
   # C++-only warning flags
 
@@ -50,7 +47,14 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
 
-  if (ENABLE_EFFCXX_COMPILER_WARNINGS)
+  if (ENABLE_EXTENDED_COMPILER_WARNINGS)
+    # this flag causes warnings on DASH_ASSERT_RETURNS
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
+    # this flag might help spot overflows in index computation but is too verbose in general
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wstrict-overflow=3")
+    # some good hints, but too style-related to be used in general
     set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++")
   endif()
