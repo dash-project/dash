@@ -31,6 +31,7 @@ struct view_traits
   typedef typename ViewT::image_type           image_type;
   typedef typename ViewT::origin_type         origin_type;
   typedef typename ViewT::local_type           local_type;
+  typedef typename ViewT::global_type         global_type;
 
   typedef std::integral_constant<bool, value> is_origin;
   typedef std::integral_constant<bool, value> is_view;
@@ -81,6 +82,8 @@ namespace detail {
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
     typedef ViewT                                                 image_type;
     typedef typename ViewT::index_type                            index_type;
+    typedef typename ViewT::local_type                            local_type;
+    typedef typename ViewT::global_type                          global_type;
     typedef typename ViewT::index_set_type                    index_set_type;
 
     typedef std::integral_constant<bool, false>                is_projection;
@@ -100,10 +103,12 @@ namespace detail {
    * Specialization of \c dash::view_traits for container types.
    */
   template <class ContainerT>
-  struct _view_traits< ContainerT, false > {
+  struct _view_traits<ContainerT, false> {
     typedef ContainerT                                           origin_type;
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
+    typedef ContainerT                                           global_type;
+    typedef typename ContainerT::local_type                       local_type;
     typedef typename ContainerT::index_type                       index_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 

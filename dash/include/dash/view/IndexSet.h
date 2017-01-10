@@ -73,7 +73,9 @@ index(const ContainerType & c) {
 
 namespace detail {
 
-template <class IndexSetType>
+template <
+  class IndexSetType,
+  int   BaseStride   = 1 >
 class IndexSetIterator {
   typedef IndexSetIterator<IndexSetType>        self_t;
   typedef typename IndexSetType::index_type index_type;
@@ -81,7 +83,7 @@ public:
   constexpr IndexSetIterator(
     const IndexSetType & index_set,
     index_type           position,
-    index_type           stride    = 1)
+    index_type           stride    = BaseStride)
   : _index_set(index_set), _pos(position), _stride(stride)
   { }
 
@@ -91,12 +93,32 @@ public:
               : _index_set[_pos-1] + 1;
   }
 
+  self_t & operator++() {
+    _pos += _stride;
+    return *this;
+  }
+
+  self_t & operator--() {
+    _pos -= _stride;
+    return *this;
+  }
+
   constexpr self_t operator++(int) const {
     return self_t(_index_set, _pos + _stride, _stride);
   }
 
   constexpr self_t operator--(int) const {
     return self_t(_index_set, _pos - _stride, _stride);
+  }
+
+  self_t & operator+=(int i) {
+    _pos += i * _stride;
+    return *this;
+  }
+
+  self_t & operator-=(int i) {
+    _pos -= i * _stride;
+    return *this;
   }
 
   constexpr self_t operator+(int i) const {
@@ -111,10 +133,18 @@ public:
     return _pos;
   }
 
+  constexpr bool operator==(const self_t & rhs) const {
+    return _pos == rhs._pos && _stride == rhs._stride;
+  }
+
+  constexpr bool operator!=(const self_t & rhs) const {
+    return not (*this == rhs);
+  }
+
 private:
   const IndexSetType & _index_set;
   index_type           _pos;
-  index_type           _stride;
+  index_type           _stride = BaseStride;
 };
 
 } // namespace detail
@@ -161,7 +191,7 @@ public:
     view_domain_type;
   typedef typename ViewType::local_type
     view_local_type;
-  typedef typename ViewType::global_type
+  typedef typename dash::view_traits<ViewType>::global_type
     view_global_type;
   typedef typename dash::view_traits<view_domain_type>::index_set_type
     index_set_domain_type;
@@ -288,7 +318,8 @@ public:
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-  typedef typename base_t::index_set_domain_type index_set_domain_type;
+//typedef typename base_t::index_set_domain_type index_set_domain_type;
+  typedef IndexSetSub<ViewType>                          preimage_type;
 
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -320,6 +351,14 @@ public:
 
   constexpr const global_type & global() const {
     return dash::index(dash::global(this->view()));
+  }
+
+  constexpr preimage_type pre() const {
+    return preimage_type(
+             this->view(),
+             -_domain_begin_idx,
+             -_domain_begin_idx + this->view().size()
+           );
   }
 
 private:
@@ -357,7 +396,7 @@ public:
   typedef typename ViewType::index_type                     index_type;
    
   typedef self_t                                            local_type;
-  typedef IndexSetGlobal<self_t>                           global_type;
+  typedef IndexSetGlobal<ViewType>                         global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -370,20 +409,18 @@ public:
   { }
 
 public:
-  constexpr global_index_type
-  operator[](local_index_type local_index) const {
-    return {
-             this->pattern().global(
-               local_index +
-               // actually only required if local of sub
-               this->pattern().at(
-                 std::max<index_type>(
-                   this->pattern().global(0),
-                   this->domain()[0]
-                 )
+  constexpr index_type
+  operator[](index_type local_index) const {
+    return this->pattern().global(
+             local_index +
+             // actually only required if local of sub
+             this->pattern().at(
+               std::max<index_type>(
+                 this->pattern().global(0),
+                 this->domain()[0]
                )
              )
-           };
+           );
   }
 
   inline index_type size() const {
@@ -397,12 +434,12 @@ public:
     return *this;
   }
 
-  constexpr const global_type & global() const {
-    return dash::index(dash::global(this->view()));
+  constexpr global_type global() const {
+    return global_type(this->view());
   }
 
-  constexpr const preimage_type & pre() const {
-    return global();
+  constexpr preimage_type pre() const {
+    return preimage_type(this->view());
   }
 };
 
@@ -449,13 +486,11 @@ public:
   { }
 
 public:
-  constexpr local_index_type
-  operator[](global_index_type global_index) const {
-    return {
-             this->pattern().at(
-               global_index
-             )
-           };
+  constexpr index_type
+  operator[](index_type global_index) const {
+    return this->pattern().at(
+             global_index
+           );
   }
 
   inline index_type size() const {

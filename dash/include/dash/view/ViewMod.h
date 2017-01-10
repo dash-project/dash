@@ -299,6 +299,9 @@ struct view_traits<ViewLocalMod<DomainType> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename domain_type::local_type                      image_type;
+  typedef ViewGlobalMod<DomainType>                             local_type;
+  typedef domain_type                                          global_type;
+
   typedef typename DomainType::index_type                       index_type;
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
 
@@ -337,34 +340,22 @@ public:
   { }
 
   inline auto begin() const
-  -> decltype(dash::begin(dash::local(dash::origin(dash::domain(*this))))) {
+  -> decltype(dash::begin(dash::local(dash::origin(*this)))) {
 
-    DASH_LOG_DEBUG_VAR(
-        "ViewLocalMod.begin",
-        dash::index(dash::local(dash::domain(*this)))[0]);
-    DASH_LOG_DEBUG_VAR(
-        "ViewLocalMod.begin",
-        dash::begin(dash::index(dash::local(dash::domain(*this)))).pos());
-    DASH_LOG_DEBUG_VAR(
-        "ViewLocalMod.begin",
-        dash::index(dash::domain(*this))[0]);
-    DASH_LOG_DEBUG_VAR(
-        "ViewLocalMod.begin",
-        dash::begin(dash::index(dash::domain(*this))).pos());
+    DASH_LOG_DEBUG(
+      "ViewLocalMod.begin",
+      "index(domain)[0]:",
+          dash::index(dash::domain(*this))[0],
+      "index(domain).pre[index(local(domain))[0]]:",
+          dash::index(dash::domain(*this)).pre()[
+            dash::index(dash::local(dash::domain(*this)))[0]
+          ],
+      "index(local(domain)).pre[index(domain)[0]]:",
+          dash::index(dash::local(dash::domain(*this))).pre()[
+            dash::index(dash::domain(*this))[0]
+          ]
+    );
 
-    return dash::begin(
-             dash::local(
-        //     dash::begin(
-                 dash::origin(
-                   *this
-                 )
-        //     ) + _index_set[0]
-             )
-           );
-  }
-
-  constexpr auto end() const
-  -> decltype(dash::end(dash::local(dash::origin(dash::domain(*this))))) {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -372,7 +363,29 @@ public:
                )
              )
            )
-           + *dash::end(dash::index(dash::domain(*this)));
+         + dash::index(dash::local(dash::domain(*this))).pre()[
+             dash::index(dash::domain(*this))[0]
+           ]
+         - dash::index(dash::domain(*this)).pre()[
+             dash::index(dash::local(dash::domain(*this)))[0]
+           ];
+  }
+
+  constexpr auto end() const
+  -> decltype(dash::end(dash::local(dash::origin(*this)))) {
+    return dash::begin(
+             dash::local(
+               dash::origin(
+                 *this
+               )
+             )
+           )
+         + dash::index(dash::local(dash::domain(*this))).pre()[
+             *dash::end(dash::index(dash::domain(*this)))
+           ]
+         - dash::index(dash::domain(*this)).pre()[
+             dash::index(dash::local(dash::domain(*this)))[0]
+           ];
   }
 
   constexpr auto operator[](int offset) const
@@ -420,6 +433,9 @@ struct view_traits<ViewGlobalMod<DomainType> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename domain_type::local_type                      image_type;
+  typedef typename domain_type::local_type                      local_type;
+  typedef ViewGlobalMod<DomainType>                            global_type;
+
   typedef typename DomainType::index_type                       index_type;
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
 
@@ -525,6 +541,9 @@ struct view_traits<ViewSubMod<DomainType, SubDim> > {
   typedef DomainType                                             domain_type;
   typedef typename dash::view_traits<domain_type>::origin_type   origin_type;
   typedef ViewSubMod<DomainType, SubDim>                          image_type;
+  typedef ViewSubMod<DomainType, SubDim>                          local_type;
+  typedef ViewSubMod<DomainType, SubDim>                         global_type;
+
   typedef typename DomainType::index_type                         index_type;
   typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
 
@@ -553,6 +572,7 @@ private:
 public:
   typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
   typedef ViewLocalMod<self_t>                                    local_type;
+  typedef self_t                                                 global_type;
 
   typedef std::integral_constant<bool, false>                       is_local;
 
