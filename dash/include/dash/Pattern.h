@@ -630,6 +630,26 @@ public:
 #include <dash/pattern/CSRPattern.h>
 #include <dash/pattern/LoadBalancePattern.h>
 
+#include <dash/Types.h>
+#include <dash/Distribution.h>
+
+namespace dash {
+
+/**
+ * Template alias for dash::Pattern with the same default template
+ * arguments
+ *
+ * \see BlockPattern
+ */
+template<
+  dim_t      NumDimensions,
+  MemArrange Arrangement   = ROW_MAJOR,
+  typename   IndexType     = dash::default_index_t
+>
+using Pattern = dash::BlockPattern<NumDimensions, Arrangement, IndexType>;
+
+} // namespace dash
+
 #include <dash/pattern/PatternIterator.h>
 #include <dash/pattern/PatternProperties.h>
 #include <dash/pattern/MakePattern.h>

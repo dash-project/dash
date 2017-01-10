@@ -34,7 +34,6 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Woverlength-strings")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -49,9 +48,11 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
 
   set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
 
+  set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
   if (ENABLE_EFFCXX_COMPILER_WARNINGS)
     set (DASH_DEVELOPER_CXX_FLAGS
-         "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy -Weffc++")
+         "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++")
   endif(ENABLE_EFFCXX_COMPILER_WARNINGS)
 
   set (DASH_DEVELOPER_CXX_FLAGS
@@ -67,14 +68,10 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
-#  set (DASH_DEVELOPER_CC_FLAGS
-#       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-definition")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
-#  set (DASH_DEVELOPER_CC_FLAGS
-#       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-prototypes")
 
 endif()
 
