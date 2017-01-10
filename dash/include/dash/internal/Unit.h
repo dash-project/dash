@@ -143,7 +143,7 @@ public:
    *                    -> guid: { id: 4 }
    *                  \endcode
    */
-  const unit_id<IdScope, DARTType> operator=(
+  const unit_id<IdScope, DARTType>& operator=(
     unit_id<IdScope, DARTType> uid) noexcept {
     this->id = uid.id;
     return *this;
@@ -167,7 +167,7 @@ public:
    *                  \endcode
    */
   template<unit_scope Scope, typename D>
-  const unit_id<IdScope, D> operator=(const unit_id<Scope, D> & id) = delete;
+  const unit_id<IdScope, D>& operator=(const unit_id<Scope, D> & id) = delete;
 
   /**
    * Assignment from a \c dart_unit_t.
@@ -191,7 +191,7 @@ public:
    *                    -> guid: { id: 4 }
    *                  \endcode
    */
-  const self_t operator=(dart_unit_t id) noexcept {
+  const self_t& operator=(dart_unit_t id) noexcept {
     this->id = id;
     return *this;
   }
@@ -210,7 +210,7 @@ public:
     typename T,
     typename std::enable_if<
                std::is_integral<T>::value, int >::type = 0>
-  const unit_id operator+=(T id) noexcept {
+  const unit_id& operator+=(T id) noexcept {
     this->id += id;
     return *this;
   }
@@ -228,7 +228,7 @@ public:
     typename T,
     typename std::enable_if<
                std::is_integral<T>::value, int >::type = 0>
-  const unit_id operator-=(T id) noexcept {
+  const unit_id& operator-=(T id) noexcept {
     this->id -= id;
     return *this;
   }
@@ -246,7 +246,7 @@ public:
     typename T,
     typename std::enable_if<
                std::is_integral<T>::value, int >::type = 0>
-  const unit_id operator*=(T id) noexcept {
+  const unit_id& operator*=(T id) noexcept {
     this->id *= id;
     return *this;
   }
@@ -264,7 +264,7 @@ public:
     typename T,
     typename std::enable_if<
                std::is_integral<T>::value, int >::type = 0>
-  const unit_id operator/=(T id) noexcept {
+  const unit_id& operator/=(T id) noexcept {
     this->id /= id;
     return *this;
   }
@@ -282,7 +282,7 @@ public:
     typename T,
     typename std::enable_if<
                std::is_integral<T>::value, int >::type = 0>
-  const unit_id operator%=(T id) noexcept {
+  const unit_id& operator%=(T id) noexcept {
     this->id %= id;
     return *this;
   }
@@ -298,7 +298,7 @@ public:
    * }
    * \endcode
    */
-  const unit_id operator++() noexcept {
+  const unit_id& operator++() noexcept {
     this->id++;
     return *this;
   }
@@ -314,7 +314,7 @@ public:
    * }
    * \endcode
    */
-  const unit_id operator--() noexcept {
+  const unit_id& operator--() noexcept {
     this->id--;
     return *this;
   }
