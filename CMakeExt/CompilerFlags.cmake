@@ -20,6 +20,9 @@
 set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
     PARENT_SCOPE)
 
+set(ENABLE_EFFCXX_COMPILER_WARNINGS ${ENABLE_EFFCXX_COMPILER_WARNINGS}
+    PARENT_SCOPE)
+
 if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
 
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -31,27 +34,31 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wredundant-decls -Woverlength-strings")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Woverlength-strings")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=5 -Wswitch")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wno-unused -Wtrigraphs")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
+  # this flag causes warnings on DASH_ASSERT_RETURNS
+#  set (DASH_DEVELOPER_CXX_FLAGS
+#       "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
 
   # C++-only warning flags
 
   set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
 
-  set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy -Weffc++")
+  if (ENABLE_EFFCXX_COMPILER_WARNINGS)
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy -Weffc++")
+  endif(ENABLE_EFFCXX_COMPILER_WARNINGS)
+
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
   set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -Wold-style-cast -Woverloaded-virtual")
-  set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
-
+       "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
+  
   # C-only warning flags
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
@@ -59,15 +66,15 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-prototypes -Wnested-externs")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-definition")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
+#  set (DASH_DEVELOPER_CC_FLAGS
+#       "${DASH_DEVELOPER_CC_FLAGS}  -Wold-style-definition")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-prototypes")
+#  set (DASH_DEVELOPER_CC_FLAGS
+#       "${DASH_DEVELOPER_CC_FLAGS}  -Wstrict-prototypes")
 
 endif()
 
@@ -164,12 +171,12 @@ set(CMAKE_CXX_FLAGS_RELEASE
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CC_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
   "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:
