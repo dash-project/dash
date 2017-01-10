@@ -339,7 +339,13 @@ public:
         dash::index(dash::local(dash::domain(*this)))[0]);
     DASH_LOG_DEBUG_VAR(
         "ViewLocalMod.begin",
+        dash::begin(dash::index(dash::local(dash::domain(*this)))).pos());
+    DASH_LOG_DEBUG_VAR(
+        "ViewLocalMod.begin",
         dash::index(dash::domain(*this))[0]);
+    DASH_LOG_DEBUG_VAR(
+        "ViewLocalMod.begin",
+        dash::begin(dash::index(dash::domain(*this))).pos());
 
     return dash::begin(
              // obtains container's local ref:

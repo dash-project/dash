@@ -117,7 +117,9 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   dash::Array<int> array(array_size);
 
   for (auto li = 0; li != array.local.size(); ++li) {
-    array.local[li] = (1000 * (dash::myid() + 1)) + li;
+    array.local[li] = (1000000 * (dash::myid() + 1)) +
+                      (10000   * li) +
+                      (dash::myid() * block_size) + li;
   }
 
   array.barrier();
