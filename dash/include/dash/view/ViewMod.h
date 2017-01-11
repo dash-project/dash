@@ -269,20 +269,10 @@ public:
     return _domain;
   }
 
-  constexpr index_type size() const {
-    return dash::distance(
-             dash::begin(this_view()),
-             dash::end(this_view()));
-  }
-  
-  constexpr bool empty() const {
-    return size() == 0;
-  }
-
 private:
-  constexpr const ViewModType & this_view() const {
-    return *static_cast<const ViewModType *>(this);
-  }
+//constexpr const ViewModType & this_view() const {
+//  return *static_cast<const ViewModType *>(this);
+//}
 
 protected:
   domain_type   & _domain;
@@ -365,6 +355,10 @@ public:
          + dash::index(dash::local(dash::domain(*this))).pre()[
              *dash::end(dash::index(dash::local(dash::domain(*this))))
            ];
+      // + *dash::end(dash::index(dash::local(dash::domain(*this))));
+      // + dash::index(dash::local(dash::domain(*this))).pre()[
+      //     *dash::end(dash::index(dash::local(dash::domain(*this))))
+      //   ];
   }
 
   constexpr auto operator[](int offset) const
@@ -583,6 +577,10 @@ public:
     return *(this->begin() + offset);
   }
 
+  constexpr index_type size() const {
+    return _index_set.size();
+  }
+
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -640,10 +638,6 @@ public:
   -> decltype(dash::begin(dash::domain(*this))) {
     return dash::begin(dash::domain(*this)) +
            *dash::end(dash::index(*this));
-  }
-
-  constexpr index_type size() const {
-    return _index_set.size();
   }
 
   constexpr const index_set_type & index_set() const {
