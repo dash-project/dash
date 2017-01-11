@@ -94,7 +94,6 @@ void mmult_local(
 /// Constraints on pattern partitioning properties of matrix operands passed
 /// to \c dash::summa.
 typedef dash::pattern_partitioning_properties<
-            dash::pattern_partitioning_tag::minimal,
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.

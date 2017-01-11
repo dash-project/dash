@@ -118,7 +118,7 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
   for (auto li = 0; li != array.local.size(); ++li) {
     array.local[li] = (1000000 * (dash::myid() + 1)) +
-                      (10000   * li) +
+                      (1000    * li) +
                       (dash::myid() * block_size) + li;
   }
 
@@ -321,6 +321,64 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                          sub_l_sub_elem);
       EXPECT_EQ(l_sub_elem, sub_l_sub_elem);
     }
+  }
+}
+
+TEST_F(ViewTest, ArrayBlockCyclicPatternLocalView)
+{
+  int block_size        = 3;
+  int nblocks_per_unit  = 2;
+  int array_size        = dash::size() * block_size * nblocks_per_unit;
+
+  dash::Array<double> array(array_size, dash::BLOCKCYCLIC(block_size));
+
+  for (auto li = 0; li != array.local.size(); ++li) {
+    array.local[li] = (100 * (dash::myid() + 1)) +
+                      (li) +
+                      ((dash::myid() * nblocks_per_unit * block_size)
+                       + li) *
+                      0.01;
+  }
+
+  array.barrier();
+
+  int sub_begin_gidx    = 2;
+  int sub_end_gidx      = array.size() - 2;
+
+  auto sub_range = dash::sub(sub_begin_gidx,
+                             sub_end_gidx,
+                             array);
+
+  if (dash::myid() == 0) {
+    for (int si = 0; si != sub_range.size(); si++) {
+      double sub_elem     = sub_range[si];
+      DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                         sub_elem);
+    }
+  }
+  array.barrier();
+
+  for (int si = 0; si != sub_range.size(); si++) {
+    double sub_elem = sub_range[si];
+    double arr_elem = array[si + sub_begin_gidx];
+    EXPECT_EQ(arr_elem, sub_elem);
+  }
+
+  auto lsub_range = dash::local(sub_range);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                     lsub_range.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                     dash::index(lsub_range).size());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                     *dash::begin(dash::index(lsub_range)));
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                     *dash::end(dash::index(lsub_range)));
+
+  for (int lsi = 0; lsi != lsub_range.size(); lsi++) {
+    double lsub_elem     = lsub_range[lsi];
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                       lsub_elem);
   }
 }
 

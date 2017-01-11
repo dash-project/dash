@@ -360,7 +360,10 @@ template<
   class    TeamSpecType
 >
 typename std::enable_if<
-  PartitioningTags::minimal &&
+  !MappingTags::diagonal &&
+  PartitioningTags::rectangular &&
+  PartitioningTags::balanced &&
+  !PartitioningTags::unbalanced &&
   LayoutTags::blocked,
   TilePattern<SizeSpecType::ndim(),
               dash::ROW_MAJOR,

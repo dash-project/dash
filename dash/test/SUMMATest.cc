@@ -84,8 +84,8 @@ TEST_F(SUMMATest, Deduction)
   // Plausibility check of single pattern traits:
   ASSERT_TRUE_U(
     dash::pattern_partitioning_traits<decltype(pattern)>::type::balanced);
-  ASSERT_TRUE_U(
-    dash::pattern_partitioning_traits<decltype(pattern)>::type::minimal);
+//ASSERT_TRUE_U(
+//  dash::pattern_partitioning_traits<decltype(pattern)>::type::minimal);
   ASSERT_TRUE_U(
     dash::pattern_mapping_traits<decltype(pattern)>::type::unbalanced);
   ASSERT_TRUE_U(

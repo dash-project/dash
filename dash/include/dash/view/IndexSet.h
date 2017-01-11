@@ -5,6 +5,9 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Local.h>
 
+#include <dash/pattern/PatternProperties.h>
+
+
 
 namespace dash {
 
@@ -400,6 +403,7 @@ public:
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
+  typedef typename base_t::pattern_type                   pattern_type;
   
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
@@ -424,10 +428,28 @@ public:
   }
 
   inline index_type size() const {
-    return std::min<index_type>(
-             this->pattern().local_size(),
-             this->domain().size()
-           );
+    typedef typename dash::pattern_partitioning_traits<pattern_type>::type
+            pat_partitioning_traits;
+
+    static_assert(
+        pat_partitioning_traits::rectangular,
+        "index sets for non-rectangular patterns are not supported yet");
+
+    return (
+        ( pat_partitioning_traits::minimal ||
+          this->pattern().blockspec().size()
+            <= this->pattern().team().size() )
+        // blocked (not blockcyclic) distribution: single local
+        // element space with contiguous global index range
+        ? std::min<index_type>(
+            this->pattern().local_size(),
+            this->domain().size()
+          )
+        // blockcyclic distribution: local element space chunked
+        // in global index range
+        : this->pattern().local_size() + // <-- TODO: intersection of local
+          this->domain().pre()[0]        //           blocks and domain
+    );
   }
 
   constexpr const local_type & local() const {

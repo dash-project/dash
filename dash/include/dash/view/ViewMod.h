@@ -352,6 +352,11 @@ public:
                )
              )
            )
+    // TODO: Using 
+    //
+    //   + _index_set.size()
+    //
+    //       ... instead should work here
          + dash::index(dash::local(dash::domain(*this))).pre()[
              *dash::end(dash::index(dash::local(dash::domain(*this))))-1
            ] + 1;
