@@ -4,7 +4,7 @@
 #include <dash/Types.h>
 #include <dash/Range.h>
 
-#include <dash/view/ViewMod.h>
+#include <dash/view/Sub.h>
 
 
 namespace dash {
@@ -30,8 +30,8 @@ intersect(
            ],
            va
          );
-};
+}
 
 } // namespace dash
 
-#endif DASH__VIEW__INTERSECT_H__INCLUDED
+#endif // DASH__VIEW__INTERSECT_H__INCLUDED

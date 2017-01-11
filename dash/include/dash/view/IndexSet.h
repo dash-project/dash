@@ -4,6 +4,7 @@
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Local.h>
+#include <dash/view/SetUnion.h>
 
 #include <dash/pattern/PatternProperties.h>
 
@@ -37,6 +38,14 @@ template <class IndexType>
 using global_index_t
   = dash::detail::scoped_index<IndexType, dash::detail::global_index>;
 
+
+// Forward-declarations
+
+template <class ViewTypeA, class ViewTypeB>
+constexpr ViewTypeA
+intersect(
+  const ViewTypeA & va,
+  const ViewTypeB & vb);
 
 template <class IndexSetType, class ViewType>
 class IndexSetBase;
@@ -427,7 +436,7 @@ public:
            );
   }
 
-  inline index_type size() const {
+  constexpr index_type size() const {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
 

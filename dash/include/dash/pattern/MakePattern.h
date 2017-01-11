@@ -75,8 +75,8 @@ make_team_spec(
   // number of blocks.
   // In this case, blocking will be minimal with respect to prefered blocking
   // factors:
-  if (n_nodes > 1 &&
-      (PartitioningTags::minimal ||
+  if (n_nodes > 1 && (
+      PartitioningTags::rectangular ||
        (!MappingTags::diagonal && !MappingTags::neighbor &&
         !MappingTags::multiple))) {
     // Optimize for surface-to-volume ratio:
@@ -103,7 +103,8 @@ make_team_spec(
                  "- team extent factors in dim 0:", team_factors_d0);
   DASH_LOG_TRACE("dash::make_team_spec",
                  "- team extent factors in dim 1:", team_factors_d1);
-  if (PartitioningTags::minimal && MappingTags::multiple) {
+  if (// PartitioningTags::minimal &&
+      MappingTags::multiple) {
     DASH_LOG_TRACE("dash::make_team_spec",
                    "optimizing for multiple blocks per unit");
     for (auto small_factor_kv : team_factors_d0) {
