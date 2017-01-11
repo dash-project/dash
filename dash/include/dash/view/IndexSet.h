@@ -229,6 +229,15 @@ public:
                     static_cast<const IndexSetType *>(this)->size());
   }
 
+  iterator begin() {
+    return iterator(*static_cast<IndexSetType *>(this), 0);
+  }
+
+  iterator end() {
+    return iterator(*static_cast<IndexSetType *>(this),
+                    static_cast<IndexSetType *>(this)->size());
+  }
+
   constexpr const ViewType & view() const {
     return _view;
   }
