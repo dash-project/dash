@@ -353,12 +353,8 @@ public:
              )
            )
          + dash::index(dash::local(dash::domain(*this))).pre()[
-             *dash::end(dash::index(dash::local(dash::domain(*this))))
-           ];
-      // + *dash::end(dash::index(dash::local(dash::domain(*this))));
-      // + dash::index(dash::local(dash::domain(*this))).pre()[
-      //     *dash::end(dash::index(dash::local(dash::domain(*this))))
-      //   ];
+             *dash::end(dash::index(dash::local(dash::domain(*this))))-1
+           ] + 1;
   }
 
   constexpr auto operator[](int offset) const
