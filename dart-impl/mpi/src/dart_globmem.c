@@ -8,6 +8,7 @@
  */
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/atomic.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -26,6 +27,7 @@
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <limits.h>
 
 MPI_Win dart_win_local_alloc;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -88,7 +90,7 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 
 dart_ret_t dart_gptr_incaddr(dart_gptr_t* gptr, int offs)
 {
-	gptr -> addr_or_offs.offset += offs;
+	gptr->addr_or_offs.offset += offs;
 	return DART_OK;
 }
 
@@ -149,6 +151,16 @@ dart_team_memalloc_aligned(
 	dart_team_size(teamid, &team_size);
 
 	char * sub_mem;
+
+	int16_t segid = DART_FETCH_AND_INC16(&dart_memid);
+
+	// check for overflow
+	if (segid < 0) {
+	  DART_LOG_ERROR(
+	      "Failed to allocate segment ID, too many segments already allocated?");
+	  DART_FETCH_AND_DEC16(&dart_memid);
+	  return DART_ERR_INVAL;
+	}
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -289,14 +301,14 @@ dart_team_memalloc_aligned(
 
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
-  /* Segid equals to dart_memid (always a positive integer), identifies an
+  /* Segid equals to dart_memid (always a positive integer), identifies a
    * unique collective global memory. */
-  gptr->segid = dart_memid;
+  gptr->segid = segid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
   /* \todo[JS] This operation is not thread-safe */
-  if (dart_segment_alloc(dart_memid, index) != DART_OK) {
+  if (dart_segment_alloc(gptr->segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
@@ -310,7 +322,7 @@ dart_team_memalloc_aligned(
   /* Updating the translation table of teamid with the created
    * (offset, win) infos */
   dart_segment_info_t item;
-  item.seg_id  = dart_memid;
+  item.seg_id  = segid;
   item.size    = nbytes;
   item.disp    = disp_set;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -327,8 +339,6 @@ dart_team_memalloc_aligned(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info_free(&win_info);
 #endif
-  /* \todo[JS] This operation is not thread-safe */
-	dart_memid++;
 
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
@@ -417,17 +427,26 @@ dart_team_memregister_aligned(
   dart_unit_t gptr_unitid = -1;
   dart_team_size(teamid, &size);
 
+  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
+  /* check for underflow */
+  if (segid >= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
+    DART_FETCH_AND_INC16(&dart_registermemid);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Win win;
   MPI_Comm comm;
   MPI_Aint disp;
   MPI_Aint * disp_set = (MPI_Aint *)malloc(size * sizeof(MPI_Aint));
   uint16_t index;
   int result = dart_adapt_teamlist_convert(teamid, &index);
-
   if (result == -1) {
     free(disp_set);
     return DART_ERR_INVAL;
   }
+
   comm = dart_team_data[index].comm;
   dart_unit_t localid = 0;
   if (index == 0) {
@@ -444,12 +463,12 @@ dart_team_memregister_aligned(
   MPI_Get_address((char *)addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
-  gptr->segid = dart_registermemid;
+  gptr->segid = segid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
   /* \todo[JS] This operation is not thread-safe */
-  if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
+  if (dart_segment_alloc(segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
         nbytes);
@@ -457,14 +476,13 @@ dart_team_memregister_aligned(
   }
 
   dart_segment_info_t item;
-  item.seg_id = dart_registermemid;
+  item.seg_id = segid;
   item.size = nbytes;
   item.disp = disp_set;
   item.win = MPI_WIN_NULL;
   item.baseptr = NULL;
   item.selfbaseptr = (char *)addr;
   dart_segment_add_info(&item);
-  dart_registermemid--;
 #if DART_ENABLE_LOGGING
   dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
@@ -489,6 +507,15 @@ dart_team_memregister(
   size_t nbytes     = nelem * dtype_size;
   dart_unit_t gptr_unitid = -1;
 	dart_team_size(teamid, &size);
+
+  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
+  /* check for underflow */
+  if (segid >= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
+    DART_FETCH_AND_INC16(&dart_registermemid);
+    return DART_ERR_INVAL;
+  }
 
 	MPI_Win    win;
 	MPI_Comm   comm;
@@ -523,12 +550,12 @@ dart_team_memregister(
   MPI_Get_address((char *)addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
-  gptr->segid = dart_registermemid;
+  gptr->segid = segid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
   /* \todo[JS] This operation is not thread-safe */
-  if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
+  if (dart_segment_alloc(segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
         nbytes);
@@ -536,14 +563,13 @@ dart_team_memregister(
   }
 
   dart_segment_info_t item;
-  item.seg_id = dart_registermemid;
+  item.seg_id = segid;
   item.size = nbytes;
   item.disp = disp_set;
   item.win = MPI_WIN_NULL;
   item.baseptr = NULL;
   item.selfbaseptr = (char *)addr;
   dart_segment_add_info(&item);
-  dart_registermemid--;
 
 #ifdef DART_ENABLE_LOGGING
   dart_team_unit_t unitid;
