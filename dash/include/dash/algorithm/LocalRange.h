@@ -1,10 +1,27 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGE_H__
 #define DASH__ALGORITHM__LOCAL_RANGE_H__
 
-#include <dash/iterator/GlobIter.h>
+#include <dash/view/IndexSet.h>
+#include <dash/view/ViewMod.h>
+#include <dash/view/Sub.h>
+
+#include <dash/Range.h>
+
 #include <dash/internal/Logging.h>
 
+
 namespace dash {
+
+template <
+  dim_t SubDim  = 0,
+  class DomainT,
+  class OffsetT >
+constexpr ViewSubMod<DomainT, SubDim>
+sub(
+    OffsetT         begin,
+    OffsetT         end,
+    const DomainT & domain);
+
 
 template<typename ElementType>
 struct LocalRange {
@@ -53,6 +70,23 @@ local_index_range(
   /// Iterator to the final position in the global sequence
   const GlobInputIter & last)
 {
+#ifdef __TODO__
+  typedef typename GlobInputIter::pattern_type::index_type idx_t;
+
+  auto range        = dash::make_range(first, last);
+  auto lrange       = dash::index(
+                        dash::local(
+                          dash::sub(     // < sub needed as temporary
+                            first.pos(), //   workaround as
+                            last.pos(),  //   index(local(container.local)
+                            range) ) );  //   is not defined in some cases
+
+  idx_t lrange_begin = lrange[0];
+  idx_t lrange_end   = lrange[lrange.size()-1]+1;
+
+  return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
+#endif
+
   typedef typename GlobInputIter::pattern_type pattern_t;
   typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
@@ -319,23 +353,6 @@ local_range(
   return LocalRange<value_t> {
            lbegin + lbegin_index,
            lbegin + lend_index };
-}
-
-/**
- * Convert global iterator referencing an element the active unit's
- * memory to a corresponding native pointer referencing the element.
- *
- * Precondition:  \c g_it  is local
- *
- */
-template<
-  typename ElementType,
-  class PatternType>
-ElementType * local(
-  /// Global iterator referencing element in local memory
-  const GlobIter<ElementType, PatternType> & g_it)
-{
-  return g_it.local();
 }
 
 } // namespace dash

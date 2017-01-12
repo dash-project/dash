@@ -70,7 +70,7 @@ sub(
 template <
   dim_t SubDim  = 0,
   class DomainT,
-  class OffsetT = typename DomainT::index_type >
+  class OffsetT >
 constexpr ViewSubMod<DomainT, SubDim>
 sub(
     OffsetT         begin,

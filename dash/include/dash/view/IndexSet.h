@@ -8,6 +8,7 @@
 
 #include <dash/pattern/PatternProperties.h>
 
+#include <dash/Iterator.h>
 
 
 namespace dash {
@@ -211,6 +212,13 @@ public:
     view_global_type;
   typedef typename dash::view_traits<view_domain_type>::index_set_type
     index_set_domain_type;
+// TODO:
+// typedef decltype(
+//           dash::index(
+//             dash::domain(std::declval<ViewType>())
+//           ))
+//   index_set_domain_type;
+
   typedef typename origin_type::pattern_type
     pattern_type;
   typedef typename dash::view_traits<view_local_type>::index_set_type

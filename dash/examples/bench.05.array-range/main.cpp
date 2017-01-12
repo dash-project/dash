@@ -72,15 +72,15 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-  tests.push_back({4          , 1000000});
-  tests.push_back({16         , 100000});
-  tests.push_back({64         , 100000});
-  tests.push_back({256        , 10000});
-  tests.push_back({1024       , 10000});
-  tests.push_back({4096       , 1000});
-  tests.push_back({4*4096     , 500});
-  tests.push_back({16*4096    , 100});
-  tests.push_back({64*4096    , 50});
+//tests.push_back({4          , 1000000});
+//tests.push_back({16         , 100000});
+//tests.push_back({64         , 100000});
+//tests.push_back({256        , 10000});
+//tests.push_back({1024       , 10000});
+//tests.push_back({4096       , 1000});
+  tests.push_back({4*4096     , 5000});
+  tests.push_back({16*4096    , 1000});
+  tests.push_back({64*4096    , 500});
 
   for (auto test: tests) {
     perform_test(test.first, test.second);
@@ -193,16 +193,16 @@ double test_view_gups(
   auto myid     = pattern.team().myid();
 
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto lidx = 1; lidx < a.lsize(); ++lidx) {
+    for (auto lidx = 0; lidx < a.lsize(); ++lidx) {
       auto lrange       = dash::index(
                             dash::local(
                               dash::sub(
                                 lbegin_gidx,
                                 lbegin_gidx + lidx,
                                 a) ) );
-      auto lrange_begin = *dash::begin(lrange);
-      auto lrange_end   = *dash::end(lrange);
-      if (false && lrange_begin > lrange_end) {
+      int lrange_begin = lrange[0];
+      int lrange_end   = lrange[lrange.size()-1]+1;
+      if (lrange_begin > lrange_end) {
         std::ostringstream os;
         os << "invalid range from view: (" << lrange_begin << ","
                                            << lrange_end   << ") "
@@ -241,8 +241,12 @@ double test_algo_gups(
                           );
       auto lrange_begin = lrange.begin;
       auto lrange_end   = lrange.end;
-      if (false && lrange_begin > lrange_end) {
-        throw std::runtime_error("invalid range from algo");
+      if (lrange_begin > lrange_end) {
+        std::ostringstream os;
+        os << "invalid range from algo: (" << lrange_begin << ","
+                                           << lrange_end   << ") "
+           << "for lidx:" << lidx << " lbegin_gidx:" << lbegin_gidx;
+        throw std::runtime_error(os.str());
       }
     }
   }

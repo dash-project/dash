@@ -21,6 +21,8 @@ namespace dash {
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
 #include <dash/TeamSpec.h>
+
+#include <dash/Iterator.h>
 #include <dash/View.h>
 #include <dash/Range.h>
 
@@ -28,8 +30,6 @@ namespace dash {
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
-
-#include <dash/Iterator.h>
 
 #include <dash/Onesided.h>
 
