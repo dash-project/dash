@@ -245,26 +245,27 @@ public:
   typedef typename view_traits<DomainType>::index_type            index_type;
 
 protected:
+  std::reference_wrapper<const DomainType> _domain;
+
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
   }
   const ViewModType & derived() const {
     return static_cast<const ViewModType &>(*this);
   }
-private:
-  std::reference_wrapper<const DomainType> _domain;
-protected:
-  ~ViewModBase()                         = default;
-public:
-  ViewModBase()                = delete;
-  ViewModBase(self_t &&)       = default;
-  ViewModBase(const self_t &)  = default;
-  self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
 
   constexpr explicit ViewModBase(const domain_type & domain)
   : _domain(domain)
   { }
+
+  ~ViewModBase()                     = default;
+
+public:
+  ViewModBase()                      = delete;
+  ViewModBase(self_t &&)             = default;
+  ViewModBase(const self_t &)        = default;
+  self_t & operator=(self_t &&)      = default;
+  self_t & operator=(const self_t &) = default;
 
   constexpr const domain_type & domain() const {
     return _domain.get();
@@ -400,7 +401,7 @@ public:
 */
 
   constexpr index_type size() const {
-    return _index_set.size();
+    return index_set().size();
   }
 
   constexpr const local_type & local() const {
@@ -419,8 +420,9 @@ public:
     return dash::global(dash::domain(*this));
   }
 
-  constexpr const index_set_type & index_set() const {
-    return _index_set;
+  constexpr const index_set_type index_set() const {
+    return index_set_type(*this);
+//  return _index_set;
   }
 
 private:

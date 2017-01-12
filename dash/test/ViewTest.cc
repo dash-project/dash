@@ -145,18 +145,30 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                  "array initialized");
 
   // View index sets:
-  auto l_begin_idx = array.pattern().global(0);
+  auto l_begin_gidx = array.pattern().global(0);
   auto l_idx_set   = dash::index(
                        dash::local(
                          dash::sub(
-                           l_begin_idx,
-                           l_begin_idx + block_size,
+                           l_begin_gidx,
+                           l_begin_gidx + block_size,
                            array)
                        )
                      );
 
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_begin_idx);
+                     l_begin_gidx);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.begin().pos());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.end().pos());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.end() - l_idx_set.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.size());
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set[0]);
 
   auto l_idx_set_begin = *dash::begin(l_idx_set);
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
@@ -167,12 +179,14 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                      l_idx_set_end);
 
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set.size());
+                     l_idx_set[0]);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.last());
 
 #if __TODO__
   // Fails for nunits = 1:
-  EXPECT_EQ(l_begin_idx,              l_idx_set_begin);
-  EXPECT_EQ(l_begin_idx + block_size, l_idx_set_end);
+  EXPECT_EQ(l_begin_gidx,              l_idx_set_begin);
+  EXPECT_EQ(l_begin_gidx + block_size, l_idx_set_end);
 #endif
 
   // Use case:

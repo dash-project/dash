@@ -15,10 +15,28 @@
  * \see DashIteratorConcept
  * \see \c dash::view_traits
  *
+ * Variables used in the following:
+ *
+ * - \c r instance of a range model type
+ * - \c o index type, representing element offsets in the range and their
+ *        distance
+ * - \c i iterator referencing elements in the range
+ *
+ * \par Types
+ *
+ * \par Expressions
+ *
+ * Expression               | Returns | Effect | Precondition | Postcondition
+ * ------------------------ | ------- | ------ | ------------ | -------------
+ * <tt>*dash::begin(r)</tt> |         |        |              | 
+ * <tt>r[o]</tt>            |         |        |              | 
+ *
  * \par Functions
  *
  * - \c dash::begin
  * - \c dash::end
+ * - \c dash::distance
+ * - \c dash::size
  *
  * \par Metafunctions
  *
@@ -48,6 +66,16 @@ template <class RangeType>
 constexpr auto end(const RangeType & range) -> decltype(range.end()) {
   return range.end();
 }
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
+constexpr auto
+size(const RangeType & r) -> decltype(r.size()) {
+  return r.size();
+}
+
 
 namespace detail {
 

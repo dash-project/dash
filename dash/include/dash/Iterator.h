@@ -23,10 +23,25 @@
  *
  * \see \c dash::view_traits
  *
+ * \par Types
+ *
  * \par Expressions
  *
+ * Expression               | Returns | Effect | Precondition | Postcondition
+ * ------------------------ | ------- | ------ | ------------ | -------------
+ *
+ * \par Metafunctions
+ *
+ * - \c dash::iterator_traits<I>
+ *
+ * \par Functions
+ *
  * - \c dash::index
+ *
+ * \par Functions in the Range concept
+ *
  * - \c dash::distance
+ * - \c dash::size
  *
  * \}
  */
