@@ -38,7 +38,7 @@ Team &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::team()
 {
-  return _refview._mat->_team;
+  return *(_refview._mat->_team);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -109,7 +109,7 @@ inline void
 MatrixRef<T, NumDim, CUR, PatternT>
 ::barrier() const
 {
-  _refview._mat->_team.barrier();
+  _refview._mat->_team->barrier();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>

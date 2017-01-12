@@ -20,8 +20,6 @@
 
 namespace dash {
 
-#ifndef DOXYGEN
-
 /**
  * Defines how a list of global indices is mapped to single units
  * within a Team.
@@ -40,7 +38,7 @@ template<
   MemArrange Arrangement   = ROW_MAJOR,
   typename   IndexType     = dash::default_index_t
 >
-class Pattern
+class BlockPattern
 {
 public:
   static constexpr char const * PatternName = "BlockPattern";
@@ -77,7 +75,7 @@ private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
   /// Fully specified type definition of self
-  typedef Pattern<NumDimensions, Arrangement, IndexType>
+  typedef BlockPattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
@@ -182,7 +180,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  Pattern(
+  BlockPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -249,7 +247,7 @@ public:
    *              TeamSpec<2>(dash::Team::All(), 1));
    * \endcode
    */
-  Pattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
@@ -326,7 +324,7 @@ public:
    *              TeamSpec<2>(dash::Team::All(), 1));
    * \endcode
    */
-  Pattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
@@ -367,7 +365,7 @@ public:
   /**
    * Copy constructor.
    */
-  Pattern(const self_t & other)
+  BlockPattern(const self_t & other)
   : _distspec(other._distspec),
     _team(other._team),
     _teamspec(other._teamspec),
@@ -392,8 +390,8 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  Pattern(self_t & other)
-  : Pattern(static_cast<const self_t &>(other))
+  BlockPattern(self_t & other)
+  : BlockPattern(static_cast<const self_t &>(other))
   { }
 
   /**
@@ -431,7 +429,7 @@ public:
   /**
    * Assignment operator.
    */
-  Pattern & operator=(const Pattern & other)
+  BlockPattern & operator=(const BlockPattern & other)
   {
     DASH_LOG_TRACE("BlockPattern.=(other)");
     if (this != &other) {
@@ -1605,7 +1603,5 @@ private:
 } // namespace dash
 
 #include <dash/pattern/BlockPattern1D.h>
-
-#endif // DOXYGEN
 
 #endif // DASH__BLOCK_PATTERN_H_

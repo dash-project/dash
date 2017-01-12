@@ -1133,7 +1133,7 @@ GlobOutputIt copy(
 // Other Specializations
 // =========================================================================
 
-#if DASH_EXPERIMENTAL
+#ifdef DASH_EXPERIMENTAL
 /*
  * Specialization of \c dash::copy as global-to-local blocking copy operation
  * returning an allocated range.

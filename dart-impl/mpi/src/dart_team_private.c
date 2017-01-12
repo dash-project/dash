@@ -183,3 +183,66 @@ int dart_adapt_teamlist_convert(
 		return -1;
 	}
 }
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
+{
+  int    i;
+  size_t n;
+  size_t      size;
+
+  dart_size(&size);
+
+  MPI_Comm sharedmem_comm;
+  MPI_Group sharedmem_group, group_all;
+  MPI_Comm_split_type(
+    team_data->comm,
+    MPI_COMM_TYPE_SHARED,
+    1,
+    MPI_INFO_NULL,
+    &sharedmem_comm);
+  team_data->sharedmem_comm = sharedmem_comm;
+
+  if (sharedmem_comm != MPI_COMM_NULL) {
+    MPI_Comm_size(
+      sharedmem_comm,
+        &(team_data->sharedmem_nodesize));
+
+  // dart_unit_mapping[index] = (int*)malloc (
+  // dart_sharedmem_size[index] * sizeof (int));
+
+    MPI_Comm_group(sharedmem_comm, &sharedmem_group);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
+
+    int * dart_unit_mapping = malloc(
+        team_data->sharedmem_nodesize * sizeof(int));
+    int * sharedmem_ranks = malloc(
+        team_data->sharedmem_nodesize * sizeof(int));
+    team_data->sharedmem_tab = malloc(size * sizeof(int));
+
+    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+      sharedmem_ranks[i] = i;
+    }
+
+  // MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index],
+  //     sharedmem_ranks, group_all, dart_unit_mapping[index]);
+    MPI_Group_translate_ranks(
+      sharedmem_group,
+      team_data->sharedmem_nodesize,
+      sharedmem_ranks,
+      group_all,
+      dart_unit_mapping);
+
+    for (n = 0; n < size; n++) {
+      team_data->sharedmem_tab[n] = DART_UNDEFINED_TEAM_UNIT_ID;
+    }
+    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+      team_data->sharedmem_tab[dart_unit_mapping[i]] = DART_TEAM_UNIT_ID(i);
+    }
+    free(sharedmem_ranks);
+    free(dart_unit_mapping);
+  }
+
+  return DART_OK;
+}
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
