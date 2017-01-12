@@ -63,6 +63,7 @@ dart_mutex_trylock(dart_mutex_t *mutex)
 }
 
 
+static inline
 dart_ret_t
 dart_mutex_destroy(dart_mutex_t *mutex)
 {
