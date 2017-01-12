@@ -136,12 +136,12 @@ void perform_test(
       dash::TILE(ELEM_PER_UNIT))
   );
 
-  double t_view = test_view_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
-  double t_algo = test_algo_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
-
   dash::barrier();
 
   if (dash::myid() == 0) {
+    double t_view = test_view_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
+    double t_algo = test_algo_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
+
     double gups_view = gups(num_units, t_view, ELEM_PER_UNIT, REPEAT);
     double gups_algo = gups(num_units, t_algo, ELEM_PER_UNIT, REPEAT);
 

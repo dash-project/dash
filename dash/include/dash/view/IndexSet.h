@@ -66,18 +66,17 @@ class IndexSetSub;
 
 
 template <class ViewType>
-typename std::enable_if <
-  dash::view_traits<ViewType>::is_view::value,
-  const typename ViewType::index_set_type &
->::type
-index(const ViewType & v) {
+auto index(const ViewType & v)
+-> typename std::enable_if<
+     dash::view_traits<ViewType>::is_view::value,
+     decltype(v.index_set())
+   >::type {
   return v.index_set();
 }
 
 template <class ContainerType>
 constexpr
 typename std::enable_if <
-//  !dash::view_traits<ContainerType>::is_view::value,
   dash::view_traits<ContainerType>::is_origin::value,
   IndexSetIdentity<ContainerType>
 >::type
@@ -330,16 +329,14 @@ public:
 
 template <class ViewType>
 constexpr auto
-local(
-  const IndexSetSub<ViewType> & index_set
+local(const IndexSetSub<ViewType> & index_set
 ) -> decltype(index_set.local()) {
   return index_set.local();
 }
 
 template <class ViewType>
 constexpr auto
-global(
-  const IndexSetSub<ViewType> & index_set
+global(const IndexSetSub<ViewType> & index_set
 ) -> decltype(index_set.global()) {
   return index_set.global();
 }
@@ -410,19 +407,16 @@ private:
 
 // -----------------------------------------------------------------------
 
-template <
-  class ViewType >
+template <class ViewType>
 constexpr const IndexSetLocal<ViewType> &
-local(
-  const IndexSetLocal<ViewType> & index_set) {
+local(const IndexSetLocal<ViewType> & index_set) {
   return index_set;
 }
 
-template <
-  class ViewType >
-constexpr const IndexSetGlobal<ViewType> &
-global(
-  const IndexSetLocal<ViewType> & index_set) {
+template <class ViewType>
+constexpr auto
+global(const IndexSetLocal<ViewType> & index_set)
+-> decltype(index_set.global()) {
   return index_set.global();
 }
 
@@ -507,19 +501,16 @@ public:
 
 // -----------------------------------------------------------------------
 
-template <
-  class ViewType >
-constexpr const IndexSetLocal<ViewType> &
-local(
-  const IndexSetGlobal<ViewType> & index_set) {
+template <class ViewType>
+constexpr auto
+local(const IndexSetGlobal<ViewType> & index_set)
+-> decltype(index_set.local()) {
   return index_set.local();
 }
 
-template <
-  class ViewType >
+template <class ViewType>
 constexpr const IndexSetGlobal<ViewType> &
-global(
-  const IndexSetGlobal<ViewType> & index_set) {
+global(const IndexSetGlobal<ViewType> & index_set) {
   return index_set;
 }
 

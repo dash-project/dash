@@ -144,17 +144,17 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
   // View index sets:
   auto l_begin_idx = array.pattern().global(0) + 2;
-  auto l_idx_set   = // dash::index(
+  auto l_idx_set   = dash::index(
                        dash::local(
                          dash::sub(
                            l_begin_idx,
                            l_begin_idx + block_size - 5,
                            array)
-                     //  )
-                       );
+                       )
+                     );
 
-  auto l_idx_set_begin = *dash::begin(dash::index(l_idx_set));
-  auto l_idx_set_end   = *dash::end(dash::index(l_idx_set));
+  auto l_idx_set_begin = *dash::begin(l_idx_set);
+  auto l_idx_set_end   = *dash::end(l_idx_set);
 
 #if __TODO__
   // Fails for nunits = 1:

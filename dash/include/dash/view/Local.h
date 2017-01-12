@@ -13,12 +13,12 @@ namespace dash {
  * \concept{DashViewConcept}
  */
 template <class ViewType>
-constexpr
-typename std::enable_if<
-  dash::view_traits<ViewType>::is_view::value,
-  const typename ViewType::local_type &
->::type
-local(const ViewType & v) {
+constexpr auto
+local(const ViewType & v)
+-> typename std::enable_if<
+     dash::view_traits<ViewType>::is_view::value,
+     decltype(v.local())
+   >::type {
   return v.local();
 }
 

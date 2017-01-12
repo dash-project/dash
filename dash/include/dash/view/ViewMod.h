@@ -559,8 +559,8 @@ public:
     index_type         begin,
     index_type         end)
   : base_t(domain),
-    _index_set(*this, begin, end),
-    _local(*this)
+    _index_set(*this, begin, end)
+   ,_local(*this)
   { }
 
   constexpr auto begin() const
@@ -588,6 +588,7 @@ public:
     return _index_set;
   }
 
+#if 1
   constexpr const local_type & local() const {
     return _local;
   }
@@ -595,6 +596,11 @@ public:
   inline local_type & local() {
     return _local;
   }
+#else
+  constexpr local_type local() const {
+    return local_type(*this);
+  }
+#endif
 
 private:
   index_set_type  _index_set;

@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
                               << static_cast<int>(*i) << '\n';
     }
 
-    auto & lsub    = dash::local(v_sub);
+    auto lsub    = dash::local(v_sub);
 
     auto lsub_b    = dash::begin(lsub);
     auto lsub_e    = dash::end(lsub);
