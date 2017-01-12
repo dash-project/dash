@@ -1,0 +1,16 @@
+
+
+set(ENABLE_MULTITHREADING ${ENABLE_MULTITHREADING}
+    PARENT_SCOPE)
+
+if (ENABLE_MULTITHREADING)
+
+    # Find support for pthreads
+    find_package(Threads REQUIRED)
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -pthread -DDART_ENABLE_THREADING -DHAVE_PTHREADS")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -pthread -DDART_ENABLE_THREADING -DHAVE_PTHREADS")
+    set(CMAKE_EXE_LINKER_FLAGS
+        "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+endif()
