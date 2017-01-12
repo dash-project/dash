@@ -307,7 +307,6 @@ dart_team_memalloc_aligned(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(gptr->segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
@@ -405,7 +404,6 @@ dart_ret_t dart_team_memfree(
                  unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
-  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
@@ -467,7 +465,6 @@ dart_team_memregister_aligned(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
@@ -554,7 +551,6 @@ dart_team_memregister(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(segid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
@@ -604,7 +600,7 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
   MPI_Win_detach(win, sub_mem);
-  /* \todo[JS] This operation is not thread-safe */
+
   if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
