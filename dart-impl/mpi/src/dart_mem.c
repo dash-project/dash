@@ -28,6 +28,10 @@ struct dart_buddy {
   uint8_t tree[1];
 };
 
+/* Help to do memory management work for local allocation/free */
+char* dart_mempool_localalloc;
+struct dart_buddy  *  dart_localpool;
+
 struct dart_buddy *
 	dart_buddy_new(int level)
 {

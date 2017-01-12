@@ -27,11 +27,11 @@
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-#include <limits.h>
 
 MPI_Win dart_win_local_alloc;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 MPI_Win dart_sharedmem_win_local_alloc;
+char** dart_sharedmem_local_baseptr_set;
 #endif
 
 /**
