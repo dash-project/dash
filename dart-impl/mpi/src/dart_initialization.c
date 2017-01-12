@@ -212,8 +212,12 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
     int thread_required = MPI_THREAD_MULTIPLE;
-    int thread_provided;
+    int thread_provided = MPI_THREAD_SINGLE;
+#ifdef DART_ENABLE_THREADING
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
+#else
+    MPI_Init(argc, argv);
+#endif
     *provided = (thread_provided == MPI_THREAD_MULTIPLE) ? DART_THREAD_MULTIPLE : DART_THREAD_SINGLE;
   }
 
