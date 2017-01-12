@@ -87,18 +87,14 @@ namespace detail {
   template <class ViewT>
   struct _view_traits<ViewT, true, true>
   {
-    typedef typename ViewT::domain_type                          domain_type;
-    typedef typename dash::view_traits<domain_type>::origin_type origin_type;
-    typedef ViewT                                                 image_type;
-    typedef typename ViewT::index_type                            index_type;
-    typedef typename ViewT::local_type                            local_type;
-    typedef typename ViewT::global_type                          global_type;
-    typedef typename ViewT::index_set_type                    index_set_type;
-
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
     /// Whether the view is the origin domain.
     typedef std::integral_constant<bool, false>                is_origin;
+
+    typedef typename ViewT::index_type                            index_type;
+    typedef typename ViewT::index_set_type                    index_set_type;
+    typedef typename ViewT::domain_type                          domain_type;
     typedef std::integral_constant<bool,
       // either view type is local:
       ViewT::is_local::value ||
@@ -107,6 +103,13 @@ namespace detail {
                    dash::is_view<domain_type>::value,
                    dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
+
+    typedef typename ViewT::local_type                            local_type;
+    typedef typename ViewT::global_type                          global_type;
+    typedef typename std::conditional<is_local::value,
+                                      local_type,
+                                      global_type >::type         image_type;
+    typedef typename dash::view_traits<domain_type>::origin_type origin_type;
   };
 
   /**

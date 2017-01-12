@@ -141,20 +141,33 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   }
 
   array.barrier();
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
+                 "array initialized");
 
   // View index sets:
-  auto l_begin_idx = array.pattern().global(0) + 2;
+  auto l_begin_idx = array.pattern().global(0);
   auto l_idx_set   = dash::index(
                        dash::local(
                          dash::sub(
                            l_begin_idx,
-                           l_begin_idx + block_size - 5,
+                           l_begin_idx + block_size,
                            array)
                        )
                      );
 
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_begin_idx);
+
   auto l_idx_set_begin = *dash::begin(l_idx_set);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set_begin);
+
   auto l_idx_set_end   = *dash::end(l_idx_set);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set_end);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set.size());
 
 #if __TODO__
   // Fails for nunits = 1:

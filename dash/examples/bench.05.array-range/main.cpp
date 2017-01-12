@@ -199,8 +199,8 @@ double test_view_gups(
       auto lrange       = dash::index(
                             dash::local(
                               dash::sub(
-                                lbegin_gidx,
-                                lbegin_gidx + lidx,
+                                1, // lbegin_gidx,
+                                3, // lbegin_gidx + lidx,
                                 a) ) );
       int lrange_begin = lrange[0];
       int lrange_end   = lrange[lrange.size()-1]+1;

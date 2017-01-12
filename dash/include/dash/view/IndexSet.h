@@ -11,6 +11,7 @@
 #include <dash/Iterator.h>
 
 
+#ifndef DOXYGEN
 namespace dash {
 
 namespace detail {
@@ -91,9 +92,15 @@ template <
   class IndexSetType,
   int   BaseStride   = 1 >
 class IndexSetIterator {
-  typedef IndexSetIterator<IndexSetType>        self_t;
-  typedef typename IndexSetType::index_type index_type;
+  typedef IndexSetIterator<IndexSetType, BaseStride>   self_t;
+  typedef typename IndexSetType::index_type        index_type;
 public:
+  constexpr IndexSetIterator()                 = delete;
+  constexpr IndexSetIterator(self_t &&)        = default;
+  constexpr IndexSetIterator(const self_t &)   = default;
+  ~IndexSetIterator()                = default;
+  self_t & operator=(self_t &&)      = default;
+  self_t & operator=(const self_t &) = default;
 
   constexpr IndexSetIterator(
     const IndexSetType & index_set,
@@ -103,6 +110,12 @@ public:
   { }
 
   constexpr index_type operator*() const {
+    return _pos < _index_set->size()
+              ? (*_index_set)[_pos]
+              : (*_index_set)[_pos-1] + 1;
+  }
+
+  constexpr index_type operator->() const {
     return _pos < _index_set->size()
               ? (*_index_set)[_pos]
               : (*_index_set)[_pos-1] + 1;
@@ -219,12 +232,6 @@ public:
     view_global_type;
   typedef typename dash::view_traits<view_domain_type>::index_set_type
     index_set_domain_type;
-// TODO:
-// typedef decltype(
-//           dash::index(
-//             dash::domain(std::declval<ViewType>())
-//           ))
-//   index_set_domain_type;
 
   typedef typename origin_type::pattern_type
     pattern_type;
@@ -235,41 +242,66 @@ public:
 public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
+protected:
+  IndexSetType & derived() {
+    return static_cast<IndexSetType &>(*this);
+  }
+  const IndexSetType & derived() const {
+    return static_cast<const IndexSetType &>(*this);
+  }
+private:
+  std::reference_wrapper<const ViewType>        _view;
+//std::reference_wrapper<const pattern_type>    _pattern;
+//std::reference_wrapper<index_set_domain_type> _domain;
+protected:
+  ~IndexSetBase()                        = default;
+public:
+  constexpr IndexSetBase()               = delete;
+  constexpr IndexSetBase(self_t &&)      = default;
+  constexpr IndexSetBase(const self_t &) = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
+
+public:
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(&view)
-  , _pattern(&(dash::origin(view).pattern()))
+  : _view(view)
+//, _pattern(dash::origin(view).pattern())
 //, _domain(dash::index(dash::domain(view)))
   { }
+  
+//ViewType & view() {
+//  return _view.get();
+//}
+  constexpr const ViewType & view() const {
+    return _view.get();
+  }
 
   constexpr iterator begin() const {
-    return iterator(*static_cast<const IndexSetType *>(this), 0);
+    return iterator(derived(), 0);
   }
 
   constexpr iterator end() const {
-    return iterator(*static_cast<const IndexSetType *>(this),
-                    static_cast<const IndexSetType *>(this)->size());
+    return iterator(derived(), derived().size());
   }
 
   iterator begin() {
-    return iterator(*static_cast<IndexSetType *>(this), 0);
+    return iterator(derived(), 0);
   }
 
   iterator end() {
-    return iterator(*static_cast<IndexSetType *>(this),
-                    static_cast<IndexSetType *>(this)->size());
-  }
-
-  constexpr const ViewType & view() const {
-    return *_view;
+    return iterator(derived(), derived().size());
   }
 
   constexpr index_set_domain_type domain() const {
 //  return _domain;
-    return dash::index(dash::domain(*_view));
+    return dash::index(dash::domain(derived().view()));
+//  return dash::index(dash::domain(derived().view()));
   }
 
   constexpr const pattern_type & pattern() const {
-    return *_pattern;
+//  return _pattern.get();
+//  return (dash::origin(view()).pattern());
+    return dash::origin(derived().view()).pattern();
   }
 
   /*
@@ -279,16 +311,10 @@ public:
   constexpr iterator step(index_type stride) const {
     return (
       stride > 0
-        ? iterator(*static_cast<const IndexSetType *>(this), 0, stride)
-        : iterator(*static_cast<const IndexSetType *>(this),
-                   static_cast<const IndexSetType *>(this)->size(), stride)
+        ? iterator(derived(),                0, stride)
+        : iterator(derived(), derived().size(), stride)
     );
   }
-
-protected:
-  const ViewType     * _view    = nullptr;
-  const pattern_type * _pattern = nullptr;
-//const index_set_domain_type & _domain;
 };
 
 // -----------------------------------------------------------------------
@@ -307,10 +333,17 @@ class IndexSetIdentity
            IndexSetIdentity<ViewType>,
            ViewType >
 {
-  typedef IndexSetIdentity<ViewType>                            self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetIdentity<ViewType>            self_t;
+  typedef IndexSetBase<self_t, ViewType>        base_t;
 public:
-  typedef typename ViewType::index_type                     index_type;
+  constexpr IndexSetIdentity()               = delete;
+  constexpr IndexSetIdentity(self_t &&)      = default;
+  constexpr IndexSetIdentity(const self_t &) = default;
+  ~IndexSetIdentity()                        = default;
+  self_t & operator=(self_t &&)              = default;
+  self_t & operator=(const self_t &)         = default;
+public:
+  typedef typename ViewType::index_type     index_type;
 
   constexpr explicit IndexSetIdentity(const ViewType & view)
   : base_t(view)
@@ -359,7 +392,14 @@ public:
   typedef IndexSetSub<ViewType>                          preimage_type;
 
 public:
+  constexpr IndexSetSub()               = delete;
+  constexpr IndexSetSub(self_t &&)      = default;
+  constexpr IndexSetSub(const self_t &) = default;
+  ~IndexSetSub()                        = default;
+  self_t & operator=(self_t &&)         = default;
+  self_t & operator=(const self_t &)    = default;
 
+public:
   constexpr IndexSetSub(
     const ViewType   & view,
     index_type         begin,
@@ -442,7 +482,14 @@ public:
   typedef dash::global_index_t<index_type>           global_index_type;
   
 public:
+  constexpr IndexSetLocal()               = delete;
+  constexpr IndexSetLocal(self_t &&)      = default;
+  constexpr IndexSetLocal(const self_t &) = default;
+  ~IndexSetLocal()                        = default;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
+public:
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
   { }
@@ -470,19 +517,19 @@ public:
         "index sets for non-rectangular patterns are not supported yet");
 
     return (
-        ( pat_partitioning_traits::minimal ||
-          this->pattern().blockspec().size()
-            <= this->pattern().team().size() )
-        // blocked (not blockcyclic) distribution: single local
-        // element space with contiguous global index range
-        ? std::min<index_type>(
-            this->pattern().local_size(),
-            this->domain().size()
-          )
-        // blockcyclic distribution: local element space chunked
-        // in global index range
-        : this->pattern().local_size() + // <-- TODO: intersection of local
-          this->domain().pre()[0]        //           blocks and domain
+      //pat_partitioning_traits::minimal ||
+        this->pattern().blockspec().size()
+          <= this->pattern().team().size()
+      // blocked (not blockcyclic) distribution: single local
+      // element space with contiguous global index range
+      ? std::min<index_type>(
+          this->pattern().local_size(),
+          this->domain().size()
+        )
+      // blockcyclic distribution: local element space chunked
+      // in global index range
+      : this->pattern().local_size() + // <-- TODO: intersection of local
+        this->domain().pre()[0]        //           blocks and domain
     );
   }
 
@@ -535,6 +582,13 @@ public:
   typedef dash::global_index_t<index_type>           global_index_type;
   
 public:
+  constexpr IndexSetGlobal()               = delete;
+  constexpr IndexSetGlobal(self_t &&)      = default;
+  constexpr IndexSetGlobal(const self_t &) = default;
+  ~IndexSetGlobal()                        = default;
+  self_t & operator=(self_t &&)            = default;
+  self_t & operator=(const self_t &)       = default;
+public:
 
   constexpr explicit IndexSetGlobal(const ViewType & view)
   : base_t(view)
@@ -568,5 +622,6 @@ public:
 };
 
 } // namespace dash
+#endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_SET_H__INCLUDED

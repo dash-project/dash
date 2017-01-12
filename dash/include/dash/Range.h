@@ -144,16 +144,26 @@ public:
 template <class RangeType>
 struct is_range : dash::detail::_is_range_type<RangeType> { };
 
-template <class Iterator, class Sentinel = Iterator>
+template <class RangeType, class Iterator, class Sentinel = Iterator>
 class RangeBase {
 public:
   typedef Iterator iterator;
   typedef Sentinel sentinel;
   typedef typename Iterator::index_type index_type;
+protected:
+  RangeType & derived() {
+    return static_cast<RangeType &>(*this);
+  }
+  const RangeType & derived() const {
+    return static_cast<const RangeType &>(*this);
+  }
 };
 
 template <class Iterator, class Sentinel = Iterator>
-class IteratorRange : public RangeBase<Iterator, Sentinel> {
+class IteratorRange
+: public RangeBase< IteratorRange<Iterator, Sentinel>,
+                    Iterator, Sentinel >
+{
   Iterator _begin;
   Sentinel _end;
 

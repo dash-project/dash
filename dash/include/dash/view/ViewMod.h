@@ -19,8 +19,6 @@ namespace dash {
 
 } // namespace dash
 
-#ifndef DOXYGEN
-
 /* TODO: Eventually, these probably are not public definitions.
  *       Move to namespace internal.
  *
@@ -117,6 +115,7 @@ namespace dash {
  */
 
 
+#ifndef DOXYGEN
 namespace dash {
 
 // --------------------------------------------------------------------
@@ -140,6 +139,12 @@ public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
+  ViewOrigin()               = delete;
+  ViewOrigin(self_t &&)      = default;
+  ViewOrigin(const self_t &) = default;
+  ~ViewOrigin()                        = default;
+  self_t & operator=(self_t &&)        = default;
+  self_t & operator=(const self_t &)   = default;
 
   constexpr explicit ViewOrigin(
       std::initializer_list<index_type> extents)
@@ -239,41 +244,51 @@ public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
 
-  constexpr explicit ViewModBase(
-    const domain_type & dom)
-  : _domain(&dom)
+protected:
+  ViewModType & derived() {
+    return static_cast<ViewModType &>(*this);
+  }
+  const ViewModType & derived() const {
+    return static_cast<const ViewModType &>(*this);
+  }
+private:
+  std::reference_wrapper<const DomainType> _domain;
+protected:
+  ~ViewModBase()                         = default;
+public:
+  ViewModBase()                = delete;
+  ViewModBase(self_t &&)       = default;
+  ViewModBase(const self_t &)  = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
+
+  constexpr explicit ViewModBase(const domain_type & domain)
+  : _domain(domain)
   { }
 
+  constexpr const domain_type & domain() const {
+    return _domain.get();
+  }
+
   constexpr bool operator==(const ViewModType & rhs) const {
-    return (static_cast<const ViewModType *>(this) == &rhs ||
-            // Note: testing _domain for identity (identical address)
-            //       instead of equality (identical value)
-            this->_domain == rhs._domain);
+    return &derived() == &rhs;
   }
   
   constexpr bool operator!=(const ViewModType & rhs) const {
-    return !(*(static_cast<const ViewModType *>(this) == rhs));
+    return !(derived() == rhs);
+  }
+
+  constexpr auto operator[](int offset) const ->
+//  decltype(*(derived().begin() + offset)) {   <-- odr use of incomplete
+//  typename view_traits<ViewModType>::origin_type {
+//           ::value_type {
+    typename view_traits<ViewModType>::origin_type::value_type {
+    return *(derived().begin() + offset);
   }
 
   constexpr bool is_local() const {
     return view_traits<ViewModType>::is_local::value;
   }
-
-  constexpr const domain_type & domain() const {
-    return *_domain;
-  }
-
-  inline domain_type & domain() {
-    return *_domain;
-  }
-
-private:
-//constexpr const ViewModType & this_view() const {
-//  return *static_cast<const ViewModType *>(this);
-//}
-
-protected:
-  const domain_type * _domain = nullptr;
 };
 
 
@@ -318,6 +333,14 @@ public:
   typedef typename domain_type::global_type                    global_type;
 
   typedef std::integral_constant<bool, true>                      is_local;
+
+public:
+  ViewLocalMod()               = delete;
+  ViewLocalMod(self_t &&)      = default;
+  ViewLocalMod(const self_t &) = default;
+  ~ViewLocalMod()                        = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
 
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
@@ -364,15 +387,17 @@ public:
     //
     //       ... instead should work here
          + dash::index(dash::local(dash::domain(*this))).pre()[
-             *dash::end(dash::index(dash::local(dash::domain(*this))))-1
+             (*dash::end(dash::index(dash::local(dash::domain(*this)))))-1
            ] + 1;
   }
 
+/*
   constexpr auto operator[](int offset) const
   -> decltype(*(dash::begin(
-                 dash::local(dash::origin(dash::domain(*this)))))) {
+                dash::local(dash::origin(dash::domain(*this)))))) {
     return *(this->begin() + offset);
   }
+*/
 
   constexpr index_type size() const {
     return _index_set.size();
@@ -436,7 +461,7 @@ public:
   typedef typename domain_type::global_type                     image_type;
   typedef typename DomainType::index_type                       index_type;
 private:
-  typedef ViewLocalMod<DomainType>                                  self_t;
+  typedef ViewGlobalMod<DomainType>                                 self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
 public:
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
@@ -444,6 +469,14 @@ public:
   typedef typename domain_type::local_type                      local_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
+
+public:
+  ViewGlobalMod()               = delete;
+  ViewGlobalMod(self_t &&)      = default;
+  ViewGlobalMod(const self_t &) = default;
+  ~ViewGlobalMod()                        = default;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
   constexpr explicit ViewGlobalMod(
     const DomainType & domain)
@@ -554,13 +587,25 @@ public:
 
   typedef std::integral_constant<bool, false>                       is_local;
 
+private:
+  index_set_type _index_set;
+//local_type     _local;
+
+public:
+  ViewSubMod()               = delete;
+  ViewSubMod(self_t &&)      = default;
+  ViewSubMod(const self_t &) = default;
+  ~ViewSubMod()                        = default;
+  self_t & operator=(self_t &&)        = default;
+  self_t & operator=(const self_t &)   = default;
+
   constexpr ViewSubMod(
     const DomainType & domain,
     index_type         begin,
     index_type         end)
-  : base_t(domain),
-    _index_set(*this, begin, end)
-   ,_local(*this)
+  : base_t(domain)
+  , _index_set(*this, begin, end)
+//, _local(*this)
   { }
 
   constexpr auto begin() const
@@ -588,7 +633,7 @@ public:
     return _index_set;
   }
 
-#if 1
+#if 0
   constexpr const local_type & local() const {
     return _local;
   }
@@ -601,10 +646,6 @@ public:
     return local_type(*this);
   }
 #endif
-
-private:
-  index_set_type  _index_set;
-  local_type      _local;
 };
 
 
@@ -626,6 +667,18 @@ public:
   typedef ViewLocalMod<self_t>                                    local_type;
 
   typedef std::integral_constant<bool, false>                       is_local;
+
+private:
+  local_type          _local;
+  index_set_type      _index_set;
+
+public:
+  ViewBlockMod()               = delete;
+  ViewBlockMod(self_t &&)      = default;
+  ViewBlockMod(const self_t &) = default;
+  ~ViewBlockMod()                        = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
 
   constexpr ViewBlockMod(
     const DomainType & domain,
@@ -658,13 +711,9 @@ public:
   inline local_type & local() {
     return _local;
   }
-
-private:
-  local_type      _local;
-  index_set_type  _index_set;
 };
 
 } // namespace dash
-
 #endif // DOXYGEN
+
 #endif // DASH__VIEW__VIEW_MOD_H__INCLUDED
