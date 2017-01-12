@@ -7,6 +7,7 @@
 
 #include <array>
 
+
 static_assert(dash::is_range<
                  dash::Array<int>
               >::value == true,
@@ -140,6 +141,21 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   }
 
   array.barrier();
+
+  // View index sets:
+  auto l_begin_idx = array.pattern().global(0);
+  auto l_idx_set   = dash::index(
+                       dash::local(
+                         dash::sub(
+                           l_begin_idx,
+                           l_begin_idx + block_size,
+                           array) ) );
+
+  auto l_idx_set_begin = *dash::begin(l_idx_set);
+  auto l_idx_set_end   = *dash::end(l_idx_set);
+
+  EXPECT_EQ(l_begin_idx,              l_idx_set_begin);
+  EXPECT_EQ(l_begin_idx + block_size, l_idx_set_end);
 
   // Use case:
   //
