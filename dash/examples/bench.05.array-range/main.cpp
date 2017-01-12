@@ -80,16 +80,18 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-  tests.push_back({4          , 10000000});
-  tests.push_back({16         , 1000000});
-  tests.push_back({64         , 1000000});
-  tests.push_back({256        , 100000});
-  tests.push_back({1024       , 100000});
-  tests.push_back({4096       , 10000});
-  tests.push_back({4*4096     , 5000});
-  tests.push_back({16*4096    , 1000});
-  tests.push_back({64*4096    , 500});
-
+  tests.push_back({4          , 1});
+#if 0
+  tests.push_back({4          , 1000000});
+  tests.push_back({16         , 100000});
+  tests.push_back({64         , 100000});
+  tests.push_back({256        , 10000});
+  tests.push_back({1024       , 10000});
+  tests.push_back({4096       , 1000});
+  tests.push_back({4*4096     , 500});
+  tests.push_back({16*4096    , 100});
+  tests.push_back({64*4096    , 50});
+#endif
   for (auto test: tests) {
     perform_test(test.first, test.second);
   }
@@ -142,10 +144,30 @@ void perform_test(
       dash::TILE(ELEM_PER_UNIT))
   );
 
-  double t_view = test_view_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
-  double t_algo = test_algo_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
+  double t_view = test_view_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
+  double t_algo = test_algo_gups(arr_blocked_dist, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
+
+  if (dash::myid() == 0) {
+      auto lbegin_gidx = arr_blocked_dist.pattern().global(0);
+      auto lrange = dash::index(
+                  //  dash::local(
+                        dash::sub(
+                          lbegin_gidx + 0,
+                          lbegin_gidx + 2,
+                          arr_blocked_dist)
+                  //    )
+                      );
+
+      auto lrange_begin = dash::begin(lrange);
+      auto lrange_end   = dash::end(lrange);
+
+      std::cout << "lrange { " << *lrange_begin << ", "
+                               << *lrange_end   << " }"
+                << std::endl;
+  }
+  return;
 
   if (dash::myid() == 0) {
     double gups_view = gups(num_units, t_view, ELEM_PER_UNIT, REPEAT);
@@ -161,10 +183,10 @@ void perform_test(
          << REPEAT
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
-         << t_view
+         << gups_view
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
-         << t_algo
+         << gups_algo
          << endl;
   }
 }
@@ -194,14 +216,25 @@ double test_view_gups(
 
   init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
 
+  auto lbegin_gidx = a.pattern().global(0);
+
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
   auto myid     = pattern.team().myid();
+
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto lidx = 0; lidx < a.lsize(); ++lidx) {
-      auto lrange = dash::index(dash::sub(0, lidx, dash::local(a)))[0];
-      assert(lrange >= 0);
-//    assert(*dash::end(lrange) + *dash::begin(lrange) >= 0);
+    for (auto lidx = 1; lidx < a.lsize(); ++lidx) {
+      auto lrange       = dash::index(
+                            dash::local(
+                              dash::sub(
+                                lbegin_gidx + 0,
+                                lbegin_gidx + lidx,
+                                a) ) );
+      auto lrange_begin = *dash::begin(lrange);
+      auto lrange_end   = *dash::end(lrange);
+      if (lrange_begin > lrange_end) {
+        throw std::runtime_error("invalid range");
+      }
     }
   }
   return Timer::ElapsedSince(ts_start);
@@ -221,15 +254,22 @@ double test_algo_gups(
 
   init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
 
+  auto lbegin_gidx = a.pattern().global(0);
+
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
   auto myid     = pattern.team().myid();
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto lidx = 0; lidx < a.lsize(); ++lidx) {
-      auto lrange = dash::local_index_range(
-                      a.begin(),
-                      a.begin() + lidx);
-      assert(lrange.end - lrange.begin >= 0);
+    for (auto lidx = 1; lidx < a.lsize(); ++lidx) {
+      auto lrange       = dash::local_index_range(
+                            a.begin() + lbegin_gidx,
+                            a.begin() + lbegin_gidx + lidx
+                          );
+      auto lrange_begin = lrange.begin;
+      auto lrange_end   = lrange.end;
+      if (lrange_begin > lrange_end) {
+        throw std::runtime_error("invalid range");
+      }
     }
   }
   return Timer::ElapsedSince(ts_start);

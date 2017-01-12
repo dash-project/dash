@@ -131,6 +131,9 @@ public:
   typedef T *                                                   pointer;
   typedef const T *                                       const_pointer;
 
+  typedef T *                                                  iterator;
+  typedef const T *                                      const_iterator;
+
 public:
   /// Type alias for LocalArrayRef<T,I,P>::view_type
   typedef LocalArrayRef<T, IndexType, PatternType>                 View;

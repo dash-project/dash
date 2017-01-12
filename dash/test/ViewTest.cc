@@ -7,6 +7,20 @@
 
 #include <array>
 
+static_assert(dash::is_range<
+                 dash::Array<int>
+              >::value == true,
+              "dash::is_range<dash::Array>::value not matched");
+
+static_assert(dash::is_range<
+                 typename dash::Array<int>::local_type
+              >::value == true,
+              "dash::is_range<dash::Array::local_type>::value not matched");
+
+static_assert(dash::is_range<
+                 typename dash::Array<int>::iterator
+              >::value == false,
+              "dash::is_range<dash::Array<...>>::value not matched");
 
 
 TEST_F(ViewTest, ViewTraits)
@@ -21,6 +35,9 @@ TEST_F(ViewTest, ViewTraits)
                 "view traits for sub(dash::Array) not matched");
 //static_assert(dash::view_traits<decltype(v_loc)>::is_view::value == true,
 //              "view traits for local(dash::Array) not matched");
+
+  static_assert(dash::is_range<decltype(array)>::value == true,
+                "dash::is_range<dash::Array<...>>::value not matched");
 }
 
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
@@ -405,3 +422,4 @@ TEST_F(ViewTest, ArrayBlockedPatternViewUnion)
                              block_b_gview
                            });
 }
+

@@ -140,10 +140,9 @@ public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
-  constexpr ViewOrigin()
-  { }
 
-  constexpr explicit ViewOrigin(std::initializer_list<index_type> extents)
+  constexpr explicit ViewOrigin(
+      std::initializer_list<index_type> extents)
   : _extents(extents)
   { }
 
@@ -235,22 +234,21 @@ class ViewSubMod;
 template <class ViewModType, class DomainType>
 class ViewModBase
 {
+  typedef ViewModBase<ViewModType, DomainType> self_t;
 public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
 
-  ViewModBase() = delete;
-
   constexpr explicit ViewModBase(
-    domain_type    & dom)
-  : _domain(dom)
+    const domain_type & dom)
+  : _domain(&dom)
   { }
 
   constexpr bool operator==(const ViewModType & rhs) const {
     return (static_cast<const ViewModType *>(this) == &rhs ||
             // Note: testing _domain for identity (identical address)
             //       instead of equality (identical value)
-            &this->_domain == &rhs._domain);
+            this->_domain == rhs._domain);
   }
   
   constexpr bool operator!=(const ViewModType & rhs) const {
@@ -262,11 +260,11 @@ public:
   }
 
   constexpr const domain_type & domain() const {
-    return _domain;
+    return *_domain;
   }
 
   inline domain_type & domain() {
-    return _domain;
+    return *_domain;
   }
 
 private:
@@ -275,7 +273,7 @@ private:
 //}
 
 protected:
-  domain_type   & _domain;
+  const domain_type * _domain = nullptr;
 };
 
 
@@ -321,13 +319,21 @@ public:
 
   typedef std::integral_constant<bool, true>                      is_local;
 
-  ViewLocalMod() = delete;
-
   constexpr explicit ViewLocalMod(
-    DomainType & domain)
+    const DomainType & domain)
   : base_t(domain),
     _index_set(*this)
   { }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return (this == &rhs ||
+             ( base_t::operator==(rhs) &&
+               _index_set == rhs._index_set ) );
+  }
+
+  constexpr bool operator!=(const self_t & rhs) const {
+    return not (*this == rhs);
+  }
 
   constexpr auto begin() const
   -> decltype(dash::begin(dash::local(dash::origin(*this)))) {
@@ -439,10 +445,8 @@ public:
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-  ViewGlobalMod() = delete;
-
   constexpr explicit ViewGlobalMod(
-    DomainType & domain)
+    const DomainType & domain)
   : base_t(domain),
     _index_set(*this)
   { }
@@ -550,12 +554,10 @@ public:
 
   typedef std::integral_constant<bool, false>                       is_local;
 
-  ViewSubMod() = delete;
-
   constexpr ViewSubMod(
-    DomainType & domain,
-    index_type   begin,
-    index_type   end)
+    const DomainType & domain,
+    index_type         begin,
+    index_type         end)
   : base_t(domain),
     _index_set(*this, begin, end),
     _local(*this)
@@ -619,11 +621,9 @@ public:
 
   typedef std::integral_constant<bool, false>                       is_local;
 
-  ViewBlockMod() = delete;
-
   constexpr ViewBlockMod(
-    DomainType & domain,
-    index_type   block_index)
+    const DomainType & domain,
+    index_type         block_index)
   : base_t(domain),
     _index_set(*this, block_index),
     _local(*this)

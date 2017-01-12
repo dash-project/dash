@@ -32,7 +32,6 @@ void dash::init(int * argc, char ** *argv)
   dart_init(argc, argv);
   dash::_initialized = true;
 
-#if DASH_DEBUG
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
     dash::Shared<int> blockvar;
     blockvar.set(1);
@@ -40,7 +39,6 @@ void dash::init(int * argc, char ** *argv)
       dash::internal::wait_breakpoint();
     }
   }
-#endif
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
   dash::util::Locality::init();

@@ -49,7 +49,7 @@ index(IndexType idx) {
  * \concept{DashIteratorConcept}
  */
 template <class Iterator>
-constexpr auto index(Iterator it) -> decltype(it.pos()) {
+constexpr auto index(Iterator it) -> decltype((++it).pos()) {
   return it.pos();
 }
 
@@ -85,13 +85,13 @@ template<
   class    GlobMem,
   class    Pointer,
   class    Reference >
-auto distance(
+typename Pattern::index_type
+distance(
   const GlobIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
   const GlobIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     last)
--> typename Pattern::index_type
 {
   return last - first;
 }

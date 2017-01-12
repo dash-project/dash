@@ -37,8 +37,7 @@ template <
   dim_t NViewDim,
   class IndexRangeT >
 constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
-sub(
-    IndexRangeT range) {
+sub(const IndexRangeT & range) {
   return sub<SubDim>(dash::begin(range),
                      dash::end(range));
 }
@@ -74,9 +73,9 @@ template <
   class OffsetT = typename DomainT::index_type >
 constexpr ViewSubMod<DomainT, SubDim>
 sub(
-    OffsetT   begin,
-    OffsetT   end,
-    DomainT & domain) {
+    OffsetT         begin,
+    OffsetT         end,
+    const DomainT & domain) {
   return ViewSubMod<DomainT, SubDim>(
            domain,
            begin,

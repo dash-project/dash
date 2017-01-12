@@ -3,6 +3,8 @@
 
 #include <type_traits>
 
+#include <dash/Range.h>
+
 
 namespace dash {
 
@@ -62,21 +64,28 @@ namespace detail {
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
   };
 
-  template <class ViewableType>
-  struct _is_view : _has_domain_type<ViewableType> { };
+} // namespace detail
+
+template <class ViewableType>
+struct is_view : dash::detail::_has_domain_type<ViewableType> { };
+
+
+
+namespace detail {
 
   // ------------------------------------------------------------------------
 
   template <
     class ViewableType,
-    bool  IsView >
+    bool  IsView,
+    bool  IsRange >
   struct _view_traits { };
 
   /**
    * Specialization of \c dash::view_traits for view types.
    */
   template <class ViewT>
-  struct _view_traits< ViewT, true >
+  struct _view_traits<ViewT, true, true>
   {
     typedef typename ViewT::domain_type                          domain_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
@@ -95,7 +104,8 @@ namespace detail {
       ViewT::is_local::value ||
       // or view domain type is local:
       _view_traits<domain_type,
-                   _is_view<domain_type>::value
+                   dash::is_view<domain_type>::value,
+                   dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
   };
 
@@ -103,7 +113,7 @@ namespace detail {
    * Specialization of \c dash::view_traits for container types.
    */
   template <class ContainerT>
-  struct _view_traits<ContainerT, false> {
+  struct _view_traits<ContainerT, false, true> {
     typedef ContainerT                                           origin_type;
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
@@ -137,7 +147,8 @@ template <class ViewableType>
 struct view_traits
 : detail::_view_traits<
     ViewableType,
-    detail::_is_view<ViewableType>::value > {
+    dash::is_view<ViewableType>::value,
+    dash::is_range<ViewableType>::value > {
 };
 
 #endif // DOXYGEN

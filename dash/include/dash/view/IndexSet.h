@@ -65,22 +65,24 @@ class IndexSetSub;
 
 
 template <class ViewType>
-const typename ViewType::index_set_type &
+typename std::enable_if <
+  dash::view_traits<ViewType>::is_view::value,
+  const typename ViewType::index_set_type &
+>::type
 index(const ViewType & v) {
   return v.index_set();
 }
 
-#ifdef __TODO__
 template <class ContainerType>
 constexpr
 typename std::enable_if <
-  !dash::view_traits<ContainerType>::is_view::value,
+//  !dash::view_traits<ContainerType>::is_view::value,
+  dash::view_traits<ContainerType>::is_origin::value,
   IndexSetIdentity<ContainerType>
 >::type
 index(const ContainerType & c) {
   return IndexSetIdentity<ContainerType>(c);
 }
-#endif
 
 
 namespace detail {
@@ -92,17 +94,18 @@ class IndexSetIterator {
   typedef IndexSetIterator<IndexSetType>        self_t;
   typedef typename IndexSetType::index_type index_type;
 public:
+
   constexpr IndexSetIterator(
     const IndexSetType & index_set,
     index_type           position,
     index_type           stride    = BaseStride)
-  : _index_set(index_set), _pos(position), _stride(stride)
+  : _index_set(&index_set), _pos(position), _stride(stride)
   { }
 
   constexpr index_type operator*() const {
-    return _pos < _index_set.size()
-              ? _index_set[_pos]
-              : _index_set[_pos-1] + 1;
+    return _pos < _index_set->size()
+              ? (*_index_set)[_pos]
+              : (*_index_set)[_pos-1] + 1;
   }
 
   self_t & operator++() {
@@ -116,11 +119,11 @@ public:
   }
 
   constexpr self_t operator++(int) const {
-    return self_t(_index_set, _pos + _stride, _stride);
+    return self_t(*_index_set, _pos + _stride, _stride);
   }
 
   constexpr self_t operator--(int) const {
-    return self_t(_index_set, _pos - _stride, _stride);
+    return self_t(*_index_set, _pos - _stride, _stride);
   }
 
   self_t & operator+=(int i) {
@@ -134,11 +137,11 @@ public:
   }
 
   constexpr self_t operator+(int i) const {
-    return self_t(_index_set, _pos + (i * _stride), _stride);
+    return self_t(*_index_set, _pos + (i * _stride), _stride);
   }
 
   constexpr self_t operator-(int i) const {
-    return self_t(_index_set, _pos - (i * _stride), _stride);
+    return self_t(*_index_set, _pos - (i * _stride), _stride);
   }
 
   constexpr index_type pos() const {
@@ -154,7 +157,7 @@ public:
   }
 
 private:
-  const IndexSetType & _index_set;
+  const IndexSetType * _index_set;
   index_type           _pos;
   index_type           _stride = BaseStride;
 };
@@ -194,6 +197,7 @@ template <
   class ViewType >
 class IndexSetBase
 {
+  typedef IndexSetBase<IndexSetType, ViewType> self_t;
 public:
   typedef typename ViewType::index_type
     index_type;
@@ -217,7 +221,9 @@ public:
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(view), _pattern(dash::origin(view).pattern())
+  : _view(&view)
+  , _pattern(&(dash::origin(view).pattern()))
+//, _domain(dash::index(dash::domain(view)))
   { }
 
   constexpr iterator begin() const {
@@ -239,19 +245,16 @@ public:
   }
 
   constexpr const ViewType & view() const {
-    return _view;
+    return *_view;
   }
 
-  constexpr const index_set_domain_type & domain() const {
-    return dash::index(dash::domain(_view));
+  constexpr index_set_domain_type domain() const {
+//  return _domain;
+    return dash::index(dash::domain(*_view));
   }
 
   constexpr const pattern_type & pattern() const {
-    return _pattern;
-  }
-
-  constexpr const index_set_domain_type & pre() const {
-    return this->domain();
+    return *_pattern;
   }
 
   /*
@@ -268,8 +271,9 @@ public:
   }
 
 protected:
-  const ViewType     & _view;
-  const pattern_type & _pattern;
+  const ViewType     * _view    = nullptr;
+  const pattern_type * _pattern = nullptr;
+//const index_set_domain_type & _domain;
 };
 
 // -----------------------------------------------------------------------
@@ -293,8 +297,7 @@ class IndexSetIdentity
 public:
   typedef typename ViewType::index_type                     index_type;
 
-  constexpr explicit IndexSetIdentity(
-    const ViewType & view)
+  constexpr explicit IndexSetIdentity(const ViewType & view)
   : base_t(view)
   { }
 
@@ -342,6 +345,8 @@ public:
 //typedef typename base_t::index_set_domain_type index_set_domain_type;
   typedef IndexSetSub<ViewType>                          preimage_type;
 
+public:
+
   constexpr IndexSetSub(
     const ViewType   & view,
     index_type         begin,
@@ -383,8 +388,8 @@ public:
   }
 
 private:
-  index_type _domain_begin_idx;
-  index_type _domain_end_idx;
+  index_type _domain_begin_idx = 0;
+  index_type _domain_end_idx   = 0;
 };
 
 // -----------------------------------------------------------------------
@@ -426,11 +431,12 @@ public:
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
   
+public:
+
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
   { }
 
-public:
   constexpr index_type
   operator[](index_type local_index) const {
     return this->pattern().global(
@@ -521,11 +527,12 @@ public:
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
   
+public:
+
   constexpr explicit IndexSetGlobal(const ViewType & view)
   : base_t(view)
   { }
 
-public:
   constexpr index_type
   operator[](index_type global_index) const {
     return this->pattern().at(
