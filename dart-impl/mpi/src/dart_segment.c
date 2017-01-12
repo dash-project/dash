@@ -325,7 +325,7 @@ dart_ret_t dart_segment_free(dart_segid_t segid)
   return DART_ERR_INVAL;
 }
 
-static void clear_segdata_list(dart_seghash_elem_t *listhead)
+static void clear_segdata_list(dart_seghash_head_t *listhead)
 {
   dart_seghash_elem_t *elem = listhead->next;
   while (elem != NULL) {
@@ -346,7 +346,7 @@ dart_ret_t dart_segment_fini()
   int i;
   // clear the hash table
   for (i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
-    clear_segdata_list(hashtab[i].next);
+    clear_segdata_list(&hashtab[i]);
     dart_mutex_destroy(&hashtab[i].mutex);
   }
 
