@@ -31,8 +31,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
   
   // TODO: Optimize
-  auto hyperslabs = _get_hdf_slabs_boundary(container.pattern());
-  hyperslabs.push_back(_get_hdf_slab_center(container.pattern()));
+  auto hyperslabs = _get_hdf_slabs(container.pattern());
   
   // hyperslab data can be quite large => sort indices only
   std::vector<int> hs_index_set(hyperslabs.size());
