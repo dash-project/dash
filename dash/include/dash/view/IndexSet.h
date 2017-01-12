@@ -149,6 +149,14 @@ public:
     return _pos;
   }
 
+  constexpr index_type operator+(const self_t & rhs) const {
+    return _pos + rhs._pos;
+  }
+
+  constexpr index_type operator-(const self_t & rhs) const {
+    return _pos - rhs._pos;
+  }
+
   constexpr bool operator==(const self_t & rhs) const {
     return _pos == rhs._pos && _stride == rhs._stride;
   }

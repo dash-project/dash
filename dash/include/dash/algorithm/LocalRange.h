@@ -73,16 +73,16 @@ local_index_range(
 #ifdef __TODO__
   typedef typename GlobInputIter::pattern_type::index_type idx_t;
 
-  auto range        = dash::make_range(first, last);
-  auto lrange       = dash::index(
-                        dash::local(
-                          dash::sub(     // < sub needed as temporary
-                            first.pos(), //   workaround as
-                            last.pos(),  //   index(local(container.local)
-                            range) ) );  //   is not defined in some cases
+  auto grange    = dash::make_range(first, last);
+  auto lrange    = dash::index(
+                     dash::local(
+                       dash::sub(     // < sub needed as temporary
+                         first.pos(), //   workaround as
+                         last.pos(),  //   index(local(container.local)
+                         grange) ) ); //   is not defined in some cases
 
-  idx_t lrange_begin = lrange[0];
-  idx_t lrange_end   = lrange[lrange.size()-1]+1;
+  idx_t lrange_0 = lrange[0];
+  idx_t lrange_e = lrange[lrange.size()-1]+1;
 
   return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
 #endif

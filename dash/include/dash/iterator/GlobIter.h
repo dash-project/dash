@@ -319,6 +319,13 @@ public:
 
   /**
    * Convert global iterator to native pointer.
+   *
+   * TODO: Evaluate alternative:
+   *         auto l_idx_this = _container.pattern().local(this->pos());
+   *         return (l_idx_this.unit == _myid
+   *                 ? _lbegin + l_idx_this
+   *                 : nullptr
+   *                );
    */
   local_pointer local() const
   {

@@ -49,14 +49,6 @@ constexpr auto end(const RangeType & range) -> decltype(range.end()) {
   return range.end();
 }
 
-#if 0
-template <class X>
-bool begin(X x) { return false; }
-
-template <class X>
-bool end(X x) { return false; }
-#endif
-
 namespace detail {
 
 template<typename T>
@@ -157,7 +149,7 @@ class RangeBase {
 public:
   typedef Iterator iterator;
   typedef Sentinel sentinel;
-  typedef dash::default_index_t index_type;
+  typedef typename Iterator::index_type index_type;
 };
 
 template <class Iterator, class Sentinel = Iterator>
@@ -168,7 +160,7 @@ class IteratorRange : public RangeBase<Iterator, Sentinel> {
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
-  : _begin(dash::begin(c)), _end(dash::end(c)) { }
+  : _begin(c.begin()), _end(c.end()) { }
 
   constexpr IteratorRange(Iterator begin, Sentinel end)
   : _begin(std::move(begin)), _end(std::move(end)) { }

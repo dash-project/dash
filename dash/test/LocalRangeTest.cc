@@ -8,9 +8,74 @@
 #include <dash/Matrix.h>
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
+#include <dash/View.h>
 
 #include <iostream>
 
+
+TEST_F(LocalRangeTest, ArrayBlockedViewExpression)
+{
+  const size_t block_size      = 20;
+  const size_t num_elems_total = dash::size() * block_size;
+
+  dash::Array<int> array(num_elems_total, dash::BLOCKED);
+
+  // Intentionally overcomplicating things to test dash::make_range:
+  auto array_view_loffset   = block_size / 5;
+  auto array_view_size      = block_size / 2;
+
+  auto array_lbegin_gidx    = array.pattern().global(0);
+  auto array_view_begin_idx = array_lbegin_gidx + array_view_loffset;
+  auto array_view_end_idx   = array_lbegin_gidx + array_view_loffset +
+                              array_view_size;
+
+  auto array_view_begin_git = array.begin() + array_view_begin_idx;
+  auto array_view_end_git   = array.begin() + array_view_end_idx;
+
+  // Note: dash::sub is currently required to obtain a local index set
+  //       as index(local(container)) is not defined in some cases, yet:
+
+
+  // Create view on container:
+  //
+  auto lct_view = dash::index(
+                      dash::local(
+                        dash::sub(
+                          array_view_begin_idx,
+                          array_view_end_idx,
+                          array) ) );
+
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lct_view.size());
+
+#ifdef __TODO__
+  // Create view on global iterator range:
+  //
+  auto git_view = dash::make_view(
+                     array_view_begin_git,
+                     array_view_end_git);
+  auto lix_view = dash::index(
+                     dash::local(
+                       dash::sub(
+                         array_view_begin_idx,
+                         array_view_end_idx,
+                         git_view) ) );
+
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lix_view.size());
+#endif
+
+  auto lview_0  = lct_view[0];
+  auto lview_e  = lct_view[lct_view.size()-1]+1;
+
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression", lview_0);
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression", lview_e);
+
+  EXPECT_EQ(array_view_size, lct_view.size());
+  EXPECT_EQ(array_view_size, dash::end(lct_view) - dash::begin(lct_view));
+
+//  EXPECT_EQ(arr_lsview, lix_view);
+}
 
 TEST_F(LocalRangeTest, ArrayBlockcyclic)
 {

@@ -422,7 +422,7 @@ struct view_traits<ViewGlobalMod<DomainType> > {
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, true>                 is_local;
+  typedef std::integral_constant<bool, false>                is_local;
 };
 
 template <

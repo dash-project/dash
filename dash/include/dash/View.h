@@ -81,5 +81,95 @@
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewTraits.h>
 
+#include <dash/Range.h>
+
+
+namespace dash {
+
+template <
+  class Iterator,
+  class Sentinel >
+class IteratorViewOrigin;
+
+// Currently only supporting
+//  - global iterators
+//  - 1-dimensional IteratorViewOrigin types.
+
+template <
+  class Iterator,
+  class Sentinel >
+struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
+  typedef IteratorViewOrigin<Iterator, Sentinel>               domain_type;
+  typedef IteratorViewOrigin<Iterator, Sentinel>               origin_type;
+  typedef IteratorViewOrigin<Iterator, Sentinel>                image_type;
+
+  // Uses container::local_type directly, e.g. dash::LocalArrayRef:
+//typedef typename dash::view_traits<domain_type>::local_type   local_type;
+  // Uses ViewLocalMod wrapper on domain, e.g. ViewLocalMod<dash::Array>:
+  typedef ViewLocalMod<domain_type>                             local_type;
+  typedef ViewGlobalMod<domain_type>                           global_type;
+
+  typedef typename Iterator::index_type                         index_type;
+  typedef dash::IndexSetIdentity< 
+            IteratorViewOrigin<Iterator, Sentinel> >        index_set_type;
+
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, true>                 is_origin;
+  typedef std::integral_constant<bool, false>                is_local;
+};
+
+template <
+  class Iterator,
+  class Sentinel
+//class DomainType = dash::IteratorViewOriginOrigin<1>
+>
+class IteratorViewOrigin
+: public dash::IteratorRange<Iterator, Sentinel>
+{
+public:
+  typedef typename Iterator::index_type                         index_type;
+private:
+  typedef IteratorViewOrigin<Iterator, Sentinel>  self_t;
+  typedef IteratorRange<Iterator, Sentinel>       base_t;
+public:
+  typedef self_t                                               domain_type;
+  typedef self_t                                               origin_type;
+  typedef self_t                                                image_type;
+  // Alternative: IteratorLocalView<self_t, Iterator, Sentinel>
+//typedef ViewLocalMod<domain_type>                             local_type;
+//typedef ViewGlobalMod<domain_type>                           global_type;
+  typedef typename view_traits<domain_type>::local_type         local_type;
+  typedef typename view_traits<domain_type>::global_type       global_type;
+
+  typedef typename Iterator::pattern_type                     pattern_type;
+public:
+  constexpr IteratorViewOrigin(Iterator begin, Iterator end)
+  : base_t(std::move(begin), std::move(end)) {
+  }
+
+  constexpr const pattern_type & pattern() const {
+    return this->begin().pattern();
+  }
+
+  constexpr local_type local() const {
+    // for local_type: IteratorLocalView<self_t, Iterator, Sentinel>
+    // return local_type(this->begin(), this->end());
+    return local_type(*this);
+  }
+
+};
+
+
+template <class Iterator, class Sentinel>
+constexpr dash::IteratorViewOrigin<Iterator, Sentinel>
+make_view(Iterator begin, Sentinel end) {
+  return dash::IteratorViewOrigin<Iterator, Sentinel>(
+           std::move(begin),
+           std::move(end));
+}
+
+} // namespace dash
+
 
 #endif // DASH__VIEW_H__INCLUDED
