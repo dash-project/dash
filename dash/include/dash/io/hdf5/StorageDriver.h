@@ -458,6 +458,25 @@ private:
     WRITE = 0x2
   };
   
+  template < class BlockSpec_t,
+             typename index_t >
+    index_t static inline _blockspec_at(
+      const BlockSpec_t & lblockspec,
+      const std::array<index_t,1> & coords)
+  {
+    return coords[0];
+  }
+  
+  template < class BlockSpec_t,
+             typename index_t,
+             std::size_t ndim >
+    index_t static inline _blockspec_at(
+      const BlockSpec_t & lblockspec,
+      const std::array<index_t,ndim> & coords)
+  {
+    return lblockspec.at(coords);
+  }
+  
   /**
    * Get a hdf5 slab representing a part of the dash pattern.
    * Which part is determined by the additional parameter dimensions.
@@ -484,7 +503,7 @@ private:
     for(auto d : dimensions) {
       coords[d] = lblockspec.extent(d)-1;
     }
-    lblckidx = lblockspec.at(coords);
+    lblckidx = _blockspec_at(lblockspec,coords);
     
     hs.contrib_blocks = true;
     // setup extends per dimension
