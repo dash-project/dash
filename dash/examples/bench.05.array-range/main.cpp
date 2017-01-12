@@ -1,5 +1,7 @@
 #include <libdash.h>
 
+#include <dash/internal/Annotation.h>
+
 #include "../bench.h"
 
 #include <array>
@@ -202,6 +204,10 @@ double test_view_gups(
                                 a) ) );
       int lrange_begin = lrange[0];
       int lrange_end   = lrange[lrange.size()-1]+1;
+  
+      dash::prevent_opt_elimination(lrange_begin);
+      dash::prevent_opt_elimination(lrange_end);
+
       if (lrange_begin > lrange_end) {
         std::ostringstream os;
         os << "invalid range from view: (" << lrange_begin << ","
@@ -241,6 +247,10 @@ double test_algo_gups(
                           );
       auto lrange_begin = lrange.begin;
       auto lrange_end   = lrange.end;
+  
+      dash::prevent_opt_elimination(lrange_begin);
+      dash::prevent_opt_elimination(lrange_end);
+
       if (lrange_begin > lrange_end) {
         std::ostringstream os;
         os << "invalid range from algo: (" << lrange_begin << ","
