@@ -27,16 +27,24 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
   OR ENABLE_EXTENDED_COMPILER_WARNINGS 
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
+  endif()
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self -Wopenmp-simd")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -70,12 +78,16 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
 
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
+    set (DASH_DEVELOPER_CC_FLAGS 
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+  endif()
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
