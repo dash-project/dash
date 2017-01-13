@@ -30,8 +30,10 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
-    set (DASH_DEVELOPER_CCXX_FLAGS
-         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+      set (DASH_DEVELOPER_CCXX_FLAGS
+           "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+    endif()
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
   endif()
@@ -80,11 +82,15 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
     set (DASH_DEVELOPER_CC_FLAGS 
          "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
-    set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+      set (DASH_DEVELOPER_CC_FLAGS
+           "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
+      set (DASH_DEVELOPER_CC_FLAGS
+           "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+    endif()
   endif()
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
