@@ -17,7 +17,8 @@ constexpr auto
 local(const ViewType & v)
 -> typename std::enable_if<
      dash::view_traits<ViewType>::is_view::value,
-     decltype(v.local())
+//   decltype(v.local())
+     const typename ViewType::local_type
    >::type {
   return v.local();
 }
@@ -43,10 +44,11 @@ local(const ContainerType & c) {
  *
  */
 template <class GlobalIterator>
-auto local(
+constexpr auto local(
   /// Global iterator referencing element in local memory
   const GlobalIterator & g_it)
--> decltype((g_it - g_it.pos()).local()) {
+// -> const typename GlobalIterator::local_type & {
+->  decltype((g_it - g_it.pos()).local()) {
   return g_it.local();
 }
 
