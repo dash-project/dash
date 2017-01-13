@@ -30,12 +30,12 @@ protected:
     _dash_id   = dash::myid();
     _dash_size = dash::size();
     dash::barrier();
-    LOG_MESSAGE("===> Running test case with %d units ...", _dash_size);
+    LOG_MESSAGE("===> Running test case with %zu units ...", _dash_size);
   }
 
   virtual void TearDown() {
     dash::barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units", _dash_size);
+    LOG_MESSAGE("<=== Finished test case with %zu units", _dash_size);
     dash::finalize();
   }
 

@@ -32,7 +32,7 @@ protected:
         remove(_filename.c_str());
     }
     dash::Team::All().barrier();
-    LOG_MESSAGE("===> Running test case with %d units ...",
+    LOG_MESSAGE("===> Running test case with %zu units ...",
                 _dash_size);
   }
 
@@ -41,7 +41,7 @@ protected:
     if(_dash_id == 0) {
         remove(_filename.c_str());
     }
-    LOG_MESSAGE("<=== Finished test case with %d units",
+    LOG_MESSAGE("<=== Finished test case with %zu units",
                 _dash_size);
     dash::finalize();
   }

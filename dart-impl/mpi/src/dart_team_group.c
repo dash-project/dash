@@ -255,13 +255,13 @@ dart_ret_t dart_group_split(
   MPI_Group_size(g->mpi_group, &size);
 
   if (n > INT_MAX) {
-    DART_LOG_ERROR("dart_group_split: n:%d > INT_MAX", n);
+    DART_LOG_ERROR("dart_group_split: n:%zu > INT_MAX", n);
     return DART_ERR_INVAL;
   }
 
   *nout = size;
   if (size < (int)n) {
-    DART_LOG_DEBUG("dart_group_split: requested:%d split:%d", n, *nout);
+    DART_LOG_DEBUG("dart_group_split: requested:%zu split:%zu", n, *nout);
   }
 
   /* Ceiling division. */
@@ -354,7 +354,7 @@ dart_ret_t dart_group_locality_split(
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = unit_ids[u].id;
-        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+        DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
       }
@@ -421,7 +421,7 @@ dart_ret_t dart_group_locality_split(
       if ((g+1) * max_group_domains > (size_t)num_domains) {
         num_group_domains = (g * max_group_domains) - num_domains;
       }
-      DART_LOG_TRACE("dart_group_locality_split: domains in group %d: %d",
+      DART_LOG_TRACE("dart_group_locality_split: domains in group %zu: %d",
                      g, num_group_domains);
       int group_first_dom_idx = g * num_group_domains;
       int group_last_dom_idx  = group_first_dom_idx + num_group_domains;
@@ -443,7 +443,7 @@ dart_ret_t dart_group_locality_split(
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = group_team_unit_ids[u].id;
-        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+        DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
       }
@@ -488,7 +488,7 @@ dart_ret_t dart_group_ismember(
   *ismember = (i!=size);
   free(ranks);
   DART_LOG_DEBUG("dart_group_ismember : unit %2d: %s",
-                 unitid, (*ismember) ? "yes" : "no");
+                 unitid.id, (*ismember) ? "yes" : "no");
   return DART_OK;
 }
 
