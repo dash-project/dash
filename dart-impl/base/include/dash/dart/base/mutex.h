@@ -3,13 +3,20 @@
 
 #include <dash/dart/if/dart_types.h>
 
+#if defined(DART_ENABLE_THREADING) && !defined(DART_THREADING_PTHREADS)
+#error "Thread support has been enabled but DART_THREADING_PTHREADS is not defined!"
+#endif
 
-#ifdef HAVE_PTHREADS
+#if !defined(DART_ENABLE_THREADING) && defined(DART_THREADING_PTHREADS)
+#undef DART_THREADING_PTHREADS
+#endif
+
+#ifdef DART_THREADING_PTHREADS
 #include <pthread.h>
 #endif
 
 typedef struct dart_mutex {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
 pthread_mutex_t mutex;
 #endif
 } dart_mutex_t;
@@ -18,7 +25,7 @@ static inline
 dart_ret_t
 dart_mutex_init(dart_mutex_t *mutex)
 {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
   pthread_mutex_init(&mutex->mutex, NULL);
   return DART_OK;
 #else
@@ -30,7 +37,7 @@ static inline
 dart_ret_t
 dart_mutex_lock(dart_mutex_t *mutex)
 {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
   pthread_mutex_lock(&mutex->mutex);
   return DART_OK;
 #else
@@ -42,7 +49,7 @@ static inline
 dart_ret_t
 dart_mutex_unlock(dart_mutex_t *mutex)
 {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
   pthread_mutex_unlock(&mutex->mutex);
   return DART_OK;
 #else
@@ -54,7 +61,7 @@ static inline
 dart_ret_t
 dart_mutex_trylock(dart_mutex_t *mutex)
 {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
   pthread_mutex_trylock(&mutex->mutex);
   return DART_OK;
 #else
@@ -67,7 +74,7 @@ static inline
 dart_ret_t
 dart_mutex_destroy(dart_mutex_t *mutex)
 {
-#ifdef HAVE_PTHREADS
+#ifdef DART_THREADING_PTHREADS
   pthread_mutex_destroy(&mutex->mutex);
   return DART_OK;
 #else

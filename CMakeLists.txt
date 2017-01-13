@@ -91,7 +91,7 @@ option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
-option(ENABLE_MULTITHREADING
+option(ENABLE_THREADING
        "Specify whether support for multithreading should be compiled" off)
 
 if (BUILD_COVERAGE_TESTS)
