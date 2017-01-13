@@ -286,6 +286,7 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
  *            lock-free list in the buckets?
  *            Alternatively, use spin-locks since lock periods should be short
  *            (maybe get rid of the free-list then?).
+ *            For now, it has been implemented using mutexes.
  */
 dart_ret_t dart_segment_free(dart_segid_t segid)
 {
