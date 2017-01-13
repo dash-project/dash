@@ -4,10 +4,12 @@
 #include <dash/Shared.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+#include <dash/internal/Logging.h>
 
 
 namespace dash {
   static bool _initialized = false;
+  static bool _multithreaded = false;
 }
 
 namespace dash {
@@ -28,8 +30,19 @@ void dash::init(int * argc, char ** *argv)
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
 
+#if DASH_ENABLE_THREADING
+  DASH_LOG_DEBUG("dash::init", "dart_init_thread()");
+  int provided_mt;
+  dart_init_thread(argc, argv, &provided_mt);
+  dash::_multithreaded = (provided_mt == DART_THREAD_MULTIPLE);
+  if (!dash::_multithreaded) {
+    DASH_LOG_WARN("Support for multi-threading requested at compile time but DART does not support multi-threaded access.");
+  }
+#else
   DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc, argv);
+#endif
+
   dash::_initialized = true;
 
 #if DASH_DEBUG
@@ -80,6 +93,11 @@ void dash::finalize()
 bool dash::is_initialized()
 {
   return dash::_initialized;
+}
+
+bool dash::is_multithreaded()
+{
+  return dash::_multithreaded;
 }
 
 void dash::barrier()
