@@ -129,7 +129,7 @@ endif()
 if (ENABLE_NASTYMPI)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/NastyMPI.cmake)
 endif()
-if (ENABLE_MULTITHREADING)
+if (ENABLE_THREADING)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
 endif()
 

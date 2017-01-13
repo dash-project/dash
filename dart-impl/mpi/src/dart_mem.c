@@ -46,8 +46,8 @@ struct dart_buddy *
 
 void
 dart_buddy_delete(struct dart_buddy * self) {
-	free(self);
   dart_mutex_destroy(&self->mutex);
+	free(self);
 }
 
 static inline int
