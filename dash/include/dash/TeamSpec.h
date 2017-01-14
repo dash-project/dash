@@ -8,6 +8,7 @@
 #include <dash/internal/Logging.h>
 
 #include <array>
+#include <set>
 #include <algorithm>
 #include <sstream>
 #include <iostream>
@@ -238,7 +239,7 @@ public:
    *
    * \code
    *   TeamSpec<3> ts({ 21,2,3 }); // extents 21x2x3 == 126 units
-   *   ts.balance_extents();       // extents 7x3x6
+   *   ts.balance_extents();       // extents 7x6x3
    * \endcode
    */
   void balance_extents()
@@ -249,43 +250,32 @@ public:
       return;
     }
 
+    std::multiset<SizeType> new_extents;
+
     SizeType num_units = 1;
     for (auto d = 0; d < MaxDimensions; ++d) {
       num_units *= this->_extents[d];
       this->_extents[d] = 1;
+      new_extents.insert(1);
     }
     _is_linear = false;
 
     // Find best surface-to-volume:
     auto teamsize_prime_factors = dash::math::factorize(num_units);
-    auto number_prime_factors = 0;
-    for(auto it : teamsize_prime_factors) {
-      number_prime_factors += it.second;
-    }
     // Equally distribute factors to extents.
-    // Reverse the order on the last iteration over this->_extents
-    dim_t current_dimension = 0;
-    bool last_iteration = false;
+    // Start with the largest factors and multiply them onto the lowest value
     for (auto it = teamsize_prime_factors.rbegin(); it != teamsize_prime_factors.rend(); ++it) {
       DASH_LOG_TRACE("TeamSpec.balance_extents()",
                      "factor:", it->first, "x", it->second);
       for (auto i = 1; i < it->second + 1; ++i) {
-        if(MaxDimensions == current_dimension) {
-          number_prime_factors -= MaxDimensions;
-          if(MaxDimensions <= number_prime_factors) {
-            current_dimension = 0;
-          } else {
-            last_iteration = true;
-            --current_dimension;
-          }
-        }
-        this->_extents[current_dimension] *= it->first;
-        if(last_iteration) {
-          --current_dimension;
-        } else {
-          ++current_dimension;
-        }
+        new_extents.insert(it->first * *new_extents.begin());
+        new_extents.erase(new_extents.begin());
       }
+    }
+
+    int d = 0;
+    for (auto it = new_extents.rbegin(); it != new_extents.rend(); ++it, ++d) {
+      this->_extents[d] = *it;
     }
 
     this->resize(this->_extents);
