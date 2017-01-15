@@ -498,6 +498,10 @@ private:
     auto & lblockspec = pattern.local_blockspec();
     
     // get the index of the start block of the current slab
+    // if local space is not empty
+    if(lblockspec.size() == 0){
+      return hdf5_hyperslab_spec<ndim>();
+    }
     std::array<index_t, ndim> coords {{0}};
     index_t lblckidx;
     for(auto d : dimensions) {
@@ -519,17 +523,13 @@ private:
         ts.block[i] = pattern.local_extent(i) - pattern.local_block_local(lblckidx).offset(i);
         if(pattern.local_extent(i) == num_tiles * tilesize) {
           // not underfilled on this unit
-          hdf5_hyperslab_spec<ndim> hs_empty;
-          hs_empty.contrib_blocks = false;
-          return hs_empty;
+          return hdf5_hyperslab_spec<ndim>();
         }
       } else {
         // look at not undefilled blocks in this dimension
         if(num_tiles == 0){
           // only underfilled blocks in this dimension
-          hdf5_hyperslab_spec<ndim> hs_empty;
-          hs_empty.contrib_blocks = false;
-          return hs_empty;
+          return hdf5_hyperslab_spec<ndim>();
         }
         ts.count[i] = num_tiles;
         ts.block[i] = tilesize;
