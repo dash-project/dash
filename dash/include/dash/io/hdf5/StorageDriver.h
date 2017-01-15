@@ -542,13 +542,13 @@ private:
         ts.stride[i] = 1;
       }
       
-      ms.count[i]     = num_tiles;
-      ms.block[i]     = tilesize;
+      ms.count[i]     = ts.count[i];
+      ms.block[i]     = ts.block[i];
       ms.offset[i]    = pattern.local_block_local(lblckidx).offset(i);
       ms.stride[i]    = tilesize;
       
       hs.data_extm[i] = pattern.local_extent(i);
-      hs.contrib_data+=ts.count[i]*ts.block[i];
+      hs.contrib_data*=ts.count[i]*ts.block[i];
       
       DASH_LOG_DEBUG("dimensions", dimensions);
       DASH_LOG_DEBUG("ts.count", i, ts.count[i]);
