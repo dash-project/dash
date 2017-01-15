@@ -39,8 +39,9 @@ class InputStream
     * Creates an HDF5 input stream using a launch policy
     * 
     * Support of \cdash::launch::async is still highly experimental and requires
-    * thread support in MPI. To wait for outstanding IO operations use
-    * \cflush(). Until the stream is not flushed, no write accesses to the
+    * thread support in MPI. If multi-threaded access is not supported,
+    * blocking I/O is used as fallback. To wait for outstanding IO operations
+    * use \cflush(). Until the stream is not flushed, no write accesses to the
     * container, as well as no barriers are allowed.
     * Otherwise the behavior is undefined.
     */
@@ -50,7 +51,16 @@ class InputStream
         : _filename(filename),
           _dataset("data"),
           _launch_policy(lpolicy)
-    { }
+    {
+      if(_launch_policy == dash::launch::async
+         && !dash::is_multithreaded())
+      {
+        _launch_policy = dash::launch::sync;
+        DASH_LOG_WARN("Requested ASIO but DART does not support "
+                      "multi-threaded access. Blocking IO is used"
+                      "as fallback");
+      }    
+    }
 
     /**
      * Creates an HDF5 input stream using blocking IO.

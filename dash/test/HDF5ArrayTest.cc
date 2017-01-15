@@ -478,6 +478,10 @@ TEST_F(HDF5ArrayTest, AsyncIO)
   if(mpi_impl == "mpich"){
     SKIP_TEST_MSG("concurrency problems in MPICH");
   }
+  if(dash::myid() == 0){
+    const char * thread_support = dash::is_multithreaded() ? "true" : "false";
+    LOG_MESSAGE("DART Thread support: %s", thread_support);
+  }
     
   double secret[] = {10, 11, 12};
   {
