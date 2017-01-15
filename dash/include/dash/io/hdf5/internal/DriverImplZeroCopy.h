@@ -31,8 +31,7 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
   
   // TODO: Optimize
-  auto hyperslabs = _get_hdf_slabs_boundary(container.pattern());
-  hyperslabs.push_back(_get_hdf_slab_center(container.pattern()));
+  auto hyperslabs = _get_hdf_slabs(container.pattern());
   
   // hyperslab data can be quite large => sort indices only
   std::vector<int> hs_index_set(hyperslabs.size());
@@ -45,8 +44,21 @@ void StoreHDF::_process_dataset_impl_zero_copy(
         return hyperslabs[a].contrib_data > hyperslabs[b].contrib_data;
     });
   
-  for(auto & hs_idx : hs_index_set){
-    auto & hs      = hyperslabs[hs_idx];
+  // get maximum number of hyperslabs
+  // optimization to avoid storing empty only hyperslabs
+  int hs_count_local = hyperslabs.size();
+  int hs_count_max   = 0;
+  
+  DASH_ASSERT_RETURNS(dart_allreduce(&hs_count_local,
+                 &hs_count_max,
+                 1,
+                 dart_datatype<int>::value,
+                 DART_OP_MAX,
+                 container.team().dart_id()), DART_OK);
+
+  const hdf5_hyperslab_spec<ndim> hs_empty;
+  for(int hs_idx = 0; hs_idx < hs_count_max; ++hs_idx){
+    auto & hs      = (hs_idx < hs_count_local) ? hyperslabs[hs_idx] : hs_empty;
     auto & ms_edge = hs.memory;
     auto & ts_edge = hs.dataset;
     memspace = H5Screate_simple(ndim, hs.data_extm.data(), NULL);

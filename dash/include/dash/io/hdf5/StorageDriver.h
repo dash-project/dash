@@ -458,6 +458,154 @@ private:
     WRITE = 0x2
   };
   
+  template < class BlockSpec_t,
+             typename index_t >
+    index_t static inline _blockspec_at(
+      const BlockSpec_t & lblockspec,
+      const std::array<index_t,1> & coords)
+  {
+    return coords[0];
+  }
+  
+  template < class BlockSpec_t,
+             typename index_t,
+             std::size_t ndim >
+    index_t static inline _blockspec_at(
+      const BlockSpec_t & lblockspec,
+      const std::array<index_t,ndim> & coords)
+  {
+    return lblockspec.at(coords);
+  }
+  
+  /**
+   * Get a hdf5 slab representing a part of the dash pattern.
+   * Which part is determined by the additional parameter dimensions.
+   */
+  template < class pattern_t >
+  const static inline hdf5_hyperslab_spec<pattern_t::ndim()>
+    _get_hdf_slab_body(
+      /// The dash pattern to convert to hdf5 slabs
+      const pattern_t & pattern,
+      /// The dimensions in which the underilled blocks are considered
+      const std::vector<dim_t> dimensions)
+  {
+    using index_t = typename pattern_t::index_type;
+    constexpr auto ndim = pattern_t::ndim();
+    hdf5_hyperslab_spec<ndim> hs;
+    auto & ms = hs.memory;
+    auto & ts = hs.dataset;
+    
+    auto & lblockspec = pattern.local_blockspec();
+    
+    // get the index of the start block of the current slab
+    // if local space is not empty
+    if(lblockspec.size() == 0){
+      return hdf5_hyperslab_spec<ndim>();
+    }
+    std::array<index_t, ndim> coords {{0}};
+    index_t lblckidx;
+    for(auto d : dimensions) {
+      coords[d] = lblockspec.extent(d)-1;
+    }
+    lblckidx = _blockspec_at(lblockspec,coords);
+    
+    hs.contrib_blocks = true;
+    // setup extends per dimension
+    for (int i = 0; i < ndim; ++i) {
+      auto tilesize  = pattern.blocksize(i);
+      auto num_tiles = pattern.local_extent(i) / tilesize;
+      
+      // if the current dimension is in dimensions look at the undefilled blocks
+      if(std::find(dimensions.begin(),dimensions.end(), i) != dimensions.end()) {
+        // only look at underfilled blocks in this dimension
+        ts.count[i] = 1;
+        // workaround until pattern.local_block(lblckidx).extent(i); is fixed
+        ts.block[i] = pattern.local_extent(i) - pattern.local_block_local(lblckidx).offset(i);
+        if(pattern.local_extent(i) == num_tiles * tilesize) {
+          // not underfilled on this unit
+          return hdf5_hyperslab_spec<ndim>();
+        }
+      } else {
+        // look at not undefilled blocks in this dimension
+        if(num_tiles == 0){
+          // only underfilled blocks in this dimension
+          return hdf5_hyperslab_spec<ndim>();
+        }
+        ts.count[i] = num_tiles;
+        ts.block[i] = tilesize;
+      }
+      ts.offset[i]     = pattern.local_block(lblckidx).offset(i);
+      
+      if(num_tiles > 1) {
+        ts.stride[i] = pattern.teamspec().extent(i) * ts.block[i];
+      } else {
+        ts.stride[i] = 1;
+      }
+      
+      ms.count[i]     = ts.count[i];
+      ms.block[i]     = ts.block[i];
+      ms.offset[i]    = pattern.local_block_local(lblckidx).offset(i);
+      ms.stride[i]    = tilesize;
+      
+      hs.data_extm[i] = pattern.local_extent(i);
+      hs.contrib_data*=ts.count[i]*ts.block[i];
+      
+      DASH_LOG_DEBUG("dimensions", dimensions);
+      DASH_LOG_DEBUG("ts.count", i, ts.count[i]);
+      DASH_LOG_DEBUG("ts.offset", i, ts.offset[i]);
+      DASH_LOG_DEBUG("ts.block", i, ts.block[i]);
+      DASH_LOG_DEBUG("ts.stride", i, ts.stride[i]);
+      DASH_LOG_DEBUG("ms.count", i, ms.count[i]);
+      DASH_LOG_DEBUG("ms.block", i, ms.block[i]);
+      DASH_LOG_DEBUG("ms.offset", i, ms.offset[i]);
+      DASH_LOG_DEBUG("ms.stride", i, ms.stride[i]);
+    }
+    hs.contrib_blocks = true;
+    return hs;
+  }
+  
+  /**
+   * Convert a dash pattern into a hdf5 pattern in form of a list of hdf5 slabs.
+   */
+  template < dim_t ndim,
+             MemArrange Arr,
+             typename index_t >
+    const static inline std::vector<hdf5_hyperslab_spec<ndim>>
+      /// The dash pattern to convert to hdf5 slabs
+      _get_hdf_slabs(const dash::Pattern<ndim, Arr, index_t> & pattern)
+  {
+    std::vector<hdf5_hyperslab_spec<ndim>> specs_hyperslab;
+    std::vector<dim_t> dimensions;
+    
+    // iteration over powerset of {0, ..., ndim-1}
+    specs_hyperslab.push_back(_get_hdf_slab_body(pattern, dimensions));
+    // initialize dimensions so that it is equal to {0} in the first iteration
+    dimensions.push_back(-1);
+    while(dimensions.size() > 0) {
+      ++dimensions.back();
+      if(ndim == dimensions.back()) {
+        dimensions.pop_back();
+        continue;
+      } else if(pattern.underfilled_blocksize(dimensions.back()) == 0) {
+        continue;
+      } //else
+      auto & current_hs = _get_hdf_slab_body(pattern, dimensions);
+      if(current_hs.contrib_blocks){
+        specs_hyperslab.push_back(current_hs);
+      }
+      dimensions.push_back(dimensions.back());
+    }
+    
+    return specs_hyperslab;
+  }
+
+  template < class pattern_t >
+  const static inline std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>
+    _get_hdf_slabs(const pattern_t & pattern){
+    return std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>(
+             1, _get_hdf_slab_body(pattern, {}));
+  }
+  
    /**
    * convert a dash pattern into a hdf5 pattern
    * \param pattern_t pattern
@@ -506,7 +654,7 @@ private:
     return hs;
   }
   
-    template < dim_t ndim,
+  template < dim_t ndim,
              MemArrange Arr,
              typename index_t >
   const static inline std::vector<hdf5_hyperslab_spec<ndim>>
