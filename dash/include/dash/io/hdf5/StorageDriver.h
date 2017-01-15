@@ -589,8 +589,10 @@ private:
       } else if(pattern.underfilled_blocksize(dimensions.back()) == 0) {
         continue;
       } //else
-      
-      specs_hyperslab.push_back(_get_hdf_slab_body(pattern, dimensions));
+      auto & current_hs = _get_hdf_slab_body(pattern, dimensions);
+      if(current_hs.contrib_blocks){
+        specs_hyperslab.push_back(current_hs);
+      }
       dimensions.push_back(dimensions.back());
     }
     
