@@ -5,21 +5,88 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
-set (DASH_DEVELOPER_COMPILE_FLAGS
-     "-Weffc++ -Wcast-align -Wcast-qual -Wno-ctor-dtor-privacy "
-     "-Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations "
-     "-Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual "
-     "-Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo "
-     "-Wstrict-overflow=5 -Wswitch -Wundef -Wno-unused -Wnon-virtual-dtor "
-     "-Wreorder -Wdeprecated -Wno-float-equal")
- 
 
-set (CXX_WARN_FLAG "")
-set (CC_WARN_FLAG  "")
+
+# The following warning options are intentionally not enabled:
+#
+#  ,--------------------------.-------------------------------------------.
+#  | Flag                     | Reason                                    |
+#  :--------------------------+-------------------------------------------:
+#  | -Wmissing-declarations   | Arguably only relevant for code style     |
+#  | -Wshadow                 | Very unlikely to cause unintended effects |
+#  | -Weffc++                 | Spurious false positives                  |
+#  '--------------------------'-------------------------------------------'
+
+set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
+    PARENT_SCOPE)
+
+set(ENABLE_EXTENDED_COMPILER_WARNINGS ${ENABLE_EXTENDED_COMPILER_WARNINGS}
+    PARENT_SCOPE)
+
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
+
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self -Wopenmp-simd")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
+
+  # C++-only warning flags
+
+  set (DASH_DEVELOPER_CXX_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+
+  set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
+
+  if (ENABLE_EXTENDED_COMPILER_WARNINGS)
+    # this flag causes warnings on DASH_ASSERT_RETURNS
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
+    # this flag might help spot overflows in index computation but is too verbose in general
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Wstrict-overflow=3")
+    # some good hints, but too style-related to be used in general
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++")
+  endif()
+
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
+  
+  # C-only warning flags
+
+  set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
+
+endif()
+
+
+set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
+set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
+
 if (ENABLE_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
-    set (CXX_WARN_FLAG "-Wall -Wextra -pedantic")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
@@ -86,6 +153,13 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
        CACHE STRING "C compiler std flag")
 endif()
 
+
+set(CMAKE_CXX_FLAGS_DEBUG
+    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
+
+set(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
+
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_ENV_SETUP_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG
@@ -98,12 +172,12 @@ set(CMAKE_CXX_FLAGS_RELEASE
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CC_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
   "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:
