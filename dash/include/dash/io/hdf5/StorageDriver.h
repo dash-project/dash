@@ -481,16 +481,16 @@ private:
    * Get a hdf5 slab representing a part of the dash pattern.
    * Which part is determined by the additional parameter dimensions.
    */
-  template < dim_t ndim,
-             MemArrange Arr,
-             typename index_t >
-  const static inline hdf5_hyperslab_spec<ndim>
+  template < class pattern_t >
+  const static inline hdf5_hyperslab_spec<pattern_t::ndim()>
     _get_hdf_slab_body(
       /// The dash pattern to convert to hdf5 slabs
-      const dash::Pattern<ndim, Arr, index_t> & pattern,
+      const pattern_t & pattern,
       /// The dimensions in which the underilled blocks are considered
       const std::vector<dim_t> dimensions)
   {
+    using index_t = typename pattern_t::index_type;
+    constexpr auto ndim = pattern_t::ndim();
     hdf5_hyperslab_spec<ndim> hs;
     auto & ms = hs.memory;
     auto & ts = hs.dataset;
@@ -595,6 +595,13 @@ private:
     }
     
     return specs_hyperslab;
+  }
+
+  template < class pattern_t >
+  const static inline std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>
+    _get_hdf_slabs(const pattern_t & pattern){
+    return std::vector<hdf5_hyperslab_spec<pattern_t::ndim()>>(
+             1, _get_hdf_slab_body(pattern, {}));
   }
   
    /**
