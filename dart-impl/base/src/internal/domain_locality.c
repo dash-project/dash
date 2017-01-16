@@ -664,8 +664,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                  module_domain->host, module_domain->domain_tag,
                  module_domain->num_units, module_domain->global_index);
 
-  DART_LOG_TRACE_ARRAY(
-    "dart__base__locality__domain__create_module_subdomains", "%lu",
+  DART_LOG_TRACE_UNITID_ARRAY(
+    "dart__base__locality__domain__create_module_subdomains", "%d",
     module_domain->unit_ids, module_domain->num_units);
   /*
    * NOTE: Locality scopes may be heterogeneous but are expected

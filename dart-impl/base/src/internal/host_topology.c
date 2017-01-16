@@ -867,7 +867,7 @@ dart_ret_t dart__base__host_topology__node_units(
   }
   *units = node_unit_ids;
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__host_topology__node_units >", "%d", *units, *num_units);
   return DART_OK;
 }
@@ -909,7 +909,7 @@ dart_ret_t dart__base__host_topology__host_domain(
     return DART_ERR_NOTFOUND;
   }
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__host_topology__module_units >", "%d", *units, *num_units);
   return DART_OK;
 }

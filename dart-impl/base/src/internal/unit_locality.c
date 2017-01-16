@@ -146,7 +146,7 @@ dart_ret_t dart__base__unit_locality__create(
                    "num_cores:%d core_id:%d cpu_id:%d "
                    "num_numa:%d numa_id:%d "
                    "nthreads:%d",
-                   (int)(u), ulm_u->unit,
+                   (int)(u), ulm_u->unit.id,
                    ulm_u->hwinfo.host,
                    ulm_u->hwinfo.num_cores, ulm_u->hwinfo.core_id,
                    ulm_u->hwinfo.cpu_id,
