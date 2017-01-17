@@ -939,7 +939,7 @@ TEST_F(MatrixTest, UnderfilledPattern)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
 
-  size_t team_size    = dash::Team::All().size();
+  auto team_size    = dash::Team::All().size();
 
   dash::TeamSpec<2> teamspec_2d(team_size, 1);
   teamspec_2d.balance_extents();
@@ -984,43 +984,49 @@ TEST_F(MatrixTest, UnderfilledPattern)
 }
 
 /**
- * Check local extents vs. global extents in 2D matrix with BLOCKED distribution 
- * pattern and underfilled blocks
+ * Check local extents vs. global extents in 2D matrix with BLOCKED
+ * distribution pattern and underfilled blocks.
  */
 TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
 {
+  typedef dash::default_extent_t   extent_t;
+  typedef dash::default_index_t     index_t;
+
   dart_unit_t myid= dash::myid();
-  size_t numunits= dash::Team::All().size();
+  auto numunits = dash::Team::All().size();
 
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-    uint32_t w= 13;
-    uint32_t h= 7;
+  extent_t w = 13;
+  extent_t h =  7;
 
-    auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
-    dash::NArray<uint32_t, 2> matrix( dash::SizeSpec<2>( h, w ),
-      distspec, dash::Team::All(), teamspec );
+  auto distspec = dash::DistributionSpec<2>(dash::BLOCKED, dash::BLOCKED);
 
-    std::array< long int, 2 > corner= matrix.pattern().global( {0,0} );
-    size_t lw= ( corner[1] + matrix.local.extent(1) < w ) ? matrix.local.extent(1) : w - corner[1];
-    size_t lh= ( corner[0] + matrix.local.extent(0) < h ) ? matrix.local.extent(0) : h - corner[0];
+  dash::NArray<uint32_t, 2>
+    matrix(dash::SizeSpec<2>(h, w),
+           distspec,
+           dash::Team::All(),
+           teamspec);
 
-#if 0
-    std::cout << "uint " << myid << " thinks local extent is " << 
-        matrix.local.extent(1) << " x " << matrix.local.extent(0) << " but it should be " <<
-        lw << " x " << lh << std::endl;
-#endif
+  auto corner = matrix.pattern().global( {0,0} );
 
-    EXPECT_LE_U( corner[1] + matrix.local.extent(1), w );
-    EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
+  auto lw = (corner[1] + matrix.local.extent(1) < w )
+               ? matrix.local.extent(1)
+               : w - corner[1];
+  auto lh = (corner[0] + matrix.local.extent(0) < h )
+               ? matrix.local.extent(0)
+               : h - corner[0];
+
+  EXPECT_LE_U( corner[1] + matrix.local.extent(1), w );
+  EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
 }
 
 
 TEST_F(MatrixTest, SimpleConstructor)
 {
-  size_t ext_x = dash::size();
-  size_t ext_y = 5*dash::size();
+  auto ext_x = dash::size();
+  auto ext_y = dash::size() * 5;
   dash::Matrix<int, 2> matrix(ext_x, ext_y);
 
   dash::fill(matrix.begin(), matrix.end(), dash::myid());
@@ -1033,9 +1039,10 @@ TEST_F(MatrixTest, SimpleConstructor)
 
 TEST_F(MatrixTest, MatrixLBegin)
 {
-  int myid = dash::myid();
-  size_t ext_x = dash::size();
-  size_t ext_y = 5*dash::size();
+  auto myid  = dash::myid();
+  auto ext_x = dash::size();
+  auto ext_y = dash::size() * 5;
+
   dash::Matrix<int, 2> matrix(ext_x, ext_y);
 
   dash::fill(matrix.begin(), matrix.end(), myid);
