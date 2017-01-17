@@ -347,7 +347,7 @@ GlobOutputIt transform(
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
   auto in_first = in_a_first;
   auto in_last  = in_a_last;
-  // dash::Array<ValueType> in_range;
+
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A
     // Input is (in_a_first, in_a_last).

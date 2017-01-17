@@ -71,20 +71,21 @@ constexpr auto
 index(const ViewType & v)
 -> typename std::enable_if<
      dash::view_traits<ViewType>::is_view::value,
-     decltype(v.index_set())
+//   decltype(v.index_set())
+     const typename ViewType::index_set_type
    >::type {
   return v.index_set();
 }
 
-template <class ViewType>
-auto
-index(ViewType & v)
--> typename std::enable_if<
-     dash::view_traits<ViewType>::is_view::value,
-     decltype(v.index_set())
-   >::type {
-  return v.index_set();
-}
+// template <class ViewType>
+// auto
+// index(ViewType & v)
+// -> typename std::enable_if<
+//      dash::view_traits<ViewType>::is_view::value,
+//      decltype(v.index_set())
+//    >::type {
+//   return v.index_set();
+// }
 
 
 
@@ -98,15 +99,15 @@ index(const ContainerType & c)
   return IndexSetIdentity<ContainerType>(c);
 }
 
-template <class ContainerType>
-auto
-index(ContainerType & c)
--> typename std::enable_if <
-     dash::view_traits<ContainerType>::is_origin::value,
-     IndexSetIdentity<ContainerType>
-   >::type {
-  return IndexSetIdentity<ContainerType>(c);
-}
+// template <class ContainerType>
+// auto
+// index(ContainerType & c)
+// -> typename std::enable_if <
+//      dash::view_traits<ContainerType>::is_origin::value,
+//      IndexSetIdentity<ContainerType>
+//    >::type {
+//   return IndexSetIdentity<ContainerType>(c);
+// }
 
 
 namespace detail {
@@ -242,8 +243,9 @@ template <
   class ViewType >
 constexpr auto
 local(
-  const IndexSetBase<IndexSetType, ViewType> & index_set
-) -> decltype(index_set.local()) {
+  const IndexSetBase<IndexSetType, ViewType> & index_set) ->
+//decltype(index_set.local()) {
+  const IndexSetLocal<ViewType> & { 
   return index_set.local();
 }
 
@@ -342,7 +344,7 @@ public:
     return *_end;
   }
 
-  constexpr const index_set_domain_type & domain() const {
+  constexpr const index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
     //   return dash::index(dash::domain(derived().view()));
     return dash::index(dash::domain(_view));
@@ -369,9 +371,7 @@ public:
 
 template <class ViewType>
 constexpr const IndexSetIdentity<ViewType> &
-local(
-  const IndexSetIdentity<ViewType> & index_set
-) {
+local(const IndexSetIdentity<ViewType> & index_set) {
   return index_set;
 }
 
@@ -399,18 +399,18 @@ private:
   index_type _size;
 public:
   constexpr explicit IndexSetIdentity(const ViewType & view)
-  : base_t(view), _size(calc_size())
+  : base_t(view) // , _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
     return image_index;
   }
 
-  constexpr index_type calc_size() const {
+  constexpr index_type size() const {
     return this->domain().size();
   }
 
-  constexpr index_type size() const {
+  constexpr index_type csize() const {
     return _size;
   }
 };
@@ -419,15 +419,17 @@ public:
 
 template <class ViewType>
 constexpr auto
-local(const IndexSetSub<ViewType> & index_set
-) -> decltype(index_set.local()) {
+local(const IndexSetSub<ViewType> & index_set) ->
+// decltype(index_set.local()) {
+  typename view_traits<IndexSetSub<ViewType>>::local_type & { 
   return index_set.local();
 }
 
 template <class ViewType>
 constexpr auto
-global(const IndexSetSub<ViewType> & index_set
-) -> decltype(index_set.global()) {
+global(const IndexSetSub<ViewType> & index_set) ->
+// decltype(index_set.global()) {
+  typename view_traits<IndexSetSub<ViewType>>::global_type & { 
   return index_set.global();
 }
 
@@ -467,10 +469,10 @@ public:
     const ViewType   & view,
     index_type         begin,
     index_type         end)
-  : base_t(view),
-    _domain_begin_idx(begin),
-    _domain_end_idx(end),
-    _size(calc_size())
+  : base_t(view)
+  , _domain_begin_idx(begin)
+  , _domain_end_idx(end)
+//  _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
@@ -479,7 +481,7 @@ public:
     return (_domain_begin_idx + image_index);
   }
 
-  constexpr index_type calc_size() const {
+  constexpr index_type size() const {
     return std::min<index_type>(
              (_domain_end_idx - _domain_begin_idx),
        // TODO:
@@ -488,7 +490,7 @@ public:
            );
   }
 
-  constexpr index_type size() const {
+  constexpr index_type csize() const {
     return _size;
   }
 
@@ -519,8 +521,9 @@ local(const IndexSetLocal<ViewType> & index_set) {
 
 template <class ViewType>
 constexpr auto
-global(const IndexSetLocal<ViewType> & index_set)
--> decltype(index_set.global()) {
+global(const IndexSetLocal<ViewType> & index_set) ->
+// decltype(index_set.global()) {
+  typename view_traits<IndexSetLocal<ViewType>>::global_type & { 
   return index_set.global();
 }
 
@@ -560,7 +563,7 @@ public:
 
 public:
   constexpr explicit IndexSetLocal(const ViewType & view)
-  : base_t(view), _size(calc_size())
+  : base_t(view) // , _size(calc_size())
   { }
 
   constexpr index_type
@@ -591,11 +594,11 @@ public:
                ) );
   }
 
-  constexpr index_type size() const {
+  constexpr index_type csize() const {
     return _size;
   }
 
-  inline index_type calc_size() const {
+  inline index_type size() const {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
 
@@ -640,8 +643,9 @@ public:
 
 template <class ViewType>
 constexpr auto
-local(const IndexSetGlobal<ViewType> & index_set)
--> decltype(index_set.local()) {
+local(const IndexSetGlobal<ViewType> & index_set) ->
+// decltype(index_set.local()) {
+  typename view_traits<IndexSetGlobal<ViewType>>::local_type & { 
   return index_set.local();
 }
 
@@ -685,7 +689,7 @@ private:
   index_type _size;
 public:
   constexpr explicit IndexSetGlobal(const ViewType & view)
-  : base_t(view), _size(calc_size())
+  : base_t(view) // , _size(calc_size())
   { }
 
   constexpr index_type
@@ -698,14 +702,14 @@ public:
            );
   }
 
-  constexpr index_type calc_size() const {
+  constexpr index_type size() const {
     return std::max<index_type>(
              this->pattern().size(),
              this->domain().size()
            );
   }
 
-  constexpr index_type size() const {
+  constexpr index_type csize() const {
     return _size;
   }
 

@@ -1142,6 +1142,11 @@ public:
     // Translate local coordinates of first element in local block to global
     // coordinates:
     for (auto d = 0; d < NumDimensions; ++d) {
+      auto num_blocks_d =_local_blockspec.extent(d);
+      if(l_block_coords[d] == (num_blocks_d - 1)){
+        // workaround, propably not efficient
+        block_vs_extents[d]= local_extent(d) - local_block_local(local_block_index).offset(d);
+      }
       auto blocksize_d  = block_vs_extents[d];
       l_elem_coords[d] *= blocksize_d;
     }
@@ -1179,8 +1184,13 @@ public:
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents =
-      _blocksize_spec.extents();
+    std::array<size_type, NumDimensions>  extents = _blocksize_spec.extents();
+    // last block in at least one dimension
+    for(dim_t d=0; d<NumDimensions; ++d){
+      if(l_block_coords[d] == (_local_blockspec.extent(d)-1)){
+          extents[d]-=underfilled_blocksize(d);
+      }
+    }
     // Local block coords to local element offset:
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = extents[d];

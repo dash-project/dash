@@ -231,7 +231,8 @@ public:
   typedef typename view_traits<DomainType>::index_type            index_type;
 
 protected:
-  std::reference_wrapper<const DomainType> _domain;
+//std::reference_wrapper<const DomainType> _domain;
+  const DomainType & _domain;
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
@@ -254,7 +255,7 @@ public:
   self_t & operator=(const self_t &) = default;
 
   constexpr const domain_type & domain() const {
-    return _domain.get();
+    return _domain;
   }
 
   constexpr bool operator==(const ViewModType & rhs) const {
@@ -265,11 +266,24 @@ public:
     return !(derived() == rhs);
   }
 
-  constexpr auto operator[](int offset) const ->
-//  decltype(*(derived().begin() + offset)) {   <-- odr use of incomplete
+  constexpr auto operator[](int offset) const
+//  decltype(*(std::declval<ViewModType>().begin())) {
 //  typename view_traits<ViewModType>::origin_type {
 //           ::value_type {
-    typename view_traits<ViewModType>::origin_type::value_type {
+  ->  typename std::add_lvalue_reference<
+        typename std::add_const<
+          typename view_traits<ViewModType>::origin_type::value_type >::type
+      >::type {
+    return *(derived().begin() + offset);
+  }
+
+  auto operator[](int offset)
+//  decltype(*(std::declval<ViewModType>().begin())) {
+//  typename view_traits<ViewModType>::origin_type {
+//           ::value_type {
+  ->  typename std::add_lvalue_reference<
+        typename view_traits<ViewModType>::origin_type::value_type
+      >::type {
     return *(derived().begin() + offset);
   }
 

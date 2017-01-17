@@ -74,8 +74,8 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-//tests.push_back({4          , 1000000});
-//tests.push_back({16         , 100000});
+  tests.push_back({4          , 1000000});
+  tests.push_back({16         , 100000});
 //tests.push_back({64         , 100000});
 //tests.push_back({256        , 10000});
 //tests.push_back({1024       , 10000});
