@@ -1,6 +1,8 @@
 #ifndef DASH__IO__HDF5__IOSTREAM_h
 #define DASH__IO__HDF5__IOSTREAM_h
 
+#include <dash/io/IOStream.h>
+
 namespace dash {
 namespace io   {
 namespace hdf5 {
@@ -13,8 +15,8 @@ using StreamMode = dash::io::IOStreamMode<DeviceMode>;
 } // namespace io
 } // namespace dash
 
-#include<dash/io/hdf5/IOManip.h>
-#include<dash/io/hdf5/InputStream.h>
-#include<dash/io/hdf5/OutputStream.h>
+#include <dash/io/hdf5/IOManip.h>
+#include <dash/io/hdf5/InputStream.h>
+#include <dash/io/hdf5/OutputStream.h>
 
 #endif // DASH__IO__HDF5__IOSTREAM_h
