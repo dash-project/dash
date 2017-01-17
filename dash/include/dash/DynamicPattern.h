@@ -22,6 +22,6 @@ namespace dash {
 
 #endif // DASH__PARTITION_H_INCLUDED
 
-#include <dash/graph/partition/VertexPartition.h>
-#include <dash/graph/partition/EdgePartition.h>
-#include <dash/graph/partition/LoadBalancedVertexPartition.h>
+#include <dash/graph/pattern/VertexPartitionedDynamicPattern.h>
+//#include <dash/graph/partition/EdgePartition.h>
+#include <dash/graph/partition/LoadBalancedDynamicPatternn.h>

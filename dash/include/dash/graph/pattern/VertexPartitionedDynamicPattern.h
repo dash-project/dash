@@ -51,12 +51,12 @@ namespace graph {
  */
 template<
   class DistributionMethod = dash::detail::VertexHashDistribution>
-class VertexPartition {
+class VertexPartitionedDynamicPattern {
 
   /**
    * Constructs the partitioning scheme.
    */
-  VertexPartition(Team & team);
+  VertexPartitionedDynamicPattern(Team & team);
 
 };
 

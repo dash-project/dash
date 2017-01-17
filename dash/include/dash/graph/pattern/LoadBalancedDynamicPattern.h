@@ -53,12 +53,12 @@ namespace graph {
  */
 template<
   class CostMethod = dash::detail::LoadBalanceDistribution>
-class LoadBalancedVertexPartition {
+class LoadBalancedDynamicPattern {
 
   /**
    * Constructs the partitioning scheme.
    */
-  LoadBalancedVertexPartition(Team & team);
+  LoadBalancedDynamicPattern(Team & team);
 
 };
 

@@ -52,11 +52,64 @@ class edge {
   // TODO: define edge interface
 };
 
+// TODO: find template paramters
+class VertexIterator {
+
+}
+
+struct VertexIteratorWrapper {
+
+  typedef VertexIterator vertex_iterator;
+  
+  /**
+   * Returns global iterator to the beginning of the vertex list.
+   */
+  vertex_iterator begin();
+  
+  /**
+   * Returns global iterator to the beginning of the vertex list.
+   */
+  const_vertex_iterator begin() const;
+  
+  /**
+   * Returns global iterator to the end of the vertex list.
+   */
+  vertex_iterator end();
+  
+  /**
+   * Returns global iterator to the end of the vertex list.
+   */
+  const_vertex_iterator end() const;
+  
+  /**
+   * Returns local iterator to the beginning of the vertex list.
+   */
+  vertex_iterator lbegin();
+  
+  /**
+   * Returns local iterator to the beginning of the vertex list.
+   */
+  const_vertex_iterator lbegin() const;
+  
+  /**
+   * Returns local iterator to the end of the vertex list.
+   */
+  vertex_iterator lend();
+  
+  /**
+   * Returns local iterator to the end of the vertex list.
+   */
+  const_vertex_iterator lend() const;
+
+};
+
+// TODO: add all iterator types + wrappers
+
 }
 
 template<
   GraphDirection Direction  = dash::graph::DirectedGraph,
-  typename Partition        = dash::graph::VertexPartition,
+  typename DynamicPattern   = dash::graph::VertexPartitionedDynamicPattern,
   typename VertexProperties = Empty,           // user-defined struct
   typename EdgeProperties   = Empty,           // user-defined struct
   typename GraphProperties  = Empty,           // user-defined struct
@@ -65,6 +118,8 @@ template<
   typename VertexSizeType   = std::size_t,
   typename EdgeSizeType     = std::size_t>
 class Graph {
+
+  typedef detail::VertexIteratorWrapper               vertex_it_wrapper;
 
 public:
 
@@ -76,22 +131,23 @@ public:
   typedef edge_size_type                              edge_index_type;
 
   typedef Direction                                   direction_type;
-  typedef Partition                                   partition_type;
+  typedef DynamicPattern                              pattern_type;
   typedef VertexContainer                             vertex_container_type;
   typedef EdgeContainer                               edge_container_type;
   typedef VertexProperties                            vertex_properties_type;
   typedef EdgeProperties                              edge_properties_type;
 
-  // iterators:
-  // TODO: Find types
-  //       Things to consider:
-  //       - Undifrected Graph: no difference betw. in- and out-edge 
-  //         iterators and edge_iterator
-  typedef   vertex_iterator;
-  typedef   edge_iterator;
-  typedef   in_edge_iterator;
-  typedef   out_edge_iterator;
-  typedef   adjacency_iterator;
+  typedef vertex_it_wrapper::vertex_iterator          vertex_iterator;
+  typedef                                             edge_iterator;
+  typedef                                             in_edge_iterator;
+  typedef                                             out_edge_iterator;
+  typedef                                             adjacency_iterator;
+
+public:
+
+  vertex_it_wrapper vertices;
+
+public:
 
   /**
    * Constructs a graph with given properties
@@ -123,7 +179,7 @@ public:
   /**
    * TODO: Return full property object for graph properties or
    *       use getter- and setter methods for individual fields?
-   *       Also: Are graph properties rellay needed? The user could just
+   *       Also: Are graph properties really needed? The user could just
    *       save them elsewhere.
    */
   
@@ -211,36 +267,7 @@ public:
    * Commits local changes performed by methods classified as "global" to
    * the whole data structure.
    */
-  void commit();
-
-  /**
-   * Returns iterator to the beginning of the vertex list.
-   */
-  vertex_iterator v_begin();
-
-  /**
-   * TODO: Iterator method names are not really straightforward.
-   */
-  vertex_iterator v_end();
-  edge_iterator e_begin();
-  edge_iterator e_end();
-  in_edge_iterator ie_begin();
-  in_edge_iterator ie_end();
-  out_edge_iterator oe_begin();
-  out_edge_iterator oe_end();
-  adjacency_iterator a_begin();
-  adjacency_iterator a_end();
-
-  vertex_iterator v_lbegin();
-  vertex_iterator v_lend();
-  edge_iterator e_lbegin();
-  edge_iterator e_lend();
-  in_edge_iterator ie_lbegin();
-  in_edge_iterator ie_lend();
-  out_edge_iterator oe_lbegin();
-  out_edge_iterator oe_lend();
-  adjacency_iterator a_lbegin();
-  adjacency_iterator a_lend();
+  void barrier();
 
 };
 
