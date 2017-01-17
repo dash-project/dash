@@ -17,26 +17,35 @@
 
 namespace dash {
 
-} // namespace dash
-
-/* TODO: Eventually, these probably are not public definitions.
- *       Move to namespace internal.
+/**
+ * \defgroup  DashViewExpressionConcept  Multidimensional View Expressions
+ *
+ * \ingroup DashViewConcept
+ * \{
+ * \par Description
  *
  * Implementing view modifier chain as combination of command pattern
  * and chain of responsibility pattern.
  * For now, only compile-time projections/slices are supported such as:
  *
+ * \code
  *   sub<0>(10,20).sub<1>(30,40)
+ * \endcode
  *
  * but not run-time projections/slices like:
  *
+ * \code
  *   sub(0, { 10,20 }).sub(1, { 30,40 })
+ * \endcode
+ *
+ * \par Implementation Notes
  *
  * A view composition is a chained application of view modifier types
  * that depend on the type of their predecessor in the chain.
  *
  * Example:
  *
+ * \code
  *  sub<0>(2).sub<1>(3,4)
  *  :         :
  *  |         |
@@ -46,17 +55,14 @@ namespace dash {
  *  '--> ViewSubMod<-1, ViewOrigin >
  *                      '----.---'
  *                           '--> parent
+ * \endcode
  *
  * Consequently, specific ViewMod types are defined for every modifier
  * category.
+ *
  * As an alternative, all view modifications could be stored in command
  * objects of a single ViewMod type. Expressions then could not be
  * evalated at compile-time, however.
- *
- * Currently, only two view modifier types seem to be required:
- * - ViewSubMod
- * - ViewBlockMod (-> ViewSubMod)
- * - ViewLocalMod
  *
  * However, View modifier types should subclass a common ViewMod base
  * class - or vice versa, following the policy pattern with the
@@ -85,38 +91,40 @@ namespace dash {
  *   // - either calls view_mod_op(initializer_list) in constructor
  *   // - or provides method sub<N>(...) directly
  *
- *
- * TODO: The ViewMod types don't satisfy the View concept entirely as
- *       methods like extents(), offsets(), cannot be defined without
- *       a known pattern type.
- *       Also, view modifiers are not bound to a data domain (like an
- *       array address space), they do not provide access to elements.
- *
- *       Clarify/ensure that these unbound/unmaterialized/lightweight
- *       views cannot appear in expressions where they are considered
- *       as models of the View concept.
- *
- *       Does not seem problematic so far as bound- and unbound views
- *       have different types (would lead to compiler errors in worst
- *       case) and users should not be tempted to access elements 
- *       without specifying a data domain first:
- *
- *          matrix.sub<1>(1,2);            is bound to matrix element
- *                                         domain
- *
- *          os << sub<1>(1,2);             view unbound at this point
- *                                         and value access cannot be
- *                                         specified.
- *          os << sub<3>(10,20) << mat;    bound once container `mat`
- *                                         is passed.
- *
- * TODO: Define dereference operator*() for view types, delegating to
+ * \todo Eventually, these probably are not public definitions.
+ *       Move to namespace internal.
+ *       Define dereference operator*() for view types, delegating to
  *       domain::operator* recursively.
  */
 
 
 #ifndef DOXYGEN
-namespace dash {
+
+// ------------------------------------------------------------------------
+// Forward-declarations
+// ------------------------------------------------------------------------
+
+template <
+  dim_t NDim = 1>
+class ViewOrigin;
+
+template <
+  class ViewModType,
+  class DomainType >
+class ViewModBase;
+
+template <
+  class DomainType = ViewOrigin<1> >
+class ViewLocalMod;
+
+template <
+  class DomainType = ViewOrigin<1> >
+class ViewGlobalMod;
+
+template <
+  class DomainType = ViewOrigin<1>,
+  dim_t SubDim     = 0 >
+class ViewSubMod;
 
 // --------------------------------------------------------------------
 // ViewOrigin
@@ -125,7 +133,7 @@ namespace dash {
 /**
  * Monotype for the logical symbol that represents a view origin.
  */
-template <dim_t NDim = 1>
+template <dim_t NDim>
 class ViewOrigin
 {
   typedef ViewOrigin self_t;
@@ -139,9 +147,9 @@ public:
   typedef std::integral_constant<bool, false> is_local;
 
 public:
-  ViewOrigin()               = delete;
-  ViewOrigin(self_t &&)      = default;
-  ViewOrigin(const self_t &) = default;
+  constexpr ViewOrigin()               = default;
+  constexpr ViewOrigin(self_t &&)      = default;
+  constexpr ViewOrigin(const self_t &) = default;
   ~ViewOrigin()                        = default;
   self_t & operator=(self_t &&)        = default;
   self_t & operator=(const self_t &)   = default;
@@ -208,35 +216,13 @@ struct view_traits<ViewOrigin<NDim>> {
 };
 
 
-
 // ------------------------------------------------------------------------
-// Forward-declarations
+// ViewModBase
 // ------------------------------------------------------------------------
 
 template <
   class ViewModType,
   class DomainType >
-class ViewModBase;
-
-template <
-  class DomainType = ViewOrigin<1> >
-class ViewLocalMod;
-
-template <
-  class DomainType = ViewOrigin<1> >
-class ViewGlobalMod;
-
-template <
-  class DomainType = ViewOrigin<1>,
-  dim_t SubDim     = 0 >
-class ViewSubMod;
-
-
-// ------------------------------------------------------------------------
-// ViewModBase
-// ------------------------------------------------------------------------
-
-template <class ViewModType, class DomainType>
 class ViewModBase
 {
   typedef ViewModBase<ViewModType, DomainType> self_t;
@@ -258,12 +244,12 @@ protected:
   : _domain(domain)
   { }
 
+  ViewModBase()                      = default;
+  ViewModBase(self_t &&)             = default;
+  ViewModBase(const self_t &)        = default;
   ~ViewModBase()                     = default;
 
 public:
-  ViewModBase()                      = delete;
-  ViewModBase(self_t &&)             = default;
-  ViewModBase(const self_t &)        = default;
   self_t & operator=(self_t &&)      = default;
   self_t & operator=(const self_t &) = default;
 
@@ -336,9 +322,9 @@ public:
   typedef std::integral_constant<bool, true>                      is_local;
 
 public:
-  ViewLocalMod()               = delete;
-  ViewLocalMod(self_t &&)      = default;
-  ViewLocalMod(const self_t &) = default;
+  ViewLocalMod()                         = default;
+  ViewLocalMod(self_t &&)                = default;
+  ViewLocalMod(const self_t &)           = default;
   ~ViewLocalMod()                        = default;
   self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = default;
@@ -431,6 +417,115 @@ private:
 
 
 // ------------------------------------------------------------------------
+// ViewSubMod
+// ------------------------------------------------------------------------
+
+template <
+  class DomainType,
+  dim_t SubDim >
+struct view_traits<ViewSubMod<DomainType, SubDim> > {
+  typedef DomainType                                             domain_type;
+  typedef typename dash::view_traits<domain_type>::origin_type   origin_type;
+  typedef ViewSubMod<DomainType, SubDim>                          image_type;
+  typedef ViewSubMod<DomainType, SubDim>                          local_type;
+  typedef ViewSubMod<DomainType, SubDim>                         global_type;
+
+  typedef typename DomainType::index_type                         index_type;
+  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
+
+  typedef std::integral_constant<bool, false>                  is_projection;
+  typedef std::integral_constant<bool, true>                   is_view;
+  typedef std::integral_constant<bool, false>                  is_origin;
+  typedef std::integral_constant<bool,
+    view_traits<domain_type>::is_local::value >                is_local;
+};
+
+
+template <
+  class DomainType,
+  dim_t SubDim >
+class ViewSubMod
+: public ViewModBase<
+           ViewSubMod<DomainType, SubDim>,
+           DomainType >
+{
+public:
+  typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::index_type            index_type;
+private:
+  typedef ViewSubMod<DomainType, SubDim>                              self_t;
+  typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
+public:
+  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
+  typedef ViewLocalMod<self_t>                                    local_type;
+  typedef self_t                                                 global_type;
+
+  typedef std::integral_constant<bool, false>                       is_local;
+
+private:
+  index_set_type _index_set;
+  local_type     _local;
+
+public:
+  ViewSubMod()                         = default;
+  ViewSubMod(self_t &&)                = default;
+  ViewSubMod(const self_t &)           = default;
+  ~ViewSubMod()                        = default;
+  self_t & operator=(self_t &&)        = default;
+  self_t & operator=(const self_t &)   = default;
+
+  constexpr ViewSubMod(
+    const DomainType & domain,
+    index_type         begin,
+    index_type         end)
+  : base_t(domain)
+  , _index_set(*this, begin, end)
+  , _local(*this)
+  { }
+
+  constexpr auto begin() const
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return dash::begin(dash::domain(*this)) +
+             *dash::begin(dash::index(*this));
+  }
+
+  constexpr auto end() const
+  -> decltype(dash::begin(dash::domain(*this))) {
+    return std::move(
+            dash::begin(dash::domain(*this)) +
+            *dash::end(dash::index(*this)));
+  }
+
+  constexpr auto operator[](int offset) const
+  -> decltype(*(dash::begin(dash::domain(*this)))) {
+    return *(this->begin() + offset);
+  }
+
+  constexpr index_type size() const {
+    return _index_set.size();
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
+
+#if 1
+  constexpr const local_type & local() const {
+    return _local;
+  }
+
+  inline local_type & local() {
+    return _local;
+  }
+#else
+  constexpr local_type local() const {
+    return local_type(*this);
+  }
+#endif
+};
+
+
+// ------------------------------------------------------------------------
 // ViewGlobalMod
 // ------------------------------------------------------------------------
 
@@ -473,17 +568,17 @@ public:
   typedef std::integral_constant<bool, false>                     is_local;
 
 public:
-  ViewGlobalMod()               = delete;
-  ViewGlobalMod(self_t &&)      = default;
-  ViewGlobalMod(const self_t &) = default;
+  ViewGlobalMod()                         = default;
+  ViewGlobalMod(self_t &&)                = default;
+  ViewGlobalMod(const self_t &)           = default;
   ~ViewGlobalMod()                        = default;
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
 
   constexpr explicit ViewGlobalMod(
     const DomainType & domain)
-  : base_t(domain),
-    _index_set(*this)
+  : base_t(domain)
+  , _index_set(*this)
   { }
 
   inline auto begin() const
@@ -543,179 +638,8 @@ private:
   index_set_type  _index_set;
 };
 
-// ------------------------------------------------------------------------
-// ViewSubMod
-// ------------------------------------------------------------------------
-
-template <
-  class DomainType,
-  dim_t SubDim >
-struct view_traits<ViewSubMod<DomainType, SubDim> > {
-  typedef DomainType                                             domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type   origin_type;
-  typedef ViewSubMod<DomainType, SubDim>                          image_type;
-  typedef ViewSubMod<DomainType, SubDim>                          local_type;
-  typedef ViewSubMod<DomainType, SubDim>                         global_type;
-
-  typedef typename DomainType::index_type                         index_type;
-  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
-
-  typedef std::integral_constant<bool, false>                  is_projection;
-  typedef std::integral_constant<bool, true>                   is_view;
-  typedef std::integral_constant<bool, false>                  is_origin;
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >                is_local;
-};
-
-
-template <
-  class DomainType,
-  dim_t SubDim >
-class ViewSubMod
-: public ViewModBase<
-           ViewSubMod<DomainType, SubDim>,
-           DomainType >
-{
-public:
-  typedef DomainType                                             domain_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
-private:
-  typedef ViewSubMod<DomainType, SubDim>                              self_t;
-  typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
-public:
-  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
-  typedef ViewLocalMod<self_t>                                    local_type;
-  typedef self_t                                                 global_type;
-
-  typedef std::integral_constant<bool, false>                       is_local;
-
-private:
-  index_set_type _index_set;
-//local_type     _local;
-
-public:
-  ViewSubMod()               = delete;
-  ViewSubMod(self_t &&)      = default;
-  ViewSubMod(const self_t &) = default;
-  ~ViewSubMod()                        = default;
-  self_t & operator=(self_t &&)        = default;
-  self_t & operator=(const self_t &)   = default;
-
-  constexpr ViewSubMod(
-    const DomainType & domain,
-    index_type         begin,
-    index_type         end)
-  : base_t(domain)
-  , _index_set(*this, begin, end)
-//, _local(*this)
-  { }
-
-  constexpr auto begin() const
-  -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::begin(dash::index(*this));
-  }
-
-  constexpr auto end() const
-  -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::end(dash::index(*this));
-  }
-
-  constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(dash::domain(*this)))) {
-    return *(this->begin() + offset);
-  }
-
-  constexpr index_type size() const {
-    return _index_set.size();
-  }
-
-  constexpr const index_set_type & index_set() const {
-    return _index_set;
-  }
-
-#if 0
-  constexpr const local_type & local() const {
-    return _local;
-  }
-
-  inline local_type & local() {
-    return _local;
-  }
-#else
-  constexpr local_type local() const {
-    return local_type(*this);
-  }
-#endif
-};
-
-
-template <
-  class DomainType >
-class ViewBlockMod
-: public ViewModBase<
-           ViewBlockMod<DomainType>,
-           DomainType >
-{
-public:
-  typedef DomainType                                             domain_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
-private:
-  typedef ViewBlockMod<DomainType>                                    self_t;
-  typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >         base_t;
-public:
-  typedef dash::IndexSetSub< ViewBlockMod<DomainType> >       index_set_type;
-  typedef ViewLocalMod<self_t>                                    local_type;
-
-  typedef std::integral_constant<bool, false>                       is_local;
-
-private:
-  local_type          _local;
-  index_set_type      _index_set;
-
-public:
-  ViewBlockMod()               = delete;
-  ViewBlockMod(self_t &&)      = default;
-  ViewBlockMod(const self_t &) = default;
-  ~ViewBlockMod()                        = default;
-  self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
-
-  constexpr ViewBlockMod(
-    const DomainType & domain,
-    index_type         block_index)
-  : base_t(domain),
-    _index_set(*this, block_index),
-    _local(*this)
-  { }
-
-  constexpr auto begin() const
-  -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) +
-           *dash::begin(dash::index(*this));
-  }
-
-  constexpr auto end() const
-  -> decltype(dash::begin(dash::domain(*this))) {
-    return dash::begin(dash::domain(*this)) +
-           *dash::end(dash::index(*this));
-  }
-
-  constexpr const index_set_type & index_set() const {
-    return _index_set;
-  }
-
-  constexpr const local_type & local() const {
-    return _local;
-  }
-
-  inline local_type & local() {
-    return _local;
-  }
-};
+#endif // DOXYGEN
 
 } // namespace dash
-#endif // DOXYGEN
 
 #endif // DASH__VIEW__VIEW_MOD_H__INCLUDED

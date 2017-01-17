@@ -86,42 +86,54 @@ private:
   typedef char yes;
   typedef long no;
 
-#if 0
-  template <typename C> static yes test_beg(
+#ifdef __TODO__
+  // Test if dash::begin(x) is valid expression:
+
+  template <typename C> static yes has_dash_begin(
                                      decltype(
                                        dash::begin(
                                          std::move(std::declval<T>())
                                        )
                                      ) * );
-  template <typename C> static no  test_beg(...);    
+  template <typename C> static no  has_dash_begin(...);    
 
-  template <typename C> static yes test_end(
+  template <typename C> static yes has_dash_end(
                                      decltype(
                                        dash::end(
                                          std::move(std::declval<T>())
                                        )
                                      ) * );
-  template <typename C> static no  test_end(...);    
+  template <typename C> static no  has_dash_end(...);    
 
 public:
-  enum { value = (    sizeof(test_beg<T>(nullptr)) == sizeof(yes)
-                   && sizeof(test_end<T>(nullptr)) == sizeof(yes) ) };
-#else
-  template<typename C, typename C::iterator (C::*)() = &C::begin >
-  static yes has_begin(C *);
+  enum { value = (
+              sizeof(has_dash_begin(static_cast<T*>(nullptr))) == sizeof(yes)
+           && sizeof(has_dash_end(static_cast<T*>(nullptr)))   == sizeof(yes)
+         ) };
 
 //template<typename C, typename begin_decl =
 //                                   decltype(
 //                                     dash::begin(
 //                                       std::move(std::declval<T>())
 //                                     )) >
-//static yes has_begin(C *);
-  
+//static yes has_dash_begin(C *);
+#else
+  // Test if x.begin() is valid expression and type x::iterator is
+  // defined:
+
+  template<typename C, typename C::iterator (C::*)() = &C::begin >
+  static yes has_begin(C *);
   static no  has_begin(...);
 
+  template<typename C, typename C::iterator (C::*)() = &C::end >
+  static yes has_end(C *);
+  static no  has_end(...);
+
 public:
-  enum { value = (    sizeof(has_begin(static_cast<T*>(nullptr)))
-                   == sizeof(yes) ) };
+  enum { value = (
+              sizeof(has_begin(static_cast<T*>(nullptr))) == sizeof(yes)
+           && sizeof(has_end(static_cast<T*>(nullptr)))   == sizeof(yes)
+         ) };
 #endif
 };
 
@@ -172,7 +184,10 @@ public:
 template <class RangeType>
 struct is_range : dash::detail::_is_range_type<RangeType> { };
 
-template <class RangeType, class Iterator, class Sentinel = Iterator>
+template <
+  class RangeType,
+  class Iterator,
+  class Sentinel = Iterator>
 class RangeBase {
 public:
   typedef Iterator iterator;
@@ -187,10 +202,17 @@ protected:
   }
 };
 
-template <class Iterator, class Sentinel = Iterator>
+/**
+ * Adapter template for range concept, wraps `begin` and `end` iterators
+ * in range type.
+ */
+template <
+  class Iterator,
+  class Sentinel = Iterator>
 class IteratorRange
 : public RangeBase< IteratorRange<Iterator, Sentinel>,
-                    Iterator, Sentinel >
+                    Iterator,
+                    Sentinel >
 {
   Iterator _begin;
   Sentinel _end;
@@ -198,15 +220,23 @@ class IteratorRange
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
-  : _begin(c.begin()), _end(c.end()) { }
+  : _begin(c.begin())
+  , _end(c.end())
+  { }
 
   constexpr IteratorRange(Iterator begin, Sentinel end)
-  : _begin(std::move(begin)), _end(std::move(end)) { }
+  : _begin(std::move(begin))
+  , _end(std::move(end))
+  { }
 
   constexpr Iterator begin() const { return _begin; }
   constexpr Iterator end()   const { return _end;   }
 };
 
+/**
+ * Adapter utility function.
+ * Wraps `begin` and `end` iterators in range type.
+ */
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorRange<Iterator, Sentinel>
 make_range(Iterator begin, Sentinel end) {

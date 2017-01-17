@@ -1,5 +1,5 @@
-#ifndef DASH__VIEW__INTERSECT_H__INCLUDED
-#define DASH__VIEW__INTERSECT_H__INCLUDED
+#ifndef DASH__VIEW__SET_INTERSECT_H__INCLUDED
+#define DASH__VIEW__SET_INTERSECT_H__INCLUDED
 
 #include <dash/Types.h>
 #include <dash/Range.h>
@@ -9,7 +9,9 @@
 
 namespace dash {
 
-template <class ViewTypeA, class ViewTypeB>
+template <
+  class ViewTypeA,
+  class ViewTypeB >
 constexpr ViewTypeA
 intersect(
   const ViewTypeA & va,
@@ -34,4 +36,4 @@ intersect(
 
 } // namespace dash
 
-#endif // DASH__VIEW__INTERSECT_H__INCLUDED
+#endif // DASH__VIEW__SET_INTERSECT_H__INCLUDED
