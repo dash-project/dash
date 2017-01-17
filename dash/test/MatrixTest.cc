@@ -999,19 +999,21 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
     uint32_t h= 7;
 
     auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
-    dash::Matrix<uint32_t, 2> matrix( dash::SizeSpec<2>( h, w ),
+    dash::NArray<uint32_t, 2> matrix( dash::SizeSpec<2>( h, w ),
       distspec, dash::Team::All(), teamspec );
 
     std::array< long int, 2 > corner= matrix.pattern().global( {0,0} );
     size_t lw= ( corner[1] + matrix.local.extent(1) < w ) ? matrix.local.extent(1) : w - corner[1];
     size_t lh= ( corner[0] + matrix.local.extent(0) < h ) ? matrix.local.extent(0) : h - corner[0];
 
+#if 0
     std::cout << "uint " << myid << " thinks local extent is " << 
         matrix.local.extent(1) << " x " << matrix.local.extent(0) << " but it should be " <<
         lw << " x " << lh << std::endl;
+#endif
 
-    EXPECT_TRUE( corner[1] + matrix.local.extent(1) <= w );
-    EXPECT_TRUE( corner[0] + matrix.local.extent(0) <= h );
+    EXPECT_LE_U( corner[1] + matrix.local.extent(1), w );
+    EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
 }
 
 
