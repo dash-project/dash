@@ -1070,3 +1070,56 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
             local_extent_x * local_extent_y);
 }
 
+TEST_F(BlockPatternTest, UnderfilledPatternExtent)
+{
+  typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
+  typedef typename pattern_t::index_type    index_t;
+
+  size_t team_size  = dash::Team::All().size();
+  if(4 != team_size){
+    SKIP_TEST_MSG("test has to be run with 4 units");
+  }
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  std::array<index_t,2> blocksize{{10,15}};
+  std::array<index_t,2> underfill{{3,1}};
+  std::array<index_t,2> extent{{
+                      (blocksize[0] * static_cast<index_t>(teamspec_2d.num_units(0))) - underfill[0],
+                      (blocksize[1] * static_cast<index_t>(teamspec_2d.num_units(1))) - underfill[1]
+                           }};
+  
+
+
+  auto size_spec    = dash::SizeSpec<2>(extent[0], extent[1]);
+
+  // Check TilePattern
+  const pattern_t pattern(
+    size_spec,
+    dash::DistributionSpec<2>(
+      dash::TILE(blocksize[0]),
+      dash::TILE(blocksize[1])),
+    teamspec_2d,
+    dash::Team::All());
+  
+  for(int i=0; i<pattern_t::ndim(); ++i){
+    EXPECT_EQ(pattern.teamspec().extent(i), 2);
+    EXPECT_EQ(pattern.blocksize(i), blocksize[i]);
+    
+    // check extent of last block
+    // assuming that each unit only has a single local block
+    int local_extent_expected = 0;
+    switch(dash::myid()){
+      case 0: local_extent_expected = blocksize[i]; break;
+      case 1: local_extent_expected = blocksize[i] -
+                ((i == 0) ?  0 : underfill[i]); break;
+      case 2: local_extent_expected = blocksize[i] -
+                ((i != 0) ?  0 : underfill[i]); break;
+      case 3: local_extent_expected = blocksize[i] - underfill[i];
+    }
+    EXPECT_EQ(pattern.local_extent(i), local_extent_expected);
+    EXPECT_EQ(pattern.local_block(0).extent(i), local_extent_expected);
+  }
+}
+
