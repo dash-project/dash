@@ -484,9 +484,9 @@ template<
 >
 typename std::enable_if<
   LayoutTags::canonical,
-  Pattern<SizeSpecType::ndim(),
-          dash::ROW_MAJOR,
-          typename SizeSpecType::index_type>
+  BlockPattern<SizeSpecType::ndim(),
+               dash::ROW_MAJOR,
+               typename SizeSpecType::index_type >
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
