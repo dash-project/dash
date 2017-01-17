@@ -1,9 +1,12 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "FillTest.h"
 
+#include <dash/Array.h>
+#include <dash/algorithm/LocalRange.h>
+#include <dash/algorithm/Fill.h>
+
 #include <array>
+
 
 TEST_F(FillTest, TestAllItemsFilled)
 {

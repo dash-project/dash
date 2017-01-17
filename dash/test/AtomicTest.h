@@ -2,7 +2,6 @@
 #define DASH__TEST__ATOMIC_TEST_H_
 
 #include <gtest/gtest.h>
-#include <libdash.h>
 
 #include "TestBase.h"
 
@@ -31,17 +30,6 @@ protected:
 
   virtual void TearDown() {
     dash::test::TestBase::TearDown();
-  }
-
-protected:
-  std::string _hostname() {
-    char hostname[100];
-    gethostname(hostname, 100);
-    return std::string(hostname);
-  }
-
-  int _pid() {
-    return static_cast<int>(getpid());
   }
 };
 

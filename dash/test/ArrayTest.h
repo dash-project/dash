@@ -2,7 +2,6 @@
 #define DASH__TEST__ARRAY_TEST_H_
 
 #include <gtest/gtest.h>
-#include <libdash.h>
 
 #include "TestBase.h"
 

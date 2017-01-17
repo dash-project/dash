@@ -1,7 +1,6 @@
 #ifndef DASH__TEST__TEST_LOG_HELPERS_H__
 #define DASH__TEST__TEST_LOG_HELPERS_H__
 
-#include <libdash.h>
 #include <iomanip>
 #include <functional>
 #include <string>

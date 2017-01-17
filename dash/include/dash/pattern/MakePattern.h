@@ -498,7 +498,7 @@ make_pattern(
   const dim_t ndim = SizeSpecType::ndim();
   // Deduce index type from size spec:
   typedef typename SizeSpecType::index_type             index_t;
-  typedef dash::Pattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
+  typedef dash::BlockPattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTags());
   DASH_LOG_TRACE("dash::make_pattern", MappingTags());
   DASH_LOG_TRACE("dash::make_pattern", LayoutTags());
