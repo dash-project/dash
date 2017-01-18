@@ -84,6 +84,7 @@ public:
   typedef const PointerType                    const_pointer;
 
   typedef typename GlobMemType::local_pointer  local_pointer;
+  typedef typename GlobMemType::local_pointer     local_type;
 
   typedef          PatternType                  pattern_type;
   typedef typename PatternType::index_type        index_type;

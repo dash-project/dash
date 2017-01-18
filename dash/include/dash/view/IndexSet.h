@@ -317,12 +317,10 @@ protected:
   , _pattern(dash::origin(_view).pattern())
   { }
 
-#if 0
   constexpr IndexSetBase(ViewType && view)
   : _view(std::forward(view))
-  , _pattern(dash::origin(_view).pattern())
+  , _pattern(dash::origin(std::forward(_view)).pattern())
   { }
-#endif
 
   ~IndexSetBase()                        = default;
 public:

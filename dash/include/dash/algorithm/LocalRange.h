@@ -1,22 +1,19 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGE_H__
 #define DASH__ALGORITHM__LOCAL_RANGE_H__
 
-#ifdef __TODO__
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewMod.h>
 #include <dash/view/Sub.h>
 
 #include <dash/Range.h>
-#endif
 
 #include <dash/internal/Logging.h>
 
 
 namespace dash {
 
-#ifdef __TODO__
 template <
-  dim_t SubDim  = 0,
+  dim_t SubDim,
   class DomainT,
   class OffsetT >
 constexpr ViewSubMod<DomainT, SubDim>
@@ -24,7 +21,6 @@ sub(
     OffsetT         begin,
     OffsetT         end,
     const DomainT & domain);
-#endif
 
 
 template<typename ElementType>
@@ -38,6 +34,35 @@ struct LocalIndexRange {
   IndexType begin;
   IndexType end;
 };
+
+
+template<class GlobInputIter>
+typename std::enable_if<
+  ( !GlobInputIter::has_view::value &&
+    typename GlobInputIter::pattern_type::ndim() == 1 ),
+  LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
+>::type
+local_index_range(
+  /// Iterator to the initial position in the global sequence
+  const GlobInputIter & first,
+  /// Iterator to the final position in the global sequence
+  const GlobInputIter & last)
+{
+  typedef typename GlobInputIter::pattern_type::index_type idx_t;
+
+  auto grange    = dash::make_range(first, last);
+  auto lrange    = dash::index(
+                     dash::local(
+                       dash::sub(     // < sub needed as temporary
+                         first.pos(), //   workaround as
+                         last.pos(),  //   index(local(container.local)
+                         grange) ) ); //   is not defined in some cases
+
+  idx_t lrange_begin = *dash::begin(lrange);
+  idx_t lrange_end   = *dash::end(lrange);
+
+  return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
+}
 
 /**
  * Resolves the local index range between global iterators.
@@ -74,22 +99,7 @@ local_index_range(
   /// Iterator to the final position in the global sequence
   const GlobInputIter & last)
 {
-#ifdef __TODO__
   typedef typename GlobInputIter::pattern_type::index_type idx_t;
-
-  auto grange    = dash::make_range(first, last);
-  auto lrange    = dash::index(
-                     dash::local(
-                       dash::sub(     // < sub needed as temporary
-                         first.pos(), //   workaround as
-                         last.pos(),  //   index(local(container.local)
-                         grange) ) ); //   is not defined in some cases
-
-  idx_t lrange_0 = lrange[0];
-  idx_t lrange_e = lrange[lrange.size()-1]+1;
-
-  return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
-#endif
 
   typedef typename GlobInputIter::pattern_type pattern_t;
   typedef typename pattern_t::index_type       idx_t;

@@ -47,9 +47,31 @@
 
 
 #include <dash/Dimensional.h>
+
+// #include <dash/view/ViewTraits.h>
+
 #include <type_traits>
 
+
 namespace dash {
+
+
+#ifndef DOXYGEN
+
+template <class ViewT>
+struct view_traits;
+
+// Forward-declaration
+template <class ViewType>
+class IndexSetIdentity;
+
+// Forward-declaration
+template <class Iterator, class Sentinel = Iterator>
+class IteratorRange;
+
+#endif
+
+
 
 /**
  * \concept{DashRangeConcept}
@@ -186,12 +208,12 @@ struct is_range : dash::detail::_is_range_type<RangeType> { };
 template <
   class RangeType,
   class Iterator,
-  class Sentinel = Iterator>
+  class Sentinel = Iterator >
 class RangeBase {
 public:
-  typedef Iterator iterator;
-  typedef Sentinel sentinel;
-  typedef typename Iterator::index_type index_type;
+  typedef Iterator                iterator;
+  typedef Sentinel                sentinel;
+  typedef dash::default_index_t   index_type;
 protected:
   RangeType & derived() {
     return static_cast<RangeType &>(*this);
@@ -201,20 +223,38 @@ protected:
   }
 };
 
+
+
 /**
  * Adapter template for range concept, wraps `begin` and `end` iterators
  * in range type.
  */
 template <
-  class Iterator,
-  class Sentinel = Iterator>
-class IteratorRange
-: public RangeBase< IteratorRange<Iterator, Sentinel>,
-                    Iterator,
-                    Sentinel >
+  class LocalIterator,
+  class LocalSentinel >
+class IteratorRange<LocalIterator *, LocalSentinel *>
+: public RangeBase< IteratorRange<LocalIterator *, LocalSentinel *>,
+                    LocalIterator *,
+                    LocalSentinel * >
 {
-  Iterator _begin;
-  Sentinel _end;
+  typedef IteratorRange<LocalIterator, LocalSentinel> self_t;
+
+  LocalIterator * _begin;
+  LocalSentinel * _end;
+
+public:
+  typedef LocalIterator *                                       iterator;
+  typedef LocalSentinel *                                       sentinel;
+  typedef dash::default_index_t                               index_type;
+  typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+
+//typedef typename dash::iterator_traits<iterator>::local_type
+  typedef iterator local_iterator;
+//typedef typename dash::iterator_traits<sentinel>::local_type
+  typedef sentinel local_sentinel;
+            
+  typedef IteratorRange<local_iterator, local_sentinel>       local_type;
+
 
 public:
   template <class Container>
@@ -223,13 +263,133 @@ public:
   , _end(c.end())
   { }
 
-  constexpr IteratorRange(Iterator begin, Sentinel end)
-  : _begin(std::move(begin))
-  , _end(std::move(end))
+  constexpr IteratorRange(iterator & begin, sentinel & end)
+  : _begin(begin)
+  , _end(end)
   { }
 
-  constexpr Iterator begin() const { return _begin; }
-  constexpr Iterator end()   const { return _end;   }
+  constexpr iterator begin() const { return _begin; }
+  constexpr iterator end()   const { return _end;   }
+
+  constexpr const local_type & local() const {
+    return *this;
+  }
+
+  constexpr index_set_type index_set() const {
+    return index_set_type(*this);
+  }
+};
+
+
+/**
+ * Specialization of \c dash::view_traits for IteratorRange.
+ */
+template <
+  class IteratorT,
+  class SentinelT >
+struct view_traits<dash::IteratorRange<IteratorT, SentinelT> > {
+private:
+  typedef IteratorRange<IteratorT, SentinelT> RangeT;
+public:
+  typedef RangeT                                               origin_type;
+  typedef RangeT                                               domain_type;
+  typedef RangeT                                                image_type;
+  typedef RangeT                                               global_type;
+  typedef typename RangeT::local_type                           local_type;
+  typedef typename RangeT::index_type                           index_type;
+//typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
+  typedef typename RangeT::index_set_type                   index_set_type;
+
+  /// Whether the view type is a projection (has less dimensions than the
+  /// view's domain type).
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, false>                is_view;
+  /// Whether the view is the origin domain.
+  typedef std::integral_constant<bool, true>                 is_origin;
+  /// Whether the view / container type is a local view.
+  /// \note A container type is local if it is identical to its
+  ///       \c local_type
+  typedef std::integral_constant<bool, std::is_same<
+                                 RangeT,
+                                 typename RangeT::local_type
+                                >::value >                   is_local;
+};
+
+/**
+ * Adapter template for range concept, wraps `begin` and `end` iterators
+ * in range type.
+ */
+template <
+  class Iterator,
+  class Sentinel >
+class IteratorRange
+: public RangeBase< IteratorRange<Iterator, Sentinel>,
+                    Iterator,
+                    Sentinel >
+{
+  typedef IteratorRange<Iterator, Sentinel> self_t;
+
+  Iterator & _begin;
+  Sentinel & _end;
+
+public:
+  typedef Iterator                                              iterator;
+  typedef Sentinel                                              sentinel;
+  typedef dash::default_index_t                               index_type;
+  typedef typename iterator::pattern_type                   pattern_type;
+  typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+
+//typedef typename dash::iterator_traits<iterator>::local_type
+  typedef typename
+            std::conditional<
+              std::is_pointer<iterator>::value,
+              iterator,
+              typename iterator::local_type
+            >::type
+    local_iterator;
+//typedef typename dash::iterator_traits<sentinel>::local_type
+  typedef typename
+            std::conditional<
+              std::is_pointer<sentinel>::value,
+              iterator,
+              typename sentinel::local_type
+            >::type
+    local_sentinel;
+            
+  typedef IteratorRange<local_iterator, local_sentinel>       local_type;
+
+
+public:
+  template <class Container>
+  constexpr explicit IteratorRange(Container && c)
+  : _begin(c.begin())
+  , _end(c.end())
+  { }
+
+  constexpr IteratorRange(iterator & begin, sentinel & end)
+  : _begin(begin)
+  , _end(end)
+  { }
+
+  constexpr iterator begin() const { return _begin; }
+  constexpr iterator end()   const { return _end;   }
+
+  constexpr const local_type local() const {
+    return local_type(
+     //      dash::local(_begin),
+     //      dash::local(_end)
+             _begin.local(),
+             _end.local()
+           );
+  }
+
+  constexpr const pattern_type & pattern() const {
+    return _begin.pattern();
+  }
+
+  constexpr index_set_type index_set() const {
+    return index_set_type(*this);
+  }
 };
 
 /**
@@ -238,15 +398,12 @@ public:
  */
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorRange<Iterator, Sentinel>
-make_range(Iterator begin, Sentinel end) {
+make_range(Iterator & begin, Sentinel & end) {
   return dash::IteratorRange<Iterator, Sentinel>(
-           std::move(begin),
-           std::move(end));
+           begin,
+           end);
 }
 
 } // namespace dash
-
-#include <dash/algorithm/LocalRange.h>
-#include <dash/algorithm/LocalRanges.h>
 
 #endif // DASH__RANGES_H__INCLUDED
