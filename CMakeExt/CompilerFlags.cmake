@@ -26,15 +26,21 @@ set(ENABLE_EXTENDED_COMPILER_WARNINGS ${ENABLE_EXTENDED_COMPILER_WARNINGS}
 if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
 
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self -Wopenmp-simd")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -73,12 +79,21 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
 endif()
 
+# disable warnings on unknown warning flags 
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS} -diag-disable=10006")
+  set (DASH_DEVELOPER_CXX_FLAGS
+       "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
+endif()
 
 set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
 set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
