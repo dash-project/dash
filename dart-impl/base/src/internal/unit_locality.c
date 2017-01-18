@@ -194,7 +194,7 @@ dart_ret_t dart__base__unit_locality__at(
 {
   if ((size_t)(unit.id) >= unit_mapping->num_units) {
     DART_LOG_ERROR("dart__base__unit_locality__get ! "
-                   "unit id %d out of bounds, team size: %u",
+                   "unit id %d out of bounds, team size: %zu",
                    unit.id, unit_mapping->num_units);
     return DART_ERR_INVAL;
   }

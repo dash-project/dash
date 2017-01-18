@@ -40,7 +40,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
 
   size_t array_size = _num_elem * _dash_size;
   // Create array instances using varying constructor options
-  LOG_MESSAGE("Array size: %d", array_size);
+  LOG_MESSAGE("Array size: %zu", array_size);
   try {
     // Initialize arrays
     LOG_MESSAGE("Initialize arr1");
