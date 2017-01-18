@@ -628,15 +628,18 @@ public:
            //    )
            //  :
 #if 1
-              ( this->pattern().global(
+  //          ( this->pattern().global(
                   local_index +
-                  // actually only required if local of sub
-                  this->pattern().at(
-                    std::max<index_type>(
-                      this->pattern().global(0),
-                      this->domain()[0]
-                  )) )
-              );
+                  // only required if local of sub
+                  ( this->domain()[0] == 0
+                    ? 0
+                    : this->pattern().at(
+                        std::max<index_type>(
+                          this->pattern().global(0),
+                          this->domain()[0]
+                      ))
+                  );
+  //          ) );
 #else
               // global index of first local element:
               ( this->pattern().global(
