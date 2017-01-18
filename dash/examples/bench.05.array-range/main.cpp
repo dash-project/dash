@@ -76,10 +76,10 @@ int main(int argc, char* argv[]) {
   tests.push_back({0          , 0}); // this prints the header
   tests.push_back({4          , 1000000});
   tests.push_back({16         , 100000});
-//tests.push_back({64         , 100000});
-//tests.push_back({256        , 10000});
-//tests.push_back({1024       , 10000});
-//tests.push_back({4096       , 1000});
+  tests.push_back({64         , 100000});
+  tests.push_back({256        , 10000});
+  tests.push_back({1024       , 10000});
+  tests.push_back({4096       , 1000});
   tests.push_back({4*4096     , 5000});
   tests.push_back({16*4096    , 1000});
   tests.push_back({64*4096    , 500});
@@ -113,6 +113,9 @@ void perform_test(
            << ", "
            << std::setw(11)
            << "lrange.algo"
+           << ", "
+           << std::setw(11)
+           << "speedup"
            << endl;
     }
     return;
@@ -159,6 +162,9 @@ void perform_test(
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
          << gups_algo
+         << ", "
+         << std::setw(11) << std::fixed << std::setprecision(4)
+         << gups_view / gups_algo
          << endl;
   }
 }
@@ -199,11 +205,11 @@ double test_view_gups(
       auto lrange       = dash::index(
                             dash::local(
                               dash::sub(
-                                1, // lbegin_gidx,
-                                3, // lbegin_gidx + lidx,
+                                lbegin_gidx,
+                                lbegin_gidx + lidx,
                                 a) ) );
-      int lrange_begin = lrange[0];
-      int lrange_end   = lrange[lrange.size()-1]+1;
+      int lrange_begin = *dash::begin(lrange);
+      int lrange_end   = *dash::end(lrange);
   
       dash::prevent_opt_elimination(lrange_begin);
       dash::prevent_opt_elimination(lrange_end);

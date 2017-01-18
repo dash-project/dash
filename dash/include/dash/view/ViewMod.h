@@ -267,6 +267,7 @@ public:
     return !(derived() == rhs);
   }
 
+#if 0
   constexpr auto operator[](int offset) const
 //  decltype(*(std::declval<ViewModType>().begin())) {
 //  typename view_traits<ViewModType>::origin_type {
@@ -278,7 +279,6 @@ public:
     return *(derived().begin() + offset);
   }
 
-#if 0
   auto operator[](int offset)
 //  decltype(*(std::declval<ViewModType>().begin())) {
 //  typename view_traits<ViewModType>::origin_type {
@@ -350,8 +350,8 @@ public:
 
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
-  : base_t(domain),
-    _index_set(*this)
+  : base_t(domain)
+  , _index_set(*this)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -389,21 +389,22 @@ public:
            )
     // TODO: Using 
     //
-    //   + _index_set.size()
+#if 0
+         + index_set().size();
+#else
     //
     //       ... instead should work here
          + dash::index(dash::local(dash::domain(*this))).pre()[
              (*dash::end(dash::index(dash::local(dash::domain(*this)))))-1
            ] + 1;
+#endif
   }
 
-/*
   constexpr auto operator[](int offset) const
   -> decltype(*(dash::begin(
                 dash::local(dash::origin(dash::domain(*this)))))) {
     return *(this->begin() + offset);
   }
-*/
 
   constexpr index_type size() const {
     return index_set().size();

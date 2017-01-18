@@ -138,7 +138,6 @@ int main(int argc, char* argv[])
          << "  end:     " << *lsub_ei << ": " << lsub_e << '\n'
          << "  size:    " << lsub.size()      << '\n';
 
-#if 0
     cout << "  values:\n";
     for (auto i = lsub.begin(); i != lsub.end(); ++i) {
       cout << "    iterator:" << i << ": "
@@ -161,7 +160,6 @@ int main(int argc, char* argv[])
       cout << "    iterator:" << i << ": "
                               << static_cast<int>(*i) << '\n';
     }
-#endif
     cout << endl;
   }
 

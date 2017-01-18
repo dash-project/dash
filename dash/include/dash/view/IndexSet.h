@@ -318,15 +318,12 @@ public:
 
 protected:
   const ViewType              &  _view;
-//iterator                       _begin;
-//iterator                       _end;
-//index_set_domain_type          _domain;
   const pattern_type          &  _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
   }
-  const IndexSetType & derived() const {
+  constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
   }
   
@@ -347,6 +344,7 @@ protected:
   , _pattern(dash::origin(_view).pattern())
   { }
 #endif
+
   ~IndexSetBase()                        = default;
 public:
   constexpr IndexSetBase()               = delete;
@@ -381,11 +379,13 @@ public:
   }
 
   constexpr const local_type & local() const {
-    return dash::index(dash::local(this->view()));
+//  return dash::index(dash::local(this->view()));
+    return dash::index(dash::local(_view));
   }
 
   constexpr const global_type & global() const {
-    return dash::index(dash::global(this->view()));
+//  return dash::index(dash::global(this->view()));
+    return dash::index(dash::global(_view));
   }
 
   constexpr const index_set_domain_type domain() const {
@@ -455,7 +455,7 @@ public:
   }
 
   constexpr index_type calc_size() const {
-    return this->domain().size();
+    return this->view().size();
   }
 
   constexpr index_type size() const {
@@ -616,19 +616,19 @@ public:
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
-    return   local_index >= size()
-              ?
-                ( this->pattern().global(
-                    (size() - 1) +
-                    // actually only required if local of sub
-                    this->pattern().at(
-                      std::max<index_type>(
-                        this->pattern().global(0),
-                        this->domain()[0]
-                    ))
-                  ) + (local_index - (size()-1))
-                )
-              :
+    return // local_index >= size()
+           //  ?
+           //    ( this->pattern().global(
+           //        (size() - 1) +
+           //        // actually only required if local of sub
+           //        this->pattern().at(
+           //          std::max<index_type>(
+           //            this->pattern().global(0),
+           //            this->domain()[0]
+           //        ))
+           //      ) + (local_index - (size()-1))
+           //    )
+           //  :
               ( this->pattern().global(
                   local_index +
                   // actually only required if local of sub
@@ -644,14 +644,14 @@ public:
     return _size;
   }
 
-  inline index_type calc_size() const {
+  constexpr index_type calc_size() const {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
 
     static_assert(
         pat_partitioning_traits::rectangular,
         "index sets for non-rectangular patterns are not supported yet");
-
+#if 0
     DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
                        this->pattern().blockspec().size());
     DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
@@ -660,7 +660,7 @@ public:
                        this->domain().size());
     DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
                        this->domain().pre()[0]);
-
+#endif
     return (
       //pat_partitioning_traits::minimal ||
         this->pattern().blockspec().size()
