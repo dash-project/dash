@@ -695,9 +695,9 @@ public:
 
 template <class ViewType>
 constexpr auto
-local(const IndexSetGlobal<ViewType> & index_set) ->
-// decltype(index_set.local()) {
-  typename view_traits<IndexSetGlobal<ViewType>>::local_type & { 
+local(const IndexSetGlobal<ViewType> & index_set)
+    -> decltype(index_set.local()) {
+//  -> typename view_traits<IndexSetGlobal<ViewType>>::local_type & { 
   return index_set.local();
 }
 

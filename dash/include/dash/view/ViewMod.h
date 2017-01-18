@@ -233,7 +233,7 @@ public:
 
 protected:
 //std::reference_wrapper<const DomainType> _domain;
-  const DomainType & _domain;
+  const DomainType * _domain;
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
@@ -243,7 +243,7 @@ protected:
   }
 
   constexpr explicit ViewModBase(const domain_type & domain)
-  : _domain(domain)
+  : _domain(&domain)
   { }
 
   constexpr ViewModBase()               = delete;
@@ -256,7 +256,7 @@ public:
   self_t & operator=(const self_t &)    = default;
 
   constexpr const domain_type & domain() const {
-    return _domain;
+    return *_domain;
   }
 
   constexpr bool operator==(const ViewModType & rhs) const {
@@ -525,13 +525,13 @@ public:
     return _index_set.size();
   }
 
-constexpr const index_set_type & index_set() const {
+  constexpr const index_set_type & index_set() const {
 //constexpr index_set_type index_set() const {
 //  return index_set_type(*this, _begin_idx, _end_idx);
     return _index_set;
   }
 
-#if 1
+#if 0
   constexpr const local_type & local() const {
     return _local;
   }

@@ -17,8 +17,8 @@ constexpr auto
 local(const ViewType & v)
 -> typename std::enable_if<
      dash::view_traits<ViewType>::is_view::value,
-//   decltype(v.local())
-     const typename ViewType::local_type
+     decltype(v.local())
+//   const typename ViewType::local_type
    >::type {
   return v.local();
 }
