@@ -154,7 +154,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  constexpr BlockPattern(
+  BlockPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -317,12 +317,12 @@ public:
     _lbegin_lend(initialize_local_range(_local_size))
   { }
 
-  constexpr BlockPattern(self_t && other)      = default;
+  BlockPattern(self_t && other)      = default;
 
   /**
    * Copy constructor.
    */
-  constexpr BlockPattern(const self_t & other) = default;
+  BlockPattern(const self_t & other) = default;
 
   /**
    * Copy constructor using non-const lvalue reference parameter.
@@ -330,7 +330,7 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  constexpr BlockPattern(self_t & other)
+  BlockPattern(self_t & other)
   : BlockPattern(static_cast<const self_t &>(other)) {
   }
 
@@ -539,7 +539,7 @@ public:
    */
   constexpr std::array<SizeType, NumDimensions> local_extents(
     team_unit_t unit) const {
-    return std::array<SizeType, 1> {{ 
+    return std::array<SizeType, 1> {{
               unit == _team->myid()
               ? _local_size
               : initialize_local_extent(unit)
@@ -600,7 +600,7 @@ public:
    */
   constexpr local_coords_t local(
     const std::array<IndexType, NumDimensions> & global_coords) const {
-    return local_coords_t { 
+    return local_coords_t {
              unit_at(global_coords),      // .unit
              local_coords(global_coords)  // .coords
            };
@@ -1199,7 +1199,7 @@ private:
   initialize_local_range(SizeType l_size) const {
     return (l_size == 0)
              ? std::array<IndexType, 2> {{ 0, 0 }}
-             : std::array<IndexType, 2> {{ 
+             : std::array<IndexType, 2> {{
                  global(0),
                  global(l_size - 1) + 1
                }};
