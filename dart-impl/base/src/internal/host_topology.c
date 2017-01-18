@@ -41,7 +41,7 @@ static int cmpstr_(const void * p1, const void * p2) {
   return strcmp(* (char * const *) p1, * (char * const *) p2);
 }
 
-dart_ret_t dart__base__host_topology__module_locations(
+static dart_ret_t dart__base__host_topology__module_locations(
   dart_module_location_t ** module_locations,
   int                     * num_modules)
 {
@@ -142,7 +142,7 @@ dart_ret_t dart__base__host_topology__module_locations(
   return DART_OK;
 }
 
-dart_ret_t dart__base__host_topology__update_module_locations(
+static dart_ret_t dart__base__host_topology__update_module_locations(
   dart_unit_mapping_t  * unit_mapping,
   dart_host_topology_t * topo)
 {
