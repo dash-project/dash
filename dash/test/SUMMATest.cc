@@ -68,7 +68,7 @@ TEST_F(SUMMATest, Deduction)
   }
 
   LOG_MESSAGE("Deduced pattern: "
-              "size(%d,%d) tilesize(%d,%d) teamsize(%d,%d) disttype(%d,%d)",
+              "size(%lu,%lu) tilesize(%lu,%lu) teamsize(%lu,%lu) disttype(%d,%d)",
               pattern.extent(0),
               pattern.extent(1),
               pattern.block(0).extent(0),

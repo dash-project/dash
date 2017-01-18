@@ -121,7 +121,7 @@ dart_ret_t dart_get(
 
   DART_LOG_DEBUG("dart_get() uid_abs:%d uid_rel:%d "
                  "o:%"PRIu64" s:%d i:%u nelem:%zu",
-                 target_unitid_abs, target_unitid_rel,
+                 target_unitid_abs.id, target_unitid_rel.id,
                  offset, seg_id, index, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -148,14 +148,14 @@ dart_ret_t dart_get(
     DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nelem, (unsigned long)win, target_unitid_rel, disp_rel, dest);
+                   nelem, (unsigned long)win, target_unitid_rel.id, disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (local): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nelem, (unsigned long)win, target_unitid_rel, disp_rel, dest);
+                   nelem, (unsigned long)win, target_unitid_rel.id, disp_rel, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
@@ -267,7 +267,7 @@ dart_ret_t dart_accumulate(
   (void)(team); // To prevent compiler warning from unused parameter.
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
-                 nelem, dtype, op, target_unitid_abs);
+                 nelem, dtype, op, target_unitid_abs.id);
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -456,7 +456,7 @@ dart_ret_t dart_get_handle(
   }
   DART_LOG_DEBUG("dart_get_handle() uid_abs:%d uid_rel:%d "
                  "o:%"PRIu64" s:%d i:%d, nelem:%zu",
-                 target_unitid_abs, target_unitid_rel,
+                 target_unitid_abs.id, target_unitid_rel.id,
                  offset, seg_id, index, nelem);
   DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
@@ -518,7 +518,7 @@ dart_ret_t dart_get_handle(
      *      &mpi_req)
      *  ... could be an better alternative?
      */
-    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (collective allocation) "
+    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (collective allocation) "
                    "from %d at offset %"PRIu64"",
                    nelem, target_unitid_rel.id, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
@@ -542,9 +542,9 @@ dart_ret_t dart_get_handle(
      * The memory accessed is allocated with local allocation.
      */
     DART_LOG_TRACE("dart_get_handle:  -- local, segment:%d", seg_id);
-    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (local allocation) "
+    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (local allocation) "
                    "from %d at offset %"PRIu64"",
-                   nelem, target_unitid_abs, offset);
+                   nelem, target_unitid_abs.id, offset);
     win     = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
@@ -657,7 +657,7 @@ dart_ret_t dart_put_handle(
     DART_LOG_DEBUG("dart_put_handle: nlem:%zu dtype:%d"
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
-                   nelem, dtype, target_unitid_abs, offset);
+                   nelem, dtype, target_unitid_abs.id, offset);
     (*handle) -> dest = target_unitid_abs.id;
   }
   (*handle) -> request = mpi_req;
@@ -706,7 +706,7 @@ dart_ret_t dart_put_blocking(
 
   DART_LOG_DEBUG("dart_put_blocking() uid_abs:%d uid_rel:%d "
                  "o:%"PRIu64" s:%d i:%d, nelem:%zu",
-                 target_unitid_abs, target_unitid_rel,
+                 target_unitid_abs.id, target_unitid_rel.id,
                  offset, seg_id, index, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -1487,8 +1487,8 @@ dart_ret_t dart_bcast(
                    "MPI_Bcast failed", root.id, teamid);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%"PRIu64" finished",
-                 root, teamid, nelem);
+  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%zu finished",
+                 root.id, teamid, nelem);
   return DART_OK;
 }
 

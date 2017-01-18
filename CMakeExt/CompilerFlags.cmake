@@ -17,14 +17,20 @@
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
-    PARENT_SCOPE)
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS 
+  OR ENABLE_EXTENDED_COMPILER_WARNINGS 
+  AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
-set(ENABLE_EXTENDED_COMPILER_WARNINGS ${ENABLE_EXTENDED_COMPILER_WARNINGS}
-    PARENT_SCOPE)
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+  endif()
 
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -73,6 +79,17 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
   # C-only warning flags
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
+  set (DASH_DEVELOPER_CC_FLAGS 
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
+
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+  endif()
 
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
@@ -85,20 +102,21 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
+  if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS} -diag-disable=10006")
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
+  endif()
+
 endif()
 
 # disable warnings on unknown warning flags 
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
-  set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS} -diag-disable=10006")
-  set (DASH_DEVELOPER_CXX_FLAGS
-       "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
-endif()
 
 set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
 set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
 
-if (ENABLE_COMPILER_WARNINGS)
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
@@ -167,13 +185,6 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
   set (CC_STD_FLAG "-h c99"
        CACHE STRING "C compiler std flag")
 endif()
-
-
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
-
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
 
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_ENV_SETUP_FLAGS}")
