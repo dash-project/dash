@@ -241,7 +241,6 @@ public:
   typedef typename view_traits<DomainType>::index_type            index_type;
 
 protected:
-//std::reference_wrapper<const DomainType> _domain;
   const DomainType * _domain;
 
   ViewModType & derived() {
@@ -275,29 +274,6 @@ public:
   constexpr bool operator!=(const ViewModType & rhs) const {
     return !(derived() == rhs);
   }
-
-#if 0
-  constexpr auto operator[](int offset) const
-//  decltype(*(std::declval<ViewModType>().begin())) {
-//  typename view_traits<ViewModType>::origin_type {
-//           ::value_type {
-  ->  typename std::add_lvalue_reference<
-        typename std::add_const<
-          typename view_traits<ViewModType>::origin_type::value_type >::type
-      >::type {
-    return *(derived().begin() + offset);
-  }
-
-  auto operator[](int offset)
-//  decltype(*(std::declval<ViewModType>().begin())) {
-//  typename view_traits<ViewModType>::origin_type {
-//           ::value_type {
-  ->  typename std::add_lvalue_reference<
-        typename view_traits<ViewModType>::origin_type::value_type
-      >::type {
-    return *(derived().begin() + offset);
-  }
-#endif
 
   constexpr bool is_local() const {
     return view_traits<ViewModType>::is_local::value;
@@ -436,8 +412,6 @@ public:
   }
 
   constexpr const index_set_type & index_set() const {
-//constexpr index_set_type index_set() const {
-//  return index_set_type(*this);
     return _index_set;
   }
 };
@@ -493,7 +467,6 @@ private:
   index_type     _begin_idx;
   index_type     _end_idx;
   index_set_type _index_set;
-//local_type     _local;
 
 public:
   constexpr ViewSubMod()               = delete;
@@ -511,7 +484,6 @@ public:
   , _begin_idx(begin)
   , _end_idx(end)
   , _index_set(*this, begin, end)
-//, _local(*this)
   { }
 
   constexpr auto begin() const
@@ -536,24 +508,12 @@ public:
   }
 
   constexpr const index_set_type & index_set() const {
-//constexpr index_set_type index_set() const {
-//  return index_set_type(*this, _begin_idx, _end_idx);
     return _index_set;
   }
 
-#if 0
-  constexpr const local_type & local() const {
-    return _local;
-  }
-
-  inline local_type & local() {
-    return _local;
-  }
-#else
   constexpr local_type local() const {
     return local_type(*this);
   }
-#endif
 };
 
 
@@ -665,8 +625,6 @@ public:
   }
 
   constexpr const index_set_type & index_set() const {
-//constexpr index_set_type index_set() const {
-//  return index_set_type(*this);
     return _index_set;
   }
 };

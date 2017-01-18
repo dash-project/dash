@@ -109,10 +109,10 @@ void perform_test(
            << "iterations"
            << ", "
            << std::setw(11)
-           << "lrange.view"
+           << "view.gups"
            << ", "
            << std::setw(11)
-           << "lrange.algo"
+           << "algo.gups"
            << ", "
            << std::setw(11)
            << "speedup"

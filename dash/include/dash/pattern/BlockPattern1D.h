@@ -216,7 +216,7 @@ public:
    *              TeamSpec<1>(dash::Team::All()));
    * \endcode
    */
-  constexpr BlockPattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
@@ -281,7 +281,7 @@ public:
    *              TeamSpec<1>(dash::Team::All()));
    * \endcode
    */
-  constexpr BlockPattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
