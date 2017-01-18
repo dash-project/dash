@@ -60,6 +60,11 @@ namespace dash {
  * Consequently, specific ViewMod types are defined for every modifier
  * category.
  *
+ * \}
+ *
+ *
+ * \note
+ *
  * As an alternative, all view modifications could be stored in command
  * objects of a single ViewMod type. Expressions then could not be
  * evalated at compile-time, however.
@@ -68,14 +73,17 @@ namespace dash {
  * class - or vice versa, following the policy pattern with the
  * operation specified as policy:
  *
+ * \code
  *   template <dim_t DimDiff, class DomainType>
  *   class ViewMod : DomainType
  *   {
  *      // ...
  *   }
+ * \endcode
  *
  * or:
  *
+ * \code
  *   template <dim_t DimDiff, class ViewModOperation>
  *   class ViewMod : ViewModOperation
  *   {
@@ -90,6 +98,7 @@ namespace dash {
  *   ViewMod<0, ViewModSubOperation> view_sub(initializer_list);
  *   // - either calls view_mod_op(initializer_list) in constructor
  *   // - or provides method sub<N>(...) directly
+ * \endcode
  *
  * \todo Eventually, these probably are not public definitions.
  *       Move to namespace internal.
@@ -484,7 +493,7 @@ private:
   index_type     _begin_idx;
   index_type     _end_idx;
   index_set_type _index_set;
-  local_type     _local;
+//local_type     _local;
 
 public:
   constexpr ViewSubMod()               = delete;
@@ -502,7 +511,7 @@ public:
   , _begin_idx(begin)
   , _end_idx(end)
   , _index_set(*this, begin, end)
-  , _local(*this)
+//, _local(*this)
   { }
 
   constexpr auto begin() const
@@ -590,6 +599,8 @@ public:
 
   typedef std::integral_constant<bool, false>                     is_local;
 
+private:
+  index_set_type  _index_set;
 public:
   constexpr ViewGlobalMod()               = delete;
   constexpr ViewGlobalMod(self_t &&)      = default;
@@ -658,9 +669,6 @@ public:
 //  return index_set_type(*this);
     return _index_set;
   }
-
-private:
-  index_set_type  _index_set;
 };
 
 #endif // DOXYGEN

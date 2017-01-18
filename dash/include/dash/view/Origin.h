@@ -33,11 +33,13 @@ origin(const ContainerT & container) {
 }
 
 template <class ViewT>
-constexpr typename std::enable_if<
-  dash::view_traits<ViewT>::is_view::value,
-  const typename dash::view_traits<ViewT>::origin_type &
->::type
-origin(const ViewT & view) {
+constexpr auto
+origin(const ViewT & view)
+  -> typename std::enable_if<
+       dash::view_traits<ViewT>::is_view::value,
+       const typename dash::view_traits<ViewT>::origin_type &
+    // decltype(dash::origin(dash::domain(view)))
+     >::type {
   // recurse upwards:
   return dash::origin(dash::domain(view));
 }

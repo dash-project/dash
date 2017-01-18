@@ -17,11 +17,13 @@ namespace dash {
  * \concept{DashViewConcept}
  */
 template <class ViewT>
-constexpr typename std::enable_if<
-  dash::view_traits<ViewT>::is_view::value,
-  const typename dash::view_traits<ViewT>::domain_type &
->::type
-domain(const ViewT & view) {
+constexpr auto
+domain(const ViewT & view)
+  -> typename std::enable_if<
+       dash::view_traits<ViewT>::is_view::value,
+       const typename dash::view_traits<ViewT>::domain_type &
+    // decltype(view.domain())
+     >::type {
   return view.domain();
 }
 

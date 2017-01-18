@@ -443,24 +443,24 @@ public:
 public:
   typedef typename ViewType::index_type     index_type;
 private:
-  index_type _size;
+//index_type _size;
 public:
   constexpr explicit IndexSetIdentity(const ViewType & view)
   : base_t(view)
-  , _size(calc_size())
+//, _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
     return image_index;
   }
 
-  constexpr index_type calc_size() const {
+  constexpr index_type size() const {
     return this->view().size();
   }
 
-  constexpr index_type size() const {
-    return _size;
-  }
+//  constexpr index_type size() const {
+//    return _size;
+//  }
 
   constexpr const self_t & pre() const {
     return *this;
@@ -515,7 +515,7 @@ public:
 private:
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
-  index_type _size;
+//index_type _size;
 public:
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -524,7 +524,7 @@ public:
   : base_t(view)
   , _domain_begin_idx(begin)
   , _domain_end_idx(end)
-  , _size(calc_size())
+//, _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
@@ -543,7 +543,7 @@ public:
   }
 
   constexpr index_type size() const {
-    return _size;
+    return calc_size();
   }
 
   constexpr preimage_type pre() const {
@@ -629,6 +629,7 @@ public:
            //      ) + (local_index - (size()-1))
            //    )
            //  :
+#if 0
               ( this->pattern().global(
                   local_index +
                   // actually only required if local of sub
@@ -638,6 +639,35 @@ public:
                       this->domain()[0]
                   )) )
               );
+#else
+              // global index of first local element:
+              ( this->pattern().global(
+           // ( this->pattern().lbegin() +
+                local_index +
+                ( this->domain()[0] == 0
+                  ? 0
+                  : this->pattern().at(this->domain()[0])
+                )
+              ) );
+/*
+ 
+              ( local_index == 0
+                ? this->domain()[0] == 0
+                  ? this->pattern().lbegin()
+                  : this->pattern().at(this->domain()[0])
+                this->pattern().lbegin()
+                    + ( this->domain()[0] == 0
+                        ? 0
+                        : this->pattern().at(this->domain()[0]) )
+                : this->pattern().global(
+                    local_index
+                    + ( this->domain()[0] == 0
+                        ? 0
+                        : this->pattern().at(this->domain()[0]) )
+                  ) 
+              );
+ */
+#endif
   }
 
   constexpr index_type size() const {

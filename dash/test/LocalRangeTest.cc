@@ -43,15 +43,35 @@ TEST_F(LocalRangeTest, ArrayBlockedViewExpression)
 
   // Create view on container:
   //
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 ">>> local index range via view expression");
   auto lct_view = dash::index(
                       dash::local(
                         dash::sub(
                           array_view_begin_idx,
                           array_view_end_idx,
                           array) ) );
-
   DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
-                     lct_view.size());
+                     *dash::begin(lct_view));
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     *dash::end(lct_view));
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 "<<< local index range via view expression");
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 ">>> local index range via algorithm");
+
+  auto lct_algo = dash::local_index_range(
+                    array.begin() + array_view_begin_idx,
+                    array.begin() + array_view_end_idx);
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lct_algo.begin);
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lct_algo.end);
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 "<<< local index range via algorithm");
 
 #ifdef __TODO__
   // Create view on global iterator range:
@@ -68,15 +88,7 @@ TEST_F(LocalRangeTest, ArrayBlockedViewExpression)
 
   DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
                      lix_view.size());
-#endif
 
-  auto lview_0  = lct_view[0];
-  auto lview_e  = lct_view[lct_view.size()-1]+1;
-
-  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression", lview_0);
-  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression", lview_e);
-
-#ifdef __TODO__
   EXPECT_EQ(array_view_size, lct_view.size());
   EXPECT_EQ(array_view_size, dash::end(lct_view) - dash::begin(lct_view));
 #endif
