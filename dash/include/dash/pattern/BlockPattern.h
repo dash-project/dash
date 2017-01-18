@@ -1,10 +1,6 @@
 #ifndef DASH__BLOCK_PATTERN_H_
 #define DASH__BLOCK_PATTERN_H_
 
-#include <functional>
-#include <array>
-#include <type_traits>
-
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -17,6 +13,11 @@
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
+
+#include <functional>
+#include <array>
+#include <type_traits>
+
 
 namespace dash {
 

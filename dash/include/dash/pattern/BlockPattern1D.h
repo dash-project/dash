@@ -1,10 +1,6 @@
 #ifndef DASH__BLOCK_PATTERN_1D_H_
 #define DASH__BLOCK_PATTERN_1D_H_
 
-#include <functional>
-#include <array>
-#include <type_traits>
-
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -18,6 +14,11 @@
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
+
+#include <functional>
+#include <array>
+#include <type_traits>
+
 
 namespace dash {
 
@@ -288,7 +289,7 @@ public:
     /// dimensions
     const DistributionSpec_t dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                     team = dash::Team::All())
+    Team &                   team = dash::Team::All())
   : _size(sizespec.size()),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(dist),
@@ -477,7 +478,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  template <dim_t dim>
+  template <dim_t dim = 0>
   constexpr IndexType extent() const {
     static_assert(
       0 == dim,
@@ -516,7 +517,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  template <dim_t dim>
+  template <dim_t dim = 0>
   constexpr IndexType local_extent() const {
     static_assert(
       0 == dim,
@@ -1089,9 +1090,14 @@ public:
    * compared to the regular blocksize (\see blocksize(d)), with
    * 0 <= \c underfilled_blocksize(d) < blocksize(d).
    */
-  SizeType underfilled_blocksize(
+  constexpr SizeType underfilled_blocksize(
     dim_t dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
+    return ( _blocksize == 0 || _size % _blocksize == 0
+             ? 0
+             : _blocksize - (_size % _blocksize)
+           );
+#if 0
     auto ovf_blocksize = (_blocksize == 0)
                          ? 0
                          : _size % _blocksize;
@@ -1100,6 +1106,7 @@ public:
     } else {
       return _blocksize - ovf_blocksize;
     }
+#endif
   }
 
 private:
@@ -1201,11 +1208,35 @@ private:
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
-  SizeType initialize_local_extent(
+  constexpr SizeType initialize_local_extent(
     team_unit_t unit) const
   {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.init_local_extent()", _nunits);
+    return (_nunits == 0
+           ? 0
+           : (_nblocks == 1 && _nunits == 1
+             ? _size
+               // Possibly there are more blocks than units in dimension
+               // and no block left for this unit. Local extent in d then
+               // becomes 0.
+             : ((_nblocks / _nunits) * _blocksize
+               // Unbalanced blocks owned by the unit:
+               + (unit < (_nblocks % _nunits)
+                 ? _blocksize
+                 : 0 )
+               // If the last block in the dimension is underfilled and
+               // assigned to the local unit, subtract the missing extent:
+               - (unit ==
+                    // Unit id assigned to the last block:
+                    (_nblocks % _nunits == 0
+                    ? _nunits - 1
+                    : ((_nblocks % _nunits) - 1 ))
+                 ? underfilled_blocksize(0)
+                 : 0 )
+               )
+             )
+           );
+
+#if 0
     if (_nunits == 0) {
       return 0;
     }
@@ -1213,9 +1244,6 @@ private:
     SizeType l_extent     = 0;
     // Minimum number of blocks local to every unit in dimension:
     auto min_local_blocks = _nblocks / _nunits;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extent", _nblocks);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extent", _blocksize);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extent", min_local_blocks);
     // Possibly there are more blocks than units in dimension and no
     // block left for this unit. Local extent in d then becomes 0.
     l_extent = min_local_blocks * _blocksize;
@@ -1230,26 +1258,19 @@ private:
       team_unit_t last_block_unit(((_nblocks % _nunits == 0)
                                         ? _nunits - 1
                                         : (_nblocks % _nunits) - 1));
-      DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extents",
-                         last_block_unit);
-      DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extents", num_add_blocks);
       if (unit < num_add_blocks) {
         // Unit is assigned to an additional block:
         l_extent += _blocksize;
-        DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extent", l_extent);
       }
       if (unit == last_block_unit) {
         // If the last block in the dimension is underfilled and
         // assigned to the local unit, subtract the missing extent:
         SizeType undfill_blocksize = underfilled_blocksize(0);
-        DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extent",
-                           undfill_blocksize);
         l_extent -= undfill_blocksize;
       }
     }
-
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.init_local_extent >", l_extent);
     return l_extent;
+#endif
   }
 };
 

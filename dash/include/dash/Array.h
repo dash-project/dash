@@ -1,17 +1,18 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
-#include <dash/GlobMem.h>
-#include <dash/GlobRef.h>
-#include <dash/GlobAsyncRef.h>
 #include <dash/Types.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
-#include <dash/HView.h>
-#include <dash/Shared.h>
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
+#include <dash/GlobMem.h>
+#include <dash/GlobRef.h>
+#include <dash/GlobAsyncRef.h>
+#include <dash/Shared.h>
+#include <dash/HView.h>
+
+#include <dash/pattern/BlockPattern1D.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -30,7 +31,7 @@
  * A distributed array of fixed size.
  *
  * Like all DASH containers, \c dash::Array is initialized by specifying
- * an arrangement of units in a team (\c dash::TeamSpec) and a
+  * an arrangement of units in a team (\c dash::TeamSpec) and a
  * distribution pattern (\c dash::Pattern).
  *
  * DASH arrays support delayed allocation (\c dash::Array::allocate),
@@ -584,7 +585,7 @@ template<
   /// Pattern type used to distribute array elements among units.
   /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
   /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
-  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType>
+  class    PatternType  = BlockPattern<1, ROW_MAJOR, IndexType>
 >
 class Array
 {

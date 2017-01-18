@@ -30,15 +30,25 @@ TEST_F(ViewTest, ViewTraits)
   auto v_sub = dash::sub(0, 10, array);
   auto v_loc = dash::local(array);
 
-  static_assert(dash::view_traits<decltype(array)>::is_view::value == false,
-                "view traits for dash::Array not matched");
-  static_assert(dash::view_traits<decltype(v_sub)>::is_view::value == true,
-                "view traits for sub(dash::Array) not matched");
+  static_assert(
+      dash::view_traits<decltype(array)>::is_view::value == false,
+      "view traits is_view for dash::Array not matched");
+  static_assert(
+      dash::view_traits<decltype(v_sub)>::is_view::value == true,
+      "view traits is_view for sub(dash::Array) not matched");
+
+  static_assert(
+      dash::view_traits<decltype(array)>::is_origin::value == true,
+      "view traits is_origin for dash::Array not matched");
+  static_assert(
+      dash::view_traits<decltype(v_sub)>::is_origin::value == false,
+      "view traits is_origin for sub(dash::Array) not matched");
 //static_assert(dash::view_traits<decltype(v_loc)>::is_view::value == true,
 //              "view traits for local(dash::Array) not matched");
 
-  static_assert(dash::is_range<decltype(array)>::value == true,
-                "dash::is_range<dash::Array<...>>::value not matched");
+  static_assert(
+      dash::is_range<decltype(array)>::value == true,
+      "dash::is_range<dash::Array<...>>::value not matched");
 }
 
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
@@ -127,7 +137,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
 
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 {
-  int block_size        = 14;
+  int block_size        = 7;
   int array_size        = dash::size() * block_size;
   int lblock_begin_gidx = block_size * dash::myid();
   int lblock_end_gidx   = lblock_begin_gidx + block_size;
@@ -144,24 +154,51 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
                  "array initialized");
 
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     array.pattern().size());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     array.pattern().blockspec().size());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     array.pattern().local_size());
+
   // View index sets:
   auto l_begin_gidx = array.pattern().global(0);
-  auto l_idx_set   = dash::index(
-                       dash::local(
-                         dash::sub(
-                           l_begin_gidx,
-                           l_begin_gidx + block_size,
-                           array)
-                       )
-                     );
+
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
+                 "index(sub(",
+                 l_begin_gidx, ",", l_begin_gidx + block_size, ", a ))");
+
+  auto g_idx_set    = dash::index(
+                        dash::sub(
+                          l_begin_gidx,
+                          l_begin_gidx + block_size,
+                          array) );
 
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_begin_gidx);
+                     *g_idx_set.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     *g_idx_set.end());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     g_idx_set.end() - g_idx_set.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     g_idx_set.size());
+
+
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
+                 "index(local(sub(",
+                 l_begin_gidx, ",", l_begin_gidx + block_size, ", a )))");
+
+  auto l_idx_set    = dash::index(
+                        dash::local(
+                          dash::sub(
+                            l_begin_gidx,
+                            l_begin_gidx + block_size,
+                            array) ) );
 
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set.begin().pos());
+                     *l_idx_set.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set.end().pos());
+                     *l_idx_set.end());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      l_idx_set.end() - l_idx_set.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",

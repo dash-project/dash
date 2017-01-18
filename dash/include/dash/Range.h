@@ -117,7 +117,7 @@ public:
 //                                       std::move(std::declval<T>())
 //                                     )) >
 //static yes has_dash_begin(C *);
-#else
+#endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:
 
@@ -134,7 +134,6 @@ public:
               sizeof(has_begin(static_cast<T*>(nullptr))) == sizeof(yes)
            && sizeof(has_end(static_cast<T*>(nullptr)))   == sizeof(yes)
          ) };
-#endif
 };
 
 } // namespace detail

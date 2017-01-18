@@ -2,8 +2,11 @@
 #define DASH__VIEW__INDEX_SET_H__INCLUDED
 
 #include <dash/view/ViewTraits.h>
+
 #include <dash/view/Origin.h>
-#include <dash/view/Local.h>
+// #include <dash/view/Local.h>
+// #include <dash/view/Global.h>
+
 #include <dash/view/SetUnion.h>
 
 #include <dash/pattern/PatternProperties.h>
@@ -144,20 +147,24 @@ public:
   { }
 
   constexpr index_type operator*() const {
-#if 0
+#if 1
     return _pos < dash::size(*_index_set)
               ? (*_index_set)[_pos]
-              : ((*_index_set)[_pos-1] + 1);
+              : ((*_index_set)[dash::size(*_index_set)-1]
+                  + (_pos - (dash::size(*_index_set) - 1))
+                );
 #else
     return (*_index_set)[_pos];
 #endif
   }
 
   constexpr index_type operator->() const {
-#if 0
+#if 1
     return _pos < dash::size(*_index_set)
               ? (*_index_set)[_pos]
-              : ((*_index_set)[_pos-1] + 1);
+              : ((*_index_set)[dash::size(*_index_set)-1]
+                  + (_pos - (dash::size(*_index_set) - 1))
+                );
 #else
     return (*_index_set)[_pos];
 #endif
@@ -243,13 +250,24 @@ template <
   class ViewType >
 constexpr auto
 local(
-  const IndexSetBase<IndexSetType, ViewType> & index_set) ->
-//decltype(index_set.local()) {
-  const IndexSetLocal<ViewType> & { 
+  const IndexSetBase<IndexSetType, ViewType> & index_set)
+//  -> decltype(index_set.local()) {
+//  -> typename view_traits<IndexSetBase<ViewType>>::global_type & { 
+    -> const IndexSetLocal<ViewType> & { 
   return index_set.local();
 }
 
-
+template <
+  class IndexSetType,
+  class ViewType >
+constexpr auto
+global(
+  const IndexSetBase<IndexSetType, ViewType> & index_set)
+//   ->  decltype(index_set.global()) {
+//   -> typename view_traits<IndexSetSub<ViewType>>::global_type & { 
+     -> const IndexSetGlobal<ViewType> & { 
+  return index_set.global();
+}
 
 /**
  * \concept{DashRangeConcept}
@@ -271,8 +289,23 @@ public:
     view_local_type;
   typedef typename dash::view_traits<ViewType>::global_type
     view_global_type;
+#if 1
   typedef typename dash::view_traits<view_domain_type>::index_set_type
     index_set_domain_type;
+#else
+  typedef typename
+            std::conditional<
+              !dash::view_traits<ViewType>::is_view::value,
+              // referenced domain is container:
+              // domain index set is identity
+              IndexSetIdentity<ViewType>,
+              // referenced domain is view:
+              // domain index set is view index set:
+              const typename
+                dash::view_traits<view_domain_type>::index_set_type &
+            >::type
+    index_set_domain_type;
+#endif
 
   typedef typename origin_type::pattern_type
     pattern_type;
@@ -285,8 +318,8 @@ public:
 
 protected:
   const ViewType              &  _view;
-  iterator                       _begin;
-  iterator                       _end;
+//iterator                       _begin;
+//iterator                       _end;
 //index_set_domain_type          _domain;
   const pattern_type          &  _pattern;
 
@@ -299,20 +332,21 @@ protected:
   
   constexpr explicit IndexSetBase(const ViewType & view)
   : _view(view)
-  , _begin(iterator(derived(), 0))
-  , _end(iterator(derived(), derived().size()))
-//, _domain(std::forward(dash::index(dash::domain(_view))))
+//, _begin(iterator(derived(), 0))
+//, _end(iterator(derived(), derived().size()))
+//, _domain(dash::index(dash::domain(_view)))
   , _pattern(dash::origin(_view).pattern())
   { }
 
+#if 0
   constexpr IndexSetBase(ViewType && view)
   : _view(std::forward(view))
-  , _begin(iterator(derived(), 0))
-  , _end(iterator(derived(), derived().size()))
+//, _begin(iterator(derived(), 0))
+//, _end(iterator(derived(), derived().size()))
 //, _domain(std::forward(dash::index(dash::domain(_view))))
   , _pattern(dash::origin(_view).pattern())
   { }
-
+#endif
   ~IndexSetBase()                        = default;
 public:
   constexpr IndexSetBase()               = delete;
@@ -329,29 +363,42 @@ public:
   }
 
   constexpr iterator begin() const {
-    return _begin;
+    return iterator(derived(), 0);
+//  return _begin;
   }
 
   constexpr iterator end() const {
-    return _end;
+    return iterator(derived(), derived().size());
+//  return _end;
   }
 
   constexpr index_type first() const {
-    return *_begin;
+    return *begin();
   }
 
   constexpr index_type last() const {
-    return *_end;
+    return *(begin() + (derived().size() - 1));
+  }
+
+  constexpr const local_type & local() const {
+    return dash::index(dash::local(this->view()));
+  }
+
+  constexpr const global_type & global() const {
+    return dash::index(dash::global(this->view()));
   }
 
   constexpr const index_set_domain_type domain() const {
+//  return _domain;
     // To allow subclasses to overwrite method view():
-    //   return dash::index(dash::domain(derived().view()));
+//  return dash::index(dash::domain(derived().view()));
     return dash::index(dash::domain(_view));
   }
 
   constexpr const pattern_type & pattern() const {
     return _pattern;
+//  return dash::origin(_view).pattern();
+//  return dash::origin(derived().view()).pattern();
   }
 
   /*
@@ -399,19 +446,24 @@ private:
   index_type _size;
 public:
   constexpr explicit IndexSetIdentity(const ViewType & view)
-  : base_t(view) // , _size(calc_size())
+  : base_t(view)
+  , _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
     return image_index;
   }
 
-  constexpr index_type size() const {
+  constexpr index_type calc_size() const {
     return this->domain().size();
   }
 
-  constexpr index_type csize() const {
+  constexpr index_type size() const {
     return _size;
+  }
+
+  constexpr const self_t & pre() const {
+    return *this;
   }
 };
 
@@ -472,7 +524,7 @@ public:
   : base_t(view)
   , _domain_begin_idx(begin)
   , _domain_end_idx(end)
-//  _size(calc_size())
+  , _size(calc_size())
   { }
 
   constexpr index_type operator[](index_type image_index) const {
@@ -481,7 +533,7 @@ public:
     return (_domain_begin_idx + image_index);
   }
 
-  constexpr index_type size() const {
+  constexpr index_type calc_size() const {
     return std::min<index_type>(
              (_domain_end_idx - _domain_begin_idx),
        // TODO:
@@ -490,16 +542,8 @@ public:
            );
   }
 
-  constexpr index_type csize() const {
+  constexpr index_type size() const {
     return _size;
-  }
-
-  constexpr const local_type & local() const {
-    return dash::index(dash::local(this->view()));
-  }
-
-  constexpr const global_type & global() const {
-    return dash::index(dash::global(this->view()));
   }
 
   constexpr preimage_type pre() const {
@@ -563,7 +607,8 @@ public:
 
 public:
   constexpr explicit IndexSetLocal(const ViewType & view)
-  : base_t(view) // , _size(calc_size())
+  : base_t(view)
+  , _size(calc_size())
   { }
 
   constexpr index_type
@@ -571,34 +616,35 @@ public:
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
-    return // local_index >= size()
-           //   ? ( this->pattern().global(
-           //         (size() - 1) +
-           //         // actually only required if local of sub
-           //         this->pattern().at(
-           //           std::max<index_type>(
-           //             this->pattern().global(0),
-           //             this->domain()[0]
-           //         ))
-           //       ) + (local_index - (size()-1))
-           //     )
-           //  :
-               ( this->pattern().global(
-                   local_index +
-                   // actually only required if local of sub
-                   this->pattern().at(
-                     std::max<index_type>(
-                       this->pattern().global(0),
-                       this->domain()[0]
-                   ))
-               ) );
+    return   local_index >= size()
+              ?
+                ( this->pattern().global(
+                    (size() - 1) +
+                    // actually only required if local of sub
+                    this->pattern().at(
+                      std::max<index_type>(
+                        this->pattern().global(0),
+                        this->domain()[0]
+                    ))
+                  ) + (local_index - (size()-1))
+                )
+              :
+              ( this->pattern().global(
+                  local_index +
+                  // actually only required if local of sub
+                  this->pattern().at(
+                    std::max<index_type>(
+                      this->pattern().global(0),
+                      this->domain()[0]
+                  )) )
+              );
   }
 
-  constexpr index_type csize() const {
+  constexpr index_type size() const {
     return _size;
   }
 
-  inline index_type size() const {
+  inline index_type calc_size() const {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
 
@@ -608,6 +654,12 @@ public:
 
     DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
                        this->pattern().blockspec().size());
+    DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
+                       this->pattern().local_size());
+    DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
+                       this->domain().size());
+    DASH_LOG_DEBUG_VAR("IndexSetLocal.size",
+                       this->domain().pre()[0]);
 
     return (
       //pat_partitioning_traits::minimal ||
@@ -689,7 +741,8 @@ private:
   index_type _size;
 public:
   constexpr explicit IndexSetGlobal(const ViewType & view)
-  : base_t(view) // , _size(calc_size())
+  : base_t(view)
+  , _size(calc_size())
   { }
 
   constexpr index_type
@@ -702,19 +755,19 @@ public:
            );
   }
 
-  constexpr index_type size() const {
+  constexpr index_type calc_size() const {
     return std::max<index_type>(
              this->pattern().size(),
              this->domain().size()
            );
   }
 
-  constexpr index_type csize() const {
+  constexpr index_type size() const {
     return _size;
   }
 
   constexpr const local_type & local() const {
-    return local();
+    return dash::index(dash::local(this->view()));
   }
 
   constexpr const global_type & global() const {

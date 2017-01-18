@@ -146,8 +146,11 @@ public:
 public:
   typedef std::integral_constant<bool, false> is_local;
 
+private:
+  std::array<index_type, NDim>   _extents    = { };
+  index_set_type                 _index_set;
 public:
-  constexpr ViewOrigin()               = default;
+  constexpr ViewOrigin()               = delete;
   constexpr ViewOrigin(self_t &&)      = default;
   constexpr ViewOrigin(const self_t &) = default;
   ~ViewOrigin()                        = default;
@@ -157,6 +160,7 @@ public:
   constexpr explicit ViewOrigin(
       std::initializer_list<index_type> extents)
   : _extents(extents)
+  , _index_set(*this)
   { }
 
   constexpr const domain_type & domain() const {
@@ -167,8 +171,8 @@ public:
     return *this;
   }
 
-  constexpr index_set_type index_set() const {
-    return IndexSetIdentity<self_t>(*this);
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
   }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -196,9 +200,6 @@ private:
                ? _size<SizeDim + 1>()
                : 0);
   }
-
-private:
-  std::array<index_type, NDim> _extents = { };
 };
 
 template <dim_t NDim>
@@ -245,14 +246,14 @@ protected:
   : _domain(domain)
   { }
 
-  ViewModBase()                      = default;
-  ViewModBase(self_t &&)             = default;
-  ViewModBase(const self_t &)        = default;
-  ~ViewModBase()                     = default;
+  constexpr ViewModBase()               = delete;
+  constexpr ViewModBase(self_t &&)      = default;
+  constexpr ViewModBase(const self_t &) = default;
+  ~ViewModBase()                        = default;
 
 public:
-  self_t & operator=(self_t &&)      = default;
-  self_t & operator=(const self_t &) = default;
+  self_t & operator=(self_t &&)         = default;
+  self_t & operator=(const self_t &)    = default;
 
   constexpr const domain_type & domain() const {
     return _domain;
@@ -277,6 +278,7 @@ public:
     return *(derived().begin() + offset);
   }
 
+#if 0
   auto operator[](int offset)
 //  decltype(*(std::declval<ViewModType>().begin())) {
 //  typename view_traits<ViewModType>::origin_type {
@@ -286,6 +288,7 @@ public:
       >::type {
     return *(derived().begin() + offset);
   }
+#endif
 
   constexpr bool is_local() const {
     return view_traits<ViewModType>::is_local::value;
@@ -335,10 +338,12 @@ public:
 
   typedef std::integral_constant<bool, true>                      is_local;
 
+private:
+  index_set_type  _index_set;
 public:
-  ViewLocalMod()                         = default;
-  ViewLocalMod(self_t &&)                = default;
-  ViewLocalMod(const self_t &)           = default;
+  constexpr ViewLocalMod()               = delete;
+  constexpr ViewLocalMod(self_t &&)      = default;
+  constexpr ViewLocalMod(const self_t &) = default;
   ~ViewLocalMod()                        = default;
   self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = default;
@@ -420,13 +425,11 @@ public:
     return dash::global(dash::domain(*this));
   }
 
-  constexpr const index_set_type index_set() const {
-    return index_set_type(*this);
-//  return _index_set;
+  constexpr const index_set_type & index_set() const {
+//constexpr index_set_type index_set() const {
+//  return index_set_type(*this);
+    return _index_set;
   }
-
-private:
-  index_set_type  _index_set;
 };
 
 
@@ -477,13 +480,15 @@ public:
   typedef std::integral_constant<bool, false>                       is_local;
 
 private:
+  index_type     _begin_idx;
+  index_type     _end_idx;
   index_set_type _index_set;
   local_type     _local;
 
 public:
-  ViewSubMod()                         = default;
-  ViewSubMod(self_t &&)                = default;
-  ViewSubMod(const self_t &)           = default;
+  constexpr ViewSubMod()               = delete;
+  constexpr ViewSubMod(self_t &&)      = default;
+  constexpr ViewSubMod(const self_t &) = default;
   ~ViewSubMod()                        = default;
   self_t & operator=(self_t &&)        = default;
   self_t & operator=(const self_t &)   = default;
@@ -493,6 +498,8 @@ public:
     index_type         begin,
     index_type         end)
   : base_t(domain)
+  , _begin_idx(begin)
+  , _end_idx(end)
   , _index_set(*this, begin, end)
   , _local(*this)
   { }
@@ -505,9 +512,8 @@ public:
 
   constexpr auto end() const
   -> decltype(dash::begin(dash::domain(*this))) {
-    return std::move(
-            dash::begin(dash::domain(*this)) +
-            *dash::end(dash::index(*this)));
+    return dash::begin(dash::domain(*this)) +
+             *dash::end(dash::index(*this));
   }
 
   constexpr auto operator[](int offset) const
@@ -519,7 +525,9 @@ public:
     return _index_set.size();
   }
 
-  constexpr const index_set_type & index_set() const {
+constexpr const index_set_type & index_set() const {
+//constexpr index_set_type index_set() const {
+//  return index_set_type(*this, _begin_idx, _end_idx);
     return _index_set;
   }
 
@@ -582,9 +590,9 @@ public:
   typedef std::integral_constant<bool, false>                     is_local;
 
 public:
-  ViewGlobalMod()                         = default;
-  ViewGlobalMod(self_t &&)                = default;
-  ViewGlobalMod(const self_t &)           = default;
+  constexpr ViewGlobalMod()               = delete;
+  constexpr ViewGlobalMod(self_t &&)      = default;
+  constexpr ViewGlobalMod(const self_t &) = default;
   ~ViewGlobalMod()                        = default;
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
@@ -595,7 +603,7 @@ public:
   , _index_set(*this)
   { }
 
-  inline auto begin() const
+  constexpr auto begin() const
   -> decltype(dash::begin(dash::global(dash::domain(*this)))) {
     return dash::begin(
              dash::global(
@@ -645,6 +653,8 @@ public:
   }
 
   constexpr const index_set_type & index_set() const {
+//constexpr index_set_type index_set() const {
+//  return index_set_type(*this);
     return _index_set;
   }
 

@@ -1,17 +1,20 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGE_H__
 #define DASH__ALGORITHM__LOCAL_RANGE_H__
 
+#ifdef __TODO__
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewMod.h>
 #include <dash/view/Sub.h>
 
 #include <dash/Range.h>
+#endif
 
 #include <dash/internal/Logging.h>
 
 
 namespace dash {
 
+#ifdef __TODO__
 template <
   dim_t SubDim  = 0,
   class DomainT,
@@ -21,6 +24,7 @@ sub(
     OffsetT         begin,
     OffsetT         end,
     const DomainT & domain);
+#endif
 
 
 template<typename ElementType>

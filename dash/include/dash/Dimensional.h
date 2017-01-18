@@ -98,11 +98,11 @@ extent(dim_t dim, const DimensionalType & d) {
  * \see SizeSpec
  * \see CartesianIndexSpace
  */
-template<typename ElementType, dim_t NumDimensions>
+template <typename ElementType, dim_t NumDimensions>
 class Dimensional
 {
-  template<typename E_, dim_t ND_>
-  friend std::ostream& operator<<(
+  template <typename E_, dim_t ND_>
+  friend std::ostream & operator<<(
     std::ostream & os,
     const Dimensional<E_, ND_> & dimensional);
 
@@ -116,8 +116,8 @@ public:
   /**
    * Constructor, expects one value for every dimension.
    */
-  template<typename ... Values>
-  Dimensional(
+  template <typename ... Values>
+  constexpr Dimensional(
     ElementType & value, Values ... values)
   : _values {{ value, (ElementType)values... }} {
     static_assert(
@@ -128,13 +128,13 @@ public:
   /**
    * Constructor, expects array containing values for every dimension.
    */
-  Dimensional(
+  constexpr Dimensional(
     const std::array<ElementType, NumDimensions> & values)
   : _values(values) {
   }
 
-  Dimensional(const self_t & other)        = default;
-  self_t & operator=(const self_t & other) = default;
+  constexpr Dimensional(const self_t & other) = default;
+  self_t & operator=(const self_t & other)    = default;
 
   /**
    * Return value with all dimensions as array of \c NumDimensions
@@ -219,7 +219,7 @@ protected:
  * DistributionSpec describes distribution patterns of all dimensions,
  * \see dash::Distribution.
  */
-template<dim_t NumDimensions>
+template <dim_t NumDimensions>
 class DistributionSpec : public Dimensional<Distribution, NumDimensions>
 {
   template<dim_t NumDimensions_>
@@ -255,7 +255,7 @@ public:
    *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
    * \endcode
    */
-  template<typename ... Values>
+  template <typename ... Values>
   DistributionSpec(
     Distribution value, Values ... values)
   : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
@@ -482,7 +482,7 @@ public:
   /**
    * Copy constructor.
    */
-  ViewSpec(const self_t & other)
+  constexpr ViewSpec(const self_t & other)
   : _size(other._size),
     _rank(other._rank),
     _extents(other._extents),
@@ -492,7 +492,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  inline bool operator==(const self_t & other) const
+  constexpr bool operator==(const self_t & other) const
   {
     return (_extents == other._extents &&
             _offsets == other._offsets &&
@@ -625,31 +625,31 @@ public:
     update_size();
   }
 
-  SizeType size() const
+  constexpr SizeType size() const
   {
     return _size;
   }
 
-  SizeType size(dim_t dimension) const
+  constexpr SizeType size(dim_t dimension) const
   {
     return _extents[dimension];
   }
 
-  std::array<SizeType, NumDimensions> extents() const
+  constexpr std::array<SizeType, NumDimensions> extents() const
   {
     return _extents;
   }
 
-  SizeType extent(dim_t dim) const {
+  constexpr SizeType extent(dim_t dim) const {
     return _extents[dim];
   }
 
-  std::array<IndexType, NumDimensions> offsets() const
+  constexpr std::array<IndexType, NumDimensions> offsets() const
   {
     return _offsets;
   }
 
-  IndexType offset(dim_t dim) const
+  constexpr IndexType offset(dim_t dim) const
   {
     return _offsets[dim];
   }
