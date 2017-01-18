@@ -732,7 +732,7 @@ dart_ret_t dart_put_blocking(
       }
       baseptr += offset;
       DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
-      memcpy(baseptr, (char*)src, nelem * dart_mpi_sizeof_datatype(dtype));
+      memcpy(baseptr, src, nelem * dart_mpi_sizeof_datatype(dtype));
       return DART_OK;
     }
   }
