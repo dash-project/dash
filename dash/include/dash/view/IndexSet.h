@@ -397,8 +397,6 @@ public:
 
   constexpr const pattern_type & pattern() const {
     return _pattern;
-//  return dash::origin(_view).pattern();
-//  return dash::origin(derived().view()).pattern();
   }
 
   /*
@@ -629,7 +627,7 @@ public:
            //      ) + (local_index - (size()-1))
            //    )
            //  :
-#if 0
+#if 1
               ( this->pattern().global(
                   local_index +
                   // actually only required if local of sub
