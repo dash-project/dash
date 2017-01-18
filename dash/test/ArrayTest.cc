@@ -1,5 +1,12 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
+
+#include <dash/Array.h>
+
+#include <dash/algorithm/ForEach.h>
+
+#include <dash/pattern/BlockPattern1D.h>
+#include <dash/pattern/TilePattern1D.h>
 
 #include "TestBase.h"
 #include "ArrayTest.h"

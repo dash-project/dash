@@ -1,8 +1,10 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "ArrayLargeStructTest.h"
+#include "TestBase.h"
+
+#include <dash/Array.h>
 
 #include <iostream>
 #include <memory>

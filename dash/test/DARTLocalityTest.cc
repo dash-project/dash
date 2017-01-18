@@ -1,10 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "DARTLocalityTest.h"
+
+#include <dash/dart/if/dart.h>
 
 #include <string>
 
-#include "TestBase.h"
-#include "DARTLocalityTest.h"
 
 bool domains_are_equal(
   const dart_domain_locality_t * loc_a,

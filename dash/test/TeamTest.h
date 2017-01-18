@@ -1,9 +1,6 @@
 #ifndef DASH__TEST__TEAM_TEST_H_
 #define DASH__TEST__TEAM_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-
 #include "TestBase.h"
 
 

@@ -1,14 +1,17 @@
 #ifndef DASH__TEST__FOR_EACH_TEST_H_
 #define DASH__TEST__FOR_EACH_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
+
+#include <dash/Array.h>
+
 #include <vector>
+
 
 /**
  * Test fixture for algorithm dash::for_each.
  */
-class ForEachTest : public ::testing::Test {
+class ForEachTest : public dash::test::TestBase {
 protected:
   typedef double                  Element_t;
   typedef dash::Array<Element_t>  Array_t;
@@ -24,14 +27,6 @@ protected:
   }
 
   virtual ~ForEachTest() {
-  }
-
-  virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-  }
-
-  virtual void TearDown() {
-    dash::finalize();
   }
 
 public:

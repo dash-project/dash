@@ -1,10 +1,8 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "TestPrinterTest.h"
+#include "TestPrinter.h"
 
-void failOnOneUnit(){
+void failOnOneUnit() {
   if(dash::myid() == 2){
     ADD_FAILURE() << "FAILED";
   }

@@ -1,17 +1,19 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "MinElementTest.h"
+
+#include <dash/algorithm/MinMax.h>
+#include <dash/Array.h>
+#include <dash/Matrix.h>
 
 #include <limits>
 
-#include "TestBase.h"
-#include "MinElementTest.h"
 
 TEST_F(MinElementTest, TestFindArrayDefault)
 {
-  _num_elem           = dash::Team::All().size();
+  int num_elem        = dash::Team::All().size();
   Element_t min_value = 11;
   // Initialize global array:
-  Array_t array(_num_elem);
+  Array_t array(num_elem);
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 41;

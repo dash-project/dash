@@ -1,20 +1,20 @@
 #ifndef DASH__TEST__BLOCK_PATTERN_TEST_H_
 #define DASH__TEST__BLOCK_PATTERN_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
+
 
 /**
  * Test fixture for class dash::Pattern
  */
-class BlockPatternTest : public ::testing::Test {
+class BlockPatternTest : public dash::test::TestBase {
 protected:
-  int _num_elem;
   int _dash_size;
+  int _num_elem;
 
   BlockPatternTest()
-  : _num_elem(0), 
-    _dash_size(0) {
+  : _dash_size(0),
+    _num_elem(23) {
     LOG_MESSAGE(">>> Test suite: BlockPatternTest");
   }
 
@@ -23,17 +23,9 @@ protected:
   }
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-    _num_elem  = 250;
+    dash::test::TestBase::SetUp();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
-                _dash_size);
-  }
-
-  virtual void TearDown() {
-    LOG_MESSAGE("<=== Finished test case with %d units",
-                _dash_size);
-    dash::finalize();
+    _num_elem  = 23;
   }
 };
 

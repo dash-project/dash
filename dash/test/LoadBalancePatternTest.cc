@@ -1,8 +1,9 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
 #include "LoadBalancePatternTest.h"
-#include "TestBase.h"
+
+#include <dash/pattern/LoadBalancePattern.h>
+#include <dash/util/TeamLocality.h>
+#include <dash/Dimensional.h>
 
 
 void mock_team_locality(
@@ -18,8 +19,8 @@ void mock_team_locality(
     unit_hwinfo.max_cpu_mhz = 1600;
   }
 
-  auto & unit_0_hwinfo      = tloc.unit_locality(dash::team_unit_t{0}).hwinfo();
-  auto & unit_1_hwinfo      = tloc.unit_locality(dash::team_unit_t{1}).hwinfo();
+  auto & unit_0_hwinfo = tloc.unit_locality(dash::team_unit_t{0}).hwinfo();
+  auto & unit_1_hwinfo = tloc.unit_locality(dash::team_unit_t{1}).hwinfo();
 
   // Double min. number of threads and CPU capacity of unit 0:
   unit_0_hwinfo.min_threads = 2;
@@ -34,7 +35,7 @@ void mock_team_locality(
 
 TEST_F(LoadBalancePatternTest, LocalSizes)
 {
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     LOG_MESSAGE("LoadBalancePatternTest.LocalSizes "
                 "requires > 1 units");
     return;
@@ -63,7 +64,7 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   size_t unit_1_lsize_exp   = std::floor(cap_balanced);
   size_t unit_x_lsize_exp   = std::floor(cap_balanced * 2);
   size_t unit_0_lsize_exp   = size - unit_1_lsize_exp -
-                                ((_dash_size - 2) * unit_x_lsize_exp);
+                                ((dash::size() - 2) * unit_x_lsize_exp);
 
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_0_lsize_exp);
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_1_lsize_exp);
@@ -71,19 +72,20 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
 
   EXPECT_EQ_U(cpu_cap_ratio,
               std::floor(
-                pat.local_size(dash::team_unit_t{0}) / pat.local_size(dash::team_unit_t{1})));
+                pat.local_size(dash::team_unit_t{0}) /
+                pat.local_size(dash::team_unit_t{1})));
 
   EXPECT_EQ_U(unit_0_lsize_exp, pat.local_size(dash::team_unit_t{0}));
   EXPECT_EQ_U(unit_1_lsize_exp, pat.local_size(dash::team_unit_t{1}));
 
-  for (dash::team_unit_t u{2}; u < _dash_size; u++) {
+  for (dash::team_unit_t u{2}; u < dash::size(); u++) {
     EXPECT_EQ_U(unit_x_lsize_exp, pat.local_size(u));
   }
 }
 
 TEST_F(LoadBalancePatternTest, IndexMapping)
 {
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     LOG_MESSAGE("LoadBalancePatternTest.IndexMapping "
                 "requires > 1 units");
     return;
@@ -100,7 +102,7 @@ TEST_F(LoadBalancePatternTest, IndexMapping)
 
   pattern_t pattern(dash::SizeSpec<1>(size), tloc);
 
-  if (_dash_id == 0) {
+  if (dash::size() == 0) {
     dash::test::print_pattern_mapping(
       "pattern.unit_at", pattern, 2,
       [](const pattern_t & _pattern, int _x) -> dart_unit_t {
@@ -137,7 +139,7 @@ TEST_F(LoadBalancePatternTest, IndexMapping)
 
   size_t  total_size = 0;
   index_t g_index    = 0;
-  for (dash::team_unit_t u{0}; u < _dash_size; ++u) {
+  for (dash::team_unit_t u{0}; u < dash::size(); ++u) {
     index_t l_size = pattern.local_size(u);
     for (index_t li = 0; li < l_size; li++) {
       EXPECT_EQ_U(li, pattern.at(g_index));

@@ -1,12 +1,17 @@
+
+#include "GlobStencilIterTest.h"
+
+#include <dash/Halo.h>
+#include <dash/Matrix.h>
+
+#include <dash/iterator/GlobStencilIter.h>
+#include <dash/pattern/TilePattern.h>
+
 #include <array>
+#include <vector>
 #include <string>
 #include <numeric>
 #include <functional>
-
-#include <libdash.h>
-
-#include "TestBase.h"
-#include "GlobStencilIterTest.h"
 
 
 template<

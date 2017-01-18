@@ -1,8 +1,9 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "MaxElementTest.h"
+
+#include <dash/algorithm/MinMax.h>
+#include <dash/Array.h>
+
 
 TEST_F(MaxElementTest, TestFindArrayDefault)
 {
