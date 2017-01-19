@@ -177,14 +177,12 @@ public:
     DASH_LOG_DEBUG("CollectiveAllocator.allocate(nlocal)",
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
-    if (num_local_elem > 0) {
-      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
-      if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
-          == DART_OK) {
-        _allocated.push_back(gptr);
-      } else {
-        gptr = DART_GPTR_NULL;
-      }
+    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+    if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+        == DART_OK) {
+      _allocated.push_back(gptr);
+    } else {
+      gptr = DART_GPTR_NULL;
     }
     DASH_LOG_DEBUG_VAR("CollectiveAllocator.allocate >", gptr);
     return gptr;
