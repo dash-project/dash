@@ -239,6 +239,18 @@ public:
   static void finalize()
   {
     DASH_LOG_TRACE("Team::finalize()");
+    // copy all Team pointer into a local vector
+    // since we cannot iterate over Team::_teams
+    // and destroy teams simultaneously.
+    std::vector<Team*> teams;
+    teams.reserve(Team::_teams.size());
+    for (auto it : Team::_teams) {
+      teams.push_back(it.second);
+    }
+    for (Team *t : teams) {
+      delete t;
+    }
+    teams.clear();
     Team::All().free();
   }
 
