@@ -184,7 +184,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
                  team_spec);
 
   LOG_MESSAGE("Matrix initialized, wait for barrier ...");
-  dash::Team::All().barrier();
+  matrix.barrier();
   LOG_MESSAGE("Team barrier passed");
 
   size_t matrix_size = extent_cols * extent_rows;
@@ -204,7 +204,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   }
   // Units waiting for value initialization
   LOG_MESSAGE("Values assigned, wait for barrier ...");
-  dash::Team::All().barrier();
+  matrix.barrier();
   LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
