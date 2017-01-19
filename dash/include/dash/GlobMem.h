@@ -118,11 +118,11 @@ public:
     DASH_LOG_TRACE("GlobMem(nlocal,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
+    _begptr = _allocator.allocate(_nlelem);
     if (_nlelem == 0 || _nunits == 0) {
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
       return;
     }
-    _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
@@ -153,26 +153,25 @@ public:
     DASH_LOG_DEBUG("GlobMem(lvals,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
+    _begptr = _allocator.allocate(_nlelem);
     if (_nlelem == 0 || _nunits == 0) {
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
-    } else {
-      _begptr = _allocator.allocate(_nlelem);
-      DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
-
-      // Use id's of team all
-      _lbegin = lbegin(dash::Team::GlobalUnitID());
-      _lend   = lend(dash::Team::GlobalUnitID());
-      DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
-                     "Capacity of local memory range differs from number "
-                     "of specified local elements");
-                     
-      // Initialize allocated local elements with specified values:
-      auto copy_end = std::copy(local_elements.begin(),
-                                local_elements.end(),
-                                _lbegin);
-      DASH_ASSERT_EQ(_lend, copy_end,
-                     "Initialization of specified local values failed");
+      //DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
     }
+
+    // Use id's of team all
+    _lbegin = lbegin(dash::Team::GlobalUnitID());
+    _lend   = lend(dash::Team::GlobalUnitID());
+    DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
+                   "Capacity of local memory range differs from number "
+                   "of specified local elements");
+
+    // Initialize allocated local elements with specified values:
+    auto copy_end = std::copy(local_elements.begin(),
+                              local_elements.end(),
+                              _lbegin);
+    DASH_ASSERT_EQ(_lend, copy_end,
+                   "Initialization of specified local values failed");
     if (_nunits > 1) {
       // Wait for initialization of local values at all units.
       // Barrier synchronization is okay here as multiple units are
