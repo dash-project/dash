@@ -1025,6 +1025,38 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
 }
 
+TEST_F(MatrixTest, UnderfilledLocalViewSpec){
+  auto myid     = dash::myid();
+  auto numunits = dash::Team::All().size();
+  dash::TeamSpec<2> teamspec( numunits, 1 );
+  teamspec.balance_extents();
+
+  uint32_t w= 13;
+  uint32_t h= 7;
+  auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
+  dash::NArray<uint32_t, 2> narray( dash::SizeSpec<2>( h, w ),
+      distspec, dash::Team::All(), teamspec );
+
+  narray.barrier();
+  
+  if ( 0 == myid ) {
+    LOG_MESSAGE("global extent is %lu x %lu", narray.extent(0), narray.extent(1));
+  }
+  LOG_MESSAGE("local extent is %lu x %lu", narray.local.extent(0), narray.local.extent(1));
+
+  narray.barrier();
+
+  uint32_t elementsvisited = 0;
+  for ( auto it= narray.lbegin(); it != narray.lend(); ++it ) {
+    elementsvisited++;
+  }
+  
+  auto local_elements= narray.local.extent(0) * narray.local.extent(1);
+  
+  ASSERT_EQ_U(elementsvisited, local_elements);
+  ASSERT_EQ_U(elementsvisited, narray.local.size());
+}
+
 
 TEST_F(MatrixTest, SimpleConstructor)
 {
