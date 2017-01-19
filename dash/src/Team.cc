@@ -79,6 +79,13 @@ Team::split(
 {
   DASH_LOG_DEBUG_VAR("Team.split()", num_parts);
 
+  Team *result = &(dash::Team::Null());
+
+  if (this->size() < 2) {
+    DASH_LOG_DEBUG("Team.split >", "Team size is <2, cannot split");
+    return *result;
+  }
+
   std::vector<dart_group_t> sub_group_v(num_parts);
 
   dart_group_t   group;
@@ -90,13 +97,6 @@ Team::split(
     DASH_ASSERT_RETURNS(
       dart_group_create(&sub_groups[i]),
       DART_OK);
-  }
-
-  Team *result = &(dash::Team::Null());
-
-  if (this->size() <= 1) {
-    DASH_LOG_DEBUG("Team.split >", "Team size is 1, cannot split");
-    return *result;
   }
 
   DASH_ASSERT_RETURNS(
@@ -137,6 +137,13 @@ Team::locality_split(
   DASH_LOG_DEBUG_VAR("Team.locality_split()", scope);
   DASH_LOG_DEBUG_VAR("Team.locality_split()", num_parts);
 
+  Team * result = &(dash::Team::Null());
+
+  if (this->size() < 2) {
+    DASH_LOG_DEBUG("Team.locality_split >", "Team size < 2, cannot split");
+    return *result;
+  }
+
   if (num_parts == 0) {
     DASH_THROW(
       dash::exception::InvalidArgument,
@@ -146,20 +153,11 @@ Team::locality_split(
   dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
                                         static_cast<int>(scope));
 
-  // TODO: Replace dynamic arrays with vectors.
-
   dart_group_t   group;
   std::vector<dart_group_t> sub_group_v(num_parts);
   dart_group_t * sub_groups = sub_group_v.data();
 
   size_t num_split     = 0;
-
-  Team * result = &(dash::Team::Null());
-
-  if (this->size() < 2) {
-    DASH_LOG_DEBUG("Team.locality_split >", "Team size < 2, cannot split");
-    return *result;
-  }
 
   for (unsigned i = 0; i < num_parts; i++) {
     DASH_ASSERT_RETURNS(
@@ -189,9 +187,9 @@ Team::locality_split(
                    sub_group_unit_ids);
   }
 #endif
+
   // Create a child Team for every part with parent set to
   // this instance:
-  // TODO [JS]: the memory allocated is likely to be lost if num_parts > 2
   for(unsigned i = 0; i < num_parts; i++) {
     dart_team_t newteam = DART_TEAM_NULL;
     DASH_ASSERT_RETURNS(
