@@ -1046,11 +1046,9 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
 
   narray.barrier();
 
-  uint32_t elementsvisited = 0;
-  for ( auto it= narray.lbegin(); it != narray.lend(); ++it ) {
-    elementsvisited++;
-  }
-  
+  std::fill(narray.lbegin(), narray.lend(), 0);
+
+  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
   
   ASSERT_EQ_U(elementsvisited, local_elements);
