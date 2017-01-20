@@ -215,7 +215,7 @@ dart_ret_t dart_exit()
 
   _dart_initialized = 0;
 
-	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
+	DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
                    unitid.id);
