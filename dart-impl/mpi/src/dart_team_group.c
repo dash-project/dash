@@ -46,6 +46,12 @@ dart_ret_t dart_group_create(
 dart_ret_t dart_group_destroy(
   dart_group_t *group)
 {
+
+  if (group == NULL || *group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p -> %p", group, (group) ? (void*)*group : (void*)group);
+    return DART_ERR_INVAL;
+  }
+
   struct dart_group_struct** g = group;
   if ((*g)->mpi_group != MPI_GROUP_NULL) {
     MPI_Group_free(&(*g)->mpi_group);
@@ -62,7 +68,12 @@ dart_ret_t dart_group_clone(
   const dart_group_t   gin,
   dart_group_t       * gout)
 {
-  //gout->mpi_group = gin->mpi_group;
+  if (gin == NULL || gout == NULL) {
+    *gout = NULL;
+    DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", gin, gout);
+    return DART_ERR_INVAL;
+  }
+
   struct dart_group_struct* res = allocate_group();
   MPI_Group_excl(gin->mpi_group, 0, NULL, &res->mpi_group);
   *gout = res;
@@ -88,6 +99,12 @@ dart_ret_t dart_group_union(
   dart_group_t       * gout)
 {
   *gout = NULL;
+
+  if (g1 == NULL || g2 == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    return DART_ERR_INVAL;
+  }
+
   /* g1 and g2 are both ordered groups. */
   struct dart_group_struct* res = allocate_group();
   if (MPI_Group_union(
@@ -146,8 +163,14 @@ dart_ret_t dart_group_intersect(
   const dart_group_t   g2,
   dart_group_t       * gout)
 {
-  struct dart_group_struct* res = allocate_group();
   *gout = NULL;
+
+  if (g1 == NULL || g2 == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    return DART_ERR_INVAL;
+  }
+
+  struct dart_group_struct* res = allocate_group();
   if (MPI_Group_intersection(
            g1 -> mpi_group,
            g2 -> mpi_group,
@@ -171,6 +194,12 @@ dart_ret_t dart_group_addmember(
   struct dart_group_struct group;
   dart_group_t  res;
   MPI_Group     group_all;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
   array[0]   = unitid.id;
@@ -194,6 +223,12 @@ dart_ret_t dart_group_delmember(
 {
   int array[1];
   MPI_Group newgroup, group_all, resgroup;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
   array[0] = unitid.id;
   MPI_Group_incl(
@@ -228,6 +263,12 @@ dart_ret_t dart_group_getmembers(
   int size;
   int *array;
   MPI_Group group_all;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Group_size(g->mpi_group, &size);
   MPI_Comm_group(DART_COMM_WORLD, &group_all);
   array = (int*) malloc(sizeof (int) * size);
@@ -251,6 +292,11 @@ dart_ret_t dart_group_split(
   dart_group_t        * gout)
 {
   int size, length, ranges[1][3];
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
 
   MPI_Group_size(g->mpi_group, &size);
 
@@ -303,6 +349,12 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: split at scope %d", scope);
 
   dart_team_t team = domain->team;
+
+  if (group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", group);
+    return DART_ERR_INVAL;
+  }
+
 
   /* query domain tags of all domains in specified scope: */
   int     num_domains;
@@ -477,6 +529,13 @@ dart_ret_t dart_group_ismember(
   int                 i, size;
   dart_global_unit_t* ranks;
 
+
+  if (g == NULL) {
+    *ismember = 0;
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Group_size(g->mpi_group, &size);
   ranks = (dart_global_unit_t *)malloc(size * sizeof(dart_global_unit_t));
   dart_group_getmembers (g, ranks);
@@ -530,6 +589,17 @@ dart_ret_t dart_team_create(
               unique_id;
   dart_team_t max_teamid = -1;
 
+  *newteam = DART_TEAM_NULL;
+
+  if (group->mpi_group == MPI_GROUP_NULL) {
+    return DART_OK;
+  }
+
+  if (group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", group);
+    return DART_ERR_INVAL;
+  }
+
 
   int result = dart_adapt_teamlist_convert(teamid, &unique_id);
   if (result == -1) {
@@ -539,8 +609,6 @@ dart_ret_t dart_team_create(
   subcomm = MPI_COMM_NULL;
 
   MPI_Comm_create(comm, group->mpi_group, &subcomm);
-
-  *newteam = DART_TEAM_NULL;
 
   /* Get the maximum next_availteamid among all the units belonging to
    * the parent team specified by 'teamid'. */
