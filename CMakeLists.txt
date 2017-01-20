@@ -42,6 +42,8 @@ option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
 option(ENABLE_DEVELOPER_COMPILER_WARNINGS
        "Specify whether excessive compiler warnings should be enabled" off)
+option(ENABLE_EXTENDED_COMPILER_WARNINGS
+       "Specify whether mainly style-related compiler warnings should be enabled" off)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION

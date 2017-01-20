@@ -70,6 +70,7 @@ http://doc.dash-project.org
 
 **Contact:**
 
+- Slack channel: <https://dash-project.slack.com>
 - Support: support@dash-project.org 
 - Developer mailing list: team@dash-project.org
 

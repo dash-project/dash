@@ -189,7 +189,13 @@ public:
 
     if (_child) {
       delete(_child);
+      _child = nullptr;
     }
+
+    if (_parent) {
+      _parent->_child = nullptr;
+    }
+
     free();
   }
 
@@ -239,6 +245,18 @@ public:
   static void finalize()
   {
     DASH_LOG_TRACE("Team::finalize()");
+
+    /**
+     * we cannot iterate over Team::_teams directly
+     * and destroy teams simultaneously since it will
+     * be modified on call to d'tor (possibly multiple
+     * times)
+     */
+    while (Team::_teams.size() > 0) {
+      Team *t = Team::_teams.begin()->second;
+      delete t;
+    }
+
     Team::All().free();
   }
 

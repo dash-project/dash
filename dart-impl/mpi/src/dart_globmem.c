@@ -276,23 +276,29 @@ dart_team_memalloc_aligned(
 
   win = dart_team_data[index].window;
   /* Attach the allocated shared memory to win */
-  if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+  /* Calling MPI_Win_attach with nbytes == 0 leads to errors, see #239 */
+  if (nbytes > 0) {
+    if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
+      DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    free(baseptr_set);
+      free(baseptr_set);
 #endif
-    free(disp_set);
-    return DART_ERR_OTHER;
-  }
-	if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
-    free(disp_set);
+      free(disp_set);
+      return DART_ERR_OTHER;
+    }
+
+    if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
+      DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
+      free(disp_set);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    free(baseptr_set);
+      free(baseptr_set);
 #endif
-    return DART_ERR_OTHER;
+      return DART_ERR_OTHER;
+    }
+  } else {
+    disp = 0;
   }
 
 	/* Collect the disp information from all the ranks in comm */
@@ -372,12 +378,12 @@ dart_ret_t dart_team_memfree(
     return DART_ERR_INVAL;
   }
 
-  /* Detach the window associated with sub-memory to be freed:
-   */
-	MPI_Win_detach(win, sub_mem);
+  /* Detach the window associated with sub-memory to be freed */
+  if (sub_mem != NULL) {
+    MPI_Win_detach(win, sub_mem);
+  }
 
-	/* Free the window's associated sub-memory:
-   */
+	/* Free the window's associated sub-memory */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   MPI_Win sharedmem_win;
   if (dart_segment_get_win(seg_id, &sharedmem_win) != DART_OK) {
@@ -477,8 +483,8 @@ dart_team_memregister_aligned(
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister_aligned: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
@@ -556,8 +562,8 @@ dart_team_memregister(
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
