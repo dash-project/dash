@@ -48,7 +48,7 @@ dart_ret_t dart_group_destroy(
 {
 
   if (group == NULL || *group == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p -> %p", group, (group) ? *group : group);
+    DART_LOG_ERROR("Invalid group argument: %p -> %p", group, (group) ? (void*)*group : (void*)group);
     return DART_ERR_INVAL;
   }
 
