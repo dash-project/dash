@@ -192,7 +192,7 @@ dart_ret_t dart__base__locality__create(
                    node_domain->level, node_domain->parent);
     for (int u = 0; u < node_units->num_units; ++u) {
       DART_LOG_TRACE("dart__base__locality__create: %s unit[%d]: %d",
-                     hostname, u, node_units->units[u]);
+                     hostname, u, node_units->units[u].id);
     }
   }
 #endif
@@ -727,7 +727,7 @@ dart_ret_t dart__base__locality__unit(
   dart_unit_locality_t            ** locality)
 {
   DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
-                 team, unit);
+                 team, unit.id);
   *locality = NULL;
 
   dart_unit_locality_t * uloc;
@@ -1029,7 +1029,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
       (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
       DART_LOG_TRACE("dart__base__locality__scope_domains: "
                      "domain %d: %s",
-                     dom_idx, (*domains_out)[dom_idx]);
+                     dom_idx, (*domains_out)[dom_idx]->domain_tag);
     } else {
       DART_LOG_ERROR("dart__base__locality__scope_domains ! "
                      "realloc failed");
