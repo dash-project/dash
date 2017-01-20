@@ -152,15 +152,14 @@ dart_team_memalloc_aligned(
 
 	char * sub_mem;
 
-	int16_t segid = DART_FETCH_AND_INC16(&dart_memid);
+  // check for overflow
+  if (dart_memid == INT16_MAX || dart_memid <= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
+    return DART_ERR_INVAL;
+  }
 
-	// check for overflow
-	if (segid < 0) {
-	  DART_LOG_ERROR(
-	      "Failed to allocate segment ID, too many segments already allocated?");
-	  DART_FETCH_AND_DEC16(&dart_memid);
-	  return DART_ERR_INVAL;
-	}
+	int16_t segid = DART_FETCH_AND_INC16(&dart_memid);
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -425,15 +424,14 @@ dart_team_memregister_aligned(
   dart_unit_t gptr_unitid = -1;
   dart_team_size(teamid, &size);
 
-  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
   /* check for underflow */
-  if (segid >= 0) {
+  if (dart_registermemid == INT16_MIN || dart_registermemid >= 0) {
     DART_LOG_ERROR(
         "Failed to allocate segment ID, too many segments already allocated?");
-    DART_FETCH_AND_INC16(&dart_registermemid);
     return DART_ERR_INVAL;
   }
 
+  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
   MPI_Win win;
   MPI_Comm comm;
   MPI_Aint disp;
@@ -505,14 +503,14 @@ dart_team_memregister(
   dart_unit_t gptr_unitid = -1;
 	dart_team_size(teamid, &size);
 
-  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
   /* check for underflow */
-  if (segid >= 0) {
+  if (dart_registermemid == INT16_MIN || dart_registermemid >= 0) {
     DART_LOG_ERROR(
         "Failed to allocate segment ID, too many segments already allocated?");
-    DART_FETCH_AND_INC16(&dart_registermemid);
     return DART_ERR_INVAL;
   }
+
+  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
 
 	MPI_Win    win;
 	MPI_Comm   comm;
