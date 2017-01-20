@@ -350,7 +350,10 @@ public:
   }
 
   constexpr auto begin() const
-  -> decltype(dash::begin(dash::local(dash::origin(*this)))) {
+  -> decltype(dash::begin(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              ))) {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -364,7 +367,10 @@ public:
   }
 
   constexpr auto end() const
-  -> decltype(dash::end(dash::local(dash::origin(*this)))) {
+  -> decltype(dash::end(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              ))) {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -387,7 +393,10 @@ public:
 
   constexpr auto operator[](int offset) const
   -> decltype(*(dash::begin(
-                dash::local(dash::origin(dash::domain(*this)))))) {
+                dash::local(dash::origin(
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type >()
+                ))))) {
     return *(this->begin() + offset);
   }
 
@@ -487,19 +496,28 @@ public:
   { }
 
   constexpr auto begin() const
-  -> decltype(dash::begin(dash::domain(*this))) {
+  -> decltype(dash::begin(
+                std::declval<
+                  typename std::add_lvalue_reference<domain_type>::type
+                >() )) {
     return dash::begin(dash::domain(*this)) +
              *dash::begin(dash::index(*this));
   }
 
   constexpr auto end() const
-  -> decltype(dash::begin(dash::domain(*this))) {
+  -> decltype(dash::begin(
+                std::declval<
+                  typename std::add_lvalue_reference<domain_type>::type
+                >() )) {
     return dash::begin(dash::domain(*this)) +
              *dash::end(dash::index(*this));
   }
 
   constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(dash::domain(*this)))) {
+  -> decltype(*(dash::begin(
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type
+                  >() ))) {
     return *(this->begin() + offset);
   }
 

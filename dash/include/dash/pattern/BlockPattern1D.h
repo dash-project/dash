@@ -154,7 +154,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  BlockPattern(
+  constexpr BlockPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -317,12 +317,12 @@ public:
     _lbegin_lend(initialize_local_range(_local_size))
   { }
 
-  BlockPattern(self_t && other)      = default;
+  constexpr BlockPattern(self_t && other)      = default;
 
   /**
    * Copy constructor.
    */
-  BlockPattern(const self_t & other) = default;
+  constexpr BlockPattern(const self_t & other) = default;
 
   /**
    * Copy constructor using non-const lvalue reference parameter.
@@ -330,7 +330,7 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  BlockPattern(self_t & other)
+  constexpr BlockPattern(self_t & other)
   : BlockPattern(static_cast<const self_t &>(other)) {
   }
 

@@ -20,7 +20,7 @@ static std::ostream & operator<<(
   std::ostream & o,
   dart_global_unit_t uid)
 {
-  o << "dart_global_unit_t(uid.id)";
+  o << uid.id;
   return o;
 }
 

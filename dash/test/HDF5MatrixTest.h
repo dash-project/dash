@@ -33,7 +33,6 @@ protected:
     if (dash::myid().id == 0) {
       remove(_filename.c_str());
     }
-
     dash::test::TestBase::TearDown();
   }
 };

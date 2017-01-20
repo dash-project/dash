@@ -6,6 +6,8 @@
 #             to the dynamic symbol table
 
 
+find_package(OpenMP)
+
 
 # The following warning options are intentionally not enabled:
 #
@@ -17,28 +19,45 @@
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-set(ENABLE_DEVELOPER_COMPILER_WARNINGS ${ENABLE_DEVELOPER_COMPILER_WARNINGS}
-    PARENT_SCOPE)
-
-set(ENABLE_EXTENDED_COMPILER_WARNINGS ${ENABLE_EXTENDED_COMPILER_WARNINGS}
-    PARENT_SCOPE)
-
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS 
+  OR ENABLE_EXTENDED_COMPILER_WARNINGS 
+  AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align -Wcast-qual")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
+
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+  endif()
+
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdisabled-optimization -Wformat")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self -Wopenmp-simd")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Winit-self")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wmissing-include-dirs -Wenum-compare")
   set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wstrict-overflow=3 -Wswitch")
+       "${DASH_DEVELOPER_CCXX_FLAGS} -Wswitch")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
+
+  if (OPENMP_FOUND)
+    set (DASH_DEVELOPER_CCXX_FLAGS
+         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
+  endif()
 
   # C++-only warning flags
 
@@ -67,26 +86,49 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS OR ENABLE_EXTENDED_COMPILER_WARNINGS)
   # C-only warning flags
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
+  set (DASH_DEVELOPER_CC_FLAGS 
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
+
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+  endif()
 
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast -Wc99-c11-compat")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
   set (DASH_DEVELOPER_CC_FLAGS
-       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type -Wpointer-sign")
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
+  set (DASH_DEVELOPER_CC_FLAGS
+       "${DASH_DEVELOPER_CC_FLAGS}  -Wpointer-sign")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-declarations")
 
+  if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
+    set (DASH_DEVELOPER_CC_FLAGS
+         "${DASH_DEVELOPER_CC_FLAGS} -diag-disable=10006")
+    set (DASH_DEVELOPER_CXX_FLAGS
+         "${DASH_DEVELOPER_CXX_FLAGS} -diag-disable=10006")
+  endif()
+
 endif()
 
+# disable warnings on unknown warning flags 
+
+set (CC_WARN_FLAG  "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
+set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
 
 set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
 set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
 
-if (ENABLE_COMPILER_WARNINGS)
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
-    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
@@ -103,14 +145,14 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_OMP_FLAG "-fopenmp")
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
-  set (CXX_OMP_FLAG "-fopenmp")
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
@@ -118,7 +160,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_OMP_FLAG "-qopenmp")
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-ipo")
   endif()
@@ -152,13 +194,6 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
   set (CC_STD_FLAG "-h c99"
        CACHE STRING "C compiler std flag")
 endif()
-
-
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
-
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_DEBUG} -Wa,-adhln=test-O3.s -g -fverbose-asm -masm=intel")
 
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_ENV_SETUP_FLAGS}")

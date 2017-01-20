@@ -185,7 +185,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
                  team_spec);
 
   LOG_MESSAGE("Matrix initialized, wait for barrier ...");
-  dash::Team::All().barrier();
+  matrix.barrier();
   LOG_MESSAGE("Team barrier passed");
 
   size_t matrix_size = extent_cols * extent_rows;
@@ -205,7 +205,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   }
   // Units waiting for value initialization
   LOG_MESSAGE("Values assigned, wait for barrier ...");
-  dash::Team::All().barrier();
+  matrix.barrier();
   LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
@@ -1024,6 +1024,36 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
 
   EXPECT_LE_U( corner[1] + matrix.local.extent(1), w );
   EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
+}
+
+TEST_F(MatrixTest, UnderfilledLocalViewSpec){
+  auto myid     = dash::myid();
+  auto numunits = dash::Team::All().size();
+  dash::TeamSpec<2> teamspec( numunits, 1 );
+  teamspec.balance_extents();
+
+  uint32_t w= 13;
+  uint32_t h= 7;
+  auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
+  dash::NArray<uint32_t, 2> narray( dash::SizeSpec<2>( h, w ),
+      distspec, dash::Team::All(), teamspec );
+
+  narray.barrier();
+  
+  if ( 0 == myid ) {
+    LOG_MESSAGE("global extent is %lu x %lu", narray.extent(0), narray.extent(1));
+  }
+  LOG_MESSAGE("local extent is %lu x %lu", narray.local.extent(0), narray.local.extent(1));
+
+  narray.barrier();
+
+  std::fill(narray.lbegin(), narray.lend(), 0);
+
+  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
+  auto local_elements= narray.local.extent(0) * narray.local.extent(1);
+  
+  ASSERT_EQ_U(elementsvisited, local_elements);
+  ASSERT_EQ_U(elementsvisited, narray.local.size());
 }
 
 
