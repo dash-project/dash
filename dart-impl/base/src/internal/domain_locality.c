@@ -325,7 +325,7 @@ dart_ret_t dart__base__locality__domain__parent(
     subdomains_prefix[subdomains_prefix_len] = '\0';
   }
   if (subdomains_prefix_len == 0) {
-    *domain_out = (const dart_domain_locality_t *)(domain_in);
+    *domain_out = (dart_domain_locality_t *)(domain_in);
     return DART_OK;
   }
 

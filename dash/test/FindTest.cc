@@ -1,10 +1,11 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "FindTest.h"
+
+#include <dash/Team.h>
+#include <dash/Array.h>
+#include <dash/algorithm/Find.h>
 
 #include <limits>
-
-#include "TestBase.h"
-#include "FindTest.h"
 
 
 TEST_F(FindTest, TestSimpleFind)

@@ -2,7 +2,8 @@
 #define DASH__ALGORITHM__COPY_H__
 
 #include <dash/Future.h>
-#include <dash/iterator/GlobIter.h>
+#include <dash/Iterator.h>
+
 #include <dash/algorithm/LocalRange.h>
 
 #include <dash/dart/if/dart_communication.h>
@@ -11,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <future>
+
 
 // #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 #define DASH__ALGORITHM__COPY__USE_FLUSH

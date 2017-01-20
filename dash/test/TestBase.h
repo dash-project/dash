@@ -2,6 +2,9 @@
 #define DASH__TEST__TEST_BASE_H_
 
 #include <gtest/gtest.h>
+
+#include <dash/Init.h>
+#include <dash/Team.h>
 #include <dash/internal/Logging.h>
 
 #include "TestGlobals.h"
@@ -121,6 +124,16 @@ class TestBase : public ::testing::Test {
     LOG_MESSAGE("-==- Finalize DASH at unit %d",             dash::myid().id);
     dash::finalize();
     LOG_MESSAGE("<=== Finished test case with %lu units",    dash::size());
+  }
+
+  std::string _hostname() const {
+    char hostname[100];
+    gethostname(hostname, 100);
+    return std::string(hostname);
+  }
+
+  int _pid() const {
+    return static_cast<int>(getpid());
   }
 };
 

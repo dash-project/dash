@@ -1,9 +1,11 @@
-#include <libdash.h>
+
+#include "ConfigTest.h"
+
+#include <dash/util/Config.h>
+
 #include <array>
 #include <sstream>
 
-#include "TestBase.h"
-#include "ConfigTest.h"
 
 TEST_F(ConfigTest, BasicSetGet) {
   DASH_TEST_LOCAL_ONLY();

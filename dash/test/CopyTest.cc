@@ -1,6 +1,13 @@
 
-#include <libdash.h>
 #include <gtest/gtest.h>
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+
+#include <dash/algorithm/Copy.h>
+#include <dash/pattern/ShiftTilePattern1D.h>
+#include <dash/pattern/TilePattern1D.h>
+#include <dash/pattern/BlockPattern1D.h>
 
 #include "TestBase.h"
 #include "TestLogHelpers.h"

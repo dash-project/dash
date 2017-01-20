@@ -1,12 +1,14 @@
-#include <libdash.h>
+
+#include "UnitIdTest.h"
+
+#include <dash/internal/Unit.h>
+
 #include <array>
 #include <sstream>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>  
 
-#include "TestBase.h"
-#include "UnitIdTest.h"
 
 TEST_F(UnitIdTest, TypeCompatibility)
 {

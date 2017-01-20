@@ -1,4 +1,10 @@
+
 #include "GlobMemTest.h"
+
+#include <dash/GlobMem.h>
+#include <dash/GlobRef.h>
+#include <dash/GlobPtr.h>
+
 
 TEST_F(GlobMemTest, ConstructorInitializerList)
 {

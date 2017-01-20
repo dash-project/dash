@@ -94,7 +94,6 @@ void mmult_local(
 /// Constraints on pattern partitioning properties of matrix operands passed
 /// to \c dash::summa.
 typedef dash::pattern_partitioning_properties<
-            dash::pattern_partitioning_tag::minimal,
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.
@@ -585,15 +584,32 @@ void summa(
   DASH_LOG_TRACE("dash::summa >", "finished");
 }
 
+#ifdef DOXYGEN
+
 /**
- * Registration of \c dash::summa as an implementation of matrix-matrix
- * multiplication (xDGEMM).
+ * Function adapter to an implementation of matrix-matrix multiplication
+ * (xDGEMM) depending on the matrix distribution patterns.
  *
  * Delegates  \c dash::mmult<MatrixType>
  * to         \c dash::summa<MatrixType>
  * if         \c MatrixType::pattern_type
  * satisfies the pattern property constraints of the SUMMA implementation.
  */
+template <
+  typename MatrixTypeA,
+  typename MatrixTypeB,
+  typename MatrixTypeC >
+void mmult(
+  /// Matrix to multiply, extents n x m
+  MatrixTypeA & A,
+  /// Matrix to multiply, extents m x p
+  MatrixTypeB & B,
+  /// Matrix to contain the multiplication result, extents n x p,
+  /// initialized with zeros
+  MatrixTypeC & C);
+
+#else // DOXYGEN
+
 template<
   typename MatrixTypeA,
   typename MatrixTypeB,
@@ -632,6 +648,8 @@ mmult(
   dash::summa(A, B, C);
 }
 
+#endif // DOXYGEN
+
 } // namespace dash
 
-#endif
+#endif // DASH__ALGORITHM__SUMMA_H_

@@ -1,10 +1,12 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include <iomanip>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "TilePatternTest.h"
+
+#include <dash/pattern/TilePattern.h>
+#include <dash/TeamSpec.h>
+
+#include <iomanip>
+#include <array>
+
 
 using std::endl;
 using std::setw;
