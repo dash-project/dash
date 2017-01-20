@@ -621,7 +621,7 @@ dart_ret_t dart_team_create(
     comm);
   dart_next_availteamid = max_teamid + 1;
 
-  dart_team_data_t *team_data;
+  dart_team_data_t * team_data = NULL;
   if (subcomm != MPI_COMM_NULL) {
     int result = dart_adapt_teamlist_alloc(max_teamid, &index);
     if (result == -1) {

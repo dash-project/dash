@@ -226,9 +226,9 @@ OutputIt transform_local(
   // Number of local elements:
   DASH_LOG_TRACE("dash::transform_local", "local elements:", lend_a-lbegin_a);
   // Local subrange of input range b:
-  ValueType * lbegin_b   = dash::local(in_b_first + g_offset_first);
+  ValueType * lbegin_b   = (in_b_first + g_offset_first).local();
   // Local pointer of initial output element:
-  ValueType * lbegin_out = dash::local(out_first  + g_offset_first);
+  ValueType * lbegin_out = (out_first  + g_offset_first).local();
   // Generate output values:
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;

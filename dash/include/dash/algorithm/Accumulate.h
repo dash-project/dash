@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM__ACCUMULATE_H__
 #define DASH__ALGORITHM__ACCUMULATE_H__
 
+#include <dash/Array.h>
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/algorithm/LocalRange.h>

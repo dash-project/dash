@@ -1,10 +1,6 @@
 #ifndef DASH__BLOCK_PATTERN_H_
 #define DASH__BLOCK_PATTERN_H_
 
-#include <functional>
-#include <array>
-#include <type_traits>
-
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -17,6 +13,11 @@
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
+
+#include <functional>
+#include <array>
+#include <type_traits>
+
 
 namespace dash {
 
@@ -41,14 +42,11 @@ template<
 class BlockPattern
 {
 public:
-  static constexpr char const * PatternName = "BlockPattern";
+  static constexpr const char * PatternName = "BlockPattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
   typedef pattern_partitioning_properties<
-              // Minimal number of blocks in every dimension, i.e. one block
-              // per unit.
-              pattern_partitioning_tag::minimal,
               // Block extents are constant for every dimension.
               pattern_partitioning_tag::rectangular,
               // Identical number of elements in every block.

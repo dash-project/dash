@@ -88,15 +88,17 @@ struct pattern_layout_tag
     /// Column major storage order.
     col_major,
 
-    /// Elements are contiguous in local memory within a single block.
+    /// Elements are contiguous in local memory within a single block
+    /// and thus indexed blockwise.
     blocked,
 
-    /// All local indices are mapped to a single logical index domain.
+    /// All local indices are mapped to a single logical index domain
+    /// and thus not indexed blockwise.
     canonical,
 
     /// Local element order corresponds to a logical linearization
-    /// within single blocks (blocked) or within entire local memory
-    /// (canonical).
+    /// within single blocks (if blocked) or within entire local memory
+    /// (if canonical).
     linear
 
   } type;

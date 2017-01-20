@@ -13,6 +13,87 @@
 #include <iostream>
 
 
+TEST_F(LocalRangeTest, ArrayBlockedViewExpression)
+{
+  const size_t block_size      = 20;
+  const size_t num_elems_total = dash::size() * block_size;
+
+  dash::Array<int> array(num_elems_total, dash::BLOCKED);
+
+  for (auto li = 0; li != array.local.size(); ++li) {
+    array.local[li] = (1000000 * (dash::myid() + 1)) +
+                      (1000    * li) +
+                      (dash::myid() * block_size) + li;
+  }
+
+  array.barrier();
+
+  // Intentionally overcomplicating things to test dash::make_range:
+  auto array_view_loffset   = block_size / 5;
+  auto array_view_size      = block_size / 2;
+
+  auto array_lbegin_gidx    = array.pattern().global(0);
+  auto array_view_begin_idx = array_lbegin_gidx + array_view_loffset;
+  auto array_view_end_idx   = array_lbegin_gidx + array_view_loffset +
+                              array_view_size;
+
+  // Note: dash::sub is currently required to obtain a local index set
+  //       as index(local(container)) is not defined in some cases, yet:
+
+
+  // Create view on container:
+  //
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 ">>> local index range via view expression");
+  auto lct_view = dash::index(
+                      dash::local(
+                        dash::sub(
+                          array_view_begin_idx,
+                          array_view_end_idx,
+                          array) ) );
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     *dash::begin(lct_view));
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     *dash::end(lct_view));
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 "<<< local index range via view expression");
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 ">>> local index range via algorithm");
+
+  auto lct_algo = dash::local_index_range(
+                    array.begin() + array_view_begin_idx,
+                    array.begin() + array_view_end_idx);
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lct_algo.begin);
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lct_algo.end);
+
+  DASH_LOG_DEBUG("LocalRangeTest.ArrayBlockedViewExpression",
+                 "<<< local index range via algorithm");
+
+#ifdef __TODO__
+  // Create view on global iterator range:
+  //
+  auto git_view = dash::make_view(
+                     array.begin(),
+                     array.end());
+  auto lix_view = dash::index(
+                     dash::local(
+                       dash::sub(
+                         array_view_begin_idx,
+                         array_view_end_idx,
+                         git_view) ) );
+
+  DASH_LOG_DEBUG_VAR("LocalRangeTest.ArrayBlockedViewExpression",
+                     lix_view.size());
+
+  EXPECT_EQ(array_view_size, lct_view.size());
+  EXPECT_EQ(array_view_size, dash::end(lct_view) - dash::begin(lct_view));
+#endif
+}
+
 TEST_F(LocalRangeTest, ArrayBlockcyclic)
 {
   if (dash::myid().id == 0) {

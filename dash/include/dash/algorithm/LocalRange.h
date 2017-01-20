@@ -1,10 +1,27 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGE_H__
 #define DASH__ALGORITHM__LOCAL_RANGE_H__
 
-#include <dash/iterator/GlobIter.h>
+#include <dash/view/IndexSet.h>
+#include <dash/view/ViewMod.h>
+#include <dash/view/Sub.h>
+
+#include <dash/Range.h>
+
 #include <dash/internal/Logging.h>
 
+
 namespace dash {
+
+template <
+  dim_t SubDim,
+  class DomainT,
+  class OffsetT >
+constexpr ViewSubMod<DomainT, SubDim>
+sub(
+    OffsetT         begin,
+    OffsetT         end,
+    const DomainT & domain);
+
 
 template<typename ElementType>
 struct LocalRange {
@@ -17,6 +34,35 @@ struct LocalIndexRange {
   IndexType begin;
   IndexType end;
 };
+
+
+template<class GlobInputIter>
+typename std::enable_if<
+  ( !GlobInputIter::has_view::value &&
+    typename GlobInputIter::pattern_type::ndim() == 1 ),
+  LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
+>::type
+local_index_range(
+  /// Iterator to the initial position in the global sequence
+  const GlobInputIter & first,
+  /// Iterator to the final position in the global sequence
+  const GlobInputIter & last)
+{
+  typedef typename GlobInputIter::pattern_type::index_type idx_t;
+
+  auto grange    = dash::make_range(first, last);
+  auto lrange    = dash::index(
+                     dash::local(
+                       dash::sub(     // < sub needed as temporary
+                         first.pos(), //   workaround as
+                         last.pos(),  //   index(local(container.local)
+                         grange) ) ); //   is not defined in some cases
+
+  idx_t lrange_begin = *dash::begin(lrange);
+  idx_t lrange_end   = *dash::end(lrange);
+
+  return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
+}
 
 /**
  * Resolves the local index range between global iterators.
@@ -53,6 +99,8 @@ local_index_range(
   /// Iterator to the final position in the global sequence
   const GlobInputIter & last)
 {
+  typedef typename GlobInputIter::pattern_type::index_type idx_t;
+
   typedef typename GlobInputIter::pattern_type pattern_t;
   typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
@@ -93,7 +141,8 @@ local_index_range(
   // Add 1 to local end index to it points one coordinate past the
   // last index:
   auto lend_index     = pattern.at(lend_gcoords);
-  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
+  if (lend_index
+      == std::numeric_limits<typename pattern_t::index_type>::max()) {
     DASH_LOG_ERROR("local_index_range !",
                    "index type too small for for local index range");
   }
@@ -106,9 +155,9 @@ local_index_range(
 /**
  * Resolves the local index range between global view iterators.
  *
- * TODO: Only all-local or all-nonlocal ranges supported for now.
+ * \todo  Only all-local or all-nonlocal ranges supported for now.
  *
- * \b Example:
+ * \par Example:
  *
  *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
  *   ---------------- | --------------------------------
@@ -121,9 +170,6 @@ local_index_range(
  *              last element in local memory within the sequence limited
  *              by the given global iterators.
  *
- * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern
- *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
  *
@@ -209,8 +255,10 @@ local_index_range(
   // Add 1 to local end index to it points one coordinate past the
   // last index:
   auto lend_index     = pattern.at(lend_gcoords);
-  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
-    DASH_LOG_ERROR("local_index_range -> index type too small for for local index range");
+  if (lend_index
+      == std::numeric_limits<typename pattern_t::index_type>::max()) {
+    DASH_LOG_ERROR("local_index_range !",
+                   "index type too small for for local index range");
   }
   lend_index += 1;
   // Return local index range
@@ -221,7 +269,7 @@ local_index_range(
 /**
  * Resolves the local address range between global iterators.
  *
- * \b Example:
+ * \par Example:
  *
  *   Total range      | <tt>a b c d e f g h i j</tt>
  *   ---------------- | --------------------------------
@@ -234,9 +282,6 @@ local_index_range(
  *              and last local element within the sequence limited by the
  *              given global iterators.
  *
- * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern
- *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
  *
@@ -324,23 +369,8 @@ local_range(
            lbegin + lend_index };
 }
 
-/**
- * Convert global iterator referencing an element the active unit's
- * memory to a corresponding native pointer referencing the element.
- *
- * Precondition:  \c g_it  is local
- *
- */
-template<
-  typename ElementType,
-  class PatternType>
-ElementType * local(
-  /// Global iterator referencing element in local memory
-  const GlobIter<ElementType, PatternType> & g_it)
-{
-  return g_it.local();
-}
-
 } // namespace dash
+
+#include <dash/algorithm/LocalRanges.h>
 
 #endif  // DASH__ALGORITHM__LOCAL_RANGE_H__
