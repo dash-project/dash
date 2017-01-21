@@ -53,20 +53,32 @@ enum dart__base__term_color_code {
   DART_LOG_TCOL_NUM_CODES
 };
 
+enum dart__base__logging_loglevel{
+  DART_LOGLEVEL_ERROR = 0,
+  DART_LOGLEVEL_WARN,
+  DART_LOGLEVEL_INFO,
+  DART_LOGLEVEL_DEBUG,
+  DART_LOGLEVEL_TRACE
+};
+
+
+enum dart__base__logging_loglevel
+dart__base__logging_env_loglevel();
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
+extern const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
 
-const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
+extern const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
 
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
 
 /* GNU variant of basename.3 */
-inline char * dart_base_logging_basename(char *path) {
+static inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
     return base ? base+1 : path;
 }
@@ -102,6 +114,7 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_TRACE(...) \
   do { \
+    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_TRACE) break; \
     dart_config_t * dart_cfg;  \
     dart_config(&dart_cfg);    \
     if (!dart_cfg->log_enabled) { \
@@ -128,6 +141,7 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_DEBUG(...) \
   do { \
+    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_DEBUG) break; \
     dart_config_t * dart_cfg;  \
     dart_config(&dart_cfg);    \
     if (!dart_cfg->log_enabled) { \
@@ -154,6 +168,7 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_INFO(...) \
   do { \
+    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_INFO) break; \
     dart_config_t * dart_cfg;  \
     dart_config(&dart_cfg);    \
     if (!dart_cfg->log_enabled) { \
@@ -180,6 +195,7 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_TRACE_ARRAY(context, fmt, array, nelem) \
   do { \
+    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_TRACE) break; \
     int  nchars = (nelem) * 10 + (nelem) * 2; \
     char array_buf[nchars]; \
     array_buf[0] = '\0'; \
