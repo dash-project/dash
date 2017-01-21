@@ -110,7 +110,6 @@ namespace test {
 
 class TestBase : public ::testing::Test {
 
-  dash::util::DistributedLogger dl;
 
  protected:
 
@@ -119,12 +118,9 @@ class TestBase : public ::testing::Test {
     dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("-==- DASH initialized");
     dash::barrier();
-    dl.setUp();
-    dl.add_message("TEST Message");
   }
 
   virtual void TearDown() {
-    dl.tearDown();
     LOG_MESSAGE("-==- Test case finished at unit %d",        dash::myid().id);
     dash::Team::All().barrier();
     LOG_MESSAGE("-==- Finalize DASH at unit %d",             dash::myid().id);
