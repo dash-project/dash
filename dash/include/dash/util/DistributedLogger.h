@@ -13,14 +13,19 @@ namespace dash {
 namespace util {
 
 /**
- * Lightweight distributed logger which prints messages without overlapping.
+ * Lightweight distributed logger which prints messages without overlapping by
+ * aggregating the messages on a master node which is responsible for IO.
  *
  * Implementation:
  * One queue per unit: Local queue, global queue
- * ringbuffer per queue
+ * ringbuffer per queue. If a local queue is full, log method blocks
+ * until elements are consumed.
+ * 
+ * The elements are consumed using a round robin strategy, consuming at most
+ * chunksize number of elements. If only few units produce massive log messages,
+ * use a large chunksize.
  *
- * Currently no thread safety per unit
- *
+ * Currently not thread safe per unit
  */
 template<int MSGLEN = 300>
 class DistributedLogger {
@@ -51,9 +56,17 @@ private:
   
 public:
   DistributedLogger() = default;
-  DistributedLogger(int queue_length,
-                    int sleep_time_ms = 10,
-                    int max_chunk_size = -1):
+  
+  /**
+   * Instanciates a distributed logger instance.
+   */
+  DistributedLogger(
+    /// length of local queue. If more logs are pushed, blocks until queue has free space
+    int queue_length,
+    /// sleep time between checks for new log messages
+    int sleep_time_ms = 10,
+    /// up to how many logs should be consumed in each pass.
+    int max_chunk_size = -1):
     _queue_length(queue_length),
     _sleep_ms(sleep_time_ms),
     _max_chunksize(max_chunk_size == -1 ? 
@@ -123,7 +136,6 @@ public:
     while(cons_pos == ((prod_pos+1) % _queue_length)){
       cons_pos = _consume_next_pos.local[0];
       // block until queue has free spaces
-      printf("BLOCK\n");
       std::this_thread::sleep_for(std::chrono::milliseconds(_sleep_ms));
     }
     _produce_next_pos.local[0] = (prod_pos + 1) % _queue_length;
