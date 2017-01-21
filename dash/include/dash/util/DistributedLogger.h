@@ -41,6 +41,7 @@ private:
   bool                _auto_consume  = false;
   bool                _logger_active = false;
   int                 _sleep_ms      = 10;
+  int                 _max_chunksize = 10;
   std::thread         _log_printer_thread;
   Timestamp           _ts_begin;
   dash::Team *        _team;
@@ -50,9 +51,14 @@ private:
   
 public:
   DistributedLogger() = default;
-  DistributedLogger(int queue_length, int sleep_time_ms = 10):
+  DistributedLogger(int queue_length,
+                    int sleep_time_ms = 10,
+                    int max_chunk_size = -1):
     _queue_length(queue_length),
-    _sleep_ms(sleep_time_ms) { }
+    _sleep_ms(sleep_time_ms),
+    _max_chunksize(max_chunk_size == -1 ? 
+                   std::max(1, _queue_length / 5) : max_chunk_size)
+  { }
   
   DistributedLogger(DistributedLogger &) = default;
   ~DistributedLogger(){tearDown();}
@@ -143,9 +149,14 @@ private:
     int pn_pos = _produce_next_pos[unit];
     //std::printf("unit: %d, consume, cn_pos: %d, pn_pos: %d\n", unit, cn_pos, pn_pos);
     if(cn_pos != pn_pos){
-      LogEntry entry = _messages[unit*_queue_length + cn_pos];
-      _consume_next_pos[unit] = (cn_pos + 1) % _queue_length;
-      std::printf("[= %2d LOG =][%5.4f] %s \n", unit, entry._timestamp, entry._message);
+      int count = 0;
+      while(cn_pos != pn_pos && count < _max_chunksize){
+        LogEntry entry = _messages[unit*_queue_length + cn_pos];
+        cn_pos = (cn_pos + 1) % _queue_length;
+        ++count;
+        std::printf("[= %2d LOG =][%5.4f] %s \n", unit, entry._timestamp, entry._message);
+      }
+      _consume_next_pos[unit] = cn_pos;
       return true;
     }
     return false;
