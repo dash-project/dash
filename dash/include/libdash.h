@@ -48,6 +48,7 @@ namespace dash {
 #include <dash/util/Trace.h>
 #include <dash/util/PatternMetrics.h>
 #include <dash/util/Timer.h>
+#include <dash/util/DistributedLogger.h>
 
 #include <dash/util/Locality.h>
 #include <dash/util/LocalityDomain.h>
