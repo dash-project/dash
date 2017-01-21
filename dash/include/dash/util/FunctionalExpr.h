@@ -85,7 +85,7 @@ constexpr T inner_product(
     /// use this as the summation operator
     const SumOp  & op_sum,
     /// use this as the multiplication operator
-    const MulOp & op_prod) {
+    const MulOp  & op_prod) {
   return (first_1 < (first_1 + length))
              ? op_sum(op_prod(
                         arr_1[first_1],
@@ -102,7 +102,7 @@ constexpr T inner_product(
 
 // TODO: Add dash::ce::transform to fmap two instances of std::array.
 //       Note, however, that std::array::operator[] is not constexpr
-//       in C++11.
+//       in C++11 but std::get<Idx>(std::array) is.
 
 } // namespace ce
 } // namespace dash
