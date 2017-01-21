@@ -8,7 +8,7 @@
 
 TEST_F(DistributedLoggerTest, BasicLogging)
 {
-  dash::util::DistributedLogger<> dl;
+  dash::util::DistributedLogger<> dl(7);
   std::random_device rd;
   std::uniform_int_distribution<int> dist(0, 50);
   
