@@ -44,6 +44,7 @@
  * <tt>dash::origin</tt> | Obtain the view origin (root domain)
  * <tt>dash::blocks</tt> | Decompose domain into blocks
  * <tt>dash::block</tt>  | Subspace of decomposed domain in a specific block
+ * <tt>dash::index</tt>  | Returns a view's index set
  *
  * \par Examples
  *
@@ -67,18 +68,23 @@
  * \}
  */
 
-#include <dash/view/Sub.h>
-#include <dash/view/Local.h>
-#include <dash/view/Global.h>
-#include <dash/view/Apply.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
+#include <dash/view/Global.h>
+#include <dash/view/Local.h>
+#include <dash/view/Remote.h>
+#include <dash/view/Apply.h>
+#include <dash/view/Sub.h>
+#include <dash/view/Chunked.h>
 
 #include <dash/view/SetUnion.h>
 #include <dash/view/SetIntersect.h>
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/CartView.h>
+
+#include <dash/view/MultiView.h>
+#include <dash/view/StridedView.h>
 
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewTraits.h>
@@ -139,8 +145,6 @@ public:
   typedef self_t                                               origin_type;
   typedef self_t                                                image_type;
   // Alternative: IteratorLocalView<self_t, Iterator, Sentinel>
-//typedef ViewLocalMod<domain_type>                             local_type;
-//typedef ViewGlobalMod<domain_type>                           global_type;
   typedef typename view_traits<domain_type>::local_type         local_type;
   typedef typename view_traits<domain_type>::global_type       global_type;
 

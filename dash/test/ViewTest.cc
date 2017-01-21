@@ -1,9 +1,8 @@
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-
-#include "TestBase.h"
 #include "ViewTest.h"
+
+#include <dash/View.h>
+#include <dash/Array.h>
 
 #include <array>
 

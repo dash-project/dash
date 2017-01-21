@@ -52,7 +52,7 @@ intersect(
   const ViewTypeA & va,
   const ViewTypeB & vb);
 
-template <class IndexSetType, class ViewType>
+template <class IndexSetType, class ViewType, dim_t NDim>
 class IndexSetBase;
 
 template <class ViewType>
@@ -147,27 +147,19 @@ public:
   { }
 
   constexpr index_type operator*() const {
-#if 1
     return _pos < dash::size(*_index_set)
               ? (*_index_set)[_pos]
               : ((*_index_set)[dash::size(*_index_set)-1]
                   + (_pos - (dash::size(*_index_set) - 1))
                 );
-#else
-    return (*_index_set)[_pos];
-#endif
   }
 
   constexpr index_type operator->() const {
-#if 1
     return _pos < dash::size(*_index_set)
               ? (*_index_set)[_pos]
               : ((*_index_set)[dash::size(*_index_set)-1]
                   + (_pos - (dash::size(*_index_set) - 1))
                 );
-#else
-    return (*_index_set)[_pos];
-#endif
   }
 
   self_t & operator++() {
@@ -247,10 +239,11 @@ public:
 
 template <
   class IndexSetType,
-  class ViewType >
+  class ViewType,
+  dim_t NDim >
 constexpr auto
 local(
-  const IndexSetBase<IndexSetType, ViewType> & index_set)
+  const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
 //  -> decltype(index_set.local()) {
 //  -> typename view_traits<IndexSetBase<ViewType>>::global_type & { 
     -> const IndexSetLocal<ViewType> & { 
@@ -259,10 +252,11 @@ local(
 
 template <
   class IndexSetType,
-  class ViewType >
+  class ViewType,
+  dim_t NDim >
 constexpr auto
 global(
-  const IndexSetBase<IndexSetType, ViewType> & index_set)
+  const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
 //   ->  decltype(index_set.global()) {
 //   -> typename view_traits<IndexSetSub<ViewType>>::global_type & { 
      -> const IndexSetGlobal<ViewType> & { 
@@ -274,10 +268,11 @@ global(
  */
 template <
   class IndexSetType,
-  class ViewType >
+  class ViewType,
+  dim_t NDim = ViewType::rank::value >
 class IndexSetBase
 {
-  typedef IndexSetBase<IndexSetType, ViewType> self_t;
+  typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
 public:
   typedef typename ViewType::index_type
     index_type;

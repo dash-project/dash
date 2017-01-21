@@ -82,7 +82,9 @@ sub(
            end);
 }
 
-// Sub-space projection, view reduces domain by one dimension
+// =========================================================================
+// Multidimensional Views
+// =========================================================================
 
 } // namespace dash
 

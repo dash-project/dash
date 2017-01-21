@@ -153,11 +153,12 @@ public:
   typedef IndexSetIdentity<self_t>                          index_set_type;
 
 public:
-  typedef std::integral_constant<bool, false> is_local;
+  typedef std::integral_constant<bool, false>   is_local;
+  typedef std::integral_constant<dim_t, NDim>   rank;
 
 private:
-  std::array<index_type, NDim>   _extents    = { };
-  index_set_type                 _index_set;
+  std::array<index_type, NDim>                  _extents    = { };
+  index_set_type                                _index_set;
 public:
   constexpr ViewOrigin()               = delete;
   constexpr ViewOrigin(self_t &&)      = default;
@@ -223,6 +224,8 @@ struct view_traits<ViewOrigin<NDim>> {
   typedef std::integral_constant<bool, true>                   is_view;
   typedef std::integral_constant<bool, true>                   is_origin;
   typedef std::integral_constant<bool, false>                  is_local;
+
+  typedef std::integral_constant<dim_t, NDim>                  rank;
 };
 
 
@@ -239,6 +242,8 @@ class ViewModBase
 public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
+
+  typedef std::integral_constant<dim_t, DomainType::rank::value>        rank;
 
 protected:
   const DomainType * _domain;
