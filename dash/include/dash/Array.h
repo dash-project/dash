@@ -589,6 +589,17 @@ template<
 >
 class Array
 {
+  /**
+   * The Cray compiler (as of CCE8.5.6) does not support
+   * std::is_trivially_copyable.
+   *
+   * TODO: Remove the guard once this has been fixed by Cray.
+   */
+#ifndef __CRAYC
+  static_assert(std::is_trivially_copyable<ElementType>::value,
+    "Element type must be trivially copyable");
+#endif
+
 private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
 
@@ -651,19 +662,6 @@ public:
   /// Proxy object, provides non-blocking operations on array.
   async_type           async;
 
-public:
-/*
-   Check requirements on element type
-   is_trivially_copyable is not implemented presently, and is_trivial
-   is too strict (e.g. fails on std::pair).
-
-   static_assert(std::is_trivially_copyable<ElementType>::value,
-     "Element type must be trivially copyable");
-   static_assert(std::is_trivial<ElementType>::value,
-     "Element type must be trivially copyable");
-*/
-
-public:
   /**
    * Default constructor, for delayed allocation.
    *

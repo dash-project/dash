@@ -135,8 +135,16 @@ template<
   class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
-  static_assert(std::is_trivial<ElementT>::value,
-    "Element type must be trivial copyable");
+  /**
+   * The Cray compiler (as of CCE8.5.6) does not support
+   * std::is_trivially_copyable.
+   *
+   * TODO: Remove the guard once this has been fixed by Cray.
+   */
+#ifndef __CRAYC
+  static_assert(std::is_trivially_copyable<ElementT>::value,
+    "Element type must be trivially copyable");
+#endif
   static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
     "Index type IndexT must be the same for Matrix and specified pattern");
 
