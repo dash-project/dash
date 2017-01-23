@@ -7,8 +7,6 @@
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 
-#include <dash/Array.h>
-
 
 namespace dash {
 

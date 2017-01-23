@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM__MISMATCH_H__INCLUDED
 #define DASH__ALGORITHM__MISMATCH_H__INCLUDED
 
+#include <dash/Array.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
