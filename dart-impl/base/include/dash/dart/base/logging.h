@@ -112,9 +112,9 @@ static inline char * dart_base_logging_basename(char *path) {
 //
 #ifdef DART_ENABLE_LOGGING
 
-#define DART_LOG_TRACE(...) \
+#define __DART_LOG_HELPER(L, P, ...) \
   do { \
-    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_TRACE) break; \
+    if (dart__base__logging_env_loglevel() < L) break; \
     dart_config_t * dart_cfg;  \
     dart_config(&dart_cfg);    \
     if (!dart_cfg->log_enabled) { \
@@ -124,74 +124,29 @@ static inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, ##__VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
     dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "[ %*d " P "  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
       msg_buf); \
   } while (0)
+
+#define DART_LOG_TRACE(...) \
+  __DART_LOG_HELPER(DART_LOGLEVEL_TRACE, "TRACE", ##__VA_ARGS__)
 
 #define DART_LOG_DEBUG(...) \
-  do { \
-    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_DEBUG) break; \
-    dart_config_t * dart_cfg;  \
-    dart_config(&dart_cfg);    \
-    if (!dart_cfg->log_enabled) { \
-      break; \
-    } \
-    const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
-    int       sn_ret; \
-    char      msg_buf[maxlen]; \
-    pid_t     pid = getpid(); \
-    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
-    if (sn_ret < 0 || sn_ret >= maxlen) { \
-      break; \
-    } \
-    dart_global_unit_t unit_id; \
-    dart_myid(&unit_id); \
-    fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
-      DASH__DART_LOGGING__PROC__WIDTH, pid, \
-      DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
-      DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
-      msg_buf); \
-  } while (0)
+  __DART_LOG_HELPER(DART_LOGLEVEL_DEBUG, "DEBUG", ##__VA_ARGS__)
 
 #define DART_LOG_INFO(...) \
-  do { \
-    if (dart__base__logging_env_loglevel() < DART_LOGLEVEL_INFO) break; \
-    dart_config_t * dart_cfg;  \
-    dart_config(&dart_cfg);    \
-    if (!dart_cfg->log_enabled) { \
-      break; \
-    } \
-    const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
-    int       sn_ret; \
-    char      msg_buf[maxlen]; \
-    pid_t     pid = getpid(); \
-    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
-    if (sn_ret < 0 || sn_ret >= maxlen) { \
-      break; \
-    } \
-    dart_global_unit_t unit_id; \
-    dart_myid(&unit_id); \
-    fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
-      DASH__DART_LOGGING__PROC__WIDTH, pid, \
-      DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
-      DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
-      msg_buf); \
-  } while (0)
+  __DART_LOG_HELPER(DART_LOGLEVEL_INFO, "INFO", ##__VA_ARGS__)
 
 #define DART_LOG_TRACE_ARRAY(context, fmt, array, nelem) \
   do { \
@@ -207,6 +162,9 @@ static inline char * dart_base_logging_basename(char *path) {
     } \
     DART_LOG_TRACE(context ": %s = { %s}", #array, array_buf); \
   } while (0)
+
+#define DART_LOG_WARN(...) \
+  __DART_LOG_HELPER(DART_LOGLEVEL_WARN, "WARN", ##__VA_ARGS__)
 
 #else /* DART_ENABLE_LOGGING */
 
