@@ -45,7 +45,7 @@ ValueType accumulate(
   auto l_result    = std::accumulate(l_first, l_last, init);
   auto result      = 0;
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();
@@ -95,7 +95,7 @@ ValueType accumulate(
   auto l_result    = std::accumulate(l_first, l_last, init, binary_op);
   auto result      = 0;
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();
