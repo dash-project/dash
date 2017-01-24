@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <thread>
 #include <chrono>
+#include <mpi.h>
 
 namespace dash {
 namespace util {
@@ -20,7 +21,7 @@ namespace util {
  * One queue per unit: Local queue, global queue
  * ringbuffer per queue. If a local queue is full, log method blocks
  * until elements are consumed.
- * 
+ *
  * The elements are consumed using a round robin strategy, consuming at most
  * chunksize number of elements. If only few units produce massive log messages,
  * use a large chunksize.
@@ -53,10 +54,10 @@ private:
   dash::Array<Entry>  _messages;
   dash::Array<int>    _produce_next_pos;
   dash::Array<int>    _consume_next_pos;
-  
+
 public:
   DistributedLogger() = default;
-  
+
   /**
    * Instanciates a distributed logger instance.
    */
@@ -69,10 +70,10 @@ public:
     int max_chunk_size = -1):
     _queue_length(queue_length),
     _sleep_ms(sleep_time_ms),
-    _max_chunksize(max_chunk_size == -1 ? 
+    _max_chunksize(max_chunk_size == -1 ?
                    std::max(1, _queue_length / 5) : max_chunk_size)
   { }
-  
+
   DistributedLogger(DistributedLogger &) = default;
   ~DistributedLogger(){tearDown();}
 
@@ -82,23 +83,23 @@ public:
    */
   void setUp(dash::Team & team = dash::Team::All()){
     if(_logger_active){return;}
-    
+
     _team = &team;
-    
+
     _messages.allocate(_team->size() * _queue_length, dash::BLOCKED, *_team);
     _produce_next_pos.allocate(_team->size(), dash::BLOCKED, *_team);
     _consume_next_pos.allocate(_team->size(), dash::BLOCKED, *_team);
 
     dash::fill(_produce_next_pos.begin(), _produce_next_pos.end(), 0);
     dash::fill(_consume_next_pos.begin(), _consume_next_pos.end(), 0);
-    
+
     // synchronize start
     Timer::Calibrate(0);
     _team->barrier();
     _ts_begin = Timer::Now();
-    
+
     _logger_active = true;
-    
+
     if(_team->myid() == 0){
       _auto_consume = true;
       _log_printer_thread = std::thread([&] { _start_consumer(*this); });
@@ -108,8 +109,9 @@ public:
    * finalizes the logger. Must not be called after \cdash::finalize()
    */
   void tearDown(){
+    DASH_LOG_TRACE("before barrier 1 in tearDown");
     if(!_logger_active){return;}
-    
+
     _team->barrier();
     _logger_active = false;
     _auto_consume = false;
@@ -120,7 +122,8 @@ public:
     _messages.deallocate();
     _produce_next_pos.deallocate();
     _consume_next_pos.deallocate();
-    
+
+    DASH_LOG_TRACE("before barrier 2 in tearDown");
     _team->barrier();
   }
 
@@ -130,11 +133,14 @@ public:
    */
   void log(std::string message){
     if(!_logger_active){return;}
-    
+
     int prod_pos = _produce_next_pos.local[0];
     int cons_pos = _consume_next_pos.local[0];
+//    int flag;
     while(cons_pos == ((prod_pos+1) % _queue_length)){
       cons_pos = _consume_next_pos.local[0];
+  //    MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
+      dart_notify_progress(_team->dart_id());
       // block until queue has free spaces
       std::this_thread::sleep_for(std::chrono::milliseconds(_sleep_ms));
     }
@@ -142,7 +148,7 @@ public:
     _messages.local[prod_pos]._timestamp = Timer::ElapsedSince(_ts_begin) / 1024;
     std::strncpy(_messages.local[prod_pos]._message, message.c_str(), MSGLEN);
   }
-  
+
 private:
   static void _start_consumer(DistributedLogger & logger){
     bool outstanding_msg;
