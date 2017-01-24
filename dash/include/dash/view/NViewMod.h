@@ -112,21 +112,20 @@ public:
     return !(*this == rhs);
   }
 
+  constexpr const std::array<index_type, NDim> & extents() const {
+    return _extents;
+  }
+
   template <dim_t ExtentDim = 0>
   constexpr index_type extent() const {
     return _extents[ExtentDim];
   }
   
-  constexpr index_type size() const {
-    return _size<0>();
-  }
-
-private:
   template <dim_t SizeDim = 0>
-  constexpr index_type _size() const {
+  constexpr index_type size() const {
     return extent<SizeDim>() *
              (SizeDim < NDim
-               ? _size<SizeDim + 1>()
+               ? size<SizeDim + 1>()
                : 1);
   }
 };
@@ -211,6 +210,14 @@ public:
 
   constexpr index_type extent(dim_t shape_dim) const {
     return _domain->extent(shape_dim);
+  }
+  
+  template <dim_t SizeDim = 0>
+  constexpr index_type size() const {
+    return extent<SizeDim>() *
+             (SizeDim < NDim
+               ? size<SizeDim + 1>()
+               : 1);
   }
 };
 
@@ -359,6 +366,14 @@ public:
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
+  
+  template <dim_t SizeDim = 0>
+  constexpr index_type size() const {
+    return extent<SizeDim>() *
+             (SizeDim < NDim
+               ? size<SizeDim + 1>()
+               : 1);
+  }
 };
 
 
@@ -440,16 +455,28 @@ public:
   , _index_set(*this, begin, end)
   { }
 
-  template <dim_t ExtDim = SubDim>
+  template <dim_t ExtDim>
   constexpr index_type extent() const {
-    return _end_idx - _begin_idx;
+    return ( ExtDim == SubDim
+             ? _end_idx - _begin_idx
+          // : base_t::template extent<ExtDim>()
+             : base_t::extent(ExtDim)
+           );
   }
 
   constexpr index_type extent(dim_t shape_dim) const {
     return ( shape_dim == SubDim
-             ? base_t::extent(shape_dim)
-             : _end_idx - _begin_idx
+             ? _end_idx - _begin_idx
+             : base_t::extent(shape_dim)
            );
+  }
+  
+  template <dim_t SizeDim = 0>
+  constexpr index_type size() const {
+    return extent<SizeDim>() *
+             (SizeDim < NDim
+               ? size<SizeDim + 1>()
+               : 1);
   }
 
   constexpr auto begin() const
