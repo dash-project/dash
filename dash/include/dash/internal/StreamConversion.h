@@ -9,28 +9,19 @@
 #include <map>
 #include <set>
 #include <sstream>
-#include <iostream>
-#include <iomanip>
 #include <iterator>
 #include <cstring>
 
+
 namespace dash {
 
-static std::ostream & operator<<(
+std::ostream & operator<<(
   std::ostream & o,
-  dart_global_unit_t uid)
-{
-  o << uid.id;
-  return o;
-}
+  dart_global_unit_t uid);
 
-static std::ostream & operator<<(
+std::ostream & operator<<(
   std::ostream & o,
-  dart_team_unit_t uid)
-{
-  o << uid.id;
-  return o;
-}
+  dart_team_unit_t uid);
 
 // To print std::array to ostream
 template <typename T, std::size_t N>
