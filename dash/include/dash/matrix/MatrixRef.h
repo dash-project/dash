@@ -133,6 +133,8 @@ class MatrixRef
     MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT> && ();
 
 public:
+  typedef std::integral_constant<dim_t, NumViewDim>
+    rank;
 
   static constexpr dim_t ndim() {
     return NumViewDim;

@@ -1,12 +1,14 @@
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-
-#include "TestBase.h"
 #include "ViewTest.h"
+
+#include <dash/View.h>
+#include <dash/Array.h>
 
 #include <array>
 
+
+// TODO: Add constexpr variables in test cases to test compile-time
+//       calculation of literal types like index sets.
 
 static_assert(dash::is_range<
                  dash::Array<int>

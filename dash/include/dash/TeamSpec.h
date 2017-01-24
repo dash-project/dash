@@ -218,6 +218,7 @@ public:
     DASH_LOG_TRACE_VAR("TeamSpec({extents})", this->_extents);
   }
 
+#if 0
   /**
    * Copy constructor.
    */
@@ -229,6 +230,7 @@ public:
     _rank(other._rank),
     _myid(other._myid)
   { }
+#endif
 
   void balance_extents()
   {
@@ -429,9 +431,9 @@ private:
 
 protected:
   /// Actual number of dimensions of the team layout specification.
-  dim_t _rank       = 0;
+  dim_t       _rank       = 0;
   /// Whether the team spec is linear
-  bool  _is_linear  = false;
+  bool        _is_linear  = false;
   /// Unit id of active unit
   team_unit_t _myid;
 

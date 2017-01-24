@@ -222,6 +222,8 @@ public:
 
 public:
 
+  typedef std::integral_constant<dim_t, NumDimensions>                rank;
+
   static constexpr dim_t ndim() {
     return NumDimensions;
   }

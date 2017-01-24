@@ -143,6 +143,14 @@ public:
   typedef PatternType                                      pattern_type;
 
 public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
+
+public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
@@ -271,6 +279,14 @@ public:
 
   typedef GlobAsyncRef<T>                               async_reference;
   typedef const GlobAsyncRef<T>                   const_async_reference;
+
+public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
 
 private:
   Array<T, IndexType, PatternType> * const _array;
@@ -476,6 +492,14 @@ public:
     View;
 
 public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
+
+public:
   ArrayRef(
     /// Pointer to array instance referenced by this view.
     Array_t          * array,
@@ -638,6 +662,14 @@ public:
     Local;
   typedef ArrayRef<ElementType, IndexType, PatternType>
     View;
+
+public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
 
 private:
   typedef DistributionSpec<1>
