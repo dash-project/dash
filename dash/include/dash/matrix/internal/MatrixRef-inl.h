@@ -14,8 +14,6 @@ MatrixRef<T, NumDim, CUR, PatternT>
   : _refview(previous._refview)
 {
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", CUR);
-  // Copy proxy of MatrixRef from last dimension:
-//  _refview = new MatrixRefView<T, NumDim, PatternT>(*(previous._refview));
   _refview._coord[_refview._dim] = coord;
   _refview._dim++;
   _refview._viewspec.set_rank(_refview._dim);
@@ -306,19 +304,25 @@ MatrixRef<T, NumDim, CUR, PatternT>
                  "dim:",    SubDimension,
                  "offset:", offset);
   dim_t target_dim = SubDimension + _refview._dim;
+  DASH_LOG_TRACE("MatrixRef<N>.sub(n)", "n:", offset,
+                 "target_dim:", target_dim, "refview.dim:", _refview._dim);
 
   MatrixRef<T, NumDim, NumDim-1, PatternT> ref;
-  MatrixRefView<T, NumDim, PatternT> proxy(_refview._mat);
 
-  proxy._coord[target_dim] = 0;
+  ref._refview._coord[target_dim] = 0;
 
-  proxy._viewspec = _refview._viewspec;
-  proxy._viewspec.resize_dim(target_dim, offset, 1);
+  ref._refview._viewspec = _refview._viewspec;
+  // Offset specified by user is relative to existing offset of the view
+  // so slice offset must be applied on the view's current offset in the
+  // sub-dimension:
+  ref._refview._viewspec.resize_dim(
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + offset, 1);
+  ref._refview._viewspec.set_rank(NumDim-1);
 
-  proxy._mat = _refview._mat;
-  proxy._dim = _refview._dim + 1;
+  ref._refview._mat = _refview._mat;
+  ref._refview._dim = _refview._dim + 1;
 
-  ref._refview = proxy;
   DASH_LOG_TRACE_VAR("MatrixRef.sub >",
                      ref._refview._viewspec);
   return ref;
@@ -330,7 +334,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::col(
   size_type column_offset)
 {
-  return sub<0>(column_offset);
+  return sub<1>(column_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -339,7 +343,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::row(
   size_type row_offset)
 {
-  return sub<1>(row_offset);
+  return sub<0>(row_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -358,8 +362,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
     SubDimension < NumDim && SubDimension >= 0,
     "Wrong sub-dimension for sub()");
   MatrixRef<T, NumDim, NumDim, PatternT> ref;
-  MatrixRefView<T, NumDim, PatternT> proxy(_refview);
-  ref._refview            = proxy;
+  ref._refview._mat      = _refview._mat;
+  ref._refview._viewspec = _refview._viewspec;
   ref._refview._viewspec.resize_dim(
                             SubDimension,
                             offset,
@@ -376,7 +380,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<1>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -386,7 +390,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<0>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -430,7 +434,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   index_type g_pos) const
 {
   return (_refview._mat->_pattern.unit_at(g_pos, _refview._viewspec) ==
-          _refview._mat->_myid);
+          _refview._mat->_team->myid());
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -444,6 +448,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
            Dimension,
            g_pos,
            _refview._mat->_myid,
+           _refview._mat->_team->myid(),
            _refview._viewspec);
 }
 
@@ -489,7 +494,7 @@ MatrixRef<T, NumDim, 0, PatternT>
   return (_refview._mat->_pattern.unit_at(
                                      _refview._coord,
                                      _refview._viewspec) ==
-          _refview._mat->_myid);
+          _refview._mat->_team->myid());
 }
 
 template <typename T, dim_t NumDim, class PatternT>

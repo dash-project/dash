@@ -63,13 +63,15 @@ TEST_F(MatrixTest, Views)
   if (dash::myid() == 0) {
     LOG_MESSAGE("Testing viewspecs of blocks in global index domain");
     for (size_t b = 0; b < num_blocks_total; ++b) {
-      LOG_MESSAGE("Testing viewspec of block %d", b);
+      DASH_LOG_TRACE("MatrixTest.Views", "Testing viewspec of block", b);
       auto g_block       = matrix.block(b);
       auto g_block_first = g_block.begin();
       auto g_block_view  = g_block_first.viewspec();
-      LOG_MESSAGE("Block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  g_block_view.offset(0), g_block_view.offset(1),
-                  g_block_view.extent(0), g_block_view.extent(1));
+      DASH_LOG_TRACE("MatrixTest.Views", "block viewspec:",
+                     "offset: (", g_block_view.offset(0), ",",
+                                  g_block_view.offset(1), ")",
+                     "extent: (", g_block_view.extent(0), ",",
+                                  g_block_view.extent(1), ")");
       // Global block coordinates:
       auto g_block_x     = b % num_blocks_x;
       auto g_block_y     = b / num_blocks_x;
@@ -100,12 +102,16 @@ TEST_F(MatrixTest, Views)
       auto l_block       = matrix.local.block(lb);
       auto l_block_first = l_block.begin();
       auto l_block_view  = l_block_first.viewspec();
-      LOG_MESSAGE("Global block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  g_block_view.offset(0), g_block_view.offset(1),
-                  g_block_view.extent(0), g_block_view.extent(1));
-      LOG_MESSAGE("Local block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  l_block_view.offset(0), l_block_view.offset(1),
-                  l_block_view.extent(0), l_block_view.extent(1));
+      DASH_LOG_TRACE("MatrixTest.Views", "global block viewspec:",
+                     "offset: (", g_block_view.offset(0), ",",
+                                  g_block_view.offset(1), ")",
+                     "extent: (", g_block_view.extent(0), ",",
+                                  g_block_view.extent(1), ")");
+      DASH_LOG_TRACE("MatrixTest.Views", "local block viewspec:",
+                     "offset: (", l_block_view.offset(0), ",",
+                                  l_block_view.offset(1), ")",
+                     "extent: (", l_block_view.extent(0), ",",
+                                  l_block_view.extent(1), ")");
       // Verify matrix.block(b) == matrix.local.block(lb):
       ASSERT_EQ_U(g_block_view, l_block_view);
       ++lb;
@@ -189,8 +195,6 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -203,7 +207,6 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -213,7 +216,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
 
 TEST_F(MatrixTest, Distribute2DimTileXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -247,8 +250,6 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -262,7 +263,6 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -272,7 +272,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
 
 TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t blocksize_x = 3;
   size_t blocksize_y = 2;
@@ -308,8 +308,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -322,7 +320,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -417,15 +414,14 @@ TEST_F(MatrixTest, Sub2DimDefault)
   element_t * lit  = matrix.lbegin();
   element_t * lend = matrix.lend();
   LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %d",
-              lend, lit, lend - lit);
+              static_cast<void*>(lend), static_cast<void*>(lit),
+              lend - lit);
   ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
               matrix.local_size());
   // Assign unit-specific values in local matrix range:
   for (index_t lidx = 0; lit != lend; ++lidx, ++lit) {
     ASSERT_LT_U(lidx, matrix.local_size());
     auto value = ((dash::myid() + 1) * 1000) + lidx;
-    LOG_MESSAGE("Assigning local address (%p) %d = %d",
-                lit, lidx, value);
     *lit = value;
   }
 
@@ -444,13 +440,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto local_idx  = pattern.local_at(l_coords);
       auto global_idx = pattern.memory_layout().at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
-      bool is_local   = unit_id == dash::myid();
-      LOG_MESSAGE("Testing g(%d,%d) l(%d,%d) u(%d) li(%d) == %d",
-                  col, row,
-                  l_coords[0], l_coords[1],
-                  unit_id,
-                  local_idx,
-                  exp_value);
+      bool is_local   = unit_id == pattern.team().myid();
       element_t value = column[row];
       ASSERT_EQ_U(exp_value, value);
       ASSERT_EQ_U(is_local, matrix.is_local(global_idx));
@@ -468,7 +458,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
 TEST_F(MatrixTest, BlockViews)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -493,8 +483,6 @@ TEST_F(MatrixTest, BlockViews)
     for(size_t col = 0; col < matrix.extent(0); ++col) {
       for(size_t row = 0; row < matrix.extent(1); ++row) {
         auto value = (row * matrix.extent(0)) + col;
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    col, row, value);
         matrix[col][row] = value;
       }
     }
@@ -544,7 +532,7 @@ TEST_F(MatrixTest, ViewIteration)
   typedef int                                   element_t;
   typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -568,8 +556,6 @@ TEST_F(MatrixTest, ViewIteration)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 1000) + (k * 1);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -617,12 +603,6 @@ TEST_F(MatrixTest, ViewIteration)
     int phase_y  = phase / view_size_x;
     int gcoord_x = block_base_coord_x + phase_x;
     int gcoord_y = block_base_coord_y + phase_y;
-    LOG_MESSAGE("phase:%d = %d,%d it_pos:%d end_pos:%d gcoord:%d,%d",
-                phase,
-                phase_x, phase_y,
-                b_it.pos(),
-                b_end.pos(),
-                gcoord_x, gcoord_y);
     ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
     // Apply view projection by converting to GlobPtr:
     dash::GlobPtr<int, pattern_t> block_elem_gptr =
@@ -641,7 +621,7 @@ TEST_F(MatrixTest, ViewIteration)
 TEST_F(MatrixTest, BlockCopy)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -676,8 +656,6 @@ TEST_F(MatrixTest, BlockCopy)
     for(size_t col = 0; col < matrix_a.extent(0); ++col) {
       for(size_t row = 0; row < matrix_a.extent(1); ++row) {
         auto value = (row * matrix_a.extent(0)) + col;
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    col, row, value);
         matrix_a[col][row] = value;
         matrix_b[col][row] = value;
       }
@@ -740,28 +718,11 @@ TEST_F(MatrixTest, StorageOrder)
   }
 
   dash::barrier();
-
-  if (dash::myid() == 0) {
-    std::cout << "row major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_row[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << "column major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_col[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
 }
 
 TEST_F(MatrixTest, DelayedAlloc)
 {
-  dart_unit_t myid = dash::myid();
+  dash::team_unit_t myid(dash::myid());
   auto num_units   = dash::size();
 
   if (num_units < 4) {
@@ -928,11 +889,47 @@ TEST_F(MatrixTest, DelayedAlloc)
                          "phase:",       phase_coords, "=", phase,
                          "expected:",    expected,
                          "actual:",      actual);
-          ASSERT_EQ_U(expected, actual);
+          EXPECT_DOUBLE_EQ_U(expected, actual);
         }
       }
     }
   }
+}
+
+TEST_F(MatrixTest, PatternScope)
+{
+  typedef dash::TilePattern<2>            pattern_t;
+  typedef typename pattern_t::index_type  index_t;
+  typedef int                             value_t;
+
+  value_t block_size_x = 5;
+  value_t block_size_y = 5;
+  value_t extent_x     = dash::size() * block_size_x;
+  value_t extent_y     = dash::size() * block_size_y;
+
+  auto & team = dash::Team::All();
+  dash::TeamSpec<2>         ts(team);
+  dash::SizeSpec<2>         ss(extent_y, extent_x);
+  dash::DistributionSpec<2> ds(dash::TILE(block_size_y),
+                               dash::TILE(block_size_x));
+
+  dash::NArray<value_t, 2, index_t, pattern_t> matrix;
+
+  {
+    pattern_t pattern(
+         ss,
+         ds,
+         ts,
+         team);
+    matrix.allocate(pattern);
+  }
+  if (dash::myid() == 0) {
+    matrix[0][0] = 123;
+  }
+
+  matrix.barrier();
+
+  EXPECT_EQ(static_cast<int>(matrix[0][0]), 123);
 }
 
 /**
@@ -988,16 +985,16 @@ TEST_F(MatrixTest, UnderfilledPattern)
 
 TEST_F(MatrixTest, SimpleConstructor)
 {
-	size_t ext_x = dash::size();
-	size_t ext_y = 5*dash::size();
-	dash::Matrix<int, 2> matrix(ext_x, ext_y);
+  size_t ext_x = dash::size();
+  size_t ext_y = 5*dash::size();
+  dash::Matrix<int, 2> matrix(ext_x, ext_y);
 
-	dash::fill(matrix.begin(), matrix.end(), dash::myid());
+  dash::fill(matrix.begin(), matrix.end(), dash::myid());
 
-	matrix.barrier();
+  matrix.barrier();
 
-	ASSERT_EQ_U(ext_x, matrix.extent(0));
-	ASSERT_EQ_U(ext_y, matrix.extent(1));
+  ASSERT_EQ_U(ext_x, matrix.extent(0));
+  ASSERT_EQ_U(ext_y, matrix.extent(1));
 }
 
 TEST_F(MatrixTest, MatrixLBegin)
@@ -1015,5 +1012,120 @@ TEST_F(MatrixTest, MatrixLBegin)
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
+}
+
+TEST_F(MatrixTest, DelayedPatternAllocation)
+{
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+
+  auto block_size_x = dash::size();
+  auto block_size_y = dash::size();
+  dash::NArray<int, 2, index_t, pattern_t > matrix;
+
+  {
+    auto & team = dash::Team::All();
+    dash::TeamSpec<2>         ts(team);
+    dash::SizeSpec<2>         ss(block_size_x, block_size_y);
+    dash::DistributionSpec<2> ds(dash::TILE(1),dash::TILE(1));
+
+    pattern_t pattern(
+          ss,
+          ds,
+          ts,
+          team);
+    matrix.allocate(pattern);
+  }
+  auto id = dash::myid();
+  matrix(id,id) =id;
+  EXPECT_EQ(id, matrix[id][id]);
+}
+
+TEST_F(MatrixTest, CopyRow)
+{
+  typedef int value_t;
+
+  auto team_size = dash::Team::All().size();
+  auto myid      = dash::Team::All().myid();
+
+  size_t n_lextent = 10;
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  auto tspec_ny = teamspec_2d.extents()[0];
+  auto tspec_nx = teamspec_2d.extents()[1];
+
+  DASH_LOG_DEBUG("MatrixTest.CopyRow", "balanced team spec:",
+                 tspec_ny, "x", tspec_nx);
+
+  dash::SizeSpec<2>         sspec(tspec_ny * n_lextent,
+                                  tspec_nx * n_lextent);
+  dash::DistributionSpec<2> dspec(dash::BLOCKED,
+                                  dash::BLOCKED);
+
+  dash::Matrix<value_t, 2>  matrix(sspec, dspec,
+                                   dash::Team::All(), teamspec_2d);
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.lend() - matrix.lbegin());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.local.size());
+  for (int l = 0; l < matrix.local.size(); l++) {
+    matrix.local.begin()[l] = ((myid + 1) * 1000) + l;
+  }
+  dash::barrier();
+
+  if (myid == 0) {
+    dash::test::print_matrix("Matrix<2>", matrix, 2);
+  }
+  dash::barrier();
+
+  auto row      = matrix.local.row(0);
+  auto row_size = row.size();
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row_size);
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(0));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(1));
+
+  dash::barrier();
+  dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
+
+  auto l_prange = dash::local_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.end));
+  auto l_irange = dash::local_index_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.end));
+
+  EXPECT_EQ_U(row_size, l_irange.end - l_irange.begin);
+  EXPECT_EQ_U(row_size, l_prange.end - l_prange.begin);
+
+  EXPECT_EQ_U(1,         decltype(row)::ndim());
+  EXPECT_EQ_U(n_lextent, row_size);
+
+  EXPECT_EQ_U(n_lextent, row.extents()[1]);
+
+  // Check values and test for each expression:
+  int li = 0;
+  for (auto l_row_val : row) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_row_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
+
+  std::vector<value_t> tmp(row_size);
+  auto copy_end = dash::copy(row.begin(), row.end(),
+                             tmp.data());
+
+  EXPECT_EQ_U(row_size, copy_end - tmp.data());
+
+  li = 0;
+  for (auto l_copy_val : tmp) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_copy_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
 }
 

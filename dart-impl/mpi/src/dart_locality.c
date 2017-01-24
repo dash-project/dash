@@ -22,19 +22,31 @@
  * Domain Locality                                                          *
  * ======================================================================== */
 
+dart_ret_t dart_team_locality_init(
+  dart_team_t                     team)
+{
+  return dart__base__locality__create(team);
+}
+
+dart_ret_t dart_team_locality_finalize(
+  dart_team_t                     team)
+{
+  return dart__base__locality__delete(team);
+}
+
 dart_ret_t dart_domain_team_locality(
   dart_team_t                     team,
   const char                    * domain_tag,
   dart_domain_locality_t       ** team_domain_out)
 {
-  DART_LOG_DEBUG("dart_domain_locality() team(%d) domain(%s)",
+  DART_LOG_DEBUG("dart_domain_team_locality() team(%d) domain(%s)",
                  team, domain_tag);
   dart_ret_t ret;
 
   dart_domain_locality_t * team_domain;
   ret = dart__base__locality__team_domain(team, &team_domain);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("dart_domain_locality: "
+    DART_LOG_ERROR("dart_domain_team_locality: "
                    "dart__base__locality__team_domain failed (%d)", ret);
     return ret;
   }
@@ -45,16 +57,43 @@ dart_ret_t dart_domain_team_locality(
     ret = dart__base__locality__domain(
             team_domain, domain_tag, &team_subdomain);
     if (ret != DART_OK) {
-      DART_LOG_ERROR("dart_domain_locality: "
-                     "dart__base__locality__domain failed (%d)", ret);
+      DART_LOG_ERROR("dart_domain_team_locality: "
+                     "dart__base__locality__domain failed "
+                     "for domain tag '%s' -> (%d)", domain_tag, ret);
       return ret;
     }
     *team_domain_out = team_subdomain;
   }
 
-  DART_LOG_DEBUG("dart_domain_locality > team(%d) domain(%s) -> %p",
+  DART_LOG_DEBUG("dart_domain_team_locality > team(%d) domain(%s) -> %p",
                  team, domain_tag, *team_domain_out);
   return DART_OK;
+}
+
+dart_ret_t dart_domain_create(
+  dart_domain_locality_t       ** domain_out)
+{
+  return dart__base__locality__create_domain(domain_out);
+}
+
+dart_ret_t dart_domain_clone(
+  const dart_domain_locality_t  * domain_in,
+  dart_domain_locality_t       ** domain_out)
+{
+  return dart__base__locality__clone_domain(domain_in, domain_out);
+}
+
+dart_ret_t dart_domain_destruct(
+  dart_domain_locality_t        * domain)
+{
+  return dart__base__locality__destruct_domain(domain);
+}
+
+dart_ret_t dart_domain_assign(
+  dart_domain_locality_t        * domain_lhs,
+  const dart_domain_locality_t  * domain_rhs)
+{
+  return dart__base__locality__assign_domain(domain_lhs, domain_rhs);
 }
 
 dart_ret_t dart_domain_find(
@@ -62,21 +101,12 @@ dart_ret_t dart_domain_find(
   const char                    * domain_tag,
   dart_domain_locality_t       ** subdomain_out)
 {
-  return dart__base__locality__domain(
-           domain_in, domain_tag, subdomain_out);
-}
-
-dart_ret_t dart_domain_copy(
-  const dart_domain_locality_t  * domain_in,
-  dart_domain_locality_t        * domain_out)
-{
-  return dart__base__locality__copy_domain(domain_in, domain_out);
-}
-
-dart_ret_t dart_domain_destruct(
-  dart_domain_locality_t        * domain)
-{
-  return dart__base__locality__destruct_domain(domain);
+  DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
+                 (void*)domain_in, domain_tag);
+  dart_ret_t ret = dart__base__locality__domain(
+                     domain_in, domain_tag, subdomain_out);
+  DART_LOG_DEBUG("dart_domain_find > %d", ret);
+  return ret;
 }
 
 dart_ret_t dart_domain_select(
@@ -144,9 +174,13 @@ dart_ret_t dart_domain_split(
      * groups for every split group : */
     DART_LOG_TRACE("dart_domain_split: copying input domain");
     DART_ASSERT_RETURNS(
-      dart__base__locality__copy_domain(
-        domain_in,
+      dart__base__locality__domain__init(
         domains_out + p),
+      DART_OK);
+    DART_ASSERT_RETURNS(
+      dart__base__locality__assign_domain(
+        domains_out + p,
+        domain_in),
       DART_OK);
 
     /* Drop domains that are not in split group: */
@@ -172,11 +206,27 @@ dart_ret_t dart_domain_scope_tags(
   *num_domains_out = 0;
   *domain_tags_out = NULL;
 
-  return dart__base__locality__scope_domains(
+  return dart__base__locality__scope_domain_tags(
            domain_in,
            scope,
            num_domains_out,
            domain_tags_out);
+}
+
+dart_ret_t dart_domain_scope_domains(
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  dart_domain_locality_t      *** domains_out)
+{
+  *num_domains_out = 0;
+  *domains_out     = NULL;
+
+  return dart__base__locality__scope_domains(
+           domain_in,
+           scope,
+           num_domains_out,
+           domains_out);
 }
 
 dart_ret_t dart_domain_group(
@@ -198,22 +248,22 @@ dart_ret_t dart_domain_group(
 
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
-  dart_unit_t                     unit,
+  dart_team_unit_t                unit,
   dart_unit_locality_t         ** locality)
 {
-  DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit);
+  DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit.id);
 
   dart_ret_t ret = dart__base__locality__unit(team, unit, locality);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__unit_locality__get(unit:%d) failed (%d)",
-                   unit, ret);
+                   unit.id, ret);
     *locality = NULL;
     return ret;
   }
 
   DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
-                 team, unit, *locality);
+                 team, unit.id, *locality);
   return DART_OK;
 }
 

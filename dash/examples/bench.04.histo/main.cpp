@@ -6,8 +6,8 @@
 using std::cout; 
 using std::endl;
 
-#define NUM_KEYS     (1<<23)
-#define MAX_KEY      (1<<13)
+#define NUM_KEYS     (1<<29)
+#define MAX_KEY      (1<<22)
 
 /*
 #define NUM_KEYS     32

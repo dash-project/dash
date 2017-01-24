@@ -1,6 +1,8 @@
 #ifndef DASH__PATTERN_H_
 #define DASH__PATTERN_H_
 
+#ifdef DOXYGEN
+
 namespace dash {
 
 /**
@@ -33,7 +35,7 @@ namespace dash {
  * ------------------------ | -------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
  * <tt>index</tt>           | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>lp</i> in local memory.                                          |
  * <tt>index</tt>           | <tt>global_at</tt>         | <tt>index[d] gp</tt>            | Global offset of the global point <i>gp</i> in the pattern's iteration order.                                 |
- * <tt>dart_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point <i>p</i>                                                     |
+ * <tt>team_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point <i>p</i>                                                     |
  * <b>global to local</b>   | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
  * <tt>{unit,index}</tt>    | <tt>local</tt>             | <tt>index gi</tt>               | Unit and linear local offset at the global index <i>gi</i>                                                 |
  * <tt>{unit,index[d]}</tt> | <tt>local</tt>             | <tt>index[d] gp</tt>            | Unit and local coordinates at the global point <i>gp</i>                                                   |
@@ -65,29 +67,8 @@ namespace dash {
  * <tt>size</tt>            | <tt>local_extent</tt>      | <tt>dim d</tt>                  | Number of elements local to the calling unit in dimension <i>d</i>                                         |
  *
  * \}
- */
-
-} // namespace dash
-
-// Static regular pattern types:
-#include <dash/pattern/BlockPattern.h>
-#include <dash/pattern/TilePattern.h>
-#include <dash/pattern/ShiftTilePattern.h>
-#include <dash/pattern/SeqTilePattern.h>
-
-// Static irregular pattern types:
-#include <dash/pattern/CSRPattern.h>
-#include <dash/pattern/LoadBalancePattern.h>
-
-#include <dash/pattern/PatternIterator.h>
-#include <dash/pattern/PatternProperties.h>
-#include <dash/pattern/MakePattern.h>
-
-#ifdef DOXYGEN
-
-namespace dash {
-
-/**
+ *
+ *
  * Defines how a list of global indices is mapped to single units
  * within a Team.
  *
@@ -97,8 +78,6 @@ namespace dash {
  *                         Memory order defines how elements in the
  *                         pattern will be iterated predominantly
  *                         \see MemArrange
- *
- * \concept{DashPatternConcept}
  */
 template<
   dim_t      NumDimensions,
@@ -111,24 +90,27 @@ class PatternConcept
   typedef ViewSpec<NumDimensions, IndexType>            ViewSpecType;
 
 public:
+
   static constexpr char const * PatternName = "TheConcretePatternTypeName";
 
 public:
+
   typedef IndexType        index_type;
   typedef SizeType          size_type;
   typedef ViewSpecType  viewspec_type;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index_type;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_type;
 
 public:
+
   /**
    * Copy constructor using non-const lvalue reference parameter.
    *
@@ -179,7 +161,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<index_type, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -190,7 +172,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     const std::array<index_type, NumDimensions> & coords) const;
 
   /**
@@ -198,7 +180,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     index_type global_pos,
     /// View to apply global position
@@ -213,7 +195,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     index_type global_pos) const;
 
@@ -270,7 +252,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<size_type, NumDimensions> local_extents(
-    dart_unit_t unit) const;
+    team_unit_t unit) const;
 
   ////////////////////////////////////////////////////////////////////////////
   /// local
@@ -301,8 +283,6 @@ public:
    * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
-   * TODO: Unoptimized
-   *
    * \see  DashPatternConcept
    */
   local_coords_t local(
@@ -310,8 +290,6 @@ public:
 
   /**
    * Converts global index to its associated unit and respective local index.
-   *
-   * TODO: Unoptimized
    *
    * \see  DashPatternConcept
    */
@@ -345,7 +323,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<index_type, NumDimensions> global(
-    dart_unit_t unit,
+    team_unit_t unit,
     const std::array<index_type, NumDimensions> & local_coords) const;
 
   /**
@@ -376,7 +354,7 @@ public:
    * \see  DashPatternConcept
    */
   index_type global_index(
-    dart_unit_t unit,
+    team_unit_t unit,
     const std::array<index_type, NumDimensions> & local_coords) const;
 
   /**
@@ -454,7 +432,7 @@ public:
    */
   bool is_local(
     index_type index,
-    dart_unit_t unit) const;
+    team_unit_t unit) const;
 
   /**
    * Whether the given global index is local to the unit that created
@@ -532,7 +510,7 @@ public:
    * \see  DashPatternConcept
    */
   inline size_type local_capacity(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const;
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const;
 
   /**
    * The actual number of elements in this pattern that are local to the
@@ -545,7 +523,7 @@ public:
    * \see  DashPatternConcept
    */
   inline size_type local_size(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const;
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const;
 
   /**
    * The maximum number of elements arranged in this pattern.
@@ -641,5 +619,19 @@ public:
 } // namespace dash
 
 #endif // DOXYGEN
+
+// Static regular pattern types:
+#include <dash/pattern/BlockPattern.h>
+#include <dash/pattern/TilePattern.h>
+#include <dash/pattern/ShiftTilePattern.h>
+#include <dash/pattern/SeqTilePattern.h>
+
+// Static irregular pattern types:
+#include <dash/pattern/CSRPattern.h>
+#include <dash/pattern/LoadBalancePattern.h>
+
+#include <dash/pattern/PatternIterator.h>
+#include <dash/pattern/PatternProperties.h>
+#include <dash/pattern/MakePattern.h>
 
 #endif // DASH__PATTERN_H_

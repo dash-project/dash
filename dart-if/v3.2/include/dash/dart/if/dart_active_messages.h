@@ -44,7 +44,7 @@ dart_amsg_openq(size_t size, dart_team_t team);
  *       i.e., no external references can be handled at the moment.
  */
 dart_ret_t
-dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size);
+dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size);
 
 /**
  * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).
@@ -67,6 +67,10 @@ dart_amsg_sync(dart_amsgq_t amsgq);
  */
 dart_ret_t
 dart_amsg_closeq(dart_amsgq_t amsgq);
+
+
+dart_team_t
+dart_amsg_team(const dart_amsgq_t amsgq);
 
 
 #endif /* DART__MPI__DART_ACTIVE_MESSAGES_H_ */

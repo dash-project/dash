@@ -44,11 +44,6 @@ dart_ret_t dart_segment_get_teamidx(dart_segid_t segid, uint16_t *team_idx);
  */
 dart_ret_t dart_segment_add_info(const dart_segment_info_t *item);
 
-/**
- * @brief Remove the segment with ID seg_id from the segment hash table.
- */
-dart_ret_t dart_segment_remove(int16_t seg_id);
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 /** @brief Query the shared memory window object associated with the specified seg_id.
  *
@@ -61,9 +56,9 @@ dart_ret_t dart_segment_remove(int16_t seg_id);
 dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win);
 
 dart_ret_t dart_segment_get_baseptr(
-  int16_t    seg_id,
-  int        rel_unitid,
-  char   **  baseptr_s);
+  int16_t                seg_id,
+  dart_team_unit_t       rel_unitid,
+  char               **  baseptr_s);
 #endif
 
 dart_ret_t dart_segment_get_selfbaseptr(
@@ -78,9 +73,9 @@ dart_ret_t dart_segment_get_selfbaseptr(
  *
  *  @retval ditto
  */
-dart_ret_t dart_segment_get_disp(int16_t seg_id,
-                                   int rel_unitid,
-                                   MPI_Aint * disp_s);
+dart_ret_t dart_segment_get_disp(int16_t             seg_id,
+                                 dart_team_unit_t    rel_unitid,
+                                 MPI_Aint          * disp_s);
 
 /** @brief Query the length of the global memory block indicated by the specified seg_id.
  *
@@ -93,13 +88,13 @@ dart_ret_t dart_segment_get_size(
 /**
  * @brief Deallocates the segment identified by the segment ID.
  */
-dart_ret_t dart_segment_dealloc(dart_segid_t segid);
+dart_ret_t dart_segment_free(dart_segid_t segid);
 
 
 /**
  * @brief Clear the segment data hash table.
  */
-dart_ret_t dart_segment_clear();
+dart_ret_t dart_segment_fini();
 
 
 #endif /* DART_SEGMENT_H_ */

@@ -118,13 +118,13 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
  */
 dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t *deps, size_t ndeps)
 {
-  dart_unit_t myid;
+  dart_global_unit_t myid;
   dart_myid(&myid);
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t *dep = &deps[i];
     int slot = hash_gptr(dep->gptr);
 
-    if (dep->gptr.unitid != myid) {
+    if (dep->gptr.unitid != myid.id) {
       dart_tasking_remote_datadep(dep, task);
     } else {
       /*
@@ -133,7 +133,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t 
       for (dart_dephash_elem_t *elem = local_deps[slot]; elem != NULL; elem = elem->next)
       {
         if (elem->taskdep.gptr.addr_or_offs.addr == dep->gptr.addr_or_offs.addr
-            && dep->gptr.unitid == myid
+            && dep->gptr.unitid == myid.id
             && elem->task.local != task) {
           if (IS_OUT_DEP(*dep) || (dep->type == DART_DEP_IN && IS_OUT_DEP(elem->taskdep))){
             // OUT dependencies have to wait for all previous dependencies
@@ -163,7 +163,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t 
  * Look for the latest task that satisfies \c dep of a remote task pointed to by \c rtask and add it to the remote successor list.
  * Note that \c dep has to be a IN dependency.
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, const taskref remote_task, dart_unit_t origin)
+dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, const taskref remote_task, dart_global_unit_t origin)
 {
   if (dep->type != DART_DEP_IN) {
     DART_LOG_ERROR("Remote dependencies with type other than DART_DEP_IN are not supported!");
@@ -179,7 +179,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
       elem->next = elem->task.local->remote_successor;
       elem->task.local->remote_successor = rs;
       // the taskdep's gptr unit is used to store the origin
-      elem->taskdep.gptr.unitid = origin;
+      elem->taskdep.gptr.unitid = origin.id;
 
       return DART_OK;
     }
@@ -193,7 +193,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
 /**
  * @brief Handle the direct task dependency between a local task and it's remote successor
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_unit_t origin)
+dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_global_unit_t origin)
 {
   dart_task_dep_t dep;
   dep.gptr = DART_GPTR_NULL;
@@ -256,7 +256,7 @@ static dart_ret_t send_direct_dependencies(dart_dephash_elem_t *remotedep)
 
     if (elem->taskdep.gptr.addr_or_offs.addr == remotedep->taskdep.gptr.addr_or_offs.addr && IS_OUT_DEP(elem->taskdep)) {
 
-      if ((ret = dart_tasking_remote_direct_taskdep(remotedep->taskdep.gptr.unitid, elem->task.local, remotedep->task)) != DART_OK)
+      if ((ret = dart_tasking_remote_direct_taskdep(DART_GLOBAL_UNIT_ID(remotedep->taskdep.gptr.unitid), elem->task.local, remotedep->task)) != DART_OK)
         return ret;
 
       // this task now needs to wait for the remote task to complete
@@ -282,7 +282,7 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
     send_direct_dependencies(rs);
 
     // send the release
-    dart_tasking_remote_release(rs->taskdep.gptr.unitid, rs->task, &rs->taskdep);
+    dart_tasking_remote_release(DART_GLOBAL_UNIT_ID(rs->taskdep.gptr.unitid), rs->task, &rs->taskdep);
     dephash_recycle_elem(rs);
     rs = tmp;
   }

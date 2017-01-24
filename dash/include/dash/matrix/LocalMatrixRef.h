@@ -108,11 +108,16 @@ public:
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
 
 public:
+
+  static constexpr dim_t ndim() {
+    return CUR;
+  }
+
+public:
   /**
    * Default constructor.
    */
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>()
-  : _refview()
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", NumDimensions);
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
@@ -206,7 +211,7 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
-  T & at(
+  inline T & at(
     /// Global coordinates
     Args... args);
 
@@ -220,7 +225,7 @@ public:
    * \see  at
    */
   template<typename... Args>
-  T & operator()(
+  inline T & operator()(
     /// Coordinates of element in global cartesian index space.
     Args... args);
 
@@ -323,7 +328,6 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
    * Default constructor.
    */
   LocalMatrixRef<T, NumDimensions, 0, PatternT>()
-  : _refview(nullptr)
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,0>()", NumDimensions);
   }

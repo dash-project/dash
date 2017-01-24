@@ -13,12 +13,14 @@ TEST_F(CartesianTest, DefaultConstructor) {
   EXPECT_EQ(cartesian1d.rank(), 1);
   EXPECT_EQ(cartesian1d.extent(0), 0);
 #if defined(DASH_ENABLE_ASSERTIONS)
+  dash::internal::logging::disable_log();
   EXPECT_THROW(
     cartesian1d.at(0),
     dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian1d.coords(0),
     dash::exception::OutOfRange);
+  dash::internal::logging::enable_log();
 #endif
   // 4-dimensional:
   dash::CartesianIndexSpace<4> cartesian4d;
@@ -29,12 +31,14 @@ TEST_F(CartesianTest, DefaultConstructor) {
   EXPECT_EQ(cartesian4d.extent(2), 0);
   EXPECT_EQ(cartesian4d.extent(3), 0);
 #if defined(DASH_ENABLE_ASSERTIONS)
+  dash::internal::logging::disable_log();
   EXPECT_THROW(
     cartesian4d.at(0, 0, 0, 0),
     dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian4d.coords(0),
     dash::exception::OutOfRange);
+  dash::internal::logging::enable_log();
 #endif
 }
 

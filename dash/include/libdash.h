@@ -29,7 +29,6 @@ namespace dash {
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
-#include <dash/iterator/GlobStencilIter.h>
 
 #include <dash/Onesided.h>
 
@@ -38,7 +37,6 @@ namespace dash {
 #include <dash/SharedCounter.h>
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
-#include <dash/Halo.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
 

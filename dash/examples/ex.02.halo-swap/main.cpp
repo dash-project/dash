@@ -50,10 +50,10 @@ void halo_swap2d(MatrixT & mat)
   auto my_x = ts.x(myid);
   auto my_y = ts.y(myid);
 
-  int bot   = (my_x + 1) < ts.extent(0) ? ts.at(my_x + 1, my_y  ) : -1;
-  int top   = (my_x > 0)                ? ts.at(my_x - 1, my_y  ) : -1;
-  int left  = (my_y > 0)                ? ts.at(my_x  , my_y - 1) : -1;
-  int right = (my_y + 1) < ts.extent(1) ? ts.at(my_x  , my_y + 1) : -1;
+  dash::team_unit_t bot(  (my_x + 1) < ts.extent(0) ? ts.at(my_x + 1, my_y  ) : -1);
+  dash::team_unit_t top(  (my_x > 0)                ? ts.at(my_x - 1, my_y  ) : -1);
+  dash::team_unit_t left( (my_y > 0)                ? ts.at(my_x  , my_y - 1) : -1);
+  dash::team_unit_t right((my_y + 1) < ts.extent(1) ? ts.at(my_x  , my_y + 1) : -1);
 
   /*
   cout << "I'm " << myid << "(" << my_x << " " << my_y << ") "

@@ -6,9 +6,13 @@
 #ifndef DART__BASE__LOGGING_H__
 #define DART__BASE__LOGGING_H__
 
+#include <dash/dart/base/config.h>
+#if defined(DART__PLATFORM__LINUX) && !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -64,11 +68,11 @@ static inline double dart_base_logging_timestamp() {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d:%d ERROR ] [ %f ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -96,11 +100,11 @@ static inline double dart_base_logging_timestamp() {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d:%d TRACE ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -123,11 +127,11 @@ static inline double dart_base_logging_timestamp() {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d:%d DEBUG ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -137,34 +141,46 @@ static inline double dart_base_logging_timestamp() {
 
 #define DART_LOG_INFO(...) \
   { \
-    dart_config_t * dart_cfg;  \
-    dart_config(&dart_cfg);    \
-    if (dart_cfg->log_enabled) { \
-      const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
-      int       sn_ret; \
-      char      msg_buf[maxlen]; \
-      pid_t     pid = getpid(); \
-      sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
-      if (sn_ret >= 0) { \
-        dart_unit_t unit_id = -1; \
-        dart_myid(&unit_id); \
-        fprintf(DART_LOG_OUTPUT_TARGET, \
-          "[ %*d:%d INFO  ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-          DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
-          dart_base_logging_timestamp(), \
-          DASH__DART_LOGGING__PROC__WIDTH, pid, \
-          DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
-          DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
-          msg_buf); \
-      } \
+    const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
+    int       sn_ret; \
+    char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
+    if (sn_ret < 0 || sn_ret >= maxlen) { \
+      break; \
     } \
-  }
+    dart_global_unit_t unit_id; \
+    dart_myid(&unit_id); \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
+      "[ %*d:%d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
+      DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
+      DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
+      msg_buf); \
+  } while (0)
+
+#define DART_LOG_TRACE_ARRAY(context, fmt, array, nelem) \
+  do { \
+    int  nchars = (nelem) * 10 + (nelem) * 2; \
+    char array_buf[nchars]; \
+    array_buf[0] = '\0'; \
+    for (int i = 0; i < nelem; i++) { \
+      char value_buf[32]; \
+      value_buf[0] = '\0'; \
+      snprintf(value_buf, 32, fmt " ", (array)[i]); \
+      strncat(array_buf, value_buf, 32); \
+    } \
+    DART_LOG_TRACE(context ": %s = { %s}", #array, array_buf); \
+  } while (0)
 
 #else /* DART_ENABLE_LOGGING */
 
 #define DART_LOG_TRACE(...) do { } while(0)
 #define DART_LOG_DEBUG(...) do { } while(0)
 #define DART_LOG_INFO(...)  do { } while(0)
+
+#define DART_LOG_TRACE_ARRAY(...) do { } while(0)
 
 #endif /* DART_ENABLE_LOGGING */
 

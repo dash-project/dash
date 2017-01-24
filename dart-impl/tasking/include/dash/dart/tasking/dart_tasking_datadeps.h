@@ -34,12 +34,12 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t 
  * @brief Look for the latest task that satisfies \c dep and add \rtask to the remote successor list.
  * Note that \c dep has to be a IN dependency.
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, const taskref remote_task, dart_unit_t origin);
+dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, const taskref remote_task, dart_global_unit_t origin);
 
 /**
  * @brief Handle the direct task dependency between a local task and it's remote successor
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_unit_t origin);
+dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_global_unit_t origin);
 
 /**
  * Release the dependencies of \c task, potentially enqueuing tasks into the runnable

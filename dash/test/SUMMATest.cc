@@ -5,16 +5,17 @@
 #include "TestLogHelpers.h"
 #include "SUMMATest.h"
 
-#define SKIP_TEST_IF_NO_SUMMA()\
-  auto conf = dash::util::DashConfig;\
-  if(!conf.avail_algo_summa){\
-    SKIP_TEST()\
-  }
+#define SKIP_TEST_IF_NO_SUMMA()           \
+  auto conf = dash::util::DashConfig;     \
+  if (!conf.avail_algo_summa) {           \
+    SKIP_TEST_MSG("SUMMA not available"); \
+  }                                       \
+  do { } while(0)
 
 
 TEST_F(SUMMATest, Deduction)
 {
-  SKIP_TEST_IF_NO_SUMMA()
+  SKIP_TEST_IF_NO_SUMMA();
 
   size_t num_units   = dash::Team::All().size();
   size_t team_size_x = num_units;
@@ -114,16 +115,19 @@ TEST_F(SUMMATest, Deduction)
   if (_dash_id == 0) {
     // Matrix B is identity matrix:
     for (index_t d = 0; d < static_cast<index_t>(extent_rows); ++d) {
-      LOG_MESSAGE("Setting matrix B value (%d,%d)", d, d);
+      DASH_LOG_TRACE("SUMMATest.Deduction",
+                     "setting matrix B value (",d,",",d,")");
       matrix_b[d][d] = 1;
     }
     for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
       for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
-        LOG_MESSAGE("Initialize A matrix value (%d,%d)", col, row);
+        DASH_LOG_TRACE("SUMMATest.Deduction",
+                       "initialize matrix A value (",col,",",row,")");
         auto unit  = matrix_a.pattern()
                              .unit_at(std::array<index_t, 2> { col, row });
         value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-        LOG_MESSAGE("Setting matrix A value (%d,%d)", col, row);
+        DASH_LOG_TRACE("SUMMATest.Deduction",
+                       "setting matrix A value (",col,",",row,")");
         matrix_a[col][row] = value;
       }
     }
@@ -166,7 +170,7 @@ TEST_F(SUMMATest, Deduction)
 
 TEST_F(SUMMATest, SeqTilePatternMatrix)
 {
-  SKIP_TEST_IF_NO_SUMMA()
+  SKIP_TEST_IF_NO_SUMMA();
 
   typedef dash::SeqTilePattern<2> pattern_t;
   typedef double                  value_t;
@@ -202,16 +206,19 @@ TEST_F(SUMMATest, SeqTilePatternMatrix)
   if (_dash_id == 0) {
     // Matrix B is identity matrix:
     for (index_t d = 0; d < static_cast<index_t>(extent_rows); ++d) {
-      LOG_MESSAGE("Setting matrix B value (%d,%d)", d, d);
+      DASH_LOG_TRACE("SUMMATest.Deduction",
+                     "setting matrix B value (",d,",",d,")");
       matrix_b[d][d] = 1;
     }
     for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
       for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
-        LOG_MESSAGE("Initialize A matrix value (%d,%d)", col, row);
+        DASH_LOG_TRACE("SUMMATest.Deduction",
+                       "initialize matrix A value (",col,",",row,")");
         auto unit  = matrix_a.pattern()
                              .unit_at(std::array<index_t, 2> { col, row });
         value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-        LOG_MESSAGE("Setting matrix A value (%d,%d)", col, row);
+        DASH_LOG_TRACE("SUMMATest.Deduction",
+                       "setting matrix A value (",col,",",row,")");
         matrix_a[col][row] = value;
       }
     }

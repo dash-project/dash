@@ -1,3 +1,9 @@
+/**
+ * \example ex.02.array/main.cpp
+ * Example illustrating access to elements in a \c dash::Array by
+ * global index.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>
@@ -22,7 +28,7 @@ int main(int argc, char* argv[])
     }
   }
   arr.barrier();
-  if (myid == static_cast<dart_unit_t>(size-1)) {
+  if (myid == (size-1)) {
     for (auto el: arr) {
       cout << static_cast<int>(el) << " ";
     }

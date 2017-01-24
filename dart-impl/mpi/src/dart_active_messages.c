@@ -30,7 +30,7 @@ struct dart_amsgq {
 struct dart_amsg_header {
   dart_task_action_t fn;
   size_t             data_size;
-  dart_unit_t        remote;
+  dart_global_unit_t remote;
 };
 
 static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -39,7 +39,7 @@ static bool initialized = false;
 static bool needs_translation = false;
 static int64_t *offsets = NULL;
 
-static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_unit_t target, dart_amsgq_t amsgq);
+static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_team_unit_t target, dart_amsgq_t amsgq);
 static inline dart_ret_t exchange_fnoffsets();
 
 /**
@@ -64,7 +64,7 @@ dart_amsg_init()
 dart_amsgq_t
 dart_amsg_openq(size_t size, dart_team_t team)
 {
-  dart_unit_t unitid;
+  dart_team_unit_t unitid;
   MPI_Comm tcomm;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
   res->size = size;
@@ -103,7 +103,7 @@ dart_amsg_openq(size_t size, dart_team_t team)
 
   MPI_Win_allocate(sizeof(uint64_t), 1, MPI_INFO_NULL, tcomm, (void*)&(res->tailpos_ptr), &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;
-  MPI_Win_flush(unitid, res->tailpos_win);
+  MPI_Win_flush(unitid.id, res->tailpos_win);
   MPI_Win_allocate(size, 1, MPI_INFO_NULL, tcomm, (void*)&(res->queue_ptr), &(res->queue_win));
   memset(res->queue_ptr, 0, size);
   MPI_Win_fence(0, res->queue_win);
@@ -114,9 +114,9 @@ dart_amsg_openq(size_t size, dart_team_t team)
 
 
 dart_ret_t
-dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size)
+dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size)
 {
-  dart_unit_t unitid;
+  dart_global_unit_t unitid;
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint64_t remote_offset = 0;
 
@@ -128,10 +128,10 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn,
   dart_myid(&unitid);
 
   //lock the tailpos window
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, amsgq->tailpos_win);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->tailpos_win);
 
   // Add the size of the message to the tailpos at the target
-  if (MPI_Fetch_and_op(&msg_size, &remote_offset, MPI_UINT64_T, target, 0, MPI_SUM, amsgq->tailpos_win) != MPI_SUCCESS) {
+  if (MPI_Fetch_and_op(&msg_size, &remote_offset, MPI_UINT64_T, target.id, 0, MPI_SUM, amsgq->tailpos_win) != MPI_SUCCESS) {
     DART_LOG_ERROR("MPI_Fetch_and_op failed!");
     return DART_ERR_NOTINIT;
   }
@@ -139,23 +139,23 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn,
   DART_LOG_INFO("MPI_Fetch_and_op returned offset %llu at unit %i", remote_offset, target);
 
   if (remote_offset >= amsgq->size) {
-    DART_LOG_ERROR("Received offset larger than message queue size from unit %i (%llu but expected < %llu)", target, remote_offset, amsgq->size);
+    DART_LOG_ERROR("Received offset larger than message queue size from unit %i (%llu but expected < %llu)", target.id, remote_offset, amsgq->size);
     return DART_ERR_INVAL;
   }
 
   if ((remote_offset + msg_size) >= amsgq->size) {
     uint64_t tmp;
     // if not, revert the operation and free the lock to try again.
-    MPI_Fetch_and_op(&remote_offset, &tmp, MPI_UINT64_T, target, 0, MPI_REPLACE, amsgq->tailpos_win);
-    MPI_Win_unlock(target, amsgq->tailpos_win);
+    MPI_Fetch_and_op(&remote_offset, &tmp, MPI_UINT64_T, target.id, 0, MPI_REPLACE, amsgq->tailpos_win);
+    MPI_Win_unlock(target.id, amsgq->tailpos_win);
     dart_comm_up();
     DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %llu of %llu)", msg_size, target, remote_offset, amsgq->size);
     return DART_ERR_AGAIN;
   }
 
   // lock the target queue before releasing the tailpos window to avoid potential race conditions
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, amsgq->queue_win);
-  MPI_Win_unlock(target, amsgq->tailpos_win);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->queue_win);
+  MPI_Win_unlock(target.id, amsgq->tailpos_win);
 
   struct dart_amsg_header header;
   header.remote = unitid;
@@ -164,10 +164,10 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn,
 
   // we now have a slot in the message queue
   MPI_Aint queue_disp = remote_offset;
-  MPI_Put(&header, sizeof(header), MPI_BYTE, target, queue_disp, sizeof(header), MPI_BYTE, amsgq->queue_win);
+  MPI_Put(&header, sizeof(header), MPI_BYTE, target.id, queue_disp, sizeof(header), MPI_BYTE, amsgq->queue_win);
   queue_disp += sizeof(header);
-  MPI_Put(data, data_size, MPI_BYTE, target, queue_disp, data_size, MPI_BYTE, amsgq->queue_win);
-  MPI_Win_unlock(target, amsgq->queue_win);
+  MPI_Put(data, data_size, MPI_BYTE, target.id, queue_disp, data_size, MPI_BYTE, amsgq->queue_win);
+  MPI_Win_unlock(target.id, amsgq->queue_win);
 
   DART_LOG_INFO("Sent message of size %i with payload %i to unit %i starting at offset %i", msg_size, data_size, target, remote_offset);
 
@@ -179,8 +179,8 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn,
 dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq)
 {
-  dart_unit_t unitid;
-  uint64_t   tailpos;
+  dart_team_unit_t unitid;
+  uint64_t         tailpos;
 
   int ret = pthread_mutex_lock(&processing_mutex);
   if (ret != 0) {
@@ -190,12 +190,12 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
   char *dbuf = amsgq->dbuf;
 
-  dart_team_myid (amsgq->team, &unitid);
+  dart_team_myid(amsgq->team, &unitid);
 
   dart_comm_down();
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->tailpos_win);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
 
-  MPI_Get(&tailpos, 1, MPI_UINT64_T, unitid, 0, 1, MPI_UINT64_T, amsgq->tailpos_win);
+  MPI_Get(&tailpos, 1, MPI_UINT64_T, unitid.id, 0, 1, MPI_UINT64_T, amsgq->tailpos_win);
 
   /**
    * process messages while they are available, i.e.,
@@ -205,7 +205,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
     uint64_t   zero = 0;
     DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
     // lock the tailpos window
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->queue_win);
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->queue_win);
     // copy the content of the queue for processing
     /*
     DART_GPTR_COPY(queueg, amsgq->queue_win);
@@ -213,12 +213,12 @@ dart_amsg_process(dart_amsgq_t amsgq)
     dart_gptr_getaddr (queueg, &queue);
     */
 //    memcpy(dbuf, amsgq->queue_ptr, tailpos);
-    MPI_Get(dbuf, tailpos, MPI_BYTE, unitid, 0, tailpos, MPI_BYTE, amsgq->queue_win);
-    MPI_Win_unlock(unitid, amsgq->queue_win);
+    MPI_Get(dbuf, tailpos, MPI_BYTE, unitid.id, 0, tailpos, MPI_BYTE, amsgq->queue_win);
+    MPI_Win_unlock(unitid.id, amsgq->queue_win);
 
     // reset the tailpos and release the lock on the message queue
-    MPI_Put(&zero, 1, MPI_INT64_T, unitid, 0, 1, MPI_INT64_T, amsgq->tailpos_win);
-    MPI_Win_unlock(unitid, amsgq->tailpos_win);
+    MPI_Put(&zero, 1, MPI_INT64_T, unitid.id, 0, 1, MPI_INT64_T, amsgq->tailpos_win);
+    MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
 
     dart_comm_up();
 
@@ -255,13 +255,18 @@ dart_amsg_process(dart_amsgq_t amsgq)
       header->fn(data);
     }
   } else {
-    MPI_Win_unlock(unitid, amsgq->tailpos_win);
+    MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
     dart_comm_up();
   }
   pthread_mutex_unlock(&processing_mutex);
   return DART_OK;
 }
 
+dart_team_t
+dart_amsg_team(const dart_amsgq_t amsgq)
+{
+  return amsgq->team;
+}
 
 dart_ret_t
 dart_amsg_sync(dart_amsgq_t amsgq)
@@ -301,13 +306,13 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
  * we do the translation everytime we send a message as it saves space
  * TODO: would it be more efficient to store the translation data per message queue?
  */
-static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_unit_t target, dart_amsgq_t amsgq) {
+static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_team_unit_t target, dart_amsgq_t amsgq) {
   uint64_t remote_fnptr = (uint64_t)fnptr;
   if (needs_translation) {
     int64_t  remote_fn_offset;
-    dart_unit_t global_target_id;
+    dart_global_unit_t global_target_id;
     dart_team_unit_l2g(amsgq->team, target, &global_target_id);
-    remote_fn_offset = offsets[global_target_id];
+    remote_fn_offset = offsets[global_target_id.id];
     remote_fnptr += remote_fn_offset;
   }
   return remote_fnptr;

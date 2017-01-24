@@ -59,6 +59,9 @@ void init_values(Iter begin, Iter end, unsigned);
 template<class ArrayType>
 double test_pattern_gups(ArrayType & a, unsigned, unsigned);
 
+template<class ArrayType>
+double test_raw_gups(ArrayType & a, unsigned, unsigned);
+
 void perform_test(unsigned ELEM_PER_UNIT, unsigned REPEAT);
 
 double gups(
@@ -127,6 +130,9 @@ void perform_test(
            << ", "
            << std::setw(11)
            << "tiled"
+           << ", "
+           << std::setw(11)
+           << "raw"
            << endl;
     }
     return;
@@ -162,6 +168,7 @@ void perform_test(
   double t_mock  = test_pattern_gups(arr_mock_dist,  ELEM_PER_UNIT, REPEAT);
   double t_irreg = test_pattern_gups(arr_irreg_dist, ELEM_PER_UNIT, REPEAT);
   double t_tiled = test_pattern_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
+  double t_raw   = test_raw_gups(    arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
 
@@ -169,6 +176,7 @@ void perform_test(
     double gups_mock  = gups(num_units, t_mock,  ELEM_PER_UNIT, REPEAT);
     double gups_irreg = gups(num_units, t_irreg, ELEM_PER_UNIT, REPEAT);
     double gups_tiled = gups(num_units, t_tiled, ELEM_PER_UNIT, REPEAT);
+    double gups_raw   = gups(num_units, t_raw,   ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10)
          << num_units
@@ -187,6 +195,9 @@ void perform_test(
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
          << gups_tiled
+         << ", "
+         << std::setw(11) << std::fixed << std::setprecision(4)
+         << gups_raw
          << endl;
   }
 }
@@ -202,9 +213,7 @@ void init_values(
   }
 }
 
-template<
-  class ArrayType
->
+template <class ArrayType>
 double test_pattern_gups(
   ArrayType & a,
   unsigned ELEM_PER_UNIT,
@@ -220,17 +229,51 @@ double test_pattern_gups(
 
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
+  auto myid     = pattern.team().myid();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a_size; ++g_idx) {
       auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
-      if (unit_id == dash::myid()) {
+      if (unit_id == myid) {
         ++loc[l_index];
       }
     }
   }
   return Timer::ElapsedSince(ts_start);
 }
+
+template <class ArrayType>
+double test_raw_gups(
+  ArrayType & a,
+  unsigned ELEM_PER_UNIT,
+  unsigned REPEAT)
+{
+  typedef typename ArrayType::pattern_type pattern_t;
+  typedef typename ArrayType::index_type index_t;
+  typedef typename ArrayType::local_type local_t;
+  local_t loc               = a.local;
+  const pattern_t & pattern = a.pattern();
+  auto lsize                = ELEM_PER_UNIT;
+  auto lbegin_global        = pattern.global(0);
+  auto lend_global          = pattern.global(lsize-1);
+
+  init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
+
+  auto a_size   = a.size();
+  auto ts_start = Timer::Now();
+  auto myid     = dash::myid();
+  for (auto i = 0; i < REPEAT; ++i) {
+    int l_idx = 0;
+    for (auto g_idx = 0; g_idx < a_size; ++g_idx) {
+      if (lbegin_global <= g_idx && g_idx <= lend_global) {
+        ++loc[l_idx];
+        ++l_idx;
+      }
+    }
+  }
+  return Timer::ElapsedSince(ts_start);
+}
+
 
 

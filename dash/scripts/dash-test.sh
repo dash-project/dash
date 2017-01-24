@@ -9,6 +9,7 @@ usage()
   echo ""
   echo "... with <bin path> pointing to the directory where the"
   echo "DASH binaries have been installed, e.g. ~/opt/dash/bin"
+  echo ""
 }
 
 if [ $# -lt 2 ]; then
@@ -16,6 +17,7 @@ if [ $# -lt 2 ]; then
   exit -1
 fi
 
+TIMESTAMP=`date +%Y%m%d-%H%M%S`
 DART_IMPL="$1"
 BIN_PATH="$2"
 LOGFILE="$3"
@@ -32,10 +34,13 @@ fi
 
 if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
-  TEST_BINARY="$BIN_PATH/dash/test/shmem/dash-test-shmem"
+  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
-  RUN_CMD="mpirun ${MPI_EXEC_FLAGS}"
-  TEST_BINARY="$BIN_PATH/dash/test/mpi/dash-test-mpi"
+#  if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
+#   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
+#  fi
+  RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
+  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
   usage
 fi
@@ -47,23 +52,24 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
-  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+  if ! [ "$DASH_MAX_UNITS" = "" ]; then
     NCORES=$DASH_MAX_UNITS
   fi
   if [ $NCORES -lt $NUNITS ]; then
-    exit 0
+    return 0
   fi
   BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
+  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
     tee -a $LOGFILE
-  $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
-    tee -a $LOGFILE
+  eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
+    tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#'
   TEST_RET=$?
   # Cannot use exit code as dartrun-shmem seems to always return 0
   NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`

@@ -112,11 +112,13 @@ int main(int argc, char** argv)
   // 0: real, 1: virt
   Timer::Calibrate(0);
 
+  dash::util::UnitLocality uloc;
+
   measurement res;
   double time_s;
   auto   ts_start        = Timer::Now();
-  size_t num_numa_nodes  = dash::util::Locality::NumNUMANodes();
-  size_t num_local_cores = dash::util::Locality::NumCores();
+  size_t num_numa_nodes  = uloc.num_numa();
+  size_t num_local_cores = uloc.node_domain().num_cores();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
   size_t numa_node_cores = num_local_cores / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
@@ -268,6 +270,8 @@ measurement copy_block_to_local(
   result.time_copy_max_us   = 0;
   result.mb_per_s           = 0;
 
+  dash::util::UnitLocality uloc;
+
   auto    myid              = dash::myid();
   // Index of block to copy. Use block of succeeding neighbor
   // which is expected to be in same NUMA domain for unit 0:
@@ -279,7 +283,7 @@ measurement copy_block_to_local(
   index_t copy_end_idx      = copy_start_idx + block_size;
   auto    block_unit_id     = pattern.unit_at(copy_start_idx);
   // Size of shared cache on highest locality level, in bytes:
-  size_t  cache_size        = dash::util::Locality::CacheSizes().back();
+  size_t  cache_size        = uloc.cache_line_size(2);
   // Alignment:
   size_t  align_size        = 128;
   // Ensure cache_size is multiple of alignment:

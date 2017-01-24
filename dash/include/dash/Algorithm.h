@@ -3,6 +3,12 @@
 
 /**
  * \defgroup  DashAlgorithms  Algorithms operating on DASH containers
+ *
+ * \par Description
+ *
+ * DASH algorithms library defines functions for a variety of purposes 
+ * (e.g. searching, sorting, counting, manipulating) that operate on DASH containers.
+ *
  */
 
 #include <dash/algorithm/Operation.h>

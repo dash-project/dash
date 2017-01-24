@@ -452,7 +452,7 @@ public:
    * Convert the given coordinates to their respective linear index.
    *
    * \param  args  An argument list consisting of the coordinates, ordered
-   *               by dimension (x, y, z, ...)
+   *               by, dimension (x, y, z, ...)
    */
   template<
     typename... Args,
@@ -583,7 +583,6 @@ public:
         index  = index % offset[i];
       }
     }
-
     return pos;
   }
 

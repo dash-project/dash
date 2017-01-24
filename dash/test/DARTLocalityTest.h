@@ -1,6 +1,8 @@
 #ifndef DASH__TEST__DART_LOCALITY_TEST_H_
 #define DASH__TEST__DART_LOCALITY_TEST_H_
 
+#include "TestBase.h"
+
 #include <gtest/gtest.h>
 #include <libdash.h>
 
@@ -23,16 +25,18 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
+    LOG_MESSAGE("===> Running test case with %ld units ...",
                 _dash_size);
   }
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units",
+    LOG_MESSAGE("<=== Finished test case with %ld units",
                 _dash_size);
+    dash::finalize();
   }
 };
 

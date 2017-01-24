@@ -71,10 +71,8 @@ public:
    * Takes ownership of the moved instance's allocation.
    */
   LocalAllocator(self_t && other) noexcept
-  : _allocated(other._allocated)
-  {
-    other._allocated.clear();
-  }
+  : _team_id(other._team_id), _allocated(std::move(other._allocated))
+  { }
 
   /**
    * Default constructor, deleted.
@@ -177,8 +175,8 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      size_type   num_local_bytes = sizeof(ElementType) * num_local_elem;
-      if (dart_memalloc(num_local_bytes, &gptr) == DART_OK) {
+      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+      if (dart_memalloc(ds.nelem, ds.dtype, &gptr) == DART_OK) {
         _allocated.push_back(gptr);
       } else {
         gptr = DART_GPTR_NULL;
@@ -229,7 +227,7 @@ private:
   }
 
 private:
-  dart_team_t          _team_id   = DART_TEAM_NULL;
+  dart_team_t          _team_id;
   std::vector<pointer> _allocated;
 
 }; // class LocalAllocator

@@ -8,7 +8,9 @@
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #endif
 
+#ifdef DASH_ENABLE_OPENMP
 #include <omp.h>
+#endif
 
 #ifndef MPI_IMPL_ID
 #define MPI_IMPL_ID unknown
@@ -83,8 +85,8 @@ typedef double  value_t;
 #else
 typedef float   value_t;
 #endif
-typedef int64_t index_t;
-typedef size_t  extent_t;
+typedef dash::default_index_t   index_t;
+typedef dash::default_extent_t  extent_t;
 
 typedef std::vector< std::pair< std::string, std::string > >
   env_flags;
@@ -179,6 +181,10 @@ int main(int argc, char* argv[])
     unsigned    repeats     = params.rep_max;
     unsigned    rep_base    = params.rep_base;
 
+#ifdef DASH_ENABLE_OPENMP
+    omp_set_num_threads(params.threads);
+#endif
+
     if (variant == "mkl") {
 #ifdef DASH_ENABLE_MKL
       // Require single unit for MKL variant:
@@ -208,7 +214,20 @@ int main(int argc, char* argv[])
       DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
 #endif
     } else {
-      omp_set_num_threads(params.threads);
+#ifdef DASH_ENABLE_MKL
+      mkl_set_dynamic(false);
+      mkl_set_num_threads(params.threads);
+      if (params.mkl_dyn ||
+          (mkl_get_max_threads() > 0 &&
+           mkl_get_max_threads() < params.threads)) {
+        // requested number of threads exceeds number of physical cores, set
+        // MKL dynamic flag and retry:
+        mkl_set_dynamic(true);
+        mkl_set_num_threads(params.threads);
+      }
+      params.threads = mkl_get_max_threads();
+      params.mkl_dyn = mkl_get_dynamic();
+#endif
     }
 
     if (variant == "plasma") {

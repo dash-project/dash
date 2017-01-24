@@ -30,7 +30,6 @@ static bool initialized = false;
 
 static pthread_key_t tpd_key;
 
-
 typedef struct {
   int           thread_id;
 } tpd_t;
@@ -251,9 +250,6 @@ dart__base__tasking__num_threads()
 dart_ret_t
 dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
 {
-  dart_unit_t myid;
-  dart_myid(&myid);
-
   // TODO: maybe use a free list?
   dart_task_t *task = malloc(sizeof(dart_task_t));
   task->data = data;
@@ -337,5 +333,3 @@ dart__base__tasking__fini()
 
   return DART_OK;
 }
-
-

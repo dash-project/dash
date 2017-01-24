@@ -42,24 +42,24 @@ TEST_F(SharedTest, SingleWriteMultiRead)
 
 TEST_F(SharedTest, SpecifyOwner)
 {
-  return;
-
   typedef int                   value_t;
   typedef dash::Shared<value_t> shared_t;
 
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST();
   }
 
-  dart_unit_t owner_a  = dash::size() < 3
+  dash::global_unit_t owner_a(dash::size() < 3
                          ? 0
-                         : dash::size() / 2;
-  dart_unit_t owner_b  = dash::size() - 1;
+                         : dash::size() / 2);
+  dash::global_unit_t owner_b(dash::size() - 1);
 
   value_t  value_a     = 1000;
   value_t  value_b     = 2000;
-  shared_t shared_at_a(owner_a);
-  shared_t shared_at_b(owner_b);
+  dash::team_unit_t l_owner_a(owner_a);
+  dash::team_unit_t l_owner_b(owner_b);
+  shared_t shared_at_a(l_owner_a);
+  shared_t shared_at_b(l_owner_b);
 
   // Initialize shared values:
   if (dash::myid() == owner_a) {
@@ -123,26 +123,38 @@ TEST_F(SharedTest, AtomicAdd)
   typedef dash::Shared<value_t> shared_t;
 
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST();
   }
 
   shared_t shared;
-  value_t  my_val = 1 + dash::myid();
+  value_t  init_val = 123;
+  value_t  my_val   = 1 + dash::myid();
 
   if (_dash_id == 0) {
-    shared.set(0);
+    shared.set(init_val);
   }
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 0");
+  shared.barrier();
 
+  EXPECT_EQ_U(init_val, static_cast<value_t>(shared.get()));
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 1");
+  shared.barrier();
+
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "sleep");
+  sleep(3);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
   shared.atomic.add(my_val);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
   shared.barrier();
 
   // Expected total is Gaussian sum:
-  value_t exp_acc = ((dash::size() + 1) * dash::size()) / 2;
+  value_t exp_acc = init_val + ((dash::size() + 1) * dash::size()) / 2;
   value_t actual  = shared.get();
 
   EXPECT_EQ_U(exp_acc, actual);
 
   // Ensure completion of test at all units before destroying shared
   // variable:
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 3");
   shared.barrier();
 }

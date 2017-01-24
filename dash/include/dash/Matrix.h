@@ -137,6 +137,8 @@ class Matrix
 {
   static_assert(std::is_trivial<ElementT>::value,
     "Element type must be trivial copyable");
+  static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
+    "Index type IndexT must be the same for Matrix and specified pattern");
 
 private:
   typedef Matrix<ElementT, NumDimensions, IndexT, PatternT>
@@ -558,8 +560,6 @@ private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
   dash::Team                 * _team = nullptr;
-  /// DART id of the unit that owns this matrix instance
-  dart_unit_t                  _myid;
   /// Capacity (total number of elements) of the matrix
   size_type                    _size;
   /// Number of local elements in the array

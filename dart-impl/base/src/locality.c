@@ -2,6 +2,14 @@
  * \file dash/dart/base/locality.c
  */
 
+#define _GNU_SOURCE
+#include <string.h>
+#include <inttypes.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sched.h>
+#include <limits.h>
+
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
@@ -19,26 +27,19 @@
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
 
-#include <inttypes.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <sched.h>
-#include <limits.h>
-
 /* ====================================================================== *
  * Private Data                                                           *
  * ====================================================================== */
 
 #define DART__BASE__LOCALITY__MAX_TEAM_DOMAINS 32
 
-dart_host_topology_t *
+static dart_host_topology_t *
 dart__base__locality__host_topology_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_unit_mapping_t *
+static dart_unit_mapping_t *
 dart__base__locality__unit_mapping_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_domain_locality_t *
+static dart_domain_locality_t *
 dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
 /* ====================================================================== *
@@ -54,13 +55,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   const dart_domain_locality_t   * domain,
   dart_locality_scope_t            scope,
   int                            * num_domains_out,
-  char                         *** domain_tags_out);
-
-dart_locality_scope_t dart__base__locality__scope_parent(
-  dart_locality_scope_t            scope);
-
-dart_locality_scope_t dart__base__locality__scope_child(
-  dart_locality_scope_t            scope);
+  dart_domain_locality_t       *** domains_out);
 
 dart_ret_t dart__base__locality__group_subdomains(
   dart_domain_locality_t         * domain,
@@ -104,6 +99,20 @@ dart_ret_t dart__base__locality__finalize()
  * \c dart__base__locality__unit_mapping_[team] with a capacity for
  * \c DART__BASE__LOCALITY__MAX_TEAM_DOMAINS teams.
  *
+ * Outline of the locality initialization procedure:
+ *
+ * 1. All units collect their local hardware locality information
+ *    -> dart_hwinfo_t
+ *
+ * 2. All-to-all exchange of hardware locality data
+ *    -> dart_unit_mapping_t { unit, team, hwinfo, domain }
+ *
+ * 3. Construct host topology from unit mapping data
+ *    -> dart_host_topology_t
+ *
+ * 4. Initialize locality domain hierarchy from unit mapping data and
+ *    host topology
+ *    -> dart_domain_locality_t
  */
 dart_ret_t dart__base__locality__create(
   dart_team_t team)
@@ -115,12 +124,11 @@ dart_ret_t dart__base__locality__create(
    *       assertion.
    */
   DART_ASSERT_MSG(
-    NULL == dart__base__locality__unit_mapping_[team],
+    (NULL == dart__base__locality__unit_mapping_[team]  &&
+     NULL == dart__base__locality__global_domain_[team] &&
+     NULL == dart__base__locality__host_topology_[team]),
     "dash__base__locality__create(): "
     "locality data of team is already initialized");
-
-  dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
-  DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
 
   dart_domain_locality_t * team_global_domain =
     malloc(sizeof(dart_domain_locality_t));
@@ -137,7 +145,6 @@ dart_ret_t dart__base__locality__create(
   team_global_domain->parent         = NULL;
   team_global_domain->num_domains    = 0;
   team_global_domain->domains        = NULL;
-  team_global_domain->hwinfo         = *hwinfo;
   team_global_domain->num_units      = 0;
   team_global_domain->host[0]        = '\0';
   team_global_domain->domain_tag[0]  = '.';
@@ -146,11 +153,12 @@ dart_ret_t dart__base__locality__create(
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
   team_global_domain->num_units = num_units;
-
-  team_global_domain->unit_ids =
-    malloc(num_units * sizeof(dart_unit_t));
+  team_global_domain->unit_ids  = malloc(num_units * sizeof(dart_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
-    team_global_domain->unit_ids[u] = u;
+    dart_team_unit_t luid = { u };
+    DART_ASSERT_RETURNS(
+      dart_team_unit_l2g(team, luid, &team_global_domain->unit_ids[u]),
+      DART_OK);
   }
 
   /* Exchange unit locality information between all units:
@@ -161,41 +169,27 @@ dart_ret_t dart__base__locality__create(
     DART_OK);
   dart__base__locality__unit_mapping_[team] = unit_mapping;
 
-  /* Copy host names of all units into array:
-   */
-  const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
-  DART_LOG_TRACE("dart__base__locality__create: copying host names");
-  char ** hosts = malloc(sizeof(char *) * num_units);
-  for (size_t u = 0; u < num_units; ++u) {
-    hosts[u] = malloc(sizeof(char) * max_host_len);
-    dart_unit_locality_t * ul;
-    DART_ASSERT_RETURNS(
-      dart__base__unit_locality__at(unit_mapping, u, &ul),
-      DART_OK);
-    strncpy(hosts[u], ul->host, max_host_len);
-  }
-
   /* Resolve host topology from the unit's host names:
    */
-  dart_host_topology_t * topo = malloc(sizeof(dart_host_topology_t));
+  dart_host_topology_t * topo;
   DART_ASSERT_RETURNS(
-    dart__base__host_topology__create(
-      hosts, team, unit_mapping, topo),
+    dart__base__host_topology__create(unit_mapping, &topo),
     DART_OK);
   dart__base__locality__host_topology_[team] = topo;
   size_t num_nodes = topo->num_nodes;
-  DART_LOG_TRACE("dart__base__locality__create: nodes: %d", num_nodes);
+  DART_LOG_TRACE("dart__base__locality__create: nodes: %ld", num_nodes);
 
   team_global_domain->num_nodes = num_nodes;
 
 #ifdef DART_ENABLE_LOGGING
   for (int h = 0; h < topo->num_hosts; ++h) {
-    dart_node_units_t * node_units = &topo->node_units[h];
+    dart_host_units_t  * node_units  = &topo->host_units[h];
+    dart_host_domain_t * node_domain = &topo->host_domains[h];
     char * hostname = topo->host_names[h];
     DART_LOG_TRACE("dart__base__locality__create: "
                    "host %s: units:%d level:%d parent:%s", hostname,
-                   node_units->num_units, node_units->level,
-                   node_units->parent);
+                   node_units->num_units,
+                   node_domain->level, node_domain->parent);
     for (int u = 0; u < node_units->num_units; ++u) {
       DART_LOG_TRACE("dart__base__locality__create: %s unit[%d]: %d",
                      hostname, u, node_units->units[u]);
@@ -224,12 +218,6 @@ dart_ret_t dart__base__locality__delete(
 {
   dart_ret_t ret = DART_OK;
 
-  if (NULL == dart__base__locality__global_domain_[team] &&
-      NULL == dart__base__locality__host_topology_[team] &&
-      NULL == dart__base__locality__unit_mapping_[team]) {
-    return ret;
-  }
-
   DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (NULL != dart__base__locality__global_domain_[team]) {
@@ -240,6 +228,8 @@ dart_ret_t dart__base__locality__delete(
                      "dart__base__locality__domain_delete failed: %d", ret);
       return ret;
     }
+    DART_LOG_DEBUG("dart__base__locality__delete: "
+                   "free(dart__base__locality__global_domain_[%d])", team);
     free(dart__base__locality__global_domain_[team]);
     dart__base__locality__global_domain_[team] = NULL;
   }
@@ -252,6 +242,8 @@ dart_ret_t dart__base__locality__delete(
                      "dart__base__host_topology__destruct failed: %d", ret);
       return ret;
     }
+    DART_LOG_DEBUG("dart__base__locality__delete: "
+                   "free(dart__base__locality__host_topology_[%d])", team);
     free(dart__base__locality__host_topology_[team]);
     dart__base__locality__host_topology_[team] = NULL;
   }
@@ -264,7 +256,8 @@ dart_ret_t dart__base__locality__delete(
                      "dart__base__unit_locality__destruct failed: %d", ret);
       return ret;
     }
-    free(dart__base__locality__unit_mapping_[team]);
+    DART_LOG_DEBUG("dart__base__locality__delete: "
+                   "free(dart__base__locality__unit_mapping_[%d])", team);
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 
@@ -290,7 +283,7 @@ dart_ret_t dart__base__locality__team_domain(
   ret = dart__base__locality__domain(domain, ".", domain_out);
 
   DART_LOG_DEBUG("dart__base__locality__team_domain > "
-                 "team(%d) -> domain(%p)", team, *domain_out);
+                 "team(%d) -> domain(%p)", team, (void *)(*domain_out));
   return ret;
 }
 
@@ -303,7 +296,20 @@ dart_ret_t dart__base__locality__domain(
            domain_in, domain_tag, domain_out);
 }
 
+
 dart_ret_t dart__base__locality__scope_domains(
+  const dart_domain_locality_t   * domain_in,
+  dart_locality_scope_t            scope,
+  int                            * num_domains_out,
+  dart_domain_locality_t       *** domains_out)
+{
+  *num_domains_out = 0;
+  *domains_out     = NULL;
+  return dart__base__locality__scope_domains_rec(
+           domain_in, scope, num_domains_out, domains_out);
+}
+
+dart_ret_t dart__base__locality__scope_domain_tags(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
@@ -311,8 +317,29 @@ dart_ret_t dart__base__locality__scope_domains(
 {
   *num_domains_out = 0;
   *domain_tags_out = NULL;
-  return dart__base__locality__scope_domains_rec(
-           domain_in, scope, num_domains_out, domain_tags_out);
+
+  dart_domain_locality_t ** dart_scope_domains;
+  dart_ret_t ret = dart__base__locality__scope_domains(
+      domain_in,
+      scope,
+      num_domains_out,
+      &dart_scope_domains);
+
+  if (ret != DART_OK) {
+    free(dart_scope_domains);
+    return ret;
+  }
+
+  *domain_tags_out = (char **)(malloc(sizeof(char *) * (*num_domains_out)));
+  for (int sd = 0; sd < *num_domains_out; sd++) {
+    (*domain_tags_out)[sd] = (char *)(malloc(
+                               sizeof(char) *
+                               (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
+    strcpy((*domain_tags_out)[sd],
+           dart_scope_domains[sd]->domain_tag);
+  }
+
+  return DART_OK;
 }
 
 dart_ret_t dart__base__locality__domain_split_tags(
@@ -345,7 +372,7 @@ dart_ret_t dart__base__locality__domain_split_tags(
   int     num_domains;
   char ** domain_tags;
   DART_ASSERT_RETURNS(
-    dart__base__locality__scope_domains(
+    dart__base__locality__scope_domain_tags(
       domain_in, scope, &num_domains, &domain_tags),
     DART_OK);
 
@@ -378,7 +405,7 @@ dart_ret_t dart__base__locality__domain_split_tags(
       int tag_len = strlen(domain_tags[d_abs]);
       group_domain_tags[g][d_rel] = malloc(sizeof(char) * (tag_len + 1));
       strncpy(group_domain_tags[g][d_rel], domain_tags[d_abs],
-              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+              tag_len);
       group_domain_tags[g][d_rel][tag_len] = '\0';
     }
     /* Create domain of group: */
@@ -491,15 +518,32 @@ dart_ret_t dart__base__locality__domain_group(
     for (int sd = 0; sd < group_size; sd++) {
       /* Resolve relative index of subdomain: */
       immediate_subdomain_tags[sd] =
-        calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
-               sizeof(char));
+        calloc(DART_LOCALITY_DOMAIN_TAG_MAX_SIZE, sizeof(char));
 
+      int group_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
+
+      if (group_subdomain_tag_len <= group_parent_domain_tag_len) {
+        /* Indicates invalid parameters, usually caused by multiple units
+         * mapped to the same domain to be grouped.
+         */
+        DART_LOG_ERROR("dart__base__locality__domain_group ! "
+                       "group subdomain %s with invalid parent domain %s",
+                       group_subdomain_tags[sd], group_parent_domain_tag);
+        return DART_ERR_INVAL;
+      }
+
+      /* Position of second dot separator in tag of grouped domain after the
+       * end of the parent domain tag, for example:
+       *   parent:          .0.1
+       *   grouped domain:  .0.1.4.0
+       *   dot_pos: 6 ------------'
+       */
       char * dot_pos = strchr(group_subdomain_tags[sd] +
                               group_parent_domain_tag_len + 1, '.');
       int immediate_subdomain_tag_len;
       if (dot_pos == NULL) {
         /* subdomain is immediate child of parent: */
-        immediate_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
+        immediate_subdomain_tag_len = group_subdomain_tag_len;
       } else {
         /* subdomain is indirect child of parent: */
         immediate_subdomain_tag_len = dot_pos -
@@ -535,11 +579,6 @@ dart_ret_t dart__base__locality__domain_group(
 
     dart__base__locality__domain__init(group_domain);
 
-    /* TODO: hwinfo of group domain is not correctly initialized, and doing
-     *       so is not trivial.
-     *       Using parent domain's hwinfo as an intermediate solution.
-     */
-    group_domain->hwinfo         = group_parent_domain->hwinfo;
     group_domain->team           = group_parent_domain->team;
     group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
     group_domain->level          = group_parent_domain->level + 1;
@@ -558,8 +597,8 @@ dart_ret_t dart__base__locality__domain_group(
 
     /* TODO: Check if this implementation is correct.
              Incrementing an existing domain's relative index could result
-             in naming collisions as the relative index of the subdomain can
-             differ from the last place in their domain tag.
+             in naming collisions as the relative index of the subdomain
+             can differ from the last place in their domain tag.
     */
     int group_domain_tag_len =
       sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
@@ -660,8 +699,12 @@ dart_ret_t dart__base__locality__domain_group(
     }
 
     for (int sd = 0; sd < group_size; sd++) {
+      DART_LOG_TRACE("dart__base__locality__domain_group: "
+                     "free(immediate_subdomain_tags[%d])", sd);
       free(immediate_subdomain_tags[sd]);
     }
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "free(immediate_subdomain_tags)");
     free(immediate_subdomain_tags);
 
     if (ret != DART_OK) { return ret; }
@@ -680,7 +723,7 @@ dart_ret_t dart__base__locality__domain_group(
 
 dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
-  dart_unit_t                        unit,
+  dart_team_unit_t                   unit,
   dart_unit_locality_t            ** locality)
 {
   DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
@@ -694,13 +737,13 @@ dart_ret_t dart__base__locality__unit(
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__locality__unit(team:%d unit:%d) "
-                   "failed (%d)", team, unit, ret);
+                   "failed (%d)", team, unit.id, ret);
     return ret;
   }
   *locality = uloc;
 
   DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
-                 team, unit);
+                 team, unit.id);
   return DART_OK;
 }
 
@@ -813,8 +856,12 @@ dart_ret_t dart__base__locality__group_subdomains(
   }
 
   for (int sdt = 0; sdt < num_group_subdomain_tags; ++sdt) {
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "free(group_subdomain_tags[%d])", sdt);
     free(group_subdomain_tags_sorted[sdt]);
   }
+  DART_LOG_TRACE("dart__base__locality__domain_group: "
+                 "free(group_subdomain_tags_sorted)");
   free(group_subdomain_tags_sorted);
 
   /* Check that all subdomains have been found: */
@@ -927,16 +974,16 @@ dart_ret_t dart__base__locality__group_subdomains(
     dart_domain_locality_t * subdom = domain->domains + sd;
     DART_LOG_TRACE(
       "dart__base__locality__group_subdomains: --> domains[%d:%d]: "
-      "tag: %s scope: %d subdomains: %d ADDR[%p]",
+      "tag:'%s' scope:%d subdomains:%d ADDR[%p]",
       sd, subdom->relative_index, subdom->domain_tag,
-      subdom->scope, subdom->num_domains, subdom);
+      subdom->scope, subdom->num_domains, (void *)subdom);
     if (subdom->scope == DART_LOCALITY_SCOPE_GROUP) {
       for (int gsd = 0; gsd < subdom->num_domains; gsd++) {
         dart_domain_locality_t * group_subdom = &(subdom->domains[gsd]);
         dart__unused(group_subdom);
         DART_LOG_TRACE(
           "dart__base__locality__group_subdomains: -->   groups[%d:%d]."
-          "domains[%d]: tag: %s scope: %d subdomains: %d",
+          "domains[%d]: tag:'%s' scope: %d subdomains:%d",
           g_idx, group_subdom->relative_index, gsd,
           group_subdom->domain_tag,
           group_subdom->scope, group_subdom->num_domains);
@@ -946,7 +993,12 @@ dart_ret_t dart__base__locality__group_subdomains(
   }
 #endif
 
+  DART_LOG_TRACE("dart__base__locality__domain_group: "
+                 "free(grouped_domains)");
   free(grouped_domains);
+
+  DART_LOG_TRACE("dart__base__locality__domain_group: "
+                 "free(ungrouped_domains)");
   free(ungrouped_domains);
 
   DART_LOG_TRACE("dart__base__locality__group_subdomains >");
@@ -957,27 +1009,27 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   const dart_domain_locality_t     * domain,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
-  char                           *** domain_tags_out)
+  dart_domain_locality_t         *** domains_out)
 {
   dart_ret_t ret;
   DART_LOG_TRACE("dart__base__locality__scope_domains() level %d",
                  domain->level);
 
   if (domain->scope == scope) {
-    DART_LOG_TRACE("dart__base__locality__scope_domains domain %s matched",
+    DART_LOG_TRACE("dart__base__locality__scope_domains: domain %s matched",
                    domain->domain_tag);
     int     dom_idx           = *num_domains_out;
     *num_domains_out         += 1;
-    char ** domain_tags_temp  = (char **)(
-                                  realloc(*domain_tags_out,
-                                            sizeof(char *) *
-                                            (*num_domains_out)));
-    if (domain_tags_temp != NULL) {
-      int domain_tag_size         = strlen(domain->domain_tag) + 1;
-      *domain_tags_out            = domain_tags_temp;
-      (*domain_tags_out)[dom_idx] = malloc(sizeof(char) * domain_tag_size);
-      strncpy((*domain_tags_out)[dom_idx], domain->domain_tag,
-              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+    dart_domain_locality_t ** domains_temp =
+      (dart_domain_locality_t **)(realloc(*domains_out,
+                                         sizeof(dart_domain_locality_t *) *
+                                         (*num_domains_out)));
+    if (domains_temp != NULL) {
+      *domains_out            = domains_temp;
+      (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
+      DART_LOG_TRACE("dart__base__locality__scope_domains: "
+                     "domain %d: %s",
+                     dom_idx, (*domains_out)[dom_idx]);
     } else {
       DART_LOG_ERROR("dart__base__locality__scope_domains ! "
                      "realloc failed");
@@ -989,14 +1041,14 @@ dart_ret_t dart__base__locality__scope_domains_rec(
               &domain->domains[d],
               scope,
               num_domains_out,
-              domain_tags_out);
+              domains_out);
       if (ret != DART_OK) {
         return ret;
       }
     }
   }
   if (*num_domains_out <= 0) {
-    DART_LOG_ERROR("dart__base__locality__scope_domains ! "
+    DART_LOG_DEBUG("dart__base__locality__scope_domains ! "
                    "no domains found");
     return DART_ERR_NOTFOUND;
   }
@@ -1004,26 +1056,3 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   return DART_OK;
 }
 
-dart_locality_scope_t dart__base__locality__scope_parent(
-  dart_locality_scope_t scope)
-{
-  switch (scope) {
-    case DART_LOCALITY_SCOPE_GLOBAL: return DART_LOCALITY_SCOPE_NODE;
-    case DART_LOCALITY_SCOPE_NODE:   return DART_LOCALITY_SCOPE_MODULE;
-    case DART_LOCALITY_SCOPE_MODULE: return DART_LOCALITY_SCOPE_NUMA;
-    case DART_LOCALITY_SCOPE_NUMA:   return DART_LOCALITY_SCOPE_CORE;
-    default:                         return DART_LOCALITY_SCOPE_UNDEFINED;
-  }
-}
-
-dart_locality_scope_t dart__base__locality__scope_child(
-  dart_locality_scope_t scope)
-{
-  switch (scope) {
-    case DART_LOCALITY_SCOPE_CORE:   return DART_LOCALITY_SCOPE_NUMA;
-    case DART_LOCALITY_SCOPE_NUMA:   return DART_LOCALITY_SCOPE_MODULE;
-    case DART_LOCALITY_SCOPE_MODULE: return DART_LOCALITY_SCOPE_NODE;
-    case DART_LOCALITY_SCOPE_NODE:   return DART_LOCALITY_SCOPE_GLOBAL;
-    default:                         return DART_LOCALITY_SCOPE_UNDEFINED;
-  }
-}

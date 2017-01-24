@@ -9,8 +9,8 @@
  */
 class CopyTest : public ::testing::Test {
 protected:
-  dart_unit_t _dash_id;
-  size_t      _dash_size;
+  dash::global_unit_t _dash_id;
+  size_t              _dash_size;
 
   CopyTest()
   : _dash_id(0),
@@ -23,6 +23,7 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
     _dash_id   = dash::myid();
     _dash_size = dash::size();
     LOG_MESSAGE("===> Running test case with %d units ...",
@@ -33,6 +34,7 @@ protected:
     dash::Team::All().barrier();
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
+    dash::finalize();
   }
 };
 

@@ -80,16 +80,17 @@ int main(int argc, char * argv[])
 
   std::deque<std::pair<int, int>> tests;
 
-  tests.push_back({0          , 0}); // this prints the header
+  tests.push_back({0          ,      0}); // this prints the header
   tests.push_back({4          , 100000});
-  tests.push_back({16         , 10000});
-  tests.push_back({64         , 10000});
-  tests.push_back({256        , 10000});
-  tests.push_back({1024       , 1000});
-  tests.push_back({4096       , 1000});
-  tests.push_back({4 * 4096     , 100});
-  tests.push_back({16 * 4096    , 100});
-  tests.push_back({64 * 4096    , 50});
+  tests.push_back({16         ,  10000});
+  tests.push_back({64         ,  10000});
+  tests.push_back({256        ,  10000});
+  tests.push_back({1024       ,   1000});
+  tests.push_back({4096       ,   1000});
+  tests.push_back({4 * 4096   ,    100});
+  tests.push_back({16 * 4096  ,    100});
+  tests.push_back({64 * 4096  ,     50});
+  tests.push_back({128 * 4096 ,     20});
 
   for (auto test : tests) {
     perform_test(test.first, test.second);
@@ -252,7 +253,7 @@ double test_dash_pattern(
       auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
-      if (unit_id == dash::myid()) {
+      if (unit_id == pattern.team().myid()) {
         ++loc[l_index];
       }
     }
@@ -446,11 +447,11 @@ double test_raw_array(
   }
   auto time_elapsed = timer.Elapsed();
 
-  delete[] arr;
-
   validate(
     arr, arr + ELEM_PER_UNIT,
     ELEM_PER_UNIT, REPEAT);
+
+  delete[] arr;
   return time_elapsed;
 }
 

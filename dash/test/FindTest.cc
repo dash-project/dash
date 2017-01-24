@@ -6,7 +6,7 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 0
+
 TEST_F(FindTest, TestSimpleFind)
 {
   _num_elem           = dash::Team::All().size();
@@ -44,9 +44,11 @@ TEST_F(FindTest, TestSimpleFind)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
-#if 1
+#if 0
 TEST_F(FindTest, SimpleVaryingTest)
 {
   typedef long Element_t;
@@ -92,6 +94,8 @@ TEST_F(FindTest, SimpleVaryingTest)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 #endif
 
@@ -121,7 +125,9 @@ TEST_F(FindTest, AllElementsEqualNoneMatches)
   // Check that the element find_me has not been found (found == last):
   LOG_MESSAGE("Completed dash::find");
 
-  ASSERT_EQ(found_gptr, array.end());
+  EXPECT_EQ(found_gptr, array.end());
+
+  array.barrier();
 }
 
 TEST_F(FindTest, AllElementsEqualAllMatch)
@@ -168,7 +174,7 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
   Element_t find_me	          = 1;
   index_t   find_pos          = 5;
   Element_t init_fill         = 0;
-  dart_unit_t unit_cntng_find = dash::Team::All().size() % 2;
+  dash::global_unit_t unit_cntng_find(dash::Team::All().size() % 2);
 
   dash::Array<Element_t> array;
 
@@ -200,6 +206,8 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
 /*
@@ -242,17 +250,16 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
-#if 0
-TEST_F(FindTest, Empty_Container)
+TEST_F(FindTest, EmptyContainer)
 {
   Element_t find_me = 1;
 
   dash::Array<Element_t> array;
-
   array.allocate(0, dash::BLOCKED);
-  array.barrier();
 
   // Run find on complete array
   auto found_gptr = dash::find(array.begin(), array.end(), find_me);
@@ -262,7 +269,6 @@ TEST_F(FindTest, Empty_Container)
   // Run find on complete array
   EXPECT_EQ(array.end(), found_gptr);
 }
-#endif
 
 TEST_F(FindTest, LessElementsThanUnits)
 {
@@ -309,5 +315,7 @@ TEST_F(FindTest, LessElementsThanUnits)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
-#endif
+

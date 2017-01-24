@@ -64,29 +64,19 @@ public:
    * Constructor.
    * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
-  CollectiveAllocator(
-    Team & team = dash::Team::Null()) noexcept
+  explicit CollectiveAllocator(
+    Team & team = dash::Team::All()) noexcept
   : _team_id(team.dart_id())
-  {
-    // Cannot use DASH_ASSERT due to noexcept qualifier:
-    assert(dart_team_size(_team_id, &_nunits) == DART_OK);
-  }
+  { }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
   CollectiveAllocator(self_t && other) noexcept
-  : _allocated(other._allocated)
-  {
-    other._allocated.clear();
-  }
-
-  /**
-   * Default constructor, deleted.
-   */
-  CollectiveAllocator() noexcept
-    = delete;
+  : _team_id(other._team_id),
+    _allocated(std::move(other._allocated))
+  { }
 
   /**
    * Copy constructor.
@@ -94,8 +84,7 @@ public:
    * \see DashAllocatorConcept
    */
   CollectiveAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -104,8 +93,7 @@ public:
    */
   template<class U>
   CollectiveAllocator(const CollectiveAllocator<U> & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -134,9 +122,10 @@ public:
   self_t & operator=(const self_t && other) noexcept
   {
     // Take ownership of other instance's allocation vector:
-    clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    if (this != &other) {
+      std::swap(_allocated, other._allocated);
+      _team_id = other._team_id;
+    }
     return *this;
   }
 
@@ -177,6 +166,9 @@ public:
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
    *
+   * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL
+   *          if \c num_local_elem is 0 or less.
+   *
    * \see DashAllocatorConcept
    */
   pointer allocate(size_type num_local_elem)
@@ -185,9 +177,9 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-      if (dart_team_memalloc_aligned(
-            _team_id, num_local_bytes, &gptr) == DART_OK) {
+      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+      if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+          == DART_OK) {
         _allocated.push_back(gptr);
       } else {
         gptr = DART_GPTR_NULL;
@@ -213,12 +205,20 @@ public:
                      "DASH not initialized, abort");
       return;
     }
+
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
 private:
@@ -236,8 +236,7 @@ private:
   }
 
 private:
-  dart_team_t          _team_id   = DART_TEAM_NULL;
-  size_t               _nunits    = 0;
+  dart_team_t          _team_id;
   std::vector<pointer> _allocated;
 
 }; // class CollectiveAllocator
@@ -248,8 +247,7 @@ bool operator==(
   const CollectiveAllocator<U> & rhs)
 {
   return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id &&
-          lhs._nunits  == rhs._nunits );
+          lhs._team_id == rhs._team_id );
 }
 
 template <class T, class U>

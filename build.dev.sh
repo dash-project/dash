@@ -62,6 +62,7 @@ rm -Rf $BUILD_DIR/*
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_ASSERTIONS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_COMPILER_WARNINGS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
@@ -77,13 +78,13 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
                         -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=OFF \
+                        -DENABLE_BLAS=ON \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=OFF \
                         \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=OFF \
                         \

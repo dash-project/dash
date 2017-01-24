@@ -9,13 +9,6 @@
  */
 class FillTest : public ::testing::Test {
 protected:
-  typedef double                  Element_t;
-  typedef dash::Array<Element_t>  Array_t;
-  typedef typename Array_t::pattern_type::index_type
-    index_t;
-
-  /// Using a prime to cause inconvenient strides
-  size_t _num_elem      = 251;
 
   FillTest() {
   }
@@ -24,9 +17,11 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
   }
 
   virtual void TearDown() {
+    dash::finalize();
   }
 };
 #endif // DASH__TEST__FILL_TEST_H_

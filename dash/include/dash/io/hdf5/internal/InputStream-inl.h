@@ -1,9 +1,9 @@
-#ifndef DASH__IO__HDF5__INTERNAL__HDF5_INPUT_STREAM_INL_H__INCLUDED
-#define DASH__IO__HDF5__INTERNAL__HDF5_INPUT_STREAM_INL_H__INCLUDED
+#ifndef DASH__IO__HDF5__INTERNAL__INPUT_STREAM_INL_H__INCLUDED
+#define DASH__IO__HDF5__INTERNAL__INPUT_STREAM_INL_H__INCLUDED
 
 
-#include <dash/io/hdf5/HDF5InputStream.h>
-#include <dash/io/hdf5/StoreHDF.h>
+#include <dash/io/hdf5/InputStream.h>
+#include <dash/io/hdf5/StorageDriver.h>
 
 #include <dash/Matrix.h>
 #include <dash/Array.h>
@@ -18,8 +18,8 @@ template <
     typename value_t,
     typename index_t,
     class    pattern_t >
-inline HDF5InputStream & operator>> (
-    HDF5InputStream          & is,
+inline InputStream & operator>> (
+    InputStream          & is,
     dash::Array< value_t,
                  index_t,
                  pattern_t > & array) {
@@ -38,8 +38,8 @@ template <
     dim_t    ndim,
     typename index_t,
     class    pattern_t >
-inline HDF5InputStream & operator>> (
-    HDF5InputStream           & is,
+inline InputStream & operator>> (
+    InputStream           & is,
     dash::Matrix< value_t,
                   ndim,
                   index_t,
@@ -57,4 +57,4 @@ inline HDF5InputStream & operator>> (
 } // namespace io
 } // namespace dash
 
-#endif // DASH__IO__HDF5__INTERNAL__HDF5_INPUT_STREAM_INL_H__INCLUDED
+#endif // DASH__IO__HDF5__INTERNAL__INPUT_STREAM_INL_H__INCLUDED

@@ -61,9 +61,9 @@ int test_union( dart_group_t *g1,
   int mem4[10] = {0,1,2,5,6,7,11,22,33};
   int nmemb;
 
-  CHECK(dart_group_init(g1));
-  CHECK(dart_group_init(g2));
-  CHECK(dart_group_init(g3));
+  CHECK(dart_group_create(g1));
+  CHECK(dart_group_create(g2));
+  CHECK(dart_group_create(g3));
 
   for(i=0; i<5; i++) {
     CHECK(dart_group_addmember(g1, mem1[i]));
@@ -83,9 +83,9 @@ int test_union( dart_group_t *g1,
     if( mem3[i]!=mem4[i] ) pass=0;
   } 
 
-  CHECK(dart_group_fini(g1));
-  CHECK(dart_group_fini(g2));
-  CHECK(dart_group_fini(g3));
+  CHECK(dart_group_destroy(g1));
+  CHECK(dart_group_destroy(g2));
+  CHECK(dart_group_destroy(g3));
   
   return pass;
 }
@@ -102,9 +102,9 @@ int test_intersect( dart_group_t *g1,
   int mem4[10] = {5};
   int nmemb;
 
-  CHECK(dart_group_init(g1));
-  CHECK(dart_group_init(g2));
-  CHECK(dart_group_init(g3));
+  CHECK(dart_group_create(g1));
+  CHECK(dart_group_create(g2));
+  CHECK(dart_group_create(g3));
 
   for(i=0; i<5; i++) {
     CHECK(dart_group_addmember(g1, mem1[i]));
@@ -124,9 +124,9 @@ int test_intersect( dart_group_t *g1,
     if( mem3[i]!=mem4[i] ) pass=0;
   } 
 
-  CHECK(dart_group_fini(g1));
-  CHECK(dart_group_fini(g2));
-  CHECK(dart_group_fini(g3));
+  CHECK(dart_group_destroy(g1));
+  CHECK(dart_group_destroy(g2));
+  CHECK(dart_group_destroy(g3));
 
   return pass;
 }

@@ -192,7 +192,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
     if (!_is_local) {
-      dart_get(static_cast<void *>(&_value), _gptr, sizeof(T));
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_get(static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype);
     }
     return _value;
   }
@@ -223,8 +224,9 @@ public:
       if (_is_local) {
         *_lptr = _value;
       } else {
+        dart_storage_t ds = dash::dart_storage<T>(1);
         dart_put_blocking(
-          _gptr, static_cast<const void *>(&_value), sizeof(T));
+          _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype);
       }
     }
     return *this;

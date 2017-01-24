@@ -2,7 +2,6 @@
 #define DASH__UTIL__LOCALITY_DOMAIN_H__INCLUDED
 
 #include <dash/util/Locality.h>
-#include <dash/util/UnitLocality.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -32,6 +31,13 @@ namespace util {
  * dash::util::TeamLocality     team_locality(dash::Team::All());
  * dash::util::LocalityDomain & domain = team_locality.domain();
  *
+ * // Leader unit in second subdomain:
+ * dart_unit_t leader_id = domain[1].leader_unit();
+ *
+ * // Unit locality data of leader unit:
+ * dash::util::UnitLocality & leader_loc = domain[1].unit_locality(leader_id);
+ * auto leader_ncores = leader_loc.num_cores();
+ *
  * domain.split_groups(dash::util::Locality::Scope::Module);
  *
  * for (auto part : domain.groups()) {
@@ -44,7 +50,6 @@ class LocalityDomain
 private:
   typedef LocalityDomain                           self_t;
   typedef dash::util::Locality::Scope             Scope_t;
-  typedef dash::util::UnitLocality         UnitLocality_t;
 
 private:
   /**
@@ -141,10 +146,7 @@ private:
 
 public:
 
-  inline LocalityDomain()
-  : _domain(nullptr),
-    _subdomains(nullptr)
-  { }
+  LocalityDomain();
 
   explicit LocalityDomain(
     const dart_domain_locality_t & domain);
@@ -261,6 +263,25 @@ public:
     return _parts;
   }
 
+  inline std::vector<self_t> scope_domains(
+    dash::util::Locality::Scope scope) const
+  {
+    std::vector<self_t>       scope_domains;
+    int                       num_scope_domains;
+    dart_domain_locality_t ** dart_scope_domains;
+    dart_domain_scope_domains(
+      _domain,
+      static_cast<dart_locality_scope_t>(scope),
+      &num_scope_domains,
+      &dart_scope_domains);
+    for (int sd = 0; sd < num_scope_domains; sd++) {
+      scope_domains.push_back(self_t((*dart_scope_domains)[sd]));
+    }
+    free(dart_scope_domains);
+    return scope_domains;
+  }
+
+#if 0
   inline const UnitLocality_t & unit_locality(
       dart_unit_t unit) const
   {
@@ -278,6 +299,7 @@ public:
     }
     return _parent->unit_locality(unit);
   }
+#endif
 
   inline dart_team_t dart_team() const
   {
@@ -302,6 +324,12 @@ public:
   {
     DASH_ASSERT(_domain != nullptr);
     return _domain->host;
+  }
+
+  inline int shared_mem_bytes() const
+  {
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->shared_mem_bytes;
   }
 
   inline iterator begin()
@@ -331,26 +359,29 @@ public:
            : _domain->num_domains;
   }
 
-  inline const std::vector<dart_unit_t> & units() const
+  inline const std::vector<global_unit_t> & units() const
   {
     return _unit_ids;
   }
 
-  inline std::vector<dart_unit_t> & units()
+  inline std::vector<global_unit_t> & units()
   {
     return _unit_ids;
   }
 
-  inline const dart_hwinfo_t & hwinfo() const
+  /**
+   * ID of leader unit in the locality domain.
+   */
+  inline global_unit_t leader_unit() const
   {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->hwinfo;
-  }
+    // TODO: Optimize
 
-  inline dart_hwinfo_t & hwinfo()
-  {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->hwinfo;
+    // Unit 0 is default leader if contained in the domain:
+    if (std::find(_unit_ids.begin(), _unit_ids.end(), global_unit_t(0))
+        != _unit_ids.end()) {
+      return global_unit_t(0);
+    }
+    return _unit_ids.front();
   }
 
   inline int level() const
@@ -375,9 +406,19 @@ public:
     return (nullptr == _domain ? -1 : _domain->num_nodes);
   }
 
+  inline int num_cores() const
+  {
+    return (nullptr == _domain ? -1 : _domain->num_cores);
+  }
+
+  inline int global_index() const
+  {
+    return (nullptr == _domain ? -1 : _domain->global_index);
+  }
+
   inline int relative_index() const
   {
-    return (nullptr == _domain ? -1 : _domain->relative_index);
+    return (nullptr == _domain ? -1 : _domain->num_cores);
   }
 
 private:
@@ -395,8 +436,6 @@ private:
   }
 
 private:
-  /// Parent locality domain.
-  mutable self_t                                  * _parent    = nullptr;
   /// Underlying \c dart_domain_locality_t object.
   dart_domain_locality_t                          * _domain    = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.
@@ -406,10 +445,12 @@ private:
   /// cycle.
   mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
   /// Units in the domain.
-  std::vector<dart_unit_t>                          _unit_ids;
+  std::vector<global_unit_t>                        _unit_ids;
+#if 0
   /// Locality descriptors of units in the domain. Only specified in root
   /// locality domain and resolved from parent in upward recursion otherwise.
   std::unordered_map<dart_unit_t, UnitLocality_t>   _unit_localities;
+#endif
   /// Iterator to the first subdomain.
   iterator                                          _begin;
   /// Iterator past the last subdomain.

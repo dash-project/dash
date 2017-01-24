@@ -57,14 +57,23 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class PatternT>
+  template<typename PatternT>
   GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<T, PatternT> & gptr)
-  : _gptr(gptr.dart_gptr())
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(GlobPtr<T>)", gptr);
-  }
+  : GlobRef(gptr.dart_gptr())
+  { }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
+   */
+  template<typename PatternT>
+  GlobRef(
+    /// Pointer to referenced object in global memory
+    const GlobPtr<T, PatternT> & gptr)
+  : GlobRef(gptr.dart_gptr())
+  { }
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -121,7 +130,7 @@ public:
 
   inline bool operator!=(const T & value) const
   {
-    return !(*this != value);
+    return !(*this == value);
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
@@ -134,7 +143,8 @@ public:
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     T t;
-    dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     return t;
   }
 
@@ -142,32 +152,37 @@ public:
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     T t;
-    dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     return t;
   }
 
   void get(T *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_get_blocking(static_cast<void *>(tptr), _gptr, sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
   }
 
   void get(T& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_get_blocking(static_cast<void *>(&tref), _gptr, sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype);
   }
 
   void put(T& tref) const {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_put_blocking(_gptr, static_cast<void *>(&tref), sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_put_blocking(_gptr, static_cast<void *>(&tref), ds.nelem, ds.dtype);
   }
 
   void put(T* tptr) const {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_put_blocking(_gptr, static_cast<void *>(tptr), sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_put_blocking(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
   }
 
   operator GlobPtr<T>() const {
@@ -181,7 +196,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dart_put_blocking(_gptr, static_cast<const void *>(&val), sizeof(T));
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
     return *this;
   }
 

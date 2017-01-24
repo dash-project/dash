@@ -13,6 +13,8 @@
 
 #include <dash/dart/if/dart_communication.h>
 
+#include <iterator>
+
 #ifdef DASH_ENABLE_OPENMP
 #include <omp.h>
 #endif
@@ -34,7 +36,7 @@ inline dart_ret_t accumulate_blocking_impl(
 {
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<char *>(values),
+                        reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op,
@@ -56,7 +58,7 @@ dart_ret_t accumulate_impl(
 {
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<char *>(values),
+                        reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op,
@@ -136,8 +138,8 @@ OutputIt transform(
  * \see      dash::accumulate
  * \see      DashReduceOperations
  *
- * \tparam   InputIt         Iterator on first (typically local) input range
- * \tparam   GlobInputIt     Iterator on second (typically global) input range
+ * \tparam   InputIt         Iterator on first (local) input range
+ * \tparam   GlobInputIt     Iterator on second (global) input range
  * \tparam   GlobOutputIt    Iterator on global result range
  * \tparam   BinaryOperation Reduce operation type
  *
@@ -145,21 +147,31 @@ OutputIt transform(
  */
 template<
   typename ValueType,
-  class InputAIt,
-  class InputBIt,
-  class OutputIt,
+  class InputIt,
+  class GlobInputIt,
+  class GlobOutputIt,
   class BinaryOperation >
-OutputIt transform(
-  InputAIt        in_a_first,
-  InputAIt        in_a_last,
-  InputBIt        in_b_first,
-  OutputIt        out_first,
+GlobOutputIt transform(
+  /// Iterator on begin of first local range
+  InputIt        in_a_first,
+  /// Iterator after last element of local range
+  InputIt        in_a_last,
+  /// Iterator on begin of second local range
+  GlobInputIt    in_b_first,
+  /// Iterator on first element of global output range 
+  GlobOutputIt   out_first,
   BinaryOperation binary_op);
 
 /**
- * Transform operation on ranges with identical distribution and start offset.
+ * Transform operation on ranges with identical distribution and start
+ * offset.
  * In this case, no communication is needed as all output values can be
  * obtained from input values in local memory:
+ *
+ * \note
+ * This function does not execute the transformation as atomic operation
+ * on elements. Use \c dash::transform if concurrent access to elements is
+ * possible.
  *
  * <pre>
  *   input a: [ u0 | u1 | u2 | ... ]
@@ -212,7 +224,8 @@ OutputIt transform_local(
   ValueType * lbegin_out = dash::local(out_first  + g_offset_first);
   // Generate output values:
 #ifdef DASH_ENABLE_OPENMP
-  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+  dash::util::UnitLocality uloc;
+  auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::transform_local", "thread capacity:",  n_threads);
   if (n_threads > 1) {
     auto l_size = lend_a - lbegin_a;
@@ -235,6 +248,10 @@ OutputIt transform_local(
   return out_first + num_gvalues;
 }
 
+/**
+ * Local lhs input ranges on global output range.
+ *
+ */
 template<
   typename ValueType,
   class InputIt,
@@ -250,7 +267,23 @@ GlobOutputIt transform(
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
   // Outut range different from rhs input range is not supported yet
-  DASH_ASSERT(in_b_first == out_first);
+  auto in_first = in_a_first;
+  auto in_last  = in_a_last;
+  std::vector<ValueType> in_range;
+  if (in_b_first == out_first) {
+    // Output range is rhs input range: C += A
+    // Input is (in_a_first, in_a_last).
+  } else {
+    // Output range different from rhs input range: C = A+B
+    // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
+    std::transform(
+      in_a_first, in_a_last,
+      in_b_first,
+      std::back_inserter(in_range),
+      binary_op);
+    in_first = in_range.data();
+    in_last  = in_first + in_range.size();
+  }
 
   dash::util::Trace trace("transform");
 
@@ -258,14 +291,14 @@ GlobOutputIt transform(
   dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
   // Number of elements in local range:
-  size_t num_local_elements     = std::distance(in_a_first, in_a_last);
+  size_t num_local_elements     = std::distance(in_first, in_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
   trace.enter_state("accumulate_blocking");
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
-      in_a_first,
+      in_first,
       num_local_elements,
       binary_op.dart_operation(),
       team.dart_id());
@@ -305,8 +338,24 @@ GlobOutputIt transform(
   BinaryOperation                  binary_op = dash::plus<ValueType>())
 {
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
-  // Output range different from rhs input range is not supported yet
-  DASH_ASSERT(in_b_first == out_first);
+  auto in_first = in_a_first;
+  auto in_last  = in_a_last;
+  // dash::Array<ValueType> in_range;
+  if (in_b_first == out_first) {
+    // Output range is rhs input range: C += A
+    // Input is (in_a_first, in_a_last).
+  } else {
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "dash::transform is only implemented for out = op(in,out)");
+    // Output range different from rhs input range: C = A+B
+    // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
+
+    // TODO:
+    // in_range.allocate(...);
+    // in_first = in_range.begin();
+    // in_last  = in_range.end();
+  }
 
   dash::util::Trace trace("transform");
 
@@ -314,6 +363,8 @@ GlobOutputIt transform(
   auto pattern_in_a = in_a_first.pattern();
   auto pattern_in_b = in_b_first.pattern();
   auto pattern_out  = out_first.pattern();
+
+#if __NON_ATOMIC__
   // Fast path: check if transform operation is local-only:
   if (pattern_in_a == pattern_in_b &&
       pattern_in_a == pattern_out) {
@@ -332,6 +383,7 @@ GlobOutputIt transform(
       return out_last;
     }
   }
+#endif
   // Resolve teams from global iterators:
   dash::Team & team_in_a        = pattern_in_a.team();
   DASH_ASSERT_MSG(

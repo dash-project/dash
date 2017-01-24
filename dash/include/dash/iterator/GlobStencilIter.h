@@ -217,7 +217,7 @@ public:
     _idx(0),
     _view_idx_offset(0),
     _max_idx(0),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(nullptr)
   {
     DASH_LOG_TRACE_VAR("GlobStencilIter()", _idx);
@@ -241,7 +241,7 @@ public:
     _idx(position),
     _view_idx_offset(view_index_offset),
     _max_idx(viewspec.size() - 1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _halospec(halospec)
   {
@@ -268,7 +268,7 @@ public:
     _idx(position),
     _view_idx_offset(view_index_offset),
     _max_idx(pat.size() - 1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _halospec(halospec)
   {
@@ -1041,6 +1041,11 @@ public:
   inline const PatternType & pattern() const
   {
     return *_pattern;
+  }
+
+  inline dash::Team & team() const
+  {
+    return _pattern->team();
   }
 
 private:

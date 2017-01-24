@@ -214,6 +214,7 @@ balance_extents(
       }
     }
   }
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents >", extents);
   return extents;
 }
 
@@ -240,6 +241,8 @@ balance_extents(
 
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
+    DASH_LOG_TRACE("dash::math::balance_extents",
+                   "trying block factor", block_size);
     if (block_size < 2 || size % block_size != 0) {
       continue;
     }
@@ -253,6 +256,9 @@ balance_extents(
     for (int i = 1; i < (n_combinations / 2) + 1; ++i) {
       // Size can be partitioned into n_blocks of size block_size:
       Integer extent_x    = i * block_size;
+      if (size % extent_x != 0) {
+        continue;
+      }
       Integer extent_y    = size / extent_x;
       Integer surface_new = (2 * extent_x) + (2 * extent_y);
       DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
@@ -264,6 +270,7 @@ balance_extents(
       }
     }
   }
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents >", extents);
   return extents;
 }
 

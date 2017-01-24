@@ -74,7 +74,6 @@ public:
   DynamicAllocator(
     Team & team = dash::Team::All()) noexcept
   : _team(&team),
-    _team_id(team.dart_id()),
     _nunits(team.size())
   { }
 
@@ -83,9 +82,10 @@ public:
    * Takes ownership of the moved instance's allocation.
    */
   DynamicAllocator(self_t && other) noexcept
-  : _allocated(other._allocated)
+  : _team(nullptr)
   {
-    other._allocated.clear();
+    std::swap(_allocated, other._allocated);
+    std::swap(_team, other._team);
   }
 
   /**
@@ -97,11 +97,12 @@ public:
   /**
    * Copy constructor.
    *
+   * \todo[TF] This copy constructor does not copy _allocated. Correct?
+   *
    * \see DashAllocatorConcept
    */
   DynamicAllocator(const self_t & other) noexcept
   : _team(other._team),
-    _team_id(other._team_id),
     _nunits(other._nunits)
   { }
 
@@ -112,7 +113,6 @@ public:
   template<class U>
   DynamicAllocator(const DynamicAllocator<U> & other) noexcept
   : _team(other._team),
-    _team_id(other._team_id),
     _nunits(other._nunits)
   { }
 
@@ -128,6 +128,8 @@ public:
   /**
    * Assignment operator.
    *
+   * \todo[TF] This smells like bad a surprise at some point...
+   *
    * \see DashAllocatorConcept
    */
   self_t & operator=(const self_t & other) noexcept
@@ -142,10 +144,10 @@ public:
   self_t & operator=(const self_t && other) noexcept
   {
     DASH_LOG_DEBUG("DynamicAllocator.=(&&)()");
-    // Take ownership of other instance's allocation vector:
-    clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    if (this != &other) {
+      // Take ownership of other instance's allocation vector:
+      std::swap(_allocated, other._allocated);
+    }
     DASH_LOG_DEBUG("DynamicAllocator.=(&&) >");
     return *this;
   }
@@ -163,7 +165,7 @@ public:
    */
   bool operator==(const self_t & rhs) const noexcept
   {
-    return (_team_id == rhs._team_id);
+    return (_team->dart_id() == rhs._team->dart_id());
   }
 
   /**
@@ -205,14 +207,18 @@ public:
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-    pointer   gptr;
+    DASH_LOG_DEBUG("DynamicAllocator.allocate(nlocal)",
+                   "number of local values:", num_local_elem);
+    pointer gptr      = DART_GPTR_NULL;
+    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
     if (dart_team_memregister(
-          _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
+        _team->dart_id(), ds.nelem, ds.dtype, lptr, &gptr) == DART_OK) {
       _allocated.push_back(std::make_pair(lptr, gptr));
-      return gptr;
+    } else {
+      gptr = DART_GPTR_NULL;
     }
-    return DART_GPTR_NULL;
+    DASH_LOG_DEBUG("DynamicAllocator.allocate > ", gptr);
+    return gptr;
   }
 
   /**
@@ -235,7 +241,7 @@ public:
       return;
     }
     DASH_ASSERT_RETURNS(
-      dart_team_memderegister(_team_id, gptr),
+      dart_team_memderegister(_team->dart_id(), gptr),
       DART_OK);
     _allocated.erase(
       std::remove_if(
@@ -288,7 +294,7 @@ public:
   {
     local_pointer lmem = allocate_local(num_local_elem);
     pointer       gmem = attach(lmem, num_local_elem);
-    if (DART_GPTR_EQUAL(gmem, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(gmem)) {
       // Attach failed, free requested local memory:
       deallocate_local(lmem);
     }
@@ -344,18 +350,19 @@ private:
   void clear() noexcept
   {
     DASH_LOG_DEBUG("DynamicAllocator.clear()");
-    for (auto e : _allocated) {
+    for (auto & e : _allocated) {
       // Null-buckets have lptr set to nullptr
       if (e.first != nullptr) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "deallocate local memory:",
                        e.first);
         delete[] e.first;
+        e.first = nullptr;
       }
-      if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
+      if (!DART_GPTR_ISNULL(e.second)) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
                        e.second);
         // Cannot use DASH_ASSERT due to noexcept qualifier:
-        assert(dart_team_memderegister(_team_id, e.second) == DART_OK);
+        assert(dart_team_memderegister(_team->dart_id(), e.second) == DART_OK);
       }
     }
     _allocated.clear();
@@ -363,8 +370,7 @@ private:
   }
 
 private:
-  dash::Team                                    * _team      = nullptr;
-  dart_team_t                                     _team_id   = DART_TEAM_NULL;
+  dash::Team                                    * _team;
   size_t                                          _nunits    = 0;
   std::vector< std::pair<value_type *, pointer> > _allocated;
 
@@ -375,9 +381,9 @@ bool operator==(
   const DynamicAllocator<T> & lhs,
   const DynamicAllocator<U> & rhs)
 {
-  return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id &&
-          lhs._nunits  == rhs._nunits );
+  return (sizeof(T)            == sizeof(U) &&
+          lhs._team->dart_id() == rhs._team->dart_id() &&
+          lhs._nunits          == rhs._nunits );
 }
 
 template <class T, class U>
