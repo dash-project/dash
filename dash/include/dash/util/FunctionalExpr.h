@@ -29,12 +29,30 @@ plus(const T x, const T y) {
 }
 
 /**
+ * Compile-time equivalent to `std::minus()`
+ */
+template <typename T>
+constexpr T
+minux(const T x, const T y) {
+  return x - y;
+}
+
+/**
  * Compile-time equivalent to `std::multiplies()`
  */
 template <typename T>
 constexpr T
 multiplies(const T x, const T y) {
   return x * y;
+}
+
+/**
+ * Compile-time equivalent to `std::divides()`
+ */
+template <typename T>
+constexpr T
+divides(const T x, const T y) {
+  return x / y;
 }
 
 /**

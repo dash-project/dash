@@ -33,11 +33,19 @@ public:
         dash::ce::make_index_sequence<NElemRight>())
   { }
 
+  constexpr split_array(
+    const std::array<ValueT, NElem> & values)
+    : split_array(
+        values,
+        dash::ce::make_index_sequence<NElemLeft>(),
+        dash::ce::make_index_sequence<NElemRight>())
+  { }
+
   constexpr const std::array<ValueT, NElemLeft> & left() const {
     return _lpart;
   }
 
-  constexpr const std::array<ValueT, NElemLeft> & right() const {
+  constexpr const std::array<ValueT, NElemRight> & right() const {
     return _rpart;
   }
 
@@ -51,6 +59,17 @@ private:
     dash::ce::index_sequence<RIs...>)
   : _lpart( {{ (*(values.begin() + LIs))... }} )
   , _rpart( {{ (*(values.begin() + PivotIdx + RIs))... }} )
+  { }
+
+  template <
+    int... LIs,
+    int... RIs >
+  constexpr split_array(
+    const std::array<ValueT, NElem> & values,
+    dash::ce::index_sequence<LIs...>,
+    dash::ce::index_sequence<RIs...>)
+  : _lpart( {{ std::get<LIs>(values)... }} )
+  , _rpart( {{ std::get<PivotIdx + RIs>(values)... }} )
   { }
 };
 

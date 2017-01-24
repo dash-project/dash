@@ -11,19 +11,19 @@ namespace dash {
 namespace ce {
 
 template <
-  default_index_t... Is >
+  int... Is >
 struct index_sequence
 { };
 
 template <
-  default_index_t    N,
-  default_index_t... Is >
+  int    N,
+  int... Is >
 struct make_index_sequence
   : make_index_sequence<N-1, N-1, Is...>
 { };
 
 template <
-  default_index_t... Is>
+  int... Is>
 struct make_index_sequence<0, Is...>
   : index_sequence<Is...>
 { };
