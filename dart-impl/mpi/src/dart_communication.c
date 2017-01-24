@@ -58,6 +58,7 @@ static dart_ret_t get_shared_mem(dart_team_data_t * team_data,
                           size_t             nelem,
                           dart_datatype_t    dtype)
 {
+  (void) team_data;
   int16_t      seg_id            = gptr.segid;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   DART_LOG_DEBUG("dart_get: shared windows enabled");
@@ -1897,4 +1898,11 @@ dart_ret_t dart_sendrecv(
   return DART_OK;
 }
 
+dart_ret_t dart_notify_progress(
+    dart_team_t team)
+{
+  (void) team;
+  int flag;
+  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, dart_comm_world, &flag, MPI_STATUS_IGNORE);
+}
 

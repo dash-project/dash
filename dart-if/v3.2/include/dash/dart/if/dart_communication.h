@@ -644,18 +644,18 @@ dart_ret_t dart_recv(
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -674,6 +674,21 @@ dart_ret_t dart_sendrecv(
   dart_datatype_t      recv_dtype,
   int                  recv_tag,
   dart_global_unit_t   src);
+
+
+
+/**
+ * Notify communication peers about observable state changes
+ *
+ * \param team   The team including the observers
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_notify_progress(
+    dart_team_t team);
 
 
 /** \} */
