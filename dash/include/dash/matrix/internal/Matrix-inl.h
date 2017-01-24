@@ -152,10 +152,11 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
-  _glob_mem        = new GlobMem_t(_lsize, _pattern.team());
+  // use _lcapacity as tje collective allocator requires symmetric allocations
+  _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
   _begin           = GlobIter_t(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
-  _lend            = _glob_mem->lend();
+  _lend            = _lbegin + _lsize;
   // Register team deallocator:
   _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
