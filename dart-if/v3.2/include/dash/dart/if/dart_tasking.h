@@ -21,7 +21,8 @@ typedef enum dart_task_deptype {
   DART_DEP_IN,
   DART_DEP_OUT,
   DART_DEP_INOUT,
-  DART_DEP_RES
+  DART_DEP_RES,
+  DART_DEP_DIRECT
 } dart_task_deptype_t;
 
 typedef struct dart_task_dep {

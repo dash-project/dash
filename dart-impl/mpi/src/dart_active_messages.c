@@ -28,9 +28,9 @@ struct dart_amsgq {
 };
 
 struct dart_amsg_header {
-  dart_task_action_t *fn;
-  size_t data_size;
-  dart_unit_t remote;
+  dart_task_action_t fn;
+  size_t             data_size;
+  dart_unit_t        remote;
 };
 
 static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -39,7 +39,7 @@ static bool initialized = false;
 static bool needs_translation = false;
 static int64_t *offsets = NULL;
 
-static inline uint64_t translate_fnptr(dart_task_action_t *fnptr, dart_unit_t target, dart_amsgq_t amsgq);
+static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_unit_t target, dart_amsgq_t amsgq);
 static inline dart_ret_t exchange_fnoffsets();
 
 /**
@@ -114,13 +114,13 @@ dart_amsg_openq(size_t size, dart_team_t team)
 
 
 dart_ret_t
-dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t *fn, const void *data, size_t data_size)
+dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size)
 {
   dart_unit_t unitid;
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint64_t remote_offset = 0;
 
-  dart_task_action_t *remote_fn_ptr = fn;
+  dart_task_action_t remote_fn_ptr = fn;
   translate_fnptr(fn, target, amsgq);
 
   dart_comm_down();
@@ -301,8 +301,8 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
  * we do the translation everytime we send a message as it saves space
  * TODO: would it be more efficient to store the translation data per message queue?
  */
-static inline uint64_t translate_fnptr(dart_task_action_t *fnptr, dart_unit_t target, dart_amsgq_t amsgq) {
-  dart_task_action_t *remote_fnptr = fnptr;
+static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_unit_t target, dart_amsgq_t amsgq) {
+  uint64_t remote_fnptr = (uint64_t)fnptr;
   if (needs_translation) {
     int64_t  remote_fn_offset;
     dart_unit_t global_target_id;

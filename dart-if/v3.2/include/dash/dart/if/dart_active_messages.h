@@ -8,7 +8,7 @@ struct dart_amsgq;
 
 typedef struct dart_amsgq* dart_amsgq_t;
 
-typedef void (dart_task_action_t) (void *);
+typedef void (*dart_task_action_t) (void *);
 
 /**
  * Initialize the active message queue subsystem.
@@ -20,6 +20,8 @@ dart_amsg_init();
  * Initialize an active message queue of size \c size on all units in team.
  *
  * This is a collective operation involving all units in team.
+ *
+ * \todo Refactor to take message_size and number of messages
  */
 dart_amsgq_t
 dart_amsg_openq(size_t size, dart_team_t team);
@@ -42,7 +44,7 @@ dart_amsg_openq(size_t size, dart_team_t team);
  *       i.e., no external references can be handled at the moment.
  */
 dart_ret_t
-dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t *fn, const void *data, size_t data_size);
+dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size);
 
 /**
  * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).

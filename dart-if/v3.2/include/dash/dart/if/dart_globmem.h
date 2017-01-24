@@ -83,10 +83,10 @@ typedef struct
 #ifdef __cplusplus
 #define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, { 0 } })
 #else
-#define DART_GPTR_NULL ((dart_gptr_t)({ .unitid = -1, \
-                                        .segid  =  0, \
-                                        .flags  =  0, \
-                                        .addr_or_offs.offset = 0 }))
+#define DART_GPTR_NULL (dart_gptr_t){ .unitid = -1, \
+                                      .segid  =  0, \
+                                      .flags  =  0, \
+                                      .addr_or_offs.offset = 0 }
 #endif
 
 #define DART_GPTR_ISNULL(gptr_)			\
@@ -181,7 +181,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  */
 dart_ret_t dart_team_memalloc_aligned(
   dart_team_t   teamid,
-	size_t        nbytes,
+  size_t        nbytes,
   dart_gptr_t * gptr);
 
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
