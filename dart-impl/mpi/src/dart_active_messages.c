@@ -2,13 +2,14 @@
 #include <unistd.h>
 #include <mpi.h>
 #include <errno.h>
+#include <pthread.h>
+#include <stdbool.h>
 
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/mpi/dart_mpi_serialization.h>
 
 /**
  * TODO:
@@ -71,8 +72,6 @@ dart_amsg_openq(size_t size, dart_team_t team)
   res->dbuf = malloc(size);
   res->team = team;
 
-  dart_comm_down();
-
   dart_team_myid (team, &unitid);
 
   // allocate the queue
@@ -108,7 +107,6 @@ dart_amsg_openq(size_t size, dart_team_t team)
   memset(res->queue_ptr, 0, size);
   MPI_Win_fence(0, res->queue_win);
 
-  dart_comm_up();
   return res;
 }
 
@@ -122,8 +120,6 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
 
   dart_task_action_t remote_fn_ptr = fn;
   translate_fnptr(fn, target, amsgq);
-
-  dart_comm_down();
 
   dart_myid(&unitid);
 
@@ -148,7 +144,6 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
     // if not, revert the operation and free the lock to try again.
     MPI_Fetch_and_op(&remote_offset, &tmp, MPI_UINT64_T, target.id, 0, MPI_REPLACE, amsgq->tailpos_win);
     MPI_Win_unlock(target.id, amsgq->tailpos_win);
-    dart_comm_up();
     DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %llu of %llu)", msg_size, target, remote_offset, amsgq->size);
     return DART_ERR_AGAIN;
   }
@@ -171,7 +166,6 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
 
   DART_LOG_INFO("Sent message of size %i with payload %i to unit %i starting at offset %i", msg_size, data_size, target, remote_offset);
 
-  dart_comm_up();
   return DART_OK;
 }
 
@@ -192,7 +186,6 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
   dart_team_myid(amsgq->team, &unitid);
 
-  dart_comm_down();
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
 
   MPI_Get(&tailpos, 1, MPI_UINT64_T, unitid.id, 0, 1, MPI_UINT64_T, amsgq->tailpos_win);
@@ -219,8 +212,6 @@ dart_amsg_process(dart_amsgq_t amsgq)
     // reset the tailpos and release the lock on the message queue
     MPI_Put(&zero, 1, MPI_INT64_T, unitid.id, 0, 1, MPI_INT64_T, amsgq->tailpos_win);
     MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
-
-    dart_comm_up();
 
     // process the messages by invoking the functions on the data supplied
     uint64_t pos = 0;
@@ -256,7 +247,6 @@ dart_amsg_process(dart_amsgq_t amsgq)
     }
   } else {
     MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
-    dart_comm_up();
   }
   pthread_mutex_unlock(&processing_mutex);
   return DART_OK;
@@ -281,10 +271,8 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   free(amsgq->dbuf);
   amsgq->dbuf = NULL;
   amsgq->queue_ptr = NULL;
-  dart_comm_down();
   MPI_Win_free(&(amsgq->tailpos_win));
   MPI_Win_free(&(amsgq->queue_win));
-  dart_comm_up();
 
   /*
   dart_team_memfree(amsgq->team, amsgq->queue_win);
@@ -329,7 +317,7 @@ static inline dart_ret_t exchange_fnoffsets() {
   }
 
   DART_LOG_TRACE("Exchanging offsets (dart_amsg_openq = %p)", &dart_amsg_openq);
-  if (MPI_Allgather(&base, 1, MPI_UINT64_T, bases, 1, MPI_UINT64_T, MPI_COMM_WORLD) != MPI_SUCCESS) {
+  if (MPI_Allgather(&base, 1, MPI_UINT64_T, bases, 1, MPI_UINT64_T, DART_COMM_WORLD) != MPI_SUCCESS) {
     DART_LOG_ERROR("Failed to exchange base pointer offsets!");
     return DART_ERR_NOTINIT;
   }

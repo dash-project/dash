@@ -17,7 +17,6 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
-#include <dash/dart/mpi/dart_mpi_serialization.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #define DART_BUDDY_ORDER 24
@@ -315,9 +314,7 @@ dart_ret_t dart_init_thread(
       *concurrency = DART_THREAD_SINGLE;
     } else if (provided == MPI_THREAD_SERIALIZED) {
       *concurrency = DART_THREAD_MULTIPLE;
-      dash_set_serialcomm(true);
     } else {
-      dash_set_serialcomm(false);
       *concurrency = DART_THREAD_MULTIPLE;
     }
   }
