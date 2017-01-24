@@ -19,8 +19,8 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS 
-  OR ENABLE_EXTENDED_COMPILER_WARNINGS 
+if (ENABLE_DEVELOPER_COMPILER_WARNINGS
+  OR ENABLE_EXTENDED_COMPILER_WARNINGS
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -82,13 +82,13 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
-  
+
   # C-only warning flags
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
-  set (DASH_DEVELOPER_CC_FLAGS 
+  set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -118,7 +118,7 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
 
 endif()
 
-# disable warnings on unknown warning flags 
+# disable warnings on unknown warning flags
 
 set (CC_WARN_FLAG  "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
 set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
@@ -205,9 +205,9 @@ set(CMAKE_CXX_FLAGS_RELEASE
     "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_ENV_SETUP_FLAGS}")
 
 set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CC_GDB_FLAG}")
+    "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -DDASH_DEBUG ${CC_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
   "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
