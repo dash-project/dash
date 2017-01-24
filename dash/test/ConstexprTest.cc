@@ -28,13 +28,13 @@ TEST_F(ConstexprTest, SplitArray)
 
   constexpr int split_ix = 4;
 
-  constexpr dash::ce::split_array<int, 9, split_ix> arr_split(arr);
+  constexpr dash::ce::split<int, 9, split_ix> arr_split(arr);
   
   constexpr std::array<int, 4> exp_l = { 0, 1, 2, 3 };
   constexpr std::array<int, 5> exp_r = { 4, 5, 6, 7, 8 };
   
-  auto & arr_l = arr_split.left();
-  auto & arr_r = arr_split.right();
+  constexpr auto arr_l = arr_split.left();
+  constexpr auto arr_r = arr_split.right();
 
   if (dash::myid() == 0) {
     for (auto l_elem : arr_l) {
