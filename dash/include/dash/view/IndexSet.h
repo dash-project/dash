@@ -80,18 +80,6 @@ index(const ViewType & v)
   return v.index_set();
 }
 
-// template <class ViewType>
-// auto
-// index(ViewType & v)
-// -> typename std::enable_if<
-//      dash::view_traits<ViewType>::is_view::value,
-//      decltype(v.index_set())
-//    >::type {
-//   return v.index_set();
-// }
-
-
-
 template <class ContainerType>
 constexpr auto
 index(const ContainerType & c)
@@ -101,16 +89,6 @@ index(const ContainerType & c)
    >::type {
   return IndexSetIdentity<ContainerType>(c);
 }
-
-// template <class ContainerType>
-// auto
-// index(ContainerType & c)
-// -> typename std::enable_if <
-//      dash::view_traits<ContainerType>::is_origin::value,
-//      IndexSetIdentity<ContainerType>
-//    >::type {
-//   return IndexSetIdentity<ContainerType>(c);
-// }
 
 
 namespace detail {

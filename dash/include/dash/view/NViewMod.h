@@ -216,6 +216,153 @@ public:
 
 
 // ------------------------------------------------------------------------
+// NViewLocalMod
+// ------------------------------------------------------------------------
+
+template <
+  class DomainType,
+  dim_t NDim >
+struct view_traits<NViewLocalMod<DomainType, NDim> > {
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<domain_type>::origin_type       origin_type;
+  typedef typename domain_type::local_type                      image_type;
+  typedef NViewLocalMod<DomainType, NDim>                       local_type;
+  typedef domain_type                                          global_type;
+
+  typedef typename DomainType::index_type                       index_type;
+  typedef dash::IndexSetLocal< NViewLocalMod<DomainType, NDim> >
+                                                            index_set_type;
+
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, false>                is_origin;
+  typedef std::integral_constant<bool, true>                 is_local;
+
+  typedef std::integral_constant<dim_t, NDim>                rank;
+};
+
+template <
+  class DomainType,
+  dim_t NDim >
+class NViewLocalMod
+: public NViewModBase<
+           NViewLocalMod<DomainType, NDim>,
+           DomainType,
+           NDim >
+{
+public:
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename domain_type::local_type                      image_type;
+  typedef typename DomainType::index_type                       index_type;
+private:
+  typedef NViewLocalMod<DomainType, NDim>                           self_t;
+  typedef NViewModBase<
+            NViewLocalMod<DomainType, NDim>, DomainType, NDim >     base_t;
+public:
+  typedef dash::IndexSetLocal<
+            NViewLocalMod<DomainType, NDim> >               index_set_type;
+  typedef self_t                                                local_type;
+  typedef typename domain_type::global_type                    global_type;
+
+  typedef std::integral_constant<bool, true>                      is_local;
+
+private:
+  index_set_type  _index_set;
+public:
+  constexpr NViewLocalMod()               = delete;
+  constexpr NViewLocalMod(self_t &&)      = default;
+  constexpr NViewLocalMod(const self_t &) = default;
+  ~NViewLocalMod()                        = default;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
+
+  constexpr explicit NViewLocalMod(
+    const DomainType & domain)
+  : base_t(domain)
+  , _index_set(*this)
+  { }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return (this == &rhs ||
+             ( base_t::operator==(rhs) &&
+               _index_set == rhs._index_set ) );
+  }
+
+  constexpr bool operator!=(const self_t & rhs) const {
+    return not (*this == rhs);
+  }
+
+  constexpr auto begin() const
+  -> decltype(dash::begin(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              ))) {
+    return dash::begin(
+             dash::local(
+               dash::origin(
+                 *this
+               )
+             )
+           )
+         + dash::index(dash::local(dash::domain(*this))).pre()[
+             dash::index(dash::local(dash::domain(*this)))[0]
+           ];
+  }
+
+  constexpr auto end() const
+  -> decltype(dash::end(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              ))) {
+    return dash::begin(
+             dash::local(
+               dash::origin(
+                 *this
+               )
+             )
+           )
+         + dash::index(dash::local(dash::domain(*this))).pre()[
+             (*dash::end(dash::index(dash::local(dash::domain(*this)))))-1
+           ] + 1;
+  }
+
+  constexpr auto operator[](int offset) const
+  -> decltype(*(dash::begin(
+                dash::local(dash::origin(
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type >()
+                ))))) {
+    return *(this->begin() + offset);
+  }
+
+  constexpr index_type size() const {
+    return index_set().size();
+  }
+
+  constexpr const local_type & local() const {
+    return *this;
+  }
+
+  inline local_type & local() {
+    return *this;
+  }
+
+  constexpr const global_type & global() const {
+    return dash::global(dash::domain(*this));
+  }
+
+  inline global_type & global() {
+    return dash::global(dash::domain(*this));
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
+};
+
+
+// ------------------------------------------------------------------------
 // NViewSubMod
 // ------------------------------------------------------------------------
 
@@ -224,23 +371,23 @@ template <
   dim_t SubDim,
   dim_t NDim >
 struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
-  typedef DomainType                                             domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type   origin_type;
-  typedef NViewSubMod<DomainType, SubDim>                         image_type;
-  typedef NViewSubMod<DomainType, SubDim>                         local_type;
-  typedef NViewSubMod<DomainType, SubDim>                        global_type;
+  typedef DomainType                                           domain_type;
+  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef NViewSubMod<DomainType, SubDim>                       image_type;
+  typedef NViewSubMod<DomainType, SubDim>                       local_type;
+  typedef NViewSubMod<DomainType, SubDim>                      global_type;
 
-  typedef typename DomainType::index_type                         index_type;
+  typedef typename DomainType::index_type                       index_type;
   typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim> >           index_set_type;
+            NViewSubMod<DomainType, SubDim, NDim> >         index_set_type;
 
-  typedef std::integral_constant<bool, false>                  is_projection;
-  typedef std::integral_constant<bool, true>                   is_view;
-  typedef std::integral_constant<bool, false>                  is_origin;
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, false>                is_origin;
   typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >                is_local;
+    view_traits<domain_type>::is_local::value >              is_local;
 
-  typedef std::integral_constant<dim_t, NDim>                  rank;
+  typedef std::integral_constant<dim_t, NDim>                rank;
 };
 
 
@@ -255,19 +402,20 @@ class NViewSubMod
            NDim >
 {
 public:
-  typedef DomainType                                             domain_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
 private:
-  typedef NViewSubMod<DomainType, SubDim>                             self_t;
+  typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
-            NViewSubMod<DomainType, SubDim, NDim>, DomainType, NDim > base_t;
+            NViewSubMod<DomainType, SubDim, NDim>, DomainType, NDim
+          >                                                         base_t;
 public:
   typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim> >           index_set_type;
-//typedef NViewLocalMod<self_t>                                   local_type;
-  typedef self_t                                                 global_type;
+            NViewSubMod<DomainType, SubDim, NDim> >         index_set_type;
+  typedef NViewLocalMod<self_t>                                 local_type;
+  typedef self_t                                               global_type;
 
-  typedef std::integral_constant<bool, false>                       is_local;
+  typedef std::integral_constant<bool, false>                     is_local;
 
 private:
   index_type     _begin_idx;
@@ -292,8 +440,8 @@ public:
   , _index_set(*this, begin, end)
   { }
 
-  template <>
-  constexpr index_type extent<SubDim>() const {
+  template <dim_t ExtDim = SubDim>
+  constexpr index_type extent() const {
     return _end_idx - _begin_idx;
   }
 
@@ -338,9 +486,9 @@ public:
     return _index_set;
   }
 
-//constexpr local_type local() const {
-//  return local_type(*this);
-//}
+  constexpr local_type local() const {
+    return local_type(*this);
+  }
 };
 
 

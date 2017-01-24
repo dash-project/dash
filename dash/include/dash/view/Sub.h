@@ -5,6 +5,7 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewMod.h>
+#include <dash/view/NViewMod.h>
 
 
 namespace dash {
@@ -71,11 +72,15 @@ template <
   dim_t SubDim  = 0,
   class DomainT,
   class OffsetT >
-constexpr ViewSubMod<DomainT, SubDim>
+constexpr auto
 sub(
     OffsetT         begin,
     OffsetT         end,
-    const DomainT & domain) {
+    const DomainT & domain)
+  -> typename std::enable_if<
+       dash::view_traits<DomainT>::rank::value == 1,
+       ViewSubMod<DomainT, SubDim>
+     >::type {
   return ViewSubMod<DomainT, SubDim>(
            domain,
            begin,
@@ -85,6 +90,28 @@ sub(
 // =========================================================================
 // Multidimensional Views
 // =========================================================================
+
+template <
+  dim_t SubDim  = 0,
+  class DomainT,
+  class OffsetT >
+constexpr auto
+sub(
+    OffsetT         begin,
+    OffsetT         end,
+    const DomainT & domain)
+  -> typename std::enable_if<
+       (dash::view_traits<DomainT>::rank::value > 1),
+       NViewSubMod<DomainT, SubDim, dash::view_traits<DomainT>::rank::value>
+     >::type {
+  return NViewSubMod<
+           DomainT,
+           SubDim,
+           dash::view_traits<DomainT>::rank::value
+         >(domain,
+           begin,
+           end);
+}
 
 } // namespace dash
 

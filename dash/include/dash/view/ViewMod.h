@@ -296,7 +296,7 @@ struct view_traits<ViewLocalMod<DomainType> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename domain_type::local_type                      image_type;
-  typedef ViewGlobalMod<DomainType>                             local_type;
+  typedef ViewLocalMod<DomainType>                              local_type;
   typedef domain_type                                          global_type;
 
   typedef typename DomainType::index_type                       index_type;
@@ -306,6 +306,8 @@ struct view_traits<ViewLocalMod<DomainType> > {
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
   typedef std::integral_constant<bool, true>                 is_local;
+
+  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
 
 template <
@@ -453,6 +455,8 @@ struct view_traits<ViewSubMod<DomainType, SubDim> > {
   typedef std::integral_constant<bool, false>                  is_origin;
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >                is_local;
+
+  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
 
 

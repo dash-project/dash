@@ -16,11 +16,15 @@ template <
   dim_t SubDim,
   class DomainT,
   class OffsetT >
-constexpr ViewSubMod<DomainT, SubDim>
+constexpr auto
 sub(
     OffsetT         begin,
     OffsetT         end,
-    const DomainT & domain);
+    const DomainT & domain)
+  -> typename std::enable_if<
+       dash::view_traits<DomainT>::rank::value == 1,
+       ViewSubMod<DomainT, SubDim>
+     >::type;
 
 
 template<typename ElementType>
