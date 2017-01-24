@@ -1,6 +1,8 @@
 #ifndef DASH__UTIL__FUNCTIONAL_EXPR_H__INCLUDED
 #define DASH__UTIL__FUNCTIONAL_EXPR_H__INCLUDED
 
+#include <dash/util/IndexSequence.h>
+
 #include <functional>
 #include <type_traits>
 
@@ -39,16 +41,15 @@ multiplies(const T x, const T y) {
  * Compile-time equivalent to `std::accumulate()`
  */
 template <typename T,         ///< result type
-          size_t   N,         ///< length of the array
-          typename ReduceOp   ///< binary reduce operation
-          >
+          size_t   N,         ///< array length
+          typename ReduceOp > ///< binary reduce operation
 constexpr T accumulate(
     const std::array<T, N> &arr, ///< array to accumulate
-    const size_t first,          ///< starting position of accumulation
+    const size_t first,          ///< start index for accumulation
     const size_t length,         ///< number of values to accumulate
-    const T initialValue,        ///< initial accumulator value
+    const T initialValue,        ///< initial accumulation value
     const ReduceOp & op          ///< binary operation
-    ) {
+  ) {
   return (first < (first + length))
              ? op(arr[first],
                   dash::ce::accumulate(
@@ -61,31 +62,31 @@ constexpr T accumulate(
 /**
  * Compile-time equivalent to `std::inner_product()`.
  */
-template <typename T,     ///< result type
-          typename T_1,   ///< first array type
-          size_t   N_1,   ///< length of the first array
-          typename T_2,   ///< second array type
-          size_t   N_2,   ///< length of the second array
-          typename SumOp, ///< summation operation type
-          typename MulOp  ///< multiplication operation type
-          >
+template <typename T,       ///< result type
+          typename T_1,     ///< first array type
+          size_t   N_1,     ///< size of first array
+          typename T_2,     ///< second array type
+          size_t   N_2,     ///< size of second array
+          typename SumOp,   ///< summation operation type
+          typename MulOp    ///< multiplication operation type
+>
 constexpr T inner_product(
-    /// inner product of this array
+    /// array to calculate inner product
     const std::array<T_1, N_1> & arr_1,
-    /// from this position
-    const size_t   first_1,
-    /// with this array
+    /// start index in first array
+    const size_t                 first_1,
+    /// second array
     const std::array<T_2, N_2> & arr_2,
-    /// from this position
-    const size_t   first_2,
-    /// using this many elements from both arrays
-    const size_t   length,
-    /// let this be the summation's initial value
-    const T        initialValue,
-    /// use this as the summation operator
-    const SumOp  & op_sum,
-    /// use this as the multiplication operator
-    const MulOp  & op_prod) {
+    /// start index in second array
+    const size_t                 first_2,
+    /// number of elements to use in both arrays
+    const size_t                 length,
+    /// summation initial value
+    const T                      initialValue,
+    /// summation operator
+    const SumOp                & op_sum,
+    /// multiplication operator
+    const MulOp                & op_prod) {
   return (first_1 < (first_1 + length))
              ? op_sum(op_prod(
                         arr_1[first_1],
@@ -100,9 +101,37 @@ constexpr T inner_product(
              : initialValue;
 }
 
+#if 0
 // TODO: Add dash::ce::transform to fmap two instances of std::array.
 //       Note, however, that std::array::operator[] is not constexpr
 //       in C++11 but std::get<Idx>(std::array) is.
+//       Approach: use parameter pack to generate result array with
+//       elements defined as
+//          
+//          arr_out { ... (op(std::get<I>(arr_a), std::get<I>(arr_b))) }
+//
+
+/**
+ * Compile-time equivalent to `std::transform()`.
+ */
+template <typename T_1,   ///< first array value type
+          size_t   N_1,   ///< size of first array
+          typename T_2,   ///< second array value type
+          size_t   N_2,   ///< size of second array
+          typename MapOp  ///< reduce operation
+          >
+constexpr std::array<T_1, N> transform(
+    /// first input array
+    const std::array<T_1, N_1> & arr_1,
+    /// start index in first array
+    const size_t                 first_1,
+    /// second input array
+    const std::array<T_2, N_2> & arr_2,
+    /// start index in second array
+    const size_t                 first_2) {
+  return ...
+}
+#endif
 
 } // namespace ce
 } // namespace dash

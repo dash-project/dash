@@ -184,8 +184,8 @@ protected:
   ~NViewModBase()                        = default;
 
 public:
-  self_t & operator=(self_t &&)         = default;
-  self_t & operator=(const self_t &)    = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
 
   constexpr const domain_type & domain() const {
     return *_domain;
