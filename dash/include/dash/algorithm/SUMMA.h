@@ -319,8 +319,6 @@ void summa(
   // Prefetch blocks from A and B for first local multiplication:
   // -------------------------------------------------------------------------
   // Block coordinates of submatrices of A and B to be prefetched:
-  coords_t block_a_get_coords;
-  coords_t block_b_get_coords;
   // Local block index of local submatrix of C for multiplication result of
   // blocks to be prefetched:
   auto     l_block_c_get       = C.local.block(0);
@@ -328,9 +326,9 @@ void summa(
   index_t  l_block_c_get_row   = l_block_c_get_view.offset(1) / block_size_n;
   index_t  l_block_c_get_col   = l_block_c_get_view.offset(0) / block_size_p;
   // Block coordinates of blocks in A and B to prefetch:
-  block_a_get_coords = coords_t {{ static_cast<index_t>(unit_ts_coords[0]),
+  coords_t block_a_get_coords = coords_t {{ static_cast<index_t>(unit_ts_coords[0]),
 				   l_block_c_get_row }};
-  block_b_get_coords = coords_t {{ l_block_c_get_col,
+  coords_t block_b_get_coords = coords_t {{ l_block_c_get_col,
 				   static_cast<index_t>(unit_ts_coords[0]) }};
   // Local block index of local submatrix of C for multiplication result of
   // currently prefetched blocks:
