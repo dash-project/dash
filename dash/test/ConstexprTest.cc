@@ -46,25 +46,62 @@ TEST_F(ConstexprTest, TakeDrop)
   constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
   constexpr std::array<int, 5> exp = { 3, 4, 5, 6, 7 };
 
-  constexpr auto takedrop = dash::ce::take<int, 6, 5>(
-                              dash::ce::drop<int, 9, 3>(arr));
+  constexpr auto takedrop = dash::ce::take<5>(
+                              dash::ce::drop<3>(arr));
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG_VAR("ConstexprTest.Append", takedrop);
   }
   EXPECT_EQ_U(exp, takedrop);
+
+  constexpr std::array<int, 0> empty;
+  constexpr auto drop_all = dash::ce::drop<9>(arr);
+
+  EXPECT_EQ_U(empty, drop_all);
+}
+
+TEST_F(ConstexprTest, HeadTail)
+{
+  constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+  constexpr auto arr_head = dash::ce::head(arr);
+  constexpr auto arr_tail = dash::ce::tail(arr);
+
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ConstexprTest.HeadTail", arr_head);
+    DASH_LOG_DEBUG_VAR("ConstexprTest.HeadTail", arr_tail);
+  }
+
+  EXPECT_EQ_U(1,              arr_head.size());
+  EXPECT_EQ_U(arr.size() - 1, arr_tail.size());
+
+  constexpr auto arr_join = dash::ce::append(arr_head, arr_tail);
+
+  EXPECT_EQ_U(arr, arr_join);
+}
+
+TEST_F(ConstexprTest, ReplaceNth)
+{
+  constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+  constexpr auto arr_rep = dash::ce::replace_nth<3>(123, arr);
+
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ConstexprTest.ReplaceNth", arr_rep);
+  }
 }
 
 TEST_F(ConstexprTest, Split)
 {
   constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 
-  constexpr int split_ix = 4;
+  constexpr int nleft  = 4;
+  constexpr int nright = 5;
 
-  constexpr dash::ce::split<int, 9, split_ix> arr_split(arr);
+  constexpr dash::ce::split<int, nleft, nright> arr_split(arr);
   
-  constexpr std::array<int, 4> exp_l = { 0, 1, 2, 3 };
-  constexpr std::array<int, 5> exp_r = { 4, 5, 6, 7, 8 };
+  constexpr std::array<int, nleft>  exp_l = { 0, 1, 2, 3 };
+  constexpr std::array<int, nright> exp_r = { 4, 5, 6, 7, 8 };
   
   constexpr auto arr_l = arr_split.left();
   constexpr auto arr_r = arr_split.right();

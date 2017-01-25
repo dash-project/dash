@@ -16,9 +16,9 @@ namespace ce {
 
 namespace detail {
   template <
+    std::size_t    NDrop,
     class          ValueT,
     std::size_t    NElem,
-    std::size_t    NDrop,
     std::size_t... Is >
   constexpr std::array<ValueT, NElem - NDrop>
   drop_impl(
@@ -33,15 +33,28 @@ namespace detail {
  * \c (0..d..N).
  */
 template <
+  std::size_t   NDrop,
   class         ValueT,
-  std::size_t   NElem,
-  std::size_t   NDrop >
+  std::size_t   NElem >
 constexpr std::array<ValueT, NElem - NDrop>
 drop(
   const std::array<ValueT, NElem> & values) {
-  return detail::drop_impl<ValueT, NElem, NDrop>(
+  return detail::drop_impl<NDrop, ValueT, NElem>(
            values,
            dash::ce::make_index_sequence<NElem - NDrop>());
+}
+
+// -------------------------------------------------------------------------
+// tail = drop<1>
+// -------------------------------------------------------------------------
+
+template <
+  class         ValueT,
+  std::size_t   NElem >
+constexpr std::array<ValueT, NElem - 1>
+tail(
+  const std::array<ValueT, NElem> & values) {
+  return drop<1>(values);
 }
 
 // -------------------------------------------------------------------------
@@ -50,9 +63,9 @@ drop(
 
 namespace detail {
   template <
+    std::size_t    NTake,
     class          ValueT,
     std::size_t    NElem,
-    std::size_t    NTake,
     std::size_t... Is >
   constexpr std::array<ValueT, NTake>
   take_impl(
@@ -67,15 +80,28 @@ namespace detail {
  * \c N with indices \c (0..t..N).
  */
 template <
+  std::size_t   NTake,
   class         ValueT,
-  std::size_t   NElem,
-  std::size_t   NTake >
+  std::size_t   NElem >
 constexpr std::array<ValueT, NTake>
 take(
   const std::array<ValueT, NElem> & values) {
-  return detail::take_impl<ValueT, NElem, NTake>(
+  return detail::take_impl<NTake, ValueT, NElem>(
            values,
            dash::ce::make_index_sequence<NTake>());
+}
+
+// -------------------------------------------------------------------------
+// head = take<1>
+// -------------------------------------------------------------------------
+
+template <
+  class         ValueT,
+  std::size_t   NElem >
+constexpr std::array<ValueT, 1>
+head(
+  const std::array<ValueT, NElem> & values) {
+  return take<1>(values);
 }
 
 // -------------------------------------------------------------------------
@@ -84,14 +110,13 @@ take(
 
 template <
   class         ValueT,
-  std::size_t   NElem,
-  std::size_t   PivotIdx >
+  std::size_t   NElemLeft,
+  std::size_t   NElemRight >
 class split
 {
-  typedef dash::ce::split<ValueT, NElem, PivotIdx> self_t;
+  typedef dash::ce::split<ValueT, NElemLeft, NElemRight> self_t;
 
-  constexpr static std::size_t NElemLeft  = PivotIdx;
-  constexpr static std::size_t NElemRight = NElem - PivotIdx;
+  constexpr static std::size_t NElem = NElemLeft + NElemRight;
 
   const std::array<ValueT, NElem> _values;
 
@@ -107,11 +132,11 @@ public:
   { }
 
   constexpr std::array<ValueT, NElemLeft> left() const {
-    return take<ValueT, NElem, PivotIdx>(_values);
+    return take<NElemLeft, ValueT, NElem>(_values);
   }
 
   constexpr std::array<ValueT, NElemRight> right() const {
-    return drop<ValueT, NElem, PivotIdx>(_values);
+    return drop<NElemLeft, ValueT, NElem>(_values);
   }
 };
 
@@ -173,6 +198,31 @@ append(
            dash::ce::make_index_sequence<NElemLeft>(),
            dash::ce::make_index_sequence<1>());
 }
+
+// -------------------------------------------------------------------------
+// replace_nth
+// -------------------------------------------------------------------------
+
+/**
+ * Replaces element at specified index in given sequence.
+ */
+template <
+  std::size_t    IElem,
+  class          ValueT,
+  std::size_t    NElem >
+constexpr std::array<ValueT, NElem>
+replace_nth(
+  const ValueT                     & elem,
+  const std::array<ValueT, NElem>  & values) {
+  // [ 0, 1, 2 ] : [ i ] : [ 4, 5, 6 ]
+  return dash::ce::append(
+           dash::ce::append(
+             dash::ce::take<IElem>(values),
+             elem),
+           dash::ce::drop<IElem + 1>(values)
+         );
+}
+
 
 } // namespace ce
 } // namespace dash
