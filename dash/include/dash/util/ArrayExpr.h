@@ -224,6 +224,15 @@ template <
 constexpr std::array<ValueT, NElem>
 reverse(
   const std::array<ValueT, NElem> & values) {
+  //
+  // NOTE:
+  //
+  // This is elegant, correct, of high didactic value and does
+  // not scale well.
+  // Should be implemented using index from parameter pack like
+  //
+  //   { (std::get<NElem - I>(values)... }
+  //
   return (NElem > 1
           ? ( dash::ce::append(
                 dash::ce::reverse(
@@ -247,7 +256,15 @@ constexpr std::array<ValueT, NElem>
 replace_nth(
   const ValueT                     & elem,
   const std::array<ValueT, NElem>  & values) {
-  // [ 0, 1, 2 ] : [ i ] : [ 4, 5, 6 ]
+  //
+  // I currently do not know any better way to change an array
+  // element at given index at compile time (constexpr).
+  // Note that std::array::operator[] is not constexpr in C++11
+  // but std::get<Idx>(std::array) is.
+  //
+  // index: [ 0, 1, ..., i-1 ] : [   i  ] : [ i+1, i+2, ... ]
+  // value: [  <unchanged>   ] : [ elem ] : [  <unchanged>  ]
+  //
   return dash::ce::append(
            dash::ce::append(
              dash::ce::take<IElem>(values),

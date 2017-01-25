@@ -34,17 +34,20 @@
  *
  * \par Expressions
  *
- * View Specifier        | Synopsis
- * --------------------- | --------------------------------------------------
- * <tt>dash::sub</tt>    | Subrange of domain in a specified dimension
- * <tt>dash::local</tt>  | Local subspace of domain
- * <tt>dash::global</tt> | Maps subspace to elements in global domain
- * <tt>dash::apply</tt>  | Obtain image of domain view (inverse of \c domain)
- * <tt>dash::domain</tt> | Obtain domain of view image (inverse of \c apply)
- * <tt>dash::origin</tt> | Obtain the view origin (root domain)
- * <tt>dash::blocks</tt> | Decompose domain into blocks
- * <tt>dash::block</tt>  | Subspace of decomposed domain in a specific block
- * <tt>dash::index</tt>  | Returns a view's index set
+ * View Specifier            | Synopsis
+ * ------------------------- | --------------------------------------------------
+ * <tt>dash::sub</tt>        | Subrange of domain in a specified dimension
+ * <tt>dash::intersect</tt>  | View from intersection of two domains
+ * <tt>dash::difference</tt> | View from difference of two domains
+ * <tt>dash::combine</tt>    | Composite view of two possibply unconnected domains
+ * <tt>dash::local</tt>      | Local subspace of domain
+ * <tt>dash::global</tt>     | Maps subspace to elements in global domain
+ * <tt>dash::apply</tt>      | Obtain image of domain view (inverse of \c domain)
+ * <tt>dash::domain</tt>     | Obtain domain of view image (inverse of \c apply)
+ * <tt>dash::origin</tt>     | Obtain the view origin (root domain)
+ * <tt>dash::blocks</tt>     | Decompose domain into blocks
+ * <tt>dash::block</tt>      | Subspace of decomposed domain in a specific block
+ * <tt>dash::index</tt>      | Returns a view's index set
  *
  * \par Examples
  *

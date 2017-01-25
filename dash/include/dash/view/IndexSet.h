@@ -46,12 +46,6 @@ using global_index_t
 
 // Forward-declarations
 
-template <class ViewTypeA, class ViewTypeB>
-constexpr ViewTypeA
-intersect(
-  const ViewTypeA & va,
-  const ViewTypeB & vb);
-
 template <class IndexSetType, class ViewType, std::size_t NDim>
 class IndexSetBase;
 
@@ -401,6 +395,19 @@ public:
   constexpr const self_t & pre() const {
     return *this;
   }
+};
+
+// -----------------------------------------------------------------------
+//
+template <class ViewType>
+class IndexSetChunked
+: public IndexSetBase<
+           IndexSetChunked<ViewType>,
+           ViewType >
+{
+
+public:
+
 };
 
 // -----------------------------------------------------------------------

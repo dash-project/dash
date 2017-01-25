@@ -120,15 +120,6 @@ constexpr T inner_product(
 }
 
 #if 0
-// TODO: Add dash::ce::transform to fmap two instances of std::array.
-//       Note, however, that std::array::operator[] is not constexpr
-//       in C++11 but std::get<Idx>(std::array) is.
-//       Approach: use parameter pack to generate result array with
-//       elements defined as
-//          
-//          arr_out { ... (op(std::get<I>(arr_a), std::get<I>(arr_b))) }
-//
-
 /**
  * Compile-time equivalent to `std::transform()`.
  */

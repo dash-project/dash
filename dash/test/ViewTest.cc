@@ -5,6 +5,7 @@
 #include <dash/Array.h>
 
 #include <array>
+#include <algorithm>
 
 
 // TODO: Add constexpr variables in test cases to test compile-time
@@ -51,6 +52,107 @@ TEST_F(ViewTest, ViewTraits)
   static_assert(
       dash::is_range<decltype(array)>::value == true,
       "dash::is_range<dash::Array<...>>::value not matched");
+}
+
+TEST_F(ViewTest, Intersect1DimSingle)
+{
+  int block_size           = 13;
+  int array_size           = dash::size() * block_size
+                             // unbalanced size:
+                             + 2;
+
+  int sub_left_begin_gidx  = 0;
+  int sub_left_end_gidx    = (array_size * 2) / 3;
+  int sub_right_begin_gidx = (array_size * 1) / 3;
+  int sub_right_end_gidx   = array_size;
+
+  dash::Array<int> array(array_size);
+
+  // View to first two thirds of global array:
+  auto gview_left   = dash::sub(sub_left_begin_gidx,
+                                sub_left_end_gidx,
+                                array);
+  // View to last two thirds of global array:
+  auto gview_right  = dash::sub(sub_right_begin_gidx,
+                                sub_right_end_gidx,
+                                array);
+
+  auto gview_isect  = dash::intersect(gview_left, gview_right);
+
+  auto gindex_isect = dash::index(gview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_left.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_right.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.end());
+
+  auto lview_isect  = dash::local(gview_isect);
+  auto lindex_isect = dash::index(lview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.end());
+}
+
+TEST_F(ViewTest, Intersect1DimMultiple)
+{
+  int block_size           = 4;
+  int blocks_per_unit      = 3;
+  int array_size           = dash::size()
+                             * (blocks_per_unit * block_size)
+                             // unbalanced size, last block underfilled:
+                             - (block_size / 2);
+
+  int sub_left_begin_gidx  = 0;
+  int sub_left_end_gidx    = array_size - (block_size / 2);
+  int sub_right_begin_gidx = (block_size / 2);
+  int sub_right_end_gidx   = array_size;
+
+  dash::Array<int> array(array_size, dash::BLOCKCYCLIC(block_size));
+
+  for (auto li = 0; li != array.local.size(); ++li) {
+    array.local[li] = (1000 * (dash::myid() + 1)) +
+                      (100    * li) +
+                      (dash::myid() * block_size) + li;
+  }
+
+  array.barrier();
+
+  DASH_LOG_DEBUG("ViewTest.Intersect1DimMultiple",
+                 "array initialized");
+
+  // View to first two thirds of global array:
+  auto gview_left   = dash::sub(sub_left_begin_gidx,
+                                sub_left_end_gidx,
+                                array);
+  // View to last two thirds of global array:
+  auto gview_right  = dash::sub(sub_right_begin_gidx,
+                                sub_right_end_gidx,
+                                array);
+
+  auto gview_isect  = dash::intersect(gview_left, gview_right);
+
+  auto gindex_isect = dash::index(gview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", array.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", gview_left.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", gview_right.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", gview_isect.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", *gindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", *gindex_isect.end());
+
+  auto lview_isect  = dash::local(gview_isect);
+  auto lindex_isect = dash::index(lview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", *lindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", *lindex_isect.end());
+
+  if (dash::myid() == 0) {
+    std::vector<int> values(array.size());
+    std::copy(array.begin(), array.end(), values.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimMultiple", values);
+  }
 }
 
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
