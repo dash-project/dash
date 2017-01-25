@@ -68,6 +68,14 @@ TEST_F(ViewTest, Intersect1DimSingle)
 
   dash::Array<int> array(array_size);
 
+  for (auto li = 0; li != array.local.size(); ++li) {
+    array.local[li] = (1000 * (dash::myid() + 1)) +
+                      (100    * li) +
+                      (dash::myid() * block_size) + li;
+  }
+
+  array.barrier();
+
   // View to first two thirds of global array:
   auto gview_left   = dash::sub(sub_left_begin_gidx,
                                 sub_left_end_gidx,
@@ -87,6 +95,18 @@ TEST_F(ViewTest, Intersect1DimSingle)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.end());
+
+  EXPECT_EQ_U(sub_left_end_gidx  - sub_left_begin_gidx,
+              gview_left.size());
+  EXPECT_EQ_U(sub_right_end_gidx - sub_right_begin_gidx,
+              gview_right.size());
+  EXPECT_EQ_U(sub_left_end_gidx  - sub_right_begin_gidx, 
+              gview_isect.size());
+
+  for (int isect_idx = 0; isect_idx < gview_isect.size(); isect_idx++) {
+    EXPECT_EQ_U(static_cast<int>(array[sub_right_begin_gidx + isect_idx]),
+                static_cast<int>(gview_isect[isect_idx]));
+  }
 
   auto lview_isect  = dash::local(gview_isect);
   auto lindex_isect = dash::index(lview_isect);
