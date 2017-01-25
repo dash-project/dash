@@ -237,7 +237,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * \return            \c DART_OK on success,
  *                    any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memalloc_aligned(
@@ -260,7 +260,7 @@ dart_ret_t dart_team_memalloc_aligned(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
@@ -282,7 +282,7 @@ dart_ret_t dart_team_memfree(
  *
  * \see dart_team_memalloc_aligned
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memregister_aligned(
