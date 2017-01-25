@@ -279,10 +279,10 @@ public:
     _nunits(team.size()),
     _myid(team.myid()),
     _attach_buckets_first(_buckets.end()),
-    _local_sizes(team.size()),
+    _local_sizes(team.size(), team),
     _bucket_cumul_sizes(team.size()),
-    _num_attach_buckets(team.size()),
-    _num_detach_buckets(team.size()),
+    _num_attach_buckets(team.size(), team),
+    _num_detach_buckets(team.size(), team),
     _remote_size(0)
   {
     DASH_LOG_TRACE("GlobDynamicMem.(ninit,nunits)",

@@ -23,6 +23,8 @@ namespace allocator {
  * Encapsulates a memory allocation and deallocation strategy of global
  * memory regions distributed across local memory of units in a specified
  * team.
+ * 
+ * \note This allocator allocates a symmetric amount of memory on each node.
  *
  * Satisfied STL concepts:
  *
@@ -167,6 +169,9 @@ public:
   /**
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
+   * 
+   * \note As allocation is symmetric, each unit has to allocate
+   *       an equal number of local elements.
    *
    * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL
    *          if \c num_local_elem is 0 or less.
