@@ -34,10 +34,7 @@ public:
    * Default constructor.
    * Sets underlying global pointer to \c DART_GPTR_NULL.
    */
-  Atomic()
-  : _gptr(DART_GPTR_NULL),
-    _team(nullptr)
-  { }
+  Atomic() = default;
 
   /**
    * Constructor, creates a new instance of \c dash::Atomic from a DART
@@ -47,7 +44,7 @@ public:
     dart_gptr_t  gptr,
     dash::Team & team = dash::Team::All())
   : _gptr(gptr),
-    _team(&team)
+    _dart_teamid(team.dart_id())
   { }
 
   /**
@@ -113,8 +110,7 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Atomic.add()", value);
     DASH_LOG_TRACE_VAR("Atomic.add",   _gptr);
-    DASH_LOG_TRACE_VAR("Atomic.add",   _team);
-    DASH_ASSERT(_team != nullptr);
+    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc = value;
     DASH_LOG_TRACE("Atomic.add", "dart_accumulate");
@@ -124,7 +120,7 @@ public:
                        1,
                        dash::dart_datatype<ValueType>::value,
                        binary_op.dart_operation(),
-                       _team->dart_id());
+                       _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.add", "flush");
     dart_flush_all(_gptr);
@@ -146,7 +142,7 @@ public:
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", val);
     DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
     DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   typeid(val).name());
-    DASH_ASSERT(_team != nullptr);
+    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;
     dart_ret_t ret = dart_fetch_and_op(
@@ -155,7 +151,7 @@ public:
                        reinterpret_cast<void *>(&acc),
                        dash::dart_datatype<ValueType>::value,
                        op.dart_operation(),
-                       _team->dart_id());
+                       _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
     dart_flush_all(_gptr);
@@ -211,7 +207,7 @@ private:
   /// The atomic value's underlying global pointer.
   dart_gptr_t   _gptr = DART_GPTR_NULL;
   /// Team of units associated with the shared atomic variable.
-  dash::Team  * _team = nullptr;
+  dart_team_t   _dart_teamid = dash::Team::Null().dart_id();
 
 }; // class Atomic
 

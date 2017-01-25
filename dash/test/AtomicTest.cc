@@ -3,6 +3,7 @@
 
 #include <dash/Atomic.h>
 #include <dash/Array.h>
+#include <dash/Matrix.h>
 #include <dash/Shared.h>
 
 #include <dash/algorithm/Copy.h>
@@ -109,4 +110,28 @@ TEST_F(AtomicTest, ArrayElements)
     EXPECT_EQ_U(expect_res_acc, actual_res_acc);
     delete[] l_copy;
   }
+}
+
+TEST_F(AtomicTest, ContainerOfAtomics){
+  using value_t  = int;
+  using atomic_t = dash::Atomic<value_t>;
+  using array_t  = dash::Array<atomic_t>;
+  using matrix_t = dash::NArray<atomic_t,2>;
+  
+  array_t  array(10);
+  matrix_t matrix(10,10);
+  
+  atomic_t elem_arr = array[0];
+  atomic_t elem_mat = matrix[0][0];
+  
+  elem_arr.fetch_and_add(1);
+  elem_mat.fetch_and_add(1);
+  
+  dash::barrier();
+  
+  value_t elem_arr_local = elem_arr.get();
+  value_t elem_mat_local = elem_mat.get();
+  
+  ASSERT_EQ_U(elem_arr_local, static_cast<value_t>(dash::size()));
+  ASSERT_EQ_U(elem_mat_local, static_cast<value_t>(dash::size()));
 }
