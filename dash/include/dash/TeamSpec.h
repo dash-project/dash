@@ -218,20 +218,6 @@ public:
     DASH_LOG_TRACE_VAR("TeamSpec({extents})", this->_extents);
   }
 
-#if 0
-  /**
-   * Copy constructor.
-   */
-  TeamSpec(
-    /// Teamspec instance to copy
-    const self_t & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(other.extents()),
-    _rank(other._rank),
-    _myid(other._myid)
-  { }
-#endif
-
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
