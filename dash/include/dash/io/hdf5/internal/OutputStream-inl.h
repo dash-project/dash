@@ -5,9 +5,6 @@
 #include <dash/io/hdf5/OutputStream.h>
 #include <dash/io/hdf5/StorageDriver.h>
 
-#include <dash/Matrix.h>
-#include <dash/Array.h>
-
 
 namespace dash {
 namespace io {
