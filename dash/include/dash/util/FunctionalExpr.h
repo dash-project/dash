@@ -33,7 +33,7 @@ plus(const T x, const T y) {
  */
 template <typename T>
 constexpr T
-minux(const T x, const T y) {
+minus(const T x, const T y) {
   return x - y;
 }
 

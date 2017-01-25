@@ -1,0 +1,30 @@
+
+#include <dash/Matrix.h>
+
+namespace dash {
+
+template <>
+class Matrix<
+  int,
+  2,
+  dash::default_index_t, 
+  dash::TilePattern<2, dash::ROW_MAJOR, dash::default_index_t >
+>;
+
+template <>
+class Matrix<
+  float,
+  2,
+  dash::default_index_t, 
+  dash::TilePattern<2, dash::ROW_MAJOR, dash::default_index_t >
+>;
+
+template <>
+class Matrix<
+  double,
+  2,
+  dash::default_index_t, 
+  dash::TilePattern<2, dash::ROW_MAJOR, dash::default_index_t >
+>;
+
+}
