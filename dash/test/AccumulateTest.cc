@@ -1,9 +1,15 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "AccumulateTest.h"
+#include "TestBase.h"
+
+#include <dash/Array.h>
+#include <dash/algorithm/Accumulate.h>
+#include <dash/algorithm/Fill.h>
 
 #include <array>
+
 
 TEST_F(AccumulateTest, SimpleConstructor) {
   const size_t num_elem_local = 100;

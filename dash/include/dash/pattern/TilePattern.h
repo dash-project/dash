@@ -52,9 +52,6 @@ public:
 public:
   /// Satisfiable properties in pattern property category Partitioning:
   typedef pattern_partitioning_properties<
-              // Minimal number of blocks in every dimension, i.e. one
-              // block per unit.
-              pattern_partitioning_tag::minimal,
               // Block extents are constant for every dimension.
               pattern_partitioning_tag::rectangular,
               // Identical number of elements in every block.

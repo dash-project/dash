@@ -146,7 +146,7 @@ dart_ret_t dart__base__unit_locality__create(
                    "num_cores:%d core_id:%d cpu_id:%d "
                    "num_numa:%d numa_id:%d "
                    "nthreads:%d",
-                   (int)(u), ulm_u->unit,
+                   (int)(u), ulm_u->unit.id,
                    ulm_u->hwinfo.host,
                    ulm_u->hwinfo.num_cores, ulm_u->hwinfo.core_id,
                    ulm_u->hwinfo.cpu_id,
@@ -194,7 +194,7 @@ dart_ret_t dart__base__unit_locality__at(
 {
   if ((size_t)(unit.id) >= unit_mapping->num_units) {
     DART_LOG_ERROR("dart__base__unit_locality__get ! "
-                   "unit id %d out of bounds, team size: %u",
+                   "unit id %d out of bounds, team size: %zu",
                    unit.id, unit_mapping->num_units);
     return DART_ERR_INVAL;
   }

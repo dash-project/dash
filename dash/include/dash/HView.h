@@ -1,9 +1,11 @@
 #ifndef DASH__HVIEW_H_INCLUDED
 #define DASH__HVIEW_H_INCLUDED
 
-#include <iostream>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/pattern/BlockPattern.h>
+
+#include <iostream>
+
 
 namespace dash {
 
@@ -11,8 +13,8 @@ template<class ContainerType, int LEVEL>
 class HIter : public ContainerType::iterator
 {
 private:
-  Pattern<1> & m_pattern;
-  Team       & m_subteam;
+  BlockPattern<1> & m_pattern;
+  Team            & m_subteam;
 
 public:
   HIter<ContainerType,LEVEL>& advance() {
@@ -35,10 +37,6 @@ public:
   : ContainerType::iterator(it), 
     m_pattern(pattern),
     m_subteam(subteam) {
-  }
-
-  void print() {
-    std::cout << ContainerType::iterator::m_idx << std::endl;
   }
 
   HIter<ContainerType,LEVEL>& operator++() {
@@ -91,18 +89,11 @@ public:
     m_end(find_end())
   { }
   
-  void print()
-  {
-    std::cout << "This team has size " << m_subteam.size() << std::endl;
-  }
-  
-  HIter<ContainerType, LEVEL> begin()
-  {
+  HIter<ContainerType, LEVEL> begin() {
     return m_begin;
   }
   
-  HIter<ContainerType, LEVEL> end()
-  {
+  HIter<ContainerType, LEVEL> end() {
     return m_end;
   }
 };
@@ -114,9 +105,9 @@ public:
   typedef typename ContainerType::value_type value_type;
 
 private:
-  Team &          m_subteam;
-  ContainerType & m_container;
-  Pattern<1> &    m_pat;
+  Team            & m_subteam;
+  ContainerType   & m_container;
+  BlockPattern<1> & m_pat;
 
 public:
   HView(ContainerType& cont) 

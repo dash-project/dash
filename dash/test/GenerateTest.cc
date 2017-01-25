@@ -1,9 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include <functional>
 
-#include "TestBase.h"
 #include "GenerateTest.h"
+
+#include <dash/Array.h>
+#include <dash/algorithm/Generate.h>
+#include <dash/algorithm/LocalRange.h>
+
 
 TEST_F(GenerateTest, TestAllItemsGenerated)
 {

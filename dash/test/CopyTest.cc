@@ -1,6 +1,13 @@
 
-#include <libdash.h>
 #include <gtest/gtest.h>
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+
+#include <dash/algorithm/Copy.h>
+#include <dash/pattern/ShiftTilePattern1D.h>
+#include <dash/pattern/TilePattern1D.h>
+#include <dash/pattern/BlockPattern1D.h>
 
 #include "TestBase.h"
 #include "TestLogHelpers.h"
@@ -63,8 +70,8 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     return;
   }
 
-  LOG_MESSAGE("nunits:%d elem_total:%d "
-              "elem_per_unit:%d blocks_per_unit:%d",
+  LOG_MESSAGE("nunits:%zu elem_total:%zu "
+              "elem_per_unit:%zu blocks_per_unit:%zu",
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -86,7 +93,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
 
   // Assign initial values:
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
-    LOG_MESSAGE("initialize values in local block %d", lb);
+    LOG_MESSAGE("initialize values in local block %zu", lb);
     auto lblock         = matrix.local.block(lb);
     auto lblock_view    = lblock.begin().viewspec();
     auto lblock_extents = lblock_view.extents();
@@ -94,7 +101,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     dash__unused(lblock_offsets);
     EXPECT_EQ_U(block_size_x, lblock_extents[0]);
     EXPECT_EQ_U(block_size_y, lblock_extents[1]);
-    LOG_MESSAGE("local block %d offset: (%d,%d) extent: (%d,%d)",
+    LOG_MESSAGE("local block %zu offset: (%li,%li) extent: (%lu,%lu)",
                 lb,
                 lblock_offsets[0], lblock_offsets[1],
                 lblock_extents[0], lblock_extents[1]);
@@ -111,7 +118,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                              ((bx + 1) * 100) +
                              by + 1
                            ));
-        LOG_MESSAGE("set local block %d at phase:(%d,%d) g:(%d,%d) = %f",
+        LOG_MESSAGE("set local block %zu at phase:(%d,%d) g:(%li,%li) = %f",
                     lb, bx, by, gx, gy, value);
         lblock[bx][by] = value;
       }
@@ -162,15 +169,15 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     auto g_block_unit = pattern.unit_at(
                           std::array<index_t, 2> {0,0},
                           g_block_view);
-    LOG_MESSAGE("Block %d: assigned to unit %d", gb, g_block_unit.id);
+    LOG_MESSAGE("Block %zu: assigned to unit %d", gb, g_block_unit.id);
     if (g_block_unit == remote_unit_id) {
       // Block is assigned to selecte remote unit, create local copy:
-      LOG_MESSAGE("Creating local copy of block %d", gb);
+      LOG_MESSAGE("Creating local copy of block %zu", gb);
       auto remote_block      = matrix.block(gb);
       auto remote_block_view = remote_block.begin().viewspec();
       dash__unused(remote_block_view);
-      LOG_MESSAGE("Block %d index range: (%d..%d] "
-                  "offset: (%d,%d) extent: (%d,%d)",
+      LOG_MESSAGE("Block %zu index range: (%li..%li] "
+                  "offset: (%li,%li) extent: (%lu,%lu)",
                   gb, remote_block.begin().pos(), remote_block.end().pos(),
                   remote_block_view.offset(0), remote_block_view.offset(1),
                   remote_block_view.extent(0), remote_block_view.extent(1));
@@ -270,7 +277,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   auto      l_start_idx       = array.pattern().lbegin();
   auto      l_end_idx         = array.pattern().lend();
 
-  LOG_MESSAGE("lstart:%d lend:%d ncopy:%d",
+  LOG_MESSAGE("lstart:%li lend:%li ncopy:%zu",
               l_start_idx, l_end_idx, num_copy_elem);
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
@@ -285,14 +292,14 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   int * dest_last  = local_copy;
   if (dash::myid().id == 0) {
     // Copy elements in front of local range:
-    LOG_MESSAGE("Copying from global range (%d-%d]",
+    LOG_MESSAGE("Copying from global range (%d-%ld]",
                 0, l_start_idx);
     dest_first = dash::copy(
                    array.begin(),
                    array.begin() + l_start_idx,
                    dest_first);
     // Copy elements after local range:
-    LOG_MESSAGE("Copying from global range (%d-%d]",
+    LOG_MESSAGE("Copying from global range (%li-%zu]",
                 l_end_idx, array.size());
     dest_last  = dash::copy(
                    array.begin() + l_end_idx,
@@ -328,10 +335,10 @@ TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
   std::vector<int> local_array(num_elems_copy);
   dash::Array<int> array(num_elems_total);
 
-  LOG_MESSAGE("Elements per unit: %d", num_elems_unit);
-  LOG_MESSAGE("Start index:       %d", start_index);
-  LOG_MESSAGE("Elements to copy:  %d", num_elems_copy);
-  LOG_MESSAGE("Array size:        %d", array.size());
+  LOG_MESSAGE("Elements per unit: %zu", num_elems_unit);
+  LOG_MESSAGE("Start index:       %zu", start_index);
+  LOG_MESSAGE("Elements to copy:  %zu", num_elems_copy);
+  LOG_MESSAGE("Array size:        %zu", array.size());
 
   std::fill(array.lbegin(), array.lend(), myid);
 
@@ -486,7 +493,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
   array.barrier();
 
   for (size_t l = 0; l < num_elems_copy; ++l) {
-    LOG_MESSAGE("Testing local value %d", l);
+    LOG_MESSAGE("Testing local value %zu", l);
     EXPECT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
 }
@@ -662,7 +669,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
 
   EXPECT_EQ_U(num_local_blocks_a, num_local_blocks_b);
 
-  LOG_MESSAGE("lblockspec_a(%lu,%lu)[%d] lblockspec_b(%lu,%lu)[%d]",
+  LOG_MESSAGE("lblockspec_a(%lu,%lu)[%zu] lblockspec_b(%lu,%lu)[%zu]",
               lblockspec_a.extent(0), lblockspec_a.extent(1),
               num_local_blocks_a,
               lblockspec_b.extent(0), lblockspec_b.extent(1),
@@ -709,7 +716,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     auto gblock_a          = matrix_a.block(block_a_index);
 
     LOG_MESSAGE("local block %d: copy_async: "
-                "A.block((%d,%d):%d) -> B.block((%d,%d):%d)",
+                "A.block((%lu,%lu):%lu) -> B.block((%lu,%lu):%d)",
                 lb,
                 block_a_gcoord_x,  block_a_gcoord_y,  block_a_index,
                 lblock_b_gcoord_x, lblock_b_gcoord_y, lb);

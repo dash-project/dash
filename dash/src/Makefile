@@ -33,7 +33,7 @@ CXXFLAGS+=-std=c++11
 
 LIBDASH = libdash.a
 
-FILES = Distribution GlobPtr Init Logging Math Team Types		\
+FILES = Distribution GlobPtr Init Logging Math Team 			\
 	algorithm/SUMMA exception/StackTrace util/BenchmarkParams	\
 	util/Config util/Locality util/LocalityDomain			\
 	util/LocalityJSONPrinter util/TeamLocality util/Timer		\

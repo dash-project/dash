@@ -1,14 +1,17 @@
 #ifndef DASH__TEST__FIND_TEST_H_
 #define DASH__TEST__FIND_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
+
+#include <dash/Array.h>
+
 #include <vector>
+
 
 /**
  * Test fixture for algorithm dash::min_element.
  */
-class FindTest : public ::testing::Test {
+class FindTest : public dash::test::TestBase {
 protected:
   typedef int                                         Element_t;
   typedef dash::Array<Element_t>                      Array_t;
@@ -20,14 +23,6 @@ protected:
   }
 
   virtual ~FindTest() {
-  }
-
-  virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-  }
-
-  virtual void TearDown() {
-    dash::finalize();
   }
 };
 
