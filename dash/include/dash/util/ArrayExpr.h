@@ -20,7 +20,7 @@ namespace detail {
     class          ValueT,
     std::size_t    NElem,
     std::size_t... Is >
-  constexpr std::array<ValueT, NElem - NDrop>
+  constexpr std::array<ValueT, (NDrop > NElem) ? 0 : NElem - NDrop >
   drop_impl(
     const std::array<ValueT, NElem> & values,
     dash::ce::index_sequence<Is...>) {
@@ -36,24 +36,30 @@ template <
   std::size_t   NDrop,
   class         ValueT,
   std::size_t   NElem >
-constexpr std::array<ValueT, NElem - NDrop>
+constexpr std::array<ValueT, (NDrop > NElem) ? 0 : NElem - NDrop >
 drop(
   const std::array<ValueT, NElem> & values) {
   return detail::drop_impl<NDrop, ValueT, NElem>(
            values,
-           dash::ce::make_index_sequence<NElem - NDrop>());
+           dash::ce::make_index_sequence<
+             (NDrop > NElem) ? 0 : NElem - NDrop
+           >());
 }
 
 // -------------------------------------------------------------------------
 // tail = drop<1>
 // -------------------------------------------------------------------------
 
+/**
+ * Tail of a sequence.
+ */
 template <
   class         ValueT,
   std::size_t   NElem >
-constexpr std::array<ValueT, NElem - 1>
+constexpr auto
 tail(
-  const std::array<ValueT, NElem> & values) {
+  const std::array<ValueT, NElem> & values)
+->  decltype(drop<1>(values)) {
   return drop<1>(values);
 }
 
@@ -67,7 +73,7 @@ namespace detail {
     class          ValueT,
     std::size_t    NElem,
     std::size_t... Is >
-  constexpr std::array<ValueT, NTake>
+  constexpr std::array<ValueT, (NTake > NElem) ? NElem : NTake >
   take_impl(
     const std::array<ValueT, NElem> & values,
     dash::ce::index_sequence<Is...>) {
@@ -83,24 +89,30 @@ template <
   std::size_t   NTake,
   class         ValueT,
   std::size_t   NElem >
-constexpr std::array<ValueT, NTake>
+constexpr std::array<ValueT, (NTake > NElem) ? NElem : NTake >
 take(
   const std::array<ValueT, NElem> & values) {
   return detail::take_impl<NTake, ValueT, NElem>(
            values,
-           dash::ce::make_index_sequence<NTake>());
+           dash::ce::make_index_sequence<
+             (NTake > NElem) ? NElem : NTake
+           >());
 }
 
 // -------------------------------------------------------------------------
 // head = take<1>
 // -------------------------------------------------------------------------
 
+/**
+ * Head of a sequence.
+ */
 template <
   class         ValueT,
   std::size_t   NElem >
-constexpr std::array<ValueT, 1>
+constexpr auto
 head(
-  const std::array<ValueT, NElem> & values) {
+  const std::array<ValueT, NElem> & values)
+->  decltype(take<1>(values)) {
   return take<1>(values);
 }
 
@@ -200,6 +212,27 @@ append(
 }
 
 // -------------------------------------------------------------------------
+// reverse
+// -------------------------------------------------------------------------
+
+/**
+ * Reverse elements of a sequence
+ */
+template <
+  class          ValueT,
+  std::size_t    NElem >
+constexpr std::array<ValueT, NElem>
+reverse(
+  const std::array<ValueT, NElem> & values) {
+  return (NElem > 1
+          ? ( dash::ce::append(
+                dash::ce::reverse(
+                  dash::ce::tail(values)),
+                dash::ce::head(values)) )
+          : values);
+}
+
+// -------------------------------------------------------------------------
 // replace_nth
 // -------------------------------------------------------------------------
 
@@ -222,7 +255,6 @@ replace_nth(
            dash::ce::drop<IElem + 1>(values)
          );
 }
-
 
 } // namespace ce
 } // namespace dash

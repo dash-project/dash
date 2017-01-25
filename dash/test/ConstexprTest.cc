@@ -80,6 +80,20 @@ TEST_F(ConstexprTest, HeadTail)
   EXPECT_EQ_U(arr, arr_join);
 }
 
+TEST_F(ConstexprTest, Reverse)
+{
+  constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+  constexpr auto arr_rev = dash::ce::reverse(arr);
+
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ConstexprTest.Reverse", arr_rev);
+  }
+
+  constexpr std::array<int, 9> exp_rev = { 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+  EXPECT_EQ_U(exp_rev, arr_rev);
+}
+
 TEST_F(ConstexprTest, ReplaceNth)
 {
   constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
