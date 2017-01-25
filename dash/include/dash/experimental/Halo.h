@@ -750,7 +750,11 @@ public:
       }
 
       if(halo_offs_plus == 0 ||
-          std::abs(view_offset + view_extent + halo_offs_plus) > _pattern.extent(d))
+          std::abs(
+            static_cast<index_type>(view_offset) +
+            static_cast<index_type>(view_extent) +
+            static_cast<index_type>(halo_offs_plus)
+          ) > static_cast<index_type>(_pattern.extent(d)))
       {
         _view_save.resize_dim(d, _view_save.offset(d), _view_save.extent(d) - halo_offs_plus);
         _view_inner.resize_dim(d, _view_inner.offset(d), _view_inner.extent(d) - halo_offs_plus);

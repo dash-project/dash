@@ -23,25 +23,9 @@ MatrixRefView<T, NumDim, PatternT>
   _viewspec(matrix->extents()),
   _l_viewspec()
 {
-  // TODO: Check if initializing local viewspec with default viewspec is okay.
+  // TODO: Check if initializing local viewspec with default viewspec
+  //       is okay.
   DASH_LOG_TRACE_VAR("MatrixRefView(matrix)", matrix);
-}
-
-template<typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>
-::MatrixRefView(
-  const MatrixRefView<T, NumDim, PatternT> & other)
-: _dim(other._dim),
-  _mat(other._mat),
-  _coord(other._coord),
-  _viewspec(other._viewspec),
-  _l_viewspec(other._l_viewspec)
-{
-  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _mat);
-  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _dim);
-  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _coord);
-  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _viewspec);
-  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _l_viewspec);
 }
 
 template<typename T, dim_t NumDim, class PatternT>
@@ -65,7 +49,8 @@ MatrixRefView<T, NumDim, PatternT>
 template<typename T, dim_t NumDim, class PatternT>
 GlobRef<T>
 MatrixRefView<T, NumDim, PatternT>
-::global_reference(const ::std::array<typename PatternT::index_type, NumDim> & c) const
+::global_reference(
+  const ::std::array<typename PatternT::index_type, NumDim> & c) const
 {
   ::std::array<typename PatternT::index_type, NumDim> coords = _coord;
   for(auto i = _dim; i < NumDim; ++i) {
