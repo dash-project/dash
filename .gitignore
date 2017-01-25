@@ -34,3 +34,4 @@ dash/include/dash/util/StaticConfig.h
 .gutctags
 cscope.files
 .ycm_*
+*.mine

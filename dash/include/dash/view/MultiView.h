@@ -20,6 +20,10 @@ namespace dash {
  *   OpenSTD document number M3851
  *   http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3851.pdf
  *
+ * For a related implementation in C++14, see:
+ *
+ * - https://github.com/Microsoft/GSL/blob/master/gsl/multi_span
+ *
  * \par Terminology:
  *
  * \b Multidimensional View Properties
