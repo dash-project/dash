@@ -42,7 +42,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::size() const noexcept
 {
@@ -51,7 +51,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-inline MatrixRef<T, NumDim, CUR, PatternT>
+constexpr MatrixRef<T, NumDim, CUR, PatternT>
 ::local_size() const noexcept
 {
   // TODO: Should be
@@ -65,7 +65,7 @@ inline MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-inline MatrixRef<T, NumDim, CUR, PatternT>
+constexpr MatrixRef<T, NumDim, CUR, PatternT>
 ::local_capacity() const noexcept
 {
   // TODO: Should be
@@ -78,7 +78,7 @@ inline MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -87,7 +87,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline std::array<
+constexpr std::array<
   typename MatrixRef<T, NumDim, CUR, PatternT>::size_type,
   NumDim>
 MatrixRef<T, NumDim, CUR, PatternT>
@@ -97,7 +97,26 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline bool
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::index_type
+MatrixRef<T, NumDim, CUR, PatternT>
+::offset(
+  dim_t dim) const noexcept
+{
+  return _refview._viewspec.offset(dim);
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr std::array<
+  typename MatrixRef<T, NumDim, CUR, PatternT>::index_type,
+  NumDim >
+MatrixRef<T, NumDim, CUR, PatternT>
+::offsets() const noexcept
+{
+  return _refview._viewspec.offsets();
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::empty() const noexcept
 {
@@ -113,7 +132,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
+constexpr const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::pattern() const
 {
@@ -121,7 +140,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
 MatrixRef<T, NumDim, CUR, PatternT>
 ::data() const noexcept
 {
@@ -129,7 +148,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::begin() const noexcept
 {
@@ -179,7 +198,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::end() const noexcept
 {
@@ -277,7 +296,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-const MatrixRef<T, NumDim, CUR-1, PatternT>
+constexpr const MatrixRef<T, NumDim, CUR-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
@@ -429,7 +448,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::is_local(
   index_type g_pos) const
@@ -440,7 +459,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t Dimension>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::is_local(
   index_type g_pos) const
@@ -487,7 +506,7 @@ MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, 0, PatternT>
 ::is_local() const
 {
@@ -498,7 +517,7 @@ MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline MatrixRef<T, NumDim, 0, PatternT>
+constexpr MatrixRef<T, NumDim, 0, PatternT>
 ::operator T() const
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview._coord);
@@ -508,7 +527,7 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline MatrixRef<T, NumDim, 0, PatternT>
+constexpr MatrixRef<T, NumDim, 0, PatternT>
 ::operator GlobPtr<T, PatternT>() const
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.GlobPtr()", _refview._coord);

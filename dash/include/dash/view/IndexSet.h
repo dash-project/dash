@@ -52,7 +52,7 @@ intersect(
   const ViewTypeA & va,
   const ViewTypeB & vb);
 
-template <class IndexSetType, class ViewType, dim_t NDim>
+template <class IndexSetType, class ViewType, std::size_t NDim>
 class IndexSetBase;
 
 template <class ViewType>
@@ -218,7 +218,7 @@ public:
 template <
   class IndexSetType,
   class ViewType,
-  dim_t NDim >
+  std::size_t NDim >
 constexpr auto
 local(
   const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
@@ -231,7 +231,7 @@ local(
 template <
   class IndexSetType,
   class ViewType,
-  dim_t NDim >
+  std::size_t NDim >
 constexpr auto
 global(
   const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
@@ -247,7 +247,7 @@ global(
 template <
   class IndexSetType,
   class ViewType,
-  dim_t NDim = ViewType::rank::value >
+  std::size_t NDim = ViewType::rank::value >
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
