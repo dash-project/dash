@@ -232,13 +232,16 @@ public:
   // ---- extents ---------------------------------------------------------
 
   constexpr auto extents() const
-    -> decltype(dash::domain(derived()).extents()) {
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<domain_type>::type
+         >().extents()) {
     return _domain->extents();
   }
 
   template <std::size_t ShapeDim>
   constexpr index_type extent() const {
-    return _domain->extent<ShapeDim>();
+    return (*_domain).template extent<ShapeDim>();
   }
 
   constexpr index_type extent(std::size_t shape_dim) const {
@@ -248,13 +251,16 @@ public:
   // ---- offsets ---------------------------------------------------------
 
   constexpr auto offsets() const
-    -> decltype(dash::domain(derived()).offsets()) {
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<domain_type>::type
+         >().offsets()) {
     return _domain->offsets();
   }
 
   template <std::size_t ShapeDim>
   constexpr index_type offset() const {
-    return _domain->offset<ShapeDim>();
+    return (*_domain).template offset<ShapeDim>();
   }
 
   constexpr index_type offset(std::size_t shape_dim) const {
@@ -518,7 +524,10 @@ public:
   }
 
   constexpr auto extents() const
-    -> decltype(dash::domain(*this).extents()) {
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<domain_type>::type
+         >().extents()) {
     return dash::ce::replace_nth<SubDim>(
              static_cast<
                typename std::remove_reference<
@@ -547,7 +556,10 @@ public:
   }
 
   constexpr auto offsets() const
-    -> decltype(dash::domain(*this).offsets()) {
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<domain_type>::type
+         >().offsets()) {
     return dash::ce::replace_nth<SubDim>(
              static_cast<
                typename std::remove_reference<

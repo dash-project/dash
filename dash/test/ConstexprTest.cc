@@ -54,7 +54,7 @@ TEST_F(ConstexprTest, TakeDrop)
   }
   EXPECT_EQ_U(exp, takedrop);
 
-  constexpr std::array<int, 0> empty;
+  constexpr std::array<int, 0> empty {{ }};
   constexpr auto drop_all = dash::ce::drop<9>(arr);
 
   EXPECT_EQ_U(empty, drop_all);

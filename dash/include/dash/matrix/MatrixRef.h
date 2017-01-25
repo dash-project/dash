@@ -175,11 +175,11 @@ public:
 
   constexpr const_pointer     data()                const noexcept;
 
-  inline    iterator          begin()                     noexcept;
-  constexpr const_iterator    begin()               const noexcept;
+            iterator          begin()                     noexcept;
+            const_iterator    begin()               const noexcept;
 
-  inline    iterator          end()                       noexcept;
-  constexpr const_iterator    end()                 const noexcept;
+            iterator          end()                       noexcept;
+            const_iterator    end()                 const noexcept;
 
   /// View representing elements in the active unit's local memory.
   inline    local_type        sub_local()                 noexcept;
