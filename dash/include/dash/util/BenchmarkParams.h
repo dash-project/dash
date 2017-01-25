@@ -2,7 +2,7 @@
 #define DASH__UTIL__BENCHMARK_PARAMS_H__
 
 #include <dash/util/Locality.h>
-#include <dash/Array.h>
+#include <dash/Team.h>
 
 #include <iostream>
 #include <sstream>
