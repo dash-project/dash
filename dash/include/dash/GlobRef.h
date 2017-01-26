@@ -39,6 +39,9 @@ class GlobRef
     std::ostream & os,
     const GlobRef<U> & gref);
 
+public:
+  typedef T value_type;
+
 private:
 
   typedef GlobRef<T>

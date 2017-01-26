@@ -41,7 +41,7 @@ public:
    * pointer.
    */
   Atomic(
-    dart_gptr_t  gptr,
+    const dart_gptr_t & gptr,
     dash::Team & team = dash::Team::All())
   : _gptr(gptr),
     _dart_teamid(team.dart_id())
@@ -211,6 +211,131 @@ private:
 
 }; // class Atomic
 
+/**
+ * Routines to perform atomic operations on elements residing in the
+ * global address space
+ *
+ * \code
+ *  int N = dash::size();
+ *  dash::Array<int> array(N);
+ *  dash::fill(array.begin(), array.end(), 0);
+ *  // each unit adds 1 to each array position
+ *  for(auto & el : array){
+ *    dash::atomic::add(el, 1);
+ *  }
+ *  // postcondition:
+ *  // array = {N,N,N,N,...}
+ * \endcode
+ */
+namespace atomic {
+
+  /**
+   * Get a reference on the shared atomic value.
+   */
+  template<class Ref_t>
+  typename Ref_t::value_type get(const Ref_t & ref){
+    return dash::Atomic<typename Ref_t::value_type>(ref).get();
+  }
+
+  /**
+   * Set the value of the atomic reference 
+   */
+  template<
+    class Ref_t >
+  void set(const Ref_t & ref, const typename Ref_t::value_type value){
+    dash::Atomic<typename Ref_t::value_type>(ref).set(value);
+  }
+
+  /**
+   * Atomically executes specified operation on the referenced shared value.
+   */
+  template<
+    class Ref_t,
+    typename BinaryOp >
+  void op(
+    const Ref_t & ref,
+    const BinaryOp  binary_op,
+    /// Value to be added to global atomic variable.
+    typename Ref_t::value_type value)
+  {
+    dash::Atomic<typename Ref_t::value_type>(
+        ref).op(binary_op, value);
+  }
+
+  /**
+   * Atomic fetch-and-op operation on the referenced shared value.
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  template<
+    class Ref_t,
+    typename BinaryOp >
+  typename Ref_t::value_type fetch_and_op(
+    const Ref_t & ref,
+    const BinaryOp  binary_op,
+    /// Value to be added to global atomic variable.
+    typename Ref_t::value_type value)
+  {
+    return dash::Atomic<typename Ref_t::value_type>(
+        ref).fetch_and_op(binary_op, value);
+  }
+
+  /**
+   * Atomic add operation on the referenced shared value.
+   */
+  template<class Ref_t>
+  void add(
+    const Ref_t & ref,
+    const typename Ref_t::value_type value)
+  {
+    dash::Atomic<typename Ref_t::value_type>(ref).add(value);
+  }
+
+  /**
+   * Atomic subtract operation on the referenced shared value.
+   */
+  template<class Ref_t>
+  void sub(
+    const Ref_t & ref,
+    const typename Ref_t::value_type value)
+  {
+    dash::Atomic<typename Ref_t::value_type>(ref).sub(value);
+  }
+
+  /**
+   * Atomic fetch-and-add operation on the referenced shared value.
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  template<class Ref_t>
+  typename Ref_t::value_type fetch_and_add(
+    const Ref_t & ref,
+    /// Value to be added to global atomic variable.
+    const typename Ref_t::value_type value)
+  {
+    return dash::Atomic<typename Ref_t::value_type>(
+        ref).fetch_and_add(value);
+  }
+
+  /**
+   * Atomic fetch-and-sub operation on the referenced shared value.
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  template<class Ref_t>
+  typename Ref_t::value_type fetch_and_sub(
+    const Ref_t & ref,
+    /// Value to be subtracted from global atomic variable.
+    const typename Ref_t::value_type value)
+  {
+    return dash::Atomic<typename Ref_t::value_type>(
+        ref).fetch_and_sup(value);
+  }
+
+} // namespace atomic
 } // namespace dash
 
 #endif // DASH__ATOMIC_H__INCLUDED

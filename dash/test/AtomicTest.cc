@@ -146,3 +146,24 @@ TEST_F(AtomicTest, ContainerOfAtomics){
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
   }
 }
+
+TEST_F(AtomicTest, AlgorithmVariant){
+  using value_t = int;
+  using array_t = dash::Array<value_t>;
+
+  array_t array(dash::size());
+
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::add(array[i], i+1);
+  }
+  
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::get(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+}
