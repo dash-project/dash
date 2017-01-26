@@ -3,6 +3,7 @@
 
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
+#include <dash/dart/base/mutex.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -19,6 +20,7 @@ typedef struct dart_task_data {
   struct dart_task_data     *parent;          // the task that created this task
   struct dart_dephash_elem  *remote_successor;
   int                        num_children;
+  dart_mutex_t               mutex;
 } dart_task_t;
 
 

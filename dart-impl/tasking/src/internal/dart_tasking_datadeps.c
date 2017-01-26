@@ -1,5 +1,7 @@
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/mutex.h>
+#include <dash/dart/base/atomic.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_tasklist.h>
@@ -28,6 +30,7 @@ struct dart_dephash_elem {
 
 static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
 static dart_dephash_elem_t *freelist_head = NULL;
+static dart_mutex_t         local_deps_mutex;
 
 
 static dart_ret_t release_remote_dependencies(dart_task_t *task);
@@ -46,6 +49,8 @@ static inline int hash_gptr(dart_gptr_t gptr)
 dart_ret_t dart_tasking_datadeps_init()
 {
   memset(local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
+
+  dart_mutex_init(&local_deps_mutex);
 
   return dart_tasking_remote_init();
 }
@@ -69,13 +74,18 @@ dart_ret_t dart_tasking_datadeps_progress()
 static dart_dephash_elem_t * dephash_allocate_elem(const dart_task_dep_t *dep, taskref task)
 {
   // take an element from the free list if possible
-  // TODO: this needs locking
-  dart_dephash_elem_t *elem;
+  dart_dephash_elem_t *elem = NULL;
   if (freelist_head != NULL) {
-    elem = freelist_head;
-    freelist_head = freelist_head->next;
-    elem->next = NULL;
-  } else {
+    dart_mutex_lock(&local_deps_mutex);
+    if (freelist_head != NULL) {
+      elem = freelist_head;
+      freelist_head = freelist_head->next;
+      elem->next = NULL;
+    }
+    dart_mutex_unlock(&local_deps_mutex);
+  }
+
+  if (elem == NULL){
     elem = calloc(1, sizeof(dart_dephash_elem_t));
   }
 
@@ -93,8 +103,10 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   // TODO: this needs locking
   if (elem != NULL) {
+    dart_mutex_lock(&local_deps_mutex);
     elem->next = freelist_head;
     freelist_head = elem;
+    dart_mutex_unlock(&local_deps_mutex);
   }
 }
 
@@ -106,8 +118,10 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
   dart_dephash_elem_t *elem = dephash_allocate_elem(dep, task);
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
+  dart_mutex_lock(&local_deps_mutex);
   elem->next = local_deps[slot];
   local_deps[slot] = elem;
+  dart_mutex_unlock(&local_deps_mutex);
 
   return DART_OK;
 }
@@ -137,10 +151,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t 
             && elem->task.local != task) {
           if (IS_OUT_DEP(*dep) || (dep->type == DART_DEP_IN && IS_OUT_DEP(elem->taskdep))){
             // OUT dependencies have to wait for all previous dependencies
-            // TODO: This needs locking
+            dart_mutex_lock(&(elem->task.local->mutex));
             dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
-            // TODO: This has to be atomic!
-            task->unresolved_deps++;
+            dart_mutex_lock(&(elem->task.local->mutex));
+            DART_FETCH_AND_INC32(&task->unresolved_deps);
           }
           if (IS_OUT_DEP(elem->taskdep)) {
             // we can stop at the first OUT|INOUT dependency
@@ -174,12 +188,13 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
   for (dart_dephash_elem_t *elem = local_deps[slot]; elem != NULL; elem = elem->next) {
     if (elem->taskdep.gptr.addr_or_offs.offset == dep->gptr.addr_or_offs.offset
         && IS_OUT_DEP(elem->taskdep)) {
-      // TODO: this needs locking
       dart_dephash_elem_t *rs = dephash_allocate_elem(dep, remote_task);
-      elem->next = elem->task.local->remote_successor;
-      elem->task.local->remote_successor = rs;
       // the taskdep's gptr unit is used to store the origin
       elem->taskdep.gptr.unitid = origin.id;
+      dart_mutex_lock(&(elem->task.local->mutex));
+      rs->next = elem->task.local->remote_successor;
+      elem->task.local->remote_successor = rs;
+      dart_mutex_unlock(&(elem->task.local->mutex));
 
       return DART_OK;
     }
@@ -196,11 +211,14 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
 dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_global_unit_t origin)
 {
   dart_task_dep_t dep;
-  dep.gptr = DART_GPTR_NULL;
   dep.type = DART_DEP_DIRECT;
+  dep.gptr = DART_GPTR_NULL;
+  dep.gptr.unitid = origin.id;
   dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
+  dart_mutex_lock(&(local_task->mutex));
   rs->next = local_task->remote_successor;
   local_task->remote_successor = rs;
+  dart_mutex_unlock(&(local_task->mutex));
 
   return DART_OK;
 }
@@ -216,11 +234,9 @@ dart_ret_t dart_tasking_datadeps_release_local_task(dart_thread_t *thread, dart_
   task_list_t *tl = task->successor;
   while (tl != NULL) {
     task_list_t *tmp = tl->next;
+    int unresolved_deps = DART_FETCH_AND_DEC32(&tl->task->unresolved_deps);
 
-    // TODO: this needs to be atomic
-    tl->task->unresolved_deps--;
-
-    if (tl->task->unresolved_deps == 0) {
+    if (unresolved_deps == 0) {
       dart_tasking_taskqueue_push(&thread->queue, task);
     }
 
@@ -240,7 +256,6 @@ dart_ret_t dart_tasking_datadeps_release_local_task(dart_thread_t *thread, dart_
  */
 static dart_ret_t send_direct_dependencies(dart_dephash_elem_t *remotedep)
 {
-  int ret;
   int slot = hash_gptr(remotedep->taskdep.gptr);
 
   // nothing to do for direct task dependencies
@@ -256,12 +271,13 @@ static dart_ret_t send_direct_dependencies(dart_dephash_elem_t *remotedep)
 
     if (elem->taskdep.gptr.addr_or_offs.addr == remotedep->taskdep.gptr.addr_or_offs.addr && IS_OUT_DEP(elem->taskdep)) {
 
-      if ((ret = dart_tasking_remote_direct_taskdep(DART_GLOBAL_UNIT_ID(remotedep->taskdep.gptr.unitid), elem->task.local, remotedep->task)) != DART_OK)
+      int ret = dart_tasking_remote_direct_taskdep(DART_GLOBAL_UNIT_ID(remotedep->taskdep.gptr.unitid),
+                                                   elem->task.local, remotedep->task);
+      if (ret != DART_OK)
         return ret;
 
       // this task now needs to wait for the remote task to complete
-      // TODO: this needs to be atomic
-      elem->task.local->unresolved_deps++;
+      DART_FETCH_AND_INC32(&elem->task.local->unresolved_deps);
     }
   }
 
