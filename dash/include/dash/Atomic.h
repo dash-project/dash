@@ -65,11 +65,11 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  void set(ValueType val)
+  void set(ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.set()", val);
+    DASH_LOG_DEBUG_VAR("Atomic.set()", value);
     DASH_LOG_TRACE_VAR("Atomic.set",   _gptr);
-    *(reference(_gptr)) = val;
+    reference(_gptr) = value;
     DASH_LOG_DEBUG("Atomic.set >");
   }
 
@@ -135,22 +135,22 @@ public:
    */
   template<typename BinaryOp>
   ValueType fetch_and_op(
-    BinaryOp  op,
+    BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    ValueType val)
+    ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", val);
+    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", value);
     DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
-    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   typeid(val).name());
+    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   typeid(value).name());
     DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
-                       reinterpret_cast<void *>(&val),
+                       reinterpret_cast<void *>(&value),
                        reinterpret_cast<void *>(&acc),
                        dash::dart_datatype<ValueType>::value,
-                       op.dart_operation(),
+                       binary_op.dart_operation(),
                        _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
     DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
@@ -185,9 +185,9 @@ public:
    */
   ValueType fetch_and_add(
     /// Value to be added to global atomic variable.
-    ValueType val)
+    ValueType value)
   {
-    return fetch_and_op(dash::plus<ValueType>(), val);
+    return fetch_and_op(dash::plus<ValueType>(), value);
   }
 
   /**
