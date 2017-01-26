@@ -371,15 +371,13 @@ public:
   
 private:
   index_type _size;
-
-  constexpr static dim_t NDim = 1;
 public:
   constexpr IndexSetBlocks()               = delete;
   constexpr IndexSetBlocks(self_t &&)      = default;
   constexpr IndexSetBlocks(const self_t &) = default;
   ~IndexSetBlocks()                        = default;
-  self_t & operator=(self_t &&)            = default;
-  self_t & operator=(const self_t &)       = default;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
 public:
   constexpr explicit IndexSetBlocks(const ViewType & view)
@@ -400,16 +398,10 @@ public:
     return (
       // index of block at last index in domain
       this->pattern().block_at(
-        std::array<index_type, NDim> {{
-          *(dash::end(this->domain())) - 1
-        }}
-      ) -
+        *dash::index(dash::end(this->domain())-1)) -
       // index of block at first index in domain
       this->pattern().block_at(
-        std::array<index_type, NDim> {{
-          *(dash::begin(this->domain()))
-        }}
-      )
+        *dash::index(dash::begin(this->domain())))
     );
   }
 };
@@ -716,3 +708,5 @@ public:
 #endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_SET_H__INCLUDED
+_INCLUDED
+

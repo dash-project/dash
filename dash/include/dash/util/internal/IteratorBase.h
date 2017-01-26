@@ -23,16 +23,16 @@ class IndexIteratorBase {
             Pointer,
             Reference >          self_t;
   typedef dash::default_index_t  index_type;
-  typedef IteratorType           iterator;
+  typedef IteratorType           derived_t;
 private:
   index_type _pos;
 
 private:
-  iterator & derived() {
+  derived_t & derived() {
     return static_cast<IteratorType &>(*this);
   }
-  constexpr const iterator & derived() const {
-    return static_cast<const iterator &>(*this);
+  constexpr const derived_t & derived() const {
+    return static_cast<const derived_t &>(*this);
   }
 
 public:
@@ -61,71 +61,71 @@ public:
     return _pos;
   }
 
-  constexpr const_reference operator*() const {
+  constexpr reference operator*() const {
     return derived().dereference(_pos);
   }
 
-  constexpr const_reference operator->() const {
+  constexpr reference operator->() const {
     return derived().dereference(_pos);
   }
 
-  iterator & operator++() {
+  derived_t & operator++() {
     _pos++;
     return derived();
   }
 
-  iterator & operator--() {
+  derived_t & operator--() {
     _pos--;
     return derived();
   }
 
-  iterator & operator+=(int i) {
+  derived_t & operator+=(int i) {
     _pos += i;
     return derived();
   }
 
-  iterator & operator-=(int i) {
+  derived_t & operator-=(int i) {
     _pos -= i;
     return derived();
   }
 
-  constexpr iterator operator+(int i) const {
-    return iterator(derived(), _pos + i);
+  constexpr derived_t operator+(int i) const {
+    return derived_t(derived(), _pos + i);
   }
 
-  constexpr iterator operator-(int i) const {
-    return iterator(derived(), _pos - i);
+  constexpr derived_t operator-(int i) const {
+    return derived_t(derived(), _pos - i);
   }
 
-  constexpr index_type operator+(const iterator & rhs) const {
+  constexpr index_type operator+(const self_t & rhs) const {
     return _pos + rhs._pos;
   }
 
-  constexpr index_type operator-(const iterator & rhs) const {
+  constexpr index_type operator-(const self_t & rhs) const {
     return _pos - rhs._pos;
   }
 
-  constexpr bool operator==(const iterator & rhs) const {
+  constexpr bool operator==(const self_t & rhs) const {
     return _pos == rhs._pos;
   }
 
-  constexpr bool operator!=(const iterator & rhs) const {
+  constexpr bool operator!=(const self_t & rhs) const {
     return not (derived() == rhs);
   }
 
-  constexpr bool operator<(const iterator & rhs) const {
+  constexpr bool operator<(const self_t & rhs) const {
     return _pos < rhs._pos;
   }
 
-  constexpr bool operator<=(const iterator & rhs) const {
+  constexpr bool operator<=(const self_t & rhs) const {
     return _pos <= rhs._pos;
   }
 
-  constexpr bool operator>(const iterator & rhs) const {
+  constexpr bool operator>(const self_t & rhs) const {
     return _pos > rhs._pos;
   }
 
-  constexpr bool operator>=(const iterator & rhs) const {
+  constexpr bool operator>=(const self_t & rhs) const {
     return _pos >= rhs._pos;
   }
 };

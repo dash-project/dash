@@ -84,6 +84,7 @@
 #include <dash/view/SetIntersect.h>
 
 #include <dash/view/IndexSet.h>
+#include <dash/view/IndexRange.h>
 #include <dash/view/CartView.h>
 
 #include <dash/view/MultiView.h>
