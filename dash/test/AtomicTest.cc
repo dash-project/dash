@@ -7,6 +7,8 @@
 #include <dash/Shared.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include "TestBase.h"
 #include "AtomicTest.h"
@@ -113,25 +115,31 @@ TEST_F(AtomicTest, ArrayElements)
 }
 
 TEST_F(AtomicTest, ContainerOfAtomics){
-  using value_t  = int;
-  using atomic_t = dash::Atomic<value_t>;
-  using array_t  = dash::Array<atomic_t>;
-  using matrix_t = dash::NArray<atomic_t,2>;
+  using value_t    = int;
+  using atomic_t   = dash::Atomic<value_t>;
+  using base_arr_t = dash::Array<value_t>;
+  using atom_arr_t = dash::Array<atomic_t>;
+
+  base_arr_t  base_array(dash::size());
+  atom_arr_t  atom_array(dash::size());
   
-  array_t  array(10);
-  matrix_t matrix(10,10);
-  
-  atomic_t elem_arr = array[0];
-  atomic_t elem_mat = matrix[0][0];
-  
-  elem_arr.fetch_and_add(1);
-  elem_mat.fetch_and_add(1);
+  int pos = dash::myid().id;
+  std::function<atomic_t()> gen = [&](){
+    return atomic_t(base_array.begin() + pos);
+  };
+  dash::fill(base_array.begin(), base_array.end(), 0);
+  dash::generate(atom_array.begin(), atom_array.end(), gen); 
+  // each unit increments all values by index+1
+  for(int i=0; i<dash::size(); ++i){
+    atomic_t elem_arr = atom_array[i];
+    elem_arr.add(i+1);
+  }
   
   dash::barrier();
-  
-  value_t elem_arr_local = elem_arr.get();
-  value_t elem_mat_local = elem_mat.get();
-  
-  ASSERT_EQ_U(elem_arr_local, static_cast<value_t>(dash::size()));
-  ASSERT_EQ_U(elem_mat_local, static_cast<value_t>(dash::size()));
+
+  for(int i=0; i<dash::size(); ++i){
+    atomic_t elem_arr      = atom_array[i];
+    value_t elem_arr_local = elem_arr.get();
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
 }
