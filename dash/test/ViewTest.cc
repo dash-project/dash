@@ -190,15 +190,24 @@ TEST_F(ViewTest, BlocksView1Dim)
                      dash::index(gview_blocks).size());
 
   if (dash::myid() == 0) {
+    int b_idx = 0;
     for (auto block : gview_blocks) {
+      DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
+                         array.pattern().block(b_idx).extents());
+      DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
+                         array.pattern().block(b_idx).offsets());
       DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
                          *(dash::index(block).begin()));
       DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
                          *(dash::index(block).end()));
+      DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
+                         dash::index(block).size());
 
       std::vector<int> block_values(block.size());
       std::copy(block.begin(), block.end(), block_values.begin());
       DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", block_values);
+
+      b_idx++;
     }
   }
 }

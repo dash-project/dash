@@ -13,7 +13,6 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Apply.h>
-#include <dash/view/Chunked.h>
 
 
 namespace dash {
@@ -135,10 +134,6 @@ class ViewSubMod;
 template <
   class DomainType = ViewOrigin<1> >
 class ViewGlobalMod;
-
-template <
-  class DomainType = ViewOrigin<1> >
-class ViewBlocksMod;
 
 
 // --------------------------------------------------------------------
@@ -289,6 +284,10 @@ public:
   constexpr bool is_local() const {
     return view_traits<ViewModType>::is_local::value;
   }
+
+  constexpr index_type size() const {
+    return derived().index_set().size();
+  }
 };
 
 
@@ -414,10 +413,6 @@ public:
     return *(this->begin() + offset);
   }
 
-  constexpr index_type size() const {
-    return index_set().size();
-  }
-
   constexpr const local_type & local() const {
     return *this;
   }
@@ -538,10 +533,6 @@ public:
     return *(this->begin() + offset);
   }
 
-  constexpr index_type size() const {
-    return _index_set.size();
-  }
-
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -616,10 +607,7 @@ public:
     return dash::begin(
              dash::global(
                dash::domain(
-                 *this
-               )
-             )
-           );
+                 *this)));
   }
 
   constexpr auto end() const
@@ -627,10 +615,7 @@ public:
     return dash::begin(
              dash::global(
                dash::domain(
-                 *this
-               )
-             )
-           )
+                 *this)))
            + *dash::end(dash::index(dash::domain(*this)));
   }
 
@@ -638,151 +623,6 @@ public:
   -> decltype(*(dash::begin(
                  dash::global(dash::domain(*this))))) {
     return *(this->begin() + offset);
-  }
-
-  constexpr index_type size() const {
-    return _index_set.size();
-  }
-
-  constexpr const local_type & local() const {
-    return dash::local(dash::domain(*this));
-  }
-
-  inline local_type & local() {
-    return dash::local(dash::domain(*this));
-  }
-
-  constexpr const global_type & global() const {
-    return dash::global(dash::domain(*this));
-  }
-
-  inline global_type & global() {
-    return dash::global(dash::domain(*this));
-  }
-
-  constexpr const index_set_type & index_set() const {
-    return _index_set;
-  }
-};
-
-// ------------------------------------------------------------------------
-// ViewBlocksMod
-// ------------------------------------------------------------------------
-
-template <class ViewType>
-constexpr ViewBlocksMod<ViewType>
-blocks(const ViewType & domain) {
-  return ViewBlocksMod<ViewType>(domain);
-}
-
-template <
-  class DomainType >
-struct view_traits<ViewBlocksMod<DomainType> > {
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef ViewBlocksMod<DomainType>                             image_type;
-  typedef typename domain_type::local_type                      local_type;
-  typedef ViewBlocksMod<DomainType>                            global_type;
-
-  typedef typename DomainType::index_type                       index_type;
-  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType>>   index_set_type;
-
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, false>                is_local;
-};
-
-template <
-  class DomainType >
-class ViewBlocksMod
-: public ViewModBase< ViewBlocksMod<DomainType>, DomainType >
-{
-public:
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<DomainType>::origin_type        origin_type;
-  typedef typename view_traits<DomainType>::index_type          index_type;
-private:
-  typedef ViewBlocksMod<DomainType>                                 self_t;
-  typedef ViewModBase<ViewBlocksMod<DomainType>, DomainType>        base_t;
-  typedef decltype(dash::block(0, std::declval<origin_type>()))
-                                                                block_type;
-public:
-  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType>>   index_set_type;
-  typedef self_t                                               global_type;
-  typedef typename domain_type::local_type                      local_type;
-
-  typedef std::integral_constant<bool, false>                     is_local;
-
-private:
-  index_set_type  _index_set;
-
-public:
-  class block_iterator
-  : public internal::IndexIteratorBase<
-             block_iterator,
-             block_type,
-             index_type,
-             std::nullptr_t,
-             block_type > {
-  private:
-    typedef internal::IndexIteratorBase<
-              block_iterator,
-              block_type,     // value type
-              index_type,     // difference type
-              std::nullptr_t, // pointer type
-              block_type >    // reference type
-      iterator_base_t;
-  private:
-    const ViewBlocksMod<DomainType> * _blocks_view;
-  public:
-    block_iterator(
-      const ViewBlocksMod<DomainType> & blocks_view,
-      index_type     position)
-    : iterator_base_t(position)
-    , _blocks_view(&blocks_view)
-    { }
-
-    constexpr block_type dereference(index_type idx) const {
-      // Dereferencing block iterator returns block at block index
-      // with iterator position.
-      // Note that idx refers to block index in the domain and is
-      // translated to global block index in IndexSetBlocks.
-      //
-      // TODO: Apply sub-section from domains to block here.
-      return dash::block(idx, dash::domain(*_blocks_view));
-    }
-  };
-
-public:
-  constexpr ViewBlocksMod()               = delete;
-  constexpr ViewBlocksMod(self_t &&)      = default;
-  constexpr ViewBlocksMod(const self_t &) = default;
-  ~ViewBlocksMod()                        = default;
-  self_t & operator=(self_t &&)           = default;
-  self_t & operator=(const self_t &)      = default;
-
-  constexpr explicit ViewBlocksMod(
-    const DomainType & domain)
-  : base_t(domain)
-  , _index_set(*this)
-  { }
-
-  constexpr block_iterator begin() const {
-    return block_iterator(*this, 0);
-  }
-
-  constexpr block_iterator end() const {
-    return block_iterator(*this, size());
-  }
-
-  constexpr block_type operator[](int offset) const {
-    return *block_iterator(*this, offset);
-  }
-
-  constexpr index_type size() const {
-    return _index_set.size();
   }
 
   constexpr const local_type & local() const {
@@ -810,4 +650,4 @@ public:
 
 } // namespace dash
 
-#endif
+#endif // DASH__VIEW__VIEW_MOD_H__INCLUDED

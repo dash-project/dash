@@ -860,9 +860,9 @@ public:
     index_type g_block_index) const
   {
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.block()", g_block_index);
-    index_type offset = g_block_index * _size;
-    std::array<index_type, NumDimensions> offsets = {{ offset }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
+    index_type offset = g_block_index * _blocksize;
+    std::array<index_type, NumDimensions>  offsets = {{ offset }};
+    std::array<size_type,  NumDimensions>  extents = {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.block >", block_vs);
     return block_vs;

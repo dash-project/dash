@@ -7,11 +7,22 @@
 #include <dash/view/Domain.h>
 #include <dash/view/Local.h>
 #include <dash/view/Origin.h>
+#include <dash/view/Domain.h>
 #include <dash/view/ViewTraits.h>
-
+#include <dash/view/SetIntersect.h>
 
 
 namespace dash {
+
+// ------------------------------------------------------------------------
+// Forward-declarations
+// ------------------------------------------------------------------------
+
+template <
+  class DomainType >
+class ViewBlockMod;
+
+
 
 template <
   class ContainerType,
@@ -40,10 +51,10 @@ block(
   const ViewType & view)
 -> typename std::enable_if<
      (  dash::view_traits<ViewType>::is_view::value &&
-       !dash::view_traits<ViewType>::is_local::value ),
-     decltype(dash::block(block_idx, dash::origin(view)))
+       !dash::view_traits<ViewType>::is_local::value   ),
+     ViewBlockMod<ViewType>
    >::type {
-  return dash::block(block_idx, dash::origin(view));
+  return ViewBlockMod<ViewType>(view, block_idx);
 }
 
 /**
@@ -59,7 +70,7 @@ block(
   const ViewType & view)
 -> typename std::enable_if<
      (  dash::view_traits<ViewType>::is_view::value &&
-        dash::view_traits<ViewType>::is_local::value ),
+        dash::view_traits<ViewType>::is_local::value   ),
      decltype(dash::block(block_idx, dash::local(dash::origin(view))))
    >::type {
   return dash::local(dash::origin(view)).block(block_idx);

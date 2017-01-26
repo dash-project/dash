@@ -90,8 +90,10 @@
 #include <dash/view/MultiView.h>
 #include <dash/view/StridedView.h>
 
-#include <dash/view/ViewMod.h>
 #include <dash/view/ViewTraits.h>
+
+#include <dash/view/ViewMod.h>
+#include <dash/view/ViewBlocksMod.h>
 
 #include <dash/Range.h>
 

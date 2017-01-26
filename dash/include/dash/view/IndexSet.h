@@ -3,6 +3,7 @@
 
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
+#include <dash/view/Domain.h>
 #include <dash/view/SetUnion.h>
 
 #include <dash/pattern/PatternProperties.h>
