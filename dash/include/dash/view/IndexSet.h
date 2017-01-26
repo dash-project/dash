@@ -389,25 +389,32 @@ public:
 
   constexpr index_type
   operator[](index_type block_index) const {
-    return block_index;
+    return block_index +
+           // index of block at first index in domain
+           this->pattern().block_at(
+             std::array<index_type, NDim> {{
+               this->domain()[0]
+             }}
+           );
   }
 
   constexpr index_type size() const {
     return _size;
   }
 
+private:
   constexpr index_type calc_size() const {
     return (
       // index of block at last index in domain
       this->pattern().block_at(
         std::array<index_type, NDim> {{
-          *(dash::end(this->domain())) - 1
+          this->domain()[*(dash::end(this->domain())) - 1] + 1
         }}
-      ) -
+      ) + 1 -
       // index of block at first index in domain
       this->pattern().block_at(
         std::array<index_type, NDim> {{
-          *(dash::begin(this->domain()))
+          this->domain()[0]
         }}
       )
     );

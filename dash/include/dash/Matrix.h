@@ -237,13 +237,13 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global matrix instances
    * that are declared before \c dash::Init().
    */
-  inline Matrix(
+  Matrix(
     Team & team = dash::Team::Null());
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
-  inline Matrix(
+  Matrix(
     const SizeSpec_t         & ss,
     const DistributionSpec_t & ds  = DistributionSpec_t(),
     Team                     & t   = dash::Team::All(),
@@ -252,13 +252,13 @@ public:
   /**
    * Constructor, creates a new instance of Matrix from a pattern instance.
    */
-  inline Matrix(
+  Matrix(
     const PatternT & pat);
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
-  inline Matrix(
+  Matrix(
     /// Number of elements
     size_t nelem,
     /// Team containing all units operating on the Matrix instance
@@ -271,14 +271,19 @@ public:
    * of given extents.
    */
   template<typename... Args>
-  inline Matrix(SizeType arg, Args... args)
+  Matrix(SizeType arg, Args... args)
   : Matrix(PatternT(arg, args... ))
   { }
 
   /**
+   * Copy-constructor, deleted.
+   */
+  Matrix(const self_t &) = delete;
+
+  /**
    * Destructor, frees underlying memory.
    */
-  inline ~Matrix();
+  ~Matrix();
 
   /**
    * View at block at given global block coordinates.

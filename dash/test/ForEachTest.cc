@@ -32,7 +32,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     array.barrier();
     // Test number of total invokes
     size_t num_invoked_indices_all = count_invokes.get();
-    LOG_MESSAGE("Total number of inspected indices: %d",
+    LOG_MESSAGE("Total number of inspected indices: %zu",
                 num_invoked_indices_all);
     EXPECT_EQ(_num_elem, num_invoked_indices_all);
 }
@@ -65,10 +65,9 @@ TEST_F(ForEachTest, ForEachWithIndex)
         dummy_fct);
 
     // Test Matrix
-    auto matrix = dash::Matrix<Element_t, 2>(
-                      dash::SizeSpec<2>(
-                          dash::size(),
-                          dash::size()));
+    dash::Matrix<Element_t, 2> matrix(dash::SizeSpec<2>(
+                                        dash::size(),
+                                        dash::size()));
     dash::fill(
         matrix.begin(),
         matrix.end(),

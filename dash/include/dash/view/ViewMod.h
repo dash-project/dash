@@ -745,8 +745,12 @@ public:
     { }
 
     constexpr block_type dereference(index_type idx) const {
-      // dereferencing block iterator returns block at block index
-      // with iterator position:
+      // Dereferencing block iterator returns block at block index
+      // with iterator position.
+      // Note that idx refers to block index in the domain and is
+      // translated to global block index in IndexSetBlocks.
+      //
+      // TODO: Apply sub-section from domains to block here.
       return dash::block(idx, dash::domain(*_blocks_view));
     }
   };
@@ -774,7 +778,7 @@ public:
   }
 
   constexpr block_type operator[](int offset) const {
-    return *(this->begin() + offset);
+    return *block_iterator(*this, offset);
   }
 
   constexpr index_type size() const {
