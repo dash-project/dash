@@ -16,6 +16,8 @@
 #include <iomanip>
 #include <iterator>
 #include <cstring>
+#include <string>
+#include <typeinfo>
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -105,6 +107,8 @@ namespace dash {
 namespace dash {
 namespace internal {
 namespace logging {
+
+std::string demangle(const char * typeid_name);
 
 extern bool _log_enabled;
 
@@ -199,7 +203,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   dash::global_unit_t uid = dash::myid();
   std::stringstream buf;
-  
+
 //  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid.id % 7]);
 
   buf << "[ "
@@ -218,7 +222,7 @@ inline void Log_Line(
       << msg;
 
 //  buf << TermColorMod(TCOL_DEFAULT);
-  
+
   buf << "\n";
 
   DASH_LOG_OUTPUT_TARGET << buf.str();
@@ -294,6 +298,18 @@ inline void LogVarWrapper(
 
 } // namespace logging
 } // namespace internal
+
+namespace logging {
+
+template <class T>
+std::string typestr(const T & obj) {
+  return dash::internal::logging::demangle(
+           typeid(obj).name()
+         );
+}
+
+} // namespace logging
+
 } // namespace dash
 
 #endif // DASH__INTERNAL__LOGGING_H_

@@ -66,7 +66,7 @@ dart_ret_t dart_domain_team_locality(
   }
 
   DART_LOG_DEBUG("dart_domain_team_locality > team(%d) domain(%s) -> %p",
-                 team, domain_tag, *team_domain_out);
+                 team, domain_tag, (void *)(*team_domain_out));
   return DART_OK;
 }
 
@@ -263,7 +263,7 @@ dart_ret_t dart_unit_locality(
   }
 
   DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
-                 team, unit.id, *locality);
+                 team, unit.id, (void*)(*locality));
   return DART_OK;
 }
 

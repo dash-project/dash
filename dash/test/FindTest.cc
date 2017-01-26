@@ -18,13 +18,13 @@ TEST_F(FindTest, TestSimpleFind)
   Array_t array(_num_elem);
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i] = init_fill;
     }
 
     // Set element to be found in the the center position:
     index_t find_pos = array.size() / 2;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
+    LOG_MESSAGE("Setting array[%ld] = %d (min)",
                 find_pos, find_me);
     array[find_pos] = find_me;
   }
@@ -110,7 +110,7 @@ TEST_F(FindTest, AllElementsEqualNoneMatches)
   Array_t array(_num_elem);
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -142,7 +142,7 @@ TEST_F(FindTest, AllElementsEqualAllMatch)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -185,7 +185,7 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -226,7 +226,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -236,7 +236,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
   array.local[find_pos] = find_me;
 
   array.barrier();
-  LOG_MESSAGE("In every local array postion %d set to value %d", find_pos,
+  LOG_MESSAGE("In every local array postion %ld set to value %d", find_pos,
               find_me);
 
 
@@ -291,7 +291,7 @@ TEST_F(FindTest, LessElementsThanUnits)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%d] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
       array[i]      = init_fill;
     }
 

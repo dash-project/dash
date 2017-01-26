@@ -483,8 +483,8 @@ dart_team_memregister_aligned(
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister_aligned: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
@@ -562,8 +562,8 @@ dart_team_memregister(
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
