@@ -69,7 +69,7 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Atomic.set()", value);
     DASH_LOG_TRACE_VAR("Atomic.set",   _gptr);
-    reference(_gptr) = value;
+    *(pointer(_gptr)) = value;
     DASH_LOG_DEBUG("Atomic.set >");
   }
 
