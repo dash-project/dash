@@ -2,16 +2,14 @@
 #define DASH__VIEW__INDEX_SET_H__INCLUDED
 
 #include <dash/view/ViewTraits.h>
-
 #include <dash/view/Origin.h>
-// #include <dash/view/Local.h>
-// #include <dash/view/Global.h>
-
 #include <dash/view/SetUnion.h>
 
 #include <dash/pattern/PatternProperties.h>
 
 #include <dash/Iterator.h>
+
+#include <dash/util/internal/IteratorBase.h>
 
 
 #ifndef DOXYGEN
@@ -90,104 +88,55 @@ namespace detail {
 template <
   class IndexSetType,
   int   BaseStride   = 1 >
-class IndexSetIterator {
-  typedef IndexSetIterator<IndexSetType, BaseStride>   self_t;
+class IndexSetIterator
+  : public dash::internal::IndexIteratorBase<
+      IndexSetIterator<IndexSetType, BaseStride>,
+      int,            // value type
+      int,            // difference type
+      std::nullptr_t, // pointer
+      int             // reference
+> {
   typedef int                                          index_type;
+
+  typedef IndexSetIterator<IndexSetType, BaseStride>   self_t;
+  typedef dash::internal::IndexIteratorBase<
+      IndexSetIterator<
+        IndexSetType,
+        BaseStride >,
+      index_type, int, std::nullptr_t, index_type >    base_t;
 private:
   const IndexSetType * const _index_set;
-  index_type                 _pos;
-  index_type                 _stride = BaseStride;
+  index_type                 _stride                 = BaseStride;
 public:
-  constexpr IndexSetIterator()                 = delete;
-  constexpr IndexSetIterator(self_t &&)        = default;
-  constexpr IndexSetIterator(const self_t &)   = default;
-  ~IndexSetIterator()                          = default;
-  self_t & operator=(self_t &&)                = default;
-  self_t & operator=(const self_t &)           = default;
-
-  constexpr IndexSetIterator(
-    const IndexSetType & index_set,
-    index_type           position)
-  : _index_set(&index_set), _pos(position), _stride(BaseStride)
-  { }
+  constexpr IndexSetIterator()                       = delete;
+  constexpr IndexSetIterator(self_t &&)              = default;
+  constexpr IndexSetIterator(const self_t &)         = default;
+  ~IndexSetIterator()                                = default;
+  self_t & operator=(self_t &&)                      = default;
+  self_t & operator=(const self_t &)                 = default;
 
   constexpr IndexSetIterator(
     const IndexSetType & index_set,
     index_type           position,
-    index_type           stride)
-  : _index_set(&index_set), _pos(position), _stride(stride)
+    index_type           stride = BaseStride)
+  : base_t(position)
+  , _index_set(&index_set)
   { }
 
-  constexpr index_type operator*() const {
-    return _pos < dash::size(*_index_set)
-              ? (*_index_set)[_pos]
+  constexpr IndexSetIterator(
+    const self_t &       other,
+    index_type           position)
+  : base_t(position)
+  , _index_set(other._index_set)
+  , _stride(other._stride)
+  { }
+
+  constexpr index_type dereference(index_type idx) const {
+    return (idx * _stride) < dash::size(*_index_set)
+              ? (*_index_set)[idx * _stride]
               : ((*_index_set)[dash::size(*_index_set)-1]
-                  + (_pos - (dash::size(*_index_set) - 1))
+                  + ((idx * _stride) - (dash::size(*_index_set) - 1))
                 );
-  }
-
-  constexpr index_type operator->() const {
-    return _pos < dash::size(*_index_set)
-              ? (*_index_set)[_pos]
-              : ((*_index_set)[dash::size(*_index_set)-1]
-                  + (_pos - (dash::size(*_index_set) - 1))
-                );
-  }
-
-  self_t & operator++() {
-    _pos += _stride;
-    return *this;
-  }
-
-  self_t & operator--() {
-    _pos -= _stride;
-    return *this;
-  }
-
-  constexpr self_t operator++(int) const {
-    return self_t(*_index_set, _pos + _stride, _stride);
-  }
-
-  constexpr self_t operator--(int) const {
-    return self_t(*_index_set, _pos - _stride, _stride);
-  }
-
-  self_t & operator+=(int i) {
-    _pos += i * _stride;
-    return *this;
-  }
-
-  self_t & operator-=(int i) {
-    _pos -= i * _stride;
-    return *this;
-  }
-
-  constexpr self_t operator+(int i) const {
-    return self_t(*_index_set, _pos + (i * _stride), _stride);
-  }
-
-  constexpr self_t operator-(int i) const {
-    return self_t(*_index_set, _pos - (i * _stride), _stride);
-  }
-
-  constexpr index_type pos() const {
-    return _pos;
-  }
-
-  constexpr index_type operator+(const self_t & rhs) const {
-    return _pos + rhs._pos;
-  }
-
-  constexpr index_type operator-(const self_t & rhs) const {
-    return _pos - rhs._pos;
-  }
-
-  constexpr bool operator==(const self_t & rhs) const {
-    return _pos == rhs._pos && _stride == rhs._stride;
-  }
-
-  constexpr bool operator!=(const self_t & rhs) const {
-    return not (*this == rhs);
   }
 };
 

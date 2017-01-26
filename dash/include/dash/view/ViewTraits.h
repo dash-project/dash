@@ -113,7 +113,10 @@ namespace detail {
                                       global_type >::type         image_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
 
-    typedef std::integral_constant<dim_t, ViewT::rank::value>  rank;
+    typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
+
+    typedef typename dash::view_traits<domain_type>::pattern_type
+                                                                pattern_type;
   };
 
   /**
@@ -128,6 +131,8 @@ namespace detail {
     typedef typename ContainerT::local_type                       local_type;
     typedef typename ContainerT::index_type                       index_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
+
+    typedef typename ContainerT::pattern_type                   pattern_type;
 
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
