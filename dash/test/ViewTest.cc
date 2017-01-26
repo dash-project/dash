@@ -157,13 +157,15 @@ TEST_F(ViewTest, BlocksView1Dim)
       "view traits is_view for blocks(dash::Array) not matched");
 
   DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
-                     dash::index(gview_blocks).begin());
+                     *(dash::index(gview_blocks).begin()));
   DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
-                     dash::index(gview_blocks).end());
+                     *(dash::index(gview_blocks).end()));
 
   for (auto block : gview_blocks) {
-    DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", dash::index(block).begin());
-    DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", dash::index(block).end());
+    DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
+                       *(dash::index(block).begin()));
+    DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
+                       *(dash::index(block).end()));
 
     std::vector<int> block_values(block.size());
     std::copy(block.begin(), block.end(), block_values.begin());
