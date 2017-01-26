@@ -128,7 +128,10 @@ TEST_F(AtomicTest, ContainerOfAtomics){
     return atomic_t(base_array.begin() + pos);
   };
   dash::fill(base_array.begin(), base_array.end(), 0);
-  dash::generate(atom_array.begin(), atom_array.end(), gen); 
+  dash::generate(atom_array.begin(), atom_array.end(), gen);
+
+  dash::barrier();
+
   // each unit increments all values by index+1
   for(int i=0; i<dash::size(); ++i){
     atomic_t elem_arr = atom_array[i];
