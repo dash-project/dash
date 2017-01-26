@@ -152,7 +152,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        op.dart_operation(),
                        _dart_teamid);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
     DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
     dart_flush_all(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);

@@ -99,6 +99,11 @@ dart_ret_t dart_get(
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_get ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -189,6 +194,11 @@ dart_ret_t dart_put(
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
 
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_put ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -265,6 +275,16 @@ dart_ret_t dart_accumulate(
   mpi_op            = dart_mpi_op(op);
 
   (void)(team); // To prevent compiler warning from unused parameter.
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (team == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_accumulate ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, target_unitid_abs.id);
@@ -353,6 +373,16 @@ dart_ret_t dart_fetch_and_op(
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
 
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (team == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_fetch_and_op ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
   (void)(team); // To prevent compiler warning from unused parameter.
 
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d",
@@ -432,6 +462,11 @@ dart_ret_t dart_get_handle(
   int16_t      seg_id = gptr.segid;
 
   *handle = NULL;
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_get_handle ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -589,6 +624,11 @@ dart_ret_t dart_put_handle(
 
   *handle = NULL;
 
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_put_handle ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -684,6 +724,11 @@ dart_ret_t dart_put_blocking(
   dart_team_unit_t    target_unitid_rel = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_put_blocking ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -813,6 +858,11 @@ dart_ret_t dart_get_blocking(
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_get_blocking ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -914,6 +964,12 @@ dart_ret_t dart_flush(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_flush ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
     dart_team_unit_t target_unitid_rel;
 
@@ -950,6 +1006,12 @@ dart_ret_t dart_flush_all(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_flush_all ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
 
     uint16_t index;
@@ -988,6 +1050,12 @@ dart_ret_t dart_flush_local(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_flush_local ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
     uint16_t index;
     if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
@@ -1022,6 +1090,12 @@ dart_ret_t dart_flush_local_all(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_flush_local_all ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
 
     uint16_t index;
@@ -1437,6 +1511,12 @@ dart_ret_t dart_barrier(
   int      result;
 
   DART_LOG_DEBUG("dart_barrier() barrier count: %d", _dart_barrier_count);
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_barrier ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
   _dart_barrier_count++;
 
   result = dart_adapt_teamlist_convert(teamid, &index);
@@ -1466,6 +1546,16 @@ dart_ret_t dart_bcast(
 
   DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
                  root.id, teamid, nelem);
+
+  if (root.id < 0) {
+    DART_LOG_ERROR("dart_bcast ! failed: root < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_bcast ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1503,6 +1593,16 @@ dart_ret_t dart_scatter(
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   MPI_Comm     comm;
   uint16_t     index;
+
+  if (root.id < 0) {
+    DART_LOG_ERROR("dart_scatter ! failed: root < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_scatter ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1542,6 +1642,16 @@ dart_ret_t dart_gather(
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   MPI_Comm     comm;
   uint16_t     index;
+
+  if (root.id < 0) {
+    DART_LOG_ERROR("dart_gather ! failed: root < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_gather ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1583,6 +1693,11 @@ dart_ret_t dart_allgather(
   int          result;
   DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_accumulate ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1635,6 +1750,11 @@ dart_ret_t dart_allgatherv(
   int          comm_size;
   DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
+
+  if (teamid == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_allgatherv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1704,6 +1824,11 @@ dart_ret_t dart_allreduce(
   MPI_Op       mpi_op    = dart_mpi_op(op);
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
 
+  if (team == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_allreduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -1745,6 +1870,16 @@ dart_ret_t dart_reduce(
   MPI_Op       mpi_op    = dart_mpi_op(op);
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
 
+  if (root.id < 0) {
+    DART_LOG_ERROR("dart_reduce ! failed: root < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (team == DART_UNDEFINED_TEAM_ID) {
+    DART_LOG_ERROR("dart_reduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -1783,6 +1918,11 @@ dart_ret_t dart_send(
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
 
+  if (unit.id < 0) {
+    DART_LOG_ERROR("dart_send ! failed: unit < 0");
+    return DART_ERR_INVAL;
+  }
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -1820,6 +1960,11 @@ dart_ret_t dart_recv(
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
+
+  if (unit.id < 0) {
+    DART_LOG_ERROR("dart_recv ! failed: unit < 0");
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -1865,6 +2010,11 @@ dart_ret_t dart_sendrecv(
   MPI_Datatype mpi_recv_dtype = dart_mpi_datatype(recv_dtype);
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
+
+  if (src.id < 0 || dest.id < 0) {
+    DART_LOG_ERROR("dart_send ! failed: src (%i) or dest (%i) unit invalid", src.id, dest.id);
+    return DART_ERR_INVAL;
+  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
