@@ -139,6 +139,9 @@ static inline char * dart_base_logging_basename(char *path) {
       msg_buf); \
   } while (0)
 
+#define DART_LOG_WARN(...) \
+  __DART_LOG_HELPER(DART_LOGLEVEL_WARN, "WARN", ##__VA_ARGS__)
+
 #define DART_LOG_TRACE(...) \
   __DART_LOG_HELPER(DART_LOGLEVEL_TRACE, "TRACE", ##__VA_ARGS__)
 
@@ -163,8 +166,6 @@ static inline char * dart_base_logging_basename(char *path) {
     DART_LOG_TRACE(context ": %s = { %s}", #array, array_buf); \
   } while (0)
 
-#define DART_LOG_WARN(...) \
-  __DART_LOG_HELPER(DART_LOGLEVEL_WARN, "WARN", ##__VA_ARGS__)
 
 #else /* DART_ENABLE_LOGGING */
 
