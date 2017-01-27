@@ -211,10 +211,10 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
 TEST_F(HDF5MatrixTest, AutoGeneratePattern)
 {
   {
-    auto matrix_a = dash::Matrix<int, 2>(
-                      dash::SizeSpec<2>(
-                        dash::size(),
-                        dash::size()));
+    dash::Matrix<int, 2> matrix_a(
+                           dash::SizeSpec<2>(
+                             dash::size(),
+                             dash::size()));
     // Fill
     fill_matrix(matrix_a);
     dash::barrier();
@@ -247,10 +247,10 @@ TEST_F(HDF5MatrixTest, PreAllocation)
   int ext_x = dash::size();
   int ext_y = ext_x * 2 + 1;
   {
-    auto matrix_a = dash::Matrix<int, 2>(
-                      dash::SizeSpec<2>(
-                        ext_x,
-                        ext_y));
+    dash::Matrix<int, 2> matrix_a(
+                           dash::SizeSpec<2>(
+                             ext_x,
+                             ext_y));
     // Fill
     fill_matrix(matrix_a, static_cast<int>(dash::myid()));
     dash::barrier();
@@ -331,8 +331,8 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
   double secret_b = 3;
 
   {
-    auto matrix_a = dash::Matrix<int,    2>(dash::SizeSpec<2>(ext_x,ext_y));
-    auto matrix_b = dash::Matrix<double, 2>(dash::SizeSpec<2>(ext_x,ext_y));
+    dash::Matrix<int,    2> matrix_a(dash::SizeSpec<2>(ext_x,ext_y));
+    dash::Matrix<double, 2> matrix_b(dash::SizeSpec<2>(ext_x,ext_y));
 
     // Fill
     fill_matrix(matrix_a, secret_a);
@@ -370,8 +370,8 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
   double secret_a = 10;
   double secret_b = 3;
   {
-    auto matrix_a = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
-    auto matrix_b = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
+    dash::Matrix<double,2> matrix_a(dash::SizeSpec<2>(ext_x,ext_y));
+    dash::Matrix<double,2> matrix_b(dash::SizeSpec<2>(ext_x,ext_y));
 
     // Fill
     fill_matrix(matrix_a, secret_a);
@@ -410,9 +410,9 @@ TEST_F(HDF5MatrixTest, GroupTest)
   int    ext_y    = dash::size() * 2;
   double secret[] = {10,11,12};
   {
-    auto matrix_a = dash::Matrix<double, 2>(ext_x, ext_y);
-    auto matrix_b = dash::Matrix<double, 2>(ext_x, ext_y);
-    auto matrix_c = dash::Matrix<double, 2>(ext_x, ext_y);
+    dash::Matrix<double, 2> matrix_a(ext_x, ext_y);
+    dash::Matrix<double, 2> matrix_b(ext_x, ext_y);
+    dash::Matrix<double, 2> matrix_c(ext_x, ext_y);
 
     // Fill
     fill_matrix(matrix_a, secret[0]);

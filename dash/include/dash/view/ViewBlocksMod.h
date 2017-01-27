@@ -146,19 +146,31 @@ private:
   constexpr index_type block_first_gidx(
       const DomainType & vdomain,
       index_type         block_idx) const {
+    //
+    // TODO: If domain is local, use pattern().local_block(block_idx)
+    //
     return ( // block viewspec (extents, offsets)
              dash::origin(vdomain)
-               .pattern().block(block_idx).offsets()[0] );
+               .pattern().block(block_idx).offsets()[0]
+           );
   }
 
   constexpr index_type block_final_gidx(
       const DomainType & vdomain,
       index_type         block_idx) const {
+    //
+    // TODO: If domain is local, use pattern().local_block(block_idx)
+    //
     return ( // block viewspec (extents, offsets)
              dash::origin(vdomain)
                .pattern().block(block_idx).offsets()[0]
            + dash::origin(vdomain)
-               .pattern().block(block_idx).extents()[0] );
+               .pattern().block(block_idx).extents()[0]
+             // subtract block elements that are not included in
+             // the domain, for example when sub() was not aligned
+             // with block boundaries:
+        //     .pattern().block(block_idx+1).offsets()[0]
+           );
   }
 };
 
@@ -235,7 +247,7 @@ public:
   public:
     block_iterator(
       const ViewBlocksMod<DomainType> & blocks_view,
-      index_type     position)
+      index_type                        position)
     : iterator_base_t(position)
     , _blocks_view(blocks_view)
     { }
@@ -245,9 +257,7 @@ public:
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      return dash::block(
-               dash::index(_blocks_view)[idx],
-               dash::domain(_blocks_view));
+      return dash::block(idx, dash::domain(_blocks_view));
     }
   };
 
