@@ -256,9 +256,7 @@ public:
   typedef dash::default_index_t                               index_type;
   typedef dash::IndexSetIdentity<self_t>                  index_set_type;
 
-//typedef typename dash::iterator_traits<iterator>::local_type
   typedef iterator local_iterator;
-//typedef typename dash::iterator_traits<sentinel>::local_type
   typedef sentinel local_sentinel;
             
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
@@ -305,7 +303,6 @@ public:
   typedef RangeT                                               global_type;
   typedef typename RangeT::local_type                           local_type;
   typedef typename RangeT::index_type                           index_type;
-//typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
   typedef typename RangeT::index_set_type                   index_set_type;
 
   /// Whether the view type is a projection (has less dimensions than the

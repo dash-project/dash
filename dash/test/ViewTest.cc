@@ -129,8 +129,14 @@ TEST_F(ViewTest, BlocksView1Dim)
   dash::Array<int> array(array_size, dash::BLOCKCYCLIC(block_size));
 
   for (auto li = 0; li != array.local.size(); ++li) {
-    array.local[li] = (1000 * (dash::myid() + 1)) +
-                      (100    * li) +
+    array.local[li] = // block index
+                      (10000 * ( ((li / block_size) * dash::size()) +
+                                 dash::myid() )) +
+                      // unit id
+                      (1000  * (dash::myid() + 1)) +
+                      // local offset
+                      (100   * li) +
+                      // global offset
                       (dash::myid() * block_size) + li;
   }
 
@@ -164,6 +170,10 @@ TEST_F(ViewTest, BlocksView1Dim)
                                 array);
 
   auto gview_isect  = dash::intersect(gview_left, gview_right);
+//auto gview_isect  = dash::sub(
+//                      block_size,
+//                      array_size-block_size,
+//                      array);
 
   DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim",
                      dash::index(gview_isect)[0]);

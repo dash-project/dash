@@ -393,9 +393,7 @@ public:
     return block_index +
            // index of block at first index in domain
            this->pattern().block_at(
-             std::array<index_type, NDim> {{
-               this->domain()[0]
-             }}
+             {{ this->domain().first() }}
            );
   }
 
@@ -408,16 +406,12 @@ private:
     return (
       // index of block at last index in domain
       this->pattern().block_at(
-        std::array<index_type, NDim> {{
-          this->domain()[*(dash::end(this->domain())) - 1] + 1
-        }}
-      ) + 1 -
+        {{ this->domain().last() }}
+      ) -
       // index of block at first index in domain
       this->pattern().block_at(
-        std::array<index_type, NDim> {{
-          this->domain()[0]
-        }}
-      )
+        {{ this->domain().first() }}
+      ) + 1
     );
   }
 };
