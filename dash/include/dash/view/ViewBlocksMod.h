@@ -280,7 +280,7 @@ public:
   }
 
   constexpr block_iterator end() const {
-    return block_iterator(*this, size());
+    return block_iterator(*this, _index_set.size()); // this->size());
   }
 
   constexpr block_type operator[](int offset) const {

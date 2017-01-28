@@ -7,6 +7,54 @@
 #include <initializer_list>
 
 
+/*
+ * TODO:
+ *
+ * Evaluate alternative implementation using expression templates.
+ *
+ * It probably will not work like this in C++11 however, because method
+ * std::array<T>::operator[]() is only constexpr since C++14.
+ *
+ * Using std::get<I> works for C++11 but does not support run-time
+ * specific index.
+ *
+ */
+#ifdef __TODO__
+
+template<class LeftT, class RightT>
+struct concat_expr
+{
+  const LeftT  & _left;
+  const RightT & _right;
+
+  typedef typename LeftT::value_type value_type;
+  // ... check that LeftT and RightT have compatible value types ...
+
+  concat operator=(const concat &) = delete;
+
+  constexpr const value_type & operator[](std::size_t idx) const {
+    // Need constexpr std::array<T>::operator[](),
+    return ( idx < _left.size()
+               ? _left[idx]
+               : _right[idx - _left.size()] );
+  }
+
+  constexpr std::size_t size() const {
+    return _left.size() + _right.size();
+  }
+
+  // ... implement std::array interface ...
+};
+
+template<class LeftT, class RightT>
+constexpr concat_expr<LeftT, RightT> concat(
+  const LeftT  & l,
+  const RightT & r) {
+  return { l, r };
+}
+#endif
+
+
 namespace dash {
 namespace ce {
 
@@ -130,6 +178,7 @@ class split
 
   constexpr static std::size_t NElem = NElemLeft + NElemRight;
 
+  // Caveat: copies array values in non-constexpr use cases?
   const std::array<ValueT, NElem> _values;
 
 public:

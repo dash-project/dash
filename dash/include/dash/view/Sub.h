@@ -22,11 +22,11 @@ namespace dash {
 template <
   dim_t SubDim   = 0,
   dim_t NViewDim,
-  class OffsetT >
+  class OffsetFirstT,
+  class OffsetFinalT >
 constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
-sub(
-    OffsetT begin,
-    OffsetT end) {
+sub(OffsetFirstT begin,
+    OffsetFinalT end) {
   return ViewSubMod<ViewOrigin<NViewDim>, SubDim>(begin, end);
 }
 
@@ -71,11 +71,12 @@ sub(
 template <
   dim_t SubDim  = 0,
   class DomainT,
-  class OffsetT >
+  class OffsetFirstT,
+  class OffsetFinalT >
 constexpr auto
 sub(
-    OffsetT         begin,
-    OffsetT         end,
+    OffsetFirstT    begin,
+    OffsetFinalT    end,
     const DomainT & domain)
   -> typename std::enable_if<
        dash::view_traits<DomainT>::rank::value == 1,
@@ -94,11 +95,12 @@ sub(
 template <
   dim_t SubDim  = 0,
   class DomainT,
-  class OffsetT >
+  class OffsetFirstT,
+  class OffsetFinalT >
 constexpr auto
 sub(
-    OffsetT         begin,
-    OffsetT         end,
+    OffsetFirstT    begin,
+    OffsetFinalT    end,
     const DomainT & domain)
   -> typename std::enable_if<
        (dash::view_traits<DomainT>::rank::value > 1),

@@ -97,35 +97,35 @@ public:
     return derived_t(derived(), _pos - i);
   }
 
-  constexpr index_type operator+(const self_t & rhs) const {
+  constexpr index_type operator+(const derived_t & rhs) const {
     return _pos + rhs._pos;
   }
 
-  constexpr index_type operator-(const self_t & rhs) const {
+  constexpr index_type operator-(const derived_t & rhs) const {
     return _pos - rhs._pos;
   }
 
-  constexpr bool operator==(const self_t & rhs) const {
+  constexpr bool operator==(const derived_t & rhs) const {
     return _pos == rhs._pos;
   }
 
-  constexpr bool operator!=(const self_t & rhs) const {
-    return not (derived() == rhs);
+  constexpr bool operator!=(const derived_t & rhs) const {
+    return _pos != rhs._pos;
   }
 
-  constexpr bool operator<(const self_t & rhs) const {
+  constexpr bool operator<(const derived_t & rhs) const {
     return _pos < rhs._pos;
   }
 
-  constexpr bool operator<=(const self_t & rhs) const {
+  constexpr bool operator<=(const derived_t & rhs) const {
     return _pos <= rhs._pos;
   }
 
-  constexpr bool operator>(const self_t & rhs) const {
+  constexpr bool operator>(const derived_t & rhs) const {
     return _pos > rhs._pos;
   }
 
-  constexpr bool operator>=(const self_t & rhs) const {
+  constexpr bool operator>=(const derived_t & rhs) const {
     return _pos >= rhs._pos;
   }
 };

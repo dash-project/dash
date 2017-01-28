@@ -856,16 +856,18 @@ public:
    * View spec (offset and extents) of block at global linear block index in
    * cartesian element space.
    */
-  ViewSpec_t block(
+  constexpr ViewSpec_t block(
+    /// Global block index
     index_type g_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.block()", g_block_index);
-    index_type offset = g_block_index * _blocksize;
-    std::array<index_type, NumDimensions>  offsets = {{ offset }};
-    std::array<size_type,  NumDimensions>  extents = {{ _blocksize }};
-    ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.block >", block_vs);
-    return block_vs;
+    return ViewSpec_t(
+      {{ static_cast<index_type>(g_block_index * _blocksize) }},
+      {{ static_cast<size_type>(
+          _blocksize - (g_block_index < blockspec().size() - 1
+                         ? 0
+                         : (_nblocks * _blocksize) - _size)
+         ) }}
+    );
   }
 
   /**
@@ -873,6 +875,7 @@ public:
    * global cartesian element space.
    */
   ViewSpec_t local_block(
+    /// Local block index
     index_type l_block_index) const
   {
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block()", l_block_index);
