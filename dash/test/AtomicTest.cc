@@ -147,10 +147,10 @@ TEST_F(AtomicTest, ContainerOfAtomics){
   }
 }
 
-#if 0
 TEST_F(AtomicTest, AlgorithmVariant){
   using value_t = int;
-  using array_t = dash::Array<value_t>;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
 
   array_t array(dash::size());
 
@@ -164,11 +164,10 @@ TEST_F(AtomicTest, AlgorithmVariant){
   dash::barrier();
 
   for(int i=0; i<dash::size(); ++i){
-    value_t elem_arr_local = dash::atomic::get(array[i]);
+    value_t elem_arr_local = dash::atomic::load(array[i]);
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
   }
 }
-#endif
 
 TEST_F(AtomicTest, AtomicInContainer){
   using value_t = int;
@@ -198,3 +197,25 @@ TEST_F(AtomicTest, AtomicInContainer){
   }
 }
 
+TEST_F(AtomicTest, AtomicInterface){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(10);
+
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  ++(array[0]);
+  array[1]++;
+  --(array[2]);
+  array[3]--;
+  
+  dash::barrier();
+  ASSERT_EQ_U(array[0].load(), dash::size());
+  ASSERT_EQ_U(array[1].load(), dash::size());
+  ASSERT_EQ_U(array[2].load(), -dash::size());
+  ASSERT_EQ_U(array[3].load(), -dash::size());
+
+}

@@ -35,359 +35,489 @@ struct has_subscript_operator
 template<typename T>
 class GlobRef
 {
-  template<typename U>
-  friend std::ostream & operator<<(
-    std::ostream & os,
-    const GlobRef<U> & gref);
+template<typename U>
+friend std::ostream & operator<<(
+  std::ostream & os,
+  const GlobRef<U> & gref);
 
 public:
-  typedef T value_type;
+typedef T value_type;
 
 private:
 
-  typedef GlobRef<T>
-    self_t;
+typedef GlobRef<T>
+  self_t;
 
 public:
-  /**
-   * Default constructor, creates an GlobRef object referencing an element in
-   * global memory.
-   */
-  GlobRef()
-  : _gptr(DART_GPTR_NULL) {
-  }
+/**
+ * Default constructor, creates an GlobRef object referencing an element in
+ * global memory.
+ */
+GlobRef()
+: _gptr(DART_GPTR_NULL) {
+}
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<typename PatternT>
-  GlobRef(
-    /// Pointer to referenced object in global memory
-    GlobPtr<T, PatternT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+template<typename PatternT>
+GlobRef(
+  /// Pointer to referenced object in global memory
+  GlobPtr<T, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<typename PatternT>
-  GlobRef(
-    /// Pointer to referenced object in global memory
-    const GlobPtr<T, PatternT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+template<typename PatternT>
+GlobRef(
+  /// Pointer to referenced object in global memory
+  const GlobPtr<T, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  explicit GlobRef(dart_gptr_t dart_gptr)
-  : _gptr(dart_gptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
-  }
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+explicit GlobRef(dart_gptr_t dart_gptr)
+: _gptr(dart_gptr)
+{
+  DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
+}
 
-  /**
-   * Copy constructor.
-   */
-  GlobRef(
-    /// GlobRef instance to copy.
-    const GlobRef<T> & other)
-  : _gptr(other._gptr)
-  { }
+/**
+ * Copy constructor.
+ */
+GlobRef(
+  /// GlobRef instance to copy.
+  const GlobRef<T> & other)
+: _gptr(other._gptr)
+{ }
 
-  /**
-   * Assignment operator.
-   */
-  GlobRef<T> & operator=(const GlobRef<T> & other)
-  {
-    DASH_LOG_TRACE_VAR("GlobRef.=()", other);
-    // This results in a dart_put, required for STL algorithms like
-    // std::copy to work on global ranges.
-    // TODO: Not well-defined:
-    //       This violates copy semantics, as
-    //         GlobRef(const GlobRef & other)
-    //       copies the GlobRef instance while
-    //         GlobRef=(const GlobRef & other)
-    //       puts the value.
-    return *this = static_cast<T>(other);
+/**
+ * Assignment operator.
+ */
+GlobRef<T> & operator=(const GlobRef<T> & other)
+{
+  DASH_LOG_TRACE_VAR("GlobRef.=()", other);
+  // This results in a dart_put, required for STL algorithms like
+  // std::copy to work on global ranges.
+  // TODO: Not well-defined:
+  //       This violates copy semantics, as
+  //         GlobRef(const GlobRef & other)
+  //       copies the GlobRef instance while
+  //         GlobRef=(const GlobRef & other)
+  //       puts the value.
+  return *this = static_cast<T>(other);
 //  _gptr = other._gptr;
 //  return *this;
-  }
+}
 
-  inline bool operator==(const self_t & other) const noexcept
-  {
-    return _gptr == other._gptr;
-  }
+inline bool operator==(const self_t & other) const noexcept
+{
+  return _gptr == other._gptr;
+}
 
-  inline bool operator!=(const self_t & other) const noexcept
-  {
-    return !(*this == other);
-  }
+inline bool operator!=(const self_t & other) const noexcept
+{
+  return !(*this == other);
+}
 
-  inline bool operator==(const T & value) const
-  {
-    return static_cast<T>(*this) == value;
-  }
+inline bool operator==(const T & value) const
+{
+  return static_cast<T>(*this) == value;
+}
 
-  inline bool operator!=(const T & value) const
-  {
-    return !(*this == value);
-  }
+inline bool operator!=(const T & value) const
+{
+  return !(*this == value);
+}
 
-  friend void swap(GlobRef<T> a, GlobRef<T> b) {
-    T temp = (T)a;
-    a = b;
-    b = temp;
-  }
+friend void swap(GlobRef<T> a, GlobRef<T> b) {
+  T temp = (T)a;
+  a = b;
+  b = temp;
+}
 
-  T get() const {
-    DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    T t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
-    return t;
-  }
+T get() const {
+  DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  T t;
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
+  return t;
+}
 
-  operator T() const {
-    DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    T t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
-    return t;
-  }
+operator T() const {
+  DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  T t;
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
+  return t;
+}
 
-  void get(T *tptr) const {
-    DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
-  }
+void get(T *tptr) const {
+  DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
+}
 
-  void get(T& tref) const {
-    DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype);
-  }
+void get(T& tref) const {
+  DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype);
+}
 
-  void put(T& tref) const {
-    DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_put_blocking(_gptr, static_cast<void *>(&tref), ds.nelem, ds.dtype);
-  }
+void put(T& tref) const {
+  DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_put_blocking(_gptr, static_cast<void *>(&tref), ds.nelem, ds.dtype);
+}
 
-  void put(T* tptr) const {
-    DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_put_blocking(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
-  }
+void put(T* tptr) const {
+  DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_put_blocking(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
+}
 
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    return GlobPtr<T>(_gptr);
-  }
+operator GlobPtr<T>() const {
+  DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  return GlobPtr<T>(_gptr);
+}
 
-  GlobRef<T> & operator=(const T val) {
-    DASH_LOG_TRACE_VAR("GlobRef.=()", val);
-    DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
-    // TODO: Clarify if dart-call can be avoided if
-    //       _gptr->is_local()
-    dart_storage_t ds = dash::dart_storage<T>(1);
-    dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
-    return *this;
-  }
+GlobRef<T> & operator=(const T val) {
+  DASH_LOG_TRACE_VAR("GlobRef.=()", val);
+  DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
+  // TODO: Clarify if dart-call can be avoided if
+  //       _gptr->is_local()
+  dart_storage_t ds = dash::dart_storage<T>(1);
+  dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
+  return *this;
+}
 
-  GlobRef<T> & operator+=(const T& ref)
-  {
+GlobRef<T> & operator+=(const T& ref)
+{
 #if 0
-    T add_val = ref;
-    T old_val;
-    dart_ret_t result = dart_fetch_and_op(
-                          _gptr,
-                          reinterpret_cast<void *>(&add_val),
-                          reinterpret_cast<void *>(&old_val),
-                          dash::dart_datatype<T>::value,
-                          dash::plus<T>().dart_operation(),
-                          dash::Team::All().dart_id());
-    dart_flush(_gptr);
+  T add_val = ref;
+  T old_val;
+  dart_ret_t result = dart_fetch_and_op(
+                        _gptr,
+                        reinterpret_cast<void *>(&add_val),
+                        reinterpret_cast<void *>(&old_val),
+                        dash::dart_datatype<T>::value,
+                        dash::plus<T>().dart_operation(),
+                        dash::Team::All().dart_id());
+  dart_flush(_gptr);
 #else
-    T val  = operator T();
-    val   += ref;
-    operator=(val);
+  T val  = operator T();
+  val   += ref;
+  operator=(val);
 #endif
-    return *this;
-  }
+  return *this;
+}
 
-  GlobRef<T> & operator-=(const T& ref) {
-    T val  = operator T();
-    val   -= ref;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator-=(const T& ref) {
+  T val  = operator T();
+  val   -= ref;
+  operator=(val);
+  return *this;
+}
 
-  GlobRef<T> & operator++() {
-    T val = operator T();
-    ++val;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator++() {
+  T val = operator T();
+  ++val;
+  operator=(val);
+  return *this;
+}
 
-  GlobRef<T> operator++(int) {
-    GlobRef<T> result = *this;
-    T val = operator T();
-    ++val;
-    operator=(val);
-    return result;
-  }
+GlobRef<T> operator++(int) {
+  GlobRef<T> result = *this;
+  T val = operator T();
+  ++val;
+  operator=(val);
+  return result;
+}
 
-  GlobRef<T> & operator--() {
-    T val = operator T();
-    --val;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator--() {
+  T val = operator T();
+  --val;
+  operator=(val);
+  return *this;
+}
 
-  GlobRef<T> operator--(int) {
-    GlobRef<T> result = *this;
-    T val = operator T();
-    --val;
-    operator=(val);
-    return result;
-  }
+GlobRef<T> operator--(int) {
+  GlobRef<T> result = *this;
+  T val = operator T();
+  --val;
+  operator=(val);
+  return result;
+}
 
-  GlobRef<T> & operator*=(const T& ref) {
-    T val  = operator T();
-    val   *= ref;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator*=(const T& ref) {
+  T val  = operator T();
+  val   *= ref;
+  operator=(val);
+  return *this;
+}
 
-  GlobRef<T> & operator/=(const T& ref) {
-    T val  = operator T();
-    val   /= ref;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator/=(const T& ref) {
+  T val  = operator T();
+  val   /= ref;
+  operator=(val);
+  return *this;
+}
 
-  GlobRef<T> & operator^=(const T& ref) {
-    T val  = operator T();
-    val   ^= ref;
-    operator=(val);
-    return *this;
-  }
+GlobRef<T> & operator^=(const T& ref) {
+  T val  = operator T();
+  val   ^= ref;
+  operator=(val);
+  return *this;
+}
 
 #if 0
-  // Might lead to unintended behaviour
-  GlobPtr<T> operator &() {
-    return _gptr;
-  }
+// Might lead to unintended behaviour
+GlobPtr<T> operator &() {
+  return _gptr;
+}
 #endif
-  dart_gptr_t dart_gptr() const {
-    return _gptr;
-  }
+dart_gptr_t dart_gptr() const {
+  return _gptr;
+}
 
 #if 0
-  template<
-    typename X=T,
-	  typename std::enable_if<has_subscript_operator<X>::value, int>::type
-      * ptr = nullptr>
-  auto operator[](size_t pos) ->
-    typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
-  {
-    T val = operator T();
-    return val[pos];
-  }
+template<
+  typename X=T,
+  typename std::enable_if<has_subscript_operator<X>::value, int>::type
+    * ptr = nullptr>
+auto operator[](size_t pos) ->
+  typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
+{
+  T val = operator T();
+  return val[pos];
+}
 #endif
 
-  /**
-   * Checks whether the globally referenced element is in
-   * the calling unit's local memory.
-   */
-  bool is_local() const {
-    return GlobPtr<T>(_gptr).is_local();
-  }
-
-  /**
-   * Get a global ref to a member of a certain type at the
-   * specified offset
-   */
-  template<typename MEMTYPE>
-  GlobRef<MEMTYPE> member(size_t offs) const {
-    dart_gptr_t dartptr = _gptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&dartptr, offs),
-      DART_OK);
-    GlobPtr<MEMTYPE> gptr(dartptr);
-    return GlobRef<MEMTYPE>(gptr);
-  }
-
-  /**
-   * Get the member via pointer to member
-   */
-  template<class MEMTYPE, class P=T>
-  GlobRef<MEMTYPE> member(
-    const MEMTYPE P::*mem) const {
-    // TODO: Thaaaat ... looks hacky.
-    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
-    return member<MEMTYPE>(offs);
-  }
-
-/*
- * ---------------------------------------------------------------------------
- * ------------------- specialisations for atomic types ----------------------
- * ---------------------------------------------------------------------------
+/**
+ * Checks whether the globally referenced element is in
+ * the calling unit's local memory.
  */
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  GlobRef<P> & >::type
-operator=(const typename P::value_type value) {
+bool is_local() const {
+  return GlobPtr<T>(_gptr).is_local();
+}
+
+/**
+ * Get a global ref to a member of a certain type at the
+ * specified offset
+ */
+template<typename MEMTYPE>
+GlobRef<MEMTYPE> member(size_t offs) const {
+  dart_gptr_t dartptr = _gptr;
+  DASH_ASSERT_RETURNS(
+    dart_gptr_incaddr(&dartptr, offs),
+    DART_OK);
+  GlobPtr<MEMTYPE> gptr(dartptr);
+  return GlobRef<MEMTYPE>(gptr);
+}
+
+/**
+ * Get the member via pointer to member
+ */
+template<class MEMTYPE, class P=T>
+GlobRef<MEMTYPE> member(
+  const MEMTYPE P::*mem) const {
+  // TODO: Thaaaat ... looks hacky.
+  size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+  return member<MEMTYPE>(offs);
+}
+
+private:
+
+dart_gptr_t _gptr;
+
+};
+
+
+/**
+ * Specialization for atomic values
+ */
+template<typename T>
+class GlobRef<dash::Atomic<T>>
+{
+template<typename U>
+friend std::ostream & operator<<(
+  std::ostream & os,
+  const GlobRef<U> & gref);
+
+public:
+typedef T value_type;
+
+private:
+typedef dash::Atomic<T>      atomic_t;
+typedef GlobRef<atomic_t>      self_t;
+
+public:
+/**
+ * Default constructor, creates an GlobRef object referencing an element in
+ * global memory.
+ */
+GlobRef()
+: _gptr(DART_GPTR_NULL) {
+}
+
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+template<typename PatternT>
+GlobRef(
+  /// Pointer to referenced object in global memory
+  GlobPtr<atomic_t, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
+
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+template<typename PatternT>
+GlobRef(
+  /// Pointer to referenced object in global memory
+  const GlobPtr<atomic_t, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
+
+/**
+ * Constructor, creates an GlobRef object referencing an element in global
+ * memory.
+ */
+explicit GlobRef(dart_gptr_t dart_gptr)
+: _gptr(dart_gptr)
+{
+  DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
+}
+
+/**
+ * Copy constructor.
+ */
+GlobRef(
+  /// GlobRef instance to copy.
+  const GlobRef<atomic_t> & other)
+: _gptr(other._gptr)
+{ }
+
+/**
+ * Assignment operator.
+ */
+self_t & operator=(const self_t & other)
+{
+  DASH_LOG_TRACE_VAR("GlobRef.=()", other);
+  // This results in a dart_put, required for STL algorithms like
+  // std::copy to work on global ranges.
+  // TODO: Not well-defined:
+  //       This violates copy semantics, as
+  //         GlobRef(const GlobRef & other)
+  //       copies the GlobRef instance while
+  //         GlobRef=(const GlobRef & other)
+  //       puts the value.
+  return *this = static_cast<atomic_t>(other);
+//  _gptr = other._gptr;
+//  return *this;
+}
+
+inline bool operator==(const self_t & other) const noexcept
+{
+  return _gptr == other._gptr;
+}
+
+inline bool operator!=(const self_t & other) const noexcept
+{
+  return !(*this == other);
+}
+
+inline bool operator==(const T & value) const
+{
+  return (load() == value);
+}
+
+inline bool operator!=(const T & value) const
+{
+  return !(*this == value);
+}
+
+
+operator T() const {
+  return load();
+}
+
+operator GlobPtr<T>() const {
+  DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
+  DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+  return GlobPtr<atomic_t>(_gptr);
+}
+
+/// atomically set value
+GlobRef<T> & operator=(const T value) {
+  store(value);
+  return *this;
+}
+
+/// atomically increment value by ref
+GlobRef<T> & operator+=(const T& ref)
+{
+  add(ref);
+  return *this;
+}
+
+/// atomically decrement value by ref
+GlobRef<T> & operator-=(const T& ref) {
+  sub(ref);
+  return *this;
+}
+
+
+dart_gptr_t dart_gptr() const {
+  return _gptr;
+}
+
+/**
+ * Checks whether the globally referenced element is in
+ * the calling unit's local memory.
+ */
+bool is_local() const {
+  return GlobPtr<T>(_gptr).is_local();
+}
+
+/// atomically assigns value
+GlobRef<atomic_t> operator=(const T & value) {
   dash::atomic::store(*this, value);
   return *this;
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  void>::type
-store(typename P::value_type value){
-  dash::atomic::store(*this, value);
-}
-
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-load(){
+/// atomically fetches value
+T load(){
   return dash::atomic::load(*this);
 }
 
-template<
-  typename P=T,
-  typename std::enable_if<dash::is_atomic<P>::value>::type>
-operator typename P::value_type (){
-  return load(); 
-}
-
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-exchange(typename P::value_type value){
+/**
+ * atomically exchanges value, but currently not implemented
+ */
+T exchange(const T & value){
   return dash::atomic::exchange(*this, value);
 }
 
 /*
  * ---------------------------------------------------------------------------
- * ------------ specialisations for atomic integral types --------------------
+ * ------------ specializations for atomic integral types --------------------
  * ---------------------------------------------------------------------------
  *
  *  As the check for integral type is already implemented in the 
@@ -398,19 +528,11 @@ exchange(typename P::value_type value){
  * DASH specific variant which is faster than \cfetch_add
  * but does not return value
  */
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  void>::type
-add(typename P::value_type value){
+void add(const T & value){
   dash::atomic::add(*this, value);
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-fetch_add(typename P::value_type value){
+T fetch_add(const T & value){
   return dash::atomic::fetch_add(*this, value);
 }
 
@@ -418,71 +540,52 @@ fetch_add(typename P::value_type value){
  * DASH specific variant which is faster than \cfetch_sub
  * but does not return value
  */
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  void>::type
-sub(typename P::value_type value){
+void sub(const T & value){
   dash::atomic::sub(*this, value);
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-fetch_sub(typename P::value_type value){
+T fetch_sub(const T & value){
   return dash::atomic::fetch_sub(*this, value);
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-operator++ (){
-  return fetch_add(1)++;
+/// prefix atomically increment value by one
+T operator++ (){
+  return fetch_add(1) + 1;
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-operator++ (int){
+/// postfix atomically increment value by one
+T operator++ (int){
   return fetch_add(1);
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-operator-- (){
-  return fetch_sub(1)--;
+/// prefix atomically decrement value by one
+T operator-- (){
+  return fetch_sub(1) - 1;
 }
 
-template<typename P=T>
-typename std::enable_if<
-  dash::is_atomic<P>::value,
-  typename P::value_type>::type
-operator-- (int){
-  return fetch_add(1);
+/// postfix atomically decrement value by one
+T operator-- (int){
+  return fetch_sub(1);
 }
 
 private:
 
-  dart_gptr_t _gptr;
+dart_gptr_t _gptr;
 
 };
 
+
 template<typename T>
 std::ostream & operator<<(
-  std::ostream & os,
-  const GlobRef<T> & gref) {
+std::ostream & os,
+const GlobRef<T> & gref) {
   char buf[100];
   sprintf(buf,
-          "(%08X|%04X|%04X|%016lX)",
-          gref._gptr.unitid,
-          gref._gptr.segid,
-          gref._gptr.flags,
-          gref._gptr.addr_or_offs.offset);
+  "(%08X|%04X|%04X|%016lX)",
+  gref._gptr.unitid,
+  gref._gptr.segid,
+  gref._gptr.flags,
+  gref._gptr.addr_or_offs.offset);
   os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
   return os;
 }

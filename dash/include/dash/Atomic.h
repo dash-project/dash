@@ -21,7 +21,7 @@ class GlobRef;
 template<typename ValueType>
 class AtomicAddress 
 {
-  typedef AtomicAddress<ValueType>                              self_t;
+  typedef AtomicAddress<ValueType>                       self_t;
 
 public:
   typedef ValueType                                  value_type;
@@ -63,7 +63,7 @@ public:
   : AtomicAddress(global.dart_gptr(), team)
   { }
 
-  AtomicAddress(const self_t & other)           = default;
+  AtomicAddress(const self_t & other)    = default;
 
   self_t & operator=(const self_t & rhs) = default;
 
@@ -221,17 +221,27 @@ private:
  *
  * If one unit writes to an atomic object while another unit reads from it,
  * the behavior is well-defined. The DASH version follows as closely as
- * possible the interface of \cstd::atomic
+ * possible the interface of \c std::atomic
  * However as data has to be transferred between
  * units using DART, the atomicity guarantees are set by the DART
  * implementation.
  *
- * \cdash::Atomic<T> objects have to be placed in a DASH container.
+ * \note \c Atomic objects have to be placed in a DASH container,
+ *       and can only be accessed using \c GlobRef<dash::Atomic<T>> .
+ *       Local accesses to atomic elements are not allowed.
  *
+ *       \code
+ *       dash::Array<dash::Atomic<int>> array(100);
+ *       array.local[10].load()               // not allowed
+ *       dash::atomic::load(array.local[10])  // not allowed
+ *       dash::atomic::load(array.lbegin())   // not allowed
+ *       \endcode
+ * \endnote
+ * 
  * \code
  *   dash::Array<dash::Atomic<int>> array(100);
- *   supported as Atomic<value_t>(value_t T) is available
- *    dash::fill(array.begin(), array.end(), 0);
+ *   // supported as Atomic<value_t>(value_t T) is available
+ *   dash::fill(array.begin(), array.end(), 0);
  *
  *   if(dash::myid() == 0){
  *     array[10].store(5);
@@ -253,21 +263,24 @@ public:
    * Initializes the underlying value with desired.
    * The initialization is not atomic
    */
-  Atomic(T value):
-  _value(value){ }
+  Atomic(T value)
+  : _value(value) { }
 
   /// disabled as this violates the atomic semantics
   T operator= (T value) = delete;
 
-  operator T() const {
-    return _value;
-  }
+  /**
+   * As \c Atomic is implemented as phantom type,
+   * the value has to be queried using the \c dash::GlobRef
+   */
+  operator T()          = delete;
+
 private:
   T _value;
 }; // class Atomic
 
 /**
- * type traits for \cdash::Atomic<T>
+ * type traits for \c dash::Atomic
  *
  * true if type is atomic
  * false otherwise
@@ -320,6 +333,8 @@ namespace atomic {
   /*
    * Atomically sets the value of the atomic reference and returns
    * the old value
+   *
+   * \note Currently not implemented
    */
   template<typename T>
   T exchange(const dash::GlobRef<dash::Atomic<T>> & ref,
@@ -423,7 +438,7 @@ namespace atomic {
     /// Value to be subtracted from global atomic variable.
     const T value)
   {
-    return dash::AtomicAddress<T>(ref).fetch_and_sup(value);
+    return dash::AtomicAddress<T>(ref).fetch_and_sub(value);
   }
 
 } // namespace atomic
