@@ -32,7 +32,7 @@ TEST_F(AtomicTest, FetchAndOp)
   // wait for initialization:
   dash::barrier();
 
-  dash::Atomic<value_t> atomic(shared);
+  dash::AtomicAddress<value_t> atomic(shared);
 
   atomic.fetch_and_add(2);
   // wait for completion of all atomic operations:
@@ -85,11 +85,11 @@ TEST_F(AtomicTest, ArrayElements)
   // In effect, sum of all array values should have tripled.
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "prev: array @ unit(", remote_prev, ") +=", my_val);
-  dash::Atomic<value_t>(array[remote_prev]).add(my_val);
+  dash::AtomicAddress<value_t>(array[remote_prev]).add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "next: array @ unit(", remote_next, ") +=", my_val);
-  dash::Atomic<value_t>(array[remote_next]).fetch_and_add(my_val);
+  dash::AtomicAddress<value_t>(array[remote_next]).fetch_and_add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #2");
   array.barrier();
@@ -116,7 +116,7 @@ TEST_F(AtomicTest, ArrayElements)
 
 TEST_F(AtomicTest, ContainerOfAtomics){
   using value_t    = int;
-  using atomic_t   = dash::Atomic<value_t>;
+  using atomic_t   = dash::AtomicAddress<value_t>;
   using base_arr_t = dash::Array<value_t>;
   using atom_arr_t = dash::Array<atomic_t>;
 
@@ -147,6 +147,7 @@ TEST_F(AtomicTest, ContainerOfAtomics){
   }
 }
 
+#if 0
 TEST_F(AtomicTest, AlgorithmVariant){
   using value_t = int;
   using array_t = dash::Array<value_t>;
@@ -167,3 +168,33 @@ TEST_F(AtomicTest, AlgorithmVariant){
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
   }
 }
+#endif
+
+TEST_F(AtomicTest, AtomicInContainer){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+
+  // supported as Atomic<value_t>(value_t T) is available
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    array[i].add(i+1);
+  }
+  
+  dash::barrier();
+
+  LOG_MESSAGE("Trivial Type: is_atomic_type %d",
+      dash::is_atomic<value_t>::value);
+  LOG_MESSAGE("Atomic Type:  is_atomic_type %d",
+      dash::is_atomic<atom_t>::value);
+
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+}
+

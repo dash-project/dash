@@ -1,22 +1,27 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
+#include <type_traits>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_communication.h>
 
 #include <dash/Exception.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobRef.h>
 #include <dash/algorithm/Operation.h>
 
 #include <dash/internal/Logging.h>
 
 namespace dash {
 
+// forward decls
+template<typename T>
+class GlobRef;
+
 template<typename ValueType>
-class Atomic
+class AtomicAddress 
 {
-  typedef Atomic<ValueType>                              self_t;
+  typedef AtomicAddress<ValueType>                              self_t;
 
 public:
   typedef ValueType                                  value_type;
@@ -34,13 +39,13 @@ public:
    * Default constructor.
    * Sets underlying global pointer to \c DART_GPTR_NULL.
    */
-  Atomic() = default;
+  AtomicAddress() = default;
 
   /**
-   * Constructor, creates a new instance of \c dash::Atomic from a DART
+   * Constructor, creates a new instance of \c dash::AtomicAddress from a DART
    * pointer.
    */
-  Atomic(
+  AtomicAddress(
     const dart_gptr_t & gptr,
     dash::Team & team = dash::Team::All())
   : _gptr(gptr),
@@ -48,17 +53,17 @@ public:
   { }
 
   /**
-   * Constructor, creates a new instance of \c dash::Atomic from any object
+   * Constructor, creates a new instance of \c dash::AtomicAddress from any object
    * that is convertible to \c dart_gptr_t.
    */
   template<class GlobalType>
-  Atomic(
+  AtomicAddress(
     const GlobalType & global,
     dash::Team       & team   = dash::Team::All())
-  : Atomic(global.dart_gptr(), team)
+  : AtomicAddress(global.dart_gptr(), team)
   { }
 
-  Atomic(const self_t & other)           = default;
+  AtomicAddress(const self_t & other)           = default;
 
   self_t & operator=(const self_t & rhs) = default;
 
@@ -67,10 +72,10 @@ public:
    */
   void set(ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.set()", value);
-    DASH_LOG_TRACE_VAR("Atomic.set",   _gptr);
+    DASH_LOG_DEBUG_VAR("AtomicAddress.set()", value);
+    DASH_LOG_TRACE_VAR("AtomicAddress.set",   _gptr);
     *(pointer(_gptr)) = value;
-    DASH_LOG_DEBUG("Atomic.set >");
+    DASH_LOG_DEBUG("AtomicAddress.set >");
   }
 
   /**
@@ -78,11 +83,11 @@ public:
    */
   reference get()
   {
-    DASH_LOG_DEBUG("Atomic.get()");
-    DASH_LOG_TRACE_VAR("Atomic.get", _gptr);
+    DASH_LOG_DEBUG("AtomicAddress.get()");
+    DASH_LOG_TRACE_VAR("AtomicAddress.get", _gptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     reference ref(_gptr);
-    DASH_LOG_DEBUG_VAR("Atomic.get >", static_cast<ValueType>(ref));
+    DASH_LOG_DEBUG_VAR("AtomicAddress.get >", static_cast<ValueType>(ref));
     return ref;
   }
 
@@ -91,11 +96,11 @@ public:
    */
   const_reference get() const
   {
-    DASH_LOG_DEBUG("Atomic.cget()");
-    DASH_LOG_TRACE_VAR("Atomic.cget", _gptr);
+    DASH_LOG_DEBUG("AtomicAddress.cget()");
+    DASH_LOG_TRACE_VAR("AtomicAddress.cget", _gptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     const_reference cref(_gptr);
-    DASH_LOG_DEBUG_VAR("Atomic.cget >", static_cast<ValueType>(cref));
+    DASH_LOG_DEBUG_VAR("AtomicAddress.cget >", static_cast<ValueType>(cref));
     return cref;
   }
 
@@ -108,12 +113,12 @@ public:
     /// Value to be added to global atomic variable.
     ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.add()", value);
-    DASH_LOG_TRACE_VAR("Atomic.add",   _gptr);
+    DASH_LOG_DEBUG_VAR("AtomicAddress.add()", value);
+    DASH_LOG_TRACE_VAR("AtomicAddress.add",   _gptr);
     DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc = value;
-    DASH_LOG_TRACE("Atomic.add", "dart_accumulate");
+    DASH_LOG_TRACE("AtomicAddress.add", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<char *>(&acc),
@@ -122,9 +127,9 @@ public:
                        binary_op.dart_operation(),
                        _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_TRACE("Atomic.add", "flush");
+    DASH_LOG_TRACE("AtomicAddress.add", "flush");
     dart_flush_all(_gptr);
-    DASH_LOG_DEBUG_VAR("Atomic.add >", acc);
+    DASH_LOG_DEBUG_VAR("AtomicAddress.add >", acc);
   }
 
   /**
@@ -139,9 +144,9 @@ public:
     /// Value to be added to global atomic variable.
     ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", value);
-    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
-    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   typeid(value).name());
+    DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op()", value);
+    DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   _gptr);
+    DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   typeid(value).name());
     DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;
@@ -153,9 +158,9 @@ public:
                        binary_op.dart_operation(),
                        _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
-    DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
+    DASH_LOG_TRACE("AtomicAddress.fetch_and_op", "flush");
     dart_flush_all(_gptr);
-    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);
+    DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op >", acc);
     return acc;
   }
 
@@ -209,15 +214,80 @@ private:
   /// Team of units associated with the shared atomic variable.
   dart_team_t   _dart_teamid = dash::Team::Null().dart_id();
 
+}; // class AtomicAddress
+
+/**
+ * Type wrapper to mark any trivial type atomic.
+ *
+ * If one unit writes to an atomic object while another unit reads from it,
+ * the behavior is well-defined. The DASH version follows as closely as
+ * possible the interface of \cstd::atomic
+ * However as data has to be transferred between
+ * units using DART, the atomicity guarantees are set by the DART
+ * implementation.
+ *
+ * \cdash::Atomic<T> objects have to be placed in a DASH container.
+ *
+ * \code
+ *   dash::Array<dash::Atomic<int>> array(100);
+ *   supported as Atomic<value_t>(value_t T) is available
+ *    dash::fill(array.begin(), array.end(), 0);
+ *
+ *   if(dash::myid() == 0){
+ *     array[10].store(5);
+ *   }
+ *   dash::barrier();
+ *   array[10].add(1);
+ *   // postcondition:
+ *   // array[10] == dash::size() + 5
+ * \endcode
+ */
+template<typename T>
+class Atomic {
+public:
+  typedef T value_type;
+
+  Atomic(const Atomic<T> & other) = delete;
+
+  /**
+   * Initializes the underlying value with desired.
+   * The initialization is not atomic
+   */
+  Atomic(T value):
+  _value(value){ }
+
+  /// disabled as this violates the atomic semantics
+  T operator= (T value) = delete;
+
+  operator T() const {
+    return _value;
+  }
+private:
+  T _value;
 }; // class Atomic
 
 /**
- * Routines to perform atomic operations on elements residing in the
+ * type traits for \cdash::Atomic<T>
+ *
+ * true if type is atomic
+ * false otherwise
+ */
+template<typename T>
+struct is_atomic {
+  static constexpr bool value = false;
+};
+template<typename T>
+struct is_atomic<dash::Atomic<T>> {
+  static constexpr bool value = true;
+};
+
+/**
+ * Routines to perform atomic operations on atomics residing in the
  * global address space
  *
  * \code
  *  int N = dash::size();
- *  dash::Array<int> array(N);
+ *  dash::Array<dash::Atomic<int>> array(N);
  *  dash::fill(array.begin(), array.end(), 0);
  *  // each unit adds 1 to each array position
  *  for(auto & el : array){
@@ -232,34 +302,46 @@ namespace atomic {
   /**
    * Get a reference on the shared atomic value.
    */
-  template<class Ref_t>
-  typename Ref_t::value_type get(const Ref_t & ref){
-    return dash::Atomic<typename Ref_t::value_type>(ref).get();
+  template<typename T>
+  T load(const dash::GlobRef<dash::Atomic<T>> & ref){
+    return static_cast<T>(dash::AtomicAddress<T>(ref).get());
   }
 
   /**
    * Set the value of the atomic reference 
    */
-  template<
-    class Ref_t >
-  void set(const Ref_t & ref, const typename Ref_t::value_type value){
-    dash::Atomic<typename Ref_t::value_type>(ref).set(value);
+  template<typename T>
+  void store(const dash::GlobRef<dash::Atomic<T>> & ref,
+             const T value)
+  {
+    dash::AtomicAddress<T>(ref).set(value);
+  }
+
+  /*
+   * Atomically sets the value of the atomic reference and returns
+   * the old value
+   */
+  template<typename T>
+  T exchange(const dash::GlobRef<dash::Atomic<T>> & ref,
+                const T value)
+  {
+    // TODO implement this
+    return;
   }
 
   /**
    * Atomically executes specified operation on the referenced shared value.
    */
   template<
-    class Ref_t,
+    typename T,
     typename BinaryOp >
   void op(
-    const Ref_t & ref,
+    const dash::GlobRef<dash::Atomic<T>> & ref,
     const BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    typename Ref_t::value_type value)
+    T value)
   {
-    dash::Atomic<typename Ref_t::value_type>(
-        ref).op(binary_op, value);
+    dash::AtomicAddress<T>(ref).op(binary_op, value);
   }
 
   /**
@@ -269,38 +351,43 @@ namespace atomic {
    *          operation.
    */
   template<
-    class Ref_t,
+    typename T,
     typename BinaryOp >
-  typename Ref_t::value_type fetch_and_op(
-    const Ref_t & ref,
+  T fetch_and_op(
+    const dash::GlobRef<dash::Atomic<T>> & ref,
     const BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    typename Ref_t::value_type value)
+    T value)
   {
-    return dash::Atomic<typename Ref_t::value_type>(
-        ref).fetch_and_op(binary_op, value);
+    return dash::AtomicAddress<T>(ref).fetch_and_op(binary_op, value);
   }
 
   /**
    * Atomic add operation on the referenced shared value.
    */
-  template<class Ref_t>
-  void add(
-    const Ref_t & ref,
-    const typename Ref_t::value_type value)
+  template<typename T>
+  typename std::enable_if<
+    std::is_integral<T>::value,
+    void>::type
+  add(
+    const dash::GlobRef<dash::Atomic<T>> & ref,
+    const T value)
   {
-    dash::Atomic<typename Ref_t::value_type>(ref).add(value);
+    dash::AtomicAddress<T>(ref).add(value);
   }
 
   /**
    * Atomic subtract operation on the referenced shared value.
    */
-  template<class Ref_t>
-  void sub(
-    const Ref_t & ref,
-    const typename Ref_t::value_type value)
+  template<typename T>
+  typename std::enable_if<
+    std::is_integral<T>::value,
+    void>::type
+  sub(
+    const dash::GlobRef<dash::Atomic<T>> & ref,
+    const T value)
   {
-    dash::Atomic<typename Ref_t::value_type>(ref).sub(value);
+    dash::AtomicAddress<T>(ref).sub(value);
   }
 
   /**
@@ -309,14 +396,16 @@ namespace atomic {
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  template<class Ref_t>
-  typename Ref_t::value_type fetch_and_add(
-    const Ref_t & ref,
+  template<typename T>
+  typename std::enable_if<
+    std::is_integral<T>::value,
+    T>::type
+  fetch_add(
+    const dash::GlobRef<dash::Atomic<T>> & ref,
     /// Value to be added to global atomic variable.
-    const typename Ref_t::value_type value)
+    const T value)
   {
-    return dash::Atomic<typename Ref_t::value_type>(
-        ref).fetch_and_add(value);
+    return dash::AtomicAddress<T>(ref).fetch_and_add(value);
   }
 
   /**
@@ -325,14 +414,16 @@ namespace atomic {
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  template<class Ref_t>
-  typename Ref_t::value_type fetch_and_sub(
-    const Ref_t & ref,
+  template<typename T>
+  typename std::enable_if<
+    std::is_integral<T>::value,
+    T>::type
+  fetch_sub(
+    const dash::GlobRef<dash::Atomic<T>> & ref,
     /// Value to be subtracted from global atomic variable.
-    const typename Ref_t::value_type value)
+    const T value)
   {
-    return dash::Atomic<typename Ref_t::value_type>(
-        ref).fetch_and_sup(value);
+    return dash::AtomicAddress<T>(ref).fetch_and_sup(value);
   }
 
 } // namespace atomic

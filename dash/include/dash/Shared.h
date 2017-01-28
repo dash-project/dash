@@ -37,7 +37,7 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>                 atomic_type;
+  typedef dash::AtomicAddress<ElementType>          atomic_type;
 
 private:
   typedef dash::GlobMem<

@@ -4,6 +4,7 @@
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
 #include <dash/algorithm/Operation.h>
+#include <dash/Atomic.h>
 
 namespace dash {
 
@@ -338,6 +339,132 @@ public:
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
+
+/*
+ * ---------------------------------------------------------------------------
+ * ------------------- specialisations for atomic types ----------------------
+ * ---------------------------------------------------------------------------
+ */
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  GlobRef<P> & >::type
+operator=(const typename P::value_type value) {
+  dash::atomic::store(*this, value);
+  return *this;
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  void>::type
+store(typename P::value_type value){
+  dash::atomic::store(*this, value);
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+load(){
+  return dash::atomic::load(*this);
+}
+
+template<
+  typename P=T,
+  typename std::enable_if<dash::is_atomic<P>::value>::type>
+operator typename P::value_type (){
+  return load(); 
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+exchange(typename P::value_type value){
+  return dash::atomic::exchange(*this, value);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * ------------ specialisations for atomic integral types --------------------
+ * ---------------------------------------------------------------------------
+ *
+ *  As the check for integral type is already implemented in the 
+ *  dash::atomic::* algorithms, no check is performed here
+ */
+
+/**
+ * DASH specific variant which is faster than \cfetch_add
+ * but does not return value
+ */
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  void>::type
+add(typename P::value_type value){
+  dash::atomic::add(*this, value);
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+fetch_add(typename P::value_type value){
+  return dash::atomic::fetch_add(*this, value);
+}
+
+/**
+ * DASH specific variant which is faster than \cfetch_sub
+ * but does not return value
+ */
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  void>::type
+sub(typename P::value_type value){
+  dash::atomic::sub(*this, value);
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+fetch_sub(typename P::value_type value){
+  return dash::atomic::fetch_sub(*this, value);
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+operator++ (){
+  return fetch_add(1)++;
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+operator++ (int){
+  return fetch_add(1);
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+operator-- (){
+  return fetch_sub(1)--;
+}
+
+template<typename P=T>
+typename std::enable_if<
+  dash::is_atomic<P>::value,
+  typename P::value_type>::type
+operator-- (int){
+  return fetch_add(1);
+}
 
 private:
 
