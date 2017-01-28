@@ -454,7 +454,6 @@ inline bool operator!=(const T & value) const
   return !(*this == value);
 }
 
-
 operator T() const {
   return load();
 }
@@ -464,26 +463,6 @@ operator GlobPtr<T>() const {
   DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
   return GlobPtr<atomic_t>(_gptr);
 }
-
-/// atomically set value
-GlobRef<T> & operator=(const T value) {
-  store(value);
-  return *this;
-}
-
-/// atomically increment value by ref
-GlobRef<T> & operator+=(const T& ref)
-{
-  add(ref);
-  return *this;
-}
-
-/// atomically decrement value by ref
-GlobRef<T> & operator-=(const T& ref) {
-  sub(ref);
-  return *this;
-}
-
 
 dart_gptr_t dart_gptr() const {
   return _gptr;
@@ -503,13 +482,17 @@ GlobRef<atomic_t> operator=(const T & value) {
   return *this;
 }
 
+void store(const T & value){
+  dash::atomic::store(*this, value);
+}
 /// atomically fetches value
 T load(){
   return dash::atomic::load(*this);
 }
 
 /**
- * atomically exchanges value, but currently not implemented
+ * atomically exchanges value
+ * \note but currently not implemented
  */
 T exchange(const T & value){
   return dash::atomic::exchange(*this, value);
@@ -566,6 +549,17 @@ T operator-- (){
 /// postfix atomically decrement value by one
 T operator-- (int){
   return fetch_sub(1);
+}
+
+/// atomically increment value by ref
+T operator+=(const T & value)
+{
+  return fetch_add(value) + value;
+}
+
+/// atomically decrement value by ref
+T operator-=(const T & value) {
+  return fetch_sub(value) - value;
 }
 
 private:
