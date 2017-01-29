@@ -347,7 +347,8 @@ private:
 
 
 /**
- * Specialization for atomic values
+ * Specialization for atomic values. All atomic operations are 
+ * \c const as the \c GlobRef does not own the atomic values.
  */
 template<typename T>
 class GlobRef<dash::Atomic<T>>
@@ -476,16 +477,16 @@ public:
   }
   
   /// atomically assigns value
-  GlobRef<atomic_t> operator=(const T & value) {
+  GlobRef<atomic_t> operator=(const T & value) const {
     dash::atomic::store(*this, value);
     return *this;
   }
   
-  void store(const T & value){
+  void store(const T & value) const {
     dash::atomic::store(*this, value);
   }
   /// atomically fetches value
-  T load(){
+  T load() const {
     return dash::atomic::load(*this);
   }
   
@@ -493,7 +494,7 @@ public:
    * atomically exchanges value
    * \note but currently not implemented
    */
-  T exchange(const T & value){
+  T exchange(const T & value) const {
     return dash::atomic::exchange(*this, value);
   }
   
@@ -510,11 +511,11 @@ public:
    * DASH specific variant which is faster than \cfetch_add
    * but does not return value
    */
-  void add(const T & value){
+  void add(const T & value) const {
     dash::atomic::add(*this, value);
   }
   
-  T fetch_add(const T & value){
+  T fetch_add(const T & value) const {
     return dash::atomic::fetch_add(*this, value);
   }
   
@@ -522,42 +523,41 @@ public:
    * DASH specific variant which is faster than \cfetch_sub
    * but does not return value
    */
-  void sub(const T & value){
+  void sub(const T & value) const {
     dash::atomic::sub(*this, value);
   }
   
-  T fetch_sub(const T & value){
+  T fetch_sub(const T & value) const {
     return dash::atomic::fetch_sub(*this, value);
   }
   
   /// prefix atomically increment value by one
-  T operator++ (){
+  T operator++ () const {
     return fetch_add(1) + 1;
   }
   
   /// postfix atomically increment value by one
-  T operator++ (int){
+  T operator++ (int) const {
     return fetch_add(1);
   }
   
   /// prefix atomically decrement value by one
-  T operator-- (){
+  T operator-- () const {
     return fetch_sub(1) - 1;
   }
   
   /// postfix atomically decrement value by one
-  T operator-- (int){
+  T operator-- (int) const {
     return fetch_sub(1);
   }
   
   /// atomically increment value by ref
-  T operator+=(const T & value)
-  {
+  T operator+=(const T & value) const {
     return fetch_add(value) + value;
   }
   
   /// atomically decrement value by ref
-  T operator-=(const T & value) {
+  T operator-=(const T & value) const {
     return fetch_sub(value) - value;
   }
   
