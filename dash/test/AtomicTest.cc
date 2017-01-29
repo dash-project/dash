@@ -205,25 +205,25 @@ TEST_F(AtomicTest, AtomicInterface){
   array_t array(10);
 
   dash::fill(array.begin(), array.end(), 0);
-  array.barrier();
+  dash::barrier();
 
   ++(array[0]);
   array[1]++;
   --(array[2]);
   array[3]--;
   
-  array.barrier();
+  dash::barrier();
   ASSERT_EQ_U(array[0].load(), dash::size());
   ASSERT_EQ_U(array[1].load(), dash::size());
   ASSERT_EQ_U(array[2].load(), -dash::size());
   ASSERT_EQ_U(array[3].load(), -dash::size());
   
-  array.barrier();
+  dash::barrier();
   
   if(dash::myid() == 0){
     auto oldval = array[3].exchange(1);
     ASSERT_EQ_U(oldval, -dash::size());
   }
-  array.barrier();
+  dash::barrier();
   ASSERT_EQ_U(array[3].load(), 1);
 }

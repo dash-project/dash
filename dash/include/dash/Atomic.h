@@ -75,6 +75,7 @@ public:
     DASH_LOG_DEBUG_VAR("AtomicAddress.set()", value);
     DASH_LOG_TRACE_VAR("AtomicAddress.set",   _gptr);
     *(pointer(_gptr)) = value;
+    dart_flush_all(_gptr);
     DASH_LOG_DEBUG("AtomicAddress.set >");
   }
 
