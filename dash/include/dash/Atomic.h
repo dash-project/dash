@@ -203,9 +203,22 @@ public:
    */
   ValueType fetch_and_sub(
     /// Value to be subtracted from global atomic variable.
-    ValueType val)
+    ValueType value)
   {
-    return fetch_and_op(dash::plus<ValueType>(), -val);
+    return fetch_and_op(dash::plus<ValueType>(), -value);
+  }
+  
+  /**
+   * Atomically fetches and replaces the value.
+   * 
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  ValueType exchange(
+    /// Value to be set
+    ValueType value)
+  {
+    return fetch_and_op(dash::second<ValueType>(), value);
   }
 
 private:
@@ -333,15 +346,12 @@ namespace atomic {
   /*
    * Atomically sets the value of the atomic reference and returns
    * the old value
-   *
-   * \note Currently not implemented
    */
   template<typename T>
   T exchange(const dash::GlobRef<dash::Atomic<T>> & ref,
-                const T value)
+             const T value)
   {
-    // TODO implement this
-    return;
+    return dash::AtomicAddress<T>(ref).exchange(value);
   }
 
   /**

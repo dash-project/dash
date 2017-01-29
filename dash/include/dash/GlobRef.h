@@ -492,7 +492,6 @@ public:
   
   /**
    * atomically exchanges value
-   * \note but currently not implemented
    */
   T exchange(const T & value) const {
     return dash::atomic::exchange(*this, value);
