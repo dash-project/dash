@@ -497,6 +497,20 @@ public:
     return dash::atomic::exchange(*this, value);
   }
   
+  /**
+   * Atomically compares the value with the value of expected and if those are
+   * bitwise-equal, replaces the former with desired.
+   * 
+   * \note not implemented yet
+   * 
+   * \return  True if value is exchanged
+   * 
+   * \see \c dash::atomic::compare_exchange
+   */
+  bool compare_exchange(const T & expected, const T & desired) const {
+    return dash::atomic::compare_exchange(*this, expected, desired);
+  }
+  
   /*
    * ---------------------------------------------------------------------------
    * ------------ specializations for atomic integral types --------------------
