@@ -6,7 +6,8 @@
 #include <dash/GlobMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
-#include <dash/Atomic.h>
+
+#include <dash/atomic/AtomicAddress.h>
 
 #include <dash/iterator/GlobIter.h>
 

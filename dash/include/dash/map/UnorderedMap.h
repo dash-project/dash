@@ -6,9 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+
+#include <dash/atomic/AtomicAddress.h>
 
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
