@@ -255,10 +255,38 @@ dart_ret_t dart_accumulate(
  */
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,
-  void *           value,
+  const void *     value,
   void *           result,
   dart_datatype_t  dtype,
   dart_operation_t op,
+  dart_team_t      team);
+
+
+/**
+ * DART Equivalent to MPI_Compare_and_swap.
+ *
+ * \param gptr    A global pointer determining the target of the compare-and-swap
+ *                operation.
+ * \param value   Pointer to an element of type \c dtype to be swapped with the
+ *                the value in \c gptr.
+ * \param compare Pointer to the value to compare \c gptr with. The swap will be
+ *                performed if \c *(gptr) \c == \c *(compare).
+ * \param result  Pointer to an element of type \c dtype to hold the value of
+ *                the element referenced by \c gptr before the operation before
+ *                the swap.
+ * \param dtype   Data data type of all involved data elements.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_compare_and_swap(
+  dart_gptr_t      gptr,
+  const void     * value,
+  const void     * compare,
+  void           * result,
+  dart_datatype_t  dtype,
   dart_team_t      team);
 
 

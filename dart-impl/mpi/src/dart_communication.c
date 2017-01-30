@@ -356,7 +356,7 @@ dart_ret_t dart_accumulate(
 
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,
-  void *           value,
+  const void *     value,
   void *           result,
   dart_datatype_t  dtype,
   dart_operation_t op,
@@ -438,6 +438,82 @@ dart_ret_t dart_fetch_and_op(
                    target_unitid_abs.id, offset);
   }
   DART_LOG_DEBUG("dart_fetch_and_op > finished");
+  return DART_OK;
+}
+
+dart_ret_t dart_compare_and_swap(
+  dart_gptr_t      gptr,
+  const void     * value,
+  const void     * compare,
+  void           * result,
+  dart_datatype_t  dtype,
+  dart_team_t      team)
+{
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Datatype mpi_dtype;
+  MPI_Op       mpi_op;
+  dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
+  uint64_t offset   = gptr.addr_or_offs.offset;
+  int16_t  seg_id   = gptr.segid;
+  mpi_dtype         = dart_mpi_datatype(dtype);
+
+  (void)(team); // To prevent compiler warning from unused parameter.
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_compare_and_swap() dtype:%d op:%d unit:%d",
+                 dtype, op, target_unitid_abs.id);
+
+  if (seg_id) {
+    dart_team_unit_t target_unitid_rel;
+
+    uint16_t index;
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_compare_and_swap ! failed: Unknown segment %i!", seg_id);
+      return DART_ERR_INVAL;
+    }
+
+    MPI_Win win = dart_team_data[index].window;
+    unit_g2l(index,
+             target_unitid_abs,
+             &target_unitid_rel);
+    if (dart_segment_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) != DART_OK) {
+      DART_LOG_ERROR("dart_accumulate ! "
+                     "dart_adapt_transtable_get_disp failed");
+      return DART_ERR_INVAL;
+    }
+    disp_rel = disp_s + offset;
+    MPI_Compare_and_swap(
+          value,
+          compare,
+          result,
+          mpi_dtype,
+          target_unitid_rel.id,
+          disp_rel,
+          win);
+    DART_LOG_TRACE("dart_compare_and_swap: target unit: %d offset: %"PRIu64"",
+                   target_unitid_abs.id, offset);
+  } else {
+    MPI_Win win = dart_win_local_alloc;
+    MPI_Compare_and_swap(
+          value,
+          compare,
+          result,
+          mpi_dtype,
+          target_unitid_abs.id,
+          offset,
+          win);
+    DART_LOG_TRACE("dart_compare_and_swap: target unit: %d offset: %"PRIu64"",
+                   target_unitid_abs.id, offset);
+  }
+  DART_LOG_DEBUG("dart_compare_and_swap > finished");
   return DART_OK;
 }
 

@@ -21,6 +21,10 @@ class GlobRef;
 template<typename ValueType>
 class AtomicAddress 
 {
+
+  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
+                  "dash::AtomicAddress only valid on integral and floating point types");
+
   typedef AtomicAddress<ValueType>                       self_t;
 
 public:
@@ -236,8 +240,23 @@ public:
     /// value to store in the atomic object if it is as expected
     ValueType desired)
   {
-    // TODO;
-    return;
+    DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange()", desired);
+    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   _gptr);
+    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   expected);
+    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   typeid(desired).name());
+    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
+    value_type result;
+    dart_ret_t ret = dart_compare_and_swap(
+                       _gptr,
+                       reinterpret_cast<void *>(&desired),
+                       reinterpret_cast<void *>(&expected),
+                       reinterpret_cast<void *>(&result),
+                       dash::dart_datatype<ValueType>::value,
+                       _dart_teamid);
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
+    DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange >", (desired == result));
+    return (desired == result);
   }
 
 private:
