@@ -70,7 +70,9 @@ typedef enum
   /** Logical XOR */
   DART_OP_LXOR,
   /** Replace Value */
-  DART_OP_REPLACE
+  DART_OP_REPLACE,
+  /** No operation */
+  DART_OP_NO_OP
 } dart_operation_t;
 
 /**

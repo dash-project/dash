@@ -69,6 +69,9 @@ public:
 
   AtomicAddress(const self_t & other)    = default;
 
+  /**
+   * Non atomic copy assignment operator
+   */
   self_t & operator=(const self_t & rhs) = default;
 
   /**
@@ -78,35 +81,44 @@ public:
   {
     DASH_LOG_DEBUG_VAR("AtomicAddress.set()", value);
     DASH_LOG_TRACE_VAR("AtomicAddress.set",   _gptr);
-    *(pointer(_gptr)) = value;
-    dart_flush_all(_gptr);
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
+    dart_ret_t ret = dart_accumulate(
+                       _gptr,
+                       reinterpret_cast<char *>(&value),
+                       1,
+                       dash::dart_datatype<ValueType>::value,
+                       DART_OP_REPLACE,
+                       _dart_teamid);
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("AtomicAddress.set >");
   }
 
   /**
    * Get a reference on the shared atomic value.
    */
-  reference get()
+  ValueType get()
   {
     DASH_LOG_DEBUG("AtomicAddress.get()");
     DASH_LOG_TRACE_VAR("AtomicAddress.get", _gptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
-    reference ref(_gptr);
-    DASH_LOG_DEBUG_VAR("AtomicAddress.get >", static_cast<ValueType>(ref));
-    return ref;
-  }
-
-  /**
-   * Get a const reference on the shared atomic value.
-   */
-  const_reference get() const
-  {
-    DASH_LOG_DEBUG("AtomicAddress.cget()");
-    DASH_LOG_TRACE_VAR("AtomicAddress.cget", _gptr);
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
-    const_reference cref(_gptr);
-    DASH_LOG_DEBUG_VAR("AtomicAddress.cget >", static_cast<ValueType>(cref));
-    return cref;
+    value_type nothing;
+    value_type result;
+    /*
+     * This should be replaced by a DART version of MPI_Get_Accumulate,
+     * as fetch_and_op might segfault (only here?) with MPI_NO_OP.
+     * 
+     * https://www.mpich.org/static/docs/v3.2/www3/MPI_Get_accumulate.html
+     */
+    dart_ret_t ret = dart_fetch_and_op(
+                       _gptr,
+                       reinterpret_cast<void *>(&nothing),
+                       reinterpret_cast<void *>(&result),
+                       dash::dart_datatype<ValueType>::value,
+                       DART_OP_NO_OP,
+                       _dart_teamid);
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
+    DASH_LOG_DEBUG_VAR("AtomicAddress.get >", result);
+    return result;
   }
 
   /**
@@ -132,8 +144,6 @@ public:
                        binary_op.dart_operation(),
                        _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_TRACE("AtomicAddress.add", "flush");
-    dart_flush_all(_gptr);
     DASH_LOG_DEBUG_VAR("AtomicAddress.add >", acc);
   }
 
@@ -163,8 +173,6 @@ public:
                        binary_op.dart_operation(),
                        _dart_teamid);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
-    DASH_LOG_TRACE("AtomicAddress.fetch_and_op", "flush");
-    dart_flush_all(_gptr);
     DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op >", acc);
     return acc;
   }
@@ -172,7 +180,7 @@ public:
   /**
    * Atomic add operation on the referenced shared value.
    */
-  void add(
+  void add (
     ValueType value)
   {
     op(dash::plus<ValueType>(), value);
@@ -181,7 +189,7 @@ public:
   /**
    * Atomic subtract operation on the referenced shared value.
    */
-  void sub(
+  void sub (
     ValueType value)
   {
     op(dash::plus<ValueType>(), -value);
@@ -193,7 +201,7 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  ValueType fetch_and_add(
+  ValueType fetch_and_add (
     /// Value to be added to global atomic variable.
     ValueType value)
   {
@@ -206,7 +214,7 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  ValueType fetch_and_sub(
+  ValueType fetch_and_sub (
     /// Value to be subtracted from global atomic variable.
     ValueType value)
   {
@@ -229,8 +237,6 @@ public:
   /**
    * Atomically compares the value with the value of expected and if those are
    * bitwise-equal, replaces the former with desired.
-   * 
-   * \note not implemented yet
    * 
    * \return  True if value is exchanged
    */

@@ -33,6 +33,7 @@ static inline MPI_Op dart_mpi_op(dart_operation_t dart_op) {
     case DART_OP_BXOR    : return MPI_BXOR;
     case DART_OP_LXOR    : return MPI_LXOR;
     case DART_OP_REPLACE : return MPI_REPLACE;
+    case DART_OP_NO_OP   : return MPI_NO_OP;
     default              : return (MPI_Op)(-1);
   }
 }
