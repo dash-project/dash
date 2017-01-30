@@ -351,7 +351,7 @@ std::ostream & operator<<(
           "(%08X|%04X|%04X|%016lX)",
           gref._gptr.unitid,
           gref._gptr.segid,
-          gref._gptr.flags,
+          gref._gptr.teamid,
           gref._gptr.addr_or_offs.offset);
   os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
   return os;

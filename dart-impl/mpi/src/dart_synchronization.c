@@ -101,12 +101,13 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	DART_GPTR_COPY(gptr_list, lock -> gptr_list);
 
   uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-  int16_t seg_id = gptr_list.segid;
-  dart_unit_t tail = gptr_tail.unitid;
+  int16_t seg_id       = gptr_list.segid;
+  dart_team_t team_id  = gptr_list.teamid;
+  dart_unit_t tail     = gptr_tail.unitid;
   MPI_Aint disp_list;
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+  if (dart_adapt_teamlist_convert(team_id, &index) != DART_OK) {
     DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
@@ -119,7 +120,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
   /* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
    * and wait for notification from its predecessor. */
   if (*predecessor != -1) {
-    if (dart_segment_get_disp(seg_id, DART_TEAM_UNIT_ID(*predecessor), &disp_list) != DART_OK) {
+    if (dart_segment_get_disp(&dart_team_data[index].segdata, seg_id, DART_TEAM_UNIT_ID(*predecessor), &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
     win = dart_team_data[index].window;
@@ -205,8 +206,8 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
   dart_gptr_getaddr(gptr_list, (void *)&addr2);
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_lock_release ! failed: Unknown segment %i!", seg_id);
+  if (dart_adapt_teamlist_convert(gptr_list.teamid, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_lock_release ! failed: Unknown team %i!", gptr_list.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -223,7 +224,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
     DART_LOG_DEBUG("UNLOCK - waiting for next pointer (tail = %d) in team %d",
                    *result, (lock -> teamid));
 
-    if (dart_segment_get_disp(seg_id, unitid, &disp_list) != DART_OK) {
+    if (dart_segment_get_disp(&dart_team_data[index].segdata, seg_id, unitid, &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
 
@@ -259,16 +260,16 @@ dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 	DART_GPTR_COPY(gptr_tail, (*lock) -> gptr_tail);
 	DART_GPTR_COPY(gptr_list, (*lock) -> gptr_list);
 
-	dart_team_myid (teamid, &unitid);
+	dart_team_myid(teamid, &unitid);
 	if (unitid.id == 0)
 	{
-		dart_memfree (gptr_tail);
+		dart_memfree(gptr_tail);
 	}
 
-	dart_team_memfree (teamid, gptr_list);
-	DART_LOG_DEBUG ("Free - done in team %d", teamid);
+	dart_team_memfree(gptr_list);
+	DART_LOG_DEBUG("Free - done in team %d", teamid);
 	*lock = NULL;
-	free (*lock);
+	free(*lock);
 	return DART_OK;
 }
 

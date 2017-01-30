@@ -52,11 +52,12 @@ static int unit_g2l(
 }
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-static dart_ret_t get_shared_mem(dart_team_data_t * team_data,
-                          void             * dest,
-                          dart_gptr_t        gptr,
-                          size_t             nelem,
-                          dart_datatype_t    dtype)
+static dart_ret_t get_shared_mem(
+              dart_team_data_t * team_data,
+              void             * dest,
+              dart_gptr_t        gptr,
+              size_t             nelem,
+              dart_datatype_t    dtype)
 {
   int16_t      seg_id            = gptr.segid;
   uint64_t     offset            = gptr.addr_or_offs.offset;
@@ -69,7 +70,7 @@ static dart_ret_t get_shared_mem(dart_team_data_t * team_data,
   DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d",
                  seg_id);
   if (seg_id) {
-    if (dart_segment_get_baseptr(seg_id, luid, &baseptr) != DART_OK) {
+    if (dart_segment_get_baseptr(&team_data->segdata, seg_id, luid, &baseptr) != DART_OK) {
       DART_LOG_ERROR("dart_get ! "
                      "dart_adapt_transtable_get_baseptr failed");
       return DART_ERR_INVAL;
@@ -108,8 +109,8 @@ dart_ret_t dart_get(
   }
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment %i!", seg_id);
+  if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -138,6 +139,7 @@ dart_ret_t dart_get(
    */
   if (seg_id) {
     if (dart_segment_get_disp(
+          &team_data->segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -200,8 +202,8 @@ dart_ret_t dart_put(
   if (seg_id) {
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_put ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -209,6 +211,7 @@ dart_ret_t dart_put(
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -281,8 +284,8 @@ dart_ret_t dart_accumulate(
     dart_team_unit_t target_unitid_rel;
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_accumulate ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -291,6 +294,7 @@ dart_ret_t dart_accumulate(
              target_unitid_abs,
              &target_unitid_rel);
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -361,9 +365,9 @@ dart_ret_t dart_fetch_and_op(
     dart_team_unit_t target_unitid_rel;
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown segment %i!",
-                     seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!",
+                     gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -371,6 +375,7 @@ dart_ret_t dart_fetch_and_op(
              target_unitid_abs,
              &target_unitid_rel);
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -442,8 +447,8 @@ dart_ret_t dart_get_handle(
   }
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_get_handle ! failed: Unknown segment %i!", seg_id);
+  if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -500,6 +505,7 @@ dart_ret_t dart_get_handle(
      * object.
      */
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -602,8 +608,8 @@ dart_ret_t dart_put_handle(
   if (seg_id != 0) {
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_put_handle ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -611,6 +617,7 @@ dart_ret_t dart_put_handle(
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -694,8 +701,8 @@ dart_ret_t dart_put_blocking(
   }
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: Unknown segment %i!", seg_id);
+  if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_put_blocking ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -722,7 +729,7 @@ dart_ret_t dart_put_blocking(
       DART_LOG_DEBUG("dart_put_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_segment_get_baseptr(seg_id, luid, &baseptr) != DART_OK) {
+        if (dart_segment_get_baseptr(&dart_team_data[index].segdata, seg_id, luid, &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_put_blocking ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -745,6 +752,7 @@ dart_ret_t dart_put_blocking(
    */
   if (seg_id) {
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -822,8 +830,8 @@ dart_ret_t dart_get_blocking(
   }
 
   uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: Unknown segment %i!", seg_id);
+  if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_get_blocking ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -852,6 +860,7 @@ dart_ret_t dart_get_blocking(
    */
   if (seg_id) {
     if (dart_segment_get_disp(
+          &dart_team_data[index].segdata,
           seg_id,
           target_unitid_rel,
           &disp_s) != DART_OK) {
@@ -911,15 +920,15 @@ dart_ret_t dart_flush(
   dart_global_unit_t target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
   int16_t     seg_id = gptr.segid;
   DART_LOG_DEBUG("dart_flush() gptr: "
-                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
-                 gptr.segid,  gptr.flags);
+                 gptr.segid,  gptr.teamid);
   if (seg_id) {
     dart_team_unit_t target_unitid_rel;
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_flush ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -947,14 +956,14 @@ dart_ret_t dart_flush_all(
   seg_id = gptr.segid;
   MPI_Win win;
   DART_LOG_DEBUG("dart_flush_all() gptr: "
-                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
-                 gptr.segid,  gptr.flags);
+                 gptr.segid,  gptr.teamid);
   if (seg_id) {
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_flush_all ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_all ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 
@@ -985,13 +994,13 @@ dart_ret_t dart_flush_local(
   int16_t seg_id = gptr.segid;
   MPI_Win win;
   DART_LOG_DEBUG("dart_flush_local() gptr: "
-                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
-                 gptr.segid,  gptr.flags);
+                 gptr.segid,  gptr.teamid);
   if (seg_id) {
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_flush_local ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_local ! failed: Unknown team %i!", gptr.segid);
       return DART_ERR_INVAL;
     }
 
@@ -1019,14 +1028,14 @@ dart_ret_t dart_flush_local_all(
   int16_t seg_id = gptr.segid;
   MPI_Win win;
   DART_LOG_DEBUG("dart_flush_local_all() gptr: "
-                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
-                 gptr.segid,  gptr.flags);
+                 gptr.segid,  gptr.teamid);
   if (seg_id) {
 
     uint16_t index;
-    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown segment %i!", seg_id);
+    if (dart_adapt_teamlist_convert(gptr.teamid, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown team %i!", gptr.teamid);
       return DART_ERR_INVAL;
     }
 

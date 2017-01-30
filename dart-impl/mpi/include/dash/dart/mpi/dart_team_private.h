@@ -141,6 +141,7 @@
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 extern dart_team_t dart_next_availteamid;
 
@@ -158,6 +159,20 @@ typedef struct dart_team_data {
    * @brief MPI dynamic window object corresponding this team.
    */
   MPI_Win window;
+
+  dart_segmentdata_t segdata;
+
+  /**
+   * For DART collective allocation/free: offset in the returned gptr
+   * represents the displacement relative to the beginning of sub-memory
+   * spanned by a DART collective allocation.
+   * For DART local allocation/free: offset in the returned gptr represents
+   * the displacement relative to the base address of memory region reserved
+   * for the dart local allocation/free (see dart_buddy_allocator).
+   * Local allocations are identified by Segment ID DART_SEGMENT_LOCAL.
+   */
+  int16_t dart_memid;
+  int16_t dart_registermemid;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /**

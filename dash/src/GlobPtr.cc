@@ -9,7 +9,7 @@ std::ostream & operator<<(
           "<%08X|%04X|%04X|%016lX>",
           dartptr.unitid,
           dartptr.segid,
-          dartptr.flags,
+          dartptr.teamid,
           dartptr.addr_or_offs.offset);
   os << "dart_gptr_t(" << buf << ")";
   return os;

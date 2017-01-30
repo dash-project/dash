@@ -58,7 +58,6 @@ dart_ret_t dart_init(
 
   /* Initialize the teamlist. */
   dart_adapt_teamlist_init();
-  dart_segment_init();
 
   dart_next_availteamid = DART_TEAM_ALL;
 
@@ -79,9 +78,14 @@ dart_ret_t dart_init(
 
   /* Create a global translation table for all
    * the collective global memory segments */
-  dart_segment_init();
+  dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
   // Segment ID zero is reserved for non-global memory allocations
-  dart_segment_alloc(0, DART_TEAM_ALL);
+  dart_segment_info_t item = {
+                .seg_id = 0,
+                .baseptr = NULL,
+                .disp = NULL,
+                .size = 0};
+  dart_segment_alloc(&team_data->segdata, &item);
 
   DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
                  index);
@@ -224,6 +228,8 @@ dart_ret_t dart_exit()
 
   dart_team_data_t *team_data = &dart_team_data[index];
 
+  dart_segment_fini(&team_data->segdata);
+
   if (MPI_Win_unlock_all(team_data->window) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
@@ -255,8 +261,6 @@ dart_ret_t dart_exit()
 #endif
 
 	dart_adapt_teamlist_destroy();
-
-  dart_segment_fini();
 
   MPI_Comm_free(&dart_comm_world);
 

@@ -76,7 +76,7 @@ typedef struct
   /** The segment ID of the allocation */
   int16_t     segid;
   /** Reserved */
-  uint16_t    flags;
+  int16_t     teamid;
   /** Absolute address or relative offset */
   union
   {
@@ -90,13 +90,13 @@ typedef struct
  * \ingroup DartGlobMem
  */
 #ifdef __cplusplus
-#define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, { 0 } })
+#define DART_GPTR_NULL (dart_gptr_t { -1, 0, DART_TEAM_NULL, { 0 } })
 #else
 #define DART_GPTR_NULL \
-((dart_gptr_t)({ .unitid = -1, \
-                 .segid  =  0, \
-                 .flags  =  0, \
-                 .addr_or_offs.offset = 0 }))
+(dart_gptr_t){ .unitid = -1, \
+               .segid  =  0, \
+               .teamid  =  DART_TEAM_NULL, \
+               .addr_or_offs.offset = 0 }
 #endif
 
 /**
@@ -106,7 +106,8 @@ typedef struct
  */
 #define DART_GPTR_ISNULL(gptr_)			\
   (gptr_.unitid<0 && gptr_.segid==0 &&		\
-   gptr_.flags==0 && gptr_.addr_or_offs.addr==0)
+   gptr_.teamid==DART_TEAM_NULL   &&    \
+   gptr_.addr_or_offs.addr==0)
 
 /**
  * Compare two global pointers
@@ -115,10 +116,19 @@ typedef struct
  */
 #define DART_GPTR_EQUAL(gptr1_, gptr2_ )		\
   ((gptr1_.unitid == gptr2_.unitid) &&			\
-   (gptr1_.segid == gptr2_.segid) &&			\
-   (gptr1_.flags == gptr2_.flags) &&			\
+   (gptr1_.segid  == gptr2_.segid)  &&			\
+   (gptr1_.teamid == gptr2_.teamid) &&			\
    (gptr1_.addr_or_offs.offset ==			\
     gptr2_.addr_or_offs.offset) )
+
+
+/**
+ * Segment ID identifying unaligned allocations.
+ *
+ * \sa dart_memalloc
+ * \sa dart_memfree
+ */
+#define DART_SEGMENT_LOCAL ((int16_t)0)
 
 
 /**
@@ -161,7 +171,7 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
+dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
 
 /**
  * Set the unit information for the specified global pointer.
@@ -175,6 +185,33 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_global_unit_t unit);
+
+/**
+ * Get the flags field for the segment specified by the global pointer.
+ *
+ * \param gptr Global Pointer describing a segment.
+ * \param unit The flags to get for segment in \c gptr
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
+
+
+/**
+ * Set the flags field for the segment specified by the global pointer.
+ *
+ * \param gptr Global Pointer describing a segment.
+ * \param unit The flags to set for segment in \c gptr
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_gptr_setflags(dart_gptr_t gptr, uint16_t flags);
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
@@ -264,7 +301,6 @@ dart_ret_t dart_team_memalloc_aligned(
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
-  dart_team_t teamid,
   dart_gptr_t gptr);
 
 /**
@@ -330,7 +366,7 @@ dart_ret_t dart_team_memregister(
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr);
+dart_ret_t dart_team_memderegister(dart_gptr_t gptr);
 
 
 /** \cond DART_HIDDEN_SYMBOLS */

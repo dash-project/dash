@@ -477,7 +477,7 @@ std::ostream & operator<<(
           "%08X|%04X|%04X|%016lX",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.segid,
-          gptr._dart_gptr.flags,
+          gptr._dart_gptr.teamid,
           gptr._dart_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());

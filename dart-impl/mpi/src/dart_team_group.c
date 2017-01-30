@@ -616,7 +616,7 @@ dart_ret_t dart_team_create(
     &dart_next_availteamid,
     &max_teamid,
     1,
-    MPI_INT32_T,
+    MPI_INT16_T,
     MPI_MAX,
     comm);
   dart_next_availteamid = max_teamid + 1;
@@ -633,6 +633,8 @@ dart_ret_t dart_team_create(
     team_data->comm = subcomm;
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
     team_data->window = win;
+    team_data->dart_memid = 1;
+    team_data->dart_registermemid = -1;
   }
 
   if (subcomm != MPI_COMM_NULL) {
