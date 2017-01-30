@@ -1,42 +1,20 @@
-#ifndef DASH__VERTEX_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
-#define  DASH__VERTEX_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
+#ifndef DASH__EDGE_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
+#define  DASH__EDGE_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
 namespace dash {
 
 namespace graph {
 
-namespace detail {
-
 /**
- * Functor that computes the unit ID for a given vertex ID in a team.
- */
-class VertexHashDistribution {
-
-  /**
-   * Constructs the Functor.
-   */
-  VertexHashDistribution(Team & team);
-  
-  /**
-   * Maps a vertex ID to the corresponding unit.
-   * TODO: argument should be Graph::size_type
-   */
-  dart_unit_t operator()(std::size_t id);
-
-};
-
-}
-
-
-/**
- * Pattern for graph data. Partitions the data by vertex and 
- * distributes these vertices to units using some hash function.
+ * Pattern for graph data. Partitions the (logical) adjecency matrix of the 
+ * graph into 2-dimensional blocks. Assigns one block to each unit.
+ * NOTE: The number of units in the assigned team must be a power of 2.
+ * NOTE: This pattern is intended for static graphs only.
  * 
  * \concept{DashDynamicPatternConcept}
  */
 template<
-  class DistributionMethod = dash::graph::detail::VertexHashDistribution,
-  typename IndexType       = std::size_t>
-class VertexPartitionedDynamicPattern {
+  typename IndexType = std::size_t>
+class EdgePartitionedDynamicPattern {
 
   typedef IndexType                                      index_type;
   typedef typename std::make_unsigned<IndexType>::type   size_type;
@@ -49,7 +27,7 @@ class VertexPartitionedDynamicPattern {
   /**
    * Constructs the partitioning scheme.
    */
-  VertexPartitionedDynamicPattern(Team & team);
+  EdgePartitionedDynamicPattern(Team & team);
 
   /**
    * Converts the given global vertex index to the owning unit.
@@ -102,4 +80,4 @@ class VertexPartitionedDynamicPattern {
 
 }
 
-#endif // DASH__VERTEX_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
+#endif // DASH__EDGE_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
