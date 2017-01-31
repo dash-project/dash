@@ -25,14 +25,6 @@ std::ostream & operator<<(
 
 namespace dash {
 
-#ifndef DOXYGEN
-template<
-    typename ElementType,
-    typename IndexType,
-    class    PatternType>
-class Array;
-#endif // DOXYGEN
-
 namespace util {
 
 class Locality
