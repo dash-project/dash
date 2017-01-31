@@ -678,8 +678,7 @@ class IndexSetLocal
   }
 
   constexpr index_type size() const {
-//  return _size;
-    return calc_size();
+    return _size;
   }
 
   constexpr index_type calc_size() const {
