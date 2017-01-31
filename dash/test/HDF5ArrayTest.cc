@@ -49,6 +49,18 @@ void fill_array(dash::Array<T, IndexT, PatternT> & array, T secret = 0)
     f);
 }
 
+template<typename T>
+void assert_eq(T a, T b)
+{
+  ASSERT_EQ_U(a, b);
+}
+
+template<>
+void assert_eq<double>(double a, double b)
+{
+  ASSERT_DOUBLE_EQ_U(a, b);
+}
+
 /**
  * Counterpart to fill_array which checks if the given array satisfies
  * the desired signature
@@ -63,8 +75,8 @@ void verify_array(dash::Array<T, IndexT, PatternT> & array,
   std::function< void(const T &, IndexT)>
   f = [&array, &secret](T el, IndexT i) {
     auto coords  = array.pattern().coords(i);
-    auto desired = coords[0] + secret;
-    ASSERT_EQ_U(
+    T desired = coords[0] + secret;
+    assert_eq(
       desired,
       el);
   };
@@ -452,7 +464,7 @@ TEST_F(HDF5ArrayTest, CustomType)
   dash::barrier();
   
   std::for_each(array_b.lbegin(), array_b.lend(), [&fillin](value_t & el){
-    ASSERT_EQ_U(fillin.a, el.a);
+    ASSERT_DOUBLE_EQ_U(fillin.a, el.a);
     ASSERT_EQ_U(fillin.b, el.b);
   });
 }
