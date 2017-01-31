@@ -78,7 +78,8 @@ class ViewBlockMod
   typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >
                                                                     base_t;
  public:
-  typedef dash::IndexSetSub< ViewBlockMod<DomainType> >     index_set_type;
+//typedef dash::IndexSetSub< ViewBlockMod<DomainType> >     index_set_type;
+  typedef dash::IndexSetSub< DomainType >                   index_set_type;
   typedef ViewLocalMod<self_t>                                  local_type;
   typedef self_t                                               global_type;
 
@@ -103,7 +104,7 @@ class ViewBlockMod
     index_type         block_idx)
   : base_t(domain)
   , _block_idx(block_idx)
-  , _index_set(*this,
+  , _index_set(domain, // *this,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
 //, _first_idx(block_first_gidx(domain, block_idx))
@@ -162,10 +163,14 @@ class ViewBlockMod
     //
     // TODO: If domain is local, use pattern().local_block(block_idx)
     //
-    return ( // block viewspec (extents, offsets)
-             dash::origin(vdomain)
-               .pattern().block(block_idx).offsets()[0]
-           );
+    return std::max(
+             ( // block viewspec (extents, offsets)
+               dash::origin(vdomain)
+                 .pattern().block(block_idx).offsets()[0]
+             ),
+             dash::index(vdomain).first()
+           )
+           - dash::index(vdomain).first();
   }
 
   /// Index past block index of last element in view:
@@ -176,16 +181,16 @@ class ViewBlockMod
     //
     // TODO: If domain is local, use pattern().local_block(block_idx)
     //
-    return ( // block viewspec (extents, offsets)
-             ( dash::origin(vdomain)
-                 .pattern().block(block_idx).offsets()[0] )
-           + ( dash::origin(vdomain)
-                 .pattern().block(block_idx).extents()[0] )
-             // subtract block elements that are not included in
-             // the domain, for example when sub() was not aligned
-             // with block boundaries:
-        //     .pattern().block(block_idx+1).offsets()[0]
-           );
+    return std::min<index_type>(
+             dash::index(vdomain).last() + 1,
+             ( // block viewspec (extents, offsets)
+               dash::origin(vdomain)
+                 .pattern().block(block_idx).offsets()[0]
+             + dash::origin(vdomain)
+                 .pattern().block(block_idx).extents()[0]
+             )
+           )
+           - dash::index(vdomain).first();
   }
 };
 
@@ -285,8 +290,8 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      return dash::block(idx, (dash::domain(_blocks_view)));
-      // return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
+    // return dash::block(idx, (dash::domain(_blocks_view)));
+      return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
     }
   };
 
@@ -305,11 +310,11 @@ class ViewBlocksMod
   { }
 
   constexpr block_iterator begin() const {
-    return block_iterator(*this, 0);
+    return block_iterator(*this, this->index_set().first());
   }
 
   constexpr block_iterator end() const {
-    return block_iterator(*this, this->size());
+    return block_iterator(*this, this->index_set().last() + 1);
   }
 
   constexpr block_type operator[](int offset) const {

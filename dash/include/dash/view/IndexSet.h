@@ -356,7 +356,6 @@ class IndexSetIdentity
 // IndexSetBlocks
 // -----------------------------------------------------------------------
 
-
 /*
  * TODO:
  *   Assuming 1-dimensional views for blocks, some patterns provide
@@ -423,6 +422,80 @@ class IndexSetBlocks
       // index of block at last index in domain
       this->pattern().block_at(
 //      {{ this->domain().last() + 1 }}
+        {{ *(this->domain().begin() + (this->domain().size() - 1)) }}
+      ) -
+      // index of block at first index in domain
+      this->pattern().block_at(
+        {{ *(this->domain().begin()) }}
+      ) + 1
+    );
+  }
+};
+
+// -----------------------------------------------------------------------
+// IndexSetBlock
+// -----------------------------------------------------------------------
+
+template <class ViewType>
+class IndexSetBlock
+: public IndexSetBase<
+           IndexSetBlock<ViewType>,
+           ViewType,
+           1 >
+{
+  typedef IndexSetBlock<ViewType>                               self_t;
+  typedef IndexSetBase<self_t, ViewType>                        base_t;
+ public:
+  typedef typename ViewType::index_type                     index_type;
+   
+  typedef self_t                                            local_type;
+  typedef IndexSetGlobal<ViewType>                         global_type;
+  typedef global_type                                    preimage_type;
+
+  typedef typename base_t::iterator                           iterator;
+  typedef typename base_t::pattern_type                   pattern_type;
+  
+  typedef dash::local_index_t<index_type>             local_index_type;
+  typedef dash::global_index_t<index_type>           global_index_type;
+  
+ private:
+  index_type _block_idx;
+
+  constexpr static dim_t NDim = 1;
+ public:
+  constexpr IndexSetBlock()                = delete;
+  constexpr IndexSetBlock(self_t &&)       = default;
+  constexpr IndexSetBlock(const self_t &)  = default;
+  ~IndexSetBlock()                         = default;
+  self_t & operator=(self_t &&)            = default;
+  self_t & operator=(const self_t &)       = default;
+
+ public:
+  constexpr explicit IndexSetBlock(
+    const ViewType & view,
+    index_type       block_idx)
+  : base_t(view)
+  , _block_idx(block_idx)
+  { }
+
+  constexpr index_type
+  operator[](index_type image_index) const {
+    return image_index +
+           // index of block at first index in domain
+           this->pattern().block_at(
+             {{ *(this->domain().begin()) }}
+           );
+  }
+
+  constexpr index_type size() const {
+    return calc_size();
+  }
+
+ private:
+  constexpr index_type calc_size() const {
+    return (
+      // index of block at last index in domain
+      this->pattern().block_at(
         {{ *(this->domain().begin() + (this->domain().size() - 1)) }}
       ) -
       // index of block at first index in domain

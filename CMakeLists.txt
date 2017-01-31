@@ -49,7 +49,7 @@ option(WARNINGS_AS_ERRORS
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
 option(ENABLE_CC_REPORTS
-       "Specify whether compiler reports should be generated" on)
+       "Specify whether compiler reports should be generated" off)
 option(ENABLE_COMPTIME_RED
        "Specify whether opts to reduce the build time should be used"
        ${DEFAULT_COMPTIME_RED})
