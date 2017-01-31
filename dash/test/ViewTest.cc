@@ -179,11 +179,11 @@ TEST_F(ViewTest, BlocksView1Dim)
                      "offsets:", array.pattern().block(b_idx).offsets()[0],
                      "extents:", array.pattern().block(b_idx).extents()[0]);
 
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "blocks[b].begin.pos, blocks[b].end.pos", 
-                     "(", (array_blocks[b_idx].begin()),
-                     ",", (array_blocks[b_idx].end()),
-                     ")");
+  //  DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
+  //                 "blocks[b].begin.pos, blocks[b].end.pos", 
+  //                 "(", (array_blocks[b_idx].begin()),
+  //                 ",", (array_blocks[b_idx].end()),
+  //                 ")");
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      "index(block).begin, index(block).end:", 

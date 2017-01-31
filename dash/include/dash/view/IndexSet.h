@@ -222,7 +222,7 @@ class IndexSetBase
 
  protected:
   const ViewType              &  _view;
-  const pattern_type          &  _pattern;
+//const pattern_type          &  _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
@@ -233,7 +233,7 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const ViewType & view)
   : _view(view)
-  , _pattern(dash::origin(_view).pattern())
+//, _pattern(dash::origin(_view).pattern())
   { }
 
 //constexpr explicit IndexSetBase(ViewType && view)
@@ -287,8 +287,8 @@ class IndexSetBase
   }
 
   constexpr const pattern_type & pattern() const {
-    return _pattern;
-//  return (dash::origin(_view).pattern());
+//  return _pattern;
+    return (dash::origin(_view).pattern());
   }
 
   /*

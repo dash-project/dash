@@ -146,10 +146,6 @@ class ViewBlockMod
   }
 
   constexpr const index_set_type & index_set() const {
-    // return index_set_type(
-    //          *this,
-    //          block_first_gidx(this->domain(), _block_idx),
-    //          block_final_gidx(this->domain(), _block_idx));
     return _index_set;
   }
 
@@ -289,8 +285,8 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-    // return dash::block(idx, (dash::domain(_blocks_view)));
-      return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
+      return dash::block(idx, (dash::domain(_blocks_view)));
+      // return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
     }
   };
 
