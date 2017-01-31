@@ -132,13 +132,15 @@ TEST_F(ViewTest, BlocksView1Dim)
   dash::Array<value_t> array(array_size, dash::BLOCKCYCLIC(block_size));
 
   for (auto li = 0; li != array.local.size(); ++li) {
-    array.local[li] = // block index
-                      (0.100 * ( ((li / block_size) * dash::size()) +
-                               dash::myid() )) +
+    auto block_lidx = li / block_size;
+    auto block_gidx = (block_lidx * dash::size()) + dash::myid();
+    auto gi         = (block_gidx * block_size) + (li % block_size);
+    array.local[li] = // unit
+                      (1.0000 * dash::myid()) +
                       // local offset
-                      (0.001 * (li+1)) +
+                      (0.0001 * (li+1)) +
                       // global offset
-                      (1.000 * ((dash::myid() * block_size) + li));
+                      (0.0100 * gi);
   }
 
   array.barrier();
@@ -152,13 +154,14 @@ TEST_F(ViewTest, BlocksView1Dim)
     DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", values);
   }
 
-  auto && array_blocks = dash::blocks(dash::sub<0>(0, array.size(), array));
+  auto array_blocks = dash::blocks(dash::sub<0>(0, array.size(), array));
 
   DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "blocks(array):",
-                 "(begin, end):",
+                 "index(blocks).begin, index(blocks).end:",
                  "(", *(dash::index(array_blocks).begin()),
                  ",", *(dash::index(array_blocks).end()),
                  ")", "size:",    array_blocks.size(),
+                 "=", array_blocks.end() - array_blocks.begin(),
                  "=", "indices:", dash::index(array_blocks).size());
 
   EXPECT_EQ_U(array_blocks.size(),
@@ -168,16 +171,22 @@ TEST_F(ViewTest, BlocksView1Dim)
 //  for (auto block : array_blocks) {
     for (auto b_it = array_blocks.begin();
          b_it != array_blocks.end(); ++b_it) {
-      auto && block = *b_it;
-      auto    b_idx = b_it.pos();
+      auto block = *b_it;
+      auto b_idx = b_it.pos();
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
                      "block index:", b_idx,
-                     "offsets:", array.pattern().block(b_idx).offsets(),
-                     "extents:", array.pattern().block(b_idx).extents());
+                     "offsets:", array.pattern().block(b_idx).offsets()[0],
+                     "extents:", array.pattern().block(b_idx).extents()[0]);
+
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
+                     "blocks[b].begin.pos, blocks[b].end.pos", 
+                     "(", (array_blocks[b_idx].begin()),
+                     ",", (array_blocks[b_idx].end()),
+                     ")");
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
-                     "index(block.begin, block.end):", 
+                     "index(block).begin, index(block).end:", 
                      "(", *(dash::index(block).begin()),
                      ",", *(dash::index(block).end()),
                      ")", "size:",    block.size(),
@@ -190,16 +199,16 @@ TEST_F(ViewTest, BlocksView1Dim)
   }
 
   // View to first two thirds of global array:
-  auto && gview_left   = dash::sub(sub_left_begin_gidx,
+  auto gview_left   = dash::sub(sub_left_begin_gidx,
                                      sub_left_end_gidx,
                                      array);
   // View to last two thirds of global array:
-  auto && gview_right  = dash::sub(sub_right_begin_gidx,
+  auto gview_right  = dash::sub(sub_right_begin_gidx,
                                    sub_right_end_gidx,
                                    array);
 
-  auto && gview_isect  = dash::intersect(gview_left, gview_right);
-//auto && gview_isect  = dash::sub(
+  auto gview_isect  = dash::intersect(gview_left, gview_right);
+//auto gview_isect  = dash::sub(
 //                         block_size,
 //                         array_size-block_size,
 //                         array);
@@ -226,7 +235,7 @@ TEST_F(ViewTest, BlocksView1Dim)
     DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", indices);
   }
 
-  auto && gview_blocks = dash::blocks(gview_isect);
+  auto gview_blocks = dash::blocks(gview_isect);
 
   static_assert(
       dash::view_traits<

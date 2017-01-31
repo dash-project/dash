@@ -105,10 +105,10 @@ class IndexSetIterator
         IndexSetType,
         BaseStride >,
       index_type, int, std::nullptr_t, index_type >    base_t;
-private:
+ private:
   const IndexSetType * const _index_set;
   index_type                 _stride                 = BaseStride;
-public:
+ public:
   constexpr IndexSetIterator()                       = delete;
   constexpr IndexSetIterator(self_t &&)              = default;
   constexpr IndexSetIterator(const self_t &)         = default;
@@ -143,6 +143,8 @@ public:
 
 } // namespace detail
 
+// -----------------------------------------------------------------------
+// IndexSetBase
 // -----------------------------------------------------------------------
 
 
@@ -195,7 +197,7 @@ template <
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
-public:
+ public:
   typedef typename ViewType::index_type
     index_type;
   typedef typename dash::view_traits<ViewType>::origin_type
@@ -218,7 +220,7 @@ public:
 
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
-protected:
+ protected:
   const ViewType              &  _view;
   const pattern_type          &  _pattern;
 
@@ -234,13 +236,13 @@ protected:
   , _pattern(dash::origin(_view).pattern())
   { }
 
-  constexpr IndexSetBase(ViewType && view)
-  : _view(std::forward(view))
-  , _pattern(dash::origin(std::forward(_view)).pattern())
-  { }
+//constexpr explicit IndexSetBase(ViewType && view)
+//: _view(std::forward(view))
+//, _pattern(dash::origin(std::forward(_view)).pattern())
+//{ }
 
   ~IndexSetBase()                        = default;
-public:
+ public:
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
@@ -263,7 +265,7 @@ public:
   }
 
   constexpr index_type first() const {
-    return *begin();
+    return *(begin());
   }
 
   constexpr index_type last() const {
@@ -286,6 +288,7 @@ public:
 
   constexpr const pattern_type & pattern() const {
     return _pattern;
+//  return (dash::origin(_view).pattern());
   }
 
   /*
@@ -301,6 +304,8 @@ public:
   }
 };
 
+// -----------------------------------------------------------------------
+// IndexSetIdentity
 // -----------------------------------------------------------------------
 
 template <class ViewType>
@@ -320,16 +325,16 @@ class IndexSetIdentity
 {
   typedef IndexSetIdentity<ViewType>            self_t;
   typedef IndexSetBase<self_t, ViewType>        base_t;
-public:
+ public:
   constexpr IndexSetIdentity()               = delete;
   constexpr IndexSetIdentity(self_t &&)      = default;
   constexpr IndexSetIdentity(const self_t &) = default;
   ~IndexSetIdentity()                        = default;
   self_t & operator=(self_t &&)              = default;
   self_t & operator=(const self_t &)         = default;
-public:
+ public:
   typedef typename ViewType::index_type     index_type;
-public:
+ public:
   constexpr explicit IndexSetIdentity(const ViewType & view)
   : base_t(view)
   { }
@@ -348,16 +353,26 @@ public:
 };
 
 // -----------------------------------------------------------------------
-//
+// IndexSetBlocks
+// -----------------------------------------------------------------------
+
+
+/*
+ * TODO:
+ *   Assuming 1-dimensional views for blocks, some patterns provide
+ *   n-dimensional arrangement of blocks, however.
+ */
+
 template <class ViewType>
 class IndexSetBlocks
 : public IndexSetBase<
            IndexSetBlocks<ViewType>,
-           ViewType >
+           ViewType,
+           1 >
 {
   typedef IndexSetBlocks<ViewType>                              self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
-public:
+ public:
   typedef typename ViewType::index_type                     index_type;
    
   typedef self_t                                            local_type;
@@ -370,11 +385,11 @@ public:
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
   
-private:
+ private:
   index_type _size;
 
   constexpr static dim_t NDim = 1;
-public:
+ public:
   constexpr IndexSetBlocks()               = delete;
   constexpr IndexSetBlocks(self_t &&)      = default;
   constexpr IndexSetBlocks(const self_t &) = default;
@@ -382,7 +397,7 @@ public:
   self_t & operator=(self_t &&)            = default;
   self_t & operator=(const self_t &)       = default;
 
-public:
+ public:
   constexpr explicit IndexSetBlocks(const ViewType & view)
   : base_t(view)
   , _size(calc_size())
@@ -393,29 +408,33 @@ public:
     return block_index +
            // index of block at first index in domain
            this->pattern().block_at(
-             {{ this->domain().first() }}
+             {{ *(this->domain().begin()) }}
            );
   }
 
   constexpr index_type size() const {
-    return _size;
+//  return _size;
+    return calc_size();
   }
 
-private:
+ private:
   constexpr index_type calc_size() const {
     return (
       // index of block at last index in domain
       this->pattern().block_at(
-        {{ this->domain().last() }}
+//      {{ this->domain().last() + 1 }}
+        {{ *(this->domain().begin() + (this->domain().size() - 1)) }}
       ) -
       // index of block at first index in domain
       this->pattern().block_at(
-        {{ this->domain().first() }}
+        {{ *(this->domain().begin()) }}
       ) + 1
     );
   }
 };
 
+// -----------------------------------------------------------------------
+// IndexSetSub
 // -----------------------------------------------------------------------
 
 template <class ViewType>
@@ -445,7 +464,7 @@ class IndexSetSub
 {
   typedef IndexSetSub<ViewType>                                 self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
-public:
+ public:
   typedef typename ViewType::index_type                     index_type;
   typedef typename base_t::view_domain_type           view_domain_type;
   typedef typename base_t::local_type                       local_type;
@@ -454,24 +473,24 @@ public:
 //typedef typename base_t::index_set_domain_type index_set_domain_type;
   typedef IndexSetSub<ViewType>                          preimage_type;
 
-public:
+ public:
   constexpr IndexSetSub()               = delete;
   constexpr IndexSetSub(self_t &&)      = default;
   constexpr IndexSetSub(const self_t &) = default;
   ~IndexSetSub()                        = default;
   self_t & operator=(self_t &&)         = default;
   self_t & operator=(const self_t &)    = default;
-private:
+ private:
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
-public:
+ public:
   constexpr IndexSetSub(
     const ViewType   & view,
-    index_type         begin,
-    index_type         end)
+    index_type         begin_idx,
+    index_type         end_idx)
   : base_t(view)
-  , _domain_begin_idx(begin)
-  , _domain_end_idx(end)
+  , _domain_begin_idx(begin_idx)
+  , _domain_end_idx(end_idx)
   { }
 
   constexpr index_type operator[](index_type image_index) const {
@@ -499,6 +518,8 @@ public:
 };
 
 // -----------------------------------------------------------------------
+// IndexSetLocal
+// -----------------------------------------------------------------------
 
 template <class ViewType>
 constexpr const IndexSetLocal<ViewType> &
@@ -525,7 +546,7 @@ class IndexSetLocal
 {
   typedef IndexSetLocal<ViewType>                               self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
-public:
+ public:
   typedef typename ViewType::index_type                     index_type;
    
   typedef self_t                                            local_type;
@@ -538,9 +559,9 @@ public:
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
   
-private:
+ private:
   index_type _size;
-public:
+ public:
   constexpr IndexSetLocal()               = delete;
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
@@ -548,7 +569,7 @@ public:
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
 
-public:
+ public:
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
   , _size(calc_size())
@@ -627,18 +648,22 @@ public:
 };
 
 // -----------------------------------------------------------------------
+// IndexSetGlobal
+// -----------------------------------------------------------------------
 
 template <class ViewType>
 constexpr auto
 local(const IndexSetGlobal<ViewType> & index_set)
-    -> decltype(index_set.local()) {
+    -> decltype(index_set.local())
+{
 //  -> typename view_traits<IndexSetGlobal<ViewType>>::local_type & { 
   return index_set.local();
 }
 
 template <class ViewType>
 constexpr const IndexSetGlobal<ViewType> &
-global(const IndexSetGlobal<ViewType> & index_set) {
+global(const IndexSetGlobal<ViewType> & index_set)
+{
   return index_set;
 }
 
@@ -653,7 +678,7 @@ class IndexSetGlobal
 {
   typedef IndexSetGlobal<ViewType>                              self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
-public:
+ public:
   typedef typename ViewType::index_type                     index_type;
    
   typedef IndexSetLocal<self_t>                             local_type;
@@ -665,16 +690,16 @@ public:
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
   
-public:
+ public:
   constexpr IndexSetGlobal()               = delete;
   constexpr IndexSetGlobal(self_t &&)      = default;
   constexpr IndexSetGlobal(const self_t &) = default;
   ~IndexSetGlobal()                        = default;
   self_t & operator=(self_t &&)            = default;
   self_t & operator=(const self_t &)       = default;
-private:
+ private:
   index_type _size;
-public:
+ public:
   constexpr explicit IndexSetGlobal(const ViewType & view)
   : base_t(view)
   , _size(calc_size())

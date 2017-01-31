@@ -24,10 +24,10 @@ class IndexIteratorBase {
             Reference >          self_t;
   typedef dash::default_index_t  index_type;
   typedef IteratorType           derived_t;
-private:
+ private:
   index_type _pos;
 
-private:
+ private:
   derived_t & derived() {
     return static_cast<IteratorType &>(*this);
   }
@@ -35,7 +35,7 @@ private:
     return static_cast<const derived_t &>(*this);
   }
 
-public:
+ public:
   typedef std::random_access_iterator_tag       iterator_category;
 
   typedef ValueType                                    value_type;
@@ -45,7 +45,7 @@ public:
   typedef Reference                                     reference;
   typedef const Reference                         const_reference;
 
-public:
+ public:
   constexpr IndexIteratorBase()                = delete;
   constexpr IndexIteratorBase(self_t &&)       = default;
   constexpr IndexIteratorBase(const self_t &)  = default;
@@ -53,7 +53,7 @@ public:
   self_t & operator=(self_t &&)                = default;
   self_t & operator=(const self_t &)           = default;
 
-  constexpr IndexIteratorBase(index_type position)
+  constexpr explicit IndexIteratorBase(index_type position)
   : _pos(position)
   { }
 

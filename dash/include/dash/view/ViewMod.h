@@ -148,19 +148,19 @@ class ViewOrigin
 {
   typedef ViewOrigin self_t;
 
-public:
+ public:
   typedef dash::default_index_t                                 index_type;
   typedef self_t                                               domain_type;
   typedef IndexSetIdentity<self_t>                          index_set_type;
 
-public:
+ public:
   typedef std::integral_constant<bool, false>   is_local;
   typedef std::integral_constant<dim_t, NDim>   rank;
 
-private:
+ private:
   std::array<index_type, NDim>                  _extents    = { };
   index_set_type                                _index_set;
-public:
+ public:
   constexpr ViewOrigin()               = delete;
   constexpr ViewOrigin(self_t &&)      = default;
   constexpr ViewOrigin(const self_t &) = default;
@@ -203,7 +203,7 @@ public:
     return _size<0>();
   }
 
-private:
+ private:
   template <dim_t SizeDim = 0>
   constexpr index_type _size() const {
     return extent<SizeDim>() +
@@ -237,16 +237,15 @@ struct view_traits<ViewOrigin<NDim>> {
 template <
   class ViewModType,
   class DomainType >
-class ViewModBase
-{
+class ViewModBase {
   typedef ViewModBase<ViewModType, DomainType> self_t;
-public:
+ public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value>        rank;
 
-protected:
+ protected:
   const DomainType * _domain;
 
   ViewModType & derived() {
@@ -265,7 +264,7 @@ protected:
   constexpr ViewModBase(const self_t &) = default;
   ~ViewModBase()                        = default;
 
-public:
+ public:
   self_t & operator=(self_t &&)         = default;
   self_t & operator=(const self_t &)    = default;
 
@@ -319,26 +318,25 @@ struct view_traits<ViewLocalMod<DomainType> > {
 template <
   class DomainType >
 class ViewLocalMod
-: public ViewModBase< ViewLocalMod<DomainType>, DomainType >
-{
-public:
+: public ViewModBase< ViewLocalMod<DomainType>, DomainType > {
+ public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename domain_type::local_type                      image_type;
   typedef typename DomainType::index_type                       index_type;
-private:
+ private:
   typedef ViewLocalMod<DomainType>                                  self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
-public:
+ public:
   typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
   typedef self_t                                                local_type;
   typedef typename domain_type::global_type                    global_type;
 
   typedef std::integral_constant<bool, true>                      is_local;
 
-private:
+ private:
   index_set_type  _index_set;
-public:
+ public:
   constexpr ViewLocalMod()               = delete;
   constexpr ViewLocalMod(self_t &&)      = default;
   constexpr ViewLocalMod(const self_t &) = default;
@@ -471,25 +469,25 @@ class ViewSubMod
            ViewSubMod<DomainType, SubDim>,
            DomainType >
 {
-public:
+ public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
-private:
+ private:
   typedef ViewSubMod<DomainType, SubDim>                              self_t;
   typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
-public:
+ public:
   typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim> > index_set_type;
   typedef ViewLocalMod<self_t>                                    local_type;
   typedef self_t                                                 global_type;
 
   typedef std::integral_constant<bool, false>                       is_local;
 
-private:
+ private:
   index_type     _begin_idx;
   index_type     _end_idx;
   index_set_type _index_set;
 
-public:
+ public:
   constexpr ViewSubMod()               = delete;
   constexpr ViewSubMod(self_t &&)      = default;
   constexpr ViewSubMod(const self_t &) = default;
@@ -513,7 +511,7 @@ public:
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-             *dash::begin(dash::index(*this));
+             dash::index(*this).first();
   }
 
   constexpr auto end() const
@@ -522,7 +520,7 @@ public:
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-             *dash::end(dash::index(*this));
+             dash::index(*this).last() + 1;
   }
 
   constexpr auto operator[](int offset) const
@@ -571,24 +569,24 @@ template <
 class ViewGlobalMod
 : public ViewModBase< ViewGlobalMod<DomainType>, DomainType >
 {
-public:
+ public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename domain_type::global_type                     image_type;
   typedef typename DomainType::index_type                       index_type;
-private:
+ private:
   typedef ViewGlobalMod<DomainType>                                 self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
-public:
+ public:
   typedef dash::IndexSetGlobal< ViewGlobalMod<DomainType> > index_set_type;
   typedef self_t                                               global_type;
   typedef typename domain_type::local_type                      local_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-private:
+ private:
   index_set_type  _index_set;
-public:
+ public:
   constexpr ViewGlobalMod()               = delete;
   constexpr ViewGlobalMod(self_t &&)      = default;
   constexpr ViewGlobalMod(const self_t &) = default;

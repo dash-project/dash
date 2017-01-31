@@ -46,9 +46,7 @@
  */
 
 
-#include <dash/Dimensional.h>
-
-// #include <dash/view/ViewTraits.h>
+#include <dash/Types.h>
 
 #include <type_traits>
 
@@ -63,8 +61,6 @@ namespace dash {
 //
 // https://github.com/boostorg/range/tree/develop/include/boost/range
 //
-
-
 
 template <class ViewT>
 struct view_traits;

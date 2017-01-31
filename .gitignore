@@ -27,6 +27,7 @@ my.*.sh
 tags
 *.orig*
 *.bac*
+*.mine*
 RELEASE/*
 dash/include/dash/util/StaticConfig.h
 .includes
@@ -34,4 +35,4 @@ dash/include/dash/util/StaticConfig.h
 .gutctags
 cscope.files
 .ycm_*
-*.mine
+TAGS
