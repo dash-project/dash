@@ -97,7 +97,7 @@ TEST_F(ViewTest, Intersect1DimSingle)
               gview_left.size());
   EXPECT_EQ_U(sub_right_end_gidx - sub_right_begin_gidx,
               gview_right.size());
-  EXPECT_EQ_U(sub_left_end_gidx  - sub_right_begin_gidx, 
+  EXPECT_EQ_U(sub_left_end_gidx  - sub_right_begin_gidx,
               gview_isect.size());
 
   for (int isect_idx = 0; isect_idx < gview_isect.size(); isect_idx++) {
@@ -179,11 +179,12 @@ TEST_F(ViewTest, BlocksView1Dim)
                      "offsets:", array.pattern().block(b_idx).offsets()[0],
                      "extents:", array.pattern().block(b_idx).extents()[0]);
 
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "blocks[b].begin.pos, blocks[b].end.pos", 
-                     "(", (array_blocks[b_idx].begin()),
-                     ",", (array_blocks[b_idx].end()),
-                     ")");
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
+                     "GlobIter: blocks[b].begin",
+                     array_blocks[b_idx].begin());
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
+                     "GlobIter: blocks[b].end",
+                     array_blocks[b_idx].end());
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      "index(block).begin, index(block).end:", 
