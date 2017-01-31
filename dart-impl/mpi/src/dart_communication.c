@@ -385,8 +385,8 @@ dart_ret_t dart_fetch_and_op(
 
   (void)(team); // To prevent compiler warning from unused parameter.
 
-  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d",
-                 dtype, op, target_unitid_abs.id);
+  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d offset:%p segid:%d",
+                 dtype, op, target_unitid_abs.id, gptr.addr_or_offs.offset, gptr.segid);
   if (seg_id) {
     dart_team_unit_t target_unitid_rel;
 
@@ -420,8 +420,8 @@ dart_ret_t dart_fetch_and_op(
       mpi_op,            // Reduce operation
       win);
     DART_LOG_TRACE("dart_fetch_and_op:  (from coll. allocation) "
-                   "target unit: %d offset: %"PRIu64"",
-                   target_unitid_abs.id, offset);
+                   "target unit: %d offset: %"PRIu64" mpi_dtype:%i mpi_op:%i",
+                   target_unitid_abs.id, offset, mpi_dtype, mpi_op);
   } else {
     win = dart_win_local_alloc;
     MPI_Fetch_and_op(
@@ -465,8 +465,8 @@ dart_ret_t dart_compare_and_swap(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_DEBUG("dart_compare_and_swap() dtype:%d op:%d unit:%d",
-                 dtype, op, target_unitid_abs.id);
+  DART_LOG_DEBUG("dart_compare_and_swap() dtype:%d unit:%d offset:%p",
+                 dtype, target_unitid_abs.id, gptr.addr_or_offs.offset);
 
   if (seg_id) {
     dart_team_unit_t target_unitid_rel;
@@ -960,9 +960,9 @@ dart_ret_t dart_get_blocking(
   dart_team_data_t *team_data = &dart_team_data[index];
 
   DART_LOG_DEBUG("dart_get_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%u, nelem:%zu",
+                 "o:%"PRIu64" s:%d i:%u, nelem:%zu dtype:%d",
                  target_unitid_abs.id, target_unitid_rel.id,
-                 offset, seg_id, index, nelem);
+                 offset, seg_id, index, nelem, dtype);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
