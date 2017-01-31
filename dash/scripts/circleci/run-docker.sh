@@ -33,6 +33,8 @@ for MPIENV in ${MPIENVS[@]}; do
     # upload build and test logs 
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
     cp ./build-ci/*/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
+    # clear logs
+    rm -rf ./build-ci/*
 
     echo "checking logs"
 
