@@ -72,10 +72,12 @@ extern "C" {
 typedef struct
 {
   /** The unit holding the memory element */
-  dart_unit_t unitid;
+  dart_unit_t  unitid : 24;
+  /** Reserved */
+  unsigned int flags  :  8;
   /** The segment ID of the allocation */
   int16_t     segid;
-  /** Reserved */
+  /** The team associated with the allocation */
   int16_t     teamid;
   /** Absolute address or relative offset */
   union
@@ -90,10 +92,11 @@ typedef struct
  * \ingroup DartGlobMem
  */
 #ifdef __cplusplus
-#define DART_GPTR_NULL (dart_gptr_t { -1, 0, DART_TEAM_NULL, { 0 } })
+#define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, DART_TEAM_NULL, { 0 } })
 #else
 #define DART_GPTR_NULL \
 (dart_gptr_t){ .unitid = -1, \
+               .flags  =  0, \
                .segid  =  0, \
                .teamid  =  DART_TEAM_NULL, \
                .addr_or_offs.offset = 0 }
