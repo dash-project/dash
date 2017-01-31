@@ -96,8 +96,8 @@ class ViewBlockMod
   constexpr ViewBlockMod(self_t &&)      = default;
   constexpr ViewBlockMod(const self_t &) = default;
   ~ViewBlockMod()                        = default;
-  self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
+  self_t & operator=(self_t &&)          = delete;
+  self_t & operator=(const self_t &)     = delete;
 
   constexpr ViewBlockMod(
     const DomainType & domain,
@@ -115,35 +115,29 @@ class ViewBlockMod
   constexpr auto begin() const
   -> decltype(dash::begin(
                 std::declval<
-                  typename std::add_const<
-                    typename std::add_lvalue_reference<domain_type>::type
-                  >::type
+                  typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-              *dash::begin(dash::index(*this));
+              dash::index(*this)[0];
            // _index_set.first();
   }
 
   constexpr auto end() const
   -> decltype(dash::begin(
                 std::declval<
-                  typename std::add_const<
-                    typename std::add_lvalue_reference<domain_type>::type
-                  >::type
+                  typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-               (dash::index(*this).last()) + 1;
-           //  _index_set.last() + 1;
+           //  (dash::index(*this).last()) + 1;
+               _index_set.last() + 1;
   }
 
   constexpr auto operator[](int offset) const
   -> decltype(*(dash::begin(
                   std::declval<
-                    typename std::add_const<
-                      typename std::add_lvalue_reference<domain_type>::type
-                    >::type
+                    typename std::add_lvalue_reference<domain_type>::type
                   >() ))) {
-    return *(this->begin() + offset);
+    return dash::begin(*this)[offset];
   }
 
   constexpr const index_set_type & index_set() const {
@@ -268,8 +262,8 @@ class ViewBlocksMod
     constexpr block_iterator(block_iterator &&)        = default;
     constexpr block_iterator(const block_iterator &)   = default;
     ~block_iterator()                                  = default;
-    block_iterator & operator=(block_iterator &&)      = default;
-    block_iterator & operator=(const block_iterator &) = default;
+    block_iterator & operator=(block_iterator &&)      = delete;
+    block_iterator & operator=(const block_iterator &) = delete;
 
     constexpr block_iterator(
       const block_iterator            & other,
@@ -300,8 +294,8 @@ class ViewBlocksMod
   constexpr ViewBlocksMod(self_t &&)      = default;
   constexpr ViewBlocksMod(const self_t &) = default;
   ~ViewBlocksMod()                        = default;
-  self_t & operator=(self_t &&)           = default;
-  self_t & operator=(const self_t &)      = default;
+  self_t & operator=(self_t &&)           = delete;
+  self_t & operator=(const self_t &)      = delete;
 
   constexpr explicit ViewBlocksMod(
     const DomainType & domain)

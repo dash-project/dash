@@ -285,7 +285,7 @@ class ViewModBase {
   }
 
   constexpr index_type size() const {
-    return derived().index_set().size();
+    return dash::index(derived()).size();
   }
 };
 
@@ -511,7 +511,7 @@ class ViewSubMod
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-             dash::index(*this).first();
+             *dash::begin(dash::index(*this));
   }
 
   constexpr auto end() const
@@ -520,7 +520,7 @@ class ViewSubMod
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-             dash::index(*this).last() + 1;
+             *dash::end(dash::index(*this));
   }
 
   constexpr auto operator[](int offset) const
