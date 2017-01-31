@@ -113,15 +113,22 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags)
   return dart_segment_get_flags(&dart_team_data[index].segdata, gptr.segid, flags);
 }
 
-dart_ret_t dart_gptr_setflags(dart_gptr_t gptr, uint16_t flags)
+dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags)
 {
   uint16_t index;
-  if (dart_adapt_teamlist_convert(gptr.teamid, &index) == -1) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", gptr.teamid);
+  if (dart_adapt_teamlist_convert(gptr->teamid, &index) == -1) {
+    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", gptr->teamid);
     return DART_ERR_INVAL;
   }
 
-  return dart_segment_set_flags(&dart_team_data[index].segdata, gptr.segid, flags);
+  dart_ret_t ret = dart_segment_set_flags(&dart_team_data[index].segdata, gptr->segid, flags);
+
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  gptr->flags = (flags & 0xFF);
+  return DART_OK;
 }
 
 

@@ -205,6 +205,10 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
 
 /**
  * Set the flags field for the segment specified by the global pointer.
+ * The flags are stored in the segment's meta data. The lower 8 bit of
+ * the flags are stored in the \c .flags field of the \c gptr for
+ * fast access. The remaining flags can be queried through
+ * \ref dart_gptr_getflags.
  *
  * \param gptr Global Pointer describing a segment.
  * \param unit The flags to set for segment in \c gptr
@@ -214,7 +218,7 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setflags(dart_gptr_t gptr, uint16_t flags);
+dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
