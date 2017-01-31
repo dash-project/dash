@@ -12,6 +12,8 @@
 
 #include <dash/util/internal/IteratorBase.h>
 
+#include <memory>
+
 
 #ifndef DOXYGEN
 namespace dash {
@@ -221,8 +223,8 @@ class IndexSetBase
   typedef detail::IndexSetIterator<IndexSetType> iterator;
 
  protected:
-  const ViewType              &  _view;
-//const pattern_type          &  _pattern;
+  const ViewType      * const   _view;
+  const pattern_type  * const   _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
@@ -232,28 +234,23 @@ class IndexSetBase
   }
   
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(view)
-//, _pattern(dash::origin(_view).pattern())
+  : _view(&view)
+  , _pattern(&(dash::origin(view).pattern()))
   { }
-
-//constexpr explicit IndexSetBase(ViewType && view)
-//: _view(std::forward(view))
-//, _pattern(dash::origin(std::forward(_view)).pattern())
-//{ }
 
   ~IndexSetBase()                        = default;
  public:
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
-  self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
+  self_t & operator=(self_t &&)          = delete;
+  self_t & operator=(const self_t &)     = delete;
   
-  ViewType & view() {
-    return _view;
+  const ViewType & view() {
+    return *_view;
   }
   constexpr const ViewType & view() const {
-    return _view;
+    return *_view;
   }
 
   constexpr iterator begin() const {
@@ -273,22 +270,22 @@ class IndexSetBase
   }
 
   constexpr const local_type & local() const {
-    return dash::index(dash::local(_view));
+    return dash::index(dash::local(*_view));
   }
 
   constexpr const global_type & global() const {
-    return dash::index(dash::global(_view));
+    return dash::index(dash::global(*_view));
   }
 
   constexpr const index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
 //  return dash::index(dash::domain(derived().view()));
-    return dash::index(dash::domain(_view));
+    return dash::index(dash::domain(*_view));
   }
 
   constexpr const pattern_type & pattern() const {
-//  return _pattern;
-    return (dash::origin(_view).pattern());
+    return *_pattern;
+//  return (dash::origin(*_view).pattern());
   }
 
   /*
@@ -393,8 +390,8 @@ class IndexSetBlocks
   constexpr IndexSetBlocks(self_t &&)      = default;
   constexpr IndexSetBlocks(const self_t &) = default;
   ~IndexSetBlocks()                        = default;
-  self_t & operator=(self_t &&)            = default;
-  self_t & operator=(const self_t &)       = default;
+  self_t & operator=(self_t &&)            = delete;
+  self_t & operator=(const self_t &)       = delete;
 
  public:
   constexpr explicit IndexSetBlocks(const ViewType & view)
@@ -407,7 +404,10 @@ class IndexSetBlocks
     return block_index +
            // index of block at first index in domain
            this->pattern().block_at(
-             {{ *(this->domain().begin()) }}
+             std::array<index_type, 1> ({
+           //  this->domain()[0]
+               *dash::begin(this->domain())
+             })
            );
   }
 
@@ -421,12 +421,11 @@ class IndexSetBlocks
     return (
       // index of block at last index in domain
       this->pattern().block_at(
-//      {{ this->domain().last() + 1 }}
-        {{ *(this->domain().begin() + (this->domain().size() - 1)) }}
+        {{ this->domain().last()  }}
       ) -
       // index of block at first index in domain
       this->pattern().block_at(
-        {{ *(this->domain().begin()) }}
+        {{ this->domain().first() }}
       ) + 1
     );
   }
@@ -551,8 +550,8 @@ class IndexSetSub
   constexpr IndexSetSub(self_t &&)      = default;
   constexpr IndexSetSub(const self_t &) = default;
   ~IndexSetSub()                        = default;
-  self_t & operator=(self_t &&)         = default;
-  self_t & operator=(const self_t &)    = default;
+  self_t & operator=(self_t &&)         = delete;
+  self_t & operator=(const self_t &)    = delete;
  private:
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
@@ -639,8 +638,8 @@ class IndexSetLocal
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
   ~IndexSetLocal()                        = default;
-  self_t & operator=(self_t &&)           = default;
-  self_t & operator=(const self_t &)      = default;
+  self_t & operator=(self_t &&)           = delete;
+  self_t & operator=(const self_t &)      = delete;
 
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
@@ -679,7 +678,8 @@ class IndexSetLocal
   }
 
   constexpr index_type size() const {
-    return _size;
+//  return _size;
+    return calc_size();
   }
 
   constexpr index_type calc_size() const {

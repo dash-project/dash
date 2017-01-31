@@ -165,7 +165,7 @@ class ViewBlockMod
     //
     return std::max(
              ( // block viewspec (extents, offsets)
-               dash::origin(vdomain)
+               dash::index(vdomain)
                  .pattern().block(block_idx).offsets()[0]
              ),
              dash::index(vdomain).first()
@@ -184,9 +184,9 @@ class ViewBlockMod
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)
-               dash::origin(vdomain)
+               dash::index(vdomain)
                  .pattern().block(block_idx).offsets()[0]
-             + dash::origin(vdomain)
+             + dash::index(vdomain)
                  .pattern().block(block_idx).extents()[0]
              )
            )
@@ -262,7 +262,7 @@ class ViewBlocksMod
               block_type >    // reference type
       iterator_base_t;
    private:
-    const ViewBlocksMod<DomainType> & _blocks_view;
+    const ViewBlocksMod<DomainType> * const _blocks_view;
    public:
     constexpr block_iterator()                         = delete;
     constexpr block_iterator(block_iterator &&)        = default;
@@ -282,7 +282,7 @@ class ViewBlocksMod
       const ViewBlocksMod<DomainType> & blocks_view,
       index_type                        position)
     : iterator_base_t(position)
-    , _blocks_view(blocks_view)
+    , _blocks_view(&blocks_view)
     { }
 
     constexpr block_type dereference(index_type idx) const {
@@ -290,8 +290,8 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-    // return dash::block(idx, (dash::domain(_blocks_view)));
-      return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
+      // return dash::block(idx, (dash::domain(*_blocks_view)));
+      return ViewBlockMod<DomainType>(dash::domain(*_blocks_view), idx);
     }
   };
 
