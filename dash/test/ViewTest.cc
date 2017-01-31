@@ -117,8 +117,8 @@ TEST_F(ViewTest, BlocksView1Dim)
   typedef float                 value_t;
   typedef dash::default_index_t index_t;
 
-  int block_size           = 4;
-  int blocks_per_unit      = 2;
+  int block_size           = 3;
+  int blocks_per_unit      = 3;
   int array_size           = dash::size()
                              * (blocks_per_unit * block_size)
                              // unbalanced size, last block underfilled:
