@@ -11,11 +11,14 @@ RUN           apt-get update -y    \
                   cmake            \
                   uuid-runtime     \
                   libhwloc-plugins \
-                  libhwloc-dev
+                  libhwloc-dev     \
+                  clang-3.8
+
+WORKDIR       /tmp
+ENV           CC=gcc
+ENV           CXX=g++
 
 # Install PAPI from source
-WORKDIR       /tmp
-
 # Compiler error when compiling with -pedantic for papi > 5.4.1
 # ADD         http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
 ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
