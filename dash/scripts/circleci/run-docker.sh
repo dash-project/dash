@@ -29,12 +29,10 @@ for MPIENV in ${MPIENVS[@]}; do
 
     # upload xml test-results
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG
-    cp ./build-ci/*/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/
+    cp ./build-ci/*/$COMPILER/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/
     # upload build and test logs 
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
-    cp ./build-ci/*/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
-    # clear logs
-    rm -rf ./build-ci/*
+    cp ./build-ci/*/$COMPILER/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
 
     echo "checking logs"
 
