@@ -178,7 +178,7 @@ TEST_F(ViewTest, IndexSet)
     std::copy(locsub_gview.begin(),
               locsub_gview.end(),
               loc_sub_values.begin());
-//  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
   }
 //DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.loc values :",
 //               dash::make_range(locsub_gview.begin(),
@@ -218,9 +218,10 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   int block_size           = 4;
   int blocks_per_unit      = 2;
   int array_size           = dash::size()
-                             * (blocks_per_unit * block_size);
+                             * (blocks_per_unit * block_size)
+                             + (block_size * 3 / 2);
 
-  dash::Array<value_t> array(array_size, dash::TILE(block_size));
+  dash::Array<value_t> array(array_size, dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(array);
 
   auto lblocks_view  = dash::local(
@@ -235,14 +236,86 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
             lblocks_indices.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_indices);
 
-  
-
   std::vector<value_t> lblocks_values(lblocks_view.size());
   std::copy(lblocks_view.begin(),
             lblocks_view.end(),
             lblocks_values.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_values);
 
+  auto blocksl_view  = dash::blocks(
+                         dash::local(
+                           array));
+
+  auto blocksl_index = dash::index(blocksl_view);
+
+  auto lsize      = array.pattern().local_extent(0);
+  auto l_beg      = array.pattern().global_index(array.team().myid(),
+                                                 {{ 0 }} );
+  auto l_end      = array.pattern().global_index(array.team().myid(),
+                                                 {{ lsize }} );
+  auto n_lblocks  = dash::math::div_ceil(array.lsize(), block_size);
+
+  DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+                 "n_lblocks:", n_lblocks, "l_beg:", l_beg, "l_end:", l_end);
+
+  EXPECT_EQ_U(n_lblocks, blocksl_view.size());
+  EXPECT_EQ_U(n_lblocks, blocksl_index.size());
+
+  int b_idx = 0;
+  for (auto block : blocksl_view) {
+    auto block_index = dash::index(block);
+
+    DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+                   "---- local block", b_idx);
+
+    std::vector<index_t> block_indices(block.size());
+    std::copy(block_index.begin(),
+              block_index.end(),
+              block_indices.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_indices);
+
+    std::vector<value_t> block_values(block.size());
+    std::copy(block.begin(),
+              block.end(),
+              block_values.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_values);
+
+    auto lblock_size   = array.pattern().local_block(b_idx).extents()[0];
+    auto lblock_gbegin = array.pattern().local_block(b_idx).offsets()[0];
+
+    EXPECT_EQ_U(lblock_size, block.size());
+    for (auto bi = 0; bi < lblock_size; ++bi) {
+      EXPECT_EQ_U(static_cast<value_t>(array[bi + lblock_gbegin]),
+                  static_cast<value_t>(block[bi]));
+    }
+    b_idx++;
+  }
+
+  dash::Array<value_t> array_bal(
+                         dash::size() * block_size,
+                         dash::BLOCKCYCLIC(block_size));
+  auto lblockssub_view = dash::local(
+                           dash::blocks(
+                             dash::sub(
+                               block_size / 2,
+                               array.size() - (block_size / 2),
+                               array_bal)));
+
+  auto lblockssub_index = dash::index(lblockssub_view);
+
+  std::vector<index_t> lblockssub_indices(lblockssub_index.size());
+  std::copy(lblockssub_index.begin(),
+            lblockssub_index.end(),
+            lblockssub_indices.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_indices);
+
+#if 0
+  std::vector<value_t> lblockssub_values(lblockssub_view.size());
+  std::copy(lblockssub_view.begin(),
+            lblockssub_view.end(),
+            lblockssub_values.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_values);
+#endif
 }
 
 TEST_F(ViewTest, BlocksView1Dim)

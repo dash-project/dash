@@ -315,11 +315,13 @@ class ViewBlocksMod
     return *(dash::begin(*this) + offset);
   }
 
-  constexpr const local_type & local() const {
+  constexpr auto local() const
+    -> decltype(dash::local(dash::domain(*this))) {
     return dash::local(dash::domain(*this));
   }
 
-  inline local_type & local() {
+  inline auto local()
+    -> decltype(dash::local(dash::domain(*this))) {
     return dash::local(dash::domain(*this));
   }
 
