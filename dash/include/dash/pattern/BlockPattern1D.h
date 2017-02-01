@@ -134,6 +134,8 @@ private:
   IndexType                   _lend            = -1;
 
 public:
+  constexpr BlockPattern() = delete;
+
   /**
    * Constructor, initializes a pattern from an argument list consisting
    * of the pattern size (extent, number of elements) followed by an optional
@@ -317,6 +319,9 @@ public:
     _lbegin_lend(initialize_local_range(_local_size))
   { }
 
+  /**
+   * Move constructor.
+   */
   constexpr BlockPattern(self_t && other)      = default;
 
   /**
@@ -334,12 +339,15 @@ public:
   : BlockPattern(static_cast<const self_t &>(other)) {
   }
 
-  self_t & operator=(self_t && other) = default;
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other)         = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(const self_t & other)    = default;
 
   /**
    * Equality comparison operator.

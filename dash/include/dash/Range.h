@@ -114,7 +114,6 @@ private:
 
 #ifdef __TODO__
   // Test if dash::begin(x) is valid expression:
-
   template <typename C> static yes has_dash_begin(
                                      decltype(
                                        dash::begin(
@@ -123,6 +122,7 @@ private:
                                      ) * );
   template <typename C> static no  has_dash_begin(...);    
 
+  // Test if dash::end(x) is valid expression:
   template <typename C> static yes has_dash_end(
                                      decltype(
                                        dash::end(
@@ -146,11 +146,12 @@ public:
 #endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:
-
   template<typename C, typename C::iterator (C::*)() = &C::begin >
   static yes has_begin(C *);
   static no  has_begin(...);
 
+  // Test if x.end() is valid expression and type x::iterator is
+  // defined:
   template<typename C, typename C::iterator (C::*)() = &C::end >
   static yes has_end(C *);
   static no  has_end(...);
@@ -237,9 +238,10 @@ template <
   class LocalIterator,
   class LocalSentinel >
 class IteratorRange<LocalIterator *, LocalSentinel *>
-: public RangeBase< IteratorRange<LocalIterator *, LocalSentinel *>,
-                    LocalIterator *,
-                    LocalSentinel * >
+: public RangeBase<
+           IteratorRange<LocalIterator *, LocalSentinel *>,
+           LocalIterator *,
+           LocalSentinel * >
 {
   typedef IteratorRange<LocalIterator, LocalSentinel> self_t;
 
@@ -340,7 +342,6 @@ public:
   typedef typename iterator::pattern_type                   pattern_type;
   typedef dash::IndexSetIdentity<self_t>                  index_set_type;
 
-//typedef typename dash::iterator_traits<iterator>::local_type
   typedef typename
             std::conditional<
               std::is_pointer<iterator>::value,
@@ -348,7 +349,7 @@ public:
               typename iterator::local_type
             >::type
     local_iterator;
-//typedef typename dash::iterator_traits<sentinel>::local_type
+
   typedef typename
             std::conditional<
               std::is_pointer<sentinel>::value,
@@ -398,7 +399,15 @@ public:
  * Wraps `begin` and `end` iterators in range type.
  */
 template <class Iterator, class Sentinel>
-constexpr dash::IteratorRange<Iterator, Sentinel>
+constexpr dash::IteratorRange<const Iterator, const Sentinel>
+make_range(const Iterator & begin, const Sentinel & end) {
+  return dash::IteratorRange<const Iterator, const Sentinel>(
+           begin,
+           end);
+}
+
+template <class Iterator, class Sentinel>
+dash::IteratorRange<Iterator, Sentinel>
 make_range(Iterator & begin, Sentinel & end) {
   return dash::IteratorRange<Iterator, Sentinel>(
            begin,
