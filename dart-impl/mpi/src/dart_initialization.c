@@ -37,7 +37,6 @@ dart_ret_t dart_init(
 {
   int      rank;
   int      size;
-  uint16_t index;
 
   if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
@@ -66,15 +65,13 @@ dart_ret_t dart_init(
     return DART_ERR_OTHER;
   }
 
-	int ret = dart_adapt_teamlist_alloc(
-                 DART_TEAM_ALL,
-                 &index);
-	if (ret == -1) {
+	dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
+	if (ret != DART_OK) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
     return DART_ERR_OTHER;
   }
 
-  dart_team_data_t *team_data = &dart_team_data[index];
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
 
   /* Create a global translation table for all
    * the collective global memory segments */
@@ -211,7 +208,6 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-	uint16_t    index;
 	dart_global_unit_t unitid;
 	dart_myid(&unitid);
 
@@ -220,13 +216,12 @@ dart_ret_t dart_exit()
   _dart_initialized = 0;
 
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);
-	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
+	dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+	if (team_data == NULL) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
                    unitid.id);
     return DART_ERR_OTHER;
   }
-
-  dart_team_data_t *team_data = &dart_team_data[index];
 
   dart_segment_fini(&team_data->segdata);
 

@@ -150,6 +150,9 @@ extern MPI_Comm dart_comm_world;
 
 
 typedef struct dart_team_data {
+
+  struct dart_team_data *next;
+
   /**
    * @brief The communicator corresponding to this team.
    */
@@ -191,11 +194,11 @@ typedef struct dart_team_data {
    */
   int sharedmem_nodesize;
 
+  dart_team_t teamid;
+
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 } dart_team_data_t;
-
-extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
 
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -208,14 +211,14 @@ extern char* *dart_sharedmem_local_baseptr_set;
  * 256 nodes with index ranging from 0 to 255. The allocated teamlist array is set to
  * be empty.
  */
-int dart_adapt_teamlist_init ();
+dart_ret_t dart_adapt_teamlist_init ();
 
 /* @brief Destroy the free-team-list and allocated-team-list.
  *
  * This call will be invoked within dart_eixt(), and the free teamlist is freed,
  * the allocated teamlist array is reset back to be empty.
  */
-int dart_adapt_teamlist_destroy ();
+dart_ret_t dart_adapt_teamlist_destroy ();
 
 /* @brief Allocate the first available index from the free-team-list.
  *
@@ -225,8 +228,15 @@ int dart_adapt_teamlist_destroy ();
  * @param[in]  teamid  The newly created team ID.
  * @param[out] index   The unique ID related to the newly created team.
  */
-int dart_adapt_teamlist_alloc(dart_team_t teamid, uint16_t *index);
+dart_ret_t dart_adapt_teamlist_alloc(dart_team_t teamid);
 
+/**
+ * Deallocate the teamlist entry.
+ */
+dart_ret_t
+dart_adapt_teamlist_dealloc(dart_team_t teamid);
+
+#if 0
 /* @brief Insert the freed index into the free-team-list, and delete the element with given index
  * from the allocated-team-list-array.
  *
@@ -237,6 +247,13 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
 /* @brief Locate the given teamid in the alloated-team-list-array.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
+#endif
+
+/**
+ * Retrieve the \c dart_team_data for \c teamid.
+ */
+dart_team_data_t *
+dart_adapt_teamlist_get(dart_team_t teamid);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 /*

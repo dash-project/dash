@@ -38,16 +38,15 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
   dart_global_unit_t myid;
   dart_myid(&myid);
 
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(gptr.teamid, &index);
-  if (result == -1) {
-    DART_LOG_ERROR("dart_gptr_getaddr: Unknown team %i", gptr.teamid);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
   if (myid.id == gptr.unitid) {
     if (seg_id != DART_SEGMENT_LOCAL) {
-      if (dart_segment_get_selfbaseptr(&dart_team_data[index].segdata, seg_id, (char **)addr) != DART_OK) {
+      if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, (char **)addr) != DART_OK) {
         return DART_ERR_INVAL;
       }
 
@@ -76,15 +75,15 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
    * the offset.
    */
 
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(gptr->teamid, &index);
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr->teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_setaddr ! Unknown team %i", gptr->teamid);
     return DART_ERR_INVAL;
   }
 
   if (seg_id != DART_SEGMENT_LOCAL) {
     char * addr_base;
-    if (dart_segment_get_selfbaseptr(&dart_team_data[index].segdata, seg_id, &addr_base) != DART_OK) {
+    if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &addr_base) != DART_OK) {
       return DART_ERR_INVAL;
     }
 		gptr->addr_or_offs.offset = (char *)addr - addr_base;
@@ -104,24 +103,24 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags)
 {
   *flags = 0;
 
-  uint16_t index;
-  if (dart_adapt_teamlist_convert(gptr.teamid, &index) == -1) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", gptr.teamid);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_getflags ! Unknown team %i", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
-  return dart_segment_get_flags(&dart_team_data[index].segdata, gptr.segid, flags);
+  return dart_segment_get_flags(&team_data->segdata, gptr.segid, flags);
 }
 
 dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags)
 {
-  uint16_t index;
-  if (dart_adapt_teamlist_convert(gptr->teamid, &index) == -1) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", gptr->teamid);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr->teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_setflags ! Unknown team %i", gptr->teamid);
     return DART_ERR_INVAL;
   }
 
-  dart_ret_t ret = dart_segment_set_flags(&dart_team_data[index].segdata, gptr->segid, flags);
+  dart_ret_t ret = dart_segment_set_flags(&team_data->segdata, gptr->segid, flags);
 
   if (ret != DART_OK) {
     return ret;
@@ -191,8 +190,8 @@ dart_team_memalloc_aligned(
 
 	char * sub_mem;
 
-	uint16_t index;
-  if (dart_adapt_teamlist_convert(teamid, &index) == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
@@ -201,11 +200,10 @@ dart_team_memalloc_aligned(
     "index:%d", index);
 
 
-  dart_team_data_t *team_data = &dart_team_data[index];
   MPI_Comm          comm      = team_data->comm;
 	dart_unit_t       localid   = 0;
 
-	if (index == 0) {
+	if (teamid == DART_TEAM_ALL) {
 		gptr_unitid = localid;
 	} else {
 		MPI_Group group;
@@ -390,21 +388,20 @@ dart_ret_t dart_team_memfree(
   MPI_Win win;
   dart_team_t teamid = gptr.teamid;
 
-  uint16_t index;
-  if (dart_adapt_teamlist_convert(gptr.teamid, &index) == -1) {
-    DART_LOG_ERROR("dart_team_free ! failed: Unknown team %i!", gptr.teamid);
-    return DART_ERR_INVAL;
-  }
-
   if (DART_GPTR_ISNULL(gptr)) {
     /* corresponds to free(NULL) which is a valid operation */
     return DART_OK;
   }
 
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_team_free ! failed: Unknown team %i!", gptr.teamid);
+    return DART_ERR_INVAL;
+  }
 
-  win = dart_team_data[index].window;
+  win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&dart_team_data[index].segdata, seg_id, &sub_mem) != DART_OK) {
+  if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &sub_mem) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
@@ -416,7 +413,7 @@ dart_ret_t dart_team_memfree(
 	/* Free the window's associated sub-memory */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   MPI_Win sharedmem_win;
-  if (dart_segment_get_win(&dart_team_data[index].segdata, seg_id, &sharedmem_win) != DART_OK) {
+  if (dart_segment_get_win(&team_data->segdata, seg_id, &sharedmem_win) != DART_OK) {
     return DART_ERR_OTHER;
   }
 	if (MPI_Win_free(&sharedmem_win) != MPI_SUCCESS) {
@@ -439,7 +436,7 @@ dart_ret_t dart_team_memfree(
                  unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
-  if (dart_segment_free(&dart_team_data[index].segdata, seg_id) != DART_OK) {
+  if (dart_segment_free(&team_data->segdata, seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
@@ -462,20 +459,17 @@ dart_team_memregister_aligned(
 
   *gptr = DART_GPTR_NULL;
 
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
 
   MPI_Aint disp;
   MPI_Aint * disp_set = (MPI_Aint *)malloc(size * sizeof(MPI_Aint));
 
-  dart_team_data_t *team_data = &dart_team_data[index];
   MPI_Comm comm = team_data->comm;
   dart_unit_t localid = 0;
-  if (index == 0) {
+  if (teamid == DART_TEAM_ALL) {
     gptr_unitid = localid;
   } else {
     MPI_Group group;
@@ -545,18 +539,16 @@ dart_team_memregister(
     addr = (void*)(&nil);
   }
 
-	uint16_t   index;
-	int        result   = dart_adapt_teamlist_convert(teamid, &index);
-  dart_team_data_t *team_data = &dart_team_data[index];
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
 
   MPI_Aint   disp;
   MPI_Aint * disp_set = (MPI_Aint*)malloc(size * sizeof (MPI_Aint));
-  MPI_Comm comm = dart_team_data[index].comm;
+  MPI_Comm comm = team_data->comm;
   dart_unit_t localid = 0;
-  if (index == 0) {
+  if (teamid == DART_TEAM_ALL) {
     gptr_unitid = localid;
   } else {
     MPI_Group group;
@@ -565,7 +557,7 @@ dart_team_memregister(
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
   }
-  MPI_Win win = dart_team_data[index].window;
+  MPI_Win win = team_data->window;
   MPI_Win_attach(win, (char *)addr, nbytes);
   MPI_Get_address((char *)addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
@@ -614,20 +606,19 @@ dart_team_memderegister(
   MPI_Win win;
   dart_team_t teamid = gptr.teamid;
 
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(gptr.teamid, &index);
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
 
-  win = dart_team_data[index].window;
+  win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&dart_team_data[index].segdata, seg_id, &sub_mem) != DART_OK) {
+  if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &sub_mem) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
   MPI_Win_detach(win, sub_mem);
-  if (dart_segment_free(&dart_team_data[index].segdata, seg_id) != DART_OK) {
+  if (dart_segment_free(&team_data->segdata, seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
 

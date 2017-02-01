@@ -555,18 +555,14 @@ dart_ret_t dart_team_get_group(
   dart_team_t    teamid,
   dart_group_t * group)
 {
-  MPI_Comm comm;
-  uint16_t index;
   *group = NULL;
 
-  struct dart_group_struct* res = allocate_group();
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1) {
-    free(res);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
-  MPI_Comm_group(comm, &(res->mpi_group));
+  struct dart_group_struct* res = allocate_group();
+  MPI_Comm_group(team_data->comm, &(res->mpi_group));
 
   *group = res;
   return DART_OK;
@@ -585,8 +581,6 @@ dart_ret_t dart_team_create(
   MPI_Comm    comm;
   MPI_Comm    subcomm;
   MPI_Win     win;
-  uint16_t    index,
-              unique_id;
   dart_team_t max_teamid = -1;
 
   *newteam = DART_TEAM_NULL;
@@ -601,11 +595,11 @@ dart_ret_t dart_team_create(
   }
 
 
-  int result = dart_adapt_teamlist_convert(teamid, &unique_id);
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[unique_id].comm;
+  comm = team_data->comm;
   subcomm = MPI_COMM_NULL;
 
   MPI_Comm_create(comm, group->mpi_group, &subcomm);
@@ -621,23 +615,20 @@ dart_ret_t dart_team_create(
     comm);
   dart_next_availteamid = max_teamid + 1;
 
-  dart_team_data_t * team_data = NULL;
   if (subcomm != MPI_COMM_NULL) {
-    int result = dart_adapt_teamlist_alloc(max_teamid, &index);
-    if (result == -1) {
+    dart_ret_t result = dart_adapt_teamlist_alloc(max_teamid);
+    if (result != DART_OK) {
       return DART_ERR_OTHER;
     }
     /* max_teamid is thought to be the new created team ID. */
     *newteam = max_teamid;
-    team_data = &dart_team_data[index];
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(max_teamid);
     team_data->comm = subcomm;
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
     team_data->window = win;
     team_data->dart_memid = 1;
     team_data->dart_registermemid = -1;
-  }
 
-  if (subcomm != MPI_COMM_NULL) {
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);
 #endif
@@ -654,7 +645,6 @@ dart_ret_t dart_team_destroy(
 {
   MPI_Comm    comm;
   MPI_Win     win;
-  uint16_t    index;
 
   DART_LOG_DEBUG("dart_team_destroy() teamid:%d", *teamid);
 
@@ -662,12 +652,10 @@ dart_ret_t dart_team_destroy(
     return DART_OK;
   }
 
-  int result = dart_adapt_teamlist_convert(*teamid, &index);
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(*teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-
-  dart_team_data_t *team_data = &dart_team_data[index];
 
   comm = team_data->comm;
 
@@ -680,10 +668,11 @@ dart_ret_t dart_team_destroy(
   win = team_data->window;
   MPI_Win_unlock_all(win);
   MPI_Win_free(&win);
-  dart_adapt_teamlist_recycle(index, result);
 
   /* -- Release the communicator associated with teamid -- */
   MPI_Comm_free(&comm);
+
+  dart_adapt_teamlist_dealloc(*teamid);
 
   DART_LOG_DEBUG("dart_team_destroy > teamid:%d", *teamid);
 
@@ -721,18 +710,18 @@ dart_ret_t dart_size(size_t *size)
 }
 
 dart_ret_t dart_team_myid(
-  dart_team_t         teamid,
+  dart_team_t        teamid,
   dart_team_unit_t * unitid)
 {
-  MPI_Comm comm;
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1)
+  if (teamid == DART_TEAM_NULL) {
+    return DART_ERR_INVAL;
+  }
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL)
   {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
-  MPI_Comm_rank(comm, &(unitid->id));
+  MPI_Comm_rank(team_data->comm, &(unitid->id));
 
   return DART_OK;
 }
@@ -741,20 +730,20 @@ dart_ret_t dart_team_size(
   dart_team_t   teamid,
   size_t      * size)
 {
-  MPI_Comm comm;
-  uint16_t index;
   if (teamid == DART_TEAM_NULL) {
     return DART_ERR_INVAL;
   }
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1) {
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
+
   // TODO: This should be a local operation.
   //       Team sizes could be cached and updated in dart_team_create.
   int s;
-  MPI_Comm_size (comm, &s);
+  MPI_Comm_size(team_data->comm, &s);
   (*size) = s;
   return DART_OK;
 }

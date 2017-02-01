@@ -22,7 +22,7 @@ static inline int hash_segid(dart_segid_t segid)
 dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
 {
   int i;
-  memset(segdata->hashtab, 0, sizeof(dart_seghash_elem_t) * DART_SEGMENT_HASH_SIZE);
+  memset(segdata->hashtab, 0, sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
 
   segdata->team_id = teamid;
 
