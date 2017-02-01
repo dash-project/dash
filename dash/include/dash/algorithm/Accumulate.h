@@ -24,6 +24,54 @@ namespace dash {
  *
  * \ingroup  DashAlgorithms
  */
+    
+template<
+    class GlobInputIt,
+    class ValueType>
+ValueType accumulate(
+    GlobInputIt     in_first,
+    GlobInputIt     in_last,
+    ValueType       init)
+    {
+        typedef dash::default_index_t index_t;
+        
+        
+        auto myid           = dash::myid();
+        
+
+        auto index_range    = dash::local_range(in_first, in_last);
+        auto l_first        = index_range.begin;
+        auto l_last         = index_range.end;
+        
+        auto l_result =std::accumulate(l_first, l_last, init);
+
+        dash::Array<index_t> l_results(dash::size());
+        
+        l_results.local[0] = l_result;
+        
+        dash::barrier();
+        auto result        = 0;
+        
+        if (myid == 0){
+            
+            for (int i = 0; i < dash::size(); i++) {
+                
+                result += l_results[i];
+            
+            }
+            
+        }
+        
+        return result;
+        
+            
+        
+    
+     }
+        
+        
+      
+    
 template<
   class GlobInputIt,
   class ValueType,
@@ -34,9 +82,42 @@ ValueType accumulate(
   ValueType       init,
   BinaryOperation binary_op = dash::plus<ValueType>())
 {
-  DASH_THROW(
-    dash::exception::NotImplemented,
-    "dash::accumulate is not implemented");
+    
+    typedef dash::default_index_t index_t;
+    
+    
+    auto myid           = dash::myid();
+    
+    auto index_range    = dash::local_range(in_first, in_last);
+
+    auto l_first        = index_range.begin;
+    auto l_last         = index_range.end;
+    
+    auto l_result =std::accumulate(l_first, l_last, init, binary_op);
+
+    dash::Array<index_t> l_results(dash::size());
+    
+    l_results.local[0] = l_result;
+    
+    dash::barrier();
+    auto result        = 0;
+    
+    if (myid == 0){
+        
+        for (int i = 0; i < dash::size(); i++) {
+            
+            result = binary_op(result, l_results[i]);
+        
+        }
+        
+    }
+    
+    return result;
+    
+        
+  
+  
+    
 }
 
 } // namespace dash

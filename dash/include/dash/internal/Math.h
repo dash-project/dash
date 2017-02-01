@@ -108,7 +108,7 @@ std::map<Integer, int> factorize(Integer n)
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (int i = 3; i <= sqrt_n; i = i + 2) {
+  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = factors.find(i);
       if (it == factors.end()) {
@@ -161,7 +161,7 @@ std::set<Integer> factors(Integer n)
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (int i = 3; i <= sqrt_n; i = i + 2) {
+  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = primes.find(i);
       if (it == primes.end()) {
@@ -240,8 +240,11 @@ balance_extents(
 
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
+    if (block_size < 2 || size % block_size != 0) {
+      continue;
+    }
     auto n_combinations = size_factors[block_size];
-    if (n_combinations == 0 && size % block_size == 0) {
+    if (n_combinations == 0) {
       n_combinations = size / block_size;
     }
     DASH_LOG_TRACE("dash::math::balance_extents",

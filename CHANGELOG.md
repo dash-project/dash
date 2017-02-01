@@ -23,6 +23,9 @@ Features:
 - Additional example applications, including histogram sort and radix sort
   implementations.
 - Runtime configuration utility (`dash::util::Config`).
+- Better textual output of unit tests
+- Added support for HDF5 groups
+- Support patterns with underfilled blocks in dash::io::hdf5
 
 Bugfixes:
 
@@ -34,6 +37,8 @@ Bugfixes:
 - Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
+- Generate cmake package for DASH and DART
+- Added code coverage tests
 
 - New compiler flags:
 
@@ -48,6 +53,7 @@ Bugfixes:
 
 - Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
 - Fixed compiler errors for Intel Compiler 16.0.
+- Disable hdf5 support if only serial version of hdf5 lib is loaded
 
 ## DART Interface
 

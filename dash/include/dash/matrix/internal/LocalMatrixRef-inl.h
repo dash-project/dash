@@ -2,6 +2,7 @@
 #define DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
 
 #include <dash/matrix/LocalMatrixRef.h>
+#include <cassert>
 
 
 namespace dash {
@@ -158,11 +159,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   dim_t dim) const noexcept
 {
   if(dim >= NumDim || dim < 0) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LocalMatrixRef.extent(): Invalid dimension, " <<
-      "expected 0.." << (NumDim - 1) << " " <<
-      "got " << dim);
+    DASH_LOG_ERROR(
+      "LocalMatrixRef.offset(): Invalid dimension, expected 0..",
+      (NumDim - 1), "got ", dim);
+    assert(false);
   }
   return _refview->_mat->_pattern.local_extent(dim);
 //return _refview->_viewspec.extent(dim);
@@ -183,11 +183,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   dim_t dim) const noexcept
 {
   if(dim >= NumDim || dim < 0) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LocalMatrixRef.offset(): Invalid dimension, " <<
-      "expected 0.." << (NumDim - 1) << " " <<
-      "got " << dim);
+    DASH_LOG_ERROR(
+      "LocalMatrixRef.offset(): Invalid dimension, expected 0..",
+      (NumDim - 1), "got ", dim);
+    assert(false);
   }
   return _refview->_viewspec.offset(dim);
 }
@@ -338,7 +337,7 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
       "expected " << (NumDim - _refview->_dim) << " " <<
       "got " << sizeof...(Args));
   }
-  std::array<long long, NumDim> coord = { args... };
+  std::array<index_type, NumDim> coord = { static_cast<index_type>(args)... };
   for(auto i = _refview->_dim; i < NumDim; ++i) {
     _refview->_coord[i] = coord[i-_refview->_dim];
   }
@@ -612,6 +611,17 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE("LocalMatrixRef<0>.+=", "delete _refview");
 //delete _refview;
   return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+LocalMatrixRef<T, NumDim, 0, PatternT>
+::operator+(
+  const T & value)
+{
+	auto res  = self_t(*this);
+	res      += value;
+	return res;
 }
 
 } // namespace dash

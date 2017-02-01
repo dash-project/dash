@@ -93,12 +93,15 @@ int main(int argc, char** argv)
 measurement store_matrix(long size, benchmark_params params)
 {
 #ifdef DASH_ENABLE_HDF5
+  typedef dash::default_index_t index_t;
+  typedef dash::default_size_t  extent_t;
+
   measurement mes;
-  auto myid              = dash::myid();
-  long extent_cols      = size;
-  long extent_rows      = size;
-  auto ts_start_total   = Timer::Now();
-  auto ts_start_create  = Timer::Now();
+  auto        myid            = dash::myid();
+  extent_t    extent_cols     = size;
+  extent_t    extent_rows     = size;
+  auto        ts_start_total  = Timer::Now();
+  auto        ts_start_create = Timer::Now();
 
   // Create Matrix
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
@@ -111,7 +114,10 @@ measurement store_matrix(long size, benchmark_params params)
                        size_spec,
                        team_spec);
 
-  dash::Matrix<double, 2, long, decltype(pattern)> matrix_a(pattern);
+  typedef decltype(pattern)                           pattern_t;
+  typedef dash::Matrix<double, 2, index_t, pattern_t> matrix_t;
+
+  matrix_t matrix_a(pattern);
   // Fill local block with id of unit
   std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
   dash::barrier();
@@ -132,7 +138,7 @@ measurement store_matrix(long size, benchmark_params params)
 
   auto ts_start_read    = Timer::Now();
   // Read Matrix
-  dash::Matrix<double, 2> matrix_b;
+  matrix_t matrix_b;
 
 	HDF5InputStream is("test.hdf5");
 	is >> matrix_b;
@@ -158,9 +164,9 @@ measurement store_matrix(long size, benchmark_params params)
     remove("test.hdf5");
   }
 
-  long num_elems     = extent_cols * extent_rows;
+  auto num_elems     = extent_cols * extent_rows;
   mes.time_total_s   = 1e-6 * Timer::ElapsedSince(ts_start_total);
-  mes.mb_global       = (sizeof(double) * num_elems) / (1024 * 1024);
+  mes.mb_global      = (sizeof(double) * num_elems) / (1024 * 1024);
   mes.mb_per_unit    = mes.mb_global / dash::size();
   mes.mb_per_s_read  = mes.mb_global / mes.time_read_s;
   mes.mb_per_s_write = mes.mb_global / mes.time_write_s;

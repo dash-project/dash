@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
 
+#include "TestPrinter.h"
 #include "TestLogHelpers.h"
 
 
@@ -75,5 +76,11 @@ extern void ColoredPrintf(
 #define SCOPED_TRACE_MSG(msg) do { \
   SCOPED_TRACE(::testing::Message() << msg); \
 } while(0)
+
+#define SKIP_TEST()\
+    if(dash::myid() == 0) {\
+      std::cout << TEST_SKIPPED << "Warning: test skipped" << std::endl;\
+    }\
+    return;
 
 #endif // DASH__TEST__TEST_BASE_H_

@@ -85,11 +85,13 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
   int    size_exp_max = 7;
 
   dash::util::Locality::SetNumNodes(1);
-  dash::util::Locality::SetNumSockets(2);
-  dash::util::Locality::SetNumNUMANodes(4);
+  dash::util::Locality::SetNumNUMANodes(2);
   dash::util::Locality::SetNumCores(28);
 
   std::vector<extents_t> exp_team_extents;
+  // For node-level team domain, units should be grouped by
+  // NUMA domains (unit grid of <num_numa> x <num_units / num_numa>
+  // if no square arrangement is possible):
   exp_team_extents.push_back({{ 2,  2 }}); //  4 units
   exp_team_extents.push_back({{ 2,  4 }}); //  8 units
   exp_team_extents.push_back({{ 2,  6 }}); // 12 units
@@ -135,6 +137,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 {
   typedef std::array<dash::default_size_t, 2> extents_t;
 
+  dash::util::Locality::SetNumNodes(1);
   dash::util::Locality::SetNumSockets(2);
   dash::util::Locality::SetNumNUMANodes(4);
   dash::util::Locality::SetNumCores(28);

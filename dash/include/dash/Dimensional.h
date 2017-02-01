@@ -531,12 +531,12 @@ public:
     update_size();
   }
 
-  IndexType size() const
+  SizeType size() const
   {
     return _size;
   }
 
-  IndexType size(dim_t dimension) const
+  SizeType size(dim_t dimension) const
   {
     return _extents[dimension];
   }

@@ -14,13 +14,67 @@
 namespace dash {
 
 /**
- * Global memory region with static size.
+ * \defgroup  DashGlobalMemoryConcept  Global Memory Concept
+ * Concept of distributed global memory space shared by units in a specified
+ * team.
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * An abstraction of global memory that provides sequential iteration and
+ * random access to local and global elements to units in a specified team.
+ * The C++ STL does not specify a counterpart of this concept as it only
+ * considers local memory that is implicitly described by the random access
+ * pointer interface.
+ *
+ * The model of global memory represents a single, virtual global address
+ * space partitioned into the local memory spaces of its associated units.
+ * The global memory concept depends on the allocator concept that specifies
+ * allocation of physical memory.
+ *
+ * Local pointers are usually, but not necessarily represented as raw native
+ * pointers as returned by \c malloc.
+ *
+ * \see DashAllocatorConcept
+ *
+ * \par Types
+ *
+ * Type Name            | Description                                            |
+ * -------------------- | ------------------------------------------------------ |
+ * \c GlobalRAI         | Random access iterator on global address space         |
+ * \c LocalRAI          | Random access iterator on a single local address space |
+ *
+ *
+ * \par Methods
+ *
+ * Return Type          | Method             | Parameters                         | Description                                                                                                |
+ * -------------------- | ------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp;                             | Global pointer to the initial address of the global memory space                                           |
+ * <tt>GlobalRAI</tt>   | <tt>end</tt>       | &nbsp;                             | Global pointer past the final element in the global memory space                                           |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | &nbsp;                             | Local pointer to the initial address in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt>                    | Local pointer to the initial address in the local segment at unit \c u of the global memory space          |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;                             | Local pointer past the final element in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | <tt>unit u</tt>                    | Local pointer past the final element in the local segment at unit \c u of the global memory space          |
+ * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt>                | Global pointer to the element at canonical global offset \c gidx in the global memory space                |
+ * <tt>void</tt>        | <tt>put_value</tt> | <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c v_in to address in global memory at canonical global offset \c gidx |
+ * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index gidx</tt> | Loads value from address in global memory at canonical global offset \c gidx into local address \c v_out   |
+ * <tt>void</tt>        | <tt>barrier</tt>   | &nbsp;                             | Blocking synchronization of all units associated with the global memory instance                           |
+ *
+ * \}
+ */
+
+
+/**
+ * Global memory with address space of static size.
+ *
+ * \concept{DashGlobalMemoryConcept}
  */
 template<
-  /// Type of values allocated in the global memory space
+  /// Type of elements maintained in the global memory space
   typename ElementType,
-  /// Type of allocator implementation used to allocate and deallocate
-  /// global memory
+  /// Type implementing the DASH allocator concept used to allocate and
+  /// deallocate physical memory
   class    AllocatorType =
              dash::allocator::CollectiveAllocator<ElementType> >
 class GlobMem
@@ -65,9 +119,11 @@ public:
       // TODO: Should be 0
       _nunits = 1;
     } else {
+      size_t nunits;
       DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, (size_t *) &_nunits),
+        dart_team_size(_teamid, &nunits),
         DART_OK);
+      _nunits = nunits;
     }
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
@@ -96,9 +152,11 @@ public:
     if (_teamid == DART_TEAM_NULL) {
       _nunits = 1;
     } else {
+      size_t nunits;
       DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, (size_t *) &_nunits),
+        dart_team_size(_teamid, &nunits),
         DART_OK);
+      _nunits = nunits;
     }
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());

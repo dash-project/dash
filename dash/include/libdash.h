@@ -56,6 +56,7 @@ namespace dash {
 #include <dash/util/LocalityDomain.h>
 #include <dash/util/TeamLocality.h>
 #include <dash/util/UnitLocality.h>
+#include <dash/util/LocalityJSONPrinter.h>
 
 #include <dash/IO.h>
 #include <dash/io/HDF5.h>

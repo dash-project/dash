@@ -52,9 +52,9 @@ run_suite()
   fi
   BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
-  if [ `which numactl` ]; then
-    BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
-  fi
+# if [ `which numactl` ]; then
+#   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
+# fi
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \

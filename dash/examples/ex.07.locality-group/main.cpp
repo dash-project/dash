@@ -107,7 +107,8 @@ int main(int argc, char ** argv)
     cout << endl
          << "global domain:"
          << endl
-         << *global_domain
+         << ((dash::util::LocalityJSONPrinter()
+              << *global_domain)).str()
          << endl
          << separator << endl;
 
@@ -147,7 +148,8 @@ int main(int argc, char ** argv)
              << endl;
       }
       cout << endl
-           << grouped_domain
+           << ((dash::util::LocalityJSONPrinter()
+                << grouped_domain)).str()
            << endl
            << separator << endl;
     }
@@ -172,7 +174,8 @@ int main(int argc, char ** argv)
         group_domain_tags[g].c_str(),
         &group_domain);
 
-      cout << *group_domain
+      cout << ((dash::util::LocalityJSONPrinter()
+                << *group_domain)).str()
            << endl;
     }
 

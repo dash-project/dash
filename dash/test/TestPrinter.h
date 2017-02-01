@@ -9,6 +9,7 @@
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
 #define TEST_SUCCESS "\033[0;32m[  PASSED  ] \033[m"
+#define TEST_SKIPPED "\033[0;33m[  SKIPPED ] \033[m"
 #define TEST_FAILURE "\033[0;31m[  FAILED  ] \033[m"
 #define TEST_ERROR   "\033[0;31m[  ERROR   ] \033[m"
 #define TEST_OK      "\033[0;32m[      OK  ] \033[m"

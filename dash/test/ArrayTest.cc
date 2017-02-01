@@ -155,3 +155,4 @@ TEST_F(ArrayTest, PatternAllocate)
     array.end(),
     verify);
 }
+

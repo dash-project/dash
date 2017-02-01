@@ -141,15 +141,15 @@ private:
 
 public:
 
-  LocalityDomain(
-    const dart_domain_locality_t & domain);
-
   inline LocalityDomain()
   : _domain(nullptr),
     _subdomains(nullptr)
   { }
 
-  LocalityDomain(
+  explicit LocalityDomain(
+    const dart_domain_locality_t & domain);
+
+  explicit LocalityDomain(
     dart_domain_locality_t * domain);
 
   ~LocalityDomain();
