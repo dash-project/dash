@@ -89,6 +89,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        DART_OP_REPLACE,
                        _dart_teamid);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("AtomicAddress.set >");
   }
@@ -116,6 +117,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        DART_OP_NO_OP,
                        _dart_teamid);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.get >", result);
     return result;
@@ -143,6 +145,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        binary_op.dart_operation(),
                        _dart_teamid);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.add >", acc);
   }
@@ -172,6 +175,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        binary_op.dart_operation(),
                        _dart_teamid);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op >", acc);
     return acc;
@@ -260,6 +264,7 @@ public:
                        reinterpret_cast<void *>(&result),
                        dash::dart_datatype<ValueType>::value,
                        _dart_teamid);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange >", (desired == result));
     return (desired == result);
