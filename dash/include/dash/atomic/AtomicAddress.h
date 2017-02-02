@@ -50,11 +50,11 @@ public:
    * pointer.
    */
   AtomicAddress(
-    const dart_gptr_t & gptr,
-    dash::Team & team = dash::Team::All())
-  : _gptr(gptr),
-    _dart_teamid(team.dart_id())
-  { }
+    const dart_gptr_t & gptr)
+  : _gptr(gptr)
+  {
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
+  }
 
   /**
    * Constructor, creates a new instance of \c dash::AtomicAddress from any object
@@ -62,10 +62,11 @@ public:
    */
   template<class GlobalType>
   AtomicAddress(
-    const GlobalType & global,
-    dash::Team       & team   = dash::Team::All())
-  : AtomicAddress(global.dart_gptr(), team)
-  { }
+    const GlobalType & global)
+  : AtomicAddress(global.dart_gptr())
+  {
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
+  }
 
   AtomicAddress(const self_t & other)    = default;
 
@@ -81,14 +82,12 @@ public:
   {
     DASH_LOG_DEBUG_VAR("AtomicAddress.set()", value);
     DASH_LOG_TRACE_VAR("AtomicAddress.set",   _gptr);
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<char *>(&value),
                        1,
                        dash::dart_datatype<ValueType>::value,
-                       DART_OP_REPLACE,
-                       _dart_teamid);
+                       DART_OP_REPLACE);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("AtomicAddress.set >");
@@ -101,7 +100,6 @@ public:
   {
     DASH_LOG_DEBUG("AtomicAddress.get()");
     DASH_LOG_TRACE_VAR("AtomicAddress.get", _gptr);
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type nothing;
     value_type result;
     /*
@@ -115,8 +113,7 @@ public:
                        reinterpret_cast<void *>(&nothing),
                        reinterpret_cast<void *>(&result),
                        dash::dart_datatype<ValueType>::value,
-                       DART_OP_NO_OP,
-                       _dart_teamid);
+                       DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.get >", result);
@@ -134,8 +131,6 @@ public:
   {
     DASH_LOG_DEBUG_VAR("AtomicAddress.add()", value);
     DASH_LOG_TRACE_VAR("AtomicAddress.add",   _gptr);
-    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc = value;
     DASH_LOG_TRACE("AtomicAddress.add", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
@@ -143,8 +138,7 @@ public:
                        reinterpret_cast<char *>(&acc),
                        1,
                        dash::dart_datatype<ValueType>::value,
-                       binary_op.dart_operation(),
-                       _dart_teamid);
+                       binary_op.dart_operation());
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.add >", acc);
@@ -165,16 +159,13 @@ public:
     DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op()", value);
     DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   _gptr);
     DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   typeid(value).name());
-    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<void *>(&value),
                        reinterpret_cast<void *>(&acc),
                        dash::dart_datatype<ValueType>::value,
-                       binary_op.dart_operation(),
-                       _dart_teamid);
+                       binary_op.dart_operation());
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op >", acc);
@@ -255,16 +246,13 @@ public:
     DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   expected);
     DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   typeid(desired).name());
-    DASH_ASSERT(_dart_teamid != dash::Team::Null().dart_id());
-    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type result;
     dart_ret_t ret = dart_compare_and_swap(
                        _gptr,
                        reinterpret_cast<void *>(&desired),
                        reinterpret_cast<void *>(&expected),
                        reinterpret_cast<void *>(&result),
-                       dash::dart_datatype<ValueType>::value,
-                       _dart_teamid);
+                       dash::dart_datatype<ValueType>::value);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange >", (desired == result));
@@ -274,8 +262,6 @@ public:
 private:
   /// The atomic value's underlying global pointer.
   dart_gptr_t   _gptr = DART_GPTR_NULL;
-  /// Team of units associated with the shared atomic variable.
-  dart_team_t   _dart_teamid = dash::Team::Null().dart_id();
 
 }; // class AtomicAddress
 

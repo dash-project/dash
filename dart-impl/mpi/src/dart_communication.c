@@ -261,8 +261,7 @@ dart_ret_t dart_accumulate(
   const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team)
+  dart_operation_t op)
 {
   MPI_Aint     disp_s,
                disp_rel;
@@ -274,15 +273,8 @@ dart_ret_t dart_accumulate(
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
 
-  (void)(team); // To prevent compiler warning from unused parameter.
-
   if (gptr.unitid < 0) {
     DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_accumulate ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
 
@@ -359,8 +351,7 @@ dart_ret_t dart_fetch_and_op(
   const void *     value,
   void *           result,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team)
+  dart_operation_t op)
 {
   MPI_Aint     disp_s,
                disp_rel;
@@ -377,13 +368,6 @@ dart_ret_t dart_fetch_and_op(
     DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
-
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_fetch_and_op ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
-  (void)(team); // To prevent compiler warning from unused parameter.
 
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d offset:%p segid:%d",
                  dtype, op, target_unitid_abs.id, gptr.addr_or_offs.offset, gptr.segid);
@@ -446,8 +430,7 @@ dart_ret_t dart_compare_and_swap(
   const void     * value,
   const void     * compare,
   void           * result,
-  dart_datatype_t  dtype,
-  dart_team_t      team)
+  dart_datatype_t  dtype)
 {
   MPI_Aint     disp_s,
                disp_rel;
@@ -455,8 +438,6 @@ dart_ret_t dart_compare_and_swap(
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
   MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
-
-  (void)(team); // To prevent compiler warning from unused parameter.
 
   if (gptr.unitid < 0) {
     DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");

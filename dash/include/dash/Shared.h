@@ -81,7 +81,7 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-    atomic = atomic_type(_ptr.dart_gptr(), team);
+    atomic = atomic_type(_ptr.dart_gptr());
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _ptr);
   }
 

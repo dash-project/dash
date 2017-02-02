@@ -187,7 +187,7 @@ dart_ret_t dart_allreduce(
   dart_team_t      team);
 
 /**
- * DART Equivalent to MPI reduce.
+ * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
  * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
@@ -211,6 +211,16 @@ dart_ret_t dart_reduce(
   dart_team_unit_t    root,
   dart_team_t         team);
 
+/** \} */
+
+/**
+ * \name Atomic operations
+ * Operations performing element-wise atomic updates on a given
+ * global pointer.
+ */
+
+/** \{ */
+
 /**
  * DART Equivalent to MPI_Accumulate.
  *
@@ -231,8 +241,7 @@ dart_ret_t dart_accumulate(
   const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team);
+  dart_operation_t op);
 
 /**
  * DART Equivalent to MPI_Fetch_and_op.
@@ -258,8 +267,7 @@ dart_ret_t dart_fetch_and_op(
   const void *     value,
   void *           result,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team);
+  dart_operation_t op);
 
 
 /**
@@ -287,8 +295,7 @@ dart_ret_t dart_compare_and_swap(
   const void     * value,
   const void     * compare,
   void           * result,
-  dart_datatype_t  dtype,
-  dart_team_t      team);
+  dart_datatype_t  dtype);
 
 
 /** \} */
