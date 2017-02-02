@@ -23,7 +23,6 @@
 static bool parallel;
 
 static int num_threads;
-static int threads_running = 0;
 
 static bool initialized = false;
 
@@ -34,8 +33,6 @@ typedef struct {
 } tpd_t;
 
 static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
-static pthread_cond_t tasks_done_cond = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t tasks_done_mutex  = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t *thread_pool;
@@ -141,8 +138,6 @@ void* thread_main(void *data)
   tpd_t *tpd = (tpd_t*)data;
   pthread_setspecific(tpd_key, tpd);
 
-  DART_FETCH_AND_INC32(&threads_running);
-
   dart_thread_t *thread = &thread_pool[tpd->thread_id];
 
   set_current_task(&root_task);
@@ -154,21 +149,13 @@ void* thread_main(void *data)
     // only go to sleep if no tasks are in flight
     if (DART_FETCH_AND_ADD32(&(root_task.num_children), 0) == 0) {
 
-      int tr = DART_FETCH_AND_DEC32(&threads_running);
-      if (tr == 0) {
-        // signal that all threads are done
-        pthread_cond_signal(&tasks_done_cond);
-      }
       pthread_mutex_lock(&thread_pool_mutex);
       wait_for_work();
       pthread_mutex_unlock(&thread_pool_mutex);
-      DART_FETCH_AND_INC32(&threads_running);
     }
     dart_task_t *task = next_task(thread);
     handle_task(task);
   }
-
-  DART_FETCH_AND_DEC32(&threads_running);
 
   return NULL;
 }

@@ -53,7 +53,7 @@ request_direct_taskdep(void *data);
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
-    amsgq  = dart_amsg_openq(sizeof(struct remote_data_dep) * DART_RTASK_QLEN, DART_TEAM_ALL);
+    amsgq  = dart_amsg_openq(sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
   }
@@ -85,7 +85,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
 
   while (1) {
     // the amsgq is opened on DART_TEAM_ALL
-    ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep, sizeof(rdep));
+    ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep);
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%p, fn=%p)",
@@ -118,7 +118,7 @@ dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, d
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(team_unit, amsgq, &release_remote_dependency, &response, sizeof(response));
+    ret = dart_amsg_trysend(team_unit, amsgq, &release_remote_dependency, &response);
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%p, fn=%p)",
@@ -153,7 +153,7 @@ dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(team_unit, amsgq, &request_direct_taskdep, &taskdep, sizeof(taskdep));
+    ret = dart_amsg_trysend(team_unit, amsgq, &request_direct_taskdep, &taskdep);
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent direct remote task dependency to unit %i (local task %p depdends on remote task %p)",

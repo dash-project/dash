@@ -25,12 +25,12 @@ struct dart_amsgq {
   char        *queue_ptr;
   char        *dbuf;      // a double buffer used during message processing to shorten lock times
   uint64_t     size;      // the size (in byte) of the message queue
+  size_t       msg_size;
   dart_team_t  team;
 };
 
 struct dart_amsg_header {
   dart_task_action_t fn;
-  size_t             data_size;
   dart_global_unit_t remote;
 };
 
@@ -63,13 +63,14 @@ dart_amsg_init()
 }
 
 dart_amsgq_t
-dart_amsg_openq(size_t size, dart_team_t team)
+dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
 {
   dart_team_unit_t unitid;
   MPI_Comm tcomm;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
-  res->size = size;
-  res->dbuf = malloc(size);
+  res->msg_size = msg_size;
+  res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
+  res->dbuf = malloc(res->size);
   res->team = team;
 
   dart_team_myid (team, &unitid);
@@ -103,8 +104,8 @@ dart_amsg_openq(size_t size, dart_team_t team)
   MPI_Win_allocate(sizeof(uint64_t), 1, MPI_INFO_NULL, tcomm, (void*)&(res->tailpos_ptr), &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;
   MPI_Win_flush(unitid.id, res->tailpos_win);
-  MPI_Win_allocate(size, 1, MPI_INFO_NULL, tcomm, (void*)&(res->queue_ptr), &(res->queue_win));
-  memset(res->queue_ptr, 0, size);
+  MPI_Win_allocate(res->size, 1, MPI_INFO_NULL, tcomm, (void*)&(res->queue_ptr), &(res->queue_win));
+  memset(res->queue_ptr, 0, res->size);
   MPI_Win_fence(0, res->queue_win);
 
   return res;
@@ -112,10 +113,10 @@ dart_amsg_openq(size_t size, dart_team_t team)
 
 
 dart_ret_t
-dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data, size_t data_size)
+dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data)
 {
   dart_global_unit_t unitid;
-  uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
+  uint64_t msg_size = (sizeof(struct dart_amsg_header) + amsgq->msg_size);
   uint64_t remote_offset = 0;
 
   dart_task_action_t remote_fn_ptr = fn;
@@ -131,6 +132,8 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
     DART_LOG_ERROR("MPI_Fetch_and_op failed!");
     return DART_ERR_NOTINIT;
   }
+
+  MPI_Win_flush_local(target.id, amsgq->tailpos_win);
 
   DART_LOG_INFO("MPI_Fetch_and_op returned offset %llu at unit %i", remote_offset, target);
 
@@ -148,23 +151,21 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
     return DART_ERR_AGAIN;
   }
 
-  // lock the target queue before releasing the tailpos window to avoid potential race conditions
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->queue_win);
   MPI_Win_unlock(target.id, amsgq->tailpos_win);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->queue_win);
 
   struct dart_amsg_header header;
   header.remote = unitid;
   header.fn = remote_fn_ptr;
-  header.data_size = data_size;
 
   // we now have a slot in the message queue
   MPI_Aint queue_disp = remote_offset;
   MPI_Put(&header, sizeof(header), MPI_BYTE, target.id, queue_disp, sizeof(header), MPI_BYTE, amsgq->queue_win);
   queue_disp += sizeof(header);
-  MPI_Put(data, data_size, MPI_BYTE, target.id, queue_disp, data_size, MPI_BYTE, amsgq->queue_win);
+  MPI_Put(data, amsgq->msg_size, MPI_BYTE, target.id, queue_disp, amsgq->msg_size, MPI_BYTE, amsgq->queue_win);
   MPI_Win_unlock(target.id, amsgq->queue_win);
 
-  DART_LOG_INFO("Sent message of size %i with payload %i to unit %i starting at offset %i", msg_size, data_size, target, remote_offset);
+  DART_LOG_INFO("Sent message of size %i with payload %i to unit %i starting at offset %i", msg_size, amsgq->msg_size, target, remote_offset);
 
   return DART_OK;
 }
@@ -232,7 +233,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
       struct dart_amsg_header *header = (struct dart_amsg_header *)(dbuf + pos);
       pos += sizeof(struct dart_amsg_header);
       void *data     = dbuf + pos;
-      pos += header->data_size;
+      pos += amsgq->msg_size;
 
       if (pos > tailpos) {
         DART_LOG_ERROR("Message out of bounds (expected %i but saw %i)\n", tailpos, pos);
@@ -242,7 +243,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
       // invoke the message
       DART_LOG_INFO("Invoking active message %p from %i on data %p of size %i starting from tailpos %i",
-                        header->fn, header->remote, data, header->data_size, startpos);
+                        header->fn, header->remote, data, amsgq->msg_size, startpos);
       header->fn(data);
     }
   } else {
