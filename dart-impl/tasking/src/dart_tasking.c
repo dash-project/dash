@@ -52,15 +52,16 @@ dart_task_complete()
   return dart__base__tasking__task_complete();
 }
 
-void
-dart_taskgraph_print()
-{
-  dart__base__tasking_print_taskgraph();
-}
+
+//void
+//dart_taskgraph_print()
+//{
+//  dart__base__tasking_print_taskgraph();
+//}
 
 
-dart_ret_t
-dart_taskgraph_sync()
-{
-  return dart__base__tasking_sync_taskgraph();
-}
+//dart_ret_t
+//dart_taskgraph_sync()
+//{
+//  return dart__base__tasking_sync_taskgraph();
+//}

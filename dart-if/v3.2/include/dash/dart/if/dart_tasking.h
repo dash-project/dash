@@ -63,11 +63,6 @@ dart_task_create(void (*fn) (void *), void *data, size_t data_size, dart_task_de
 dart_ret_t
 dart_task_complete();
 
-/**
- * \brief Wait for all remote dependency requests to be processed.
- */
-dart_ret_t
-dart_taskgraph_sync();
 
 /**
  * \brief Finalize and release all resource acquired during initialization.
@@ -75,8 +70,15 @@ dart_taskgraph_sync();
 dart_ret_t
 dart_tasking_fini();
 
-void
-dart_taskgraph_print();
+//
+//void
+//dart_taskgraph_print();
+
+/**
+ * \brief Wait for all remote dependency requests to be processed.
+ */
+//dart_ret_t
+//dart_taskgraph_sync();
 
 #ifdef __cplusplus
 }

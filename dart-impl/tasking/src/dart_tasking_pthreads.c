@@ -25,7 +25,6 @@ static bool parallel;
 static int num_threads;
 static int threads_running = 0;
 
-static bool processing = false;
 static bool initialized = false;
 
 static pthread_key_t tpd_key;
@@ -82,8 +81,14 @@ dart_task_t * next_task(dart_thread_t *thread)
   dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
   if (task == NULL) {
     // try to steal from another thread, round-robbing starting to the right
-    for (int i = thread->thread_id + 1; i != thread->thread_id; i = (i + 1) % num_threads) {
+    for (int i  = (thread->thread_id + 1) % num_threads;
+             i != thread->thread_id;
+             i  = (i + 1) % num_threads) {
       task = dart_tasking_taskqueue_popback(&thread_pool[i].queue);
+      if (task != NULL) {
+        DART_LOG_DEBUG("Stole task %p from thread %i", task, i);
+        break;
+      }
     }
   }
   return task;
@@ -107,19 +112,25 @@ void handle_task(dart_task_t *task)
     dart_task_action_t fn = task->fn;
     void *data = task->data;
 
+    DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
     //invoke the task function
     fn(data);
+    DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
 
     // let the parent know that we are done
-    DART_FETCH_AND_DEC32(&task->parent->num_children);
+    int32_t nc = DART_FETCH_AND_DEC32(&task->parent->num_children);
+    DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
     // clean up
     dart_tasking_datadeps_release_local_task(&thread_pool[dart__base__tasking__thread_num()], task);
+    if (task->data_size) {
+      free(task->data);
+    }
+    task->data = NULL;
     free(task);
 
     // return to previous task
     set_current_task(current_task);
-
   }
 }
 
@@ -140,9 +151,8 @@ void* thread_main(void *data)
   while (parallel) {
     // look for incoming remote tasks and responses
     dart_tasking_remote_progress();
-    dart_task_t *task = next_task(thread);
     // only go to sleep if no tasks are in flight
-    if (task == NULL && DART_FETCH_AND_ADD32(&(root_task.num_children), 0) == 0) {
+    if (DART_FETCH_AND_ADD32(&(root_task.num_children), 0) == 0) {
 
       int tr = DART_FETCH_AND_DEC32(&threads_running);
       if (tr == 0) {
@@ -154,6 +164,7 @@ void* thread_main(void *data)
       pthread_mutex_unlock(&thread_pool_mutex);
       DART_FETCH_AND_INC32(&threads_running);
     }
+    dart_task_t *task = next_task(thread);
     handle_task(task);
   }
 
@@ -252,13 +263,20 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 {
   // TODO: maybe use a free list?
   dart_task_t *task = malloc(sizeof(dart_task_t));
-  task->data = data;
-  task->data_size = data_size;
+  if (data_size) {
+    task->data_size = data_size;
+    task->data = malloc(data_size);
+    memcpy(task->data, data, data_size);
+  } else {
+    task->data = data;
+    task->data_size = 0;
+  }
   task->fn = fn;
   task->num_children = 0;
   task->parent = get_current_task();
 
-  DART_FETCH_AND_INC32(&task->parent->num_children);
+  int32_t nc = DART_FETCH_AND_INC32(&task->parent->num_children);
+  DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
@@ -284,7 +302,7 @@ dart__base__tasking__task_complete()
 
   dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
 
-  if (thread->current_task == &(root_task) && thread->thread_id == 0) {
+  if (thread->current_task == &(root_task) && thread->thread_id != 0) {
     DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task only valid on MASTER thread!");
     return DART_ERR_INVAL;
   }
@@ -296,18 +314,6 @@ dart__base__tasking__task_complete()
     dart_tasking_remote_progress();
     // b) process our tasks
     dart_task_t *task = next_task(thread);
-    if (task == NULL) {
-      // wait for all threads to finish
-      if (DART_FETCH_AND_ADD32(&threads_running, 0) > 0) {
-        pthread_mutex_lock(&tasks_done_mutex);
-        pthread_cond_wait(&tasks_done_cond, &tasks_done_mutex);
-        pthread_mutex_unlock(&tasks_done_mutex);
-      }
-      // c) make sure there is really no task left
-      // TODO: necessary?
-      dart_tasking_remote_progress();
-      task = next_task(thread);
-    }
     handle_task(task);
   }
 

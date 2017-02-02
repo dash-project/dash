@@ -152,8 +152,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t 
           if (IS_OUT_DEP(*dep) || (dep->type == DART_DEP_IN && IS_OUT_DEP(elem->taskdep))){
             // OUT dependencies have to wait for all previous dependencies
             dart_mutex_lock(&(elem->task.local->mutex));
+            DART_LOG_DEBUG("Making task %p a local successor of task %p (successor: %p)", task, elem->task.local, elem->task.local->successor);
             dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
-            dart_mutex_lock(&(elem->task.local->mutex));
+            dart_mutex_unlock(&(elem->task.local->mutex));
             DART_FETCH_AND_INC32(&task->unresolved_deps);
           }
           if (IS_OUT_DEP(elem->taskdep)) {
@@ -195,7 +196,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
       rs->next = elem->task.local->remote_successor;
       elem->task.local->remote_successor = rs;
       dart_mutex_unlock(&(elem->task.local->mutex));
-
+      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of taks %p", elem->task.local, remote_task.remote);
       return DART_OK;
     }
   }
@@ -214,6 +215,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, t
   dep.type = DART_DEP_DIRECT;
   dep.gptr = DART_GPTR_NULL;
   dep.gptr.unitid = origin.id;
+  DART_LOG_DEBUG("Direct task dependency for task %p: %p", local_task, remote_task.remote);
   dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
   dart_mutex_lock(&(local_task->mutex));
   rs->next = local_task->remote_successor;
@@ -234,10 +236,11 @@ dart_ret_t dart_tasking_datadeps_release_local_task(dart_thread_t *thread, dart_
   task_list_t *tl = task->successor;
   while (tl != NULL) {
     task_list_t *tmp = tl->next;
-    int unresolved_deps = DART_FETCH_AND_DEC32(&tl->task->unresolved_deps);
-
+    int32_t unresolved_deps = DART_FETCH_AND_DEC32(&tl->task->unresolved_deps);
+    unresolved_deps--;
+    DART_LOG_DEBUG("release_local_task: task %p has %i dependencies left", tl->task, unresolved_deps);
     if (unresolved_deps == 0) {
-      dart_tasking_taskqueue_push(&thread->queue, task);
+      dart_tasking_taskqueue_push(&thread->queue, tl->task);
     }
 
     dart_tasking_tasklist_deallocate_elem(tl);

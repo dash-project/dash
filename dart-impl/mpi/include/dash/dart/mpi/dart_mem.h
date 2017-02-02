@@ -12,7 +12,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#define DART_MAX_TEAM_NUMBER (256)
+#define DART_TEAM_HASH_SIZE (256)
 #define DART_MAX_LENGTH (1024*1024*16)
 
 struct dart_buddy {

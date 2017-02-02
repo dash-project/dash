@@ -13,22 +13,22 @@ dart_team_t dart_next_availteamid;
 MPI_Comm dart_comm_world;
 
 #if 0
-MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
+MPI_Comm dart_teams[DART_TEAM_HASH_SIZE];
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
+MPI_Comm dart_sharedmem_comm_list[DART_TEAM_HASH_SIZE];
 #endif
 
-MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
+MPI_Win dart_win_lists[DART_TEAM_HASH_SIZE];
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
-int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
+int* dart_sharedmem_table[DART_TEAM_HASH_SIZE];
+int dart_sharedmemnode_size[DART_TEAM_HASH_SIZE];
 #endif
 
 #endif // 0
 
-dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
+dart_team_data_t dart_team_data[DART_TEAM_HASH_SIZE];
 
 struct dart_free_teamlist_entry {
   struct dart_free_teamlist_entry * next;
@@ -48,7 +48,7 @@ struct dart_allocated_teamlist_entry
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
 
 /* This array is used to store all the correspondences between indice and teams */
-dart_allocated_entry dart_allocated_teamlist_array[DART_MAX_TEAM_NUMBER];
+dart_allocated_entry dart_allocated_teamlist_array[DART_TEAM_HASH_SIZE];
 
 
 /* Indicate the length of the allocated teamlist */
@@ -59,7 +59,7 @@ int dart_adapt_teamlist_init ()
 	int i;
 	dart_free_teamlist_ptr pre = NULL;
 	dart_free_teamlist_ptr newAllocateEntry;
-	for (i = 0; i < DART_MAX_TEAM_NUMBER; i++) {
+	for (i = 0; i < DART_TEAM_HASH_SIZE; i++) {
 		newAllocateEntry =
       (dart_free_teamlist_ptr)malloc(sizeof (dart_free_entry));
 		newAllocateEntry -> index = i;

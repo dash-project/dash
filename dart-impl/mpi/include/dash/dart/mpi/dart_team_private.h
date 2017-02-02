@@ -180,7 +180,7 @@ typedef struct dart_team_data {
 
 } dart_team_data_t;
 
-extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
+extern dart_team_data_t dart_team_data[DART_TEAM_HASH_SIZE];
 
 
 
@@ -192,7 +192,7 @@ extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
  * we find that teamlist[i] equals to teamid, which means teams[i]
  * will be the corresponding communicator of teamid.
  */
-extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
+extern MPI_Comm dart_teams[DART_TEAM_HASH_SIZE];
 
 /* @brief Store the sub-communicator with regard to certain node, where the units can
  * communicate via shared memory.
@@ -202,7 +202,7 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
  * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes.
  */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
+extern MPI_Comm dart_sharedmem_comm_list[DART_TEAM_HASH_SIZE];
 
 /* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
  *
@@ -218,15 +218,15 @@ extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
  *
  * Each element of this array will relate to certain team.
  */
-extern int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
+extern int* dart_sharedmem_table[DART_TEAM_HASH_SIZE];
 
 /* @brief Set of the size of node for each unit in MAX_TEAM_NUMBER teams.
  */
-extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
+extern int dart_sharedmemnode_size[DART_TEAM_HASH_SIZE];
 #endif
 
 /* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
-extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
+extern MPI_Win dart_win_lists[DART_TEAM_HASH_SIZE];
 
 #endif // 0
 

@@ -5,6 +5,9 @@
 
 #include <dash/dart/tasking/dart_tasking_priv.h>
 
+
+void dart_tasking_tasklist_init();
+
 /**
  * Prepend the task to the tasklist.
  */

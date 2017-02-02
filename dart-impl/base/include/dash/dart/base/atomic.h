@@ -39,4 +39,8 @@
 #define DART_COMPARE_AND_SWAP8(ptr, oldval, newval)    __sync_val_compare_and_swap((int8_t  *)(ptr), (int8_t )(oldval), (int8_t )(newval))
 #define DART_COMPARE_AND_SWAPPTR(ptr, oldval, newval)  __sync_val_compare_and_swap((void   **)(ptr), (void  *)(oldval), (void  *)(newval))
 
+// generic form
+#define DART_COMPARE_AND_SWAP(ptr, oldval, newval)     __sync_val_compare_and_swap (ptr, oldval, newval)
+#define DART_FETCH_GENERIC(ptr)                        __sync_fetch_and_add(ptr, 0)
+
 #endif /* DASH_DART_BASE_ATOMIC_H_ */

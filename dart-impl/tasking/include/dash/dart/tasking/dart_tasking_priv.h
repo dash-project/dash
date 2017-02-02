@@ -25,9 +25,8 @@ typedef struct dart_task_data {
 
 
 typedef struct task_list {
+  struct task_list      *next;
   dart_task_t           *task;
-  dart_unit_t            unit;
-  struct task_list      *next; // next entry on the same level of the task graph
 } task_list_t;
 
 typedef struct dart_taskqueue {
@@ -58,11 +57,11 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 dart_ret_t
 dart__base__tasking__task_complete();
 
-void
-dart__base__tasking_print_taskgraph();
-
-dart_ret_t
-dart__base__tasking_sync_taskgraph();
+//void
+//dart__base__tasking_print_taskgraph();
+//
+//dart_ret_t
+//dart__base__tasking_sync_taskgraph();
 
 dart_ret_t
 dart__base__tasking__fini();

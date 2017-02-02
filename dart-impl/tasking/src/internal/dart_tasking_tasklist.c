@@ -1,4 +1,4 @@
-
+#include <dash/dart/base/assert.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/tasking/dart_tasking_tasklist.h>
@@ -17,12 +17,15 @@ void dart_tasking_tasklist_prepend(task_list_t **tl, dart_task_t *task)
     return;
   }
 
+  if (task == NULL) {
+    DART_ASSERT_MSG(task != NULL, "Huh? Better do not put a NULL task into a tasklist...");
+    return;
+  }
+
   task_list_t *elem = dart_tasking_tasklist_allocate_elem();
   elem->task = task;
-  dart_mutex_lock(&mutex);
   elem->next = *tl;
   *tl = elem;
-  dart_mutex_unlock(&mutex);
 }
 
 
