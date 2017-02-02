@@ -274,7 +274,8 @@ dart_ret_t dart_fetch_and_op(
  * \param result  Pointer to an element of type \c dtype to hold the value of
  *                the element referenced by \c gptr before the operation before
  *                the swap.
- * \param dtype   Data data type of all involved data elements.
+ * \param dtype   Data data type of all involved data elements. Note that only
+ *                integral types are supported.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *

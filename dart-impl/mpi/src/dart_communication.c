@@ -451,16 +451,19 @@ dart_ret_t dart_compare_and_swap(
 {
   MPI_Aint     disp_s,
                disp_rel;
-  MPI_Datatype mpi_dtype;
-  MPI_Op       mpi_op;
   dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
-  mpi_dtype         = dart_mpi_datatype(dtype);
+  MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
 
   (void)(team); // To prevent compiler warning from unused parameter.
 
   if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  if (dtype > DART_TYPE_LONGLONG) {
     DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }

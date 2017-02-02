@@ -83,6 +83,7 @@ typedef enum
 typedef enum
 {
     DART_TYPE_UNDEFINED = 0,
+    /** integral data types */
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
     DART_TYPE_INT,
@@ -90,6 +91,7 @@ typedef enum
     DART_TYPE_LONG,
     DART_TYPE_ULONG,
     DART_TYPE_LONGLONG,
+    /** floating point data types */
     DART_TYPE_FLOAT,
     DART_TYPE_DOUBLE
 } dart_datatype_t;

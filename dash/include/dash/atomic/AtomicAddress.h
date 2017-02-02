@@ -250,6 +250,7 @@ public:
     /// value to store in the atomic object if it is as expected
     ValueType desired)
   {
+    static_assert(std::is_integral<ValueType>::value, "AtomicAddress.compare_exchange only valid on integral types!");
     DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   expected);
