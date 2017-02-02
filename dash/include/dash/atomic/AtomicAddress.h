@@ -117,7 +117,7 @@ public:
                        dash::dart_datatype<ValueType>::value,
                        DART_OP_NO_OP,
                        _dart_teamid);
-    dart_flush(_gptr);
+    dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("AtomicAddress.get >", result);
     return result;
