@@ -80,7 +80,10 @@ public:
   CollectiveAllocator(self_t && other) noexcept
   : _team_id(other._team_id),
     _allocated(std::move(other._allocated))
-  { }
+  {
+    // clear origin without deallocating gptrs
+    other._allocated.clear();
+  }
 
   /**
    * Copy constructor.
@@ -123,12 +126,15 @@ public:
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(const self_t && other) noexcept
+  self_t & operator=(self_t && other) noexcept
   {
     // Take ownership of other instance's allocation vector:
     if (this != &other) {
-      std::swap(_allocated, other._allocated);
+      clear();
+      _allocated = std::move(other._allocated);
       _team_id = other._team_id;
+      // clear origin without deallocating gptrs
+      other._allocated.clear();
     }
     return *this;
   }
@@ -198,6 +204,8 @@ public:
    * Deallocates memory in global memory space previously allocated across
    * local memory of all units in the team.
    *
+   * \note collective operation
+   * 
    * \see DashAllocatorConcept
    */
   void deallocate(pointer gptr)
