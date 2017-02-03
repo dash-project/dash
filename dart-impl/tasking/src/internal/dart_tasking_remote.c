@@ -89,9 +89,9 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
     ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep);
     if (ret == DART_OK) {
       // the message was successfully sent
-      int32_t unresolved_deps = DART_FETCH_AND_INC32(&task->unresolved_deps);
+      int32_t unresolved_deps = DART_INC32_AND_FETCH(&task->unresolved_deps);
       DART_LOG_INFO("Sent remote dependency request for task %p (unit=%i, segid=%i, offset=%p, fn=%p, num_deps=%i)",
-          task, dep->gptr.unitid, dep->gptr.segid, dep->gptr.addr_or_offs.offset, &enqueue_from_remote, unresolved_deps +1);
+          task, dep->gptr.unitid, dep->gptr.segid, dep->gptr.addr_or_offs.offset, &enqueue_from_remote, unresolved_deps);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -221,8 +221,7 @@ static void release_remote_dependency(void *data)
   DART_LOG_INFO("release_remote_dependency : Received remote dependency release from unit %i for task %p (segid=%i, offset=%p)",
     response->runit.id, task, response->gptr.segid, response->gptr.addr_or_offs.offset);
 
-  int unresolved_deps = DART_FETCH_AND_DEC32(&task->unresolved_deps);
-  unresolved_deps--;
+  int unresolved_deps = DART_DEC32_AND_FETCH(&task->unresolved_deps);
   DART_LOG_DEBUG("release_remote_dependency : Task with remote dep %p has %i unresolved dependencies left", task, unresolved_deps);
   if (unresolved_deps < 0) {
     DART_LOG_ERROR("ERROR: task %p with remote dependency does not seem to have unresolved dependencies!", task);

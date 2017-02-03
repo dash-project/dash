@@ -166,7 +166,7 @@ void handle_task(dart_task_t *task)
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
 
     // let the parent know that we are done
-    int32_t nc = DART_FETCH_AND_DEC32(&task->parent->num_children);
+    int32_t nc = DART_DEC32_AND_FETCH(&task->parent->num_children);
     DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
     // clean up
@@ -194,7 +194,7 @@ void* thread_main(void *data)
     // look for incoming remote tasks and responses
     dart_tasking_remote_progress();
     // only go to sleep if no tasks are in flight
-    if (DART_FETCH_AND_ADD32(&(root_task.num_children), 0) == 0) {
+    if (DART_FETCH32(&(root_task.num_children)) == 0) {
 
       pthread_mutex_lock(&thread_pool_mutex);
       wait_for_work();
@@ -298,7 +298,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
   // TODO: maybe use a free list?
   dart_task_t *task = create_task(fn, data, data_size);
 
-  int32_t nc = DART_FETCH_AND_INC32(&task->parent->num_children);
+  int32_t nc = DART_INC32_AND_FETCH(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
@@ -332,7 +332,7 @@ dart__base__tasking__task_complete()
 
   // 2) start processing ourselves
   dart_task_t *task = get_current_task();
-  while (DART_FETCH_AND_ADD32(&(task->num_children), 0) > 0) {
+  while (DART_FETCH32(&(task->num_children)) > 0) {
     // a) look for incoming remote tasks and responses
     dart_tasking_remote_progress();
     // b) process our tasks
