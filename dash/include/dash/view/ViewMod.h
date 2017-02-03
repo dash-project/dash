@@ -334,6 +334,13 @@ class ViewLocalMod
 
   typedef std::integral_constant<bool, true>                      is_local;
 
+//typedef image_type iterator;
+  typedef decltype(dash::begin(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              )))
+    iterator;
+
  private:
   index_set_type  _index_set;
  public:
@@ -360,11 +367,7 @@ class ViewLocalMod
     return not (*this == rhs);
   }
 
-  constexpr auto begin() const
-  -> decltype(dash::begin(dash::local(
-                std::declval<
-                  typename std::add_lvalue_reference<origin_type>::type >()
-              ))) {
+  constexpr iterator begin() const {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -372,16 +375,18 @@ class ViewLocalMod
                )
              )
            )
-         + dash::index(dash::local(dash::domain(*this))).pre()[
-             dash::index(dash::local(dash::domain(*this)))[0]
+#if 1
+         + _index_set.pre()[
+             _index_set.first()
            ];
+#else
+         + dash::index(dash::local(dash::domain(*this))).pre()[
+             *dash::begin(dash::index(dash::local(dash::domain(*this))))
+           ];
+#endif
   }
 
-  constexpr auto end() const
-  -> decltype(dash::end(dash::local(
-                std::declval<
-                  typename std::add_lvalue_reference<origin_type>::type >()
-              ))) {
+  constexpr iterator end() const {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -391,13 +396,18 @@ class ViewLocalMod
            )
     // TODO: Using 
     //
-#if 0
-         + index_set().size();
+#if 1
+//       + index_set().size();
+         + _index_set.pre()[
+             _index_set.last()
+           ] + 1;
 #else
     //
     //       ... instead should work here
          + dash::index(dash::local(dash::domain(*this))).pre()[
-             (*dash::end(dash::index(dash::local(dash::domain(*this)))))-1
+             *(dash::begin(dash::index(dash::local(dash::domain(*this))))
+                 + dash::index(dash::local(dash::domain(*this))).size()
+                 - 1 )
            ] + 1;
 #endif
   }
@@ -482,6 +492,12 @@ class ViewSubMod
 
   typedef std::integral_constant<bool, false>                       is_local;
 
+  typedef decltype(dash::begin(
+                     std::declval<
+                       typename std::add_lvalue_reference<domain_type>::type
+                     >() ))
+    iterator;
+
  private:
   index_type     _begin_idx;
   index_type     _end_idx;
@@ -505,20 +521,12 @@ class ViewSubMod
   , _index_set(*this, begin, end)
   { }
 
-  constexpr auto begin() const
-  -> decltype(dash::begin(
-                std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
-                >() )) {
+  constexpr iterator begin() const {
     return dash::begin(dash::domain(*this)) +
              *dash::begin(dash::index(*this));
   }
 
-  constexpr auto end() const
-  -> decltype(dash::begin(
-                std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
-                >() )) {
+  constexpr iterator end() const {
     return dash::begin(dash::domain(*this)) +
              *dash::end(dash::index(*this));
   }

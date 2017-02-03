@@ -134,6 +134,8 @@ private:
   IndexType                   _lend            = -1;
 
 public:
+  constexpr BlockPattern() = delete;
+
   /**
    * Constructor, initializes a pattern from an argument list consisting
    * of the pattern size (extent, number of elements) followed by an optional
@@ -317,6 +319,9 @@ public:
     _lbegin_lend(initialize_local_range(_local_size))
   { }
 
+  /**
+   * Move constructor.
+   */
   constexpr BlockPattern(self_t && other)      = default;
 
   /**
@@ -334,12 +339,15 @@ public:
   : BlockPattern(static_cast<const self_t &>(other)) {
   }
 
-  self_t & operator=(self_t && other) = default;
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other)         = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(const self_t & other)    = default;
 
   /**
    * Equality comparison operator.
@@ -878,15 +886,21 @@ public:
     /// Local block index
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block()", l_block_index);
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
     std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
     std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block >", block_vs);
-    return block_vs;
+
+    return ViewSpec_t(
+      {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
+      {{ static_cast<size_type>(
+          _blocksize - (l_block_index < _nlblocks - 1
+                         ? 0
+                         : (_nlblocks * _blocksize) - _local_size)
+         ) }}
+    );
   }
 
   /**

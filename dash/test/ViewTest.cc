@@ -3,9 +3,33 @@
 
 #include <dash/View.h>
 #include <dash/Array.h>
+#include <dash/Range.h>
 
 #include <array>
 #include <algorithm>
+
+namespace dash {
+namespace test {
+
+  template <class ArrayT>
+  void initialize_array(ArrayT && array) {
+    auto block_size = array.pattern().blocksize(0);
+    for (auto li = 0; li != array.local.size(); ++li) {
+      auto block_lidx = li / block_size;
+      auto block_gidx = (block_lidx * dash::size()) + dash::myid();
+      auto gi         = (block_gidx * block_size) + (li % block_size);
+      array.local[li] = // unit
+                        (1.0000 * dash::myid()) +
+                        // local offset
+                        (0.0001 * (li+1)) +
+                        // global offset
+                        (0.0100 * gi);
+    }
+    array.barrier();
+  }
+
+}
+}
 
 
 static_assert(dash::is_range<
@@ -27,7 +51,7 @@ static_assert(dash::is_range<
 TEST_F(ViewTest, ViewTraits)
 {
   dash::Array<int> array(dash::size() * 10);
-  auto v_sub = dash::sub(0, 10, array);
+  auto v_sub = dash::sub(0, 5, (dash::sub(0, 10, array)));
   auto v_loc = dash::local(array);
 
   static_assert(
@@ -43,12 +67,23 @@ TEST_F(ViewTest, ViewTraits)
   static_assert(
       dash::view_traits<decltype(v_sub)>::is_origin::value == false,
       "view traits is_origin for sub(dash::Array) not matched");
-//static_assert(dash::view_traits<decltype(v_loc)>::is_view::value == true,
-//              "view traits for local(dash::Array) not matched");
+
+  static_assert(dash::is_range<decltype(array)>::value == true,
+                "range type traits for dash::Array not matched");
+  static_assert(dash::is_range<decltype(v_loc)>::value == true,
+                "range type traits for local(dash::Array) not matched");
+//static_assert(dash::is_range<decltype(v_sub)>::value == true,
+//              "range type traits for sub(dash::Array) not matched");
 
   static_assert(
       dash::is_range<decltype(array)>::value == true,
       "dash::is_range<dash::Array<...>>::value not matched");
+
+//auto l_range = dash::make_range(array.local.begin(),
+//                                array.local.end());
+//static_assert(
+//    dash::is_range<decltype(l_range)>::value == true,
+//    "dash::is_range<dash::Array<...>>::value not matched");
 }
 
 TEST_F(ViewTest, Intersect1DimSingle)
@@ -112,6 +147,177 @@ TEST_F(ViewTest, Intersect1DimSingle)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.end());
 }
 
+TEST_F(ViewTest, IndexSet)
+{
+  typedef float                 value_t;
+  typedef dash::default_index_t index_t;
+
+  int block_size           = 4;
+  int blocks_per_unit      = 2;
+  int array_size           = dash::size()
+                             * (blocks_per_unit * block_size);
+
+  dash::Array<value_t, index_t, dash::TilePattern<1>>
+    array(array_size, dash::TILE(block_size));
+  dash::test::initialize_array(array);
+
+  auto locsub_gview = dash::local(
+                        dash::sub(
+                          block_size / 2,
+                          array_size - (block_size / 2),
+                          array));
+
+  auto locsub_index = dash::index(locsub_gview);
+  {
+    std::vector<index_t> loc_sub_indices(locsub_index.size());
+    std::copy(locsub_index.begin(),
+              locsub_index.end(),
+              loc_sub_indices.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_indices);
+    std::vector<value_t> loc_sub_values(locsub_gview.size());
+    std::copy(locsub_gview.begin(),
+              locsub_gview.end(),
+              loc_sub_values.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
+  }
+//DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.loc values :",
+//               dash::make_range(locsub_gview.begin(),
+//                                locsub_gview.end()));
+//DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.loc index:  ", locsub_index);
+
+  auto subsub_gview = dash::sub(3, 6,
+                        dash::sub(
+                          block_size / 2,
+                          array_size - (block_size / 2),
+                          array));
+
+  auto subsub_index = dash::index(subsub_gview);
+  {
+    std::vector<index_t> sub_sub_indices(subsub_index.size());
+    std::copy(subsub_index.begin(),
+              subsub_index.end(),
+              sub_sub_indices.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_indices);
+    std::vector<value_t> sub_sub_values(subsub_gview.size());
+    std::copy(subsub_gview.begin(),
+              subsub_gview.end(),
+              sub_sub_values.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
+  }
+//DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub values :",
+//               dash::make_range(subsub_gview.begin(),
+//                                subsub_gview.end()));
+//DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub index:  ", subsub_index);
+}
+
+TEST_F(ViewTest, LocalBlocksView1Dim)
+{
+  typedef float                 value_t;
+  typedef dash::default_index_t index_t;
+
+  int block_size           = 4;
+  int blocks_per_unit      = 2;
+  int array_size           = dash::size()
+                             * (blocks_per_unit * block_size)
+                             + (block_size * 3 / 2);
+
+  dash::Array<value_t> array(array_size, dash::BLOCKCYCLIC(block_size));
+  dash::test::initialize_array(array);
+
+  auto lblocks_view  = dash::local(
+                         dash::blocks(
+                           array));
+
+  auto lblocks_index = dash::index(lblocks_view);
+
+  std::vector<index_t> lblocks_indices(lblocks_index.size());
+  std::copy(lblocks_index.begin(),
+            lblocks_index.end(),
+            lblocks_indices.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_indices);
+
+  std::vector<value_t> lblocks_values(lblocks_view.size());
+  std::copy(lblocks_view.begin(),
+            lblocks_view.end(),
+            lblocks_values.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_values);
+
+  auto blocksl_view  = dash::blocks(
+                         dash::local(
+                           array));
+
+  auto blocksl_index = dash::index(blocksl_view);
+
+  auto lsize      = array.pattern().local_extent(0);
+  auto l_beg      = array.pattern().global_index(array.team().myid(),
+                                                 {{ 0 }} );
+  auto l_end      = array.pattern().global_index(array.team().myid(),
+                                                 {{ lsize }} );
+  auto n_lblocks  = dash::math::div_ceil(array.lsize(), block_size);
+
+  DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+                 "n_lblocks:", n_lblocks, "l_beg:", l_beg, "l_end:", l_end);
+
+  EXPECT_EQ_U(n_lblocks, blocksl_view.size());
+  EXPECT_EQ_U(n_lblocks, blocksl_index.size());
+
+  int b_idx = 0;
+  for (auto block : blocksl_view) {
+    auto block_index = dash::index(block);
+
+    DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+                   "---- local block", b_idx);
+
+    std::vector<index_t> block_indices(block.size());
+    std::copy(block_index.begin(),
+              block_index.end(),
+              block_indices.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_indices);
+
+    std::vector<value_t> block_values(block.size());
+    std::copy(block.begin(),
+              block.end(),
+              block_values.begin());
+    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_values);
+
+    auto lblock_size   = array.pattern().local_block(b_idx).extents()[0];
+    auto lblock_gbegin = array.pattern().local_block(b_idx).offsets()[0];
+
+    EXPECT_EQ_U(lblock_size, block.size());
+    for (auto bi = 0; bi < lblock_size; ++bi) {
+      EXPECT_EQ_U(static_cast<value_t>(array[bi + lblock_gbegin]),
+                  static_cast<value_t>(block[bi]));
+    }
+    b_idx++;
+  }
+
+  dash::Array<value_t> array_bal(
+                         dash::size() * block_size,
+                         dash::BLOCKCYCLIC(block_size));
+  auto lblockssub_view = dash::local(
+                           dash::blocks(
+                             dash::sub(
+                               block_size / 2,
+                               array.size() - (block_size / 2),
+                               array_bal)));
+
+  auto lblockssub_index = dash::index(lblockssub_view);
+
+  std::vector<index_t> lblockssub_indices(lblockssub_index.size());
+  std::copy(lblockssub_index.begin(),
+            lblockssub_index.end(),
+            lblockssub_indices.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_indices);
+
+#if 0
+  std::vector<value_t> lblockssub_values(lblockssub_view.size());
+  std::copy(lblockssub_view.begin(),
+            lblockssub_view.end(),
+            lblockssub_values.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_values);
+#endif
+}
+
 TEST_F(ViewTest, BlocksView1Dim)
 {
   typedef float                 value_t;
@@ -173,15 +379,10 @@ TEST_F(ViewTest, BlocksView1Dim)
                    "=", array_blocks.end() - array_blocks.begin(),
                    "=", "indices:", dash::index(array_blocks).size());
 
-#if 0
     for (auto b_it = array_blocks.begin();
          b_it != array_blocks.end(); ++b_it) {
       auto block = *b_it;
       auto b_idx = b_it.pos();
-#else
-    int b_idx = 0;
-    for (auto block : array_blocks) {
-#endif
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
                      "block index:", b_idx,
@@ -263,21 +464,6 @@ TEST_F(ViewTest, BlocksView1Dim)
                  ",", dash::index(gview_blocks).last(),
                  ",", *(dash::index(gview_blocks).end()),
                  ")", "size:", dash::index(gview_blocks).size());
-
-  // TODO: Dereferencing nested sub view fails:
-  auto test_gview = dash::sub(3, 6,
-                      dash::sub(0, 3,
-                        array
-                      )
-                    );
-  auto test_index = dash::index(test_gview);
-
-  DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "-- test:",
-                 "array.sub.sub.index.(first,last):",
-                 test_index[0], test_index[test_index.size()]);
-// DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "-- test:",
-//                "array.sub.sub.begin:",
-//                test_gview.begin(), "=", test_gview[0]);
 
   if (dash::myid() == 0) {
     int b_idx = 0;

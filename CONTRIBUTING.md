@@ -141,7 +141,9 @@ passed review and has been merged.
 
 The development branch of DASH is merged to master periodically once all
 issues in the development branch associated with the next stable release
-are closed.
+are closed. We do not use squash merges as this wipes out the ownership
+of the code. A later `git blame` would only show the member which
+squash-merged the changes, but not author of the code.
 
 Before merging:
 
