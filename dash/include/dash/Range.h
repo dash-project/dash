@@ -259,7 +259,6 @@ public:
             
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
 
-
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)

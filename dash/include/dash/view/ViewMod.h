@@ -334,7 +334,6 @@ class ViewLocalMod
 
   typedef std::integral_constant<bool, true>                      is_local;
 
-//typedef image_type iterator;
   typedef decltype(dash::begin(dash::local(
                 std::declval<
                   typename std::add_lvalue_reference<origin_type>::type >()
@@ -394,16 +393,11 @@ class ViewLocalMod
                )
              )
            )
-    // TODO: Using 
-    //
 #if 1
-//       + index_set().size();
          + _index_set.pre()[
              _index_set.last()
            ] + 1;
 #else
-    //
-    //       ... instead should work here
          + dash::index(dash::local(dash::domain(*this))).pre()[
              *(dash::begin(dash::index(dash::local(dash::domain(*this))))
                  + dash::index(dash::local(dash::domain(*this))).size()
@@ -632,19 +626,23 @@ class ViewGlobalMod
   }
 
   constexpr const local_type & local() const {
+    // if any parent domain is local, it will return *this
+    // and in effect eliminate dash::global( ... dash::local( ... ))
     return dash::local(dash::domain(*this));
   }
 
   inline local_type & local() {
+    // if any parent domain is local, it will return *this
+    // and in effect eliminate dash::global( ... dash::local( ... ))
     return dash::local(dash::domain(*this));
   }
 
   constexpr const global_type & global() const {
-    return dash::global(dash::domain(*this));
+    return *this;
   }
 
   inline global_type & global() {
-    return dash::global(dash::domain(*this));
+    return *this;
   }
 
   constexpr const index_set_type & index_set() const {
