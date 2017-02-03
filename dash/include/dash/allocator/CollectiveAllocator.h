@@ -210,6 +210,30 @@ public:
    */
   void deallocate(pointer gptr)
   {
+    _deallocate(gptr, false);
+  }
+
+private:
+  /**
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  void clear() noexcept
+  {
+    for (auto gptr : _allocated) {
+      _deallocate(gptr, true);
+    }
+    _allocated.clear();
+  }
+  /**
+   * Deallocates memory in global memory space previously allocated in the
+   * active unit's local memory.
+   */
+  void _deallocate(
+    /// gptr to be deallocated
+    pointer gptr,
+    /// if true, only free memory but keep gptr in vector
+    bool    keep_reference = false)
+  {
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
@@ -228,24 +252,12 @@ public:
       dart_team_memfree(_team_id, gptr),
       DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
-    _allocated.erase(
+    if(!keep_reference){
+      _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
-    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
-  }
-
-private:
-  /**
-   * Frees all global memory regions allocated by this allocator instance.
-   */
-  void clear() noexcept
-  {
-    for (auto gptr : _allocated) {
-      // TODO:
-      // Inefficient as deallocate() applies vector.erase(std::remove)
-      // for every element.
-      deallocate(gptr);
     }
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
 private:
