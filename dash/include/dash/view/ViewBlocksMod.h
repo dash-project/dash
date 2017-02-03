@@ -319,9 +319,7 @@ class ViewBlocksMod
 //  -> decltype(dash::local(dash::domain(*this))) {
     -> decltype(dash::local(
                   std::declval<
-                    std::add_const<
-                      typename std::add_lvalue_reference<domain_type>::type
-                    >::type
+                    typename std::add_lvalue_reference<domain_type>::type
                   >() )) {
     return dash::local(dash::domain(*this));
   }
@@ -329,9 +327,9 @@ class ViewBlocksMod
   inline auto local()
 //  -> decltype(dash::local(dash::domain(*this))) {
     -> decltype(dash::local(
-                    std::declval<
-                      typename std::add_lvalue_reference<domain_type>::type
-                    >() )) {
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type
+                  >() )) {
     return dash::local(dash::domain(*this));
   }
 
