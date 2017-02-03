@@ -198,9 +198,9 @@ TEST_F(ViewTest, BlocksView1Dim)
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
                      "block index:", b_idx,
                      "->", dash::index(array_blocks)[b_idx],
-                     "index(block).begin, index(block).end:", 
-                     "(", *(dash::index(block).begin()),
-                     ",", *(dash::index(block).end()),
+                     "index(block).begin, index(block).end:",
+                     "(", *(dash::begin(dash::index(block))),
+                     ",", *(dash::end(dash::index(block))),
                      ")", "size:",    block.size(),
                      "=", "indices:", dash::index(block).size());
 
@@ -251,7 +251,7 @@ TEST_F(ViewTest, BlocksView1Dim)
 
   static_assert(
       dash::view_traits<
-        std::remove_reference< decltype(gview_blocks) >::type 
+        std::remove_reference< decltype(gview_blocks) >::type
       >::is_view::value == true,
       "view traits is_view for blocks(dash::Array) not matched");
 
