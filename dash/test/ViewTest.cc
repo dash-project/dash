@@ -174,11 +174,11 @@ TEST_F(ViewTest, IndexSet)
               locsub_index.end(),
               loc_sub_indices.begin());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_indices);
-    std::vector<value_t> loc_sub_values(locsub_gview.size());
-    std::copy(locsub_gview.begin(),
-              locsub_gview.end(),
-              loc_sub_values.begin());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
+//  std::vector<value_t> loc_sub_values(locsub_gview.size());
+//  std::copy(locsub_gview.begin(),
+//            locsub_gview.end(),
+//            loc_sub_values.begin());
+//  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
   }
 //DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.loc values :",
 //               dash::make_range(locsub_gview.begin(),
@@ -198,11 +198,11 @@ TEST_F(ViewTest, IndexSet)
               subsub_index.end(),
               sub_sub_indices.begin());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_indices);
-    std::vector<value_t> sub_sub_values(subsub_gview.size());
-    std::copy(subsub_gview.begin(),
-              subsub_gview.end(),
-              sub_sub_values.begin());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
+//  std::vector<value_t> sub_sub_values(subsub_gview.size());
+//  std::copy(subsub_gview.begin(),
+//            subsub_gview.end(),
+//            sub_sub_values.begin());
+//  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
   }
 //DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub values :",
 //               dash::make_range(subsub_gview.begin(),
@@ -699,29 +699,20 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      *l_idx_set.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     *l_idx_set.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      l_idx_set.end() - l_idx_set.begin());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      l_idx_set.size());
-
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set[0]);
-
-  auto l_idx_set_begin = *dash::begin(l_idx_set);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set_begin);
-
-  auto l_idx_set_end   = *dash::end(l_idx_set);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set_end);
-
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set[0]);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set.last());
+//DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+//                   l_idx_set.last());
 
 #if __TODO__
+  auto l_idx_set_begin = *dash::begin(l_idx_set);
+  auto l_idx_set_end   = *dash::end(l_idx_set);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set_begin);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                     l_idx_set_end);
   // Fails for nunits = 1:
   EXPECT_EQ(l_begin_gidx,              l_idx_set_begin);
   EXPECT_EQ(l_begin_gidx + block_size, l_idx_set_end);

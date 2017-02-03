@@ -256,7 +256,7 @@ class ViewBlocksMod
               block_type >    // reference type
       iterator_base_t;
    private:
-    const ViewBlocksMod<DomainType> * _blocks_view;
+    const ViewBlocksMod<DomainType> * const _blocks_view;
    public:
     constexpr block_iterator()                         = delete;
     constexpr block_iterator(block_iterator &&)        = default;
@@ -284,8 +284,8 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      return dash::block(idx, (dash::domain(*_blocks_view)));
-      // return ViewBlockMod<DomainType>(dash::domain(*_blocks_view), idx);
+      // return dash::block(idx, (dash::domain(*_blocks_view)));
+      return ViewBlockMod<DomainType>(dash::domain(*_blocks_view), idx);
     }
   };
 
