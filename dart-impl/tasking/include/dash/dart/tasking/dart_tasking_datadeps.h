@@ -23,12 +23,14 @@ typedef union taskref {
  */
 dart_ret_t dart_tasking_datadeps_init();
 
+dart_ret_t dart_tasking_datadeps_reset();
+
 dart_ret_t dart_tasking_datadeps_fini();
 
 /**
  * @brief Search for tasks that satisfy the data dependencies of this task.
  */
-dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, dart_task_dep_t *deps, size_t ndeps);
+dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, const dart_task_dep_t *deps, size_t ndeps);
 
 /**
  * @brief Look for the latest task that satisfies \c dep and add \rtask to the remote successor list.
