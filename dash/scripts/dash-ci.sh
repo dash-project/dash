@@ -11,7 +11,13 @@ run_ci()
   BUILD_TYPE=${1}
   BUILD_UUID=`uuidgen | awk -F '-' '{print $1}'`
 
-  DEPLOY_PATH=$BASEPATH/build-ci/${TIMESTAMP}--uuid-${BUILD_UUID}/${BUILD_TYPE}
+  case "$CC" in
+    *gcc*)   COMPILER="gnu" ;;
+    *clang*) COMPILER="clang" ;;
+    *)       COMPILER="unknown" ;;
+  esac
+
+  DEPLOY_PATH=$BASEPATH/build-ci/${TIMESTAMP}--uuid-${BUILD_UUID}/$COMPILER/${BUILD_TYPE}
 
   mkdir -p $DEPLOY_PATH && \
     cd $DEPLOY_PATH
