@@ -38,7 +38,7 @@ static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool initialized = false;
 static bool needs_translation = false;
-static int64_t *offsets = NULL;
+static intptr_t *offsets = NULL;
 
 static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_team_unit_t target, dart_amsgq_t amsgq);
 static inline dart_ret_t exchange_fnoffsets();
@@ -119,8 +119,7 @@ dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + amsgq->msg_size);
   uint64_t remote_offset = 0;
 
-  dart_task_action_t remote_fn_ptr = fn;
-  translate_fnptr(fn, target, amsgq);
+  dart_task_action_t remote_fn_ptr = (dart_task_action_t)translate_fnptr(fn, target, amsgq);
 
   dart_myid(&unitid);
 
@@ -177,9 +176,8 @@ dart_amsg_process(dart_amsgq_t amsgq)
   dart_team_unit_t unitid;
   uint64_t         tailpos;
 
-  int ret = pthread_mutex_lock(&processing_mutex);
+  int ret = pthread_mutex_trylock(&processing_mutex);
   if (ret != 0) {
-    // another thread is currently processing the active message queue
     return DART_ERR_AGAIN;
   }
 
@@ -190,6 +188,8 @@ dart_amsg_process(dart_amsgq_t amsgq)
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
 
   MPI_Get(&tailpos, 1, MPI_UINT64_T, unitid.id, 0, 1, MPI_UINT64_T, amsgq->tailpos_win);
+
+  MPI_Win_flush_local(unitid.id, amsgq->tailpos_win);
 
   /**
    * process messages while they are available, i.e.,
@@ -296,13 +296,14 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
  * TODO: would it be more efficient to store the translation data per message queue?
  */
 static inline uint64_t translate_fnptr(dart_task_action_t fnptr, dart_team_unit_t target, dart_amsgq_t amsgq) {
-  uint64_t remote_fnptr = (uint64_t)fnptr;
+  uintptr_t remote_fnptr = (uintptr_t)fnptr;
   if (needs_translation) {
-    int64_t  remote_fn_offset;
+    intptr_t  remote_fn_offset;
     dart_global_unit_t global_target_id;
     dart_team_unit_l2g(amsgq->team, target, &global_target_id);
     remote_fn_offset = offsets[global_target_id.id];
     remote_fnptr += remote_fn_offset;
+    DART_LOG_TRACE("Translated function pointer %p into %p on unit %i", fnptr, remote_fnptr, global_target_id.id);
   }
   return remote_fnptr;
 }
@@ -333,12 +334,14 @@ static inline dart_ret_t exchange_fnoffsets() {
   }
 
   if (needs_translation) {
-    offsets = malloc(numunits * sizeof(uint64_t));
+    offsets = malloc(numunits * sizeof(intptr_t));
     if (!offsets) {
       return DART_ERR_INVAL;
     }
+    DART_LOG_TRACE("Active message function offsets:");
     for (size_t i = 0; i < numunits; i++) {
       offsets[i] = bases[i] - ((uint64_t)&dart_amsg_openq);
+      DART_LOG_TRACE("   %i: %lli", i, offsets[i]);
     }
   }
 
