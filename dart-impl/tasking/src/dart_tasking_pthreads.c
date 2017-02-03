@@ -35,6 +35,9 @@ typedef struct {
 static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+static dart_task_t *task_recycle_list = NULL;
+static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static dart_thread_t *thread_pool;
 
 // a dummy task that serves as a root task for all other tasks
@@ -62,12 +65,14 @@ static void destroy_tsd(void *tsd)
   free(tsd);
 }
 
-static void set_current_task(dart_task_t *t)
+static inline
+void set_current_task(dart_task_t *t)
 {
   thread_pool[((tpd_t*)pthread_getspecific(tpd_key))->thread_id].current_task = t;
 }
 
-static dart_task_t * get_current_task()
+static inline
+dart_task_t * get_current_task()
 {
   return thread_pool[((tpd_t*)pthread_getspecific(tpd_key))->thread_id].current_task;
 }
@@ -89,6 +94,52 @@ dart_task_t * next_task(dart_thread_t *thread)
     }
   }
   return task;
+}
+
+static inline
+dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
+{
+  dart_task_t *task;
+  pthread_mutex_lock(&task_recycle_mutex);
+  if (task_recycle_list != NULL) {
+    task = task_recycle_list;
+    task_recycle_list = task->next;
+  } else {
+    task = calloc(1, sizeof(dart_task_t));
+    dart_mutex_init(&task->mutex);
+  }
+  pthread_mutex_unlock(&task_recycle_mutex);
+
+  if (data_size) {
+    task->data_size = data_size;
+    task->data = malloc(data_size);
+    memcpy(task->data, data, data_size);
+  } else {
+    task->data = data;
+    task->data_size = 0;
+  }
+  task->fn = fn;
+  task->num_children = 0;
+  task->parent = get_current_task();
+  task->state = DART_TASK_CREATED;
+  return task;
+}
+
+static inline
+void destroy_task(dart_task_t *task)
+{
+  if (task->data_size) {
+    free(task->data);
+  }
+  task->data = NULL;
+  task->data_size = 0;
+  task->fn = NULL;
+  task->parent = NULL;
+  pthread_mutex_lock(&task_recycle_mutex);
+  task->next = task_recycle_list;
+  task_recycle_list = task;
+  pthread_mutex_unlock(&task_recycle_mutex);
+//  free(task);
 }
 
 
@@ -120,11 +171,7 @@ void handle_task(dart_task_t *task)
 
     // clean up
     dart_tasking_datadeps_release_local_task(&thread_pool[dart__base__tasking__thread_num()], task);
-    if (task->data_size) {
-      free(task->data);
-    }
-    task->data = NULL;
-    free(task);
+    destroy_task(task);
 
     // return to previous task
     set_current_task(current_task);
@@ -249,18 +296,7 @@ dart_ret_t
 dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
 {
   // TODO: maybe use a free list?
-  dart_task_t *task = malloc(sizeof(dart_task_t));
-  if (data_size) {
-    task->data_size = data_size;
-    task->data = malloc(data_size);
-    memcpy(task->data, data, data_size);
-  } else {
-    task->data = data;
-    task->data_size = 0;
-  }
-  task->fn = fn;
-  task->num_children = 0;
-  task->parent = get_current_task();
+  dart_task_t *task = create_task(fn, data, data_size);
 
   int32_t nc = DART_FETCH_AND_INC32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
@@ -304,6 +340,8 @@ dart__base__tasking__task_complete()
     handle_task(task);
   }
 
+  dart_tasking_datadeps_reset();
+
   return DART_OK;
 }
 
@@ -321,6 +359,15 @@ dart__base__tasking__fini()
   }
 
   dart__tasking__ayudame_fini();
+
+  dart_task_t *task = task_recycle_list;
+  while (task != NULL) {
+    dart_task_t *tmp = task;
+    task = task->next;
+    tmp->next = NULL;
+    free(tmp);
+  }
+  task_recycle_list = NULL;
 
   initialized = false;
 
