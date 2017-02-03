@@ -220,13 +220,20 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
     if (elem->taskdep.gptr.addr_or_offs.offset == dep->gptr.addr_or_offs.offset
         && IS_OUT_DEP(elem->taskdep)) {
       dart_task_t *task = elem->task.local;
-      dart_dephash_elem_t *rs = dephash_allocate_elem(dep, remote_task);
-      // the taskdep's gptr unit is used to store the origin
-      rs->taskdep.gptr.unitid = origin.id;
+
       dart_mutex_lock(&(task->mutex));
-      rs->next = task->remote_successor;
-      task->remote_successor = rs;
-      dart_mutex_unlock(&(task->mutex));
+      if (task->state != DART_TASK_FINISHED) {
+        dart_dephash_elem_t *rs = dephash_allocate_elem(dep, remote_task);
+        // the taskdep's gptr unit is used to store the origin
+        rs->taskdep.gptr.unitid = origin.id;
+        rs->next = task->remote_successor;
+        task->remote_successor = rs;
+        dart_mutex_unlock(&(task->mutex));
+      } else {
+        dart_mutex_unlock(&(task->mutex));
+        // the task is already finished --> send release immediately
+        dart_tasking_remote_release(origin, remote_task, dep);
+      }
       DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of task %p from origin %i",
         task, remote_task.remote, origin.id);
       return DART_OK;

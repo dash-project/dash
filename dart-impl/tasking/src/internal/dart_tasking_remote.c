@@ -109,7 +109,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
  * @brief Send a release for the remote task \c rtask to \c unit, potentially enqueuing rtask into the
  *        runnable list on the remote side.
  */
-dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, dart_task_dep_t *dep)
+dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, const dart_task_dep_t *dep)
 {
   struct remote_data_dep response;
   response.rtask = rtask;

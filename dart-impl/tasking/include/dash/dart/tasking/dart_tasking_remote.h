@@ -26,7 +26,7 @@ dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task
  * @brief Send a release for the remote task \c rtask to \c unit, potentially enqueuing rtask into the
  *        runnable list on the remote side.
  */
-dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, dart_task_dep_t *dep);
+dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, const dart_task_dep_t *dep);
 
 /**
  * @brief Check for new remote task dependency requests coming in

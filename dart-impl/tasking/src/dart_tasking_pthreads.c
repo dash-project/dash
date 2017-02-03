@@ -160,10 +160,21 @@ void handle_task(dart_task_t *task)
     dart_task_action_t fn = task->fn;
     void *data = task->data;
 
+    dart_mutex_lock(&(task->mutex));
+    task->state = DART_TASK_RUNNING;
+    dart_mutex_unlock(&(task->mutex));
+
     DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
     //invoke the task function
     fn(data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
+
+    // we need to lock the task shortly here
+    // to allow for atomic check and update
+    // of remote successors in dart_tasking_datadeps_handle_remote_task
+    dart_mutex_lock(&(task->mutex));
+    task->state = DART_TASK_FINISHED;
+    dart_mutex_unlock(&(task->mutex));
 
     // let the parent know that we are done
     int32_t nc = DART_DEC32_AND_FETCH(&task->parent->num_children);
