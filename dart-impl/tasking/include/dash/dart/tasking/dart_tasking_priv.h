@@ -9,6 +9,12 @@
 struct dart_dephash_elem;
 struct task_list;
 
+typedef enum {
+  DART_TASK_RUNNING,
+  DART_TASK_CREATED,
+  DART_TASK_FINISHED
+} dart_task_state_t;
+
 typedef struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
@@ -21,6 +27,7 @@ typedef struct dart_task_data {
   struct dart_dephash_elem  *remote_successor;
   int                        num_children;
   dart_mutex_t               mutex;
+  dart_task_state_t          state;
 } dart_task_t;
 
 
