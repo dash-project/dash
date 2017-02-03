@@ -3,12 +3,13 @@ FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
-RUN           apt-get update -y
-RUN           apt-get install -y \
-                  git \
-                  build-essential \
-                  cmake \
-                  uuid-runtime \
+RUN           apt-get update -y    \
+           && apt-get install -y   \
+                  git              \
+                  build-essential  \
+                  libz-dev         \
+                  cmake            \
+                  uuid-runtime     \
                   libhwloc-plugins \
                   libhwloc-dev
 
@@ -23,17 +24,32 @@ RUN           cd papi*/src/                     \
               && ./configure --prefix=/opt/papi \
               && make                           \
               && make install
+
 # Openmpi 2.0
 ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
-RUN           cd openmpi*                           \
-              && ./configure --prefix=/opt/openmpi  \
-              && make                               \
-              && make install
+RUN           cd openmpi*                         \
+           && ./configure --prefix=/opt/openmpi   \
+                          --enable-mpi-thread-multiple \
+           && make                                \
+           && make install
+ENV           PATH=${PATH}:/opt/openmpi/bin
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/openmpi/lib
+
+# PHDF5 1.10
+ADD           https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.gz phdf5.tgz
+RUN           tar -xf phdf5.tgz
+RUN           cd hdf5*                        \
+           && CC=/opt/openmpi/bin/mpicc       \
+              ./configure --enable-parallel   \
+                          --prefix=/opt/phdf5 \
+           && make                            \
+           && make install
+ENV           HDF5_BASE=/opt/phdf5
+
 # Prepare env
 ENV           PAPI_BASE=/opt/papi
-ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/lib
-ENV           PATH=${PATH}:/opt/openmpi/bin
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:${HDF5_BASE}/lib
 ENV           MPI_EXEC_FLAGS='--allow-run-as-root'
 ENV           VERBOSE_CI='true'
 # Workaround for issue #63

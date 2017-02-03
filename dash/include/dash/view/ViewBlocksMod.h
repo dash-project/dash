@@ -316,12 +316,20 @@ class ViewBlocksMod
   }
 
   constexpr auto local() const
-    -> decltype(dash::local(dash::domain(*this))) {
+//  -> decltype(dash::local(dash::domain(*this))) {
+    -> decltype(dash::local(
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type
+                  >() )) {
     return dash::local(dash::domain(*this));
   }
 
   inline auto local()
-    -> decltype(dash::local(dash::domain(*this))) {
+//  -> decltype(dash::local(dash::domain(*this))) {
+    -> decltype(dash::local(
+                  std::declval<
+                    typename std::add_lvalue_reference<domain_type>::type
+                  >() )) {
     return dash::local(dash::domain(*this));
   }
 

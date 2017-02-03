@@ -882,17 +882,11 @@ public:
    * View spec (offset and extents) of block at local linear block index in
    * global cartesian element space.
    */
-  ViewSpec_t local_block(
+  constexpr ViewSpec_t local_block(
     /// Local block index
     index_type l_block_index) const
   {
     // Local block index to local block coords:
-    auto l_elem_index = l_block_index * _blocksize;
-    auto g_elem_index = global(l_elem_index);
-    std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    ViewSpec_t block_vs(offsets, extents);
-
     return ViewSpec_t(
       {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
       {{ static_cast<size_type>(
