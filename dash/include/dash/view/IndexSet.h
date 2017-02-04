@@ -225,6 +225,8 @@ class IndexSetBase
 
   typedef detail::IndexSetIterator<IndexSetType>
     iterator;
+  typedef index_type
+    value_type;
 
  protected:
   const ViewType      * const   _view;

@@ -241,7 +241,9 @@ class ViewModBase {
   typedef ViewModBase<ViewModType, DomainType> self_t;
  public:
   typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::origin_type          origin_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
+  typedef typename origin_type::value_type                        value_type;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value>        rank;
 

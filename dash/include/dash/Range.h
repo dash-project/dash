@@ -297,6 +297,7 @@ public:
   typedef dash::default_index_t                               index_type;
   typedef typename iterator::pattern_type                   pattern_type;
   typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+  typedef typename iterator::value_type                       value_type;
 
   typedef typename
             std::conditional<
@@ -374,6 +375,7 @@ public:
   typedef LocalSentinel *                                       sentinel;
   typedef dash::default_index_t                               index_type;
   typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+  typedef LocalIterator                                       value_type;
 
   typedef iterator local_iterator;
   typedef sentinel local_sentinel;

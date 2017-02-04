@@ -2,6 +2,8 @@
 #define DASH__INTERNAL__STREAM_CONVERSION_H_
 
 #include <dash/internal/Macro.h>
+#include <dash/internal/TypeInfo.h>
+
 #include <dash/dart/if/dart_types.h>
 
 #include <dash/Range.h>
@@ -106,11 +108,19 @@ auto operator<<(
        std::ostream &
     >::type
 {
+  typedef typename Range::value_type value_t;
+
   std::ostringstream ss;
   int pos = 0;
-  ss << "{ ";
+  ss << dash::internal::typestr(*dash::begin(range))
+     << " -> "
+     << dash::internal::typestr(static_cast<value_t>(*dash::begin(range)));
+  ss << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it, ++pos) {
-    ss << pos << ":" << *it << " ";
+    if (pos % 5 == 0) {
+      ss << "[" << pos << "] ";
+    }
+    ss << static_cast<value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());
@@ -140,10 +150,15 @@ auto operator<<(
        std::ostream &
     >::type
 {
+  typedef typename Range::value_type value_t;
+
   std::ostringstream ss;
-  ss << "{ ";
+  ss << dash::internal::typestr(*dash::begin(range))
+     << " -> "
+     << dash::internal::typestr(static_cast<value_t>(*dash::begin(range)));
+  ss << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it) {
-    ss << *it << " ";
+    ss << static_cast<value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());
