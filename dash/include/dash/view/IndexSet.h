@@ -228,6 +228,9 @@ class IndexSetBase
   typedef index_type
     value_type;
 
+  typedef std::integral_constant<std::size_t, NDim>
+    rank;
+
  protected:
   const ViewType      * const   _view;
   const pattern_type  * const   _pattern;
@@ -380,17 +383,17 @@ class IndexSetBlocks
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
   typedef typename ViewType::index_type                     index_type;
-   
+
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<ViewType>                         global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
   typedef typename base_t::pattern_type                   pattern_type;
-  
+
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
-  
+
  private:
   index_type _size;
 
@@ -430,7 +433,6 @@ class IndexSetBlocks
   }
 
   constexpr index_type size() const {
-//  return _size;
     return calc_size();
   }
 
@@ -539,7 +541,7 @@ template <class ViewType>
 constexpr auto
 local(const IndexSetSub<ViewType> & index_set) ->
 // decltype(index_set.local()) {
-  typename view_traits<IndexSetSub<ViewType>>::local_type & { 
+  typename view_traits<IndexSetSub<ViewType>>::local_type & {
   return index_set.local();
 }
 
@@ -547,7 +549,7 @@ template <class ViewType>
 constexpr auto
 global(const IndexSetSub<ViewType> & index_set) ->
 // decltype(index_set.global()) {
-  typename view_traits<IndexSetSub<ViewType>>::global_type & { 
+  typename view_traits<IndexSetSub<ViewType>>::global_type & {
   return index_set.global();
 }
 
@@ -653,17 +655,17 @@ class IndexSetLocal
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
   typedef typename ViewType::index_type                     index_type;
-   
+
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<ViewType>                         global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
   typedef typename base_t::pattern_type                   pattern_type;
-  
+
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
-  
+
  private:
   index_type _size;
  public:
@@ -693,20 +695,7 @@ class IndexSetLocal
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
-    return // local_index >= size()
-           //  ?
-           //    ( this->pattern().global(
-           //        (size() - 1) +
-           //        // actually only required if local of sub
-           //        this->pattern().at(
-           //          std::max<index_type>(
-           //            this->pattern().global(0),
-           //            this->domain()[0]
-           //        ))
-           //      ) + (local_index - (size()-1))
-           //    )
-           //  :
-              local_index +
+    return local_index +
               // only required if local of sub
               ( this->domain()[0] == 0
                 ? 0
@@ -769,7 +758,7 @@ constexpr auto
 local(const IndexSetGlobal<ViewType> & index_set)
     -> decltype(index_set.local())
 {
-//  -> typename view_traits<IndexSetGlobal<ViewType>>::local_type & { 
+//  -> typename view_traits<IndexSetGlobal<ViewType>>::local_type & {
   return index_set.local();
 }
 
@@ -793,16 +782,16 @@ class IndexSetGlobal
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
   typedef typename ViewType::index_type                     index_type;
-   
+
   typedef IndexSetLocal<self_t>                             local_type;
   typedef self_t                                           global_type;
   typedef local_type                                     preimage_type;
 
   typedef typename base_t::iterator                           iterator;
-  
+
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
-  
+
  public:
   constexpr IndexSetGlobal()               = delete;
   constexpr IndexSetGlobal(self_t &&)      = default;
