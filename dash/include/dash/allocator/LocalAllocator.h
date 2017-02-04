@@ -78,12 +78,6 @@ public:
   }
 
   /**
-   * Default constructor, deleted.
-   */
-  LocalAllocator() noexcept
-    = delete;
-
-  /**
    * Copy constructor.
    *
    * \see DashAllocatorConcept
