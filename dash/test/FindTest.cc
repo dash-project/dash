@@ -18,7 +18,7 @@ TEST_F(FindTest, TestSimpleFind)
   Array_t array(_num_elem);
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
 
@@ -110,7 +110,7 @@ TEST_F(FindTest, AllElementsEqualNoneMatches)
   Array_t array(_num_elem);
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -142,7 +142,7 @@ TEST_F(FindTest, AllElementsEqualAllMatch)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -185,7 +185,7 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -226,7 +226,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
   }
@@ -291,7 +291,7 @@ TEST_F(FindTest, LessElementsThanUnits)
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
-      LOG_MESSAGE("Setting array[%zu] = %d", i, init_fill);
+      LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);
       array[i]      = init_fill;
     }
 
