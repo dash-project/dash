@@ -427,12 +427,13 @@ class IndexSetBlocks
            this->pattern().block_at(
              std::array<index_type, 1> ({
            //  this->domain()[0]
-               *dash::begin(this->domain())
+               *(this->domain().begin())
              })
            );
   }
 
   constexpr index_type size() const {
+    // return _size;
     return calc_size();
   }
 
@@ -479,6 +480,7 @@ class IndexSetBlock
   
  private:
   index_type _block_idx;
+//index_type _size;
 
   constexpr static dim_t NDim = 1;
  public:
@@ -495,6 +497,7 @@ class IndexSetBlock
     index_type       block_idx)
   : base_t(view)
   , _block_idx(block_idx)
+//, _size(calc_size())
   { }
 
   constexpr iterator begin() const {
@@ -515,6 +518,7 @@ class IndexSetBlock
   }
 
   constexpr index_type size() const {
+    // return _size;
     return calc_size();
   }
 

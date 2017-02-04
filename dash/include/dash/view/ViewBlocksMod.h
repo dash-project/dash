@@ -91,9 +91,6 @@ class ViewBlockMod
     iterator;
 
  private:
-  index_type     _block_idx;
-  index_type     _first_idx;
-  index_type     _final_idx;
   index_set_type _index_set;
 
  public:
@@ -108,13 +105,9 @@ class ViewBlockMod
     const DomainType & domain,
     index_type         block_idx)
   : base_t(domain)
-  , _block_idx(block_idx)
-  , _index_set(domain, // *this,
+  , _index_set(domain,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
-//, _first_idx(block_first_gidx(domain, block_idx))
-//, _final_idx(block_final_gidx(domain, block_idx))
-//, _index_set(*this, _first_idx, _final_idx)
   { }
 
   constexpr auto begin() const
@@ -122,8 +115,8 @@ class ViewBlockMod
                 std::declval<
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
-    return dash::begin(dash::domain(*this)) +
-              dash::index(*this)[0];
+    return this->domain().begin() +
+              _index_set[0];
   }
 
   constexpr auto end() const
@@ -131,7 +124,7 @@ class ViewBlockMod
                 std::declval<
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
-    return dash::begin(dash::domain(*this)) +
+    return this->domain().begin() +
                _index_set.last() + 1;
   }
 
@@ -140,7 +133,7 @@ class ViewBlockMod
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
                   >() ))) {
-    return dash::begin(*this)[offset];
+    return begin()[offset];
   }
 
   constexpr const index_set_type & index_set() const {
@@ -200,6 +193,24 @@ constexpr ViewBlocksMod<ViewType>
 blocks(const ViewType & domain) {
   return ViewBlocksMod<ViewType>(domain);
 }
+
+#ifdef __TODO__
+
+// TODO: Support use of temporaries (-> bind rvalues):
+
+template <class ViewType>
+constexpr ViewBlocksMod<const ViewType &>
+blocks(const ViewType & domain) {
+  return ViewBlocksMod<const ViewType &>(domain);
+}
+
+template <class ViewType>
+constexpr ViewBlocksMod<ViewType>
+blocks(const ViewType && domain) {
+  return ViewBlocksMod<ViewType>(std::move(domain));
+}
+
+#endif
 
 template <
   class DomainType >
@@ -309,16 +320,24 @@ class ViewBlocksMod
   , _index_set(*this)
   { }
 
+#ifdef __TODO__
+  constexpr explicit ViewBlocksMod(
+    DomainType && domain)
+  : base_t(domain)
+  , _index_set(*this)
+  { }
+#endif
+
   constexpr block_iterator begin() const {
-    return block_iterator(*this, this->index_set().first());
+    return block_iterator(*this, _index_set.first());
   }
 
   constexpr block_iterator end() const {
-    return block_iterator(*this, this->index_set().last() + 1);
+    return block_iterator(*this, _index_set.last() + 1);
   }
 
   constexpr block_type operator[](int offset) const {
-    return *(dash::begin(*this) + offset);
+    return *block_iterator(*this, _index_set[offset]);
   }
 
   constexpr auto local() const
@@ -327,7 +346,7 @@ class ViewBlocksMod
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
                   >() )) {
-    return dash::local(dash::domain(*this));
+    return dash::local(this->domain());
   }
 
   inline auto local()
@@ -336,7 +355,7 @@ class ViewBlocksMod
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
                   >() )) {
-    return dash::local(dash::domain(*this));
+    return dash::local(this->domain());
   }
 
   constexpr const global_type global() const {

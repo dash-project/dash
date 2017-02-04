@@ -39,7 +39,7 @@ struct LocalIndexRange {
   IndexType end;
 };
 
-
+#if 0
 template<class GlobInputIter>
 typename std::enable_if<
   ( !GlobInputIter::has_view::value &&
@@ -67,6 +67,7 @@ local_index_range(
 
   return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
 }
+#endif
 
 /**
  * Resolves the local index range between global iterators.

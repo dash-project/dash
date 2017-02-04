@@ -119,6 +119,8 @@ private:
   typedef char yes;
   typedef long no;
 
+  typedef typename std::remove_reference<T>::type ValueT;
+
 #ifdef __TODO__
 private:
   // Test if dash::begin(x) is valid expression:
@@ -170,8 +172,8 @@ public:
 
 public:
   enum { value = (
-              sizeof(has_begin(static_cast<T*>(nullptr))) == sizeof(yes)
-           && sizeof(has_end(static_cast<T*>(nullptr)))   == sizeof(yes)
+              sizeof(has_begin(static_cast<ValueT*>(nullptr))) == sizeof(yes)
+           && sizeof(has_end(static_cast<ValueT*>(nullptr)))   == sizeof(yes)
          ) };
 };
 

@@ -41,7 +41,6 @@ namespace test {
          << static_cast<value_t>(v) << " ";
       ++i;
     }
-    ss << std::endl;
     return ss.str();
   }
 
@@ -437,9 +436,19 @@ TEST_F(ViewTest, BlocksView1Dim)
   }
   array.barrier();
 
+  // TODO: Fails if domain of dash::blocks is temporary as ViewModBase
+  //       currently stores _domain as reference; should support move
+  //       semantics and bind instead.
+#if 0
   auto array_blocks = dash::blocks(
                           dash::sub<0>(0, array.size(),
                             array));
+#else
+  auto array_gview  = dash::sub<0>(0, array.size(),
+                        array);
+  auto array_blocks = dash::blocks(
+                        array_gview);
+#endif
 
   DASH_LOG_DEBUG("ViewTest.BlocksView1Dim",
                  "array.blocks.size:", array_blocks.size(),
@@ -448,6 +457,8 @@ TEST_F(ViewTest, BlocksView1Dim)
 
   EXPECT_EQ_U(array_blocks.size(),
               array_blocks.end() - array_blocks.begin());
+
+  array.barrier();
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "blocks(array):",
@@ -465,9 +476,9 @@ TEST_F(ViewTest, BlocksView1Dim)
       EXPECT_EQ_U(b_idx, b_it.pos());
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "block index:", b_idx,
-                     "view type:", dash::internal::typestr(block));
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
+                     "block[", b_idx, "]:",
+                     dash::internal::typestr(block));
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      "p.offsets:", array.pattern().block(b_idx).offsets()[0],
                      "p.extents:", array.pattern().block(b_idx).extents()[0],
                      "->", dash::index(array_blocks)[b_idx],
@@ -477,17 +488,17 @@ TEST_F(ViewTest, BlocksView1Dim)
                      ")", "size:",    block.size(),
                      "=", "indices:", dash::index(block).size());
 
-//    DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
-//                   "block[", b_idx, "]:", range_str(block));
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
+                     range_str(block));
   
-//    EXPECT_EQ_U(( b_idx < array_blocks.size() - 1
-//                  ? block_size
-//                  : block_size - (block_size / 2) ),
-//                block.size());
-//    EXPECT_TRUE_U(
-//      std::equal(array.begin() + (b_idx * block_size),
-//                 array.begin() + (b_idx * block_size) + block.size(),
-//                 block.begin()));
+      EXPECT_EQ_U(( b_idx < array_blocks.size() - 1
+                    ? block_size
+                    : block_size - (block_size / 2) ),
+                  block.size());
+      EXPECT_TRUE_U(
+        std::equal(array.begin() + (b_idx * block_size),
+                   array.begin() + (b_idx * block_size) + block.size(),
+                   block.begin()));
     }
   }
   array.barrier();
@@ -532,24 +543,26 @@ TEST_F(ViewTest, BlocksView1Dim)
       >::is_view::value == true,
       "view traits is_view for blocks(dash::Array) not matched");
 
-  DASH_LOG_DEBUG("ViewTest.BlocksView1Dim",
-                 "index(blocks(gview_isect(array))):",
-                 "(begin, first, last, end):",
-                 "(", *(dash::index(gview_blocks).begin()),
-                 ",", dash::index(gview_blocks).first(),
-                 ",", dash::index(gview_blocks).last(),
-                 ",", *(dash::index(gview_blocks).end()),
-                 ")", "size:", dash::index(gview_blocks).size());
+  array.barrier();
 
   if (dash::myid() == 0) {
+    DASH_LOG_DEBUG("ViewTest.BlocksView1Dim",
+                   "index(blocks(gview_isect(array))):",
+                   "(begin, first, last, end):",
+                   "(", *(dash::index(gview_blocks).begin()),
+                   ",", dash::index(gview_blocks).first(),
+                   ",", dash::index(gview_blocks).last(),
+                   ",", *(dash::index(gview_blocks).end()),
+                   ")", "size:", dash::index(gview_blocks).size());
+
     int b_idx = 0;
     for (auto block : gview_blocks) {
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "block index:", b_idx,
-                     "view type:", dash::internal::typestr(block));
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "offsets:", array.pattern().block(b_idx).offsets()[0],
-                     "extents:", array.pattern().block(b_idx).extents()[0],
+                     "block[", b_idx, "]:",
+                     dash::internal::typestr(block));
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
+                     "p.offsets:", array.pattern().block(b_idx).offsets()[0],
+                     "p.extents:", array.pattern().block(b_idx).extents()[0],
                      "->", (dash::index(gview_blocks)[b_idx]),
                      "index(block.begin, block.end):", 
                      "(", *(dash::index(block).begin()),

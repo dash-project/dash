@@ -88,6 +88,50 @@ sub(
            end);
 }
 
+#ifdef __TODO__
+
+template <
+  dim_t SubDim  = 0,
+  class DomainT,
+  class OffsetFirstT,
+  class OffsetFinalT >
+constexpr auto
+sub(
+    OffsetFirstT    begin,
+    OffsetFinalT    end,
+    const DomainT & domain)
+  -> typename std::enable_if<
+       dash::view_traits<DomainT>::rank::value == 1,
+       ViewSubMod<const DomainT &, SubDim>
+     >::type {
+  return ViewSubMod<const DomainT &, SubDim>(
+           domain,
+           begin,
+           end);
+}
+
+template <
+  dim_t SubDim  = 0,
+  class DomainT,
+  class OffsetFirstT,
+  class OffsetFinalT >
+constexpr auto
+sub(
+    OffsetFirstT    begin,
+    OffsetFinalT    end,
+    const DomainT && domain)
+  -> typename std::enable_if<
+       dash::view_traits<DomainT>::rank::value == 1,
+       ViewSubMod<DomainT, SubDim>
+     >::type {
+  return ViewSubMod<DomainT, SubDim>(
+           std::forward(domain),
+           begin,
+           end);
+}
+
+#endif
+
 // =========================================================================
 // Multidimensional Views
 // =========================================================================
