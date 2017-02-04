@@ -1107,8 +1107,6 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
                       (blocksize[0] * static_cast<index_t>(teamspec_2d.num_units(0))) - underfill[0],
                       (blocksize[1] * static_cast<index_t>(teamspec_2d.num_units(1))) - underfill[1]
                            }};
-  
-
 
   auto size_spec    = dash::SizeSpec<2>(extent[0], extent[1]);
 
@@ -1138,6 +1136,59 @@ TEST_F(BlockPatternTest, UnderfilledPatternExtent)
     }
     EXPECT_EQ(pattern.local_extent(i), local_extent_expected);
     EXPECT_EQ(pattern.local_block(0).extent(i), local_extent_expected);
+    
+    auto num_blocks_dim = pattern.blockspec().extent(i);
+    std::array<index_t,2> coords = {};
+    coords[i] = num_blocks_dim - 1;
+    auto index   = pattern.blockspec().at(coords);
+    auto extent  = pattern.block(index).extent(i);
+    auto desired = blocksize[i] - underfill[i];
+    
+    EXPECT_EQ_U(extent, desired);
   }
 }
 
+TEST_F(BlockPatternTest, UnderfilledPatternExtent1Dim)
+{
+  typedef dash::Pattern<1, dash::ROW_MAJOR> pattern_t;
+  typedef typename pattern_t::index_type    index_t;
+
+  size_t team_size  = dash::Team::All().size();
+  if(4 != team_size){
+    SKIP_TEST_MSG("test has to be run with 4 units");
+  }
+
+  dash::TeamSpec<1> teamspec_1d(team_size);
+  index_t blocksize = 10;
+  index_t underfill = 3;
+  index_t extent    = blocksize * team_size - underfill;
+  
+  auto size_spec    = dash::SizeSpec<1>(extent);
+
+  // Check TilePattern
+  const pattern_t pattern(
+    size_spec,
+    dash::DistributionSpec<1>(
+      dash::TILE(blocksize)),
+    teamspec_1d,
+    dash::Team::All());
+  
+  EXPECT_EQ(pattern.blocksize(0), blocksize);
+
+  // check extent of last block
+  // assuming that each unit only has a single local block
+  int local_extent_expected = 0;
+  switch(dash::myid()){
+    case 0:
+    case 1:
+    case 2: local_extent_expected = blocksize; break;
+    case 3: local_extent_expected = blocksize - underfill;
+  }
+  EXPECT_EQ(pattern.local_extent(0), local_extent_expected);
+  EXPECT_EQ(pattern.local_block(0).extent(0), local_extent_expected);
+
+  auto bextent = pattern.block(team_size-1).extent(0);
+  auto desired = blocksize - underfill;
+
+  EXPECT_EQ_U(bextent, desired);
+}
