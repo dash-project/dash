@@ -13,7 +13,7 @@ namespace dash {
 namespace test {
 
   template <class ArrayT>
-  void initialize_array(ArrayT && array) {
+  void initialize_array(ArrayT & array) {
     auto block_size = array.pattern().blocksize(0);
     for (auto li = 0; li != array.local.size(); ++li) {
       auto block_lidx = li / block_size;
@@ -164,9 +164,11 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
 
 TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
 {
-  int block_size       = 37;
+  int block_size       = 5;
   int blocks_per_unit  = 3;
-  int array_size       = dash::size() * block_size * blocks_per_unit;
+  int array_size       = dash::size() * block_size * blocks_per_unit
+                         + (block_size * 2)
+                         - 2;
   int block_begin_gidx = block_size * dash::myid();
   int block_end_gidx   = block_size * (dash::myid() + 1);
 
@@ -177,12 +179,30 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   auto block_gview = dash::sub(block_begin_gidx,
                                block_end_gidx,
                                a);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                     block_gview);
+
   EXPECT_EQ(block_size, block_gview.size());
 
   // Origin of block view is array:
   auto & block_domain = dash::domain(block_gview);
   EXPECT_EQ(a.begin(),  dash::begin(block_domain));
   EXPECT_EQ(a.end(),    dash::end(block_domain));
+
+  if (dash::myid() == 0) {
+    auto blocks_view = dash::blocks(
+                         dash::sub(
+                           block_size / 2,
+                           a.size() - (block_size / 2),
+                           a));
+    int b_idx = 0;
+    for (auto block : blocks_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                     "block[", b_idx, "]:", range_str(block));
+      ++b_idx;
+    }
+  }
 }
 
 TEST_F(ViewTest, Intersect1DimSingle)
