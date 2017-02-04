@@ -435,28 +435,13 @@ TEST_F(ViewTest, BlocksView1Dim)
   int sub_right_end_gidx   = array_size;
 
   dash::Array<value_t> array(array_size, dash::BLOCKCYCLIC(block_size));
-
-  for (auto li = 0; li != array.local.size(); ++li) {
-    auto block_lidx = li / block_size;
-    auto block_gidx = (block_lidx * dash::size()) + dash::myid();
-    auto gi         = (block_gidx * block_size) + (li % block_size);
-    array.local[li] = // unit
-                      (1.0000 * dash::myid()) +
-                      // local offset
-                      (0.0001 * (li+1)) +
-                      // global offset
-                      (0.0100 * gi);
-  }
-
-  array.barrier();
-
-  DASH_LOG_DEBUG("ViewTest.BlocksView1Dim",
-                 "array initialized");
+  dash::test::initialize_array(array);
 
   if (dash::myid() == 0) {
     std::vector<value_t> values(array.begin(), array.end());
     DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", values);
   }
+  array.barrier();
 
   auto array_blocks = dash::blocks(dash::sub<0>(0, array.size(), array));
 
@@ -477,25 +462,16 @@ TEST_F(ViewTest, BlocksView1Dim)
                    "=", array_blocks.end() - array_blocks.begin(),
                    "=", "indices:", dash::index(array_blocks).size());
 
+    int b_idx = 0;
     for (auto b_it = array_blocks.begin();
-         b_it != array_blocks.end(); ++b_it) {
+         b_it != array_blocks.end(); ++b_it, ++b_idx) {
       auto block = *b_it;
-      auto b_idx = b_it.pos();
+      EXPECT_EQ_U(b_idx, b_it.pos());
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
                      "block index:", b_idx,
                      "offsets:", array.pattern().block(b_idx).offsets()[0],
-                     "extents:", array.pattern().block(b_idx).extents()[0]);
-
-   // DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
-   //                "GlobIter: blocks[b].begin",
-   //                array_blocks[b_idx].begin());
-   // DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
-   //                "GlobIter: blocks[b].end",
-   //                array_blocks[b_idx].end());
-
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "block index:", b_idx,
+                     "extents:", array.pattern().block(b_idx).extents()[0],
                      "->", dash::index(array_blocks)[b_idx],
                      "index(block).begin, index(block).end:",
                      "(", *(dash::begin(dash::index(block))),
@@ -503,7 +479,16 @@ TEST_F(ViewTest, BlocksView1Dim)
                      ")", "size:",    block.size(),
                      "=", "indices:", dash::index(block).size());
 
-    // DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block);
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block);
+
+      EXPECT_EQ_U(( b_idx < array_blocks.size() - 1
+                    ? block_size
+                    : block_size - (block_size / 2) ),
+                  block.size());
+      EXPECT_TRUE_U(
+        std::equal(array.begin() + (b_idx * block_size),
+                   array.begin() + (b_idx * block_size) + block.size(),
+                   block.begin()));
     }
   }
   array.barrier();
@@ -518,6 +503,9 @@ TEST_F(ViewTest, BlocksView1Dim)
                                 array);
 
   auto gview_isect  = dash::intersect(gview_left, gview_right);
+
+  EXPECT_EQ_U(sub_left_end_gidx - sub_right_begin_gidx,
+              gview_isect.size());
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "index(gview_isect(array)):",
@@ -536,6 +524,11 @@ TEST_F(ViewTest, BlocksView1Dim)
     DASH_LOG_DEBUG_VAR("ViewTest.BlocksView1Dim", indices);
   }
   array.barrier();
+
+  EXPECT_TRUE_U(
+    std::equal(array.begin() + sub_right_begin_gidx,
+               array.begin() + sub_left_end_gidx,
+               gview_isect.begin()));
 
   auto gview_blocks = dash::blocks(gview_isect);
 
@@ -560,10 +553,7 @@ TEST_F(ViewTest, BlocksView1Dim)
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
                      "block index:", b_idx,
                      "offsets:", array.pattern().block(b_idx).offsets()[0],
-                     "extents:", array.pattern().block(b_idx).extents()[0]);
-
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
-                     "block index:", b_idx,
+                     "extents:", array.pattern().block(b_idx).extents()[0],
                      "->", (dash::index(gview_blocks)[b_idx]),
                      "index(block.begin, block.end):", 
                      "(", *(dash::index(block).begin()),
