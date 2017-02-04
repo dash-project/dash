@@ -24,7 +24,7 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
   Alloc_t target_new;
 
   {
-    auto target_old       = Alloc_t();
+    auto target_old       = Alloc_t(dash::Team::All());
     dart_gptr_t requested = target_old.allocate(sizeof(int) * 10);
     gptr = GlobPtr_t(requested);
 
@@ -56,7 +56,7 @@ TEST_F(LocalAllocatorTest, MoveCtor)
   Alloc_t target_new;
 
   {
-    auto target_old       = Alloc_t();
+    auto target_old       = Alloc_t(dash::Team::All());
     dart_gptr_t requested = target_old.allocate(sizeof(int) * 5);
     gptr = GlobPtr_t(requested);
 
