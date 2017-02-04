@@ -62,16 +62,20 @@ namespace dash {
 // https://github.com/boostorg/range/tree/develop/include/boost/range
 //
 
-template <class ViewT>
+template <typename ViewT>
 struct view_traits;
 
 // Forward-declaration
-template <class ViewType>
+template <typename ViewType>
 class IndexSetIdentity;
 
 // Forward-declaration
-template <class Iterator, class Sentinel = Iterator>
+template <typename Iterator, typename Sentinel = Iterator>
 class IteratorRange;
+
+// Forward-declaration
+template <typename Iterator, typename Sentinel>
+class IteratorRange<Iterator *, Sentinel *>;
 
 #endif
 
@@ -80,8 +84,9 @@ class IteratorRange;
 /**
  * \concept{DashRangeConcept}
  */
-template <class RangeType>
-constexpr auto begin(const RangeType & range) -> decltype(range.begin()) {
+template <typename RangeType>
+constexpr auto begin(const RangeType & range)
+  -> decltype(range.begin()) {
   return range.begin();
 }
 
@@ -89,7 +94,8 @@ constexpr auto begin(const RangeType & range) -> decltype(range.begin()) {
  * \concept{DashRangeConcept}
  */
 template <class RangeType>
-constexpr auto end(const RangeType & range) -> decltype(range.end()) {
+constexpr auto end(const RangeType & range)
+  -> decltype(range.end()) {
   return range.end();
 }
 
@@ -98,7 +104,8 @@ constexpr auto end(const RangeType & range) -> decltype(range.end()) {
  */
 template <class RangeType>
 constexpr auto
-size(const RangeType & r) -> decltype(r.size()) {
+size(const RangeType & r)
+  -> decltype(r.size()) {
   return r.size();
 }
 
@@ -146,12 +153,16 @@ public:
 #endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:
+  template<typename C, typename C::iterator (C::*)() const = &C::begin >
+  static yes has_begin(C *);
   template<typename C, typename C::iterator (C::*)() = &C::begin >
   static yes has_begin(C *);
   static no  has_begin(...);
 
   // Test if x.end() is valid expression and type x::iterator is
   // defined:
+  template<typename C, typename C::iterator (C::*)() const = &C::end >
+  static yes has_end(C *);
   template<typename C, typename C::iterator (C::*)() = &C::end >
   static yes has_end(C *);
   static no  has_end(...);
@@ -211,9 +222,9 @@ template <class RangeType>
 struct is_range : dash::detail::_is_range_type<RangeType> { };
 
 template <
-  class RangeType,
-  class Iterator,
-  class Sentinel = Iterator >
+  typename RangeType,
+  typename Iterator,
+  typename Sentinel = Iterator >
 class RangeBase {
 public:
   typedef Iterator                iterator;
@@ -229,67 +240,12 @@ protected:
 };
 
 
-
-/**
- * Adapter template for range concept, wraps `begin` and `end` iterators
- * in range type.
- */
-template <
-  class LocalIterator,
-  class LocalSentinel >
-class IteratorRange<LocalIterator *, LocalSentinel *>
-: public RangeBase<
-           IteratorRange<LocalIterator *, LocalSentinel *>,
-           LocalIterator *,
-           LocalSentinel * >
-{
-  typedef IteratorRange<LocalIterator, LocalSentinel> self_t;
-
-  LocalIterator * _begin;
-  LocalSentinel * _end;
-
-public:
-  typedef LocalIterator *                                       iterator;
-  typedef LocalSentinel *                                       sentinel;
-  typedef dash::default_index_t                               index_type;
-  typedef dash::IndexSetIdentity<self_t>                  index_set_type;
-
-  typedef iterator local_iterator;
-  typedef sentinel local_sentinel;
-            
-  typedef IteratorRange<local_iterator, local_sentinel>       local_type;
-
-public:
-  template <class Container>
-  constexpr explicit IteratorRange(Container && c)
-  : _begin(c.begin())
-  , _end(c.end())
-  { }
-
-  constexpr IteratorRange(iterator & begin, sentinel & end)
-  : _begin(begin)
-  , _end(end)
-  { }
-
-  constexpr iterator begin() const { return _begin; }
-  constexpr iterator end()   const { return _end;   }
-
-  constexpr const local_type & local() const {
-    return *this;
-  }
-
-  constexpr index_set_type index_set() const {
-    return index_set_type(*this);
-  }
-};
-
-
 /**
  * Specialization of \c dash::view_traits for IteratorRange.
  */
 template <
-  class IteratorT,
-  class SentinelT >
+  typename IteratorT,
+  typename SentinelT >
 struct view_traits<dash::IteratorRange<IteratorT, SentinelT> > {
 private:
   typedef IteratorRange<IteratorT, SentinelT> RangeT;
@@ -322,8 +278,8 @@ public:
  * in range type.
  */
 template <
-  class Iterator,
-  class Sentinel >
+  typename Iterator,
+  typename Sentinel >
 class IteratorRange
 : public RangeBase< IteratorRange<Iterator, Sentinel>,
                     Iterator,
@@ -393,21 +349,89 @@ public:
   }
 };
 
+
+/**
+ * Adapter template for range concept, wraps `begin` and `end` iterators
+ * in range type.
+ */
+template <
+  typename LocalIterator,
+  typename LocalSentinel >
+class IteratorRange<LocalIterator *, LocalSentinel *>
+: public RangeBase<
+           IteratorRange<LocalIterator *, LocalSentinel *>,
+           LocalIterator *,
+           LocalSentinel * >
+{
+  typedef IteratorRange<LocalIterator, LocalSentinel> self_t;
+
+  LocalIterator * _begin;
+  LocalSentinel * _end;
+
+public:
+  typedef LocalIterator *                                       iterator;
+  typedef LocalSentinel *                                       sentinel;
+  typedef dash::default_index_t                               index_type;
+  typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+
+  typedef iterator local_iterator;
+  typedef sentinel local_sentinel;
+            
+  typedef IteratorRange<local_iterator, local_sentinel>       local_type;
+
+public:
+  template <class Container>
+  constexpr explicit IteratorRange(Container && c)
+  : _begin(c.begin())
+  , _end(c.end())
+  { }
+
+  constexpr IteratorRange(iterator & begin, sentinel & end)
+  : _begin(begin)
+  , _end(end)
+  { }
+
+  constexpr iterator begin() const { return _begin; }
+  constexpr iterator end()   const { return _end;   }
+
+  constexpr const local_type & local() const {
+    return *this;
+  }
+
+  constexpr index_set_type index_set() const {
+    return index_set_type(*this);
+  }
+};
+
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
  */
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorRange<const Iterator, const Sentinel>
-make_range(const Iterator & begin, const Sentinel & end) {
+make_range(
+  const Iterator & begin,
+  const Sentinel & end) {
   return dash::IteratorRange<const Iterator, const Sentinel>(
            begin,
            end);
 }
 
 template <class Iterator, class Sentinel>
+constexpr dash::IteratorRange<Iterator *, Sentinel *>
+make_range(
+  Iterator * begin,
+  Sentinel * end) {
+  return dash::IteratorRange<Iterator *, Sentinel *>(
+           begin,
+           end);
+}
+
+template <class Iterator, class Sentinel>
 dash::IteratorRange<Iterator, Sentinel>
-make_range(Iterator & begin, Sentinel & end) {
+make_range(
+  Iterator & begin,
+  Sentinel & end) {
   return dash::IteratorRange<Iterator, Sentinel>(
            begin,
            end);

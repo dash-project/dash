@@ -85,6 +85,12 @@ class ViewBlockMod
 
   typedef std::integral_constant<bool, false>                     is_local;
 
+  typedef decltype(dash::begin(
+                std::declval<
+                  typename std::add_lvalue_reference<domain_type>::type
+                >() ))
+    iterator;
+
  private:
   index_type     _block_idx;
   index_type     _first_idx;
@@ -119,7 +125,6 @@ class ViewBlockMod
                 >() )) {
     return dash::begin(dash::domain(*this)) +
               dash::index(*this)[0];
-           // _index_set.first();
   }
 
   constexpr auto end() const
@@ -128,7 +133,6 @@ class ViewBlockMod
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
     return dash::begin(dash::domain(*this)) +
-           //  (dash::index(*this).last()) + 1;
                _index_set.last() + 1;
   }
 
@@ -290,6 +294,9 @@ class ViewBlocksMod
   };
 
  public:
+  typedef block_iterator                    iterator;
+
+ public:
   constexpr ViewBlocksMod()               = delete;
   constexpr ViewBlocksMod(self_t &&)      = default;
   constexpr ViewBlocksMod(const self_t &) = default;
@@ -316,7 +323,6 @@ class ViewBlocksMod
   }
 
   constexpr auto local() const
-//  -> decltype(dash::local(dash::domain(*this))) {
     -> decltype(dash::local(
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
@@ -325,7 +331,6 @@ class ViewBlocksMod
   }
 
   inline auto local()
-//  -> decltype(dash::local(dash::domain(*this))) {
     -> decltype(dash::local(
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type

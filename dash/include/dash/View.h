@@ -71,6 +71,9 @@
  * \}
  */
 
+#include <dash/view/Apply.h>
+#include <dash/view/Block.h>
+#include <dash/view/Chunked.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Global.h>
@@ -78,7 +81,6 @@
 #include <dash/view/Remote.h>
 #include <dash/view/Apply.h>
 #include <dash/view/Sub.h>
-#include <dash/view/Chunked.h>
 
 #include <dash/view/SetUnion.h>
 #include <dash/view/SetIntersect.h>

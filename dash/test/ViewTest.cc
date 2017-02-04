@@ -1,12 +1,12 @@
 
 #include "ViewTest.h"
 
-#include <dash/View.h>
 #include <dash/Array.h>
-#include <dash/Range.h>
+#include <dash/View.h>
 
 #include <array>
 #include <algorithm>
+
 
 namespace dash {
 namespace test {
@@ -51,39 +51,42 @@ static_assert(dash::is_range<
 TEST_F(ViewTest, ViewTraits)
 {
   dash::Array<int> array(dash::size() * 10);
-  auto v_sub = dash::sub(0, 5, (dash::sub(0, 10, array)));
-  auto v_loc = dash::local(array);
+  auto v_sub  = dash::sub(0, 10, array);
+  auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, array)));
+  auto v_loc  = dash::local(array);
 
   static_assert(
       dash::view_traits<decltype(array)>::is_view::value == false,
       "view traits is_view for dash::Array not matched");
   static_assert(
-      dash::view_traits<decltype(v_sub)>::is_view::value == true,
+      dash::view_traits<decltype(v_ssub)>::is_view::value == true,
       "view traits is_view for sub(dash::Array) not matched");
 
   static_assert(
       dash::view_traits<decltype(array)>::is_origin::value == true,
       "view traits is_origin for dash::Array not matched");
   static_assert(
-      dash::view_traits<decltype(v_sub)>::is_origin::value == false,
+      dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
       "view traits is_origin for sub(dash::Array) not matched");
 
   static_assert(dash::is_range<decltype(array)>::value == true,
                 "range type traits for dash::Array not matched");
   static_assert(dash::is_range<decltype(v_loc)>::value == true,
                 "range type traits for local(dash::Array) not matched");
-//static_assert(dash::is_range<decltype(v_sub)>::value == true,
-//              "range type traits for sub(dash::Array) not matched");
+  static_assert(dash::is_range<decltype(v_sub)>::value == true,
+                "range type traits for sub(dash::Array) not matched");
+  static_assert(dash::is_range<decltype(v_ssub)>::value == true,
+                "range type traits for sub(sub(dash::Array)) not matched");
 
   static_assert(
       dash::is_range<decltype(array)>::value == true,
       "dash::is_range<dash::Array<...>>::value not matched");
 
-//auto l_range = dash::make_range(array.local.begin(),
-//                                array.local.end());
-//static_assert(
-//    dash::is_range<decltype(l_range)>::value == true,
-//    "dash::is_range<dash::Array<...>>::value not matched");
+  auto l_range = dash::make_range(array.local.begin(),
+                                  array.local.end());
+  static_assert(
+      dash::is_range<decltype(l_range)>::value == true,
+      "dash::is_range<dash::make_range(...)>::value not matched");
 }
 
 TEST_F(ViewTest, Intersect1DimSingle)
@@ -219,11 +222,11 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
 
   std::vector<index_t> lblocks_indices(lblocks_index.begin(),
                                        lblocks_index.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_indices);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_indices);
 
   std::vector<value_t> lblocks_values(lblocks_view.begin(),
                                       lblocks_view.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblocks_values);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_values);
 
   auto blocksl_view  = dash::blocks(
                          dash::local(
@@ -238,7 +241,7 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
                                                  {{ lsize }} );
   auto n_lblocks  = dash::math::div_ceil(array.lsize(), block_size);
 
-  DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+  DASH_LOG_DEBUG("ViewTest.LocalBlocksView1Dim",
                  "n_lblocks:", n_lblocks, "l_beg:", l_beg, "l_end:", l_end);
 
   EXPECT_EQ_U(n_lblocks, blocksl_view.size());
@@ -248,15 +251,15 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   for (auto block : blocksl_view) {
     auto block_index = dash::index(block);
 
-    DASH_LOG_DEBUG("ViewTest.BlockLocalView1Dim",
+    DASH_LOG_DEBUG("ViewTest.LocalBlocksView1Dim",
                    "---- local block", b_idx);
 
     std::vector<index_t> block_indices(block_index.begin(),
                                        block_index.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_indices);
+    DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_indices);
 
     std::vector<value_t> block_values(block.begin(), block.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", block_values);
+    DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_values);
 
     auto lblock_size   = array.pattern().local_block(b_idx).extents()[0];
     auto lblock_gbegin = array.pattern().local_block(b_idx).offsets()[0];
@@ -283,12 +286,12 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
 
   std::vector<index_t> lblockssub_indices(lblockssub_index.begin(),
                                           lblockssub_index.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_indices);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_indices);
 
-#if 0
+#if 1
   std::vector<value_t> lblockssub_values(lblockssub_view.begin(),
                                          lblockssub_view.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.BlockLocalView1Dim", lblockssub_values);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_values);
 #endif
 }
 
