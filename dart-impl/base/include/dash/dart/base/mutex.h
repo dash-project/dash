@@ -18,6 +18,10 @@
 typedef struct dart_mutex {
 #ifdef DART_THREADING_PTHREADS
 pthread_mutex_t mutex;
+#else 
+// required since C99 does not allow empty structs
+// TODO: this could be used for correctness checking
+char __dummy;
 #endif
 } dart_mutex_t;
 

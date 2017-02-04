@@ -39,7 +39,7 @@ extern "C" {
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_barrier(
@@ -57,7 +57,7 @@ dart_ret_t dart_barrier(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
@@ -80,7 +80,7 @@ dart_ret_t dart_bcast(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
@@ -104,7 +104,7 @@ dart_ret_t dart_scatter(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
@@ -127,7 +127,7 @@ dart_ret_t dart_gather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
@@ -152,7 +152,7 @@ dart_ret_t dart_allgather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
@@ -176,7 +176,7 @@ dart_ret_t dart_allgatherv(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
@@ -200,7 +200,7 @@ dart_ret_t dart_allreduce(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_reduce(
@@ -224,7 +224,7 @@ dart_ret_t dart_reduce(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_accumulate(
