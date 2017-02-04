@@ -175,9 +175,9 @@ TEST_F(ViewTest, IndexSet)
     std::vector<index_t> loc_sub_indices(locsub_index.begin(),
                                          locsub_index.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_indices);
-//  std::vector<value_t> loc_sub_values(locsub_gview.begin(),
-//                                      locsub_gview.end());
-//  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
+    std::vector<value_t> loc_sub_values(locsub_gview.begin(),
+                                        locsub_gview.end());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
   }
 
   auto subsub_gview = dash::sub(3, 6,
@@ -191,13 +191,13 @@ TEST_F(ViewTest, IndexSet)
     std::vector<index_t> sub_sub_indices(subsub_index.begin(),
                                          subsub_index.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_indices);
-//  std::vector<value_t> sub_sub_values(subsub_gview.begin(),
-//                                      subsub_gview.end());
-//  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
+    std::vector<value_t> sub_sub_values(subsub_gview.begin(),
+                                        subsub_gview.end());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
   }
-//DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub values :",
-//               dash::make_range(subsub_gview.begin(),
-//                                subsub_gview.end()));
+  DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub values :",
+                 dash::make_range(subsub_gview.begin(),
+                                  subsub_gview.end()));
 }
 
 TEST_F(ViewTest, LocalBlocksView1Dim)
@@ -288,11 +288,9 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
                                           lblockssub_index.end());
   DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_indices);
 
-#if 1
   std::vector<value_t> lblockssub_values(lblockssub_view.begin(),
                                          lblockssub_view.end());
   DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_values);
-#endif
 }
 
 TEST_F(ViewTest, BlocksView1Dim)
@@ -381,8 +379,8 @@ TEST_F(ViewTest, BlocksView1Dim)
                      ")", "size:",    block.size(),
                      "=", "indices:", dash::index(block).size());
 
-   // std::vector<value_t> block_values(block.begin(), block.end());
-   // DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block_values);
+      std::vector<value_t> block_values(block.begin(), block.end());
+      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block_values);
     }
   }
   array.barrier();
