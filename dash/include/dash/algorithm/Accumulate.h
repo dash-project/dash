@@ -1,67 +1,14 @@
 #ifndef DASH__ALGORITHM__ACCUMULATE_H__
 #define DASH__ALGORITHM__ACCUMULATE_H__
 
+#include <dash/Array.h>
 #include <dash/iterator/GlobIter.h>
+
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 
+
 namespace dash {
-
-
-namespace internal {
-
-/**
- * Wrapper of the blocking DART accumulate operation.
- */
-template< typename ValueType >
-inline dart_ret_t accumulate_blocking_impl(
-  dart_gptr_t        dest,
-  ValueType        * values,
-  size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
-{
-  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
-      "Cannot accumulate unknown type!");
-
-  dart_ret_t result = dart_accumulate(
-                        dest,
-                        reinterpret_cast<void *>(values),
-                        nvalues,
-                        dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
-  dart_flush(dest);
-  return result;
-}
-
-/**
- * Wrapper of the non-blocking DART accumulate operation.
- */
-template< typename ValueType >
-dart_ret_t accumulate_impl(
-  dart_gptr_t        dest,
-  ValueType        * values,
-  size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
-{
-  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
-      "Cannot accumulate unknown type!");
-
-  dart_ret_t result = dart_accumulate(
-                        dest,
-                        reinterpret_cast<void *>(values),
-                        nvalues,
-                        dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
-  dart_flush_local(dest);
-  return result;
-}
-
-} // namespace internal
-
 
 /**
  * Accumulate values in range \c [first, last) as the sum of all values
@@ -96,7 +43,7 @@ ValueType accumulate(
   auto l_result    = std::accumulate(l_first, l_last, init);
   auto result      = 0;
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();
@@ -146,7 +93,7 @@ ValueType accumulate(
   auto l_result    = std::accumulate(l_first, l_last, init, binary_op);
   auto result      = 0;
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();

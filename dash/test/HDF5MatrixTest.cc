@@ -1,11 +1,20 @@
 #ifdef DASH_ENABLE_HDF5
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "HDF5MatrixTest.h"
 
-#include <libdash.h>
-#include <gtest/gtest.h>
+#include <dash/io/HDF5.h>
+
+#include <dash/Matrix.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
+#include <dash/algorithm/ForEach.h>
+#include <dash/algorithm/SUMMA.h>
+
+#include <dash/pattern/TilePattern.h>
+#include <dash/pattern/MakePattern.h>
+
+#include <array>
 #include <limits.h>
 
 

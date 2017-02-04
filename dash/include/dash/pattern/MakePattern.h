@@ -1,6 +1,8 @@
 #ifndef DASH__MAKE_PATTERN_H_
 #define DASH__MAKE_PATTERN_H_
 
+#include <dash/Pattern.h>
+
 #include <dash/pattern/PatternProperties.h>
 #include <dash/pattern/BlockPattern.h>
 #include <dash/pattern/TilePattern.h>
@@ -73,8 +75,8 @@ make_team_spec(
   // number of blocks.
   // In this case, blocking will be minimal with respect to prefered blocking
   // factors:
-  if (n_nodes > 1 &&
-      (PartitioningTags::minimal ||
+  if (n_nodes > 1 && (
+      PartitioningTags::rectangular ||
        (!MappingTags::diagonal && !MappingTags::neighbor &&
         !MappingTags::multiple))) {
     // Optimize for surface-to-volume ratio:
@@ -101,7 +103,8 @@ make_team_spec(
                  "- team extent factors in dim 0:", team_factors_d0);
   DASH_LOG_TRACE("dash::make_team_spec",
                  "- team extent factors in dim 1:", team_factors_d1);
-  if (PartitioningTags::minimal && MappingTags::multiple) {
+  if (// PartitioningTags::minimal &&
+      MappingTags::multiple) {
     DASH_LOG_TRACE("dash::make_team_spec",
                    "optimizing for multiple blocks per unit");
     for (auto small_factor_kv : team_factors_d0) {
@@ -358,7 +361,10 @@ template<
   class    TeamSpecType
 >
 typename std::enable_if<
-  PartitioningTags::minimal &&
+  !MappingTags::diagonal &&
+  PartitioningTags::rectangular &&
+  PartitioningTags::balanced &&
+  !PartitioningTags::unbalanced &&
   LayoutTags::blocked,
   TilePattern<SizeSpecType::ndim(),
               dash::ROW_MAJOR,
@@ -484,9 +490,9 @@ template<
 >
 typename std::enable_if<
   LayoutTags::canonical,
-  Pattern<SizeSpecType::ndim(),
-          dash::ROW_MAJOR,
-          typename SizeSpecType::index_type>
+  BlockPattern<SizeSpecType::ndim(),
+               dash::ROW_MAJOR,
+               typename SizeSpecType::index_type >
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
@@ -498,7 +504,7 @@ make_pattern(
   const dim_t ndim = SizeSpecType::ndim();
   // Deduce index type from size spec:
   typedef typename SizeSpecType::index_type             index_t;
-  typedef dash::Pattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
+  typedef dash::BlockPattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTags());
   DASH_LOG_TRACE("dash::make_pattern", MappingTags());
   DASH_LOG_TRACE("dash::make_pattern", LayoutTags());

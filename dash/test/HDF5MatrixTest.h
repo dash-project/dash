@@ -3,16 +3,12 @@
 #ifndef DASH__TEST__HDF5_MATRIX_TEST_H__INCLUDED
 #define DASH__TEST__HDF5_MATRIX_TEST_H__INCLUDED
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-#include <stdio.h>
-
 #include "TestBase.h"
 
 class HDF5MatrixTest : public dash::test::TestBase {
 protected:
-  std::string _filename = "test_matrix.hdf5";
-  std::string _dataset  = "data";
+  const std::string _filename = "test_matrix.hdf5";
+  const std::string _dataset  = "data";
   bool        _preserve;
 
   HDF5MatrixTest() {
@@ -26,7 +22,7 @@ protected:
   virtual void SetUp() {
     dash::test::TestBase::SetUp();
     _preserve = dash::util::Config::get<bool>("DASH_HDF5_PRESERVE_FILE");
-    if(dash::myid() == 0) {
+    if(dash::myid().id == 0) {
         remove(_filename.c_str());
     }
     dash::Team::All().barrier();
@@ -34,7 +30,7 @@ protected:
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-    if((dash::myid() == 0) && !_preserve) {
+    if((dash::myid().id == 0) && !_preserve) {
         remove(_filename.c_str());
     }
     dash::test::TestBase::TearDown();

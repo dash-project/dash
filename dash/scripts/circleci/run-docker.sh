@@ -2,7 +2,20 @@
 
 MPIENVS=(mpich openmpi)
 BUILD_CONFIG=$1
+COMPILER=$2
+
 DASH_ENV_EXPORTS="export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF';"
+
+if [[ "$COMPILER" == "clang" ]]; then
+  C_COMPILER="clang-3.8"
+  CXX_COMPILER="clang++-3.8"
+else
+  COMPILER="gnu"
+  C_COMPILER="gcc"
+  CXX_COMPILER="g++"
+fi
+
+DASH_ENV_EXPORTS="${DASH_ENV_EXPORTS} export CC='${C_COMPILER}'; export CXX='${CXX_COMPILER}';"
 
 # run tests
 i=0
@@ -15,11 +28,11 @@ for MPIENV in ${MPIENVS[@]}; do
                   /bin/sh -c "$DASH_ENV_EXPORTS sh dash/scripts/dash-ci.sh $BUILD_CONFIG | tee dash-ci.log 2> dash-ci.err;"
 
     # upload xml test-results
-    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG
-    cp ./build-ci/*/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/
+    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG
+    cp ./build-ci/*/$COMPILER/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/
     # upload build and test logs 
-    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
-    cp ./build-ci/*/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
+    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
+    cp ./build-ci/*/$COMPILER/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG/logs
 
     echo "checking logs"
 

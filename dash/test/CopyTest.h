@@ -2,15 +2,17 @@
 #define DASH__TEST__COPY_TEST_H_
 
 #include <gtest/gtest.h>
-#include <libdash.h>
+
+#include "TestBase.h"
+
 
 /**
  * Test fixture for \c dash::copy.
  */
-class CopyTest : public ::testing::Test {
+class CopyTest : public dash::test::TestBase {
 protected:
-  dash::global_unit_t _dash_id;
-  size_t              _dash_size;
+  size_t _dash_id;
+  size_t _dash_size;
 
   CopyTest()
   : _dash_id(0),
@@ -23,18 +25,9 @@ protected:
   }
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
+    dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
-                _dash_size);
-  }
-
-  virtual void TearDown() {
-    dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units",
-                _dash_size);
-    dash::finalize();
   }
 };
 

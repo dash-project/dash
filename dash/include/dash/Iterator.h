@@ -2,13 +2,71 @@
 #define DASH__ITERATOR_H__INCLUDED
 
 #include <dash/Types.h>
+#include <dash/Dimensional.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
 
 #include <iterator>
 
+/**
+ * \defgroup  DashIteratorConcept  Multidimensional Iterator Concept
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * Definitions for multidimensional iterator expressions.
+ *
+ * \see DashDimensionalConcept
+ * \see DashViewConcept
+ * \see DashRangeConcept
+ *
+ * \see \c dash::view_traits
+ *
+ * \par Types
+ *
+ * \par Expressions
+ *
+ * Expression               | Returns | Effect | Precondition | Postcondition
+ * ------------------------ | ------- | ------ | ------------ | -------------
+ *
+ * \par Metafunctions
+ *
+ * - \c dash::iterator_traits<I>
+ *
+ * \par Functions
+ *
+ * - \c dash::index
+ *
+ * \par Functions in the Range concept
+ *
+ * - \c dash::distance
+ * - \c dash::size
+ *
+ * \}
+ */
 
 namespace dash {
+
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
+template <class IndexType>
+constexpr typename std::enable_if<
+  std::is_integral<IndexType>::value, IndexType >::type
+index(IndexType idx) {
+  return idx;
+}
+
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
+template <class Iterator>
+constexpr auto index(Iterator it) -> decltype((++it).pos()) {
+  return it.pos();
+}
 
 /**
  * Resolve the number of elements between two global iterators.
@@ -33,6 +91,8 @@ namespace dash {
  * \complexity  O(1)
  *
  * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
  */
 template<
   typename ElementType,
@@ -40,19 +100,25 @@ template<
   class    GlobMem,
   class    Pointer,
   class    Reference >
-auto distance(
+typename Pattern::index_type
+distance(
   const GlobIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
   const GlobIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     last)
--> typename Pattern::index_type
 {
   return last - first;
 }
 
+/**
+ *
+ * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class T>
-constexpr std::ptrdiff_t distance(T * first, T * last) {
+constexpr std::ptrdiff_t distance(T * const first, T * const last) {
   return std::distance(first, last);
 }
 
@@ -81,6 +147,8 @@ constexpr std::ptrdiff_t distance(T * first, T * last) {
  * \complexity  O(1)
  *
  * \ingroup     Algorithms
+ * 
+ * \concept{DashIteratorConcept}
  */
 template<typename ElementType>
 dash::default_index_t distance(
@@ -94,6 +162,12 @@ dash::default_index_t distance(
   return gptr_last - gptr_first;
 }
 
+/**
+ *
+ * \ingroup     Algorithms
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <
   class OffsetType >
 constexpr typename std::enable_if<

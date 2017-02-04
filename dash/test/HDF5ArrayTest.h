@@ -3,9 +3,6 @@
 
 #ifdef DASH_ENABLE_HDF5
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-
 #include "TestBase.h"
 
 // for CustomType test

@@ -8,7 +8,6 @@
  */
 
 #include <dash/dart/base/logging.h>
-#include <dash/dart/base/atomic.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -31,7 +30,6 @@
 MPI_Win dart_win_local_alloc;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 MPI_Win dart_sharedmem_win_local_alloc;
-char** dart_sharedmem_local_baseptr_set;
 #endif
 
 /**
@@ -90,7 +88,7 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 
 dart_ret_t dart_gptr_incaddr(dart_gptr_t* gptr, int offs)
 {
-	gptr->addr_or_offs.offset += offs;
+	gptr -> addr_or_offs.offset += offs;
 	return DART_OK;
 }
 
@@ -152,15 +150,14 @@ dart_team_memalloc_aligned(
 
 	char * sub_mem;
 
-	int16_t segid = DART_FETCH_AND_INC16(&dart_memid);
+	/* The units belonging to the specified team are eligible to participate
+	 * below codes enclosed.
+   */
 
-	// check for overflow
-	if (segid < 0) {
-	  DART_LOG_ERROR(
-	      "Failed to allocate segment ID, too many segments already allocated?");
-	  DART_FETCH_AND_DEC16(&dart_memid);
-	  return DART_ERR_INVAL;
-	}
+	MPI_Win    win;
+	MPI_Comm   comm;
+	MPI_Aint   disp;
+	MPI_Aint * disp_set = (MPI_Aint*)(malloc(team_size * sizeof (MPI_Aint)));
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -169,10 +166,11 @@ dart_team_memalloc_aligned(
     "index:%d", index);
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
 
-  MPI_Comm comm = dart_team_data[index].comm;
+  comm = dart_team_data[index].comm;
 	dart_unit_t localid = 0;
 
 	if (index == 0) {
@@ -239,12 +237,14 @@ dart_team_memalloc_aligned(
       DART_LOG_ERROR("dart_team_memalloc_aligned: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
+      free(disp_set);
       return DART_ERR_OTHER;
     }
   } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
+    free(disp_set);
     return DART_ERR_OTHER;
   }
 
@@ -274,44 +274,48 @@ dart_team_memalloc_aligned(
   }
 #endif
 
-  MPI_Win win = dart_team_data[index].window;
+  win = dart_team_data[index].window;
   /* Attach the allocated shared memory to win */
-  if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+  /* Calling MPI_Win_attach with nbytes == 0 leads to errors, see #239 */
+  if (nbytes > 0) {
+    if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
+      DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    free(baseptr_set);
+      free(baseptr_set);
 #endif
-    return DART_ERR_OTHER;
+      free(disp_set);
+      return DART_ERR_OTHER;
+    }
+
+    if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
+      DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
+      free(disp_set);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+      free(baseptr_set);
+#endif
+      return DART_ERR_OTHER;
+    }
+  } else {
+    disp = 0;
   }
 
-  MPI_Aint disp;
-	if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
-    DART_LOG_ERROR(
-      "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    free(baseptr_set);
-#endif
-    return DART_ERR_OTHER;
-  }
-
-  /* Collect the disp information from all the ranks in comm */
-  MPI_Aint * disp_set = (MPI_Aint*)(malloc(team_size * sizeof (MPI_Aint)));
+	/* Collect the disp information from all the ranks in comm */
 	MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
-  /* Segid equals to dart_memid (always a positive integer), identifies a
+  /* Segid equals to dart_memid (always a positive integer), identifies an
    * unique collective global memory. */
-  gptr->segid = segid;
+  gptr->segid = dart_memid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  if (dart_segment_alloc(gptr->segid, index) != DART_OK) {
+  if (dart_segment_alloc(dart_memid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
-    free(disp_set);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
 #endif
@@ -321,7 +325,7 @@ dart_team_memalloc_aligned(
   /* Updating the translation table of teamid with the created
    * (offset, win) infos */
   dart_segment_info_t item;
-  item.seg_id  = segid;
+  item.seg_id  = dart_memid;
   item.size    = nbytes;
   item.disp    = disp_set;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -338,6 +342,7 @@ dart_team_memalloc_aligned(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info_free(&win_info);
 #endif
+	dart_memid++;
 
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
@@ -373,12 +378,12 @@ dart_ret_t dart_team_memfree(
     return DART_ERR_INVAL;
   }
 
-  /* Detach the window associated with sub-memory to be freed:
-   */
-	MPI_Win_detach(win, sub_mem);
+  /* Detach the window associated with sub-memory to be freed */
+  if (sub_mem != NULL) {
+    MPI_Win_detach(win, sub_mem);
+  }
 
-	/* Free the window's associated sub-memory:
-   */
+	/* Free the window's associated sub-memory */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   MPI_Win sharedmem_win;
   if (dart_segment_get_win(seg_id, &sharedmem_win) != DART_OK) {
@@ -425,26 +430,17 @@ dart_team_memregister_aligned(
   dart_unit_t gptr_unitid = -1;
   dart_team_size(teamid, &size);
 
-  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
-  /* check for underflow */
-  if (segid >= 0) {
-    DART_LOG_ERROR(
-        "Failed to allocate segment ID, too many segments already allocated?");
-    DART_FETCH_AND_INC16(&dart_registermemid);
-    return DART_ERR_INVAL;
-  }
-
   MPI_Win win;
   MPI_Comm comm;
   MPI_Aint disp;
   MPI_Aint * disp_set = (MPI_Aint *)malloc(size * sizeof(MPI_Aint));
   uint16_t index;
   int result = dart_adapt_teamlist_convert(teamid, &index);
+
   if (result == -1) {
     free(disp_set);
     return DART_ERR_INVAL;
   }
-
   comm = dart_team_data[index].comm;
   dart_unit_t localid = 0;
   if (index == 0) {
@@ -461,11 +457,11 @@ dart_team_memregister_aligned(
   MPI_Get_address((char *)addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
-  gptr->segid = segid;
+  gptr->segid = dart_registermemid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  if (dart_segment_alloc(segid, index) != DART_OK) {
+  if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
         nbytes);
@@ -473,21 +469,22 @@ dart_team_memregister_aligned(
   }
 
   dart_segment_info_t item;
-  item.seg_id = segid;
+  item.seg_id = dart_registermemid;
   item.size = nbytes;
   item.disp = disp_set;
   item.win = MPI_WIN_NULL;
   item.baseptr = NULL;
   item.selfbaseptr = (char *)addr;
   dart_segment_add_info(&item);
+  dart_registermemid--;
 #if DART_ENABLE_LOGGING
   dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister_aligned: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
@@ -504,15 +501,6 @@ dart_team_memregister(
   size_t nbytes     = nelem * dtype_size;
   dart_unit_t gptr_unitid = -1;
 	dart_team_size(teamid, &size);
-
-  int16_t segid = DART_FETCH_AND_DEC16(&dart_registermemid);
-  /* check for underflow */
-  if (segid >= 0) {
-    DART_LOG_ERROR(
-        "Failed to allocate segment ID, too many segments already allocated?");
-    DART_FETCH_AND_INC16(&dart_registermemid);
-    return DART_ERR_INVAL;
-  }
 
 	MPI_Win    win;
 	MPI_Comm   comm;
@@ -547,11 +535,11 @@ dart_team_memregister(
   MPI_Get_address((char *)addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
-  gptr->segid = segid;
+  gptr->segid = dart_registermemid;
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
-  if (dart_segment_alloc(segid, index) != DART_OK) {
+  if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
         nbytes);
@@ -559,13 +547,14 @@ dart_team_memregister(
   }
 
   dart_segment_info_t item;
-  item.seg_id = segid;
+  item.seg_id = dart_registermemid;
   item.size = nbytes;
   item.disp = disp_set;
   item.win = MPI_WIN_NULL;
   item.baseptr = NULL;
   item.selfbaseptr = (char *)addr;
   dart_segment_add_info(&item);
+  dart_registermemid--;
 
 #ifdef DART_ENABLE_LOGGING
   dart_team_unit_t unitid;
@@ -573,8 +562,8 @@ dart_team_memregister(
 #endif
   DART_LOG_DEBUG(
     "dart_team_memregister: collective alloc, "
-    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
-    unitid, nbytes, 0, gptr_unitid, teamid);
+    "unit:%2d, nbytes:%zu offset:%d gptr_unitid:%d " "across team %d",
+    unitid.id, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
@@ -600,7 +589,6 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
   MPI_Win_detach(win, sub_mem);
-
   if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }

@@ -1,10 +1,14 @@
-#include <libdash.h>
+
+#include "TeamSpecTest.h"
+
+#include <dash/TeamSpec.h>
+#include <dash/Team.h>
+#include <dash/Distribution.h>
+
 #include <array>
 #include <numeric>
 #include <functional>
 
-#include "TestBase.h"
-#include "TeamSpecTest.h"
 
 TEST_F(TeamSpecTest, DefaultConstrutor)
 {

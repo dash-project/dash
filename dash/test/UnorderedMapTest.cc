@@ -1,8 +1,7 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "UnorderedMapTest.h"
+
+#include <dash/UnorderedMap.h>
 
 #include <vector>
 #include <algorithm>
@@ -37,11 +36,11 @@ TEST_F(UnorderedMapTest, Initialization)
   dash::barrier();
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "map initialized");
 
-  if (_dash_id == 0) {
+  if (dash::myid().id == 0) {
     for (auto li = 0; li < ninsert; ++li) {
       DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "insert element");
-      key_t     key    = 100 * (_dash_id + 1) + (li + 1);
-      mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
+      key_t     key    = 100 * (dash::myid().id + 1) + (li + 1);
+      mapped_t  mapped = 1.0 * (dash::myid().id + 1) + (0.01 * li);
       map_value value({ key, mapped });
 
       auto inserted = map.insert(value);
@@ -54,14 +53,14 @@ TEST_F(UnorderedMapTest, Initialization)
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "committing elements");
   map.barrier();
 
-  if (_dash_id == 0) {
+  if (dash::myid().id == 0) {
     // Validate elements after commit:
     DASH_LOG_DEBUG("UnorderedMapTest.Initialization",
                    "validate values after commit");
     int li = 0;
     for (auto git = map.begin(); git != map.end(); ++git) {
-      key_t     key    = 100 * (_dash_id + 1) + (li + 1);
-      mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
+      key_t     key    = 100 * (dash::myid().id + 1) + (li + 1);
+      mapped_t  mapped = 1.0 * (dash::myid().id + 1) + (0.01 * li);
       map_value expect({ key, mapped });
       map_value actual = static_cast<map_value>(*git);
       DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "after commit",
@@ -87,11 +86,11 @@ TEST_F(UnorderedMapTest, BalancedGlobalInsert)
 
   // key-value pair to be inserted:
   int       elem_per_unit = 2;
-  key_t     key_a    = 100 * (_dash_id + 1) + 1;
-  mapped_t  mapped_a = 1.0 * (_dash_id + 1) + 0.01;
+  key_t     key_a    = 100 * (dash::myid().id + 1) + 1;
+  mapped_t  mapped_a = 1.0 * (dash::myid().id + 1) + 0.01;
   map_value value_a({ key_a, mapped_a });
-  key_t     key_b    = 100 * (_dash_id + 1) + 2;
-  mapped_t  mapped_b = 1.0 * (_dash_id + 1) + 0.02;
+  key_t     key_b    = 100 * (dash::myid().id + 1) + 2;
+  mapped_t  mapped_b = 1.0 * (dash::myid().id + 1) + 0.02;
   map_value value_b({ key_b, mapped_b });
 
   DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert", "insert elements");
@@ -130,7 +129,7 @@ TEST_F(UnorderedMapTest, BalancedGlobalInsert)
     DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
                    "before commit:",
                    "gidx:",  gidx,
-                   "unit:",  _dash_id,
+                   "unit:",  dash::myid().id,
                    "git:",   git,
                    "value:", actual.first, "->", actual.second);
     EXPECT_EQ_U(expect, actual);
@@ -193,7 +192,7 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   size_type init_global_size  = 0;
   // Use small local buffer size to enforce reallocation.
   // Also determines eager allocation size:
-  size_type local_buffer_size = _dash_id == 0 ? 2 : 3;
+  size_type local_buffer_size = dash::myid().id == 0 ? 2 : 3;
   map_t map(init_global_size, local_buffer_size);
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                  "map initialized");
@@ -210,10 +209,10 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
                         ((dash::size() - 2) * unit_x_elements);
   int local_elements  = unit_x_elements;
 
-  if (_dash_id == 0) {
+  if (dash::myid().id == 0) {
     local_elements = unit_0_elements;
   }
-  if (_dash_id == 1) {
+  if (dash::myid().id == 1) {
     local_elements = unit_1_elements;
   }
 
@@ -222,8 +221,8 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   // Changes in global memory space are immediately visible to the unit that
   // executed them.
   for (int li = 0; li < local_elements; ++li) {
-    key_t     key    = 100 * (_dash_id + 1) + (li + 1);
-    mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
+    key_t     key    = 100 * (dash::myid().id + 1) + (li + 1);
+    mapped_t  mapped = 1.0 * (dash::myid().id + 1) + (0.01 * (li + 1));
     map_value value({ key, mapped });
 
     auto insertion = map.insert(value);
@@ -260,7 +259,7 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
 
   DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
                  "updating values");
-  if (_dash_id == 0) {
+  if (dash::myid().id == 0) {
     for (auto git = map.begin(); git != map.end(); ++git) {
       map_value elem       = *git;
       key_t     key        = elem.first;
@@ -366,7 +365,7 @@ TEST_F(UnorderedMapTest, Local)
   size_type init_global_size  = 0;
   // Use small local buffer size to enforce reallocation.
   // Also determines eager allocation size:
-  size_type local_buffer_size = _dash_id == 0 ? 2 : 3;
+  size_type local_buffer_size = dash::myid().id == 0 ? 2 : 3;
 
   map_t map(init_global_size,
             local_buffer_size);
@@ -385,8 +384,8 @@ TEST_F(UnorderedMapTest, Local)
   size_type local_elements = 5;
 
   for (int li = 0; li < local_elements; ++li) {
-    key_t     key    = (nunits * (100 + li)) + _dash_id;
-    mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
+    key_t     key    = (nunits * (100 + li)) + dash::myid().id;
+    mapped_t  mapped = 1.0 * (dash::myid().id + 1) + (0.01 * (li + 1));
     map_value value({ key, mapped });
 
     DASH_LOG_DEBUG("UnorderedMapTest.Local",

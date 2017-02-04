@@ -7,6 +7,7 @@
 
 #include <dash/algorithm/LocalRange.h>
 
+#if 0
 
 namespace dash {
 
@@ -122,5 +123,7 @@ local_index_ranges(
 }
 
 } // namespace dash
+
+#endif
 
 #endif // DASH__ALGORITHM__LOCAL_RANGES_H__INCLUDED

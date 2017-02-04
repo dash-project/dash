@@ -1,15 +1,19 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "TransformTest.h"
 
+#include <dash/algorithm/Transform.h>
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+
 #include <array>
+
 
 TEST_F(TransformTest, ArrayLocalPlusLocal)
 {
   // Local input and output ranges, does not require communication
   const size_t num_elem_local = 5;
-  size_t num_elem_total       = _dash_size * num_elem_local;
+  size_t num_elem_total       = dash::size() * num_elem_local;
   // Identical distribution in all ranges:
   dash::Array<int> array_in(num_elem_total, dash::BLOCKED);
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
@@ -47,7 +51,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
 
   // Add local range to every block in global range
   const size_t num_elem_local = 5;
-  size_t num_elem_total = _dash_size * num_elem_local;
+  size_t num_elem_total = dash::size() * num_elem_local;
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
   std::array<int, num_elem_local> local;
 
@@ -70,7 +74,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   }
 
   // Accumulate local range to every block in the array:
-  for (size_t block_idx = 0; block_idx < _dash_size; ++block_idx) {
+  for (size_t block_idx = 0; block_idx < dash::size(); ++block_idx) {
     auto block_offset  = block_idx * num_elem_local;
     auto transform_end =
       dash::transform<int>(&(*local.begin()), &(*local.end()), // A
@@ -109,7 +113,7 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
 {
   // Add values in global range to values in other global range
   const size_t num_elem_local = 100;
-  size_t num_elem_total = _dash_size * num_elem_local;
+  size_t num_elem_total = dash::size() * num_elem_local;
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
   dash::Array<int> array_values(num_elem_total, dash::BLOCKED);
 

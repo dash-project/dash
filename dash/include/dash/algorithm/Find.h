@@ -116,7 +116,7 @@ GlobIter<ElementType, PatternType> find_if(
     l_offset = -1;
   }
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
 
   l_results.local[0] = l_offset;
 

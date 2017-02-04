@@ -1,9 +1,12 @@
-#include <libdash.h>
+
+#include "CartesianTest.h"
+
+#include <dash/Cartesian.h>
+
 #include <array>
 #include <numeric>
 #include <functional>
-#include "TestBase.h"
-#include "CartesianTest.h"
+
 
 TEST_F(CartesianTest, DefaultConstructor) {
   DASH_TEST_LOCAL_ONLY();

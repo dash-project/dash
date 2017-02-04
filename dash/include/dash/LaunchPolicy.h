@@ -1,6 +1,8 @@
 #ifndef DASH__LAUNCH__H__INCLUDED
 #define DASH__LAUNCH__H__INCLUDED
 
+#include <cstdint>
+
 namespace dash {
 
 enum class launch : uint16_t {

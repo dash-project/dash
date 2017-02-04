@@ -13,61 +13,76 @@ namespace dash {
 // View Modifiers (not coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain origin dimensions
+// Sub-space slice, view dimensions maintain domain dimensions
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
-  dim_t SubDim = 0,
+  dim_t SubDim   = 0,
+  dim_t NViewDim,
   class OffsetT >
-constexpr ViewSubMod<0, OffsetT>
+constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
 sub(
     OffsetT begin,
     OffsetT end) {
-  return ViewSubMod<0, OffsetT>(begin, end);
+  return ViewSubMod<ViewOrigin<NViewDim>, SubDim>(begin, end);
 }
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
-  dim_t SubDim = 0,
+  dim_t SubDim   = 0,
+  dim_t NViewDim,
   class IndexRangeT >
-constexpr ViewSubMod<0, typename IndexRangeT::index_type>
-sub(
-    IndexRangeT range) {
+constexpr ViewSubMod<ViewOrigin<NViewDim>, SubDim>
+sub(const IndexRangeT & range) {
   return sub<SubDim>(dash::begin(range),
                      dash::end(range));
 }
 
-// Sub-space projection, view reduces origin domain by one dimension
+// Sub-space projection, view reduces domain by one dimension
 
+#if 0
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim = 0,
   class OffsetT >
-constexpr ViewSubMod<-1, OffsetT>
+constexpr ViewSubMod<ViewOrigin, SubDim>
 sub(
     OffsetT offset) {
-  return ViewSubMod<-1, OffsetT>(offset);
+  return ViewSubMod<ViewOrigin, SubDim>(offset);
 }
+#endif
 
 // -------------------------------------------------------------------------
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain origin dimensions
+// Sub-space slice, view dimensions maintain domain dimensions
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   dim_t SubDim  = 0,
-  class RangeT,
-  class OffsetT = typename RangeT::index_type >
-constexpr ViewSubMod<0, RangeT, OffsetT>
+  class DomainT,
+  class OffsetT >
+constexpr ViewSubMod<DomainT, SubDim>
 sub(
-    OffsetT   begin,
-    OffsetT   end,
-    RangeT  & origin) {
-  return ViewSubMod<0, RangeT, OffsetT>(
-           origin,
+    OffsetT         begin,
+    OffsetT         end,
+    const DomainT & domain) {
+  return ViewSubMod<DomainT, SubDim>(
+           domain,
            begin,
            end);
 }
 
-// Sub-space projection, view reduces origin domain by one dimension
+// Sub-space projection, view reduces domain by one dimension
 
 } // namespace dash
 

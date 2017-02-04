@@ -1,17 +1,18 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
-#include <dash/GlobMem.h>
-#include <dash/GlobRef.h>
-#include <dash/GlobAsyncRef.h>
 #include <dash/Types.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
-#include <dash/HView.h>
-#include <dash/Shared.h>
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
+#include <dash/GlobMem.h>
+#include <dash/GlobRef.h>
+#include <dash/GlobAsyncRef.h>
+#include <dash/Shared.h>
+#include <dash/HView.h>
+
+#include <dash/pattern/BlockPattern1D.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -30,7 +31,7 @@
  * A distributed array of fixed size.
  *
  * Like all DASH containers, \c dash::Array is initialized by specifying
- * an arrangement of units in a team (\c dash::TeamSpec) and a
+  * an arrangement of units in a team (\c dash::TeamSpec) and a
  * distribution pattern (\c dash::Pattern).
  *
  * DASH arrays support delayed allocation (\c dash::Array::allocate),
@@ -131,10 +132,15 @@ public:
   typedef T *                                                   pointer;
   typedef const T *                                       const_pointer;
 
+  typedef T *                                                  iterator;
+  typedef const T *                                      const_iterator;
+
 public:
   /// Type alias for LocalArrayRef<T,I,P>::view_type
   typedef LocalArrayRef<T, IndexType, PatternType>                 View;
   typedef self_t                                             local_type;
+//typedef Array_t                                           domain_type;
+  typedef PatternType                                      pattern_type;
 
 public:
   /**
@@ -217,12 +223,9 @@ public:
   /**
    * View at block at given global block offset.
    */
-  self_t block(index_type block_lindex)
+  constexpr self_t block(index_type block_lindex) const
   {
-    DASH_LOG_TRACE("LocalArrayRef.block()", block_lindex);
-    ViewSpec<1> block_view = pattern().local_block(block_lindex);
-    DASH_LOG_TRACE("LocalArrayRef.block >", block_view);
-    return self_t(_array, block_view);
+    return self_t(_array, pattern().local_block(block_lindex));
   }
 
   /**
@@ -553,7 +556,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const {
+  constexpr const PatternType & pattern() const {
     return _arr->pattern();
   }
 
@@ -582,7 +585,7 @@ template<
   /// Pattern type used to distribute array elements among units.
   /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
   /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
-  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType>
+  class    PatternType  = BlockPattern<1, ROW_MAJOR, IndexType>
 >
 class Array
 {
@@ -1013,7 +1016,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  inline const Team & team() const noexcept
+  constexpr const Team & team() const noexcept
   {
     return *m_team;
   }
@@ -1087,7 +1090,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const
+  constexpr const PatternType & pattern() const
   {
     return m_pattern;
   }
