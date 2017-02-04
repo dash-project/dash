@@ -173,7 +173,9 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
+    DASH_ASSERT_RETURNS(
+      dart__io__hdf5__prep_mpio(plist_id, team.dart_id()),
+      DART_OK);
 
     dash::Shared<int> f_exists;
     if (team.myid() == 0) {
@@ -367,9 +369,13 @@ public:
     // Setup MPI IO
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
     if(is_alloc){
-      dart__io__hdf5__prep_mpio(plist_id, matrix.team().dart_id());
+      DASH_ASSERT_RETURNS(
+        dart__io__hdf5__prep_mpio(plist_id, matrix.team().dart_id()),
+        DART_OK);
     } else {
-      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
+      DASH_ASSERT_RETURNS(
+        dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id()),
+        DART_OK);
     }
 
     // HD5 create file
