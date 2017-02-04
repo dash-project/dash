@@ -52,6 +52,7 @@ TEST_F(ViewTest, ViewTraits)
 {
   dash::Array<int> array(dash::size() * 10);
   auto v_sub  = dash::sub(0, 10, array);
+  auto i_sub  = dash::index(v_sub);
   auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, array)));
   auto v_loc  = dash::local(array);
 
@@ -77,6 +78,8 @@ TEST_F(ViewTest, ViewTraits)
                 "range type traits for sub(dash::Array) not matched");
   static_assert(dash::is_range<decltype(v_ssub)>::value == true,
                 "range type traits for sub(sub(dash::Array)) not matched");
+  static_assert(dash::is_range<decltype(i_sub)>::value == true,
+                "range type traits for index(sub(dash::Array)) not matched");
 
   static_assert(
       dash::is_range<decltype(array)>::value == true,
@@ -172,12 +175,8 @@ TEST_F(ViewTest, IndexSet)
 
   auto locsub_index = dash::index(locsub_gview);
   {
-    std::vector<index_t> loc_sub_indices(locsub_index.begin(),
-                                         locsub_index.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_indices);
-    std::vector<value_t> loc_sub_values(locsub_gview.begin(),
-                                        locsub_gview.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", loc_sub_values);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_index);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_gview);
   }
 
   auto subsub_gview = dash::sub(3, 6,
@@ -188,16 +187,11 @@ TEST_F(ViewTest, IndexSet)
 
   auto subsub_index = dash::index(subsub_gview);
   {
-    std::vector<index_t> sub_sub_indices(subsub_index.begin(),
-                                         subsub_index.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_indices);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_index);
     std::vector<value_t> sub_sub_values(subsub_gview.begin(),
                                         subsub_gview.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_sub_values);
   }
-  DASH_LOG_DEBUG("ViewTest.IndexSet", "-- sub.sub values :",
-                 dash::make_range(subsub_gview.begin(),
-                                  subsub_gview.end()));
 }
 
 TEST_F(ViewTest, LocalBlocksView1Dim)
@@ -213,6 +207,11 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
 
   dash::Array<value_t> array(array_size, dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(array);
+
+  if (dash::myid() == 0) {
+    std::vector<value_t> values(array.begin(), array.end());
+    DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", values);
+  }
 
   auto lblocks_view  = dash::local(
                          dash::blocks(
@@ -284,13 +283,8 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
 
   auto lblockssub_index = dash::index(lblockssub_view);
 
-  std::vector<index_t> lblockssub_indices(lblockssub_index.begin(),
-                                          lblockssub_index.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_indices);
-
-  std::vector<value_t> lblockssub_values(lblockssub_view.begin(),
-                                         lblockssub_view.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_values);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_index);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblockssub_view);
 }
 
 TEST_F(ViewTest, BlocksView1Dim)
@@ -379,8 +373,7 @@ TEST_F(ViewTest, BlocksView1Dim)
                      ")", "size:",    block.size(),
                      "=", "indices:", dash::index(block).size());
 
-      std::vector<value_t> block_values(block.begin(), block.end());
-      DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block_values);
+    // DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----", block);
     }
   }
   array.barrier();

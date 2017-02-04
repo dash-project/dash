@@ -120,6 +120,7 @@ private:
   typedef long no;
 
 #ifdef __TODO__
+private:
   // Test if dash::begin(x) is valid expression:
   template <typename C> static yes has_dash_begin(
                                      decltype(
@@ -144,12 +145,12 @@ public:
            && sizeof(has_dash_end(static_cast<T*>(nullptr)))   == sizeof(yes)
          ) };
 
-//template<typename C, typename begin_decl =
-//                                   decltype(
-//                                     dash::begin(
-//                                       std::move(std::declval<T>())
-//                                     )) >
-//static yes has_dash_begin(C *);
+  //template<typename C, typename begin_decl =
+  //                                   decltype(
+  //                                     dash::begin(
+  //                                       std::move(std::declval<T>())
+  //                                     )) >
+  //static yes has_dash_begin(C *);
 #endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:

@@ -6,6 +6,9 @@
 #include <dash/view/Domain.h>
 #include <dash/view/SetUnion.h>
 
+#include <dash/view/Local.h>
+#include <dash/view/Global.h>
+
 #include <dash/pattern/PatternProperties.h>
 
 #include <dash/Iterator.h>
@@ -220,7 +223,8 @@ class IndexSetBase
   typedef typename dash::view_traits<view_global_type>::index_set_type
     global_type;
 
-  typedef detail::IndexSetIterator<IndexSetType> iterator;
+  typedef detail::IndexSetIterator<IndexSetType>
+    iterator;
 
  protected:
   const ViewType      * const   _view;
@@ -262,18 +266,22 @@ class IndexSetBase
   }
 
   constexpr index_type first() const {
-    return *(begin());
+    return *(derived().begin());
   }
 
   constexpr index_type last() const {
-    return *(begin() + (derived().size() - 1));
+    return *(derived().begin() + (derived().size() - 1));
   }
 
   constexpr const local_type & local() const {
+//  -> decltype(dash::index(dash::local(
+//                std::declval< ViewType & >() ))) {
     return dash::index(dash::local(*_view));
   }
 
   constexpr const global_type & global() const {
+//  -> decltype(dash::index(dash::global(
+//                std::declval< ViewType & >() ))) {
     return dash::index(dash::global(*_view));
   }
 
@@ -399,6 +407,14 @@ class IndexSetBlocks
   , _size(calc_size())
   { }
 
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*this, size());
+  }
+
   constexpr index_type
   operator[](index_type block_index) const {
     return block_index +
@@ -477,6 +493,14 @@ class IndexSetBlock
   , _block_idx(block_idx)
   { }
 
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*this, size());
+  }
+
   constexpr index_type
   operator[](index_type image_index) const {
     return image_index +
@@ -542,7 +566,6 @@ class IndexSetSub
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-//typedef typename base_t::index_set_domain_type index_set_domain_type;
   typedef IndexSetSub<ViewType>                          preimage_type;
 
  public:
@@ -569,6 +592,14 @@ class IndexSetSub
 //  TODO:
 //  return this->domain()[_domain_begin_idx + image_index];
     return (_domain_begin_idx + image_index);
+  }
+
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*this, size());
   }
 
   constexpr index_type size() const {
@@ -646,6 +677,14 @@ class IndexSetLocal
   : base_t(view)
   , _size(calc_size())
   { }
+
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*this, size());
+  }
 
   constexpr index_type
   operator[](index_type local_index) const {

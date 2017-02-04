@@ -16,7 +16,6 @@
 #include <dash/view/Apply.h>
 #include <dash/view/Chunked.h>
 #include <dash/view/Sub.h>
-// #include <dash/view/SetIntersect.h>
 
 
 namespace dash {
@@ -323,6 +322,7 @@ class ViewBlocksMod
   }
 
   constexpr auto local() const
+//constexpr const local_type local() const {
     -> decltype(dash::local(
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
@@ -331,6 +331,7 @@ class ViewBlocksMod
   }
 
   inline auto local()
+//inline local_type local() {
     -> decltype(dash::local(
                   std::declval<
                     typename std::add_lvalue_reference<domain_type>::type
@@ -338,11 +339,11 @@ class ViewBlocksMod
     return dash::local(dash::domain(*this));
   }
 
-  constexpr const global_type & global() const {
+  constexpr const global_type global() const {
     return dash::global(dash::domain(*this));
   }
 
-  inline global_type & global() {
+  inline global_type global() {
     return dash::global(dash::domain(*this));
   }
 
