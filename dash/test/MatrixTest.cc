@@ -45,7 +45,7 @@ TEST_F(MatrixTest, Views)
   size_t num_elem_per_unit   = num_elem_total / dash::size();
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
-  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
+  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:%d",
               dash::size(), num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -1039,7 +1039,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
       distspec, dash::Team::All(), teamspec );
 
   narray.barrier();
-  
+
   if ( 0 == myid ) {
     LOG_MESSAGE("global extent is %lu x %lu", narray.extent(0), narray.extent(1));
   }
@@ -1051,7 +1051,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
 
   uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
-  
+
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());
 }

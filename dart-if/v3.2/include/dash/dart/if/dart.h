@@ -75,7 +75,7 @@
  * any location in the allocated memory.
  *
  *
- * A note on thread safety:
+ * Thread-safety
  * ------------------------
  *
  * In this release, most of DART's functionality cannot be called from within
@@ -98,6 +98,28 @@ for( auto i=0; i<arr.local.size(); i++ ) [
  arr.local[i]=foo(i);
 }
  * \endcode
+ *
+ *
+ *
+ * Logging
+ * -------
+ *
+ * DART can be configured to produce log output with different log levels, a feature that is
+ * mainly meant for debugging purposes. To enable general logging output, the parameter
+ * \c -DENABLE_DART_LOGGING=ON should be passed to CMake when building DART/DASH. Alternatively,
+ * the pre-compiler macro \c DART_ENABLE_LOGGING can be defined manually. Please note that
+ * the additional log output may cause notable performance overhead and should not be enabled
+ * for production runs.
+ *
+ * The verbosity of the log output can be controlled at runtime through the environment variable
+ * DART_LOG_LEVEL, whose value (if set) controls the maximum log level. Possible values are:
+ *   - \c DART_LOGLEVEL_ERROR: Emit only messages on errors that are fatal (similar to having logging disabled).
+ *   - \c DART_LOGLEVEL_WARN:  Emit error messages and non-fatal warnings.
+ *   - \c DART_LOGLEVEL_INFO:  In addition to errors and warnings, emit additional information on the execution
+ *                             of the DART library.
+ *   - \c DART_LOGLEVEL_DEBUG: Issue detailed debugging output on (mostly) all DART methods executed.
+ *   - \c DART_LOGLEVEL_TRACE: In addition to the above, also output information on the internal state of DART.
+ *
  */
 #ifdef __cplusplus
 extern "C" {
