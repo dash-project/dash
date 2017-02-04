@@ -241,8 +241,38 @@ public:
         dash::exception::InvalidArgument,
         "No element in map for key " << key);
     }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMapLocalRef.at > const", mapped);
+    dart_gptr_t   gptr_mapped = git_value.dart_gptr();
+    value_type  * lptr_value  = git_value.local();
+    mapped_type * lptr_mapped = nullptr;
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at", "gptr to element:",
+                   gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at", "lptr to element:",
+                   lptr_value);
+    // Byte offset of mapped value in element type:
+    auto          mapped_offs = offsetof(value_type, second);
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at", "byte offset of mapped member:",
+                   mapped_offs);
+    // Increment pointers to element by byte offset of mapped value member:
+    if (lptr_value != nullptr) {
+      // Convert to char pointer for byte-wise increment:
+      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
+      b_lptr_mapped        += mapped_offs;
+      // Convert to mapped type pointer:
+      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+    }
+    if (!DART_GPTR_ISNULL(gptr_mapped)) {
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
+        DART_OK);
+    }
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at", "gptr to mapped member:",
+                   gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at", "lptr to mapped member:",
+                   lptr_mapped);
+    // Create global reference to mapped value member in element:
+    const_mapped_type_reference mapped(gptr_mapped,
+                                       lptr_mapped);
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at >", mapped);
     return mapped;
   }
 
