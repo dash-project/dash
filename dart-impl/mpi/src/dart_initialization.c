@@ -194,7 +194,7 @@ dart_ret_t dart_init(
 dart_ret_t dart_init_thread(
   int*                  argc,
   char***               argv,
-  dart_thread_level_t * provided)
+  dart_thread_support_level_t * provided)
 {
   if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
