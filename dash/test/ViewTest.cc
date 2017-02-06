@@ -305,11 +305,11 @@ TEST_F(ViewTest, IndexSet)
   }
   array.barrier();
 
-  auto locsub_gview = dash::local(
-                        dash::sub(
-                          block_size / 2,
-                          array_size - (block_size / 2),
-                          array));
+  auto sub_gview    = dash::sub(
+                        block_size / 2,
+                        array_size - (block_size / 2),
+                        array);
+  auto locsub_gview = dash::local(sub_gview);
 
   auto locsub_index = dash::index(locsub_gview);
 
@@ -319,11 +319,11 @@ TEST_F(ViewTest, IndexSet)
   array.barrier();
 
   if (dash::myid() == 0) {
-    auto subsub_gview = dash::sub(3, 6,
-                          dash::sub(
-                            block_size / 2,
-                            array_size - (block_size / 2),
-                            array));
+    auto sub_gview    = dash::sub(
+                          block_size / 2,
+                          array_size - (block_size / 2),
+                          array);
+    auto subsub_gview = dash::sub(3, 6, sub_gview);
 
     auto subsub_index = dash::index(subsub_gview);
 
@@ -417,12 +417,12 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
                          dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(array_bal);
 
-  auto lblockssub_view = dash::local(
-                           dash::blocks(
-                             dash::sub(
-                               block_size / 2,
-                               array.size() - (block_size / 2),
-                               array_bal)));
+  auto sub_view        = dash::sub(
+                           block_size / 2,
+                           array.size() - (block_size / 2),
+                           array_bal);
+  auto blockssub_view  = dash::blocks(sub_view);
+  auto lblockssub_view = dash::local(blockssub_view);
 
   auto lblockssub_index = dash::index(lblockssub_view);
 
