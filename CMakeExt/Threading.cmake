@@ -1,4 +1,4 @@
-## Flags to enabel support for multi-threading 
+## Flags to enable support for multi-threading 
 
 ##
 # At the moment, ENABLE_THREADING enables DART_THREADING_PTHREADS since
@@ -7,16 +7,35 @@
 
 if (ENABLE_THREADING)
 
+    MESSAGE(STATUS "Checking for builtin __sync_add_and_fetch")
+    TRY_COMPILE(DART_SYNC_BUILTINS ${CMAKE_BINARY_DIR}
+                ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_builtin_sync.c 
+                OUTPUT_VARIABLE OUTPUT)
+    if (DART_SYNC_BUILTINS)
+      MESSAGE(STATUS "Found builtin __sync_add_and_fetch")
+      set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS_RELEASE} -DDART_HAVE_SYNC_BUILTINS")
+      set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS_RELEASE} -DDART_HAVE_SYNC_BUILTINS")
+    else()
+      # error out for now
+      MESSAGE(STATUS "Compiling builtin __sync_add_and_fetch failed with error " 
+                     ${OUTPUT})
+      message(FATAL_ERROR "Support for builtin __sync atomics required if " 
+                          "building with thread support enabled!")
+    endif()
+    
     # Find support for pthreads
     find_package(Threads REQUIRED)
-    set(CMAKE_C_FLAGS_RELEASE
-        "${CMAKE_C_FLAGS_RELEASE} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
-    set(CMAKE_CXX_FLAGS_RELEASE
-        "${CMAKE_CXX_FLAGS_RELEASE} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
-    set(CMAKE_C_FLAGS_DEBUG
-        "${CMAKE_C_FLAGS_DEBUG} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
-    set(CMAKE_CXX_FLAGS_DEBUG
-        "${CMAKE_CXX_FLAGS_DEBUG} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -pthread -DDART_ENABLE_THREADSUPPORT")
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADSUPPORT")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -pthread -DDART_ENABLE_THREADSUPPORT")
+    set(CMAKE_CXX_FLAGS
+        "${CMAKE_CXX_FLAGS} -DDART_HAVE_PTHREADS -DDASH_ENABLE_THREADSUPPORT")
     set(CMAKE_EXE_LINKER_FLAGS
         "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+
 endif()
