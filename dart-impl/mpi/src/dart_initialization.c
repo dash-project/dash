@@ -44,16 +44,16 @@ dart_ret_t dart_init(
   }
   DART_LOG_DEBUG("dart_init()");
 
-	int mpi_initialized;
-	if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
+  int mpi_initialized;
+  if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_init(): MPI_Initialized failed");
     return DART_ERR_OTHER;
   }
-	if (!mpi_initialized) {
-		_init_by_dart = 1;
+  if (!mpi_initialized) {
+    _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
-		MPI_Init(argc, argv);
-	}
+    MPI_Init(argc, argv);
+  }
 
   /* Initialize the teamlist. */
   dart_adapt_teamlist_init();
@@ -65,7 +65,7 @@ dart_ret_t dart_init(
     return DART_ERR_OTHER;
   }
 
-	dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
+  dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
 	if (ret != DART_OK) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
     return DART_ERR_OTHER;
@@ -84,9 +84,7 @@ dart_ret_t dart_init(
                 .size = 0};
   dart_segment_alloc(&team_data->segdata, &item);
 
-  DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
-                 index);
-	dart_next_availteamid++;
+  dart_next_availteamid++;
 
   team_data->comm = DART_COMM_WORLD;
 
@@ -99,15 +97,15 @@ dart_ret_t dart_init(
   dart_allocate_shared_comm(team_data);
   MPI_Comm sharedmem_comm = team_data->sharedmem_comm;
 
-	if (sharedmem_comm != MPI_COMM_NULL) {
+  if (sharedmem_comm != MPI_COMM_NULL) {
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)",
                    DART_MAX_LENGTH);
     MPI_Info win_info;
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
-		/* Reserve a free shared memory block for non-collective
+    /* Reserve a free shared memory block for non-collective
      * global memory allocation. */
-		ret = MPI_Win_allocate_shared(
+    ret = MPI_Win_allocate_shared(
                 DART_MAX_LENGTH,
                 sizeof(char),
                 win_info,
@@ -125,15 +123,11 @@ dart_ret_t dart_init(
 
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared completed");
 
-		int sharedmem_unitid;
-		MPI_Comm_size(
-      sharedmem_comm,
+    int sharedmem_unitid;
+    MPI_Comm_size(sharedmem_comm,
       &(team_data->sharedmem_nodesize));
-    MPI_Comm_rank(
-      sharedmem_comm,
-      &sharedmem_unitid);
-    dart_sharedmem_local_baseptr_set =
-      (char **)malloc(
+    MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
+    dart_sharedmem_local_baseptr_set = malloc(
         sizeof(char *) * team_data->sharedmem_nodesize);
 
     for (int i = 0; i < team_data->sharedmem_nodesize; i++) {
@@ -147,12 +141,12 @@ dart_ret_t dart_init(
           &winseg_size,
           &disp_unit,
           &baseptr);
-				dart_sharedmem_local_baseptr_set[i] = baseptr;
+        dart_sharedmem_local_baseptr_set[i] = baseptr;
       }
-			else {
+      else {
         dart_sharedmem_local_baseptr_set[i] = dart_mempool_localalloc;
       }
-		}
+    }
   }
 #else
 	MPI_Alloc_mem(

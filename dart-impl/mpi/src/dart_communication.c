@@ -121,7 +121,7 @@ dart_ret_t dart_get(
   DART_LOG_DEBUG("dart_get() uid_abs:%d uid_rel:%d "
                  "o:%"PRIu64" s:%d t:%d nelem:%zu",
                  target_unitid_abs.id, target_unitid_rel.id,
-                 offset, seg_id, teamid, nelem);
+                 offset, seg_id, gptr.teamid, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
