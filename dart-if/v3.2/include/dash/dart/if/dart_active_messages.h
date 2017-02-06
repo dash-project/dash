@@ -21,7 +21,12 @@ dart_amsg_init();
  *
  * This is a collective operation involving all units in team.
  *
- * \todo Refactor to take message_size and number of messages
+ * \param msg_size   The expected size of messages. Messages may vary in size.
+ *                   Used in combination with \c msg_count to determine
+ *                   buffer sizes.
+ * \param msg_count  The number of messages of size \c msg_size to reserve
+ *                   space for.
+ * \param team       The team of units used for the allocation.
  */
 dart_amsgq_t
 dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team);
@@ -44,7 +49,12 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team);
  *       i.e., no external references can be handled at the moment.
  */
 dart_ret_t
-dart_amsg_trysend(dart_team_unit_t target, dart_amsgq_t amsgq, dart_task_action_t fn, const void *data);
+dart_amsg_trysend(
+    dart_team_unit_t    target,
+    dart_amsgq_t        amsgq,
+    dart_task_action_t  fn,
+    const void         *data,
+    size_t              data_size);
 
 /**
  * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).
