@@ -36,6 +36,7 @@ static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_task_t *task_recycle_list = NULL;
+static dart_task_t *task_free_list = NULL;
 static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t *thread_pool;
@@ -101,9 +102,9 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
 {
   dart_task_t *task;
   pthread_mutex_lock(&task_recycle_mutex);
-  if (task_recycle_list != NULL) {
-    task = task_recycle_list;
-    task_recycle_list = task->next;
+  if (task_free_list != NULL) {
+    task = task_free_list;
+    task_free_list = task->next;
   } else {
     task = calloc(1, sizeof(dart_task_t));
     dart_mutex_init(&task->mutex);
@@ -304,9 +305,13 @@ dart__base__tasking__num_threads()
 
 
 dart_ret_t
-dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
+dart__base__tasking__create_task(
+    void           (*fn) (void *),
+    void            *data,
+    size_t           data_size,
+    dart_task_dep_t *deps,
+    size_t           ndeps)
 {
-  // TODO: maybe use a free list?
   dart_task_t *task = create_task(fn, data, data_size);
 
   int32_t nc = DART_INC32_AND_FETCH(&task->parent->num_children);
@@ -337,7 +342,8 @@ dart__base__tasking__task_complete()
   dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {
-    DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task only valid on MASTER thread!");
+    DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task "
+                   "only valid on MASTER thread!");
     return DART_ERR_INVAL;
   }
 
@@ -351,7 +357,13 @@ dart__base__tasking__task_complete()
     handle_task(task);
   }
 
-  dart_tasking_datadeps_reset();
+  // 3) clean up if this was the root task and thus no other tasks are running
+  if (thread->current_task == &(root_task)) {
+    dart_tasking_datadeps_reset();
+    // recycled tasks can now be used again
+    task_free_list = task_recycle_list;
+    task_recycle_list = NULL;
+  }
 
   return DART_OK;
 }
