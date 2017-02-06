@@ -56,10 +56,6 @@ public:
     DASH_LOG_TRACE("MovableMock", "<", dash::internal::typestr(_value), ">",
                    "MovableMock()");
   }
-// explicit MovableMock(const T & v) : _value(v) {
-//   lval_ctor = true;
-//   DASH_LOG_TRACE("MovableMock", "MovableMock(const T &)");
-// }
   MovableMock(T && v) : _value(std::forward<T>(v)) {
     rval_ctor = true;
     DASH_LOG_TRACE("MovableMock", "<", dash::internal::typestr(_value), ">",
@@ -102,8 +98,6 @@ class AcceptTest {
 private:
   MovableMock<T> _captured;
 public:
-// explicit AcceptTest(const T & v) : _captured(v)
-// { }
   AcceptTest(T && v) : _captured(std::forward<T>(v))
   { }
   T & value() { return static_cast<T &>(_captured); }
@@ -112,19 +106,49 @@ public:
   MovableMock<T> & captured() { return _captured; }
 };
 
+template <class T>
+AcceptTest<T &>
+make_accept_test(T & val) {
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "make_accept_test(T &):");
+  return AcceptTest<T &>(val);
+}
+
+template <class T>
+AcceptTest<T>
+make_accept_test(T && val) {
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "make_accept_test(T &&)");
+  return AcceptTest<T>(std::move(val));
+}
+
 TEST_F(UtilTest, ReferenceCapture)
 {
   DASH_TEST_LOCAL_ONLY();
 
-  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "create with lvalue:");
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "-- create with lvalue ref:");
   ValueMock<double> named(1.23);
   AcceptTest<ValueMock<double> &> acc_named(named);
 
-  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "create with rvalue:");
-  AcceptTest<ValueMock<double>> acc_moved(ValueMock<double>(1.23));
+  // Must produce compiler error:
+  //   AcceptTest<ValueMock<double>> acc_named_value(named);
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "-- create with rvalue:");
+  AcceptTest<ValueMock<double>>   acc_moved(ValueMock<double>(1.23));
 
   EXPECT_EQ_U(1.23, acc_named.value());
   EXPECT_EQ_U(1.23, acc_moved.value());
+
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "-- make from lvalue ref:");
+  auto make_named = make_accept_test(named);
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "-- make from rvalue:");
+  auto make_moved = make_accept_test(ValueMock<double>(1.23));
+
+  EXPECT_EQ_U(1.23, make_named.value());
+  EXPECT_EQ_U(1.23, make_moved.value());
+
+  DASH_LOG_DEBUG("UtilTest.ReferenceCapture", "-- change referenced value:");
+  make_named.value() = ValueMock<double>(2.34);
+
+  EXPECT_EQ_U(2.34, make_named.value());
+  EXPECT_EQ_U(2.34, acc_named.value());
 }
 
 
