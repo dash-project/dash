@@ -153,7 +153,7 @@
 
 #else
 
-#define DART_MAYBE_UNUSED __attribute__ ((unused))
+#define DART_MAYBE_UNUSED __attribute__((unused))
 
 /**
  * Fall-back version in case __sync* functions are not available.
@@ -187,10 +187,10 @@ __fetch_and_add16(int16_t *ptr, int16_t val) {
 
 static inline int8_t
 DART_MAYBE_UNUSED
-__fetch_and_add16(int8_t *ptr, int8_t val) {
-  int8_t val = *ptr;
+__fetch_and_add8(int8_t *ptr, int8_t val) {
+  int8_t res = *ptr;
   *ptr += val;
-  return val;
+  return res;
 }
 
 static inline void *
@@ -302,7 +302,7 @@ __compare_and_swap64(int64_t *ptr, int64_t oldval, int64_t newval) {
   if (*ptr == oldval) {
     *ptr = newval;
   }
-  return val;
+  return res;
 }
 
 static inline int32_t
@@ -312,7 +312,7 @@ __compare_and_swap32(int32_t *ptr, int32_t oldval, int32_t newval) {
   if (*ptr == oldval) {
     *ptr = newval;
   }
-  return val;
+  return res;
 }
 
 static inline int16_t
@@ -322,7 +322,7 @@ __compare_and_swap16(int16_t *ptr, int16_t oldval, int16_t newval) {
   if (*ptr == oldval) {
     *ptr = newval;
   }
-  return val;
+  return res;
 }
 
 static inline int8_t
@@ -332,7 +332,7 @@ __compare_and_swap8(int8_t *ptr, int8_t oldval, int8_t newval) {
   if (*ptr == oldval) {
     *ptr = newval;
   }
-  return val;
+  return res;
 }
 
 static inline void*
@@ -342,7 +342,7 @@ __compare_and_swapptr(void **ptr, void *oldval, void *newval) {
   if (*ptr == oldval) {
     *ptr = newval;
   }
-  return val;
+  return res;
 }
 
 
