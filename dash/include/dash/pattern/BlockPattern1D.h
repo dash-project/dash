@@ -871,11 +871,22 @@ public:
     return ViewSpec_t(
       {{ static_cast<index_type>(g_block_index * _blocksize) }},
       {{ static_cast<size_type>(
-          _blocksize - (g_block_index < blockspec().size() - 1
+          _blocksize - ( g_block_index < _nblocks - 1
                          ? 0
-                         : (_nblocks * _blocksize) - _size)
+                         : underfilled_blocksize(0) )
          ) }}
     );
+#if 0
+    index_type offset = g_block_index * _size;
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
+    if(g_block_index == (_nblocks - 1)){
+      extents[0] -= underfilled_blocksize(0);
+    }
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("BlockPattern<1>.block >", block_vs);
+    return block_vs;
+#endif
   }
 
   /**
@@ -890,11 +901,30 @@ public:
     return ViewSpec_t(
       {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
       {{ static_cast<size_type>(
-          _blocksize - (l_block_index < _nlblocks - 1
-                         ? 0
-                         : (_nlblocks * _blocksize) - _local_size)
+          (l_block_index == (_nlblocks - 1)
+          ? (_local_size % _blocksize == 0
+             ? _blocksize
+             : _local_size % _blocksize )
+          : _blocksize )
          ) }}
     );
+#if 0
+    auto l_elem_index = l_block_index * _blocksize;
+    auto g_elem_index = global(l_elem_index);
+    std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
+    DASH_LOG_DEBUG("_nlblocks", _nlblocks);
+    DASH_LOG_DEBUG("_nblocks", _nblocks);
+    DASH_LOG_DEBUG("l_block_index", l_block_index);
+    DASH_LOG_DEBUG("g_block_index", global(l_block_index));
+    if(l_block_index == (_nlblocks - 1)) {
+      size_type remaining = _local_size % extents[0];
+      extents[0] = (remaining == 0) ? extents[0] : remaining;
+    }
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block >", block_vs);
+    return block_vs;
+#endif
   }
 
   /**
@@ -908,6 +938,11 @@ public:
     index_type offset = l_block_index * _blocksize;
     std::array<index_type, NumDimensions> offsets = {{ offset }};
     std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
+    if(l_block_index == (_nlblocks - 1))
+    {
+      size_type remaining = _local_size % extents[0];
+      extents[0] = (remaining == 0) ? extents[0] : remaining;
+    }
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block_local >", block_vs);
     return block_vs;
