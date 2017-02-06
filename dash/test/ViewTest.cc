@@ -100,7 +100,7 @@ TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
                                block_end_gidx,
                                a);
   EXPECT_EQ(block_size, block_gview.size());
-  
+
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
                      range_str(block_gview));
 
@@ -510,7 +510,7 @@ TEST_F(ViewTest, BlocksView1Dim)
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      range_str(block));
-  
+
       EXPECT_EQ_U(( b_idx < array_blocks.size() - 1
                     ? block_size
                     : block_size - (block_size / 2) ),
