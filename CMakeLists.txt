@@ -93,7 +93,7 @@ option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
-option(ENABLE_THREADING
+option(ENABLE_THREADSUPPORT
        "Specify whether support for multithreading should be compiled" off)
 
 if (BUILD_COVERAGE_TESTS)
@@ -131,7 +131,7 @@ endif()
 if (ENABLE_NASTYMPI)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/NastyMPI.cmake)
 endif()
-if (ENABLE_THREADING)
+if (ENABLE_THREADSUPPORT)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
 endif()
 
@@ -289,8 +289,8 @@ message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
-message(INFO "Enable multithreading:    (ENABLE_MULTITHREADING)          "
-        ${ENABLE_MULTITHREADING})
+message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)          "
+        ${ENABLE_THREADSUPPORT})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
 if (MPI_FOUND)
