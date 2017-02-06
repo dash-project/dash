@@ -72,10 +72,10 @@ dart_ret_t
 dart_mutex_trylock(dart_mutex_t *mutex)
 {
 #ifdef DART_THREADING_PTHREADS
-  pthread_mutex_trylock(&mutex->mutex);
-  return DART_OK;
+  int ret = pthread_mutex_trylock(&mutex->mutex);
+  return (ret == 0) ? DART_OK : DART_PENDING;
 #else
-  return DART_ERR_INVAL;
+  return DART_OK;
 #endif
 }
 
