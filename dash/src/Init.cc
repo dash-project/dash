@@ -34,7 +34,7 @@ void dash::init(int * argc, char ** *argv)
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
 
-#if DASH_ENABLE_THREADING
+#if DASH_ENABLE_THREADSUPPORT
   DASH_LOG_DEBUG("dash::init", "dart_init_thread()");
   dart_thread_level_t provided_mt;
   dart_init_thread(argc, argv, &provided_mt);

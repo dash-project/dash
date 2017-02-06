@@ -213,14 +213,14 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
     int thread_required = MPI_THREAD_MULTIPLE;
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i\n", thread_provided);
 #else
     MPI_Init(argc, argv);
 #endif
   } else {
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i\n", thread_provided);
 #endif

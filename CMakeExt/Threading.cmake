@@ -1,11 +1,11 @@
 ## Flags to enable support for multi-threading 
 
 ##
-# At the moment, ENABLE_THREADING enables DART_THREADING_PTHREADS since
+# At the moment, DART_ENABLE_THREADSUPPORT enables DART_HAVE_PTHREADS since 
 # Pthreads are the only threading implementation currently supported. 
 ##
 
-if (ENABLE_THREADING)
+if (ENABLE_THREADSUPPORT)
 
     MESSAGE(STATUS "Checking for builtin __sync_add_and_fetch")
     TRY_COMPILE(DART_SYNC_BUILTINS ${CMAKE_BINARY_DIR}
@@ -30,7 +30,7 @@ if (ENABLE_THREADING)
     set(CMAKE_C_FLAGS
         "${CMAKE_C_FLAGS} -pthread -DDART_ENABLE_THREADSUPPORT")
     set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADSUPPORT")
+        "${CMAKE_C_FLAGS} -DDART_HAVE_PTHREADS -DDASH_ENABLE_THREADSUPPORT")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -pthread -DDART_ENABLE_THREADSUPPORT")
     set(CMAKE_CXX_FLAGS
