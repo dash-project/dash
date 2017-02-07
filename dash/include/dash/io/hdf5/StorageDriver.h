@@ -45,40 +45,38 @@ template < typename T > hid_t get_h5_datatype();
 using type_converter_fun_type = std::function<hid_t()>;
 
 /**
+ * Options which can be passed to dash::io::StoreHDF::write
+ * to specify how existing structures are treated and what
+ * metadata is stored.
+ *
+ * Collective operation.
+ */
+struct hdf5_options {
+  /// Overwrite HDF5 file if already existing
+  bool          overwrite_file = true;
+  /**
+   * Modify an already existing HDF5 dataset.
+   * If the dataset is not existing, throws a runtime error
+   */
+  bool          modify_dataset = false;
+  /// Store dash pattern characteristics as metadata in HDF5 file
+  bool          store_pattern = true;
+  /// Restore pattern from metadata if HDF5 file contains any.
+  bool          restore_pattern = true;
+  /// Metadata attribute key in HDF5 file.
+  std::string   pattern_metadata_key = "DASH_PATTERN";
+};
+
+/**
  * DASH wrapper to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
  * All operations are collective.
  */
 class StoreHDF {
-public:
-  /**
-   * Options which can be passed to dash::io::StoreHDF::write
-   * to specify how existing structures are treated and what
-   * metadata is stored.
-   *
-   * Collective operation.
-   */
-  struct hdf5_options {
-    /// Overwrite HDF5 file if already existing
-    bool          overwrite_file = true;
-    /**
-     * Modify an already existing HDF5 dataset.
-     * If the dataset is not existing, throws a runtime error
-     */
-    bool          modify_dataset = false;
-    /// Store dash pattern characteristics as metadata in HDF5 file
-    bool          store_pattern = true;
-    /// Restore pattern from metadata if HDF5 file contains any.
-    bool          restore_pattern = true;
-    /// Metadata attribute key in HDF5 file.
-    std::string   pattern_metadata_key = "DASH_PATTERN";
-  };
-
   /**
    * test at compile time if pattern is compatible
    * \return true if pattern is compatible
    */
-private:
   template < class pattern_t >
   static constexpr bool _compatible_pattern()
   {
@@ -433,6 +431,8 @@ public:
     std::array<hsize_t,ndim> stride {{0}};
     std::array<hsize_t,ndim> offset {{0}};
     std::array<hsize_t,ndim> block {{0}};
+
+    hdf5_pattern_spec() = default;
   };
   
   /**
@@ -454,6 +454,10 @@ public:
     // approx. amount of data this unit contribs in this hyperslab
     size_t contrib_data   = 0;
     bool   contrib_blocks = false;
+
+    // cannot be defaulted as otherwise const construction is not
+    // possible in clang
+    hdf5_hyperslab_spec() {};
   };
   
 

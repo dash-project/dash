@@ -28,7 +28,7 @@ class InputStream
     std::string                _filename;
     std::string                _dataset;
     type_converter             _converter;
-    hdf5_options               _foptions = StoreHDF::hdf5_options();
+    hdf5_options               _foptions = hdf5_options();
     bool                       _use_cust_conv = false;
     dash::launch               _launch_policy;
     

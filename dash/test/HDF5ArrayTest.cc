@@ -21,6 +21,7 @@ using dash::io::hdf5::DeviceMode;
 using dash::io::hdf5::InputStream;
 using dash::io::hdf5::OutputStream;
 using dash::io::hdf5::dataset;
+using dash::io::hdf5::hdf5_options;
 using dash::io::hdf5::modify_dataset;
 using dash::io::hdf5::store_pattern;
 using dash::io::hdf5::restore_pattern;
@@ -129,7 +130,7 @@ TEST_F(HDF5ArrayTest, AutoGeneratePattern)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    auto fopts = hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -156,7 +157,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    auto fopts = hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -206,7 +207,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "barrier #1");
     dash::barrier();
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    auto fopts = hdf5_options();
     // Important as recreation should create equal pattern
     fopts.store_pattern = true;
 
@@ -246,7 +247,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
     fill_array(array_a);
     dash::barrier();
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    auto fopts = hdf5_options();
     fopts.store_pattern = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -281,7 +282,7 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
     dash::barrier();
 
     // Set option
-    StoreHDF::hdf5_options fopts;
+    hdf5_options fopts;
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
@@ -315,7 +316,7 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
     dash::barrier();
 
     // Set option
-    auto fopts = StoreHDF::hdf5_options();
+    auto fopts = hdf5_options();
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);

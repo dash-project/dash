@@ -10,7 +10,8 @@ namespace dash {
 namespace io {
 namespace hdf5 {
 
-typedef StoreHDF::hdf5_options hdf5_options;
+// forward decl
+struct hdf5_options;
 
 /**
  * Stream manipulator class to specify

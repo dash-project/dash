@@ -1623,23 +1623,6 @@ private:
   }
 };
 
-#ifndef DOXYGEN
-
-/**
- * Template alias for dash::Pattern with the same default template
- * arguments
- *
- * \see BlockPattern
- */
-template<
-  dim_t      NumDimensions,
-  MemArrange Arrangement   = ROW_MAJOR,
-  typename   IndexType     = dash::default_index_t
->
-using Pattern = dash::BlockPattern<NumDimensions, Arrangement, IndexType>;
-
-#endif // DOXYGEN
-
 } // namespace dash
 
 #include <dash/pattern/BlockPattern1D.h>
