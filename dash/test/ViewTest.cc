@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 
+#if 0
 
 namespace dash {
 namespace test {
@@ -1022,3 +1023,4 @@ TEST_F(ViewTest, ArrayBlockedPatternViewUnion)
                            });
 }
 
+#endif

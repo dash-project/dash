@@ -96,15 +96,24 @@ class ViewBlockMod
  public:
   constexpr ViewBlockMod()               = delete;
   constexpr ViewBlockMod(self_t &&)      = default;
-  constexpr ViewBlockMod(const self_t &) = default;
+  constexpr ViewBlockMod(const self_t &) = delete;
   ~ViewBlockMod()                        = default;
   self_t & operator=(self_t &&)          = delete;
   self_t & operator=(const self_t &)     = delete;
 
+// constexpr ViewBlockMod(
+//   const DomainType & domain,
+//   index_type         block_idx)
+// : base_t(domain)
+// , _index_set(domain,
+//              block_first_gidx(domain, block_idx),
+//              block_final_gidx(domain, block_idx))
+// { }
+
   constexpr ViewBlockMod(
-    const DomainType & domain,
-    index_type         block_idx)
-  : base_t(domain)
+    domain_type && domain,
+    index_type     block_idx)
+  : base_t(std::forward<domain_type>(domain))
   , _index_set(domain,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
@@ -192,6 +201,18 @@ template <class ViewType>
 constexpr ViewBlocksMod<ViewType>
 blocks(const ViewType & domain) {
   return ViewBlocksMod<ViewType>(domain);
+}
+
+template <
+  class    ViewType,
+  typename ViewValueT =
+             typename std::remove_const<
+               typename std::remove_reference<ViewType>::type
+             >::type
+>
+constexpr ViewBlocksMod<ViewValueT>
+blocks(ViewType && domain) {
+  return ViewBlocksMod<ViewValueT>(std::move(domain));
 }
 
 #ifdef __TODO__
@@ -308,8 +329,8 @@ class ViewBlocksMod
 
  public:
   constexpr ViewBlocksMod()               = delete;
+  constexpr ViewBlocksMod(const self_t &) = delete;
   constexpr ViewBlocksMod(self_t &&)      = default;
-  constexpr ViewBlocksMod(const self_t &) = default;
   ~ViewBlocksMod()                        = default;
   self_t & operator=(self_t &&)           = delete;
   self_t & operator=(const self_t &)      = delete;
@@ -320,13 +341,11 @@ class ViewBlocksMod
   , _index_set(*this)
   { }
 
-#ifdef __TODO__
   constexpr explicit ViewBlocksMod(
     DomainType && domain)
-  : base_t(domain)
+  : base_t(std::move(domain))
   , _index_set(*this)
   { }
-#endif
 
   constexpr block_iterator begin() const {
     return block_iterator(*this, _index_set.first());

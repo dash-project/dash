@@ -16,13 +16,19 @@ namespace dash {
  *
  * \concept{DashViewConcept}
  */
-template <class ViewT>
+template <
+  class    ViewT,
+  typename ViewValueT =
+             typename std::remove_const<
+               typename std::remove_reference<ViewT>::type
+             >::type
+>
 constexpr auto
-domain(const ViewT & view)
+domain(ViewT && view)
   -> typename std::enable_if<
-       dash::view_traits<ViewT>::is_view::value,
-       const typename dash::view_traits<ViewT>::domain_type &
-    // decltype(view.domain())
+       dash::view_traits<ViewValueT>::is_view::value,
+    // const typename dash::view_traits<ViewValueT>::domain_type &
+       decltype(view.domain())
      >::type {
   return view.domain();
 }

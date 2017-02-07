@@ -8,7 +8,7 @@ namespace dash {
 
 /**
  * Utility class template to capture values from both moved temporaries
- * (rvalues) and named references.
+ * (rvalues) and named references to avoid temporary copies.
  *
  * Use as specializations:
  *
@@ -23,7 +23,9 @@ class UniversalMember {
   ValueType _value;
 
 public:
-  UniversalMember() = delete;
+  UniversalMember()                      = delete;
+  UniversalMember(const self_t & other)  = delete;
+  self_t & operator=(const self_t & rhs) = delete;
 
   explicit UniversalMember(ValueType && value)
   : _value(std::forward<ValueType>(value))
@@ -33,10 +35,6 @@ public:
   : _value(std::forward<ValueType>(other._value))
   { }
 
-  UniversalMember(const self_t & other) = delete;
-
-  self_t & operator=(const self_t & rhs) = delete;
-
   self_t & operator=(self_t && rhs) {
     _value = std::move(rhs._value);
     return *this;
@@ -44,7 +42,6 @@ public:
 
   operator       ValueType & ()       { return _value; }
   operator const ValueType & () const { return _value; }
-
 };
 
 } // namespace dash
