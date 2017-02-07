@@ -21,6 +21,15 @@ typedef struct dart_dephash_elem dart_dephash_elem_t;
  * throughout the task handling code.
  */
 
+#define DART_STACK_PUSH(_head, _elem) \
+    _elem->next = _head;              \
+    _head = _elem;
+
+#define DART_STACK_POP(_head, _elem) \
+    _elem = _head;                   \
+    _head = _head->next;              \
+    _elem->next = NULL;
+
 #define IS_OUT_DEP(taskdep) (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT))
 
 struct dart_dephash_elem {
@@ -107,9 +116,7 @@ static dart_dephash_elem_t * dephash_allocate_elem(const dart_task_dep_t *dep, t
   if (freelist_head != NULL) {
     dart_mutex_lock(&local_deps_mutex);
     if (freelist_head != NULL) {
-      elem = freelist_head;
-      freelist_head = freelist_head->next;
-      elem->next = NULL;
+      DART_STACK_POP(freelist_head, elem);
     }
     dart_mutex_unlock(&local_deps_mutex);
   }
@@ -118,6 +125,8 @@ static dart_dephash_elem_t * dephash_allocate_elem(const dart_task_dep_t *dep, t
     elem = calloc(1, sizeof(dart_dephash_elem_t));
   }
 
+  DART_ASSERT(task.local != NULL);
+  DART_ASSERT(elem->task.local == NULL);
   elem->task = task;
   elem->taskdep = *dep;
 
@@ -126,15 +135,14 @@ static dart_dephash_elem_t * dephash_allocate_elem(const dart_task_dep_t *dep, t
 
 
 /**
- * @brief Allocate a new element for the dependency hash, possibly from a free-list
+ * @brief Deallocate an element
  */
 static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
     memset(elem, 0, sizeof(*elem));
     dart_mutex_lock(&local_deps_mutex);
-    elem->next = freelist_head;
-    freelist_head = elem;
+    DART_STACK_PUSH(freelist_head, elem);
     dart_mutex_unlock(&local_deps_mutex);
   }
 }
@@ -148,8 +156,7 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
   dart_mutex_lock(&local_deps_mutex);
-  elem->next = local_deps[slot];
-  local_deps[slot] = elem;
+  DART_STACK_PUSH(local_deps[slot], elem);
   dart_mutex_unlock(&local_deps_mutex);
 
   return DART_OK;
@@ -215,8 +222,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, const dart_task_
             DART_LOG_TRACE("Previously unhandled remote dependency {address:%p, origin=%i} handled by task %p",
                     dep.gptr.addr_or_offs.addr, dep.gptr.unitid, task);
             dart_mutex_lock(&(task->mutex));
-            elem->next = task->remote_successor;
-            task->remote_successor = elem;
+            DART_STACK_PUSH(task->remote_successor, elem);
             dart_mutex_unlock(&(task->mutex));
           }
           prev = &elem;
@@ -252,13 +258,11 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
         dart_dephash_elem_t *rs = dephash_allocate_elem(dep, remote_task);
         // the taskdep's gptr unit is used to store the origin
         rs->taskdep.gptr.unitid = origin.id;
-        rs->next = task->remote_successor;
-        task->remote_successor = rs;
+        DART_STACK_PUSH(task->remote_successor, rs);
         dart_mutex_unlock(&(task->mutex));
       } else {
         dart_mutex_unlock(&(task->mutex));
         // the task is already finished --> send release immediately
-        // TODO: the message queue is not reentrant atm!
         dart_tasking_remote_release(origin, remote_task, dep);
       }
       DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of task %p from origin %i",
@@ -269,13 +273,11 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, 
 
   DART_LOG_INFO("Cannot find local task that satisfies dependency %p for task %p from unit %i",
     dep->gptr.addr_or_offs.addr, remote_task.remote, origin.id);
-  // TODO: cache this request and resolve it later
+  // cache this request and resolve it later
   dart_dephash_elem_t *rs = dephash_allocate_elem(dep, remote_task);
   dart_mutex_lock(&local_deps_mutex);
   rs->taskdep.gptr.unitid = origin.id;
-  rs->task.local = NULL;
-  rs->next = unhandled_remote_deps;
-  unhandled_remote_deps = rs;
+  DART_STACK_PUSH(unhandled_remote_deps, rs);
   dart_mutex_unlock(&local_deps_mutex);
   return DART_OK;
 }
@@ -293,8 +295,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, t
   DART_LOG_DEBUG("remote direct task dependency for task %p: %p", local_task, remote_task.remote);
   dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
   dart_mutex_lock(&(local_task->mutex));
-  rs->next = local_task->remote_successor;
-  local_task->remote_successor = rs;
+  DART_STACK_PUSH(local_task->remote_successor, rs);
   dart_mutex_unlock(&(local_task->mutex));
 
   return DART_OK;
@@ -378,15 +379,15 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
   DART_LOG_TRACE("Releasing remote dependencies for task %p", task);
   dart_dephash_elem_t *rs = task->remote_successor;
   while (rs != NULL) {
-    dart_dephash_elem_t *tmp = rs->next;
+    dart_dephash_elem_t *tmp = rs;
+    rs = rs->next;
 
     // before sending the release we send direct task dependencies for local tasks
-    send_direct_dependencies(rs);
+    send_direct_dependencies(tmp);
 
     // send the release
-    dart_tasking_remote_release(DART_GLOBAL_UNIT_ID(rs->taskdep.gptr.unitid), rs->task, &rs->taskdep);
-    dephash_recycle_elem(rs);
-    rs = tmp;
+    dart_tasking_remote_release(DART_GLOBAL_UNIT_ID(tmp->taskdep.gptr.unitid), tmp->task, &tmp->taskdep);
+    dephash_recycle_elem(tmp);
   }
   task->remote_successor = NULL;
   return DART_OK;
