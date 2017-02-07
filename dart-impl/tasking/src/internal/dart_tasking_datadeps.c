@@ -55,7 +55,12 @@ static inline int hash_gptr(dart_gptr_t gptr)
   /*
    * Use the upper 61 bit of the pointer since we assume that pointers are 8-byte aligned.
    * */
-  return ((gptr.addr_or_offs.offset >> 3) % DART_DEPHASH_SIZE);
+  uint64_t offset = gptr.addr_or_offs.offset;
+  offset >>= 3;
+  // use triplet (7, 11, 10), consider adding (21,17,48)
+  // proposed by Marsaglia
+  return (offset ^ (offset >> 7) ^ (offset >> 11) ^ (offset >> 17)) % DART_DEPHASH_SIZE;
+  //return ((gptr.addr_or_offs.offset >> 3) % DART_DEPHASH_SIZE);
 }
 
 /**
@@ -187,6 +192,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, const dart_task_
       for (dart_dephash_elem_t *elem = local_deps[slot]; elem != NULL; elem = elem->next)
       {
         DART_ASSERT_MSG(elem->task.local != task, "Task already present in dependency hashmap!");
+        DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) of task %p",
+                          task, dep.gptr.addr_or_offs.addr, dep.gptr.segid,
+                          elem->taskdep.gptr.addr_or_offs.addr, elem->taskdep.gptr.segid,
+                          elem->task.local);
         if (elem->taskdep.gptr.addr_or_offs.addr == dep.gptr.addr_or_offs.addr) {
           dart_mutex_lock(&(elem->task.local->mutex));
           DART_LOG_TRACE("Checking task %p against task %p (deptype: %i vs %i)", elem->task.local, task, elem->taskdep.type, dep.type);
@@ -201,6 +210,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, const dart_task_
           dart_mutex_unlock(&(elem->task.local->mutex));
           if (IS_OUT_DEP(elem->taskdep)) {
             // we can stop at the first OUT|INOUT dependency
+            DART_LOG_TRACE("Stopping search for dependencies for task %p at first OUT dependency encountered from task %p!", task, elem->task.local);;
             break;
           }
         }
