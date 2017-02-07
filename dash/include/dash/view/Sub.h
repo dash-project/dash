@@ -116,7 +116,7 @@ constexpr auto
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    const DomainT & domain)
+    DomainT       & domain)
   -> typename std::enable_if<
        dash::view_traits<
          DomainT
@@ -148,10 +148,10 @@ sub(
        dash::view_traits<
          DomainValueT
        >::rank::value == 1,
-       ViewSubMod<DomainValueT, SubDim>
+       ViewSubMod<DomainT, SubDim>
      >::type {
-  return ViewSubMod<DomainValueT, SubDim>(
-           std::forward<DomainValueT>(domain),
+  return ViewSubMod<DomainT, SubDim>(
+           std::move(domain),
            begin,
            end);
 }

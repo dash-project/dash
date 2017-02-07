@@ -20,24 +20,27 @@ class UniversalMember {
 public:
   UniversalMember() = delete;
 
-  UniversalMember(UniversalMember<ValueType> && other)      = default;
-  UniversalMember(const UniversalMember<ValueType> & other) = default;
+  constexpr UniversalMember(self_t && other)      = default;
+  constexpr UniversalMember(const self_t & other) = default;
 
-  explicit UniversalMember(ValueType && value)
+  self_t & operator=(const self_t & other)        = default;
+  self_t & operator=(self_t && other)             = default;
+
+  constexpr explicit UniversalMember(ValueType && value)
   : _value(std::make_shared<ValueType>(std::move(value)))
   { }
-  explicit UniversalMember(ValueType & value)
+  constexpr explicit UniversalMember(ValueType & value)
   : _value(&value, [](ValueType *) { /* no deleter */ })
   { }
 
-  operator       ValueType & ()       { return *(_value.get()); }
-  operator const ValueType & () const { return *(_value.get()); }
+            operator       ValueType & ()       { return *(_value.get()); }
+  constexpr operator const ValueType & () const { return *(_value.get()); }
 
   self_t & operator=(ValueType && value) {
     *(_value.get()) = std::move(value);
     return *this;
   }
-
+ 
   self_t & operator=(const ValueType & value) {
     *(_value.get()) = value;
     return *this;

@@ -9,29 +9,30 @@ using namespace dash;
 
 
 template <class T>
-class MovableMock {
+class MovableType {
   T _value;
 public:
-  bool moved       = false;
-  bool copied      = false;
+  MovableType() = delete;
 
-  MovableMock() = delete;
-
-  explicit MovableMock(const T & v) : _value(v) {
-    DASH_LOG_TRACE("MovableMock", "MovableMock(T)");
+  explicit MovableType(const T & v) : _value(v) {
+    DASH_LOG_TRACE("MovableType", "MovableType(T)");
   }
 
-  MovableMock(const MovableMock & o)             = delete;
-  MovableMock & operator=(const MovableMock & o) = delete;
+  explicit MovableType(const MovableType & o)    = delete;
+  MovableType & operator=(const MovableType & o) = delete;
 
-  MovableMock(MovableMock && o) : _value(std::forward<T>(o._value)) {
-    moved = true;
-    DASH_LOG_TRACE("MovableMock", "MovableMock(self_t &&)");
+  explicit MovableType(MovableType && o)
+  : _value(std::forward<T>(o._value)) {
+    DASH_LOG_TRACE("MovableType", "MovableType(self_t &&)");
   }
-  MovableMock & operator=(MovableMock && o) {
+  MovableType & operator=(MovableType && o) {
     _value = std::move(o._value);
-    moved = true;
-    DASH_LOG_TRACE("MovableMock", "operator=(self_t &&)");
+    DASH_LOG_TRACE("MovableType", "operator=(self_t &&)");
+    return *this;
+  }
+
+  MovableType & operator=(const T & value) {
+    _value = value;
     return *this;
   }
 
@@ -40,107 +41,179 @@ public:
 };
 
 template <class T>
-class ImmovableMock {
+class ImmovableType {
   T _value;
 public:
-  bool moved       = false;
-  bool copied      = false;
+  ImmovableType() = delete;
 
-  ImmovableMock() = delete;
-
-  explicit ImmovableMock(const T & v) : _value(v) {
-    DASH_LOG_TRACE("MovableMock", "MovableMock(T)");
+  explicit ImmovableType(const T & v) : _value(v) {
+    DASH_LOG_TRACE("ImmovableType", "ImmovableType(T)");
   }
 
-  ImmovableMock(const ImmovableMock & o)             = delete;
-  ImmovableMock & operator=(const ImmovableMock & o) = delete;
-  ImmovableMock(ImmovableMock && o)                  = delete;
-  ImmovableMock & operator=(ImmovableMock && o)      = delete;
+  explicit ImmovableType(const ImmovableType & o)    = delete;
+  explicit ImmovableType(ImmovableType && o)         = delete;
+  ImmovableType & operator=(const ImmovableType & o) = delete;
+  ImmovableType & operator=(ImmovableType && o)      = delete;
+
+  ImmovableType & operator=(const T & value) {
+    _value = value;
+    return *this;
+  }
 
   operator       T & ()       { return _value; }
   operator const T & () const { return _value; }
 };
 
+
 template <class T>
-class UniversalTest {
+UniversalMember<T>
+make_universal_member(T & val) {
+  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_member(T &):");
+  return UniversalMember<T>(val);
+}
+
+template <class T>
+UniversalMember<T>
+make_universal_member(T && val) {
+  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_member(T &&)");
+  return UniversalMember<T>(std::move(val));
+}
+
+
+
+/* NOTE:
+ *
+ * There are just a few assertions needed as the prevention of temporary
+ * copies is already checked at compile time via deleted copy- and move
+ * in MovableType / ImmovableType.
+ *
+ */
+
+TEST_F(UniversalMemberTest, TestHelpers)
+{
+  DASH_TEST_LOCAL_ONLY();
+
+  MovableType<double>   movable_a(1.23);
+  EXPECT_EQ_U(1.23, static_cast<double>(movable_a));
+
+  MovableType<double>   movable_b(MovableType<double>(2.34));
+  EXPECT_EQ_U(2.34, static_cast<double>(movable_b));
+
+  ImmovableType<double> immovable(3.45);
+  EXPECT_EQ_U(3.45, static_cast<double>(immovable));
+}
+
+TEST_F(UniversalMemberTest, InitFromLValAndRVal)
+{
+  typedef std::string value_t;
+
+  DASH_TEST_LOCAL_ONLY();
+  MovableType<value_t>   movable_a("movable_a");
+  MovableType<value_t>   movable_b("movable_b");
+  ImmovableType<value_t> immovable("immovable");
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from mov. lvalue:");
+  UniversalMember<MovableType<value_t>> shared_movable(movable_a);
+  EXPECT_EQ_U("movable_a", static_cast<value_t>(movable_a));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from mov. lvalue:");
+  UniversalMember<ImmovableType<value_t>> shared_immovable(immovable);
+  EXPECT_EQ_U("immovable", static_cast<value_t>(immovable));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from rvalue:");
+  UniversalMember<MovableType<value_t>> shared_moved(
+                                      MovableType<value_t>("rvalue_a"));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make mov. lvalue:");
+  auto make_movable = make_universal_member(movable_b);
+
+  EXPECT_EQ_U("movable_b", static_cast<value_t>(movable_b));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- change ref'ed value:");
+  make_movable = MovableType<value_t>("changed referenced value");
+
+  EXPECT_EQ_U("changed referenced value", static_cast<value_t>(movable_b));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make from rvalue:");
+  auto make_moved = make_universal_member(MovableType<value_t>("rvalue_b"));
+
+  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+}
+
+template <class T>
+class UniversalBase {
   dash::UniversalMember<T> _value;
 public:
-  constexpr UniversalTest(T && value)
+  constexpr explicit UniversalBase(T && value)
   : _value(std::forward<T>(value))
+  { }
+
+  constexpr explicit UniversalBase(T & value)
+  : _value(value)
   { }
 
         T & value()       { return _value; }
   const T & value() const { return _value; }
 };
 
+template <class T>
+class UniversalOwner : public UniversalBase<T> {
+  typedef UniversalOwner<T> self_t;
+  typedef UniversalBase<T>  base_t;
+public:
+  constexpr explicit UniversalOwner(T && value)
+  : base_t(std::move(value))
+  { }
+
+  constexpr explicit UniversalOwner(T & value)
+  : base_t(value)
+  { }
+};
 
 template <class T>
-UniversalMember<T>
-make_shared_test(T & val) {
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "make_shared_test(T &):");
-  return UniversalMember<T>(val);
+UniversalOwner<T>
+make_universal_owner(T & val) {
+  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_owner(T &):");
+  return UniversalOwner<T>(val);
 }
 
 template <class T>
-UniversalMember<T>
-make_shared_test(T && val) {
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "make_shared_test(T &&)");
-  return UniversalMember<T>(std::move(val));
+UniversalOwner<T>
+make_universal_owner(T && val) {
+  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_owner(T &&)");
+  return UniversalOwner<T>(std::move(val));
 }
 
-
-TEST_F(UniversalMemberTest, SelfTest)
-{
-  DASH_TEST_LOCAL_ONLY();
-
-  DASH_LOG_DEBUG("UniversalMemberTest.SelfTest", "-- expl. constructor:");
-  MovableMock<double> vmock_a(1.23);
-  EXPECT_FALSE_U(vmock_a.copied);
-
-  DASH_LOG_DEBUG("UniversalMemberTest.SelfTest", "-- using rvalue ref:");
-  MovableMock<double> vmock_c(MovableMock<double>(2.34));
-  EXPECT_FALSE_U(vmock_c.copied);
-}
-
-TEST_F(UniversalMemberTest, OwnerCtor)
+TEST_F(UniversalMemberTest, WrappedMember)
 {
   typedef std::string value_t;
 
-  DASH_TEST_LOCAL_ONLY();
-  MovableMock<value_t>   movable_a("movable_a");
-  MovableMock<value_t>   movable_b("movable_b");
-  ImmovableMock<value_t> immovable("immovable");
+  ImmovableType<value_t> immovable("immovable");
+  MovableType<value_t>   movable("movable");
 
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from mov. lvalue:");
-  UniversalMember<MovableMock<value_t>> shared_movable(movable_a);
-  EXPECT_EQ_U("movable_a", static_cast<value_t>(movable_a));
+  UniversalOwner<ImmovableType<value_t>> lref_owner(immovable);
+  UniversalOwner<MovableType<value_t>>   rval_owner(
+                                           MovableType<value_t>("moved"));
 
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from mov. lvalue:");
-  UniversalMember<ImmovableMock<value_t>> shared_immovable(immovable);
+  EXPECT_EQ_U("movable",   static_cast<value_t>(movable));
   EXPECT_EQ_U("immovable", static_cast<value_t>(immovable));
+  EXPECT_EQ_U("immovable", static_cast<value_t &>(lref_owner.value()));
+  EXPECT_EQ_U("moved",     static_cast<value_t &>(rval_owner.value()));
 
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from rvalue:");
-  UniversalMember<MovableMock<value_t>> shared_moved(
-                                      MovableMock<value_t>("rvalue_a"));
+  movable            = "movable xx";
+  lref_owner.value() = "immovable xx";
+  rval_owner.value() = "moved xx";
 
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make mov. lvalue:");
-  auto make_movable = make_shared_test(movable_b);
-
-  EXPECT_EQ_U("movable_b", static_cast<value_t>(movable_b));
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- change ref'ed value:");
-  make_movable = MovableMock<value_t>("changed referenced value");
-
-  EXPECT_EQ_U("changed referenced value", static_cast<value_t>(movable_b));
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make from rvalue:");
-  auto make_moved = make_shared_test(MovableMock<value_t>("rvalue_b"));
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
+  // Check if value of referenced variable has changed
+  EXPECT_EQ_U("movable xx",   static_cast<value_t>(movable));
+  EXPECT_EQ_U("immovable xx", static_cast<value_t>(immovable));
+  EXPECT_EQ_U("immovable xx", static_cast<value_t>(lref_owner.value()));
+  EXPECT_EQ_U("moved xx",     static_cast<value_t &>(rval_owner.value()));
 }
+
 

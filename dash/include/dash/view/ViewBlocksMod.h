@@ -101,19 +101,19 @@ class ViewBlockMod
   self_t & operator=(self_t &&)          = delete;
   self_t & operator=(const self_t &)     = delete;
 
-// constexpr ViewBlockMod(
-//   const DomainType & domain,
-//   index_type         block_idx)
-// : base_t(domain)
-// , _index_set(domain,
-//              block_first_gidx(domain, block_idx),
-//              block_final_gidx(domain, block_idx))
-// { }
+  constexpr ViewBlockMod(
+    DomainType   & domain,
+    index_type     block_idx)
+  : base_t(domain)
+  , _index_set(domain,
+               block_first_gidx(domain, block_idx),
+               block_final_gidx(domain, block_idx))
+  { }
 
   constexpr ViewBlockMod(
     domain_type && domain,
     index_type     block_idx)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(domain,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
@@ -275,23 +275,24 @@ class ViewBlocksMod
   index_set_type  _index_set;
 
  public:
+  template <class ViewBlocksModType>
   class block_iterator
   : public internal::IndexIteratorBase<
-             block_iterator,
+             block_iterator<ViewBlocksModType>,
              block_type,
              index_type,
              std::nullptr_t,
              block_type > {
    private:
     typedef internal::IndexIteratorBase<
-              block_iterator,
+              block_iterator<ViewBlocksModType>,
               block_type,     // value type
               index_type,     // difference type
               std::nullptr_t, // pointer type
               block_type >    // reference type
       iterator_base_t;
    private:
-    const ViewBlocksMod<DomainType> * const _blocks_view;
+    ViewBlocksModType & _blocks_view;
    public:
     constexpr block_iterator()                         = delete;
     constexpr block_iterator(block_iterator &&)        = default;
@@ -301,17 +302,17 @@ class ViewBlocksMod
     block_iterator & operator=(const block_iterator &) = delete;
 
     constexpr block_iterator(
-      const block_iterator            & other,
-      index_type                        position)
+      const block_iterator    & other,
+      index_type                position)
     : iterator_base_t(position)
     , _blocks_view(other._blocks_view)
     { }
 
     constexpr block_iterator(
-      const ViewBlocksMod<DomainType> & blocks_view,
-      index_type                        position)
+      ViewBlocksModType       & blocks_view,
+      index_type                position)
     : iterator_base_t(position)
-    , _blocks_view(&blocks_view)
+    , _blocks_view(blocks_view)
     { }
 
     constexpr block_type dereference(index_type idx) const {
@@ -320,12 +321,13 @@ class ViewBlocksMod
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
       // return dash::block(idx, (dash::domain(*_blocks_view)));
-      return ViewBlockMod<DomainType>(dash::domain(*_blocks_view), idx);
+      return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
     }
   };
 
  public:
-  typedef block_iterator                    iterator;
+  typedef block_iterator<self_t>                  iterator;
+  typedef block_iterator<const self_t>      const_iterator;
 
  public:
   constexpr ViewBlocksMod()               = delete;
@@ -336,7 +338,7 @@ class ViewBlocksMod
   self_t & operator=(const self_t &)      = delete;
 
   constexpr explicit ViewBlocksMod(
-    const DomainType & domain)
+    DomainType & domain)
   : base_t(domain)
   , _index_set(*this)
   { }
@@ -347,16 +349,25 @@ class ViewBlocksMod
   , _index_set(*this)
   { }
 
-  constexpr block_iterator begin() const {
-    return block_iterator(*this, _index_set.first());
+  constexpr const_iterator begin() const {
+    return const_iterator(*this, _index_set.first());
+  }
+  inline iterator begin() {
+    return iterator(*this, _index_set.first());
   }
 
-  constexpr block_iterator end() const {
-    return block_iterator(*this, _index_set.last() + 1);
+  constexpr const_iterator end() const {
+    return const_iterator(*this, _index_set.last() + 1);
+  }
+  inline iterator end() {
+    return iterator(*this, _index_set.last() + 1);
   }
 
   constexpr block_type operator[](int offset) const {
-    return *block_iterator(*this, _index_set[offset]);
+    return *const_iterator(*this, _index_set[offset]);
+  }
+  inline block_type operator[](int offset) {
+    return *iterator(*this, _index_set[offset]);
   }
 
   constexpr auto local() const

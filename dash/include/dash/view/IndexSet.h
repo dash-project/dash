@@ -233,7 +233,7 @@ class IndexSetBase
 
  protected:
   const ViewType     & _view;
-  const pattern_type &  _pattern;
+  const pattern_type & _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
@@ -247,20 +247,13 @@ class IndexSetBase
   , _pattern(dash::origin(view).pattern())
   { }
   
-//constexpr explicit IndexSetBase(ViewType && view)
-//: _view(std::make_shared<ViewType>(
-//             std::move(view)))
-//, _pattern(std::make_shared<pattern_type>(
-//             dash::origin(*_view.get()).pattern()))
-//{ }
-
   ~IndexSetBase()                        = default;
  public:
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
-  self_t & operator=(self_t &&)          = delete;
-  self_t & operator=(const self_t &)     = delete;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
   
   const ViewType & view() {
     return _view; // *(_view.get());
@@ -410,8 +403,8 @@ class IndexSetBlocks
   constexpr IndexSetBlocks(self_t &&)      = default;
   constexpr IndexSetBlocks(const self_t &) = default;
   ~IndexSetBlocks()                        = default;
-  self_t & operator=(self_t &&)            = delete;
-  self_t & operator=(const self_t &)       = delete;
+  self_t & operator=(self_t &&)            = default;
+  self_t & operator=(const self_t &)       = default;
 
  public:
   constexpr explicit IndexSetBlocks(const ViewType & view)
@@ -684,8 +677,8 @@ class IndexSetLocal
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
   ~IndexSetLocal()                        = default;
-  self_t & operator=(self_t &&)           = delete;
-  self_t & operator=(const self_t &)      = delete;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)

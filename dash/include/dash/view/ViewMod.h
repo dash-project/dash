@@ -5,6 +5,8 @@
 #include <dash/Range.h>
 #include <dash/Iterator.h>
 
+#include <dash/util/UniversalMember.h>
+
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewTraits.h>
 
@@ -249,7 +251,7 @@ class ViewModBase {
   typedef std::integral_constant<dim_t, domain_type::rank::value>       rank;
 
  protected:
-  std::shared_ptr<domain_type> _domain;
+  dash::UniversalMember<domain_type> _domain;
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
@@ -259,24 +261,23 @@ class ViewModBase {
   }
 
   constexpr explicit ViewModBase(domain_type && domain)
-  : _domain(std::make_shared<domain_type>(std::forward<domain_type>(domain)))
+  : _domain(std::move(domain))
   { }
 
-// constexpr explicit ViewModBase(const domain_type & domain)
-// : _domain(std::make_shared<domain_type>(domain))
-// { }
+  constexpr explicit ViewModBase(domain_type & domain)
+  : _domain(domain)
+  { }
 
   constexpr ViewModBase()               = delete;
   constexpr ViewModBase(const self_t &) = delete;
   self_t & operator=(const self_t &)    = delete;
-  ~ViewModBase()                        = default;
 
  public:
   constexpr ViewModBase(self_t &&)      = default;
   self_t & operator=(self_t &&)         = default;
 
   constexpr const domain_type & domain() const {
-    return *_domain.get();
+    return _domain;
   }
 
   constexpr bool operator==(const ViewModType & rhs) const {
@@ -516,21 +517,21 @@ class ViewSubMod
     DomainType      && domain,
     index_type         begin,
     index_type         end)
-  : base_t(std::forward<DomainType>(domain))
+  : base_t(std::move(domain))
   , _begin_idx(begin)
   , _end_idx(end)
   , _index_set(*this, begin, end)
   { }
 
-// constexpr ViewSubMod(
-//   const DomainType & domain,
-//   index_type         begin,
-//   index_type         end)
-// : base_t(domain)
-// , _begin_idx(begin)
-// , _end_idx(end)
-// , _index_set(*this, begin, end)
-// { }
+  constexpr ViewSubMod(
+    DomainType & domain,
+    index_type         begin,
+    index_type         end)
+  : base_t(domain)
+  , _begin_idx(begin)
+  , _end_idx(end)
+  , _index_set(*this, begin, end)
+  { }
 
   constexpr iterator begin() const {
     return dash::begin(dash::domain(*this)) +
