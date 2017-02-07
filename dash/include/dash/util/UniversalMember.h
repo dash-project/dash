@@ -2,6 +2,7 @@
 #define DASH__UTIL__UNIVERSAL_MEMBER_H__INCLUDED
 
 #include <utility>
+#include <memory>
 
 
 namespace dash {
@@ -20,28 +21,32 @@ template <class ValueType>
 class UniversalMember {
   typedef UniversalMember<ValueType> self_t;
 
-  ValueType _value;
-
+  std::shared_ptr<ValueType> _value;
 public:
-  UniversalMember()                      = delete;
-  UniversalMember(const self_t & other)  = delete;
-  self_t & operator=(const self_t & rhs) = delete;
+  UniversalMember() = delete;
+
+  UniversalMember(UniversalMember<ValueType> && other)      = default;
+  UniversalMember(const UniversalMember<ValueType> & other) = default;
 
   explicit UniversalMember(ValueType && value)
-  : _value(std::forward<ValueType>(value))
+  : _value(std::make_shared<ValueType>(std::move(value)))
+  { }
+  explicit UniversalMember(ValueType & value)
+  : _value(&value, [](ValueType *) { /* no deleter */ })
   { }
 
-  UniversalMember(self_t && other)
-  : _value(std::forward<ValueType>(other._value))
-  { }
+  operator       ValueType & ()       { return *(_value.get()); }
+  operator const ValueType & () const { return *(_value.get()); }
 
-  self_t & operator=(self_t && rhs) {
-    _value = std::move(rhs._value);
+  self_t & operator=(ValueType && value) {
+    *(_value.get()) = std::move(value);
     return *this;
   }
 
-  operator       ValueType & ()       { return _value; }
-  operator const ValueType & () const { return _value; }
+  self_t & operator=(const ValueType & value) {
+    *(_value.get()) = value;
+    return *this;
+  }
 };
 
 } // namespace dash
