@@ -62,65 +62,15 @@ public:
 };
 
 template <class T>
-class AcceptTest {
-private:
-  dash::UniversalMember<T> _captured;
-public:
-  AcceptTest(T && v) : _captured(std::forward<T>(v))
-  { }
-        T & value()       { return _captured; }
-  const T & value() const { return _captured; }
-
-  const dash::UniversalMember<T> & captured() const { return _captured; }
-};
-
-template <class T>
-AcceptTest<T &>
-make_accept_test(T & val) {
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "make_accept_test(T &):");
-  return AcceptTest<T &>(val);
-}
-
-template <class T>
-AcceptTest<T>
-make_accept_test(T && val) {
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "make_accept_test(T &&)");
-  return AcceptTest<T>(std::move(val));
-}
-
-template <class T>
 class UniversalTest {
-  typedef typename std::remove_reference<T>::type ValueT;
-
   dash::UniversalMember<T> _value;
 public:
   constexpr UniversalTest(T && value)
   : _value(std::forward<T>(value))
   { }
 
-        T & value()       { return *_value.get(); }
-  const T & value() const { return *_value.get(); }
-};
-
-template <class T>
-class SharedPtrTest {
-  typedef typename std::remove_reference<T>::type ValueT;
-
-  std::shared_ptr<T> _value;
-public:
-  SharedPtrTest(SharedPtrTest<T> && other)      = default;
-  SharedPtrTest(const SharedPtrTest<T> & other) = default;
-  explicit SharedPtrTest(T && value)
-  : _value(std::make_shared<T>(std::move(value))) {
-    DASH_LOG_DEBUG("UniversalMemberTest.SharedPtrTest", "(T &&)");
-  }
-  explicit SharedPtrTest(T & value)
-  : _value(&value, [](T *) { /* no deleter */ }) {
-    DASH_LOG_DEBUG("UniversalMemberTest.SharedPtrTest", "(T &)");
-  }
-
-        T & value()       { return *_value.get(); }
-  const T & value() const { return *_value.get(); }
+        T & value()       { return _value; }
+  const T & value() const { return _value; }
 };
 
 
@@ -157,8 +107,8 @@ TEST_F(UniversalMemberTest, OwnerCtor)
   typedef std::string value_t;
 
   DASH_TEST_LOCAL_ONLY();
-  MovableMock<value_t>     movable_a("movable_a");
-  MovableMock<value_t>     movable_b("movable_b");
+  MovableMock<value_t>   movable_a("movable_a");
+  MovableMock<value_t>   movable_b("movable_b");
   ImmovableMock<value_t> immovable("immovable");
 
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from mov. lvalue:");
@@ -177,7 +127,7 @@ TEST_F(UniversalMemberTest, OwnerCtor)
 
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make mov. lvalue:");
-  auto make_movable    = make_shared_test(movable_b);
+  auto make_movable = make_shared_test(movable_b);
 
   EXPECT_EQ_U("movable_b", static_cast<value_t>(movable_b));
 
@@ -189,54 +139,8 @@ TEST_F(UniversalMemberTest, OwnerCtor)
 
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make from rvalue:");
-  auto make_moved     = make_shared_test(MovableMock<value_t>("rvalue_b"));
+  auto make_moved = make_shared_test(MovableMock<value_t>("rvalue_b"));
 
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
-
-#if 0
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from lvalue ref:");
-  AcceptTest<MovableMock<double> &> acc_named(named);
-
-  EXPECT_FALSE_U(acc_named.value().moved);
-  EXPECT_FALSE_U(acc_named.value().copied);
-
-  // Must produce compiler error:
-  //   AcceptTest<MovableMock<double>> acc_named_value(named);
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- from rvalue:");
-  AcceptTest<MovableMock<double>>   acc_moved(MovableMock<double>(1.23));
-
-  EXPECT_TRUE_U(acc_moved.value().moved);
-  EXPECT_FALSE_U(acc_moved.value().copied);
-
-  EXPECT_EQ_U(1.23, acc_named.value());
-  EXPECT_EQ_U(1.23, acc_moved.value());
-
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make from lvalue ref:");
-  auto make_named = make_accept_test(named);
-
-  EXPECT_FALSE_U(make_named.value().moved);
-  EXPECT_FALSE_U(make_named.value().copied);
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- make from rvalue:");
-  auto make_moved = make_accept_test(MovableMock<double>(1.23));
-
-  EXPECT_TRUE_U(make_moved.value().moved);
-  EXPECT_FALSE_U(make_moved.value().copied);
-
-  EXPECT_EQ_U(1.23, make_named.value());
-  EXPECT_EQ_U(1.23, make_moved.value());
-
-  DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- change ref'd value:");
-  make_named.value() = MovableMock<double>(2.34);
-
-  EXPECT_FALSE_U(make_named.value().copied);
-  EXPECT_TRUE_U(make_named.value().moved);
-
-  EXPECT_EQ_U(2.34, make_named.value());
-  EXPECT_EQ_U(2.34, acc_named.value());
-#endif
 }
-
 

@@ -11,11 +11,6 @@ namespace dash {
  * Utility class template to capture values from both moved temporaries
  * (rvalues) and named references to avoid temporary copies.
  *
- * Use as specializations:
- *
- * - \c UniversalMember<T &> to capture lvalues
- * - \c UniversalMember<T>   to capture rvalues
- *
  */
 template <class ValueType>
 class UniversalMember {
