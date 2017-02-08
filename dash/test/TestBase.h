@@ -2,6 +2,9 @@
 #define DASH__TEST__TEST_BASE_H_
 
 #include <gtest/gtest.h>
+
+#include <dash/Init.h>
+#include <dash/Team.h>
 #include <dash/internal/Logging.h>
 
 #include "TestGlobals.h"
@@ -109,18 +112,28 @@ class TestBase : public ::testing::Test {
  protected:
 
   virtual void SetUp() {
-    LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+    LOG_MESSAGE("===> Running test case with %lu units ...", dash::size());
     dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("-==- DASH initialized");
     dash::barrier();
   }
 
   virtual void TearDown() {
-    LOG_MESSAGE("-==- Test case finished at unit %d",       dash::myid().id);
+    LOG_MESSAGE("-==- Test case finished at unit %d",        dash::myid().id);
     dash::Team::All().barrier();
-    LOG_MESSAGE("-==- Finalize DASH at unit %d",            dash::myid().id);
+    LOG_MESSAGE("-==- Finalize DASH at unit %d",             dash::myid().id);
     dash::finalize();
-    LOG_MESSAGE("<=== Finished test case with %d units",    dash::size());
+    LOG_MESSAGE("<=== Finished test case with %lu units",    dash::size());
+  }
+
+  std::string _hostname() const {
+    char hostname[100];
+    gethostname(hostname, 100);
+    return std::string(hostname);
+  }
+
+  int _pid() const {
+    return static_cast<int>(getpid());
   }
 };
 

@@ -1,5 +1,11 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
+
+#include <dash/Atomic.h>
+#include <dash/Array.h>
+#include <dash/Shared.h>
+
+#include <dash/algorithm/Copy.h>
 
 #include "TestBase.h"
 #include "AtomicTest.h"

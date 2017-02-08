@@ -220,18 +220,6 @@ public:
   }
 
   /**
-   * Copy constructor.
-   */
-  TeamSpec(
-    /// Teamspec instance to copy
-    const self_t & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(other.extents()),
-    _rank(other._rank),
-    _myid(other._myid)
-  { }
-
-  /**
    * Tries to equally distribute the units across the dimensions.
    * The number of units is determined by the current state of the extents.
    *
@@ -450,9 +438,9 @@ private:
 
 protected:
   /// Actual number of dimensions of the team layout specification.
-  dim_t _rank       = 0;
+  dim_t       _rank       = 0;
   /// Whether the team spec is linear
-  bool  _is_linear  = false;
+  bool        _is_linear  = false;
   /// Unit id of active unit
   team_unit_t _myid;
 

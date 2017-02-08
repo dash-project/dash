@@ -3,7 +3,6 @@
 
 #include <dash/internal/Config.h>
 
-#include <dash/Array.h>
 #include <dash/Allocator.h>
 
 #include <dash/algorithm/LocalRange.h>

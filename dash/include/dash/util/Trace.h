@@ -1,7 +1,7 @@
 #ifndef DASH__UTIL__TRACE_H__
 #define DASH__UTIL__TRACE_H__
 
-#include <dash/Array.h>
+#include <dash/Init.h>
 #include <dash/util/Timer.h>
 #include <iostream>
 #include <fstream>

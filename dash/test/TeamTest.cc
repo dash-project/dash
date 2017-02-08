@@ -1,12 +1,18 @@
-#include <libdash.h>
+
+#include "TeamTest.h"
+
+#include <dash/Team.h>
+#include <dash/Array.h>
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
+#include <dash/util/TeamLocality.h>
+
 #include <array>
 #include <sstream>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
 
-#include "TestBase.h"
-#include "TeamTest.h"
 
 TEST_F(TeamTest, Deallocate) {
   LOG_MESSAGE("Start dealloc test");

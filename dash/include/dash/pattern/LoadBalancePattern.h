@@ -352,6 +352,10 @@ public:
   { }
 
   LoadBalancePattern(const self_t & other) = default;
+  LoadBalancePattern(self_t && other)      = default;
+  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(self_t && other)      = default;
+  
 
   /**
    * Copy constructor using non-const lvalue reference parameter.

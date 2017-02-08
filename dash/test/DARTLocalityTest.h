@@ -3,13 +3,11 @@
 
 #include "TestBase.h"
 
-#include <gtest/gtest.h>
-#include <libdash.h>
 
 /**
  * Test fixture for onesided operations provided by DART.
  */
-class DARTLocalityTest : public ::testing::Test {
+class DARTLocalityTest : public dash::test::TestBase {
 protected:
   size_t _dash_id;
   size_t _dash_size;
@@ -25,18 +23,9 @@ protected:
   }
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
+    dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %ld units ...",
-                _dash_size);
-  }
-
-  virtual void TearDown() {
-    dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %ld units",
-                _dash_size);
-    dash::finalize();
   }
 };
 
