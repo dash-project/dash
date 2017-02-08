@@ -29,7 +29,7 @@ template <
   class OffsetT >
 constexpr auto
 block(
-  OffsetT               block_idx,
+  OffsetT         block_idx,
   const ContainerType & container)
 -> typename std::enable_if<
      !dash::view_traits<ContainerType>::is_view::value,
@@ -47,7 +47,7 @@ template <
   class OffsetT >
 constexpr auto
 block(
-  OffsetT          block_idx,
+  OffsetT    block_idx,
   const ViewType & view)
 -> typename std::enable_if<
      (  dash::view_traits<ViewType>::is_view::value &&

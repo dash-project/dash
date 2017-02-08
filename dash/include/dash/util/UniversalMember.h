@@ -29,8 +29,9 @@ public:
   constexpr explicit UniversalMember(ValueType && value)
   : _value(std::make_shared<ValueType>(std::move(value)))
   { }
-  constexpr explicit UniversalMember(ValueType & value)
-  : _value(&value, [](ValueType *) { /* no deleter */ })
+  constexpr explicit UniversalMember(const ValueType & value)
+  : _value(&const_cast<ValueType &>(value),
+           [](ValueType *) { /* no deleter */ })
   { }
 
             operator       ValueType & ()       { return *(_value.get()); }

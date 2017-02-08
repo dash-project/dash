@@ -260,11 +260,17 @@ class ViewModBase {
     return static_cast<const ViewModType &>(*this);
   }
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit ViewModBase(domain_type && domain)
-  : _domain(std::move(domain))
+  : _domain(std::forward<domain_type>(domain))
   { }
 
-  constexpr explicit ViewModBase(domain_type & domain)
+  /**
+   * Constructor, creates a view on a given domain.
+   */
+  constexpr explicit ViewModBase(const domain_type & domain)
   : _domain(domain)
   { }
 
@@ -353,11 +359,23 @@ class ViewLocalMod
  public:
   constexpr ViewLocalMod()               = delete;
   constexpr ViewLocalMod(self_t &&)      = default;
-  constexpr ViewLocalMod(const self_t &) = default;
+  constexpr ViewLocalMod(const self_t &) = delete;
   ~ViewLocalMod()                        = default;
   self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
+  self_t & operator=(const self_t &)     = delete;
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
+  constexpr explicit ViewLocalMod(
+    domain_type && domain)
+  : base_t(std::forward<domain_type>(domain))
+  , _index_set(*this)
+  { }
+
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
@@ -514,19 +532,19 @@ class ViewSubMod
   self_t & operator=(const self_t &)   = delete;
 
   constexpr ViewSubMod(
-    DomainType      && domain,
-    index_type         begin,
-    index_type         end)
-  : base_t(std::move(domain))
+    domain_type && domain,
+    index_type     begin,
+    index_type     end)
+  : base_t(std::forward<domain_type>(domain))
   , _begin_idx(begin)
   , _end_idx(end)
   , _index_set(*this, begin, end)
   { }
 
   constexpr ViewSubMod(
-    DomainType & domain,
-    index_type         begin,
-    index_type         end)
+    domain_type  & domain,
+    index_type     begin,
+    index_type     end)
   : base_t(domain)
   , _begin_idx(begin)
   , _end_idx(end)
@@ -614,9 +632,21 @@ class ViewGlobalMod
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit ViewGlobalMod(
-    const DomainType & domain)
+    const domain_type & domain)
   : base_t(domain)
+  , _index_set(*this)
+  { }
+
+  /**
+   * Constructor, creates a view on a given domain.
+   */
+  constexpr explicit ViewGlobalMod(
+    domain_type && domain)
+  : base_t(std::forward<domain_type>(domain))
   , _index_set(*this)
   { }
 

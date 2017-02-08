@@ -98,22 +98,25 @@ class ViewBlockMod
   constexpr ViewBlockMod(self_t &&)      = default;
   constexpr ViewBlockMod(const self_t &) = delete;
   ~ViewBlockMod()                        = default;
-  self_t & operator=(self_t &&)          = delete;
+  self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = delete;
 
   constexpr ViewBlockMod(
-    DomainType   & domain,
-    index_type     block_idx)
+    const domain_type & domain,
+    index_type    block_idx)
   : base_t(domain)
   , _index_set(domain,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
   { }
 
+  /**
+   * Constructor, creates a view on a block in the specified domain.
+   */
   constexpr ViewBlockMod(
-    domain_type && domain,
-    index_type     block_idx)
-  : base_t(std::move(domain))
+    domain_type     && domain,
+    index_type         block_idx)
+  : base_t(std::forward<domain_type>(domain))
   , _index_set(domain,
                block_first_gidx(domain, block_idx),
                block_final_gidx(domain, block_idx))
@@ -212,26 +215,8 @@ template <
 >
 constexpr ViewBlocksMod<ViewValueT>
 blocks(ViewType && domain) {
-  return ViewBlocksMod<ViewValueT>(std::move(domain));
+  return ViewBlocksMod<ViewValueT>(std::forward<ViewType>(domain));
 }
-
-#ifdef __TODO__
-
-// TODO: Support use of temporaries (-> bind rvalues):
-
-template <class ViewType>
-constexpr ViewBlocksMod<const ViewType &>
-blocks(const ViewType & domain) {
-  return ViewBlocksMod<const ViewType &>(domain);
-}
-
-template <class ViewType>
-constexpr ViewBlocksMod<ViewType>
-blocks(const ViewType && domain) {
-  return ViewBlocksMod<ViewType>(std::move(domain));
-}
-
-#endif
 
 template <
   class DomainType >
@@ -292,14 +277,15 @@ class ViewBlocksMod
               block_type >    // reference type
       iterator_base_t;
    private:
-    ViewBlocksModType & _blocks_view;
+//  ViewBlocksModType & _blocks_view;
+    const self_t & _blocks_view;
    public:
     constexpr block_iterator()                         = delete;
     constexpr block_iterator(block_iterator &&)        = default;
-    constexpr block_iterator(const block_iterator &)   = default;
+    constexpr block_iterator(const block_iterator &)   = delete;
     ~block_iterator()                                  = default;
-    block_iterator & operator=(block_iterator &&)      = delete;
-    block_iterator & operator=(const block_iterator &) = delete;
+    block_iterator & operator=(block_iterator &&)      = default;
+    block_iterator & operator=(const block_iterator &) = default;
 
     constexpr block_iterator(
       const block_iterator    & other,
@@ -309,8 +295,8 @@ class ViewBlocksMod
     { }
 
     constexpr block_iterator(
-      ViewBlocksModType       & blocks_view,
-      index_type                position)
+      const ViewBlocksModType & blocks_view,
+      index_type          position)
     : iterator_base_t(position)
     , _blocks_view(blocks_view)
     { }
@@ -320,8 +306,10 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      // return dash::block(idx, (dash::domain(*_blocks_view)));
-      return ViewBlockMod<DomainType>(dash::domain(_blocks_view), idx);
+      //
+      return dash::block(idx, (dash::domain(_blocks_view)));
+      // return ViewBlockMod<DomainType>(
+      //          dash::domain(_blocks_view), idx);
     }
   };
 
@@ -331,32 +319,38 @@ class ViewBlocksMod
 
  public:
   constexpr ViewBlocksMod()               = delete;
-  constexpr ViewBlocksMod(const self_t &) = delete;
+  constexpr ViewBlocksMod(const self_t &) = default;
   constexpr ViewBlocksMod(self_t &&)      = default;
   ~ViewBlocksMod()                        = default;
-  self_t & operator=(self_t &&)           = delete;
-  self_t & operator=(const self_t &)      = delete;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit ViewBlocksMod(
-    DomainType & domain)
+    const domain_type & domain)
   : base_t(domain)
   , _index_set(*this)
   { }
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit ViewBlocksMod(
-    DomainType && domain)
-  : base_t(std::move(domain))
+    domain_type && domain)
+  : base_t(std::forward<domain_type>(domain))
   , _index_set(*this)
   { }
 
-  constexpr const_iterator begin() const {
+  constexpr iterator begin() const {
     return const_iterator(*this, _index_set.first());
   }
   inline iterator begin() {
     return iterator(*this, _index_set.first());
   }
 
-  constexpr const_iterator end() const {
+  constexpr iterator end() const {
     return const_iterator(*this, _index_set.last() + 1);
   }
   inline iterator end() {
@@ -364,7 +358,7 @@ class ViewBlocksMod
   }
 
   constexpr block_type operator[](int offset) const {
-    return *const_iterator(*this, _index_set[offset]);
+    return *iterator(*this, _index_set[offset]);
   }
   inline block_type operator[](int offset) {
     return *iterator(*this, _index_set[offset]);

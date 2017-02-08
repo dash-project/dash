@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <sstream>
 
-#if 0
 
 namespace dash {
 namespace test {
@@ -205,6 +204,8 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
     }
   }
 }
+
+#if 0
 
 TEST_F(ViewTest, Intersect1DimSingle)
 {

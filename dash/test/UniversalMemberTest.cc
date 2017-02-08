@@ -153,7 +153,7 @@ public:
   : _value(std::forward<T>(value))
   { }
 
-  constexpr explicit UniversalBase(T & value)
+  constexpr explicit UniversalBase(const T & value)
   : _value(value)
   { }
 
@@ -167,10 +167,10 @@ class UniversalOwner : public UniversalBase<T> {
   typedef UniversalBase<T>  base_t;
 public:
   constexpr explicit UniversalOwner(T && value)
-  : base_t(std::move(value))
+  : base_t(std::forward<T>(value))
   { }
 
-  constexpr explicit UniversalOwner(T & value)
+  constexpr explicit UniversalOwner(const T & value)
   : base_t(value)
   { }
 };

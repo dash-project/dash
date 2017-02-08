@@ -65,48 +65,9 @@ sub(
 
 // Sub-space slice, view dimensions maintain domain dimensions
 
-#ifdef __TODO__
-
 /**
  * \concept{DashViewConcept}
  */
-template <
-  dim_t SubDim  = 0,
-  class DomainT,
-  class OffsetFirstT,
-  class OffsetFinalT >
-constexpr auto
-sub(
-    OffsetFirstT    begin,
-    OffsetFinalT    end,
-    DomainT      && domain)
-  -> typename std::enable_if<
-       dash::view_traits<
-         typename std::remove_const<
-           typename std::remove_reference<DomainT>::type
-         >::type
-       >::rank::value == 1,
-       ViewSubMod<
-         typename std::remove_const<
-           typename std::remove_reference<DomainT>::type
-         >::type,
-         SubDim >
-     >::type {
-  typedef typename
-            std::remove_const<
-              typename std::remove_reference<DomainT>::type
-            >::type
-    domain_value_t;
-  return ViewSubMod<
-           domain_value_t,
-           SubDim
-         >(std::forward<domain_value_t>(domain),
-           begin,
-           end);
-}
-
-#else
-
 template <
   dim_t    SubDim  = 0,
   class    DomainT,
@@ -155,8 +116,6 @@ sub(
            begin,
            end);
 }
-
-#endif
 
 // =========================================================================
 // Multidimensional Views
