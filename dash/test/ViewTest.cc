@@ -205,8 +205,6 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   }
 }
 
-#if 0
-
 TEST_F(ViewTest, Intersect1DimSingle)
 {
   int block_size           = 13;
@@ -1000,6 +998,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalView)
   }
 }
 
+/*
 TEST_F(ViewTest, ArrayBlockedPatternViewUnion)
 {
   int block_size         = 37;
@@ -1023,5 +1022,4 @@ TEST_F(ViewTest, ArrayBlockedPatternViewUnion)
                              block_b_gview
                            });
 }
-
-#endif
+*/

@@ -306,10 +306,8 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      //
-      return dash::block(idx, (dash::domain(_blocks_view)));
-      // return ViewBlockMod<DomainType>(
-      //          dash::domain(_blocks_view), idx);
+      return ViewBlockMod<DomainType>(
+               dash::domain(_blocks_view), idx);
     }
   };
 
