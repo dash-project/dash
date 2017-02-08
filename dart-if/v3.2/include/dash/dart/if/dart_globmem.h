@@ -57,10 +57,10 @@ extern "C" {
  PROPOSAL: use 128 bit global pointers with the following layout:
 
 
- 0         1         2         3         4         5         6
- 0123456789012345678901234567890123456789012345678901234567890123
- |------<32 bit unit id>--------|-<segment id>--|--flags/resv---|
- |-----------<either a virtual address or an offset>------------|
+ 0       1       2       3       4       5       6       7
+ 0123456701234567012345670123456701234567012345670123456701234567
+ |----<24 bit unit id>---|-flags-|-<segment id>--|---<team id>--|
+ |-----------<64 bit virtual address or offset>-----------------|
 
   */
 
