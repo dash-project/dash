@@ -456,19 +456,9 @@ TEST_F(ViewTest, BlocksView1Dim)
   }
   array.barrier();
 
-  // TODO: Fails if domain of dash::blocks is temporary as ViewModBase
-  //       currently stores _domain as reference; should support move
-  //       semantics and bind instead.
-#if 0
   auto array_blocks = dash::blocks(
                           dash::sub<0>(0, array.size(),
                             array));
-#else
-  auto array_gview  = dash::sub<0>(0, array.size(),
-                        array);
-  auto array_blocks = dash::blocks(
-                        array_gview);
-#endif
 
   DASH_LOG_DEBUG("ViewTest.BlocksView1Dim",
                  "array.blocks.size:", array_blocks.size(),

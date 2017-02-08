@@ -38,14 +38,15 @@ public:
   constexpr operator const ValueType & () const { return *(_value.get()); }
 
   self_t & operator=(ValueType && value) {
-    *(_value.get()) = std::move(value);
+    *(_value.get()) = std::forward<ValueType>(value);
     return *this;
   }
- 
+#if 0
   self_t & operator=(const ValueType & value) {
     *(_value.get()) = value;
     return *this;
   }
+#endif
 };
 
 } // namespace dash
