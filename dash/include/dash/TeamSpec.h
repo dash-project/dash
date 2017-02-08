@@ -268,9 +268,6 @@ public:
 
     this->resize(this->_extents);
     update_rank();
-    if(1 == _rank) {
-      _is_linear = true;
-    }
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents() ->", this->_extents);
   }
 
