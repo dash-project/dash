@@ -28,7 +28,6 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
 	dart_team_unit_t unitid;
-	dart_global_unit_t myid;
 	int32_t *addr;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -37,7 +36,6 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	}
 
 	dart_team_myid (teamid, &unitid);
-	dart_myid (&myid);
 	*lock = (dart_lock_t) malloc (sizeof (struct dart_lock_struct));
 
 
@@ -63,8 +61,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
   MPI_Win win;
   win = team_data->window; //this window object is used for atomic operations
 
-	dart_gptr_setunit (&gptr_list, myid);
-	dart_gptr_getaddr (gptr_list, (void*)&addr);
+	dart_gptr_setunit(&gptr_list, unitid);
+	dart_gptr_getaddr(gptr_list, (void*)&addr);
 	*addr = -1;
 	MPI_Win_sync (win);
 
@@ -81,9 +79,9 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
 	dart_team_unit_t unitid;
-	dart_team_myid (lock->teamid, &unitid);
+	dart_team_myid(lock->teamid, &unitid);
 
-	if (lock -> is_acquired == 1)
+	if (lock->is_acquired == 1)
 	{
 		printf ("Warning: LOCK - %2d has acquired the lock already\n", unitid.id);
 		return DART_OK;
@@ -158,7 +156,7 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 
 	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
 	dart_unit_t tail = gptr_tail.unitid;
-	uint64_t offset = gptr_tail.addr_or_offs.offset;
+	uint64_t offset  = gptr_tail.addr_or_offs.offset;
 
 	/* Atomicity: Check if the lock is available and claim it if it is. */
   MPI_Compare_and_swap (&unitid.id, compare, result, MPI_INT32_T, tail, offset, dart_win_local_alloc);

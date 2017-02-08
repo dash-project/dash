@@ -149,7 +149,7 @@ dart_ret_t dart_init(
     }
   }
 #else
-	MPI_Alloc_mem(
+  MPI_Alloc_mem(
     DART_MAX_LENGTH,
     MPI_INFO_NULL,
     &dart_mempool_localalloc);
@@ -163,7 +163,7 @@ dart_ret_t dart_init(
     DART_MAX_LENGTH,
     sizeof(char),
     MPI_INFO_NULL,
-		DART_COMM_WORLD,
+    DART_COMM_WORLD,
     &dart_win_local_alloc);
 
 	/* Create a dynamic win object for all the dart collective

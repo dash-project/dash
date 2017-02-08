@@ -11,8 +11,13 @@
 #define NODE_SPLIT 2
 #define NODE_FULL 3
 
+struct dart_buddy {
+  int level;
+  uint8_t tree[1];
+};
+
 struct dart_buddy *
-	dart_buddy_new(int level)
+dart_buddy_new(int level)
 {
 	int size = 1 << level;
 	struct dart_buddy * self =

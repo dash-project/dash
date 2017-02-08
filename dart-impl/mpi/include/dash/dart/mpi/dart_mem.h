@@ -14,11 +14,8 @@
 
 #define DART_MAX_LENGTH (1024*1024*16)
 
-struct dart_buddy {
-	int level;
-	uint8_t tree[1];
-};
-
+// forward declaration
+struct dart_buddy;
 extern char* dart_mempool_localalloc;
 extern struct dart_buddy* dart_localpool;
 

@@ -71,15 +71,18 @@ extern "C" {
  */
 typedef struct
 {
-  /** The unit holding the memory element */
+  /**
+   * The unit holding the memory element.
+   * The ID is relative to the team identified by \c teamid.
+   */
   dart_unit_t  unitid : 24;
   /** Reserved */
   unsigned int flags  :  8;
-  /** The segment ID of the allocation */
+  /** The segment ID of the allocation. */
   int16_t     segid;
-  /** The team associated with the allocation */
+  /** The team associated with the allocation. */
   int16_t     teamid;
-  /** Absolute address or relative offset */
+  /** Absolute address or relative offset. */
   union
   {
     uint64_t offset;
@@ -107,8 +110,8 @@ typedef struct
  *
  * \ingroup DartGlobMem
  */
-#define DART_GPTR_ISNULL(gptr_)			\
-  (gptr_.unitid<0 && gptr_.segid==0 &&		\
+#define DART_GPTR_ISNULL(gptr_)         \
+  (gptr_.unitid<0 && gptr_.segid==0 &&  \
    gptr_.teamid==DART_TEAM_NULL   &&    \
    gptr_.addr_or_offs.addr==0)
 
@@ -117,11 +120,11 @@ typedef struct
  *
  * \ingroup DartGlobMem
  */
-#define DART_GPTR_EQUAL(gptr1_, gptr2_ )		\
-  ((gptr1_.unitid == gptr2_.unitid) &&			\
-   (gptr1_.segid  == gptr2_.segid)  &&			\
-   (gptr1_.teamid == gptr2_.teamid) &&			\
-   (gptr1_.addr_or_offs.offset ==			\
+#define DART_GPTR_EQUAL(gptr1_, gptr2_ )    \
+  ((gptr1_.unitid == gptr2_.unitid) &&      \
+   (gptr1_.segid  == gptr2_.segid)  &&      \
+   (gptr1_.teamid == gptr2_.teamid) &&      \
+   (gptr1_.addr_or_offs.offset ==           \
     gptr2_.addr_or_offs.offset) )
 
 
@@ -187,7 +190,7 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_global_unit_t unit);
+dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
 
 /**
  * Get the flags field for the segment specified by the global pointer.
