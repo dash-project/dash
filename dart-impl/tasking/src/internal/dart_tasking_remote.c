@@ -26,6 +26,7 @@ struct remote_data_dep {
   /** pointer to a task on the origin unit. Only valid at the origin! */
   taskref            rtask;
   uint64_t           magic;
+  uint64_t           phase;
 };
 
 struct remote_task_dep {
@@ -83,6 +84,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
   rdep.magic       = 0xDEADBEEF;
+  rdep.phase       = task->phase;
   dart_myid(&rdep.runit);
   dart_team_unit_t team_unit;
   dart_team_unit_g2l(DART_TEAM_ALL, DART_GLOBAL_UNIT_ID(dep->gptr.unitid), &team_unit);
@@ -170,8 +172,9 @@ dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task
     ret = dart_amsg_trysend(team_unit, amsgq, &request_direct_taskdep, &taskdep, sizeof(taskdep));
     if (ret == DART_OK) {
       // the message was successfully sent
-      DART_LOG_INFO("Sent direct remote task dependency to unit %i (local task %p depdends on remote task %p)",
-          unit, local_task, remote_task);
+      DART_LOG_INFO("Sent direct remote task dependency to unit %i "
+                    "(local task %p depdends on remote task %p)",
+                    unit, local_task, remote_task);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -214,12 +217,15 @@ enqueue_from_remote(void *data)
   struct remote_data_dep *rdep = (struct remote_data_dep *)data;
   DART_ASSERT(rdep->magic == 0xDEADBEEF);
   DART_ASSERT(rdep->rtask.remote != NULL);
-  dart_task_dep_t dep;
-  dep.gptr = rdep->gptr;
-  dep.type = DART_DEP_IN;
+  dart_phase_dep_t dep;
+  dep.dep.gptr = rdep->gptr;
+  dep.dep.type = DART_DEP_IN;
+  dep.phase    = rdep->phase;
   taskref rtask = rdep->rtask;
-  DART_LOG_INFO("Received remote dependency request for task %p (unit=%i, segid=%i, addr=%p)",
-                      rdep->rtask.remote, rdep->runit.id, rdep->gptr.segid, rdep->gptr.addr_or_offs.addr);
+  DART_LOG_INFO("Received remote dependency request for task %p "
+                "(unit=%i, segid=%i, addr=%p, ph=%li)",
+                rdep->rtask.remote, rdep->runit.id, rdep->gptr.segid,
+                rdep->gptr.addr_or_offs.addr, dep.phase);
   dart_tasking_datadeps_handle_remote_task(&dep, rtask, rdep->runit);
 }
 
@@ -234,16 +240,21 @@ static void release_remote_dependency(void *data)
   DART_ASSERT(response->magic == 0xDEADBEEF);
   DART_ASSERT(response->rtask.local != NULL);
   dart_task_t *task = response->rtask.local;
-  DART_LOG_INFO("release_remote_dependency : Received remote dependency release from unit %i for task %p (segid=%i, offset=%p)",
-    response->runit.id, task, response->gptr.segid, response->gptr.addr_or_offs.offset);
+  DART_LOG_INFO("release_remote_dependency : Received remote dependency "
+                "release from unit %i for task %p (segid=%i, offset=%p, ph=%li)",
+                response->runit.id, task, response->gptr.segid,
+                response->gptr.addr_or_offs.offset);
 
   int unresolved_deps = DART_DEC32_AND_FETCH(&task->unresolved_deps);
-  DART_LOG_DEBUG("release_remote_dependency : Task with remote dep %p has %i unresolved dependencies left", task, unresolved_deps);
+  DART_LOG_DEBUG("release_remote_dependency : Task with remote dep %p has %i "
+                 "unresolved dependencies left", task, unresolved_deps);
   if (unresolved_deps < 0) {
-    DART_LOG_ERROR("ERROR: task %p with remote dependency does not seem to have unresolved dependencies!", task);
+    DART_LOG_ERROR("ERROR: task %p with remote dependency does not seem to "
+                   "have unresolved dependencies!", task);
   } else if (unresolved_deps == 0) {
     // enqueue as runnable
-    dart_tasking_taskqueue_push(&dart__base__tasking_current_thread()->queue, task);
+    dart_tasking_taskqueue_push(
+        &dart__base__tasking_current_thread()->queue, task);
   }
 }
 

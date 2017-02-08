@@ -70,6 +70,13 @@ dart_task_complete();
 dart_ret_t
 dart_tasking_fini();
 
+/**
+ * Signal the end of an phase (or iteration) and the beginning of a new phase.
+ *
+ * This should be used to ensure remote dependencies
+ */
+dart_ret_t
+dart_tasking_phase();
 //
 //void
 //dart_taskgraph_print();

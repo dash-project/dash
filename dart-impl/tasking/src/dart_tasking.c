@@ -53,6 +53,12 @@ dart_task_complete()
 }
 
 
+dart_ret_t
+dart_tasking_phase()
+{
+  return dart__base__tasking__phase();
+}
+
 //void
 //dart_taskgraph_print()
 //{

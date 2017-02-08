@@ -28,7 +28,17 @@ typedef struct dart_task_data {
   int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;
+  uint64_t                   phase;
 } dart_task_t;
+
+#define DART_STACK_PUSH(_head, _elem) \
+    _elem->next = _head;              \
+    _head = _elem;
+
+#define DART_STACK_POP(_head, _elem) \
+    _elem = _head;                   \
+    _head = _head->next;              \
+    _elem->next = NULL;
 
 
 typedef struct task_list {
@@ -63,6 +73,9 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
 dart_ret_t
 dart__base__tasking__task_complete();
+
+dart_ret_t
+dart__base__tasking__phase();
 
 //void
 //dart__base__tasking_print_taskgraph();

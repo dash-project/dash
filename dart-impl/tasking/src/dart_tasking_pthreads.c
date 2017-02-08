@@ -52,7 +52,8 @@ static dart_task_t root_task = {
     .successor = NULL,
     .parent = NULL,
     .remote_successor = NULL,
-    .num_children = 0};
+    .num_children = 0,
+    .phase  = 0};
 
 
 static void wait_for_work()
@@ -100,16 +101,20 @@ dart_task_t * next_task(dart_thread_t *thread)
 static inline
 dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
 {
-  dart_task_t *task;
-  pthread_mutex_lock(&task_recycle_mutex);
+  dart_task_t *task = NULL;
   if (task_free_list != NULL) {
-    task = task_free_list;
-    task_free_list = task->next;
+    pthread_mutex_lock(&task_recycle_mutex);
+    if (task_free_list != NULL) {
+      DART_STACK_POP(task_free_list, task);
+//      task = task_free_list;
+//      task_free_list = task->next;
+    }
+    pthread_mutex_unlock(&task_recycle_mutex);
   } else {
+    pthread_mutex_unlock(&task_recycle_mutex);
     task = calloc(1, sizeof(dart_task_t));
     dart_mutex_init(&task->mutex);
   }
-  pthread_mutex_unlock(&task_recycle_mutex);
 
   if (data_size) {
     task->data_size = data_size;
@@ -123,6 +128,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->num_children = 0;
   task->parent = get_current_task();
   task->state = DART_TASK_CREATED;
+  task->phase = task->parent->phase;
   return task;
 }
 
@@ -132,13 +138,11 @@ void destroy_task(dart_task_t *task)
   if (task->data_size) {
     free(task->data);
   }
-  task->data = NULL;
-  task->data_size = 0;
-  task->fn = NULL;
-  task->parent = NULL;
+  memset(task, 0, sizeof(dart_task_t));
   pthread_mutex_lock(&task_recycle_mutex);
-  task->next = task_recycle_list;
-  task_recycle_list = task;
+  DART_STACK_PUSH(task_recycle_list, task);
+//  task->next = task_recycle_list;
+//  task_recycle_list = task;
   pthread_mutex_unlock(&task_recycle_mutex);
 //  free(task);
 }
@@ -207,7 +211,6 @@ void* thread_main(void *data)
     dart_tasking_remote_progress();
     // only go to sleep if no tasks are in flight
     if (DART_FETCH32(&(root_task.num_children)) == 0) {
-
       pthread_mutex_lock(&thread_pool_mutex);
       wait_for_work();
       pthread_mutex_unlock(&thread_pool_mutex);
@@ -254,7 +257,8 @@ dart__base__tasking__init()
     DART_LOG_INFO("Failed to get number of cores! Playing it safe with 2 threads...");
     num_threads = 2;
   }
-  DART_LOG_INFO("Creating %i threads", num_threads);
+
+  DART_LOG_INFO("Using %i threads", num_threads);
 
   dart_amsg_init();
 
@@ -347,6 +351,11 @@ dart__base__tasking__task_complete()
     return DART_ERR_INVAL;
   }
 
+  if (thread->current_task == &(root_task)) {
+    // release unhandled remote dependencies
+    dart_tasking_datadeps_release_unhandled_remote();
+  }
+
   // 2) start processing ourselves
   dart_task_t *task = get_current_task();
   while (DART_FETCH32(&(task->num_children)) > 0) {
@@ -368,6 +377,22 @@ dart__base__tasking__task_complete()
   return DART_OK;
 }
 
+
+
+dart_ret_t
+dart__base__tasking__phase()
+{
+  if (dart__base__tasking__thread_num() != 0) {
+    DART_LOG_ERROR("Switching phases can only be done by the master thread!");
+    return DART_ERR_INVAL;
+  }
+  dart_barrier(DART_TEAM_ALL);
+  dart_tasking_remote_progress();
+  dart_tasking_datadeps_end_phase(root_task.phase);
+  root_task.phase++;
+  DART_LOG_INFO("Starting task phase %li\n", root_task.phase);
+  return DART_OK;
+}
 
 dart_ret_t
 dart__base__tasking__fini()

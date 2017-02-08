@@ -13,13 +13,18 @@
 typedef void* remote_task_t;
 
 typedef union taskref {
-  dart_task_t              *local;
+  dart_task_t         *local;
   remote_task_t        remote;
 } taskref;
 
+typedef struct {
+  dart_task_dep_t dep;
+  uint64_t        phase;
+} dart_phase_dep_t;
+
 
 /**
- * @brief Initialize the data dependency management system.
+ * Initialize the data dependency management system.
  */
 dart_ret_t dart_tasking_datadeps_init();
 
@@ -28,30 +33,58 @@ dart_ret_t dart_tasking_datadeps_reset();
 dart_ret_t dart_tasking_datadeps_fini();
 
 /**
- * @brief Search for tasks that satisfy the data dependencies of this task.
+ * Search for tasks that satisfy the data dependencies of this task.
  */
-dart_ret_t dart_tasking_datadeps_handle_task(dart_task_t *task, const dart_task_dep_t *deps, size_t ndeps);
+dart_ret_t dart_tasking_datadeps_handle_task(
+    dart_task_t           *task,
+    const dart_task_dep_t *deps,
+    size_t                 ndeps);
 
 /**
- * @brief Look for the latest task that satisfies \c dep and add \rtask to the remote successor list.
+ * Look for the latest task that satisfies \c dep and add \rtask
+ * to the remote successor list.
  * Note that \c dep has to be a IN dependency.
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_task(const dart_task_dep_t *dep, const taskref remote_task, dart_global_unit_t origin);
+dart_ret_t dart_tasking_datadeps_handle_remote_task(
+    const dart_phase_dep_t *dep,
+    const taskref           remote_task,
+    dart_global_unit_t      origin);
 
 /**
- * @brief Handle the direct task dependency between a local task and it's remote successor
+ * Handle the direct task dependency between a local task
+ * and it's remote successor
  */
-dart_ret_t dart_tasking_datadeps_handle_remote_direct(dart_task_t *local_task, taskref remote_task, dart_global_unit_t origin);
+dart_ret_t dart_tasking_datadeps_handle_remote_direct(
+    dart_task_t        *local_task,
+    taskref             remote_task,
+    dart_global_unit_t  origin);
+
 
 /**
- * Release the dependencies of \c task, potentially enqueuing tasks into the runnable
- * queue of \c thread.
+ * End a phase, e.g., by releasing any unhandled remote dependency of the
+ * same phase.
+ */
+dart_ret_t dart_tasking_datadeps_end_phase(uint64_t phase);
+
+/**
+ * Release the dependencies of \c task, potentially enqueuing t
+ * asks into the runnable queue of \c thread.
  */
 dart_ret_t
-dart_tasking_datadeps_release_local_task(dart_thread_t *thread, dart_task_t *task);
+dart_tasking_datadeps_release_local_task(
+    dart_thread_t *thread,
+    dart_task_t   *task);
 
 /**
- * @brief Check for new remote task dependency requests coming in
+ * Release all unhandled remote dependency requests.
+ * This should be done before starting to execute local tasks
+ * to avoid deadlocks.
+ */
+dart_ret_t
+dart_tasking_datadeps_release_unhandled_remote();
+
+/**
+ * Check for new remote task dependency requests coming in
  */
 dart_ret_t dart_tasking_datadeps_progress();
 
