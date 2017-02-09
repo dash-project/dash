@@ -5,6 +5,7 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewTraits.h>
+#include <dash/view/NViewMod.h>
 
 
 namespace dash {
@@ -61,6 +62,23 @@ constexpr auto local(
   const GlobalIterator & g_it)
 ->  decltype((g_it - g_it.pos()).local()) {
   return g_it.local();
+}
+
+// =========================================================================
+// Multidimensional Views
+// =========================================================================
+
+template <class ViewType>
+constexpr auto
+local(const ViewType & v)
+-> typename std::enable_if<
+     (dash::view_traits<ViewType>::rank::value > 1),
+     NViewLocalMod<DomainT, dash::view_traits<ViewType>::rank::value>
+   >::type {
+  return NViewLocalMod<
+           ViewType,
+           dash::view_traits<ViewType>::rank::value >(
+             v);
 }
 
 } // namespace dash
