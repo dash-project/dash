@@ -72,13 +72,10 @@ public:
    */
   LocalAllocator(self_t && other) noexcept
   : _team_id(other._team_id), _allocated(std::move(other._allocated))
-  { }
-
-  /**
-   * Default constructor, deleted.
-   */
-  LocalAllocator() noexcept
-    = delete;
+  {
+    // clear origin without deallocating gptrs
+    other._allocated.clear();
+  }
 
   /**
    * Copy constructor.
@@ -121,12 +118,16 @@ public:
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(const self_t && other) noexcept
+  self_t & operator=(self_t && other) noexcept
   {
-    // Take ownership of other instance's allocation vector:
-    clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    if(this != &other){
+      // Take ownership of other instance's allocation vector:
+      clear();
+      _allocated = std::move(other._allocated);
+      _team_id   = other._team_id;
+      // clear origin without deallocating gptrs
+      other._allocated.clear();
+    }
     return *this;
   }
 
@@ -194,6 +195,30 @@ public:
    */
   void deallocate(pointer gptr)
   {
+    _deallocate(gptr, false);
+  }
+
+private:
+  /**
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  void clear() noexcept
+  {
+    for (auto gptr : _allocated) {
+      _deallocate(gptr, true);
+    }
+    _allocated.clear();
+  }
+  /**
+   * Deallocates memory in global memory space previously allocated in the
+   * active unit's local memory.
+   */
+  void _deallocate(
+    /// gptr to be deallocated
+    pointer gptr,
+    /// if true, only free memory but keep gptr in vector
+    bool    keep_reference = false)
+  {
     DASH_LOG_DEBUG_VAR("LocalAllocator.deallocate(gptr)", gptr);
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
@@ -206,24 +231,12 @@ public:
     DASH_ASSERT_RETURNS(
       dart_memfree(gptr),
       DART_OK);
-    _allocated.erase(
+    if(!keep_reference){
+      _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
-    DASH_LOG_DEBUG("LocalAllocator.deallocate >");
-  }
-
-private:
-  /**
-   * Frees all global memory regions allocated by this allocator instance.
-   */
-  void clear() noexcept
-  {
-    for (auto gptr : _allocated) {
-      // TODO:
-      // Inefficient as deallocate() applies vector.erase(std::remove)
-      // for every element.
-      deallocate(gptr);
     }
+    DASH_LOG_DEBUG("LocalAllocator.deallocate >");
   }
 
 private:
