@@ -64,19 +64,25 @@ public:
   operator const T & () const { return _value; }
 };
 
-
+#if 0
 template <class T>
 UniversalMember<T>
-make_universal_member(T & val) {
+make_universal_member(const T & val) {
   DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_member(T &):");
   return UniversalMember<T>(val);
 }
+#endif
 
-template <class T>
-UniversalMember<T>
+template <
+  class T,
+  class ValueT = typename std::remove_const<
+                   typename std::remove_reference<T>::type
+                 >::type
+>
+UniversalMember<ValueT>
 make_universal_member(T && val) {
   DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_member(T &&)");
-  return UniversalMember<T>(std::move(val));
+  return UniversalMember<ValueT>(std::forward<T>(val));
 }
 
 

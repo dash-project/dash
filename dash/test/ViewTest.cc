@@ -83,6 +83,19 @@ TEST_F(ViewTest, ViewTraits)
 //static_assert(
 //    dash::view_traits<decltype(v_loc)>::is_origin::value == false,
 //    "view traits is_origin for local(dash::Array) not matched");
+
+  static_assert(
+       dash::view_traits<decltype(array)>::rank::value == 1,
+       "rank of array different from 1");
+  static_assert(
+       dash::view_traits<decltype(v_sub)>::rank::value == 1,
+       "rank of sub(array) different from 1");
+  static_assert(
+       dash::view_traits<decltype(v_ssub)>::rank::value == 1,
+       "rank of sub(sub(array)) different from 1");
+  static_assert(
+       dash::view_traits<decltype(v_loc)>::rank::value == 1,
+       "rank of local(array) different from 1");
 }
 
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)

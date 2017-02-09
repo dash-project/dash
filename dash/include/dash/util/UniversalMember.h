@@ -41,12 +41,6 @@ public:
     *(_value.get()) = std::forward<ValueType>(value);
     return *this;
   }
-#if 0
-  self_t & operator=(const ValueType & value) {
-    *(_value.get()) = value;
-    return *this;
-  }
-#endif
 };
 
 } // namespace dash
