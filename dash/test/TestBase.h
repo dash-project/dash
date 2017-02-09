@@ -190,7 +190,7 @@ class TestBase : public ::testing::Test {
   virtual void SetUp() {
     LOG_MESSAGE("===> Running test case");
     dash::init(&TESTENV.argc, &TESTENV.argv);
-    LOG_MESSAGE("-==- DASH initialized with %lu", dash::size());
+    LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
     dash::barrier();
   }
 
