@@ -868,7 +868,6 @@ public:
     /// Global block index
     index_type g_block_index) const
   {
-#if 1
     return ViewSpec_t(
       {{ static_cast<index_type>(g_block_index * _blocksize) }},
       {{ static_cast<size_type>(
@@ -877,16 +876,6 @@ public:
                          : underfilled_blocksize(0) )
          ) }}
     );
-#else
-    index_type offset = g_block_index * _size;
-    std::array<index_type, NumDimensions> offsets = {{ offset }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    if(g_block_index == (_nblocks - 1)){
-      extents[0] -= underfilled_blocksize(0);
-    }
-    ViewSpec_t block_vs(offsets, extents);
-    return block_vs;
-#endif
   }
 
   /**
@@ -897,7 +886,6 @@ public:
     /// Local block index
     index_type l_block_index) const
   {
-#if 1
     // Local block index to local block coords:
     return ViewSpec_t(
       {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
@@ -909,18 +897,6 @@ public:
           : _blocksize )
          ) }}
     );
-#else
-    auto l_elem_index = l_block_index * _blocksize;
-    auto g_elem_index = global(l_elem_index);
-    std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
-    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    if(l_block_index == (_nlblocks - 1)) {
-      size_type remaining = _local_size % extents[0];
-      extents[0] = (remaining == 0) ? extents[0] : remaining;
-    }
-    ViewSpec_t block_vs(offsets, extents);
-    return block_vs;
-#endif
   }
 
   /**

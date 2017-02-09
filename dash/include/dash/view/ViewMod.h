@@ -241,7 +241,6 @@ template <
   class DomainType >
 class ViewModBase {
   typedef ViewModBase<ViewModType, DomainType> self_t;
-//typedef typename std::remove_reference<DomainType>::type domain_value_type;
  public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<domain_type>::origin_type         origin_type;
@@ -400,15 +399,9 @@ class ViewLocalMod
                )
              )
            )
-#if 1
          + _index_set.pre()[
              _index_set.first()
            ];
-#else
-         + dash::index(dash::local(dash::domain(*this))).pre()[
-             *dash::begin(dash::index(dash::local(dash::domain(*this))))
-           ];
-#endif
   }
 
   constexpr iterator end() const {
@@ -419,17 +412,9 @@ class ViewLocalMod
                )
              )
            )
-#if 1
          + _index_set.pre()[
              _index_set.last()
            ] + 1;
-#else
-         + dash::index(dash::local(dash::domain(*this))).pre()[
-             *(dash::begin(dash::index(dash::local(dash::domain(*this))))
-                 + dash::index(dash::local(dash::domain(*this))).size()
-                 - 1 )
-           ] + 1;
-#endif
   }
 
   constexpr auto operator[](int offset) const
@@ -519,8 +504,6 @@ class ViewSubMod
     iterator;
 
  private:
-  index_type     _begin_idx;
-  index_type     _end_idx;
   index_set_type _index_set;
 
  public:
@@ -536,8 +519,6 @@ class ViewSubMod
     index_type     begin,
     index_type     end)
   : base_t(std::forward<domain_type>(domain))
-  , _begin_idx(begin)
-  , _end_idx(end)
   , _index_set(*this, begin, end)
   { }
 
@@ -546,8 +527,6 @@ class ViewSubMod
     index_type     begin,
     index_type     end)
   : base_t(domain)
-  , _begin_idx(begin)
-  , _end_idx(end)
   , _index_set(*this, begin, end)
   { }
 

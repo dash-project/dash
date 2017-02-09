@@ -5,6 +5,7 @@
 #include <dash/Range.h>
 #include <dash/Iterator.h>
 
+#include <dash/util/UniversalMember.h>
 #include <dash/util/ArrayExpr.h>
 
 #include <dash/view/IndexSet.h>
@@ -57,7 +58,7 @@ template <
 class NViewSubMod;
 
 // --------------------------------------------------------------------
-// ViewOrigin
+// NViewOrigin
 // --------------------------------------------------------------------
 
 /**
@@ -193,7 +194,7 @@ public:
   typedef std::integral_constant<std::size_t, DomainType::rank::value>  rank;
 
 protected:
-  const DomainType * _domain;
+  dash::UniversalMember<domain_type> _domain;
 
   NViewModType & derived() {
     return static_cast<NViewModType &>(*this);
@@ -202,8 +203,18 @@ protected:
     return static_cast<const NViewModType &>(*this);
   }
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
+  constexpr explicit NViewModBase(domain_type && domain)
+  : _domain(std::forward<domain_type>(domain))
+  { }
+
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit NViewModBase(const domain_type & domain)
-  : _domain(&domain)
+  : _domain(domain)
   { }
 
   constexpr NViewModBase()               = delete;
@@ -216,7 +227,7 @@ public:
   self_t & operator=(const self_t &)     = default;
 
   constexpr const domain_type & domain() const {
-    return *_domain;
+    return _domain;
   }
 
   constexpr bool operator==(const NViewModType & rhs) const {
@@ -238,16 +249,16 @@ public:
          std::declval<
            typename std::add_lvalue_reference<domain_type>::type
          >().extents()) {
-    return _domain->extents();
+    return domain().extents();
   }
 
   template <std::size_t ShapeDim>
   constexpr index_type extent() const {
-    return (*_domain).template extent<ShapeDim>();
+    return domain().template extent<ShapeDim>();
   }
 
   constexpr index_type extent(std::size_t shape_dim) const {
-    return _domain->extent(shape_dim);
+    return domain().extent(shape_dim);
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -257,16 +268,16 @@ public:
          std::declval<
            typename std::add_lvalue_reference<domain_type>::type
          >().offsets()) {
-    return _domain->offsets();
+    return domain().offsets();
   }
 
   template <std::size_t ShapeDim>
   constexpr index_type offset() const {
-    return (*_domain).template offset<ShapeDim>();
+    return domain().template offset<ShapeDim>();
   }
 
   constexpr index_type offset(std::size_t shape_dim) const {
-    return _domain->offset(shape_dim);
+    return domain().offset(shape_dim);
   }
 
   // ---- size ------------------------------------------------------------
@@ -308,7 +319,7 @@ struct view_traits<NViewLocalMod<DomainType, NDim> > {
 };
 
 template <
-  class DomainType,
+  class       DomainType,
   std::size_t NDim >
 class NViewLocalMod
 : public NViewModBase<
@@ -333,6 +344,12 @@ public:
 
   typedef std::integral_constant<bool, true>                      is_local;
 
+  typedef decltype(dash::begin(dash::local(
+                std::declval<
+                  typename std::add_lvalue_reference<origin_type>::type >()
+              )))
+    iterator;
+
 private:
   index_set_type  _index_set;
 public:
@@ -343,6 +360,18 @@ public:
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
 
+  /**
+   * Constructor, creates a view on a given domain.
+   */
+  constexpr explicit NViewLocalMod(
+    domain_type && domain)
+  : base_t(std::forward<domain_type>(domain))
+  , _index_set(*this)
+  { }
+
+  /**
+   * Constructor, creates a view on a given domain.
+   */
   constexpr explicit NViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
@@ -359,37 +388,23 @@ public:
     return not (*this == rhs);
   }
 
-  constexpr auto begin() const
-  -> decltype(dash::begin(dash::local(
-                std::declval<
-                  typename std::add_lvalue_reference<origin_type>::type >()
-              ))) {
+  constexpr iterator begin() const {
     return dash::begin(
              dash::local(
                dash::origin(
-                 *this
-               )
-             )
-           )
-         + dash::index(dash::local(dash::domain(*this))).pre()[
-             dash::index(dash::local(dash::domain(*this)))[0]
+                 *this ) ) )
+         + _index_set.pre()[
+             _index_set.first()
            ];
   }
 
-  constexpr auto end() const
-  -> decltype(dash::end(dash::local(
-                std::declval<
-                  typename std::add_lvalue_reference<origin_type>::type >()
-              ))) {
+  constexpr iterator end() const {
     return dash::begin(
              dash::local(
                dash::origin(
-                 *this
-               )
-             )
-           )
-         + dash::index(dash::local(dash::domain(*this))).pre()[
-             (*dash::end(dash::index(dash::local(dash::domain(*this)))))-1
+                 *this ) ) )
+         + _index_set.pre()[
+             _index_set.last()
            ] + 1;
   }
 
@@ -435,13 +450,28 @@ public:
   }
 };
 
+#if 0
+template <class ViewType>
+constexpr auto
+local(const ViewType & v)
+-> typename std::enable_if<
+     (dash::view_traits<ViewType>::rank::value > 1),
+     NViewLocalMod< ViewType, dash::view_traits<ViewType>::rank::value >
+   >::type {
+  return NViewLocalMod<
+           ViewType,
+           dash::view_traits<ViewType>::rank::value >(
+             v);
+}
+#endif
+
 
 // ------------------------------------------------------------------------
 // NViewSubMod
 // ------------------------------------------------------------------------
 
 template <
-  class DomainType,
+  class       DomainType,
   std::size_t SubDim,
   std::size_t NDim >
 struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
@@ -466,7 +496,7 @@ struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
 
 
 template <
-  class DomainType,
+  class       DomainType,
   std::size_t SubDim,
   std::size_t NDim >
 class NViewSubMod
@@ -505,9 +535,19 @@ public:
   self_t & operator=(const self_t &)    = default;
 
   constexpr NViewSubMod(
-    const DomainType & domain,
-    index_type         begin,
-    index_type         end)
+    domain_type && domain,
+    index_type     begin,
+    index_type     end)
+  : base_t(std::forward<domain_type>(domain))
+  , _begin_idx(begin)
+  , _end_idx(end)
+  , _index_set(*this, begin, end)
+  { }
+
+  constexpr NViewSubMod(
+    domain_type  & domain,
+    index_type     begin,
+    index_type     end)
   : base_t(domain)
   , _begin_idx(begin)
   , _end_idx(end)
@@ -520,7 +560,6 @@ public:
   constexpr index_type extent() const {
     return ( ExtDim == SubDim
              ? _end_idx - _begin_idx
-          // : base_t::template extent<ExtDim>()
              : base_t::extent(ExtDim)
            );
   }
@@ -552,7 +591,6 @@ public:
   constexpr index_type offset() const {
     return ( ExtDim == SubDim
              ? _begin_idx
-          // : base_t::template offset<ExtDim>()
              : base_t::offset(ExtDim)
            );
   }
@@ -626,6 +664,16 @@ public:
 
   constexpr local_type local() const {
     return local_type(*this);
+  }
+};
+
+
+#endif // DOXYGEN
+
+} // namespace dash
+
+#endif // DASH__NVIEW__VIEW_MOD_H__INCLUDED
+is);
   }
 };
 

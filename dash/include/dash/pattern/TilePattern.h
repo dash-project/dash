@@ -382,11 +382,14 @@ public:
   { }
 
   /**
+   * Assignment operator.
+   */
+  TilePattern & operator=(const self_t & other) = default;
+
+  /**
    * Equality comparison operator.
    */
-  bool operator==(
-    /// TilePattern instance to compare for equality
-    const self_t & other) const
+  bool operator==(const self_t & other) const
   {
     if (this == &other) {
       return true;
@@ -411,29 +414,6 @@ public:
     const self_t & other) const
   {
     return !(*this == other);
-  }
-
-  /**
-   * Assignment operator.
-   */
-  TilePattern & operator=(const TilePattern & other)
-  {
-    if (this != &other) {
-      _distspec            = other._distspec;
-      _team                = other._team;
-      _myid                = other._myid;
-      _teamspec            = other._teamspec;
-      _memory_layout       = other._memory_layout;
-      _nunits              = other._nunits;
-      _blocksize_spec      = other._blocksize_spec;
-      _blockspec           = other._blockspec;
-      _local_blockspec     = other._local_blockspec;
-      _local_memory_layout = other._local_memory_layout;
-      _local_capacity      = other._local_capacity;
-      _lbegin              = other._lbegin;
-      _lend                = other._lend;
-    }
-    return *this;
   }
 
   /**
@@ -645,13 +625,19 @@ public:
       block_coords_l[d] = vs_coord_d / block_size_d;
     }
     DASH_LOG_TRACE("TilePattern.local_at",
-                   "local_coords:",       local_coords,
-                   "view:",               viewspec,
-                   "local blocks:",       _local_blockspec.extents(),
-                   "local block coords:", block_coords_l,
+                   "local_coords:",       local_coords);
+    DASH_LOG_TRACE("TilePattern.local_at",
+                   "view:",               viewspec);
+    DASH_LOG_TRACE("TilePattern.local_at",
+                   "local blocks:",       _local_blockspec.extents());
+    DASH_LOG_TRACE("TilePattern.local_at",
+                   "local block coords:", block_coords_l);
+    DASH_LOG_TRACE("TilePattern.local_at",
                    "phase coords:",       phase_coords);
     // Number of blocks preceeding the coordinates' block:
     auto block_offset_l = _local_blockspec.at(block_coords_l);
+    DASH_LOG_TRACE("TilePattern.local_at",
+                   "local block offset:", block_offset_l);
     auto local_index    =
            block_offset_l * _blocksize_spec.size() + // preceeding blocks
            _blocksize_spec.at(phase_coords);         // element phase
@@ -1546,7 +1532,10 @@ private:
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distspec,
     const TeamSpec_t         & teamspec) const {
-    DASH_LOG_TRACE("TilePattern.init_blocksizespec()");
+    DASH_LOG_TRACE("TilePattern.init_blocksizespec()",
+                   "sizespec:", sizespec.extents(),
+                   "distspec:", distspec.values(),
+                   "teamspec:", teamspec.extents());
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
     if (sizespec.size() == 0 || teamspec.size() == 0) {

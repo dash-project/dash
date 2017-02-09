@@ -15,22 +15,18 @@ namespace test {
 
   template <class MatrixT>
   void initialize_matrix(MatrixT & matrix) {
-#if 0
-    for (auto li = 0; li != matrix.local.size(); ++li) {
-      matrix.local.begin()[li] = // unit
-                                 (1.0000 * dash::myid()) +
-                                 // local offset
-                                 (0.0001 * (li+1));
-    }
-#else
     if (dash::myid() == 0) {
       for(size_t i = 0; i < matrix.extent(0); ++i) {
         for(size_t k = 0; k < matrix.extent(1); ++k) {
-          matrix[i][k] = (i + 1) * 1.000 + (k + 1) * 0.001;
+          matrix[i][k] = (i + 1) * 0.100 + (k + 1) * 0.001;
         }
       }
     }
-#endif
+    matrix.barrier();
+
+    for(size_t i = 0; i < matrix.local_size(); ++i) {
+      matrix.lbegin()[i] += dash::myid();
+    }
     matrix.barrier();
   }
 
@@ -150,8 +146,17 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   //  0 0 0 | 1 1 1 | 2 2 2 | ...
   //
   dash::Matrix<double, 2> mat(
-      nrows,      ncols,
-      dash::NONE, dash::BLOCKED);
+      dash::SizeSpec<2>(
+        nrows,
+        ncols),
+      dash::DistributionSpec<2>(
+        dash::NONE,
+        dash::TILE(block_cols)),
+      dash::Team::All(),
+      dash::TeamSpec<2>(
+        1,
+        nunits));
+
   dash::test::initialize_matrix(mat);
 
   if (dash::myid() == 0) {
@@ -165,21 +170,52 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                      "row[", r, "]", row_values);
     }
   }
-  auto nview_sub_cols = dash::sub<1>(
-                          1, ncols - 1,
-                          mat
-                        );
-  auto nview_sub      = dash::sub<0>(
-                          1, nrows - 1,
-                          nview_sub_cols
-                        );
-  auto nview_rows     = nview_sub.extent<0>();
-  auto nview_cols     = nview_sub.extent<1>();
+  mat.barrier();
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows);
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols);
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat.extents());
 
+  // -- Local View -----------------------------------
+  //
+  
+  auto loc_view = dash::local(
+                    dash::sub<0>(
+                      0, mat.extents()[0],
+                      mat));
+  
+  int  lrows    = loc_view.extent<0>();
+  int  lcols    = loc_view.extent<1>();
+
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                 dash::internal::typestr(loc_view),
+                 "lrows:", lrows, "lcols:", lcols);
+
+  for (int r = 0; r < lrows; ++r) {
+    std::vector<double> row_values;
+    for (int c = 0; c < lcols; ++c) {
+      row_values.push_back(
+        static_cast<double>(*(loc_view.begin() + (r * lrows + c))));
+    }
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "lrow[", r, "]", row_values);
+  }
+
+  return;
+
+  mat.barrier();
+
+  // -- Sub-Section ----------------------------------
+  //
+  
   if (dash::myid() == 0) {
+    auto nview_sub  = dash::sub<0>(1, nrows - 1,
+                        dash::sub<1>(1, ncols - 1,
+                          mat) );
+    auto nview_rows = nview_sub.extent<0>();
+    auto nview_cols = nview_sub.extent<1>();
+
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows);
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols);
+
     for (int r = 0; r < nview_rows; ++r) {
       std::vector<double> row_values;
       for (int c = 0; c < nview_cols; ++c) {
@@ -195,5 +231,6 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                      range_str(row_view));
     }
   }
+
 }
 

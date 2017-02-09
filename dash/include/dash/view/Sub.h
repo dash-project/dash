@@ -14,9 +14,9 @@ namespace dash {
 // View Modifiers (not coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain domain dimensions
-
 /**
+ * Sub-section, view dimensions maintain domain dimensions.
+ *
  * \concept{DashViewConcept}
  */
 template <
@@ -31,6 +31,8 @@ sub(OffsetFirstT begin,
 }
 
 /**
+ * Sub-section, view dimensions maintain domain dimensions.
+ *
  * \concept{DashViewConcept}
  */
 template <
@@ -43,10 +45,11 @@ sub(const IndexRangeT & range) {
                      dash::end(range));
 }
 
-// Sub-space projection, view reduces domain by one dimension
 
 #if 0
 /**
+ * Sub-space projection, view reduces domain by one dimension.
+ *
  * \concept{DashViewConcept}
  */
 template <
@@ -63,50 +66,18 @@ sub(
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-// Sub-space slice, view dimensions maintain domain dimensions
-
-#if 0
 /**
+ * Sub-section, view dimensions maintain domain dimensions.
+ *
  * \concept{DashViewConcept}
  */
-template <
-  dim_t    SubDim  = 0,
-  class    DomainT,
-  class    OffsetFirstT,
-  class    OffsetFinalT,
-  typename DomainValueT =
-             typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-             >::type
->
-constexpr auto
-sub(
-    OffsetFirstT    begin,
-    OffsetFinalT    end,
-    DomainT       & domain)
-  -> typename std::enable_if<
-       dash::view_traits<
-         DomainValueT
-       >::rank::value == 1,
-       ViewSubMod<DomainT, SubDim>
-     >::type {
-  return ViewSubMod<DomainT, SubDim>(
-           domain,
-           begin,
-           end);
-}
-#endif
-
-#if 1
 template <
   dim_t SubDim  = 0,
   class DomainT,
   class OffsetFirstT,
   class OffsetFinalT,
   typename DomainValueT =
-  //         typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-  //         >::type
+             typename std::remove_reference<DomainT>::type
 >
 constexpr auto
 sub(
@@ -114,9 +85,7 @@ sub(
     OffsetFinalT    end,
     DomainT      && domain)
   -> typename std::enable_if<
-       dash::view_traits<
-         DomainValueT
-       >::rank::value == 1,
+       dash::view_traits< DomainValueT >::rank::value == 1,
        ViewSubMod<DomainValueT, SubDim>
      >::type {
   return ViewSubMod<DomainValueT, SubDim>(
@@ -124,7 +93,6 @@ sub(
            begin,
            end);
 }
-#endif
 
 // =========================================================================
 // Multidimensional Views
@@ -134,21 +102,28 @@ template <
   dim_t SubDim  = 0,
   class DomainT,
   class OffsetFirstT,
-  class OffsetFinalT >
+  class OffsetFinalT,
+  typename DomainValueT =
+             typename std::remove_reference<DomainT>::type
+>
 constexpr auto
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    const DomainT & domain)
+    DomainT      && domain)
   -> typename std::enable_if<
-       (dash::view_traits<DomainT>::rank::value > 1),
-       NViewSubMod<DomainT, SubDim, dash::view_traits<DomainT>::rank::value>
+       (dash::view_traits<DomainValueT>::rank::value > 1),
+       NViewSubMod<
+         DomainValueT,
+         SubDim,
+         dash::view_traits<DomainValueT>::rank::value
+       >
      >::type {
   return NViewSubMod<
-           DomainT,
+           DomainValueT,
            SubDim,
-           dash::view_traits<DomainT>::rank::value
-         >(domain,
+           dash::view_traits<DomainValueT>::rank::value
+         >(std::forward<DomainT>(domain),
            begin,
            end);
 }

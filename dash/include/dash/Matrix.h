@@ -609,3 +609,4 @@ using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
+

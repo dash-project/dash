@@ -703,11 +703,11 @@ class IndexSetLocal
               // only required if local of sub
               ( this->domain()[0] == 0
                 ? 0
-                : this->pattern().at(
+                : this->pattern().local(
                     std::max<index_type>(
                       this->pattern().global(0),
                       this->domain()[0]
-                  ))
+                  )).index
               );
   }
 
@@ -816,9 +816,9 @@ class IndexSetGlobal
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
-    return this->pattern().at(
+    return this->pattern().local(
              global_index
-           );
+           ).index;
   }
 
   constexpr index_type calc_size() const {
