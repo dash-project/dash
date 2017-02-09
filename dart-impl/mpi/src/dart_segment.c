@@ -1,6 +1,7 @@
 #include <string.h>
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/mutex.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
@@ -48,11 +49,14 @@ typedef struct dart_seghash_elem dart_seghash_elem_t;
 struct dart_seghash_elem {
   dart_seghash_elem_t *next;
   dart_segment_t       data;
-  int32_t              seg_id; // use int32_t internally to signal "invalid segment id"
 };
 
-static dart_seghash_elem_t hashtab[DART_SEGMENT_HASH_SIZE];
-static dart_seghash_elem_t *freelist_head = NULL;
+typedef struct dart_seghash_head {
+  dart_seghash_elem_t *next;
+  dart_mutex_t         mutex;
+} dart_seghash_head_t;
+
+static dart_seghash_head_t hashtab[DART_SEGMENT_HASH_SIZE];
 
 static inline int hash_segid(dart_segid_t segid)
 {
@@ -70,10 +74,10 @@ static inline int hash_segid(dart_segid_t segid)
 dart_ret_t dart_segment_init()
 {
   int i;
-  memset(hashtab, 0, sizeof(dart_seghash_elem_t) * DART_SEGMENT_HASH_SIZE);
+  memset(hashtab, 0, sizeof(dart_seghash_head_t) * DART_SEGMENT_HASH_SIZE);
 
   for (i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
-    hashtab[i].seg_id = DART_SEGMENT_INVALID;
+    dart_mutex_init(&hashtab[i].mutex);
   }
 
   return DART_OK;
@@ -82,12 +86,9 @@ dart_ret_t dart_segment_init()
 static dart_segment_t * get_segment(dart_segid_t segid)
 {
   int slot = hash_segid(segid);
-  dart_seghash_elem_t *elem = &hashtab[slot];
+  dart_seghash_elem_t *elem = hashtab[slot].next;
 
-  while (elem != NULL) {
-    if (elem->data.segid == segid) {
-      break;
-    }
+  while (elem != NULL && elem->data.segid != segid) {
     elem = elem->next;
   }
 
@@ -104,6 +105,11 @@ static dart_segment_t * get_segment(dart_segid_t segid)
  * @brief Allocates a new segment data struct. May be served from a freelist.
  *
  * @return A pointer to an empty segment data object.
+ *
+ * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
+ *            lock-free list in the buckets?
+ *            Alternatively, use spin-locks since lock periods should be short
+ *            (maybe get rid of the free-list then?).
  */
 dart_ret_t dart_segment_alloc(dart_segid_t segid, uint16_t team_idx)
 {
@@ -111,37 +117,18 @@ dart_ret_t dart_segment_alloc(dart_segid_t segid, uint16_t team_idx)
                  segid, team_idx);
 
   int slot = hash_segid(segid);
-  dart_seghash_elem_t *elem = &hashtab[slot];
 
-  if (elem->seg_id != DART_SEGMENT_INVALID) {
-    dart_seghash_elem_t *pred = NULL;
-    // we cannot use the first element, go to the last element in the
-    // slot's list
-    while (elem != NULL) {
-      if (elem->seg_id == segid) {
-        elem->data.segid = segid;
-        elem->data.team_idx = team_idx;
-        return DART_OK;
-      }
-      pred = elem;
-      elem = elem->next;
-    }
-
-    // add a new element to the list, either allocate new or take from
-    // freelist
-    if (freelist_head != NULL) {
-      elem = freelist_head;
-      freelist_head = freelist_head->next;
-      elem->next = NULL;
-    } else {
-      elem = calloc(1, sizeof(dart_seghash_elem_t));
-    }
-    pred->next = elem;
-
-  }
-  elem->seg_id        = segid;
+  dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
   elem->data.segid    = segid;
   elem->data.team_idx = team_idx;
+
+  dart_mutex_lock(&hashtab[slot].mutex);
+
+  /* simply swap pointers and put the new element to the front */
+  elem->next = hashtab[slot].next;
+  hashtab[slot].next = elem;
+
+  dart_mutex_unlock(&hashtab[slot].mutex);
 
   DART_LOG_DEBUG("dart_segment_alloc > segid:%d team_id:%d",
                  segid, team_idx);
@@ -294,16 +281,25 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
  *
  * @return DART_OK on success.
  *         DART_ERR_INVAL if the segment was not found.
+ *
+ * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
+ *            lock-free list in the buckets?
+ *            Alternatively, use spin-locks since lock periods should be short
+ *            (maybe get rid of the free-list then?).
+ *            For now, it has been implemented using mutexes.
  */
 dart_ret_t dart_segment_free(dart_segid_t segid)
 {
   int slot = hash_segid(segid);
   dart_seghash_elem_t *pred = NULL;
-  dart_seghash_elem_t *elem = &hashtab[slot];
+  dart_mutex_lock(&hashtab[slot].mutex);
+  dart_seghash_elem_t *elem = hashtab[slot].next;
 
   // shortcut: the bucket head is not moved to the freelist
-  if (elem->seg_id == segid) {
-    elem->seg_id = DART_SEGMENT_INVALID;
+  if (elem->data.segid == segid) {
+    hashtab[slot].next = elem->next;
+    dart_mutex_unlock(&hashtab[slot].mutex);
+    free(elem);
     return DART_OK;
   }
 
@@ -314,29 +310,23 @@ dart_ret_t dart_segment_free(dart_segid_t segid)
 
     if (elem->data.segid == segid) {
       pred->next = elem->next;
+      dart_mutex_unlock(&hashtab[slot].mutex);
+      /* the rest can be done outside of the critical section */
       free_segment_info(&elem->data.seg_info);
-      elem->seg_id = DART_SEGMENT_INVALID;
-      if (freelist_head == NULL) {
-        // make it the new freelist head
-        freelist_head = elem;
-        freelist_head->next = NULL;
-      } else {
-        // insert after the freelist head
-        elem->next = freelist_head->next;
-        freelist_head->next = elem;
-      }
+      free(elem);
       return DART_OK;
     }
 
     pred = elem;
     elem = elem->next;
   }
+  dart_mutex_unlock(&hashtab[slot].mutex);
 
   // element not found
   return DART_ERR_INVAL;
 }
 
-static void clear_segdata_list(dart_seghash_elem_t *listhead)
+static void clear_segdata_list(dart_seghash_head_t *listhead)
 {
   dart_seghash_elem_t *elem = listhead->next;
   while (elem != NULL) {
@@ -358,13 +348,8 @@ dart_ret_t dart_segment_fini()
   // clear the hash table
   for (i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
     clear_segdata_list(&hashtab[i]);
+    dart_mutex_destroy(&hashtab[i].mutex);
   }
 
-  // clear the free_list
-  if (freelist_head != NULL) {
-    clear_segdata_list(freelist_head);
-    free(freelist_head);
-    freelist_head = NULL;
-  }
   return DART_OK;
 }

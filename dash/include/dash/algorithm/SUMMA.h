@@ -121,6 +121,27 @@ typedef dash::pattern_layout_properties<
             dash::pattern_layout_tag::linear
         > summa_pattern_layout_constraints;
 
+template<typename MatrixType>
+using summa_pattern_constraints =
+    typename dash::pattern_constraints<
+        dash::summa_pattern_partitioning_constraints,
+        dash::summa_pattern_mapping_constraints,
+        dash::summa_pattern_layout_constraints,
+        typename MatrixType::pattern_type>;
+
+template<
+  typename MatrixTypeA,
+  typename MatrixTypeB,
+  typename MatrixTypeC
+>
+using check_summa_pattern_constraints =
+    typename std::enable_if<
+      summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
+      summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
+      summa_pattern_constraints<MatrixTypeA>::satisfied::value,
+      void>;
+
+
 /**
  * Multiplies two matrices using the SUMMA algorithm.
  * Performs \c (2 * (nunits-1) * nunits^2) async copy operations of
@@ -583,7 +604,6 @@ void summa(
 }
 
 #ifdef DOXYGEN
-
 /**
  * Function adapter to an implementation of matrix-matrix multiplication
  * (xDGEMM) depending on the matrix distribution patterns.
@@ -613,27 +633,11 @@ template<
   typename MatrixTypeB,
   typename MatrixTypeC
 >
-typename std::enable_if<
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeA::pattern_type
-  >::satisfied::value &&
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeB::pattern_type
-  >::satisfied::value &&
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeC::pattern_type
-  >::satisfied::value,
-  void
->::type
+typename
+dash::check_summa_pattern_constraints<
+  MatrixTypeA,
+  MatrixTypeB,
+  MatrixTypeC >::type
 mmult(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,

@@ -4,6 +4,7 @@
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
 #include <dash/Types.h>
+#include <dash/Init.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -20,12 +21,6 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-
-
-namespace dash {
-  // forward-declaration
-  global_unit_t myid();
-}
 
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
