@@ -11,6 +11,40 @@ namespace dash {
  * Utility class template to capture values from both moved temporaries
  * (rvalues) and named references to avoid temporary copies.
  *
+ * \par Usage example
+ *
+ * \code
+ *    // Class using dash::UniversalMember 
+ *    template <class T>
+ *    class MyClass {
+ *      dash::UniversalMember<T> _value;
+ *    public:
+ *      constexpr explicit MyClass(T && value)
+ *      : _value(std::forward<T>(value))
+ *      { }
+
+ *      constexpr explicit MyClass(const T & value)
+ *      : _value(value)
+ *      { }
+
+ *            T & value()       { return _value; }
+ *      const T & value() const { return _value; }
+ *    };
+ *
+ *    // Value type definition and passing values to a class using
+ *    // dash::UniversalMember
+ *    template <
+ *      class T,
+ *      class ValueT = typename std::remove_const<
+ *                       typename std::remove_reference<T>::type
+ *                     >::type
+ *    >
+ *    MyClass<ValueT>
+ *    make_my_class(T && val) {
+ *      return MyClass<ValueT>(std::forward<T>(val));
+ *    }
+ * \endcode
+ *
  */
 template <class ValueType>
 class UniversalMember {

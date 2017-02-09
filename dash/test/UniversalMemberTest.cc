@@ -64,15 +64,6 @@ public:
   operator const T & () const { return _value; }
 };
 
-#if 0
-template <class T>
-UniversalMember<T>
-make_universal_member(const T & val) {
-  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_member(T &):");
-  return UniversalMember<T>(val);
-}
-#endif
-
 template <
   class T,
   class ValueT = typename std::remove_const<
@@ -181,18 +172,16 @@ public:
   { }
 };
 
-template <class T>
-UniversalOwner<T>
-make_universal_owner(T & val) {
-  DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_owner(T &):");
-  return UniversalOwner<T>(val);
-}
-
-template <class T>
-UniversalOwner<T>
+template <
+  class T,
+  class ValueT = typename std::remove_const<
+                   typename std::remove_reference<T>::type
+                 >::type
+>
+UniversalOwner<ValueT>
 make_universal_owner(T && val) {
   DASH_LOG_DEBUG("UniversalMemberTest", "make_universal_owner(T &&)");
-  return UniversalOwner<T>(std::move(val));
+  return UniversalOwner<ValueT>(std::forward<T>(val));
 }
 
 TEST_F(UniversalMemberTest, WrappedMember)
@@ -201,6 +190,14 @@ TEST_F(UniversalMemberTest, WrappedMember)
 
   ImmovableType<value_t> immovable("immovable");
   MovableType<value_t>   movable("movable");
+  
+  // Test passing to owner c'tor:
+  {
+    auto lref_owner = make_universal_owner(immovable);
+    auto rval_owner = make_universal_owner(MovableType<value_t>("moved"));
+    EXPECT_EQ_U("immovable", static_cast<value_t &>(lref_owner.value()));
+    EXPECT_EQ_U("moved",     static_cast<value_t &>(rval_owner.value()));
+  }
 
   UniversalOwner<ImmovableType<value_t>> lref_owner(immovable);
   UniversalOwner<MovableType<value_t>>   rval_owner(
