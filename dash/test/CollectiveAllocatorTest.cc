@@ -10,6 +10,7 @@ TEST_F(CollectiveAllocatorTest, Constructor)
   dart_gptr_t requested = target.allocate(sizeof(int) * 10);
 
   ASSERT_EQ(0, requested.unitid);
+  ASSERT_EQ(DART_TEAM_ALL, requested.teamid);
 }
 
 TEST_F(CollectiveAllocatorTest, TeamAlloc)
@@ -25,5 +26,6 @@ TEST_F(CollectiveAllocatorTest, TeamAlloc)
   // make sure the unitid in the gptr is
   // team-local and 0 instead of the corresponding global unit ID
   ASSERT_EQ(0, requested.unitid);
+  ASSERT_EQ(subteam.dart_id(), requested.teamid);
 }
 
