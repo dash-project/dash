@@ -673,13 +673,3 @@ public:
 } // namespace dash
 
 #endif // DASH__NVIEW__VIEW_MOD_H__INCLUDED
-is);
-  }
-};
-
-
-#endif // DOXYGEN
-
-} // namespace dash
-
-#endif // DASH__NVIEW__VIEW_MOD_H__INCLUDED
