@@ -18,12 +18,11 @@ struct hdf5_options;
  * the hdf5 dataset
  */
 class dataset {
-public:
+ public:
   std::string _dataset;
-public:
-  dataset(std::string dataset) {
-    _dataset = dataset;
-  }
+
+ public:
+  dataset(std::string dataset) { _dataset = dataset; }
 };
 
 /**
@@ -31,12 +30,11 @@ public:
  * pattern key of the dataset.
  */
 class setpattern_key {
-public:
+ public:
   std::string _key;
-public:
-  setpattern_key(std::string name)
-  : _key(name)
-  { }
+
+ public:
+  setpattern_key(std::string name) : _key(name) {}
 };
 
 /**
@@ -45,12 +43,11 @@ public:
  * hdf5 dataset metadata or not.
  */
 class restore_pattern {
-public:
+ public:
   bool _restore;
-public:
-  restore_pattern(bool restore = true)
-  : _restore(restore)
-  { }
+
+ public:
+  restore_pattern(bool restore = true) : _restore(restore) {}
 };
 
 /**
@@ -59,12 +56,11 @@ public:
  * of the hdf5 dataset or not.
  */
 class store_pattern {
-public:
+ public:
   bool _store;
-public:
-  store_pattern(bool store = true)
-  : _store(store)
-  { }
+
+ public:
+  store_pattern(bool store = true) : _store(store) {}
 };
 
 /**
@@ -74,18 +70,17 @@ public:
  * have to match the extends of the dataset
  */
 class modify_dataset {
-public:
+ public:
   bool _modify;
-public:
-  modify_dataset(bool modify = true)
-  : _modify(modify)
-  { }
+
+ public:
+  modify_dataset(bool modify = true) : _modify(modify) {}
 };
 
 /**
- * Converter function to convert non-POT types and especially structs to 
+ * Converter function to convert non-POT types and especially structs to
  * HDF5 types.
- * 
+ *
  * Example:
  * \code
  * // Struct that is stored in DASH array
@@ -106,7 +101,7 @@ public:
  *     os << dio::dataset("array_a")
  *        << dio::type_converter(converter)
  *        << array_a;
- * 
+ *
  * // restore data
  * dash::Array<value_t> array_b(1000);
  * InputStream is(_filename);
@@ -116,24 +111,23 @@ public:
  * \endcode
  */
 class type_converter {
-private:
-    type_converter_fun_type _converter;
-public:
-    type_converter(type_converter_fun_type fun = get_h5_datatype<UNSPECIFIED_TYPE>)
-    : _converter(fun) { }
+ private:
+  type_converter_fun_type _converter;
 
-    operator type_converter_fun_type(){
-        return _converter;
-    }
+ public:
+  type_converter(type_converter_fun_type fun =
+                     get_h5_datatype<UNSPECIFIED_TYPE>)
+      : _converter(fun) {}
+
+  operator type_converter_fun_type() { return _converter; }
 };
 
-
-} // namespace hdf5
-} // namespace io
-} // namespace dash
+}  // namespace hdf5
+}  // namespace io
+}  // namespace dash
 
 #include <dash/io/hdf5/IOStream.h>
 
-#endif // DASH_ENABLE_HDF5
+#endif  // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5__IO_MANIP_H__
+#endif  // DASH__IO__HDF5__IO_MANIP_H__
