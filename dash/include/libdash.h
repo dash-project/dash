@@ -33,6 +33,8 @@ namespace dash {
 
 #include <dash/Onesided.h>
 
+#include <dash/LaunchPolicy.h>
+
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>
