@@ -50,6 +50,22 @@ private:
   typedef GlobMem<T, dash::allocator::CollectiveAllocator<T> >
     GlobMem_t;
 
+private:
+  /// Instance of GlobMem that issued this global reference
+  GlobMem_t  * _globmem;
+  /// Value of the referenced element, initially not loaded
+  mutable T    _value;
+  /// Pointer to referenced element in global memory
+  dart_gptr_t  _gptr;
+  /// Pointer to referenced element in local memory
+  T *          _lptr        = nullptr;
+  /// Whether the value of the reference has been changed
+  bool         _has_changed = false;
+  /// Whether the referenced element is located local memory
+  bool         _is_local    = false;
+  /// Whether the value of the referenced element is known
+  mutable bool _has_value   = false;
+
 public:
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -233,14 +249,6 @@ public:
   }
 
   /**
-   * Assignment operator.
-   */
-  self_t & operator=(const self_t & other)
-  {
-    return *this = T(other);
-  }
-
-  /**
    * Value increment operator.
    */
   self_t & operator+=(const T & ref)
@@ -307,22 +315,6 @@ public:
     operator=(val);
     return result;
   }
-
-private:
-  /// Instance of GlobMem that issued this global reference
-  GlobMem_t  * _globmem;
-  /// Value of the referenced element, initially not loaded
-  mutable T    _value;
-  /// Pointer to referenced element in global memory
-  dart_gptr_t  _gptr;
-  /// Pointer to referenced element in local memory
-  T *          _lptr        = nullptr;
-  /// Whether the value of the reference has been changed
-  bool         _has_changed = false;
-  /// Whether the referenced element is located local memory
-  bool         _is_local    = false;
-  /// Whether the value of the referenced element is known
-  mutable bool _has_value   = false;
 
 }; // class GlobAsyncRef
 
