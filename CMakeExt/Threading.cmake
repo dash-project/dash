@@ -1,0 +1,22 @@
+## Flags to enabel support for multi-threading 
+
+##
+# At the moment, ENABLE_THREADING enables DART_THREADING_PTHREADS since
+# Pthreads are the only threading implementation currently supported. 
+##
+
+if (ENABLE_THREADING)
+
+    # Find support for pthreads
+    find_package(Threads REQUIRED)
+    set(CMAKE_C_FLAGS_RELEASE
+        "${CMAKE_C_FLAGS_RELEASE} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
+    set(CMAKE_CXX_FLAGS_RELEASE
+        "${CMAKE_CXX_FLAGS_RELEASE} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
+    set(CMAKE_C_FLAGS_DEBUG
+        "${CMAKE_C_FLAGS_DEBUG} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
+    set(CMAKE_CXX_FLAGS_DEBUG
+        "${CMAKE_CXX_FLAGS_DEBUG} -pthread -DDART_ENABLE_THREADING -DDART_THREADING_PTHREADS -DDASH_ENABLE_THREADING")
+    set(CMAKE_EXE_LINKER_FLAGS
+        "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+endif()
