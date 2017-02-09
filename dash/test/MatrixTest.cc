@@ -893,7 +893,7 @@ TEST_F(MatrixTest, DelayedAlloc)
                          "phase:",       phase_coords, "=", phase,
                          "expected:",    expected,
                          "actual:",      actual);
-          EXPECT_DOUBLE_EQ_U(expected, actual);
+          EXPECT_EQ_U(expected, actual);
         }
       }
     }
