@@ -119,7 +119,10 @@ private:
   typedef char yes;
   typedef long no;
 
-  typedef typename std::remove_reference<T>::type ValueT;
+  typedef typename std::remove_reference<
+            typename std::remove_const<T>::type
+          >::type
+    ValueT;
 
 #ifdef __TODO__
 private:
@@ -143,8 +146,8 @@ private:
 
 public:
   enum { value = (
-              sizeof(has_dash_begin(static_cast<T*>(nullptr))) == sizeof(yes)
-           && sizeof(has_dash_end(static_cast<T*>(nullptr)))   == sizeof(yes)
+          sizeof(has_dash_begin(static_cast<ValueT*>(nullptr))) == sizeof(yes)
+       && sizeof(has_dash_end(static_cast<ValueT*>(nullptr)))   == sizeof(yes)
          ) };
 
   //template<typename C, typename begin_decl =

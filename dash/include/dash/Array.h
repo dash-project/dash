@@ -858,13 +858,11 @@ public:
    * dash::copy(a1.begin(), a1.end(), a2.begin());
    * \endcode
    */
-  Array(const self_t & other) = delete;
+  Array(const self_t & other)         = delete;
 
-  /**
-   * Move constructor is deleted as move semantics are non-trivial for
-   * distributed arrays.
-   */
-  Array(self_t && other) = delete;
+  Array(self_t && other)              = delete;
+
+  self_t & operator=(self_t && other) = delete;
 
   /**
    * Destructor, deallocates array elements.
@@ -875,12 +873,6 @@ public:
     deallocate();
     DASH_LOG_TRACE_VAR("Array.~Array >", this);
   }
-
-  /**
-   * Move assignment operator is deleted as move semantics are non-trivial
-   * for distributed arrays.
-   */
-  self_t & operator=(self_t && other) = delete;
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of

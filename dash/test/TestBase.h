@@ -112,18 +112,26 @@ class TestBase : public ::testing::Test {
  protected:
 
   virtual void SetUp() {
-    LOG_MESSAGE("===> Running test case with %lu units ...", dash::size());
+    const ::testing::TestInfo* const test_info =
+      ::testing::UnitTest::GetInstance()->current_test_info();
+    LOG_MESSAGE("===> Running test case %s:%s with %lu units ...",
+                test_info->name(), test_info->test_case_name(),
+                dash::size());
     dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("-==- DASH initialized");
     dash::barrier();
   }
 
   virtual void TearDown() {
-    LOG_MESSAGE("-==- Test case finished at unit %d",        dash::myid().id);
+    const ::testing::TestInfo* const test_info =
+      ::testing::UnitTest::GetInstance()->current_test_info();
+    LOG_MESSAGE("-==- Test case finished at unit %d", dash::myid().id);
     dash::Team::All().barrier();
-    LOG_MESSAGE("-==- Finalize DASH at unit %d",             dash::myid().id);
+    LOG_MESSAGE("-==- Finalize DASH at unit %d", dash::myid().id);
     dash::finalize();
-    LOG_MESSAGE("<=== Finished test case with %lu units",    dash::size());
+    LOG_MESSAGE("<=== Finished test case %s:%s with %lu units",
+                test_info->name(), test_info->test_case_name(),
+                dash::size());
   }
 
   std::string _hostname() const {

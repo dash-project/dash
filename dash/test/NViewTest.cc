@@ -166,15 +166,15 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
     }
   }
   auto nview_sub_cols = dash::sub<1>(
-                      1, ncols - 1,
-                      mat
-                    );
-  auto nview_sub  = dash::sub<0>(
-                      1, nrows - 1,
-                      nview_sub_cols
-                    );
-  auto nview_rows = nview_sub.extent<0>();
-  auto nview_cols = nview_sub.extent<1>();
+                          1, ncols - 1,
+                          mat
+                        );
+  auto nview_sub      = dash::sub<0>(
+                          1, nrows - 1,
+                          nview_sub_cols
+                        );
+  auto nview_rows     = nview_sub.extent<0>();
+  auto nview_cols     = nview_sub.extent<1>();
 
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows);
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols);

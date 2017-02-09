@@ -22,8 +22,7 @@ template <
   class DomainType >
 class ViewBlockMod;
 
-
-
+#if 0
 template <
   class ContainerType,
   class OffsetT >
@@ -37,6 +36,7 @@ block(
    >::type {
   return container.block(block_idx);
 }
+#endif
 
 /**
  * Blocks view from global view
@@ -47,11 +47,11 @@ template <
   class OffsetT >
 constexpr auto
 block(
-  OffsetT          block_idx,
+  OffsetT    block_idx,
   const ViewType & view)
 -> typename std::enable_if<
-     (  dash::view_traits<ViewType>::is_view::value &&
-       !dash::view_traits<ViewType>::is_local::value   ),
+     (//  dash::view_traits<ViewType>::is_view::value &&
+         !dash::view_traits<ViewType>::is_local::value   ),
      ViewBlockMod<ViewType>
    >::type {
   return ViewBlockMod<ViewType>(view, block_idx);
@@ -69,8 +69,8 @@ block(
   OffsetT          block_idx,
   const ViewType & view)
 -> typename std::enable_if<
-     (  dash::view_traits<ViewType>::is_view::value &&
-        dash::view_traits<ViewType>::is_local::value   ),
+     (// dash::view_traits<ViewType>::is_view::value &&
+         dash::view_traits<ViewType>::is_local::value   ),
      decltype(dash::block(block_idx, dash::local(dash::origin(view))))
    >::type {
   return dash::local(dash::origin(view)).block(block_idx);

@@ -232,8 +232,8 @@ class IndexSetBase
     rank;
 
  protected:
-  const ViewType      * const   _view;
-  const pattern_type  * const   _pattern;
+  const ViewType     & _view;
+  const pattern_type & _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
@@ -243,23 +243,23 @@ class IndexSetBase
   }
   
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(&view)
-  , _pattern(&(dash::origin(view).pattern()))
+  : _view(view)
+  , _pattern(dash::origin(view).pattern())
   { }
-
+  
   ~IndexSetBase()                        = default;
  public:
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
-  self_t & operator=(self_t &&)          = delete;
-  self_t & operator=(const self_t &)     = delete;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
   
   const ViewType & view() {
-    return *_view;
+    return _view; // *(_view.get());
   }
   constexpr const ViewType & view() const {
-    return *_view;
+    return _view; // *(_view.get());
   }
 
   constexpr iterator begin() const {
@@ -281,23 +281,23 @@ class IndexSetBase
   constexpr const local_type & local() const {
 //  -> decltype(dash::index(dash::local(
 //                std::declval< ViewType & >() ))) {
-    return dash::index(dash::local(*_view));
+    return dash::index(dash::local(_view));
   }
 
   constexpr const global_type & global() const {
 //  -> decltype(dash::index(dash::global(
 //                std::declval< ViewType & >() ))) {
-    return dash::index(dash::global(*_view));
+    return dash::index(dash::global(_view));
   }
 
   constexpr const index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
 //  return dash::index(dash::domain(derived().view()));
-    return dash::index(dash::domain(*_view));
+    return dash::index(dash::domain(_view));
   }
 
   constexpr const pattern_type & pattern() const {
-    return *_pattern;
+    return _pattern; // *(_pattern.get());
 //  return (dash::origin(*_view).pattern());
   }
 
@@ -403,8 +403,8 @@ class IndexSetBlocks
   constexpr IndexSetBlocks(self_t &&)      = default;
   constexpr IndexSetBlocks(const self_t &) = default;
   ~IndexSetBlocks()                        = default;
-  self_t & operator=(self_t &&)            = delete;
-  self_t & operator=(const self_t &)       = delete;
+  self_t & operator=(self_t &&)            = default;
+  self_t & operator=(const self_t &)       = default;
 
  public:
   constexpr explicit IndexSetBlocks(const ViewType & view)
@@ -677,8 +677,8 @@ class IndexSetLocal
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
   ~IndexSetLocal()                        = default;
-  self_t & operator=(self_t &&)           = delete;
-  self_t & operator=(const self_t &)      = delete;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
