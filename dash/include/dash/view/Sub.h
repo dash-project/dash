@@ -45,7 +45,6 @@ sub(const IndexRangeT & range) {
                      dash::end(range));
 }
 
-
 #if 0
 /**
  * Sub-space projection, view reduces domain by one dimension.
