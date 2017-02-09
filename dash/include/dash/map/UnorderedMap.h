@@ -491,11 +491,15 @@ public:
                    mapped_offs);
     // Increment pointers to element by byte offset of mapped value member:
     if (lptr_value != nullptr) {
-      // Convert to char pointer for byte-wise increment:
-      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
-      b_lptr_mapped        += mapped_offs;
-      // Convert to mapped type pointer:
-      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+        if (std::is_standard_layout<value_type>::value) {
+        // Convert to char pointer for byte-wise increment:
+        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        b_lptr_mapped       += mapped_offs;
+        // Convert to mapped type pointer:
+        lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+      } else {
+        lptr_mapped = &(lptr_value->second);
+      }
     }
     if (!DART_GPTR_ISNULL(gptr_mapped)) {
       DASH_ASSERT_RETURNS(
@@ -514,17 +518,46 @@ public:
   const_mapped_type_reference at(const key_type & key) const
   {
     DASH_LOG_TRACE("UnorderedMap.at() const", "key:", key);
-    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
-    //       calls insert(key).
-    const_iterator git_value = find(key);
-    if (git_value == _end) {
+    auto found = find(key);
+    if (found == _end) {
       // No equivalent key in map, throw:
       DASH_THROW(
         dash::exception::InvalidArgument,
         "No element in map for key " << key);
     }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMap.at > const", mapped);
+    dart_gptr_t gptr_mapped   = iterator(this, found.pos()).dart_gptr();
+
+    value_type  * lptr_value  = static_cast<value_type *>(
+                                  found.local());
+    mapped_type * lptr_mapped = nullptr;
+    DASH_LOG_TRACE("UnorderedMap.at", "gptr to element:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.at", "lptr to element:", lptr_value);
+    // Byte offset of mapped value in element type:
+    auto          mapped_offs = offsetof(value_type, second);
+    DASH_LOG_TRACE("UnorderedMap.at", "byte offset of mapped member:",
+                   mapped_offs);
+    // Increment pointers to element by byte offset of mapped value member:
+    if (lptr_value != nullptr) {
+      if (std::is_standard_layout<value_type>::value) {
+        // Convert to char pointer for byte-wise increment:
+        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        b_lptr_mapped       += mapped_offs;
+        // Convert to mapped type pointer:
+        lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+      } else {
+        lptr_mapped = &(lptr_value->second);
+      }
+    }
+    if (!DART_GPTR_ISNULL(gptr_mapped)) {
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
+        DART_OK);
+    }
+    DASH_LOG_TRACE("UnorderedMap.at", "gptr to mapped member:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.at", "lptr to mapped member:", lptr_mapped);
+    // Create global reference to mapped value member in element:
+    const_mapped_type_reference mapped(gptr_mapped,
+                                       lptr_mapped);
     return mapped;
   }
 
