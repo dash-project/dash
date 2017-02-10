@@ -227,7 +227,7 @@ dart_ret_t dart_init_thread(
   }
   *provided = (thread_provided == MPI_THREAD_MULTIPLE) ? DART_THREAD_MULTIPLE : DART_THREAD_SINGLE;
   DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s\n",
-            (provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
+            (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
   return do_init();
 }
