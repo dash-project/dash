@@ -188,17 +188,58 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                        allsub_view.extents());
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                        allsub_view.extent(0));
+                       allsub_view.extent(0));
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                        allsub_view.extent(1));
+                       allsub_view.extent(1));
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                        allsub_view.size(0));
+                       allsub_view.size(0));
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                        allsub_view.size(1));
+                       allsub_view.size(1));
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                        index(allsub_view).size());
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    "allsub_view:", range_str(allsub_view));
+  }
+
+  mat.barrier();
+
+  // -- Sub-Section ----------------------------------
+  //
+  
+  if (dash::myid() == 0) {
+    auto nview_sub  = dash::sub<0>(1, nrows - 1,
+                        dash::sub<1>(1, ncols - 1,
+                          mat) );
+    auto nview_rows = nview_sub.extent<0>();
+    auto nview_cols = nview_sub.extent<1>();
+
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       nview_sub.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       nview_sub.extent(0));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       nview_sub.extent(1));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       nview_sub.size(0));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       nview_sub.size(1));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       index(nview_sub).size());
+
+    for (int r = 0; r < nview_rows; ++r) {
+      std::vector<double> row_values;
+      for (int c = 0; c < nview_cols; ++c) {
+        row_values.push_back(nview_sub[r * nview_cols + c]);
+      }
+      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                     "row[", r, "]", row_values);
+    }
+    for (int r = 0; r < nview_rows; ++r) {
+      auto row_view = dash::sub<0>(r, r+1, nview_sub);
+      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                     "row[", r, "]",
+                     range_str(row_view));
+    }
   }
 
   // -- Local View -----------------------------------
@@ -243,39 +284,5 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    "lrow[", r, "]", row_values);
   }
-
-  return;
-
-  mat.barrier();
-
-  // -- Sub-Section ----------------------------------
-  //
-  
-  if (dash::myid() == 0) {
-    auto nview_sub  = dash::sub<0>(1, nrows - 1,
-                        dash::sub<1>(1, ncols - 1,
-                          mat) );
-    auto nview_rows = nview_sub.extent<0>();
-    auto nview_cols = nview_sub.extent<1>();
-
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows);
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols);
-
-    for (int r = 0; r < nview_rows; ++r) {
-      std::vector<double> row_values;
-      for (int c = 0; c < nview_cols; ++c) {
-        row_values.push_back(nview_sub[r * nview_cols + c]);
-      }
-      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                     "row[", r, "]", row_values);
-    }
-    for (int r = 0; r < nview_rows; ++r) {
-      auto row_view = dash::sub<0>(r, r+1, nview_sub);
-      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                     "row[", r, "]",
-                     range_str(row_view));
-    }
-  }
-
 }
 
