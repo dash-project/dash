@@ -185,18 +185,18 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    dash::internal::typestr(allsub_view));
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "extents:", allsub_view.extents());
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "extent<0>:", allsub_view.extent(0));
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "extent<1>:", allsub_view.extent(1));
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "size<0>:", allsub_view.size(0));
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "size<1>:", allsub_view.size(1));
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "num.indices:", index(allsub_view).size());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       allsub_view.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                        allsub_view.extent(0));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                        allsub_view.extent(1));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                        allsub_view.size(0));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                        allsub_view.size(1));
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                       index(allsub_view).size());
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    "allsub_view:", range_str(allsub_view));
   }
@@ -217,12 +217,16 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  dash::internal::typestr(loc_view));
-  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 "extents:", loc_view.extents());
-  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 "lrows:", lrows, "lcols:", lcols);
-  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 "size:", loc_view.size());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_view.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", lrows);
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", lcols);
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_view.size());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                     loc_view.begin().pos());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                     loc_view.end().pos());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                     (loc_view.end() - loc_view.begin()));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  "loc_view:", range_str(loc_view));
 
