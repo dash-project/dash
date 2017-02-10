@@ -297,11 +297,11 @@ class IndexSetBase
 
   template <std::size_t ShapeDim>
   constexpr index_type extent() const {
-    return extents()[ShapeDim];
+    return derived().extents()[ShapeDim];
   }
 
   constexpr index_type extent(std::size_t shape_dim) const {
-    return extents()[shape_dim];
+    return derived().extents()[shape_dim];
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -711,30 +711,29 @@ class IndexSetLocal
   , _size(calc_size())
   { }
 
-  constexpr iterator begin() const {
-    return iterator(*this, 0);
+  constexpr const local_type & local() const {
+    return *this;
   }
 
-  constexpr iterator end() const {
-    return iterator(*this, size());
+  constexpr global_type global() const {
+    return global_type(this->view());
   }
 
-  constexpr index_type
-  operator[](index_type local_index) const {
-    // NOTE:
-    // Random access operator must allow access at [end] because
-    // end iterator of an index range may be dereferenced.
-    return local_index +
-              // only required if local of sub
-              ( this->domain()[0] == 0
-                ? 0
-                : this->pattern().local(
-                    std::max<index_type>(
-                      this->pattern().global(0),
-                      this->domain()[0]
-                  )).index
-              );
+  constexpr preimage_type pre() const {
+    return preimage_type(this->view());
   }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr auto extents() const
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<pattern_type>::type
+         >().local_extents()) {
+    return this->pattern().local_extents();
+  }
+
+  // ---- size ------------------------------------------------------------
 
   constexpr index_type size() const {
     return _size;
@@ -765,16 +764,31 @@ class IndexSetLocal
     );
   }
 
-  constexpr const local_type & local() const {
-    return *this;
+  // ---- access ----------------------------------------------------------
+
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
   }
 
-  constexpr global_type global() const {
-    return global_type(this->view());
+  constexpr iterator end() const {
+    return iterator(*this, size());
   }
 
-  constexpr preimage_type pre() const {
-    return preimage_type(this->view());
+  constexpr index_type
+  operator[](index_type local_index) const {
+    // NOTE:
+    // Random access operator must allow access at [end] because
+    // end iterator of an index range may be dereferenced.
+    return local_index +
+              // only required if local of sub
+              ( this->domain()[0] == 0
+                ? 0
+                : this->pattern().local(
+                    std::max<index_type>(
+                      this->pattern().global(0),
+                      this->domain()[0]
+                  )).index
+              );
   }
 };
 

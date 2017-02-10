@@ -186,7 +186,10 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   int  lcols    = loc_view.extent<1>();
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 dash::internal::typestr(loc_view),
+                 dash::internal::typestr(loc_view));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                 "extents:", loc_view.extents());
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  "lrows:", lrows, "lcols:", lcols);
 
   for (int r = 0; r < lrows; ++r) {
