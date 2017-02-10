@@ -16,11 +16,15 @@ template <
   dim_t SubDim,
   class DomainT,
   class OffsetT >
-constexpr ViewSubMod<DomainT, SubDim>
+constexpr auto
 sub(
     OffsetT         begin,
     OffsetT         end,
-    const DomainT & domain);
+    const DomainT & domain)
+  -> typename std::enable_if<
+       dash::view_traits<DomainT>::rank::value == 1,
+       ViewSubMod<DomainT, SubDim>
+     >::type;
 
 
 template<typename ElementType>
@@ -35,7 +39,7 @@ struct LocalIndexRange {
   IndexType end;
 };
 
-
+#if 0
 template<class GlobInputIter>
 typename std::enable_if<
   ( !GlobInputIter::has_view::value &&
@@ -63,6 +67,7 @@ local_index_range(
 
   return LocalIndexRange<idx_t> { lrange_begin, lrange_end };
 }
+#endif
 
 /**
  * Resolves the local index range between global iterators.
@@ -353,9 +358,9 @@ local_range(
     return LocalRange<value_t> { nullptr, nullptr };
   }
   // Local start address from global memory:
-  auto pattern = first.pattern();
-  auto lbegin  = first.globmem().lbegin(
-                    dash::Team::GlobalUnitID());
+  auto && pattern = first.pattern();
+  auto    lbegin  = first.globmem().lbegin(
+                      dash::Team::GlobalUnitID());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range >", "lbegin null");

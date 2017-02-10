@@ -10,6 +10,7 @@
 
 namespace dash {
 
+#if 0
 /**
  *
  * \concept{DashViewConcept}
@@ -24,7 +25,7 @@ constexpr typename std::enable_if<
 block(BlockIndexT block_index, const ViewT & view) {
   return ViewBlockMod<ViewT>(view, block_index);
 }
-
+#endif
 
 }
 

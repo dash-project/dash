@@ -35,10 +35,12 @@ struct view_traits
   typedef typename ViewT::local_type           local_type;
   typedef typename ViewT::global_type         global_type;
 
-  typedef std::integral_constant<bool, value> is_origin;
-  typedef std::integral_constant<bool, value> is_view;
-  typedef std::integral_constant<bool, value> is_projection;
-  typedef std::integral_constant<bool, value> is_local;
+  typedef std::integral_constant<dim_t, value>  rank;
+
+  typedef std::integral_constant<bool, value>   is_origin;
+  typedef std::integral_constant<bool, value>   is_view;
+  typedef std::integral_constant<bool, value>   is_projection;
+  typedef std::integral_constant<bool, value>   is_local;
 };
 
 #else // DOXYGEN
@@ -110,6 +112,11 @@ namespace detail {
                                       local_type,
                                       global_type >::type         image_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+
+    typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
+
+    typedef typename dash::view_traits<domain_type>::pattern_type
+                                                                pattern_type;
   };
 
   /**
@@ -125,6 +132,8 @@ namespace detail {
     typedef typename ContainerT::index_type                       index_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 
+    typedef typename ContainerT::pattern_type                   pattern_type;
+
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
     typedef std::integral_constant<bool, false>                is_projection;
@@ -135,9 +144,12 @@ namespace detail {
     /// \note A container type is local if it is identical to its
     ///       \c local_type
     typedef std::integral_constant<bool, std::is_same<
-                                   ContainerT,
-                                   typename ContainerT::local_type
-                                  >::value >                   is_local;
+                                           ContainerT,
+                                           typename ContainerT::local_type
+                                         >::value >            is_local;
+
+    typedef std::integral_constant<dim_t,
+                                   ContainerT::rank::value>    rank;
   };
 
 } // namespace detail
