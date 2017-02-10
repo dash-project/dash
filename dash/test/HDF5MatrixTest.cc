@@ -475,7 +475,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset) {
   // Verify data
   verify_matrix(matrix_c, secret_b);
 }
-#if 1
+
 TEST_F(HDF5MatrixTest, GroupTest) {
   int ext_x = dash::size() * 5;
   int ext_y = dash::size() * 2;
@@ -512,7 +512,6 @@ TEST_F(HDF5MatrixTest, GroupTest) {
   verify_matrix(matrix_b, secret[1]);
   verify_matrix(matrix_c, secret[2]);
 }
-#endif
 
 #if 0
 TEST_F(HDF5MatrixTest, DashView)

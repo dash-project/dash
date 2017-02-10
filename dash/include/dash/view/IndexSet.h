@@ -260,12 +260,9 @@ class IndexSetBase
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
-  self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = default;
+  self_t & operator=(self_t &&)          = delete;
+  self_t & operator=(const self_t &)     = delete;
   
-  const ViewType & view() {
-    return _view;
-  }
   constexpr const ViewType & view() const {
     return _view;
   }
@@ -349,7 +346,7 @@ class IndexSetBase
 // -----------------------------------------------------------------------
 
 template <class ViewType>
-constexpr const IndexSetIdentity<ViewType> &
+constexpr IndexSetIdentity<ViewType> &
 local(const IndexSetIdentity<ViewType> & index_set) {
   return index_set;
 }
@@ -463,8 +460,7 @@ class IndexSetBlocks
   }
 
   constexpr index_type size() const {
-    // return _size;
-    return calc_size();
+    return _size; // calc_size();
   }
 
  private:
@@ -510,7 +506,7 @@ class IndexSetBlock
   
  private:
   index_type _block_idx;
-//index_type _size;
+  index_type _size;
 
   constexpr static dim_t NDim = 1;
  public:
@@ -527,7 +523,7 @@ class IndexSetBlock
     index_type       block_idx)
   : base_t(view)
   , _block_idx(block_idx)
-//, _size(calc_size())
+  , _size(calc_size())
   { }
 
   constexpr iterator begin() const {
@@ -548,8 +544,7 @@ class IndexSetBlock
   }
 
   constexpr index_type size() const {
-    // return _size;
-    return calc_size();
+    return _size; // calc_size();
   }
 
  private:
@@ -620,8 +615,8 @@ class IndexSetSub
   constexpr IndexSetSub(self_t &&)      = default;
   constexpr IndexSetSub(const self_t &) = default;
   ~IndexSetSub()                        = default;
-  self_t & operator=(self_t &&)         = delete;
-  self_t & operator=(const self_t &)    = delete;
+  self_t & operator=(self_t &&)         = default;
+  self_t & operator=(const self_t &)    = default;
  private:
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
@@ -736,6 +731,9 @@ class IndexSetLocal
   typedef typename base_t::iterator                           iterator;
   typedef typename base_t::pattern_type                   pattern_type;
 
+  typedef typename pattern_type::index_type                 index_type;
+  typedef typename pattern_type::size_type                   size_type;
+
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
 
@@ -746,8 +744,8 @@ class IndexSetLocal
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
   ~IndexSetLocal()                        = default;
-  self_t & operator=(self_t &&)           = default;
-  self_t & operator=(const self_t &)      = default;
+  self_t & operator=(self_t &&)           = delete;
+  self_t & operator=(const self_t &)      = delete;
 
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
@@ -915,10 +913,10 @@ class IndexSetGlobal
  public:
   constexpr IndexSetGlobal()               = delete;
   constexpr IndexSetGlobal(self_t &&)      = default;
-  constexpr IndexSetGlobal(const self_t &) = default;
+  constexpr IndexSetGlobal(const self_t &) = delete;
   ~IndexSetGlobal()                        = default;
   self_t & operator=(self_t &&)            = default;
-  self_t & operator=(const self_t &)       = default;
+  self_t & operator=(const self_t &)       = delete;
  private:
   index_type _size;
  public:
@@ -945,7 +943,7 @@ class IndexSetGlobal
   }
 
   constexpr index_type size() const {
-    return _size;
+    return _size; // calc_size();
   }
 
   constexpr const local_type & local() const {

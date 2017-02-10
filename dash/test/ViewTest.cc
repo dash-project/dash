@@ -107,6 +107,41 @@ TEST_F(ViewTest, ViewTraits)
        "rank of local(array) different from 1");
 }
 
+TEST_F(ViewTest, NestedTemporaries)
+{
+  int block_size       = 16;
+  int array_size       = dash::size() * block_size;
+
+  dash::Array<float> a(array_size);
+  dash::test::initialize_array(a);
+
+  if (dash::myid() != 0) {
+    return;
+  }
+
+  DASH_LOG_DEBUG_VAR("viewtest.nestedtemporaries",
+                     range_str(a));
+
+  auto gview_nested  = dash::sub(1, array_size - 1,
+                         dash::sub(1, array_size - 3,
+                           dash::sub(1, array_size - 5,
+                             a )));
+
+  DASH_LOG_DEBUG_VAR("viewtest.nestedtemporaries",
+                     range_str(gview_nested));
+
+  auto gindex_nested = dash::index(
+                         dash::sub(1, array_size - 1,
+                           dash::sub(1, array_size - 3,
+                             dash::sub(1, array_size - 5,
+                               a ))));
+
+  int i = 0;
+  for (auto iv : gindex_nested) {
+    DASH_LOG_DEBUG("ViewTest.NestedTemporaries", i, ":", iv);
+  }
+}
+
 TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
 {
   int block_size       = 3;
