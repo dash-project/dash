@@ -739,6 +739,15 @@ class IndexSetLocal
     return this->pattern().local_extents();
   }
 
+  template <std::size_t ShapeDim>
+  constexpr index_type extent() const {
+    return this->pattern().local_extents()[ShapeDim];
+  }
+
+  constexpr index_type extent(std::size_t shape_dim) const {
+    return this->pattern().local_extents()[shape_dim];
+  }
+
   // ---- size ------------------------------------------------------------
 
   constexpr index_type size() const {
@@ -757,6 +766,14 @@ class IndexSetLocal
         pat_partitioning_traits::rectangular,
         "index sets for non-rectangular patterns are not supported yet");
 
+#if 0
+    return dash::ce::accumulate<index_type, NDim>(
+             {{ NDim...(extent<D>()) }}, // values
+             0, NDim,                    // index range
+             0,                          // accumulate init
+             std::plus<index_type>()     // reduce op
+           );
+#else
     return (
       //pat_partitioning_traits::minimal ||
         this->pattern().blockspec().size()
@@ -772,6 +789,7 @@ class IndexSetLocal
       : this->pattern().local_size() + // <-- TODO: intersection of local
         this->domain().pre()[0]        //           blocks and domain
     );
+#endif
   }
 
   // ---- access ----------------------------------------------------------

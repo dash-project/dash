@@ -196,6 +196,12 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                  "lrows:", lrows, "lcols:", lcols);
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  "size:", loc_view.size());
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                 "loc_view:", range_str(loc_view));
+
+  EXPECT_EQ_U(mat.local_size(), lrows * lcols);
+
+  return;
 
   for (int r = 0; r < lrows; ++r) {
     std::vector<double> row_values;

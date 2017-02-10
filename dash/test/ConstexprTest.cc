@@ -11,15 +11,26 @@ TEST_F(ConstexprTest, Accumulate)
 {
   constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 
-  constexpr int acc = dash::ce::accumulate(
-                        arr, 0, 9,
-                        100, dash::ce::plus<int>);
-  
-  if (dash::myid() == 0) {
-    DASH_LOG_DEBUG_VAR("ConstexprTest.Accumulate", acc);
+  {
+    constexpr int acc = dash::ce::accumulate(
+                          arr, 0, 9,
+                          100, dash::ce::plus<int>);
+    
+    if (dash::myid() == 0) {
+      DASH_LOG_DEBUG_VAR("ConstexprTest.Accumulate", acc);
+      EXPECT_EQ_U(136, acc);
+    }
   }
-
-  EXPECT_EQ_U(136, acc);
+  {
+    constexpr int acc = dash::ce::accumulate(
+                          arr, 2, 8,
+                          100, dash::ce::plus<int>);
+    
+    if (dash::myid() == 0) {
+      DASH_LOG_DEBUG_VAR("ConstexprTest.Accumulate", acc);
+      EXPECT_EQ_U(127, acc);
+    }
+  }
 }
 
 TEST_F(ConstexprTest, Append)
