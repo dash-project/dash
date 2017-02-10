@@ -108,6 +108,8 @@ public:
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
 
 public:
+  typedef std::integral_constant<dim_t, CUR>
+    rank;
 
   static constexpr dim_t ndim() {
     return CUR;

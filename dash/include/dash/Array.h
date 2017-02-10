@@ -139,21 +139,28 @@ public:
   /// Type alias for LocalArrayRef<T,I,P>::view_type
   typedef LocalArrayRef<T, IndexType, PatternType>                 View;
   typedef self_t                                             local_type;
-//typedef Array_t                                           domain_type;
   typedef PatternType                                      pattern_type;
+
+public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
 
 public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   LocalArrayRef(
-    Array<T, IndexType, PatternType> * array)
+    const Array<T, IndexType, PatternType> * array)
   : _array(array)
   { }
 
   LocalArrayRef(
     /// Pointer to array instance referenced by this view.
-    Array<T, IndexType, PatternType> * array,
+    const Array<T, IndexType, PatternType> * array,
     /// The view's offset and extent within the referenced array.
     const ViewSpec_t & viewspec)
   : _array(array),
@@ -237,9 +244,9 @@ public:
 
 private:
   /// Pointer to array instance referenced by this view.
-  Array_t * const _array;
+  const Array_t * const _array;
   /// The view's offset and extent within the referenced array.
-  ViewSpec_t      _viewspec;
+  ViewSpec_t            _viewspec;
 };
 
 #ifndef DOXYGEN
@@ -271,6 +278,14 @@ public:
 
   typedef GlobAsyncRef<T>                               async_reference;
   typedef const GlobAsyncRef<T>                   const_async_reference;
+
+public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
 
 private:
   Array<T, IndexType, PatternType> * const _array;
@@ -323,14 +338,14 @@ public:
   /**
    * Number of array elements in local memory.
    */
-  inline size_type size() const noexcept {
+  constexpr size_type size() const noexcept {
     return _array->size();
   }
 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline const_async_reference operator[](const size_t n) const  {
+  constexpr const_async_reference operator[](const size_t n) const  {
     return async_reference(
              _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
@@ -349,26 +364,22 @@ public:
    * Complete all outstanding asynchronous operations on the referenced array
    * on all units.
    */
-  void flush() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush()");
+  void flush() const {
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
-  void flush_local() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush_local()");
+  void flush_local() const {
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
-  void flush_all() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush()");
+  void flush_all() const {
     // could also call _array->flush();
     _array->m_globmem->flush_all();
   }
 
-  void flush_local_all() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush_local_all()");
+  void flush_local_all() const {
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
   }
@@ -379,7 +390,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  void push() {
+  void push() const {
     flush_local_all();
   }
 
@@ -389,7 +400,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  void fetch() {
+  void fetch() const {
     flush_all();
   }
 };
@@ -476,32 +487,65 @@ public:
     View;
 
 public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
+
+public:
   ArrayRef(
     /// Pointer to array instance referenced by this view.
-    Array_t          * array,
+    const Array_t    * array,
     /// The view's offset and extent within the referenced array.
     const ViewSpec_t & viewspec)
   : _arr(array),
-    _viewspec(viewspec)
+    _viewspec(viewspec),
+    _begin(array->begin() + _viewspec.offsets()[0]),
+    _end(array->begin()   + _viewspec.offsets()[0] + _viewspec.extents()[0]),
+    _size(_viewspec.size())
   { }
 
 public:
-  inline    Team              & team();
+  inline    Team              & team() const {
+    return _arr->team();
+  }
 
-  constexpr size_type           size()             const noexcept;
+  constexpr size_type           size()             const noexcept {
+    return _size;
+  }
+
   constexpr size_type           local_size()       const noexcept;
   constexpr size_type           local_capacity()   const noexcept;
-  constexpr size_type           extent(dim_t dim)  const noexcept;
-  constexpr Extents_t           extents()          const noexcept;
-  constexpr bool                empty()            const noexcept;
+
+  constexpr size_type           extent(dim_t dim)  const noexcept {
+    return _viewspec.extents()[dim];
+  }
+  constexpr Extents_t           extents()          const noexcept {
+    return _viewspec.extents();
+  }
+  constexpr bool                empty()            const noexcept {
+    return _size == 0;
+  }
 
   inline    void                barrier()          const;
 
-  inline    const_pointer       data()             const noexcept;
-  inline    iterator            begin()                  noexcept;
-  inline    const_iterator      begin()            const noexcept;
-  inline    iterator            end()                    noexcept;
-  inline    const_iterator      end()              const noexcept;
+  inline    const_pointer       data()             const noexcept {
+    return _begin;
+  }
+  inline    iterator            begin()                  noexcept {
+    return _begin;
+  }
+  inline    const_iterator      begin()            const noexcept {
+    return _begin;
+  }
+  inline    iterator            end()                    noexcept {
+    return _end;
+  }
+  inline    const_iterator      end()              const noexcept {
+    return _end;
+  }
   /// View representing elements in the active unit's local memory.
   inline    local_type          sub_local()              noexcept;
   /// Pointer to first element in local range.
@@ -517,11 +561,10 @@ public:
     return _arr->_begin[global_index];
   }
 
-  const_reference operator[](
+  constexpr const_reference operator[](
     /// The position of the element to return
     size_type global_index) const
   {
-    DASH_LOG_TRACE("ArrayRef.[]", global_index);
     return _arr->_begin[global_index];
   }
 
@@ -562,10 +605,15 @@ public:
 
 private:
   /// Pointer to array instance referenced by this view.
-  Array_t    * _arr;
+  const Array_t * const _arr;
   /// The view's offset and extent within the referenced array.
-  ViewSpec_t   _viewspec;
-
+  ViewSpec_t            _viewspec;
+  /// Iterator to initial element in the array
+  iterator              _begin;
+  /// Iterator to final element in the array
+  iterator              _end;
+  /// Total number of elements in the array
+  size_type             _size;
 }; // class ArrayRef
 
 /**
@@ -638,6 +686,14 @@ public:
     Local;
   typedef ArrayRef<ElementType, IndexType, PatternType>
     View;
+
+public:
+  typedef std::integral_constant<dim_t, 1>
+    rank;
+
+  static constexpr dim_t ndim() {
+    return 1;
+  }
 
 private:
   typedef DistributionSpec<1>
@@ -802,13 +858,11 @@ public:
    * dash::copy(a1.begin(), a1.end(), a2.begin());
    * \endcode
    */
-  Array(const self_t & other) = delete;
+  Array(const self_t & other)         = delete;
 
-  /**
-   * Move constructor is deleted as move semantics are non-trivial for
-   * distributed arrays.
-   */
-  Array(self_t && other) = delete;
+  Array(self_t && other)              = delete;
+
+  self_t & operator=(self_t && other) = delete;
 
   /**
    * Destructor, deallocates array elements.
@@ -819,12 +873,6 @@ public:
     deallocate();
     DASH_LOG_TRACE_VAR("Array.~Array >", this);
   }
-
-  /**
-   * Move assignment operator is deleted as move semantics are non-trivial
-   * for distributed arrays.
-   */
-  self_t & operator=(self_t && other) = delete;
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of
@@ -849,12 +897,9 @@ public:
   /**
    * View at block at given global block offset.
    */
-  View block(index_type block_gindex)
+  const View block(index_type block_gindex) const
   {
-    DASH_LOG_TRACE("Array.block()", block_gindex);
-    ViewSpec<1> block_view = pattern().block(block_gindex);
-    DASH_LOG_TRACE("Array.block >", block_view);
-    return View(this, block_view);
+    return View(this, ViewSpec<1>(pattern().block(block_gindex)));
   }
 
   /**

@@ -27,7 +27,6 @@ class StridedView
 
 };
 
-}
-
+} // namespace dash
 
 #endif // DASH__VIEW__STRIDED_VIEW_H__INCLUDED
