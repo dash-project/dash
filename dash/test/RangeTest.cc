@@ -9,7 +9,6 @@
 
 #include <array>
 
-#if 0
 
 TEST_F(RangeTest, RangeTraits)
 {
@@ -55,4 +54,3 @@ TEST_F(RangeTest, RangeTraits)
       "dash::is_range<dash::make_range(...)>::value not matched");
 }
 
-#endif
