@@ -655,14 +655,15 @@ class IndexSetLocal
   typedef IndexSetLocal<ViewType>                               self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
-
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<ViewType>                         global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
   typedef typename base_t::pattern_type                   pattern_type;
+
+  typedef typename pattern_type::index_type                 index_type;
+  typedef typename pattern_type::size_type                   size_type;
 
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;

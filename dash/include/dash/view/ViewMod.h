@@ -246,8 +246,35 @@ class ViewModBase {
   typedef std::integral_constant<dim_t, domain_type::rank::value>       rank;
 
  protected:
-//dash::UniversalMember<const domain_type> _domain;
-  const domain_type & _domain;
+  // Fixes performance but leads to dangling references in chain of
+  // temporaries:
+  //
+  // const domain_type & _domain;
+  //
+  // Even worse:
+  //
+  // std::reference_wrapper<const domain_type> _domain;
+  //
+  // Fixes dangling references but breaks constexpr folding:
+  //
+  dash::UniversalMember<domain_type> _domain;
+  //
+  // TODO:
+  // Introduce binding/passing of shared and temporary view istances.
+  //
+  // The `shared_view` in range-v3 seems similar top the `std::shared_ptr`
+  // variant:
+  //
+  // - https://github.com/ericniebler/range-v3/pull/557/files
+  //
+  // Also consider:
+  //
+  // - `common_reference` proposal:
+  //    http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0022r2.html
+  //
+  // - ref-qualified member functions:
+  //   http://kukuruku.co/hub/cpp/ref-qualified-member-functions
+  //
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);

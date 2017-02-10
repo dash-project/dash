@@ -112,7 +112,7 @@ constexpr auto
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    const DomainT      && domain)
+    DomainT      && domain)
   -> typename std::enable_if<
        dash::view_traits<
          DomainValueT
