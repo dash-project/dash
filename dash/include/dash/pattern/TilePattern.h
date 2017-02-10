@@ -581,16 +581,13 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<SizeType, NumDimensions> local_extents(
+  constexpr std::array<SizeType, NumDimensions> local_extents(
       team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
-    if (unit == UNDEFINED_TEAM_UNIT_ID) {
-      unit = _myid;
-    }
-    if (unit == _myid) {
-      return _local_memory_layout.extents();
-    }
-    return initialize_local_extents(unit);
+    return ( ( unit == UNDEFINED_TEAM_UNIT_ID ||
+               unit == _myid )
+            ? _local_memory_layout.extents()
+            : initialize_local_extents(unit) );
   }
 
   ////////////////////////////////////////////////////////////////////////
@@ -1464,7 +1461,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const {
+  constexpr const std::array<SizeType, NumDimensions> & extents() const {
     return _memory_layout.extents();
   }
 

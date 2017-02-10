@@ -196,8 +196,8 @@ global(
  * \concept{DashRangeConcept}
  */
 template <
-  class IndexSetType,
-  class ViewType,
+  class       IndexSetType,
+  class       ViewType,
   std::size_t NDim = ViewType::rank::value >
 class IndexSetBase
 {
@@ -256,11 +256,59 @@ class IndexSetBase
   self_t & operator=(const self_t &)     = default;
   
   const ViewType & view() {
-    return _view; // *(_view.get());
+    return _view;
   }
   constexpr const ViewType & view() const {
-    return _view; // *(_view.get());
+    return _view;
   }
+
+  constexpr const index_set_domain_type domain() const {
+    // To allow subclasses to overwrite method view():
+//  return dash::index(dash::domain(derived().view()));
+    return dash::index(dash::domain(_view));
+  }
+
+  constexpr const pattern_type & pattern() const {
+    return _pattern;
+//  return (dash::origin(*_view).pattern());
+  }
+
+  constexpr const local_type & local() const {
+//  -> decltype(dash::index(dash::local(
+//                std::declval< ViewType & >() ))) {
+    return dash::index(dash::local(_view));
+  }
+
+  constexpr const global_type & global() const {
+//  -> decltype(dash::index(dash::global(
+//                std::declval< ViewType & >() ))) {
+    return dash::index(dash::global(_view));
+  }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr auto extents() const
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<pattern_type>::type
+         >().extents()) {
+    return _pattern.extents();
+  }
+
+  template <std::size_t ShapeDim>
+  constexpr index_type extent() const {
+    return extents()[ShapeDim];
+  }
+
+  constexpr index_type extent(std::size_t shape_dim) const {
+    return extents()[shape_dim];
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  // ---- size ------------------------------------------------------------
+
+  // ---- access ----------------------------------------------------------
 
   constexpr iterator begin() const {
     return iterator(derived(), 0);
@@ -276,29 +324,6 @@ class IndexSetBase
 
   constexpr index_type last() const {
     return *(derived().begin() + (derived().size() - 1));
-  }
-
-  constexpr const local_type & local() const {
-//  -> decltype(dash::index(dash::local(
-//                std::declval< ViewType & >() ))) {
-    return dash::index(dash::local(_view));
-  }
-
-  constexpr const global_type & global() const {
-//  -> decltype(dash::index(dash::global(
-//                std::declval< ViewType & >() ))) {
-    return dash::index(dash::global(_view));
-  }
-
-  constexpr const index_set_domain_type domain() const {
-    // To allow subclasses to overwrite method view():
-//  return dash::index(dash::domain(derived().view()));
-    return dash::index(dash::domain(_view));
-  }
-
-  constexpr const pattern_type & pattern() const {
-    return _pattern; // *(_pattern.get());
-//  return (dash::origin(*_view).pattern());
   }
 
   /*

@@ -388,6 +388,43 @@ public:
     return not (*this == rhs);
   }
 
+  // ---- extents ---------------------------------------------------------
+
+  constexpr auto extents() const
+    -> decltype(
+         std::declval<
+           typename std::add_lvalue_reference<domain_type>::type
+         >().extents()) {
+    return _index_set.extents();
+  }
+
+  template <std::size_t ShapeDim>
+  constexpr index_type extent() const {
+    return _index_set.template extent<ShapeDim>();
+  }
+
+  constexpr index_type extent(std::size_t shape_dim) const {
+    return _index_set.extent(shape_dim);
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  // ---- size ------------------------------------------------------------
+
+  constexpr index_type size() const {
+    return index_set().size();
+  }
+
+  template <std::size_t SizeDim = 0>
+  constexpr index_type size() const {
+    return extent<SizeDim>() *
+             (SizeDim < NDim
+               ? size<SizeDim + 1>()
+               : 1);
+  }
+
+  // ---- access ----------------------------------------------------------
+
   constexpr iterator begin() const {
     return dash::begin(
              dash::local(
@@ -417,10 +454,6 @@ public:
     return *(this->begin() + offset);
   }
 
-  constexpr index_type size() const {
-    return index_set().size();
-  }
-
   constexpr const local_type & local() const {
     return *this;
   }
@@ -439,14 +472,6 @@ public:
 
   constexpr const index_set_type & index_set() const {
     return _index_set;
-  }
-  
-  template <std::size_t SizeDim = 0>
-  constexpr index_type size() const {
-    return extent<SizeDim>() *
-             (SizeDim < NDim
-               ? size<SizeDim + 1>()
-               : 1);
   }
 };
 
