@@ -664,15 +664,11 @@ class IndexSetSub
   
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const {
+  constexpr size_type size(std::size_t sub_dim = 0) const {
     return extent(sub_dim) *
-             (sub_dim < NDim && NDim > 0
+             (sub_dim + 1 < NDim && NDim > 0
                ? size(sub_dim + 1)
                : 1);
-  }
-
-  constexpr size_type size() const {
-    return size(0);
   }
 
   // ---- access ----------------------------------------------------------

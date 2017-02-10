@@ -209,7 +209,7 @@ class ViewOrigin
   template <dim_t SizeDim = 0>
   constexpr index_type _size() const {
     return extent<SizeDim>() +
-             (SizeDim < NDim
+             (SizeDim + 1 < NDim
                ? _size<SizeDim + 1>()
                : 0);
   }

@@ -188,7 +188,15 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    "extents:", allsub_view.extents());
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                   "size:", allsub_view.size());
+                   "extent<0>:", allsub_view.extent(0));
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "extent<1>:", allsub_view.extent(1));
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "size<0>:", allsub_view.size(0));
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "size<1>:", allsub_view.size(1));
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "num.indices:", index(allsub_view).size());
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                    "allsub_view:", range_str(allsub_view));
   }

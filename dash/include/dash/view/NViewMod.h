@@ -151,7 +151,7 @@ public:
   template <std::size_t SizeDim = 0>
   constexpr index_type size() const {
     return extent<SizeDim>() *
-             (SizeDim < NDim
+             (SizeDim + 1 < NDim
                ? size<SizeDim + 1>()
                : 1);
   }
@@ -286,14 +286,6 @@ public:
   }
 
   // ---- size ------------------------------------------------------------
-  
-  template <std::size_t SizeDim = 0>
-  constexpr index_type size() const {
-    return extent<SizeDim>() *
-             (SizeDim < NDim
-               ? size<SizeDim + 1>()
-               : 1);
-  }
 };
 
 
@@ -418,12 +410,8 @@ public:
 
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const {
+  constexpr size_type size(std::size_t sub_dim = 0) const {
     return index_set().size(sub_dim);
-  }
-
-  constexpr size_type size() const {
-    return size(0);
   }
 
   // ---- access ----------------------------------------------------------
@@ -632,12 +620,8 @@ public:
 
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const {
-    return index_set().size(sub_dim);
-  }
-
-  constexpr size_type size() const {
-    return size(0);
+  constexpr size_type size(std::size_t sub_dim = 0) const {
+    return _index_set.size(sub_dim);
   }
 
   // ---- access ----------------------------------------------------------
