@@ -65,7 +65,7 @@ sub(
 
 // Sub-space slice, view dimensions maintain domain dimensions
 
-#if 0
+#if 1
 /**
  * \concept{DashViewConcept}
  */
@@ -83,10 +83,10 @@ constexpr auto
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    DomainT       & domain)
+    const DomainT & domain)
   -> typename std::enable_if<
        dash::view_traits<
-         DomainValueT
+         DomainT
        >::rank::value == 1,
        ViewSubMod<DomainT, SubDim>
      >::type {
@@ -112,7 +112,7 @@ constexpr auto
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    DomainT      && domain)
+    const DomainT      && domain)
   -> typename std::enable_if<
        dash::view_traits<
          DomainValueT

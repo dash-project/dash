@@ -96,10 +96,10 @@ class ViewBlockMod
  public:
   constexpr ViewBlockMod()               = delete;
   constexpr ViewBlockMod(self_t &&)      = default;
-  constexpr ViewBlockMod(const self_t &) = delete;
+  constexpr ViewBlockMod(const self_t &) = default;
   ~ViewBlockMod()                        = default;
   self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = delete;
+  self_t & operator=(const self_t &)     = default;
 
   constexpr ViewBlockMod(
     const domain_type & domain,
@@ -282,7 +282,7 @@ class ViewBlocksMod
    public:
     constexpr block_iterator()                         = delete;
     constexpr block_iterator(block_iterator &&)        = default;
-    constexpr block_iterator(const block_iterator &)   = delete;
+    constexpr block_iterator(const block_iterator &)   = default;
     ~block_iterator()                                  = default;
     block_iterator & operator=(block_iterator &&)      = default;
     block_iterator & operator=(const block_iterator &) = default;
@@ -342,14 +342,14 @@ class ViewBlocksMod
   { }
 
   constexpr iterator begin() const {
-    return const_iterator(*this, _index_set.first());
+    return iterator(*this, _index_set.first());
   }
   inline iterator begin() {
     return iterator(*this, _index_set.first());
   }
 
   constexpr iterator end() const {
-    return const_iterator(*this, _index_set.last() + 1);
+    return iterator(*this, _index_set.last() + 1);
   }
   inline iterator end() {
     return iterator(*this, _index_set.last() + 1);

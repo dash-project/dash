@@ -180,10 +180,6 @@ class ViewOrigin
     return *this;
   }
 
-  inline domain_type & domain() {
-    return *this;
-  }
-
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -241,7 +237,6 @@ template <
   class DomainType >
 class ViewModBase {
   typedef ViewModBase<ViewModType, DomainType> self_t;
-//typedef typename std::remove_reference<DomainType>::type domain_value_type;
  public:
   typedef DomainType                                             domain_type;
   typedef typename view_traits<domain_type>::origin_type         origin_type;
@@ -251,7 +246,8 @@ class ViewModBase {
   typedef std::integral_constant<dim_t, domain_type::rank::value>       rank;
 
  protected:
-  dash::UniversalMember<domain_type> _domain;
+//dash::UniversalMember<const domain_type> _domain;
+  const domain_type & _domain;
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
@@ -275,10 +271,9 @@ class ViewModBase {
   { }
 
   constexpr ViewModBase()               = delete;
-  constexpr ViewModBase(const self_t &) = delete;
-  self_t & operator=(const self_t &)    = delete;
-
  public:
+  constexpr ViewModBase(const self_t &) = default;
+  self_t & operator=(const self_t &)    = default;
   constexpr ViewModBase(self_t &&)      = default;
   self_t & operator=(self_t &&)         = default;
 
@@ -359,10 +354,10 @@ class ViewLocalMod
  public:
   constexpr ViewLocalMod()               = delete;
   constexpr ViewLocalMod(self_t &&)      = default;
-  constexpr ViewLocalMod(const self_t &) = delete;
+  constexpr ViewLocalMod(const self_t &) = default;
   ~ViewLocalMod()                        = default;
   self_t & operator=(self_t &&)          = default;
-  self_t & operator=(const self_t &)     = delete;
+  self_t & operator=(const self_t &)     = default;
 
   /**
    * Constructor, creates a view on a given domain.
@@ -526,10 +521,10 @@ class ViewSubMod
  public:
   constexpr ViewSubMod()               = delete;
   constexpr ViewSubMod(self_t &&)      = default;
-  constexpr ViewSubMod(const self_t &) = delete;
+  constexpr ViewSubMod(const self_t &) = default;
   ~ViewSubMod()                        = default;
   self_t & operator=(self_t &&)        = default;
-  self_t & operator=(const self_t &)   = delete;
+  self_t & operator=(const self_t &)   = default;
 
   constexpr ViewSubMod(
     domain_type && domain,
@@ -542,7 +537,7 @@ class ViewSubMod
   { }
 
   constexpr ViewSubMod(
-    domain_type  & domain,
+    const domain_type  & domain,
     index_type     begin,
     index_type     end)
   : base_t(domain)

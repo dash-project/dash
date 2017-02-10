@@ -55,9 +55,9 @@ public:
   UniversalMember() = delete;
 
   constexpr UniversalMember(self_t && other)      = default;
-  constexpr UniversalMember(const self_t & other) = default;
+  constexpr UniversalMember(const self_t & other) = delete;
 
-  self_t & operator=(const self_t & other)        = default;
+  self_t & operator=(const self_t & other)        = delete;
   self_t & operator=(self_t && other)             = default;
 
   constexpr explicit UniversalMember(ValueType && value)
