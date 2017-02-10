@@ -167,8 +167,8 @@ class IndexSetIterator
 
 
 template <
-  class IndexSetType,
-  class ViewType,
+  class       IndexSetType,
+  class       ViewType,
   std::size_t NDim >
 constexpr auto
 local(
@@ -180,8 +180,8 @@ local(
 }
 
 template <
-  class IndexSetType,
-  class ViewType,
+  class       IndexSetType,
+  class       ViewType,
   std::size_t NDim >
 constexpr auto
 global(
@@ -725,6 +725,12 @@ class IndexSetLocal
 
   // ---- extents ---------------------------------------------------------
 
+  // TODO:
+  //
+  // Index set types should specify extent<D> and apply mapping of domain
+  // (as in calc_size) with extents() implemented in IndexSetBase as
+  // sequence { extent<d>... }.
+  //
   constexpr auto extents() const
     -> decltype(
          std::declval<
@@ -739,6 +745,10 @@ class IndexSetLocal
     return _size;
   }
 
+  // TODO:
+  // 
+  // Should be accumulate of extents().
+  //
   constexpr index_type calc_size() const {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;

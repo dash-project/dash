@@ -181,6 +181,9 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                     dash::sub<0>(
                       0, mat.extents()[0],
                       mat));
+
+  EXPECT_EQ_U(2, decltype(loc_view)::rank::value);
+  EXPECT_EQ_U(2, loc_view.ndim());
   
   int  lrows    = loc_view.extent<0>();
   int  lcols    = loc_view.extent<1>();
@@ -192,7 +195,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  "lrows:", lrows, "lcols:", lcols);
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 "extents:", loc_view.size());
+                 "size:", loc_view.size());
 
   for (int r = 0; r < lrows; ++r) {
     std::vector<double> row_values;

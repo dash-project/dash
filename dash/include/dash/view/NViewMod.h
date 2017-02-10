@@ -193,6 +193,8 @@ public:
 
   typedef std::integral_constant<std::size_t, DomainType::rank::value>  rank;
 
+  static std::size_t ndim() { return NDim; }
+
 protected:
   dash::UniversalMember<domain_type> _domain;
 
