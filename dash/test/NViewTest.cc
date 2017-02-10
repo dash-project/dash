@@ -191,6 +191,8 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                  "extents:", loc_view.extents());
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                  "lrows:", lrows, "lcols:", lcols);
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                 "extents:", loc_view.size());
 
   for (int r = 0; r < lrows; ++r) {
     std::vector<double> row_values;
