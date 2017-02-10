@@ -163,6 +163,7 @@ struct view_traits<NViewOrigin<NDim>> {
   typedef NViewOrigin<NDim>                                      domain_type;
   typedef NViewOrigin<NDim>                                       image_type;
   typedef typename NViewOrigin<NDim>::index_type                  index_type;
+  typedef typename NViewOrigin<NDim>::size_type                    size_type;
   typedef typename NViewOrigin<NDim>::index_set_type          index_set_type;
 
   typedef std::integral_constant<bool, false>                  is_projection;
@@ -186,14 +187,16 @@ class NViewModBase
 {
   typedef NViewModBase<NViewModType, DomainType, NDim> self_t;
 public:
-  typedef DomainType                                             domain_type;
-  typedef typename view_traits<DomainType>::origin_type          origin_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
-  typedef typename origin_type::value_type                        value_type;
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
+  typedef typename origin_type::value_type                      value_type;
 
-  typedef std::integral_constant<std::size_t, DomainType::rank::value>  rank;
+  typedef std::integral_constant<std::size_t, DomainType::rank::value>
+    rank;
 
-  static std::size_t ndim() { return NDim; }
+  static constexpr std::size_t ndim() { return NDim; }
 
 protected:
   dash::UniversalMember<domain_type> _domain;
@@ -309,6 +312,7 @@ struct view_traits<NViewLocalMod<DomainType, NDim> > {
   typedef domain_type                                          global_type;
 
   typedef typename DomainType::index_type                       index_type;
+  typedef typename DomainType::size_type                         size_type;
   typedef dash::IndexSetLocal< NViewLocalMod<DomainType, NDim> >
                                                             index_set_type;
 
@@ -333,7 +337,8 @@ public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename domain_type::local_type                      image_type;
-  typedef typename DomainType::index_type                       index_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
 private:
   typedef NViewLocalMod<DomainType, NDim>                           self_t;
   typedef NViewModBase<
@@ -401,11 +406,11 @@ public:
   }
 
   template <std::size_t ShapeDim>
-  constexpr index_type extent() const {
+  constexpr size_type extent() const {
     return _index_set.template extent<ShapeDim>();
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(std::size_t shape_dim) const {
     return _index_set.extent(shape_dim);
   }
 
@@ -413,16 +418,12 @@ public:
 
   // ---- size ------------------------------------------------------------
 
-  constexpr index_type size() const {
-    return index_set().size();
+  constexpr size_type size(std::size_t sub_dim) const {
+    return index_set().size(sub_dim);
   }
 
-  template <std::size_t SizeDim = 0>
-  constexpr index_type size() const {
-    return extent<SizeDim>() *
-             (SizeDim < NDim
-               ? size<SizeDim + 1>()
-               : 1);
+  constexpr size_type size() const {
+    return size(0);
   }
 
   // ---- access ----------------------------------------------------------
@@ -509,8 +510,9 @@ struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
   typedef NViewSubMod<DomainType, SubDim>                      global_type;
 
   typedef typename DomainType::index_type                       index_type;
+  typedef typename DomainType::size_type                         size_type;
   typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim> >         index_set_type;
+            NViewSubMod<DomainType, SubDim, NDim>, SubDim > index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -535,6 +537,7 @@ class NViewSubMod
 public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
@@ -542,7 +545,7 @@ private:
           >                                                         base_t;
 public:
   typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim> >         index_set_type;
+            NViewSubMod<DomainType, SubDim, NDim>, SubDim>  index_set_type;
   typedef NViewLocalMod<self_t>                                 local_type;
   typedef self_t                                               global_type;
 
@@ -584,32 +587,16 @@ public:
   // ---- extents ---------------------------------------------------------
 
   template <std::size_t ExtDim>
-  constexpr index_type extent() const {
-    return ( ExtDim == SubDim
-             ? _end_idx - _begin_idx
-             : base_t::extent(ExtDim)
-           );
+  constexpr size_type extent() const {
+    return _index_set.template extent<ExtDim>();
   }
 
-  constexpr auto extents() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<domain_type>::type
-         >().extents()) {
-    return dash::ce::replace_nth<SubDim>(
-             static_cast<
-               typename std::remove_reference<
-                 decltype( std::get<0>(dash::domain(*this).extents()) )
-               >::type
-             >(_end_idx - _begin_idx),
-             dash::domain(*this).extents());
+  constexpr size_type extent(std::size_t shape_dim) const {
+    return _index_set.extent(shape_dim);
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const {
-    return ( shape_dim == SubDim
-             ? _end_idx - _begin_idx
-             : base_t::extent(shape_dim)
-           );
+  constexpr std::array<size_type, NDim> extents() const {
+    return _index_set.extents();
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -644,17 +631,13 @@ public:
   }
 
   // ---- size ------------------------------------------------------------
-  
-  template <std::size_t SizeDim = 0>
-  constexpr index_type size() const {
-    return extent<SizeDim>() *
-             (SizeDim < NDim
-               ? size<SizeDim + 1>()
-               : 1);
+
+  constexpr size_type size(std::size_t sub_dim) const {
+    return index_set().size(sub_dim);
   }
 
-  constexpr index_type size() const {
-    return _index_set.size();
+  constexpr size_type size() const {
+    return size(0);
   }
 
   // ---- access ----------------------------------------------------------

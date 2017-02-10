@@ -95,6 +95,7 @@ namespace detail {
     typedef std::integral_constant<bool, false>                is_origin;
 
     typedef typename ViewT::index_type                            index_type;
+    typedef typename ViewT::size_type                              size_type;
     typedef typename ViewT::index_set_type                    index_set_type;
     typedef typename ViewT::domain_type                          domain_type;
     typedef std::integral_constant<bool,
@@ -130,6 +131,7 @@ namespace detail {
     typedef ContainerT                                           global_type;
     typedef typename ContainerT::local_type                       local_type;
     typedef typename ContainerT::index_type                       index_type;
+    typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 
     typedef typename ContainerT::pattern_type                   pattern_type;

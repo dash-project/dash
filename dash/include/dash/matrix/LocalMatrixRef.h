@@ -55,6 +55,8 @@ template <
 class LocalMatrixRef
 {
 private:
+  typedef LocalMatrixRef<T, NumDimensions, CUR, PatternT> self_t;
+
   typedef MatrixRefView<T, NumDimensions, PatternT>
     MatrixRefView_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
@@ -102,6 +104,8 @@ public:
 
   typedef       T *                                             local_pointer;
   typedef const T *                                       const_local_pointer;
+
+  typedef self_t                                                   local_type;
 
   template <dim_t NumViewDim>
     using view_type =

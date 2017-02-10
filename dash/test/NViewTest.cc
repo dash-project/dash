@@ -173,6 +173,25 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   mat.barrier();
 
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                     mat.pattern().local_extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+                     mat.pattern().local_size());
+
+  if (dash::myid() == 0) {
+    auto allsub_view = dash::sub<0>(
+                         0, mat.extents()[0],
+                         mat);
+
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   dash::internal::typestr(allsub_view));
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "extents:", allsub_view.extents());
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "size:", allsub_view.size());
+    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                   "allsub_view:", range_str(allsub_view));
+  }
 
   // -- Local View -----------------------------------
   //

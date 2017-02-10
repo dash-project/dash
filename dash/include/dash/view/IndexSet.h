@@ -13,6 +13,10 @@
 
 #include <dash/Iterator.h>
 
+#include <dash/util/FunctionalExpr.h>
+#include <dash/util/ArrayExpr.h>
+#include <dash/util/IndexSequence.h>
+
 #include <dash/util/internal/IteratorBase.h>
 
 #include <memory>
@@ -62,7 +66,7 @@ class IndexSetLocal;
 template <class ViewType>
 class IndexSetGlobal;
 
-template <class ViewType>
+template <class ViewType, std::size_t SubDim>
 class IndexSetSub;
 
 
@@ -203,8 +207,6 @@ class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
  public:
-  typedef typename ViewType::index_type
-    index_type;
   typedef typename dash::view_traits<ViewType>::origin_type
     origin_type;
   typedef typename dash::view_traits<ViewType>::domain_type
@@ -225,11 +227,17 @@ class IndexSetBase
 
   typedef detail::IndexSetIterator<IndexSetType>
     iterator;
+  typedef typename pattern_type::size_type
+    size_type;
+  typedef typename pattern_type::index_type
+    index_type;
   typedef index_type
     value_type;
 
   typedef std::integral_constant<std::size_t, NDim>
     rank;
+
+  static constexpr std::size_t ndim() { return NDim; }
 
  protected:
   const ViewType     & _view;
@@ -262,7 +270,7 @@ class IndexSetBase
     return _view;
   }
 
-  constexpr const index_set_domain_type domain() const {
+  constexpr index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
 //  return dash::index(dash::domain(derived().view()));
     return dash::index(dash::domain(_view));
@@ -287,20 +295,17 @@ class IndexSetBase
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr auto extents() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<pattern_type>::type
-         >().extents()) {
+  constexpr std::array<size_type, NDim>
+  extents() const {
     return _pattern.extents();
   }
 
   template <std::size_t ShapeDim>
-  constexpr index_type extent() const {
+  constexpr size_type extent() const {
     return derived().extents()[ShapeDim];
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(std::size_t shape_dim) const {
     return derived().extents()[shape_dim];
   }
 
@@ -566,40 +571,49 @@ class IndexSetBlock
 // IndexSetSub
 // -----------------------------------------------------------------------
 
-template <class ViewType>
+template <
+  class       ViewType,
+  std::size_t SubDim >
 constexpr auto
-local(const IndexSetSub<ViewType> & index_set) ->
+local(const IndexSetSub<ViewType, SubDim> & index_set) ->
 // decltype(index_set.local()) {
-  typename view_traits<IndexSetSub<ViewType>>::local_type & {
+  typename view_traits<IndexSetSub<ViewType, SubDim>>::local_type & {
   return index_set.local();
 }
 
-template <class ViewType>
+template <
+  class       ViewType,
+  std::size_t SubDim >
 constexpr auto
-global(const IndexSetSub<ViewType> & index_set) ->
+global(const IndexSetSub<ViewType, SubDim> & index_set) ->
 // decltype(index_set.global()) {
-  typename view_traits<IndexSetSub<ViewType>>::global_type & {
+  typename view_traits<IndexSetSub<ViewType, SubDim>>::global_type & {
   return index_set.global();
 }
 
 /**
  * \concept{DashRangeConcept}
  */
-template <class ViewType>
+template <
+  class       ViewType,
+  std::size_t SubDim = 0 >
 class IndexSetSub
 : public IndexSetBase<
-           IndexSetSub<ViewType>,
+           IndexSetSub<ViewType, SubDim>,
            ViewType >
 {
-  typedef IndexSetSub<ViewType>                                 self_t;
+  typedef IndexSetSub<ViewType, SubDim>                         self_t;
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
+  typedef typename base_t::index_type                       index_type;
+  typedef typename base_t::size_type                         size_type;
   typedef typename base_t::view_domain_type           view_domain_type;
+  typedef typename base_t::index_set_domain_type index_set_domain_type;
+  typedef typename base_t::pattern_type                   pattern_type;
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-  typedef IndexSetSub<ViewType>                          preimage_type;
+  typedef IndexSetSub<ViewType, SubDim>                  preimage_type;
 
  public:
   constexpr IndexSetSub()               = delete;
@@ -611,6 +625,8 @@ class IndexSetSub
  private:
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
+
+  static constexpr std::size_t NDim   = ViewType::ndim();
  public:
   constexpr IndexSetSub(
     const ViewType   & view,
@@ -620,6 +636,46 @@ class IndexSetSub
   , _domain_begin_idx(begin_idx)
   , _domain_end_idx(end_idx)
   { }
+
+  // ---- extents ---------------------------------------------------------
+
+  template <std::size_t ExtDim>
+  constexpr size_type extent() const {
+    return ( ExtDim == SubDim
+             ? _domain_end_idx - _domain_begin_idx
+             : this->domain().extent(ExtDim)
+           );
+  }
+
+  constexpr size_type extent(std::size_t shape_dim) const {
+    return ( shape_dim == SubDim
+             ? _domain_end_idx - _domain_begin_idx
+             : this->domain().extent(shape_dim)
+           );
+  }
+
+  constexpr std::array<size_type, NDim> extents() const {
+    return dash::ce::replace_nth<SubDim>(
+             extent<SubDim>(),
+             this->domain().extents());
+  }
+
+  // ---- offsets ---------------------------------------------------------
+  
+  // ---- size ------------------------------------------------------------
+
+  constexpr size_type size(std::size_t sub_dim) const {
+    return extent(sub_dim) *
+             (sub_dim < NDim && NDim > 0
+               ? size(sub_dim + 1)
+               : 1);
+  }
+
+  constexpr size_type size() const {
+    return size(0);
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr index_type operator[](index_type image_index) const {
 //  TODO:
@@ -633,15 +689,6 @@ class IndexSetSub
 
   constexpr iterator end() const {
     return iterator(*this, size());
-  }
-
-  constexpr index_type size() const {
-    return std::min<index_type>(
-             (_domain_end_idx - _domain_begin_idx),
-       // TODO:
-       //    this->domain().size()
-             (_domain_end_idx - _domain_begin_idx)
-           );
   }
 
   constexpr preimage_type pre() const {
@@ -684,6 +731,7 @@ class IndexSetLocal
   typedef IndexSetBase<self_t, ViewType>                        base_t;
  public:
   typedef typename ViewType::index_type                     index_type;
+  typedef typename ViewType::size_type                       size_type;
 
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<ViewType>                         global_type;
@@ -750,8 +798,12 @@ class IndexSetLocal
 
   // ---- size ------------------------------------------------------------
 
-  constexpr index_type size() const {
+  constexpr size_type size(std::size_t sub_dim) const {
     return _size;
+  }
+
+  constexpr size_type size() const {
+    return size(0);
   }
 
   // TODO:
@@ -767,11 +819,12 @@ class IndexSetLocal
         "index sets for non-rectangular patterns are not supported yet");
 
 #if 0
+    dash::ce::index_sequence<Dims...>
     return dash::ce::accumulate<index_type, NDim>(
-             {{ NDim...(extent<D>()) }}, // values
-             0, NDim,                    // index range
-             0,                          // accumulate init
-             std::plus<index_type>()     // reduce op
+             {{ (extent<Dims>())... }},     // values
+             0, NDim,                       // index range
+             0,                             // accumulate init
+             std::multiplies<index_type>()  // reduce op
            );
 #else
     return (

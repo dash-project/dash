@@ -45,7 +45,8 @@ struct view_traits<ViewBlockMod<DomainType> > {
   typedef ViewBlockMod<DomainType>                             global_type;
 
   typedef typename DomainType::index_type                       index_type;
-  typedef dash::IndexSetSub<ViewBlockMod<DomainType>>       index_set_type;
+  // TODO: Defaulting to SubDim = 0 here, clarify
+  typedef dash::IndexSetSub<DomainType, 0>                  index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -77,8 +78,8 @@ class ViewBlockMod
   typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >
                                                                     base_t;
  public:
-//typedef dash::IndexSetSub< ViewBlockMod<DomainType> >     index_set_type;
-  typedef dash::IndexSetSub< DomainType >                   index_set_type;
+  // TODO: Defaulting to SubDim = 0 here, clarify
+  typedef dash::IndexSetSub< DomainType, 0 >                index_set_type;
   typedef ViewLocalMod<self_t>                                  local_type;
   typedef self_t                                               global_type;
 
