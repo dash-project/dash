@@ -131,7 +131,7 @@ TEST_F(UniversalMemberTest, InitFromLValAndRVal)
 
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "------------------");
   DASH_LOG_DEBUG("UniversalMemberTest.OwnerCtor", "-- change ref'ed value:");
-//  make_movable = MovableType<value_t>("changed referenced value");
+  make_movable = MovableType<value_t>("changed referenced value");
 
   EXPECT_EQ_U("changed referenced value", static_cast<value_t>(movable_b));
 
