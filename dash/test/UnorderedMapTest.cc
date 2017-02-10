@@ -103,6 +103,12 @@ TEST_F(UnorderedMapTest, BalancedGlobalInsert)
   auto existing_b  = map.insert(value_b);
   EXPECT_FALSE_U(existing_b.second);
 
+  const mapped_t & lookup_a = map[key_a];
+  EXPECT_EQ(lookup_a, mapped_a);
+
+  const mapped_t & lookup_b = map[key_b];
+  EXPECT_EQ(lookup_b, mapped_b);
+
   DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
                  "map size before commit:", map.size(),
                  "local size:", map.lsize());
@@ -231,6 +237,9 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
     auto existing  = map.insert(value);
     EXPECT_FALSE(existing.second);
     EXPECT_EQ(insertion.first, existing.first);
+
+    const mapped_t & lookup  = map[key];
+    EXPECT_EQ(lookup, mapped);
 
     map_value value_res = *insertion.first;
     DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
@@ -414,6 +423,9 @@ TEST_F(UnorderedMapTest, Local)
                    "->",        existing_val.second);
     EXPECT_FALSE_U(existing.second);
     EXPECT_EQ_U(insertion.first, existing.first);
+
+    const mapped_t & lookup = map[key];
+    EXPECT_EQ(lookup, mapped);
 
     EXPECT_EQ_U(1, map.local.count(key));
     EXPECT_NE_U(map.local.end(), map.local.find(key));

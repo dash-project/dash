@@ -87,6 +87,10 @@ void Config::init()
 #ifdef DASH_ENABLE_HDF5
   set("DASH_ENABLE_HDF5",      true);
 #endif
+
+#ifdef MPI_IMPL_ID
+   set("DART_MPI_IMPL", dash__toxstr(MPI_IMPL_ID));
+#endif
 }
 
 void Config::set(

@@ -1084,6 +1084,14 @@ public:
   {
     return _blockspec;
   }
+  
+  /**
+   * Cartesian arrangement of local pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return _local_blockspec;
+  }
 
   /**
    * Index of block at given global coordinates.
@@ -1118,9 +1126,14 @@ public:
     auto block_coords = _blockspec.coords(global_block_index);
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
+    
     for (auto d = 0; d < NumDimensions; ++d) {
-      extents[d] = _blocksize_spec.extent(d);
-      offsets[d] = block_coords[d] * extents[d];
+      auto num_blocks_d = _blockspec.extent(d);
+      extents[d]        = _blocksize_spec.extent(d);
+      if(block_coords[d] == (num_blocks_d - 1)){
+        extents[d] -= underfilled_blocksize(d);
+      }
+      offsets[d] = block_coords[d] * _blocksize_spec.extent(d);
     }
     return ViewSpec_t(offsets, extents);
   }
@@ -1145,11 +1158,13 @@ public:
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_blocks_d =_local_blockspec.extent(d);
       if(l_block_coords[d] == (num_blocks_d - 1)){
-        // workaround, propably not efficient
-        block_vs_extents[d]= local_extent(d) - local_block_local(local_block_index).offset(d);
+          size_type remaining = local_extent(d) % block_vs_extents[d];
+          block_vs_extents[d] = (remaining == 0) ? block_vs_extents[d] : remaining;
+        // to calculate offset, extent of fully filled blocks are needed
+        l_elem_coords[d] *= _blocksize_spec.extent(d);
+      } else {
+        l_elem_coords[d] *= block_vs_extents[d];
       }
-      auto blocksize_d  = block_vs_extents[d];
-      l_elem_coords[d] *= blocksize_d;
     }
     // Global coordinates of first element in block:
     auto g_elem_coords = global(l_elem_coords);
@@ -1189,13 +1204,13 @@ public:
     // last block in at least one dimension
     for(dim_t d=0; d<NumDimensions; ++d){
       if(l_block_coords[d] == (_local_blockspec.extent(d)-1)){
-          extents[d]-=underfilled_blocksize(d);
+          size_type remaining = local_extent(d) % extents[d];
+          extents[d] = (remaining == 0) ? extents[d] : remaining;
+          // to calculate offset, extent of fully filled blocks are needed
+          offsets[d] = l_block_coords[d] * _blocksize_spec.extent(d);
+      } else {
+        offsets[d] = l_block_coords[d] * extents[d];
       }
-    }
-    // Local block coords to local element offset:
-    for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d = extents[d];
-      offsets[d]       = l_block_coords[d] * blocksize_d;
     }
     return ViewSpec_t(offsets, extents);
   }
