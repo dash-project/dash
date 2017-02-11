@@ -1,7 +1,7 @@
 #ifndef DASH__ATOMIC_OPERATION_H_
 #define DASH__ATOMIC_OPERATION_H_
 
-#include <dash/atomic/GlobRefAtomic.h>
+#include <dash/atomic/GlobAtomicRef.h>
 
 namespace dash {
 
@@ -28,11 +28,11 @@ class Atomic;
 namespace atomic {
 
 /**
- * Get a reference on the shared atomic value.
+ * Get the value of the shared atomic.
  */
 template<typename T>
 T load(const dash::GlobRef<dash::Atomic<T>> & ref){
-  return static_cast<T>(dash::AtomicAddress<T>(ref).get());
+  return ref.load();
 }
 
 /**
@@ -42,7 +42,7 @@ template<typename T>
 void store(const dash::GlobRef<dash::Atomic<T>> & ref,
            const T & value)
 {
-  dash::AtomicAddress<T>(ref).set(value);
+  ref.store(value);
 }
 
 /**
@@ -53,7 +53,7 @@ template<typename T>
 T exchange(const dash::GlobRef<dash::Atomic<T>> & ref,
            const T & value)
 {
-  return dash::AtomicAddress<T>(ref).exchange(value);
+  return ref.exchange(value);
 }
 
 /**
@@ -68,7 +68,7 @@ bool compare_exchange(
   const T & expected,
   const T & desired)
 {
-  return dash::AtomicAddress<T>(ref).compare_exchange(expected, desired);
+  return ref.compare_exchange(expected, desired);
 }
 
 /**
@@ -83,7 +83,7 @@ void op(
   /// Value to be added to global atomic variable.
   const T & value)
 {
-  dash::AtomicAddress<T>(ref).op(binary_op, value);
+  ref.op(binary_op, value);
 }
 
 /**
@@ -95,13 +95,13 @@ void op(
 template<
   typename T,
   typename BinaryOp >
-T fetch_and_op(
+T fetch_op(
   const dash::GlobRef<dash::Atomic<T>> & ref,
   const BinaryOp  binary_op,
   /// Value to be added to global atomic variable.
   const T & value)
 {
-  return dash::AtomicAddress<T>(ref).fetch_and_op(binary_op, value);
+  return ref.fetch_op(binary_op, value);
 }
 
 /**
@@ -115,7 +115,7 @@ add(
   const dash::GlobRef<dash::Atomic<T>> & ref,
   const T & value)
 {
-  dash::AtomicAddress<T>(ref).add(value);
+  ref.add(value);
 }
 
 /**
@@ -129,7 +129,7 @@ sub(
   const dash::GlobRef<dash::Atomic<T>> & ref,
   const T & value)
 {
-  dash::AtomicAddress<T>(ref).sub(value);
+  ref.sub(value);
 }
 
 /**
@@ -147,7 +147,7 @@ fetch_add(
   /// Value to be added to global atomic variable.
   const T & value)
 {
-  return dash::AtomicAddress<T>(ref).fetch_and_add(value);
+  return ref.fetch_add(value);
 }
 
 /**
@@ -165,7 +165,7 @@ fetch_sub(
   /// Value to be subtracted from global atomic variable.
   const T & value)
 {
-  return dash::AtomicAddress<T>(ref).fetch_and_sub(value);
+  return ref.fetch_sub(value);
 }
   
 } // namespace atomic

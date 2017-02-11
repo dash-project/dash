@@ -83,8 +83,7 @@ struct is_atomic<dash::Atomic<T>> {
 
 } // namespace dash
 
-#include <dash/atomic/AtomicAddress.h>
-#include <dash/atomic/GlobRefAtomic.h>
+#include <dash/atomic/GlobAtomicRef.h>
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED

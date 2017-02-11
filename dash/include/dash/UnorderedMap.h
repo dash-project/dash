@@ -8,7 +8,7 @@
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
-#include <dash/atomic/AtomicAddress.h>
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <iterator>
 #include <utility>
