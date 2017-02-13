@@ -117,7 +117,8 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += std::abs(static_cast<offset_type>(_offset_ranges[d].max) -
+                          static_cast<offset_type>(_offset_ranges[d].min));
     }
   }
 
@@ -139,7 +140,8 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += std::abs(static_cast<offset_type>(_offset_ranges[d].max) -
+                          static_cast<offset_type>(_offset_ranges[d].min));
     }
   }
 
