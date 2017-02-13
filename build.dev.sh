@@ -61,6 +61,7 @@ rm -Rf $BUILD_DIR/*
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_ASSERTIONS=ON \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_DEVELOPER_COMPILER_WARNINGS=ON \

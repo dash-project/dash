@@ -52,7 +52,7 @@ dart_ret_t dart_init(int *argc, char ***argv);
 dart_ret_t dart_init_thread(
   int*                  argc,
   char***               argv,
-  dart_thread_level_t * thread_safety);
+  dart_thread_support_level_t * thread_safety);
 
 /**
  * Finalize the DASH runtime.
