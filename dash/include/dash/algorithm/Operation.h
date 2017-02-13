@@ -112,6 +112,25 @@ public:
   }
 };
 
+/**
+ * Returns second operand. Used as replace reduce operation
+ *
+ * \see      dart_operation_t::DART_OP_REPLACE
+ *
+ * \ingroup  DashReduceOperations
+ */
+template< typename ValueType >
+struct second : public ReduceOperation<ValueType, DART_OP_REPLACE> {
+
+public:
+
+  ValueType operator()(
+    const ValueType & lhs,
+    const ValueType & rhs) const {
+    return rhs;
+  }
+};
+
 }  // namespace dash
 
 #endif // DASH__ALGORITHM__OPERATION_H__

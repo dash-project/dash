@@ -32,8 +32,7 @@ inline dart_ret_t transform_blocking_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
   static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
       "Cannot accumulate unknown type!");
@@ -43,8 +42,7 @@ inline dart_ret_t transform_blocking_impl(
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush(dest);
   return result;
 }
@@ -57,8 +55,7 @@ dart_ret_t transform_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
   static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
       "Cannot accumulate unknown type!");
@@ -68,8 +65,7 @@ dart_ret_t transform_impl(
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush_local(dest);
   return result;
 }
@@ -294,8 +290,6 @@ GlobOutputIt transform(
 
   dash::util::Trace trace("transform");
 
-  // Resolve team from global iterator:
-  dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
   // Number of elements in local range:
   size_t num_local_elements     = std::distance(in_first, in_last);
@@ -307,8 +301,7 @@ GlobOutputIt transform(
       dest_gptr,
       in_first,
       num_local_elements,
-      binary_op.dart_operation(),
-      team.dart_id());
+      binary_op.dart_operation());
   trace.exit_state("transform_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
@@ -421,8 +414,7 @@ GlobOutputIt transform(
       dest_gptr,
       l_values,
       num_local_elements,
-      binary_op.dart_operation(),
-      team_in_a.dart_id());
+      binary_op.dart_operation());
   trace.exit_state("transform_blocking");
 
   return out_first + global_offset + num_local_elements;
