@@ -15,9 +15,19 @@
  * Test fixture for onesided operations provided by DART.
  */
 class ThreadsafetyTest : public dash::test::TestBase {
+protected:
+  int _num_threads;
+
 public:
   ThreadsafetyTest() {
-  	
+
+  #pragma omp parallel
+    {
+  #pragma omp master
+    {
+      _num_threads = omp_get_num_threads();
+    }
+    }
   }
 
   virtual ~ThreadsafetyTest() {

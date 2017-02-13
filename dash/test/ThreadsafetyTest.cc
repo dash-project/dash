@@ -5,6 +5,7 @@
 #include <dash/Team.h>
 #include <dash/Array.h>
 #include <dash/Distribution.h>
+#include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
 #include <dash/allocator/DynamicAllocator.h>
 #include <dash/util/TeamLocality.h>
@@ -15,7 +16,7 @@
 #include <omp.h>
 #endif
 
-static constexpr int    thread_iterations = 100;
+static constexpr int    thread_iterations = 10;
 static constexpr size_t elem_per_thread = 100;
 
 TEST_F(ThreadsafetyTest, ThreadInit) {
@@ -37,16 +38,8 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
 #if !defined(_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
-  int num_threads;
-#pragma omp parallel
-  {
-#pragma omp master
-  {
-    num_threads = omp_get_num_threads();
-  }
-  }
 
-  size_t size = dash::size() * num_threads * elem_per_thread;
+  size_t size = dash::size() * _num_threads * elem_per_thread;
   array_t src(size);
   array_t dst(size);
 
@@ -65,10 +58,10 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
   {
     int  thread_id = omp_get_thread_num();
     array_t::index_type src_idx =   dash::myid()
-                                        * (elem_per_thread * num_threads)
+                                        * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
     array_t::index_type dst_idx = ((dash::myid() + 1) % dash::size())
-                                    * (elem_per_thread * num_threads)
+                                    * (elem_per_thread * _num_threads)
                                     + (elem_per_thread * thread_id);
     for (size_t i = 0; i < elem_per_thread; ++i) {
       dst[dst_idx + i] = src[src_idx + i];
@@ -77,11 +70,8 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
 
   dash::barrier();
 
-//  for (int i = 0; i < num_threads; ++i) {
-//    std::cout << "[" << dash::myid() << "] array[" << i << "] = " << (int)array[i] << std::endl;
-//  }
   size_t pos = 0;
-  for (int i = 0; i < num_threads; ++i) {
+  for (int i = 0; i < _num_threads; ++i) {
     for (size_t j = 0; j  < elem_per_thread; ++j) {
       ASSERT_EQ_U(dst.local[pos++], i);
     }
@@ -117,10 +107,11 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 #pragma omp parallel num_threads(2)
   {
     int thread_id = omp_get_thread_num();
+    // thread 0: contribute to allocation on team_all
     dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
     array_t    *arr  = (thread_id == 0) ? &arr_all : &arr_split;
     for (int i = 0; i < thread_iterations; ++i) {
-      // thread 0: contribute to allocation on team_all
+#pragma omp barrier
       if (i) {
         arr->deallocate();
       }
@@ -183,12 +174,12 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
     int thread_id = omp_get_thread_num();
     dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
     for (int i = 0; i < thread_iterations; ++i) {
+#pragma omp barrier
       allocator_t allocator(*team);
       elem_t *vals = allocator.allocate_local(elem_per_thread);
       for (size_t j = 0; j < elem_per_thread; ++j) {
         vals[j] = thread_id;
       }
-      std::cout << "vals: " << vals << std::endl;
       dart_gptr_t gptr = allocator.attach(vals, elem_per_thread);
       ASSERT_NE_U(DART_GPTR_NULL, gptr);
       ASSERT_LT_U(gptr.segid, 0); // attached memory has segment ID < 0
@@ -235,21 +226,13 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
-  int num_threads;
-#pragma omp parallel
-  {
-#pragma omp master
-  {
-    num_threads = omp_get_num_threads();
-  }
-  }
 
   dash::Team& team_all   = dash::Team::All();
   dash::Team& team_split = team_all.split(2);
   ASSERT_GT_U(team_all.size(), 0);
   ASSERT_GT_U(team_split.size(), 0);
 
-  pointer_t ptr[num_threads];
+  pointer_t ptr[_num_threads];
 
 #pragma omp parallel num_threads(2)
   {
@@ -260,6 +243,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
             dash::DistributionSpec<1>(), *team);
 
     for (int i = 0; i < thread_iterations; ++i) {
+#pragma omp barrier
       ptr[thread_id] = dash::memalloc<elem_t>(elem_per_thread);
 #pragma omp barrier
 #pragma omp master
@@ -279,3 +263,70 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   }
 #endif //!defined(_OPENMP)
 }
+
+
+TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
+
+  using elem_t = int;
+  using array_t = dash::Array<elem_t>;
+
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("requires support for multi-threading");
+  }
+
+  if (dash::size() < 4) {
+    SKIP_TEST_MSG("requires at least 4 units");
+  }
+
+  static constexpr size_t elem_per_thread = 10;
+
+#if !defined(_OPENMP)
+  SKIP_TEST_MSG("requires support for OpenMP");
+#else
+
+  dash::Team& team_all   = dash::Team::All();
+  dash::Team& team_split = team_all.split(2);
+  ASSERT_GT_U(team_all.size(), 0);
+  ASSERT_GT_U(team_split.size(), 0);
+
+#pragma omp parallel num_threads(2)
+  {
+    int thread_id = omp_get_thread_num();
+    dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
+    size_t num_elem = team->size() * elem_per_thread;
+    array_t arr(num_elem, *team);
+    elem_t *vals = new elem_t[num_elem];
+    for (int i = 0; i < thread_iterations; ++i) {
+#pragma omp barrier
+      dash::fill(arr.begin(), arr.end(), thread_id);
+      ASSERT_EQ_U(arr.local[0], thread_id);
+      elem_t acc = dash::accumulate(arr.begin(), arr.end(), 0);
+      // TODO: dash::accumulate is still broken
+      if (team->myid() == 0) {
+        ASSERT_EQ_U(num_elem * thread_id, acc);
+      }
+      dash::copy(arr.begin(), arr.end(), vals);
+      ASSERT_EQ_U(vals[team->myid() * elem_per_thread], thread_id);
+
+      std::function<void(elem_t &)> f = [=](const elem_t& val){
+        ASSERT_EQ_U(thread_id, val);
+      };
+      dash::for_each(arr.begin(), arr.end(), f);
+
+      std::function<elem_t(void)> g = [=](){
+        return (thread_id + 1) * (team->myid() + 1);
+      };
+      dash::generate(arr.begin(), arr.end(), g);
+      // wait here because dash::generate does not block
+      arr.barrier();
+      elem_t min = *(dash::min_element(arr.begin(), arr.end()));
+      ASSERT_EQ_U((thread_id + 1), min);
+      elem_t max = *(dash::max_element(arr.begin(), arr.end()));
+      ASSERT_EQ_U((thread_id + 1) * team->size(), max);
+      arr.barrier();
+    }
+    delete[] vals;
+  }
+#endif // !defined(_OPENMP)
+}
+
