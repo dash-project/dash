@@ -3,7 +3,9 @@
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
-#include <dash/internal/Logging.h>
+
+#include <algorithm>
+
 
 namespace dash {
 
@@ -17,7 +19,9 @@ namespace dash {
  * \tparam      ElementType   Type of the elements in the sequence
  * \tparam      UnaryFunction Function to invoke for each element
  *                            in the specified range with signature
- *                            \c void (const ElementType &)
+ *                            \c (void (const ElementType &)).
+ *                            Signature does not need to have \c (const &)
+ *                            but must be compatible to \c std::for_each.
  *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
@@ -62,6 +66,9 @@ void for_each(
  * \tparam      UnaryFunctionWithIndex Function to invoke for each element
  *                                     in the specified range with signature
  *                                     \c void (const ElementType &, index_t)
+ *                                     Signature does not need to have
+ *                                     \c (const &) but must be compatible
+ *                                     to \c std::for_each.
  *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range

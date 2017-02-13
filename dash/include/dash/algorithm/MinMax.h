@@ -41,7 +41,7 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template<
+template <
   class ElementType,
   class Compare = std::less<const ElementType &> >
 const ElementType * min_element(
@@ -148,10 +148,10 @@ const ElementType * min_element(
  *
  * \ingroup     DashAlgorithms
  */
-template<
+template <
   class ElementType,
-  class Compare = std::less<const ElementType &>,
-  class PatternType >
+  class PatternType,
+  class Compare = std::less<const ElementType &> >
 GlobIter<ElementType, PatternType> min_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
@@ -317,10 +317,10 @@ GlobIter<ElementType, PatternType> min_element(
  *
  * \ingroup     DashAlgorithms
  */
-template<
+template <
   class ElementType,
-  class Compare = std::greater<const ElementType &>,
-  class PatternType >
+  class PatternType,
+  class Compare = std::greater<const ElementType &> >
 GlobIter<ElementType, PatternType> max_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
@@ -351,7 +351,7 @@ GlobIter<ElementType, PatternType> max_element(
  *
  * \ingroup     DashAlgorithms
  */
-template<
+template <
   class ElementType,
   class Compare = std::greater<const ElementType &> >
 const ElementType * max_element(
