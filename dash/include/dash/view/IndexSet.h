@@ -731,9 +731,6 @@ class IndexSetLocal
   typedef typename base_t::iterator                           iterator;
   typedef typename base_t::pattern_type                   pattern_type;
 
-  typedef typename pattern_type::index_type                 index_type;
-  typedef typename pattern_type::size_type                   size_type;
-
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
 
