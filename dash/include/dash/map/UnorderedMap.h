@@ -212,11 +212,10 @@ public:
   UnorderedMap(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
-    _key_hash(team)
+    _key_hash(team),
+    local(this)
   {
     DASH_LOG_TRACE_VAR("UnorderedMap(nelem,team)", nelem);
     if (_team->size() > 0) {
@@ -229,12 +228,11 @@ public:
     size_type   nelem,
     size_type   nlbuf,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
     _key_hash(team),
-    _local_buffer_size(nlbuf)
+    _local_buffer_size(nlbuf),
+    local(this)
   {
     DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);

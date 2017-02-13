@@ -231,7 +231,7 @@ typedef enum
    * the underlying runtime.
    */
   DART_THREAD_MULTIPLE = 10
-} dart_thread_level_t;
+} dart_thread_support_level_t;
 
 /**
  * Scopes of locality domains.

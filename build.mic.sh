@@ -51,6 +51,7 @@ rm -Rf $BUILD_DIR/*
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
                         -DDART_IMPLEMENTATIONS=mpi \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEVELOPER_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXTENDED_COMPILER_WARNINGS=OFF \
                         -DENABLE_ASSERTIONS=OFF \
