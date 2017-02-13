@@ -6,9 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
@@ -797,9 +798,9 @@ private:
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
-    size_type old_local_size   = dash::Atomic<size_type>(
+    size_type old_local_size   = GlobRef<Atomic<size_type>>(
                                     _local_size_gptr
-                                 ).fetch_and_add(1);
+                                 ).fetch_add(1);
     size_type new_local_size   = old_local_size + 1;
     size_type local_capacity   = _globmem->local_size();
     _local_cumul_sizes[unit]  += 1;
