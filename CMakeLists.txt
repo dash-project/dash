@@ -43,8 +43,7 @@ option(BUILD_EXAMPLES
 option(ENABLE_DEV_COMPILER_WARNINGS
        "Specify whether excessive compiler warnings should be enabled" off)
 option(ENABLE_EXT_COMPILER_WARNINGS
-       "Specify whether mainly style-related compiler warnings should \ 
-        be enabled" off)
+       "Specify whether extended compiler warnings should be enabled" off)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION

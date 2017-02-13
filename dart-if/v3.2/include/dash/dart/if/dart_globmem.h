@@ -219,8 +219,9 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * anywhere in the allocation can easily be formed locally. The global
  * pointer to the beginning of the allocation is returned in \c gptr on
  * each participating unit. Each participating unit has to call
- * \c dart_team_memalloc_aligned with the same specification of \c teamid, \c dtype and
- * \c nelem. Each unit will receive the a global pointer to the beginning
+ * \c dart_team_memalloc_aligned with the same specification of \c teamid,
+ * \c dtype and \c nelem.
+ * Each unit will receive the a global pointer to the beginning
  * of the allocation (on unit 0) in \c gptr.
  * Accessibility of memory allocated with this function is limited to
  * those units that are part of the team allocating the memory. I.e.,

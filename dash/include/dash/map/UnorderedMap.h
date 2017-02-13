@@ -168,6 +168,10 @@ public:
             size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
+public:
+  /// Local proxy object, allows use in range-based for loops.
+  local_type local;
+
 private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team            = nullptr;
@@ -203,10 +207,6 @@ private:
   /// Default is 4 KB.
   size_type              _local_buffer_size
                            = 4096 / sizeof(value_type);
-
-public:
-  /// Local proxy object, allows use in range-based for loops.
-  local_type local;
 
 public:
   UnorderedMap(
