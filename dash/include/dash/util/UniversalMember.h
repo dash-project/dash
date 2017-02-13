@@ -51,14 +51,15 @@ class UniversalMember {
   typedef UniversalMember<ValueType> self_t;
 
   std::shared_ptr<ValueType> _value;
+//ValueType _value;
 public:
-  UniversalMember() = delete;
+  UniversalMember() = default;
 
-  constexpr UniversalMember(self_t && other)      = default;
-  constexpr UniversalMember(const self_t & other) = default;
-
-  self_t & operator=(const self_t & other)        = default;
-  self_t & operator=(self_t && other)             = default;
+// constexpr UniversalMember(self_t && other)      = default;
+// constexpr UniversalMember(const self_t & other) = delete;
+//
+// self_t & operator=(const self_t & other)        = delete;
+// self_t & operator=(self_t && other)             = default;
 
   constexpr explicit UniversalMember(ValueType && value)
   : _value(std::make_shared<ValueType>(std::move(value)))
@@ -66,6 +67,7 @@ public:
   constexpr explicit UniversalMember(const ValueType & value)
   : _value(&const_cast<ValueType &>(value),
            [](ValueType *) { /* no deleter */ })
+//: _value(value)
   { }
 
             operator       ValueType & ()       { return *(_value.get()); }
@@ -74,6 +76,10 @@ public:
   self_t & operator=(ValueType && value) {
     *(_value.get()) = std::forward<ValueType>(value);
     return *this;
+  }
+
+  constexpr const std::shared_ptr<ValueType> & shared() const {
+    return _value;
   }
 };
 
