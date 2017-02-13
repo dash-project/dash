@@ -64,8 +64,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_ASSERTIONS=ON \
                         -DENABLE_LT_OPTIMIZATION=OFF \
-                        -DENABLE_DEVELOPER_COMPILER_WARNINGS=ON \
-                        -DENABLE_EXTENDED_COMPILER_WARNINGS=ON \
+                        -DENABLE_DEV_COMPILER_WARNINGS=ON \
+                        -DENABLE_EXT_COMPILER_WARNINGS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
