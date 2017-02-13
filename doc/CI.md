@@ -174,7 +174,7 @@ The best way to debug is to spin up a interactive container using the correspond
 docker run -it -v $( pwd ):/opt/dash dashproject/ci:openmpi2
 ```
 
-Inside the container, `cd` to `/opt/dash` and execute `/bin/bash /opt/dash/scripts/dash-ci.sh` to run the CI. If you are only interessted in a single target, pass it to the CI as described above: `dash-ci.sh $TARGET`.
+Inside the container, `cd` to `/opt/dash` and execute `/bin/bash /opt/dash/dash/dash/scripts/dash-ci.sh` to run the CI. If you are only interessted in a single target, pass it to the CI as described above: `dash-ci.sh $TARGET`.
 
 To leave the container again, just type `exit`.
 

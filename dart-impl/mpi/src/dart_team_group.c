@@ -642,6 +642,8 @@ dart_ret_t dart_team_create(
     MPI_Win_lock_all(0, win);
     DART_LOG_DEBUG("TEAMCREATE - create team %d from parent team %d",
                    *newteam, teamid);
+    DART_LOG_TRACE("TEAMCREATE - team:%d comm:%p win:%p subcomm:%p",
+                   *newteam, team_data->comm, team_data->window, subcomm);
   }
 
   return DART_OK;
