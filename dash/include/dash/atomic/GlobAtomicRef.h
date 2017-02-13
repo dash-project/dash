@@ -22,7 +22,7 @@ template<typename T>
 class GlobRef<dash::Atomic<T>>
 {
   static_assert(dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED,
-         "dash::AtomicAddress only valid on integral and floating point types");
+    "dash::GlobRef<Atomic<T>> only valid on integral and floating point types");
   
   template<typename U>
   friend std::ostream & operator<<(
@@ -136,8 +136,8 @@ public:
    */
   void store(const T & value) const
   {
-    DASH_LOG_DEBUG_VAR("AtomicAddress.set()", value);
-    DASH_LOG_TRACE_VAR("AtomicAddress.set",   _gptr);
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<const char * const>(&value),
@@ -146,22 +146,16 @@ public:
                        DART_OP_REPLACE);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_DEBUG("AtomicAddress.set >");
+    DASH_LOG_DEBUG("GlobRef<Atomic>.store >");
   }
 
   /// atomically fetches value
   T load() const
   {
-    DASH_LOG_DEBUG("AtomicAddress.get()");
-    DASH_LOG_TRACE_VAR("AtomicAddress.get", _gptr);
+    DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
     value_type nothing;
     value_type result;
-    /*
-     * This should be replaced by a DART version of MPI_Get_Accumulate,
-     * as fetch_and_op might segfault (only here?) with MPI_NO_OP.
-     * 
-     * https://www.mpich.org/static/docs/v3.2/www3/MPI_Get_accumulate.html
-     */
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
@@ -170,11 +164,11 @@ public:
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_DEBUG_VAR("AtomicAddress.get >", result);
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.get >", result);
     return result;
   }
   
-    /**
+  /**
    * Atomically executes specified operation on the referenced shared value.
    */
   template<typename BinaryOp>
@@ -183,10 +177,10 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
-    DASH_LOG_DEBUG_VAR("AtomicAddress.add()", value);
-    DASH_LOG_TRACE_VAR("AtomicAddress.add",   _gptr);
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
     value_type acc = value;
-    DASH_LOG_TRACE("AtomicAddress.add", "dart_accumulate");
+    DASH_LOG_TRACE("GlobRef<Atomic>.op", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<char *>(&acc),
@@ -195,7 +189,7 @@ public:
                        binary_op.dart_operation());
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_DEBUG_VAR("AtomicAddress.add >", acc);
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op >", acc);
   }
   
   /**
@@ -210,9 +204,9 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
-    DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op()", value);
-    DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   _gptr);
-    DASH_LOG_TRACE_VAR("AtomicAddress.fetch_and_op",   typeid(value).name());
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
     value_type acc;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
@@ -221,8 +215,8 @@ public:
                        dash::dart_datatype<T>::value,
                        binary_op.dart_operation());
     dart_flush(_gptr);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_and_op failed");
-    DASH_LOG_DEBUG_VAR("AtomicAddress.fetch_and_op >", acc);
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", acc);
     return acc;
   }
   
@@ -243,11 +237,11 @@ public:
    */
   bool compare_exchange(const T & expected, const T & desired) const {
     static_assert(std::is_integral<T>::value,
-      "AtomicAddress.compare_exchange only valid on integral types!");
-    DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange()", desired);
-    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   _gptr);
-    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   expected);
-    DASH_LOG_TRACE_VAR("AtomicAddress.compare_exchange",   typeid(desired).name());
+      "GlobRef<Atomic>.compare_exchange only valid on integral types!");
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   _gptr);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
+    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   typeid(desired).name());
     value_type result;
     dart_ret_t ret = dart_compare_and_swap(
                        _gptr,
@@ -257,7 +251,7 @@ public:
                        dash::dart_datatype<T>::value);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
-    DASH_LOG_DEBUG_VAR("AtomicAddress.compare_exchange >", (expected == result));
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange >", (expected == result));
     return (expected == result);
   }
   
@@ -266,8 +260,8 @@ public:
    * ------------ specializations for atomic integral types --------------------
    * ---------------------------------------------------------------------------
    *
-   *  As the check for integral type is already implemented in the 
-   *  dash::atomic::* algorithms, no check is performed here
+   *  As the check for integral type is already implemented in constructor, 
+   *  no check is performed here
    */
   
   /**
