@@ -127,7 +127,7 @@
 #define DART_DEC_AND_FETCH8(ptr)     \
           __sync_sub_and_fetch((int8_t  *)(ptr), 1)
 #define DART_DEC_AND_FETCHPTR(ptr)   \
-          __sync_sub_and_fetch((void   **)(ptr), sizeof(**ptr))
+          __sync_sub_and_fetch((void   **)(ptr), sizeof(**(ptr)))
 
 
 #define DART_COMPARE_AND_SWAP64(ptr, oldval, newval)       \
