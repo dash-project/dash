@@ -25,6 +25,7 @@ TEST_F(CSRPatternTest, InitArray) {
     local_sizes.push_back(tmp);
     sum += tmp;
   }
+  auto max_local_size = local_sizes.back();
 
   DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray", local_sizes);
 
@@ -33,13 +34,22 @@ TEST_F(CSRPatternTest, InitArray) {
 
   EXPECT_EQ_U(local_sizes[myid], array.lsize());
   EXPECT_EQ_U(local_sizes[myid], array.lend() - array.lbegin());
-  EXPECT_EQ_U(sum, array.size());
-  EXPECT_EQ_U(pattern.size(), array.size());
+  EXPECT_EQ_U(sum,               array.size());
+  EXPECT_EQ_U(pattern.size(),    array.size());
+  EXPECT_EQ_U(max_local_size,    array.lcapacity());
 
-  for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
-    *i = myid;
+  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize local values (lidx");
+  for (index_t li = 0; li < array.lsize(); li++) {
+    array.local[li] = myid.id;
   }
 
+  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize local values (*lp)");
+  for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
+//  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize", i);
+    *i = myid.id;
+  }
+
+  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "verify local values");
   for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
     EXPECT_EQ_U(*i, myid.id);
   }

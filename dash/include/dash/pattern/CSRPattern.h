@@ -123,7 +123,7 @@ public:
 private:
   PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
-  SizeType                    _size;
+  SizeType                    _size            = 0;
   /// Number of local elements for every unit in the active team.
   std::vector<size_type>      _local_sizes;
   /// Block offsets for every unit. Prefix sum of local sizes.
@@ -142,15 +142,15 @@ private:
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = 0;
   /// Actual number of local elements of the active unit.
-  SizeType                    _local_size;
+  SizeType                    _local_size      = 0;
   /// Local memory layout of the pattern.
   LocalMemoryLayout_t         _local_memory_layout;
   /// Maximum number of elements assigned to a single unit
-  SizeType                    _local_capacity;
+  SizeType                    _local_capacity  = 0;
   /// Corresponding global index to first local index of the active unit
-  IndexType                   _lbegin;
+  IndexType                   _lbegin          = 0;
   /// Corresponding global index past last local index of the active unit
-  IndexType                   _lend;
+  IndexType                   _lend            = 0;
 
 public:
   /**
@@ -831,9 +831,10 @@ public:
     IndexType index,
     team_unit_t unit) const noexcept
   {
-    return index >= _block_offsets[unit] &&
-                    (unit == _nunits-1 ||
-                     index <  _block_offsets[unit+1]);
+    return (index >= _block_offsets[unit])
+           && ( unit == _nunits-1
+                || index <  _block_offsets[unit+1]
+              );
   }
 
   /**
@@ -1249,14 +1250,13 @@ private:
     const std::vector<size_type> & local_sizes) const
   {
     SizeType l_capacity = 0;
-    if (_nunits == 0) {
-      return 0;
-    }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
-    l_capacity = *(std::max_element(local_sizes.begin(),
-                                    local_sizes.end()));
+    auto max_local_size = std::max_element(local_sizes.begin(),
+                                           local_sizes.end());
+    if (max_local_size != local_sizes.end()) {
+      l_capacity = *max_local_size;
+    }
     DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
