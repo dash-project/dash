@@ -12,7 +12,7 @@
 
 #include <mpi.h>
 
-#if defined(_OPENMP)
+#if defined(DASH_ENABLE_OPENMP)
 #include <omp.h>
 #endif
 
@@ -35,7 +35,7 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
     SKIP_TEST_MSG("requires support for multi-threading");
   }
 
-#if !defined(_OPENMP)
+#if !defined(DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -93,7 +93,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
   using elem_t  = int;
   using array_t = dash::Array<elem_t>;
 
-#if !defined(_OPENMP)
+#if !defined(DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -144,7 +144,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 #pragma omp barrier
   }
 
-#endif //!defined(_OPENMP)
+#endif //!defined(DASH_ENABLE_OPENMP)
 }
 
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
@@ -160,7 +160,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
     SKIP_TEST_MSG("requires at least 4 units");
   }
 
-#if !defined(_OPENMP)
+#if !defined(DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -203,7 +203,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
     }
 #pragma omp barrier
   }
-#endif //!defined(_OPENMP)
+#endif //!defined(DASH_ENABLE_OPENMP)
 }
 
 
@@ -222,7 +222,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
 
   static constexpr size_t elem_per_thread = 10;
 
-#if !defined(_OPENMP)
+#if !defined(DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -261,7 +261,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
       dash::memfree(ptr[thread_id]);
     }
   }
-#endif //!defined(_OPENMP)
+#endif //!defined(DASH_ENABLE_OPENMP)
 }
 
 
@@ -280,7 +280,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
 
   static constexpr size_t elem_per_thread = 10;
 
-#if !defined(_OPENMP)
+#if !defined(DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -327,6 +327,6 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
     }
     delete[] vals;
   }
-#endif // !defined(_OPENMP)
+#endif // !defined(DASH_ENABLE_OPENMP)
 }
 
