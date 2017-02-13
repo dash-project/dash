@@ -9,7 +9,12 @@ TEST_F(CSRPatternTest, InitArray) {
   using extent_t  = pattern_t::size_type;
   using index_t   = pattern_t::index_type;
 
+#if 0
+  // alignment of array.lbegin != sizeof(value_t)
   typedef size_t value_t;
+#else
+  typedef int value_t;
+#endif
 
   auto   myid   = dash::myid();
   auto & team   = dash::Team::All();
@@ -39,6 +44,9 @@ TEST_F(CSRPatternTest, InitArray) {
   EXPECT_EQ_U(max_local_size,    array.lcapacity());
 
   DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray", array.lcapacity());
+  DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray", array.lbegin());
+  DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray",
+                       reinterpret_cast<size_t>(array.lbegin()) % 64);
 
   DASH_LOG_DEBUG("CSRPatternTest.InitArray", "init local values (lidx)");
   for (index_t li = 0; li < array.lsize(); li++) {
@@ -53,8 +61,10 @@ TEST_F(CSRPatternTest, InitArray) {
   DASH_LOG_DEBUG("CSRPatternTest.InitArray", "init local values (*lp)");
   for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
     // If this log message is omitted, segfaults for GCC + OpenMPI.
-    // Apparently due to automatic loop parallelization?
-    DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize", i);
+    //
+    // Apparently due to automatic loop parallelization:
+    // Alignment is 4 bytes and using `int` instead of `size_t` works.
+//  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize", i);
     *i = myid.id;
   }
 
