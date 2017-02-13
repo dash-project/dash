@@ -49,7 +49,7 @@ option(WARNINGS_AS_ERRORS
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
 option(ENABLE_CC_REPORTS
-       "Specify whether compiler reports should be generated" on)
+       "Specify whether compiler reports should be generated" off)
 option(ENABLE_COMPTIME_RED
        "Specify whether opts to reduce the build time should be used"
        ${DEFAULT_COMPTIME_RED})
@@ -120,10 +120,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
+
+if (ENABLE_MKL)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+endif()
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)

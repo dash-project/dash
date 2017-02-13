@@ -166,6 +166,8 @@ private:
     TeamSpec_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
     Extents_t;
+  typedef std::array<typename PatternT::index_type, NumDimensions>
+    Offsets_t;
 
 public:
   template<
@@ -225,6 +227,8 @@ public:
 
 public:
 
+  typedef std::integral_constant<dim_t, NumDimensions>                rank;
+
   static constexpr dim_t ndim() {
     return NumDimensions;
   }
@@ -236,13 +240,13 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global matrix instances
    * that are declared before \c dash::Init().
    */
-  inline Matrix(
+  Matrix(
     Team & team = dash::Team::Null());
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
-  inline Matrix(
+  Matrix(
     const SizeSpec_t         & ss,
     const DistributionSpec_t & ds  = DistributionSpec_t(),
     Team                     & t   = dash::Team::All(),
@@ -251,13 +255,13 @@ public:
   /**
    * Constructor, creates a new instance of Matrix from a pattern instance.
    */
-  inline Matrix(
+  Matrix(
     const PatternT & pat);
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
-  inline Matrix(
+  Matrix(
     /// Number of elements
     size_t nelem,
     /// Team containing all units operating on the Matrix instance
@@ -270,14 +274,19 @@ public:
    * of given extents.
    */
   template<typename... Args>
-  inline Matrix(SizeType arg, Args... args)
+  Matrix(SizeType arg, Args... args)
   : Matrix(PatternT(arg, args... ))
   { }
 
   /**
+   * Copy-constructor, deleted.
+   */
+  Matrix(const self_t &) = delete;
+
+  /**
    * Destructor, frees underlying memory.
    */
-  inline ~Matrix();
+  ~Matrix();
 
   /**
    * View at block at given global block coordinates.
@@ -329,21 +338,23 @@ public:
    */
   void deallocate();
 
-  inline Team            & team();
+  Team                      & team();
 
-  inline size_type         size()                const noexcept;
-  inline size_type         local_size()          const noexcept;
-  inline size_type         local_capacity()      const noexcept;
-  inline size_type         extent(dim_t dim)     const noexcept;
-  inline Extents_t         extents()             const noexcept;
-  inline bool              empty()               const noexcept;
+  constexpr size_type         size()                const noexcept;
+  constexpr size_type         local_size()          const noexcept;
+  constexpr size_type         local_capacity()      const noexcept;
+  constexpr size_type         extent(dim_t dim)     const noexcept;
+  constexpr Extents_t         extents()             const noexcept;
+  constexpr index_type        offset(dim_t dim)     const noexcept;
+  constexpr Offsets_t         offsets()             const noexcept;
+  constexpr bool              empty()               const noexcept;
 
   /**
    * Synchronize units associated with the matrix.
    *
    * \see  DashContainerConcept
    */
-  inline void              barrier()             const;
+  void                       barrier()              const;
 
   /**
    * The pattern used to distribute matrix elements to units in its
@@ -351,21 +362,21 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline const Pattern_t & pattern()             const;
+  constexpr const Pattern_t & pattern()             const;
 
   /**
    * Iterator referencing first matrix element in global index space.
    *
    * \see  DashContainerConcept
    */
-  inline       iterator    begin()        noexcept;
+                  iterator    begin()        noexcept;
 
   /**
    * Iterator referencing first matrix element in global index space.
    *
    * \see  DashContainerConcept
    */
-  inline const_iterator    begin()  const noexcept;
+  constexpr const_iterator    begin()  const noexcept;
 
   /**
    * Iterator referencing past the last matrix element in global index
@@ -373,7 +384,7 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline       iterator    end()          noexcept;
+                  iterator    end()          noexcept;
 
   /**
    * Iterator referencing past the last matrix element in global index
@@ -381,41 +392,41 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline const_iterator    end()    const noexcept;
+  constexpr const_iterator    end()    const noexcept;
 
   /**
    * Pointer to first element in local range.
    *
    * \see  DashContainerConcept
    */
-  inline       ElementT *  lbegin()       noexcept;
+                  ElementT *  lbegin()       noexcept;
 
   /**
    * Pointer to first element in local range.
    *
    * \see  DashContainerConcept
    */
-  inline const ElementT *  lbegin() const noexcept;
+  constexpr const ElementT *  lbegin() const noexcept;
 
   /**
    * Pointer past final element in local range.
    *
    * \see  DashContainerConcept
    */
-  inline       ElementT *  lend()         noexcept;
+                  ElementT *  lend()         noexcept;
 
   /**
    * Pointer past final element in local range.
    *
    * \see  DashContainerConcept
    */
-  inline const ElementT *  lend()   const noexcept;
+  constexpr const ElementT *  lend()   const noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  inline const view_type<NumDimensions-1> operator[](
+  constexpr const view_type<NumDimensions-1> operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
 
@@ -423,12 +434,12 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  inline view_type<NumDimensions-1> operator[](
+  view_type<NumDimensions-1> operator[](
     size_type n       ///< Offset in highest matrix dimension.
   );
 
   template<dim_t SubDimension>
-  inline view_type<NumDimensions> sub(
+  view_type<NumDimensions> sub(
     size_type n,      ///< Offset of the sub-range.
     size_type range   ///< Width of the sub-range.
   );
@@ -440,7 +451,7 @@ public:
    * \see  col
    */
   template<dim_t SubDimension>
-  inline view_type<NumDimensions-1> sub(
+  view_type<NumDimensions-1> sub(
     size_type n       ///< Offset in selected dimension.
   );
 
@@ -448,7 +459,7 @@ public:
    * Local proxy object representing a view consisting of matrix elements
    * that are located in the active unit's local memory.
    */
-  inline local_type sub_local() noexcept;
+  local_type sub_local() noexcept;
 
   /**
    * Projection to given offset in first sub-dimension (column), same as
@@ -459,7 +470,7 @@ public:
    * \see  sub
    * \see  row
    */
-  inline view_type<NumDimensions-1> col(
+  view_type<NumDimensions-1> col(
     size_type n       ///< Column offset.
   );
 
@@ -472,7 +483,7 @@ public:
    * \see  sub
    * \see  col
    */
-  inline view_type<NumDimensions-1> row(
+  view_type<NumDimensions-1> row(
     size_type n       ///< Row offset.
   );
 
@@ -485,7 +496,7 @@ public:
    *
    * \see  sub
    */
-  inline view_type<NumDimensions> cols(
+  view_type<NumDimensions> cols(
     size_type offset, ///< Offset of first column in range.
     size_type range   ///< Number of columns in the range.
   );
@@ -499,7 +510,7 @@ public:
    *
    * \see  sub
    */
-  inline view_type<NumDimensions> rows(
+  view_type<NumDimensions> rows(
     size_type n,      ///< Offset of first row in range.
     size_type range   ///< Number of rows in the range.
   );
@@ -513,7 +524,7 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
-  inline reference at(
+  reference at(
     Args... args      ///< Global coordinates
   );
 
@@ -527,7 +538,7 @@ public:
    * \see  at
    */
   template<typename... Args>
-  inline reference operator()(
+  reference operator()(
     Args... args      ///< Global coordinates
   );
 
@@ -537,7 +548,7 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline bool is_local(
+  constexpr bool is_local(
     size_type g_pos   ///< Canonical offset in global index space.
   ) const;
 
@@ -546,17 +557,17 @@ public:
    * dimension of the matrix is local to the active unit.
    */
   template<dim_t Dimension>
-  inline bool is_local(
+  constexpr bool is_local(
     size_type g_pos   ///< Linear offset in the selected dimension.
   ) const;
 
   template <int level>
-  inline dash::HView<self_t, level> hview();
+  dash::HView<self_t, level> hview();
 
   /**
    * Conversion operator to type \c MatrixRef.
    */
-  inline operator
+  operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
 
 private:

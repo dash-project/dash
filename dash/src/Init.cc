@@ -52,7 +52,7 @@ void dash::init(int * argc, char ** *argv)
 
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
     if (dash::myid() == 0) {
-      int blockvar = 0;
+      int blockvar = 1;
       dash::prevent_opt_elimination(blockvar);
       while (blockvar) {
         dash::internal::wait_breakpoint();

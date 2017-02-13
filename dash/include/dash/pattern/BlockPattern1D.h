@@ -134,6 +134,8 @@ private:
   IndexType                   _lend            = -1;
 
 public:
+  constexpr BlockPattern() = delete;
+
   /**
    * Constructor, initializes a pattern from an argument list consisting
    * of the pattern size (extent, number of elements) followed by an optional
@@ -317,6 +319,9 @@ public:
     _lbegin_lend(initialize_local_range(_local_size))
   { }
 
+  /**
+   * Move constructor.
+   */
   constexpr BlockPattern(self_t && other)      = default;
 
   /**
@@ -334,12 +339,15 @@ public:
   : BlockPattern(static_cast<const self_t &>(other)) {
   }
 
-  self_t & operator=(self_t && other) = default;
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other)         = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(const self_t & other)    = default;
 
   /**
    * Equality comparison operator.
@@ -864,10 +872,20 @@ public:
    * View spec (offset and extents) of block at global linear block index in
    * cartesian element space.
    */
-  ViewSpec_t block(
+  constexpr ViewSpec_t block(
+    /// Global block index
     index_type g_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.block()", g_block_index);
+#if 1
+    return ViewSpec_t(
+      {{ static_cast<index_type>(g_block_index * _blocksize) }},
+      {{ static_cast<size_type>(
+          _blocksize - ( g_block_index < _nblocks - 1
+                         ? 0
+                         : underfilled_blocksize(0) )
+         ) }}
+    );
+#else
     index_type offset = g_block_index * _size;
     std::array<index_type, NumDimensions> offsets = {{ offset }};
     std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
@@ -875,34 +893,42 @@ public:
       extents[0] -= underfilled_blocksize(0);
     }
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.block >", block_vs);
     return block_vs;
+#endif
   }
 
   /**
    * View spec (offset and extents) of block at local linear block index in
    * global cartesian element space.
    */
-  ViewSpec_t local_block(
+  constexpr ViewSpec_t local_block(
+    /// Local block index
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block()", l_block_index);
+#if 1
     // Local block index to local block coords:
+    return ViewSpec_t(
+      {{ static_cast<index_type>( global(l_block_index * _blocksize) ) }},
+      {{ static_cast<size_type>(
+          (l_block_index == (_nlblocks - 1)
+          ? (_local_size % _blocksize == 0
+             ? _blocksize
+             : _local_size % _blocksize )
+          : _blocksize )
+         ) }}
+    );
+#else
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
     std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
     std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
-    DASH_LOG_DEBUG("_nlblocks", _nlblocks);
-    DASH_LOG_DEBUG("_nblocks", _nblocks);
-    DASH_LOG_DEBUG("l_block_index", l_block_index);
-    DASH_LOG_DEBUG("g_block_index", global(l_block_index));
     if(l_block_index == (_nlblocks - 1)) {
       size_type remaining = _local_size % extents[0];
       extents[0] = (remaining == 0) ? extents[0] : remaining;
     }
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.local_block >", block_vs);
     return block_vs;
+#endif
   }
 
   /**
