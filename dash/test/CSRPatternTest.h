@@ -4,20 +4,9 @@
 #include "TestBase.h"
 
 /**
- * Test fixture for onesided operations provided by DART.
+ * Test fixture for dash::CSRPattern
  */
 class CSRPatternTest : public dash::test::TestBase {
-protected:
-
-  CSRPatternTest(){
-    LOG_MESSAGE(">>> Test suite: CSRPatternTest");
-  }
-
-  virtual ~CSRPatternTest() {
-    LOG_MESSAGE("<<< Closing test suite: CSRPatternTest");
-  }
-
 };
-
 
 #endif // DASH__TEST__CSR_Pattern_TEST_H_
