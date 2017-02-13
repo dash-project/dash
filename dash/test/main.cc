@@ -29,13 +29,13 @@ int main(int argc, char * argv[])
 
   // Init MPI
 #ifdef MPI_SUPPORT
-#ifdef DASH_ENABLE_THREADING
+#ifdef DASH_ENABLE_THREADSUPPORT
   int thread_required = MPI_THREAD_MULTIPLE;
   int thread_provided; // ignored here
   MPI_Init_thread(&argc, &argv, thread_required, &thread_provided);
 #else
   MPI_Init(&argc, &argv);
-#endif // DASH_ENABLE_THREADING
+#endif // DASH_ENABLE_THREADSUPPORT
   MPI_Comm_rank(MPI_COMM_WORLD, &team_myid);
   MPI_Comm_size(MPI_COMM_WORLD, &team_size);
 
