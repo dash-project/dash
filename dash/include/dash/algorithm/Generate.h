@@ -14,8 +14,11 @@ namespace dash {
  *
  *  Being a collaborative operation, each unit will invoke the given function on its local elements only.
  *
- * \tparam      ElementType  Type of the elements in the sequence
- *                           invoke, deduced from parameter \c func
+ * \tparam      ElementType    Type of the elements in the sequence
+ *                             invoke, deduced from parameter \c gen
+ * \tparam      UnaryFunction  Unary function with signature
+ *                             \c void(ElementType &)
+ *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
@@ -23,20 +26,21 @@ namespace dash {
  */
 template<
     typename ElementType,
-    class    PatternType>
+    class    PatternType,
+    class    UnaryFunction >
 void generate (
-    /// Iterator to the initial position in the sequence
-    GlobIter<ElementType, PatternType> first,
-    /// Iterator to the final position in the sequence
-    GlobIter<ElementType, PatternType> last,
-    /// Generator function
-    ::std::function<ElementType(void)> & g) {
-    /// Global iterators to local range:
-    auto lrange = dash::local_range(first, last);
-    auto lfirst = lrange.begin;
-    auto llast  = lrange.end;
+  /// Iterator to the initial position in the sequence
+  GlobIter<ElementType, PatternType> first,
+  /// Iterator to the final position in the sequence
+  GlobIter<ElementType, PatternType> last,
+  /// Generator function
+  UnaryFunction                      gen) {
+  /// Global iterators to local range:
+  auto lrange = dash::local_range(first, last);
+  auto lfirst = lrange.begin;
+  auto llast  = lrange.end;
 
-    std::generate(lfirst, llast, g);
+  std::generate(lfirst, llast, gen);
 }
 
 } // namespace dash
