@@ -160,13 +160,14 @@ template<
   class BinaryOperation >
 GlobOutputIt transform(
   /// Iterator on begin of first local range
-  InputIt        in_a_first,
+  InputIt         in_a_first,
   /// Iterator after last element of local range
-  InputIt        in_a_last,
+  InputIt         in_a_last,
   /// Iterator on begin of second local range
-  GlobInputIt    in_b_first,
+  GlobInputIt     in_b_first,
   /// Iterator on first element of global output range 
-  GlobOutputIt   out_first,
+  GlobOutputIt    out_first,
+  /// Reduce operation
   BinaryOperation binary_op);
 
 /**
@@ -446,7 +447,10 @@ GlobAsyncRef<ValueType> transform(
   InputIt                 in_a_last,
   GlobInputIt             in_b_first,
   GlobAsyncRef<ValueType> out_first,
-  BinaryOperation         binary_op   = dash::plus<ValueType>()) {
+  BinaryOperation         binary_op  = dash::plus<ValueType>()) {
+  DASH_THROW(
+    dash::exception::NotImplemented,
+    "Async variant of dash::transform is not implemented");
 }
 
 } // namespace dash
