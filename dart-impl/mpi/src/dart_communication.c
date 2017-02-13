@@ -844,8 +844,6 @@ dart_ret_t dart_get_blocking(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
-  // store the team-local ID in the gptr
-  gptr.unitid = target_unitid_rel.id;
   if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
     // store the team-local ID in the gptr
     gptr.unitid = target_unitid_rel.id;
