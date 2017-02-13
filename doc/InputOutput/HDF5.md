@@ -12,7 +12,7 @@ DASH implements two different kinds of the API, which provide exact the same fun
 In its simples form, an `dash::Array` or `dash::Matrix` is written by passing a filename, the dataset and the array to the API. For example:
 
 ```cpp
-auto array = dash::Array<double>(1000);
+dash::Array<double> array(1000);
 dash::io:StoreHDF::write(array, "file.hdf5", "dataset");
 
 // Same as
@@ -48,8 +48,8 @@ It is possible to add more datasets to a single hdf5 file. To this, the append o
 
 ```cpp
 // Store two matrices
-auto matrix_a = dash::Matrix<int,2>(100, 100);
-auto matrix_b = dash::Matrix<int,3>(10, 15, 20);
+dash::Matrix<int,2> matrix_a(100, 100);
+dash::Matrix<int,3> matrix_b(10, 15, 20);
 
 dash::io::hdf5::OutputStream os("file.hdf5", dash::io::hdf5::DeviceMode::App);
 os << dash::io::hdf5::dataset("pressure")
@@ -64,8 +64,8 @@ Hence, the option `modify_dataset` has to be set if and only if an already exist
 
 ```cpp
 // Modify dataset
-auto matrix_a = dash::Matrix<int,2>(100, 100);
-auto matrix_b = dash::Matrix<int,2>(100, 100);
+dash::Matrix<int,2> matrix_a(100, 100);
+dash::Matrix<int,2> matrix_b(100, 100);
 dash::io::hdf5::OutputStream os("file.hdf5", dash::io::hdf5::DeviceMode::App);
 os << dash::io::hdf5::dataset("temperature")
    << matrix_a

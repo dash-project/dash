@@ -215,6 +215,18 @@ typedef int32_t dart_team_t;
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
 
+
+typedef enum
+{
+  /** No support for thread-based concurrency in DART is provided. */
+  DART_THREAD_SINGLE = 0,
+  /**
+   * Support for thread-based concurrency is provided by DART and
+   * the underlying runtime.
+   */
+  DART_THREAD_MULTIPLE = 10
+} dart_thread_level_t;
+
 /**
  * Scopes of locality domains.
  *

@@ -8,38 +8,33 @@
 // for CustomType test
 #include "hdf5.h"
 
-
 class HDF5ArrayTest : public dash::test::TestBase {
-protected:
-  const std::string _filename = "test_array.hdf5";
-  const std::string _dataset  = "data";
+ protected:
+  std::string _filename = "test_array.hdf5";
+  std::string _dataset = "data";
+  bool _preserve;
 
-  HDF5ArrayTest() {
-    LOG_MESSAGE(">>> Test suite: HDFTest");
-  }
+  HDF5ArrayTest() { LOG_MESSAGE(">>> Test suite: HDFTest"); }
 
-  virtual ~HDF5ArrayTest() {
-    LOG_MESSAGE("<<< Closing test suite: HDFTest");
-  }
+  virtual ~HDF5ArrayTest() { LOG_MESSAGE("<<< Closing test suite: HDFTest"); }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();
-
-    if(dash::myid().id == 0) {
+    _preserve = dash::util::Config::get<bool>("DASH_HDF5_PRESERVE_FILE");
+    if (dash::myid() == 0) {
       remove(_filename.c_str());
     }
     dash::Team::All().barrier();
   }
 
   virtual void TearDown() {
-    if(dash::myid().id == 0) {
+    if ((dash::myid() == 0) && !_preserve) {
       remove(_filename.c_str());
     }
-
     dash::test::TestBase::TearDown();
   }
 };
 
-#endif // DASH_ENABLE_HDF5
+#endif  // DASH_ENABLE_HDF5
 
-#endif // DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
+#endif  // DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
