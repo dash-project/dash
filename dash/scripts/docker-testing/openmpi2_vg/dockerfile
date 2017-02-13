@@ -7,7 +7,7 @@ FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
-RUN           apt-get update -y
+RUN           apt-get update -y --fix-missing
 RUN           apt-get install -y \
                 git \
                 build-essential \
@@ -30,7 +30,7 @@ ENV           VALGRIND_BASE=/opt/valgrind
 ENV           PATH=${PATH}:${VALGRIND_BASE}/bin
 
 # Openmpi 2.0
-ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.gz ompi.tgz
+ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                                     \
               && ./configure --prefix=/opt/openmpi            \
