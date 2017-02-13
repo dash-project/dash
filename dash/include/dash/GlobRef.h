@@ -3,7 +3,6 @@
 
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
-#include <dash/algorithm/Operation.h>
 
 namespace dash {
 
@@ -38,9 +37,11 @@ class GlobRef
   friend std::ostream & operator<<(
     std::ostream & os,
     const GlobRef<U> & gref);
-
+  
+public:
+  typedef T value_type;
+  
 private:
-
   typedef GlobRef<T>
     self_t;
 
@@ -109,8 +110,8 @@ public:
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
     return *this = static_cast<T>(other);
-//  _gptr = other._gptr;
-//  return *this;
+  //  _gptr = other._gptr;
+  //  return *this;
   }
 
   inline bool operator==(const self_t & other) const noexcept
@@ -203,7 +204,7 @@ public:
 
   GlobRef<T> & operator+=(const T& ref)
   {
-#if 0
+  #if 0
     T add_val = ref;
     T old_val;
     dart_ret_t result = dart_fetch_and_op(
@@ -214,11 +215,11 @@ public:
                           dash::plus<T>().dart_operation(),
                           dash::Team::All().dart_id());
     dart_flush(_gptr);
-#else
+  #else
     T val  = operator T();
     val   += ref;
     operator=(val);
-#endif
+  #endif
     return *this;
   }
 
@@ -280,20 +281,20 @@ public:
     return *this;
   }
 
-#if 0
+  #if 0
   // Might lead to unintended behaviour
   GlobPtr<T> operator &() {
     return _gptr;
   }
-#endif
+  #endif
   dart_gptr_t dart_gptr() const {
     return _gptr;
   }
 
-#if 0
+  #if 0
   template<
     typename X=T,
-	  typename std::enable_if<has_subscript_operator<X>::value, int>::type
+    typename std::enable_if<has_subscript_operator<X>::value, int>::type
       * ptr = nullptr>
   auto operator[](size_t pos) ->
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
@@ -301,7 +302,7 @@ public:
     T val = operator T();
     return val[pos];
   }
-#endif
+  #endif
 
   /**
    * Checks whether the globally referenced element is in
@@ -344,15 +345,16 @@ private:
 
 template<typename T>
 std::ostream & operator<<(
-  std::ostream & os,
-  const GlobRef<T> & gref) {
+  std::ostream     & os,
+  const GlobRef<T> & gref)
+{
   char buf[100];
   sprintf(buf,
-          "(%08X|%04X|%04X|%016lX)",
-          gref._gptr.unitid,
-          gref._gptr.segid,
-          gref._gptr.flags,
-          gref._gptr.addr_or_offs.offset);
+  "(%08X|%04X|%04X|%016lX)",
+  gref._gptr.unitid,
+  gref._gptr.segid,
+  gref._gptr.flags,
+  gref._gptr.addr_or_offs.offset);
   os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
   return os;
 }
