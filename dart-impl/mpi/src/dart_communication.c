@@ -89,10 +89,8 @@ dart_ret_t dart_get(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_DEBUG("dart_get() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d t:%d nelem:%zu",
-                 target_unitid_abs.id, team_unit_id.id,
-                 offset, seg_id, gptr.teamid, nelem);
+  DART_LOG_DEBUG("dart_get() uid:%d o:%"PRIu64" s:%d t:%d nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
@@ -376,10 +374,8 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_DEBUG("dart_get_handle() uid:%d "
-                 "o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 team_unit_id.id,
-                 offset, seg_id, gptr.teamid, nelem);
+  DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
   DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -430,14 +426,14 @@ dart_ret_t dart_get_handle(
 
     DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (collective allocation) "
                    "from %d at offset %"PRIu64"",
-                   nelem, target_unitid_rel.id, offset);
+                   nelem, team_unit_id.id, offset);
   } else {
     /*
      * The memory accessed is allocated with local allocation.
      */
     DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (local allocation) "
                    "from %d at offset %"PRIu64"",
-                   nelem, target_unitid_abs.id, offset);
+                   nelem, team_unit_id.id, offset);
     win     = dart_win_local_alloc;
   }
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
@@ -576,10 +572,8 @@ dart_ret_t dart_put_blocking(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_DEBUG("dart_put_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 target_unitid_abs.id, target_unitid_rel.id,
-                 offset, seg_id, gptr.teamid, nelem);
+  DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put_blocking: shared windows enabled");
@@ -594,7 +588,11 @@ dart_ret_t dart_put_blocking(
       DART_LOG_DEBUG("dart_put_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_segment_get_baseptr(&team_data->segdata, seg_id, luid, &baseptr) != DART_OK) {
+        if (dart_segment_get_baseptr(
+                &team_data->segdata,
+                seg_id,
+                luid,
+                &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_put_blocking ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -603,7 +601,8 @@ dart_ret_t dart_put_blocking(
         baseptr = dart_sharedmem_local_baseptr_set[luid.id];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes",
+                        nelem * dart_mpi_sizeof_datatype(dtype));
       memcpy(baseptr, src, nelem * dart_mpi_sizeof_datatype(dtype));
       return DART_OK;
     }
@@ -629,17 +628,17 @@ dart_ret_t dart_put_blocking(
     win = team_data->window;
     offset += disp_s;
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
-                   "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "target (coll.): win:%p unit:%d offset:%p "
                    "<- source: %p",
-                   nelem, (unsigned long)win, team_unit_id.id,
-                   (unsigned long)disp_rel, src);
+                   nelem, win, team_unit_id.id,
+                   offset, src);
   } else {
     win      = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
-                   "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "target (local): win:%p unit:%d offset:%p "
                    "<- source: %p",
-                   nelem, (unsigned long)win, team_unit_id.id,
-                   (unsigned long)disp_rel, src);
+                   nelem, win, team_unit_id.id,
+                   offset, src);
   }
 
   /*
@@ -731,15 +730,15 @@ dart_ret_t dart_get_blocking(
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (coll.): win:%p unit:%d offset:%p"
                    "-> dest: %p",
-                   nelem, (void*)((unsigned long)win), team_unit_id.id,
-                   (void*)disp_rel, dest);
+                   nelem, win, team_unit_id.id,
+                   offset, dest);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (local): win:%p unit:%d offset:%p "
                    "-> dest: %p",
-                   nelem, (void*)((unsigned long)win), team_unit_id.id,
-                   (void*)disp_rel, dest);
+                   nelem, win, team_unit_id.id,
+                   offset, dest);
   }
 
   /*
@@ -893,7 +892,8 @@ dart_ret_t dart_flush_local_all(
   if (seg_id) {
     dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
     if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown team %i!", gptr.teamid);
+      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown team %i!",
+                          gptr.teamid);
       return DART_ERR_INVAL;
     }
     win = team_data->window;

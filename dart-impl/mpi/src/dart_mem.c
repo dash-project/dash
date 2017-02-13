@@ -1,6 +1,17 @@
-//https://github.com/cloudwu/buddy
+/*
+ * Buddy allocator to be used with externally allocated blocks.
+ *
+ * The main use for this allocator is \c dart_memalloc where a
+ * fixed-size pre-allocated shared window is used to facilitate
+ * shared-memory optimizations.
+ *
+ * The code was taken from https://github.com/cloudwu/buddy and
+ * the right to use it has been kindly granted by the author.
+ *
+ */
 
 #include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/base/mutex.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -12,9 +23,14 @@
 #define NODE_FULL 3
 
 struct dart_buddy {
+  dart_mutex_t mutex;
   int level;
   uint8_t tree[1];
 };
+
+/* Help to do memory management work for local allocation/free */
+char* dart_mempool_localalloc;
+struct dart_buddy  *  dart_localpool;
 
 struct dart_buddy *
 dart_buddy_new(int level)
@@ -24,11 +40,13 @@ dart_buddy_new(int level)
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (size * 2 - 2));
 	self->level = level;
 	memset(self->tree, NODE_UNUSED, size * 2 - 1);
+	dart_mutex_init(&self->mutex);
 	return self;
 }
 
 void
 dart_buddy_delete(struct dart_buddy * self) {
+  dart_mutex_destroy(&self->mutex);
 	free(self);
 }
 
@@ -90,11 +108,14 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 	int index = 0;
 	int level = 0;
 
+	dart_mutex_lock(&self->mutex);
+
 	while (index >= 0) {
 		if (size == length) {
 			if (self->tree[index] == NODE_UNUSED) {
 				self->tree[index] = NODE_USED;
 				_mark_parent(self, index);
+			  dart_mutex_unlock(&self->mutex);
 				return _index_offset(index, level, self->level);
 			}
 		}
@@ -109,6 +130,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 				self->tree[index] = NODE_SPLIT;
 				self->tree[index * 2 + 1] = NODE_UNUSED;
 				self->tree[index * 2 + 2] = NODE_UNUSED;
+				// intentional fall-through (?)
 			default:
 				index = index * 2 + 1;
 				length /= 2;
@@ -125,6 +147,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 			length *= 2;
 			index = (index + 1) / 2 - 1;
 			if (index < 0)
+			  dart_mutex_unlock(&self->mutex);
 				return -1;
 			if (index & 1) {
 				++index;
@@ -133,6 +156,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 		}
 	}
 
+  dart_mutex_unlock(&self->mutex);
 	return -1;
 }
 
@@ -163,17 +187,21 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 		return -1;
 	}
 
+  dart_mutex_lock(&self->mutex);
 	for (;;) {
 		switch (self->tree[index]) {
 		case NODE_USED:
 			if (offset != left){
 				assert (offset == left);
+			  dart_mutex_unlock(&self->mutex);
 				return -1;
 			}
 			_combine(self, index);
+		  dart_mutex_unlock(&self->mutex);
 			return 0;
 		case NODE_UNUSED:
 			assert (0);
+		  dart_mutex_unlock(&self->mutex);
 			return -1;
 		default:
 			length /= 2;
@@ -187,6 +215,10 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 			break;
 		}
 	}
+
+  dart_mutex_unlock(&self->mutex);
+  // TODO: is this ever reached?
+	return -1;
 }
 
 int buddy_size(struct dart_buddy * self, uint64_t offset)
@@ -217,6 +249,9 @@ int buddy_size(struct dart_buddy * self, uint64_t offset)
 			break;
 		}
 	}
+
+  // TODO: is this ever reached?
+	return -1;
 }
 
 static void

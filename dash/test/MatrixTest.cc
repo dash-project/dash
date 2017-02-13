@@ -45,7 +45,8 @@ TEST_F(MatrixTest, Views)
   size_t num_elem_per_unit   = num_elem_total / dash::size();
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
-  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
+  LOG_MESSAGE("nunits:%lu elem_total:%lu elem_per_unit:%lu "
+              "blocks_per_unit:%lu",
               dash::size(), num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -893,7 +894,7 @@ TEST_F(MatrixTest, DelayedAlloc)
                          "phase:",       phase_coords, "=", phase,
                          "expected:",    expected,
                          "actual:",      actual);
-          EXPECT_DOUBLE_EQ_U(expected, actual);
+          EXPECT_EQ_U(expected, actual);
         }
       }
     }
@@ -1041,9 +1042,11 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
   narray.barrier();
   
   if ( 0 == myid ) {
-    LOG_MESSAGE("global extent is %lu x %lu", narray.extent(0), narray.extent(1));
+    LOG_MESSAGE("global extent is %lu x %lu",
+                narray.extent(0), narray.extent(1));
   }
-  LOG_MESSAGE("local extent is %lu x %lu", narray.local.extent(0), narray.local.extent(1));
+  LOG_MESSAGE("local extent is %lu x %lu",
+              narray.local.extent(0), narray.local.extent(1));
 
   narray.barrier();
 

@@ -18,11 +18,6 @@ protected:
   : _dash_id(0),
     _dash_size(0),
     _num_elem(0) {
-    LOG_MESSAGE(">>> Test suite: ArrayTest");
-  }
-
-  virtual ~ArrayTest() {
-    LOG_MESSAGE("<<< Closing test suite: ArrayTest");
   }
 
   virtual void SetUp() {

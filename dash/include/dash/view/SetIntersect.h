@@ -9,13 +9,17 @@
 
 namespace dash {
 
+/**
+ * \concept{DashViewConcept}
+ */
 template <
   class ViewTypeA,
   class ViewTypeB >
-constexpr ViewTypeA
+constexpr auto
 intersect(
   const ViewTypeA & va,
   const ViewTypeB & vb)
+  -> decltype(dash::sub(0, 0, va))
 {
   return dash::sub(
            dash::index(va).pre()[

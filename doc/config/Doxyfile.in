@@ -63,8 +63,10 @@ ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@r
                           local_op="\b Local operation\n" \
                           onesided_op="\b One-sided operation\n" \
                           thread_safety{1}="\par Thread safety\n\1" \
-                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
-                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
+                          thread_level="<br><i>Note: Thread-safety is subject to the constraint that the call to \ref dart_init_thread </i> returns \c DART_THREAD_MULTIPLE.\n" \
+                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i> to the extent that the calls do not operate on the same data (race conditions).\n\thread_level}" \
+                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.\n\thread_level}" \
+                          threadsafe_data{1}="\thread_safety{This routine is thread-safe if not called on the same <i>\1</i> concurrently.\n\thread_level}" \
                           threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
 
 # Graphs

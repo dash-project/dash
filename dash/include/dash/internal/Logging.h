@@ -4,6 +4,7 @@
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
 #include <dash/Types.h>
+#include <dash/Init.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -17,16 +18,9 @@
 #include <iterator>
 #include <cstring>
 #include <string>
-#include <typeinfo>
 
 #include <sys/types.h>
 #include <unistd.h>
-
-
-namespace dash {
-  // forward-declaration
-  global_unit_t myid();
-}
 
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
@@ -107,8 +101,6 @@ namespace dash {
 namespace dash {
 namespace internal {
 namespace logging {
-
-std::string demangle(const char * typeid_name);
 
 extern bool _log_enabled;
 
@@ -298,18 +290,6 @@ inline void LogVarWrapper(
 
 } // namespace logging
 } // namespace internal
-
-namespace logging {
-
-template <class T>
-std::string typestr(const T & obj) {
-  return dash::internal::logging::demangle(
-           typeid(obj).name()
-         );
-}
-
-} // namespace logging
-
 } // namespace dash
 
 #endif // DASH__INTERNAL__LOGGING_H_

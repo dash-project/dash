@@ -9,7 +9,7 @@
 
 #define DART_TEAM_HASH_SIZE (256)
 
-dart_team_t dart_next_availteamid;
+dart_team_t dart_next_availteamid = (DART_TEAM_ALL + 1);
 
 MPI_Comm dart_comm_world;
 

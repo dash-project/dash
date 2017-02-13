@@ -29,12 +29,6 @@ typedef struct
 // forward declaration to make the compiler happy
 typedef struct dart_seghash_elem dart_seghash_elem_t;
 
-struct dart_seghash_elem {
-  dart_seghash_elem_t *next;
-  dart_segment_info_t  data;
-  int32_t              seg_id; // use int32_t internally to signal "invalid segment id"
-};
-
 typedef struct {
 
   dart_seghash_elem_t* hashtab[DART_SEGMENT_HASH_SIZE];

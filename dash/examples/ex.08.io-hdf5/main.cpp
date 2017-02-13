@@ -13,6 +13,7 @@ using std::cerr;
 using std::endl;
 
 using dash::io::hdf5::StoreHDF;
+using dash::io::hdf5::hdf5_options;
 
 typedef dash::Pattern<1, dash::ROW_MAJOR, long> pattern_t;
 typedef dash::Array<int, long, pattern_t>       array_t;
@@ -101,7 +102,7 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Add dataset temperature to " << FILENAME << endl;
 		}
-		auto fopts = StoreHDF::get_default_options();
+		hdf5_options fopts;
 		fopts.overwrite_file = false; // Do not overwrite existing file
 
 		StoreHDF::write(array_b, FILENAME, "temperature", fopts);
@@ -115,7 +116,7 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Modify " << FILENAME << " / temperature dataset" << endl;
 		}
-		auto fopts = StoreHDF::get_default_options();
+		hdf5_options fopts;
 		fopts.overwrite_file = false;
 		fopts.modify_dataset = true;
 

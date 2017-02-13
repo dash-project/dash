@@ -8,6 +8,7 @@
  */
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/atomic.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -32,6 +33,7 @@
 MPI_Win dart_win_local_alloc;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 MPI_Win dart_sharedmem_win_local_alloc;
+char** dart_sharedmem_local_baseptr_set;
 #endif
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
@@ -207,10 +209,10 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
+
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned: dart_adapt_teamlist_convert completed, "
     "index:%d", index);
-
 
   MPI_Comm  comm = team_data->comm;
 
@@ -519,6 +521,13 @@ dart_team_memregister(
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_team_memregister ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
+  }
+  /* check for underflow */
+  if (team_data->dart_registermemid == INT16_MIN ||
+      team_data->dart_registermemid >= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
     return DART_ERR_INVAL;
   }
 
