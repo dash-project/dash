@@ -194,7 +194,7 @@ dart_ret_t dart_init(
 dart_ret_t dart_init_thread(
   int*                  argc,
   char***               argv,
-  dart_thread_level_t * provided)
+  dart_thread_support_level_t * provided)
 {
   if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
@@ -213,21 +213,21 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
     int thread_required = MPI_THREAD_MULTIPLE;
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i\n", thread_provided);
 #else
     MPI_Init(argc, argv);
 #endif
   } else {
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i\n", thread_provided);
 #endif
   }
   *provided = (thread_provided == MPI_THREAD_MULTIPLE) ? DART_THREAD_MULTIPLE : DART_THREAD_SINGLE;
   DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s\n",
-            (provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
+            (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
   return do_init();
 }

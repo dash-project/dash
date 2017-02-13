@@ -127,6 +127,8 @@ dart_ret_t dart_get(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
   if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
+    // store the team-local ID in the gptr
+    gptr.unitid = target_unitid_rel.id;
     return get_shared_mem(team_data, dest, gptr, nelem, dtype);
   }
 #else
@@ -464,6 +466,8 @@ dart_ret_t dart_get_handle(
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
 
   if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
+    // store the team-local ID in the gptr
+    gptr.unitid = target_unitid_rel.id;
     dart_ret_t ret = get_shared_mem(team_data, dest, gptr, nelem, dtype);
 
     /*
@@ -841,6 +845,8 @@ dart_ret_t dart_get_blocking(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
   if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
+    // store the team-local ID in the gptr
+    gptr.unitid = target_unitid_rel.id;
     return get_shared_mem(team_data, dest, gptr, nelem, dtype);
   }
 #else
