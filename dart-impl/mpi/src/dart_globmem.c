@@ -527,7 +527,8 @@ dart_team_memregister(
   if (team_data->dart_registermemid == INT16_MIN ||
       team_data->dart_registermemid >= 0) {
     DART_LOG_ERROR(
-        "Failed to allocate segment ID, too many segments already allocated?");
+        "Failed to allocate segment ID, too many segments already "
+        "allocated in team %i?", teamid);
     return DART_ERR_INVAL;
   }
 
@@ -582,6 +583,11 @@ dart_team_memderegister(
   char  * sub_mem;
   MPI_Win win;
   dart_team_t teamid = gptr.teamid;
+
+  if (DART_GPTR_ISNULL(gptr)) {
+    /* corresponds to free(NULL) which is a valid operation */
+    return DART_OK;
+  }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
