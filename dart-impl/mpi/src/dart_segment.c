@@ -144,7 +144,7 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
 
   trans_disp = segment->disp[rel_unitid.id];
   *disp_s    = trans_disp;
-  DART_LOG_TRACE("dart_segment_get_disp > dist:%"PRIu64"",
+  DART_LOG_TRACE("dart_segment_get_disp > disp:%"PRIu64"",
                  (unsigned long)trans_disp);
   return DART_OK;
 }

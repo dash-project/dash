@@ -247,7 +247,9 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
       ptr[thread_id] = dash::memalloc<elem_t>(elem_per_thread);
 #pragma omp barrier
 #pragma omp master
-      ASSERT_NE_U(ptr[0], ptr[1]);
+      {
+        ASSERT_NE_U(ptr[0], ptr[1]);
+      }
 #pragma omp barrier
       arr.local[0] = ptr[thread_id];
       arr.barrier();

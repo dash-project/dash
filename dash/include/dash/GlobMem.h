@@ -118,10 +118,6 @@ public:
     DASH_LOG_TRACE("GlobMem(nlocal,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
-//    if (_nlelem == 0 || _nunits == 0) {
-//      DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
-//      return;
-//    }
     _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
