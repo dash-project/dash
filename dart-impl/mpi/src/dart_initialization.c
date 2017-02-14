@@ -26,9 +26,6 @@ static int _dart_initialized = 0;
 static
 dart_ret_t do_init()
 {
-  int      rank;
-  int      size;
-
   /* Initialize the teamlist. */
   dart_adapt_teamlist_init();
 

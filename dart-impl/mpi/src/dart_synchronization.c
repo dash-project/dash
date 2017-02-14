@@ -99,7 +99,6 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 
   uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
   int16_t seg_id       = gptr_list.segid;
-  dart_team_t team_id  = gptr_list.teamid;
   dart_unit_t tail     = gptr_tail.unitid;
   MPI_Aint disp_list;
 

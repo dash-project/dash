@@ -210,10 +210,6 @@ dart_team_memalloc_aligned(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: dart_adapt_teamlist_convert completed, "
-    "index:%d", index);
-
   MPI_Comm  comm = team_data->comm;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)

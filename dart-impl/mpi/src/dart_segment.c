@@ -28,7 +28,6 @@ static inline int hash_segid(dart_segid_t segid)
  */
 dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
 {
-  int i;
   memset(segdata->hashtab, 0,
     sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
 
@@ -92,7 +91,6 @@ dart_ret_t dart_segment_alloc(
                  item->seg_id, segdata->team_id);
 
   int slot = hash_segid(item->seg_id);
-  dart_seghash_elem_t *head = segdata->hashtab[slot];
 
   dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
   elem->next = segdata->hashtab[slot];
