@@ -1050,13 +1050,28 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
 
   narray.barrier();
 
-  std::fill(narray.lbegin(), narray.lend(), 0);
+  // test lbegin, lend
+  std::fill(narray.lbegin(), narray.lend(), 1);
+  std::for_each(narray.lbegin(), narray.lend(), 
+      [](uint32_t & el){
+        ASSERT_EQ_U(el, 1);
+      });
+  dash::barrier();
+  // test local view
+  std::fill(narray.local.begin(), narray.local.end(), 2);
+  std::for_each(narray.local.begin(), narray.local.end(), 
+      [](uint32_t el){
+        ASSERT_EQ_U(el, 2);
+      });
 
   uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
   
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());
+
+  elementsvisited = std::distance(narray.local.begin(), narray.local.end());
+  ASSERT_EQ_U(elementsvisited, local_elements);
 }
 
 
