@@ -217,13 +217,13 @@ public:
   }
 
   /**
-   * Checks whether the given global index is local to the calling unit.
+   * Checks whether the given local index is local to the calling unit.
    *
    * \return  True
    */
   constexpr bool is_local(
     /// A global array index
-    index_type global_index) const {
+    index_type local_index) const {
     return true;
   }
 
@@ -508,7 +508,7 @@ public:
   { }
 
 public:
-  inline    Team              & team() const {
+  constexpr Team              & team() const {
     return _arr->team();
   }
 
@@ -531,19 +531,19 @@ public:
 
   inline    void                barrier()          const;
 
-  inline    const_pointer       data()             const noexcept {
+  constexpr const_pointer       data()             const noexcept {
     return _begin;
   }
   inline    iterator            begin()                  noexcept {
     return _begin;
   }
-  inline    const_iterator      begin()            const noexcept {
+  constexpr const_iterator      begin()            const noexcept {
     return _begin;
   }
   inline    iterator            end()                    noexcept {
     return _end;
   }
-  inline    const_iterator      end()              const noexcept {
+  constexpr const_iterator      end()              const noexcept {
     return _end;
   }
   /// View representing elements in the active unit's local memory.
@@ -707,6 +707,30 @@ public:
   /// Proxy object, provides non-blocking operations on array.
   async_type           async;
 
+private:
+  /// Team containing all units interacting with the array
+  dash::Team         * m_team      = nullptr;
+  /// DART id of the unit that created the array
+  team_unit_t          m_myid;
+  /// Element distribution pattern
+  PatternType          m_pattern;
+  /// Global memory allocation and -access
+  glob_mem_type      * m_globmem   = nullptr;
+  /// Iterator to initial element in the array
+  iterator             m_begin;
+  /// Iterator to final element in the array
+  iterator             m_end;
+  /// Total number of elements in the array
+  size_type            m_size;
+  /// Number of local elements in the array
+  size_type            m_lsize;
+  /// Number allocated local elements in the array
+  size_type            m_lcapacity;
+  /// Native pointer to first local element in the array
+  ElementType        * m_lbegin    = nullptr;
+  /// Native pointer past last local element in the array
+  ElementType        * m_lend      = nullptr;
+
 public:
 /*
    Check requirements on element type
@@ -858,21 +882,9 @@ public:
    * dash::copy(a1.begin(), a1.end(), a2.begin());
    * \endcode
    */
-  Array(const self_t & other)         = delete;
+  Array(const self_t & other) = delete;
 
-  Array(self_t && other)              = delete;
-
-  self_t & operator=(self_t && other) = delete;
-
-  /**
-   * Destructor, deallocates array elements.
-   */
-  ~Array()
-  {
-    DASH_LOG_TRACE_VAR("Array.~Array()", this);
-    deallocate();
-    DASH_LOG_TRACE_VAR("Array.~Array >", this);
-  }
+  Array(self_t && other)      = delete;
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of
@@ -894,10 +906,22 @@ public:
    */
   self_t & operator=(const self_t & rhs) = delete;
 
+  self_t & operator=(self_t && other)    = delete;
+
+  /**
+   * Destructor, deallocates array elements.
+   */
+  ~Array()
+  {
+    DASH_LOG_TRACE_VAR("Array.~Array()", this);
+    deallocate();
+    DASH_LOG_TRACE_VAR("Array.~Array >", this);
+  }
+
   /**
    * View at block at given global block offset.
    */
-  const View block(index_type block_gindex) const
+  constexpr const View block(index_type block_gindex) const
   {
     return View(this, ViewSpec<1>(pattern().block(block_gindex)));
   }
@@ -905,7 +929,7 @@ public:
   /**
    * Global const pointer to the beginning of the array.
    */
-  const_pointer data() const noexcept
+  constexpr const_pointer data() const noexcept
   {
     return m_begin;
   }
@@ -921,7 +945,7 @@ public:
   /**
    * Global pointer to the beginning of the array.
    */
-  const_iterator begin() const noexcept
+  constexpr const_iterator begin() const noexcept
   {
     return m_begin;
   }
@@ -937,7 +961,7 @@ public:
   /**
    * Global pointer to the end of the array.
    */
-  const_iterator end() const noexcept
+  constexpr const_iterator end() const noexcept
   {
     return m_end;
   }
@@ -945,7 +969,7 @@ public:
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType * lbegin() const noexcept
+  constexpr ElementType * lbegin() const noexcept
   {
     return m_lbegin;
   }
@@ -953,7 +977,7 @@ public:
   /**
    * Native pointer to the end of the array.
    */
-  ElementType * lend() const noexcept
+  constexpr ElementType * lend() const noexcept
   {
     return m_lend;
   }
@@ -968,10 +992,7 @@ public:
     /// The position of the element to return
     size_type global_index)
   {
-    DASH_LOG_TRACE_VAR("Array.[]=()", global_index);
-    auto global_ref = m_begin[global_index];
-    DASH_LOG_TRACE_VAR("Array.[]= >", global_ref);
-    return global_ref;
+    return m_begin[global_index];
   }
 
   /**
@@ -980,14 +1001,11 @@ public:
    * \return  A global reference to the element in the array at the given
    *          index.
    */
-  const_reference operator[](
+  constexpr const_reference operator[](
     /// The position of the element to return
     size_type global_index) const
   {
-    DASH_LOG_TRACE_VAR("Array.[]()", global_index);
-    auto global_ref = m_begin[global_index];
-    DASH_LOG_TRACE_VAR("Array.[] >", global_ref);
-    return global_ref;
+    return m_begin[global_index];
   }
 
   /**
@@ -1039,7 +1057,7 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  inline size_type size() const noexcept
+  constexpr size_type size() const noexcept
   {
     return m_size;
   }
@@ -1050,7 +1068,7 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  inline size_type capacity() const noexcept
+  constexpr size_type capacity() const noexcept
   {
     return m_size;
   }
@@ -1072,7 +1090,7 @@ public:
    * \return  The number of elements in the array that are local to the
    *          calling unit.
    */
-  inline size_type lsize() const noexcept
+  constexpr size_type lsize() const noexcept
   {
     return m_lsize;
   }
@@ -1083,7 +1101,7 @@ public:
    * \return  The number of allocated elements in the array that are local
    *          to the calling unit.
    */
-  inline size_type lcapacity() const noexcept
+  constexpr size_type lcapacity() const noexcept
   {
     return m_lcapacity;
   }
@@ -1093,12 +1111,12 @@ public:
    *
    * \return  True if \c size() is 0, otherwise false
    */
-  inline bool empty() const noexcept
+  constexpr bool empty() const noexcept
   {
     return size() == 0;
   }
 
-  inline View local_in(dash::util::Locality::Scope scope)
+  constexpr View local_in(dash::util::Locality::Scope scope) const
   {
     return View(); // TODO
   }
@@ -1109,7 +1127,7 @@ public:
    * \return  True if the array element referenced by the index is held
    *          in the calling unit's local memory
    */
-  bool is_local(
+  constexpr bool is_local(
     /// A global array index
     index_type global_index) const
   {
@@ -1138,12 +1156,6 @@ public:
   constexpr const PatternType & pattern() const
   {
     return m_pattern;
-  }
-
-  template<int level>
-  dash::HView<self_t, level> hview()
-  {
-    return dash::HView<self_t, level>(*this);
   }
 
   bool allocate(
@@ -1340,30 +1352,6 @@ private:
     DASH_LOG_TRACE("Array._allocate >", "finished");
     return true;
   }
-
-private:
-  /// Team containing all units interacting with the array
-  dash::Team         * m_team      = nullptr;
-  /// DART id of the unit that created the array
-  team_unit_t          m_myid;
-  /// Element distribution pattern
-  PatternType          m_pattern;
-  /// Global memory allocation and -access
-  glob_mem_type      * m_globmem   = nullptr;
-  /// Iterator to initial element in the array
-  iterator             m_begin;
-  /// Iterator to final element in the array
-  iterator             m_end;
-  /// Total number of elements in the array
-  size_type            m_size;
-  /// Number of local elements in the array
-  size_type            m_lsize;
-  /// Number allocated local elements in the array
-  size_type            m_lcapacity;
-  /// Native pointer to first local element in the array
-  ElementType        * m_lbegin    = nullptr;
-  /// Native pointer past last local element in the array
-  ElementType        * m_lend      = nullptr;
 
 };
 

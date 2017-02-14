@@ -3,9 +3,12 @@
 
 #include <dash/Atomic.h>
 #include <dash/Array.h>
+#include <dash/Matrix.h>
 #include <dash/Shared.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include "TestBase.h"
 #include "AtomicTest.h"
@@ -28,16 +31,16 @@ TEST_F(AtomicTest, FetchAndOp)
   }
   // wait for initialization:
   dash::barrier();
+  
+  auto & atomic = shared.atomic;
 
-  dash::Atomic<value_t> atomic(shared);
-
-  atomic.fetch_and_add(2);
+  atomic.fetch_add(2);
   // wait for completion of all atomic operations:
   dash::barrier();
 
   // incremented by 2 by every unit:
   value_t val_expect   = val_init + (dash::size() * 2);
-  value_t a_val_actual = atomic.get();
+  value_t a_val_actual = atomic.load();
   value_t s_val_actual = shared.get();
   EXPECT_EQ_U(val_expect, a_val_actual);
   EXPECT_EQ_U(val_expect, s_val_actual);
@@ -82,11 +85,12 @@ TEST_F(AtomicTest, ArrayElements)
   // In effect, sum of all array values should have tripled.
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "prev: array @ unit(", remote_prev, ") +=", my_val);
-  dash::Atomic<value_t>(array[remote_prev]).add(my_val);
+  // in fact, this is a hack
+  dash::GlobRef<dash::Atomic<value_t>>(array[remote_prev].dart_gptr()).add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "next: array @ unit(", remote_next, ") +=", my_val);
-  dash::Atomic<value_t>(array[remote_next]).fetch_and_add(my_val);
+  dash::GlobRef<dash::Atomic<value_t>>(array[remote_next].dart_gptr()).fetch_add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #2");
   array.barrier();
@@ -109,4 +113,109 @@ TEST_F(AtomicTest, ArrayElements)
     EXPECT_EQ_U(expect_res_acc, actual_res_acc);
     delete[] l_copy;
   }
+}
+
+TEST_F(AtomicTest, AlgorithmVariant){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::add(array[i], i+1);
+  }
+  
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+}
+
+TEST_F(AtomicTest, AtomicInContainer){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+
+  // supported as Atomic<value_t>(value_t T) is available
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  for(int i=0; i<dash::size(); ++i){
+    array[i].add(i+1);
+  }
+  
+  dash::barrier();
+
+  LOG_MESSAGE("Trivial Type: is_atomic_type %d",
+      dash::is_atomic<value_t>::value);
+  LOG_MESSAGE("Atomic Type:  is_atomic_type %d",
+      dash::is_atomic<atom_t>::value);
+
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+}
+
+TEST_F(AtomicTest, AtomicInterface){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(10);
+
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  ++(array[0]);
+  array[1]++;
+  --(array[2]);
+  array[3]--;
+  
+  dash::barrier();
+  ASSERT_EQ_U(array[0].load(), dash::size());
+  ASSERT_EQ_U(array[1].load(), dash::size());
+  ASSERT_EQ_U(array[2].load(), -dash::size());
+  ASSERT_EQ_U(array[3].load(), -dash::size());
+  
+  dash::barrier();
+  
+  if(dash::myid() == 0){
+    auto oldval = array[3].exchange(1);
+    ASSERT_EQ_U(oldval, -dash::size());
+  }
+  dash::barrier();
+  ASSERT_EQ_U(array[3].load(), 1);
+  
+  value_t myid     = static_cast<value_t>(dash::myid().id);
+  value_t id_right = (myid + 1) % dash::size();
+  
+  array[myid].store(myid);
+  array.barrier();
+  ASSERT_EQ_U(id_right, array[id_right].load());
+  array.barrier();
+  array[myid].op(dash::plus<value_t>(), 2);
+  array.barrier();
+  ASSERT_EQ_U(id_right+2, array[id_right].fetch_op(dash::plus<value_t>(), 1));
+  array.barrier();
+  array[myid].exchange(-myid);
+  array.barrier();
+  ASSERT_EQ_U(-myid, array[myid].load());
+  array.barrier();
+  bool ret = array[myid].compare_exchange(0,10);
+  if(myid == 0){
+    ASSERT_EQ_U(true, ret);
+    ASSERT_EQ_U(10, array[myid].load());
+  } else {
+    ASSERT_EQ_U(false, ret);
+  }
+  array.barrier();
 }

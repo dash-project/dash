@@ -6,9 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
@@ -167,6 +168,10 @@ public:
             size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
+public:
+  /// Local proxy object, allows use in range-based for loops.
+  local_type local;
+
 private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team            = nullptr;
@@ -202,10 +207,6 @@ private:
   /// Default is 4 KB.
   size_type              _local_buffer_size
                            = 4096 / sizeof(value_type);
-
-public:
-  /// Local proxy object, allows use in range-based for loops.
-  local_type local;
 
 public:
   UnorderedMap(
@@ -797,9 +798,9 @@ private:
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
-    size_type old_local_size   = dash::Atomic<size_type>(
+    size_type old_local_size   = GlobRef<Atomic<size_type>>(
                                     _local_size_gptr
-                                 ).fetch_and_add(1);
+                                 ).fetch_add(1);
     size_type new_local_size   = old_local_size + 1;
     size_type local_capacity   = _globmem->local_size();
     _local_cumul_sizes[unit]  += 1;
