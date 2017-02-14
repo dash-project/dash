@@ -58,7 +58,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   EXPECT_EQ_U(num_elem_total, array_dest.size());
   EXPECT_EQ_U(num_elem_local, array_dest.lend() - array_dest.lbegin());
 
-  // Initialize result array: [ 100, 100, ... | 200, 200, ... ]
+  // Initialize result array: [ 10000, 10001, 10002, ... | 10000, 10001, ... ]
   int loffs = 0;
   for (auto l_it = array_dest.lbegin(); l_it != array_dest.lend(); ++l_it) {
     *l_it = 10000 + loffs;
@@ -68,7 +68,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   // Every unit adds a local range of elements to every block in a global
   // array.
 
-  // Initialize local values, e.g. unit 2: [ 2000, 2001, 2002, ... ]
+  // Initialize local values, e.g. unit 2: [ 3, 3, 3, ... ]
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     local[l_idx] = (dash::myid() + 1);
   }
@@ -102,7 +102,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
                    ((dash::size() * (dash::size() + 1)) / 2);
     LOG_MESSAGE("TransformTest.ArrayGlobalPlusLocalBlocking: "
                 "array_dest.local[%lu]: %d",
-                l_idx, &array_dest.local[l_idx]);
+                l_idx, array_dest.local[l_idx]);
     EXPECT_EQ_U(expected, array_dest.local[l_idx]);
   }
 
@@ -175,7 +175,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   EXPECT_EQ(matrix_size, matrix_a.size());
   EXPECT_EQ(extent_cols, matrix_a.extent(0));
   EXPECT_EQ(extent_rows, matrix_a.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %zu", matrix_size);
 
   // Fill matrix
   if(myid == 0) {
