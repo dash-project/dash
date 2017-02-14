@@ -18,6 +18,8 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   elseif ("${MPI_INCLUDE_PATH}" MATCHES "openmpi")
     set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
     set(MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
+    # temporarily disable shared memory windows due to alignment problems
+    set(ENABLE_SHARED_WINDOWS OFF)
   endif()
 else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")
