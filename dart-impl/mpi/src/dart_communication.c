@@ -119,13 +119,13 @@ dart_ret_t dart_get(
     DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nelem, (unsigned long)win, target_unitid_rel.id, offset, dest);
+                   nelem, (unsigned long)win, team_unit_id.id, offset, dest);
   } else {
     win      = dart_win_local_alloc;
     DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (local): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nelem, (unsigned long)win, target_unitid_rel.id, offset, dest);
+                   nelem, (unsigned long)win, team_unit_id.id, offset, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
@@ -224,7 +224,7 @@ dart_ret_t dart_accumulate(
   (void)(team); // To prevent compiler warning from unused parameter.
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
-                 nelem, dtype, op, target_unitid_abs.id);
+                 nelem, dtype, op, team_unit_id.id);
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -255,12 +255,12 @@ dart_ret_t dart_accumulate(
     offset += disp_s;
     DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from collective allocation) "
                    "target unit: %d offset: %"PRIu64"",
-                   nelem, target_unitid_abs.id, offset);
+                   nelem, team_unit_id.id, offset);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from local allocation) "
                    "target unit: %d offset: %"PRIu64"",
-                   nelem, target_unitid_abs.id, offset);
+                   nelem, team_unit_id.id, offset);
   }
 
   MPI_Accumulate(
@@ -299,7 +299,7 @@ dart_ret_t dart_fetch_and_op(
   (void)(team); // To prevent compiler warning from unused parameter.
 
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d",
-                 dtype, op, target_unitid_abs.id);
+                 dtype, op, team_unit_id.id);
   if (seg_id) {
 
     dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
@@ -628,14 +628,14 @@ dart_ret_t dart_put_blocking(
     win = team_data->window;
     offset += disp_s;
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
-                   "target (coll.): win:%p unit:%d offset:%p "
+                   "target (coll.): win:%p unit:%d offset:%lu "
                    "<- source: %p",
                    nelem, win, team_unit_id.id,
                    offset, src);
   } else {
     win      = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
-                   "target (local): win:%p unit:%d offset:%p "
+                   "target (local): win:%p unit:%d offset:%lu "
                    "<- source: %p",
                    nelem, win, team_unit_id.id,
                    offset, src);
@@ -728,14 +728,14 @@ dart_ret_t dart_get_blocking(
     win     = team_data->window;
     offset += disp_s;
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
-                   "source (coll.): win:%p unit:%d offset:%p"
+                   "source (coll.): win:%p unit:%d offset:%lu "
                    "-> dest: %p",
                    nelem, win, team_unit_id.id,
                    offset, dest);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
-                   "source (local): win:%p unit:%d offset:%p "
+                   "source (local): win:%p unit:%d offset:%lu "
                    "-> dest: %p",
                    nelem, win, team_unit_id.id,
                    offset, dest);
