@@ -10,6 +10,7 @@
 
 #include <dash/iterator/GlobIter.h>
 
+#include <dash/internal/Config.h>
 #include <dash/util/Trace.h>
 
 #include <dash/dart/if/dart_communication.h>

@@ -17,7 +17,7 @@
 #endif
 
 static constexpr int    thread_iterations = 10;
-static constexpr size_t elem_per_thread = 100;
+static constexpr size_t elem_per_thread = 10;
 
 TEST_F(ThreadsafetyTest, ThreadInit) {
   int mpi_thread;
@@ -26,7 +26,7 @@ TEST_F(ThreadsafetyTest, ThreadInit) {
   EXPECT_TRUE_U((mpi_thread == MPI_THREAD_MULTIPLE) == dash::is_multithreaded() );
 }
 
-TEST_F(ThreadsafetyTest, ConcurrentPut) {
+TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
 
   using elem_t  = int;
   using array_t = dash::Array<elem_t>;
@@ -35,7 +35,8 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
     SKIP_TEST_MSG("requires support for multi-threading");
   }
 
-#if !defined(DASH_ENABLE_OPENMP)
+
+#if !defined (DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
 #else
 
@@ -48,6 +49,7 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
     int  thread_id = omp_get_thread_num();
     array_t::index_type base_idx = thread_id * elem_per_thread;
     for (size_t i = 0; i < elem_per_thread; ++i) {
+      LOG_MESSAGE("src.local[%i] <= %i", base_idx + i, thread_id);
       src.local[base_idx + i] = thread_id;
     }
   }
@@ -61,9 +63,10 @@ TEST_F(ThreadsafetyTest, ConcurrentPut) {
                                         * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
     array_t::index_type dst_idx = ((dash::myid() + 1) % dash::size())
-                                    * (elem_per_thread * _num_threads)
-                                    + (elem_per_thread * thread_id);
+                                        * (elem_per_thread * _num_threads)
+                                        + (elem_per_thread * thread_id);
     for (size_t i = 0; i < elem_per_thread; ++i) {
+      LOG_MESSAGE("dst[%i] <= src[%i]", dst_idx + i, src_idx + i);
       dst[dst_idx + i] = src[src_idx + i];
     }
   }
@@ -120,7 +123,9 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
               dash::DistributionSpec<1>(), *team);
       ASSERT_EQ_U(arr->size(), elem_per_thread * team->size());
 #pragma omp barrier
-      ASSERT_NE_U(
+      // segment IDs should be equal since
+      // every team has it's own counter
+      ASSERT_EQ_U(
           arr_all[0].dart_gptr().segid,
           arr_split[0].dart_gptr().segid);
 #pragma omp barrier
@@ -185,8 +190,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
       ASSERT_LT_U(gptr.segid, 0); // attached memory has segment ID < 0
       elem_t check[elem_per_thread];
       dart_gptr_t gptr_r = gptr;
-      gptr_r.unitid = team->global_id(
-          dash::team_unit_t((team->myid() + 1) % team->size()));
+      gptr_r.unitid = (team->myid() + 1) % team->size();
       dart_storage_t ds = dash::dart_storage<elem_t>(elem_per_thread);
       ASSERT_EQ_U(
         dart_get_blocking(check, gptr_r, ds.nelem, ds.dtype),
