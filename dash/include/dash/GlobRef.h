@@ -158,7 +158,7 @@ public:
     nonconst_value_type t;
     dart_storage_t ds = dash::dart_storage<T>(1);
     dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
-    DASH_LOG_TRACE_VAR("GlobRef.T >", t);
+    DASH_LOG_TRACE_VAR("GlobRef.T >", _gptr);
     return t;
   }
 
