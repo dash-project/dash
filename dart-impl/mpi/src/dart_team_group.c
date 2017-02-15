@@ -595,11 +595,11 @@ dart_ret_t dart_team_create(
   }
 
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
+  dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
+  if (parent_team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = team_data->comm;
+  comm = parent_team_data->comm;
   subcomm = MPI_COMM_NULL;
 
   MPI_Comm_create(comm, group->mpi_group, &subcomm);
@@ -626,8 +626,6 @@ dart_ret_t dart_team_create(
     team_data->comm = subcomm;
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
     team_data->window = win;
-    team_data->dart_memid = 1;
-    team_data->dart_registermemid = -1;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);

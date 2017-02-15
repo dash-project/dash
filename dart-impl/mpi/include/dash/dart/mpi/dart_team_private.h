@@ -194,9 +194,9 @@ typedef struct dart_team_data {
    */
   int sharedmem_nodesize;
 
-  dart_team_t teamid;
-
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+
+  dart_team_t teamid;
 
 } dart_team_data_t;
 
