@@ -37,6 +37,10 @@ class GlobRef
   friend std::ostream & operator<<(
     std::ostream & os,
     const GlobRef<U> & gref);
+
+  template <
+    typename ElementT >
+  friend class GlobRef;
   
   typedef typename std::remove_const<T>::type
     nonconst_value_type;
@@ -138,14 +142,12 @@ public:
     return !(*this == other);
   }
 
-  template <class ElementT>
-  constexpr bool operator==(const ElementT & value) const
+  constexpr bool operator==(const nonconst_value_type & value) const noexcept
   {
     return static_cast<T>(*this) == value;
   }
 
-  template <class ElementT>
-  constexpr bool operator!=(const ElementT & value) const
+  constexpr bool operator!=(const nonconst_value_type & value) const noexcept
   {
     return !(*this == value);
   }

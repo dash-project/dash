@@ -947,7 +947,7 @@ public:
    */
   constexpr const_iterator begin() const noexcept
   {
-    return static_cast<const_iterator>(const_cast<self_t *>(this)->begin());
+    return static_cast<const_iterator>(const_cast<iterator &>(m_begin));
   }
 
   /**
@@ -963,7 +963,7 @@ public:
    */
   constexpr const_iterator end() const noexcept
   {
-    return static_cast<const_iterator>(const_cast<self_t *>(this)->end());
+    return static_cast<const_iterator>(const_cast<iterator &>(m_end));
   }
 
   /**

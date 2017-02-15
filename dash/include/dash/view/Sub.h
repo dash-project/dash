@@ -98,10 +98,10 @@ sub(
 }
 
 template <
-  dim_t SubDim  = 0,
-  class DomainT,
-  class OffsetFirstT,
-  class OffsetFinalT,
+  dim_t    SubDim  = 0,
+  class    DomainT,
+  class    OffsetFirstT,
+  class    OffsetFinalT,
   typename DomainValueT =
              typename std::remove_const<
                typename std::remove_reference<DomainT>::type
@@ -127,10 +127,10 @@ sub(
 // =========================================================================
 
 template <
-  dim_t SubDim  = 0,
-  class DomainT,
-  class OffsetFirstT,
-  class OffsetFinalT,
+  dim_t    SubDim  = 0,
+  class    DomainT,
+  class    OffsetFirstT,
+  class    OffsetFinalT,
   typename DomainValueT =
              typename std::remove_reference<DomainT>::type
 >
