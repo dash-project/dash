@@ -35,6 +35,10 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
     SKIP_TEST_MSG("requires support for multi-threading");
   }
 
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("requires at least 2 units");
+  }
+
 
 #if !defined (DASH_ENABLE_OPENMP)
   SKIP_TEST_MSG("requires support for OpenMP");
