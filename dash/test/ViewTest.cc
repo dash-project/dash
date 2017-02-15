@@ -285,6 +285,8 @@ TEST_F(ViewTest, Intersect1DimSingle)
   }
   array.barrier();
 
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array);
+
   // View to first two thirds of global array:
   auto gview_left   = dash::sub(sub_left_begin_gidx,
                                 sub_left_end_gidx,
@@ -297,6 +299,9 @@ TEST_F(ViewTest, Intersect1DimSingle)
   auto gview_isect  = dash::intersect(gview_left, gview_right);
 
   auto gindex_isect = dash::index(gview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gindex_isect);
 
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_left.size());

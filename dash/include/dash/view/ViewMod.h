@@ -602,39 +602,27 @@ class ViewSubMod
   { }
 
   constexpr const_iterator begin() const {
-    return this->domain().begin() + _index_set[0];
+    return this->domain().begin() + dash::index(*this)[0];
   }
 
   iterator begin() {
-    return this->domain().begin() + _index_set[0];
+    return this->domain().begin() + dash::index(*this)[0];
   }
 
   constexpr const_iterator end() const {
-    return this->domain().begin() + *_index_set.end();
-//           *dash::end(dash::index(*this))
+    return this->domain().begin() + *dash::index(*this).end();
   }
 
   iterator end() {
-    return this->domain().begin() + *_index_set.end();
- //          *dash::end(dash::index(*this));
+    return this->domain().begin() + *dash::index(*this).end();
   }
 
   constexpr const_reference operator[](int offset) const {
-//constexpr auto operator[](int offset) const
-//-> decltype(*(dash::begin(
-//                std::declval<
-//                  typename std::add_lvalue_reference<const domain_type>::type
-//                >() ))) {
-    return this->begin()[offset];
+    return *(this->begin() + offset);
   }
 
   reference operator[](int offset) {
-//constexpr auto operator[](int offset) const
-//-> decltype(*(dash::begin(
-//                std::declval<
-//                  typename std::add_lvalue_reference<const domain_type>::type
-//                >() ))) {
-    return this->begin()[offset];
+    return *(this->begin() + offset);
   }
 
   constexpr const index_set_type & index_set() const {
