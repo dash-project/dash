@@ -111,7 +111,8 @@ public:
   /**
    * Assignment operator.
    */
-  GlobRef<T> & operator=(const GlobRef<T> & other)
+  template <typename ElementT>
+  GlobRef<T> & operator=(const GlobRef<ElementT> & other)
   {
     DASH_LOG_TRACE_VAR("GlobRef.=()", other);
     // This results in a dart_put, required for STL algorithms like
@@ -123,37 +124,39 @@ public:
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
     return *this = static_cast<T>(other);
-  //  _gptr = other._gptr;
-  //  return *this;
   }
 
-  inline bool operator==(const self_t & other) const noexcept
+  template <class GlobRefT>
+  constexpr bool operator==(const GlobRefT & other) const noexcept
   {
     return _gptr == other._gptr;
   }
 
-  inline bool operator!=(const self_t & other) const noexcept
+  template <class GlobRefT>
+  constexpr bool operator!=(const GlobRefT & other) const noexcept
   {
     return !(*this == other);
   }
 
-  inline bool operator==(const T & value) const
+  template <class ElementT>
+  constexpr bool operator==(const ElementT & value) const
   {
     return static_cast<T>(*this) == value;
   }
 
-  inline bool operator!=(const T & value) const
+  template <class ElementT>
+  constexpr bool operator!=(const ElementT & value) const
   {
     return !(*this == value);
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
-    T temp = (T)a;
+    nonconst_value_type temp = static_cast<nonconst_value_type>(a);
     a = b;
     b = temp;
   }
 
-  T get() const {
+  nonconst_value_type get() const {
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
