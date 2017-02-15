@@ -91,6 +91,9 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   // Global-to-global copy using std::copy:
   if (dash::myid() == 0) {
     std::copy(array_a.begin(), array_a.end(), array_b.begin());
+
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_a);
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
   }
   // Wait until copy operation is completed:
   dash::barrier();

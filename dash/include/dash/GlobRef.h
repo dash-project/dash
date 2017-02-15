@@ -129,7 +129,7 @@ public:
     //       copies the GlobRef instance while
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
-    return *this = static_cast<T>(other);
+    return *this = static_cast<ElementT>(other);
   }
 
   template <class GlobRefT>
@@ -169,7 +169,7 @@ public:
     return t;
   }
 
-  operator nonconst_value_type() const {
+  operator T() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
@@ -212,18 +212,18 @@ public:
     return GlobPtr<T>(_gptr);
   }
 
-  GlobRef<T> & operator=(const nonconst_value_type val) {
+  GlobRef<T> & operator=(const T & val) {
     DASH_LOG_TRACE_VAR("GlobRef.=()", val);
     DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
     dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
-    dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
+    dart_put_blocking(
+        _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
     return *this;
   }
 
-  GlobRef<T> & operator+=(const nonconst_value_type& ref)
-  {
+  GlobRef<T> & operator+=(const nonconst_value_type& ref) {
   #if 0
     T add_val = ref;
     T old_val;
@@ -236,7 +236,7 @@ public:
                           dash::Team::All().dart_id());
     dart_flush(_gptr);
   #else
-    nonconst_value_type val  = operator nonconst_value_type();
+    nonconst_value_type val  = operator T();
     val   += ref;
     operator=(val);
   #endif
@@ -244,14 +244,14 @@ public:
   }
 
   GlobRef<T> & operator-=(const nonconst_value_type& ref) {
-    nonconst_value_type val  = operator nonconst_value_type();
+    nonconst_value_type val  = operator T();
     val   -= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator++() {
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     ++val;
     operator=(val);
     return *this;
@@ -259,14 +259,14 @@ public:
 
   GlobRef<T> operator++(int) {
     GlobRef<T> result = *this;
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     ++val;
     operator=(val);
     return result;
   }
 
   GlobRef<T> & operator--() {
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     --val;
     operator=(val);
     return *this;
@@ -274,28 +274,28 @@ public:
 
   GlobRef<T> operator--(int) {
     GlobRef<T> result = *this;
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     --val;
     operator=(val);
     return result;
   }
 
   GlobRef<T> & operator*=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     val   *= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator/=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     val   /= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator^=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     val   ^= ref;
     operator=(val);
     return *this;
@@ -314,7 +314,7 @@ public:
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
     T val = operator T();
-    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type val = operator T();
     return val[pos];
   }
   #endif

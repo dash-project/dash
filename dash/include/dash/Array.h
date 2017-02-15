@@ -953,15 +953,15 @@ public:
   /**
    * Global pointer to the end of the array.
    */
-  constexpr const_iterator end() const noexcept {
-    return (const_cast<iterator &>(m_end));
+  iterator end() noexcept {
+    return m_end;
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  iterator end() noexcept {
-    return m_end;
+  constexpr const_iterator end() const noexcept {
+    return (const_cast<iterator &>(m_end));
   }
 
   /**
@@ -974,7 +974,7 @@ public:
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType * lbegin() {
+  ElementType * lbegin() noexcept {
     return m_lbegin;
   }
 
@@ -988,7 +988,7 @@ public:
   /**
    * Native pointer to the end of the array.
    */
-  ElementType * lend() {
+  ElementType * lend() noexcept {
     return m_lend;
   }
 
@@ -1163,7 +1163,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  constexpr const PatternType & pattern() const
+  constexpr const PatternType & pattern() const noexcept
   {
     return m_pattern;
   }
