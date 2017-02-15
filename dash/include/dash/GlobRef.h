@@ -69,7 +69,7 @@ public:
    * memory.
    */
   template<class PatternT, class ElementT>
-  GlobRef(
+  explicit GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -80,7 +80,7 @@ public:
    * memory.
    */
   template<class PatternT, class ElementT>
-  GlobRef(
+  explicit GlobRef(
     /// Pointer to referenced object in global memory
     const GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())

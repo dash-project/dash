@@ -142,7 +142,7 @@ public:
   /**
    * Converts pointer to its underlying global address.
    */
-  explicit constexpr operator dart_gptr_t() const noexcept
+  constexpr operator dart_gptr_t() const noexcept
   {
     return _dart_gptr;
   }

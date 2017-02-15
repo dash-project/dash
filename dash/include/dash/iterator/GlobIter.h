@@ -134,6 +134,15 @@ public:
     class    Ref_ >
   friend class GlobViewIter;
 
+  // For comparison operators
+  template<
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobIter;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -219,14 +228,12 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator PointerType() const
-  {
+  operator const_pointer() const {
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     index_type idx    = _idx;
     index_type offset = 0;
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -234,14 +241,41 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", offset);
     // Global index to local index and unit:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
-    PointerType gptr(
+    const_pointer gptr(
+      _globmem->at(team_unit_t(local_pos.unit), local_pos.index)
+    );
+    return gptr + offset;
+  }
+
+  /**
+   * Type conversion operator to \c GlobPtr.
+   *
+   * \return  A global reference to the element at the iterator's position
+   */
+  operator pointer() {
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx    = _idx;
+    index_type offset = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
+    // Global index to local index and unit:
+    local_pos_t local_pos = _pattern->local(idx);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
+    // Create global pointer from unit and local offset:
+    pointer gptr(
       _globmem->at(team_unit_t(local_pos.unit), local_pos.index)
     );
     return gptr + offset;
@@ -276,7 +310,7 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
-    dash::GlobPtr<ElementType, PatternType> gptr(
+    const_pointer gptr(
       _globmem->at(
         team_unit_t(local_pos.unit),
         local_pos.index)
@@ -656,7 +690,7 @@ std::ostream & operator<<(
           ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, Pattern> ptr(it);
+  dash::GlobPtr<const ElementType, Pattern> ptr(it);
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";
