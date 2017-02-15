@@ -71,15 +71,20 @@ class IndexSetSub;
 
 
 
-template <class ViewType>
+template <
+  class    ViewType,
+  typename ViewValueType =
+             typename std::remove_const<
+               typename std::remove_reference<ViewType>::type
+             >::type
+>
 constexpr auto
-index(const ViewType & v)
+index(ViewType && v)
 -> typename std::enable_if<
-     dash::view_traits<ViewType>::is_view::value,
-//   decltype(v.index_set())
-     const typename ViewType::index_set_type
+     dash::view_traits<ViewValueType>::is_view::value,
+     decltype(std::forward<ViewType>(v).index_set())
    >::type {
-  return v.index_set();
+  return std::forward<ViewType>(v).index_set();
 }
 
 template <class ContainerType>
@@ -227,6 +232,8 @@ class IndexSetBase
 
   typedef detail::IndexSetIterator<IndexSetType>
     iterator;
+  typedef detail::IndexSetIterator<IndexSetType>
+    const_iterator;
   typedef typename pattern_type::size_type
     size_type;
   typedef typename pattern_type::index_type
@@ -312,11 +319,11 @@ class IndexSetBase
 
   // ---- access ----------------------------------------------------------
 
-  constexpr iterator begin() const {
+  constexpr const_iterator begin() const {
     return iterator(derived(), 0);
   }
 
-  constexpr iterator end() const {
+  constexpr const_iterator end() const {
     return iterator(derived(), derived().size());
   }
 
@@ -332,7 +339,7 @@ class IndexSetBase
    *  dash::index(r(10..100)).step(2)[8]  -> 26
    *  dash::index(r(10..100)).step(-5)[4] -> 80
    */
-  constexpr iterator step(index_type stride) const {
+  constexpr const_iterator step(index_type stride) const {
     return (
       stride > 0
         ? iterator(derived(),                0, stride)
