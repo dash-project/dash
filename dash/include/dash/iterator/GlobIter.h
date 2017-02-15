@@ -450,15 +450,21 @@ public:
   /**
    * Map iterator to global index domain.
    */
-  inline self_t global() const
-  {
+  constexpr const self_t & global() const noexcept {
+    return *this;
+  }
+
+  /**
+   * Map iterator to global index domain.
+   */
+  self_t & global() {
     return *this;
   }
 
   /**
    * Position of the iterator in global index space.
    */
-  inline index_type pos() const
+  constexpr index_type pos() const noexcept
   {
     return _idx;
   }
@@ -466,7 +472,7 @@ public:
   /**
    * Position of the iterator in global index range.
    */
-  inline index_type gpos() const
+  constexpr index_type gpos() const noexcept
   {
     return _idx;
   }
@@ -478,7 +484,7 @@ public:
    * should be iterator trait:
    *   dash::iterator_traits<GlobIter<..>>::is_relative()::value
    */
-  inline constexpr bool is_relative() const noexcept
+  constexpr bool is_relative() const noexcept
   {
     return false;
   }
@@ -487,7 +493,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  constexpr const GlobMemType & globmem() const noexcept
   {
     return *_globmem;
   }
@@ -551,72 +557,86 @@ public:
     return *this;
   }
 
-  inline self_t operator+(index_type n) const
+  constexpr self_t operator+(index_type n) const noexcept
   {
-    self_t res(
+    return self_t(
       _globmem,
       *_pattern,
       _idx + static_cast<index_type>(n));
-    return res;
   }
 
-  inline self_t operator-(index_type n) const
+  constexpr self_t operator-(index_type n) const noexcept
   {
-    self_t res(
+    return self_t(
       _globmem,
       *_pattern,
       _idx - static_cast<index_type>(n));
-    return res;
   }
 
-  inline index_type operator+(
-    const self_t & other) const
+  template <class GlobIterT>
+  constexpr auto operator+(
+    const GlobIterT & other) const noexcept
+    -> typename std::enable_if<
+         !std::is_integral<GlobIterT>::value,
+         index_type
+       >::type
   {
     return _idx + other._idx;
   }
 
-  inline index_type operator-(
-    const self_t & other) const
+  template <class GlobIterT>
+  constexpr auto operator-(
+    const GlobIterT & other) const noexcept
+    -> typename std::enable_if<
+         !std::is_integral<GlobIterT>::value,
+         index_type
+       >::type
   {
     return _idx - other._idx;
   }
 
-  inline bool operator<(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator<(const GlobIterT & other) const noexcept
   {
     return (_idx < other._idx);
   }
 
-  inline bool operator<=(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator<=(const GlobIterT & other) const noexcept
   {
     return (_idx <= other._idx);
   }
 
-  inline bool operator>(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator>(const GlobIterT & other) const noexcept
   {
     return (_idx > other._idx);
   }
 
-  inline bool operator>=(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator>=(const GlobIterT & other) const noexcept
   {
     return (_idx >= other._idx);
   }
 
-  inline bool operator==(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator==(const GlobIterT & other) const noexcept
   {
     return _idx == other._idx;
   }
 
-  inline bool operator!=(const self_t & other) const
+  template <class GlobIterT>
+  constexpr bool operator!=(const GlobIterT & other) const noexcept
   {
     return _idx != other._idx;
   }
 
-  inline const PatternType & pattern() const
+  constexpr const PatternType & pattern() const noexcept
   {
     return *_pattern;
   }
 
-  inline dash::Team & team() const
+  constexpr dash::Team & team() const noexcept
   {
     return _pattern->team();
   }

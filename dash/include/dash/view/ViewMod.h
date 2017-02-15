@@ -180,6 +180,10 @@ class ViewOrigin
     return *this;
   }
 
+  domain_type & domain() {
+    return *this;
+  }
+
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -386,6 +390,14 @@ class ViewLocalMod
               )))
     iterator;
 
+  typedef
+    decltype(
+      dash::begin(dash::local(
+        std::declval<
+          typename std::add_lvalue_reference<const origin_type>::type >()
+      )))
+    const_iterator;
+
  private:
   index_set_type  _index_set;
  public:
@@ -421,10 +433,10 @@ class ViewLocalMod
   }
 
   constexpr bool operator!=(const self_t & rhs) const {
-    return not (*this == rhs);
+    return !(*this == rhs);
   }
 
-  constexpr iterator begin() const {
+  constexpr const_iterator begin() const {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -437,7 +449,7 @@ class ViewLocalMod
            ];
   }
 
-  constexpr iterator end() const {
+  constexpr const_iterator end() const {
     return dash::begin(
              dash::local(
                dash::origin(
@@ -598,12 +610,12 @@ class ViewSubMod
   }
 
   constexpr const_iterator end() const {
-    return this->domain().begin() + _index_set.last() + 1;
+    return this->domain().begin() + *_index_set.end();
 //           *dash::end(dash::index(*this))
   }
 
   iterator end() {
-    return this->domain().begin() + _index_set.last() + 1;
+    return this->domain().begin() + *_index_set.end();
  //          *dash::end(dash::index(*this));
   }
 
@@ -613,7 +625,16 @@ class ViewSubMod
 //                std::declval<
 //                  typename std::add_lvalue_reference<const domain_type>::type
 //                >() ))) {
-    return *(this->begin() + offset);
+    return this->begin()[offset];
+  }
+
+  reference operator[](int offset) {
+//constexpr auto operator[](int offset) const
+//-> decltype(*(dash::begin(
+//                std::declval<
+//                  typename std::add_lvalue_reference<const domain_type>::type
+//                >() ))) {
+    return this->begin()[offset];
   }
 
   constexpr const index_set_type & index_set() const {

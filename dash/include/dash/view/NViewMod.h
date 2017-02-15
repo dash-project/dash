@@ -528,8 +528,9 @@ public:
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
 
-  using value_type = typename origin_type::value_type;
-  using reference  = typename origin_type::reference;
+  using value_type      = typename origin_type::value_type;
+  using reference       = typename origin_type::reference;
+  using const_reference = typename origin_type::const_reference;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
@@ -648,14 +649,24 @@ public:
 //           *dash::end(dash::index(*this));
   }
 
-  constexpr reference operator[](int offset) const {
+  constexpr const_reference operator[](int offset) const {
 //constexpr auto operator[](int offset) const
 //-> decltype(*(dash::begin(
 //                std::declval<
 //                  typename std::add_lvalue_reference<domain_type>::type
 //                >() ))) {
 //  return *(this->begin() + offset);
-    return *(this->domain().begin() + offset);
+    return this->domain().begin()[offset];
+  }
+
+  reference operator[](int offset) {
+//constexpr auto operator[](int offset) const
+//-> decltype(*(dash::begin(
+//                std::declval<
+//                  typename std::add_lvalue_reference<domain_type>::type
+//                >() ))) {
+//  return *(this->begin() + offset);
+    return this->domain().begin()[offset];
   }
 
   constexpr const index_set_type & index_set() const {
