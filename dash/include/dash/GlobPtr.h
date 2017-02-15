@@ -107,16 +107,6 @@ public:
   }
 
   /**
-   * Constructor, creates a new instance of dash::GlobPtr from a global
-   * reference.
-   */
-  explicit GlobPtr(const dash::GlobRef<ElementType> & globref)
-  : _dart_gptr(globref.dart_gptr())
-  {
-    DASH_LOG_TRACE("GlobPtr()", "GlobRef<T> globref");
-  }
-
-  /**
    * Copy constructor.
    */
   GlobPtr(const self_t & other)

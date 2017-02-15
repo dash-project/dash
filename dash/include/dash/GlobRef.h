@@ -4,6 +4,7 @@
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
 
+
 namespace dash {
 
 // Forward declaration
@@ -55,6 +56,9 @@ private:
   typedef GlobRef<const T>
     self_const_t;
 
+private:
+  dart_gptr_t _gptr;
+
 public:
   /**
    * Default constructor, creates an GlobRef object referencing an element in
@@ -102,25 +106,22 @@ public:
    *
    * Copy constructor.
    */
+  template <class ElementT>
   GlobRef(
-    /// GlobRef instance to copy.
-    const GlobRef<T> & other)
+    const GlobRef<ElementT> & other)
   : _gptr(other._gptr)
   { }
 
-  template <class GlobRefT>
-  explicit GlobRef(
-    GlobRefT & other)
-  : GlobRef(reinterpret_cast<const self_t &>(other))
-  { }
+  GlobRef<T> & operator=(const T val) {
+    set(val);
+    return *this;
+  }
 
   /**
    * Assignment operator.
    */
-  template <typename ElementT>
-  GlobRef<T> & operator=(const GlobRef<ElementT> & other)
+  GlobRef<T> & operator=(const self_t & other)
   {
-    DASH_LOG_TRACE_VAR("GlobRef.=()", other);
     // This results in a dart_put, required for STL algorithms like
     // std::copy to work on global ranges.
     // TODO: Not well-defined:
@@ -129,7 +130,36 @@ public:
     //       copies the GlobRef instance while
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
-    return *this = static_cast<ElementT>(other);
+    set(static_cast<T>(other));
+    return *this;
+  }
+
+  /**
+   * Assignment operator.
+   */
+  template <typename GlobRefOrElementT>
+  GlobRef<T> & operator=(GlobRefOrElementT && other)
+  {
+    // This results in a dart_put, required for STL algorithms like
+    // std::copy to work on global ranges.
+    // TODO: Not well-defined:
+    //       This violates copy semantics, as
+    //         GlobRef(const GlobRef & other)
+    //       copies the GlobRef instance while
+    //         GlobRef=(const GlobRef & other)
+    //       puts the value.
+    set(std::forward<GlobRefOrElementT>(other));
+    return *this;
+  }
+
+  operator T() const {
+    DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    nonconst_value_type t;
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
+    DASH_LOG_TRACE_VAR("GlobRef.T >", t);
+    return t;
   }
 
   template <class GlobRefT>
@@ -160,20 +190,22 @@ public:
     b = temp;
   }
 
+  void set(const T & val) {
+    DASH_LOG_TRACE_VAR("GlobRef.set()", val);
+    DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
+    // TODO: Clarify if dart-call can be avoided if
+    //       _gptr->is_local()
+    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_put_blocking(
+        _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
+    DASH_LOG_TRACE_VAR("GlobRef.set >", _gptr);
+  }
+
   nonconst_value_type get() const {
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
-    dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
-    return t;
-  }
-
-  operator T() const {
-    DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    nonconst_value_type t;
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
+    dart_storage_t ds = dash::dart_storage<T>(1);
     dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     return t;
   }
@@ -181,46 +213,29 @@ public:
   void get(nonconst_value_type *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
+    dart_storage_t ds = dash::dart_storage<T>(1);
     dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
   }
 
   void get(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
+    dart_storage_t ds = dash::dart_storage<T>(1);
     dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype);
   }
 
   void put(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
+    dart_storage_t ds = dash::dart_storage<T>(1);
     dart_put_blocking(_gptr, static_cast<void *>(&tref), ds.nelem, ds.dtype);
   }
 
   void put(nonconst_value_type* tptr) const {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
+    dart_storage_t ds = dash::dart_storage<T>(1);
     dart_put_blocking(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
-  }
-
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    return GlobPtr<T>(_gptr);
-  }
-
-  GlobRef<T> & operator=(const T & val) {
-    DASH_LOG_TRACE_VAR("GlobRef.=()", val);
-    DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
-    // TODO: Clarify if dart-call can be avoided if
-    //       _gptr->is_local()
-    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
-    dart_put_blocking(
-        _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
-    return *this;
   }
 
   GlobRef<T> & operator+=(const nonconst_value_type& ref) {
@@ -305,7 +320,7 @@ public:
     return _gptr;
   }
 
-  #if 0
+#if 0
   template<
     typename X=T,
     typename std::enable_if<has_subscript_operator<X>::value, int>::type
@@ -317,7 +332,7 @@ public:
     nonconst_value_type val = operator T();
     return val[pos];
   }
-  #endif
+#endif
 
   /**
    * Checks whether the globally referenced element is in
@@ -352,10 +367,6 @@ public:
     return member<MEMTYPE>(offs);
   }
 
-private:
-
-  dart_gptr_t _gptr;
-
 };
 
 template<typename T>
@@ -365,11 +376,11 @@ std::ostream & operator<<(
 {
   char buf[100];
   sprintf(buf,
-  "(%08X|%04X|%04X|%016lX)",
-  gref._gptr.unitid,
-  gref._gptr.segid,
-  gref._gptr.flags,
-  gref._gptr.addr_or_offs.offset);
+          "(%08X|%04X|%04X|%016lX)",
+          gref._gptr.unitid,
+          gref._gptr.segid,
+          gref._gptr.flags,
+          gref._gptr.addr_or_offs.offset);
   os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
   return os;
 }

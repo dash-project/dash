@@ -339,22 +339,22 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*() const
+  reference operator*()
   {
-    DASH_LOG_TRACE("GlobIter.*", _idx);
+    DASH_LOG_TRACE("GlobIter.*()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     index_type idx = _idx;
     // Global index to local index and unit:
     local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
+    DASH_LOG_TRACE("GlobIter.* >",
+                   "unit:", local_pos.unit, "index:", local_pos.index);
     // Global reference to element at given position:
     return reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));
   }
-#if 0
+
   /**
    * Dereference operator.
    *
@@ -375,7 +375,7 @@ public:
              _globmem->at(local_pos.unit,
                           local_pos.index));
   }
-#endif
+
   /**
    * Subscript operator, returns global reference to element at given
    * global index.
