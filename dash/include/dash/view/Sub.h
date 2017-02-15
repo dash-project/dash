@@ -103,7 +103,9 @@ template <
   class OffsetFirstT,
   class OffsetFinalT,
   typename DomainValueT =
-             typename std::remove_reference<DomainT>::type
+             typename std::remove_const<
+               typename std::remove_reference<DomainT>::type
+             >::type
 >
 constexpr auto
 sub(

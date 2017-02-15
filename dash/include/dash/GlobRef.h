@@ -25,7 +25,7 @@ struct has_subscript_operator
   typedef char (& no)[2];
 
   template <typename C> static yes check(decltype(&C::operator[]));
-  template <typename> static no check(...);
+  template <typename>   static no  check(...);
 
   static bool const value = sizeof(check<T>(0)) == sizeof(yes);
 };
@@ -38,12 +38,18 @@ class GlobRef
     std::ostream & os,
     const GlobRef<U> & gref);
   
+  typedef typename std::remove_const<T>::type
+    nonconst_value_type;
 public:
-  typedef T value_type;
+  typedef T                 value_type;
+
+  typedef GlobRef<const T>  const_type;
   
 private:
   typedef GlobRef<T>
     self_t;
+  typedef GlobRef<const T>
+    self_const_t;
 
 public:
   /**
@@ -58,10 +64,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<class PatternT, class ElementT>
   GlobRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<T, PatternT> & gptr)
+    GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -69,10 +75,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<class PatternT, class ElementT>
   GlobRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<T, PatternT> & gptr)
+    const GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -94,6 +100,13 @@ public:
     const GlobRef<T> & other)
   : _gptr(other._gptr)
   { }
+
+  /**
+   * Convert reference to its corresponding const reference type.
+   */
+  constexpr operator self_const_t() const {
+    return self_const_t(*this);
+  }
 
   /**
    * Assignment operator.
@@ -143,46 +156,46 @@ public:
   T get() const {
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    T t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    nonconst_value_type t;
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     return t;
   }
 
-  operator T() const {
+  operator nonconst_value_type() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    T t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    nonconst_value_type t;
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     return t;
   }
 
-  void get(T *tptr) const {
+  void get(nonconst_value_type *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
   }
 
-  void get(T& tref) const {
+  void get(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype);
   }
 
-  void put(T& tref) const {
+  void put(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_put_blocking(_gptr, static_cast<void *>(&tref), ds.nelem, ds.dtype);
   }
 
-  void put(T* tptr) const {
+  void put(nonconst_value_type* tptr) const {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_put_blocking(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
   }
 
@@ -192,17 +205,17 @@ public:
     return GlobPtr<T>(_gptr);
   }
 
-  GlobRef<T> & operator=(const T val) {
+  GlobRef<T> & operator=(const nonconst_value_type val) {
     DASH_LOG_TRACE_VAR("GlobRef.=()", val);
     DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dart_storage_t ds = dash::dart_storage<nonconst_value_type>(1);
     dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
     return *this;
   }
 
-  GlobRef<T> & operator+=(const T& ref)
+  GlobRef<T> & operator+=(const nonconst_value_type& ref)
   {
   #if 0
     T add_val = ref;
@@ -216,22 +229,22 @@ public:
                           dash::Team::All().dart_id());
     dart_flush(_gptr);
   #else
-    T val  = operator T();
+    nonconst_value_type val  = operator nonconst_value_type();
     val   += ref;
     operator=(val);
   #endif
     return *this;
   }
 
-  GlobRef<T> & operator-=(const T& ref) {
-    T val  = operator T();
+  GlobRef<T> & operator-=(const nonconst_value_type& ref) {
+    nonconst_value_type val  = operator nonconst_value_type();
     val   -= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator++() {
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return *this;
@@ -239,14 +252,14 @@ public:
 
   GlobRef<T> operator++(int) {
     GlobRef<T> result = *this;
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return result;
   }
 
   GlobRef<T> & operator--() {
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return *this;
@@ -254,28 +267,28 @@ public:
 
   GlobRef<T> operator--(int) {
     GlobRef<T> result = *this;
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return result;
   }
 
-  GlobRef<T> & operator*=(const T& ref) {
-    T val  = operator T();
+  GlobRef<T> & operator*=(const nonconst_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
     val   *= ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> & operator/=(const T& ref) {
-    T val  = operator T();
+  GlobRef<T> & operator/=(const nonconst_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
     val   /= ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> & operator^=(const T& ref) {
-    T val  = operator T();
+  GlobRef<T> & operator^=(const nonconst_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
     val   ^= ref;
     operator=(val);
     return *this;
@@ -300,6 +313,7 @@ public:
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
     T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     return val[pos];
   }
   #endif

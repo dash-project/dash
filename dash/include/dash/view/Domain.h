@@ -24,13 +24,15 @@ template <
              >::type
 >
 constexpr auto
-domain(const ViewT & view)
+domain(ViewT && view)
   -> typename std::enable_if<
-       dash::view_traits<ViewT>::is_view::value,
-       const typename dash::view_traits<ViewT>::domain_type &
+       dash::view_traits<ViewValueT>::is_view::value,
+    // const typename dash::view_traits<ViewT>::domain_type &
     // decltype(view.domain())
+       decltype(std::forward<ViewT>(view).domain())
      >::type {
-  return view.domain();
+//return view.domain();
+  return std::forward<ViewT>(view).domain();
 }
 #if 0
 template <
@@ -58,12 +60,18 @@ domain(ViewT && view)
  *
  * \concept{DashViewConcept}
  */
-template <class ContainerT>
+template <
+  class    ContainerT,
+  typename ContainerValueT =
+             typename std::remove_const<
+               typename std::remove_reference<ContainerT>::type
+             >::type
+>
 constexpr typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
-  const ContainerT &
+  !dash::view_traits<ContainerValueT>::is_view::value,
+  ContainerT &
 >::type
-domain(const ContainerT & container) {
+domain(ContainerT & container) {
   return container;
 }
 

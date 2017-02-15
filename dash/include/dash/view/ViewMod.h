@@ -312,6 +312,10 @@ class ViewModBase {
     return _domain;
   }
 
+  domain_type & domain() {
+    return _domain;
+  }
+
   constexpr bool operator==(const ViewModType & rhs) const {
     return &derived() == &rhs;
   }
@@ -530,11 +534,33 @@ class ViewSubMod
 
   typedef std::integral_constant<bool, false>                       is_local;
 
-  typedef decltype(dash::begin(
-                     std::declval<
-                       typename std::add_lvalue_reference<domain_type>::type
-                     >() ))
+  typedef
+    decltype(dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<domain_type>::type
+               >() ))
     iterator;
+
+  typedef
+    decltype(dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<const domain_type>::type
+               >() ))
+    const_iterator;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<domain_type>::type
+               >() ))
+    reference;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<const domain_type>::type
+               >() ))
+    const_reference;
 
  private:
   index_set_type _index_set;
@@ -563,21 +589,30 @@ class ViewSubMod
   , _index_set(*this, begin, end)
   { }
 
-  constexpr iterator begin() const {
-    return dash::begin(dash::domain(*this)) +
-             *dash::begin(dash::index(*this));
+  constexpr const_iterator begin() const {
+    return this->domain().begin() + _index_set[0];
   }
 
-  constexpr iterator end() const {
-    return dash::begin(dash::domain(*this)) +
-             *dash::end(dash::index(*this));
+  iterator begin() {
+    return this->domain().begin() + _index_set[0];
   }
 
-  constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(
-                  std::declval<
-                    typename std::add_lvalue_reference<domain_type>::type
-                  >() ))) {
+  constexpr const_iterator end() const {
+    return this->domain().begin() + _index_set.last() + 1;
+//           *dash::end(dash::index(*this))
+  }
+
+  iterator end() {
+    return this->domain().begin() + _index_set.last() + 1;
+ //          *dash::end(dash::index(*this));
+  }
+
+  constexpr const_reference operator[](int offset) const {
+//constexpr auto operator[](int offset) const
+//-> decltype(*(dash::begin(
+//                std::declval<
+//                  typename std::add_lvalue_reference<const domain_type>::type
+//                >() ))) {
     return *(this->begin() + offset);
   }
 

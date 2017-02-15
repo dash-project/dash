@@ -101,7 +101,7 @@ TEST_F(MatrixTest, Views)
     auto g_block       = matrix.block(b);
     auto g_block_first = g_block.begin();
     auto g_block_view  = g_block_first.viewspec();
-    LOG_MESSAGE("Checking if block %d is local", b);
+    LOG_MESSAGE("Checking if block %lu is local", b);
     if (g_block_first.is_local()) {
       LOG_MESSAGE("Testing viewspec of local block %d", lb);
       auto l_block       = matrix.local.block(lb);

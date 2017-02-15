@@ -126,25 +126,27 @@ class ViewBlockMod
   constexpr auto begin() const
   -> decltype(dash::begin(
                 std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
+                  typename std::add_lvalue_reference<const domain_type>::type
                 >() )) {
-    return this->domain().begin() +
-              _index_set[0];
+    return this->domain().begin() + _index_set[0];
+//  return dash::begin(dash::domain(*this)) +
+//           *dash::end(dash::index(*this));
   }
 
   constexpr auto end() const
   -> decltype(dash::begin(
                 std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
+                  typename std::add_lvalue_reference<const domain_type>::type
                 >() )) {
-    return this->domain().begin() +
-               _index_set.last() + 1;
+    return this->domain().begin() + _index_set.last() + 1;
+//  return dash::begin(dash::domain(*this)) +
+//           _index_set.last() + 1;
   }
 
   constexpr auto operator[](int offset) const
   -> decltype(*(dash::begin(
                   std::declval<
-                    typename std::add_lvalue_reference<domain_type>::type
+                    typename std::add_lvalue_reference<const domain_type>::type
                   >() ))) {
     return begin()[offset];
   }

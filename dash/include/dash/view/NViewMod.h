@@ -524,8 +524,12 @@ class NViewSubMod
 {
 public:
   typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
+
+  using value_type = typename origin_type::value_type;
+  using reference  = typename origin_type::reference;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
@@ -631,8 +635,7 @@ public:
                 std::declval<
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::begin(dash::index(*this));
+    return this->domain().begin() + _index_set[0];
   }
 
   constexpr auto end() const
@@ -640,16 +643,19 @@ public:
                 std::declval<
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::end(dash::index(*this));
+    return this->domain().begin() + _index_set.last() + 1;
+//  return dash::begin(dash::domain(*this)) +
+//           *dash::end(dash::index(*this));
   }
 
-  constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(
-                  std::declval<
-                    typename std::add_lvalue_reference<domain_type>::type
-                  >() ))) {
-    return *(this->begin() + offset);
+  constexpr reference operator[](int offset) const {
+//constexpr auto operator[](int offset) const
+//-> decltype(*(dash::begin(
+//                std::declval<
+//                  typename std::add_lvalue_reference<domain_type>::type
+//                >() ))) {
+//  return *(this->begin() + offset);
+    return *(this->domain().begin() + offset);
   }
 
   constexpr const index_set_type & index_set() const {

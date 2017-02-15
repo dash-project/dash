@@ -216,6 +216,11 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                        index(nview_sub).size());
 
+    EXPECT_EQ_U(nview_rows, nview_sub.extent(0));
+    EXPECT_EQ_U(nview_rows, mat.extent(0) - 2);
+    EXPECT_EQ_U(nview_cols, nview_sub.extent(1));
+    EXPECT_EQ_U(nview_cols, mat.extent(1) - 2);
+
     for (int r = 0; r < nview_rows; ++r) {
       std::vector<double> row_values;
       for (int c = 0; c < nview_cols; ++c) {
@@ -256,18 +261,18 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_view.size());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      index(loc_view).size());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                     loc_view.begin().pos());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                     loc_view.end().pos());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
-                     (loc_view.end() - loc_view.begin()));
-  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                 "loc_view:", range_str(loc_view));
-
-  EXPECT_EQ_U(mat.local_size(), lrows * lcols);
-
-  return;
+// DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+//                    loc_view.begin().pos());
+// DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+//                    loc_view.end().pos());
+// DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+//                    (loc_view.end() - loc_view.begin()));
+// DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+//                "loc_view:", range_str(loc_view));
+//
+// EXPECT_EQ_U(mat.local_size(), lrows * lcols);
+//
+// return;
 
   for (int r = 0; r < lrows; ++r) {
     std::vector<double> row_values;

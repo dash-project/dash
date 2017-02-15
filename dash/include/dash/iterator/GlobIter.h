@@ -56,7 +56,8 @@ class GlobViewIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobMem<ElementType>,
+  class    GlobMemType
+             = GlobMem< typename std::remove_const<ElementType>::type >,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
@@ -76,18 +77,29 @@ private:
             ReferenceType>
     self_t;
 
+  typedef typename std::remove_const<ElementType>::type
+    nonconst_value_type;
 public:
-  typedef       ElementType                       value_type;
-  typedef       ReferenceType                      reference;
-  typedef const ReferenceType                const_reference;
-  typedef       PointerType                          pointer;
-  typedef const PointerType                    const_pointer;
+  typedef          ElementType                         value_type;
+  typedef          ReferenceType                        reference;
+  typedef typename ReferenceType::const_type      const_reference;
+  typedef          PointerType                            pointer;
+  typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobMemType::local_pointer  local_pointer;
-  typedef typename GlobMemType::local_pointer     local_type;
+  typedef typename GlobMemType::local_pointer       local_pointer;
+  typedef typename GlobMemType::local_pointer          local_type;
 
-  typedef          PatternType                  pattern_type;
-  typedef typename PatternType::index_type        index_type;
+  typedef          PatternType                       pattern_type;
+  typedef typename PatternType::index_type             index_type;
+
+private:
+  typedef GlobIter<
+            const ElementType,
+            PatternType,
+            GlobMemType,
+            const_pointer,
+            const_reference >
+    self_const_t;
 
 public:
   typedef std::integral_constant<bool, false>       has_view;
@@ -196,6 +208,13 @@ public:
   }
 
   /**
+   * Convert iterator to its corresponding const iterator type.
+   */
+  constexpr operator self_const_t() const {
+    return self_const_t(*this);
+  }
+
+  /**
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
@@ -271,7 +290,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  ReferenceType operator*() const
+  reference operator*()
   {
     DASH_LOG_TRACE("GlobIter.*", _idx);
     typedef typename pattern_type::local_index_t
@@ -282,18 +301,28 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(
+    return reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));
+  }
+
+  /**
+   * Dereference operator.
+   *
+   * \return  A global reference to the element at the iterator's position.
+   */
+  const_reference operator*() const
+  {
+    return *const_cast<self_t *>(this);
   }
 
   /**
    * Subscript operator, returns global reference to element at given
    * global index.
    */
-  ReferenceType operator[](
+  reference operator[](
     /// The global position of the element
-    index_type g_index) const
+    index_type g_index)
   {
     DASH_LOG_TRACE("GlobIter.[]", g_index);
     index_type idx = g_index;
@@ -304,16 +333,27 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(
+    return reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));
+  }
+
+  /**
+   * Subscript operator, returns global reference to element at given
+   * global index.
+   */
+  const_reference operator[](
+    /// The global position of the element
+    index_type g_index) const
+  {
+    return const_cast<self_t *>(this)->operator[](g_index);
   }
 
   /**
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  inline bool is_local() const
+  constexpr bool is_local() const
   {
     return (_myid == lpos().unit);
   }
