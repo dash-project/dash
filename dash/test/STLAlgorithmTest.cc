@@ -99,7 +99,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   lidx = 0;
   for (auto l_it = array_b.lbegin(); l_it != array_b.lend();
        ++l_it, ++lidx) {
-    ASSERT_EQ_U(array_a.local[lidx], static_cast<element_t>(*l_it));
+    ASSERT_EQ_U(array_a.local[lidx], (*l_it));
   }
 }
 

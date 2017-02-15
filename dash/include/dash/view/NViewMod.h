@@ -644,7 +644,7 @@ public:
                 std::declval<
                   typename std::add_lvalue_reference<domain_type>::type
                 >() )) {
-    return this->domain().begin() + _index_set.last() + 1;
+    return this->domain().begin() + *_index_set.end();
 //  return dash::begin(dash::domain(*this)) +
 //           *dash::end(dash::index(*this));
   }

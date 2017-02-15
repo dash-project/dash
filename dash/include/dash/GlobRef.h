@@ -97,6 +97,9 @@ public:
   }
 
   /**
+   * TODO: Try deleting copy constructors to preserve unified copy semantics
+   *       ref_a = ref_b.
+   *
    * Copy constructor.
    */
   GlobRef(
@@ -105,12 +108,11 @@ public:
   : _gptr(other._gptr)
   { }
 
-  /**
-   * Convert reference to its corresponding const reference type.
-   */
-  constexpr operator self_const_t() const {
-    return self_const_t(*this);
-  }
+  template <class GlobRefT>
+  explicit GlobRef(
+    GlobRefT & other)
+  : GlobRef(reinterpret_cast<const self_t &>(other))
+  { }
 
   /**
    * Assignment operator.
@@ -299,12 +301,6 @@ public:
     return *this;
   }
 
-  #if 0
-  // Might lead to unintended behaviour
-  GlobPtr<T> operator &() {
-    return _gptr;
-  }
-  #endif
   dart_gptr_t dart_gptr() const {
     return _gptr;
   }

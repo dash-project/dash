@@ -35,8 +35,8 @@ namespace test {
     const ValueRange & vrange) {
     typedef typename ValueRange::value_type value_t;
     std::ostringstream ss;
-    auto idx = dash::index(vrange);
-    int  i   = 0;
+    const auto & idx = dash::index(vrange);
+    int          i   = 0;
     for (const auto & v : vrange) {
       ss << "[" << *(dash::begin(idx) + i) << "] "
          << static_cast<value_t>(v) << " ";

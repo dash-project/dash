@@ -229,7 +229,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator PointerType() const
+  explicit operator pointer() const
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t

@@ -403,11 +403,12 @@ public:
   /**
    * Dereference operator.
    */
-  GlobRef<ElementType> operator*()
+  GlobRef<ElementType> operator*() const
   {
     return GlobRef<ElementType>(*this);
   }
 
+#if 0
   /**
    * Dereference operator.
    */
@@ -415,6 +416,7 @@ public:
   {
     return GlobRef<const ElementType>(*this);
   }
+#endif
 
   /**
    * Conversion operator to local pointer.

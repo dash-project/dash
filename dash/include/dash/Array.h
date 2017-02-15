@@ -947,38 +947,48 @@ public:
    */
   constexpr const_iterator begin() const noexcept
   {
-    return static_cast<const_iterator>(const_cast<iterator &>(m_begin));
+    return (const_cast<iterator &>(m_begin));
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  iterator end() noexcept
-  {
+  constexpr const_iterator end() const noexcept {
+    return (const_cast<iterator &>(m_end));
+  }
+
+  /**
+   * Global pointer to the end of the array.
+   */
+  iterator end() noexcept {
     return m_end;
-  }
-
-  /**
-   * Global pointer to the end of the array.
-   */
-  constexpr const_iterator end() const noexcept
-  {
-    return static_cast<const_iterator>(const_cast<iterator &>(m_end));
   }
 
   /**
    * Native pointer to the first local element in the array.
    */
-  constexpr ElementType * lbegin() const noexcept
-  {
+  constexpr const ElementType * lbegin() const noexcept {
+    return m_lbegin;
+  }
+
+  /**
+   * Native pointer to the first local element in the array.
+   */
+  ElementType * lbegin() {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  constexpr ElementType * lend() const noexcept
-  {
+  constexpr const ElementType * lend() const noexcept {
+    return m_lend;
+  }
+
+  /**
+   * Native pointer to the end of the array.
+   */
+  ElementType * lend() {
     return m_lend;
   }
 

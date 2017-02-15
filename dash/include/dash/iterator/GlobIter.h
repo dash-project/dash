@@ -199,14 +199,36 @@ public:
   /**
    * Copy constructor.
    */
+  template <class GlobIterT>
   GlobIter(
-    const self_t & other) = default;
+    const GlobIterT & other)
+  : _globmem(other._globmem)
+  , _pattern(other._pattern)
+  , _idx    (other._idx)
+  , _max_idx(other._max_idx)
+  , _myid   (other._myid)
+  , _lbegin (other._lbegin)
+  { }
 
   /**
    * Assignment operator.
    */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   self_t & operator=(
-    const self_t & other) = default;
+    const GlobIter<T_, P_, GM_, Ptr_, Ref_ > & other)
+  {
+    _globmem = other._globmem;
+    _pattern = other._pattern;
+    _idx     = other._idx;
+    _max_idx = other._max_idx;
+    _myid    = other._myid;
+    _lbegin  = other._lbegin;
+  }
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -217,18 +239,11 @@ public:
   }
 
   /**
-   * Convert iterator to its corresponding const iterator type.
-   */
-  constexpr operator self_const_t() const {
-    return self_const_t(*this);
-  }
-
-  /**
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator const_pointer() const {
+  explicit operator const_pointer() const {
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -257,7 +272,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator pointer() {
+  explicit operator pointer() {
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -324,7 +339,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*()
+  reference operator*() const
   {
     DASH_LOG_TRACE("GlobIter.*", _idx);
     typedef typename pattern_type::local_index_t
@@ -339,7 +354,7 @@ public:
              _globmem->at(local_pos.unit,
                           local_pos.index));
   }
-
+#if 0
   /**
    * Dereference operator.
    *
@@ -360,7 +375,7 @@ public:
              _globmem->at(local_pos.unit,
                           local_pos.index));
   }
-
+#endif
   /**
    * Subscript operator, returns global reference to element at given
    * global index.
@@ -690,7 +705,7 @@ std::ostream & operator<<(
           ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<const ElementType, Pattern> ptr(it);
+  dash::GlobPtr<const ElementType, Pattern> ptr(it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";
