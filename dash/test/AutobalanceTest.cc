@@ -1,9 +1,14 @@
-#include <libdash.h>
+
 #include <array>
 #include <sstream>
 
-#include "TestBase.h"
 #include "AutobalanceTest.h"
+#include "TestBase.h"
+
+#include <dash/algorithm/SUMMA.h>
+#include <dash/internal/Math.h>
+#include <dash/util/Timer.h>
+
 
 typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
 
@@ -151,7 +156,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
   const extent_t n_numa_per_node  =  4;
   const extent_t n_cores_per_node = 28;
 
-  dash::util::UnitLocality uloc(dash::Team::All(), dash::myid());
+  dash::util::UnitLocality uloc(dash::myid());
   uloc.hwinfo().num_numa  = n_numa_per_node;
   uloc.hwinfo().num_cores = n_cores_per_node;
 

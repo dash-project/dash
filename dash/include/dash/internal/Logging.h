@@ -3,6 +3,8 @@
 
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
+#include <dash/Types.h>
+#include <dash/Init.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -15,14 +17,11 @@
 #include <iomanip>
 #include <iterator>
 #include <cstring>
+#include <string>
 
 #include <sys/types.h>
 #include <unistd.h>
 
-namespace dash {
-// forward-declaration
-int myid();
-}
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
 #  define DASH_LOG_OUTPUT_TARGET std::cout
@@ -105,6 +104,56 @@ namespace logging {
 
 extern bool _log_enabled;
 
+
+enum term_color_code {
+  TCOL_DEFAULT = 0,
+  TCOL_WHITE,
+  TCOL_RED,
+  TCOL_GREEN,
+  TCOL_YELLOW,
+  TCOL_BLUE,
+  TCOL_MAGENTA,
+  TCOL_CYAN,
+
+  TCOL_NUM_CODES
+};
+
+const int term_colors[TCOL_NUM_CODES] = {
+  39, // default
+  37, // white
+  31, // red
+  32, // green
+  33, // yellow
+  34, // blue
+  35, // magenta
+  36  // cyan
+};
+
+const term_color_code unit_term_colors[TCOL_NUM_CODES-1] = {
+  TCOL_CYAN,
+  TCOL_YELLOW,
+  TCOL_MAGENTA,
+  TCOL_WHITE,
+  TCOL_GREEN,
+  TCOL_RED,
+  TCOL_BLUE
+};
+
+class TermColorMod {
+  term_color_code tcol;
+
+public:
+  TermColorMod(term_color_code code)
+  : tcol(code)
+  { }
+
+  friend std::ostream & operator<<(
+    std::ostream & os, const TermColorMod & mod) {
+    return os << "\033[" << term_colors[mod.tcol] << "m";
+  }
+};
+
+
 static inline bool log_enabled()
 {
   return _log_enabled;
@@ -144,9 +193,13 @@ inline void Log_Line(
   const std::string & msg)
 {
   pid_t pid = getpid();
+  dash::global_unit_t uid = dash::myid();
   std::stringstream buf;
+
+//  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid.id % 7]);
+
   buf << "[ "
-      << std::setw(4) << dash::myid()
+      << std::setw(4) << uid.id
       << " "
       << level
       << " ] [ "
@@ -158,8 +211,11 @@ inline void Log_Line(
       << line << " | "
       << std::left << std::setw(45)
       << context_tag << "| "
-      << msg
-      << "\n";
+      << msg;
+
+//  buf << TermColorMod(TCOL_DEFAULT);
+
+  buf << "\n";
 
   DASH_LOG_OUTPUT_TARGET << buf.str();
 }

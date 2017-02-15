@@ -1,9 +1,16 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "SeqTilePatternTest.h"
+
+#include <dash/pattern/SeqTilePattern.h>
+#include <dash/pattern/MakePattern.h>
+
+#include <dash/util/PatternMetrics.h>
+
+#include <dash/algorithm/SUMMA.h>
+
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
 
 TEST_F(SeqTilePatternTest, Distribute2DimTile)
 {
@@ -41,10 +48,10 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
     teamspec, dash::Team::All());
 
   dash::util::PatternMetrics<pattern_t> pm(pattern);
-  for (int unit = 0; unit < dash::size(); ++unit) {
+  for (dash::team_unit_t unit{0}; unit < dash::size(); ++unit) {
     auto unit_local_blocks = pattern.local_blockspec(unit).size();
     LOG_MESSAGE("Blocks mapped to unit %d: %d",
-                unit, unit_local_blocks);
+                unit.id, unit_local_blocks);
     EXPECT_EQ_U(pm.unit_local_blocks(unit), unit_local_blocks);
   }
 

@@ -37,6 +37,7 @@ class Timestamp {
   typedef unsigned long long counter_t;
 
  public:
+  virtual ~Timestamp() { };
   virtual const counter_t & Value() const = 0;
 
   static double FrequencyScaling();

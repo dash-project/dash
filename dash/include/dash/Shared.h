@@ -6,7 +6,8 @@
 #include <dash/GlobMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
-#include <dash/Atomic.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -37,7 +38,7 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>                 atomic_type;
+  typedef GlobRef<Atomic<ElementType>>          atomic_ref_type;
 
 private:
   typedef dash::GlobMem<
@@ -49,7 +50,7 @@ private:
   friend void swap(Shared<T_> & a, Shared<T_> & b);
 
 public:
-  atomic_type atomic;
+  atomic_ref_type atomic;
 
 public:
   /**
@@ -57,7 +58,7 @@ public:
    */
   Shared(
     /// Unit id of the shared value's owner.
-    dart_unit_t   owner = 0,
+    team_unit_t   owner = team_unit_t(0),
     /// Team containing all units accessing the element in shared memory
     Team     &    team  = dash::Team::All())
     : _team(&team),
@@ -80,7 +81,9 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-    atomic = atomic_type(_ptr.dart_gptr(), team);
+    atomic._set_dart_gptr(_ptr.dart_gptr());
+    // ensure that atomic proxy is initialized on all units
+    team.barrier();
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _ptr);
   }
 
@@ -187,7 +190,7 @@ public:
 
 private:
   dash::Team          *          _team    = nullptr;
-  dart_unit_t                    _owner   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t                     _owner;
   std::shared_ptr<GlobMem_t>     _globmem = nullptr;
   pointer                        _ptr;
 

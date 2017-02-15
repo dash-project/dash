@@ -1,10 +1,12 @@
 #ifndef DASH__INTERNAL__PATTERN_LOGGING_H__
 #define DASH__INTERNAL__PATTERN_LOGGING_H__
 
-#include <libdash.h>
+#include <iostream>
 #include <iomanip>
 #include <functional>
 #include <string>
+#include <vector>
+
 
 namespace dash {
 namespace internal {
@@ -75,10 +77,10 @@ print_pattern_mapping(
 
   std::vector<std::string> entries;
   entries.push_back("[");
-  dart_unit_t last_unit = pattern.unit_at(0);
+  team_unit_t last_unit = pattern.unit_at(0);
   for (index_t i = 0; i < pattern.extent(0); ++i) {
     std::ostringstream ss;
-    dart_unit_t entry_unit = pattern.unit_at(i);
+    team_unit_t entry_unit = pattern.unit_at(i);
     if (entry_unit != last_unit) {
       entries.push_back("|");
       last_unit = entry_unit;

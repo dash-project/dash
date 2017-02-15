@@ -117,7 +117,8 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += std::abs(static_cast<offset_type>(_offset_ranges[d].max) -
+                          static_cast<offset_type>(_offset_ranges[d].min));
     }
   }
 
@@ -139,7 +140,8 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += std::abs(static_cast<offset_type>(_offset_ranges[d].max) -
+                          static_cast<offset_type>(_offset_ranges[d].min));
     }
   }
 
@@ -316,7 +318,7 @@ public:
     _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _position_to_coords(position_mapping_fun)
   {
@@ -353,7 +355,7 @@ public:
     _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _position_to_coords(
       std::bind(&self_t::coords, this, std::placeholders::_1))
@@ -1012,7 +1014,7 @@ private:
   /// Maximum iterator position in the block border's iteration space.
   index_type                         _max_idx          = 0;
   /// Unit id of the active unit
-  dart_unit_t                        _myid;
+  dart_global_unit_t                 _myid;
   /// Pointer to first element in local memory
   ElementType                      * _lbegin           = nullptr;
   /// Function implementing mapping of iterator position to global element

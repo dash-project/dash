@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     }
   }
   arr.barrier();
-  if (myid == static_cast<dart_unit_t>(size-1)) {
+  if (myid == (size-1)) {
     for (auto el: arr) {
       cout << static_cast<int>(el) << " ";
     }

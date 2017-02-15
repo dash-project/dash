@@ -68,7 +68,11 @@ typedef enum
   /** Binary XOR */
   DART_OP_BXOR,
   /** Logical XOR */
-  DART_OP_LXOR
+  DART_OP_LXOR,
+  /** Replace Value */
+  DART_OP_REPLACE,
+  /** No operation */
+  DART_OP_NO_OP
 } dart_operation_t;
 
 /**
@@ -79,6 +83,7 @@ typedef enum
 typedef enum
 {
     DART_TYPE_UNDEFINED = 0,
+    /** integral data types */
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
     DART_TYPE_INT,
@@ -86,17 +91,18 @@ typedef enum
     DART_TYPE_LONG,
     DART_TYPE_ULONG,
     DART_TYPE_LONGLONG,
+    /** floating point data types */
     DART_TYPE_FLOAT,
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
 
 #if (UINT32_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_UINT
+#  define DART_TYPE_SIZET DART_TYPE_UINT
 #elif (UINT64_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#  define DART_TYPE_SIZET DART_TYPE_LONGLONG
 #else
-#error "Cannot determine DART type for size_t!"
+#  error "Cannot determine DART type for size_t!"
 #endif
 
 
@@ -112,22 +118,120 @@ typedef struct {
 typedef int32_t dart_unit_t;
 
 /**
- * Data type for storing a team ID
- * \ingroup DartTypes
- */
-typedef int32_t dart_team_t;
-
-/**
  * Undefined unit ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
 
 /**
+ * Data type for storing a global unit ID
+ * \ingroup DartTypes
+ */
+typedef struct dart_global_unit {
+#ifdef __cplusplus
+  constexpr dart_global_unit() : id(DART_UNDEFINED_UNIT_ID) { }
+  constexpr dart_global_unit(dart_unit_t uid) : id(uid) { }
+#endif
+  dart_unit_t id;
+} dart_global_unit_t;
+
+
+/**
+ * Data type for storing a unit ID
+ * relative to a team.
+ * \ingroup DartTypes
+ */
+typedef struct dart_local_unit {
+#ifdef __cplusplus
+  constexpr dart_local_unit() : id(DART_UNDEFINED_UNIT_ID) { }
+  constexpr dart_local_unit(dart_unit_t uid) : id(uid) { }
+#endif
+  dart_unit_t id;
+} dart_team_unit_t;
+
+/**
+ * Create a \c dart_team_unit_t from a \ref dart_unit_t.
+ * \ingroup DartTypes
+ */
+static inline
+dart_team_unit_t dart_create_team_unit(dart_unit_t unit)
+{
+  dart_team_unit_t tmp = {unit};
+  return tmp;
+}
+
+/**
+ * Create a \c dart_team_unit_t from a \ref dart_unit_t.
+ *
+ * This is a wrapper for \ref dart_create_team_unit.
+ *
+ * \ingroup DartTypes
+ */
+#define DART_TEAM_UNIT_ID(__u) (dart_create_team_unit(__u))
+
+
+/**
+ * Create a \c dart_global_unit_t from a \ref dart_unit_t.
+ *
+ * \ingroup DartTypes
+ */
+static inline
+dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
+{
+  dart_global_unit_t tmp = {unit};
+  return tmp;
+}
+
+/**
+ * Create a \c dart_global_unit_t from a \ref dart_unit_t.
+ *
+ * This is a wrapper for \ref dart_create_global_unit.
+ *
+ * \ingroup DartTypes
+ */
+#define DART_GLOBAL_UNIT_ID(__u) (dart_create_global_unit(__u))
+
+/**
+ * A \ref dart_team_unit_t representing an undefined team-relative unit.
+ *
+ * \see DART_UNDEFINED_UNIT_ID
+ *
+ * \ingroup DartTypes
+ */
+#define DART_UNDEFINED_TEAM_UNIT_ID DART_TEAM_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+
+/**
+ * A \ref dart_global_unit_t representing an undefined global unit.
+ *
+ * \see DART_UNDEFINED_UNIT_ID
+ *
+ * \ingroup DartTypes
+ */
+#define DART_UNDEFINED_GLOBAL_UNIT_ID DART_GLOBAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+
+/**
+ * Data type for storing a team ID
+ * \ingroup DartTypes
+ */
+typedef int32_t dart_team_t;
+
+/**
  * Undefined team ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
+
+
+typedef enum
+{
+  /** No support for thread-based concurrency in DART is provided. */
+  DART_THREAD_SINGLE = 0,
+  /**
+   * Support for thread-based concurrency is provided by DART and
+   * the underlying runtime.
+   */
+  DART_THREAD_MULTIPLE = 10
+} dart_thread_support_level_t;
 
 /**
  * Scopes of locality domains.
@@ -480,11 +584,15 @@ struct dart_domain_locality_s
     dart_team_t                      team;
     /** Number of units in the domain. */
     int                              num_units;
-    /** IDs of units in the domain. */
-    dart_unit_t                    * unit_ids;
+    /** Global IDs of units in the domain. */
+    dart_global_unit_t             * unit_ids;
 
     /* The number of compute nodes in the domain. */
     int                              num_nodes;
+    /* Node (machine) index of the domain or -1 if domain contains
+     * multiple compute nodes. */
+    int                              node_id;
+
     /* Number of cores in the domain. Cores may be heterogeneous unless
      * `is_symmetric` is different from 0. */
     int                              num_cores;
@@ -511,7 +619,7 @@ typedef struct dart_domain_locality_s
  */
 typedef struct {
     /** Unit ID relative to team. */
-    dart_unit_t              unit;
+    dart_team_unit_t         unit;
 
     /** Team ID. */
     dart_team_t              team;

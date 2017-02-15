@@ -1,10 +1,12 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include <iomanip>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "TilePatternTest.h"
+
+#include <dash/pattern/TilePattern.h>
+#include <dash/TeamSpec.h>
+
+#include <iomanip>
+#include <array>
+
 
 using std::endl;
 using std::setw;
@@ -40,7 +42,7 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   size_t extent_y     = (team_size_y + odd_blocks_y) * block_size_y;
   size_t size         = extent_x * extent_y;
   size_t max_per_unit = size / team_size;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
+  LOG_MESSAGE("e:%zu,%zu, bs:%d,%d, nu:%zu, mpu:%zu",
       extent_x, extent_y,
       block_size_x, block_size_y,
       team_size,
@@ -119,7 +121,7 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
         auto lcoords = lpos.coords;
         std::ostringstream ss;
         ss << "u" << unit << "(";
-        if (unit == dash::myid()) {
+        if (unit == _pattern.team().myid()) {
           auto lindex = _pattern.local_at(lcoords);
           ss << std::setw(2) << lindex;
         } else {
@@ -143,7 +145,7 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 
       ASSERT_EQ_U(unit_id_c, unit_id_i);
 
-      if (dash::myid() == unit_id_i) {
+      if (pattern.team().myid() == unit_id_i) {
         auto l_coords_idx = pattern.local_at(l_coords);
         ASSERT_EQ_U(l_index, l_coords_idx);
       }

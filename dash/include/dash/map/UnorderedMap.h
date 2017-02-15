@@ -6,9 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
@@ -32,7 +33,7 @@ private:
 
 public:
   typedef Key          argument_type;
-  typedef dart_unit_t  result_type;
+  typedef team_unit_t result_type;
 
 public:
   /**
@@ -63,7 +64,7 @@ public:
 private:
   dash::Team * _team   = nullptr;
   size_type    _nunits = 0;
-  dart_unit_t  _myid   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t   _myid;
 }; // class HashLocal
 
 #ifndef DOXYGEN
@@ -171,15 +172,50 @@ public:
   /// Local proxy object, allows use in range-based for loops.
   local_type local;
 
+private:
+  /// Team containing all units interacting with the map.
+  dash::Team           * _team            = nullptr;
+  /// DART id of the local unit.
+  team_unit_t            _myid{DART_UNDEFINED_UNIT_ID};
+  /// Global memory allocation and -access.
+  glob_mem_type        * _globmem         = nullptr;
+  /// Iterator to initial element in the map.
+  iterator               _begin           = nullptr;
+  /// Iterator past the last element in the map.
+  iterator               _end             = nullptr;
+  /// Number of elements in the map.
+  size_type              _remote_size     = 0;
+  /// Native pointer to first local element in the map.
+  local_iterator         _lbegin          = nullptr;
+  /// Native pointer past the last local element in the map.
+  local_iterator         _lend            = nullptr;
+  /// Mapping units to their number of local map elements.
+  local_sizes_map        _local_sizes;
+  /// Cumulative (postfix sum) local sizes of all units.
+  std::vector<size_type> _local_cumul_sizes;
+  /// Iterators to elements in local memory space that are marked for move
+  /// to remote unit in next commit.
+  std::vector<iterator>  _move_elements;
+  /// Global pointer to local element in _local_sizes.
+  dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
+  /// Hash type for mapping of key to unit and local offset.
+  hasher                 _key_hash;
+  /// Predicate for key comparison.
+  key_equal              _key_equal;
+  /// Capacity of local buffer containing locally added node elements that
+  /// have not been committed to global memory yet.
+  /// Default is 4 KB.
+  size_type              _local_buffer_size
+                           = 4096 / sizeof(value_type);
+
 public:
   UnorderedMap(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
-    _key_hash(team)
+    _key_hash(team),
+    local(this)
   {
     DASH_LOG_TRACE_VAR("UnorderedMap(nelem,team)", nelem);
     if (_team->size() > 0) {
@@ -192,12 +228,11 @@ public:
     size_type   nelem,
     size_type   nlbuf,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
     _key_hash(team),
-    _local_buffer_size(nlbuf)
+    _local_buffer_size(nlbuf),
+    local(this)
   {
     DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);
@@ -482,27 +517,8 @@ public:
     value_type  * lptr_value  = static_cast<value_type *>(
                                   git_value.local());
     mapped_type * lptr_mapped = nullptr;
-    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to element:", gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to element:", lptr_value);
-    // Byte offset of mapped value in element type:
-    auto          mapped_offs = offsetof(value_type, second);
-    DASH_LOG_TRACE("UnorderedMap.[]", "byte offset of mapped member:",
-                   mapped_offs);
-    // Increment pointers to element by byte offset of mapped value member:
-    if (lptr_value != nullptr) {
-      // Convert to char pointer for byte-wise increment:
-      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
-      b_lptr_mapped        += mapped_offs;
-      // Convert to mapped type pointer:
-      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
-    }
-    if (!DART_GPTR_ISNULL(gptr_mapped)) {
-      DASH_ASSERT_RETURNS(
-        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
-        DART_OK);
-    }
-    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to mapped member:", gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to mapped member:", lptr_mapped);
+
+    _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
     // Create global reference to mapped value member in element:
     mapped_type_reference mapped(gptr_mapped,
                                  lptr_mapped);
@@ -513,17 +529,23 @@ public:
   const_mapped_type_reference at(const key_type & key) const
   {
     DASH_LOG_TRACE("UnorderedMap.at() const", "key:", key);
-    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
-    //       calls insert(key).
-    const_iterator git_value = find(key);
-    if (git_value == _end) {
+    auto found = find(key);
+    if (found == _end) {
       // No equivalent key in map, throw:
       DASH_THROW(
         dash::exception::InvalidArgument,
         "No element in map for key " << key);
     }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMap.at > const", mapped);
+    dart_gptr_t gptr_mapped   = iterator(this, found.pos()).dart_gptr();
+
+    value_type  * lptr_value  = static_cast<value_type *>(
+                                  found.local());
+    mapped_type * lptr_mapped = nullptr;
+
+    _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
+    // Create global reference to mapped value member in element:
+    const_mapped_type_reference mapped(gptr_mapped,
+                                       lptr_mapped);
     return mapped;
   }
 
@@ -676,8 +698,7 @@ public:
 
   inline size_type bucket_size(size_type bucket_index) const
   {
-    dart_unit_t unit  = static_cast<dart_unit_t>(bucket_index);
-    size_type   bsize = _local_sizes[unit];
+    size_type   bsize = _local_sizes[bucket_index];
     return bsize;
   }
 
@@ -697,10 +718,73 @@ public:
 
 private:
   /**
+   * Helper to resolve address of mapped value from map entries.
+   *
+   * std::pair cannot be used as MPI data type directly.
+   * Offset-to-member only works reliably with offsetof in the general case
+   * We have to use `offsetof` as there is no instance of value_type
+   * available that could be used to calculate the member offset as
+   * `l_ptr_value` is possibly undefined.
+   *
+   * Using `std::declval()` instead (to generate a compile-time
+   * pseudo-instance for member resolution) only works if Key and Mapped
+   * are default-constructible.
+   * 
+   * Finally, the distance obtained from
+   *
+   *   &(lptr_value->second) - lptr_value
+   *
+   * had different alignment than the address obtained via offsetof in some
+   * cases, depending on the combination of MPI runtime and compiler.
+   * Apparently some compilers / standard libs have special treatment
+   * (padding?) for members of std::pair such that
+   *
+   *   __builtin_offsetof(type, member)
+   *
+   * differs from the member-offset provided by the type system.
+   * The alternative, using `offsetof` (resolves to `__builtin_offsetof`
+   * automatically if needed) and manual pointer increments works, however.
+   */
+  void _lptr_value_to_mapped(
+    // [IN]  native pointer to map entry
+    value_type    * lptr_value,
+    // [OUT] corresponding global pointer to mapped value
+    dart_gptr_t   & gptr_mapped,
+    // [OUT] corresponding native pointer to mapped value
+    mapped_type * & lptr_mapped) const
+  {
+    // Byte offset of mapped value in element type:
+    auto mapped_offs = offsetof(value_type, second);
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped()",
+                   "byte offset of mapped member:", mapped_offs);
+    // Increment pointers to element by byte offset of mapped value member:
+    if (lptr_value != nullptr) {
+        if (std::is_standard_layout<value_type>::value) {
+        // Convert to char pointer for byte-wise increment:
+        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        b_lptr_mapped       += mapped_offs;
+        // Convert to mapped type pointer:
+        lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+      } else {
+        lptr_mapped = &(lptr_value->second);
+      }
+    }
+    if (!DART_GPTR_ISNULL(gptr_mapped)) {
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
+        DART_OK);
+    }
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped >",
+                   "gptr to mapped:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped >",
+                   "lptr to mapped:", lptr_mapped);
+  }
+
+  /**
    * Insert value at specified unit.
    */
   std::pair<iterator, bool> _insert_at(
-    dart_unit_t        unit,
+    team_unit_t        unit,
     /// The element to insert.
     const value_type & value)
   {
@@ -714,9 +798,9 @@ private:
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
-    size_type old_local_size   = dash::Atomic<size_type>(
+    size_type old_local_size   = GlobRef<Atomic<size_type>>(
                                     _local_size_gptr
-                                 ).fetch_and_add(1);
+                                 ).fetch_add(1);
     size_type new_local_size   = old_local_size + 1;
     size_type local_capacity   = _globmem->local_size();
     _local_cumul_sizes[unit]  += 1;
@@ -772,42 +856,6 @@ private:
                    result.first);
     return result;
   }
-
-private:
-  /// Team containing all units interacting with the map.
-  dash::Team           * _team            = nullptr;
-  /// DART id of the local unit.
-  dart_unit_t            _myid            = DART_UNDEFINED_UNIT_ID;
-  /// Global memory allocation and -access.
-  glob_mem_type        * _globmem         = nullptr;
-  /// Iterator to initial element in the map.
-  iterator               _begin           = nullptr;
-  /// Iterator past the last element in the map.
-  iterator               _end             = nullptr;
-  /// Number of elements in the map.
-  size_type              _remote_size     = 0;
-  /// Native pointer to first local element in the map.
-  local_iterator         _lbegin          = nullptr;
-  /// Native pointer past the last local element in the map.
-  local_iterator         _lend            = nullptr;
-  /// Mapping units to their number of local map elements.
-  local_sizes_map        _local_sizes;
-  /// Cumulative (postfix sum) local sizes of all units.
-  std::vector<size_type> _local_cumul_sizes;
-  /// Iterators to elements in local memory space that are marked for move
-  /// to remote unit in next commit.
-  std::vector<iterator>  _move_elements;
-  /// Global pointer to local element in _local_sizes.
-  dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
-  /// Hash type for mapping of key to unit and local offset.
-  hasher                 _key_hash;
-  /// Predicate for key comparison.
-  key_equal              _key_equal;
-  /// Capacity of local buffer containing locally added node elements that
-  /// have not been committed to global memory yet.
-  /// Default is 4 KB.
-  size_type              _local_buffer_size
-                           = 4096 / sizeof(value_type);
 
 }; // class UnorderedMap
 

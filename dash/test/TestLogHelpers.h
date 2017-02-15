@@ -1,7 +1,6 @@
 #ifndef DASH__TEST__TEST_LOG_HELPERS_H__
 #define DASH__TEST__TEST_LOG_HELPERS_H__
 
-#include <libdash.h>
 #include <iomanip>
 #include <functional>
 #include <string>
@@ -186,10 +185,10 @@ print_pattern_mapping(
 
   std::vector<std::string> entries;
   entries.push_back("[");
-  dart_unit_t last_unit = pattern.unit_at(0);
+  dash::team_unit_t last_unit = pattern.unit_at(0);
   for (index_t i = 0; i < pattern.extent(0); ++i) {
     std::ostringstream ss;
-    dart_unit_t entry_unit = pattern.unit_at(i);
+    dash::team_unit_t entry_unit = pattern.unit_at(i);
     if (entry_unit != last_unit) {
       entries.push_back("| ");
       last_unit = entry_unit;

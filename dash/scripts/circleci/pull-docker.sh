@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MPIENVS=(mpich openmpi openmpi2)
+MPIENVS=(mpich openmpi)
 
 # build docker containers
 

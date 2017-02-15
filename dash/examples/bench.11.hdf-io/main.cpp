@@ -29,7 +29,9 @@ typedef typename dash::util::BenchmarkParams::config_params_type
 
 typedef struct benchmark_params_t {
   long   size_base;
+  int    num_it;
   bool   verify;
+  std::string path;
 } benchmark_params;
 
 typedef struct measurement_t {
@@ -79,8 +81,10 @@ int main(int argc, char** argv)
   print_params(bench_params, params);
   print_measurement_header();
 
-  res = store_matrix(params.size_base, params);
-  print_measurement_record(bench_cfg, res, params);
+  for(int i=0;i<params.num_it;++i){
+    res = store_matrix(params.size_base*(i+1), params);
+    print_measurement_record(bench_cfg, res, params);
+  }
 
   if( dash::myid()==0 ) {
     cout << "Benchmark finished" << endl;
@@ -102,6 +106,22 @@ measurement store_matrix(long size, benchmark_params params)
   extent_t    extent_rows     = size;
   auto        ts_start_total  = Timer::Now();
   auto        ts_start_create = Timer::Now();
+
+  auto num_elems     = extent_cols * extent_rows;
+  mes.mb_global      = (sizeof(double) * num_elems) / (1024 * 1024);
+  mes.mb_per_unit    = mes.mb_global / dash::size();
+
+  // check if unit has sufficient memory to store matrix
+  dash::util::UnitLocality uloc;
+  long sys_mem_bytes = uloc.hwinfo().system_memory_bytes;
+  long unit_mem_bytes = sys_mem_bytes / (uloc.num_cores());
+ 
+  if(mes.mb_per_unit > ((unit_mem_bytes / 10) * 9)){
+    mes.time_total_s   = -1;
+    mes.mb_per_s_read  = -1;
+    mes.mb_per_s_write = -1;
+    return mes;
+  }
 
   // Create Matrix
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
@@ -127,7 +147,7 @@ measurement store_matrix(long size, benchmark_params params)
   // Store Matrix
   auto ts_start_write    = Timer::Now();
 
-	OutputStream os("test.hdf5");
+	OutputStream os(params.path);
 	os << matrix_a;
 
   dash::barrier();
@@ -140,7 +160,7 @@ measurement store_matrix(long size, benchmark_params params)
   // Read Matrix
   matrix_t matrix_b;
 
-	InputStream is("test.hdf5");
+	InputStream is(params.path);
 	is >> matrix_b;
 
   dash::barrier();
@@ -161,13 +181,10 @@ measurement store_matrix(long size, benchmark_params params)
 
   // Remove hdf5 file
   if(myid == 0){
-    remove("test.hdf5");
+    remove(params.path.c_str());
   }
 
-  auto num_elems     = extent_cols * extent_rows;
   mes.time_total_s   = 1e-6 * Timer::ElapsedSince(ts_start_total);
-  mes.mb_global      = (sizeof(double) * num_elems) / (1024 * 1024);
-  mes.mb_per_unit    = mes.mb_global / dash::size();
   mes.mb_per_s_read  = mes.mb_global / mes.time_read_s;
   mes.mb_per_s_write = mes.mb_global / mes.time_write_s;
   return mes;
@@ -223,12 +240,18 @@ benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
   params.size_base      = 28 * 512;
+  params.num_it         = 1;
+  params.path           = "testfile.hdf5";
   params.verify         = false;
 
   for (auto i = 1; i < argc; i += 2) {
     std::string flag = argv[i];
     if (flag == "-sb") {
       params.size_base      = atoi(argv[i+1]);
+    } else if(flag == "-it") {
+      params.num_it         = atoi(argv[i+1]);
+    } else if(flag == "-path") {
+      params.path = argv[i+1];
     } else if (flag == "-verify") {
       params.verify         = true;
       --i;
@@ -247,6 +270,8 @@ void print_params(
 
   bench_cfg.print_section_start("Runtime arguments");
   bench_cfg.print_param("-sb",    "initial matrix size", params.size_base);
+  bench_cfg.print_param("-it",    "number of iterations", params.num_it);
+  bench_cfg.print_param("-path",  "path including filename", params.path);
   bench_cfg.print_param("-verify","verification",        params.verify);
   bench_cfg.print_section_end();
 }

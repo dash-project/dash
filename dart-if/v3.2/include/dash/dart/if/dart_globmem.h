@@ -167,14 +167,14 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
  * Set the unit information for the specified global pointer.
  *
  * \param gptr Global Pointer
- * \param unit The unit to set in \c gptr
+ * \param unit The global unit to set in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
+dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_global_unit_t unit);
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
@@ -189,7 +189,7 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_memalloc(
@@ -206,7 +206,7 @@ dart_ret_t dart_memalloc(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_memfree(dart_gptr_t gptr);
@@ -219,8 +219,9 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * anywhere in the allocation can easily be formed locally. The global
  * pointer to the beginning of the allocation is returned in \c gptr on
  * each participating unit. Each participating unit has to call
- * \c dart_team_memalloc_aligned with the same specification of \c teamid, \c dtype and
- * \c nelem. Each unit will receive the a global pointer to the beginning
+ * \c dart_team_memalloc_aligned with the same specification of \c teamid,
+ * \c dtype and \c nelem.
+ * Each unit will receive the a global pointer to the beginning
  * of the allocation (on unit 0) in \c gptr.
  * Accessibility of memory allocated with this function is limited to
  * those units that are part of the team allocating the memory. I.e.,
@@ -237,7 +238,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * \return            \c DART_OK on success,
  *                    any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memalloc_aligned(
@@ -260,7 +261,7 @@ dart_ret_t dart_team_memalloc_aligned(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
@@ -282,7 +283,7 @@ dart_ret_t dart_team_memfree(
  *
  * \see dart_team_memalloc_aligned
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memregister_aligned(

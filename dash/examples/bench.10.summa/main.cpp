@@ -8,7 +8,9 @@
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #endif
 
+#ifdef DASH_ENABLE_OPENMP
 #include <omp.h>
+#endif
 
 #ifndef MPI_IMPL_ID
 #define MPI_IMPL_ID unknown

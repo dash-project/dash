@@ -93,7 +93,7 @@ public:
     local_pointer;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index;
 
@@ -113,7 +113,7 @@ public:
     index_type    position)
   : _map(map),
     _idx(0),
-    _myid(dash::myid()),
+    _myid(map->team().myid()),
     _idx_unit_id(0),
     _idx_local_idx(0)
   {
@@ -127,12 +127,12 @@ public:
    * specified unit's local iteration space.
    */
   UnorderedMapGlobIter(
-    map_t       * map,
-    dart_unit_t   unit,
-    index_type    local_index)
+    map_t         * map,
+    team_unit_t     unit,
+    index_type      local_index)
   : _map(map),
     _idx(0),
-    _myid(dash::myid()),
+    _myid(map->team().myid()),
     _idx_unit_id(unit),
     _idx_local_idx(local_index)
   {
@@ -184,12 +184,12 @@ public:
     return *this;
   }
 
-  inline bool operator==(std::nullptr_t) const noexcept
+  constexpr bool operator==(std::nullptr_t) const noexcept
   {
     return _is_nullptr;
   }
 
-  inline bool operator!=(std::nullptr_t) const noexcept
+  constexpr bool operator!=(std::nullptr_t) const noexcept
   {
     return !_is_nullptr;
   }
@@ -209,7 +209,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator pointer() const
+  constexpr operator pointer() const
   {
     return pointer(dart_gptr());
   }
@@ -220,15 +220,12 @@ public:
    * \return  A DART global pointer to the element at the iterator's
    *          position
    */
-  dart_gptr_t dart_gptr() const
+  constexpr dart_gptr_t dart_gptr() const
   {
-    DASH_LOG_TRACE_VAR("UnorderedMapGlobIter.dart_gptr()", _idx);
-    dart_gptr_t dart_gptr = _map->globmem().at(
-                              _idx_unit_id,
-                              _idx_local_idx)
-                            .dart_gptr();
-    DASH_LOG_TRACE_VAR("UnorderedMapGlobIter.dart_gptr >", dart_gptr);
-    return dart_gptr;
+    return _map->globmem().at(
+                            _idx_unit_id,
+                            _idx_local_idx)
+                          .dart_gptr();
   }
 
   /**
@@ -285,7 +282,7 @@ public:
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  inline bool is_local() const noexcept
+  constexpr bool is_local() const noexcept
   {
     return (_myid == _idx_unit_id);
   }
@@ -302,7 +299,6 @@ public:
     return (_map->lbegin() + _idx_local_idx);
   }
 
-#if 0
   /**
    * Conversion to local bucket iterator.
    */
@@ -314,7 +310,6 @@ public:
     }
     return (_map->lbegin() + _idx_local_idx);
   }
-#endif
 
   /**
    * Unit and local offset at the iterator's position.
@@ -330,7 +325,7 @@ public:
   /**
    * Map iterator to global index domain.
    */
-  inline self_t global() const noexcept
+  constexpr self_t global() const noexcept
   {
     return *this;
   }
@@ -338,7 +333,7 @@ public:
   /**
    * Position of the iterator in global index space.
    */
-  inline index_type pos() const noexcept
+  constexpr index_type pos() const noexcept
   {
     return _idx;
   }
@@ -346,7 +341,7 @@ public:
   /**
    * Position of the iterator in global index range.
    */
-  inline index_type gpos() const noexcept
+  constexpr index_type gpos() const noexcept
   {
     return _idx;
   }
@@ -390,14 +385,14 @@ public:
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator==(
+  constexpr bool operator==(
     const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator!=(
+  constexpr bool operator!=(
     const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return !(*this == other);
@@ -429,42 +424,42 @@ public:
     return res;
   }
 
-  inline index_type operator+(
-    const self_t & other) const
+  constexpr index_type operator+(
+    const self_t & other) const noexcept
   {
     return _idx + other._idx;
   }
 
-  inline index_type operator-(
-    const self_t & other) const
+  constexpr index_type operator-(
+    const self_t & other) const noexcept
   {
     return _idx - other._idx;
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator<(
-    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const
+  constexpr bool operator<(
+    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (_idx < other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator<=(
-    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const
+  constexpr bool operator<=(
+    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (_idx <= other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator>(
-    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const
+  constexpr bool operator>(
+    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (_idx > other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  inline bool operator>=(
-    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const
+  constexpr bool operator>=(
+    const UnorderedMapGlobIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (_idx >= other._idx);
   }
@@ -543,9 +538,9 @@ private:
   /// Current position of the iterator in global canonical index space.
   index_type               _idx           = -1;
   /// Unit id of the active unit.
-  dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _myid;
   /// Unit id at the iterator's current position.
-  dart_unit_t              _idx_unit_id   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _idx_unit_id;
   /// Logical offset in local index space at the iterator's current position.
   index_type               _idx_local_idx = -1;
   /// Whether the iterator represents a null pointer.

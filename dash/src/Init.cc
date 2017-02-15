@@ -1,14 +1,19 @@
+
 #include <dash/Init.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
 #include <dash/Shared.h>
+
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+#include <dash/internal/Logging.h>
+
+#include <dash/internal/Annotation.h>
 
 
 namespace dash {
-  static int  _myid        = -1;
-  static int  _size        = -1;
   static bool _initialized = false;
+  static bool _multithreaded = false;
 }
 
 namespace dash {
@@ -29,19 +34,32 @@ void dash::init(int * argc, char ** *argv)
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
 
+#if DASH_ENABLE_THREADSUPPORT
+  DASH_LOG_DEBUG("dash::init", "dart_init_thread()");
+  dart_thread_support_level_t provided_mt;
+  dart_init_thread(argc, argv, &provided_mt);
+  dash::_multithreaded = (provided_mt == DART_THREAD_MULTIPLE);
+  if (!dash::_multithreaded) {
+    DASH_LOG_WARN("Support for multi-threading requested at compile time but DART does not support multi-threaded access.");
+  }
+#else
+
   DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc, argv);
+#endif
+
   dash::_initialized = true;
 
-#if DASH_DEBUG
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
-    dash::Shared<int> blockvar;
-    blockvar.set(1);
-    while (blockvar.get()) {
-      dash::internal::wait_breakpoint();
+    if (dash::myid() == 0) {
+      int blockvar = 1;
+      dash::prevent_opt_elimination(blockvar);
+      while (blockvar) {
+        dash::internal::wait_breakpoint();
+      }
     }
+    dash::barrier();
   }
-#endif
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
   dash::util::Locality::init();
@@ -83,36 +101,23 @@ bool dash::is_initialized()
   return dash::_initialized;
 }
 
+bool dash::is_multithreaded()
+{
+  return dash::_multithreaded;
+}
+
 void dash::barrier()
 {
   dash::Team::All().barrier();
 }
 
-int dash::myid()
+dash::global_unit_t dash::myid()
 {
-  if (dash::_myid < 0 && dash::is_initialized()) {
-    // First call of dash::myid() after dash::init():
-    dart_unit_t myid;
-    dart_myid(&myid);
-    dash::_myid = myid;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::myid() after dash::finalize():
-    dash::_myid = -1;
-  }
-  return dash::_myid;
+  return dash::Team::GlobalUnitID();
 }
 
-size_t dash::size()
+ssize_t dash::size()
 {
-  if (dash::_size < 0 && dash::is_initialized()) {
-    // First call of dash::size() after dash::init():
-    size_t size;
-    dart_size(&size);
-    dash::_size = size;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::size() after dash::finalize():
-    dash::_size = -1;
-  }
-  return dash::_size;
+  return dash::Team::All().size();
 }
 

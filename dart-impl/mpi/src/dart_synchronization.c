@@ -27,7 +27,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_unit_t unitid, myid;
+	dart_team_unit_t unitid;
+	dart_global_unit_t myid;
 	int32_t *addr;
 
 	uint16_t index;
@@ -42,7 +43,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 
 
 	/* Unit 0 is the process holding the gptr_tail by default. */
-	if (unitid == 0) {
+	if (unitid.id == 0) {
 		dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
 		dart_gptr_getaddr (gptr_tail, (void*)&addr);
 
@@ -51,7 +52,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		MPI_Win_sync (dart_win_local_alloc);
 	}
 
-	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, 0, teamid);
+	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, DART_TEAM_UNIT_ID(0), teamid);
 
 	/* Create a global memory region across the teamid,
 	 * and every local memory segment related certain unit
@@ -73,19 +74,19 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	(*lock) -> teamid = teamid;
 	(*lock) -> is_acquired = 0;
 
-	DART_LOG_DEBUG ("%2d: INIT	- done", unitid);
+	DART_LOG_DEBUG ("INIT - done");
 
 	return DART_OK;
 }
 
 dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
-	dart_unit_t unitid;
-	dart_team_myid (lock -> teamid, &unitid);
+	dart_team_unit_t unitid;
+	dart_team_myid (lock->teamid, &unitid);
 
 	if (lock -> is_acquired == 1)
 	{
-		printf ("Warning: LOCK	- %2d has acquired the lock already\n", unitid);
+		printf ("Warning: LOCK - %2d has acquired the lock already\n", unitid.id);
 		return DART_OK;
 	}
 
@@ -112,42 +113,42 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 
 
 	/* MPI-3 newly added feature: atomic operation*/
-	MPI_Fetch_and_op (&unitid, predecessor, MPI_INT32_T, tail, offset_tail, MPI_REPLACE, dart_win_local_alloc);
+	MPI_Fetch_and_op (&unitid.id, predecessor, MPI_INT32_T, tail, offset_tail, MPI_REPLACE, dart_win_local_alloc);
 	MPI_Win_flush (tail, dart_win_local_alloc);
 
   /* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
    * and wait for notification from its predecessor. */
   if (*predecessor != -1) {
-    if (dart_segment_get_disp(seg_id, *predecessor, &disp_list) != DART_OK) {
+    if (dart_segment_get_disp(seg_id, DART_TEAM_UNIT_ID(*predecessor), &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
     win = dart_team_data[index].window;
 
 		/* Atomicity: Update its predecessor's next pointer */
-		MPI_Fetch_and_op (&unitid, result, MPI_INT32_T, *predecessor, disp_list, MPI_REPLACE, win);
+		MPI_Fetch_and_op (&unitid.id, result, MPI_INT32_T, *predecessor, disp_list, MPI_REPLACE, win);
 
 		MPI_Win_flush (*predecessor, win);
 
 		/* Waiting for notification from its predecessor*/
-		DART_LOG_DEBUG ("%2d: LOCK	- waiting for notification from %d in team %d",
-				unitid, *predecessor, (lock -> teamid));
+		DART_LOG_DEBUG ("LOCK - waiting for notification from %d in team %d",
+				*predecessor, (lock -> teamid));
 
     MPI_Recv(NULL, 0, MPI_INT, *predecessor, 0, dart_team_data[index].comm,
         &status);
   }
 
-	DART_LOG_DEBUG ("%2d: LOCK	- lock required in team %d", unitid, (lock -> teamid));
+	DART_LOG_DEBUG ("LOCK - lock required in team %d", (lock -> teamid));
 	lock -> is_acquired = 1;
 	return DART_OK;
 }
 
 dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 {
-	dart_unit_t unitid;
-	dart_team_myid (lock -> teamid, &unitid);
+	dart_team_unit_t unitid;
+	dart_team_myid(lock->teamid, &unitid);
 	if (lock -> is_acquired == 1)
 	{
-		printf ("Warning: TRYLOCK	- %2d has acquired the lock already\n", unitid);
+		printf ("Warning: TRYLOCK - %2d has acquired the lock already\n", unitid.id);
 		return DART_OK;
 	}
 	dart_gptr_t gptr_tail;
@@ -160,7 +161,7 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 	uint64_t offset = gptr_tail.addr_or_offs.offset;
 
 	/* Atomicity: Check if the lock is available and claim it if it is. */
-  MPI_Compare_and_swap (&unitid, compare, result, MPI_INT32_T, tail, offset, dart_win_local_alloc);
+  MPI_Compare_and_swap (&unitid.id, compare, result, MPI_INT32_T, tail, offset, dart_win_local_alloc);
 	MPI_Win_flush (tail, dart_win_local_alloc);
 
 	/* If the old predecessor was -1, we will claim the lock, otherwise, do nothing. */
@@ -181,10 +182,10 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 
 dart_ret_t dart_lock_release (dart_lock_t lock)
 {
-  dart_unit_t unitid;
-  dart_team_myid(lock -> teamid, &unitid);
+  dart_team_unit_t unitid;
+  dart_team_myid(lock->teamid, &unitid);
   if (lock -> is_acquired == 0) {
-    printf("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
+    printf("Warning: RELEASE - %2d has not yet required the lock\n", unitid.id);
     return DART_OK;
   }
   dart_gptr_t gptr_tail;
@@ -213,14 +214,14 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 
   /* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
    * Otherwise, we still need to send notification. */
-  MPI_Compare_and_swap(origin, &unitid, result, MPI_INT32_T, tail, offset_tail,
+  MPI_Compare_and_swap(origin, &unitid.id, result, MPI_INT32_T, tail, offset_tail,
                        dart_win_local_alloc);
   MPI_Win_flush(tail, dart_win_local_alloc);
 
   /* We are not at the tail of this lock queue. */
-  if (*result != unitid) {
-    DART_LOG_DEBUG("%2d: UNLOCK	- waiting for next pointer (tail = %d) in team %d",
-                   unitid, *result, (lock -> teamid));
+  if (*result != unitid.id) {
+    DART_LOG_DEBUG("UNLOCK - waiting for next pointer (tail = %d) in team %d",
+                   *result, (lock -> teamid));
 
     if (dart_segment_get_disp(seg_id, unitid, &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
@@ -228,15 +229,15 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 
     /* Waiting for the update of my next pointer finished. */
     while (1) {
-      MPI_Fetch_and_op(NULL, &next, MPI_INT, unitid, disp_list, MPI_NO_OP, win);
-      MPI_Win_flush(unitid, win);
+      MPI_Fetch_and_op(NULL, &next, MPI_INT, unitid.id, disp_list, MPI_NO_OP, win);
+      MPI_Win_flush(unitid.id, win);
 
       if (next != -1) {
         break;
       }
     }
 
-    DART_LOG_DEBUG("%2d: UNLOCK	- notifying %d in team %d", unitid, next,
+    DART_LOG_DEBUG("UNLOCK - notifying %d in team %d", next,
                    (lock -> teamid));
 
     /* Notifying the next unit waiting on the lock queue. */
@@ -246,8 +247,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
     MPI_Win_sync(win);
   }
   lock -> is_acquired = 0;
-  DART_LOG_DEBUG("%2d: UNLOCK	- release lock in team %d", unitid,
-                 (lock -> teamid));
+  DART_LOG_DEBUG("UNLOCK - release lock in team %d", (lock -> teamid));
   return DART_OK;
 }
 
@@ -255,18 +255,18 @@ dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_unit_t unitid;
+	dart_team_unit_t unitid;
 	DART_GPTR_COPY(gptr_tail, (*lock) -> gptr_tail);
 	DART_GPTR_COPY(gptr_list, (*lock) -> gptr_list);
 
 	dart_team_myid (teamid, &unitid);
-	if (unitid == 0)
+	if (unitid.id == 0)
 	{
 		dart_memfree (gptr_tail);
 	}
 
 	dart_team_memfree (teamid, gptr_list);
-	DART_LOG_DEBUG ("%2d: Free	- done in team %d", unitid, teamid);
+	DART_LOG_DEBUG ("Free - done in team %d", teamid);
 	*lock = NULL;
 	free (*lock);
 	return DART_OK;

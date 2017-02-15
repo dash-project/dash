@@ -146,7 +146,8 @@ dart_ret_t dart_group_intersect(const dart_group_t   g1,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_addmember(dart_group_t g, dart_unit_t unitid);
+dart_ret_t dart_group_addmember(dart_group_t       g,
+                                dart_global_unit_t unitid);
 
 
 /**
@@ -160,8 +161,8 @@ dart_ret_t dart_group_addmember(dart_group_t g, dart_unit_t unitid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_delmember(dart_group_t g,
-                                dart_unit_t  unitid);
+dart_ret_t dart_group_delmember(dart_group_t        g,
+                                dart_global_unit_t  unitid);
 
 
 /**
@@ -177,7 +178,7 @@ dart_ret_t dart_group_delmember(dart_group_t g,
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_ismember(const dart_group_t   g,
-                               dart_unit_t          unitid,
+                               dart_global_unit_t   unitid,
                                int32_t            * ismember);
 
 
@@ -210,7 +211,7 @@ dart_ret_t dart_group_size(const dart_group_t   g,
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_getmembers(const dart_group_t   g,
-                                 dart_unit_t        * unitids);
+                                 dart_global_unit_t * unitids);
 
 
 /**
@@ -289,6 +290,8 @@ dart_ret_t dart_group_locality_split(const dart_group_t        g,
 #define DART_TEAM_ALL   ((dart_team_t)0)
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_TEAM_NULL  ((dart_team_t)-1)
+
+#define DART_GROUP_NULL ((struct dart_group_struct*)NULL)
 /** \endcond */
 
 
@@ -421,7 +424,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid);
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid);
 
 /**
  * Return the size of the specified team.
@@ -446,7 +449,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_myid(dart_unit_t *myid);
+dart_ret_t dart_myid(dart_global_unit_t *myid);
 
 /**
  * Return the size of the default team \ref DART_TEAM_ALL
@@ -474,9 +477,9 @@ dart_ret_t dart_size(size_t *size);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_unit_l2g(dart_team_t team,
-                              dart_unit_t localid,
-                              dart_unit_t *globalid);
+dart_ret_t dart_team_unit_l2g(dart_team_t          team,
+                              dart_team_unit_t     localid,
+                              dart_global_unit_t * globalid);
 
 /**
  * Convert from a global to a local unit ID
@@ -491,9 +494,9 @@ dart_ret_t dart_team_unit_l2g(dart_team_t team,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_unit_g2l(dart_team_t team,
-                              dart_unit_t globalid,
-                              dart_unit_t *localid);
+dart_ret_t dart_team_unit_g2l(dart_team_t         team,
+                              dart_global_unit_t  globalid,
+                              dart_team_unit_t * localid);
 
 /** \} */
 
