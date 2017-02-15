@@ -32,6 +32,7 @@ typedef struct cli_params_t {
   int         tile_x;
   int         tile_y;
   bool        blocked_display;
+  bool        balance_extents;
   bool        cout;
 } cli_params;
 
@@ -174,6 +175,9 @@ int main(int argc, char* argv[])
       dash::SizeSpec<2, extent_t> sizespec(params.size_y,  params.size_x);
       dash::TeamSpec<2, index_t>  teamspec(params.units_y, params.units_x);
 
+      if(params.balance_extents) {
+        teamspec.balance_extents();
+      }
       if (params.tile_x < 0 && params.tile_y < 0) {
         auto max_team_extent = std::max(teamspec.extent(0),
                                         teamspec.extent(1));
@@ -220,6 +224,7 @@ cli_params parse_args(int argc, char * argv[])
   params.tile_x  = -1;
   params.tile_y  = -1;
   params.blocked_display = false;
+  params.balance_extents = false;
   params.cout    = false;
   params.type    = "summa";
 
@@ -239,6 +244,9 @@ cli_params parse_args(int argc, char * argv[])
       params.tile_x  = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-p") {
       params.cout    = true;
+      i -= 2;
+    } else if (flag == "-e") {
+      params.balance_extents = true;
       i -= 2;
     } else if (flag == "-b") {
       params.blocked_display = true;
@@ -267,9 +275,15 @@ void print_params(const cli_params & params)
        << std::fixed << std::setw(w) << params.units_y << ", "
        << std::fixed << std::setw(w) << params.units_x << " )"
        << endl
+       << "    balance extents (-e): "
+       << (params.balance_extents ? "yes" : "no")
+       << endl
        << "    tile (-t <rows> <cols>): ( "
        << std::fixed << std::setw(w) << params.tile_y << ", "
        << std::fixed << std::setw(w) << params.tile_x << " )"
+       << endl
+       << "    blocked display (-b): "
+       << (params.blocked_display ? "yes" : "no")
        << endl
        << endl;
 }
