@@ -192,7 +192,7 @@ public:
    *       not have a pattern. The pattern of the referenced matrix
    *       refers to the global data domain.
    */
-  inline const PatternT    & pattern()             const;
+  constexpr    PatternT    & pattern()             const;
 
   inline       iterator      begin()                     noexcept;
   inline const_iterator      begin()               const noexcept;
@@ -242,15 +242,15 @@ public:
    * Subscript operator, access element at given offset in
    * global element range.
    */
-  const LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
+  constexpr LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
   const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n) const;
-  inline const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+  constexpr LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     col(size_type n) const;
-  inline const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+  constexpr LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     row(size_type n) const;
 
   template<dim_t SubDimension>
@@ -267,7 +267,7 @@ public:
    *
    * \see  sub
    */
-  inline const LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
+  constexpr LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
     /// Offset of first row in range
     size_type offset,
     /// Number of rows in the range
@@ -282,7 +282,7 @@ public:
    *
    * \see  sub
    */
-  inline const LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
+  constexpr LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
     /// Offset of first column in range
     size_type offset,
     /// Number of columns in the range
