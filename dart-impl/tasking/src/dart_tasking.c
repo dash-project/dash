@@ -59,6 +59,13 @@ dart_tasking_phase()
   return dart__base__tasking__phase();
 }
 
+
+dart_taskref_t
+dart_tasking_current_task()
+{
+  return dart__base__tasking__current_task();
+}
+
 //void
 //dart_taskgraph_print()
 //{

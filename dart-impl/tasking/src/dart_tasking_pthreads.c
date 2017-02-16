@@ -339,6 +339,7 @@ dart_ret_t
 dart__base__tasking__task_complete()
 {
   // TODO: How to determine that all tasks have successfully finished?
+  dart_tasking_remote_progress();
 
   // 1) wake up all threads (might later be done earlier)
   pthread_cond_broadcast(&task_avail_cond);
@@ -386,12 +387,18 @@ dart__base__tasking__phase()
     DART_LOG_ERROR("Switching phases can only be done by the master thread!");
     return DART_ERR_INVAL;
   }
-  dart_barrier(DART_TEAM_ALL);
+//  dart_barrier(DART_TEAM_ALL);
   dart_tasking_remote_progress();
   dart_tasking_datadeps_end_phase(root_task.phase);
   root_task.phase++;
   DART_LOG_INFO("Starting task phase %li\n", root_task.phase);
   return DART_OK;
+}
+
+dart_taskref_t
+dart__base__tasking__current_task()
+{
+  return thread_pool[dart__base__tasking__thread_num()].current_task;
 }
 
 dart_ret_t

@@ -15,7 +15,7 @@ typedef enum {
   DART_TASK_FINISHED
 } dart_task_state_t;
 
-typedef struct dart_task_data {
+struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
   dart_task_action_t         fn;              // the action to be invoked
@@ -29,7 +29,7 @@ typedef struct dart_task_data {
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   uint64_t                   phase;
-} dart_task_t;
+};
 
 #define DART_STACK_PUSH(_head, _elem) \
     _elem->next = _head;              \
@@ -76,6 +76,9 @@ dart__base__tasking__task_complete();
 
 dart_ret_t
 dart__base__tasking__phase();
+
+dart_taskref_t
+dart__base__tasking__current_task();
 
 //void
 //dart__base__tasking_print_taskgraph();

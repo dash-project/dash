@@ -165,8 +165,8 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
 }
 
 /**
- * Iterate over the list of unhandled remote dependencies to and do one of
- * the following:
+ * Iterate over the list of unhandled remote dependencies to find remote tasks that
+ * depend on this task and do one of the following:
  * 1) If  the remote dependency and \c task are in the same phase, the
  *    remote dependency will be handled by \c task.
  * 2) If the remote dependency stems from a phase earlier than the phase of
@@ -178,6 +178,8 @@ check_unresolved_remote_deps(
   dart_task_t           *task,
   const dart_task_dep_t *dep)
 {
+  DART_LOG_DEBUG("Checking whether local task %p can handle previously unhandled"
+                 "dependencies", task);
   if (IS_OUT_DEP(*dep) && unhandled_remote_deps != NULL) {
     dart_mutex_lock(&local_deps_mutex);
     dart_dephash_elem_t *elem = unhandled_remote_deps;
@@ -186,7 +188,7 @@ check_unresolved_remote_deps(
       dart_dephash_elem_t *next = elem->next;
       if (elem->taskdep.gptr.addr_or_offs.addr == dep->gptr.addr_or_offs.addr)
       {
-        if (elem->phase == task->phase) {
+        if (elem->phase >= task->phase) {
           // move the remote request from unhandled into the task
           if (!prev) {
             unhandled_remote_deps = elem->next;
@@ -194,8 +196,10 @@ check_unresolved_remote_deps(
             prev->next = elem->next;
           }
           DART_LOG_TRACE("Previously unhandled remote dependency "
-                         "{address:%p, origin=%i} to be handled by task %p",
-                         dep->gptr.addr_or_offs.addr, dep->gptr.unitid, task);
+                         "{address:%p, origin=%i, ph:%i} to be handled by "
+                         "task %p",
+                         dep->gptr.addr_or_offs.addr,
+                         elem->taskdep.gptr.unitid, elem->phase, task);
           dart_mutex_lock(&(task->mutex));
           DART_STACK_PUSH(task->remote_successor, elem);
           dart_mutex_unlock(&(task->mutex));
@@ -315,33 +319,46 @@ dart_ret_t dart_tasking_datadeps_handle_task(
  * Note that \c dep has to be a IN dependency.
  */
 dart_ret_t dart_tasking_datadeps_handle_remote_task(
-    const dart_phase_dep_t *dep,
+    const dart_phase_dep_t *rdep,
     const taskref           remote_task,
     dart_global_unit_t      origin)
 {
-  if (dep->dep.type != DART_DEP_IN) {
+  if (rdep->dep.type != DART_DEP_IN) {
     DART_LOG_ERROR("Remote dependencies with type other than DART_DEP_IN are not supported!");
     return DART_ERR_INVAL;
   }
 
-  int slot = hash_gptr(dep->dep.gptr);
+  int slot = hash_gptr(rdep->dep.gptr);
   for (dart_dephash_elem_t *elem = local_deps[slot]; elem != NULL; elem = elem->next) {
-    if (elem->taskdep.gptr.addr_or_offs.offset == dep->dep.gptr.addr_or_offs.offset
+    if (elem->taskdep.gptr.addr_or_offs.offset == rdep->dep.gptr.addr_or_offs.offset
         && IS_OUT_DEP(elem->taskdep)) {
       dart_task_t *task = elem->task.local;
 
       dart_mutex_lock(&(task->mutex));
       if (task->state != DART_TASK_FINISHED) {
-        dart_dephash_elem_t *rs = dephash_allocate_elem(&dep->dep, remote_task);
-        // the taskdep's gptr unit is used to store the origin
-        rs->taskdep.gptr.unitid = origin.id;
-        rs->phase = dep->phase;
-        DART_STACK_PUSH(task->remote_successor, rs);
-        dart_mutex_unlock(&(task->mutex));
-      } else {
+        if (task->phase <= rdep->phase) {
+          // the local task will resolve this remote dependency
+          dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task);
+          // the taskdep's gptr unit is used to store the origin
+          rs->taskdep.gptr.unitid = origin.id;
+          rs->phase = rdep->phase;
+          DART_STACK_PUSH(task->remote_successor, rs);
+          dart_mutex_unlock(&(task->mutex));
+        } else {
+          dart_mutex_unlock(&(task->mutex));
+          // the local task has a direct dependency to remote_task
+          dart_tasking_remote_direct_taskdep(origin, task, remote_task);
+          int32_t unresolved_deps = DART_INC32_AND_FETCH(
+                                      &elem->task.local->unresolved_deps);
+          DART_LOG_DEBUG("handle_remote_task: task %p has %i dependencies",
+                         task,
+                         unresolved_deps);
+          continue;
+        }
+      } else if (task->phase <= rdep->phase) {
         dart_mutex_unlock(&(task->mutex));
         // the task is already finished --> send release immediately
-        dart_tasking_remote_release(origin, remote_task, &dep->dep);
+        dart_tasking_remote_release(origin, remote_task, &rdep->dep);
       }
       DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of task %p from origin %i",
         task, remote_task.remote, origin.id);
@@ -350,12 +367,12 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   }
 
   DART_LOG_INFO("Cannot find local task that satisfies dependency %p for task %p from unit %i",
-    dep->dep.gptr.addr_or_offs.addr, remote_task.remote, origin.id);
+    rdep->dep.gptr.addr_or_offs.addr, remote_task.remote, origin.id);
   // cache this request and resolve it later
-  dart_dephash_elem_t *rs = dephash_allocate_elem(&dep->dep, remote_task);
+  dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task);
   dart_mutex_lock(&local_deps_mutex);
   rs->taskdep.gptr.unitid = origin.id;
-  rs->phase = dep->phase;
+  rs->phase = rdep->phase;
   DART_STACK_PUSH(unhandled_remote_deps, rs);
   dart_mutex_unlock(&local_deps_mutex);
   return DART_OK;
@@ -489,7 +506,8 @@ send_direct_dependencies(const dart_dephash_elem_t *remotedep)
  */
 static dart_ret_t release_remote_dependencies(dart_task_t *task)
 {
-  DART_LOG_TRACE("Releasing remote dependencies for task %p", task);
+  DART_LOG_TRACE("Releasing remote dependencies for task %p (rs:%p)",
+                 task, task->remote_successor);
   dart_dephash_elem_t *rs = task->remote_successor;
   while (rs != NULL) {
     dart_dephash_elem_t *tmp = rs;

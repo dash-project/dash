@@ -241,7 +241,7 @@ static void release_remote_dependency(void *data)
   DART_ASSERT(response->rtask.local != NULL);
   dart_task_t *task = response->rtask.local;
   DART_LOG_INFO("release_remote_dependency : Received remote dependency "
-                "release from unit %i for task %p (segid=%i, offset=%p, ph=%li)",
+                "release from unit %i for task %p (segid=%i, offset=%p)",
                 response->runit.id, task, response->gptr.segid,
                 response->gptr.addr_or_offs.offset);
 

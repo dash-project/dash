@@ -30,6 +30,9 @@ typedef struct dart_task_dep {
   dart_task_deptype_t type;
 } dart_task_dep_t;
 
+typedef struct dart_task_data dart_task_t;
+
+typedef dart_task_t* dart_taskref_t;
 
 /**
  * \brief Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
@@ -77,6 +80,9 @@ dart_tasking_fini();
  */
 dart_ret_t
 dart_tasking_phase();
+
+dart_taskref_t
+dart_tasking_current_task();
 //
 //void
 //dart_taskgraph_print();
