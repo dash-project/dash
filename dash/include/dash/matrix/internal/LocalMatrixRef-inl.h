@@ -410,9 +410,9 @@ const LocalMatrixRef<T, NumDim, CUR, PatternT>
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t SubDimension>
 LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
+const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
-  size_type n)
+  size_type n) const
 {
   static_assert(
       NumDim-1 > 0,
@@ -445,17 +445,17 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
+const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::col(
-  size_type n)
+  size_type n) const
 {
   return sub<1>(n);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
-  size_type n)
+const LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
+  size_type n) const
 {
   return sub<0>(n);
 }
@@ -463,10 +463,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t SubDimension>
 LocalMatrixRef<T, NumDim, NumDim, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
+const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
   size_type offset,
-  size_type extent)
+  size_type extent) const
 {
   DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", SubDimension);
   DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", offset);
@@ -489,19 +489,19 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, NumDim, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
+const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::rows(
   size_type offset,
-  size_type extent)
+  size_type extent) const
 {
   return sub<0>(offset, extent);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, NumDim, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
+const LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
   size_type offset,
-  size_type extent)
+  size_type extent) const
 {
   return sub<1>(offset, extent);
 }

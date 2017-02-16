@@ -246,17 +246,17 @@ public:
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
-  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
-    sub(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
-    col(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
-    row(size_type n);
+  const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+    sub(size_type n) const;
+  inline const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+    col(size_type n) const;
+  inline const LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+    row(size_type n) const;
 
   template<dim_t SubDimension>
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> sub(
+  const LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> sub(
     size_type n,
-    size_type range);
+    size_type range) const;
 
   /**
    * Create a view representing the matrix slice within a row
@@ -267,11 +267,11 @@ public:
    *
    * \see  sub
    */
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
+  inline const LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
     /// Offset of first row in range
     size_type offset,
     /// Number of rows in the range
-    size_type range);
+    size_type range) const;
 
   /**
    * Create a view representing the matrix slice within a column
@@ -282,11 +282,11 @@ public:
    *
    * \see  sub
    */
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
+  inline const LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
     /// Offset of first column in range
     size_type offset,
     /// Number of columns in the range
-    size_type extent);
+    size_type extent) const;
 
 private:
   MatrixRefView_t _refview;
