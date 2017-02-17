@@ -50,6 +50,27 @@ namespace test {
 
 using dash::test::range_str;
 
+TEST_F(NViewTest, ViewTraits)
+{
+  dash::Matrix<int, 2> matrix(dash::size() * 10);
+  auto v_sub  = dash::sub(0, 10, matrix);
+  auto i_sub  = dash::index(v_sub);
+  auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, matrix)));
+  auto v_loc  = dash::local(matrix);
+
+  static_assert(
+      dash::view_traits<decltype(v_sub)>::is_view::value == true,
+      "view traits is_view for sub(dash::Matrix) not matched");
+  static_assert(
+      dash::view_traits<decltype(v_ssub)>::is_view::value == true,
+      "view traits is_view for sub(sub(dash::Matrix)) not matched");
+  static_assert(
+      dash::view_traits<decltype(v_sub)>::is_origin::value == false,
+      "view traits is_origin for sub(dash::Matrix) not matched");
+  static_assert(
+      dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
+      "view traits is_origin for sub(sub(dash::Matrix)) not matched");
+}
 
 TEST_F(NViewTest, MatrixBlocked1DimLocalView)
 {
@@ -118,7 +139,6 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
   EXPECT_EQ_U(nview_rc_s_g.extents(), nview_cr_s_g.extents());
   EXPECT_EQ_U(nview_rc_s_g.offsets(), nview_cr_s_g.offsets());
 
-#if __TODO__
   auto nview_rows_l = dash::local(nview_rows_g);
 
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimLocalView",
@@ -126,7 +146,6 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
 
   EXPECT_EQ_U(2,             nview_rows_l.extent<0>());
   EXPECT_EQ_U(block_cols,    nview_rows_l.extent<1>());
-#endif
 }
 
 TEST_F(NViewTest, MatrixBlocked1DimSub)
@@ -234,6 +253,12 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
       DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
                      "row[", r, "]",
                      range_str(row_view));
+    }
+    for (int r = 0; r < nview_rows; ++r) {
+      auto row_view = dash::sub<0>(r, r+1, nview_sub);
+      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+                     "index row[", r, "]",
+                     range_str(dash::index(row_view)));
     }
   }
 

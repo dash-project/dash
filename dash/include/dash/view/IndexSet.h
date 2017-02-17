@@ -286,14 +286,16 @@ class IndexSetBase
   }
 
   constexpr const local_type & local() const {
-//  -> decltype(dash::index(dash::local(
-//                std::declval< ViewType & >() ))) {
+//constexpr auto local() const
+//-> decltype(dash::index(dash::local(
+//             std::declval< const ViewType & >() ))) {
     return dash::index(dash::local(_view));
   }
 
   constexpr const global_type & global() const {
-//  -> decltype(dash::index(dash::global(
-//                std::declval< ViewType & >() ))) {
+//constexpr auto global() const
+//-> decltype(dash::index(dash::global(
+//              std::declval< const ViewType & >() ))) {
     return dash::index(dash::global(_view));
   }
 
@@ -675,10 +677,27 @@ class IndexSetSub
 
   // ---- access ----------------------------------------------------------
 
+  /**
+   * Domain index at specified linear offset.
+   */
   constexpr index_type operator[](index_type image_index) const {
 //  TODO:
 //  return this->domain()[_domain_begin_idx + image_index];
-    return (_domain_begin_idx + image_index);
+    return ( _domain_begin_idx +
+             ( NDim == 1
+               ? image_index
+               : extent(0) * (image_index / extent(0))
+                 + (image_index % extent(0))
+             )
+           );
+  }
+
+  /**
+   * Domain index at specified Cartesian coordinates.
+   */
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & coords) const {
+    return -1;
   }
 
   constexpr iterator begin() const {
