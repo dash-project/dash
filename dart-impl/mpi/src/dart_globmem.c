@@ -159,6 +159,9 @@ dart_team_memalloc_aligned(
     return DART_ERR_INVAL;
   }
 
+  DART_LOG_TRACE("dart_team_memalloc_aligned : dts:%i nelem:%zu nbytes:%zu",
+    dtype_size, nelem, nbytes);
+
   int16_t segid = DART_FETCH_AND_INC16(&dart_memid);
 
   uint16_t index;
@@ -212,6 +215,14 @@ dart_team_memalloc_aligned(
    * !!!   (because the shared array has not been allocated correctly)."
    * !!!
    * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   *
+   * !!! BUG IN OPENMPI 1.10.5 and 2.0.2
+   * !!!
+   * !!! The alignment of the memory returned by MPI_Win_allocate_shared is not
+   * !!! guaranteed to be natural, i.e., on 64b systems it can be only 4 byte
+   * !!! if running with an odd number of processes.
+   * !!! The issue has been reported.
+   * !!!
    *
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
@@ -345,8 +356,8 @@ dart_team_memalloc_aligned(
 
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
-    "across team %d",
-		nbytes, 0, gptr_unitid, teamid);
+    "baseptr:%p across team %d",
+    nbytes, 0, gptr_unitid, sub_mem, teamid);
 
 	return DART_OK;
 }
