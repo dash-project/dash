@@ -47,6 +47,7 @@ else()
     GIT_TAG master
     TIMEOUT 10
     PREFIX "${GTEST_PREFIX}"
+    CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
     INSTALL_COMMAND ""
     # Wrap download, configure and build steps in a script to log output
     LOG_DOWNLOAD ON
