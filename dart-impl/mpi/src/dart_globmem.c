@@ -204,11 +204,23 @@ dart_team_memalloc_aligned(
 
   *gptr = DART_GPTR_NULL;
 
+  DART_LOG_TRACE("dart_team_memalloc_aligned : dts:%i nelem:%zu nbytes:%zu",
+    dtype_size, nelem, nbytes);
+
+
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
+
+  // check for overflow
+  if (team_data->dart_memid == INT16_MAX || team_data->dart_memid <= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
+    return DART_ERR_INVAL;
+  }
+  int dart_memid = team_data->dart_memid++;
 
   MPI_Comm  comm = team_data->comm;
 
@@ -241,6 +253,14 @@ dart_team_memalloc_aligned(
    * !!!   (because the shared array has not been allocated correctly)."
    * !!!
    * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   *
+   * !!! BUG IN OPENMPI 1.10.5 and 2.0.2
+   * !!!
+   * !!! The alignment of the memory returned by MPI_Win_allocate_shared is not
+   * !!! guaranteed to be natural, i.e., on 64b systems it can be only 4 byte
+   * !!! if running with an odd number of processes.
+   * !!! The issue has been reported.
+   * !!!
    *
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
@@ -330,7 +350,7 @@ dart_team_memalloc_aligned(
   /* Updating the translation table of teamid with the created
    * (offset, win) infos */
   dart_segment_info_t item;
-  item.seg_id  = team_data->dart_memid;
+  item.seg_id  = dart_memid;
   item.size    = nbytes;
   item.disp    = disp_set;
   item.flags   = 0;
@@ -349,17 +369,16 @@ dart_team_memalloc_aligned(
   /* -- Updating infos on gptr -- */
   /* Segid equals to dart_memid (always a positive integer), identifies an
    * unique collective global memory. */
-  gptr->segid  = team_data->dart_memid;
+  gptr->segid  = dart_memid;
   gptr->unitid = gptr_unitid;
   gptr->teamid = teamid;
   gptr->addr_or_offs.offset = 0;
 
-	team_data->dart_memid++;
 
   DART_LOG_DEBUG(
     "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
-    "across team %d",
-		nbytes, 0, gptr_unitid, teamid);
+    "baseptr:%p across team %d",
+    nbytes, 0, gptr_unitid, sub_mem, teamid);
 
 	return DART_OK;
 }
@@ -449,6 +468,14 @@ dart_team_memregister_aligned(
     return DART_ERR_INVAL;
   }
 
+  if (team_data->dart_registermemid == INT16_MIN ||
+      team_data->dart_registermemid >= 0) {
+    DART_LOG_ERROR(
+        "Failed to allocate segment ID, too many segments already allocated?");
+    return DART_ERR_INVAL;
+  }
+  int dart_registermemid = team_data->dart_registermemid--;
+
   MPI_Aint disp;
   MPI_Aint * disp_set = (MPI_Aint *)malloc(size * sizeof(MPI_Aint));
 
@@ -459,7 +486,7 @@ dart_team_memregister_aligned(
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
   dart_segment_info_t item;
-  item.seg_id  = team_data->dart_registermemid;
+  item.seg_id  = dart_registermemid;
   item.size    = nbytes;
   item.disp    = disp_set;
   item.win     = MPI_WIN_NULL;
@@ -478,8 +505,6 @@ dart_team_memregister_aligned(
   gptr->segid  = item.seg_id;
   gptr->teamid = teamid;
   gptr->addr_or_offs.offset = 0;
-
-  team_data->dart_registermemid--;
 
 #if defined(DART_ENABLE_LOGGING)
   dart_team_unit_t unitid;

@@ -12,8 +12,6 @@
 #include <string.h>
 #include <inttypes.h>
 
-#define DART_MAX_LENGTH (1024*1024*16)
-
 // forward declaration
 struct dart_buddy;
 extern char* dart_mempool_localalloc;
@@ -28,10 +26,10 @@ extern struct dart_buddy* dart_localpool;
  * 2**(level). The internal memory requirements are
  * O(2**(2*level)).
  *
- * \param level The number of levels of the internal binary tree.
+ * \param size The size of the memory pool managed by the buddy allocator.
  */
 struct dart_buddy *
-dart_buddy_new(int level);
+dart_buddy_new(size_t size);
 
 /**
  * Delete the given buddy allocator instance.

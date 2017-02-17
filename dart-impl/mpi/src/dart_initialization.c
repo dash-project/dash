@@ -17,7 +17,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
-#define DART_BUDDY_ORDER 24
+#define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
@@ -59,7 +59,7 @@ dart_ret_t do_init()
 
   team_data->comm = DART_COMM_WORLD;
 
-  dart_localpool = dart_buddy_new(DART_BUDDY_ORDER);
+  dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -69,14 +69,14 @@ dart_ret_t do_init()
 
   if (sharedmem_comm != MPI_COMM_NULL) {
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)",
-                   DART_MAX_LENGTH);
+                   DART_LOCAL_ALLOC_SIZE);
     MPI_Info win_info;
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
     /* Reserve a free shared memory block for non-collective
      * global memory allocation. */
     int ret = MPI_Win_allocate_shared(
-                DART_MAX_LENGTH,
+                DART_LOCAL_ALLOC_SIZE,
                 sizeof(char),
                 win_info,
                 sharedmem_comm,
@@ -120,7 +120,7 @@ dart_ret_t do_init()
   }
 #else
   MPI_Alloc_mem(
-    DART_MAX_LENGTH,
+    DART_LOCAL_ALLOC_SIZE,
     MPI_INFO_NULL,
     &dart_mempool_localalloc);
 #endif
@@ -130,7 +130,7 @@ dart_ret_t do_init()
    * Return in dart_win_local_alloc. */
   MPI_Win_create(
     dart_mempool_localalloc,
-    DART_MAX_LENGTH,
+    DART_LOCAL_ALLOC_SIZE,
     sizeof(char),
     MPI_INFO_NULL,
     DART_COMM_WORLD,
