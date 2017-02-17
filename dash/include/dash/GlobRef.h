@@ -262,7 +262,7 @@ public:
                           dash::Team::All().dart_id());
     dart_flush(_gptr);
   #else
-    nonconst_value_type val  = operator T();
+    nonconst_value_type val  = operator nonconst_value_type();
     val   += ref;
     operator=(val);
   #endif
@@ -270,14 +270,14 @@ public:
   }
 
   GlobRef<T> & operator-=(const nonconst_value_type& ref) {
-    nonconst_value_type val  = operator T();
+    nonconst_value_type val  = operator nonconst_value_type();
     val   -= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator++() {
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return *this;
@@ -285,14 +285,14 @@ public:
 
   GlobRef<T> operator++(int) {
     GlobRef<T> result = *this;
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return result;
   }
 
   GlobRef<T> & operator--() {
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return *this;
@@ -300,28 +300,28 @@ public:
 
   GlobRef<T> operator--(int) {
     GlobRef<T> result = *this;
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return result;
   }
 
   GlobRef<T> & operator*=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     val   *= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator/=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     val   /= ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator^=(const nonconst_value_type& ref) {
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     val   ^= ref;
     operator=(val);
     return *this;
@@ -339,8 +339,7 @@ public:
   auto operator[](size_t pos) ->
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
-    T val = operator T();
-    nonconst_value_type val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     return val[pos];
   }
 #endif
