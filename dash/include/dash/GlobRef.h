@@ -106,9 +106,9 @@ public:
    *
    * Copy constructor.
    */
-  GlobRef(const self_t & other)
-  : _gptr(other._gptr)
-  { }
+  GlobRef(const self_t & other) = default;
+ 
+  GlobRef(self_t && other) = default;
 
   /**
    * TODO: Try deleting copy constructors to preserve unified copy semantics
@@ -158,7 +158,7 @@ public:
     //       copies the GlobRef instance while
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
-    set(std::forward<GlobRefOrElementT>(other));
+    set(static_cast<T>(other));
     return *this;
   }
 
@@ -250,6 +250,7 @@ public:
 
   GlobRef<T> & operator+=(const nonconst_value_type& ref) {
   #if 0
+    // TODO: Alternative implementation, possibly more efficient:
     T add_val = ref;
     T old_val;
     dart_ret_t result = dart_fetch_and_op(

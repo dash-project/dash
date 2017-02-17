@@ -115,7 +115,7 @@ auto operator<<(
   ss << dash::internal::typestr(*dash::begin(range))
      << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it, ++pos) {
-    ss << static_cast<value_t>(*it) << " ";
+    ss << static_cast<const value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());
@@ -151,7 +151,7 @@ auto operator<<(
   ss << dash::internal::typestr(*dash::begin(range))
      << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it) {
-    ss << static_cast<value_t>(*it) << " ";
+    ss << static_cast<const value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());
