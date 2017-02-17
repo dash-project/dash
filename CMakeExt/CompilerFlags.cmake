@@ -19,8 +19,8 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS 
-  OR ENABLE_EXTENDED_COMPILER_WARNINGS 
+if (ENABLE_DEV_COMPILER_WARNINGS 
+  OR ENABLE_EXT_COMPILER_WARNINGS 
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -62,7 +62,7 @@ if (ENABLE_DEVELOPER_COMPILER_WARNINGS
   set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wno-ctor-dtor-privacy")
 
-  if (ENABLE_EXTENDED_COMPILER_WARNINGS)
+  if (ENABLE_EXT_COMPILER_WARNINGS)
     # this flag causes warnings on DASH_ASSERT_RETURNS
     set (DASH_DEVELOPER_CXX_FLAGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wsign-promo")
@@ -117,7 +117,7 @@ set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
 set (CC_WARN_FLAG  "${DASH_DEVELOPER_CC_FLAGS}")
 set (CXX_WARN_FLAG "${DASH_DEVELOPER_CXX_FLAGS}")
 
-if (ENABLE_DEVELOPER_COMPILER_WARNINGS)
+if (ENABLE_DEV_COMPILER_WARNINGS)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
     # Flags for C and C++:
     set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")

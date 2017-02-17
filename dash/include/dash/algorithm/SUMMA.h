@@ -129,19 +129,6 @@ using summa_pattern_constraints =
         dash::summa_pattern_layout_constraints,
         typename MatrixType::pattern_type>;
 
-template<
-  typename MatrixTypeA,
-  typename MatrixTypeB,
-  typename MatrixTypeC
->
-using check_summa_pattern_constraints =
-    typename std::enable_if<
-      summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
-      summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
-      summa_pattern_constraints<MatrixTypeA>::satisfied::value,
-      void>;
-
-
 /**
  * Multiplies two matrices using the SUMMA algorithm.
  * Performs \c (2 * (nunits-1) * nunits^2) async copy operations of
@@ -196,8 +183,7 @@ void summa(
                               >::satisfied::value;
 
   static_assert(
-      std::is_same<value_type, double>::value ||
-      std::is_same<value_type, float>::value,
+      std::is_floating_point<value_type>::value,
       "dash::summa expects matrix element type double or float");
 
   DASH_LOG_DEBUG("dash::summa()");
@@ -628,16 +614,11 @@ void mmult(
 
 #else // DOXYGEN
 
-template<
+template <
   typename MatrixTypeA,
   typename MatrixTypeB,
-  typename MatrixTypeC
->
-typename
-dash::check_summa_pattern_constraints<
-  MatrixTypeA,
-  MatrixTypeB,
-  MatrixTypeC >::type
+  typename MatrixTypeC >
+auto
 mmult(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,
@@ -646,7 +627,12 @@ mmult(
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC & C)
-{
+  -> typename std::enable_if<
+                summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeB>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeC>::satisfied::value,
+                void
+              >::type {
   dash::summa(A, B, C);
 }
 

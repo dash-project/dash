@@ -32,8 +32,7 @@ inline dart_ret_t transform_blocking_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
   static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
       "Cannot accumulate unknown type!");
@@ -43,8 +42,7 @@ inline dart_ret_t transform_blocking_impl(
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush(dest);
   return result;
 }
@@ -57,8 +55,7 @@ dart_ret_t transform_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
   static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
       "Cannot accumulate unknown type!");
@@ -68,8 +65,7 @@ dart_ret_t transform_impl(
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush_local(dest);
   return result;
 }
@@ -160,13 +156,14 @@ template<
   class BinaryOperation >
 GlobOutputIt transform(
   /// Iterator on begin of first local range
-  InputIt        in_a_first,
+  InputIt         in_a_first,
   /// Iterator after last element of local range
-  InputIt        in_a_last,
+  InputIt         in_a_last,
   /// Iterator on begin of second local range
-  GlobInputIt    in_b_first,
+  GlobInputIt     in_b_first,
   /// Iterator on first element of global output range 
-  GlobOutputIt   out_first,
+  GlobOutputIt    out_first,
+  /// Reduce operation
   BinaryOperation binary_op);
 
 /**
@@ -294,8 +291,6 @@ GlobOutputIt transform(
 
   dash::util::Trace trace("transform");
 
-  // Resolve team from global iterator:
-  dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
   // Number of elements in local range:
   size_t num_local_elements     = std::distance(in_first, in_last);
@@ -307,8 +302,7 @@ GlobOutputIt transform(
       dest_gptr,
       in_first,
       num_local_elements,
-      binary_op.dart_operation(),
-      team.dart_id());
+      binary_op.dart_operation());
   trace.exit_state("transform_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
@@ -421,8 +415,7 @@ GlobOutputIt transform(
       dest_gptr,
       l_values,
       num_local_elements,
-      binary_op.dart_operation(),
-      team_in_a.dart_id());
+      binary_op.dart_operation());
   trace.exit_state("transform_blocking");
 
   return out_first + global_offset + num_local_elements;
@@ -446,7 +439,10 @@ GlobAsyncRef<ValueType> transform(
   InputIt                 in_a_last,
   GlobInputIt             in_b_first,
   GlobAsyncRef<ValueType> out_first,
-  BinaryOperation         binary_op   = dash::plus<ValueType>()) {
+  BinaryOperation         binary_op  = dash::plus<ValueType>()) {
+  DASH_THROW(
+    dash::exception::NotImplemented,
+    "Async variant of dash::transform is not implemented");
 }
 
 } // namespace dash

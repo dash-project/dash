@@ -101,7 +101,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
     int expected = (10000 + l_idx) +
                    ((dash::size() * (dash::size() + 1)) / 2);
     LOG_MESSAGE("TransformTest.ArrayGlobalPlusLocalBlocking: "
-                "array_dest.local[%lu]: %d",
+                "array_dest.local[%lu]: %p",
                 l_idx, &array_dest.local[l_idx]);
     EXPECT_EQ_U(expected, array_dest.local[l_idx]);
   }
@@ -175,7 +175,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   EXPECT_EQ(matrix_size, matrix_a.size());
   EXPECT_EQ(extent_cols, matrix_a.extent(0));
   EXPECT_EQ(extent_rows, matrix_a.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %lu", matrix_size);
 
   // Fill matrix
   if(myid == 0) {

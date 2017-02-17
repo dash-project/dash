@@ -26,10 +26,6 @@ namespace internal {
 #define ASSERT_GT_U(e,a)  EXPECT_GT(e,a)  << "Unit " << dash::myid().id
 #define ASSERT_LE_U(e,a)  EXPECT_LE(e,a)  << "Unit " << dash::myid().id
 #define ASSERT_GE_U(e,a)  EXPECT_GE(e,a)  << "Unit " << dash::myid().id
-#define ASSERT_DOUBLE_EQ_U(e,a) \
-  EXPECT_DOUBLE_EQ(e,a) << "Unit " << dash::myid().id
-#define ASSERT_FLOAT_EQ_U(e,a)  \
-  EXPECT_FLOAT_EQ(e,a)  << "Unit " << dash::myid().id
 
 #define EXPECT_TRUE_U(b)  EXPECT_TRUE(b)  << "Unit " << dash::myid().id
 #define EXPECT_FALSE_U(b) EXPECT_FALSE(b) << "Unit " << dash::myid().id
@@ -49,6 +45,9 @@ namespace internal {
  *       GTest seems to have a workaround for that case, which we might
  *       adopt.
  */
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wconversion-null"
+#endif // defined(__GNUC__)
 template<typename T, typename S>
 typename std::enable_if<!std::is_floating_point<T>::value, ::testing::AssertionResult>::type
 assert_float_eq(

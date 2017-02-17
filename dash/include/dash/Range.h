@@ -85,18 +85,20 @@ class IteratorRange<Iterator *, Sentinel *>;
  * \concept{DashRangeConcept}
  */
 template <typename RangeType>
-constexpr auto begin(const RangeType & range)
-  -> decltype(range.begin()) {
-  return range.begin();
+constexpr auto begin(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).begin()) {
+//return range.begin();
+  return std::forward<RangeType>(range).begin();
 }
 
 /**
  * \concept{DashRangeConcept}
  */
 template <class RangeType>
-constexpr auto end(const RangeType & range)
-  -> decltype(range.end()) {
-  return range.end();
+constexpr auto end(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).end()) {
+//return range.end();
+  return std::forward<RangeType>(range).end();
 }
 
 /**
@@ -104,9 +106,10 @@ constexpr auto end(const RangeType & range)
  */
 template <class RangeType>
 constexpr auto
-size(const RangeType & r)
+size(RangeType && r)
   -> decltype(r.size()) {
-  return r.size();
+//return r.size();
+  return std::forward<RangeType>(r).size();
 }
 
 

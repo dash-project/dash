@@ -95,7 +95,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   size_t block = 0;
   for (size_t u = 0; u < _dash_size; ++u) {
     if (u != static_cast<size_t>(dash::myid())) {
-      LOG_MESSAGE("Requesting block %d from unit %d", block, u);
+      LOG_MESSAGE("Requesting block %zu from unit %zu", block, u);
       dart_handle_t handle;
 
       dart_storage_t ds = dash::dart_storage<value_t>(block_size);
@@ -109,7 +109,8 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             ds.dtype,
             &handle)
       );
-      LOG_MESSAGE("dart_get_handle returned handle %p", static_cast<void*>(handle));
+      LOG_MESSAGE("dart_get_handle returned handle %p",
+                  static_cast<void*>(handle));
       handles.push_back(handle);
       ++block;
     }

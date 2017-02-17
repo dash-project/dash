@@ -71,17 +71,18 @@ class NViewOrigin
 
 public:
   typedef dash::default_index_t                                 index_type;
+  typedef dash::default_extent_t                                 size_type;
   typedef self_t                                               domain_type;
   typedef IndexSetIdentity<self_t>                          index_set_type;
 
 public:
-  typedef std::integral_constant<bool, false>   is_local;
-  typedef std::integral_constant<std::size_t, NDim>   rank;
+  typedef std::integral_constant<bool, false>        is_local;
+  typedef std::integral_constant<std::size_t, NDim>  rank;
 
 private:
-  std::array<index_type, NDim>                  _extents    = { };
-  std::array<index_type, NDim>                  _offsets    = { };
-  index_set_type                                _index_set;
+  std::array<size_type, NDim>                  _extents    = { };
+  std::array<index_type, NDim>                 _offsets    = { };
+  index_set_type                               _index_set;
 public:
   constexpr NViewOrigin()               = delete;
   constexpr NViewOrigin(self_t &&)      = default;
@@ -118,7 +119,7 @@ public:
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr const std::array<index_type, NDim> & extents() const {
+  constexpr const std::array<size_type, NDim> extents() const {
     return _extents;
   }
 
@@ -249,30 +250,22 @@ public:
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr auto extents() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<domain_type>::type
-         >().extents()) {
+  constexpr const std::array<size_type, NDim> extents() const {
     return domain().extents();
   }
 
   template <std::size_t ShapeDim>
-  constexpr index_type extent() const {
+  constexpr size_type extent() const {
     return domain().template extent<ShapeDim>();
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(std::size_t shape_dim) const {
     return domain().extent(shape_dim);
   }
 
   // ---- offsets ---------------------------------------------------------
 
-  constexpr auto offsets() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<domain_type>::type
-         >().offsets()) {
+  constexpr const std::array<index_type, NDim> & offsets() const {
     return domain().offsets();
   }
 
@@ -305,8 +298,8 @@ struct view_traits<NViewLocalMod<DomainType, NDim> > {
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetLocal< NViewLocalMod<DomainType, NDim> >
-                                                            index_set_type;
+  typedef dash::IndexSetLocal<
+            NViewLocalMod<DomainType, NDim> >               index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -389,11 +382,7 @@ public:
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr auto extents() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<domain_type>::type
-         >().extents()) {
+  constexpr const std::array<size_type, NDim> extents() const {
     return _index_set.extents();
   }
 
@@ -407,6 +396,10 @@ public:
   }
 
   // ---- offsets ---------------------------------------------------------
+
+  constexpr const std::array<index_type, NDim> & offsets() const {
+    return _index_set.offsets();
+  }
 
   // ---- size ------------------------------------------------------------
 
@@ -524,8 +517,13 @@ class NViewSubMod
 {
 public:
   typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
+
+  using value_type      = typename origin_type::value_type;
+  using reference       = typename origin_type::reference;
+  using const_reference = typename origin_type::const_reference;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
@@ -538,6 +536,22 @@ public:
   typedef self_t                                               global_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+            //  typename std::add_lvalue_reference<origin_type>::type
+                typename std::add_lvalue_reference<domain_type>::type
+              >() ))
+    iterator;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+            //  typename std::add_lvalue_reference<const origin_type>::type
+                typename std::add_lvalue_reference<const domain_type>::type
+              >() ))
+    const_iterator;
 
 private:
   index_type     _begin_idx;
@@ -626,30 +640,20 @@ public:
 
   // ---- access ----------------------------------------------------------
 
-  constexpr auto begin() const
-  -> decltype(dash::begin(
-                std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
-                >() )) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::begin(dash::index(*this));
+  constexpr const_iterator begin() const {
+    return this->domain().begin() + _index_set[0];
   }
 
-  constexpr auto end() const
-  -> decltype(dash::begin(
-                std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
-                >() )) {
-    return dash::begin(dash::domain(*this)) +
-             *dash::end(dash::index(*this));
+  constexpr const_iterator end() const {
+    return this->domain().begin() + *_index_set.end();
   }
 
-  constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(
-                  std::declval<
-                    typename std::add_lvalue_reference<domain_type>::type
-                  >() ))) {
-    return *(this->begin() + offset);
+  constexpr const_reference operator[](int offset) const {
+    return this->domain().begin()[offset];
+  }
+
+  reference operator[](int offset) {
+    return this->domain().begin()[offset];
   }
 
   constexpr const index_set_type & index_set() const {

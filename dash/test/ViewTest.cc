@@ -35,10 +35,11 @@ namespace test {
     typedef typename ValueRange::value_type value_t;
     std::ostringstream ss;
     auto idx = dash::index(vrange);
-    int  i   = 0;
+    int        i   = 0;
     for (const auto & v : vrange) {
-      ss << "[" << *(dash::begin(idx) + i) << "] "
-         << static_cast<value_t>(v) << " ";
+      ss << dash::internal::typestr(v)
+         << " [" << *(dash::begin(idx) + i) << "] "
+         << static_cast<const value_t>(v) << " ";
       ++i;
     }
     return ss.str();
@@ -284,6 +285,8 @@ TEST_F(ViewTest, Intersect1DimSingle)
   }
   array.barrier();
 
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array);
+
   // View to first two thirds of global array:
   auto gview_left   = dash::sub(sub_left_begin_gidx,
                                 sub_left_end_gidx,
@@ -296,6 +299,9 @@ TEST_F(ViewTest, Intersect1DimSingle)
   auto gview_isect  = dash::intersect(gview_left, gview_right);
 
   auto gindex_isect = dash::index(gview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gindex_isect);
 
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_left.size());

@@ -17,7 +17,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
-#define DART_BUDDY_ORDER 24
+#define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
@@ -54,7 +54,7 @@ dart_ret_t do_init()
 
   team_data->comm = DART_COMM_WORLD;
 
-  dart_localpool = dart_buddy_new(DART_BUDDY_ORDER);
+  dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -64,14 +64,14 @@ dart_ret_t do_init()
 
   if (sharedmem_comm != MPI_COMM_NULL) {
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)",
-                   DART_MAX_LENGTH);
+                   DART_LOCAL_ALLOC_SIZE);
     MPI_Info win_info;
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
     /* Reserve a free shared memory block for non-collective
      * global memory allocation. */
     int ret = MPI_Win_allocate_shared(
-                DART_MAX_LENGTH,
+                DART_LOCAL_ALLOC_SIZE,
                 sizeof(char),
                 win_info,
                 sharedmem_comm,
@@ -119,7 +119,7 @@ dart_ret_t do_init()
   }
 #else
   MPI_Alloc_mem(
-    DART_MAX_LENGTH,
+    DART_LOCAL_ALLOC_SIZE,
     MPI_INFO_NULL,
     &dart_mempool_localalloc);
 #endif
@@ -129,7 +129,7 @@ dart_ret_t do_init()
    * Return in dart_win_local_alloc. */
   MPI_Win_create(
     dart_mempool_localalloc,
-    DART_MAX_LENGTH,
+    DART_LOCAL_ALLOC_SIZE,
     sizeof(char),
     MPI_INFO_NULL,
     DART_COMM_WORLD,
@@ -194,7 +194,7 @@ dart_ret_t dart_init(
 dart_ret_t dart_init_thread(
   int*                  argc,
   char***               argv,
-  dart_thread_level_t * provided)
+  dart_thread_support_level_t * provided)
 {
   if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
@@ -213,21 +213,21 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
     int thread_required = MPI_THREAD_MULTIPLE;
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i\n", thread_provided);
 #else
     MPI_Init(argc, argv);
 #endif
   } else {
-#ifdef DART_ENABLE_THREADING
+#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i\n", thread_provided);
 #endif
   }
   *provided = (thread_provided == MPI_THREAD_MULTIPLE) ? DART_THREAD_MULTIPLE : DART_THREAD_SINGLE;
   DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s\n",
-            (provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
+            (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
   return do_init();
 }
