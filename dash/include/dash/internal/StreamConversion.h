@@ -113,14 +113,9 @@ auto operator<<(
   std::ostringstream ss;
   int pos = 0;
   ss << dash::internal::typestr(*dash::begin(range))
-     << " -> "
-     << dash::internal::typestr(static_cast<value_t>(*dash::begin(range)));
-  ss << " { ";
+     << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it, ++pos) {
-    if (pos % 5 == 0) {
-      ss << "[" << pos << "] ";
-    }
-    ss << static_cast<value_t>(*it) << " ";
+    ss << static_cast<const value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());
@@ -154,11 +149,9 @@ auto operator<<(
 
   std::ostringstream ss;
   ss << dash::internal::typestr(*dash::begin(range))
-     << " -> "
-     << dash::internal::typestr(static_cast<value_t>(*dash::begin(range)));
-  ss << " { ";
+     << " { ";
   for (auto it = dash::begin(range); it != dash::end(range); ++it) {
-    ss << static_cast<value_t>(*it) << " ";
+    ss << static_cast<const value_t>(*it) << " ";
   }
   ss << "}";
   return operator<<(o, ss.str());

@@ -41,10 +41,19 @@ namespace dash {
  */
 template<typename T>
 class Atomic {
+private:
+  T _value;
+  typedef Atomic<T> self_t;
+
 public:
   typedef T value_type;
 
   Atomic(const Atomic<T> & other) = delete;
+
+  /**
+   * Disabled assignment as this violates the atomic semantics
+   */
+  self_t & operator=(const self_t & other) = default;
 
   /**
    * Initializes the underlying value with desired.
@@ -53,17 +62,17 @@ public:
   Atomic(T value)
   : _value(value) { }
 
-  /// disabled as this violates the atomic semantics
-  T operator= (T value) = delete;
+  /**
+   * Disabled assignment as this violates the atomic semantics
+   */
+  T operator=(T value) = delete;
 
   /**
    * As \c Atomic is implemented as phantom type,
    * the value has to be queried using the \c dash::GlobRef
    */
-  operator T()          = delete;
+  operator T() = delete;
 
-private:
-  T _value;
 }; // class Atomic
 
 /**

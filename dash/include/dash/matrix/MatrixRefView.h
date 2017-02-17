@@ -90,9 +90,13 @@ class MatrixRefView
   MatrixRefView<T, NumDimensions, PatternT>(
     Matrix<T, NumDimensions, index_type, PatternT> * matrix);
 
-  GlobRef<T> global_reference() const;
+  GlobRef<T>       global_reference();
+  GlobRef<const T> global_reference() const;
 
-  GlobRef<T> global_reference(
+  GlobRef<T>       global_reference(
+    const ::std::array<typename PatternT::index_type, NumDimensions> & coords
+  );
+  GlobRef<const T> global_reference(
     const ::std::array<typename PatternT::index_type, NumDimensions> & coords
   ) const;
 };

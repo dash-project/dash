@@ -457,16 +457,16 @@ public:
   typedef typename std::make_unsigned<IndexType>::type             size_type;
   typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                   iterator;
-  typedef const GlobIter<value_type, PatternType>             const_iterator;
+  typedef GlobIter<      value_type, PatternType>                   iterator;
+  typedef GlobIter<const value_type, PatternType>             const_iterator;
   typedef       std::reverse_iterator<      iterator>       reverse_iterator;
   typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>                                reference;
-  typedef const GlobRef<value_type>                          const_reference;
+  typedef GlobRef<const value_type>                          const_reference;
 
   typedef       GlobIter<value_type, PatternType>                    pointer;
-  typedef const GlobIter<value_type, PatternType>              const_pointer;
+  typedef GlobIter<const value_type, PatternType>              const_pointer;
 
 /// Public types as required by dash container concept
 public:
@@ -648,15 +648,15 @@ public:
   typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
   typedef       GlobIter<value_type, PatternType>                   iterator;
-  typedef const GlobIter<value_type, PatternType>             const_iterator;
+  typedef GlobIter<const value_type, PatternType>             const_iterator;
   typedef       std::reverse_iterator<      iterator>       reverse_iterator;
   typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>                                reference;
-  typedef const GlobRef<value_type>                          const_reference;
+  typedef GlobRef<const value_type>                          const_reference;
 
   typedef       GlobIter<value_type, PatternType>                    pointer;
-  typedef const GlobIter<value_type, PatternType>              const_pointer;
+  typedef GlobIter<const value_type, PatternType>              const_pointer;
 
   typedef dash::GlobMem<value_type>                            glob_mem_type;
 
@@ -947,38 +947,48 @@ public:
    */
   constexpr const_iterator begin() const noexcept
   {
-    return m_begin;
+    return (const_cast<iterator &>(m_begin));
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  iterator end() noexcept
-  {
+  iterator end() noexcept {
     return m_end;
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  constexpr const_iterator end() const noexcept
-  {
-    return m_end;
+  constexpr const_iterator end() const noexcept {
+    return (const_cast<iterator &>(m_end));
   }
 
   /**
    * Native pointer to the first local element in the array.
    */
-  constexpr ElementType * lbegin() const noexcept
-  {
+  constexpr const ElementType * lbegin() const noexcept {
+    return m_lbegin;
+  }
+
+  /**
+   * Native pointer to the first local element in the array.
+   */
+  ElementType * lbegin() noexcept {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  constexpr ElementType * lend() const noexcept
-  {
+  constexpr const ElementType * lend() const noexcept {
+    return m_lend;
+  }
+
+  /**
+   * Native pointer to the end of the array.
+   */
+  ElementType * lend() noexcept {
     return m_lend;
   }
 
@@ -1153,7 +1163,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  constexpr const PatternType & pattern() const
+  constexpr const PatternType & pattern() const noexcept
   {
     return m_pattern;
   }
