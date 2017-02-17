@@ -106,6 +106,16 @@ public:
    *
    * Copy constructor.
    */
+  GlobRef(const self_t & other)
+  : _gptr(other._gptr)
+  { }
+
+  /**
+   * TODO: Try deleting copy constructors to preserve unified copy semantics
+   *       ref_a = ref_b.
+   *
+   * Copy constructor.
+   */
   template <class ElementT>
   GlobRef(
     const GlobRef<ElementT> & other)
@@ -152,7 +162,7 @@ public:
     return *this;
   }
 
-  operator T() const {
+  operator nonconst_value_type() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
