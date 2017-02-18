@@ -76,6 +76,11 @@ class MatrixRefView
   template<
     typename T_,
     dim_t NumDimensions1,
+    class PatternT_ >
+  friend class MatrixRefView;
+  template<
+    typename T_,
+    dim_t NumDimensions1,
     dim_t NumDimensions2,
     class PatternT_ >
   friend class LocalMatrixRef;
@@ -87,8 +92,14 @@ class MatrixRefView
   friend class Matrix;
 
   MatrixRefView<T, NumDimensions, PatternT>();
+
+  template <class T_>
   MatrixRefView<T, NumDimensions, PatternT>(
-    Matrix<T, NumDimensions, index_type, PatternT> * matrix);
+    const MatrixRefView<T_, NumDimensions, PatternT> & other);
+
+  template <class T_>
+  MatrixRefView<T, NumDimensions, PatternT>(
+    Matrix<T_, NumDimensions, index_type, PatternT> * matrix);
 
   GlobRef<T>       global_reference();
   GlobRef<const T> global_reference() const;

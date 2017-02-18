@@ -81,8 +81,10 @@ private:
     nonconst_value_type;
 public:
   typedef          ElementType                         value_type;
+
   typedef          ReferenceType                        reference;
   typedef typename ReferenceType::const_type      const_reference;
+
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 

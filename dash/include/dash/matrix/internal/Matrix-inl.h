@@ -154,7 +154,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   // Allocate and initialize memory
   // use _lcapacity as tje collective allocator requires symmetric allocations
   _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
-  _begin           = GlobIter_t(_glob_mem, _pattern);
+  _begin           = iterator(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _lbegin + _lsize;
   // Register team deallocator:
@@ -306,19 +306,19 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-typename Matrix<T, NumDim, IndexT, PatternT>::iterator
-Matrix<T, NumDim, IndexT, PatternT>
-::begin() noexcept
-{
-  return iterator(_begin);
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 constexpr typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::begin() const noexcept
 {
   return const_iterator(_begin);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+typename Matrix<T, NumDim, IndexT, PatternT>::iterator
+Matrix<T, NumDim, IndexT, PatternT>
+::begin() noexcept
+{
+  return iterator(_begin);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -378,7 +378,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-constexpr const MatrixRef<T, NumDim, NumDim-1, PatternT>
+constexpr MatrixRef<const T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos) const
 {
