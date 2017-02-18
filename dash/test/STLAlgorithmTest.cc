@@ -91,6 +91,22 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   // Global-to-global copy using std::copy:
   if (dash::myid() == 0) {
     std::copy(array_a.begin(), array_a.end(), array_b.begin());
+
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_a);
+
+    auto a_first = array_a.begin();
+    auto b_first = array_b.begin();
+    while (a_first != array_a.end()) {
+      *b_first++ == *a_first++;
+    }
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
+
+    for (int l = 0; l < array_a.size(); l++) {
+      DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal",
+                         dash::internal::typestr(array_b[l]));
+      array_b[l] = array_a[l];
+    }
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
   }
   // Wait until copy operation is completed:
   dash::barrier();
@@ -99,7 +115,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   lidx = 0;
   for (auto l_it = array_b.lbegin(); l_it != array_b.lend();
        ++l_it, ++lidx) {
-    ASSERT_EQ_U(array_a.local[lidx], static_cast<element_t>(*l_it));
+    ASSERT_EQ_U(array_a.local[lidx], (*l_it));
   }
 }
 

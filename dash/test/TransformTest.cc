@@ -175,6 +175,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   EXPECT_EQ(matrix_size, matrix_a.size());
   EXPECT_EQ(extent_cols, matrix_a.extent(0));
   EXPECT_EQ(extent_rows, matrix_a.extent(1));
+
   LOG_MESSAGE("Matrix size: %zu", matrix_size);
 
   // Fill matrix

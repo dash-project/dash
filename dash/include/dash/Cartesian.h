@@ -267,35 +267,26 @@ public:
  */
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType     _size;
+  SizeType     _size    = 0;
   /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType     _ndim;
+  SizeType     _ndim    = NumDimensions;
   /// Extents of the cartesian space by dimension.
   extents_type _extents = {  };
   /// Cumulative index offsets of the index space by dimension respective
   /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<ROW_ORDER>().
-  extents_type _offset_row_major;
+  extents_type _offset_row_major = { };
   /// Cumulative index offsets of the index space by dimension respective
   /// to column order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<COL_ORDER>().
-  extents_type _offset_col_major;
+  extents_type _offset_col_major = { };
 
 public:
   /**
    * Default constructor, creates a cartesian index space of extent 0
    * in all dimensions.
    */
-  CartesianIndexSpace()
-  : _size(0),
-    _ndim(0),
-    _extents({{ }})
-  {
-    for(auto i = 0; i < NumDimensions; i++) {
-      _offset_row_major[i] = 0;
-      _offset_col_major[i] = 0;
-    }
-  }
+  constexpr CartesianIndexSpace() = default;
 
   /**
    * Constructor, creates a cartesian index space of given extents.
@@ -454,14 +445,15 @@ public:
   template<
     typename... Args,
     MemArrange AtArrangement = Arrangement>
-  IndexType at(
+  constexpr IndexType at(
       IndexType arg, Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    ::std::array<IndexType, NumDimensions> pos =
-	{{ arg, (IndexType)(args) ... }};
-    return at<AtArrangement>(pos);
+    return at<AtArrangement>(
+             std::array<IndexType, NumDimensions> {{
+               arg, (IndexType)(args) ... }}
+           );
   }
 
   /**
