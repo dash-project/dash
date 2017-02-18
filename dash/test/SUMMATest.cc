@@ -20,12 +20,16 @@ TEST_F(SUMMATest, Deduction)
 {
   SKIP_TEST_IF_NO_SUMMA();
 
+  if (dash::size() % 2 != 0) {
+    SKIP_TEST_MSG("SUMMATest requires multiple of 2 units");
+  }
+
   size_t num_units   = dash::Team::All().size();
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
 
-  size_t extent_cols = num_units;
-  size_t extent_rows = num_units;
+  size_t extent_cols = num_units * 20;
+  size_t extent_rows = num_units * 20;
 
 #if 0
   // For explicit definition of data distribution:
@@ -70,8 +74,10 @@ TEST_F(SUMMATest, Deduction)
       });
   }
 
-  LOG_MESSAGE("Deduced pattern: "
-              "size(%lu,%lu) tilesize(%lu,%lu) teamsize(%lu,%lu) disttype(%d,%d)",
+  LOG_MESSAGE("Deduced pattern: %s "
+              "size(%lu,%lu) tilesize(%lu,%lu) "
+              "teamsize(%lu,%lu) disttype(%d,%d)",
+              dash::internal::typestr(pattern).c_str(),
               pattern.extent(0),
               pattern.extent(1),
               pattern.block(0).extent(0),
@@ -142,8 +148,8 @@ TEST_F(SUMMATest, Deduction)
   // Expected to be resolved to SUMMA version of dash::mmult:
   LOG_MESSAGE("Calling dash::mmult ...");
   dash::mmult(matrix_a,
-                 matrix_b,
-                 matrix_c);
+              matrix_b,
+              matrix_c);
 
   if (dash::myid().id == 0) {
     dash::test::print_matrix("summa.matrix A", matrix_a, 3);
