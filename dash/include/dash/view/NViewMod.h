@@ -590,7 +590,6 @@ public:
   typedef decltype(
             dash::begin(
               std::declval<
-            //  typename std::add_lvalue_reference<origin_type>::type
                 typename std::add_lvalue_reference<domain_type>::type
               >() ))
     iterator;
@@ -598,7 +597,6 @@ public:
   typedef decltype(
             dash::begin(
               std::declval<
-            //  typename std::add_lvalue_reference<const origin_type>::type
                 typename std::add_lvalue_reference<const domain_type>::type
               >() ))
     const_iterator;
@@ -638,6 +636,10 @@ public:
 
   // ---- extents ---------------------------------------------------------
 
+  constexpr std::array<size_type, NDim> extents() const {
+    return _index_set.extents();
+  }
+
   template <dim_t ExtDim>
   constexpr size_type extent() const {
     return _index_set.template extent<ExtDim>();
@@ -645,10 +647,6 @@ public:
 
   constexpr size_type extent(dim_t shape_dim) const {
     return _index_set.extent(shape_dim);
-  }
-
-  constexpr std::array<size_type, NDim> extents() const {
-    return _index_set.extents();
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -661,11 +659,7 @@ public:
            );
   }
 
-  constexpr auto offsets() const
-    -> decltype(
-         std::declval<
-           typename std::add_lvalue_reference<domain_type>::type
-         >().offsets()) {
+  constexpr std::array<index_type, NDim> offsets() const {
     return dash::ce::replace_nth<SubDim>(
              static_cast<
                typename std::remove_reference<
@@ -694,7 +688,15 @@ public:
     return this->domain().begin() + _index_set[0];
   }
 
+  iterator begin() {
+    return this->domain().begin() + _index_set[0];
+  }
+
   constexpr const_iterator end() const {
+    return this->domain().begin() + *_index_set.end();
+  }
+
+  iterator end() {
     return this->domain().begin() + *_index_set.end();
   }
 

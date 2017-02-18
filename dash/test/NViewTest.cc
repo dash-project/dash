@@ -92,7 +92,7 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
       nrows,      ncols,
       dash::NONE, dash::BLOCKED);
 
-  mat.barrier();
+  dash::test::initialize_matrix(mat);
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
                  "Matrix initialized");
@@ -141,6 +141,7 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
 
   auto nview_rows_l = dash::local(nview_rows_g);
 
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimLocalView", nview_rows_l);
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimLocalView",
                      nview_rows_l.extents());
 
