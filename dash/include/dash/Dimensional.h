@@ -140,7 +140,7 @@ public:
    * Return value with all dimensions as array of \c NumDimensions
    * elements.
    */
-  constexpr std::array<ElementType, NumDimensions> & values() const {
+  constexpr const std::array<ElementType, NumDimensions> & values() const {
     return _values;
   }
 

@@ -72,7 +72,7 @@ void test_copy_if(const dash::Array<T> & arr)
   dash::Array<T> arr2(arr.size());
   if (dash::myid() == 0) {
     std::copy_if(arr.begin(), arr.end(), arr2.begin(),
-                 [](dash::GlobRef<T> r) {
+                 [](dash::GlobRef<const T> r) {
                    return r % 2 == 0;
                  });
   }
@@ -88,11 +88,11 @@ void test_all_of(const dash::Array<T> & arr)
 {
   if (dash::myid() == 0) {
     auto all_gt_0 = std::all_of(arr.begin(), arr.end(),
-                      [](dash::GlobRef<T> r) {
+                      [](dash::GlobRef<const T> r) {
                         return r > 0;
                       });
     auto all_gt_5 = std::all_of(arr.begin(), arr.end(),
-                      [](dash::GlobRef<T> r) {
+                      [](dash::GlobRef<const T> r) {
                         return r > 5;
                       });
 
