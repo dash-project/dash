@@ -70,12 +70,6 @@ class MatrixRef
     Size_t;
   typedef MatrixRefView<ElementT, NumDimensions, PatternT>
     MatrixRefView_t;
-  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
-    LocalRef_t;
-  typedef GlobIter<ElementT, PatternT>
-    GlobIter_t;
-  typedef GlobViewIter<ElementT, PatternT>
-    GlobViewIter_t;
   typedef CartesianIndexSpace<
             NumViewDim,
             PatternT::memory_order(),
@@ -95,21 +89,31 @@ class MatrixRef
   typedef typename PatternT::size_type                       size_type;
   typedef typename PatternT::index_type                difference_type;
 
-  typedef GlobViewIter_t                                      iterator;
-  typedef const GlobViewIter_t                          const_iterator;
+  typedef GlobViewIter<      value_type, PatternT>            iterator;
+  typedef GlobViewIter<const value_type, PatternT>      const_iterator;
+
   typedef std::reverse_iterator<iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef GlobRef<value_type>                                reference;
-  typedef const GlobRef<value_type>                    const_reference;
+  typedef GlobRef<      value_type>                          reference;
+  typedef GlobRef<const value_type>                    const_reference;
 
-  typedef GlobViewIter_t                                       pointer;
-  typedef const GlobViewIter_t                           const_pointer;
+  typedef GlobViewIter<      value_type, PatternT>             pointer;
+  typedef GlobViewIter<const value_type, PatternT>       const_pointer;
 
-  typedef LocalRef_t                                        local_type;
-  typedef const LocalRef_t                            const_local_type;
-  typedef LocalRef_t                              local_reference_type;
-  typedef const LocalRef_t                  const_local_reference_type;
+  typedef LocalMatrixRef<
+            ElementT, NumDimensions, NumDimensions, PatternT>
+                                                            local_type;
+  typedef LocalMatrixRef<
+            const ElementT, NumDimensions, NumDimensions, PatternT>
+                                                      const_local_type;
+
+  typedef LocalMatrixRef<
+            ElementT, NumDimensions, NumDimensions, PatternT>
+                                                  local_reference_type;
+  typedef LocalMatrixRef<
+            const ElementT, NumDimensions, NumDimensions, PatternT>
+                                            const_local_reference_type;
 
  public:
   template<
@@ -150,11 +154,12 @@ public:
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumViewDim);
   }
 
+  template <class T_>
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & prev,
+    const MatrixRef<T_, NumDimensions, NumViewDim+1, PatternT> & prev,
     index_type coord);
 
-  inline    Team            & team();
+  constexpr const Team      & team()                const noexcept;
 
   constexpr size_type         size()                const noexcept;
   constexpr size_type         local_size()          const noexcept;
@@ -171,22 +176,28 @@ public:
    * The pattern used to distribute matrix elements to units in its
    * associated team.
    */
-  constexpr const PatternT  & pattern()             const;
+  constexpr const PatternT  & pattern()             const noexcept;
 
   constexpr const_pointer     data()                const noexcept;
+                  pointer     data()                      noexcept;
 
             iterator          begin()                     noexcept;
-            const_iterator    begin()               const noexcept;
+  constexpr const_iterator    begin()               const noexcept;
 
             iterator          end()                       noexcept;
-            const_iterator    end()                 const noexcept;
+  constexpr const_iterator    end()                 const noexcept;
 
   /// View representing elements in the active unit's local memory.
-  inline    local_type        sub_local()                 noexcept;
+  inline          local_type   sub_local()                noexcept;
+
   /// Pointer to first element in local range.
-  inline    ElementT        * lbegin()                    noexcept;
+  inline          ElementT   * lbegin()                   noexcept;
+  /// Pointer to first element in local range.
+  constexpr const ElementT   * lbegin()             const noexcept;
   /// Pointer past final element in local range.
-  inline    ElementT        * lend()                      noexcept;
+  inline          ElementT   * lend()                     noexcept;
+  /// Pointer past final element in local range.
+  constexpr const ElementT   * lend()               const noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
@@ -199,7 +210,7 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr const MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>
+  constexpr MatrixRef<const ElementT, NumDimensions, NumViewDim-1, PatternT>
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
@@ -365,7 +376,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
   /**
    * TODO[TF] The following two functions don't seem to be implemented.
    */
-  constexpr const GlobRef<ElementT> local_at(
+  constexpr GlobRef<const ElementT> local_at(
     team_unit_t unit,
     index_type   elem) const;
 
@@ -375,7 +386,13 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
 
   constexpr bool is_local() const;
 
-  inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
+  constexpr ViewSpec<NumDimensions, index_type> &
+  viewspec() const {
+    return _refview._viewspec;
+  }
+
+  inline ViewSpec<NumDimensions, index_type> &
+  viewspec() {
     return _refview._viewspec;
   }
 

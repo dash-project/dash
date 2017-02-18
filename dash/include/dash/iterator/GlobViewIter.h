@@ -60,13 +60,25 @@ private:
     IndexType;
 
 public:
-  typedef       ReferenceType                      reference;
-  typedef const ReferenceType                const_reference;
-  typedef       PointerType                          pointer;
-  typedef const PointerType                    const_pointer;
+  typedef ElementType                             value_type;
 
-  typedef       PatternType                     pattern_type;
-  typedef       IndexType                         index_type;
+  typedef ReferenceType                            reference;
+  typedef typename reference::const_type     const_reference;
+
+  typedef PointerType                                pointer;
+  typedef typename pointer::const_type         const_pointer;
+
+  typedef PatternType                           pattern_type;
+  typedef IndexType                               index_type;
+
+private:
+  typedef GlobViewIter<
+            const ElementType,
+            PatternType,
+            GlobMemType,
+            const_pointer,
+            const_reference >
+    self_const_t;
 
 public:
   typedef std::integral_constant<bool, true>        has_view;
@@ -207,8 +219,18 @@ public:
   /**
    * Copy constructor.
    */
+  template <class GlobViewIterT>
   GlobViewIter(
-    const self_t & other) = default;
+    const GlobViewIterT & other)
+  : _globmem(other._globmem)
+  , _pattern(other._pattern)
+  , _viewspec(other._viewspec)
+  , _idx    (other._idx)
+  , _view_idx_offset(other._view_idx_offset)
+  , _max_idx(other._max_idx)
+  , _myid   (other._myid)
+  , _lbegin (other._lbegin)
+  { }
 
   /**
    * Assignment operator.
@@ -376,7 +398,7 @@ public:
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  inline bool is_local() const
+  constexpr bool is_local() const
   {
     return (_myid == lpos().unit);
   }
@@ -552,7 +574,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  constexpr const GlobMemType & globmem() const
   {
     return *_globmem;
   }

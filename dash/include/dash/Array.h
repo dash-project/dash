@@ -126,13 +126,13 @@ public:
 
   typedef IndexType                                     difference_type;
 
-  typedef T &                                                 reference;
+  typedef       T &                                           reference;
   typedef const T &                                     const_reference;
 
-  typedef T *                                                   pointer;
+  typedef       T *                                             pointer;
   typedef const T *                                       const_pointer;
 
-  typedef T *                                                  iterator;
+  typedef       T *                                            iterator;
   typedef const T *                                      const_iterator;
 
 public:
@@ -170,28 +170,28 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  constexpr const_pointer begin() const noexcept {
+  constexpr const_iterator begin() const noexcept {
     return _array->m_lbegin;
   }
 
   /**
    * Pointer to initial local element in the array.
    */
-  inline pointer begin() noexcept {
+  inline iterator begin() noexcept {
     return _array->m_lbegin;
   }
 
   /**
    * Pointer past final local element in the array.
    */
-  constexpr const_pointer end() const noexcept {
+  constexpr const_iterator end() const noexcept {
     return _array->m_lend;
   }
 
   /**
    * Pointer past final local element in the array.
    */
-  inline pointer end() noexcept {
+  inline iterator end() noexcept {
     return _array->m_lend;
   }
 
@@ -205,7 +205,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr value_type operator[](const size_t n) const {
+  constexpr const_reference operator[](const size_t n) const {
     return (_array->m_lbegin)[n];
   }
 
@@ -270,14 +270,17 @@ public:
   typedef typename std::make_unsigned<IndexType>::type        size_type;
   typedef IndexType                                     difference_type;
 
-  typedef T &                                                 reference;
+  typedef       T &                                           reference;
   typedef const T &                                     const_reference;
 
-  typedef T *                                                   pointer;
+  typedef       T *                                            iterator;
+  typedef const T *                                      const_iterator;
+
+  typedef       T *                                             pointer;
   typedef const T *                                       const_pointer;
 
-  typedef GlobAsyncRef<T>                               async_reference;
-  typedef const GlobAsyncRef<T>                   const_async_reference;
+  typedef GlobAsyncRef<      T>                         async_reference;
+  typedef GlobAsyncRef<const T>                   const_async_reference;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -304,7 +307,7 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->begin())
    */
-  inline const_pointer begin() const noexcept {
+  constexpr const_iterator begin() const noexcept {
     return _array->m_begin;
   }
 
@@ -313,7 +316,7 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->begin())
    */
-  inline pointer begin() noexcept {
+  inline iterator begin() noexcept {
     return _array->m_begin;
   }
 
@@ -322,7 +325,7 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->end())
    */
-  inline const_pointer end() const noexcept {
+  constexpr const_iterator end() const noexcept {
     return _array->m_end;
   }
 
@@ -331,7 +334,7 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->end())
    */
-  inline pointer end() noexcept {
+  inline iterator end() noexcept {
     return _array->m_end;
   }
 
@@ -364,22 +367,22 @@ public:
    * Complete all outstanding asynchronous operations on the referenced array
    * on all units.
    */
-  void flush() const {
+  constexpr void flush() const {
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
-  void flush_local() const {
+  constexpr void flush_local() const {
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
-  void flush_all() const {
+  constexpr void flush_all() const {
     // could also call _array->flush();
     _array->m_globmem->flush_all();
   }
 
-  void flush_local_all() const {
+  constexpr void flush_local_all() const {
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
   }
@@ -390,7 +393,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  void push() const {
+  constexpr void push() const {
     flush_local_all();
   }
 
@@ -400,7 +403,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  void fetch() const {
+  constexpr void fetch() const {
     flush_all();
   }
 };
@@ -459,13 +462,14 @@ public:
 
   typedef GlobIter<      value_type, PatternType>                   iterator;
   typedef GlobIter<const value_type, PatternType>             const_iterator;
-  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                reference;
+  typedef std::reverse_iterator<      iterator>             reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
+
+  typedef GlobRef<      value_type>                                reference;
   typedef GlobRef<const value_type>                          const_reference;
 
-  typedef       GlobIter<value_type, PatternType>                    pointer;
+  typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
 /// Public types as required by dash container concept
@@ -479,12 +483,6 @@ public:
     local_type;
   typedef AsyncArrayRef<value_type, IndexType, PatternType>
     async_type;
-  /// Type alias for Array<T,I,P>::local_type
-  typedef LocalArrayRef<value_type, IndexType, PatternType>
-    Local;
-  /// Type alias for Array<T,I,P>::view_type
-  typedef ArrayRef<ElementType, IndexType, PatternType>
-    View;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -549,9 +547,9 @@ public:
   /// View representing elements in the active unit's local memory.
   inline    local_type          sub_local()              noexcept;
   /// Pointer to first element in local range.
-  inline    ElementType       * lbegin()           const noexcept;
+  constexpr ElementType       * lbegin()           const noexcept;
   /// Pointer past final element in local range.
-  inline    ElementType       * lend()             const noexcept;
+  constexpr ElementType       * lend()             const noexcept;
 
   reference operator[](
     /// The position of the element to return
@@ -647,15 +645,16 @@ public:
   typedef typename std::make_unsigned<IndexType>::type             size_type;
   typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                   iterator;
+  typedef GlobIter<      value_type, PatternType>                   iterator;
   typedef GlobIter<const value_type, PatternType>             const_iterator;
-  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                reference;
+  typedef std::reverse_iterator<      iterator>             reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
+
+  typedef GlobRef<      value_type>                                reference;
   typedef GlobRef<const value_type>                          const_reference;
 
-  typedef       GlobIter<value_type, PatternType>                    pointer;
+  typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
   typedef dash::GlobMem<value_type>                            glob_mem_type;
@@ -677,15 +676,13 @@ public:
   /// The type of the pattern used to distribute array elements to units
   typedef PatternType
     pattern_type;
-  typedef LocalArrayRef<value_type, IndexType, PatternType>
-    local_type;
-  typedef AsyncArrayRef<value_type, IndexType, PatternType>
-    async_type;
 
   typedef LocalArrayRef<value_type, IndexType, PatternType>
-    Local;
+    local_type;
   typedef ArrayRef<ElementType, IndexType, PatternType>
-    View;
+    view_type;
+  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+    async_type;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -921,7 +918,7 @@ public:
   /**
    * View at block at given global block offset.
    */
-  constexpr const View block(index_type block_gindex) const
+  constexpr const view_type block(index_type block_gindex) const
   {
     return View(this, ViewSpec<1>(pattern().block(block_gindex)));
   }
@@ -1126,9 +1123,9 @@ public:
     return size() == 0;
   }
 
-  constexpr View local_in(dash::util::Locality::Scope scope) const
+  constexpr view_type local_in(dash::util::Locality::Scope scope) const
   {
-    return View(); // TODO
+    return view_type(); // TODO
   }
 
   /**
@@ -1304,17 +1301,7 @@ public:
   }
 
 private:
-
-#if 0
-  typename std::enable_if<
-    std::is_move_constructible<value_type>::value &&
-    std::is_move_assignable<value_type>::value,
-    bool
-  >::type
-#else
-  bool
-#endif
-  allocate(
+  bool allocate(
     const PatternType                 & pattern,
     std::initializer_list<value_type>   local_elements)
   {

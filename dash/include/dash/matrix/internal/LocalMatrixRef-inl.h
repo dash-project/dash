@@ -8,9 +8,10 @@
 namespace dash {
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <class T_>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
-  const LocalMatrixRef<T, NumDim, CUR+1, PatternT> & previous,
+  const LocalMatrixRef<T_, NumDim, CUR+1, PatternT> & previous,
   index_type coord)
   : _refview(previous._refview)
 {
@@ -22,10 +23,11 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", _refview._viewspec);
 }
 
-template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <class T_>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
-  Matrix<T, NumDim, index_type, PatternT> * mat)
+  Matrix<T_, NumDim, index_type, PatternT> * mat)
   : _refview(mat->_ref._refview)
 {
   auto local_extents = mat->_pattern.local_extents();
@@ -61,7 +63,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 #endif
 
-template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::block(
@@ -150,7 +152,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -166,7 +168,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline std::array<typename PatternT::size_type, NumDim>
+constexpr std::array<typename PatternT::size_type, NumDim>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extents() const noexcept
 {
@@ -174,7 +176,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::index_type
+constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::index_type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::offset(
   dim_t dim) const noexcept
@@ -189,7 +191,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline std::array<typename PatternT::index_type, NumDim>
+constexpr std::array<typename PatternT::index_type, NumDim>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::offsets() const noexcept
 {
@@ -197,7 +199,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline bool
+constexpr bool
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::empty() const noexcept
 {
@@ -230,7 +232,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::begin() const noexcept
 {
@@ -263,7 +265,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::end() const noexcept
 {
@@ -279,7 +281,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const T *
+constexpr const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lbegin() const noexcept
 {
@@ -295,7 +297,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const T *
+constexpr const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() const noexcept
 {
@@ -304,7 +306,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
-inline LocalMatrixRef<T, NumDim, CUR, PatternT>
+constexpr LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::size() const noexcept
 {
   return _refview._viewspec.size();
@@ -367,7 +369,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const LocalMatrixRef<T, NumDim, CUR-1, PatternT>
+constexpr LocalMatrixRef<const T, NumDim, CUR-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
@@ -378,7 +380,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                  "index:",    pos,
                  "viewspec:", _refview._viewspec);
 #endif
-  return LocalMatrixRef<T, NumDim, CUR-1, PatternT>(*this, pos);
+  return LocalMatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -390,12 +392,12 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 {
   // following Meyers, Eff. C++ p. 23, Item 3
   using RefType = LocalMatrixRef<T, NumDim, CUR, PatternT>;
-  return static_cast<const RefType &>(*this).sub<SubDimension>(n);
+  return static_cast<RefType &>(*this).sub<SubDimension>(n);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t SubDimension>
-const LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
+LocalMatrixRef<const T, NumDim, NumDim-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
   size_type n) const
@@ -410,7 +412,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE("LocalMatrixRef<N>.sub(n)", "n:", n,
                  "target_dim:", target_dim, "refview.dim:", _refview._dim);
 
-  LocalMatrixRef<T, NumDim, NumDim - 1, PatternT> ref;
+  LocalMatrixRef<const T, NumDim, NumDim - 1, PatternT> ref;
   ref._refview._coord[target_dim] = 0;
 
   ref._refview._viewspec = _refview._viewspec;
@@ -439,7 +441,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
+constexpr LocalMatrixRef<const T, NumDim, NumDim-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::col(
   size_type n) const
@@ -456,7 +458,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
+constexpr LocalMatrixRef<const T, NumDim, NumDim-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
   size_type n) const
 {
@@ -478,7 +480,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t SubDimension>
-const LocalMatrixRef<T, NumDim, NumDim, PatternT>
+LocalMatrixRef<const T, NumDim, NumDim, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
   size_type offset,
@@ -514,7 +516,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const LocalMatrixRef<T, NumDim, NumDim, PatternT>
+constexpr LocalMatrixRef<const T, NumDim, NumDim, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::rows(
   size_type offset,
@@ -533,7 +535,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const LocalMatrixRef<T, NumDim, NumDim, PatternT>
+constexpr LocalMatrixRef<const T, NumDim, NumDim, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
   size_type offset,
   size_type extent) const
@@ -545,9 +547,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
 // Partial Specialization for value deferencing.
 
 template <typename T, dim_t NumDim, class PatternT>
+template <class T_>
 LocalMatrixRef<T, NumDim, 0, PatternT>
 ::LocalMatrixRef(
-  const LocalMatrixRef<T, NumDim, 1, PatternT> & previous,
+  const LocalMatrixRef<T_, NumDim, 1, PatternT> & previous,
   typename PatternT::index_type                  coord)
   : _refview(previous._refview)
 {
@@ -653,7 +656,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const PatternT&
+constexpr const PatternT &
 LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
 {
 	return _refview._mat->_pattern;
