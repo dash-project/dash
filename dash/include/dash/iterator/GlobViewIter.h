@@ -104,6 +104,22 @@ public:
     class    Ref_ >
   friend class GlobStencilIter;
 
+  template<
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobViewIter;
+
+  template<
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobIter;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -149,13 +165,14 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
+  template <class GlobMemType_>
   GlobViewIter(
-    GlobMemType          * gmem,
+    GlobMemType_         * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(gmem),
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem)),
     _pattern(&pat),
     _viewspec(&viewspec),
     _idx(position),
@@ -174,12 +191,13 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
+  template <class GlobMemType_>
   GlobViewIter(
-    GlobMemType       * gmem,
+    GlobMemType_      * gmem,
 	  const PatternType & pat,
 	  IndexType           position          = 0,
     IndexType           view_index_offset = 0)
-  : _globmem(gmem),
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem)),
     _pattern(&pat),
     _viewspec(nullptr),
     _idx(position),
@@ -222,21 +240,37 @@ public:
   template <class GlobViewIterT>
   GlobViewIter(
     const GlobViewIterT & other)
-  : _globmem(other._globmem)
-  , _pattern(other._pattern)
-  , _viewspec(other._viewspec)
-  , _idx    (other._idx)
+  : _globmem        (other._globmem)
+  , _pattern        (other._pattern)
+  , _viewspec       (other._viewspec)
+  , _idx            (other._idx)
   , _view_idx_offset(other._view_idx_offset)
-  , _max_idx(other._max_idx)
-  , _myid   (other._myid)
-  , _lbegin (other._lbegin)
+  , _max_idx        (other._max_idx)
+  , _myid           (other._myid)
+  , _lbegin         (other._lbegin)
   { }
 
   /**
    * Assignment operator.
    */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   self_t & operator=(
-    const self_t & other) = default;
+    const GlobViewIter<T_, P_, GM_, Ptr_, Ref_ > & other)
+  {
+    _globmem         = other._globmem;
+    _pattern         = other._pattern;
+    _viewspec        = other._viewspec;
+    _idx             = other._idx;
+    _view_idx_offset = other._view_idx_offset;
+    _max_idx         = other._max_idx;
+    _myid            = other._myid;
+    _lbegin          = other._lbegin;
+  }
 
   /**
    * The number of dimensions of the iterator's underlying pattern.

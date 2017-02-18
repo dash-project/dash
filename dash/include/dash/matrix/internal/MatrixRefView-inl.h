@@ -20,7 +20,7 @@ MatrixRefView<T, NumDim, PatternT>
 ::MatrixRefView(
   const MatrixRefView<T_, NumDim, PatternT> & other)
 : _dim(other._dim)
-  // cast from Matrix<const T, ...> * to Matrix<T, ...> *
+  // cast from Matrix<T, ...> * to Matrix<const T, ...> *
 , _mat(reinterpret_cast< Matrix<T, NumDim, index_type, PatternT> * >(
          other._mat))
 , _coord(other._coord)
