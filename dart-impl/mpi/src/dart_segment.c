@@ -1,69 +1,24 @@
 #include <string.h>
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/base/logging.h>
-#include <dash/dart/base/mutex.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
-#define DART_SEGMENT_HASH_SIZE 256
 #define DART_SEGMENT_INVALID   (INT32_MAX)
-
-/**
- * @brief A data structure holding all required data for a segment.
- */
-
-typedef struct dart_segment_data {
-
-  /**
-   * @brief The segment ID
-   */
-  dart_segid_t segid;
-
-  /**
-   * @brief The index of the team in the active team array.
-   *
-   * @note We implicitly assume that all segments are closed before a
-   * team is closed,
-   * thus avoiding cases where the team_id points to an invalid team.
-   *
-   * TODO: Is this a valid assumption?
-   *
-   * <fuchsto>: It might not, see dash::Team and dash::Array, especially
-   *            register/unregister deallocators.
-   */
-  uint16_t team_idx;
-
-  /**
-   * @brief Data structure containing all relevant data for a segment.
-   * To be queried using dart_adapt_transtable_* functions.
-   */
-  dart_segment_info_t seg_info;
-
-  /* TODO: Add data fields as needed */
-
-} dart_segment_t;
-
-// forward declaration to make the compiler happy
-typedef struct dart_seghash_elem dart_seghash_elem_t;
 
 struct dart_seghash_elem {
   dart_seghash_elem_t *next;
-  dart_segment_t       data;
+  dart_segment_info_t  data;
 };
 
-typedef struct dart_seghash_head {
-  dart_seghash_elem_t *next;
-  dart_mutex_t         mutex;
-} dart_seghash_head_t;
-
-static dart_seghash_head_t hashtab[DART_SEGMENT_HASH_SIZE];
 
 static inline int hash_segid(dart_segid_t segid)
 {
   /* Simply use the lower bits of the segment ID.
    * Since segment IDs are allocated continuously, this is likely to cause
    * collisions starting at (segment number == DART_SEGMENT_HASH_SIZE)
-   * TODO: come up with a random distribution to account for random free'd segments?
+   * TODO: come up with a random distribution to account for random free'd
+   * segments?
    * */
   return (abs(segid) % DART_SEGMENT_HASH_SIZE);
 }
@@ -71,130 +26,105 @@ static inline int hash_segid(dart_segid_t segid)
 /**
  * @brief Initialize the segment data hash table.
  */
-dart_ret_t dart_segment_init()
+dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
 {
-  int i;
-  memset(hashtab, 0, sizeof(dart_seghash_head_t) * DART_SEGMENT_HASH_SIZE);
+  memset(segdata->hashtab, 0,
+    sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
 
-  for (i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
-    dart_mutex_init(&hashtab[i].mutex);
-  }
+  segdata->team_id = teamid;
 
   return DART_OK;
 }
 
-static dart_segment_t * get_segment(dart_segid_t segid)
+static dart_segment_info_t * get_segment(
+    dart_segmentdata_t *segdata,
+    dart_segid_t        segid)
 {
   int slot = hash_segid(segid);
-  dart_seghash_elem_t *elem = hashtab[slot].next;
+  dart_seghash_elem_t *elem = segdata->hashtab[slot];
 
-  while (elem != NULL && elem->data.segid != segid) {
+  while (elem != NULL) {
+    if (elem->data.seg_id == segid) {
+      break;
+    }
     elem = elem->next;
   }
 
   if (elem == NULL) {
-    DART_LOG_ERROR("dart_segment__get_segment : Invalid segment ID %i",
-                   segid);
+    DART_LOG_ERROR("dart_segment__get_segment : "
+                   "Invalid segment ID %i on team %i",
+                   segid, segdata->team_id);
     return NULL;
   }
 
   return &(elem->data);
 }
 
+static dart_ret_t
+dart_segment_copy_info(
+    dart_segment_info_t       *seginfo,
+    const dart_segment_info_t *item)
+{
+  seginfo->seg_id  = item->seg_id;
+  seginfo->size    = item->size;
+  seginfo->disp    = item->disp;
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  seginfo->win     = item->win;
+  seginfo->baseptr = item->baseptr;
+#endif
+  seginfo->selfbaseptr = item->selfbaseptr;
+  seginfo->flags       = item->flags;
+
+  return DART_OK;
+}
+
 /**
  * @brief Allocates a new segment data struct. May be served from a freelist.
  *
  * @return A pointer to an empty segment data object.
- *
- * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
- *            lock-free list in the buckets?
- *            Alternatively, use spin-locks since lock periods should be short
- *            (maybe get rid of the free-list then?).
  */
-dart_ret_t dart_segment_alloc(dart_segid_t segid, uint16_t team_idx)
+dart_ret_t dart_segment_alloc(
+    dart_segmentdata_t        *segdata,
+    const dart_segment_info_t *item)
 {
   DART_LOG_DEBUG("dart_segment_alloc() segid:%d team_id:%d",
-                 segid, team_idx);
+                 item->seg_id, segdata->team_id);
 
-  int slot = hash_segid(segid);
+  int slot = hash_segid(item->seg_id);
 
   dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
-  elem->data.segid    = segid;
-  elem->data.team_idx = team_idx;
+  elem->next = segdata->hashtab[slot];
+  segdata->hashtab[slot] = elem;
 
-  dart_mutex_lock(&hashtab[slot].mutex);
-
-  /* simply swap pointers and put the new element to the front */
-  elem->next = hashtab[slot].next;
-  hashtab[slot].next = elem;
-
-  dart_mutex_unlock(&hashtab[slot].mutex);
+  dart_segment_copy_info(&elem->data, item);
 
   DART_LOG_DEBUG("dart_segment_alloc > segid:%d team_id:%d",
-                 segid, team_idx);
+                 item->seg_id, segdata->team_id);
   return DART_OK;
 }
 
-/**
- * @brief Returns the registered segment data for the segment ID.
- *
- * @return A pointer to an existing segment data object.
- *         NULL if the segment ID was not found.
- */
-dart_ret_t dart_segment_get_teamidx(dart_segid_t segid, uint16_t *team_idx)
-{
-  dart_segment_t *segment = get_segment(segid);
-  if (segment == NULL) {
-    // entry not found!
-    DART_LOG_ERROR("dart_segment_get_teamidx ! Invalid segment ID %i", segid);
-    return DART_ERR_INVAL;
-  }
-
-  *team_idx = segment->team_idx;
-  return DART_OK;
-}
-
-
-dart_ret_t dart_segment_add_info(const dart_segment_info_t *item)
-{
-  dart_segment_t *segment = get_segment(item->seg_id);
-  if (segment == NULL) {
-    DART_LOG_ERROR("Invalid segment ID %i", item->seg_id);
-    return DART_ERR_INVAL;
-  }
-  DART_LOG_TRACE(
-    "dart_adapt_transtable_add() item: "
-    "seg_id:%d size:%zu disp:%"PRIu64" win:%"PRIu64"",
-    item->seg_id, item->size, (unsigned long)item->disp, (unsigned long)item->win);
-  segment->seg_info.seg_id  = item->seg_id;
-  segment->seg_info.size    = item->size;
-  segment->seg_info.disp    = item->disp;
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  segment->seg_info.win     = item->win;
-  segment->seg_info.baseptr = item->baseptr;
-#endif
-  segment->seg_info.selfbaseptr = item->selfbaseptr;
-
-  return DART_OK;
-}
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win)
+dart_ret_t dart_segment_get_win(
+    dart_segmentdata_t * segdata,
+    int16_t              seg_id,
+    MPI_Win            * win)
 {
-  dart_segment_t *segment = get_segment(seg_id);
-  if (segment == NULL || segment->seg_info.seg_id != seg_id) {
-    DART_LOG_ERROR("Invalid segment ID %i", seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("Invalid segment ID %i on team %i", seg_id, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
-  *win = segment->seg_info.win;
+  *win = segment->win;
   return DART_OK;
 }
 #endif
 
-dart_ret_t dart_segment_get_disp(int16_t             seg_id,
-                                 dart_team_unit_t    rel_unitid,
-                                 MPI_Aint          * disp_s)
+dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
+                                 int16_t              seg_id,
+                                 dart_team_unit_t     rel_unitid,
+                                 MPI_Aint           * disp_s)
 {
   MPI_Aint trans_disp = 0;
   *disp_s  = 0;
@@ -202,13 +132,15 @@ dart_ret_t dart_segment_get_disp(int16_t             seg_id,
   DART_LOG_TRACE("dart_segment_get_disp() "
                  "seq_id:%d rel_unitid:%d", seg_id, rel_unitid.id);
 
-  dart_segment_t *segment = get_segment(seg_id);
-  if (segment == NULL || segment->seg_info.seg_id != seg_id) {
-    DART_LOG_ERROR("dart_segment_get_disp ! Invalid segment ID %i", seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_disp ! Invalid segment ID %i on team %i",
+        seg_id, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
-  trans_disp = segment->seg_info.disp[rel_unitid.id];
+  trans_disp = segment->disp[rel_unitid.id];
   *disp_s    = trans_disp;
   DART_LOG_TRACE("dart_segment_get_disp > disp:%"PRIu64"",
                  (unsigned long)trans_disp);
@@ -217,50 +149,88 @@ dart_ret_t dart_segment_get_disp(int16_t             seg_id,
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_baseptr(
+  dart_segmentdata_t  * segdata,
   int16_t               seg_id,
   dart_team_unit_t      rel_unitid,
   char              **  baseptr_s)
 {
-  dart_segment_t *segment = get_segment(seg_id);
-  if (segment == NULL || segment->seg_info.seg_id != seg_id) {
-    DART_LOG_ERROR("dart_segment_get_baseptr ! Invalid segment ID %i",
-                   seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_baseptr ! Invalid segment ID %i on team %i",
+                   seg_id, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
-  *baseptr_s = segment->seg_info.baseptr[rel_unitid.id];
+  *baseptr_s = segment->baseptr[rel_unitid.id];
   return DART_OK;
 }
 #endif
 
 dart_ret_t dart_segment_get_selfbaseptr(
-  int16_t    seg_id,
-  char   **  baseptr)
+  dart_segmentdata_t  * segdata,
+  int16_t               seg_id,
+  char               ** baseptr)
 {
-  dart_segment_t *segment = get_segment(seg_id);
+  *baseptr = NULL;
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_selfbaseptr ! Invalid segment ID %i",
-                   seg_id);
+    DART_LOG_ERROR("dart_segment_get_selfbaseptr ! "
+                   "Invalid segment ID %i on team %i",
+                   seg_id, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
-  *baseptr = segment->seg_info.selfbaseptr;
+  *baseptr = segment->selfbaseptr;
   return DART_OK;
 }
 
 dart_ret_t dart_segment_get_size(
-  int16_t   seg_id,
-  size_t  * size)
+  dart_segmentdata_t  * segdata,
+  int16_t               seg_id,
+  size_t              * size)
 {
-  dart_segment_t *segment = get_segment(seg_id);
-  if (segment == NULL || segment->seg_info.seg_id != seg_id) {
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  if (segment == NULL) {
     DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
     return DART_ERR_INVAL;
   }
 
-  *size = segment->seg_info.size;
+  *size = segment->size;
   return DART_OK;
 }
+
+dart_ret_t dart_segment_get_flags(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t           * flags)
+{
+
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
+    return DART_ERR_INVAL;
+  }
+
+  *flags = segment->flags;
+  return DART_OK;
+}
+
+dart_ret_t dart_segment_set_flags(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t             flags)
+{
+
+  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
+    return DART_ERR_INVAL;
+  }
+
+  segment->flags = flags;
+  return DART_OK;
+}
+
 
 static inline void free_segment_info(dart_segment_info_t *seg_info){
   if (seg_info->disp != NULL) {
@@ -282,37 +252,26 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
  * @return DART_OK on success.
  *         DART_ERR_INVAL if the segment was not found.
  *
- * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
- *            lock-free list in the buckets?
- *            Alternatively, use spin-locks since lock periods should be short
- *            (maybe get rid of the free-list then?).
- *            For now, it has been implemented using mutexes.
  */
-dart_ret_t dart_segment_free(dart_segid_t segid)
+dart_ret_t dart_segment_free(
+  dart_segmentdata_t  * segdata,
+  dart_segid_t          segid)
 {
   int slot = hash_segid(segid);
   dart_seghash_elem_t *pred = NULL;
-  dart_mutex_lock(&hashtab[slot].mutex);
-  dart_seghash_elem_t *elem = hashtab[slot].next;
-
-  // shortcut: the bucket head is not moved to the freelist
-  if (elem->data.segid == segid) {
-    hashtab[slot].next = elem->next;
-    dart_mutex_unlock(&hashtab[slot].mutex);
-    free(elem);
-    return DART_OK;
-  }
+  dart_seghash_elem_t *elem = segdata->hashtab[slot];
 
   // find the correct entry in this bucket
-  pred = elem;
-  elem = elem->next;
+  pred = NULL;
   while (elem != NULL) {
 
-    if (elem->data.segid == segid) {
-      pred->next = elem->next;
-      dart_mutex_unlock(&hashtab[slot].mutex);
-      /* the rest can be done outside of the critical section */
-      free_segment_info(&elem->data.seg_info);
+    if (elem->data.seg_id == segid) {
+      if (pred != NULL) {
+        pred->next = elem->next;
+      } else {
+        segdata->hashtab[slot] = elem->next;
+      }
+      free_segment_info(&elem->data);
       free(elem);
       return DART_OK;
     }
@@ -320,36 +279,32 @@ dart_ret_t dart_segment_free(dart_segid_t segid)
     pred = elem;
     elem = elem->next;
   }
-  dart_mutex_unlock(&hashtab[slot].mutex);
 
   // element not found
   return DART_ERR_INVAL;
 }
 
-static void clear_segdata_list(dart_seghash_head_t *listhead)
+static void clear_segdata_list(dart_seghash_elem_t *listhead)
 {
-  dart_seghash_elem_t *elem = listhead->next;
+  dart_seghash_elem_t *elem = listhead;
   while (elem != NULL) {
     dart_seghash_elem_t *tmp = elem;
     elem = tmp->next;
     tmp->next = NULL;
-    free_segment_info(&tmp->data.seg_info);
+    free_segment_info(&tmp->data);
     free(tmp);
   }
-  listhead->next = NULL;
 }
 
 /**
  * @brief Clear the segment data hash table.
  */
-dart_ret_t dart_segment_fini()
+dart_ret_t dart_segment_fini(
+  dart_segmentdata_t  * segdata)
 {
-  int i;
   // clear the hash table
-  for (i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
-    clear_segdata_list(&hashtab[i]);
-    dart_mutex_destroy(&hashtab[i].mutex);
+  for (int i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
+    clear_segdata_list(segdata->hashtab[i]);
   }
-
   return DART_OK;
 }

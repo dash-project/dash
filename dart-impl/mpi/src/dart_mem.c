@@ -12,6 +12,7 @@
 
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/assert.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -48,9 +49,15 @@ num_level(size_t size)
   return level;
 }
 
+static inline int
+is_pow_of_2(uint32_t x) {
+  return !(x & (x - 1));
+}
+
 struct dart_buddy *
-	dart_buddy_new(size_t size)
+dart_buddy_new(size_t size)
 {
+  DART_ASSERT(is_pow_of_2(size));
   int level = num_level(size) - DART_MEM_ALIGN_BITS;
 	int lsize = 1 << level;
 	struct dart_buddy * self =
@@ -65,11 +72,6 @@ void
 dart_buddy_delete(struct dart_buddy * self) {
   dart_mutex_destroy(&self->mutex);
 	free(self);
-}
-
-static inline int
-is_pow_of_2(uint32_t x) {
-	return !(x & (x - 1));
 }
 
 static inline size_t

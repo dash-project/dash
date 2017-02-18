@@ -12,8 +12,8 @@
 #include <string.h>
 #include <inttypes.h>
 
+// forward declaration
 struct dart_buddy;
-
 extern char* dart_mempool_localalloc;
 extern struct dart_buddy* dart_localpool;
 

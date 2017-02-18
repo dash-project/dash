@@ -213,7 +213,7 @@ dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
  * Data type for storing a team ID
  * \ingroup DartTypes
  */
-typedef int32_t dart_team_t;
+typedef int16_t dart_team_t;
 
 /**
  * Undefined team ID.
