@@ -403,7 +403,7 @@ TEST_F(HDF5ArrayTest, CustomType) {
   InputStream is(_filename);
   is >> dio::dataset("array_a") >> dio::type_converter(converter) >> array_b;
   dash::barrier();
-
+  
   std::for_each(array_b.lbegin(), array_b.lend(), [&fillin](value_t &el) {
     ASSERT_EQ_U(fillin.a, el.a);
     ASSERT_EQ_U(fillin.b, el.b);

@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <dash/internal/Config.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/internal/Logging.h>

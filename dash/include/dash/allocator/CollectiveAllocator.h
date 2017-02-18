@@ -251,7 +251,7 @@ private:
       DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
-      dart_team_memfree(_team_id, gptr),
+      dart_team_memfree(gptr),
       DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
     if(!keep_reference){

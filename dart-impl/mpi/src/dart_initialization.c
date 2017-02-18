@@ -26,31 +26,36 @@ static int _dart_initialized = 0;
 static
 dart_ret_t do_init()
 {
-  uint16_t index;
-
-  // Segment ID zero is reserved for non-global memory allocations
-  dart_segment_init();
-  dart_segment_alloc(0, DART_TEAM_ALL);
-
   /* Initialize the teamlist. */
   dart_adapt_teamlist_init();
+
+  dart_next_availteamid = DART_TEAM_ALL;
 
   if (MPI_Comm_dup(MPI_COMM_WORLD, &dart_comm_world) != MPI_SUCCESS) {
     DART_LOG_ERROR("Failed to duplicate MPI_COMM_WORLD");
     return DART_ERR_OTHER;
   }
 
-  if (dart_adapt_teamlist_alloc(
-                 DART_TEAM_ALL,
-                 &index) == -1) {
+  dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
+	if (ret != DART_OK) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
     return DART_ERR_OTHER;
   }
 
-  dart_team_data_t *team_data = &dart_team_data[index];
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
 
-  DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
-                 index);
+  /* Create a global translation table for all
+   * the collective global memory segments */
+  dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
+  // Segment ID zero is reserved for non-global memory allocations
+  dart_segment_info_t item = {
+                .seg_id = 0,
+                .baseptr = NULL,
+                .disp = NULL,
+                .size = 0};
+  dart_segment_alloc(&team_data->segdata, &item);
+
+  dart_next_availteamid++;
 
   team_data->comm = DART_COMM_WORLD;
 
@@ -89,14 +94,10 @@ dart_ret_t do_init()
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared completed");
 
     int sharedmem_unitid;
-    MPI_Comm_size(
-      sharedmem_comm,
+    MPI_Comm_size(sharedmem_comm,
       &(team_data->sharedmem_nodesize));
-    MPI_Comm_rank(
-      sharedmem_comm,
-      &sharedmem_unitid);
-    dart_sharedmem_local_baseptr_set =
-      (char **)malloc(
+    MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
+    dart_sharedmem_local_baseptr_set = malloc(
         sizeof(char *) * team_data->sharedmem_nodesize);
 
     for (int i = 0; i < team_data->sharedmem_nodesize; i++) {
@@ -175,19 +176,19 @@ dart_ret_t dart_init(
   }
   DART_LOG_DEBUG("dart_init()");
 
-	int mpi_initialized;
-	if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
+  int mpi_initialized;
+  if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_init(): MPI_Initialized failed");
     return DART_ERR_OTHER;
   }
 
-	if (!mpi_initialized) {
-		_init_by_dart = 1;
+  if (!mpi_initialized) {
+    _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
-		MPI_Init(argc, argv);
-	}
+    MPI_Init(argc, argv);
+  }
 
-	return do_init();
+  return do_init();
 }
 
 
@@ -213,19 +214,21 @@ dart_ret_t dart_init_thread(
     _init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
     int thread_required = MPI_THREAD_MULTIPLE;
-#ifdef DART_ENABLE_THREADSUPPORT
+#if !defined(DART_ENABLE_THREADSUPPORT)
+    MPI_Init(argc, argv);
+  }
+#else
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i\n", thread_provided);
-#else
-    MPI_Init(argc, argv);
-#endif
   } else {
-#ifdef DART_ENABLE_THREADSUPPORT
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i\n", thread_provided);
-#endif
   }
-  *provided = (thread_provided == MPI_THREAD_MULTIPLE) ? DART_THREAD_MULTIPLE : DART_THREAD_SINGLE;
+#endif // DART_ENABLE_THREADSUPPORT
+
+  *provided = (thread_provided == MPI_THREAD_MULTIPLE) ?
+                DART_THREAD_MULTIPLE :
+                DART_THREAD_SINGLE;
   DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s\n",
             (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
@@ -239,7 +242,6 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-	uint16_t    index;
 	dart_global_unit_t unitid;
 	dart_myid(&unitid);
 
@@ -248,13 +250,14 @@ dart_ret_t dart_exit()
   _dart_initialized = 0;
 
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);
-	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
+	dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+	if (team_data == NULL) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
                    unitid.id);
     return DART_ERR_OTHER;
   }
 
-  dart_team_data_t *team_data = &dart_team_data[index];
+  dart_segment_fini(&team_data->segdata);
 
   if (MPI_Win_unlock_all(team_data->window) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
@@ -287,8 +290,6 @@ dart_ret_t dart_exit()
 #endif
 
 	dart_adapt_teamlist_destroy();
-
-  dart_segment_fini();
 
   MPI_Comm_free(&dart_comm_world);
 

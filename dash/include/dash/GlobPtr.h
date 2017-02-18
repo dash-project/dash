@@ -233,7 +233,7 @@ public:
    */
   constexpr index_type operator-(const self_t & rhs) const noexcept
   {
-    return _dart_gptr - rhs.m_dart_ptr;
+    return _dart_gptr - rhs._dart_gptr;
   }
 
   /**
@@ -454,7 +454,7 @@ public:
   /**
    * Set the global pointer's associated unit.
    */
-  void set_unit(global_unit_t unit_id) {
+  void set_unit(team_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&_dart_gptr, unit_id),
       DART_OK);
@@ -464,8 +464,10 @@ public:
    * Check whether the global pointer is in the local
    * address space the pointer's associated unit.
    */
-  constexpr bool is_local() const {
-    return _dart_gptr.unitid == dash::Team::GlobalUnitID();
+  bool is_local() const {
+    dart_team_unit_t luid;
+    dart_team_myid(_dart_gptr.teamid, &luid);
+    return _dart_gptr.unitid == luid.id;
   }
 };
 
@@ -477,10 +479,11 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%08X|%04X|%04X|%016lX",
+          "%06X|%02X|%04X|%04X|%016lX",
           gptr._dart_gptr.unitid,
-          gptr._dart_gptr.segid,
           gptr._dart_gptr.flags,
+          gptr._dart_gptr.segid,
+          gptr._dart_gptr.teamid,
           gptr._dart_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
