@@ -276,23 +276,21 @@ class IndexSetBase
 
   constexpr index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
-//  return dash::index(dash::domain(derived().view()));
     return dash::index(dash::domain(_view));
   }
 
   constexpr const pattern_type & pattern() const {
     return _pattern;
-//  return (dash::origin(*_view).pattern());
   }
 
-  constexpr const local_type & local() const {
+  constexpr const local_type local() const {
 //constexpr auto local() const
 //-> decltype(dash::index(dash::local(
 //             std::declval< const ViewType & >() ))) {
     return dash::index(dash::local(_view));
   }
 
-  constexpr const global_type & global() const {
+  constexpr const global_type global() const {
 //constexpr auto global() const
 //-> decltype(dash::index(dash::global(
 //              std::declval< const ViewType & >() ))) {

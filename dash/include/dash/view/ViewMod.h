@@ -6,6 +6,7 @@
 #include <dash/Iterator.h>
 
 #include <dash/util/UniversalMember.h>
+#include <dash/util/ArrayExpr.h>
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewTraits.h>
@@ -152,6 +153,7 @@ class ViewOrigin
 
  public:
   typedef dash::default_index_t                                 index_type;
+  typedef dash::default_extent_t                                 size_type;
   typedef self_t                                               domain_type;
   typedef IndexSetIdentity<self_t>                          index_set_type;
 
@@ -384,19 +386,41 @@ class ViewLocalMod
 
   typedef std::integral_constant<bool, true>                      is_local;
 
-  typedef decltype(dash::begin(dash::local(
-                std::declval<
-                  typename std::add_lvalue_reference<origin_type>::type >()
-              )))
+  typedef
+    decltype(
+      dash::begin(
+        dash::local(dash::origin(
+          std::declval<
+            typename std::add_lvalue_reference<domain_type>::type >()
+      ))))
     iterator;
 
   typedef
     decltype(
-      dash::begin(dash::local(
-        std::declval<
-          typename std::add_lvalue_reference<const origin_type>::type >()
-      )))
+      dash::begin(
+        dash::local(dash::origin(
+          std::declval<
+            typename std::add_lvalue_reference<const domain_type>::type >()
+      ))))
     const_iterator;
+
+  typedef
+    decltype(
+      *(dash::begin(
+          dash::local(dash::origin(
+            std::declval<
+              typename std::add_lvalue_reference<domain_type>::type >()
+          )))))
+    reference;
+
+  typedef
+    decltype(
+      *(dash::begin(
+          dash::local(dash::origin(
+            std::declval<
+              typename std::add_lvalue_reference<const domain_type>::type >()
+          )))))
+    const_reference;
 
  private:
   index_set_type  _index_set;
@@ -449,6 +473,19 @@ class ViewLocalMod
            ];
   }
 
+  iterator begin() {
+    return dash::begin(
+             dash::local(
+               dash::origin(
+                 *this
+               )
+             )
+           )
+         + _index_set.pre()[
+             _index_set.first()
+           ];
+  }
+
   constexpr const_iterator end() const {
     return dash::begin(
              dash::local(
@@ -462,12 +499,24 @@ class ViewLocalMod
            ] + 1;
   }
 
-  constexpr auto operator[](int offset) const
-  -> decltype(*(dash::begin(
-                dash::local(dash::origin(
-                  std::declval<
-                    typename std::add_lvalue_reference<domain_type>::type >()
-                ))))) {
+  iterator end() {
+    return dash::begin(
+             dash::local(
+               dash::origin(
+                 *this
+               )
+             )
+           )
+         + _index_set.pre()[
+             _index_set.last()
+           ] + 1;
+  }
+
+  constexpr const_reference operator[](int offset) const {
+    return *(this->begin() + offset);
+  }
+
+  reference operator[](int offset) {
     return *(this->begin() + offset);
   }
 
@@ -475,7 +524,7 @@ class ViewLocalMod
     return *this;
   }
 
-  inline local_type & local() {
+  local_type & local() {
     return *this;
   }
 
@@ -483,7 +532,7 @@ class ViewLocalMod
     return dash::global(dash::domain(*this));
   }
 
-  inline global_type & global() {
+  global_type & global() {
     return dash::global(dash::domain(*this));
   }
 

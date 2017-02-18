@@ -47,6 +47,7 @@
 
 
 #include <dash/Types.h>
+#include <dash/Meta.h>
 
 #include <type_traits>
 
@@ -87,7 +88,6 @@ class IteratorRange<Iterator *, Sentinel *>;
 template <typename RangeType>
 constexpr auto begin(RangeType && range)
   -> decltype(std::forward<RangeType>(range).begin()) {
-//return range.begin();
   return std::forward<RangeType>(range).begin();
 }
 
@@ -97,7 +97,6 @@ constexpr auto begin(RangeType && range)
 template <class RangeType>
 constexpr auto end(RangeType && range)
   -> decltype(std::forward<RangeType>(range).end()) {
-//return range.end();
   return std::forward<RangeType>(range).end();
 }
 
@@ -107,8 +106,7 @@ constexpr auto end(RangeType && range)
 template <class RangeType>
 constexpr auto
 size(RangeType && r)
-  -> decltype(r.size()) {
-//return r.size();
+  -> decltype(std::forward<RangeType>(r).size()) {
   return std::forward<RangeType>(r).size();
 }
 
@@ -162,24 +160,40 @@ public:
 #endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:
-  template<typename C, typename C::iterator (C::*)() const = &C::begin >
-  static yes has_begin(C *);
+//template<typename C, typename C::const_iterator (C::*)() const = &C::begin >
+//static yes has_begin(C *);
   template<typename C, typename C::iterator (C::*)() = &C::begin >
   static yes has_begin(C *);
   static no  has_begin(...);
 
+  template<typename C, typename C::iterator (C::*)() const = &C::begin >
+  static yes has_const_begin(C *);
+  static no  has_const_begin(...);
+
   // Test if x.end() is valid expression and type x::iterator is
   // defined:
-  template<typename C, typename C::iterator (C::*)() const = &C::end >
-  static yes has_end(C *);
   template<typename C, typename C::iterator (C::*)() = &C::end >
   static yes has_end(C *);
   static no  has_end(...);
 
+  template<typename C, typename C::iterator (C::*)() const = &C::end >
+  static yes has_const_end(C *);
+  static no  has_const_end(...);
+
 public:
   enum { value = (
-              sizeof(has_begin(static_cast<ValueT*>(nullptr))) == sizeof(yes)
-           && sizeof(has_end(static_cast<ValueT*>(nullptr)))   == sizeof(yes)
+           (  sizeof(has_begin(static_cast<ValueT*>(nullptr)))
+                 == sizeof(yes)
+            || 
+              sizeof(has_const_begin(static_cast<ValueT*>(nullptr)))
+                 == sizeof(yes) )
+           &&
+           (
+              sizeof(has_end(static_cast<ValueT*>(nullptr)))
+                 == sizeof(yes)
+            ||
+              sizeof(has_const_end(static_cast<ValueT*>(nullptr)))
+                 == sizeof(yes) )
          ) };
 };
 

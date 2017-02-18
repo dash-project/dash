@@ -254,12 +254,12 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                      "row[", r, "]",
                      range_str(row_view));
     }
-    for (int r = 0; r < nview_rows; ++r) {
-      auto row_view = dash::sub<0>(r, r+1, nview_sub);
-      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
-                     "index row[", r, "]",
-                     range_str(dash::index(row_view)));
-    }
+//  for (int r = 0; r < nview_rows; ++r) {
+//    auto row_index = dash::index(dash::sub<0>(r, r+1, nview_sub));
+//    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+//                   "index row[", r, "]",
+//                   range_str(row_index));
+//  }
   }
 
   // -- Local View -----------------------------------

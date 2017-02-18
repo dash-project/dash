@@ -3,6 +3,7 @@
 
 #include <type_traits>
 
+#include <dash/Meta.h>
 #include <dash/Range.h>
 
 
@@ -52,24 +53,11 @@ template <class ViewType>
 class IndexSetIdentity;
 
 namespace detail {
-
-  template<typename T>
-  struct _has_domain_type
-  {
-  private:
-    typedef char                      yes;
-    typedef struct { char array[2]; } no;
-
-    template<typename C> static yes test(typename C::domain_type*);
-    template<typename C> static no  test(...);
-  public:
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
-  };
-
-} // namespace detail
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
+}
 
 template <class ViewableType>
-struct is_view : dash::detail::_has_domain_type<ViewableType> { };
+struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
 
 
 

@@ -1,9 +1,34 @@
 #ifndef DASH__META_H__INCLUDED
 #define DASH__META_H__INCLUDED
 
+#ifndef DOXYGEN
+
+#define DASH__META__DEFINE_TRAIT__HAS_TYPE(DepType) \
+  template<typename T> \
+  struct has_type_##DepType { \
+  private: \
+    typedef char                      yes; \
+    typedef struct { char array[2]; } no; \
+    template<typename C> static yes test(typename C:: DepType *); \
+    template<typename C> static no  test(...); \
+  public: \
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes); \
+  };
+
 namespace dash {
 
-#ifndef DOXYGEN
+DASH__META__DEFINE_TRAIT__HAS_TYPE(iterator);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_iterator);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(reference);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
+
+} // namespace dash
+
+#include <type_traits>
+#include <functional>
+
+namespace dash {
 
 /*
  * For reference, see
@@ -14,8 +39,11 @@ namespace dash {
  */
 
 template <class I>
+using reference_t = typename std::add_lvalue_reference<I>::type;
+
+template <class I>
 using rvalue_reference_t =
-  decltype(std::move(declval<reference_t<I>>()));
+  decltype(std::move(std::declval<dash::reference_t<I>>()));
 
 // void f(ValueType && val) { 
 //   std::string i(move(val)); 
@@ -27,23 +55,23 @@ using rvalue_reference_t =
 
 template<typename T> struct adv { 
   T _value; 
-  explicit adv(T && value) : _value(forward<T>(value)) {} 
+  explicit adv(T && value) : _value(std::forward<T>(value)) {} 
   template<typename ...U> T && operator()(U &&...) { 
-    return forward<T>(_value); 
+    return std::forward<T>(_value); 
   } 
 }; 
 
 template<typename T> adv<T> make_adv(T && value) { 
-  return adv<T> { forward<T>(value) }; 
+  return adv<T> { std::forward<T>(value) }; 
 }
+
+} // namespace dash
 
 namespace std { 
   template<typename T> 
-  struct is_bind_expression< adv<T> > : std::true_type {}; 
+  struct is_bind_expression< dash::adv<T> > : std::true_type {}; 
 } 
 
 #endif // DOXYGEN
 
-} // namespace dash
-
-#endif DASH__META_H__INCLUDED
+#endif // DASH__META_H__INCLUDED

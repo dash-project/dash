@@ -27,11 +27,8 @@ constexpr auto
 domain(ViewT && view)
   -> typename std::enable_if<
        dash::view_traits<ViewValueT>::is_view::value,
-    // const typename dash::view_traits<ViewT>::domain_type &
-    // decltype(view.domain())
        decltype(std::forward<ViewT>(view).domain())
      >::type {
-//return view.domain();
   return std::forward<ViewT>(view).domain();
 }
 #if 0
