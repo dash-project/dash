@@ -1222,3 +1222,35 @@ TEST_F(MatrixTest, CopyRow)
   }
 }
 
+TEST_F(MatrixTest, InterfaceTest)
+{
+  typedef dash::Pattern<2>                 pattern_t;
+  typedef typename pattern_t::index_type   index_t;
+
+  dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
+  
+  auto const & matrix_by_ref = matrix;
+  auto & matrix_local  = matrix.local;
+  
+  dash::fill(matrix.begin(), matrix.end(), 0);
+  dash::barrier();
+  
+  int el = matrix(0,0);
+  el = matrix[0][0];
+  el = matrix.local[0][0];
+  el = *(matrix.local.lbegin());
+  dash::barrier();
+  el = ++(*(matrix.local.lbegin()));
+  el = ++(*(matrix.local.row(0).lbegin()));
+  
+  // test access using const & matrix
+  el = matrix_by_ref[0][0];
+  el = matrix_by_ref.local[0][0];
+  // should not compile
+  // el = ++(*(matrix_by_ref.local.lbegin()));
+  // el = ++(*(matrix_by_ref.local.row(0).lbegin()));
+  // matrix_by_ref.local.row(0)[0] = 5;
+  
+  // test access using non-const & matrix.local
+  *(matrix_local.lbegin()) = 5;
+}
