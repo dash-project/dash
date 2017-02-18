@@ -32,8 +32,8 @@ public:
   typedef typename base_t::reference                    reference;
   typedef typename IndexSetType::index_type            index_type;
 private:
-  const DomainIterator * _domain_it;
-        IndexSetType     _index_set;
+  DomainIterator  _domain_it;
+  IndexSetType    _index_set;
 public:
   constexpr ViewIterator() = delete;
 
@@ -42,12 +42,12 @@ public:
     const IndexSetType   & index_set,
     index_type             position)
   : base_t(position)
-  , _domain_it(&domain_it)
+  , _domain_it(domain_it)
   , _index_set(index_set)
   { }
 
   constexpr reference dereference(index_type idx) const {
-    return (*_domain_it)[ (_index_set)[idx] ];
+    return (_domain_it)[ (_index_set)[idx] ];
   }
 };
 

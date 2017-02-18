@@ -325,6 +325,10 @@ class IndexSetBase
 
   // ---- size ------------------------------------------------------------
 
+  constexpr index_type size() const {
+    return view().size();
+  }
+
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
@@ -636,7 +640,7 @@ class IndexSetSub
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
 
-  static constexpr std::size_t NDim   = ViewType::ndim();
+  static constexpr std::size_t NDim = base_t::ndim();
  public:
   constexpr IndexSetSub(
     const ViewType   & view,

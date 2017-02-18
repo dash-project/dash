@@ -110,6 +110,7 @@ Features:
         - `dart__base__locality__unit`
 
 Fixes:
+
 - Added clarification which DART functionality provides thread-safe access. 
   DART functions can be considered thread-safe as long as they do not operate
   on the same data structures. In particular, thread-concurrent (collective) 

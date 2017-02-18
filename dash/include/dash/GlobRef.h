@@ -158,7 +158,7 @@ public:
     //       copies the GlobRef instance while
     //         GlobRef=(const GlobRef & other)
     //       puts the value.
-    set(static_cast<T>(other));
+    set(std::forward<GlobRefOrElementT>(other));
     return *this;
   }
 
