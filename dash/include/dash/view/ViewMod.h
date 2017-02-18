@@ -10,6 +10,7 @@
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewTraits.h>
+#include <dash/view/ViewIterator.h>
 
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>

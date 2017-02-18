@@ -10,6 +10,7 @@
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewTraits.h>
+#include <dash/view/ViewIterator.h>
 
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>
@@ -596,13 +597,18 @@ public:
               std::declval<
                 typename std::add_lvalue_reference<domain_type>::type
               >() ))
-    iterator;
+    domain_iterator;
 
   typedef decltype(
             dash::begin(
               std::declval<
                 typename std::add_lvalue_reference<const domain_type>::type
               >() ))
+    const_domain_iterator;
+
+  typedef ViewIterator<domain_iterator, index_set_type>
+    iterator;
+  typedef ViewIterator<const_domain_iterator, index_set_type>
     const_iterator;
 
 private:
@@ -685,27 +691,35 @@ public:
     //         view_iterator(this->domain().begin(), _index_set, 0)
     //         => operator[](vi) { return _domain_it[ _index_set[vi] ]; }
     //
-    return this->domain().begin() + _index_set[0];
+    // return this->domain().begin() + _index_set[0];
+    return const_iterator(this->domain().begin(), _index_set, 0);
+    // Alternative: use GlobViewIter
   }
 
   iterator begin() {
-    return this->domain().begin() + _index_set[0];
+    // return this->domain().begin() + _index_set[0];
+    return iterator(this->domain().begin(), _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    return this->domain().begin() + *_index_set.end();
+    // return this->domain().begin() + *_index_set.end();
+    return const_iterator(
+             this->domain().begin(), _index_set, _index_set.size());
   }
 
   iterator end() {
-    return this->domain().begin() + *_index_set.end();
+    // return this->domain().begin() + *_index_set.end();
+    return iterator(
+             this->domain().begin(), _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return this->domain().begin()[_index_set[offset]];
+    return begin()[offset];
   }
 
   reference operator[](int offset) {
-    return this->domain().begin()[_index_set[offset]];
+    // return this->domain().begin()[_index_set[offset]];
+    return begin()[offset];
   }
 
   constexpr const index_set_type & index_set() const {

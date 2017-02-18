@@ -69,6 +69,10 @@ class IndexIteratorBase {
     return derived().dereference(_pos);
   }
 
+  constexpr reference operator[](int pos) const {
+    return derived().dereference(pos);
+  }
+
   derived_t & operator++() {
     _pos++;
     return derived();

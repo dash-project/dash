@@ -284,7 +284,8 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                        index(nview_sub).size());
 
     dash::test::print_nview("nview_sub", nview_sub);
-//
+    dash::test::print_nview("index_sub", dash::index(nview_sub));
+
 //  EXPECT_EQ_U(nview_rows, nview_sub.extent(0));
 //  EXPECT_EQ_U(nview_rows, mat.extent(0) - 2);
 //  EXPECT_EQ_U(nview_cols, nview_sub.extent(1));

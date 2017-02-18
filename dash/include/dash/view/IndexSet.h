@@ -267,8 +267,8 @@ class IndexSetBase
   constexpr IndexSetBase()               = delete;
   constexpr IndexSetBase(self_t &&)      = default;
   constexpr IndexSetBase(const self_t &) = default;
-  self_t & operator=(self_t &&)          = delete;
-  self_t & operator=(const self_t &)     = delete;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
   
   constexpr const ViewType & view() const {
     return _view;
