@@ -163,7 +163,6 @@ TEST_F(NViewTest, MatrixBlocked1DimSingleViewModifiers)
     EXPECT_EQ_U(mat.extent(0), nview_cols_g.extent<0>());
     EXPECT_EQ_U(5,             nview_cols_g.extent<1>());
  
-#if 0
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
                    "sub<1>(2,7, sub<0>(1,3, mat) ->",
                    "offsets:", nview_cr_s_g.offsets(),
@@ -172,6 +171,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSingleViewModifiers)
     dash::test::print_nview("index_cr_s_g", dash::index(nview_cr_s_g));
     dash::test::print_nview("nview_cr_s_g", nview_cr_s_g);
  
+#if 0
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
                    "sub<0>(1,3, sub<0>(2,7, mat) ->",
                    "offsets:", nview_rc_s_g.offsets(),

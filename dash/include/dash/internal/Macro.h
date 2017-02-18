@@ -26,4 +26,20 @@
   #endif // __ICC
 #endif // NOINLINE_ATTRIBUTE
 
+#define DASH__DECLTYPE_AUTO_RETURN(...) \
+  -> decltype(__VA_ARGS__)              \
+  { return (__VA_ARGS__); }             \
+  /**/
+
+#define DASH__DECLTYPE_AUTO_RETURN_NOEXCEPT(...)          \
+  noexcept(noexcept(decltype(__VA_ARGS__)(__VA_ARGS__)))  \
+  -> decltype(__VA_ARGS__)                                \
+  { return (__VA_ARGS__); }                               \
+  /**/
+
+#define DASH__DECLTYPE_NOEXCEPT(...)                      \
+  noexcept(noexcept(decltype(__VA_ARGS__)(__VA_ARGS__)))  \
+  -> decltype(__VA_ARGS__)                                \
+  /**/
+
 #endif // DASH__INTERNAL__MACRO_H_
