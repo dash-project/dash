@@ -367,22 +367,22 @@ public:
    * Complete all outstanding asynchronous operations on the referenced array
    * on all units.
    */
-  constexpr void flush() const {
+  inline void flush() const {
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
-  constexpr void flush_local() const {
+  inline void flush_local() const {
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
-  constexpr void flush_all() const {
+  inline void flush_all() const {
     // could also call _array->flush();
     _array->m_globmem->flush_all();
   }
 
-  constexpr void flush_local_all() const {
+  inline void flush_local_all() const {
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
   }
@@ -393,7 +393,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  constexpr void push() const {
+  inline void push() const {
     flush_local_all();
   }
 
@@ -403,7 +403,7 @@ public:
    *
    * \see DashAsyncProxyConcept
    */
-  constexpr void fetch() const {
+  inline void fetch() const {
     flush_all();
   }
 };

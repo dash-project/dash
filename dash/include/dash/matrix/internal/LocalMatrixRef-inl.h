@@ -152,7 +152,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
+inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -163,7 +163,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
       (NumDim - 1), "got ", dim);
     assert(false);
   }
-//return _refview._mat->_pattern.local_extent(dim);
   return _refview._viewspec.extent(dim);
 }
 
@@ -176,7 +175,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::index_type
+inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::index_type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::offset(
   dim_t dim) const noexcept
@@ -211,24 +210,17 @@ inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::begin() noexcept
 {
-  // Offset of first local element in viewspec, e.g. local offset of first
-  // element in block:
-  auto l_vs_begin_idx = _refview._mat->_pattern.local_at(
-                          _refview._coord,
-                          _refview._l_viewspec);
-  DASH_LOG_TRACE("LocalMatrixRef.begin=()",
-                 "viewspec:",        _refview._viewspec,
-                 "l_viewspec:",      _refview._l_viewspec,
-                 "iterator offset:", l_vs_begin_idx);
-  iterator gv_it(
+  return iterator(
     _refview._mat->_glob_mem,
     _refview._mat->_pattern,
     _refview._viewspec,
-    0,                   // iterator position in view index space
-    l_vs_begin_idx       // view index start offset
+    // iterator position in view index space
+    0,
+    // view index start offset
+    _refview._mat->_pattern.local_at(
+                          _refview._coord,
+                          _refview._l_viewspec)
   );
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.begin= >", gv_it);
-  return gv_it;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -236,24 +228,17 @@ constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::begin() const noexcept
 {
-  // Offset of first local element in viewspec, e.g. local offset of first
-  // element in block:
-  auto l_vs_begin_idx = _refview._mat->_pattern.local_at(
-                          _refview._coord,
-                          _refview._l_viewspec);
-  DASH_LOG_TRACE("LocalMatrixRef.begin()",
-                 "viewspec:",        _refview._viewspec,
-                 "l_viewspec:",      _refview._l_viewspec,
-                 "iterator offset:", l_vs_begin_idx);
-  const_iterator gv_it(
+  return const_iterator(
     _refview._mat->_glob_mem,
     _refview._mat->_pattern,
     _refview._viewspec,
-    0,                   // iterator position in view index space
-    l_vs_begin_idx       // view index start offset
+    // iterator position in view index space
+    0,
+    // view index start offset
+    _refview._mat->_pattern.local_at(
+                          _refview._coord,
+                          _refview._l_viewspec)
   );
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.begin >", gv_it);
-  return gv_it;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
