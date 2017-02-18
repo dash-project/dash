@@ -206,7 +206,7 @@ protected:
   NViewModType & derived() {
     return static_cast<NViewModType &>(*this);
   }
-  const NViewModType & derived() const {
+  constexpr const NViewModType & derived() const {
     return static_cast<const NViewModType &>(*this);
   }
 
@@ -225,15 +225,19 @@ protected:
   { }
 
   constexpr NViewModBase()               = delete;
-  constexpr NViewModBase(self_t &&)      = default;
-  constexpr NViewModBase(const self_t &) = default;
   ~NViewModBase()                        = default;
 
 public:
-  self_t & operator=(self_t &&)          = default;
+  constexpr NViewModBase(const self_t &) = default;
   self_t & operator=(const self_t &)     = default;
+  constexpr NViewModBase(self_t &&)      = default;
+  self_t & operator=(self_t &&)          = default;
 
   constexpr const domain_type & domain() const {
+    return _domain;
+  }
+
+  domain_type & domain() {
     return _domain;
   }
 
@@ -673,6 +677,14 @@ public:
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
+    // TODO: returned iterator will iterate domain starting at this
+    //       views first index but will not use index set of this
+    //       view (_index_set) to determine its position.
+    //       Should return proxy iterator like:
+    //
+    //         view_iterator(this->domain().begin(), _index_set, 0)
+    //         => operator[](vi) { return _domain_it[ _index_set[vi] ]; }
+    //
     return this->domain().begin() + _index_set[0];
   }
 

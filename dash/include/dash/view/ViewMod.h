@@ -289,7 +289,7 @@ class ViewModBase {
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
   }
-  const ViewModType & derived() const {
+  constexpr const ViewModType & derived() const {
     return static_cast<const ViewModType &>(*this);
   }
 
