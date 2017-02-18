@@ -15,21 +15,13 @@ protected:
 
   AtomicTest()
   : _dash_id(0),
-    _dash_size(0) {
-  }
-
-  virtual ~AtomicTest() {
-    LOG_MESSAGE("<<< Closing test suite: AtomicTest");
-  }
+    _dash_size(0)
+  { }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-  }
-
-  virtual void TearDown() {
-    dash::test::TestBase::TearDown();
   }
 };
 

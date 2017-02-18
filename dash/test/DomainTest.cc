@@ -8,7 +8,7 @@
 
 TEST_F(DomainTest, Basic3Dim)
 {
-  if (_dash_id != 0) { return; }
+  if (dash::myid() != 0) { return; }
 
   dash::Domain<3, int> dom({ {0,10}, {10,20}, {5,10} });
 

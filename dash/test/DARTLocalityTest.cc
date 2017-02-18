@@ -119,7 +119,9 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
     dart_domain_clone(loc_team_all_orig, &loc_team_all_copy));
 
   dart_unit_locality_t * ul;
-  EXPECT_EQ_U(DART_OK, dart_unit_locality(DART_TEAM_ALL, _dash_id, &ul));
+  EXPECT_EQ_U(
+    DART_OK,
+    dart_unit_locality(DART_TEAM_ALL, dash::myid().id, &ul));
 
   // Remove the active unit's domain:
   const char * excluded_domain = ul->domain_tag;
@@ -142,7 +144,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get local unit locality descriptor");
   dart_unit_locality_t * ul;
-  EXPECT_EQ_U(DART_OK, dart_unit_locality(DART_TEAM_ALL, _dash_id, &ul));
+  EXPECT_EQ_U(
+      DART_OK,
+      dart_unit_locality(DART_TEAM_ALL, dash::myid().id, &ul));
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "pointer to local unit locality descriptor:", ul);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *ul);
@@ -158,7 +162,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.min_threads);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.max_threads);
 
-  EXPECT_EQ_U(_dash_id, ul->unit.id);
+  EXPECT_EQ_U(dash::myid().id, ul->unit.id);
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      -1); // -1 if unknown, >= 0 if set
@@ -208,7 +212,7 @@ TEST_F(DARTLocalityTest, Domains)
 
 TEST_F(DARTLocalityTest, ScopeDomains)
 {
-  if (0 != dash::myid()) {
+  if (0 != dash::myid().id) {
     return;
   }
 

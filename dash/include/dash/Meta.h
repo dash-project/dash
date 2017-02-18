@@ -15,18 +15,47 @@
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes); \
   };
 
+#endif // DOXYGEN
+
 namespace dash {
 
+/**
+ * Definition of type trait \c dash::has_type_iterator<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c iterator.
+ */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(iterator);
+/**
+ * Definition of type trait \c dash::has_type_const_iterator<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c const_iterator.
+ */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(const_iterator);
+/**
+ * Definition of type trait \c dash::has_type_reference<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c reference.
+ */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(reference);
+/**
+ * Definition of type trait \c dash::has_type_const_reference<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c const_reference.
+ */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
+/**
+ * Definition of type trait \c dash::has_type_value_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c value_type.
+ */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
 
 } // namespace dash
 
 #include <type_traits>
 #include <functional>
+
+#ifndef DOXYGEN
 
 namespace dash {
 

@@ -30,13 +30,8 @@ protected:
 
   ArrayLargeStruct()
     : _dash_id(0),
-      _dash_size(0) {
-    LOG_MESSAGE(">>> Test suite: ArrayLargeStruct");
-  }
-
-  virtual ~ArrayLargeStruct() {
-    LOG_MESSAGE("<<< Closing test suite: ArrayLargeStruct");
-  }
+      _dash_size(0)
+  { }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();

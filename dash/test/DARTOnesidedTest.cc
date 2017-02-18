@@ -9,7 +9,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
 {
   typedef int value_t;
   const size_t block_size = 10;
-  size_t num_elem_total   = _dash_size * block_size;
+  size_t num_elem_total   = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
   int local_array[block_size];
@@ -19,7 +19,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   }
   array.barrier();
   // Unit to copy values from:
-  dart_unit_t unit_src  = (dash::myid() + 1) % _dash_size;
+  dart_unit_t unit_src  = (dash::myid() + 1) % dash::size();
   // Global start index of block to copy:
   int g_src_index       = unit_src * block_size;
   // Copy values:
@@ -42,9 +42,9 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   typedef int value_t;
   const size_t block_size    = 10;
   const size_t num_elem_copy = 2 * block_size;
-  size_t num_elem_total      = _dash_size * block_size;
+  size_t num_elem_total      = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     return;
   }
   // Array to store local copy:
@@ -74,10 +74,10 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
   typedef int value_t;
   const size_t block_size = 5000;
-  size_t num_elem_copy    = (_dash_size - 1) * block_size;
-  size_t num_elem_total   = _dash_size * block_size;
+  size_t num_elem_copy    = (dash::size() - 1) * block_size;
+  size_t num_elem_total   = dash::size() * block_size;
   dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     return;
   }
   // Array to store local copy:
@@ -93,7 +93,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   LOG_MESSAGE("Requesting remote blocks");
   // Copy values from all non-local blocks:
   size_t block = 0;
-  for (size_t u = 0; u < _dash_size; ++u) {
+  for (size_t u = 0; u < dash::size(); ++u) {
     if (u != static_cast<size_t>(dash::myid())) {
       LOG_MESSAGE("Requesting block %zu from unit %zu", block, u);
       dart_handle_t handle;

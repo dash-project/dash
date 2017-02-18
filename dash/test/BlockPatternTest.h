@@ -14,13 +14,8 @@ protected:
 
   BlockPatternTest()
   : _dash_size(0),
-    _num_elem(23) {
-    LOG_MESSAGE(">>> Test suite: BlockPatternTest");
-  }
-
-  virtual ~BlockPatternTest() {
-    LOG_MESSAGE("<<< Closing test suite: BlockPatternTest");
-  }
+    _num_elem(23)
+  { }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();

@@ -26,10 +26,6 @@ protected:
     _dash_size = dash::size();
     _num_elem  = 100;
   }
-
-  virtual void TearDown() {
-    dash::test::TestBase::TearDown();
-  }
 };
 
 #endif // DASH__TEST__ARRAY_TEST_H_

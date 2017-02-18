@@ -160,8 +160,6 @@ public:
 #endif
   // Test if x.begin() is valid expression and type x::iterator is
   // defined:
-//template<typename C, typename C::const_iterator (C::*)() const = &C::begin >
-//static yes has_begin(C *);
   template<typename C, typename C::iterator (C::*)() = &C::begin >
   static yes has_begin(C *);
   static no  has_begin(...);
@@ -182,17 +180,14 @@ public:
 
 public:
   enum { value = (
-           (  sizeof(has_begin(static_cast<ValueT*>(nullptr)))
+           (    sizeof(has_begin(static_cast<ValueT*>(nullptr)))
                  == sizeof(yes)
-            || 
-              sizeof(has_const_begin(static_cast<ValueT*>(nullptr)))
+             || sizeof(has_const_begin(static_cast<ValueT*>(nullptr)))
                  == sizeof(yes) )
            &&
-           (
-              sizeof(has_end(static_cast<ValueT*>(nullptr)))
+           (    sizeof(has_end(static_cast<ValueT*>(nullptr)))
                  == sizeof(yes)
-            ||
-              sizeof(has_const_end(static_cast<ValueT*>(nullptr)))
+             || sizeof(has_const_end(static_cast<ValueT*>(nullptr)))
                  == sizeof(yes) )
          ) };
 };
@@ -200,8 +195,11 @@ public:
 } // namespace detail
 
 /**
- * Type trait for testing if `dash::begin<T>` and `dash::end<T>`
- * are defined.
+ * Definition of type trait \c dash::is_range<T>
+ * with static member \c value indicating whether type \c T is a model
+ * of the Range concept.
+ *
+ * Implemented as test if `dash::begin<T>` and `dash::end<T>` are defined.
  *
  * In the current implementation, range types must specify the
  * return type of `dash::begin<T>` and `dash::end<T>` as type
@@ -357,8 +355,6 @@ public:
 
   constexpr const local_type local() const {
     return local_type(
-     //      dash::local(_begin),
-     //      dash::local(_end)
              _begin.local(),
              _end.local()
            );
@@ -375,8 +371,8 @@ public:
 
 
 /**
- * Adapter template for range concept, wraps `begin` and `end` iterators
- * in range type.
+ * Specialization of adapter template for range concept, wraps `begin`
+ * and `end` pointers in range type.
  */
 template <
   typename LocalIterator,
@@ -430,7 +426,7 @@ public:
 
 /**
  * Adapter utility function.
- * Wraps `begin` and `end` iterators in range type.
+ * Wraps `begin` and `end` const iterators in range type.
  */
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorRange<const Iterator, const Sentinel>
@@ -442,6 +438,10 @@ make_range(
            end);
 }
 
+/**
+ * Adapter utility function.
+ * Wraps `begin` and `end` pointers in range type.
+ */
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorRange<Iterator *, Sentinel *>
 make_range(
@@ -452,6 +452,10 @@ make_range(
            end);
 }
 
+/**
+ * Adapter utility function.
+ * Wraps `begin` and `end` iterators in range type.
+ */
 template <class Iterator, class Sentinel>
 dash::IteratorRange<Iterator, Sentinel>
 make_range(

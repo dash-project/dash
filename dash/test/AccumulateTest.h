@@ -13,13 +13,8 @@ protected:
 
   AccumulateTest() 
   : _dash_id(0),
-    _dash_size(0) {
-    LOG_MESSAGE(">>> Test suite: AccumulateTest");
-  }
-
-  virtual ~AccumulateTest() {
-    LOG_MESSAGE("<<< Closing test suite: AccumulateTest");
-  }
+    _dash_size(0)
+  { }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();

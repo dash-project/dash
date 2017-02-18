@@ -23,15 +23,15 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
     dart_gptr_getaddr(gptr, (void**)&baseptr));
 
   for (size_t i = 0; i < block_size; ++i) {
-    baseptr[i] = _dash_id;
+    baseptr[i] = dash::myid().id;
   }
 
-  dash::Array<dart_gptr_t> arr(_dash_size);
+  dash::Array<dart_gptr_t> arr(dash::size());
   arr.local[0] = gptr;
   arr.barrier();
 
   value_t neighbor_val;
-  size_t  neighbor_id = (_dash_id + 1) % _dash_size;
+  size_t  neighbor_id = (dash::myid().id + 1) % dash::size();
   dart_storage_t ds = dash::dart_storage<value_t>(1);
   ASSERT_EQ_U(
     DART_OK,

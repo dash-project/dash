@@ -13,13 +13,8 @@ protected:
 
   AutobalanceTest() 
   : _dash_id(0),
-    _dash_size(0) {
-    LOG_MESSAGE(">>> Test suite: AutobalanceTest");
-  }
-
-  virtual ~AutobalanceTest() {
-    LOG_MESSAGE("<<< Closing test suite: AutobalanceTest");
-  }
+    _dash_size(0)
+  { }
 
   virtual void SetUp() {
     dash::test::TestBase::SetUp();
