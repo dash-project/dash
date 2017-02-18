@@ -266,7 +266,7 @@ public:
 
   // ---- offsets ---------------------------------------------------------
 
-  constexpr const std::array<index_type, NDim> & offsets() const {
+  constexpr const std::array<index_type, NDim> offsets() const {
     return domain().offsets();
   }
 
@@ -571,9 +571,9 @@ public:
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
 
-  using value_type      = typename origin_type::value_type;
-  using reference       = typename origin_type::reference;
-  using const_reference = typename origin_type::const_reference;
+  using value_type      = typename domain_type::value_type;
+  using reference       = typename domain_type::reference;
+  using const_reference = typename domain_type::const_reference;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
@@ -653,27 +653,15 @@ public:
 
   template <dim_t ExtDim>
   constexpr index_type offset() const {
-    return ( ExtDim == SubDim
-             ? _begin_idx
-             : base_t::offset(ExtDim)
-           );
+    return _index_set.template offset<ExtDim>();
   }
 
   constexpr std::array<index_type, NDim> offsets() const {
-    return dash::ce::replace_nth<SubDim>(
-             static_cast<
-               typename std::remove_reference<
-                 decltype( std::get<0>(dash::domain(*this).offsets()) )
-               >::type
-             >(_begin_idx),
-             dash::domain(*this).offsets());
+    return _index_set.offsets();
   }
 
   constexpr index_type offset(dim_t shape_dim) const {
-    return ( shape_dim == SubDim
-             ? _begin_idx
-             : base_t::offset(shape_dim)
-           );
+    return _index_set.offset(shape_dim);
   }
 
   // ---- size ------------------------------------------------------------
@@ -701,11 +689,11 @@ public:
   }
 
   constexpr const_reference operator[](int offset) const {
-    return this->domain().begin()[offset];
+    return this->domain().begin()[_index_set[offset]];
   }
 
   reference operator[](int offset) {
-    return this->domain().begin()[offset];
+    return this->domain().begin()[_index_set[offset]];
   }
 
   constexpr const index_set_type & index_set() const {

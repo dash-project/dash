@@ -122,7 +122,7 @@ private:
   /// Team containing the units to which the patterns element are mapped
   dash::Team                * _team            = nullptr;
   /// The active unit's id.
-  team_unit_t                  _myid;
+  team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// The global layout of the pattern's elements in memory respective to
@@ -409,7 +409,7 @@ public:
   /**
    * Inquality comparison operator.
    */
-  bool operator!=(
+  constexpr bool operator!=(
     /// TilePattern instance to compare for inequality
     const self_t & other) const
   {
@@ -421,7 +421,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType lbegin() const {
+  constexpr IndexType lbegin() const {
     return _lbegin;
   }
 
@@ -430,7 +430,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType lend() const {
+  constexpr IndexType lend() const {
     return _lend;
   }
 
@@ -713,10 +713,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  local_index_t local(
+  constexpr local_index_t local(
     IndexType g_index) const
   {
-    DASH_LOG_TRACE_VAR("TilePattern.local()", g_index);
     // TODO: Implement dedicated method for this, conversion to/from
     //       global coordinates is expensive.
     return local_index(coords(g_index));
@@ -834,7 +833,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  constexpr std::array<IndexType, NumDimensions> global(
     const std::array<IndexType, NumDimensions> & local_coords) const {
     return global(_myid, local_coords);
   }
@@ -1144,7 +1143,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
+  constexpr bool is_local(
     IndexType index) const
   {
     return is_local(index, _myid);
@@ -1268,7 +1267,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  ViewSpec_t local_block(
+  constexpr ViewSpec_t local_block(
     index_type local_block_index) const
   {
     return local_block(_myid, local_block_index);
@@ -1337,7 +1336,7 @@ public:
   /**
    * Cartesian arrangement of pattern blocks.
    */
-  const BlockSpec_t & blockspec() const
+  constexpr const BlockSpec_t & blockspec() const
   {
     return _blockspec;
   }
@@ -1345,7 +1344,7 @@ public:
   /**
    * Cartesian arrangement of pattern blocks.
    */
-  const BlockSpec_t & local_blockspec() const
+  constexpr const BlockSpec_t & local_blockspec() const
   {
     return _local_blockspec;
   }
@@ -1357,7 +1356,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType blocksize(
+  constexpr SizeType blocksize(
     /// The dimension in the pattern
     dim_t dimension) const
   {
@@ -1372,7 +1371,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const {
+  constexpr SizeType max_blocksize() const {
     return _blocksize_spec.size();
   }
 
@@ -1382,7 +1381,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+  constexpr SizeType local_capacity(
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
     return local_size();
   }
 
@@ -1410,7 +1410,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType num_units() const {
+  constexpr IndexType num_units() const {
     return _teamspec.size();
   }
 
@@ -1419,7 +1419,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType capacity() const {
+  constexpr IndexType capacity() const {
     return _memory_layout.size();
   }
 
@@ -1428,7 +1428,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType size() const {
+  constexpr IndexType size() const {
     return _memory_layout.size();
   }
 
@@ -1436,14 +1436,14 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  dash::Team & team() const {
+  constexpr dash::Team & team() const {
     return *_team;
   }
 
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const {
+  constexpr const DistributionSpec_t & distspec() const {
     return _distspec;
   }
 
@@ -1452,12 +1452,12 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const {
+  constexpr SizeSpec_t sizespec() const {
     return SizeSpec_t(_memory_layout.extents());
   }
 
   /**
-   * Size specification of the index space mapped by this pattern.
+   * Size specification (shape) of the index space mapped by this pattern.
    *
    * \see DashPatternConcept
    */
@@ -1471,7 +1471,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const MemoryLayout_t & memory_layout() const {
+  constexpr const MemoryLayout_t & memory_layout() const {
     return _memory_layout;
   }
 
@@ -1480,7 +1480,7 @@ public:
    * of this pattern for the calling unit.
    * Not part of DASH Pattern concept.
    */
-  const LocalMemoryLayout_t & local_memory_layout() const {
+  constexpr const LocalMemoryLayout_t & local_memory_layout() const {
     return _local_memory_layout;
   }
 
@@ -1490,7 +1490,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const TeamSpec_t & teamspec() const {
+  constexpr const TeamSpec_t & teamspec() const {
     return _teamspec;
   }
 
@@ -1500,7 +1500,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> coords(
+  constexpr std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return _memory_layout.coords(index);
   }

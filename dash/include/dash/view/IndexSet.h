@@ -274,7 +274,7 @@ class IndexSetBase
     return _view;
   }
 
-  constexpr index_set_domain_type domain() const {
+  constexpr const index_set_domain_type domain() const {
     // To allow subclasses to overwrite method view():
     return dash::index(dash::domain(_view));
   }
@@ -284,16 +284,10 @@ class IndexSetBase
   }
 
   constexpr const local_type local() const {
-//constexpr auto local() const
-//-> decltype(dash::index(dash::local(
-//             std::declval< const ViewType & >() ))) {
     return dash::index(dash::local(_view));
   }
 
   constexpr const global_type global() const {
-//constexpr auto global() const
-//-> decltype(dash::index(dash::global(
-//              std::declval< const ViewType & >() ))) {
     return dash::index(dash::global(_view));
   }
 
@@ -314,6 +308,20 @@ class IndexSetBase
   }
 
   // ---- offsets ---------------------------------------------------------
+
+  constexpr std::array<index_type, NDim>
+  offsets() const {
+    return std::array<index_type, NDim> { };
+  }
+
+  template <std::size_t ShapeDim>
+  constexpr index_type offset() const {
+    return derived().offsets()[ShapeDim];
+  }
+
+  constexpr index_type offset(std::size_t shape_dim) const {
+    return derived().offsets()[shape_dim];
+  }
 
   // ---- size ------------------------------------------------------------
 
@@ -645,7 +653,7 @@ class IndexSetSub
   constexpr size_type extent() const {
     return ( ExtDim == SubDim
              ? _domain_end_idx - _domain_begin_idx
-             : this->domain().extent(ExtDim)
+             : this->domain().template extent<ExtDim>()
            );
   }
 
@@ -663,6 +671,27 @@ class IndexSetSub
   }
 
   // ---- offsets ---------------------------------------------------------
+
+  template <std::size_t ExtDim>
+  constexpr index_type offset() const {
+    return ( ExtDim == SubDim
+             ? _domain_begin_idx
+             : this->domain().template offset<ExtDim>()
+           );
+  }
+
+  constexpr index_type offset(std::size_t shape_dim) const {
+    return ( shape_dim == SubDim
+             ? _domain_begin_idx
+             : this->domain().offset(shape_dim)
+           );
+  }
+
+  constexpr std::array<index_type, NDim> offsets() const {
+    return dash::ce::replace_nth<SubDim>(
+             offset<SubDim>(),
+             this->domain().offsets());
+  }
   
   // ---- size ------------------------------------------------------------
 
@@ -679,13 +708,21 @@ class IndexSetSub
    * Domain index at specified linear offset.
    */
   constexpr index_type operator[](index_type image_index) const {
-//  TODO:
-//  return this->domain()[_domain_begin_idx + image_index];
-    return ( _domain_begin_idx +
+    return ( 
              ( NDim == 1
-               ? image_index
-               : extent(0) * (image_index / extent(0))
-                 + (image_index % extent(0))
+               ? _domain_begin_idx + image_index
+               : // full rows in domain:
+                   (offset(0) * this->domain().extent(1))
+                     // row in view region:
+                 + ( ((image_index / extent(1)) + 1)
+                     // leading offset:
+                     * offset(1) )
+                     // row in view region:
+                 + ( (image_index / extent(1))
+                     // trailing offset:
+                     * (this->domain().extent(1)
+                        - (offset(1) + extent(1)) ) )
+                 + (image_index % extent(1))
              )
            );
   }
