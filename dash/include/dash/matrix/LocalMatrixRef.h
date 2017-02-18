@@ -165,14 +165,14 @@ public:
 
   inline    T                   & local_at(size_type pos);
 
-  constexpr const Team          & team();
+  constexpr const Team          & team()                const noexcept;
 
   constexpr size_type             size()                const noexcept;
   constexpr size_type             local_size()          const noexcept;
   constexpr size_type             local_capacity()      const noexcept;
-  constexpr size_type             extent(dim_t dim)     const noexcept;
+  inline    size_type             extent(dim_t dim)     const noexcept;
   constexpr Extents_t             extents()             const noexcept;
-  constexpr index_type            offset(dim_t dim)     const noexcept;
+  inline    index_type            offset(dim_t dim)     const noexcept;
   constexpr Offsets_t             offsets()             const noexcept;
   constexpr bool                  empty()               const noexcept;
 
