@@ -144,6 +144,7 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
                    "offsets:", nview_rows_g.offsets(),
                    "extents:", nview_rows_g.extents(),
                    "size:",    nview_rows_g.size());
+    dash::test::print_nview("index_rows_g", dash::index(nview_rows_g));
     dash::test::print_nview("nview_rows_g", nview_rows_g);
 
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
@@ -151,21 +152,23 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
                    "offsets:", nview_cols_g.offsets(),
                    "extents:", nview_cols_g.extents(),
                    "size:",    nview_cols_g.size());
+    dash::test::print_nview("index_cols_g", dash::index(nview_cols_g));
     dash::test::print_nview("nview_cols_g", nview_cols_g);
-
+ 
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
                    "sub<1>(2,7, sub<0>(1,3, mat) ->",
                    "offsets:", nview_cr_s_g.offsets(),
                    "extents:", nview_cr_s_g.extents(),
                    "size:",    nview_cr_s_g.size());
+    dash::test::print_nview("index_cr_s_g", dash::index(nview_cr_s_g));
     dash::test::print_nview("nview_cr_s_g", nview_cr_s_g);
-
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
-                   "sub<0>(1,3, sub<0>(2,7, mat) ->",
-                   "offsets:", nview_rc_s_g.offsets(),
-                   "extents:", nview_rc_s_g.extents(),
-                   "size:",    nview_rc_s_g.size());
-    dash::test::print_nview("nview_rc_s_g", nview_rc_s_g);
+ 
+//   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
+//                  "sub<0>(1,3, sub<0>(2,7, mat) ->",
+//                  "offsets:", nview_rc_s_g.offsets(),
+//                  "extents:", nview_rc_s_g.extents(),
+//                  "size:",    nview_rc_s_g.size());
+//   dash::test::print_nview("nview_rc_s_g", nview_rc_s_g);
   }
 
   EXPECT_EQ_U(2,             nview_rows_g.extent<0>());
@@ -174,19 +177,21 @@ TEST_F(NViewTest, MatrixBlocked1DimLocalView)
   EXPECT_EQ_U(nview_rc_s_g.extents(), nview_cr_s_g.extents());
   EXPECT_EQ_U(nview_rc_s_g.offsets(), nview_cr_s_g.offsets());
 
-  return;
-
   auto nview_rows_l = dash::local(nview_rows_g);
-  
-  dash::test::print_nview("nview_rows_l", nview_rows_l);
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimLocalView",
-                     nview_rows_l.extents());
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimLocalView",
+                 "local(sub<0>(1,3, mat)) ->",
+                 "offsets:", nview_rows_l.offsets(),
+                 "extents:", nview_rows_l.extents(),
+                 "size:",    nview_rows_l.size());
+  dash::test::print_nview("index_rows_l", dash::index(nview_rows_l));
+  dash::test::print_nview("nview_rows_l", nview_rows_l);
 
   EXPECT_EQ_U(2,             nview_rows_l.extent<0>());
   EXPECT_EQ_U(block_cols,    nview_rows_l.extent<1>());
 }
 
+#if 0
 TEST_F(NViewTest, MatrixBlocked1DimSub)
 {
   auto nunits = dash::size();
@@ -348,4 +353,4 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                    "lrow[", r, "]", row_values);
   }
 }
-
+#endif

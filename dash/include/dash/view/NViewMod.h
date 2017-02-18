@@ -428,7 +428,7 @@ public:
 
   // ---- offsets ---------------------------------------------------------
 
-  constexpr const std::array<index_type, NDim> & offsets() const {
+  constexpr const std::array<index_type, NDim> offsets() const {
     return _index_set.offsets();
   }
 

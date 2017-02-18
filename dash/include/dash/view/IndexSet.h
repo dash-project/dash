@@ -711,18 +711,19 @@ class IndexSetSub
     return ( 
              ( NDim == 1
                ? _domain_begin_idx + image_index
-               : // full rows in domain:
-                   (offset(0) * this->domain().extent(1))
-                     // row in view region:
-                 + ( ((image_index / extent(1)) + 1)
-                     // leading offset:
-                     * offset(1) )
-                     // row in view region:
-                 + ( (image_index / extent(1))
-                     // trailing offset:
-                     * (this->domain().extent(1)
-                        - (offset(1) + extent(1)) ) )
-                 + (image_index % extent(1))
+               : ( SubDim == 0
+                   // Rows sub section:
+                   ? ( // full rows in domain:
+                       (offset(0) * this->domain().extent(1))
+                     + image_index )
+                   // Columns sub section:
+                   : ( // first index:
+                       offset(1)
+                       // row in view region:
+                     + ( (image_index / extent(1))
+                         * this->domain().extent(1))
+                     + image_index % extent(1) )
+                 )
              )
            );
   }
