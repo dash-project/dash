@@ -390,9 +390,37 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
   size_type n)
 {
-  // following Meyers, Eff. C++ p. 23, Item 3
-  using RefType = LocalMatrixRef<T, NumDim, CUR, PatternT>;
-  return static_cast<RefType &>(*this).sub<SubDimension>(n);
+// // following Meyers, Eff. C++ p. 23, Item 3
+// using RefType = LocalMatrixRef<T, NumDim, CUR, PatternT>;
+// return static_cast<RefType &>(*this).sub<SubDimension>(n);
+
+  static_assert(
+      NumDim-1 > 0,
+      "Dimension too low for sub()");
+  static_assert(
+      SubDimension < NumDim && SubDimension >= 0,
+      "Illegal sub-dimension");
+  dim_t target_dim = SubDimension + _refview._dim;
+  DASH_LOG_TRACE("LocalMatrixRef<N>.sub(n)", "n:", n,
+                 "target_dim:", target_dim, "refview.dim:", _refview._dim);
+
+  LocalMatrixRef<T, NumDim, NumDim - 1, PatternT> ref;
+  ref._refview._coord[target_dim] = 0;
+
+  ref._refview._viewspec = _refview._viewspec;
+  // Offset specified by user is relative to existing offset of the view
+  // so slice offset must be applied on the view's current offset in the
+  // sub-dimension:
+  ref._refview._viewspec.resize_dim(
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + n, 1);
+  ref._refview._viewspec.set_rank(NumDim-1);
+
+  DASH_LOG_TRACE("LocalMatrixRef<N>.sub(n)", "n:", n,
+                 "refview.size:", ref._refview._viewspec.size());
+  ref._refview._mat = _refview._mat;
+  ref._refview._dim = _refview._dim + 1;
+  return ref;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -473,9 +501,27 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  // following Meyers, Eff. C++ p. 23, Item 3
-  using RefType = LocalMatrixRef<T, NumDim, CUR, PatternT>;
-  return static_cast<const RefType &>(*this).sub<SubDimension>(offset, extent);
+// // following Meyers, Eff. C++ p. 23, Item 3
+// using RefType = LocalMatrixRef<T, NumDim, CUR, PatternT>;
+// return static_cast<const RefType &>(*this).sub<SubDimension>(offset, extent);
+
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", SubDimension);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", offset);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", extent);
+  static_assert(
+      SubDimension < NumDim && SubDimension >= 0,
+      "Wrong sub-dimension");
+  LocalMatrixRef<T, NumDim, NumDim, PatternT> ref;
+  ::std::fill(ref._refview._coord.begin(), ref._refview._coord.end(), 0);
+  ref._refview._viewspec = _refview._viewspec;
+  ref._refview._viewspec.resize_dim(
+                            SubDimension,
+                            offset,
+                            extent);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub >",
+                     ref._refview._viewspec.size());
+  ref._refview._mat = _refview._mat;
+  return ref;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -492,7 +538,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   static_assert(
       SubDimension < NumDim && SubDimension >= 0,
       "Wrong sub-dimension");
-  LocalMatrixRef<T, NumDim, NumDim, PatternT> ref;
+  LocalMatrixRef<const T, NumDim, NumDim, PatternT> ref;
   ::std::fill(ref._refview._coord.begin(), ref._refview._coord.end(), 0);
   ref._refview._viewspec = _refview._viewspec;
   ref._refview._viewspec.resize_dim(
