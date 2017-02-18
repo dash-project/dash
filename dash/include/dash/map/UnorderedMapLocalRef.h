@@ -91,6 +91,9 @@ public:
   typedef typename map_type::const_mapped_type_reference
     const_mapped_type_reference;
 
+private:
+  map_type * _map  = nullptr;
+
 public:
   UnorderedMapLocalRef(
     // Pointer to instance of \c dash::UnorderedMap referenced by the view
@@ -197,31 +200,8 @@ public:
     dart_gptr_t   gptr_mapped = git_value.dart_gptr();
     value_type  * lptr_value  = git_value.local();
     mapped_type * lptr_mapped = nullptr;
-    DASH_LOG_TRACE("UnorderedMapLocalRef.[]", "gptr to element:",
-                   gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMapLocalRef.[]", "lptr to element:",
-                   lptr_value);
-    // Byte offset of mapped value in element type:
-    auto          mapped_offs = offsetof(value_type, second);
-    DASH_LOG_TRACE("UnorderedMapLocalRef.[]", "byte offset of mapped member:",
-                   mapped_offs);
-    // Increment pointers to element by byte offset of mapped value member:
-    if (lptr_value != nullptr) {
-      // Convert to char pointer for byte-wise increment:
-      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
-      b_lptr_mapped        += mapped_offs;
-      // Convert to mapped type pointer:
-      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
-    }
-    if (!DART_GPTR_ISNULL(gptr_mapped)) {
-      DASH_ASSERT_RETURNS(
-        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
-        DART_OK);
-    }
-    DASH_LOG_TRACE("UnorderedMapLocalRef.[]", "gptr to mapped member:",
-                   gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMapLocalRef.[]", "lptr to mapped member:",
-                   lptr_mapped);
+
+    _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
     // Create global reference to mapped value member in element:
     mapped_type_reference mapped(gptr_mapped,
                                  lptr_mapped);
@@ -241,8 +221,15 @@ public:
         dash::exception::InvalidArgument,
         "No element in map for key " << key);
     }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMapLocalRef.at > const", mapped);
+    dart_gptr_t   gptr_mapped = git_value.dart_gptr();
+    value_type  * lptr_value  = git_value.local();
+    mapped_type * lptr_mapped = nullptr;
+
+    _lptr_value_to_mapped(lptr_value, gptr_mapped, lptr_mapped);
+    // Create global reference to mapped value member in element:
+    const_mapped_type_reference mapped(gptr_mapped,
+                                       lptr_mapped);
+    DASH_LOG_TRACE("UnorderedMapLocalRef.at >", mapped);
     return mapped;
   }
 
@@ -456,7 +443,68 @@ public:
   }
 
 private:
-  map_type * _map  = nullptr;
+  /**
+   * Helper to resolve address of mapped value from map entries.
+   *
+   * std::pair cannot be used as MPI data type directly.
+   * Offset-to-member only works reliably with offsetof in the general case
+   * We have to use `offsetof` as there is no instance of value_type
+   * available that could be used to calculate the member offset as
+   * `l_ptr_value` is possibly undefined.
+   *
+   * Using `std::declval()` instead (to generate a compile-time
+   * pseudo-instance for member resolution) only works if Key and Mapped
+   * are default-constructible.
+   * 
+   * Finally, the distance obtained from
+   *
+   *   &(lptr_value->second) - lptr_value
+   *
+   * had different alignment than the address obtained via offsetof in some
+   * cases, depending on the combination of MPI runtime and compiler.
+   * Apparently some compilers / standard libs have special treatment
+   * (padding?) for members of std::pair such that
+   *
+   *   __builtin_offsetof(type, member)
+   *
+   * differs from the member-offset provided by the type system.
+   * The alternative, using `offsetof` (resolves to `__builtin_offsetof`
+   * automatically if needed) and manual pointer increments works, however.
+   */
+  void _lptr_value_to_mapped(
+    // [IN]    native pointer to map entry
+    value_type    * lptr_value,
+    // [INOUT] corresponding global pointer to mapped value
+    dart_gptr_t   & gptr_mapped,
+    // [OUT]   corresponding native pointer to mapped value
+    mapped_type * & lptr_mapped) const
+  {
+    // Byte offset of mapped value in element type:
+    auto mapped_offs = offsetof(value_type, second);
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped()",
+                   "byte offset of mapped member:", mapped_offs);
+    // Increment pointers to element by byte offset of mapped value member:
+    if (lptr_value != nullptr) {
+        if (std::is_standard_layout<value_type>::value) {
+        // Convert to char pointer for byte-wise increment:
+        char * b_lptr_mapped = reinterpret_cast<char *>(lptr_value);
+        b_lptr_mapped       += mapped_offs;
+        // Convert to mapped type pointer:
+        lptr_mapped          = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+      } else {
+        lptr_mapped = &(lptr_value->second);
+      }
+    }
+    if (!DART_GPTR_ISNULL(gptr_mapped)) {
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
+        DART_OK);
+    }
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped >",
+                   "gptr to mapped:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.lptr_value_to_mapped >",
+                   "lptr to mapped:", lptr_mapped);
+  }
 
 }; // class UnorderedMapLocalRef
 

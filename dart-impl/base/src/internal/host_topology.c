@@ -41,7 +41,7 @@ static int cmpstr_(const void * p1, const void * p2) {
   return strcmp(* (char * const *) p1, * (char * const *) p2);
 }
 
-dart_ret_t dart__base__host_topology__module_locations(
+static dart_ret_t dart__base__host_topology__module_locations(
   dart_module_location_t ** module_locations,
   int                     * num_modules)
 {
@@ -142,7 +142,7 @@ dart_ret_t dart__base__host_topology__module_locations(
   return DART_OK;
 }
 
-dart_ret_t dart__base__host_topology__update_module_locations(
+static dart_ret_t dart__base__host_topology__update_module_locations(
   dart_unit_mapping_t  * unit_mapping,
   dart_host_topology_t * topo)
 {
@@ -211,7 +211,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
                    topo->host_names[h], host_units->num_units);
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "leader unit on host %s: %d",
-                   topo->host_names[h], leader_unit_id);
+                   topo->host_names[h], leader_unit_id.id);
     DART_ASSERT(
       strncmp(topo->host_names[h], host_domain->host,
               DART_LOCALITY_HOST_MAX_SIZE) == 0);
@@ -226,7 +226,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       for (int u_idx = 0; u_idx < host_units->num_units; u_idx++) {
         DART_LOG_TRACE("dart__base__host_topology__init: "
                        "add unit %d to local group",
-                       host_units->units[u_idx]);
+                       host_units->units[u_idx].id);
         dart_group_addmember(local_group, host_units->units[u_idx]);
       }
     }
@@ -234,13 +234,13 @@ dart_ret_t dart__base__host_topology__update_module_locations(
 
   DART_LOG_TRACE("dart__base__host_topology__init: "
                  "myid:%d (in team %d) local_leader_unit_id:%d",
-                 my_id, team, local_leader_unit_id);
+                 my_id.id, team, local_leader_unit_id.id);
 
   size_t num_leaders;
   DART_ASSERT_RETURNS(
     dart_group_size(leader_group, &num_leaders),
     DART_OK);
-  DART_LOG_TRACE("dart__base__host_topology__init: num_leaders:%d",
+  DART_LOG_TRACE("dart__base__host_topology__init: num_leaders:%zu",
                  num_leaders);
 
   if (num_leaders > 1) {
@@ -265,8 +265,8 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       dart_team_myid(leader_team, &my_leader_id),
       DART_OK);
     DART_LOG_TRACE("dart__base__host_topology__init: "
-                   "num_leaders:%d my_leader_id:%d (in team %d)",
-                   num_leaders, my_leader_id, leader_team);
+                   "num_leaders:%zu my_leader_id:%d (in team %d)",
+                   num_leaders, my_leader_id.id, leader_team);
 
     /* local module locations to send: */
     int max_node_modules  = 2;
@@ -302,7 +302,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       displs[0] = 0;
       for (size_t lu = 1; lu < num_leaders; lu++) {
         DART_LOG_TRACE("dart__base__host_topology__init: "
-                       "allgather: leader unit %sz sent %sz",
+                       "allgather: leader unit %zu sent %zu",
                        lu, recvcounts[lu]);
         displs[lu] = displs[lu-1] + recvcounts[lu];
       }
@@ -417,7 +417,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "broadcasting module locations from leader unit %d "
                    "to units in team %d",
-                   local_leader_unit_id, host_topo_bcast_team);
+                   local_leader_unit_id.id, host_topo_bcast_team);
 
     DART_ASSERT_RETURNS(
       dart_bcast(
@@ -725,7 +725,7 @@ dart_ret_t dart__base__host_topology__destruct(
     for (size_t h = 0; h < topo->num_units; ++h) {
       if (NULL != topo->host_names[h]) {
         DART_LOG_DEBUG("dart__base__host_topology__init: "
-                       "free(topo->host_names[%d])", h);
+                       "free(topo->host_names[%zu])", h);
         free(topo->host_names[h]);
         topo->host_names[h] = NULL;
       }
@@ -867,7 +867,7 @@ dart_ret_t dart__base__host_topology__node_units(
   }
   *units = node_unit_ids;
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__host_topology__node_units >", "%d", *units, *num_units);
   return DART_OK;
 }
@@ -909,7 +909,7 @@ dart_ret_t dart__base__host_topology__host_domain(
     return DART_ERR_NOTFOUND;
   }
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__host_topology__module_units >", "%d", *units, *num_units);
   return DART_OK;
 }

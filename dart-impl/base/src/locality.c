@@ -193,7 +193,7 @@ dart_ret_t dart__base__locality__create(
                    node_domain->level, node_domain->parent);
     for (int u = 0; u < node_units->num_units; ++u) {
       DART_LOG_TRACE("dart__base__locality__create: %s unit[%d]: %d",
-                     hostname, u, node_units->units[u]);
+                     hostname, u, node_units->units[u].id);
     }
   }
 #endif
@@ -783,7 +783,7 @@ dart_ret_t dart__base__locality__unit(
   dart_unit_locality_t            ** locality)
 {
   DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
-                 team, unit);
+                 team, unit.id);
   *locality = NULL;
 
   dart_unit_locality_t * uloc;

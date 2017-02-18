@@ -39,6 +39,7 @@ extern "C" {
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_barrier(
@@ -56,7 +57,7 @@ dart_ret_t dart_barrier(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
@@ -79,7 +80,7 @@ dart_ret_t dart_bcast(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
@@ -103,7 +104,7 @@ dart_ret_t dart_scatter(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
@@ -126,7 +127,7 @@ dart_ret_t dart_gather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
@@ -151,7 +152,7 @@ dart_ret_t dart_allgather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
@@ -175,7 +176,7 @@ dart_ret_t dart_allgatherv(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
@@ -187,7 +188,7 @@ dart_ret_t dart_allreduce(
   dart_team_t      team);
 
 /**
- * DART Equivalent to MPI reduce.
+ * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
  * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
@@ -199,7 +200,7 @@ dart_ret_t dart_allreduce(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_reduce(
@@ -210,6 +211,16 @@ dart_ret_t dart_reduce(
   dart_operation_t    op,
   dart_team_unit_t    root,
   dart_team_t         team);
+
+/** \} */
+
+/**
+ * \name Atomic operations
+ * Operations performing element-wise atomic updates on a given
+ * global pointer.
+ */
+
+/** \{ */
 
 /**
  * DART Equivalent to MPI_Accumulate.
@@ -223,7 +234,7 @@ dart_ret_t dart_reduce(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
 dart_ret_t dart_accumulate(
@@ -231,8 +242,7 @@ dart_ret_t dart_accumulate(
   const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team);
+  dart_operation_t op);
 
 /**
  * DART Equivalent to MPI_Fetch_and_op.
@@ -250,16 +260,43 @@ dart_ret_t dart_accumulate(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,
-  void *           value,
+  const void *     value,
   void *           result,
   dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team);
+  dart_operation_t op);
+
+
+/**
+ * DART Equivalent to MPI_Compare_and_swap.
+ *
+ * \param gptr    A global pointer determining the target of the compare-and-swap
+ *                operation.
+ * \param value   Pointer to an element of type \c dtype to be swapped with the
+ *                the value in \c gptr.
+ * \param compare Pointer to the value to compare \c gptr with. The swap will be
+ *                performed if \c *(gptr) \c == \c *(compare).
+ * \param result  Pointer to an element of type \c dtype to hold the value of
+ *                the element referenced by \c gptr before the operation before
+ *                the swap.
+ * \param dtype   Data data type of all involved data elements. Note that only
+ *                integral types are supported.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_compare_and_swap(
+  dart_gptr_t      gptr,
+  const void     * value,
+  const void     * compare,
+  void           * result,
+  dart_datatype_t  dtype);
 
 
 /** \} */
@@ -287,7 +324,7 @@ dart_ret_t dart_fetch_and_op(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
@@ -310,7 +347,7 @@ dart_ret_t dart_get(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
@@ -331,7 +368,7 @@ dart_ret_t dart_put(
  * \param gptr Global pointer identifying the segment and unit to complete outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush(
@@ -348,7 +385,7 @@ dart_ret_t dart_flush(
  * \param gptr Global pointer identifying the segment to complete outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_all(
@@ -365,7 +402,7 @@ dart_ret_t dart_flush_all(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local(
@@ -382,7 +419,7 @@ dart_ret_t dart_flush_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local_all(
@@ -418,7 +455,7 @@ typedef struct dart_handle_struct * dart_handle_t;
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
@@ -442,7 +479,7 @@ dart_ret_t dart_get_handle(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
@@ -459,6 +496,7 @@ dart_ret_t dart_put_handle(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe
  * \ingroup DartCommunication
  */
 
@@ -472,7 +510,7 @@ dart_ret_t dart_wait(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
@@ -486,7 +524,7 @@ dart_ret_t dart_waitall(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_wait_local(
@@ -500,7 +538,7 @@ dart_ret_t dart_wait_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall_local(
@@ -515,7 +553,7 @@ dart_ret_t dart_waitall_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
@@ -531,7 +569,7 @@ dart_ret_t dart_test_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
@@ -559,7 +597,7 @@ dart_ret_t dart_testall_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
@@ -579,7 +617,7 @@ dart_ret_t dart_get_blocking(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
@@ -610,7 +648,7 @@ dart_ret_t dart_put_blocking(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_send(
@@ -631,7 +669,7 @@ dart_ret_t dart_send(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_recv(
@@ -660,7 +698,7 @@ dart_ret_t dart_recv(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartCommunication
  */
 dart_ret_t dart_sendrecv(

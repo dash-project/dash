@@ -241,7 +241,7 @@ public:
       return;
     }
     DASH_ASSERT_RETURNS(
-      dart_team_memderegister(_team->dart_id(), gptr),
+      dart_team_memderegister(gptr),
       DART_OK);
     _allocated.erase(
       std::remove_if(
@@ -362,7 +362,8 @@ private:
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
                        e.second);
         // Cannot use DASH_ASSERT due to noexcept qualifier:
-        assert(dart_team_memderegister(_team->dart_id(), e.second) == DART_OK);
+        dart_ret_t ret = dart_team_memderegister(e.second);
+        assert(ret == DART_OK);
       }
     }
     _allocated.clear();

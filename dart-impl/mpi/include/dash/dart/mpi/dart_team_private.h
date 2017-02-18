@@ -141,14 +141,19 @@
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 extern dart_team_t dart_next_availteamid;
 
 extern MPI_Comm dart_comm_world;
 #define DART_COMM_WORLD dart_comm_world
 
+#define DART_MAX_TEAM_NUMBER (256)
 
 typedef struct dart_team_data {
+
+  struct dart_team_data *next;
+
   /**
    * @brief The communicator corresponding to this team.
    */
@@ -158,6 +163,20 @@ typedef struct dart_team_data {
    * @brief MPI dynamic window object corresponding this team.
    */
   MPI_Win window;
+
+  dart_segmentdata_t segdata;
+
+  /**
+   * For DART collective allocation/free: offset in the returned gptr
+   * represents the displacement relative to the beginning of sub-memory
+   * spanned by a DART collective allocation.
+   * For DART local allocation/free: offset in the returned gptr represents
+   * the displacement relative to the base address of memory region reserved
+   * for the dart local allocation/free (see dart_buddy_allocator).
+   * Local allocations are identified by Segment ID DART_SEGMENT_LOCAL.
+   */
+  int16_t dart_memid;
+  int16_t dart_registermemid;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /**
@@ -178,57 +197,10 @@ typedef struct dart_team_data {
 
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
+  dart_team_t teamid;
+
 } dart_team_data_t;
 
-extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
-
-
-
-#if 0
-
-/* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
- *
- * After locating the given teamid in the teamlist,
- * we find that teamlist[i] equals to teamid, which means teams[i]
- * will be the corresponding communicator of teamid.
- */
-extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
-
-/* @brief Store the sub-communicator with regard to certain node, where the units can
- * communicate via shared memory.
- *
- * The units running in certain node vary
- * according to the specified team.
- * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes.
- */
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
-
-/* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
- *
- * Each element of this array will relate to certain team A.
- * Set of units belonging to the same node vary for different team.
- * Each unit stores all the IDs of those units (including itself) who are parts of team A and
- * located in the same node as it is.
- */
-//extern int* dart_unit_mapping[MAX_TEAM_NUMBER];
-
-/* @brief This table is represented as a hash table
- * , which is used to determine the units who are located in the same node.
- *
- * Each element of this array will relate to certain team.
- */
-extern int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
-
-/* @brief Set of the size of node for each unit in MAX_TEAM_NUMBER teams.
- */
-extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
-#endif
-
-/* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
-extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
-
-#endif // 0
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -240,14 +212,14 @@ extern char* *dart_sharedmem_local_baseptr_set;
  * 256 nodes with index ranging from 0 to 255. The allocated teamlist array is set to
  * be empty.
  */
-int dart_adapt_teamlist_init ();
+dart_ret_t dart_adapt_teamlist_init ();
 
 /* @brief Destroy the free-team-list and allocated-team-list.
  *
  * This call will be invoked within dart_eixt(), and the free teamlist is freed,
  * the allocated teamlist array is reset back to be empty.
  */
-int dart_adapt_teamlist_destroy ();
+dart_ret_t dart_adapt_teamlist_destroy ();
 
 /* @brief Allocate the first available index from the free-team-list.
  *
@@ -257,8 +229,15 @@ int dart_adapt_teamlist_destroy ();
  * @param[in]  teamid  The newly created team ID.
  * @param[out] index   The unique ID related to the newly created team.
  */
-int dart_adapt_teamlist_alloc(dart_team_t teamid, uint16_t *index);
+dart_ret_t dart_adapt_teamlist_alloc(dart_team_t teamid);
 
+/**
+ * Deallocate the teamlist entry.
+ */
+dart_ret_t
+dart_adapt_teamlist_dealloc(dart_team_t teamid);
+
+#if 0
 /* @brief Insert the freed index into the free-team-list, and delete the element with given index
  * from the allocated-team-list-array.
  *
@@ -269,6 +248,21 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
 /* @brief Locate the given teamid in the alloated-team-list-array.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
+#endif
+
+/**
+ * Retrieve the \c dart_team_data for \c teamid.
+ */
+dart_team_data_t *
+dart_adapt_teamlist_get(dart_team_t teamid);
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+/*
+ * Allocate shared memory communicator for the given \c team_data.
+ * Shared between \c dart_initialize and \c dart_team_create.
+ */
+dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data);
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 

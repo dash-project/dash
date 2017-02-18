@@ -4,6 +4,7 @@
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
 #include <dash/Types.h>
+#include <dash/Init.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -16,14 +17,11 @@
 #include <iomanip>
 #include <iterator>
 #include <cstring>
+#include <string>
 
 #include <sys/types.h>
 #include <unistd.h>
 
-namespace dash {
-  // forward-declaration
-  global_unit_t myid();
-}
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
 #  define DASH_LOG_OUTPUT_TARGET std::cout
@@ -197,7 +195,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   dash::global_unit_t uid = dash::myid();
   std::stringstream buf;
-  
+
 //  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid.id % 7]);
 
   buf << "[ "
@@ -216,7 +214,7 @@ inline void Log_Line(
       << msg;
 
 //  buf << TermColorMod(TCOL_DEFAULT);
-  
+
   buf << "\n";
 
   DASH_LOG_OUTPUT_TARGET << buf.str();

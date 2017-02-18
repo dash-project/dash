@@ -76,6 +76,11 @@ class MatrixRefView
   template<
     typename T_,
     dim_t NumDimensions1,
+    class PatternT_ >
+  friend class MatrixRefView;
+  template<
+    typename T_,
+    dim_t NumDimensions1,
     dim_t NumDimensions2,
     class PatternT_ >
   friend class LocalMatrixRef;
@@ -87,15 +92,24 @@ class MatrixRefView
   friend class Matrix;
 
   MatrixRefView<T, NumDimensions, PatternT>();
-  MatrixRefView<T, NumDimensions, PatternT>(
-    Matrix<T, NumDimensions, index_type, PatternT> * matrix);
-  MatrixRefView<T, NumDimensions, PatternT>(
-    const MatrixRefView<T, NumDimensions, PatternT> & other);
 
-  GlobRef<T> global_reference() const;
+  template <class T_>
+  MatrixRefView<T, NumDimensions, PatternT>(
+    const MatrixRefView<T_, NumDimensions, PatternT> & other);
 
-  GlobRef<T> global_reference(
-      const ::std::array<typename PatternT::index_type, NumDimensions> & coords) const;
+  template <class T_>
+  MatrixRefView<T, NumDimensions, PatternT>(
+    Matrix<T_, NumDimensions, index_type, PatternT> * matrix);
+
+  GlobRef<T>       global_reference();
+  GlobRef<const T> global_reference() const;
+
+  GlobRef<T>       global_reference(
+    const ::std::array<typename PatternT::index_type, NumDimensions> & coords
+  );
+  GlobRef<const T> global_reference(
+    const ::std::array<typename PatternT::index_type, NumDimensions> & coords
+  ) const;
 };
 
 } // namespace dash

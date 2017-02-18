@@ -1,27 +1,18 @@
 #ifndef DASH__TEST__FILL_TEST_H_
 #define DASH__TEST__FILL_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
 
 /**
  * Test fixture for class dash::transform
  */
-class FillTest : public ::testing::Test {
+class FillTest : public dash::test::TestBase {
 protected:
 
   FillTest() {
   }
 
   virtual ~FillTest() {
-  }
-
-  virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-  }
-
-  virtual void TearDown() {
-    dash::finalize();
   }
 };
 #endif // DASH__TEST__FILL_TEST_H_

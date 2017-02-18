@@ -33,7 +33,7 @@ bool equal(
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2);
 
-  dash::Array<bool> l_results(team.size());
+  dash::Array<bool> l_results(team.size(), team);
 
   l_results.local[0] = l_result;
   bool return_result = true;
@@ -77,7 +77,7 @@ bool equal(
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2, pred);
 
-  dash::Array<bool> l_results(team.size());
+  dash::Array<bool> l_results(team.size(), team);
 
   l_results.local[0] = l_result;
 

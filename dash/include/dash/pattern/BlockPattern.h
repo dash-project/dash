@@ -1,10 +1,6 @@
 #ifndef DASH__BLOCK_PATTERN_H_
 #define DASH__BLOCK_PATTERN_H_
 
-#include <functional>
-#include <array>
-#include <type_traits>
-
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
@@ -18,9 +14,12 @@
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
-namespace dash {
+#include <functional>
+#include <array>
+#include <type_traits>
 
-#ifndef DOXYGEN
+
+namespace dash {
 
 /**
  * Defines how a list of global indices is mapped to single units
@@ -40,17 +39,14 @@ template<
   MemArrange Arrangement   = ROW_MAJOR,
   typename   IndexType     = dash::default_index_t
 >
-class Pattern
+class BlockPattern
 {
 public:
-  static constexpr char const * PatternName = "BlockPattern";
+  static constexpr const char * PatternName = "BlockPattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
   typedef pattern_partitioning_properties<
-              // Minimal number of blocks in every dimension, i.e. one block
-              // per unit.
-              pattern_partitioning_tag::minimal,
               // Block extents are constant for every dimension.
               pattern_partitioning_tag::rectangular,
               // Identical number of elements in every block.
@@ -77,7 +73,7 @@ private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
   /// Fully specified type definition of self
-  typedef Pattern<NumDimensions, Arrangement, IndexType>
+  typedef BlockPattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
@@ -182,7 +178,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  Pattern(
+  BlockPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -249,7 +245,7 @@ public:
    *              TeamSpec<2>(dash::Team::All(), 1));
    * \endcode
    */
-  Pattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
@@ -326,7 +322,7 @@ public:
    *              TeamSpec<2>(dash::Team::All(), 1));
    * \endcode
    */
-  Pattern(
+  BlockPattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
@@ -367,7 +363,7 @@ public:
   /**
    * Copy constructor.
    */
-  Pattern(const self_t & other)
+  BlockPattern(const self_t & other)
   : _distspec(other._distspec),
     _team(other._team),
     _teamspec(other._teamspec),
@@ -392,8 +388,8 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  Pattern(self_t & other)
-  : Pattern(static_cast<const self_t &>(other))
+  BlockPattern(self_t & other)
+  : BlockPattern(static_cast<const self_t &>(other))
   { }
 
   /**
@@ -431,7 +427,7 @@ public:
   /**
    * Assignment operator.
    */
-  Pattern & operator=(const Pattern & other)
+  BlockPattern & operator=(const BlockPattern & other)
   {
     DASH_LOG_TRACE("BlockPattern.=(other)");
     if (this != &other) {
@@ -1088,6 +1084,14 @@ public:
   {
     return _blockspec;
   }
+  
+  /**
+   * Cartesian arrangement of local pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return _local_blockspec;
+  }
 
   /**
    * Index of block at given global coordinates.
@@ -1122,9 +1126,14 @@ public:
     auto block_coords = _blockspec.coords(global_block_index);
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
+    
     for (auto d = 0; d < NumDimensions; ++d) {
-      extents[d] = _blocksize_spec.extent(d);
-      offsets[d] = block_coords[d] * extents[d];
+      auto num_blocks_d = _blockspec.extent(d);
+      extents[d]        = _blocksize_spec.extent(d);
+      if(block_coords[d] == (num_blocks_d - 1)){
+        extents[d] -= underfilled_blocksize(d);
+      }
+      offsets[d] = block_coords[d] * _blocksize_spec.extent(d);
     }
     return ViewSpec_t(offsets, extents);
   }
@@ -1147,8 +1156,15 @@ public:
     // Translate local coordinates of first element in local block to global
     // coordinates:
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d  = block_vs_extents[d];
-      l_elem_coords[d] *= blocksize_d;
+      auto num_blocks_d =_local_blockspec.extent(d);
+      if(l_block_coords[d] == (num_blocks_d - 1)){
+          size_type remaining = local_extent(d) % block_vs_extents[d];
+          block_vs_extents[d] = (remaining == 0) ? block_vs_extents[d] : remaining;
+        // to calculate offset, extent of fully filled blocks are needed
+        l_elem_coords[d] *= _blocksize_spec.extent(d);
+      } else {
+        l_elem_coords[d] *= block_vs_extents[d];
+      }
     }
     // Global coordinates of first element in block:
     auto g_elem_coords = global(l_elem_coords);
@@ -1184,12 +1200,17 @@ public:
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     std::array<index_type, NumDimensions> offsets;
-    std::array<size_type, NumDimensions>  extents =
-      _blocksize_spec.extents();
-    // Local block coords to local element offset:
-    for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d = extents[d];
-      offsets[d]       = l_block_coords[d] * blocksize_d;
+    std::array<size_type, NumDimensions>  extents = _blocksize_spec.extents();
+    // last block in at least one dimension
+    for(dim_t d=0; d<NumDimensions; ++d){
+      if(l_block_coords[d] == (_local_blockspec.extent(d)-1)){
+          size_type remaining = local_extent(d) % extents[d];
+          extents[d] = (remaining == 0) ? extents[d] : remaining;
+          // to calculate offset, extent of fully filled blocks are needed
+          offsets[d] = l_block_coords[d] * _blocksize_spec.extent(d);
+      } else {
+        offsets[d] = l_block_coords[d] * extents[d];
+      }
     }
     return ViewSpec_t(offsets, extents);
   }
@@ -1605,7 +1626,5 @@ private:
 } // namespace dash
 
 #include <dash/pattern/BlockPattern1D.h>
-
-#endif // DOXYGEN
 
 #endif // DASH__BLOCK_PATTERN_H_

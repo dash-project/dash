@@ -94,7 +94,6 @@ void mmult_local(
 /// Constraints on pattern partitioning properties of matrix operands passed
 /// to \c dash::summa.
 typedef dash::pattern_partitioning_properties<
-            dash::pattern_partitioning_tag::minimal,
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.
@@ -121,6 +120,14 @@ typedef dash::pattern_layout_properties<
             // Required for cache-optimized block matrix multiplication.
             dash::pattern_layout_tag::linear
         > summa_pattern_layout_constraints;
+
+template<typename MatrixType>
+using summa_pattern_constraints =
+    typename dash::pattern_constraints<
+        dash::summa_pattern_partitioning_constraints,
+        dash::summa_pattern_mapping_constraints,
+        dash::summa_pattern_layout_constraints,
+        typename MatrixType::pattern_type>;
 
 /**
  * Multiplies two matrices using the SUMMA algorithm.
@@ -176,8 +183,7 @@ void summa(
                               >::satisfied::value;
 
   static_assert(
-      std::is_same<value_type, double>::value ||
-      std::is_same<value_type, float>::value,
+      std::is_floating_point<value_type>::value,
       "dash::summa expects matrix element type double or float");
 
   DASH_LOG_DEBUG("dash::summa()");
@@ -320,8 +326,6 @@ void summa(
   // Prefetch blocks from A and B for first local multiplication:
   // -------------------------------------------------------------------------
   // Block coordinates of submatrices of A and B to be prefetched:
-  coords_t block_a_get_coords;
-  coords_t block_b_get_coords;
   // Local block index of local submatrix of C for multiplication result of
   // blocks to be prefetched:
   auto     l_block_c_get       = C.local.block(0);
@@ -329,9 +333,9 @@ void summa(
   index_t  l_block_c_get_row   = l_block_c_get_view.offset(1) / block_size_n;
   index_t  l_block_c_get_col   = l_block_c_get_view.offset(0) / block_size_p;
   // Block coordinates of blocks in A and B to prefetch:
-  block_a_get_coords = coords_t {{ static_cast<index_t>(unit_ts_coords[0]),
+  coords_t block_a_get_coords = coords_t {{ static_cast<index_t>(unit_ts_coords[0]),
 				   l_block_c_get_row }};
-  block_b_get_coords = coords_t {{ l_block_c_get_col,
+  coords_t block_b_get_coords = coords_t {{ l_block_c_get_col,
 				   static_cast<index_t>(unit_ts_coords[0]) }};
   // Local block index of local submatrix of C for multiplication result of
   // currently prefetched blocks:
@@ -585,41 +589,36 @@ void summa(
   DASH_LOG_TRACE("dash::summa >", "finished");
 }
 
+#ifdef DOXYGEN
 /**
- * Registration of \c dash::summa as an implementation of matrix-matrix
- * multiplication (xDGEMM).
+ * Function adapter to an implementation of matrix-matrix multiplication
+ * (xDGEMM) depending on the matrix distribution patterns.
  *
  * Delegates  \c dash::mmult<MatrixType>
  * to         \c dash::summa<MatrixType>
  * if         \c MatrixType::pattern_type
  * satisfies the pattern property constraints of the SUMMA implementation.
  */
-template<
+template <
   typename MatrixTypeA,
   typename MatrixTypeB,
-  typename MatrixTypeC
->
-typename std::enable_if<
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeA::pattern_type
-  >::satisfied::value &&
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeB::pattern_type
-  >::satisfied::value &&
-  dash::pattern_constraints<
-    dash::summa_pattern_partitioning_constraints,
-    dash::summa_pattern_mapping_constraints,
-    dash::summa_pattern_layout_constraints,
-    typename MatrixTypeC::pattern_type
-  >::satisfied::value,
-  void
->::type
+  typename MatrixTypeC >
+void mmult(
+  /// Matrix to multiply, extents n x m
+  MatrixTypeA & A,
+  /// Matrix to multiply, extents m x p
+  MatrixTypeB & B,
+  /// Matrix to contain the multiplication result, extents n x p,
+  /// initialized with zeros
+  MatrixTypeC & C);
+
+#else // DOXYGEN
+
+template <
+  typename MatrixTypeA,
+  typename MatrixTypeB,
+  typename MatrixTypeC >
+auto
 mmult(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,
@@ -628,10 +627,17 @@ mmult(
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC & C)
-{
+  -> typename std::enable_if<
+                summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeB>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeC>::satisfied::value,
+                void
+              >::type {
   dash::summa(A, B, C);
 }
 
+#endif // DOXYGEN
+
 } // namespace dash
 
-#endif
+#endif // DASH__ALGORITHM__SUMMA_H_

@@ -46,6 +46,12 @@ dart_ret_t dart_group_create(
 dart_ret_t dart_group_destroy(
   dart_group_t *group)
 {
+
+  if (group == NULL || *group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p -> %p", group, (group) ? (void*)*group : (void*)group);
+    return DART_ERR_INVAL;
+  }
+
   struct dart_group_struct** g = group;
   if ((*g)->mpi_group != MPI_GROUP_NULL) {
     MPI_Group_free(&(*g)->mpi_group);
@@ -62,7 +68,12 @@ dart_ret_t dart_group_clone(
   const dart_group_t   gin,
   dart_group_t       * gout)
 {
-  //gout->mpi_group = gin->mpi_group;
+  if (gin == NULL || gout == NULL) {
+    *gout = NULL;
+    DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", gin, gout);
+    return DART_ERR_INVAL;
+  }
+
   struct dart_group_struct* res = allocate_group();
   MPI_Group_excl(gin->mpi_group, 0, NULL, &res->mpi_group);
   *gout = res;
@@ -88,6 +99,12 @@ dart_ret_t dart_group_union(
   dart_group_t       * gout)
 {
   *gout = NULL;
+
+  if (g1 == NULL || g2 == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    return DART_ERR_INVAL;
+  }
+
   /* g1 and g2 are both ordered groups. */
   struct dart_group_struct* res = allocate_group();
   if (MPI_Group_union(
@@ -146,8 +163,14 @@ dart_ret_t dart_group_intersect(
   const dart_group_t   g2,
   dart_group_t       * gout)
 {
-  struct dart_group_struct* res = allocate_group();
   *gout = NULL;
+
+  if (g1 == NULL || g2 == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p and %p", g1, g2);
+    return DART_ERR_INVAL;
+  }
+
+  struct dart_group_struct* res = allocate_group();
   if (MPI_Group_intersection(
            g1 -> mpi_group,
            g2 -> mpi_group,
@@ -171,6 +194,12 @@ dart_ret_t dart_group_addmember(
   struct dart_group_struct group;
   dart_group_t  res;
   MPI_Group     group_all;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
   array[0]   = unitid.id;
@@ -194,6 +223,12 @@ dart_ret_t dart_group_delmember(
 {
   int array[1];
   MPI_Group newgroup, group_all, resgroup;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
   array[0] = unitid.id;
   MPI_Group_incl(
@@ -228,6 +263,12 @@ dart_ret_t dart_group_getmembers(
   int size;
   int *array;
   MPI_Group group_all;
+
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Group_size(g->mpi_group, &size);
   MPI_Comm_group(DART_COMM_WORLD, &group_all);
   array = (int*) malloc(sizeof (int) * size);
@@ -252,16 +293,21 @@ dart_ret_t dart_group_split(
 {
   int size, length, ranges[1][3];
 
+  if (g == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Group_size(g->mpi_group, &size);
 
   if (n > INT_MAX) {
-    DART_LOG_ERROR("dart_group_split: n > INT_MAX", n, *nout);
+    DART_LOG_ERROR("dart_group_split: n:%zu > INT_MAX", n);
     return DART_ERR_INVAL;
   }
 
   *nout = size;
   if (size < (int)n) {
-    DART_LOG_DEBUG("dart_group_split: requested:%d split:%d", n, *nout);
+    DART_LOG_DEBUG("dart_group_split: requested:%zu split:%zu", n, *nout);
   }
 
   /* Ceiling division. */
@@ -303,6 +349,12 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: split at scope %d", scope);
 
   dart_team_t team = domain->team;
+
+  if (group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", group);
+    return DART_ERR_INVAL;
+  }
+
 
   /* query domain tags of all domains in specified scope: */
   int     num_domains;
@@ -354,7 +406,7 @@ dart_ret_t dart_group_locality_split(
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = unit_ids[u].id;
-        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+        DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
       }
@@ -421,7 +473,7 @@ dart_ret_t dart_group_locality_split(
       if ((g+1) * max_group_domains > (size_t)num_domains) {
         num_group_domains = (g * max_group_domains) - num_domains;
       }
-      DART_LOG_TRACE("dart_group_locality_split: domains in group %d: %d",
+      DART_LOG_TRACE("dart_group_locality_split: domains in group %zu: %d",
                      g, num_group_domains);
       int group_first_dom_idx = g * num_group_domains;
       int group_last_dom_idx  = group_first_dom_idx + num_group_domains;
@@ -443,7 +495,7 @@ dart_ret_t dart_group_locality_split(
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = group_team_unit_ids[u].id;
-        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+        DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
       }
@@ -477,6 +529,13 @@ dart_ret_t dart_group_ismember(
   int                 i, size;
   dart_global_unit_t* ranks;
 
+
+  if (g == NULL) {
+    *ismember = 0;
+    DART_LOG_ERROR("Invalid group argument: %p", g);
+    return DART_ERR_INVAL;
+  }
+
   MPI_Group_size(g->mpi_group, &size);
   ranks = (dart_global_unit_t *)malloc(size * sizeof(dart_global_unit_t));
   dart_group_getmembers (g, ranks);
@@ -488,7 +547,7 @@ dart_ret_t dart_group_ismember(
   *ismember = (i!=size);
   free(ranks);
   DART_LOG_DEBUG("dart_group_ismember : unit %2d: %s",
-                 unitid, (*ismember) ? "yes" : "no");
+                 unitid.id, (*ismember) ? "yes" : "no");
   return DART_OK;
 }
 
@@ -496,18 +555,14 @@ dart_ret_t dart_team_get_group(
   dart_team_t    teamid,
   dart_group_t * group)
 {
-  MPI_Comm comm;
-  uint16_t index;
   *group = NULL;
 
-  struct dart_group_struct* res = allocate_group();
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1) {
-    free(res);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
-  MPI_Comm_group(comm, &(res->mpi_group));
+  struct dart_group_struct* res = allocate_group();
+  MPI_Comm_group(team_data->comm, &(res->mpi_group));
 
   *group = res;
   return DART_OK;
@@ -526,24 +581,28 @@ dart_ret_t dart_team_create(
   MPI_Comm    comm;
   MPI_Comm    subcomm;
   MPI_Win     win;
-  uint16_t    index,
-              unique_id;
-  size_t      size;
   dart_team_t max_teamid = -1;
 
+  *newteam = DART_TEAM_NULL;
 
-  dart_size(&size);
+  if (group->mpi_group == MPI_GROUP_NULL) {
+    return DART_OK;
+  }
 
-  int result = dart_adapt_teamlist_convert(teamid, &unique_id);
-  if (result == -1) {
+  if (group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p", group);
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[unique_id].comm;
+
+
+  dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
+  if (parent_team_data == NULL) {
+    return DART_ERR_INVAL;
+  }
+  comm = parent_team_data->comm;
   subcomm = MPI_COMM_NULL;
 
   MPI_Comm_create(comm, group->mpi_group, &subcomm);
-
-  *newteam = DART_TEAM_NULL;
 
   /* Get the maximum next_availteamid among all the units belonging to
    * the parent team specified by 'teamid'. */
@@ -551,136 +610,31 @@ dart_ret_t dart_team_create(
     &dart_next_availteamid,
     &max_teamid,
     1,
-    MPI_INT32_T,
+    MPI_INT16_T,
     MPI_MAX,
     comm);
   dart_next_availteamid = max_teamid + 1;
 
-  dart_team_data_t *team_data;
   if (subcomm != MPI_COMM_NULL) {
-    int result = dart_adapt_teamlist_alloc(max_teamid, &index);
-    if (result == -1) {
+    dart_ret_t result = dart_adapt_teamlist_alloc(max_teamid);
+    if (result != DART_OK) {
       return DART_ERR_OTHER;
     }
     /* max_teamid is thought to be the new created team ID. */
     *newteam = max_teamid;
-    team_data = &dart_team_data[index];
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(max_teamid);
     team_data->comm = subcomm;
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
     team_data->window = win;
-  }
 
-#if 0
-  /* Another way of generating the available teamID for the newly crated team. */
-  if (subcomm != MPI_COMM_NULL)
-  {
-    /* Get the maximum next_availteamid among all the units belonging to the
-     * created sub-communicator. */
-    MPI_Allreduce (&next_availteamid, &max_teamid, 1, MPI_INT, MPI_MAX, subcomm);
-    int result = dart_adapt_teamlist_alloc (max_teamid, &index);
-
-    if (result == -1)
-    {
-      return DART_ERR_OTHER;
-    }
-
-    *newteam = max_teamid;
-    teams[index] = subcomm;
-    MPI_Comm_rank (subcomm, &rank);
-
-    if (rank == 0)
-    {
-      root = sub_unit;
-      if (sub_unit != 0)
-      {
-        MPI_Send (&root, 1, MPI_INT, 0, 0, comm);
-      }
-    }
-
-    next_availteamid = max_teamid + 1;
-  }
-
-  if (sub_unit == 0)
-  {
-    if (root == -1)
-    {
-      MPI_Recv (&root, 1, MPI_INT, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
-    }
-  }
-
-  MPI_Bcast (&root, 1, MPI_INT, 0, comm);
-
-  /* Broadcast the calculated max_teamid to all the units not belonging to the
-   * sub-communicator. */
-  MPI_Bcast (&max_teamid, 1, MPI_INT, root, comm);
-  if (subcomm == MPI_COMM_NULL)
-  {
-    /* 'Next_availteamid' is changed iff it is smaller than 'max_teamid + 1' */
-    if (max_teamid + 1 > next_availteamid)
-    {
-      next_availteamid = max_teamid + 1;
-    }
-  }
-#endif
-
-  if (subcomm != MPI_COMM_NULL) {
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    int    i;
-    size_t n;
-
-    MPI_Comm sharedmem_comm;
-    MPI_Group sharedmem_group, group_all;
-    MPI_Comm_split_type(
-      subcomm,
-      MPI_COMM_TYPE_SHARED,
-      1,
-      MPI_INFO_NULL,
-      &sharedmem_comm);
-    team_data->sharedmem_comm = sharedmem_comm;
-
-    if (sharedmem_comm != MPI_COMM_NULL) {
-      MPI_Comm_size(
-        sharedmem_comm,
-          &(team_data->sharedmem_nodesize));
-
-    // dart_unit_mapping[index] = (int*)malloc (
-    // dart_sharedmem_size[index] * sizeof (int));
-
-      MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-      MPI_Comm_group(DART_COMM_WORLD, &group_all);
-
-      int * dart_unit_mapping = malloc(
-          team_data->sharedmem_nodesize * sizeof(int));
-      int * sharedmem_ranks = malloc(
-          team_data->sharedmem_nodesize * sizeof(int));
-      team_data->sharedmem_tab = malloc(size * sizeof(int));
-
-      for (i = 0; i < team_data->sharedmem_nodesize; i++) {
-        sharedmem_ranks[i] = i;
-      }
-
-    // MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index],
-    //     sharedmem_ranks, group_all, dart_unit_mapping[index]);
-      MPI_Group_translate_ranks(
-        sharedmem_group,
-        team_data->sharedmem_nodesize,
-        sharedmem_ranks,
-        group_all,
-        dart_unit_mapping);
-
-      for (n = 0; n < size; n++) {
-        team_data->sharedmem_tab[n] = DART_UNDEFINED_TEAM_UNIT_ID;
-      }
-      for (i = 0; i < team_data->sharedmem_nodesize; i++) {
-        team_data->sharedmem_tab[dart_unit_mapping[i]] = DART_TEAM_UNIT_ID(i);
-      }
-      free(sharedmem_ranks);
-      free(dart_unit_mapping);
-    }
+    dart_allocate_shared_comm(team_data);
 #endif
     MPI_Win_lock_all(0, win);
     DART_LOG_DEBUG("TEAMCREATE - create team %d from parent team %d",
                    *newteam, teamid);
+    DART_LOG_TRACE("TEAMCREATE - team:%d comm:%p win:%p subcomm:%p",
+                   *newteam, team_data->comm, team_data->window, subcomm);
   }
 
   return DART_OK;
@@ -691,7 +645,6 @@ dart_ret_t dart_team_destroy(
 {
   MPI_Comm    comm;
   MPI_Win     win;
-  uint16_t    index;
 
   DART_LOG_DEBUG("dart_team_destroy() teamid:%d", *teamid);
 
@@ -699,12 +652,10 @@ dart_ret_t dart_team_destroy(
     return DART_OK;
   }
 
-  int result = dart_adapt_teamlist_convert(*teamid, &index);
-  if (result == -1) {
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(*teamid);
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-
-  dart_team_data_t *team_data = &dart_team_data[index];
 
   comm = team_data->comm;
 
@@ -717,10 +668,11 @@ dart_ret_t dart_team_destroy(
   win = team_data->window;
   MPI_Win_unlock_all(win);
   MPI_Win_free(&win);
-  dart_adapt_teamlist_recycle(index, result);
 
   /* -- Release the communicator associated with teamid -- */
   MPI_Comm_free(&comm);
+
+  dart_adapt_teamlist_dealloc(*teamid);
 
   DART_LOG_DEBUG("dart_team_destroy > teamid:%d", *teamid);
 
@@ -758,18 +710,18 @@ dart_ret_t dart_size(size_t *size)
 }
 
 dart_ret_t dart_team_myid(
-  dart_team_t         teamid,
+  dart_team_t        teamid,
   dart_team_unit_t * unitid)
 {
-  MPI_Comm comm;
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1)
+  if (teamid == DART_TEAM_NULL) {
+    return DART_ERR_INVAL;
+  }
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL)
   {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
-  MPI_Comm_rank(comm, &(unitid->id));
+  MPI_Comm_rank(team_data->comm, &(unitid->id));
 
   return DART_OK;
 }
@@ -778,20 +730,20 @@ dart_ret_t dart_team_size(
   dart_team_t   teamid,
   size_t      * size)
 {
-  MPI_Comm comm;
-  uint16_t index;
   if (teamid == DART_TEAM_NULL) {
     return DART_ERR_INVAL;
   }
-  int result = dart_adapt_teamlist_convert(teamid, &index);
-  if (result == -1) {
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+
+  if (team_data == NULL) {
     return DART_ERR_INVAL;
   }
-  comm = dart_team_data[index].comm;
+
   // TODO: This should be a local operation.
   //       Team sizes could be cached and updated in dart_team_create.
   int s;
-  MPI_Comm_size (comm, &s);
+  MPI_Comm_size(team_data->comm, &s);
   (*size) = s;
   return DART_OK;
 }

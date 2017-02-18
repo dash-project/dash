@@ -870,7 +870,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     module_domain->host, module_domain->domain_tag,
     module_domain->num_units, module_domain->global_index);
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__locality__domain__create_module_subdomains", "%d",
     module_domain->unit_ids, module_domain->num_units);
   /*
@@ -998,7 +998,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
       "dart__base__locality__domain__create_module_subdomains: ---- "
       "module_domain.unit_ids[%d] => unit:%d sub_gid:%d level_gid:%d "
       "module_domain.global_index:%d",
-      u_idx, unit_lid, unit_sub_gid, unit_level_gid,
+      u_idx, unit_lid.id, unit_sub_gid, unit_level_gid,
       module_domain->global_index);
     /* Ignore units that are not contained in current module domain: */
     if (module_scope_level == 0 ||
@@ -1094,7 +1094,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
         "dart__base__locality__domain__create_module_subdomains: ---- "
         "module_unit[%d](= unit:%d).scopes[%d].index:%d =?= "
         "subdomain.global_index:%d",
-        u_idx, unit_lid, subdomain_gid_idx,
+        u_idx, unit_lid.id, subdomain_gid_idx,
         unit_loc->hwinfo.scopes[subdomain_gid_idx].index,
         subdomain->global_index);
 
@@ -1148,7 +1148,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
           "dart__base__locality__domain__create_module_subdomains: "
           "reached CORE scope (num_units:%d), setting domain tag for "
           "unit_lid:%d to %s",
-          subdomain->num_units, unit_lid, subdomain->domain_tag);
+          subdomain->num_units, unit_lid.id, subdomain->domain_tag);
 
         dart_unit_locality_t * unit_loc;
         DART_ASSERT_RETURNS(

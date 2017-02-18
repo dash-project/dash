@@ -81,7 +81,15 @@ Features:
 - Made global memory allocation and communication operations aware of the underlying 
   data type to improve stability and performance
 
+- Made DART global pointer globally unique to allow copying of global pointer between
+  members of the team that allocated the global memory. Note that a global now 
+  contains unit IDs relative to the team that allocated the memory instead of 
+  global unit IDs. 
+
 - Extended use of `const` specifier in DART communication interface 
+
+- Introduced typed unit IDs to safely distinguish between global IDs 
+  (`dart_global_unit_t`) and IDs that are relative to a team (`dart_team_unit_t`).
 
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
@@ -118,7 +126,10 @@ Features:
 
 Fixes:
 
-- Added clarification that DART currently does not provide thread-safe access. 
+- Added clarification which DART functionality provides thread-safe access. 
+  DART functions can be considered thread-safe as long as they do not operate
+  on the same data structures. In particular, thread-concurrent (collective) 
+  operations on the same team are not guaranteed to be safe. 
 
 ## DART-MPI
 

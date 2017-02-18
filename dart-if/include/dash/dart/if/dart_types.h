@@ -68,7 +68,11 @@ typedef enum
   /** Binary XOR */
   DART_OP_BXOR,
   /** Logical XOR */
-  DART_OP_LXOR
+  DART_OP_LXOR,
+  /** Replace Value */
+  DART_OP_REPLACE,
+  /** No operation */
+  DART_OP_NO_OP
 } dart_operation_t;
 
 /**
@@ -79,6 +83,7 @@ typedef enum
 typedef enum
 {
     DART_TYPE_UNDEFINED = 0,
+    /** integral data types */
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
     DART_TYPE_INT,
@@ -86,17 +91,18 @@ typedef enum
     DART_TYPE_LONG,
     DART_TYPE_ULONG,
     DART_TYPE_LONGLONG,
+    /** floating point data types */
     DART_TYPE_FLOAT,
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
 
 #if (UINT32_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_UINT
+#  define DART_TYPE_SIZET DART_TYPE_UINT
 #elif (UINT64_MAX == SIZE_MAX)
-#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#  define DART_TYPE_SIZET DART_TYPE_LONGLONG
 #else
-#error "Cannot determine DART type for size_t!"
+#  error "Cannot determine DART type for size_t!"
 #endif
 
 
@@ -207,13 +213,25 @@ dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
  * Data type for storing a team ID
  * \ingroup DartTypes
  */
-typedef int32_t dart_team_t;
+typedef int16_t dart_team_t;
 
 /**
  * Undefined team ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
+
+
+typedef enum
+{
+  /** No support for thread-based concurrency in DART is provided. */
+  DART_THREAD_SINGLE = 0,
+  /**
+   * Support for thread-based concurrency is provided by DART and
+   * the underlying runtime.
+   */
+  DART_THREAD_MULTIPLE = 10
+} dart_thread_support_level_t;
 
 /**
  * Scopes of locality domains.

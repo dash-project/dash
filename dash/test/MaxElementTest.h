@@ -1,14 +1,15 @@
 #ifndef DASH__TEST__MAX_ELEMENT_TEST_H_
 #define DASH__TEST__MAX_ELEMENT_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-#include <vector>
+#include "TestBase.h"
+
+#include <dash/Array.h>
+
 
 /**
  * Test fixture for algorithm dash::max_element.
  */
-class MaxElementTest : public ::testing::Test {
+class MaxElementTest : public dash::test::TestBase {
 protected:
   typedef long                   Element_t;
   typedef dash::Array<Element_t> Array_t;
@@ -16,20 +17,12 @@ protected:
     index_t;
 
   /// Using a prime to cause inconvenient strides
-  size_t _num_elem = 251;
+  const size_t _num_elem = 251;
 
   MaxElementTest() {
   }
 
   virtual ~MaxElementTest() {
-  }
-
-  virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
-  }
-
-  virtual void TearDown() {
-    dash::finalize();
   }
 };
 

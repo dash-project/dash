@@ -1,10 +1,12 @@
 #ifndef DASH__INTERNAL__PATTERN_LOGGING_H__
 #define DASH__INTERNAL__PATTERN_LOGGING_H__
 
-#include <libdash.h>
+#include <iostream>
 #include <iomanip>
 #include <functional>
 #include <string>
+#include <vector>
+
 
 namespace dash {
 namespace internal {
