@@ -298,6 +298,7 @@ template <
 struct view_traits<NViewLocalMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
+  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef typename domain_type::local_type                      image_type;
   typedef NViewLocalMod<DomainType, NDim>                       local_type;
   typedef domain_type                                          global_type;
@@ -541,6 +542,7 @@ template <
 struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef NViewSubMod<DomainType, SubDim>                       image_type;
   typedef NViewSubMod<DomainType, SubDim>                       local_type;
   typedef NViewSubMod<DomainType, SubDim>                      global_type;

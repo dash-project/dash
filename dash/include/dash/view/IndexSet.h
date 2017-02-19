@@ -426,7 +426,7 @@ class IndexSetBlocks
            1 >
 {
   typedef IndexSetBlocks<ViewType>                              self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetBase<self_t, ViewType, 1>                     base_t;
  public:
   typedef typename ViewType::index_type                     index_type;
 
@@ -471,10 +471,10 @@ class IndexSetBlocks
     return block_index +
            // index of block at first index in domain
            this->pattern().block_at(
-             std::array<index_type, 1> ({
-           //  this->domain()[0]
-               *(this->domain().begin())
-             })
+             this->pattern().coords(this->domain().first())
+         //  std::array<index_type, 1> ({
+         //    *(this->domain().begin())
+         //  })
            );
   }
 
@@ -487,11 +487,11 @@ class IndexSetBlocks
     return (
       // index of block at last index in domain
       this->pattern().block_at(
-        {{ this->domain().last()  }}
+        this->pattern().coords(this->domain().last())
       ) -
       // index of block at first index in domain
       this->pattern().block_at(
-        {{ this->domain().first() }}
+        this->pattern().coords(this->domain().first())
       ) + 1
     );
   }
@@ -885,19 +885,19 @@ class IndexSetLocal
            );
 #else
     return (
-      //pat_partitioning_traits::minimal ||
-        this->pattern().blockspec().size()
-          <= this->pattern().team().size()
-      // blocked (not blockcyclic) distribution: single local
-      // element space with contiguous global index range
-      ? std::min<index_type>(
-          this->pattern().local_size(),
-          this->domain().size()
-        )
-      // blockcyclic distribution: local element space chunked
-      // in global index range
-      : this->pattern().local_size() + // <-- TODO: intersection of local
-        this->domain().pre()[0]        //           blocks and domain
+      // pat_partitioning_traits::minimal ||
+      this->pattern().blockspec().size()
+        <= this->pattern().team().size()
+        // blocked (not blockcyclic) distribution: single local
+        // element space with contiguous global index range
+        ? std::min<index_type>(
+            this->pattern().local_size(),
+            this->domain().size()
+          )
+        // blockcyclic distribution: local element space chunked
+        // in global index range
+        : this->pattern().local_size() + // <-- TODO: intersection of local
+          this->domain().pre()[0]        //           blocks and domain
     );
 #endif
   }
