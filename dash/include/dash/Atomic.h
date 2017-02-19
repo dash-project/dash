@@ -55,9 +55,6 @@ public:
 
   Atomic(const Atomic<T> & other) = default;
 
-  /**
-   * Disabled assignment as this violates the atomic semantics
-   */
   self_t & operator=(const self_t & other) = default;
 
   /**
@@ -70,9 +67,7 @@ public:
   /**
    * Disabled assignment as this violates the atomic semantics
    */
-  T operator=(T value) {
-    _value = value;
-  }
+  T operator=(T value) = delete;
 
   /**
    * As \c Atomic is implemented as phantom type,
