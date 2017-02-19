@@ -86,11 +86,15 @@ TEST_F(AtomicTest, ArrayElements)
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "prev: array @ unit(", remote_prev, ") +=", my_val);
   // in fact, this is a hack
-  dash::GlobRef<dash::Atomic<value_t>>(array[remote_prev].dart_gptr()).add(my_val);
+  dash::GlobRef<dash::Atomic<value_t>>(
+          array[remote_prev].dart_gptr()
+        ).add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements",
                  "next: array @ unit(", remote_next, ") +=", my_val);
-  dash::GlobRef<dash::Atomic<value_t>>(array[remote_next].dart_gptr()).fetch_add(my_val);
+  dash::GlobRef<dash::Atomic<value_t>>(
+          array[remote_next].dart_gptr()
+        ).fetch_add(my_val);
 
   DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #2");
   array.barrier();

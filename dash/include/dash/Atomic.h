@@ -1,6 +1,9 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
+#include <iostream>
+
+
 namespace dash {
 
 /**
@@ -48,7 +51,9 @@ private:
 public:
   typedef T value_type;
 
-  Atomic(const Atomic<T> & other) = delete;
+  Atomic() = default;
+
+  Atomic(const Atomic<T> & other) = default;
 
   /**
    * Disabled assignment as this violates the atomic semantics
@@ -65,13 +70,29 @@ public:
   /**
    * Disabled assignment as this violates the atomic semantics
    */
-  T operator=(T value) = delete;
+  T operator=(T value) {
+    _value = value;
+  }
 
   /**
    * As \c Atomic is implemented as phantom type,
    * the value has to be queried using the \c dash::GlobRef
    */
   operator T() = delete;
+
+  bool operator==(const self_t & other) const {
+    return _value == other._value;
+  }
+
+  bool operator!=(const self_t & other) const {
+    return !(*this == other);
+  }
+
+public:
+  template<typename T>
+  friend std::ostream & operator<<(
+    std::ostream    & os,
+    const Atomic<T> & at);
 
 }; // class Atomic
 
@@ -89,6 +110,16 @@ template<typename T>
 struct is_atomic<dash::Atomic<T>> {
   static constexpr bool value = true;
 };
+
+template<typename T>
+std::ostream & operator<<(
+  std::ostream    & os,
+  const Atomic<T> & at)
+{
+  std::ostringstream ss;
+  ss << dash::internal::typestr(at) << "<phantom>";
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 

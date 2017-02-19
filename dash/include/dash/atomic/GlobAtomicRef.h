@@ -55,7 +55,7 @@ public:
    * memory.
    */
   template<typename PatternT>
-  GlobRef(
+  explicit GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<atomic_t, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -353,7 +353,6 @@ private:
   }
   
 private:
-  
   dart_gptr_t _gptr;
   
 };

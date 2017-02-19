@@ -313,9 +313,8 @@ public:
     const value_type & value)
   {
     auto key    = value.first;
-    auto mapped = value.second;
     DASH_LOG_DEBUG("UnorderedMapLocalRef.insert()",
-                   "key:", key, "mapped:", mapped);
+                   "key:", key);
     auto result = std::make_pair(_map->_lend, false);
 
     // Look up existing element at given key:
