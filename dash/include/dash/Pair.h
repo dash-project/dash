@@ -25,13 +25,16 @@ namespace dash {
     /**
      * The default constructor.
      */
-    constexpr Pair() = default;
+    constexpr Pair()
+      : first(), second()
+    { }
 
     /**
      * Two objects may be passed to a Pair constructor to be copied.
      */
     constexpr Pair(const T1& __a, const T2& __b)
-    : first(__a), second(__b) { }
+      : first(__a), second(__b)
+    { }
 
     /**
      * A Pair might be constructed from another pair iff first and second
@@ -42,7 +45,8 @@ namespace dash {
                 std::is_convertible<const U1&, T1>::value &&
                 std::is_convertible<const U2&, T2>::value>::value>
     constexpr Pair(const Pair<U1, U2>& p)
-      : first(p.first), second(p.second) { }
+      : first(p.first), second(p.second)
+    { }
 
     constexpr Pair(const Pair&) = default;
     constexpr Pair(Pair&&) = default;
@@ -50,25 +54,29 @@ namespace dash {
     template<class U1, class = typename
         std::enable_if<std::is_convertible<U1, T1>::value>::type>
     constexpr Pair(U1&& x, const T2& y)
-      : first(std::forward<U1>(x)), second(y) { }
+      : first(std::forward<U1>(x)), second(y)
+    { }
 
     template<class U2, class = typename
         std::enable_if<std::is_convertible<U2, T2>::value>::type>
     constexpr Pair(const T1& x, U2&& y)
-      : first(x), second(std::forward<U2>(y)) { }
+      : first(x), second(std::forward<U2>(y))
+    { }
 
     template<class U1, class U2, class = typename
         std::enable_if<std::is_convertible<U1, T1>::value &&
                        std::is_convertible<U2, T2>::value>::type>
     constexpr Pair(U1&& x, U2&& y)
-      : first(std::forward<U1>(x)), second(std::forward<U2>(y)) { }
+      : first(std::forward<U1>(x)), second(std::forward<U2>(y))
+    { }
 
     template<class U1, class U2, class = typename
         std::enable_if<std::is_convertible<U1, T1>::value &&
                        std::is_convertible<U2, T2>::value>::type>
     constexpr Pair(Pair<U1, U2>&& p)
       : first(std::forward<U1>(p.first)),
-        second(std::forward<U2>(p.second)) { }
+        second(std::forward<U2>(p.second))
+    { }
 
     Pair&
     operator=(const Pair& p) = default;
