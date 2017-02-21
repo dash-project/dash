@@ -450,8 +450,8 @@ public:
                    "size:", bucket.size,
                    "lptr:", bucket.lptr);
     // Update local iteration space:
-    _lbegin = lbegin(_myid);
-    _lend   = lend(_myid);
+    _lbegin = update_lbegin(_myid);
+    _lend   = update_lend(_myid);
     DASH_ASSERT_EQ(_local_sizes.local[0], _lend - _lbegin,
                    "local size differs from local iteration space size");
     DASH_LOG_TRACE("GlobDynamicMem.grow",
@@ -623,8 +623,8 @@ public:
       _buckets.pop_back();
     }
     // Update local iterators as bucket iterators might have changed:
-    _lbegin = lbegin(_myid);
-    _lend   = lend(_myid);
+    _lbegin = update_lbegin(_myid);
+    _lend   = update_lend(_myid);
 
     DASH_LOG_TRACE("GlobDynamicMem.shrink",
                    "cumulative bucket sizes:",  _bucket_cumul_sizes[_myid]);
@@ -675,9 +675,9 @@ public:
     }
     // Update local iterators as bucket iterators might have changed:
     DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _lbegin");
-    _lbegin = lbegin(_myid);
+    _lbegin = update_lbegin(_myid);
     DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _lend");
-    _lend   = lend(_myid);
+    _lend   = update_lend(_myid);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 
@@ -778,63 +778,6 @@ public:
 
   /**
    * Native pointer of the initial address of the local memory of
-   * a unit.
-   *
-   * TODO: Should be private and renamed to update_lbegin() as returning a
-   *       local iterator from lbegin(u) is not possible if u is remote.
-   */
-  local_iterator lbegin(
-    team_unit_t unit_id)
-  {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin()", unit_id);
-    if (unit_id == _myid) {
-      local_iterator unit_lbegin(
-               // iteration space
-               _buckets.begin(), _buckets.end(),
-               // position in iteration space
-               0,
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.begin(), 0);
-      DASH_LOG_TRACE("GlobDynamicMem.lbegin >", unit_lbegin);
-      return unit_lbegin;
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lbegin(unit) is not implemented "
-                 "for unit != dash::myid()");
-    }
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
-   * a unit.
-   *
-   * TODO: Should be removed once non-const lbegin(u) is refactored.
-   */
-  const_local_iterator lbegin(
-    team_unit_t unit_id) const
-  {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin const()", unit_id);
-    if (unit_id == _myid) {
-      local_iterator unit_clbegin(
-               // iteration space
-               _buckets.begin(), _buckets.end(),
-               // position in iteration space
-               0,
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.begin(), 0);
-      DASH_LOG_TRACE("GlobDynamicMem.lbegin const >", unit_clbegin);
-      return unit_clbegin;
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lbegin(unit) const " <<
-                 "is not implemented for unit != dash::myid()");
-    }
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
   inline local_iterator & lbegin()
@@ -849,58 +792,6 @@ public:
   inline const_local_iterator lbegin() const
   {
     return _lbegin;
-  }
-
-  /**
-   * Native pointer of the final address of the local memory of
-   * a unit.
-   */
-  local_iterator lend(
-    team_unit_t unit_id)
-  {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lend()", unit_id);
-    if (unit_id == _myid) {
-      local_iterator unit_lend(
-               // iteration space
-               _buckets.begin(), _buckets.end(),
-               // position in iteration space
-               local_size(),
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.end(), 0);
-      DASH_LOG_TRACE("GlobDynamicMem.lend >", unit_lend);
-      return unit_lend;
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lend(unit) is not implemented "
-                 "for unit != dash::myid()");
-    }
-  }
-
-  /**
-   * Native pointer of the final address of the local memory of
-   * a unit.
-   */
-  const_local_iterator lend(
-    team_unit_t unit_id) const
-  {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lend() const", unit_id);
-    if (unit_id == _myid) {
-      local_iterator unit_clend(
-               // iteration space
-               _buckets.cbegin(), _buckets.cend(),
-               // position in iteration space
-               local_size(),
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.cend(), 0);
-      DASH_LOG_TRACE("GlobDynamicMem.lend const >", unit_clend);
-      return unit_clend;
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lend(unit) const is not implemented "
-                 "for unit != dash::myid()");
-    }
   }
 
   /**
@@ -1015,6 +906,60 @@ public:
   }
 
 private:
+
+  /**
+   * Native pointer of the final address of the local memory of
+   * a unit.
+   */
+  local_iterator update_lend(
+    team_unit_t unit_id)
+  {
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.lend()", unit_id);
+    if (unit_id == _myid) {
+      local_iterator unit_lend(
+               // iteration space
+               _buckets.begin(), _buckets.end(),
+               // position in iteration space
+               local_size(),
+               // bucket at position in iteration space,
+               // offset in bucket
+               _buckets.end(), 0);
+      DASH_LOG_TRACE("GlobDynamicMem.lend >", unit_lend);
+      return unit_lend;
+    } else {
+      DASH_THROW(dash::exception::NotImplemented,
+                 "dash::GlobDynamicMem.lend(unit) is not implemented "
+                 "for unit != dash::myid()");
+    }
+  }
+
+  /**
+   * Native pointer of the initial address of the local memory of
+   * a unit.
+   *
+   */
+  local_iterator update_lbegin(
+    team_unit_t unit_id)
+  {
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin()", unit_id);
+    if (unit_id == _myid) {
+      local_iterator unit_lbegin(
+               // iteration space
+               _buckets.begin(), _buckets.end(),
+               // position in iteration space
+               0,
+               // bucket at position in iteration space,
+               // offset in bucket
+               _buckets.begin(), 0);
+      DASH_LOG_TRACE("GlobDynamicMem.lbegin >", unit_lbegin);
+      return unit_lbegin;
+    } else {
+      DASH_THROW(dash::exception::NotImplemented,
+                 "dash::GlobDynamicMem.lbegin(unit) is not implemented "
+                 "for unit != dash::myid()");
+    }
+  }
+
   /**
    * Commit global deallocation of buffers marked for detach.
    */
