@@ -218,98 +218,88 @@ amsg_process_internal(dart_amsgq_t amsgq, bool blocking)
     dart_mutex_lock(&amsgq->processing_mutex);
   }
 
-  char *dbuf = amsgq->dbuf;
+  do {
+    char *dbuf = amsgq->dbuf;
 
-  dart_team_myid(amsgq->team, &unitid);
+    dart_team_myid(amsgq->team, &unitid);
 
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
 
-  MPI_Get(
-      &tailpos,
-      1,
-      MPI_UINT64_T,
-      unitid.id,
-      0,
-      1,
-      MPI_UINT64_T,
-      amsgq->tailpos_win);
-
-  MPI_Win_flush_local(unitid.id, amsgq->tailpos_win);
-
-  /**
-   * process messages while they are available, i.e.,
-   * repeat if messages come in while processing previous messages
-   */
-  if (tailpos > 0) {
-    uint64_t   zero = 0;
-    DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
-    // lock the tailpos window
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->queue_win);
-    // copy the content of the queue for processing
-    /*
-    DART_GPTR_COPY(queueg, amsgq->queue_win);
-    queueg.unitid = unitid;
-    dart_gptr_getaddr (queueg, &queue);
-    */
-//    memcpy(dbuf, amsgq->queue_ptr, tailpos);
     MPI_Get(
-        dbuf,
-        tailpos,
-        MPI_BYTE,
-        unitid.id,
-        0,
-        tailpos,
-        MPI_BYTE,
-        amsgq->queue_win);
-    MPI_Win_unlock(unitid.id, amsgq->queue_win);
-
-    // reset the tailpos and release the lock on the message queue
-    MPI_Put(
-        &zero,
+        &tailpos,
         1,
-        MPI_INT64_T,
+        MPI_UINT64_T,
         unitid.id,
         0,
         1,
-        MPI_INT64_T,
+        MPI_UINT64_T,
         amsgq->tailpos_win);
-    MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
 
-    // process the messages by invoking the functions on the data supplied
-    uint64_t pos = 0;
-    while (pos < tailpos) {
-#ifdef DART_ENABLE_LOGGING
-      int startpos = pos;
-#endif
-      // unpack the message
-//      dart_unit_t remote = *(dart_unit_t*)(dbuf + pos);
-//      pos += sizeof(dart_unit_t);
-//      dart_task_action_t *fn = *(dart_task_action_t**)(dbuf + pos);
-//      pos += sizeof(dart_task_action_t*);
-//      size_t data_size  = *(size_t*)(dbuf + pos);
-//      pos += sizeof(data_size);
-//      void *data     = dbuf + pos;
-//      pos += data_size;
+    MPI_Win_flush_local(unitid.id, amsgq->tailpos_win);
 
-      struct dart_amsg_header *header = (struct dart_amsg_header *)(dbuf + pos);
-      pos += sizeof(struct dart_amsg_header);
-      void *data     = dbuf + pos;
-      pos += header->data_size;
+    if (tailpos > 0) {
+      uint64_t   zero = 0;
+      DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
+      // lock the tailpos window
+      MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->queue_win);
+      // copy the content of the queue for processing
+      MPI_Get(
+          dbuf,
+          tailpos,
+          MPI_BYTE,
+          unitid.id,
+          0,
+          tailpos,
+          MPI_BYTE,
+          amsgq->queue_win);
+      MPI_Win_unlock(unitid.id, amsgq->queue_win);
 
-      if (pos > tailpos) {
-        DART_LOG_ERROR("Message out of bounds (expected %i but saw %i)\n", tailpos, pos);
-        dart_mutex_unlock(&amsgq->processing_mutex);
-        return DART_ERR_INVAL;
+      // reset the tailpos and release the lock on the message queue
+      MPI_Put(
+          &zero,
+          1,
+          MPI_INT64_T,
+          unitid.id,
+          0,
+          1,
+          MPI_INT64_T,
+          amsgq->tailpos_win);
+      MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
+
+      // process the messages by invoking the functions on the data supplied
+      uint64_t pos = 0;
+      while (pos < tailpos) {
+  #ifdef DART_ENABLE_LOGGING
+        int startpos = pos;
+  #endif
+        // unpack the message
+        struct dart_amsg_header *header = (struct dart_amsg_header *)(dbuf + pos);
+        pos += sizeof(struct dart_amsg_header);
+        void *data     = dbuf + pos;
+        pos += header->data_size;
+
+        if (pos > tailpos) {
+          DART_LOG_ERROR("Message out of bounds (expected %i but saw %i)\n",
+                         tailpos,
+                         pos);
+          dart_mutex_unlock(&amsgq->processing_mutex);
+          return DART_ERR_INVAL;
+        }
+
+        // invoke the message
+        DART_LOG_INFO("Invoking active message %p from %i on data %p of "
+                      "size %i starting from tailpos %i",
+                      header->fn,
+                      header->remote,
+                      data,
+                      header->data_size,
+                      startpos);
+        header->fn(data);
       }
-
-      // invoke the message
-      DART_LOG_INFO("Invoking active message %p from %i on data %p of size %i starting from tailpos %i",
-                        header->fn, header->remote, data, header->data_size, startpos);
-      header->fn(data);
+    } else {
+      MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
     }
-  } else {
-    MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
-  }
+  } while (blocking && tailpos > 0);
   dart_mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;
 }

@@ -364,10 +364,6 @@ dart__base__tasking__create_task(
 dart_ret_t
 dart__base__tasking__task_complete()
 {
-  // TODO: How to determine that all tasks have successfully finished?
-  // TODO: Handle message backlog!
-  dart_tasking_remote_progress_blocking();
-
   dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {

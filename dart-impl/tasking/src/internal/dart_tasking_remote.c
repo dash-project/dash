@@ -191,14 +191,20 @@ dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task
 
 
 /**
- * @brief Check for new remote task dependency requests coming in
+ * Check for new remote task dependency requests coming in.
  */
 dart_ret_t dart_tasking_remote_progress()
 {
   return dart_amsg_process(amsgq);
 }
 
-
+/**
+ * Check for new remote task dependency requests coming in.
+ * This is similar to \ref dart_tasking_remote_progress
+ * but blocks if another process is currently processing the
+ * message queue. The call will block until no further incoming
+ * messages are received.
+ */
 dart_ret_t dart_tasking_remote_progress_blocking()
 {
   return dart_amsg_process_blocking(amsgq);
