@@ -203,15 +203,19 @@ dart_amsg_trysend(
 }
 
 
-dart_ret_t
-dart_amsg_process(dart_amsgq_t amsgq)
+static dart_ret_t
+amsg_process_internal(dart_amsgq_t amsgq, bool blocking)
 {
   dart_team_unit_t unitid;
   uint64_t         tailpos;
 
-  dart_ret_t ret = dart_mutex_trylock(&amsgq->processing_mutex);
-  if (ret != DART_OK) {
-    return DART_ERR_AGAIN;
+  if (!blocking) {
+    dart_ret_t ret = dart_mutex_trylock(&amsgq->processing_mutex);
+    if (ret != DART_OK) {
+      return DART_ERR_AGAIN;
+    }
+  } else {
+    dart_mutex_lock(&amsgq->processing_mutex);
   }
 
   char *dbuf = amsgq->dbuf;
@@ -308,6 +312,18 @@ dart_amsg_process(dart_amsgq_t amsgq)
   }
   dart_mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;
+}
+
+dart_ret_t
+dart_amsg_process(dart_amsgq_t amsgq)
+{
+  return amsg_process_internal(amsgq, false);
+}
+
+dart_ret_t
+dart_amsg_process_blocking(dart_amsgq_t amsgq)
+{
+  return amsg_process_internal(amsgq, true);
 }
 
 dart_team_t

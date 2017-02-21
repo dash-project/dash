@@ -4,6 +4,8 @@
 
 #include <dash/dart/if/dart_types.h>
 
+#include <stdbool.h>
+
 struct dart_amsgq;
 
 typedef struct dart_amsgq* dart_amsgq_t;
@@ -64,6 +66,19 @@ dart_amsg_trysend(
  */
 dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq);
+
+/**
+ * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).
+ *
+ * Implementation: The local queue will be locked (again using compare_and_swap) to grab a copy of the current content
+ *                 and released before processing starts.
+ *
+ * This function is similar to \c dart_amsgq_process except that it blocks
+ * until processing can be performed in case another thread is currently
+ * processing messages.
+ */
+dart_ret_t
+dart_amsg_process_blocking(dart_amsgq_t amsgq);
 
 /**
  * Collective operation on all members of the team involved in the active message queue.
