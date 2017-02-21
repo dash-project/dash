@@ -439,7 +439,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
   DASH_LOG_TRACE("LocalMatrixRef<N>.sub(n)", "n:", n,
                  "refview.size:", ref._refview._viewspec.size());
-  ref._refview._mat = _refview._mat;
+  ref._refview._mat = reinterpret_cast<
+                        dash::Matrix<
+                          const T, NumDim, index_type, pattern_type
+                        > * const >(_refview._mat);
   ref._refview._dim = _refview._dim + 1;
   return ref;
 }
