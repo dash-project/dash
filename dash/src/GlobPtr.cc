@@ -6,10 +6,11 @@ std::ostream & operator<<(
 {
   char buf[100];
   sprintf(buf,
-          "<%08X|%04X|%04X|%016lX>",
+          "<%06X|%02X|%04X|%04X|%016lX>",
           dartptr.unitid,
-          dartptr.segid,
           dartptr.flags,
+          dartptr.segid,
+          dartptr.teamid,
           dartptr.addr_or_offs.offset);
   os << "dart_gptr_t(" << buf << ")";
   return os;

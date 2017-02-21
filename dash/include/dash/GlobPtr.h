@@ -61,9 +61,10 @@ private:
   typedef typename PatternType::index_type  IndexType;
 
 public:
-  typedef IndexType   index_type;
-  typedef PatternType pattern_type;
-  typedef IndexType   gptrdiff_t;
+  typedef GlobPtr<const ElementType, PatternType>   const_type;
+  typedef IndexType                                 index_type;
+  typedef PatternType                             pattern_type;
+  typedef IndexType                                 gptrdiff_t;
 
 public:
   /// Convert GlobPtr<T, PatternType> to GlobPtr<U, PatternType>.
@@ -106,16 +107,6 @@ public:
   }
 
   /**
-   * Constructor, creates a new instance of dash::GlobPtr from a global
-   * reference.
-   */
-  explicit GlobPtr(const dash::GlobRef<ElementType> & globref)
-  : _dart_gptr(globref.dart_gptr())
-  {
-    DASH_LOG_TRACE("GlobPtr()", "GlobRef<T> globref");
-  }
-
-  /**
    * Copy constructor.
    */
   GlobPtr(const self_t & other)
@@ -141,7 +132,7 @@ public:
   /**
    * Converts pointer to its underlying global address.
    */
-  explicit operator dart_gptr_t() const
+  constexpr operator dart_gptr_t() const noexcept
   {
     return _dart_gptr;
   }
@@ -151,7 +142,7 @@ public:
    * \c nullptr if the \c GlobPtr does not point to a local
    * address.
    */
-  explicit operator ElementType*() const
+  explicit constexpr operator ElementType*() const noexcept
   {
     return local();
   }
@@ -159,7 +150,7 @@ public:
   /**
    * The pointer's underlying global address.
    */
-  dart_gptr_t dart_gptr() const
+  constexpr dart_gptr_t dart_gptr() const noexcept
   {
     return _dart_gptr;
   }
@@ -240,9 +231,9 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  index_type operator-(const self_t & rhs)
+  constexpr index_type operator-(const self_t & rhs) const noexcept
   {
-    return _dart_gptr - rhs.m_dart_ptr;
+    return _dart_gptr - rhs._dart_gptr;
   }
 
   /**
@@ -272,7 +263,8 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator==(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator==(const GlobPtrT & other) const noexcept
   {
     return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
   }
@@ -280,7 +272,8 @@ public:
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator!=(const GlobPtrT & other) const noexcept
   {
     return !(*this == other);
   }
@@ -291,7 +284,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator<(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator<(const GlobPtrT & other) const noexcept
   {
     return (
       ( _dart_gptr.unitid <  other._dart_gptr.unitid )
@@ -314,7 +308,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator<=(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator<=(const GlobPtrT & other) const noexcept
   {
     return (
       ( _dart_gptr.unitid <  other._dart_gptr.unitid )
@@ -337,7 +332,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator>(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator>(const GlobPtrT & other) const noexcept
   {
     return (
       ( _dart_gptr.unitid >  other._dart_gptr.unitid )
@@ -360,7 +356,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator>=(const self_t & other) const
+  template <class GlobPtrT>
+  constexpr bool operator>=(const GlobPtrT & other) const noexcept
   {
     return (
       ( _dart_gptr.unitid >  other._dart_gptr.unitid )
@@ -380,10 +377,9 @@ public:
   /**
    * Subscript operator.
    */
-  const GlobRef<ElementType> operator[](gptrdiff_t n) const
+  constexpr GlobRef<const ElementType> operator[](gptrdiff_t n) const
   {
-    self_t ptr = (*this)+n;
-    return GlobRef<ElementType>(ptr);
+    return GlobRef<const ElementType>(self_t((*this) + n));
   }
 
   /**
@@ -391,8 +387,7 @@ public:
    */
   GlobRef<ElementType> operator[](gptrdiff_t n)
   {
-    self_t ptr = (*this)+n;
-    return GlobRef<ElementType>(ptr);
+    return GlobRef<ElementType>(self_t((*this) + n));
   }
 
   /**
@@ -401,6 +396,14 @@ public:
   GlobRef<ElementType> operator*()
   {
     return GlobRef<ElementType>(*this);
+  }
+
+  /**
+   * Dereference operator.
+   */
+  constexpr GlobRef<const ElementType> operator*() const
+  {
+    return GlobRef<const ElementType>(*this);
   }
 
   /**
@@ -451,7 +454,7 @@ public:
   /**
    * Set the global pointer's associated unit.
    */
-  void set_unit(global_unit_t unit_id) {
+  void set_unit(team_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&_dart_gptr, unit_id),
       DART_OK);
@@ -462,7 +465,9 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    return _dart_gptr.unitid == dash::Team::GlobalUnitID();
+    dart_team_unit_t luid;
+    dart_team_myid(_dart_gptr.teamid, &luid);
+    return _dart_gptr.unitid == luid.id;
   }
 };
 
@@ -474,10 +479,11 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%08X|%04X|%04X|%016lX",
+          "%06X|%02X|%04X|%04X|%016lX",
           gptr._dart_gptr.unitid,
-          gptr._dart_gptr.segid,
           gptr._dart_gptr.flags,
+          gptr._dart_gptr.segid,
+          gptr._dart_gptr.teamid,
           gptr._dart_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());

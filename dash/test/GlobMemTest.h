@@ -1,5 +1,5 @@
-#ifndef DASH__TEST__ARRAY_TEST_H_
-#define DASH__TEST__ARRAY_TEST_H_
+#ifndef DASH__TEST__GLOBMEM_TEST_H_
+#define DASH__TEST__GLOBMEM_TEST_H_
 
 #include "TestBase.h"
 
@@ -18,4 +18,4 @@ protected:
   }
 };
 
-#endif // DASH__TEST__ARRAY_TEST_H_
+#endif // DASH__TEST__GLOBMEM_TEST_H_

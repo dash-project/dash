@@ -32,7 +32,10 @@ class GlobRef<dash::Atomic<T>>
   friend class Shared<T>;
   
 public:
-  typedef T value_type;
+  typedef T
+    value_type;
+  typedef GlobRef<const dash::Atomic<T>>
+    const_type;
   
 private:
   typedef dash::Atomic<T>      atomic_t;

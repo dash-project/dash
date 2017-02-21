@@ -7,28 +7,21 @@
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/mpi/dart_team_private.h>
 
+#define DART_TEAM_HASH_SIZE (256)
 
 dart_team_t dart_next_availteamid = (DART_TEAM_ALL + 1);
 
 MPI_Comm dart_comm_world;
 
+static dart_team_data_t *dart_team_data[DART_TEAM_HASH_SIZE];
+
+static int
+dart_adapt_teamlist_hash(dart_team_t teamid)
+{
+  return (teamid % DART_TEAM_HASH_SIZE);
+}
+
 #if 0
-MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
-
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
-#endif
-
-MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
-
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
-int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
-#endif
-
-#endif // 0
-
-dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
 
 struct dart_free_teamlist_entry {
   struct dart_free_teamlist_entry * next;
@@ -37,29 +30,28 @@ struct dart_free_teamlist_entry {
 typedef struct dart_free_teamlist_entry dart_free_entry;
 typedef dart_free_entry* dart_free_teamlist_ptr;
 
-dart_free_teamlist_ptr dart_free_teamlist_header;
+static dart_free_teamlist_ptr dart_free_teamlist_header;
 
 /* Structure of the allocated teamlist entry */
 struct dart_allocated_teamlist_entry
 {
-	uint16_t index;
-	dart_team_t allocated_teamid;
+  uint16_t index;
+  dart_team_t allocated_teamid;
 };
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
 
 /* This array is used to store all the correspondences between indice and teams */
-dart_allocated_entry dart_allocated_teamlist_array[DART_MAX_TEAM_NUMBER];
-
+static dart_allocated_entry dart_allocated_teamlist_array[DART_TEAM_HASH_SIZE];
 
 /* Indicate the length of the allocated teamlist */
-int dart_allocated_teamlist_size;
+static int dart_allocated_teamlist_size;
 
 int dart_adapt_teamlist_init ()
 {
 	int i;
 	dart_free_teamlist_ptr pre = NULL;
 	dart_free_teamlist_ptr newAllocateEntry;
-	for (i = 0; i < DART_MAX_TEAM_NUMBER; i++) {
+	for (i = 0; i < DART_TEAM_HASH_SIZE; i++) {
 		newAllocateEntry =
       (dart_free_teamlist_ptr)malloc(sizeof (dart_free_entry));
 		newAllocateEntry -> index = i;
@@ -182,6 +174,85 @@ int dart_adapt_teamlist_convert(
 		DART_LOG_ERROR("Invalid teamid input: %d", teamid);
 		return -1;
 	}
+}
+#endif
+
+
+dart_ret_t
+dart_adapt_teamlist_init()
+{
+  memset(dart_team_data, 0, sizeof(dart_team_data_t*) * DART_TEAM_HASH_SIZE);
+
+  return DART_OK;
+}
+
+dart_team_data_t *
+dart_adapt_teamlist_get(dart_team_t teamid)
+{
+  int slot = dart_adapt_teamlist_hash(teamid);
+  dart_team_data_t *res = dart_team_data[slot];
+  while (res != NULL && res->teamid != teamid) {
+    res = res->next;
+  }
+
+  return res;
+}
+
+dart_ret_t
+dart_adapt_teamlist_dealloc(dart_team_t teamid)
+{
+  int slot = dart_adapt_teamlist_hash(teamid);
+  dart_team_data_t *res = dart_team_data[slot];
+  dart_team_data_t **prev = NULL;
+
+  while (res != NULL && res->teamid == teamid) {
+    prev = &res;
+    res = res->next;
+  }
+
+  // not found!
+  if (res == NULL) {
+    return DART_ERR_INVAL;
+  }
+
+  if (prev == NULL) {
+    dart_team_data[slot] = res->next;
+  } else {
+    (*prev)->next = res->next;
+  }
+
+  res->next = NULL;
+  free(res);
+  return DART_OK;
+}
+
+dart_ret_t
+dart_adapt_teamlist_alloc(dart_team_t teamid)
+{
+  int slot = dart_adapt_teamlist_hash(teamid);
+  dart_team_data_t *res = calloc(1, sizeof(dart_team_data_t));
+  res->teamid = teamid;
+  res->dart_memid = 1;
+  res->dart_registermemid = -1;
+  res->next = dart_team_data[slot];
+  dart_team_data[slot] = res;
+  return DART_OK;
+}
+
+
+dart_ret_t dart_adapt_teamlist_destroy()
+{
+  for (int i = 0; i < DART_TEAM_HASH_SIZE; i++) {
+    dart_team_data_t *elem = dart_team_data[i];
+    while (elem != NULL) {
+      dart_team_data_t *tmp = elem;
+      elem = tmp->next;
+      tmp->next = NULL;
+      free(tmp);
+    }
+    dart_team_data[i] = NULL;
+  }
+  return DART_OK;
 }
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
