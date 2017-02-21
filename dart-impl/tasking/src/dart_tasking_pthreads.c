@@ -140,7 +140,16 @@ void destroy_task(dart_task_t *task)
   if (task->data_size) {
     free(task->data);
   }
-  memset(task, 0, sizeof(dart_task_t));
+  // reset some of the fields
+  // IMPORTANT: the state may not be rewritten!
+  task->data = NULL;
+  task->data_size = 0;
+  task->fn = NULL;
+  task->parent = NULL;
+  task->phase = 0;
+  task->prev = NULL;
+  task->remote_successor = NULL;
+  task->successor = NULL;
   pthread_mutex_lock(&task_recycle_mutex);
   DART_STACK_PUSH(task_recycle_list, task);
 //  task->next = task_recycle_list;
@@ -181,6 +190,7 @@ void handle_task(dart_task_t *task)
     // of remote successors in dart_tasking_datadeps_handle_remote_task
     dart_mutex_lock(&(task->mutex));
     task->state = DART_TASK_FINISHED;
+    dart_tasking_datadeps_release_local_task(task);
     dart_mutex_unlock(&(task->mutex));
 
     // let the parent know that we are done
@@ -188,7 +198,6 @@ void handle_task(dart_task_t *task)
     DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
     // clean up
-    dart_tasking_datadeps_release_local_task(&thread_pool[dart__base__tasking__thread_num()], task);
     destroy_task(task);
 
     // return to previous task
@@ -230,6 +239,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->thread_id = threadnum;
   thread->current_task = NULL;
   dart_tasking_taskqueue_init(&thread->queue);
+  dart_tasking_taskqueue_init(&thread->defered_queue);
 }
 
 static
@@ -238,6 +248,7 @@ void dart_thread_finalize(dart_thread_t *thread)
   thread->thread_id = -1;
   thread->current_task = NULL;
   dart_tasking_taskqueue_finalize(&thread->queue);
+  dart_tasking_taskqueue_finalize(&thread->defered_queue);
 }
 
 
@@ -315,6 +326,17 @@ dart__base__tasking__phase_bound()
   return phase_bound;
 }
 
+void
+dart__base__tasking__enqueue_runnable(dart_task_t *task)
+{
+  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+  dart_taskqueue_t *q = &thread->queue;
+  if (task->phase > phase_bound) {
+    // if the task's phase is outside the phase bound we defer it
+    q = &thread->defered_queue;
+  }
+  dart_tasking_taskqueue_push(q, task);
+}
 
 dart_ret_t
 dart__base__tasking__create_task(
@@ -332,11 +354,7 @@ dart__base__tasking__create_task(
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
   if (task->unresolved_deps == 0) {
-    dart_tasking_taskqueue_push(&thread_pool[dart__base__tasking__thread_num()].queue, task);
-
-    // signal that a task is available
-    // TODO: disabled for easier debugging
-//    pthread_cond_signal(&task_avail_cond);
+    dart__base__tasking__enqueue_runnable(task);
   }
 
   return DART_OK;
@@ -348,25 +366,30 @@ dart__base__tasking__task_complete()
 {
   // TODO: How to determine that all tasks have successfully finished?
   // TODO: Handle message backlog!
-  dart_tasking_remote_progress();
+  dart_tasking_remote_progress_blocking();
 
   dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
-  if (thread->current_task == &(root_task)) {
-    // release unhandled remote dependencies
-    dart_tasking_datadeps_release_unhandled_remote();
-  }
-
-  phase_bound = thread->current_task->phase;
-
-  // 1) wake up all threads (might later be done earlier)
-  pthread_cond_broadcast(&task_avail_cond);
-
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {
     DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task "
                    "only valid on MASTER thread!");
     return DART_ERR_INVAL;
   }
+
+
+  if (thread->current_task == &(root_task)) {
+    // once again make sure all incoming requests are served
+    dart_tasking_remote_progress_blocking();
+    // release unhandled remote dependencies
+    dart_tasking_datadeps_release_unhandled_remote();
+    // release defered tasks
+    phase_bound = thread->current_task->phase;
+    dart_tasking_taskqueue_move(&thread->queue, &thread->defered_queue);
+  }
+
+  // 1) wake up all threads (might later be done earlier)
+  pthread_cond_broadcast(&task_avail_cond);
+
 
   // 2) start processing ourselves
   dart_task_t *task = get_current_task();

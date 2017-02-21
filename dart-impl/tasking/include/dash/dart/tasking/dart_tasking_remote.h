@@ -4,6 +4,8 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 
+#include <stdbool.h>
+
 /**
  * @brief Initialize the remote task dependency system.
  */
@@ -32,5 +34,11 @@ dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, c
  * @brief Check for new remote task dependency requests coming in
  */
 dart_ret_t dart_tasking_remote_progress();
+
+
+/**
+ * @brief Check for new remote task dependency requests coming in
+ */
+dart_ret_t dart_tasking_remote_progress_blocking();
 
 #endif /* DART_TASKING_REMOTE_H_ */

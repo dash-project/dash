@@ -49,12 +49,13 @@ typedef struct task_list {
 typedef struct dart_taskqueue {
   dart_task_t          * head;
   dart_task_t          * tail;
-  pthread_mutex_t        mutex;
+  dart_mutex_t           mutex;
 } dart_taskqueue_t;
 
 typedef struct {
   dart_task_t           * current_task;
   struct dart_taskqueue   queue;
+  struct dart_taskqueue   defered_queue;
   pthread_t               pthread;
   int                     thread_id;
 } dart_thread_t;
@@ -83,6 +84,8 @@ dart__base__tasking__phase();
 dart_taskref_t
 dart__base__tasking__current_task();
 
+void
+dart__base__tasking__enqueue_runnable(dart_task_t *task);
 //void
 //dart__base__tasking_print_taskgraph();
 //

@@ -199,6 +199,11 @@ dart_ret_t dart_tasking_remote_progress()
 }
 
 
+dart_ret_t dart_tasking_remote_progress_blocking()
+{
+  return dart_amsg_process_blocking(amsgq);
+}
+
 
 /**************************
  * Remote tasking actions *
