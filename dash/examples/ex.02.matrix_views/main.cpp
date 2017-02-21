@@ -15,14 +15,6 @@ inline void sum(const uint nelts,
   uint const *mPtr;
   uint localSum = 0;
 
-  dash::barrier();
-
-  /* If the NArray/Matrix is a non const paremter everything compiles and
-   * runs fine.
-   * If the NArray/Matrix a const parameter then the compiler throws an
-   * error.
-   */
-
   for (uint i = 0; i < lclRows; ++i) {
     mPtr = matIn.local.row(i).lbegin();
 
@@ -32,22 +24,26 @@ inline void sum(const uint nelts,
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
   dash::init(&argc, &argv);
+
   uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
 
-  uint nelts = 40;
+  const uint nelts = 40;
 
   dash::NArray<uint, 2> mat(nelts, nelts);
 
-  // init matrix with some values
+  // Initialize matrix values:
   uint counter = myid + 20;
   if (0 == myid) {
     for (uint *i = mat.lbegin(); i < mat.lend(); ++i) {
       *i = ++counter;
     }
   }
+  dash::barrier();
 
   sum(nelts, mat, myid);
+
   dash::finalize();
 }
