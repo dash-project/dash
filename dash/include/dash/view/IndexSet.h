@@ -275,7 +275,6 @@ class IndexSetBase
   }
 
   constexpr const index_set_domain_type domain() const {
-    // To allow subclasses to overwrite method view():
     return dash::index(dash::domain(_view));
   }
 
@@ -444,6 +443,8 @@ class IndexSetBlocks
   index_type _size;
 
   constexpr static dim_t NDim = 1;
+  constexpr static bool  view_is_local
+    = dash::view_traits<ViewType>::is_local::value;
  public:
   constexpr IndexSetBlocks()               = delete;
   constexpr IndexSetBlocks(self_t &&)      = default;
@@ -470,11 +471,21 @@ class IndexSetBlocks
   operator[](index_type block_index) const {
     return block_index +
            // index of block at first index in domain
-           this->pattern().block_at(
-             this->pattern().coords(this->domain().first())
-         //  std::array<index_type, 1> ({
-         //    *(this->domain().begin())
-         //  })
+           ( view_is_local
+               // global coords to local block index:
+             ? this->pattern().local_block_at(
+                 // global offset to global coords:
+                 this->pattern().coords(
+                   // local offset to global offset:
+                // this->pattern().global(
+                     this->domain().first()
+                // )
+                 )
+               ).index
+               // global coords to local block index:
+             : this->pattern().block_at(
+                 // global offset to global coords:
+                 this->pattern().coords(this->domain().first()))
            );
   }
 
@@ -485,14 +496,33 @@ class IndexSetBlocks
  private:
   constexpr index_type calc_size() const {
     return (
-      // index of block at last index in domain
-      this->pattern().block_at(
-        this->pattern().coords(this->domain().last())
-      ) -
-      // index of block at first index in domain
-      this->pattern().block_at(
-        this->pattern().coords(this->domain().first())
-      ) + 1
+      view_is_local
+      ? ( // index of block at last index in domain
+          this->pattern().local_block_at(
+            this->pattern().coords(
+              // local offset to global offset:
+           // this->pattern().global(
+                this->domain().last()
+           // )
+            )
+          ).index -
+          // index of block at first index in domain
+          this->pattern().local_block_at(
+            this->pattern().coords(
+              // local offset to global offset:
+           // this->pattern().global(
+                this->domain().first()
+           // )
+            )
+          ).index + 1 )
+      : ( // index of block at last index in domain
+          this->pattern().block_at(
+            this->pattern().coords(this->domain().last())
+          ) -
+          // index of block at first index in domain
+          this->pattern().block_at(
+            this->pattern().coords(this->domain().first())
+          ) + 1 )
     );
   }
 };
