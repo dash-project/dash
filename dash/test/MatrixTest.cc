@@ -1222,7 +1222,7 @@ TEST_F(MatrixTest, CopyRow)
   }
 }
 
-TEST_F(MatrixTest, InterfaceTest)
+TEST_F(MatrixTest, ConstMatrixRefs)
 {
   typedef dash::Pattern<2>                 pattern_t;
   typedef typename pattern_t::index_type   index_t;
@@ -1254,3 +1254,56 @@ TEST_F(MatrixTest, InterfaceTest)
   // test access using non-const & matrix.local
   *(matrix_local.lbegin()) = 5;
 }
+
+template <
+  class MatrixT,
+  class ValueT = typename MatrixT::value_type >
+ValueT local_sum_rows(const int       nelts,
+                      const MatrixT & matIn,
+                      const int       myid)
+{
+  auto   lclRows   = matIn.pattern().local_extents()[0];
+  ValueT local_sum = 0;
+
+  // Accumulate local values by row to test combinations of
+  // `sub` and `local` view qualifiers:
+  ValueT const * mPtr;
+  for (int i = 0; i < lclRows; ++i) {
+    mPtr = matIn.local.row(i).lbegin();
+
+    for (int j = 0; j < nelts; ++j) {
+      local_sum += *(mPtr++);
+    }
+  }
+  return local_sum;
+}
+
+TEST_F(MatrixTest, ConstLocalMatrixRefs)
+{
+  using value_t = unsigned int;
+  using uint    = unsigned int;
+
+  uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
+
+  const uint nelts = 40;
+
+  dash::NArray<value_t, 2> mat(nelts, nelts);
+
+  // Initialize matrix values:
+  uint counter = myid + 20;
+  if (0 == myid) {
+    for (uint *i = mat.lbegin(); i < mat.lend(); ++i) {
+      *i = ++counter;
+    }
+  }
+  dash::barrier();
+
+  auto local_rows_sum = local_sum_rows(nelts, mat, myid);
+  auto local_elem_sum = std::accumulate(
+                          mat.lbegin(),
+                          mat.lend(),
+                          0, std::plus<value_t>());
+
+  EXPECT_EQ_U(local_elem_sum, local_rows_sum);
+}
+
