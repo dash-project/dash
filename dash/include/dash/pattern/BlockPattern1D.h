@@ -664,39 +664,24 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  constexpr std::array<IndexType, NumDimensions> global(
     team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", unit);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", local_coords);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nunits);
-    if (_nunits < 2) {
-      return local_coords;
-    }
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nblocks);
-    // Global coords of the element's block within all blocks.
-    // Use initializer so elements are initialized with 0s:
-    IndexType block_index;
-    // Index of the element:
-    IndexType glob_index;
-
-    const Distribution & dist = _distspec[0];
-    IndexType local_index     = local_coords[0];
-    IndexType elem_phase      = local_index % _blocksize;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", local_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", elem_phase);
-    // Global coords of the element's block within all blocks:
-    block_index               = dist.local_index_to_block_coord(
+    return (_nunits < 2)
+           ? local_coords
+           : std::array<IndexType, 1> {{
+               static_cast<IndexType>(
+                 // Global coords of the element's block within all blocks:
+                 ( _distspec[0].local_index_to_block_coord(
                                   static_cast<IndexType>(unit),
-                                  local_index,
+                                  local_coords[0],
                                   _nunits,
                                   _nblocks,
                                   _blocksize
-                                );
-    glob_index  = (block_index * _blocksize) + elem_phase;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", block_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global >", glob_index);
-    return std::array<IndexType, 1> {{ glob_index }};
+                    ) * _blocksize
+                 ) + (local_coords[0] % _blocksize)
+               )
+             }};
   }
 
   /**
@@ -852,7 +837,7 @@ public:
   /**
    * Cartesian arrangement of local pattern blocks.
    */
-  const BlockSpec_t local_blockspec() const
+  constexpr BlockSpec_t local_blockspec() const
   {
     return BlockSpec_t({ _nlblocks });
   }
@@ -866,6 +851,24 @@ public:
     /// Global coordinates of element
     const std::array<index_type, NumDimensions> & g_coords) const {
     return g_coords[0] / _blocksize;
+  }
+  
+  /**
+   * Index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  constexpr local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const {
+    return local_index_t {
+             // unit id:
+             static_cast<team_unit_t>(
+                (g_coords[0] / _blocksize) % _teamspec.size()),
+             // local block index:
+             static_cast<index_type>(
+                (g_coords[0] / _blocksize) / _teamspec.size())
+           };
   }
 
   /**
