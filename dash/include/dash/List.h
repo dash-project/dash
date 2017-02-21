@@ -616,7 +616,7 @@ public:
     _begin       = iterator(_globmem, _nil_node);
     _end         = _begin;
     // Local iterators:
-    _lbegin      = _globmem->lbegin(_myid);
+    _lbegin      = _globmem->lbegin();
     // More efficient than using _globmem->lend as this a second mapping
     // of the local memory segment:
     _lend        = _lbegin;
