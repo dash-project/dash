@@ -84,10 +84,10 @@ public:
   }
 
 public:
-  template<typename T>
+  template<typename T_>
   friend std::ostream & operator<<(
-    std::ostream    & os,
-    const Atomic<T> & at);
+    std::ostream     & os,
+    const Atomic<T_> & at);
 
 }; // class Atomic
 
