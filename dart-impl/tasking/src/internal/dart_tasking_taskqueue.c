@@ -8,13 +8,13 @@ void
 dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
 {
   tq->head = tq->tail = NULL;
-  pthread_mutex_init(&tq->mutex, NULL);
+  dart_mutex_init(&tq->mutex);
 }
 
 dart_task_t *
 dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 {
-  pthread_mutex_lock(&tq->mutex);
+  dart_mutex_lock(&tq->mutex);
   dart_task_t *task = tq->head;
   if (tq->head != NULL) {
     if (tq->head == tq->tail) {
@@ -30,7 +30,7 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
     task->prev = NULL;
     task->next = NULL;
   }
-  pthread_mutex_unlock(&tq->mutex);
+  dart_mutex_unlock(&tq->mutex);
   return task;
 }
 
@@ -47,7 +47,7 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
   }
   task->next = NULL;
   task->prev = NULL;
-  pthread_mutex_lock(&tq->mutex);
+  dart_mutex_lock(&tq->mutex);
   if (tq->head == NULL) {
     // task queue previously empty
     DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to empty task queue tq:%p tq->head:%p", task, tq, tq->head);
@@ -59,7 +59,7 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
     tq->head->prev = task;
     tq->head       = task;
   }
-  pthread_mutex_unlock(&tq->mutex);
+  dart_mutex_unlock(&tq->mutex);
 }
 
 dart_task_t *
@@ -68,7 +68,7 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
   dart_task_t * task = NULL;
   if (tq->tail != NULL)
   {
-    pthread_mutex_lock(&tq->mutex);
+    dart_mutex_lock(&tq->mutex);
 
     // re-check
     if (tq->tail != NULL)
@@ -87,16 +87,45 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
       task->next = NULL;
     }
 
-    pthread_mutex_unlock(&tq->mutex);
+    dart_mutex_unlock(&tq->mutex);
   }
 
   return task;
 }
 
+dart_ret_t
+dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
+{
+  if (dst == NULL || src == NULL) {
+    return DART_ERR_INVAL;
+  }
+  if (src->head != NULL && src->tail != NULL) {
+    dart_mutex_lock(&dst->mutex);
+    dart_mutex_lock(&src->mutex);
+
+    if (src->head != NULL && src->tail != NULL) {
+      /**
+       * For now we simply prepend the src queue to the dest queue.
+       * This assumes that the tasks in the src queue are hotter than the ones
+       * in the dest queue.
+       */
+
+      src->tail->next = dst->head;
+      dst->head->prev = src->tail;
+      dst->head = src->head;
+      src->tail = src->head = NULL;
+
+    }
+    dart_mutex_unlock(&dst->mutex);
+    dart_mutex_unlock(&src->mutex);
+  }
+  return DART_OK;
+}
+
 void
 dart_tasking_taskqueue_finalize(dart_taskqueue_t *tq)
 {
-  pthread_mutex_destroy(&tq->mutex);
+  dart_mutex_destroy(&tq->mutex);
   tq->head = tq->tail = NULL;
 }
 

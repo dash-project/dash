@@ -50,6 +50,13 @@ dart_tasking_taskqueue_isempty(const dart_taskqueue_t *tq)
 }
 
 /**
+ * Move the tasks enqueued in \c src to the queue dst.
+ * Tasks are prepended at the destination queue.
+ */
+dart_ret_t
+dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src);
+
+/**
  * Finalize a task queue, releasing held resources.
  */
 void
