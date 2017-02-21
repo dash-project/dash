@@ -68,6 +68,9 @@ dart__base__tasking__thread_num();
 int
 dart__base__tasking__num_threads();
 
+uint64_t
+dart__base__tasking__phase_bound();
+
 dart_ret_t
 dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps);
 

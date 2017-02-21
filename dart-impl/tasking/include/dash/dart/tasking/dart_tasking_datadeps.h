@@ -76,6 +76,13 @@ dart_tasking_datadeps_release_local_task(
     dart_task_t   *task);
 
 /**
+ * Release a remote dependency of the \c local_task.
+ * Might defer the release if the task is not eligible to run, yet.
+ */
+dart_ret_t dart_tasking_datadeps_release_remote_dep(
+    dart_task_t *local_task);
+
+/**
  * Release all unhandled remote dependency requests.
  * This should be done before starting to execute local tasks
  * to avoid deadlocks.

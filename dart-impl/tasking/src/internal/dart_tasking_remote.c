@@ -87,12 +87,12 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.phase       = task->phase;
   dart_myid(&rdep.runit);
   dart_team_unit_t team_unit;
+  // the amsgq is opened on DART_TEAM_ALL
   dart_team_unit_g2l(DART_TEAM_ALL, DART_GLOBAL_UNIT_ID(dep->gptr.unitid), &team_unit);
 
   DART_ASSERT(task != NULL);
 
   while (1) {
-    // the amsgq is opened on DART_TEAM_ALL
     ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep, sizeof(rdep));
     if (ret == DART_OK) {
       // the message was successfully sent
@@ -245,17 +245,7 @@ static void release_remote_dependency(void *data)
                 response->runit.id, task, response->gptr.segid,
                 response->gptr.addr_or_offs.offset);
 
-  int unresolved_deps = DART_DEC32_AND_FETCH(&task->unresolved_deps);
-  DART_LOG_DEBUG("release_remote_dependency : Task with remote dep %p has %i "
-                 "unresolved dependencies left", task, unresolved_deps);
-  if (unresolved_deps < 0) {
-    DART_LOG_ERROR("ERROR: task %p with remote dependency does not seem to "
-                   "have unresolved dependencies!", task);
-  } else if (unresolved_deps == 0) {
-    // enqueue as runnable
-    dart_tasking_taskqueue_push(
-        &dart__base__tasking_current_thread()->queue, task);
-  }
+  dart_tasking_datadeps_release_remote_dep(response->rtask.local);
 }
 
 /**

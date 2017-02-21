@@ -28,6 +28,8 @@ static bool initialized = false;
 
 static pthread_key_t tpd_key;
 
+static uint64_t phase_bound = 0;
+
 typedef struct {
   int           thread_id;
 } tpd_t;
@@ -307,6 +309,12 @@ dart__base__tasking__num_threads()
   return (initialized ? num_threads : 1);
 }
 
+uint64_t
+dart__base__tasking__phase_bound()
+{
+  return phase_bound;
+}
+
 
 dart_ret_t
 dart__base__tasking__create_task(
@@ -339,22 +347,25 @@ dart_ret_t
 dart__base__tasking__task_complete()
 {
   // TODO: How to determine that all tasks have successfully finished?
+  // TODO: Handle message backlog!
   dart_tasking_remote_progress();
+
+  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+  if (thread->current_task == &(root_task)) {
+    // release unhandled remote dependencies
+    dart_tasking_datadeps_release_unhandled_remote();
+  }
+
+  phase_bound = thread->current_task->phase;
 
   // 1) wake up all threads (might later be done earlier)
   pthread_cond_broadcast(&task_avail_cond);
 
-  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {
     DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task "
                    "only valid on MASTER thread!");
     return DART_ERR_INVAL;
-  }
-
-  if (thread->current_task == &(root_task)) {
-    // release unhandled remote dependencies
-    dart_tasking_datadeps_release_unhandled_remote();
   }
 
   // 2) start processing ourselves
