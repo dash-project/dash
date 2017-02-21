@@ -1,6 +1,8 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
+#include <dash/internal/TypeInfo.h>
+
 #include <iostream>
 
 
