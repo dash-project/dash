@@ -165,9 +165,12 @@ class ViewBlockMod
       index_type         block_idx) const {
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
+    //
+    // TODO: Currently values passed as `block_idx` are global block indices
+    //       even if domain is local
     return std::max(
              ( // block viewspec (extents, offsets)
-               ( dash::view_traits<DomainType>::is_local::value
+               ( false && dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).offsets()[0]
                  : dash::index(vdomain)
@@ -186,16 +189,19 @@ class ViewBlockMod
       index_type         block_idx) const {
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
+    //
+    // TODO: Currently values passed as `block_idx` are global block indices
+    //       even if domain is local
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)
-               ( dash::view_traits<DomainType>::is_local::value
+               ( false && dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).offsets()[0]
                  : dash::index(vdomain)
                      .pattern().block(block_idx).offsets()[0]
                )
-             + ( dash::view_traits<DomainType>::is_local::value
+             + ( false && dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).extents()[0]
                  : dash::index(vdomain)

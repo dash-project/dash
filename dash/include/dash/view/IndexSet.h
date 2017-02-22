@@ -71,6 +71,7 @@ class IndexSetSub;
 
 
 
+#if 0
 template <
   class    ViewType,
   typename ViewValueType =
@@ -80,12 +81,30 @@ template <
 >
 constexpr auto
 index(ViewType && v)
--> typename std::enable_if<
-     dash::view_traits<ViewValueType>::is_view::value,
-     decltype(std::forward<ViewType>(v).index_set())
-   >::type {
+  -> typename std::enable_if<
+       dash::view_traits<ViewValueType>::is_view::value,
+       decltype(std::forward<ViewType>(v).index_set())
+     >::type {
+  // If `v` is moved, returned const-ref to index set would dangle:
   return std::forward<ViewType>(v).index_set();
 }
+#else
+template <
+  class    ViewType,
+  typename ViewValueType =
+             typename std::remove_const<
+               typename std::remove_reference<ViewType>::type
+             >::type
+>
+constexpr auto
+index(const ViewType & v)
+  -> typename std::enable_if<
+       dash::view_traits<ViewValueType>::is_view::value,
+       decltype(v.index_set())
+     >::type {
+  return v.index_set();
+}
+#endif
 
 template <class ContainerType>
 constexpr auto
@@ -477,9 +496,9 @@ class IndexSetBlocks
                  // global offset to global coords:
                  this->pattern().coords(
                    // local offset to global offset:
-                // this->pattern().global(
+                   this->pattern().global(
                      this->domain().first()
-                // )
+                   )
                  )
                ).index
                // global coords to local block index:
@@ -501,18 +520,18 @@ class IndexSetBlocks
           this->pattern().local_block_at(
             this->pattern().coords(
               // local offset to global offset:
-           // this->pattern().global(
+              this->pattern().global(
                 this->domain().last()
-           // )
+              )
             )
           ).index -
           // index of block at first index in domain
           this->pattern().local_block_at(
             this->pattern().coords(
               // local offset to global offset:
-           // this->pattern().global(
+              this->pattern().global(
                 this->domain().first()
-           // )
+              )
             )
           ).index + 1 )
       : ( // index of block at last index in domain
@@ -558,6 +577,8 @@ class IndexSetBlock
   index_type _size;
 
   constexpr static dim_t NDim = 1;
+  constexpr static bool  view_is_local
+    = dash::view_traits<ViewType>::is_local::value;
  public:
   constexpr IndexSetBlock()                = delete;
   constexpr IndexSetBlock(self_t &&)       = default;
@@ -586,9 +607,20 @@ class IndexSetBlock
   constexpr index_type
   operator[](index_type image_index) const {
     return image_index +
-           // index of block at first index in domain
-           this->pattern().block_at(
-             {{ *(this->domain().begin()) }}
+           ( view_is_local
+             ? ( // index of block at last index in domain
+                 this->pattern().local_block_at(
+                   this->pattern().coords(
+                     // local offset to global offset:
+                     this->pattern().global(
+                       this->domain().begin()
+                     )
+                   )
+                 ).index )
+             : ( // index of block at first index in domain
+                 this->pattern().block_at(
+                   {{ *(this->domain().begin()) }}
+                 ) )
            );
   }
 
@@ -598,16 +630,26 @@ class IndexSetBlock
 
  private:
   constexpr index_type calc_size() const {
-    return (
-      // index of block at last index in domain
-      this->pattern().block_at(
-        {{ *(this->domain().begin() + (this->domain().size() - 1)) }}
-      ) -
-      // index of block at first index in domain
-      this->pattern().block_at(
-        {{ *(this->domain().begin()) }}
-      ) + 1
-    );
+    return ( view_is_local
+             ? ( // index of block at last index in domain
+                 this->pattern().local_block_at(
+                   {{ *(this->domain().begin()
+                        + (this->domain().size() - 1)) }}
+                 ).index -
+                 // index of block at first index in domain
+                 this->pattern().local_block_at(
+                   {{ *(this->domain().begin()) }}
+                 ).index + 1 )
+             : ( // index of block at last index in domain
+                 this->pattern().block_at(
+                   {{ *(this->domain().begin()
+                        + (this->domain().size() - 1)) }}
+                 ) -
+                 // index of block at first index in domain
+                 this->pattern().block_at(
+                   {{ *(this->domain().begin()) }}
+                 ) + 1 )
+           );
   }
 };
 

@@ -301,46 +301,88 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
   dash::Array<float> a(array_size, dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(a);
 
-  auto blocks_view   = dash::blocks(
-                         dash::sub(
-                           block_size / 2,
-                           a.size() - (block_size / 2),
-                           a));
-  EXPECT_EQ_U(num_blocks, blocks_view.size());
+  // local(blocks(array))
+  //
+  {
+    auto blocks_view   = dash::blocks(a);
+    if (dash::myid() == 0) {
+      for (auto block : blocks_view) {
+        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks", "----",
+                       "blocks_view", range_str(block));
+      }
+    }
+    a.barrier();
 
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     dash::internal::typestr(blocks_view));
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     dash::internal::typestr(blocks_view.begin()));
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     blocks_view.size());
+    EXPECT_EQ_U(num_blocks, blocks_view.size());
 
-  auto l_blocks_view = dash::local(
-#if 0
-                         dash::blocks(
-                           dash::sub(
-                             block_size / 2,
-                             a.size() - (block_size / 2),
-                             a))
-#else
-                         blocks_view
-#endif
-                       );
-  EXPECT_EQ_U(num_local_blocks, l_blocks_view.size());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(blocks_view));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(blocks_view.begin()));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       blocks_view.size());
 
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     dash::internal::typestr(l_blocks_view));
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     l_blocks_view.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                     dash::internal::typestr(l_blocks_view.begin()));
-  return;
+    auto l_blocks_view = dash::local(
+                           dash::blocks(a) );
+    EXPECT_EQ_U(num_local_blocks, l_blocks_view.size());
 
-  int l_b_idx = 0;
-  for (auto l_block : l_blocks_view) {
-    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                   "l_block[", l_b_idx, "]:", range_str(l_block));
-    ++l_b_idx;
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(l_blocks_view));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       l_blocks_view.size());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(l_blocks_view.begin()));
+
+    int l_b_idx = 0;
+    for (auto l_block : l_blocks_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                     "l_block[", l_b_idx, "]:", range_str(l_block));
+      ++l_b_idx;
+    }
+    a.barrier();
+  }
+
+  // local(blocks(sub(array)))
+  //
+  {
+    auto blocks_sub_view   = dash::blocks(
+                               dash::sub(
+                                 block_size / 2,
+                                 a.size() - (block_size / 2),
+                                 a));
+    if (dash::myid() == 0) {
+      for (auto block : blocks_sub_view) {
+        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks", "----",
+                       "blocks_sub_view", range_str(block));
+      }
+    }
+    a.barrier();
+
+    EXPECT_EQ_U(num_blocks, blocks_sub_view.size());
+
+    auto l_blocks_sub_view = dash::local(
+                               dash::blocks(
+                                 dash::sub(
+                                   block_size / 2,
+                                   a.size() - (block_size / 2),
+                                   a
+                                 ) ) );
+    EXPECT_EQ_U(num_local_blocks, l_blocks_sub_view.size());
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(l_blocks_sub_view));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       l_blocks_sub_view.size());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       dash::internal::typestr(l_blocks_sub_view.begin()));
+
+    int l_b_idx = 0;
+    for (auto l_block : l_blocks_sub_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                     "l_block_sub[", l_b_idx, "]:", range_str(l_block));
+      ++l_b_idx;
+    }
+    a.barrier();
   }
 }
 
