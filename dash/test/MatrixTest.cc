@@ -28,6 +28,47 @@ TEST_F(MatrixTest, OddSize)
   }
 }
 
+TEST_F(MatrixTest, ElementAccess)
+{
+  const int n_brow = 4;
+  const int n_bcol = 3;
+
+  auto myid = dash::myid();
+
+  dash::NArray<int, 2> mat(n_brow * dash::size(),
+                           n_bcol * dash::size());
+
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix extents:", mat.extent(0), "x", mat.extent(1));
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix local view:", mat.local.extents());
+
+#if DASH__TODO__
+  int lcount = (myid + 1) * 1000;
+  dash::generate(mat.begin(), mat.end(), 
+                 [&]() {
+                   return (lcount++);
+                 });
+#else
+  if (myid == 0) {
+    std::iota(mat.begin(), mat.end(), 1000);
+  }
+  dash::barrier();
+#endif
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+
+  if (myid == dash::size() - 1) {
+    for (int i = 0; i < mat.local.extent(0); i++) {
+      for (int j = 0; j < mat.local.extent(1); j++) {
+        DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                       "mat at [", i, "][", j, "]");
+        EXPECT_EQ(mat.local(i,j),
+                  mat.local[i][j]);
+      }
+    }
+  }
+}
+
 TEST_F(MatrixTest, Views)
 {
   const size_t block_size_x  = 3;
