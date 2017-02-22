@@ -6,6 +6,7 @@
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include <iostream>
 #include <iomanip>
@@ -28,7 +29,7 @@ TEST_F(MatrixTest, OddSize)
   }
 }
 
-TEST_F(MatrixTest, ElementAccess)
+TEST_F(MatrixTest, LocalAccess)
 {
   const int n_brow = 4;
   const int n_bcol = 3;
@@ -43,25 +44,19 @@ TEST_F(MatrixTest, ElementAccess)
   DASH_LOG_DEBUG("MatrixTest.ElementAccess",
                  "matrix local view:", mat.local.extents());
 
-#if DASH__TODO__
   int lcount = (myid + 1) * 1000;
   dash::generate(mat.begin(), mat.end(), 
                  [&]() {
                    return (lcount++);
                  });
-#else
-  if (myid == 0) {
-    std::iota(mat.begin(), mat.end(), 1000);
-  }
-  dash::barrier();
-#endif
+
   DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
 
   if (myid == dash::size() - 1) {
     for (int i = 0; i < mat.local.extent(0); i++) {
       for (int j = 0; j < mat.local.extent(1); j++) {
         DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                       "mat at [", i, "][", j, "]");
+                       "mat.local[", i, "][", j, "]");
         EXPECT_EQ(mat.local(i,j),
                   mat.local[i][j]);
       }
