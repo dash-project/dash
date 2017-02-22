@@ -335,11 +335,7 @@ dart_tasking_datadeps_release_unhandled_remote()
 
     if (candidate != NULL) {
       // we have a local task to satisfy the remote task
-      dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->taskdep, rdep->task);
-      // the taskdep's gptr unit is used to store the origin
-      rs->taskdep.gptr.unitid = origin.id;
-      rs->phase = rdep->phase;
-      DART_STACK_PUSH(candidate->remote_successor, rs);
+      DART_STACK_PUSH(candidate->remote_successor, rdep);
       dart_mutex_unlock(&(candidate->mutex));
       DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
                      "task %p from origin %i",
@@ -351,6 +347,7 @@ dart_tasking_datadeps_release_unhandled_remote()
                      rdep->task.remote, origin.id,
                      rdep->phase);
       dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
+      dephash_recycle_elem(rdep);
     }
   }
 
@@ -366,7 +363,6 @@ dart_tasking_datadeps_release_unhandled_remote()
   while ((elem = next) != NULL) {
     next = elem->next;
     dart_task_t *task = elem->task.local;
-    // immediately release the task
     int unresolved_deps = DART_DEC32_AND_FETCH(&task->unresolved_deps);
     DART_LOG_DEBUG("release_defered : Task with remote dep %p has %i "
                    "unresolved dependencies left", task, unresolved_deps);
@@ -379,6 +375,7 @@ dart_tasking_datadeps_release_unhandled_remote()
     }
     dephash_recycle_elem(elem);
   }
+  deferred_remote_releases = NULL;
   dart_mutex_unlock(&deferred_remote_mutex);
 
   return DART_OK;
