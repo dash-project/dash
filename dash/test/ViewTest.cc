@@ -256,7 +256,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
                            a.size() - (block_size / 2),
                            a));
     int b_idx      = 0;
-    int begin_idx  = 0;
+    int begin_idx  = block_size / 2;
     int num_blocks = a.pattern().blockspec().size();
     for (auto block : blocks_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternGlobalView",
