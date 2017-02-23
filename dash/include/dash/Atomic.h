@@ -53,21 +53,23 @@ private:
 public:
   typedef T value_type;
 
-  Atomic() = default;
-
-  Atomic(const Atomic<T> & other) = default;
-
-  self_t & operator=(const self_t & other) = default;
+  constexpr Atomic()                                 = default;
+  constexpr Atomic(const Atomic<T> & other)          = default;
+  self_t & operator=(const self_t & other)           = default;
 
   /**
    * Initializes the underlying value with desired.
    * The initialization is not atomic
    */
-  Atomic(T value)
+  constexpr Atomic(T value)
   : _value(value) { }
 
   /**
    * Disabled assignment as this violates the atomic semantics
+   *
+   * TODO: Assignment semantics are not well-defined:
+   *       - Constructor Atomic(T)  is default-defined
+   *       - Assignment  Atomic=(T) is deleted
    */
   T operator=(T value) = delete;
 
@@ -75,17 +77,16 @@ public:
    * As \c Atomic is implemented as phantom type,
    * the value has to be queried using the \c dash::GlobRef
    */
-  operator T() = delete;
+  operator T()         = delete;
 
-  bool operator==(const self_t & other) const {
+  constexpr bool operator==(const self_t & other) const {
     return _value == other._value;
   }
 
-  bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
 
-public:
   template<typename T_>
   friend std::ostream & operator<<(
     std::ostream     & os,

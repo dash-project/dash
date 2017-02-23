@@ -626,9 +626,8 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key = value.first;
-    DASH_LOG_TRACE("UnorderedMap.insert()",
-                   "key:",    key);
+    auto && key = value.first;
+    DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
 
     auto result = std::make_pair(_end, false);
 
