@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # This script runs scan-build to perform a static code analysis
 # https://clang-analyzer.llvm.org/scan-build.html
 #
@@ -8,10 +8,18 @@
 
 BUILD_DIR=./build.analyze
 REPORT_DIR=report            # relative to BUILD_DIR
-BUILD_WRAPPER="scan-build-3.8"
+BUILD_WRAPPER="${SCANBUILD_BIN}";
 ANALYZE_OPTS="-o $REPORT_DIR -analyze-headers -plist-html"
 
-which $BUILD_WRAPPER || (echo "This build requires $BUILD_WRAPPER" & exit 1);
+
+# try to find build wrapper
+if [ "$BUILD_WRAPPER" = "" ]; then
+  BUILD_WRAPPER="scan-build"
+fi
+
+which $BUILD_WRAPPER ||
+  (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
+   & exit 1);
 
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
