@@ -86,48 +86,29 @@ public:
   /**
    * Default constructor, underlying global address is unspecified.
    */
-  explicit GlobPtr() = default;
+  constexpr explicit GlobPtr() = default;
 
   /**
    * Constructor, specifies underlying global address.
    */
-  explicit GlobPtr(dart_gptr_t gptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobPtr(dart_gptr_t)", gptr);
-    _dart_gptr = gptr;
-  }
+  constexpr explicit GlobPtr(dart_gptr_t gptr) : _dart_gptr(gptr)
+  { }
 
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  GlobPtr(std::nullptr_t p)
-  {
-    DASH_LOG_TRACE("GlobPtr()", "nullptr");
-    _dart_gptr = DART_GPTR_NULL;
-  }
+  constexpr GlobPtr(std::nullptr_t p) : _dart_gptr(DART_GPTR_NULL)
+  { }
 
   /**
    * Copy constructor.
    */
-  GlobPtr(const self_t & other)
-  : _dart_gptr(other._dart_gptr)
-  {
-    DASH_LOG_TRACE("GlobPtr()", "GlobPtr<T> other");
-  }
+  constexpr GlobPtr(const self_t & other) = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)
-  {
-    DASH_LOG_TRACE("GlobPtr.=()", "GlobPtr<T> rhs");
-    DASH_LOG_TRACE_VAR("GlobPtr.=", rhs);
-    if (this != &rhs) {
-      _dart_gptr = rhs._dart_gptr;
-    }
-    DASH_LOG_TRACE("GlobPtr.= >");
-    return *this;
-  }
+  self_t & operator=(const self_t & rhs) = default;
 
   /**
    * Converts pointer to its underlying global address.
