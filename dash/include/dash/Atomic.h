@@ -1,6 +1,11 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
+#include <dash/internal/TypeInfo.h>
+
+#include <iostream>
+
+
 namespace dash {
 
 /**
@@ -48,22 +53,23 @@ private:
 public:
   typedef T value_type;
 
-  Atomic(const Atomic<T> & other) = delete;
-
-  /**
-   * Disabled assignment as this violates the atomic semantics
-   */
-  self_t & operator=(const self_t & other) = default;
+  constexpr Atomic()                                 = default;
+  constexpr Atomic(const Atomic<T> & other)          = default;
+  self_t & operator=(const self_t & other)           = default;
 
   /**
    * Initializes the underlying value with desired.
    * The initialization is not atomic
    */
-  Atomic(T value)
+  constexpr Atomic(T value)
   : _value(value) { }
 
   /**
    * Disabled assignment as this violates the atomic semantics
+   *
+   * TODO: Assignment semantics are not well-defined:
+   *       - Constructor Atomic(T)  is default-defined
+   *       - Assignment  Atomic=(T) is deleted
    */
   T operator=(T value) = delete;
 
@@ -71,7 +77,20 @@ public:
    * As \c Atomic is implemented as phantom type,
    * the value has to be queried using the \c dash::GlobRef
    */
-  operator T() = delete;
+  operator T()         = delete;
+
+  constexpr bool operator==(const self_t & other) const {
+    return _value == other._value;
+  }
+
+  constexpr bool operator!=(const self_t & other) const {
+    return !(*this == other);
+  }
+
+  template<typename T_>
+  friend std::ostream & operator<<(
+    std::ostream     & os,
+    const Atomic<T_> & at);
 
 }; // class Atomic
 
@@ -89,6 +108,16 @@ template<typename T>
 struct is_atomic<dash::Atomic<T>> {
   static constexpr bool value = true;
 };
+
+template<typename T>
+std::ostream & operator<<(
+  std::ostream    & os,
+  const Atomic<T> & at)
+{
+  std::ostringstream ss;
+  ss << dash::internal::typestr(at) << "<phantom>";
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 
