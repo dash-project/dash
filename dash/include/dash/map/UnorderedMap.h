@@ -78,6 +78,19 @@ template<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
+  /**
+   * The Cray compiler (as of CCE8.5.6) does not support
+   * std::is_trivially_copyable.
+   *
+   * TODO: Remove the guard once this has been fixed by Cray.
+   */
+#ifndef __CRAYC
+  static_assert(std::is_trivially_copyable<Key>::value,
+    "Element type must be trivially copyable");
+  static_assert(std::is_trivially_copyable<Mapped>::value,
+    "Element type must be trivially copyable");
+#endif
+
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class UnorderedMapLocalRef;
 
@@ -613,9 +626,9 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
+    auto && key = value.first;
+    DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
+
     auto result = std::make_pair(_end, false);
 
     DASH_ASSERT(_globmem != nullptr);
@@ -788,12 +801,9 @@ private:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
     DASH_LOG_TRACE("UnorderedMap._insert_at()",
                    "unit:",   unit,
-                   "key:",    key,
-                   "mapped:", mapped);
+                   "key:",    value.first);
     auto result = std::make_pair(_end, false);
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
