@@ -49,6 +49,7 @@ TEST_F(MatrixTest, LocalAccess)
                  [&]() {
                    return (lcount++);
                  });
+  mat.barrier();
 
   DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
 

@@ -46,8 +46,6 @@ void generate (
   auto llast  = lrange.end;
 
   std::generate(lfirst, llast, gen);
-
-  first.team().barrier();
 }
 
 } // namespace dash
