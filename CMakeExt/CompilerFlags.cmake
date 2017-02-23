@@ -140,6 +140,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
        CACHE STRING "C++ compiler (clang++) debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+  
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
+    message(FATAL_ERROR "Insufficient Clang version detected (3.8.0) or above required")
+  endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
@@ -151,6 +155,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.1.0")
+    message(FATAL_ERROR "Insufficient GCC version detected (5.1.0 or above required)")
+  endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
@@ -163,6 +172,12 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   if(ENABLE_CC_REPORTS)
     set (CC_REPORT_FLAG "-qopt-report=4 -qopt-report-phase ipo")
   endif()
+
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
+    message(FATAL_ERROR "Insufficient Intel compiler version detected (15.0.0 or above required)")
+  endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,

@@ -26,6 +26,7 @@ Features:
 - Better textual output of unit tests
 - Added support for HDF5 groups
 - Support patterns with underfilled blocks in dash::io::hdf5
+- Allow trivially copyable data types in containers
 
 Bugfixes:
 
@@ -39,6 +40,10 @@ Bugfixes:
 - Support for HDF5.
 - Generate cmake package for DASH and DART
 - Added code coverage tests
+- Enforce minimum C++ compiler versions:
+    - GCC: 5.1.0
+    - Clang: 3.8.0
+    - Intel: 15.0.0
 
 - New compiler flags:
 
