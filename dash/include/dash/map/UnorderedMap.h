@@ -626,9 +626,9 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
+    auto && key = value.first;
+    DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
+
     auto result = std::make_pair(_end, false);
 
     DASH_ASSERT(_globmem != nullptr);
@@ -801,12 +801,9 @@ private:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
     DASH_LOG_TRACE("UnorderedMap._insert_at()",
                    "unit:",   unit,
-                   "key:",    key,
-                   "mapped:", mapped);
+                   "key:",    value.first);
     auto result = std::make_pair(_end, false);
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
