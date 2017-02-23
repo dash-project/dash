@@ -312,10 +312,8 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMapLocalRef.insert()",
-                   "key:", key, "mapped:", mapped);
+    auto && key = value.first;
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.insert()", "key:", key);
     auto result = std::make_pair(_map->_lend, false);
 
     // Look up existing element at given key:
