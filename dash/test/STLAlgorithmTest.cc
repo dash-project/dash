@@ -9,14 +9,6 @@
 #include <utility>
 
 
-template <class T1, class T2>
-std::ostream & operator<<(
-  std::ostream            & os,
-  const dash::Pair<T1, T2> & p) {
-  os << "(" << p.first << "," << p.second << ")";
-  return os;
-}
-
 TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
   typedef dash::Pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;
