@@ -1,7 +1,12 @@
 #ifndef DASH_DASH_INCLUDE_DASH_PAIR_H_
 #define DASH_DASH_INCLUDE_DASH_PAIR_H_
 
+#include <dash/internal/TypeInfo.h>
+
 #include <type_traits>
+#include <iostream>
+#include <sstream>
+
 
 namespace dash {
 
@@ -202,6 +207,19 @@ namespace dash {
     typedef typename std::__decay_and_strip<T2>::__type ds_type2;
     typedef Pair<ds_type1, ds_type2>                    pair_type;
     return pair_type(std::forward<T1>(x), std::forward<T2>(y));
+  }
+
+  template<class T1, class T2>
+  std::ostream & operator<<(
+    std::ostream       & os,
+    const Pair<T1, T2> & pair)
+  {
+    std::ostringstream ss;
+    ss << dash::internal::typestr(pair)
+       << " { " << pair.first
+       << " , " << pair.second
+       << " } ";
+    return operator<<(os, ss.str());
   }
 
 } // namespace dash
