@@ -305,6 +305,8 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   if (!(pos < _refview._viewspec.size())) {
     throw std::out_of_range("Out of range");
   }
+  DASH_LOG_TRACE("LocalMatrixRef.local_at()",
+                 "pos:", pos);
   return _refview._mat->lbegin()[pos];
 }
 
@@ -327,10 +329,15 @@ inline T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   for(auto i = _refview._dim; i < NumDim; ++i) {
     _refview._coord[i] = coord[i-_refview._dim];
   }
+  DASH_LOG_TRACE("LocalMatrixRef.at()",
+                 "ndim:",     NumDim,
+                 "curdim:",   CUR,
+                 "l_coords:",   _refview._coord,
+                 "l_viewspec:", _refview._l_viewspec);
   return local_at(
            _refview._mat->_pattern.local_at(
              _refview._coord,
-             _refview._viewspec));
+             _refview._l_viewspec));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -361,12 +368,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
 {
-#if 0
   DASH_LOG_TRACE("LocalMatrixRef.[]()",
                  "curdim:",   CUR,
                  "index:",    pos,
                  "viewspec:", _refview._viewspec);
-#endif
   return LocalMatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
 }
 
