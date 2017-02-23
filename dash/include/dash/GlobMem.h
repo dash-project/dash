@@ -93,7 +93,8 @@ public:
   typedef typename allocator_type::void_pointer              void_pointer;
   typedef typename allocator_type::const_pointer            const_pointer;
   typedef typename allocator_type::const_void_pointer  const_void_pointer;
-  typedef ElementType *                                     local_pointer;
+  typedef          value_type *                             local_pointer;
+  typedef const    value_type *                       local_const_pointer;
 
 public:
   /**
@@ -105,7 +106,7 @@ public:
    *       For example, \c dash::LocalAllocator is used in \c dash::Shared
    *       and only called at owner unit.
    */
-  inline GlobMem(
+  explicit GlobMem(
     /// Number of local elements to allocate in global memory space
     size_type   n_local_elem,
     /// Team containing all units operating on the global memory region
@@ -122,8 +123,8 @@ public:
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
-    _lbegin = lbegin(_team.myid());
-    _lend   = lend(_team.myid());
+    update_lbegin();
+    update_lend();
     DASH_LOG_TRACE("GlobMem(nlocal,team) >");
   }
 
@@ -136,7 +137,7 @@ public:
    *       For example, \c dash::LocalAllocator is used in \c dash::Shared
    *       and only called at owner unit.
    */
-  inline GlobMem(
+  explicit GlobMem(
     /// Local elements to allocate in global memory space
     std::initializer_list<value_type>   local_elements,
     /// Team containing all units operating on the global memory region
@@ -153,8 +154,8 @@ public:
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
-    _lbegin = lbegin(_team.myid());
-    _lend   = lend(_team.myid());
+    update_lbegin();
+    update_lend();
     DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
                    "Capacity of local memory range differs from number "
                    "of specified local elements");
@@ -184,7 +185,7 @@ public:
   /**
    * Destructor, collectively frees underlying global memory.
    */
-  inline ~GlobMem()
+  ~GlobMem()
   {
     DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", _begptr);
     _allocator.deallocate(_begptr);
@@ -219,7 +220,7 @@ public:
   /**
    * Inequality comparison operator.
    */
-  inline bool operator!=(const self_t & rhs) const
+  constexpr bool operator!=(const self_t & rhs) const
   {
     return !(*this == rhs);
   }
@@ -227,68 +228,24 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  inline const GlobPtr<ElementType> begin() const
+  inline const GlobPtr<value_type> begin() const
   {
-    return GlobPtr<ElementType>(_begptr);
+    return GlobPtr<value_type>(_begptr);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  inline GlobPtr<ElementType> begin()
+  inline GlobPtr<value_type> begin()
   {
-    return GlobPtr<ElementType>(_begptr);
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
-   * a unit.
-   * \param global_unit_id id of unit in \c dash::Team::All()
-   */
-  const ElementType * lbegin(
-    team_unit_t unit_id) const
-  {
-    void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
-    dart_gptr_t gptr = _begptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const >", addr);
-    return static_cast<const ElementType *>(addr);
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
-   * a unit.
-   * \param team_unit_id id of unit in \c dash::Team::All()
-   */
-  ElementType * lbegin(
-    team_unit_t unit_id)
-  {
-    void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
-    dart_gptr_t gptr = _begptr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin",
-                       GlobPtr<ElementType>((dart_gptr_t)gptr));
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin >", addr);
-    return static_cast<ElementType *>(addr);
+    return GlobPtr<value_type>(_begptr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline const ElementType * lbegin() const
+  constexpr local_const_pointer lbegin() const
   {
     return _lbegin;
   }
@@ -297,58 +254,17 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline ElementType * lbegin()
+  inline local_pointer lbegin()
   {
     return _lbegin;
   }
 
-  /**
-   * Native pointer of the final address of the local memory of
-   * a unit.
-   */
-  const ElementType * lend(
-    team_unit_t unit_id) const
-  {
-    void *addr;
-    dart_gptr_t gptr = _begptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    return static_cast<const ElementType *>(addr);
-  }
-
-  /**
-   * Native pointer of the final address of the local memory of
-   * a unit.
-   */
-  ElementType * lend(
-    team_unit_t unit_id)
-  {
-    void *addr;
-    dart_gptr_t gptr = _begptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    return static_cast<ElementType *>(addr);
-  }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline const ElementType * lend() const
+  constexpr local_const_pointer lend() const
   {
     return _lend;
   }
@@ -357,7 +273,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline ElementType * lend()
+  inline local_pointer lend()
   {
     return _lend;
   }
@@ -367,7 +283,7 @@ public:
    *
    * \see  dash::put_value
    */
-  template<typename ValueType = ElementType>
+  template<typename ValueType = value_type>
   inline void put_value(
     const ValueType & newval,
     index_type        global_index)
@@ -381,7 +297,7 @@ public:
    *
    * \see  dash::get_value
    */
-  template<typename ValueType = ElementType>
+  template<typename ValueType = value_type>
   inline void get_value(
     ValueType  * ptr,
     index_type   global_index) const
@@ -462,13 +378,56 @@ public:
   }
 
 private:
+
+  /**
+   * Native pointer of the initial address of the local memory of
+   * a unit.
+   * \param team_unit_id id of unit in \c dash::Team::All()
+   */
+  void update_lbegin()
+  {
+    void *addr;
+    dart_gptr_t gptr = _begptr;
+    DASH_LOG_TRACE_VAR("GlobMem.update_lbegin",
+                       GlobPtr<value_type>((dart_gptr_t)gptr));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, _team.myid()),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
+    DASH_LOG_TRACE_VAR("GlobMem.update_lbegin >", addr);
+    _lbegin = static_cast<local_pointer>(addr);
+  }
+
+  /**
+   * Native pointer of the final address of the local memory of
+   * a unit.
+   */
+  void update_lend()
+  {
+    void *addr;
+    dart_gptr_t gptr = _begptr;
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, _team.myid()),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&gptr, _nlelem * sizeof(value_type)),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
+    _lend = static_cast<local_pointer>(addr);
+  }
+
+private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
   dash::Team&             _team;
   size_type               _nlelem     = 0;
   size_type               _nunits     = 0;
-  ElementType           * _lbegin     = nullptr;
-  ElementType           * _lend       = nullptr;
+  local_pointer           _lbegin     = nullptr;
+  local_pointer           _lend       = nullptr;
 };
 
 template<typename T>
