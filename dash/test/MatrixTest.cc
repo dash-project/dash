@@ -6,6 +6,7 @@
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include <iostream>
 #include <iomanip>
@@ -24,6 +25,40 @@ TEST_F(MatrixTest, OddSize)
         DASH_LOG_TRACE("MatrixText.OddSize", "(", i, ",", j, ")",
                        "unit:", dash::myid().id);
       }
+    }
+  }
+}
+
+TEST_F(MatrixTest, LocalAccess)
+{
+  const int n_brow = 4;
+  const int n_bcol = 3;
+
+  auto myid = dash::myid();
+
+  dash::NArray<int, 2> mat(n_brow * dash::size(),
+                           n_bcol * dash::size());
+
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix extents:", mat.extent(0), "x", mat.extent(1));
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix local view:", mat.local.extents());
+
+  int lcount = (myid + 1) * 1000;
+  dash::generate(mat.begin(), mat.end(), 
+                 [&]() {
+                   return (lcount++);
+                 });
+  mat.barrier();
+
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+
+  for (int i = 0; i < mat.local.extent(0); i++) {
+    for (int j = 0; j < mat.local.extent(1); j++) {
+      DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                     "mat.local[", i, "][", j, "]");
+      EXPECT_EQ(mat.local(i,j),
+                mat.local[i][j]);
     }
   }
 }
