@@ -635,6 +635,17 @@ template<
 >
 class Array
 {
+  /**
+   * The Cray compiler (as of CCE8.5.6) does not support
+   * std::is_trivially_copyable.
+   *
+   * TODO: Remove the guard once this has been fixed by Cray.
+   */
+#ifndef __CRAYC
+  static_assert(std::is_trivially_copyable<ElementType>::value,
+    "Element type must be trivially copyable");
+#endif
+
 private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
 
