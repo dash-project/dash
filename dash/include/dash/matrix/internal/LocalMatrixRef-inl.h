@@ -368,10 +368,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
 {
-  DASH_LOG_TRACE("LocalMatrixRef.[]()",
-                 "curdim:",   CUR,
-                 "index:",    pos,
-                 "viewspec:", _refview._viewspec);
   return LocalMatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
 }
 
