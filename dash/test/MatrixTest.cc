@@ -53,14 +53,12 @@ TEST_F(MatrixTest, LocalAccess)
 
   DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
 
-  if (myid == dash::size() - 1) {
-    for (int i = 0; i < mat.local.extent(0); i++) {
-      for (int j = 0; j < mat.local.extent(1); j++) {
-        DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                       "mat.local[", i, "][", j, "]");
-        EXPECT_EQ(mat.local(i,j),
-                  mat.local[i][j]);
-      }
+  for (int i = 0; i < mat.local.extent(0); i++) {
+    for (int j = 0; j < mat.local.extent(1); j++) {
+      DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                     "mat.local[", i, "][", j, "]");
+      EXPECT_EQ(mat.local(i,j),
+                mat.local[i][j]);
     }
   }
 }
