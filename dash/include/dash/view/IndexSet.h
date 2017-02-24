@@ -240,7 +240,7 @@ class IndexSetBase
   typedef typename dash::view_traits<ViewType>::global_type
     view_global_type;
   typedef typename dash::view_traits<view_domain_type>::index_set_type
-    index_set_domain_type;
+    domain_index_set_type;
 
   typedef typename view_origin_type::pattern_type
     pattern_type;
@@ -266,19 +266,18 @@ class IndexSetBase
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  const ViewType     * _view;
-  const pattern_type * _pattern;
+  const ViewType              & _view;
+//const domain_index_set_type & _domain_index_set;
+  const pattern_type          & _pattern;
 
-  IndexSetType & derived() {
-    return static_cast<IndexSetType &>(*this);
-  }
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
   }
   
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(&view)
-  , _pattern(&(dash::origin(view).pattern()))
+  : _view(view)
+//, _domain_index_set(dash::index(dash::domain(view)))
+  , _pattern(dash::origin(view).pattern())
   { }
 
   typedef struct {
@@ -304,8 +303,8 @@ class IndexSetBase
     const PatternT_     & pat,
     const index_range_t & grng) noexcept {
     return index_range_t {
-             pat.local(grng.begin).index,
-             pat.local(grng.end).index
+             pat.local_coords({{ grng.begin }})[0],
+             pat.local_coords({{ grng.end }})[0]
            };
   }
 
@@ -328,32 +327,33 @@ class IndexSetBase
   self_t & operator=(const self_t &)     = default;
   
   constexpr const ViewType & view() const {
-    return *_view;
+    return _view;
   }
 
-//constexpr const index_set_domain_type domain() const {
+//constexpr const domain_index_set_type & domain() const {
   constexpr auto domain() const
     -> decltype(dash::index(dash::domain(view()))) {
     return dash::index(dash::domain(view()));
+//  return _domain_index_set;
   }
 
   constexpr const pattern_type & pattern() const {
-    return *_pattern;
+    return _pattern;
   }
 
   constexpr const local_type local() const {
-    return dash::index(dash::local(*_view));
+    return dash::index(dash::local(_view));
   }
 
   constexpr const global_type global() const {
-    return dash::index(dash::global(*_view));
+    return dash::index(dash::global(_view));
   }
 
   // ---- extents ---------------------------------------------------------
 
   constexpr std::array<size_type, NDim>
   extents() const {
-    return _pattern->extents();
+    return _pattern.extents();
   }
 
   template <std::size_t ShapeDim>
@@ -757,7 +757,7 @@ class IndexSetSub
   typedef typename base_t::size_type                         size_type;
   typedef typename base_t::view_origin_type           view_origin_type;
   typedef typename base_t::view_domain_type           view_domain_type;
-  typedef typename base_t::index_set_domain_type index_set_domain_type;
+  typedef typename base_t::domain_index_set_type domain_index_set_type;
   typedef typename base_t::pattern_type                   pattern_type;
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
@@ -886,10 +886,9 @@ class IndexSetSub
 
   constexpr preimage_type pre() const {
     return preimage_type(
-             dash::origin(this->view()), // this->view(),
-             -(this->operator[](0)), // -_domain_begin_idx,
-             -(this->operator[](0))  // -_domain_begin_idx
-               + dash::origin(this->view()).size()
+             dash::origin(this->view()),
+             -(this->operator[](0)),
+             -(this->operator[](0)) + dash::origin(this->view()).size()
            );
   }
 };
@@ -976,7 +975,7 @@ class IndexSetLocal
   constexpr auto extents() const
     -> decltype(
          std::declval<
-           typename std::add_lvalue_reference<pattern_type>::type
+           typename std::add_lvalue_reference<const pattern_type>::type
          >().local_extents()) {
     return this->pattern().local_extents();
   }

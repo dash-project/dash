@@ -133,7 +133,7 @@ TEST_F(ViewTest, NestedTemporaries)
 
   auto gview_nested  = dash::sub(1, array_size - 1,
                          dash::sub(1, array_size - 3,
-                           dash::sub(1, array_size - 6,
+                           dash::sub(1, 4,
                              a )));
 
   DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",

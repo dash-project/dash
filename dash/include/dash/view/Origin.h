@@ -53,6 +53,7 @@ origin(const ViewT & view)
   return dash::origin(view.domain());
 }
 
+#if 0
 template <class ViewT>
 auto
 origin(ViewT & view)
@@ -64,6 +65,7 @@ origin(ViewT & view)
   // recurse upwards:
   return dash::origin(view.domain());
 }
+#endif
 
 #endif // DOXYGEN
 

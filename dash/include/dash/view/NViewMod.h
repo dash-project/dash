@@ -103,7 +103,7 @@ public:
     return *this;
   }
 
-  inline domain_type & domain() {
+  domain_type & domain() {
     return *this;
   }
 
@@ -202,7 +202,8 @@ public:
   static constexpr dim_t ndim() { return NDim; }
 
 protected:
-  dash::UniversalMember<domain_type> _domain;
+//dash::UniversalMember<domain_type> _domain;
+  const domain_type & _domain;
 
   NViewModType & derived() {
     return static_cast<NViewModType &>(*this);
@@ -235,10 +236,6 @@ public:
   self_t & operator=(self_t &&)          = default;
 
   constexpr const domain_type & domain() const {
-    return _domain;
-  }
-
-  domain_type & domain() {
     return _domain;
   }
 

@@ -35,16 +35,6 @@ domain(ViewT && view)
 #else
 template <class ViewT>
 constexpr auto
-domain(ViewT & view)
-   -> typename std::enable_if<
-        dash::view_traits<ViewT>::is_view::value,
-     // decltype(view.domain())
-        typename dash::view_traits<ViewT>::domain_type &
-      >::type {
-  return view.domain();
-}
-template <class ViewT>
-constexpr auto
 domain(const ViewT & view)
    -> typename std::enable_if<
         dash::view_traits<ViewT>::is_view::value,
@@ -52,6 +42,25 @@ domain(const ViewT & view)
         const typename dash::view_traits<ViewT>::domain_type &
       >::type {
   return view.domain();
+}
+#endif
+
+#if 0
+template <
+  class    ViewT,
+  typename ViewValueT =
+             typename std::remove_const<
+               typename std::remove_reference<ViewT>::type
+             >::type
+>
+constexpr auto
+domain(ViewT && view)
+  -> typename std::enable_if<
+       dash::view_traits<ViewValueT>::is_view::value,
+    // decltype(std::forward<ViewT>(view).domain())
+       const typename dash::view_traits<ViewValueT>::domain_type &
+     >::type {
+  return (view).domain();
 }
 #endif
 

@@ -260,7 +260,7 @@ class ViewModBase {
   // Fixes performance but leads to dangling references in chain of
   // temporaries:
   //
-  // const domain_type & _domain;
+  const domain_type & _domain;
   //
   // Even worse:
   //
@@ -268,7 +268,7 @@ class ViewModBase {
   //
   // Fixes dangling references but breaks constexpr folding:
   //
-  dash::UniversalMember<domain_type> _domain;
+  // dash::UniversalMember<domain_type> _domain;
   //
   // TODO:
   // Introduce binding/passing of shared and temporary view istances.
@@ -316,10 +316,6 @@ class ViewModBase {
   self_t & operator=(self_t &&)         = default;
 
   constexpr const domain_type & domain() const {
-    return _domain;
-  }
-
-  domain_type & domain() {
     return _domain;
   }
 
@@ -689,7 +685,9 @@ class ViewSubMod
 
   iterator begin() {
     // return this->domain().begin() + dash::index(*this)[0];
-    return iterator(dash::origin(*this).begin(),
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
                     _index_set, 0);
   }
 
@@ -701,7 +699,9 @@ class ViewSubMod
 
   iterator end() {
     // return this->domain().begin() + *dash::index(*this).end();
-    return iterator(dash::origin(*this).begin(),
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
                     _index_set, _index_set.size());
   }
 
@@ -711,7 +711,11 @@ class ViewSubMod
   }
 
   reference operator[](int offset) {
-    return *(iterator(dash::origin(*this).begin(),
+  //return *(iterator(dash::origin(*this).begin(),
+  //                  _index_set, offset));
+    return *(iterator(const_cast<origin_type &>(
+                        dash::origin(*this)
+                      ).begin(),
                       _index_set, offset));
   }
 

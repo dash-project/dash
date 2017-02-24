@@ -70,7 +70,7 @@ sub(
  *
  * \concept{DashViewConcept}
  */
-#if 0
+#if 1
 template <
   dim_t    SubDim  = 0,
   class    DomainT,

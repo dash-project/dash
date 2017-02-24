@@ -633,7 +633,8 @@ public:
    * \see  DashPatternConcept
    */
   constexpr std::array<IndexType, NumDimensions> local_coords(
-    const std::array<IndexType, NumDimensions> & global_coords) const {
+    const std::array<IndexType, NumDimensions> & global_coords
+  ) const noexcept {
     return std::array<IndexType, 1> {{
              static_cast<IndexType>(
                (((global_coords[0] / _blocksize) / _nunits) * _blocksize)
@@ -995,7 +996,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size() const
+  constexpr SizeType local_size() const noexcept
   {
     return _local_size;
   }
@@ -1005,7 +1006,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType num_units() const {
+  constexpr IndexType num_units() const noexcept {
     return _nunits;
   }
 
@@ -1014,7 +1015,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType capacity() const {
+  constexpr IndexType capacity() const noexcept {
     return _size;
   }
 
@@ -1023,7 +1024,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType size() const {
+  constexpr IndexType size() const noexcept {
     return _size;
   }
 
@@ -1031,14 +1032,14 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  constexpr dash::Team & team() const {
+  constexpr dash::Team & team() const noexcept {
     return *_team;
   }
 
   /**
    * Distribution specification of this pattern.
    */
-  constexpr const DistributionSpec_t & distspec() const {
+  constexpr const DistributionSpec_t & distspec() const noexcept {
     return _distspec;
   }
 
