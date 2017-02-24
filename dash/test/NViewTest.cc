@@ -260,8 +260,8 @@ TEST_F(NViewTest, MatrixBlocked1DimBlocks)
                  "Matrix mat_cb initialized");
 
   if (dash::myid() == 0) {
-    auto v_mat_cb  = dash::sub<0>(0, mat_cb.extent(0), mat_cb);
-    auto cb_blocks = dash::blocks(v_mat_cb);
+    auto && v_mat_cb  = dash::sub<0>(0, mat_cb.extent(0), mat_cb);
+    auto && cb_blocks = dash::blocks(v_mat_cb);
     EXPECT_EQ_U(nunits, cb_blocks.size());
 
 //  int bi = 0;

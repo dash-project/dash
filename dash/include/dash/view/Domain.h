@@ -38,7 +38,8 @@ constexpr auto
 domain(ViewT & view)
    -> typename std::enable_if<
         dash::view_traits<ViewT>::is_view::value,
-        decltype(view.domain())
+     // decltype(view.domain())
+        typename dash::view_traits<ViewT>::domain_type &
       >::type {
   return view.domain();
 }
@@ -47,7 +48,8 @@ constexpr auto
 domain(const ViewT & view)
    -> typename std::enable_if<
         dash::view_traits<ViewT>::is_view::value,
-        decltype(view.domain())
+     // decltype(view.domain())
+        const typename dash::view_traits<ViewT>::domain_type &
       >::type {
   return view.domain();
 }

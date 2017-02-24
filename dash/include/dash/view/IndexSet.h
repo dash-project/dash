@@ -266,8 +266,8 @@ class IndexSetBase
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  const ViewType     & _view;
-  const pattern_type & _pattern;
+  const ViewType     * _view;
+  const pattern_type * _pattern;
 
   IndexSetType & derived() {
     return static_cast<IndexSetType &>(*this);
@@ -277,8 +277,8 @@ class IndexSetBase
   }
   
   constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(view)
-  , _pattern(dash::origin(view).pattern())
+  : _view(&view)
+  , _pattern(&(dash::origin(view).pattern()))
   { }
   
   ~IndexSetBase()                        = default;
@@ -290,30 +290,32 @@ class IndexSetBase
   self_t & operator=(const self_t &)     = default;
   
   constexpr const ViewType & view() const {
-    return _view;
+    return *_view;
   }
 
-  constexpr const index_set_domain_type domain() const {
-    return dash::index(dash::domain(_view));
+//constexpr const index_set_domain_type domain() const {
+  constexpr auto domain()
+    -> decltype(dash::index(dash::domain(view()))) const {
+    return dash::index(dash::domain(view()));
   }
 
   constexpr const pattern_type & pattern() const {
-    return _pattern;
+    return *_pattern;
   }
 
   constexpr const local_type local() const {
-    return dash::index(dash::local(_view));
+    return dash::index(dash::local(*_view));
   }
 
   constexpr const global_type global() const {
-    return dash::index(dash::global(_view));
+    return dash::index(dash::global(*_view));
   }
 
   // ---- extents ---------------------------------------------------------
 
   constexpr std::array<size_type, NDim>
   extents() const {
-    return _pattern.extents();
+    return _pattern->extents();
   }
 
   template <std::size_t ShapeDim>

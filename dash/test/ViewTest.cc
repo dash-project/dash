@@ -124,18 +124,25 @@ TEST_F(ViewTest, NestedTemporaries)
   DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
                      range_str(a));
 
+  auto gview_tmp     = dash::sub(1, array_size - 1,
+                         dash::sub(1, array_size - 3,
+                           a ));
+
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
+                     gview_tmp);
+
   auto gview_nested  = dash::sub(1, array_size - 1,
                          dash::sub(1, array_size - 3,
-                           dash::sub(1, array_size - 5,
+                           dash::sub(1, array_size - 6,
                              a )));
 
   DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
-                     range_str(gview_nested));
+                     gview_nested);
 
   auto gindex_nested = dash::index(
                          dash::sub(1, array_size - 1,
                            dash::sub(1, array_size - 3,
-                             dash::sub(1, array_size - 5,
+                             dash::sub(1, array_size - 6,
                                a ))));
 
   int i = 0;

@@ -323,6 +323,7 @@ class ViewModBase {
     return _domain;
   }
 
+#if 0
   constexpr const origin_type & origin() const {
     return _origin(typename view_traits<domain_type>::is_view());
   }
@@ -350,7 +351,7 @@ class ViewModBase {
   _origin(std::integral_constant<bool, true>) {
     return domain().origin();
   }
-
+#endif
 
   constexpr bool operator==(const ViewModType & rhs) const {
     return &derived() == &rhs;
