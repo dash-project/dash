@@ -671,7 +671,7 @@ class IndexSetBlock
                    this->pattern().coords(
                      // local offset to global offset:
                      this->pattern().global(
-                       this->domain().begin()
+                       *(this->domain().begin())
                      )
                    )
                  ).index )
@@ -933,7 +933,7 @@ class IndexSetLocal
   typedef dash::global_index_t<index_type>           global_index_type;
 
  private:
-// index_type _size;
+  index_type _size;
  public:
   constexpr IndexSetLocal()               = delete;
   constexpr IndexSetLocal(self_t &&)      = default;
@@ -945,7 +945,7 @@ class IndexSetLocal
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
-//, _size(calc_size())
+  , _size(calc_size())
   { }
 
   constexpr const local_type & local() const {
@@ -988,7 +988,7 @@ class IndexSetLocal
   // ---- size ------------------------------------------------------------
 
   constexpr size_type size(std::size_t sub_dim) const {
-    return calc_size(); // _size;
+    return _size;
   }
 
   constexpr size_type size() const {
@@ -999,7 +999,7 @@ class IndexSetLocal
   // 
   // Should be accumulate of extents().
   //
-  constexpr index_type calc_size() const {
+  constexpr index_type calc_size() const noexcept {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
 
@@ -1017,18 +1017,21 @@ class IndexSetLocal
            );
 #else
     return (
-      // pat_partitioning_traits::minimal ||
-      this->pattern().blockspec().size()
-        <= this->pattern().team().size()
-      && false
-        // blocked (not blockcyclic) distribution: single local
-        // element space with contiguous global index range
-        ? std::min<index_type>(
-            this->pattern().local_size(),
-            this->domain().size()
-          )
-        // blockcyclic distribution: local element space chunked
-        // in global index range
+      this->pattern().blockspec().size() <= this->pattern().team().size()
+       // blocked (not blockcyclic) distribution: single local
+       // element space with contiguous global index range
+        ? this->index_range_size(
+            this->index_range_intersect(
+              // local range in global index space:
+              { this->pattern().global(0),
+                this->pattern().global(
+                  this->pattern().local_size() - 1) },
+              // domain range in global index space;
+              { this->domain().first(),
+                this->domain().last() }
+            )) + 1 
+       // blockcyclic distribution: local element space chunked
+       // in global index range
         : this->index_range_size(
             this->index_range_g2l(
               this->pattern(),
