@@ -323,6 +323,35 @@ class ViewModBase {
     return _domain;
   }
 
+  constexpr const origin_type & origin() const {
+    return _origin(typename view_traits<domain_type>::is_view());
+  }
+
+  origin_type & origin() {
+    return _origin(typename view_traits<domain_type>::is_view());
+  }
+
+  constexpr const origin_type &
+  _origin(std::integral_constant<bool, false>) const {
+    return _domain;
+  }
+
+  origin_type &
+  _origin(std::integral_constant<bool, false>) {
+    return _domain;
+  }
+
+  constexpr const origin_type &
+  _origin(std::integral_constant<bool, true>) const {
+    return domain().origin();
+  }
+
+  origin_type &
+  _origin(std::integral_constant<bool, true>) {
+    return domain().origin();
+  }
+
+
   constexpr bool operator==(const ViewModType & rhs) const {
     return &derived() == &rhs;
   }
@@ -469,9 +498,9 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre()[
-             _index_set.first()
-           ];
+         + _index_set.pre().rel(
+             _index_set.rel(0)
+           );
   }
 
   iterator begin() {
@@ -482,9 +511,9 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre()[
-             _index_set.first()
-           ];
+         + _index_set.pre().rel(
+             _index_set.rel(0)
+           );
   }
 
   constexpr const_iterator end() const {
@@ -495,9 +524,9 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre()[
-             _index_set.last()
-           ] + 1;
+         + _index_set.pre().rel(
+             _index_set.rel(_index_set.size() - 1)
+           ) + 1;
   }
 
   iterator end() {
@@ -508,9 +537,9 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre()[
-             _index_set.last()
-           ] + 1;
+         + _index_set.pre().rel(
+             _index_set.rel(_index_set.size() - 1)
+           ) + 1;
   }
 
   constexpr const_reference operator[](int offset) const {
@@ -583,6 +612,7 @@ class ViewSubMod
 {
  public:
   typedef DomainType                                             domain_type;
+  typedef typename view_traits<DomainType>::origin_type          origin_type;
   typedef typename view_traits<DomainType>::index_type            index_type;
   typedef typename view_traits<DomainType>::size_type              size_type;
  private:
@@ -596,31 +626,36 @@ class ViewSubMod
 
   typedef std::integral_constant<bool, false>                       is_local;
 
-  typedef
-    decltype(dash::begin(
-               std::declval<
-                 typename std::add_lvalue_reference<domain_type>::type
-               >() ))
-    iterator;
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<origin_type>::type
+              >() ))
+    origin_iterator;
 
-  typedef
-    decltype(dash::begin(
-               std::declval<
-                 typename std::add_lvalue_reference<const domain_type>::type
-               >() ))
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<const origin_type>::type
+              >() ))
+    const_origin_iterator;
+
+  typedef ViewIterator<origin_iterator, index_set_type>
+    iterator;
+  typedef ViewIterator<const_origin_iterator, index_set_type>
     const_iterator;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<domain_type>::type
+                 typename std::add_lvalue_reference<origin_type>::type
                >() ))
     reference;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<const domain_type>::type
+                 typename std::add_lvalue_reference<const origin_type>::type
                >() ))
     const_reference;
 
@@ -652,27 +687,37 @@ class ViewSubMod
   { }
 
   constexpr const_iterator begin() const {
-    return this->domain().begin() + dash::index(*this)[0];
+    // return this->domain().begin() + dash::index(*this)[0];
+    return const_iterator(dash::origin(*this).begin(),
+                          _index_set, 0);
   }
 
   iterator begin() {
-    return this->domain().begin() + dash::index(*this)[0];
+    // return this->domain().begin() + dash::index(*this)[0];
+    return iterator(dash::origin(*this).begin(),
+                    _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    return this->domain().begin() + *dash::index(*this).end();
+    // return this->domain().begin() + *dash::index(*this).end();
+    return const_iterator(dash::origin(*this).begin(),
+                          _index_set, _index_set.size());
   }
 
   iterator end() {
-    return this->domain().begin() + *dash::index(*this).end();
+    // return this->domain().begin() + *dash::index(*this).end();
+    return iterator(dash::origin(*this).begin(),
+                    _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(this->begin() + offset);
+    return *(const_iterator(dash::origin(*this).begin(),
+                            _index_set, offset));
   }
 
   reference operator[](int offset) {
-    return *(this->begin() + offset);
+    return *(iterator(dash::origin(*this).begin(),
+                      _index_set, offset));
   }
 
   constexpr const index_set_type & index_set() const {

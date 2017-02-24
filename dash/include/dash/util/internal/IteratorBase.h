@@ -15,7 +15,14 @@ template <
   class IndexType    = dash::default_index_t,
   class Pointer      = ValueType *,
   class Reference    = ValueType & >
-class IndexIteratorBase {
+class IndexIteratorBase
+: public std::iterator<
+            std::random_access_iterator_tag,
+            ValueType,
+            IndexType,
+            Pointer,
+            Reference >
+{
   typedef IndexIteratorBase<
             IteratorType,
             ValueType,

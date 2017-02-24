@@ -32,16 +32,37 @@ origin(const ContainerT & container) {
   return container;
 }
 
+template <class ContainerT>
+typename std::enable_if<
+  !dash::view_traits<ContainerT>::is_view::value,
+  typename dash::view_traits<ContainerT>::origin_type &
+>::type
+origin(ContainerT & container) {
+  return container;
+}
+
 template <class ViewT>
 constexpr auto
 origin(const ViewT & view)
   -> typename std::enable_if<
        dash::view_traits<ViewT>::is_view::value,
        const typename dash::view_traits<ViewT>::origin_type &
-    // decltype(dash::origin(dash::domain(view)))
+    // const decltype(dash::origin(view.domain()))
      >::type {
   // recurse upwards:
-  return dash::origin(dash::domain(view));
+  return dash::origin(view.domain());
+}
+
+template <class ViewT>
+auto
+origin(ViewT & view)
+  -> typename std::enable_if<
+       dash::view_traits<ViewT>::is_view::value,
+       typename dash::view_traits<ViewT>::origin_type &
+    // decltype(dash::origin(view.domain()))
+     >::type {
+  // recurse upwards:
+  return dash::origin(view.domain());
 }
 
 #endif // DOXYGEN

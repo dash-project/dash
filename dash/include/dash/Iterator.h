@@ -68,6 +68,21 @@ constexpr auto index(Iterator it) -> decltype((++it).pos()) {
   return it.pos();
 }
 
+
+/**
+ * Resolve the number of elements between two iterators.
+ *
+ * \concept{DashIteratorConcept}
+ */
+template <class RandomAccessIt>
+typename RandomAccessIt::difference_type
+distance(
+  const RandomAccessIt & first,
+  const RandomAccessIt & last)
+{
+  return last - first;
+}
+
 /**
  * Resolve the number of elements between two global iterators.
  *

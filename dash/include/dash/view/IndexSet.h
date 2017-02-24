@@ -341,13 +341,25 @@ class IndexSetBase
     return derived().offsets()[shape_dim];
   }
 
-  // ---- size ------------------------------------------------------------
+  // ---- access ----------------------------------------------------------
 
-  constexpr index_type size() const {
-    return view().size();
+  constexpr index_type rel(index_type image_index) const {
+    return image_index;
   }
 
-  // ---- access ----------------------------------------------------------
+  constexpr index_type rel(
+    const std::array<index_type, NDim> & coords) const {
+    return -1;
+  }
+
+  constexpr index_type operator[](index_type image_index) const {
+    return domain()[derived().rel(image_index)];
+  }
+
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & coords) const {
+    return domain()[derived().rel(coords)];
+  }
 
   constexpr const_iterator begin() const {
     return iterator(derived(), 0);
@@ -413,12 +425,22 @@ class IndexSetIdentity
   : base_t(view)
   { }
 
-  constexpr index_type operator[](index_type image_index) const {
+  constexpr index_type rel(index_type image_index) const {
     return image_index;
   }
 
   constexpr index_type size() const {
     return this->view().size();
+  }
+
+  constexpr index_type operator[](index_type image_index) const {
+    return image_index;
+  }
+
+  template <dim_t NDim>
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & coords) const {
+    return -1;
   }
 
   constexpr const self_t & pre() const {
@@ -783,7 +805,7 @@ class IndexSetSub
   /**
    * Domain index at specified linear offset.
    */
-  constexpr index_type operator[](index_type image_index) const {
+  constexpr index_type rel(index_type image_index) const {
     return ( 
              ( NDim == 1
                ? _domain_begin_idx + image_index
@@ -807,7 +829,7 @@ class IndexSetSub
   /**
    * Domain index at specified Cartesian coordinates.
    */
-  constexpr index_type operator[](
+  constexpr index_type rel(
     const std::array<index_type, NDim> & coords) const {
     return -1;
   }
@@ -879,8 +901,8 @@ class IndexSetLocal
   constexpr IndexSetLocal(self_t &&)      = default;
   constexpr IndexSetLocal(const self_t &) = default;
   ~IndexSetLocal()                        = default;
-  self_t & operator=(self_t &&)           = delete;
-  self_t & operator=(const self_t &)      = delete;
+  self_t & operator=(self_t &&)           = default;
+  self_t & operator=(const self_t &)      = default;
 
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
@@ -984,8 +1006,7 @@ class IndexSetLocal
     return iterator(*this, size());
   }
 
-  constexpr index_type
-  operator[](index_type local_index) const {
+  constexpr index_type rel(index_type local_index) const {
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
@@ -1060,8 +1081,7 @@ class IndexSetGlobal
   , _size(calc_size())
   { }
 
-  constexpr index_type
-  operator[](index_type global_index) const {
+  constexpr index_type rel(index_type global_index) const {
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.

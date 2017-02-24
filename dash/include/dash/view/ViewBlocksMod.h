@@ -87,10 +87,11 @@ class ViewBlockMod
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-  typedef decltype(dash::begin(
-                std::declval<
-                  typename std::add_lvalue_reference<domain_type>::type
-                >() ))
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<domain_type>::type
+              >() ))
     iterator;
 
  private:

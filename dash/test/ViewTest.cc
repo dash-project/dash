@@ -121,7 +121,7 @@ TEST_F(ViewTest, NestedTemporaries)
     return;
   }
 
-  DASH_LOG_DEBUG_VAR("viewtest.nestedtemporaries",
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
                      range_str(a));
 
   auto gview_nested  = dash::sub(1, array_size - 1,
@@ -129,7 +129,7 @@ TEST_F(ViewTest, NestedTemporaries)
                            dash::sub(1, array_size - 5,
                              a )));
 
-  DASH_LOG_DEBUG_VAR("viewtest.nestedtemporaries",
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
                      range_str(gview_nested));
 
   auto gindex_nested = dash::index(
@@ -467,16 +467,22 @@ TEST_F(ViewTest, IndexSet)
     array(array_size, dash::TILE(block_size));
   dash::test::initialize_array(array);
 
+  auto sub_begin_gidx = block_size / 2;
+  auto sub_end_gidx   = array_size - (block_size / 2);
+
   if (dash::myid() == 0) {
     std::vector<value_t> values(array.begin(), array.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", values);
 
     auto sub_gview = dash::sub(
-                       block_size / 2,
-                       array_size - (block_size / 2),
+                       sub_begin_gidx,
+                       sub_end_gidx,
                        array);
 
     auto sub_index = dash::index(sub_gview);
+
+    DASH_LOG_DEBUG("ViewTest.IndexSet", "---- sub(",
+                   sub_begin_gidx, ",", sub_end_gidx, ")");
 
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index);
 
@@ -501,6 +507,9 @@ TEST_F(ViewTest, IndexSet)
 
   auto locsub_index = dash::index(locsub_gview);
 
+  DASH_LOG_DEBUG("ViewTest.IndexSet", "---- local(sub(",
+                 sub_begin_gidx, ",", sub_end_gidx, "))");
+
   DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_index);
   DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_gview);
 
@@ -524,8 +533,21 @@ TEST_F(ViewTest, IndexSet)
           array.begin() + (array_size - (block_size / 2)),
           sub_gview.begin()) );
 
-    auto subsub_gview = dash::sub(3, 6, sub_gview);
+    auto subsub_begin_idx = 3;
+    auto subsub_end_idx   = 6;
+
+    auto subsub_gview = dash::sub(
+                          subsub_begin_idx,
+                          subsub_end_idx,
+                          sub_gview);
     auto subsub_index = dash::index(subsub_gview);
+
+    DASH_LOG_DEBUG("ViewTest.IndexSet", "---- sub(sub(",
+                   sub_begin_gidx,   ",", sub_end_gidx, ") ",
+                   subsub_begin_idx, ",", subsub_end_idx, ")");
+
+    auto subsub_begin_gidx = sub_begin_gidx + subsub_begin_idx;
+    auto subsub_end_gidx   = sub_begin_gidx + subsub_end_idx;
 
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_index);
     std::vector<value_t> subsub_values(subsub_gview.begin(),

@@ -16,6 +16,7 @@ namespace dash {
  *
  * \concept{DashViewConcept}
  */
+#if 0
 template <
   class    ViewT,
   typename ViewValueT =
@@ -31,21 +32,23 @@ domain(ViewT && view)
      >::type {
   return std::forward<ViewT>(view).domain();
 }
-#if 0
-template <
-  class    ViewT,
-  typename ViewValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ViewT>::type
-             >::type
->
+#else
+template <class ViewT>
 constexpr auto
-domain(ViewT && view)
-  -> typename std::enable_if<
-       dash::view_traits<ViewValueT>::is_view::value,
-       const typename dash::view_traits<ViewValueT>::domain_type &
-    // decltype(view.domain())
-     >::type {
+domain(ViewT & view)
+   -> typename std::enable_if<
+        dash::view_traits<ViewT>::is_view::value,
+        decltype(view.domain())
+      >::type {
+  return view.domain();
+}
+template <class ViewT>
+constexpr auto
+domain(const ViewT & view)
+   -> typename std::enable_if<
+        dash::view_traits<ViewT>::is_view::value,
+        decltype(view.domain())
+      >::type {
   return view.domain();
 }
 #endif
@@ -69,6 +72,25 @@ constexpr typename std::enable_if<
   ContainerT &
 >::type
 domain(ContainerT & container) {
+  return container;
+}
+
+/**
+ *
+ * \concept{DashViewConcept}
+ */
+template <
+  class    ContainerT,
+  typename ContainerValueT =
+             typename std::remove_const<
+               typename std::remove_reference<ContainerT>::type
+             >::type
+>
+constexpr typename std::enable_if<
+  !dash::view_traits<ContainerValueT>::is_view::value,
+  const ContainerT &
+>::type
+domain(const ContainerT & container) {
   return container;
 }
 
