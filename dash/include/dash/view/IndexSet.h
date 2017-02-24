@@ -267,7 +267,6 @@ class IndexSetBase
 
  protected:
   const ViewType              & _view;
-//const domain_index_set_type & _domain_index_set;
   const pattern_type          & _pattern;
 
   constexpr const IndexSetType & derived() const {
@@ -276,7 +275,6 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const ViewType & view)
   : _view(view)
-//, _domain_index_set(dash::index(dash::domain(view)))
   , _pattern(dash::origin(view).pattern())
   { }
 
@@ -330,11 +328,9 @@ class IndexSetBase
     return _view;
   }
 
-//constexpr const domain_index_set_type & domain() const {
   constexpr auto domain() const
     -> decltype(dash::index(dash::domain(view()))) {
     return dash::index(dash::domain(view()));
-//  return _domain_index_set;
   }
 
   constexpr const pattern_type & pattern() const {
@@ -937,7 +933,7 @@ class IndexSetLocal
   typedef dash::global_index_t<index_type>           global_index_type;
 
  private:
-  index_type _size;
+// index_type _size;
  public:
   constexpr IndexSetLocal()               = delete;
   constexpr IndexSetLocal(self_t &&)      = default;
@@ -949,7 +945,7 @@ class IndexSetLocal
  public:
   constexpr explicit IndexSetLocal(const ViewType & view)
   : base_t(view)
-  , _size(calc_size())
+//, _size(calc_size())
   { }
 
   constexpr const local_type & local() const {
@@ -992,7 +988,7 @@ class IndexSetLocal
   // ---- size ------------------------------------------------------------
 
   constexpr size_type size(std::size_t sub_dim) const {
-    return _size;
+    return calc_size(); // _size;
   }
 
   constexpr size_type size() const {

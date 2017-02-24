@@ -39,7 +39,7 @@ namespace test {
     int        i   = 0;
     for (const auto & v : vrange) {
       ss // << dash::internal::typestr(v)
-         << "[" << *(dash::begin(idx) + i) << "]"
+         << *(dash::begin(idx) + i) << ":"
          << static_cast<const value_t>(v) << " ";
       ++i;
     }
@@ -1100,7 +1100,9 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
       EXPECT_EQ(sub_elem, l_sub_elem);
     }
 
-    auto sub_l_sub_lblock = dash::sub(1,4, dash::local(sub_lblock));
+    auto sub_l_sub_lblock = dash::sub(
+                              1, l_sub_lblock.size() - 2,
+                              l_sub_lblock);
 
     static_assert(
       dash::view_traits<decltype(sub_l_sub_lblock)>::is_local::value,
@@ -1110,9 +1112,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                        range_str(sub_l_sub_lblock));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        sub_l_sub_lblock.size());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       dash::end(sub_l_sub_lblock) -
-                       dash::begin(sub_l_sub_lblock));
     EXPECT_EQ(
       sub_l_sub_lblock.size(),
       dash::end(sub_l_sub_lblock) - dash::begin(sub_l_sub_lblock));

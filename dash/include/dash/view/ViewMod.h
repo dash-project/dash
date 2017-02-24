@@ -684,7 +684,6 @@ class ViewSubMod
   }
 
   iterator begin() {
-    // return this->domain().begin() + dash::index(*this)[0];
     return iterator(const_cast<origin_type &>(
                       dash::origin(*this)
                     ).begin(),
@@ -698,7 +697,6 @@ class ViewSubMod
   }
 
   iterator end() {
-    // return this->domain().begin() + *dash::index(*this).end();
     return iterator(const_cast<origin_type &>(
                       dash::origin(*this)
                     ).begin(),
@@ -711,8 +709,6 @@ class ViewSubMod
   }
 
   reference operator[](int offset) {
-  //return *(iterator(dash::origin(*this).begin(),
-  //                  _index_set, offset));
     return *(iterator(const_cast<origin_type &>(
                         dash::origin(*this)
                       ).begin(),
