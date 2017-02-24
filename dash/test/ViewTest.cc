@@ -169,6 +169,8 @@ TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
 
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
                      range_str(block_gview));
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
+                     block_gview.begin());
 
   EXPECT_TRUE_U(std::equal(a.begin() + block_begin_gidx,
                            a.begin() + block_end_gidx,

@@ -68,6 +68,10 @@ class IndexIteratorBase
     return _pos;
   }
 
+  constexpr index_type gpos() const {
+    return _pos;
+  }
+
   constexpr reference operator*() const {
     return derived().dereference(_pos);
   }

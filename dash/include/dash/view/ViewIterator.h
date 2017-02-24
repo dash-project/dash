@@ -66,6 +66,10 @@ public:
   constexpr reference dereference(index_type idx) const {
     return (_domain_it)[ (_index_set)[idx] ];
   }
+
+  constexpr index_type gpos() const {
+    return (_index_set)[this->pos()];
+  }
 };
 
 template <
@@ -120,6 +124,10 @@ public:
   constexpr reference dereference(index_type idx) const {
     return (_domain_it)[ (_index_set)[idx] ];
   }
+
+  constexpr index_type gpos() const {
+    return (_index_set)[this->pos()];
+  }
 };
 
 template<class DomainT, class IndexSetT>
@@ -131,7 +139,8 @@ std::ostream & operator<<(
   ss << dash::internal::typestr(view_it) << " "
      << "{ "
      << "domain_it: " << view_it._domain_it << ", "
-     << "position: "  << view_it.pos()
+     << "rpos: "      << view_it.pos()      << ", "
+     << "gpos: "      << view_it.gpos()
      << " }";
   return operator<<(os, ss.str());
 }

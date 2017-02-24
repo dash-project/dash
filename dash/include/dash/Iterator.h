@@ -63,9 +63,18 @@ index(IndexType idx) {
  *
  * \concept{DashIteratorConcept}
  */
+// template <class Iterator>
+// constexpr auto index(Iterator it) -> decltype((++it).pos()) {
+//   return it.pos();
+// }
+
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class Iterator>
-constexpr auto index(Iterator it) -> decltype((++it).pos()) {
-  return it.pos();
+constexpr auto index(Iterator it) -> decltype((++it).gpos()) {
+  return it.gpos();
 }
 
 
