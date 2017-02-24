@@ -689,36 +689,40 @@ public:
     //
     //         view_iterator(this->domain().begin(), _index_set, 0)
     //         => operator[](vi) { return _domain_it[ _index_set[vi] ]; }
+    // 
+    //       Alternative: use GlobViewIter
     //
-    // return this->domain().begin() + _index_set[0];
     return const_iterator(this->domain().begin(), _index_set, 0);
-    // Alternative: use GlobViewIter
   }
 
   iterator begin() {
-    // return this->domain().begin() + _index_set[0];
-    return iterator(this->domain().begin(), _index_set, 0);
+    return iterator(
+             const_cast<domain_type &>(this->domain()).begin(),
+             _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    // return this->domain().begin() + *_index_set.end();
     return const_iterator(
-             this->domain().begin(), _index_set, _index_set.size());
+             this->domain().begin(),
+             _index_set, _index_set.size());
   }
 
   iterator end() {
-    // return this->domain().begin() + *_index_set.end();
     return iterator(
-             this->domain().begin(), _index_set, _index_set.size());
+             const_cast<domain_type &>(this->domain()).begin(),
+             _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return begin()[offset];
+    return *(const_iterator(
+               this->domain().begin(),
+               _index_set, offset));
   }
 
   reference operator[](int offset) {
-    // return this->domain().begin()[_index_set[offset]];
-    return begin()[offset];
+    return *(iterator(
+               const_cast<domain_type &>(this->domain()).begin(),
+               _index_set, offset));
   }
 
   constexpr const index_set_type & index_set() const {
