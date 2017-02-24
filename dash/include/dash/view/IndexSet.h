@@ -1021,6 +1021,16 @@ class IndexSetLocal
                   )).index
               );
   }
+
+  constexpr index_type operator[](index_type local_index) const {
+    return rel(local_index);
+  }
+
+  template <dim_t NDim>
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & local_coords) const {
+    return -1;
+  }
 };
 
 // -----------------------------------------------------------------------

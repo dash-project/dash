@@ -498,9 +498,7 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre().rel(
-             _index_set.rel(0)
-           );
+         + _index_set[0];
   }
 
   iterator begin() {
@@ -511,9 +509,7 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre().rel(
-             _index_set.rel(0)
-           );
+         + _index_set[0];
   }
 
   constexpr const_iterator end() const {
@@ -524,9 +520,8 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre().rel(
-             _index_set.rel(_index_set.size() - 1)
-           ) + 1;
+         + _index_set[_index_set.size() - 1]
+         + 1;
   }
 
   iterator end() {
@@ -537,9 +532,8 @@ class ViewLocalMod
                )
              )
            )
-         + _index_set.pre().rel(
-             _index_set.rel(_index_set.size() - 1)
-           ) + 1;
+         + _index_set[_index_set.size() - 1]
+         + 1;
   }
 
   constexpr const_reference operator[](int offset) const {

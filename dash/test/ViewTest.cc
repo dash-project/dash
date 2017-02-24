@@ -459,7 +459,7 @@ TEST_F(ViewTest, IndexSet)
   typedef dash::default_index_t index_t;
 
   int block_size           = 4;
-  int blocks_per_unit      = 2;
+  int blocks_per_unit      = 3;
   int array_size           = dash::size()
                              * (blocks_per_unit * block_size);
 
@@ -470,6 +470,8 @@ TEST_F(ViewTest, IndexSet)
   auto sub_begin_gidx = block_size / 2;
   auto sub_end_gidx   = array_size - (block_size / 2);
 
+  // ---- sub(array) ----------------------------------------------------
+  //
   if (dash::myid() == 0) {
     std::vector<value_t> values(array.begin(), array.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", values);
@@ -480,6 +482,19 @@ TEST_F(ViewTest, IndexSet)
                        array);
 
     auto sub_index = dash::index(sub_gview);
+
+    EXPECT_EQ_U(
+        dash::distance(
+          array.begin() + sub_begin_gidx,
+          array.begin() + sub_end_gidx),
+        dash::distance(
+          sub_gview.begin(),
+          sub_gview.end()) );
+    EXPECT_TRUE_U(
+        std::equal(
+          array.begin() + sub_begin_gidx,
+          array.begin() + sub_end_gidx,
+          sub_gview.begin()) );
 
     DASH_LOG_DEBUG("ViewTest.IndexSet", "---- sub(",
                    sub_begin_gidx, ",", sub_end_gidx, ")");
@@ -499,12 +514,29 @@ TEST_F(ViewTest, IndexSet)
   }
   array.barrier();
 
-  auto sub_gview    = dash::sub(
-                        block_size / 2,
-                        array_size - (block_size / 2),
+  // ---- local(all(array)) ---------------------------------------------
+  //
+  auto all_gview    = dash::sub(
+                        0, array_size,
                         array);
-  auto locsub_gview = dash::local(sub_gview);
+  auto locall_gview = dash::local(all_gview);
+  auto locall_index = dash::index(locall_gview);
 
+  DASH_LOG_DEBUG("ViewTest.IndexSet", "---- local(sub(",
+                 0, ",", array_size, "))");
+
+  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locall_index);
+  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locall_gview);
+
+  array.barrier();
+
+  // ---- local(sub(array)) ---------------------------------------------
+  //
+  auto locsub_gview = dash::local(
+                        dash::sub(
+                          sub_begin_gidx,
+                          sub_end_gidx,
+                          array));
   auto locsub_index = dash::index(locsub_gview);
 
   DASH_LOG_DEBUG("ViewTest.IndexSet", "---- local(sub(",
@@ -515,31 +547,19 @@ TEST_F(ViewTest, IndexSet)
 
   array.barrier();
 
+  // ---- sub(sub(array)) -----------------------------------------------
+  //
   if (dash::myid() == 0) {
-    auto sub_gview    = dash::sub(
-                          block_size / 2,
-                          array_size - (block_size / 2),
-                          array);
-    EXPECT_EQ_U(
-        dash::distance(
-          array.begin() + (block_size / 2),
-          array.begin() + (array_size - (block_size / 2))),
-        dash::distance(
-          sub_gview.begin(),
-          sub_gview.end()) );
-    EXPECT_TRUE_U(
-        std::equal(
-          array.begin() + (block_size / 2),
-          array.begin() + (array_size - (block_size / 2)),
-          sub_gview.begin()) );
-
     auto subsub_begin_idx = 3;
-    auto subsub_end_idx   = 6;
+    auto subsub_end_idx   = subsub_begin_idx + block_size;
 
     auto subsub_gview = dash::sub(
                           subsub_begin_idx,
                           subsub_end_idx,
-                          sub_gview);
+                          dash::sub(
+                            sub_begin_gidx,
+                            sub_end_gidx,
+                            array));
     auto subsub_index = dash::index(subsub_gview);
 
     DASH_LOG_DEBUG("ViewTest.IndexSet", "---- sub(sub(",
@@ -556,15 +576,15 @@ TEST_F(ViewTest, IndexSet)
 
     EXPECT_EQ_U(
         dash::distance(
-          array.begin() + (block_size / 2) + 3,
-          array.begin() + (block_size / 2) + 6),
+          array.begin() + subsub_begin_gidx,
+          array.begin() + subsub_end_gidx),
         dash::distance(
           subsub_gview.begin(),
           subsub_gview.end()) );
     EXPECT_TRUE_U(
         std::equal(
-          array.begin() + (block_size / 2) + 3,
-          array.begin() + (block_size / 2) + 6,
+          array.begin() + subsub_begin_gidx,
+          array.begin() + subsub_end_gidx,
           subsub_gview.begin()) );
   }
 }
