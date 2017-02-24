@@ -1,13 +1,15 @@
 #ifndef DASH__FUTURE_H__INCLUDED
 #define DASH__FUTURE_H__INCLUDED
 
+#include <dash/Exception.h>
+#include <dash/LaunchPolicy.h>
+
+#include <dash/internal/Logging.h>
+
 #include <cstddef>
 #include <functional>
 #include <sstream>
 #include <iostream>
-
-#include <dash/Exception.h>
-#include <dash/internal/Logging.h>
 
 
 namespace dash {

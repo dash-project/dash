@@ -5,6 +5,9 @@
 
 #include <libdash.h>
 
+#include <dash/tools/PatternVisualizer.h>
+
+
 using std::cout;
 using std::cerr;
 using std::endl;
