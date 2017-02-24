@@ -467,7 +467,7 @@ TEST_F(ViewTest, IndexSet)
   typedef float                 value_t;
   typedef dash::default_index_t index_t;
 
-  int block_size           = 4;
+  int block_size           = 3;
   int blocks_per_unit      = 3;
   int array_size           = dash::size()
                              * (blocks_per_unit * block_size);
@@ -509,13 +509,15 @@ TEST_F(ViewTest, IndexSet)
                    sub_begin_gidx, ",", sub_end_gidx, ")");
 
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index.pre().first());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index.pre().last());
 
     std::vector<value_t> sub_values(sub_gview.begin(),
                                     sub_gview.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_values);
 
-    EXPECT_EQ_U(array_size - block_size, sub_gview.size());
-    EXPECT_EQ_U(array_size - block_size, sub_index.size());
+    EXPECT_EQ_U(array_size - (2 * (block_size / 2)), sub_gview.size());
+    EXPECT_EQ_U(array_size - (2 * (block_size / 2)), sub_index.size());
 
     EXPECT_TRUE_U(std::equal(array.begin() + (block_size / 2),
                              array.begin() + array_size - (block_size / 2),
@@ -552,6 +554,9 @@ TEST_F(ViewTest, IndexSet)
                  sub_begin_gidx, ",", sub_end_gidx, "))");
 
   DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_index);
+  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_index.pre().first());
+  DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_index.pre().last());
+
   DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", locsub_gview);
 
   array.barrier();
@@ -579,6 +584,9 @@ TEST_F(ViewTest, IndexSet)
     auto subsub_end_gidx   = sub_begin_gidx + subsub_end_idx;
 
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_index);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_index.pre().first());
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_index.pre().last());
+
     std::vector<value_t> subsub_values(subsub_gview.begin(),
                                        subsub_gview.end());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", subsub_values);

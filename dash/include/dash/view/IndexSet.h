@@ -232,7 +232,7 @@ class IndexSetBase
   typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
  public:
   typedef typename dash::view_traits<ViewType>::origin_type
-    origin_type;
+    view_origin_type;
   typedef typename dash::view_traits<ViewType>::domain_type
     view_domain_type;
   typedef typename ViewType::local_type
@@ -242,7 +242,7 @@ class IndexSetBase
   typedef typename dash::view_traits<view_domain_type>::index_set_type
     index_set_domain_type;
 
-  typedef typename origin_type::pattern_type
+  typedef typename view_origin_type::pattern_type
     pattern_type;
   typedef typename dash::view_traits<view_local_type>::index_set_type
     local_type;
@@ -280,6 +280,44 @@ class IndexSetBase
   : _view(&view)
   , _pattern(&(dash::origin(view).pattern()))
   { }
+
+  typedef struct {
+    index_type begin;
+    index_type end;
+  } index_range_t;
+
+  static constexpr index_range_t index_range_intersect(
+    const index_range_t & a,
+    const index_range_t & b) noexcept {
+    return index_range_t {
+             std::max<index_type>(a.begin, b.begin),
+             std::min<index_type>(a.end,   b.end)
+           };
+  }
+  static constexpr index_type index_range_size(
+    const index_range_t & irng) noexcept {
+    return irng.end - irng.begin;
+  }
+
+  template <class PatternT_>
+  static constexpr index_range_t index_range_g2l(
+    const PatternT_     & pat,
+    const index_range_t & grng) noexcept {
+    return index_range_t {
+             pat.local(grng.begin).index,
+             pat.local(grng.end).index
+           };
+  }
+
+  template <class PatternT_>
+  static constexpr index_range_t index_range_l2g(
+    const PatternT_     & pat,
+    const index_range_t & lrng) noexcept {
+    return index_range_t {
+             pat.global(lrng.begin),
+             pat.global(lrng.end)
+           };
+  }
   
   ~IndexSetBase()                        = default;
  public:
@@ -294,8 +332,8 @@ class IndexSetBase
   }
 
 //constexpr const index_set_domain_type domain() const {
-  constexpr auto domain()
-    -> decltype(dash::index(dash::domain(view()))) const {
+  constexpr auto domain() const
+    -> decltype(dash::index(dash::domain(view()))) {
     return dash::index(dash::domain(view()));
   }
 
@@ -372,11 +410,11 @@ class IndexSetBase
   }
 
   constexpr index_type first() const {
-    return *(derived().begin());
+    return derived()[0];
   }
 
   constexpr index_type last() const {
-    return *(derived().begin() + (derived().size() - 1));
+    return derived()[ derived().size() - 1 ];
   }
 
   /*
@@ -717,13 +755,15 @@ class IndexSetSub
  public:
   typedef typename base_t::index_type                       index_type;
   typedef typename base_t::size_type                         size_type;
+  typedef typename base_t::view_origin_type           view_origin_type;
   typedef typename base_t::view_domain_type           view_domain_type;
   typedef typename base_t::index_set_domain_type index_set_domain_type;
   typedef typename base_t::pattern_type                   pattern_type;
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-  typedef IndexSetSub<ViewType, SubDim>                  preimage_type;
+//typedef IndexSetSub<ViewType, SubDim>                  preimage_type;
+  typedef IndexSetSub<view_origin_type, SubDim>          preimage_type;
 
  public:
   constexpr IndexSetSub()               = delete;
@@ -846,9 +886,10 @@ class IndexSetSub
 
   constexpr preimage_type pre() const {
     return preimage_type(
-             this->view(),
-             -_domain_begin_idx,
-             -_domain_begin_idx + this->view().size()
+             dash::origin(this->view()), // this->view(),
+             -(this->operator[](0)), // -_domain_begin_idx,
+             -(this->operator[](0))  // -_domain_begin_idx
+               + dash::origin(this->view()).size()
            );
   }
 };
@@ -984,6 +1025,7 @@ class IndexSetLocal
       // pat_partitioning_traits::minimal ||
       this->pattern().blockspec().size()
         <= this->pattern().team().size()
+      && false
         // blocked (not blockcyclic) distribution: single local
         // element space with contiguous global index range
         ? std::min<index_type>(
@@ -992,8 +1034,19 @@ class IndexSetLocal
           )
         // blockcyclic distribution: local element space chunked
         // in global index range
-        : this->pattern().local_size() + // <-- TODO: intersection of local
-          this->domain().pre()[0]        //           blocks and domain
+        : this->index_range_size(
+            this->index_range_g2l(
+              this->pattern(),
+              // intersection of local range and domain range:
+              this->index_range_intersect(
+                // local range in global index space:
+                { this->pattern().global(0),
+                  this->pattern().global(
+                    this->pattern().local_size() - 1) },
+                // domain range in global index space;
+                { this->domain().first(),
+                  this->domain().last() }
+            ))) + 1
     );
 #endif
   }
