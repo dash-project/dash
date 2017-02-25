@@ -299,13 +299,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   DeployLibrary(${DASH_LIBRARY})
 
   # cmake packaging
-if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+  if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
 	
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
-endif()
+  endif()
 
   string(TOUPPER ${dart_variant} DART_VARIANT)
 
