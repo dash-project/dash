@@ -42,8 +42,8 @@ struct dart_buddy  *  dart_localpool;
 static inline int
 num_level(size_t size)
 {
-  int level = 1;
-  while ((1 << level) < size) {
+  unsigned int level = 1;
+  while ((((unsigned int) 1) << level) < size) {
     level++;
   }
   return level;
@@ -58,8 +58,8 @@ struct dart_buddy *
 dart_buddy_new(size_t size)
 {
   DART_ASSERT(is_pow_of_2(size));
-  int level = num_level(size) - DART_MEM_ALIGN_BITS;
-	int lsize = 1 << level;
+  unsigned int level = num_level(size) - DART_MEM_ALIGN_BITS;
+  unsigned int lsize = ((unsigned int) 1) << level;
 	struct dart_buddy * self =
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (lsize * 2 - 2));
 	self->level = level;
