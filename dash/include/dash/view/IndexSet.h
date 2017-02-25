@@ -544,8 +544,7 @@ class IndexSetBlocks
     return iterator(*this, size());
   }
 
-  constexpr index_type
-  operator[](index_type block_index) const {
+  constexpr index_type rel(index_type block_index) const {
     return block_index +
            // index of block at first index in domain
            ( view_is_local
@@ -555,15 +554,25 @@ class IndexSetBlocks
                  this->pattern().coords(
                    // local offset to global offset:
                    this->pattern().global(
-                     this->domain().first()
+                     this->domain()[0]
                    )
                  )
                ).index
                // global coords to local block index:
              : this->pattern().block_at(
                  // global offset to global coords:
-                 this->pattern().coords(this->domain().first()))
+                 this->pattern().coords(this->domain()[0] ))
            );
+  }
+
+  constexpr index_type operator[](index_type block_index) const noexcept {
+    return rel(block_index);
+  }
+
+  template <dim_t NDim>
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & block_coords) const noexcept {
+    return -1;
   }
 
   constexpr index_type size() const {
@@ -602,12 +611,14 @@ class IndexSetBlocks
           ) + 1 )
     );
   }
-};
+}; // class IndexSetBlocks
 
 // -----------------------------------------------------------------------
 // IndexSetBlock
 // -----------------------------------------------------------------------
-
+#if 0
+// Currently using IndexSetSub instead
+//
 template <class ViewType>
 class IndexSetBlock
 : public IndexSetBase<
@@ -662,9 +673,8 @@ class IndexSetBlock
     return iterator(*this, size());
   }
 
-  constexpr index_type
-  operator[](index_type image_index) const {
-    return image_index +
+  constexpr index_type rel(index_type block_phase) const {
+    return block_phase +
            ( view_is_local
              ? ( // index of block at last index in domain
                  this->pattern().local_block_at(
@@ -682,6 +692,16 @@ class IndexSetBlock
            );
   }
 
+  constexpr index_type operator[](index_type block_phase) const noexcept {
+    return rel(block_phase);
+  }
+
+  template <dim_t NDim>
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & block_phase_coords) const noexcept {
+    return -1;
+  }
+
   constexpr index_type size() const {
     return _size; // calc_size();
   }
@@ -691,17 +711,17 @@ class IndexSetBlock
     return ( view_is_local
              ? ( // index of block at last index in domain
                  this->pattern().local_block_at(
-                   {{ *(this->domain().begin()
-                        + (this->domain().size() - 1)) }}
+                   {{ *( this->domain().begin()
+                         + (this->domain().size() - 1) ) }}
                  ).index -
                  // index of block at first index in domain
                  this->pattern().local_block_at(
-                   {{ *(this->domain().begin()) }}
+                   {{ *( this->domain().begin() ) }}
                  ).index + 1 )
              : ( // index of block at last index in domain
                  this->pattern().block_at(
-                   {{ *(this->domain().begin()
-                        + (this->domain().size() - 1)) }}
+                   {{ *( this->domain().begin()
+                         + (this->domain().size() - 1) ) }}
                  ) -
                  // index of block at first index in domain
                  this->pattern().block_at(
@@ -709,7 +729,8 @@ class IndexSetBlock
                  ) + 1 )
            );
   }
-};
+}; // class IndexSetBlock
+#endif
 
 // -----------------------------------------------------------------------
 // IndexSetSub
@@ -887,7 +908,7 @@ class IndexSetSub
              -(this->operator[](0)) + dash::origin(this->view()).size()
            );
   }
-};
+}; // class IndexSetSub
 
 // -----------------------------------------------------------------------
 // IndexSetLocal
@@ -948,15 +969,15 @@ class IndexSetLocal
   , _size(calc_size())
   { }
 
-  constexpr const local_type & local() const {
+  constexpr const local_type & local() const noexcept {
     return *this;
   }
 
-  constexpr global_type global() const {
+  constexpr global_type global() const noexcept {
     return global_type(this->view());
   }
 
-  constexpr preimage_type pre() const {
+  constexpr preimage_type pre() const noexcept {
     return preimage_type(this->view());
   }
 
@@ -968,7 +989,7 @@ class IndexSetLocal
   // (as in calc_size) with extents() implemented in IndexSetBase as
   // sequence { extent<d>... }.
   //
-  constexpr auto extents() const
+  constexpr auto extents() const noexcept
     -> decltype(
          std::declval<
            typename std::add_lvalue_reference<const pattern_type>::type
@@ -977,21 +998,21 @@ class IndexSetLocal
   }
 
   template <std::size_t ShapeDim>
-  constexpr index_type extent() const {
+  constexpr index_type extent() const noexcept {
     return this->pattern().local_extents()[ShapeDim];
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const {
+  constexpr index_type extent(std::size_t shape_dim) const noexcept {
     return this->pattern().local_extents()[shape_dim];
   }
 
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const {
+  constexpr size_type size(std::size_t sub_dim) const noexcept {
     return _size;
   }
 
-  constexpr size_type size() const {
+  constexpr size_type size() const noexcept {
     return size(0);
   }
 
@@ -1051,15 +1072,15 @@ class IndexSetLocal
 
   // ---- access ----------------------------------------------------------
 
-  constexpr iterator begin() const {
+  constexpr iterator begin() const noexcept {
     return iterator(*this, 0);
   }
 
-  constexpr iterator end() const {
+  constexpr iterator end() const noexcept {
     return iterator(*this, size());
   }
 
-  constexpr index_type rel(index_type local_index) const {
+  constexpr index_type rel(index_type local_index) const noexcept {
     // NOTE:
     // Random access operator must allow access at [end] because
     // end iterator of an index range may be dereferenced.
@@ -1075,16 +1096,16 @@ class IndexSetLocal
               );
   }
 
-  constexpr index_type operator[](index_type local_index) const {
+  constexpr index_type operator[](index_type local_index) const noexcept {
     return rel(local_index);
   }
 
   template <dim_t NDim>
   constexpr index_type operator[](
-    const std::array<index_type, NDim> & local_coords) const {
+    const std::array<index_type, NDim> & local_coords) const noexcept {
     return -1;
   }
-};
+}; // class IndexSetLocal
 
 // -----------------------------------------------------------------------
 // IndexSetGlobal
@@ -1175,7 +1196,7 @@ class IndexSetGlobal
   constexpr const preimage_type & pre() const {
     return dash::index(dash::local(this->view()));
   }
-};
+}; // class IndexSetGlobal
 
 } // namespace dash
 #endif // DOXYGEN

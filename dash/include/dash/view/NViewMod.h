@@ -103,10 +103,6 @@ public:
     return *this;
   }
 
-  domain_type & domain() {
-    return *this;
-  }
-
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }

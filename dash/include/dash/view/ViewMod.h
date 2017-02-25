@@ -183,10 +183,6 @@ class ViewOrigin
     return *this;
   }
 
-  domain_type & domain() {
-    return *this;
-  }
-
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -655,7 +651,6 @@ class ViewSubMod
   { }
 
   constexpr const_iterator begin() const {
-    // return this->domain().begin() + dash::index(*this)[0];
     return const_iterator(dash::origin(*this).begin(),
                           _index_set, 0);
   }

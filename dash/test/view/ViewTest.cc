@@ -7,13 +7,49 @@
 #include <array>
 #include <algorithm>
 #include <sstream>
+#include <string>
+#include <iomanip>
 
 
 namespace dash {
 namespace test {
 
+  class seq_pos_t {
+  public:
+    int unit;
+    int lindex;
+    int lblock;
+    int gindex;
+    int marker;
+
+    constexpr bool operator==(const seq_pos_t & rhs) const {
+      return &rhs == this ||
+             ( unit   == rhs.unit   &&
+               lindex == rhs.lindex &&
+               lblock == rhs.lblock &&
+               gindex == rhs.gindex &&
+               marker == rhs.marker );
+    }
+  };
+
+  std::ostream & operator<<(std::ostream & os, const seq_pos_t & sp) {
+    std::ostringstream ss;
+    if (sp.marker != 0) {
+      ss << "<" << sp.marker << "> ";
+    }
+    ss << sp.gindex
+       << "-u" << sp.unit
+       << ":b" << sp.lblock
+       << "-"  << sp.lindex;
+    return operator<<(os, ss.str());
+  }
+
   template <class ArrayT>
-  void initialize_array(ArrayT & array) {
+  auto initialize_array(ArrayT & array)
+  -> typename std::enable_if<
+                std::is_floating_point<typename ArrayT::value_type>::value,
+                void >::type
+  {
     auto block_size = array.pattern().blocksize(0);
     for (auto li = 0; li != array.local.size(); ++li) {
       auto block_lidx = li / block_size;
@@ -25,6 +61,29 @@ namespace test {
                         (0.0001 * (li+1)) +
                         // global offset
                         (0.0100 * gi);
+    }
+    array.barrier();
+  }
+
+  template <class ArrayT>
+  auto initialize_array(ArrayT & array)
+  -> typename std::enable_if<
+                std::is_same<typename ArrayT::value_type, seq_pos_t>::value,
+                void >::type
+  {
+    auto block_size = array.pattern().blocksize(0);
+    for (auto li = 0; li != array.local.size(); ++li) {
+      auto block_lidx = li / block_size;
+      auto block_gidx = (block_lidx * dash::size()) + dash::myid();
+      auto gi         = (block_gidx * block_size) + (li % block_size);
+      seq_pos_t val {
+                      static_cast<int>(dash::myid().id), // unit
+                      static_cast<int>(li),              // local offset
+                      static_cast<int>(block_lidx),      // local block index
+                      static_cast<int>(gi),              // global offset
+                      0                                  // marker
+                    };
+      array.local[li] = val;
     }
     array.barrier();
     DASH_LOG_TRACE("ViewTest.initialize_array", "Array initialized");
@@ -39,8 +98,8 @@ namespace test {
     int        i   = 0;
     for (const auto & v : vrange) {
       ss // << dash::internal::typestr(v)
-         << *(dash::begin(idx) + i) << "|"
-         << static_cast<const value_t>(v) << " ";
+         << std::setw(2)         << *(dash::begin(idx) + i) << "|"
+         << std::fixed << std::setprecision(4) << static_cast<const value_t>(v) << " ";
       ++i;
     }
     return ss.str();
@@ -50,6 +109,7 @@ namespace test {
 }
 
 using dash::test::range_str;
+using dash::test::seq_pos_t;
 
 
 TEST_F(ViewTest, ViewTraits)
@@ -248,8 +308,13 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
                                block_end_gidx,
                                a);
 
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
-                     block_gview);
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                       range_str(a));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                       range_str(block_gview));
+  }
+  a.barrier();
 
   EXPECT_EQ(block_size, block_gview.size());
 
@@ -313,6 +378,9 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
   // local(blocks(array))
   //
   {
+    int  l_b_idx;
+    int  l_idx;
+
     auto blocks_view   = dash::blocks(a);
     if (dash::myid() == 0) {
       for (auto block : blocks_view) {
@@ -342,122 +410,93 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        dash::internal::typestr(l_blocks_view.begin()));
 
-    int l_b_idx = 0;
+    l_b_idx = 0;
+    l_idx   = 0;
     for (auto l_block : l_blocks_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                      "l_block[", l_b_idx, "]:", range_str(l_block));
+      EXPECT_TRUE_U(std::equal(a.lbegin() + l_idx,
+                               a.lbegin() + l_idx + l_block.size(),
+                               l_block.begin()));
       ++l_b_idx;
+      l_idx += l_block.size();
     }
-    a.barrier();
+    EXPECT_EQ_U(l_idx, a.lsize());
   }
+  a.barrier();
+
+  // blocks(local(array))
+  //
+  {
+    int  l_b_idx = 0;
+    int  l_idx   = 0;
+
+    auto blocks_l_view = dash::blocks(
+                           dash::local(a));
+    for (const auto & block_l : blocks_l_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                     "block_l[", l_b_idx, "]:", range_str(block_l));
+      EXPECT_TRUE_U(std::equal(a.lbegin() + l_idx,
+                               a.lbegin() + l_idx + block_l.size(),
+                               block_l.begin()));
+      ++l_b_idx;
+      l_idx += block_l.size();
+    }
+    EXPECT_EQ_U(l_idx, a.lsize());
+  }
+  a.barrier();
 
   // local(blocks(sub(array)))
   //
   {
+    int  l_b_idx;
+    int  l_idx;
     auto blocks_sub_view   = dash::blocks(
                                dash::sub(
                                  block_size / 2,
                                  a.size() - (block_size / 2),
                                  a));
     if (dash::myid() == 0) {
+      int b_idx = 0;
+      int idx   = 0;
       for (auto block : blocks_sub_view) {
-        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks", "----",
-                       "blocks_sub_view", range_str(block));
+        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       "blocks_sub[", b_idx, "]", range_str(block));
+        ++b_idx;
       }
     }
     a.barrier();
 
     EXPECT_EQ_U(num_blocks, blocks_sub_view.size());
 
+    auto sub_array         = dash::sub(
+                                 block_size / 2,
+                                 a.size() - (block_size / 2),
+                                 a);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       range_str(sub_array));
+
+    auto tmp_2             = dash::blocks(
+                               sub_array);
     auto l_blocks_sub_view = dash::local(
-                               dash::blocks(
-                                 dash::sub(
-                                   block_size / 2,
-                                   a.size() - (block_size / 2),
-                                   a
-                                 ) ) );
+                               tmp_2);
     EXPECT_EQ_U(num_local_blocks, l_blocks_sub_view.size());
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        dash::internal::typestr(l_blocks_sub_view));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        l_blocks_sub_view.size());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                       dash::internal::typestr(l_blocks_sub_view.begin()));
 
-    int l_b_idx = 0;
-    for (auto l_block : l_blocks_sub_view) {
+    l_b_idx = 0;
+    l_idx   = 0;
+    for (const auto & l_block : l_blocks_sub_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                      "l_block_sub[", l_b_idx, "]:", range_str(l_block));
       ++l_b_idx;
+      l_idx += l_block.size();
     }
     a.barrier();
   }
-}
-
-TEST_F(ViewTest, Intersect1DimSingle)
-{
-  int block_size           = 13;
-  int array_size           = dash::size() * block_size
-                             // unbalanced size:
-                             + 2;
-
-  int sub_left_begin_gidx  = 0;
-  int sub_left_end_gidx    = (array_size * 2) / 3;
-  int sub_right_begin_gidx = (array_size * 1) / 3;
-  int sub_right_end_gidx   = array_size;
-
-  dash::Array<int> array(array_size);
-
-  for (auto li = 0; li != array.local.size(); ++li) {
-    array.local[li] = (1000 * (dash::myid() + 1)) +
-                      (100    * li) +
-                      (dash::myid() * block_size) + li;
-  }
-  array.barrier();
-
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array);
-
-  // View to first two thirds of global array:
-  auto gview_left   = dash::sub(sub_left_begin_gidx,
-                                sub_left_end_gidx,
-                                array);
-  // View to last two thirds of global array:
-  auto gview_right  = dash::sub(sub_right_begin_gidx,
-                                sub_right_end_gidx,
-                                array);
-
-  auto gview_isect  = dash::intersect(gview_left, gview_right);
-
-  auto gindex_isect = dash::index(gview_isect);
-
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect);
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gindex_isect);
-
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_left.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_right.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.begin());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.end());
-
-  EXPECT_EQ_U(sub_left_end_gidx  - sub_left_begin_gidx,
-              gview_left.size());
-  EXPECT_EQ_U(sub_right_end_gidx - sub_right_begin_gidx,
-              gview_right.size());
-  EXPECT_EQ_U(sub_left_end_gidx  - sub_right_begin_gidx,
-              gview_isect.size());
-
-  for (int isect_idx = 0; isect_idx < gview_isect.size(); isect_idx++) {
-    EXPECT_EQ_U(static_cast<int>(array[sub_right_begin_gidx + isect_idx]),
-                static_cast<int>(gview_isect[isect_idx]));
-  }
-
-  auto lview_isect  = dash::local(gview_isect);
-  auto lindex_isect = dash::index(lview_isect);
-
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.begin());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.end());
 }
 
 TEST_F(ViewTest, IndexSet)
@@ -852,6 +891,71 @@ TEST_F(ViewTest, BlocksView1Dim)
   }
 }
 
+TEST_F(ViewTest, Intersect1DimSingle)
+{
+  int block_size           = 13;
+  int array_size           = dash::size() * block_size
+                             // unbalanced size:
+                             + 2;
+
+  int sub_left_begin_gidx  = 0;
+  int sub_left_end_gidx    = (array_size * 2) / 3;
+  int sub_right_begin_gidx = (array_size * 1) / 3;
+  int sub_right_end_gidx   = array_size;
+
+  dash::Array<int> array(array_size);
+
+  for (auto li = 0; li != array.local.size(); ++li) {
+    array.local[li] = (1000 * (dash::myid() + 1)) +
+                      (100    * li) +
+                      (dash::myid() * block_size) + li;
+  }
+  array.barrier();
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array);
+
+  // View to first two thirds of global array:
+  auto gview_left   = dash::sub(sub_left_begin_gidx,
+                                sub_left_end_gidx,
+                                array);
+  // View to last two thirds of global array:
+  auto gview_right  = dash::sub(sub_right_begin_gidx,
+                                sub_right_end_gidx,
+                                array);
+
+  auto gview_isect  = dash::intersect(gview_left, gview_right);
+
+  auto gindex_isect = dash::index(gview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gindex_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", array.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_left.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_right.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", gview_isect.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *gindex_isect.end());
+
+  EXPECT_EQ_U(sub_left_end_gidx  - sub_left_begin_gidx,
+              gview_left.size());
+  EXPECT_EQ_U(sub_right_end_gidx - sub_right_begin_gidx,
+              gview_right.size());
+  EXPECT_EQ_U(sub_left_end_gidx  - sub_right_begin_gidx,
+              gview_isect.size());
+
+  for (int isect_idx = 0; isect_idx < gview_isect.size(); isect_idx++) {
+    EXPECT_EQ_U(static_cast<int>(array[sub_right_begin_gidx + isect_idx]),
+                static_cast<int>(gview_isect[isect_idx]));
+  }
+
+  auto lview_isect  = dash::local(gview_isect);
+  auto lindex_isect = dash::index(lview_isect);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.begin());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimSingle", *lindex_isect.end());
+}
+
 TEST_F(ViewTest, Intersect1DimChain)
 {
   int block_size           = 4;
@@ -866,7 +970,8 @@ TEST_F(ViewTest, Intersect1DimChain)
   int sub_right_begin_gidx = (block_size / 2);
   int sub_right_end_gidx   = array_size;
 
-  dash::Array<float> array(array_size, dash::BLOCKCYCLIC(block_size));
+  dash::Array<seq_pos_t> array(array_size,
+                               dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(array);
 
   DASH_LOG_DEBUG("ViewTest.Intersect1DimChain",
