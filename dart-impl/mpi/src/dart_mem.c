@@ -42,7 +42,7 @@ struct dart_buddy  *  dart_localpool;
 static inline int
 num_level(size_t size)
 {
-  unsigned int level = 1;
+  unsigned int level  = 1;
   while ((((unsigned int) 1) << level) < size) {
     level++;
   }
@@ -58,8 +58,13 @@ struct dart_buddy *
 dart_buddy_new(size_t size)
 {
   DART_ASSERT(is_pow_of_2(size));
-  unsigned int level = num_level(size) - DART_MEM_ALIGN_BITS;
-  unsigned int lsize = ((unsigned int) 1) << level;
+  unsigned int level  = num_level(size) - DART_MEM_ALIGN_BITS;
+  // do not shift more than 31 bit
+  if(level > sizeof(unsigned int) * 8){
+    DART_LOG_ERROR("Level of buddy allocator invalid");
+    return NULL;
+  }
+  unsigned int lsize  = (((unsigned int) 1) << level);
 	struct dart_buddy * self =
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (lsize * 2 - 2));
 	self->level = level;
@@ -166,7 +171,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 		}
 		for (;;) {
 			level--;
-			length *= 2;
+//    length *= 2;
 			index = (index + 1) / 2 - 1;
 			if (index < 0)
 			  dart_mutex_unlock(&self->mutex);
