@@ -98,8 +98,9 @@ namespace test {
     int        i   = 0;
     for (const auto & v : vrange) {
       ss // << dash::internal::typestr(v)
-         << std::setw(2)         << *(dash::begin(idx) + i) << "|"
-         << std::fixed << std::setprecision(4) << static_cast<const value_t>(v) << " ";
+         << std::setw(2) << *(dash::begin(idx) + i) << "|"
+         << std::fixed << std::setprecision(4)
+         << static_cast<const value_t>(v) << " ";
       ++i;
     }
     return ss.str();
@@ -1087,13 +1088,10 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      *g_sub_index.end());
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     g_sub_index.end() - g_sub_index.begin());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     g_sub_index.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     range_str(g_sub_index));
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                      range_str(g_sub_view));
+
+  EXPECT_EQ_U(block_size,   g_sub_view.size());
+  EXPECT_EQ_U(block_size,   g_sub_view.end() - g_sub_view.begin());
 
   EXPECT_EQ_U(block_size,   g_sub_index.size());
   EXPECT_EQ_U(block_size,   g_sub_index.end() - g_sub_index.begin());
@@ -1119,22 +1117,12 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                             l_begin_gidx,
                             l_begin_gidx + block_size,
                             array) ) );
-
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     *l_sub_index.begin());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_sub_index.end() - l_sub_index.begin());
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_sub_index.size());
-  // TODO: Assert
+  EXPECT_EQ_U(block_size, l_sub_view.size());
+  EXPECT_EQ_U(block_size, l_sub_index.size());
 
   auto l_idx_set_begin = *dash::begin(l_sub_index);
   auto l_idx_set_end   = *dash::end(l_sub_index);
 
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set_begin);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                     l_idx_set_end);
   EXPECT_EQ(0,              l_idx_set_begin);
   EXPECT_EQ(0 + block_size, l_idx_set_end);
 
@@ -1166,14 +1154,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
       "sub(range) expected have type trait local = false");
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       *dash::begin(dash::index(sub_lblock)));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       *dash::end(dash::index(sub_lblock)));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       sub_lblock.size());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       dash::end(sub_lblock) - dash::begin(sub_lblock));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(sub_lblock));
 
     EXPECT_EQ(block_size - 4, sub_lblock.size());
@@ -1186,14 +1166,6 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
       dash::view_traits<decltype(l_sub_lblock)>::is_local::value,
       "local(sub(range)) expected have type trait local = true");
 
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       *dash::begin(dash::index(l_sub_lblock)));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       *dash::end(dash::index(l_sub_lblock)));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       l_sub_lblock.size());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       dash::end(l_sub_lblock) - dash::begin(l_sub_lblock));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(l_sub_lblock));
 

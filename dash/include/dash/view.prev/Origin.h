@@ -47,11 +47,25 @@ origin(const ViewT & view)
   -> typename std::enable_if<
        dash::view_traits<ViewT>::is_view::value,
        const typename dash::view_traits<ViewT>::origin_type &
-//     const decltype(dash::origin(view.domain()))
+    // const decltype(dash::origin(view.domain()))
      >::type {
   // recurse upwards:
   return dash::origin(view.domain());
 }
+
+#if 0
+template <class ViewT>
+auto
+origin(ViewT & view)
+  -> typename std::enable_if<
+       dash::view_traits<ViewT>::is_view::value,
+       typename dash::view_traits<ViewT>::origin_type &
+    // decltype(dash::origin(view.domain()))
+     >::type {
+  // recurse upwards:
+  return dash::origin(view.domain());
+}
+#endif
 
 #endif // DOXYGEN
 

@@ -90,7 +90,7 @@ namespace detail {
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
     /// Whether the view is the origin domain.
-    typedef std::integral_constant<bool, false>                 is_origin;
+    typedef std::integral_constant<bool, false>                is_origin;
 
     typedef typename ViewT::index_type                            index_type;
     typedef typename ViewT::size_type                              size_type;
