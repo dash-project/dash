@@ -396,7 +396,11 @@ dart_ret_t dart_group_locality_split(
     num_groups = num_domains;
     *nout      = num_groups;
   }
-
+  if(num_groups <= 0) {
+    DART_LOG_ERROR("num_groups has to be greater than 0");
+    free(domains);
+    return DART_ERR_OTHER;
+  }
   if (num_groups == (size_t)num_domains) {
     /* one domain per group: */
     for (size_t g = 0; g < num_groups; ++g) {
@@ -465,7 +469,6 @@ dart_ret_t dart_group_locality_split(
     }
 #else
     /* Preliminary implementation */
-    DART_ASSERT_MSG(num_groups > 0, "num_groups has to be greater than 0");
     int max_group_domains = (num_domains + (num_groups-1)) / num_groups;
     DART_LOG_TRACE("dart_group_locality_split: max. domains per group: %d",
                    max_group_domains);
@@ -482,9 +485,13 @@ dart_ret_t dart_group_locality_split(
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         group_num_units += domains[d]->num_units;
       }
-      dart_global_unit_t * group_team_unit_ids = (dart_global_unit_t *)
-                              malloc(sizeof(dart_global_unit_t) *
-                                     group_num_units);
+
+      dart_global_unit_t * group_team_unit_ids = NULL;
+      if(group_num_units != 0){
+        group_team_unit_ids = (dart_global_unit_t *)
+                                malloc(sizeof(dart_global_unit_t) *
+                                       group_num_units);
+      }
       int group_unit_idx = 0;
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         for (int u = 0; u < domains[d]->num_units; ++u) {
