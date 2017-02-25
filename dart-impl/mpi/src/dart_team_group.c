@@ -27,9 +27,10 @@
 
 static struct dart_group_struct* allocate_group()
 {
-  struct dart_group_struct* group = malloc(sizeof(struct dart_group_struct));
+  struct dart_group_struct* group = (struct dart_group_struct *) malloc(
+                                      sizeof(struct dart_group_struct));
   return group;
-}
+};
 
 dart_ret_t dart_group_create(
   dart_group_t *group)
@@ -373,7 +374,7 @@ dart_ret_t dart_group_locality_split(
   /* create a group for every domain in the specified scope: */
 
   int total_domains_units           = 0;
-  dart_domain_locality_t ** domains = malloc(
+  dart_domain_locality_t ** domains = (dart_domain_locality_t **) malloc(
                                         num_domains *
                                         sizeof(dart_domain_locality_t *));
   for (int d = 0; d < num_domains; ++d) {
@@ -403,7 +404,7 @@ dart_ret_t dart_group_locality_split(
       dart_global_unit_t * unit_ids        = domains[g]->unit_ids;
 
       /* convert relative unit ids from domain to global unit ids: */
-      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
+      int * group_global_unit_ids = (int *) malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
@@ -464,6 +465,7 @@ dart_ret_t dart_group_locality_split(
     }
 #else
     /* Preliminary implementation */
+    DART_ASSERT_MSG(num_groups > 0, "num_groups has to be greater than 0");
     int max_group_domains = (num_domains + (num_groups-1)) / num_groups;
     DART_LOG_TRACE("dart_group_locality_split: max. domains per group: %d",
                    max_group_domains);
@@ -480,7 +482,7 @@ dart_ret_t dart_group_locality_split(
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         group_num_units += domains[d]->num_units;
       }
-      dart_global_unit_t * group_team_unit_ids =
+      dart_global_unit_t * group_team_unit_ids = (dart_global_unit_t *)
                               malloc(sizeof(dart_global_unit_t) *
                                      group_num_units);
       int group_unit_idx = 0;
@@ -492,7 +494,7 @@ dart_ret_t dart_group_locality_split(
       }
 
       /* convert relative unit ids from domain to global unit ids: */
-      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
+      int * group_global_unit_ids = (int *) malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = group_team_unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
