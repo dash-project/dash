@@ -1300,6 +1300,7 @@ TEST_F(MatrixTest, ConstMatrixRefs)
   // matrix_by_ref.local.row(0)[0] = 5;
   
   // test access using non-const & matrix.local
+  matrix.barrier();
   *(matrix_local.lbegin()) = 5;
 }
 
