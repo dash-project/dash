@@ -31,6 +31,7 @@ namespace internal {
 
 TimestampClockPosix::TimestampClockPosix()
 {
+  struct timespec ts;
 #if defined(DASH__UTIL__TIMER_UX)
 // HP-UX, Solaris
   value = static_cast<Timestamp::counter_t>(gethrtime());
@@ -52,8 +53,6 @@ TimestampClockPosix::TimestampClockPosix()
 // POSIX
 #if defined(_POSIX_TIMERS) && (_POSIX_TIMERS > 0)
 // POSIX clock_gettime
-  struct timespec ts;
-
   if (clockId != (clockid_t)-1 && clock_gettime(clockId, &ts) != -1) {
     value = static_cast<Timestamp::counter_t>(
               static_cast<double>(ts.tv_sec * 1000000) +
