@@ -153,7 +153,8 @@ dart_ret_t dart__base__locality__create(
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
   team_global_domain->num_units = num_units;
-  team_global_domain->unit_ids  = malloc(num_units * sizeof(dart_unit_t));
+  team_global_domain->unit_ids  = malloc(num_units *
+                                          sizeof(dart_global_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
     dart_team_unit_t luid = { u };
     DART_ASSERT_RETURNS(
@@ -339,6 +340,8 @@ dart_ret_t dart__base__locality__scope_domain_tags(
            dart_scope_domains[sd]->domain_tag);
   }
 
+  free(dart_scope_domains);
+
   return DART_OK;
 }
 
@@ -398,8 +401,10 @@ dart_ret_t dart__base__locality__domain_split_tags(
                    "domains in group %d: %d", g, num_group_subdomains);
 
     group_sizes[g]       = num_group_subdomains;
-    group_domain_tags[g] = malloc(sizeof(char *) * num_group_subdomains);
-
+    group_domain_tags[g] = NULL;
+    if (num_group_subdomains > 0) {
+      group_domain_tags[g] = malloc(sizeof(char *) * num_group_subdomains);
+    }
     for (int d_rel = 0; d_rel < num_group_subdomains; ++d_rel) {
       int d_abs   = group_first_domain_idx + d_rel;
       int tag_len = strlen(domain_tags[d_abs]);
@@ -414,6 +419,8 @@ dart_ret_t dart__base__locality__domain_split_tags(
 
   *group_sizes_out       = group_sizes;
   *group_domain_tags_out = group_domain_tags;
+
+  free(domain_tags);
 
   DART_LOG_TRACE("dart__base__locality__domain_split_tags >");
   return DART_OK;
@@ -529,6 +536,11 @@ dart_ret_t dart__base__locality__domain_group(
         DART_LOG_ERROR("dart__base__locality__domain_group ! "
                        "group subdomain %s with invalid parent domain %s",
                        group_subdomain_tags[sd], group_parent_domain_tag);
+        /*
+         * TODO TF: this will leak immediate_subdomain_tags and all
+         *          previously allocated subdomain_tags!
+         */
+
         return DART_ERR_INVAL;
       }
 
@@ -649,7 +661,7 @@ dart_ret_t dart__base__locality__domain_group(
 
     if (ret != DART_OK) { return ret; }
 
-    group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+    group_domain->unit_ids = malloc(sizeof(dart_global_unit_t) *
                                     group_domain->num_units);
 
     /* Remove entries from group domain that are not part of the group:

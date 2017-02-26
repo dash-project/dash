@@ -624,7 +624,8 @@ dart_ret_t dart__base__host_topology__create(
     /* Histogram of NUMA ids: */
     int numa_id_hist[DART_LOCALITY_MAX_NUMA_ID] = { 0 };
     /* Allocate array with capacity of maximum units on a single host: */
-    host_units->units      = malloc(sizeof(dart_unit_t) * max_host_units);
+    host_units->units      = malloc(sizeof(dart_global_unit_t)
+                                          * max_host_units);
     host_units->num_units  = 0;
     host_domain->host[0]   = '\0';
     host_domain->parent[0] = '\0';
@@ -684,7 +685,7 @@ dart_ret_t dart__base__host_topology__create(
                      max_host_units, host_units->num_units);
       host_units->units = realloc(host_units->units,
                                   host_units->num_units *
-                                    sizeof(dart_unit_t));
+                                    sizeof(dart_global_unit_t));
       DART_ASSERT(host_units->units != NULL);
     }
   }
