@@ -120,18 +120,19 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   }
 
   if (data_size) {
-    task->data_size = data_size;
-    task->data = malloc(data_size);
+    task->data_size  = data_size;
+    task->data       = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
-    task->data = data;
-    task->data_size = 0;
+    task->data       = data;
+    task->data_size  = 0;
   }
-  task->fn = fn;
+  task->fn           = fn;
   task->num_children = 0;
-  task->parent = get_current_task();
-  task->state = DART_TASK_CREATED;
-  task->phase = task->parent->phase;
+  task->parent       = get_current_task();
+  task->state        = DART_TASK_CREATED;
+  task->phase        = task->parent->phase;
+  task->has_ref      = false;
   return task;
 }
 
@@ -143,14 +144,16 @@ void destroy_task(dart_task_t *task)
   }
   // reset some of the fields
   // IMPORTANT: the state may not be rewritten!
-  task->data = NULL;
-  task->data_size = 0;
-  task->fn = NULL;
-  task->parent = NULL;
-  task->phase = 0;
-  task->prev = NULL;
+  task->data             = NULL;
+  task->data_size        = 0;
+  task->fn               = NULL;
+  task->parent           = NULL;
+  task->phase            = 0;
+  task->prev             = NULL;
   task->remote_successor = NULL;
-  task->successor = NULL;
+  task->successor        = NULL;
+  task->state            = DART_TASK_DESTROYED;
+  task->has_ref          = false;
   pthread_mutex_lock(&task_recycle_mutex);
   DART_STACK_PUSH(task_recycle_list, task);
 //  task->next = task_recycle_list;
@@ -193,8 +196,9 @@ void handle_task(dart_task_t *task)
     // to allow for atomic check and update
     // of remote successors in dart_tasking_datadeps_handle_remote_task
     dart_mutex_lock(&(task->mutex));
-    task->state = DART_TASK_FINISHED;
+    task->state = DART_TASK_TEARDOWN;
     dart_tasking_datadeps_release_local_task(task);
+    task->state = DART_TASK_FINISHED;
     dart_mutex_unlock(&(task->mutex));
 
     // let the parent know that we are done
@@ -202,7 +206,11 @@ void handle_task(dart_task_t *task)
     DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
     // clean up
-    destroy_task(task);
+    if (!task->has_ref){
+      // only destroy the task if there are no references outside
+      // referenced tasks will be destroyed in task_wait
+      destroy_task(task);
+    }
 
     // return to previous task
     set_current_task(current_task);
@@ -364,6 +372,32 @@ dart__base__tasking__create_task(
   return DART_OK;
 }
 
+dart_ret_t
+dart__base__tasking__create_task_handle(
+    void           (*fn) (void *),
+    void            *data,
+    size_t           data_size,
+    dart_task_dep_t *deps,
+    size_t           ndeps,
+    dart_taskref_t  *ref)
+{
+  dart_task_t *task = create_task(fn, data, data_size);
+  task->has_ref = true;
+
+  int32_t nc = DART_INC32_AND_FETCH(&task->parent->num_children);
+  DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
+
+  dart_tasking_datadeps_handle_task(task, deps, ndeps);
+
+  if (task->unresolved_deps == 0) {
+    dart__base__tasking__enqueue_runnable(task);
+  }
+
+  *ref = task;
+
+  return DART_OK;
+}
+
 
 dart_ret_t
 dart__base__tasking__task_complete()
@@ -405,9 +439,35 @@ dart__base__tasking__task_complete()
   if (thread->current_task == &(root_task)) {
     dart_tasking_datadeps_reset();
     // recycled tasks can now be used again
+    pthread_mutex_lock(&task_recycle_mutex);
     task_free_list = task_recycle_list;
     task_recycle_list = NULL;
+    pthread_mutex_unlock(&task_recycle_mutex);
   }
+
+  return DART_OK;
+}
+
+
+dart_ret_t
+dart__base__tasking__task_wait(dart_taskref_t *tr)
+{
+  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+
+  if (tr == NULL || *tr == NULL || (*tr)->state == DART_TASK_DESTROYED) {
+    return DART_ERR_INVAL;
+  }
+
+  // the thread just contributes to the execution
+  // of available tasks until the task waited on finishes
+  while ((*tr)->state != DART_TASK_FINISHED) {
+    dart_tasking_remote_progress();
+    dart_task_t *task = next_task(thread);
+    handle_task(task);
+  }
+
+  destroy_task(*tr);
+  *tr = NULL;
 
   return DART_OK;
 }

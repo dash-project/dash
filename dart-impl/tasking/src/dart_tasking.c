@@ -35,16 +35,65 @@ dart_tasking_num_threads()
 }
 
 /**
- * \brief Add a task the local task graph with dependencies. Tasks may define new tasks if necessary.
+ * Add a task to the local task graph with dependencies.
+ * Tasks may define new tasks if necessary.
+ *
+ * The \c data argument will be passed to the action \c fn.
+ * If \c data_size is non-zero, the content of \c data
+ * will be copied, the copy will be passed to \c fn
+ * and free'd upon completion of \c fn.
  */
 dart_ret_t
-dart_task_create(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
+dart_task_create(
+  void           (*fn) (void *),
+  void            *data,
+  size_t           data_size,
+  dart_task_dep_t *deps,
+  size_t           ndeps)
 {
-  return dart__base__tasking__create_task(fn, data, data_size, deps, ndeps);
+  return dart__base__tasking__create_task(
+                  fn, data,
+                  data_size,
+                  deps, ndeps);
 }
 
 /**
- * \brief Wait for all defined tasks to complete.
+ * Add a task to the local task graph with dependencies.
+ * This function is similar to \ref dart_task_create but
+ * also returns a reference to the created task, which can
+ * be used to wait for completion of that task in
+ * \c dart_task_wait.
+ */
+dart_ret_t
+dart_task_create_handle(
+  void           (*fn) (void *),
+  void            *data,
+  size_t           data_size,
+  dart_task_dep_t *deps,
+  size_t           ndeps,
+  dart_taskref_t  *taskref)
+{
+  return dart__base__tasking__create_task_handle(
+                 fn, data,
+                 data_size,
+                 deps, ndeps,
+                 taskref);
+}
+
+/**
+ * Wait for the completion of a task created through
+ * \c dart_task_create_handle.
+ * A task can only be waited on once, passing the same
+ * task reference to \c dart_task_wait twice is erroneous.
+ */
+dart_ret_t
+dart_task_wait(dart_taskref_t *taskref)
+{
+  return dart__base__tasking__task_wait(taskref);
+}
+
+/**
+ * Wait for all defined tasks to complete.
  */
 dart_ret_t
 dart_task_complete()
@@ -59,22 +108,3 @@ dart_tasking_phase()
   return dart__base__tasking__phase();
 }
 
-
-dart_taskref_t
-dart_tasking_current_task()
-{
-  return dart__base__tasking__current_task();
-}
-
-//void
-//dart_taskgraph_print()
-//{
-//  dart__base__tasking_print_taskgraph();
-//}
-
-
-//dart_ret_t
-//dart_taskgraph_sync()
-//{
-//  return dart__base__tasking_sync_taskgraph();
-//}

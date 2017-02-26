@@ -1,6 +1,8 @@
 #ifndef DART__BASE__INTERNAL__TASKING_H__
 #define DART__BASE__INTERNAL__TASKING_H__
 
+#include <stdbool.h>
+
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
@@ -13,7 +15,9 @@ typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0
   DART_TASK_RUNNING,
-  DART_TASK_CREATED
+  DART_TASK_CREATED,
+  DART_TASK_TEARDOWN,
+  DART_TASK_DESTROYED
 } dart_task_state_t;
 
 struct dart_task_data {
@@ -30,6 +34,7 @@ struct dart_task_data {
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   uint64_t                   phase;
+  bool                       has_ref;
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
@@ -74,7 +79,26 @@ uint64_t
 dart__base__tasking__phase_bound();
 
 dart_ret_t
-dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps);
+dart__base__tasking__create_task(
+  void           (*fn) (void *),
+  void            *data,
+  size_t           data_size,
+  dart_task_dep_t *deps,
+  size_t           ndeps);
+
+
+dart_ret_t
+dart__base__tasking__create_task_handle(
+  void           (*fn) (void *),
+  void            *data,
+  size_t           data_size,
+  dart_task_dep_t *deps,
+  size_t           ndeps,
+  dart_taskref_t  *ref);
+
+
+dart_ret_t
+dart__base__tasking__task_wait(dart_taskref_t *tr);
 
 dart_ret_t
 dart__base__tasking__task_complete();
