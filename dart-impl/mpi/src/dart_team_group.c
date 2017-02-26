@@ -70,7 +70,9 @@ dart_ret_t dart_group_clone(
   dart_group_t       * gout)
 {
   if (gin == NULL || gout == NULL) {
-    *gout = NULL;
+    if (gout != NULL) {
+      *gout = NULL;
+    }
     DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", gin, gout);
     return DART_ERR_INVAL;
   }
@@ -371,6 +373,16 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
                  num_domains, scope);
 
+  /* Splitting into more groups than domains not supported: */
+  if (num_groups > (size_t)num_domains) {
+    num_groups = num_domains;
+    *nout      = num_groups;
+  }
+  if(num_groups == 0) {
+    DART_LOG_ERROR("num_groups has to be greater than 0");
+    return DART_ERR_OTHER;
+  }
+
   /* create a group for every domain in the specified scope: */
 
   int total_domains_units           = 0;
@@ -391,16 +403,6 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
                  total_domains_units);
 
-  /* Splitting into more groups than domains not supported: */
-  if (num_groups > (size_t)num_domains) {
-    num_groups = num_domains;
-    *nout      = num_groups;
-  }
-  if(num_groups <= 0) {
-    DART_LOG_ERROR("num_groups has to be greater than 0");
-    free(domains);
-    return DART_ERR_OTHER;
-  }
   if (num_groups == (size_t)num_domains) {
     /* one domain per group: */
     for (size_t g = 0; g < num_groups; ++g) {
@@ -503,6 +505,7 @@ dart_ret_t dart_group_locality_split(
       /* convert relative unit ids from domain to global unit ids: */
       int * group_global_unit_ids = (int *) malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
+        // TODO TF: why is there no actual conversion happening here?!
         group_global_unit_ids[u] = group_team_unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
@@ -594,18 +597,20 @@ dart_ret_t dart_team_create(
 
   *newteam = DART_TEAM_NULL;
 
-  if (group->mpi_group == MPI_GROUP_NULL) {
-    return DART_OK;
-  }
-
   if (group == NULL) {
     DART_LOG_ERROR("Invalid group argument: %p", group);
     return DART_ERR_INVAL;
   }
 
 
+  if (group->mpi_group == MPI_GROUP_NULL) {
+    return DART_OK;
+  }
+
+
   dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
   if (parent_team_data == NULL) {
+    DART_LOG_ERROR("Invalid team argument: %p", teamid);
     return DART_ERR_INVAL;
   }
   comm = parent_team_data->comm;
@@ -786,7 +791,17 @@ dart_ret_t dart_team_unit_l2g(
   int size;
   dart_group_t group;
 
+  if (globalid == NULL) {
+    return DART_ERR_INVAL;
+  }
+
+  *globalid = DART_UNDEFINED_GLOBAL_UNIT_ID;
+
   dart_team_get_group (teamid, &group);
+  if (group == NULL) {
+    DART_LOG_EROR("Unknown teamid: %i", teamid);
+    return DART_ERR_INVAL;
+  }
   MPI_Group_size (group->mpi_group, &size);
 
   if (localid.id >= size) {
@@ -840,6 +855,9 @@ dart_ret_t dart_team_unit_g2l(
   *localid = i;
   return DART_OK;
 #endif
+  if (localid == NULL) {
+    return DART_ERR_INVAL;
+  }
   if(teamid == DART_TEAM_ALL) {
     localid->id = globalid.id;
   }
@@ -847,6 +865,10 @@ dart_ret_t dart_team_unit_g2l(
     dart_group_t group;
     MPI_Group group_all;
     dart_team_get_group(teamid, &group);
+    if (group == NULL) {
+      DART_LOG_ERROR("Invalid teamid: %i", teamid);
+      return DART_ERR_INVAL;
+    }
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(
       group_all,
