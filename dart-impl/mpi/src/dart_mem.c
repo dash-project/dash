@@ -171,7 +171,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 		}
 		for (;;) {
 			level--;
-//			length *= 2;
+			length *= 2;
 			index = (index + 1) / 2 - 1;
 			if (index < 0) {
 			  dart_mutex_unlock(&self->mutex);
