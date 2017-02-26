@@ -27,8 +27,7 @@
 
 static struct dart_group_struct* allocate_group()
 {
-  struct dart_group_struct* group = (struct dart_group_struct *) malloc(
-                                      sizeof(struct dart_group_struct));
+  struct dart_group_struct* group = malloc(sizeof(struct dart_group_struct));
   return group;
 };
 
@@ -116,18 +115,16 @@ dart_ret_t dart_group_union(
               &res->mpi_group) == MPI_SUCCESS)
   {
     int i, j, k, size_in, size_out;
-    dart_global_unit_t *pre_unitidsout;
-    dart_unit_t *post_unitidsout;
 
     MPI_Group group_all;
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_size(res->mpi_group, &size_out);
     if (size_out > 1) {
       MPI_Group_size(g1->mpi_group, &size_in);
-      pre_unitidsout  = (dart_global_unit_t *)malloc(
-                          size_out * sizeof (dart_global_unit_t));
-      post_unitidsout = (dart_unit_t *)malloc(
-                          size_out * sizeof (dart_unit_t));
+      dart_global_unit_t *pre_unitidsout = malloc(size_out
+                                            * sizeof(*pre_unitidsout));
+      dart_unit_t *post_unitidsout = malloc(size_out
+                                            * sizeof(*post_unitidsout));
       dart_group_getmembers (res, pre_unitidsout);
 
       /* Sort gout by the method of 'merge sort'. */
@@ -264,7 +261,6 @@ dart_ret_t dart_group_getmembers(
   dart_global_unit_t * unitids)
 {
   int size;
-  int *array;
   MPI_Group group_all;
 
   if (g == NULL) {
@@ -274,7 +270,7 @@ dart_ret_t dart_group_getmembers(
 
   MPI_Group_size(g->mpi_group, &size);
   MPI_Comm_group(DART_COMM_WORLD, &group_all);
-  array = (int*) malloc(sizeof (int) * size);
+  int *array = malloc(sizeof(*array) * size);
   for (int i = 0; i < size; i++) {
     array[i] = i;
   }
@@ -386,9 +382,7 @@ dart_ret_t dart_group_locality_split(
   /* create a group for every domain in the specified scope: */
 
   int total_domains_units           = 0;
-  dart_domain_locality_t ** domains = (dart_domain_locality_t **) malloc(
-                                        num_domains *
-                                        sizeof(dart_domain_locality_t *));
+  dart_domain_locality_t ** domains = malloc(num_domains * sizeof(*domains));
   for (int d = 0; d < num_domains; ++d) {
     DART_ASSERT_RETURNS(
       dart_domain_team_locality(team, domain_tags[d], &domains[d]),
@@ -410,7 +404,7 @@ dart_ret_t dart_group_locality_split(
       dart_global_unit_t * unit_ids        = domains[g]->unit_ids;
 
       /* convert relative unit ids from domain to global unit ids: */
-      int * group_global_unit_ids = (int *) malloc(group_num_units * sizeof(int));
+      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         group_global_unit_ids[u] = unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
@@ -490,8 +484,7 @@ dart_ret_t dart_group_locality_split(
 
       dart_global_unit_t * group_team_unit_ids = NULL;
       if(group_num_units != 0){
-        group_team_unit_ids = (dart_global_unit_t *)
-                                malloc(sizeof(dart_global_unit_t) *
+        group_team_unit_ids = malloc(sizeof(dart_global_unit_t) *
                                        group_num_units);
       }
       int group_unit_idx = 0;
@@ -503,7 +496,7 @@ dart_ret_t dart_group_locality_split(
       }
 
       /* convert relative unit ids from domain to global unit ids: */
-      int * group_global_unit_ids = (int *) malloc(group_num_units * sizeof(int));
+      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
         // TODO TF: why is there no actual conversion happening here?!
         group_global_unit_ids[u] = group_team_unit_ids[u].id;
@@ -539,7 +532,6 @@ dart_ret_t dart_group_ismember(
   int32_t            * ismember)
 {
   int                 i, size;
-  dart_global_unit_t* ranks;
 
 
   if (g == NULL) {
@@ -549,7 +541,7 @@ dart_ret_t dart_group_ismember(
   }
 
   MPI_Group_size(g->mpi_group, &size);
-  ranks = (dart_global_unit_t *)malloc(size * sizeof(dart_global_unit_t));
+  dart_global_unit_t* ranks = malloc(size * sizeof(dart_global_unit_t));
   dart_group_getmembers (g, ranks);
   for (i = 0; i < size; i++) {
     if (ranks[i].id == unitid.id) {
