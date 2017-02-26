@@ -610,7 +610,7 @@ dart_ret_t dart_team_create(
 
   dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
   if (parent_team_data == NULL) {
-    DART_LOG_ERROR("Invalid team argument: %p", teamid);
+    DART_LOG_ERROR("Invalid team argument: %d", teamid);
     return DART_ERR_INVAL;
   }
   comm = parent_team_data->comm;
@@ -799,7 +799,7 @@ dart_ret_t dart_team_unit_l2g(
 
   dart_team_get_group (teamid, &group);
   if (group == NULL) {
-    DART_LOG_EROR("Unknown teamid: %i", teamid);
+    DART_LOG_ERROR("Unknown teamid: %i", teamid);
     return DART_ERR_INVAL;
   }
   MPI_Group_size (group->mpi_group, &size);
