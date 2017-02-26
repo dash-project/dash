@@ -55,7 +55,8 @@ static dart_task_t root_task = {
     .parent = NULL,
     .remote_successor = NULL,
     .num_children = 0,
-    .phase  = 0};
+    .phase  = 0,
+    .state  = DART_TASK_ROOT};
 
 
 static void wait_for_work()
@@ -184,6 +185,9 @@ void handle_task(dart_task_t *task)
     //invoke the task function
     fn(data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
+
+    // Implicit wait for child tasks
+    dart__base__tasking__task_complete();
 
     // we need to lock the task shortly here
     // to allow for atomic check and update

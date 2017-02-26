@@ -10,9 +10,10 @@ struct dart_dephash_elem;
 struct task_list;
 
 typedef enum {
+  DART_TASK_ROOT     = -1, // special state assigned to the root task
+  DART_TASK_FINISHED =  0, // comparison with 0
   DART_TASK_RUNNING,
-  DART_TASK_CREATED,
-  DART_TASK_FINISHED
+  DART_TASK_CREATED
 } dart_task_state_t;
 
 struct dart_task_data {

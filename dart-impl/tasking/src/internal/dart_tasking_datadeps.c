@@ -22,7 +22,8 @@
  */
 
 
-#define IS_OUT_DEP(taskdep) (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT))
+#define IS_OUT_DEP(taskdep) \
+  (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT))
 
 typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;
@@ -203,7 +204,8 @@ dart_tasking_datadeps_release_unhandled_remote()
       dart_task_t *task = elem->task.local;
       // lock the task to avoid race condiditions in updating the state
       dart_mutex_lock(&task->mutex);
-      if (elem->taskdep.gptr.addr_or_offs.addr == rdep->taskdep.gptr.addr_or_offs.addr &&
+      if (elem->taskdep.gptr.addr_or_offs.addr
+              == rdep->taskdep.gptr.addr_or_offs.addr &&
           task->state != DART_TASK_FINISHED) {
         /*
          * Remote INPUT task dependencies are considered to refer to the
@@ -316,36 +318,59 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
     int slot = hash_gptr(dep.gptr);
     DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i seg:%i addr:%p",
-      task, i, dep.type, dep.gptr.unitid, dep.gptr.segid, dep.gptr.addr_or_offs.addr);
+                   task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
+                   dep.gptr.addr_or_offs.addr);
 
     if (dep.gptr.unitid != myid.id) {
-      dart_tasking_remote_datadep(&dep, task);
+      if (task->parent->state == DART_TASK_ROOT) {
+        dart_tasking_remote_datadep(&dep, task);
+      } else {
+        DART_LOG_ERROR("Ignoring remote dependency in nested task!");
+      }
     } else {
       /*
        * iterate over all dependent tasks until we find the first task with OUT|INOUT dependency on the same pointer
        */
-      for (dart_dephash_elem_t *elem = local_deps[slot]; elem != NULL; elem = elem->next)
+      for (dart_dephash_elem_t *elem = local_deps[slot];
+           elem != NULL; elem = elem->next)
       {
-        DART_ASSERT_MSG(elem->task.local != task, "Task already present in dependency hashmap!");
-        DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) of task %p",
-                          task, dep.gptr.addr_or_offs.addr, dep.gptr.segid,
-                          elem->taskdep.gptr.addr_or_offs.addr, elem->taskdep.gptr.segid,
-                          elem->task.local);
-        if (elem->taskdep.gptr.addr_or_offs.addr == dep.gptr.addr_or_offs.addr) {
+        DART_ASSERT_MSG(elem->task.local != task,
+            "Task already present in dependency hashmap!");
+        DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
+                       "of task %p",
+                       task,
+                       dep.gptr.addr_or_offs.addr,
+                       dep.gptr.segid,
+                       elem->taskdep.gptr.addr_or_offs.addr,
+                       elem->taskdep.gptr.segid,
+                       elem->task.local);
+
+        if (elem->taskdep.gptr.addr_or_offs.addr
+              == dep.gptr.addr_or_offs.addr) {
           dart_mutex_lock(&(elem->task.local->mutex));
-          DART_LOG_TRACE("Checking task %p against task %p (deptype: %i vs %i)", elem->task.local, task, elem->taskdep.type, dep.type);
+          DART_LOG_TRACE("Checking task %p against task %p "
+                         "(deptype: %i vs %i)",
+                         elem->task.local, task, elem->taskdep.type,
+                         dep.type);
+
           if (elem->task.local->state != DART_TASK_FINISHED &&
-              (IS_OUT_DEP(dep) || (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
+              (IS_OUT_DEP(dep) ||
+                  (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
             // OUT dependencies have to wait for all previous dependencies
-            int32_t unresolved_deps = DART_INC32_AND_FETCH(&task->unresolved_deps);
-            DART_LOG_DEBUG("Making task %p a local successor of task %p (successor: %p, num_deps: %i)",
-                      task, elem->task.local, elem->task.local->successor, unresolved_deps);
+            int32_t unresolved_deps = DART_INC32_AND_FETCH(
+                                          &task->unresolved_deps);
+            DART_LOG_DEBUG("Making task %p a local successor of task %p "
+                           "(successor: %p, num_deps: %i)",
+                           task, elem->task.local,
+                           elem->task.local->successor, unresolved_deps);
             dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
           }
           dart_mutex_unlock(&(elem->task.local->mutex));
           if (IS_OUT_DEP(elem->taskdep)) {
             // we can stop at the first OUT|INOUT dependency
-            DART_LOG_TRACE("Stopping search for dependencies for task %p at first OUT dependency encountered from task %p!", task, elem->task.local);;
+            DART_LOG_TRACE("Stopping search for dependencies for task %p at "
+                           "first OUT dependency encountered from task %p!",
+                           task, elem->task.local);;
             break;
           }
         }
@@ -436,10 +461,12 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   while (tl != NULL) {
     task_list_t *tmp = tl->next;
     int32_t unresolved_deps = DART_DEC32_AND_FETCH(&tl->task->unresolved_deps);
-    DART_LOG_DEBUG("release_local_task: task %p has %i dependencies left", tl->task, unresolved_deps);
+    DART_LOG_DEBUG("release_local_task: task %p has %i dependencies left",
+                   tl->task, unresolved_deps);
 
     if (unresolved_deps < 0) {
-      DART_LOG_ERROR("release_local_task: task %p has negative number of dependencies:  %i", tl->task, unresolved_deps);
+      DART_LOG_ERROR("release_local_task: task %p has negative number "
+                     "of dependencies:  %i", tl->task, unresolved_deps);
     } else if (unresolved_deps == 0) {
       dart__base__tasking__enqueue_runnable(tl->task);
     }
