@@ -938,7 +938,7 @@ dart_ret_t dart__base__locality__group_subdomains(
   /*
    * Collect unit ids of group domain:
    */
-  group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+  group_domain->unit_ids = malloc(sizeof(dart_global_unit_t) *
                                   group_domain->num_units);
   int group_domain_unit_idx = 0;
   for (int gd = 0; gd < num_grouped; gd++) {
