@@ -104,6 +104,9 @@ private:
   typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
     self_t;
 
+  typedef dash::util::Timer<dash::util::TimeMeasure::Clock>
+    Timer;
+
 public:
   typedef Key                                                       key_type;
   typedef Mapped                                                 mapped_type;
@@ -656,6 +659,68 @@ public:
     return result;
   }
 
+  iterator insert(
+    const_iterator hint,
+    const value_type & value)
+  {
+    Timer::timestamp_t ts_enter = Timer::Now(), ts_insert, ts_find, d_insert, d_find;
+    auto key = value.first;
+    auto mapped = value.second;
+
+    DASH_ASSERT(_globmem != nullptr);
+    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
+
+    auto unit = _key_hash(key);
+
+    iterator found = _end;
+
+    if (_myid == unit) {
+      DASH_LOG_TRACE("UnorderedMap.insert", "local element key lookup");
+
+      ts_find = Timer::Now();
+      auto lbegin = static_cast<value_type *>(_lbegin);
+      auto lend = static_cast<value_type *>(_lend);
+      const_local_iterator liter = std::find_if(
+                  _lbegin, _lend,
+                   [&](const value_type & v) {
+                     return _key_equal(v.first, key);
+                   });
+      d_find = Timer::ElapsedSince(ts_find);
+
+      if (liter != _lend) {
+        found = iterator(this, _myid, liter.pos());
+      }
+
+    } else  {
+      DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
+      iterator found = find(key);
+    }
+    DASH_LOG_TRACE_VAR("UnorderedMap.insert", found);
+
+    iterator res;
+    if (found != _end) {
+      DASH_LOG_TRACE("UnorderedMap.insert", "key found");
+      // Existing element found, no insertion:
+      res = found;
+    } else {
+      DASH_LOG_TRACE("UnorderedMap.insert", "key not found");
+      // Unit mapped to the new element's key by the hash function:
+      DASH_LOG_TRACE("UnorderedMap.insert", "target unit:", unit);
+      // No element with specified key exists, insert new value.
+      ts_insert = Timer::Now();
+      auto result = _insert_at(unit, value);
+      res = result.first;
+      d_insert = Timer::ElapsedSince(ts_insert);
+    }
+
+    auto d_exit = Timer::ElapsedSince(ts_enter);
+
+    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time:", d_exit * 10e-3);
+    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time (find):", d_find * 10e-3);
+    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time (insert_at):", d_insert * 10e-3);
+    return res;
+  }
+
   template<class InputIterator>
   void insert(
     // Iterator at first value in the range to insert.
@@ -742,7 +807,7 @@ private:
    * Using `std::declval()` instead (to generate a compile-time
    * pseudo-instance for member resolution) only works if Key and Mapped
    * are default-constructible.
-   * 
+   *
    * Finally, the distance obtained from
    *
    *   &(lptr_value->second) - lptr_value
@@ -805,12 +870,19 @@ private:
                    "unit:",   unit,
                    "key:",    value.first);
     auto result = std::make_pair(_end, false);
+    /* rkowalewski:
+     * Why do we increment local size and _local_cumul_size for the corresponding unit at the same time?
+     * This seems strange to me!!
+    */
+
+    //TODO rkowalewski: performance problem
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
     size_type old_local_size   = GlobRef<Atomic<size_type>>(
                                     _local_size_gptr
                                  ).fetch_add(1);
+
     size_type new_local_size   = old_local_size + 1;
     size_type local_capacity   = _globmem->local_size();
     _local_cumul_sizes[unit]  += 1;
@@ -849,6 +921,8 @@ private:
       DASH_LOG_TRACE("UnorderedMap.insert", "remote insertion");
       // Mark inserted element for move to remote unit in next commit:
       _move_elements.push_back(result.first);
+    } else {
+      ++_lend;
     }
 
     // Update iterators as global memory space has been changed for the

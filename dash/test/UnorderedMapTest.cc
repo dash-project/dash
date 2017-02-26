@@ -18,6 +18,7 @@ TEST_F(UnorderedMapTest, Initialization)
 
   auto nunits    = dash::size();
   auto myid      = dash::myid();
+
   // Size of local commit buffer:
   auto lbuf_size = 1;
   // Initial number of elements per unit:

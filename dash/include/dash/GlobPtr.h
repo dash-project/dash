@@ -15,14 +15,6 @@ std::ostream & operator<<(
   std::ostream      & os,
   const dart_gptr_t & dartptr);
 
-bool operator==(
-  const dart_gptr_t & lhs,
-  const dart_gptr_t & rhs);
-
-bool operator!=(
-  const dart_gptr_t & lhs,
-  const dart_gptr_t & rhs);
-
 namespace dash {
 
 // Forward-declarations
