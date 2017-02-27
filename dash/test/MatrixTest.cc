@@ -1272,21 +1272,35 @@ TEST_F(MatrixTest, ConstMatrixRefs)
   
   int el = matrix(0,0);
   el = matrix[0][0];
+  ASSERT_EQ_U(el, 0);
+  
   el = matrix.local[0][0];
+  ASSERT_EQ_U(el, 0);
+
   el = *(matrix.local.lbegin());
+  ASSERT_EQ_U(el, 0);
+
   dash::barrier();
   el = ++(*(matrix.local.lbegin()));
+  ASSERT_EQ_U(el, 1);
   el = ++(*(matrix.local.row(0).lbegin()));
-  
+  ASSERT_EQ_U(el, 2);
+  matrix.barrier();
+
   // test access using const & matrix
   el = matrix_by_ref[0][0];
+  ASSERT_EQ_U(el, 2);
+
   el = matrix_by_ref.local[0][0];
+  ASSERT_EQ_U(el, 2);
+
   // should not compile
   // el = ++(*(matrix_by_ref.local.lbegin()));
   // el = ++(*(matrix_by_ref.local.row(0).lbegin()));
   // matrix_by_ref.local.row(0)[0] = 5;
   
   // test access using non-const & matrix.local
+  matrix.barrier();
   *(matrix_local.lbegin()) = 5;
 }
 

@@ -29,7 +29,7 @@ static struct dart_group_struct* allocate_group()
 {
   struct dart_group_struct* group = malloc(sizeof(struct dart_group_struct));
   return group;
-}
+};
 
 dart_ret_t dart_group_create(
   dart_group_t *group)
@@ -69,7 +69,9 @@ dart_ret_t dart_group_clone(
   dart_group_t       * gout)
 {
   if (gin == NULL || gout == NULL) {
-    *gout = NULL;
+    if (gout != NULL) {
+      *gout = NULL;
+    }
     DART_LOG_ERROR("Invalid group argument: %p (gin), %p (gout)", gin, gout);
     return DART_ERR_INVAL;
   }
@@ -113,18 +115,16 @@ dart_ret_t dart_group_union(
               &res->mpi_group) == MPI_SUCCESS)
   {
     int i, j, k, size_in, size_out;
-    dart_global_unit_t *pre_unitidsout;
-    dart_unit_t *post_unitidsout;
 
     MPI_Group group_all;
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_size(res->mpi_group, &size_out);
     if (size_out > 1) {
       MPI_Group_size(g1->mpi_group, &size_in);
-      pre_unitidsout  = (dart_global_unit_t *)malloc(
-                          size_out * sizeof (dart_global_unit_t));
-      post_unitidsout = (dart_unit_t *)malloc(
-                          size_out * sizeof (dart_unit_t));
+      dart_global_unit_t *pre_unitidsout = malloc(size_out
+                                            * sizeof(*pre_unitidsout));
+      dart_unit_t *post_unitidsout = malloc(size_out
+                                            * sizeof(*post_unitidsout));
       dart_group_getmembers (res, pre_unitidsout);
 
       /* Sort gout by the method of 'merge sort'. */
@@ -261,7 +261,6 @@ dart_ret_t dart_group_getmembers(
   dart_global_unit_t * unitids)
 {
   int size;
-  int *array;
   MPI_Group group_all;
 
   if (g == NULL) {
@@ -271,7 +270,7 @@ dart_ret_t dart_group_getmembers(
 
   MPI_Group_size(g->mpi_group, &size);
   MPI_Comm_group(DART_COMM_WORLD, &group_all);
-  array = (int*) malloc(sizeof (int) * size);
+  int *array = malloc(sizeof(*array) * size);
   for (int i = 0; i < size; i++) {
     array[i] = i;
   }
@@ -370,12 +369,20 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
                  num_domains, scope);
 
+  /* Splitting into more groups than domains not supported: */
+  if (num_groups > (size_t)num_domains) {
+    num_groups = num_domains;
+    *nout      = num_groups;
+  }
+  if(num_groups == 0) {
+    DART_LOG_ERROR("num_groups has to be greater than 0");
+    return DART_ERR_OTHER;
+  }
+
   /* create a group for every domain in the specified scope: */
 
   int total_domains_units           = 0;
-  dart_domain_locality_t ** domains = malloc(
-                                        num_domains *
-                                        sizeof(dart_domain_locality_t *));
+  dart_domain_locality_t ** domains = malloc(num_domains * sizeof(*domains));
   for (int d = 0; d < num_domains; ++d) {
     DART_ASSERT_RETURNS(
       dart_domain_team_locality(team, domain_tags[d], &domains[d]),
@@ -389,12 +396,6 @@ dart_ret_t dart_group_locality_split(
   }
   DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
                  total_domains_units);
-
-  /* Splitting into more groups than domains not supported: */
-  if (num_groups > (size_t)num_domains) {
-    num_groups = num_domains;
-    *nout      = num_groups;
-  }
 
   if (num_groups == (size_t)num_domains) {
     /* one domain per group: */
@@ -480,9 +481,16 @@ dart_ret_t dart_group_locality_split(
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         group_num_units += domains[d]->num_units;
       }
-      dart_global_unit_t * group_team_unit_ids =
-                              malloc(sizeof(dart_global_unit_t) *
-                                     group_num_units);
+
+      dart_global_unit_t * group_team_unit_ids = NULL;
+      if(group_num_units != 0){
+        group_team_unit_ids = malloc(sizeof(dart_global_unit_t) *
+                                       group_num_units);
+      } else {
+        DART_LOG_DEBUG("dart_group_locality_split: no units in group %zu",
+                       g);
+        continue;
+      }
       int group_unit_idx = 0;
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         for (int u = 0; u < domains[d]->num_units; ++u) {
@@ -494,7 +502,7 @@ dart_ret_t dart_group_locality_split(
       /* convert relative unit ids from domain to global unit ids: */
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
-        group_global_unit_ids[u] = group_team_unit_ids[u].id;
+        group_global_unit_ids[u] = (int)group_team_unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
@@ -527,7 +535,6 @@ dart_ret_t dart_group_ismember(
   int32_t            * ismember)
 {
   int                 i, size;
-  dart_global_unit_t* ranks;
 
 
   if (g == NULL) {
@@ -537,7 +544,7 @@ dart_ret_t dart_group_ismember(
   }
 
   MPI_Group_size(g->mpi_group, &size);
-  ranks = (dart_global_unit_t *)malloc(size * sizeof(dart_global_unit_t));
+  dart_global_unit_t* ranks = malloc(size * sizeof(dart_global_unit_t));
   dart_group_getmembers (g, ranks);
   for (i = 0; i < size; i++) {
     if (ranks[i].id == unitid.id) {
@@ -585,18 +592,20 @@ dart_ret_t dart_team_create(
 
   *newteam = DART_TEAM_NULL;
 
-  if (group->mpi_group == MPI_GROUP_NULL) {
-    return DART_OK;
-  }
-
   if (group == NULL) {
     DART_LOG_ERROR("Invalid group argument: %p", group);
     return DART_ERR_INVAL;
   }
 
 
+  if (group->mpi_group == MPI_GROUP_NULL) {
+    return DART_OK;
+  }
+
+
   dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
   if (parent_team_data == NULL) {
+    DART_LOG_ERROR("Invalid team argument: %d", teamid);
     return DART_ERR_INVAL;
   }
   comm = parent_team_data->comm;
@@ -777,7 +786,17 @@ dart_ret_t dart_team_unit_l2g(
   int size;
   dart_group_t group;
 
+  if (globalid == NULL) {
+    return DART_ERR_INVAL;
+  }
+
+  *globalid = DART_UNDEFINED_GLOBAL_UNIT_ID;
+
   dart_team_get_group (teamid, &group);
+  if (group == NULL) {
+    DART_LOG_ERROR("Unknown teamid: %i", teamid);
+    return DART_ERR_INVAL;
+  }
   MPI_Group_size (group->mpi_group, &size);
 
   if (localid.id >= size) {
@@ -831,6 +850,9 @@ dart_ret_t dart_team_unit_g2l(
   *localid = i;
   return DART_OK;
 #endif
+  if (localid == NULL) {
+    return DART_ERR_INVAL;
+  }
   if(teamid == DART_TEAM_ALL) {
     localid->id = globalid.id;
   }
@@ -838,6 +860,10 @@ dart_ret_t dart_team_unit_g2l(
     dart_group_t group;
     MPI_Group group_all;
     dart_team_get_group(teamid, &group);
+    if (group == NULL) {
+      DART_LOG_ERROR("Invalid teamid: %i", teamid);
+      return DART_ERR_INVAL;
+    }
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(
       group_all,

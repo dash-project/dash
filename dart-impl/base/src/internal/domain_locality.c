@@ -304,9 +304,7 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
       }
     }
   } else {
-    if (NULL != domain->unit_ids) {
-      free(domain->unit_ids);
-    }
+    free(domain->unit_ids);
     domain->unit_ids = NULL;
   }
   DART_LOG_TRACE("dart__base__locality__domain__update_subdomains > "
@@ -538,12 +536,13 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 
   if (NULL != domain->unit_ids) {
     if (domain->num_units != unit_idx) {
-      dart_global_unit_t * tmp =
-        realloc(domain->unit_ids, unit_idx * sizeof(dart_global_unit_t));
       if (unit_idx == 0) {
+        free(domain->unit_ids);
         domain->unit_ids = NULL;
-      } else if (tmp != NULL) {
-        domain->unit_ids = tmp;
+      } else {
+        domain->unit_ids =
+            realloc(domain->unit_ids, unit_idx * sizeof(dart_global_unit_t));
+        DART_ASSERT(domain->unit_ids != NULL);
       }
       domain->num_units = unit_idx;
     }
@@ -743,14 +742,15 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
       dart_domain_locality_t * node_subdomain = node_domain->children[sd];
       int node_num_units_prev  = node_domain->num_units;
       node_domain->num_units  += node_subdomain->num_units;
+
       if (node_domain->num_units > node_num_units_prev) {
         node_domain->unit_ids    = realloc(node_domain->unit_ids,
                                            node_domain->num_units *
                                              sizeof(dart_global_unit_t));
 
         DART_ASSERT_MSG(
-          node_domain->unit_ids, "dart__base__locality__domain__create_subdomains: "
-             "realloc failed");
+          node_domain->unit_ids != NULL,
+          "dart__base__locality__domain__create_subdomains: realloc failed");
 
         memcpy(node_domain->unit_ids + node_num_units_prev,
                node_subdomain->unit_ids,
@@ -1108,10 +1108,15 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                    "-- module->children[%d].num_units:%d",
                    sd, subdomain->num_units);
 
-    subdomain->unit_ids = realloc(subdomain->unit_ids,
-                                  subdomain->num_units *
-                                    sizeof(dart_global_unit_t));
-    DART_ASSERT(NULL != subdomain->unit_ids);
+    if (subdomain->num_units > 0) {
+      subdomain->unit_ids = realloc(subdomain->unit_ids,
+                            subdomain->num_units * sizeof(dart_global_unit_t));
+      DART_ASSERT(NULL != subdomain->unit_ids);
+    } else {
+      free(subdomain->unit_ids);
+      subdomain->num_units = 0;
+      subdomain->unit_ids  = NULL;
+    }
 
     /* Number of units in subdomain is set at this point.
      * Below module level, a module subdomain's number of affine
