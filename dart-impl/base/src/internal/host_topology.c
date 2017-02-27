@@ -607,6 +607,10 @@ dart_ret_t dart__base__host_topology__create(
     /* All units mapped to same host: */
     max_host_units = num_host_units;
   }
+
+  DART_ASSERT_MSG(max_host_units > 0,
+                  "Resolved max. units per host is <= 0");
+
   /* All entries after index last_host_ids are duplicates now: */
   int num_hosts = last_host_idx + 1;
   DART_LOG_TRACE("dart__base__host_topology__init: number of hosts: %d",

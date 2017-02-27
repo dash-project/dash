@@ -890,7 +890,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   for (int sd = 0; sd < domain->num_domains; sd++) {
     dart_domain_locality_t * subdom        = &domain->domains[sd];
-    dart_domain_locality_t * domain_copy;
+    dart_domain_locality_t * domain_copy   = NULL;
 
     if (subdom->scope == DART_LOCALITY_SCOPE_GROUP) {
       DART_ASSERT_MSG(
