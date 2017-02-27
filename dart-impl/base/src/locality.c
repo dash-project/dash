@@ -330,6 +330,12 @@ dart_ret_t dart__base__locality__scope_domain_tags(
     free(dart_scope_domains);
     return ret;
   }
+  if (*num_domains_out <= 0) {
+    DART_LOG_ERROR("dart__base__locality__scope_domain_tags ! "
+                   "num_domains result at scope %d is %d <= 0",
+                   scope, *num_domains_out);
+    return DART_ERR_INVAL;
+  }
 
   *domain_tags_out = (char **)(malloc(sizeof(char *) * (*num_domains_out)));
   for (int sd = 0; sd < *num_domains_out; sd++) {
@@ -341,6 +347,12 @@ dart_ret_t dart__base__locality__scope_domain_tags(
   }
 
   free(dart_scope_domains);
+
+  if (*domain_tags_out == NULL) {
+    DART_LOG_ERROR("dart__base__locality__scope_domain_tags ! "
+                   "domain_tags result is undefined");
+    return DART_ERR_OTHER;
+  }
 
   return DART_OK;
 }
@@ -373,7 +385,7 @@ dart_ret_t dart__base__locality__domain_split_tags(
 
   /* Get total number and tags of domains in split scope: */
   int     num_domains;
-  char ** domain_tags;
+  char ** domain_tags = NULL;
   DART_ASSERT_RETURNS(
     dart__base__locality__scope_domain_tags(
       domain_in, scope, &num_domains, &domain_tags),
@@ -383,6 +395,12 @@ dart_ret_t dart__base__locality__domain_split_tags(
     DART_LOG_ERROR("dart__base__locality__domain_split_tags ! "
                    "domain_tags is undefined");
     return DART_ERR_OTHER;
+  }
+  if (num_domains <= 0) {
+    DART_LOG_ERROR("dart__base__locality__domain_split_tags ! "
+                   "num_domains at scope %d is %d <= 0",
+                   scope, num_domains);
+    return DART_ERR_INVAL;
   }
 
   DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
@@ -885,6 +903,7 @@ dart_ret_t dart__base__locality__group_subdomains(
       domain_copy = &ungrouped_domains[ungrouped_idx];
       ungrouped_idx++;
     }
+    DART_ASSERT(domain_copy != NULL);
     memcpy(domain_copy, subdom, sizeof(dart_domain_locality_t));
   }
 
@@ -981,12 +1000,14 @@ dart_ret_t dart__base__locality__group_subdomains(
   }
 
   for (int sd = 0; sd < num_ungrouped; sd++) {
-    DART_LOG_TRACE(
-      "dart__base__locality__group_subdomains: ==> domains[%d] u: %s",
-      sd, domain->domains[sd].domain_tag);
+    DART_ASSERT(
+      domain->domains != NULL);
     DART_ASSERT_MSG(
       ungrouped_domains != NULL,
       "No ungrouped subdomains at group locality scope");
+    DART_LOG_TRACE(
+      "dart__base__locality__group_subdomains: ==> domains[%d] u: %s",
+      sd, domain->domains[sd].domain_tag);
     memcpy(&domain->domains[sd],
            &ungrouped_domains[sd],
            sizeof(dart_domain_locality_t));
