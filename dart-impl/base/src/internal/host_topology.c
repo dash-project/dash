@@ -691,10 +691,17 @@ dart_ret_t dart__base__host_topology__create(
       // or       realloc(addr  = 0, n >  0) -> malloc
       DART_ASSERT(host_units->units     != NULL ||
                   host_units->num_units  > 0);
-      host_units->units = realloc(host_units->units,
-                                  host_units->num_units *
-                                    sizeof(dart_global_unit_t));
-      DART_ASSERT(host_units->units != NULL);
+      // Note: realloc with zero-size is argued unsafe in certain scenarios:
+      // https://www.securecoding.cert.org/confluence/display/c/\
+      //   MEM04-C.+Beware+of+zero-length+allocations
+      if (host_units->num_units > 0) {
+        host_units->units = realloc(host_units->units,
+                                    host_units->num_units *
+                                      sizeof(dart_global_unit_t));
+        DART_ASSERT(host_units->units != NULL);
+      } else {
+        free(host_units->units);
+      }
     }
   }
 
