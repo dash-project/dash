@@ -11,6 +11,18 @@ REPORT_DIR=report            # relative to BUILD_DIR
 BUILD_WRAPPER="${SCANBUILD_BIN}";
 
 
+
+## !! NOTE !!
+#
+#  See documentation of scan-build for details on recommended build
+#  configuration:
+#
+#  https://clang-analyzer.llvm.org/scan-build.html#recommended_debug
+#
+##
+
+
+
 # try to find build wrapper
 if [ "$BUILD_WRAPPER" = "" ]; then
   BUILD_WRAPPER="scan-build"
@@ -19,7 +31,7 @@ if [ "$SCANBUILD_OPTS" = "" ]; then
   SCANBUILD_OPTS="-analyze-headers -plist-html"
 fi
 SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
-
+SCANBUILD_OPTS="--force-analyze-debug-code ${SCANBUILD_OPTS}"
 
 which $BUILD_WRAPPER ||
   (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
@@ -78,7 +90,7 @@ fi
 rm -Rf $BUILD_DIR/*
 mkdir -p $BUILD_DIR/$REPORT_DIR
 (cd $BUILD_DIR && $BUILD_WRAPPER $SCANBUILD_OPTS \
-                  cmake3 -DCMAKE_BUILD_TYPE=Release \
+                  cmake3 -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
                         -DENABLE_COMPTIME_RED=OFF \
                         \
@@ -120,7 +132,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- $BUILD_WRAPPER $SCANBUILD_OPTS make -j 4) && \
+ $BUILD_WRAPPER $SCANBUILD_OPTS make) && \
  (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 
