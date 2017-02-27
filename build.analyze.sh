@@ -71,10 +71,10 @@ fi
 # installed.
 
 # Configure with default release build settings:
-mkdir -p $BUILD_DIR/$REPORT_DIR
 rm -Rf $BUILD_DIR/*
+mkdir -p $BUILD_DIR/$REPORT_DIR
 (cd $BUILD_DIR && $BUILD_WRAPPER $ANALYZE_OPTS \
-                  cmake -DCMAKE_BUILD_TYPE=Release \
+                  cmake3 -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
                         -DENABLE_COMPTIME_RED=OFF \
                         \
@@ -106,7 +106,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=ON \
                         \
