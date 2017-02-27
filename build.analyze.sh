@@ -9,12 +9,14 @@
 BUILD_DIR=./build.analyze
 REPORT_DIR=report            # relative to BUILD_DIR
 BUILD_WRAPPER="${SCANBUILD_BIN}";
-ANALYZE_OPTS="-o $REPORT_DIR -analyze-headers -plist-html"
 
 
 # try to find build wrapper
 if [ "$BUILD_WRAPPER" = "" ]; then
   BUILD_WRAPPER="scan-build"
+fi
+if [ "$SCANBUILD_OPTS" = "" ]; then
+  SCANBUILD_OPTS="-o $REPORT_DIR --analyze-headers --plist-html"
 fi
 
 which $BUILD_WRAPPER ||
@@ -73,7 +75,7 @@ fi
 # Configure with default release build settings:
 rm -Rf $BUILD_DIR/*
 mkdir -p $BUILD_DIR/$REPORT_DIR
-(cd $BUILD_DIR && $BUILD_WRAPPER $ANALYZE_OPTS \
+(cd $BUILD_DIR && $BUILD_WRAPPER $SCANBUILD_OPTS \
                   cmake3 -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
                         -DENABLE_COMPTIME_RED=OFF \
@@ -116,7 +118,7 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- $BUILD_WRAPPER $ANALYZE_OPTS make -j 4) && \
+ $BUILD_WRAPPER $SCANBUILD_OPTS make -j 4) && \
  (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 

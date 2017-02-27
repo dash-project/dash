@@ -379,6 +379,12 @@ dart_ret_t dart__base__locality__domain_split_tags(
       domain_in, scope, &num_domains, &domain_tags),
     DART_OK);
 
+  if (domain_tags == NULL) {
+    DART_LOG_ERROR("dart__base__locality__domain_split_tags ! "
+                   "domain_tags is undefined");
+    return DART_ERR_OTHER;
+  }
+
   DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
                  "number of domains in scope %d: %d", scope, num_domains);
 
@@ -898,6 +904,13 @@ dart_ret_t dart__base__locality__group_subdomains(
    */
   dart_domain_locality_t * group_domain =
     &domain->domains[group_domain_rel_idx];
+
+  if (group_domain == NULL) {
+    DART_LOG_ERROR("dart__base__locality__group_subdomains: "
+                   "Group domain at relative index %d not defined",
+                   group_domain_rel_idx);
+    return DART_ERR_NOTFOUND;
+  }
 
   dart__base__locality__domain__init(group_domain);
 

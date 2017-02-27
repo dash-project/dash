@@ -486,6 +486,10 @@ dart_ret_t dart_group_locality_split(
       if(group_num_units != 0){
         group_team_unit_ids = malloc(sizeof(dart_global_unit_t) *
                                        group_num_units);
+      } else {
+        DART_LOG_DEBUG("dart_group_locality_split: no units in group %zu",
+                       g);
+        continue;
       }
       int group_unit_idx = 0;
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
