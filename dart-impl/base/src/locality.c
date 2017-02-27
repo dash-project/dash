@@ -394,12 +394,16 @@ dart_ret_t dart__base__locality__domain_split_tags(
   if (domain_tags == NULL) {
     DART_LOG_ERROR("dart__base__locality__domain_split_tags ! "
                    "domain_tags is undefined");
+    free(group_domain_tags);
+    free(group_sizes);
     return DART_ERR_OTHER;
   }
   if (num_domains <= 0) {
     DART_LOG_ERROR("dart__base__locality__domain_split_tags ! "
                    "num_domains at scope %d is %d <= 0",
                    scope, num_domains);
+    free(group_domain_tags);
+    free(group_sizes);
     return DART_ERR_INVAL;
   }
 
@@ -560,10 +564,11 @@ dart_ret_t dart__base__locality__domain_group(
         DART_LOG_ERROR("dart__base__locality__domain_group ! "
                        "group subdomain %s with invalid parent domain %s",
                        group_subdomain_tags[sd], group_parent_domain_tag);
-        /*
-         * TODO TF: this will leak immediate_subdomain_tags and all
-         *          previously allocated subdomain_tags!
-         */
+
+        for (int sd_p = 0; sd_p <= sd; sd_p++) {
+          free(immediate_subdomain_tags[sd_p]);
+        }
+        free(immediate_subdomain_tags);
 
         return DART_ERR_INVAL;
       }
