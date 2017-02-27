@@ -55,21 +55,19 @@ public:
    * Default constructor, creates a cartesian space of extent 0 in all
    * dimensions.
    */
-  CartesianSpace()
+  constexpr CartesianSpace()
   : _size(0),
     _ndim(NumDimensions)
-  {
-  }
+  { }
 
   /**
    * Constructor, creates a cartesian index space of given extents in
    * all dimensions.
    */
-  template<typename... Args>
+  template <typename... Args>
   CartesianSpace(SizeType arg, Args... args)
   : _size(0),
-    _ndim(NumDimensions)
-  {
+    _ndim(NumDimensions) {
     resize(arg, args...);
   }
 
@@ -79,8 +77,7 @@ public:
   CartesianSpace(
     const extents_type & extents)
   : _size(0),
-    _ndim(NumDimensions)
-  {
+    _ndim(NumDimensions) {
     resize(extents);
   }
 
@@ -110,7 +107,7 @@ public:
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
 
@@ -156,7 +153,7 @@ public:
    *
    * \return The number of dimensions in the coordinate
    */
-  SizeType rank() const {
+  constexpr SizeType rank() const {
     return NumDimensions;
   }
 
@@ -167,7 +164,7 @@ public:
    *
    * \return The number of dimensions in the coordinate
    */
-  SizeType num_dimensions() const noexcept {
+  constexpr SizeType num_dimensions() const noexcept {
     return NumDimensions;
   }
 
@@ -177,14 +174,14 @@ public:
    *
    * \return The number of discrete elements in the coordinate's space
    */
-  SizeType size() const noexcept {
+  constexpr SizeType size() const noexcept {
     return _size;
   }
 
   /**
    * Extents of the cartesian space, by dimension.
    */
-  const extents_type & extents() const noexcept {
+  constexpr const extents_type & extents() const noexcept {
     return _extents;
   }
 
@@ -220,14 +217,14 @@ public:
   /**
    * Default constructor, creates a space of extent 0 in all dimensions.
    */
-  SizeSpec() : parent_t() {
+  constexpr SizeSpec() : parent_t() {
   }
 
   /**
    * Constructor, creates a cartesian space of given extents.
    */
-  template<typename... Args>
-  SizeSpec(SizeType arg, Args... args)
+  template <typename... Args>
+  constexpr SizeSpec(SizeType arg, Args... args)
   : parent_t(arg, args...) {
   }
 
@@ -235,7 +232,7 @@ public:
    * Constructor, creates a cartesian index space of given extents in
    * all dimensions.
    */
-  SizeSpec(
+  constexpr SizeSpec(
     const ::std::array<SizeType, NumDimensions> & extents)
   : parent_t(extents) {
   }
@@ -270,35 +267,26 @@ public:
  */
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType     _size;
+  SizeType     _size    = 0;
   /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType     _ndim;
+  SizeType     _ndim    = NumDimensions;
   /// Extents of the cartesian space by dimension.
   extents_type _extents = {  };
   /// Cumulative index offsets of the index space by dimension respective
   /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<ROW_ORDER>().
-  extents_type _offset_row_major;
+  extents_type _offset_row_major = { };
   /// Cumulative index offsets of the index space by dimension respective
   /// to column order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<COL_ORDER>().
-  extents_type _offset_col_major;
+  extents_type _offset_col_major = { };
 
 public:
   /**
    * Default constructor, creates a cartesian index space of extent 0
    * in all dimensions.
    */
-  CartesianIndexSpace()
-  : _size(0),
-    _ndim(0),
-    _extents({{ }})
-  {
-    for(auto i = 0; i < NumDimensions; i++) {
-      _offset_row_major[i] = 0;
-      _offset_col_major[i] = 0;
-    }
-  }
+  constexpr CartesianIndexSpace() = default;
 
   /**
    * Constructor, creates a cartesian index space of given extents.
@@ -347,7 +335,7 @@ public:
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
 
@@ -402,7 +390,7 @@ public:
    *
    * \return The number of dimensions in the coordinate
    */
-  SizeType rank() const noexcept {
+  constexpr SizeType rank() const noexcept {
     return NumDimensions;
   }
 
@@ -413,7 +401,7 @@ public:
    *
    * \return The number of dimensions in the coordinate
    */
-  SizeType num_dimensions() const noexcept {
+  constexpr SizeType num_dimensions() const noexcept {
     return NumDimensions;
   }
 
@@ -423,14 +411,14 @@ public:
    *
    * \return The number of discrete elements in the coordinate's space
    */
-  SizeType size() const noexcept {
+  constexpr SizeType size() const noexcept {
     return _size;
   }
 
   /**
    * Extents of the cartesian space, by dimension.
    */
-  const extents_type & extents() const noexcept {
+  constexpr const extents_type & extents() const noexcept {
     return _extents;
   }
 
@@ -457,14 +445,15 @@ public:
   template<
     typename... Args,
     MemArrange AtArrangement = Arrangement>
-  IndexType at(
+  constexpr IndexType at(
       IndexType arg, Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    ::std::array<IndexType, NumDimensions> pos =
-	{{ arg, (IndexType)(args) ... }};
-    return at<AtArrangement>(pos);
+    return at<AtArrangement>(
+             std::array<IndexType, NumDimensions> {{
+               arg, (IndexType)(args) ... }}
+           );
   }
 
   /**
@@ -617,7 +606,7 @@ public:
    * Accessor for dimension 1 (x), enabled for dimensionality > 0.
    */
   template<dim_t U = NumDimensions>
-  typename std::enable_if< (U > 0), SizeType >::type
+  constexpr typename std::enable_if< (U > 0), SizeType >::type
   x(SizeType offs) const {
     return coords(offs)[0];
   }
@@ -626,7 +615,7 @@ public:
    * Accessor for dimension 2 (y), enabled for dimensionality > 1.
    */
   template<dim_t U = NumDimensions>
-  typename std::enable_if< (U > 1), SizeType >::type
+  constexpr typename std::enable_if< (U > 1), SizeType >::type
   y(SizeType offs) const {
     return coords(offs)[1];
   }
@@ -635,7 +624,7 @@ public:
    * Accessor for dimension 3 (z), enabled for dimensionality > 2.
    */
   template<dim_t U = NumDimensions>
-  typename std::enable_if< (U > 2), SizeType >::type
+  constexpr typename std::enable_if< (U > 2), SizeType >::type
   z(SizeType offs) const {
     return coords(offs)[2];
   }
@@ -671,7 +660,7 @@ public:
    * Constructor, creates an instance of LocalMemoryLayout from a SizeSpec
    * and a DistributionSpec of \c NumDimensions dimensions.
    */
-  LocalMemoryLayout(
+  constexpr LocalMemoryLayout(
     const SizeSpec<NumDimensions> & sizespec,
     const DistributionSpec<NumDimensions> & distspec)
   : parent_t(sizespec),
@@ -682,7 +671,7 @@ public:
    * Constructor, creates an instance of LocalMemoryLayout with initial extents
    * 0 and a DistributionSpec of \c NumDimensions dimensions.
    */
-  LocalMemoryLayout(
+  constexpr LocalMemoryLayout(
     const DistributionSpec<NumDimensions> & distspec)
   : parent_t(SizeSpec<NumDimensions>()),
     _distspec(distspec) {
@@ -701,7 +690,7 @@ public:
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
 
@@ -739,14 +728,15 @@ public:
   template<
     typename... Args,
     MemArrange AtArrangement = Arrangement>
-  IndexType at(
+  constexpr IndexType at(
       IndexType arg, Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    ::std::array<IndexType, NumDimensions> pos =
-      { arg, (IndexType)(args) ... };
-    return at<AtArrangement>(pos);
+    return at<AtArrangement>(
+             std::array<IndexType, NumDimensions> {
+               arg, (IndexType)(args) ... }
+           );
   }
 
   /**

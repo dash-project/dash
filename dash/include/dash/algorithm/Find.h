@@ -46,8 +46,7 @@ GlobIter<ElementType, PatternType> find(
    auto g_begin_index = pattern.global(l_begin_index);
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin(
-                                          dash::Team::GlobalUnitID());
+    const ElementType * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + l_begin_index;
     const ElementType * l_range_end   = lbegin + l_end_index;
@@ -116,7 +115,7 @@ GlobIter<ElementType, PatternType> find_if(
     l_offset = -1;
   }
 
-  dash::Array<index_t> l_results(team.size());
+  dash::Array<index_t> l_results(team.size(), team);
 
   l_results.local[0] = l_offset;
 

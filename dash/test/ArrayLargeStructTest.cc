@@ -1,8 +1,10 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "ArrayLargeStructTest.h"
+#include "TestBase.h"
+
+#include <dash/Array.h>
 
 #include <iostream>
 #include <memory>
@@ -14,7 +16,7 @@ TEST_F(ArrayLargeStruct, LocalArrayTest)
 {
   size_t array_size = _dash_size;
   // Create array instances using varying constructor options
-  LOG_MESSAGE("Array size: %d", array_size);
+  LOG_MESSAGE("Array size: %zu", array_size);
   // Initialize arrays
   LOG_MESSAGE("Initialize arr1");
   dash::Array<DGNode> arr1(array_size);

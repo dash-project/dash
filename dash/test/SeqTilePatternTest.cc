@@ -1,9 +1,16 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "SeqTilePatternTest.h"
+
+#include <dash/pattern/SeqTilePattern.h>
+#include <dash/pattern/MakePattern.h>
+
+#include <dash/util/PatternMetrics.h>
+
+#include <dash/algorithm/SUMMA.h>
+
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
 
 TEST_F(SeqTilePatternTest, Distribute2DimTile)
 {

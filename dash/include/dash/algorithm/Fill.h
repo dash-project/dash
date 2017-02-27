@@ -1,6 +1,8 @@
 #ifndef DASH__ALGORITHM__FILL_H__
 #define DASH__ALGORITHM__FILL_H__
 
+#include <dash/internal/Config.h>
+
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/algorithm/LocalRange.h>
@@ -60,6 +62,7 @@ void fill(
   for (index_t lt = 0; lt < nlocal; lt += 2) {
     lfirst[lt] = value;
   }
+
   #pragma omp parallel num_threads(n_threads)
   for (index_t lt = 1; lt < nlocal; lt += 2) {
     lfirst[lt] = value;

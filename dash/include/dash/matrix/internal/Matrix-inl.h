@@ -152,10 +152,11 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
+  // use _lcapacity as tje collective allocator requires symmetric allocations
   _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
-  _begin           = GlobIter_t(_glob_mem, _pattern);
+  _begin           = iterator(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
-  _lend            = _glob_mem->lend();
+  _lend            = _lbegin + _lsize;
   // Register team deallocator:
   _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
@@ -223,7 +224,7 @@ inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>
 ::size() const noexcept
 {
@@ -231,7 +232,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>
 ::local_size() const noexcept
 {
@@ -239,7 +240,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>
 ::local_capacity() const noexcept
 {
@@ -247,7 +248,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -256,10 +257,10 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline
+constexpr
   std::array<
     typename Matrix<T, NumDim, IndexT, PatternT>::size_type,
-    NumDim>
+    NumDim >
 Matrix<T, NumDim, IndexT, PatternT>
 ::extents() const noexcept
 {
@@ -267,7 +268,30 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline bool
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::index_type
+Matrix<T, NumDim, IndexT, PatternT>
+::offset(
+  dim_t dim) const noexcept
+{
+  return _pattern.offset(dim);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+constexpr
+  std::array<
+    typename Matrix<T, NumDim, IndexT, PatternT>::index_type,
+    NumDim >
+Matrix<T, NumDim, IndexT, PatternT>
+::offsets() const noexcept
+{
+  // Offset of global matrix is (0,0)
+  return std::array<
+    typename Matrix<T, NumDim, IndexT, PatternT>::index_type,
+    NumDim > { };
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+constexpr bool
 Matrix<T, NumDim, IndexT, PatternT>
 ::empty() const noexcept
 {
@@ -282,15 +306,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::iterator
-Matrix<T, NumDim, IndexT, PatternT>
-::begin() noexcept
-{
-  return iterator(_begin);
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::begin() const noexcept
 {
@@ -298,7 +314,15 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
+typename Matrix<T, NumDim, IndexT, PatternT>::iterator
+Matrix<T, NumDim, IndexT, PatternT>
+::begin() noexcept
+{
+  return iterator(_begin);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+constexpr typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::end() const noexcept
 {
@@ -306,7 +330,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::iterator
+typename Matrix<T, NumDim, IndexT, PatternT>::iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::end() noexcept
 {
@@ -314,7 +338,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::local_type
+typename Matrix<T, NumDim, IndexT, PatternT>::local_type
 Matrix<T, NumDim, IndexT, PatternT>
 ::sub_local() noexcept
 {
@@ -322,7 +346,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline T *
+T *
 Matrix<T, NumDim, IndexT, PatternT>
 ::lbegin() noexcept
 {
@@ -330,7 +354,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline const T *
+constexpr const T *
 Matrix<T, NumDim, IndexT, PatternT>
 ::lbegin() const noexcept
 {
@@ -338,7 +362,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline T *
+T *
 Matrix<T, NumDim, IndexT, PatternT>
 ::lend() noexcept
 {
@@ -346,7 +370,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline const T *
+constexpr const T *
 Matrix<T, NumDim, IndexT, PatternT>
 ::lend() const noexcept
 {
@@ -354,26 +378,24 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline const MatrixRef<T, NumDim, NumDim-1, PatternT>
+constexpr MatrixRef<const T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos) const
 {
-  DASH_LOG_TRACE_VAR("Matrix.[]()", pos);
   return _ref.operator[](pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline MatrixRef<T, NumDim, NumDim-1, PatternT>
+MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos)
 {
-  DASH_LOG_TRACE_VAR("Matrix.[]()", pos);
   return _ref.operator[](pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t SubDimension>
-inline MatrixRef<T, NumDim, NumDim, PatternT>
+MatrixRef<T, NumDim, NumDim, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::sub(
   size_type offset,
@@ -384,7 +406,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t SubDimension>
-inline MatrixRef<T, NumDim, NumDim-1, PatternT>
+MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::sub(
   size_type n)
@@ -393,7 +415,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline MatrixRef<T, NumDim, NumDim-1, PatternT>
+MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::col(
   size_type n)
@@ -402,7 +424,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline MatrixRef<T, NumDim, NumDim-1, PatternT>
+MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::row(
   size_type n)
@@ -411,7 +433,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline MatrixRef<T, NumDim, NumDim, PatternT>
+MatrixRef<T, NumDim, NumDim, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::rows(
   size_type offset,
@@ -421,7 +443,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline MatrixRef<T, NumDim, NumDim, PatternT>
+MatrixRef<T, NumDim, NumDim, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::cols(
   size_type offset,
@@ -432,7 +454,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template <typename ... Args>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::reference
+typename Matrix<T, NumDim, IndexT, PatternT>::reference
 Matrix<T, NumDim, IndexT, PatternT>
 ::at(Args... args)
 {
@@ -441,7 +463,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template <typename ... Args>
-inline typename Matrix<T, NumDim, IndexT, PatternT>::reference
+typename Matrix<T, NumDim, IndexT, PatternT>::reference
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator()(Args... args)
 {
@@ -449,7 +471,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline const PatternT &
+constexpr const PatternT &
 Matrix<T, NumDim, IndexT, PatternT>
 ::pattern() const
 {
@@ -457,7 +479,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline bool Matrix<T, NumDim, IndexT, PatternT>
+constexpr bool Matrix<T, NumDim, IndexT, PatternT>
 ::is_local(
   size_type g_pos) const
 {
@@ -466,7 +488,7 @@ inline bool Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template <dim_t Dimension>
-inline bool Matrix<T, NumDim, IndexT, PatternT>
+constexpr bool Matrix<T, NumDim, IndexT, PatternT>
 ::is_local(
   size_type g_pos) const
 {
@@ -475,7 +497,7 @@ inline bool Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template <int level>
-inline dash::HView<Matrix<T, NumDim, IndexT, PatternT>, level>
+dash::HView<Matrix<T, NumDim, IndexT, PatternT>, level>
 Matrix<T, NumDim, IndexT, PatternT>
 ::hview()
 {
@@ -483,7 +505,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline Matrix<T, NumDim, IndexT, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
 ::operator MatrixRef<T, NumDim, NumDim, PatternT>()
 {
   return _ref;

@@ -1,14 +1,16 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "GlobAsyncRefTest.h"
+
+#include <dash/GlobAsyncRef.h>
+#include <dash/Array.h>
+
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
   int num_elem_per_unit = 20;
   // Initialize values:
-  dash::Array<int> array(_dash_size * num_elem_per_unit);
+  dash::Array<int> array(dash::size() * num_elem_per_unit);
   for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = _dash_id;
+    array.local[li] = dash::myid().id;
   }
   array.barrier();
   // Test global async references on array elements:
@@ -28,9 +30,9 @@ TEST_F(GlobAsyncRefTest, IsLocal) {
 TEST_F(GlobAsyncRefTest, Push) {
   int num_elem_per_unit = 20;
   // Initialize values:
-  dash::Array<int> array(_dash_size * num_elem_per_unit);
+  dash::Array<int> array(dash::size() * num_elem_per_unit);
   for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = _dash_id;
+    array.local[li] = dash::myid().id;
   }
   array.barrier();
   // Assign values asynchronously:
@@ -45,7 +47,7 @@ TEST_F(GlobAsyncRefTest, Push) {
   // Test values in local window. Changes by all units should be visible:
   for (auto li = 0; li < array.lcapacity(); ++li) {
     // All local values incremented once by all units
-    ASSERT_EQ_U(_dash_id + 1,
+    ASSERT_EQ_U(dash::myid().id + 1,
                 array.local[li]);
   }
 }

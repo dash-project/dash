@@ -141,7 +141,9 @@ passed review and has been merged.
 
 The development branch of DASH is merged to master periodically once all
 issues in the development branch associated with the next stable release
-are closed.
+are closed. We do not use squash merges as this wipes out the ownership
+of the code. A later `git blame` would only show the member which
+squash-merged the changes, but not author of the code.
 
 Before merging:
 
@@ -158,3 +160,17 @@ After merging:
 - Publish a new release: create a tarball distribution by running
  `release.pl` and add a link on the DASH project website.
 
+Contributing Tests
+-----------------
+
+Write your tests orienting yourself on existing ones.
+The tests can be found under `(dash-root)/dash/test`.
+For how to compile and run the tests take a look at `README.md`.
+
+If you want to check for equality at compile time use `static_assert` etc.
+For runtime equality check; normally a `assert_*` leads to abortion if failed
+and a `expect_*` leads to continuation but the test is accounted as failed.
+See `(dash-root)/dash/test/TestBase.h` for more functions.
+
+For the time being `assert_*` is synonym to `expect_*` but please write your tests
+as you "normally" would in case it will be adapted to the standard some day.

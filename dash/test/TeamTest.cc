@@ -1,12 +1,18 @@
-#include <libdash.h>
+
+#include "TeamTest.h"
+
+#include <dash/Team.h>
+#include <dash/Array.h>
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
+#include <dash/util/TeamLocality.h>
+
 #include <array>
 #include <sstream>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
 
-#include "TestBase.h"
-#include "TeamTest.h"
 
 TEST_F(TeamTest, Deallocate) {
   LOG_MESSAGE("Start dealloc test");
@@ -52,10 +58,10 @@ TEST_F(TeamTest, SplitTeamSync)
     SKIP_TEST_MSG("test supports only 1 node");
   }
 
-  LOG_MESSAGE("team_all contains %d units", team_all.size());
+  LOG_MESSAGE("team_all contains %lu units", team_all.size());
 
   auto & team_core = team_all.split(2);
-  LOG_MESSAGE("team_core (%d) contains %d units",
+  LOG_MESSAGE("team_core (%d) contains %lu units",
               team_core.dart_id(), team_core.size());
 
   if (team_core.num_siblings() < 2) {

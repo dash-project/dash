@@ -12,10 +12,9 @@ struct UNSPECIFIED_TYPE;
  * This has to be implemented using a function, as the H5T_NATIVE_*
  * is a macro that expands to a non constant function
  */
-template < typename T > inline hid_t get_h5_datatype() {
-  DASH_THROW(
-    dash::exception::InvalidArgument,
-    "Datatype not supported");
+template <typename T>
+inline hid_t get_h5_datatype() {
+  DASH_THROW(dash::exception::InvalidArgument, "Datatype not supported");
   // To avoid compiler warning:
   return -1;
 }
@@ -39,8 +38,7 @@ template <>
 inline hid_t get_h5_datatype<double>() {
   return H5T_NATIVE_DOUBLE;
 }
-
 }
 }
 }
-#endif // DASH__IO__HDF5__INTERNAL__STORAGEDRIVER_H__INCLUDED
+#endif  // DASH__IO__HDF5__INTERNAL__STORAGEDRIVER_H__INCLUDED

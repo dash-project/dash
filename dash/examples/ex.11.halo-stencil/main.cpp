@@ -54,7 +54,7 @@ void write_pgm(const std::string & filename, const Array_t & data){
     std::vector<element_t> buffer(ext_x);
 
     for(long y=0; y<ext_y; ++y){
-      auto & first = data.begin();
+      const auto & first = data.begin();
 
       dash::copy(first+ext_x*y, first+ext_x*(y+1), buffer.data());
 

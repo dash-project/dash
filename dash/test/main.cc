@@ -28,8 +28,14 @@ int main(int argc, char * argv[])
   std::string host(hostname);
 
   // Init MPI
-  #ifdef MPI_SUPPORT
+#ifdef MPI_SUPPORT
+#ifdef DASH_ENABLE_THREADSUPPORT
+  int thread_required = MPI_THREAD_MULTIPLE;
+  int thread_provided; // ignored here
+  MPI_Init_thread(&argc, &argv, thread_required, &thread_provided);
+#else
   MPI_Init(&argc, &argv);
+#endif // DASH_ENABLE_THREADSUPPORT
   MPI_Comm_rank(MPI_COMM_WORLD, &team_myid);
   MPI_Comm_size(MPI_COMM_WORLD, &team_size);
 
@@ -38,24 +44,24 @@ int main(int argc, char * argv[])
     ::testing::GTEST_FLAG(output) = "";
   }
 
-  #endif
+#endif
   // Init GoogleTest (strips gtest arguments from argv)
   ::testing::InitGoogleTest(&argc, argv);
-  #ifdef MPI_SUPPORT
+#ifdef MPI_SUPPORT
   MPI_Barrier(MPI_COMM_WORLD);
-  #endif
+#endif
 
   std::cout << "#### "
             << "Starting test on unit " << team_myid << " "
             << "(" << host << " PID: " << getpid() << ")"
             << std::endl;
-  #ifdef MPI_SUPPORT
+#ifdef MPI_SUPPORT
   MPI_Barrier(MPI_COMM_WORLD);
-  #endif
+#endif
 
   sleep(1);
 
-  #ifdef MPI_SUPPORT
+#ifdef MPI_SUPPORT
   // Parallel Test Printer only available for MPI
   // Change Test Printer
   UnitTest& unit_test = *UnitTest::GetInstance();
@@ -64,16 +70,16 @@ int main(int argc, char * argv[])
   delete listeners.Release(listeners.default_result_printer());
 
   listeners.Append(new TestPrinter);
-  #endif
+#endif
 
   // Run Tests
   int ret = RUN_ALL_TESTS();
 
-  #ifdef MPI_SUPPORT
+#ifdef MPI_SUPPORT
   if (dash::is_initialized()) {
     dash::finalize();
   }
   MPI_Finalize();
-  #endif
+#endif
   return ret;
 }

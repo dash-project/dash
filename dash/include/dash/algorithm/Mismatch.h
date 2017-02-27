@@ -1,10 +1,15 @@
 #ifndef DASH__ALGORITHM__MISMATCH_H__INCLUDED
 #define DASH__ALGORITHM__MISMATCH_H__INCLUDED
 
+#include <dash/Array.h>
+
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
+
 #include <dash/dart/if/dart_communication.h>
+
+#include <utility>
 
 
 namespace dash {
@@ -42,8 +47,8 @@ mismatch(
     l_offset = -1;
   }
 
-  dash::Array<PairType> l_results_return(team.size());
-  dash::Array<index_t>  l_results;
+  dash::Array<PairType> l_results_return(team.size(), team);
+  dash::Array<index_t>  l_results(team.size(), team);
   l_results.local[0]        = l_offset;
   l_results_return.local[0] = l_result;
 

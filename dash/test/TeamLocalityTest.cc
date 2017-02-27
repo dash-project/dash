@@ -1,10 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "TeamLocalityTest.h"
 
+#include <dash/util/TeamLocality.h>
+
 #include <string>
+#include <vector>
 
 
 void print_locality_domain(
@@ -36,7 +36,7 @@ void test_locality_hierarchy_integrity(
 
 TEST_F(TeamLocalityTest, GlobalAll)
 {
-  if (_dash_id != 0) {
+  if (dash::myid().id != 0) {
     return;
   }
 
@@ -47,7 +47,8 @@ TEST_F(TeamLocalityTest, GlobalAll)
   EXPECT_EQ_U(team, tloc.team());
 
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
-                 "team all, global domain, units:", tloc.global_units().size());
+                 "team all, global domain, units:",
+                 tloc.global_units().size());
   EXPECT_EQ_U(team.size(), tloc.global_units().size());
 
   for (auto unit : tloc.global_units()) {
@@ -64,7 +65,7 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
 TEST_F(TeamLocalityTest, SplitCore)
 {
-  if (_dash_size < 2) {
+  if (dash::size() < 2) {
     SKIP_TEST();
   }
 
@@ -96,7 +97,7 @@ TEST_F(TeamLocalityTest, SplitCore)
 
 TEST_F(TeamLocalityTest, SplitNUMA)
 {
-  if (_dash_id != 0) {
+  if (dash::myid().id != 0) {
     return;
   }
 
@@ -143,7 +144,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (dash::size() < 3) {
     SKIP_TEST();
   }
-  if (_dash_id != 0) {
+  if (dash::myid().id != 0) {
     return;
   }
 
@@ -252,7 +253,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
   if (dash::size() < 4) {
     SKIP_TEST();
   }
-  if (_dash_id != 0) {
+  if (dash::myid().id != 0) {
     return;
   }
 

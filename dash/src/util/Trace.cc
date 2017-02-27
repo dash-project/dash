@@ -1,5 +1,6 @@
 #include <dash/util/Trace.h>
-#include <dash/Init.h>
+#include <dash/util/Config.h>
+#include <dash/Team.h>
 
 #include <map>
 #include <iostream>
