@@ -31,7 +31,7 @@ if [ "$SCANBUILD_OPTS" = "" ]; then
   SCANBUILD_OPTS="-analyze-headers -plist-html"
 fi
 SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
-SCANBUILD_OPTS="--force-analyze-debug-code ${SCANBUILD_OPTS}"
+SCANBUILD_OPTS="--force-analyze-debug-code -v ${SCANBUILD_OPTS}"
 
 which $BUILD_WRAPPER ||
   (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
@@ -123,8 +123,8 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=OFF \
-                        -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_TESTS=OFF \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
