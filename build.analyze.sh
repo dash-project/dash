@@ -29,7 +29,7 @@ fi
 await_confirm() {
   if ! $FORCE_BUILD; then
     echo ""
-    echo "   To build using these settings, hit ENTER"
+    echo "   To build and analyze using these settings, hit ENTER"
     read confirm
   fi
 }
@@ -71,16 +71,12 @@ fi
 # installed.
 
 # Configure with default release build settings:
-mkdir -p $BUILD_DIR
-mkdir -p $REPORT_DIR
+mkdir -p $BUILD_DIR/$REPORT_DIR
 rm -Rf $BUILD_DIR/*
-rm -Rf $REPORT_DIR/*
 (cd $BUILD_DIR && $BUILD_WRAPPER $ANALYZE_OPTS \
                   cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
-                        \
-                        -DCMAKE_C_COMPILER=clang \
-                        -DCMAKE_CXX_COMPILER=clang++ \
+                        -DENABLE_COMPTIME_RED=OFF \
                         \
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
