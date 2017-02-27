@@ -39,11 +39,11 @@ namespace internal {
 
   public:
     typedef LocalityDomainIterator<LocalityDomainT>       self_type;
-    typedef int                              difference_type;
+    typedef int                                     difference_type;
 
-    typedef       LocalityDomainT                 value_type;
-    typedef       LocalityDomainT *                  pointer;
-    typedef       LocalityDomainT &                reference;
+    typedef       LocalityDomainT                        value_type;
+    typedef       LocalityDomainT *                         pointer;
+    typedef       LocalityDomainT &                       reference;
 
   public:
 
@@ -278,8 +278,8 @@ public:
     dash::util::Locality::Scope scope) const
   {
     std::vector<self_t>       scope_domains;
-    
     int                       num_scope_domains;
+
     dart_domain_locality_t ** dart_scope_domains;
     dart_ret_t ret = dart_domain_scope_domains(
                        _domain,
@@ -290,6 +290,7 @@ public:
 
     DASH_LOG_TRACE_VAR("LocalityDomain.scope_domains", num_scope_domains);
     if (num_scope_domains > 0) {
+      scope_domains.reserve(num_scope_domains);
       for (int sd = 0; sd < num_scope_domains; sd++) {
         DASH_LOG_TRACE("LocalityDomain.scope_domains",
                        "scope_domains[", sd, "]", ":",

@@ -166,7 +166,7 @@ dart_ret_t dart_domain_split_scope(
   int                             num_parts,
   dart_domain_locality_t        * domains_out)
 {
-  DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
+  DART_LOG_DEBUG("dart_domain_split_scope() team(%d) domain(%s) "
                  "into %d parts at scope %d",
                  domain_in->team, domain_in->domain_tag, num_parts, 
                  scope);
@@ -192,11 +192,11 @@ dart_ret_t dart_domain_split_scope(
    * hierarchy:
    */
   for (int p = 0; p < num_parts; p++) {
-    DART_LOG_DEBUG("dart_domain_split: split %d / %d",
+    DART_LOG_DEBUG("dart_domain_split_scope: split %d / %d",
                    p + 1, num_parts);
 
 #ifdef DART_ENABLE_LOGGING
-    DART_LOG_TRACE("dart_domain_split: groups[%d] size: %d",
+    DART_LOG_TRACE("dart_domain_split_scope: groups[%d] size: %d",
                    p, group_sizes[p]);
     for (int g = 0; g < group_sizes[p]; g++) {
       DART_LOG_TRACE("dart_domain_split:            |- tags[%d]: %s",
@@ -206,7 +206,7 @@ dart_ret_t dart_domain_split_scope(
 
     /* Deep copy of grouped domain so we do not have to recalculate
      * groups for every split group : */
-    DART_LOG_TRACE("dart_domain_split: copying input domain");
+    DART_LOG_TRACE("dart_domain_split_scope: copying input domain");
     DART_ASSERT_RETURNS(
       dart__base__locality__domain__init(
         domains_out + p),
@@ -218,7 +218,7 @@ dart_ret_t dart_domain_split_scope(
       DART_OK);
 
     /* Drop domains that are not in split group: */
-    DART_LOG_TRACE("dart_domain_split: selecting subdomains");
+    DART_LOG_TRACE("dart_domain_split_scope: selecting subdomains");
     DART_ASSERT_RETURNS(
       dart__base__locality__select_subdomains(
         domains_out + p,
@@ -227,7 +227,7 @@ dart_ret_t dart_domain_split_scope(
       DART_OK);
   }
 
-  DART_LOG_DEBUG("dart_domain_split >");
+  DART_LOG_DEBUG("dart_domain_split_scope >");
   return DART_OK;
 }
 

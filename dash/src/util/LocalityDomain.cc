@@ -246,7 +246,6 @@ dash::util::LocalityDomain::operator=(
 
   if (nullptr != _subdomains) {
     delete _subdomains;
-    other._subdomains = nullptr;
   }
 
   // Move resources from source to target:
@@ -273,9 +272,9 @@ dash::util::LocalityDomain::operator=(
   other._domain     = nullptr;
   other._subdomains = nullptr;
 
-  return *this;
-
   DASH_LOG_TRACE_VAR("LocalityDomain.=(&& other) >", this);
+
+  return *this;
 }
 
 // -------------------------------------------------------------------------
