@@ -817,9 +817,12 @@ dart_ret_t dart__base__locality__group_subdomains(
   int num_ungrouped       = domain->num_domains - num_grouped;
   int num_subdomains_new  = num_ungrouped + 1;
 
-  DART_ASSERT_MSG(
-    num_grouped > 0,
-    "requested to group <= 0 domains");
+  if (num_grouped <= 0) {
+    DART_LOG_ERROR("dart__base__locality__group_subdomains ! "
+                   "requested to group %d <= 0 domains",
+                   num_grouped);
+    return DART_ERR_INVAL;
+  }
 
   /* The domain tag of the group to be added must be a successor of the last
    * subdomain's (the group domain's last sibling) tag to avoid collisions.
