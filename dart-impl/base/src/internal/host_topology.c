@@ -687,6 +687,10 @@ dart_ret_t dart__base__host_topology__create(
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
                      max_host_units, host_units->num_units);
+      // Either   realloc(addr != 0, n >= 0) -> free or realloc
+      // or       realloc(addr  = 0, n >  0) -> malloc
+      DART_ASSERT(host_units->units     != NULL ||
+                  host_units->num_units  > 0);
       host_units->units = realloc(host_units->units,
                                   host_units->num_units *
                                     sizeof(dart_global_unit_t));
