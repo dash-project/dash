@@ -74,9 +74,14 @@ fi
 mkdir -p $BUILD_DIR
 mkdir -p $REPORT_DIR
 rm -Rf $BUILD_DIR/*
+rm -Rf $REPORT_DIR/*
 (cd $BUILD_DIR && $BUILD_WRAPPER $ANALYZE_OPTS \
                   cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
+                        \
+                        -DCMAKE_C_COMPILER=clang \
+                        -DCMAKE_CXX_COMPILER=clang++ \
+                        \
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
@@ -98,7 +103,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
+                        -DENABLE_MKL=OFF \
                         -DENABLE_BLAS=ON \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
@@ -115,7 +120,7 @@ rm -Rf $BUILD_DIR/*
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- $BUILD_WRAPPER $ANALYZE_OPTS make -j 4) &&
+ $BUILD_WRAPPER $ANALYZE_OPTS make -j 4) && \
  (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 
