@@ -16,8 +16,10 @@ if [ "$BUILD_WRAPPER" = "" ]; then
   BUILD_WRAPPER="scan-build"
 fi
 if [ "$SCANBUILD_OPTS" = "" ]; then
-  SCANBUILD_OPTS="-o $REPORT_DIR --analyze-headers --plist-html"
+  SCANBUILD_OPTS="-analyze-headers -plist-html"
 fi
+SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
+
 
 which $BUILD_WRAPPER ||
   (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
