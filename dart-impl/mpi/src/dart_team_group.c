@@ -502,8 +502,7 @@ dart_ret_t dart_group_locality_split(
       /* convert relative unit ids from domain to global unit ids: */
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
-        // TODO TF: why is there no actual conversion happening here?!
-        group_global_unit_ids[u] = group_team_unit_ids[u].id;
+        group_global_unit_ids[u] = (int)group_team_unit_ids[u];
         DART_LOG_TRACE("dart_group_locality_split: group[%zu].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
