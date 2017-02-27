@@ -799,6 +799,10 @@ dart_ret_t dart__base__locality__group_subdomains(
   int num_ungrouped       = domain->num_domains - num_grouped;
   int num_subdomains_new  = num_ungrouped + 1;
 
+  DART_ASSERT_MSG(
+    num_grouped > 0,
+    "requested to group <= 0 domains");
+
   /* The domain tag of the group to be added must be a successor of the last
    * subdomain's (the group domain's last sibling) tag to avoid collisions.
    * Relative index of last subdomain can differ from its last domain tag
@@ -837,10 +841,16 @@ dart_ret_t dart__base__locality__group_subdomains(
   /* Partition child nodes of domain into grouped and ungrouped
    * subdomains:
    */
-  dart_domain_locality_t * ungrouped_domains =
-    malloc(sizeof(dart_domain_locality_t) * num_ungrouped);
-  dart_domain_locality_t * group_domains =
-    malloc(sizeof(dart_domain_locality_t) * num_existing_domain_groups);
+  dart_domain_locality_t * group_domains     = NULL;
+  dart_domain_locality_t * ungrouped_domains = NULL;
+  if (num_existing_domain_groups > 0) {
+    group_domains =
+      malloc(sizeof(dart_domain_locality_t) * num_existing_domain_groups);
+  }
+  if (num_ungrouped > 0) {
+    ungrouped_domains =
+      malloc(sizeof(dart_domain_locality_t) * num_ungrouped);
+  }
   dart_domain_locality_t * grouped_domains =
     malloc(sizeof(dart_domain_locality_t) * num_grouped);
 
@@ -857,6 +867,8 @@ dart_ret_t dart__base__locality__group_subdomains(
     dart_domain_locality_t * domain_copy;
 
     if (subdom->scope == DART_LOCALITY_SCOPE_GROUP) {
+      DART_ASSERT_MSG(
+        group_domains != NULL, "No subdomains at group locality scope");
       domain_copy = &group_domains[group_idx];
       group_idx++;
     }
@@ -867,6 +879,9 @@ dart_ret_t dart__base__locality__group_subdomains(
       grouped_idx++;
       sdt++;
     } else {
+      DART_ASSERT_MSG(
+        ungrouped_domains != NULL,
+        "No ungrouped subdomains at group locality scope");
       domain_copy = &ungrouped_domains[ungrouped_idx];
       ungrouped_idx++;
     }
@@ -887,6 +902,9 @@ dart_ret_t dart__base__locality__group_subdomains(
     DART_LOG_ERROR("dart__base__locality__group_subdomains ! "
                    "only found %d of %d requested subdomains",
                    sdt, num_group_subdomain_tags);
+    free(ungrouped_domains);
+    free(group_domains);
+    free(grouped_domains);
     return DART_ERR_NOTFOUND;
   }
 
@@ -966,6 +984,9 @@ dart_ret_t dart__base__locality__group_subdomains(
     DART_LOG_TRACE(
       "dart__base__locality__group_subdomains: ==> domains[%d] u: %s",
       sd, domain->domains[sd].domain_tag);
+    DART_ASSERT_MSG(
+      ungrouped_domains != NULL,
+      "No ungrouped subdomains at group locality scope");
     memcpy(&domain->domains[sd],
            &ungrouped_domains[sd],
            sizeof(dart_domain_locality_t));
@@ -981,6 +1002,8 @@ dart_ret_t dart__base__locality__group_subdomains(
     DART_LOG_TRACE(
       "dart__base__locality__group_subdomains: ==> domains[%d] g: %s",
       abs_g, domain->domains[abs_g].domain_tag);
+    DART_ASSERT_MSG(
+      group_domains != NULL, "No subdomains at group locality scope");
     memcpy(&domain->domains[abs_g], &group_domains[g],
            sizeof(dart_domain_locality_t));
 
