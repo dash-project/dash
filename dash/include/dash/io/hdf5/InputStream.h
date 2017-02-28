@@ -4,6 +4,7 @@
 #ifdef DASH_ENABLE_HDF5
 
 #include <string>
+#include <future>
 
 #include <dash/Matrix.h>
 #include <dash/Array.h>
