@@ -572,17 +572,16 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
           }
         }
       }
-      dart_domain_locality_t ** tmp =
-        realloc(domain->children,
-                subdomain_idx * sizeof(dart_domain_locality_t *));
       if (subdomain_idx == 0) {
         domain->children = NULL;
-      } else if (tmp != NULL) {
-        domain->children = tmp;
       } else {
+        domain->children = realloc(domain->children,
+                                   subdomain_idx *
+                                     sizeof(dart_domain_locality_t *));
         DART_ASSERT_MSG(
-          0, "dart__base__locality__domain__filter_subdomains: "
-             "realloc failed");
+          domain->children != NULL,
+          "dart__base__locality__domain__filter_subdomains: "
+          "realloc failed");
       }
       domain->num_domains = subdomain_idx;
     }
@@ -644,20 +643,16 @@ dart_ret_t dart__base__locality__domain__remove_subdomain(
   }
   domain->num_domains--;
 
-  dart_domain_locality_t ** tmp;
-  tmp = realloc(domain->children,
-                  domain->num_domains *
-                    sizeof(dart_domain_locality_t *));
-
-  if (0 == domain->num_domains) {
-    domain->children = NULL;
-  } else if (NULL != tmp) {
-    domain->children = tmp;
+  if (domain->num_domains <= 0) {
+    domain->children    = NULL;
+    domain->num_domains = 0;
   } else {
-      DART_ASSERT_MSG(
-        0, "dart__base__locality__domain__add_subdomain: "
-           "realloc failed");
-      return DART_ERR_OTHER;
+    domain->children = realloc(domain->children,
+                               domain->num_domains *
+                                 sizeof(dart_domain_locality_t *));
+    DART_ASSERT_MSG(
+      domain->children != NULL,
+      "dart__base__locality__domain__add_subdomain: realloc failed");
   }
   return DART_OK;
 }

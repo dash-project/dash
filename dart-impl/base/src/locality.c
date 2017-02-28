@@ -1010,6 +1010,7 @@ dart_ret_t dart__base__locality__group_subdomains(
     DART_LOG_ERROR("dart__base__locality__group_subdomains: "
                    "Group domain at relative index %d not defined",
                    group_domain_rel_idx);
+    free(ungrouped_domains);
     return DART_ERR_NOTFOUND;
   }
 
