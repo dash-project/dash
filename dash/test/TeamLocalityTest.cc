@@ -4,6 +4,7 @@
 #include <dash/util/TeamLocality.h>
 
 #include <string>
+#include <sstream>
 #include <vector>
 
 
@@ -15,9 +16,15 @@ void print_locality_domain(
     return;
   }
 
-  std::string context_pref = "TeamLocalityTest.print_domain.";
+  return;
+
+  std::string context_pref = "TeamLocalityTest.locality_domain.";
   context_pref += context;
-  DASH_LOG_DEBUG(context_pref.c_str(), ld);
+
+  std::ostringstream ss;
+  ss << ld;
+
+  LOG_MESSAGE("%s : %s", context_pref.c_str(), ss.str().c_str());
 }
 
 void test_locality_hierarchy_integrity(
@@ -117,8 +124,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
                  "<-- number of NUMA domains:", numa_domains.size());
 
   if (numa_domains.size() < 2) {
-    DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA", "skipping test");
-    return;
+    SKIP_TEST_MSG("Test requires at least 2 NUMA domains");
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
@@ -142,7 +148,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 TEST_F(TeamLocalityTest, GroupUnits)
 {
   if (dash::size() < 3) {
-    SKIP_TEST();
+    SKIP_TEST_MSG("Test requires at least 3 units");
   }
   if (dash::myid().id != 0) {
     return;
@@ -153,7 +159,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   dash::util::TeamLocality tloc(team);
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
-                 "team locality in Global domain:");
+                 "team locality in global domain:");
   print_locality_domain("global", tloc.domain());
 
   std::vector<dash::global_unit_t> group_1_units;
@@ -199,7 +205,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
   if (group_1_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_1_tags);
-    auto & group_1 = tloc.group(group_1_tags);
+    const auto & group_1 = tloc.group(group_1_tags);
     print_locality_domain("group_1", group_1);
 
     auto group_1_units_actual = group_1.units();
@@ -210,7 +216,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
-    auto & group_2 = tloc.group(group_2_tags);
+    const auto & group_2 = tloc.group(group_2_tags);
     print_locality_domain("group_2", group_2);
 
     auto group_2_units_actual = group_2.units();
@@ -221,7 +227,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   }
   if (group_3_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_3_tags);
-    auto & group_3 = tloc.group(group_3_tags);
+    const auto & group_3 = tloc.group(group_3_tags);
     print_locality_domain("group_3", group_3);
 
     auto group_3_units_actual = group_3.units();
@@ -251,7 +257,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
 TEST_F(TeamLocalityTest, SplitGroups)
 {
   if (dash::size() < 4) {
-    SKIP_TEST();
+    SKIP_TEST_MSG("Test requires at least 4 units");
   }
   if (dash::myid().id != 0) {
     return;

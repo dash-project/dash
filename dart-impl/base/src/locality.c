@@ -479,14 +479,15 @@ dart_ret_t dart__base__locality__domain_group(
   char                             * group_domain_tag_out)
 {
   DART_LOG_TRACE("dart__base__locality__domain_group() "
-                 "domain_in: (%s: %d @ %d) group size: %d",
+                 "domain_in: (%s: scope:%d @ level:%d) group size: %d",
                  domain->domain_tag, domain->scope, domain->level,
                  group_size);
 #ifdef DART_ENABLE_LOGGING
   for (int sd = 0; sd < group_size; sd++) {
     DART_LOG_TRACE("dart__base__locality__domain_group: "
-                   "group_subdomain_tags[%d]: %s",
-                   sd, group_subdomain_tags[sd]);
+                   "group_subdomain_tags[%d]: %p = %s",
+                   sd, (void *)(group_subdomain_tags[sd]),
+                   group_subdomain_tags[sd]);
   }
 #endif
 
@@ -1064,7 +1065,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   for (int sd = 0; sd < num_ungrouped; sd++) {
     DART_ASSERT(
-      domain->domains != NULL);
+      domain->children != NULL);
     DART_ASSERT_MSG(
       ungrouped_domains != NULL,
       "No ungrouped subdomains at group locality scope");

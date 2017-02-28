@@ -344,7 +344,10 @@ dash::util::LocalityDomain::group(
   DASH_LOG_TRACE("LocalityDomain.group(subdomains[])");
 
   std::vector<const char *> subdomain_tags_cstr;
-  for (auto domain_tag : group_subdomain_tags) {
+  for (auto & domain_tag : group_subdomain_tags) {
+    DASH_LOG_TRACE("LocalityDomain.group",
+                   reinterpret_cast<const void *>(domain_tag.c_str()), "->",
+                   domain_tag.c_str());
     subdomain_tags_cstr.push_back(domain_tag.c_str());
   }
 
@@ -366,7 +369,7 @@ dash::util::LocalityDomain::group(
   _group_domain_tags.push_back(group_domain_tag);
   collect_groups(_group_domain_tags);
 
-  for (auto part : _parts) {
+  for (auto & part : _parts) {
     part.group(group_subdomain_tags);
   }
 
