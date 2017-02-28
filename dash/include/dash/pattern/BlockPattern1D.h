@@ -225,7 +225,7 @@ public:
     /// Defaults to BLOCKED.
     const DistributionSpec_t dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         teamspec = typename TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
     dash::Team &             team     = dash::Team::All())
   : _size(sizespec.size()),
@@ -236,67 +236,6 @@ public:
       teamspec,
       _distspec,
       *_team),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _nlblocks(initialize_num_local_blocks(
-        _nblocks,
-        _blocksize,
-        _distspec,
-        _nunits,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()),
-    _lbegin_lend(initialize_local_range(_local_size))
-  { }
-
-  /**
-   * Constructor, initializes a pattern from explicit instances of
-   * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
-   *
-   * Examples:
-   *
-   * \code
-   *   // 500 elements with blocked distribution:
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   *   // Same as
-   *   Pattern p1(500, BLOCKED);
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED));
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()));
-   * \endcode
-   */
-  BlockPattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team &                   team = dash::Team::All())
-  : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,

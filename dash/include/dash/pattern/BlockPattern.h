@@ -253,7 +253,7 @@ public:
     /// dimensions
     const DistributionSpec_t & dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         & teamspec = typename TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
     dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
@@ -322,43 +322,6 @@ public:
    *              TeamSpec<2>(dash::Team::All(), 1));
    * \endcode
    */
-  BlockPattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team                     & team = dash::Team::All())
-  : _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _nunits(_teamspec.size()),
-    _memory_layout(sizespec.extents()),
-    _blocksize_spec(initialize_blocksizespec(
-        sizespec,
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        sizespec,
-        _distspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _distspec,
-        _teamspec,
-        _local_memory_layout)),
-    _local_capacity(initialize_local_capacity())
-  {
-    DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, team)");
-    initialize_local_range();
-    DASH_LOG_TRACE("BlockPattern()", "BlockPattern initialized");
-  }
 
   /**
    * Copy constructor.
