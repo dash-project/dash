@@ -6,6 +6,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <iostream>
 
 
 void print_locality_domain(
@@ -16,15 +17,12 @@ void print_locality_domain(
     return;
   }
 
-  return;
-
   std::string context_pref = "TeamLocalityTest.locality_domain.";
   context_pref += context;
 
-  std::ostringstream ss;
-  ss << ld;
+  LOG_MESSAGE("%s: ", context_pref.c_str());
 
-  LOG_MESSAGE("%s : %s", context_pref.c_str(), ss.str().c_str());
+  std::cerr << ld << std::endl;
 }
 
 void test_locality_hierarchy_integrity(
@@ -51,6 +49,8 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
   dash::util::TeamLocality tloc(team);
 
+  DASH_LOG_DEBUG_VAR("TeamLocalityTest.GlobalAll", tloc.domain());
+
   EXPECT_EQ_U(team, tloc.team());
 
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
@@ -58,7 +58,7 @@ TEST_F(TeamLocalityTest, GlobalAll)
                  tloc.global_units().size());
   EXPECT_EQ_U(team.size(), tloc.global_units().size());
 
-  for (auto unit : tloc.global_units()) {
+  for (auto & unit : tloc.global_units()) {
     DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
                    "team all, global domain, units[]:", unit);
   }
@@ -66,8 +66,6 @@ TEST_F(TeamLocalityTest, GlobalAll)
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
                  "team all, global domain, parts:", tloc.parts().size());
   EXPECT_EQ_U(0, tloc.parts().size());
-
-  print_locality_domain("global", tloc.domain());
 }
 
 TEST_F(TeamLocalityTest, SplitCore)
@@ -83,7 +81,7 @@ TEST_F(TeamLocalityTest, SplitCore)
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                  "team locality in Global domain:");
-  print_locality_domain("global", tloc.domain());
+  DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitCore", tloc.domain());
 
   // Split via explicit method call:
   DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
@@ -96,7 +94,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   for (auto & part : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                    "team locality in Core domain:");
-    print_locality_domain("CORE split", part);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitCore", part);
   }
 
   dash::barrier();
@@ -129,7 +127,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                  "team locality in Global domain:");
-  print_locality_domain("global", tloc.domain());
+  DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitNUMA", tloc.domain());
 
   // Split via constructor parameter:
   dash::util::TeamLocality tloc_numa(
@@ -141,7 +139,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
   for (auto & part : tloc_numa.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                    "team locality NUMA domain:");
-    print_locality_domain("NUMA split", part);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitNUMA", part);
   }
 }
 
@@ -206,7 +204,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (group_1_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_1_tags);
     const auto & group_1 = tloc.group(group_1_tags);
-    print_locality_domain("group_1", group_1);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.GroupUnits", group_1);
 
     auto group_1_units_actual = group_1.units();
     std::sort(group_1_units.begin(),        group_1_units.end());
@@ -217,7 +215,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
     const auto & group_2 = tloc.group(group_2_tags);
-    print_locality_domain("group_2", group_2);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.GroupUnits", group_2);
 
     auto group_2_units_actual = group_2.units();
     std::sort(group_2_units.begin(),        group_2_units.end());
@@ -228,7 +226,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (group_3_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_3_tags);
     const auto & group_3 = tloc.group(group_3_tags);
-    print_locality_domain("group_3", group_3);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.GroupUnits", group_3);
 
     auto group_3_units_actual = group_3.units();
     std::sort(group_3_units.begin(),        group_3_units.end());
@@ -239,17 +237,17 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "Global domain after grouping:");
-  print_locality_domain("global", tloc.domain());
+  DASH_LOG_DEBUG_VAR("TeamLocalityTest.GroupUnits", tloc.domain());
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "team all, groups:", tloc.groups().size());
 
-  for (auto group : tloc.groups()) {
+  for (const auto & group : tloc.groups()) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                    "team locality group domain: tag:", group->domain_tag());
 
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "----------------------");
-    print_locality_domain("Group", *group);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.GroupUnits", *group);
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "----------------------");
   }
 }
@@ -269,7 +267,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups",
                  "team locality in Global domain:");
-  print_locality_domain("global", tloc.domain());
+  DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", tloc.domain());
 
   std::vector<dash::global_unit_t> group_1_units;
   std::vector<dash::global_unit_t> group_2_units;
@@ -296,26 +294,26 @@ TEST_F(TeamLocalityTest, SplitGroups)
 
   if (group_1_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_1_tags);
-    auto & group_1 = tloc.group(group_1_tags);
-    print_locality_domain("group_1", group_1);
+    const auto & group_1 = tloc.group(group_1_tags);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", group_1);
 
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
     //  EXPECT_EQ_U(group_1_units, group_1.units());
-  }
+  } 
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
-    auto & group_2 = tloc.group(group_2_tags);
-    print_locality_domain("group_2", group_2);
+    const auto & group_2 = tloc.group(group_2_tags);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", group_2);
 
     EXPECT_EQ_U(group_2_units, group_2.units());
-  }
+  } 
 
   tloc.split_groups();
 
-  for (auto part : tloc.parts()) {
+  for (const auto & part : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups",
                    "team locality split group:");
-    print_locality_domain("Group split", part);
+    DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", part);
   }
 }

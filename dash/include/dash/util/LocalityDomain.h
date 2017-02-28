@@ -43,7 +43,9 @@ namespace internal {
 
     typedef       LocalityDomainT                        value_type;
     typedef       LocalityDomainT *                         pointer;
+    typedef const LocalityDomainT *                   const_pointer;
     typedef       LocalityDomainT &                       reference;
+    typedef const LocalityDomainT &                 const_reference;
 
   public:
 
@@ -78,13 +80,32 @@ namespace internal {
       return _domain->at(subdomain_idx);
     }
 
+    const_reference operator[](int i) const
+    {
+      DASH_ASSERT(_domain != nullptr);
+      int subdomain_idx = _idx + i;
+      return _domain->at(subdomain_idx);
+    }
+
     reference operator*()
     {
       DASH_ASSERT(_domain != nullptr);
       return _domain->at(_idx);
     }
 
+    const_reference operator*() const
+    {
+      DASH_ASSERT(_domain != nullptr);
+      return _domain->at(_idx);
+    }
+
     pointer operator->()
+    {
+      DASH_ASSERT(_domain != nullptr);
+      return &(_domain->at(_idx));
+    }
+
+    const_pointer operator->() const
     {
       DASH_ASSERT(_domain != nullptr);
       return &(_domain->at(_idx));
