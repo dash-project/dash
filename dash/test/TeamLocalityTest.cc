@@ -184,14 +184,28 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
   group_3_units = shuffled_unit_ids;
 
+  std::vector<int> unit_core_ids;
+
   for (dash::global_unit_t u : group_1_units) {
-    group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
+    const auto & unit_loc = tloc.unit_locality(u);
+    group_1_tags.push_back(unit_loc.domain_tag());
+    unit_core_ids.push_back(unit_loc.hwinfo().core_id);
   }
   for (dash::global_unit_t u : group_2_units) {
-    group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
+    const auto & unit_loc = tloc.unit_locality(u);
+    group_2_tags.push_back(unit_loc.domain_tag());
+    unit_core_ids.push_back(unit_loc.hwinfo().core_id);
   }
   for (dash::global_unit_t u : group_3_units) {
-    group_3_tags.push_back(tloc.unit_locality(u).domain_tag());
+    const auto & unit_loc = tloc.unit_locality(u);
+    group_3_tags.push_back(unit_loc.domain_tag());
+    unit_core_ids.push_back(unit_loc.hwinfo().core_id);
+  }
+
+  std::sort(unit_core_ids.begin(), unit_core_ids.end());
+  if (std::unique(unit_core_ids.begin(), unit_core_ids.end())
+      != unit_core_ids.end()) {
+    SKIP_TEST_MSG("Multiple units mapped to same core is not supported yet");
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group 1:",
