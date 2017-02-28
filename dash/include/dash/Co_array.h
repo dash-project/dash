@@ -8,6 +8,9 @@
 
 #include <dash/pattern/BlockPattern.h>
 
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+
 /**
  * \defgroup  DashCoArrayConcept  co_array Concept
  *
@@ -28,21 +31,6 @@
  */
 
 namespace dash {
-
-// forward declaration
-template<
-  typename ElementType,
-  typename IndexType,
-  class    PatternType >
-class Array;
-
-template<
-  typename ElementType,
-  dim_t    NumDimensions,
-  typename IndexType,
-  class    PatternType>
-class Matrix;
-
 
 /**
  * fortran style co_array
@@ -75,7 +63,7 @@ private:
   static constexpr int _rank = std::rank<T>::value;
   
   using _index_type     = typename std::make_unsigned<IndexType>::type;
-  using _pattern_type   = dash::BlockPattern<_rank+1>;
+  using _pattern_type   = BlockPattern<_rank+1, ROW_MAJOR, _index_type>;
   using _element_type   = typename std::remove_all_extents<T>::type;
   using _storage_type   = typename _get_storage_type<_element_type,
                                                      _index_type,
@@ -99,6 +87,19 @@ public:
   //using view_type              = Co_arrayRef<>;
   //using local_type             = LocalCo_arrayRef<>;
   using pattern_type           = _pattern_type;
+  
+private:
+  constexpr SizeSpec<_rank+1, size_type> _make_size_spec() const {
+    return SizeSpec<_rank+1, size_type>(static_cast<size_type>(dash::size()));
+  }
+  
+public:
+  constexpr Co_array():
+    _storage(_pattern_type(_make_size_spec())) { }
+
+private:
+  /// storage backend
+  _storage_type _storage;
 
 };
 
