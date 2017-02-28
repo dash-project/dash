@@ -35,7 +35,8 @@ dart_ret_t dart_group_create(
   dart_group_t *group)
 {
   struct dart_group_struct* res = allocate_group();
-  // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY as it might lead to invalid free later
+  // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY
+  // as it might lead to invalid free later
   MPI_Group g;
   MPI_Comm_group(DART_COMM_WORLD, &g);
   MPI_Group_incl(g, 0, NULL, &res->mpi_group);
@@ -47,19 +48,22 @@ dart_ret_t dart_group_destroy(
   dart_group_t *group)
 {
 
-  if (group == NULL || *group == NULL) {
-    DART_LOG_ERROR("Invalid group argument: %p -> %p", group, (group) ? (void*)*group : (void*)group);
+  if (group == NULL) {
+    DART_LOG_ERROR("Invalid group argument: %p -> %p",
+                   group, (group) ? (void*)*group : (void*)group);
     return DART_ERR_INVAL;
   }
 
   struct dart_group_struct** g = group;
-  if ((*g)->mpi_group != MPI_GROUP_NULL) {
-    MPI_Group_free(&(*g)->mpi_group);
-    (*g)->mpi_group = MPI_GROUP_NULL;
-  }
 
-  free(*g);
-  *g = NULL;
+  if (*g != NULL) {
+    if ((*g)->mpi_group != MPI_GROUP_NULL) {
+      MPI_Group_free(&(*g)->mpi_group);
+      (*g)->mpi_group = MPI_GROUP_NULL;
+    }
+    free(*g);
+    *g = NULL;
+  }
 
   return DART_OK;
 }
@@ -182,10 +186,6 @@ dart_ret_t dart_group_intersect(
   return DART_OK;
 }
 
-/**
- * <fuchst>   Does this function expect global or local unit ids (relative
- *            to a team)?
- */
 dart_ret_t dart_group_addmember(
   dart_group_t        g,
   dart_global_unit_t  unitid)
