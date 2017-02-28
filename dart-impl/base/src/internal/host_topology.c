@@ -205,7 +205,9 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
     dart_host_domain_t * host_domain = &topo->host_domains[h];
     /* Select first unit id at local host as leader: */
     dart_global_unit_t leader_unit_id = host_units->units[0];
-    dart_group_addmember(leader_group, leader_unit_id);
+    DART_ASSERT_RETURNS(
+      dart_group_addmember(leader_group, leader_unit_id),
+      DART_OK);
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "num. units on host %s: %d",
                    topo->host_names[h], host_units->num_units);
@@ -227,7 +229,9 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
         DART_LOG_TRACE("dart__base__host_topology__init: "
                        "add unit %d to local group",
                        host_units->units[u_idx].id);
-        dart_group_addmember(local_group, host_units->units[u_idx]);
+        DART_ASSERT_RETURNS(
+          dart_group_addmember(local_group, host_units->units[u_idx]),
+          DART_OK);
       }
     }
   }
@@ -260,7 +264,7 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
 
   if (my_id.id == local_leader_unit_id.id) {
     dart_module_location_t * module_locations = NULL;
-    dart_team_unit_t my_leader_id;
+    dart_team_unit_t         my_leader_id;
     DART_ASSERT_RETURNS(
       dart_team_myid(leader_team, &my_leader_id),
       DART_OK);
