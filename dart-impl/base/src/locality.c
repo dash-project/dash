@@ -357,9 +357,10 @@ dart_ret_t dart__base__locality__scope_domain_tags(
 
   *domain_tags_out = (char **)(malloc(sizeof(char *) * (*num_domains_out)));
   for (int sd = 0; sd < *num_domains_out; sd++) {
-    (*domain_tags_out)[sd] =
-      (char *)(malloc(sizeof(char) *
-                      (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
+    (*domain_tags_out)[sd]
+      = malloc(sizeof(char) *
+               (strlen(dart_scope_domains[sd]->domain_tag) + 1));
+
     strcpy((*domain_tags_out)[sd],
            dart_scope_domains[sd]->domain_tag);
   }
@@ -1051,8 +1052,7 @@ dart_ret_t dart__base__locality__group_subdomains(
   group_domain->num_units = 0;
   group_domain->num_nodes = 0;
   for (int gd = 0; gd < num_grouped; gd++) {
-    memcpy(group_domain->children[gd], &grouped_domains[gd],
-           sizeof(dart_domain_locality_t));
+    group_domain->children[gd] = &grouped_domains[gd];
   }
   dart__base__locality__domain__update_subdomains(
     group_domain);

@@ -573,6 +573,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
         }
       }
       if (subdomain_idx == 0) {
+        free(domain->children);
         domain->children = NULL;
       } else {
         domain->children = realloc(domain->children,
@@ -580,8 +581,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
                                      sizeof(dart_domain_locality_t *));
         DART_ASSERT_MSG(
           domain->children != NULL,
-          "dart__base__locality__domain__filter_subdomains: "
-          "realloc failed");
+          "dart__base__locality__domain__filter_subdomains: realloc failed");
       }
       domain->num_domains = subdomain_idx;
     }
@@ -599,19 +599,13 @@ dart_ret_t dart__base__locality__domain__add_subdomain(
    * does not recalculate domain attributes.
    */
   domain->num_domains++;
-  dart_domain_locality_t ** tmp;
-  tmp = realloc(domain->children,
-                  domain->num_domains *
-                    sizeof(dart_domain_locality_t *));
+  domain->children = realloc(domain->children,
+                             domain->num_domains *
+                                sizeof(dart_domain_locality_t *));
+  DART_ASSERT_MSG(
+    domain->children != NULL,
+    "dart__base__locality__domain__add_subdomain: realloc failed");
 
-  if (NULL != tmp) {
-    domain->children = tmp;
-  } else {
-      DART_ASSERT_MSG(
-        0, "dart__base__locality__domain__add_subdomain: "
-           "realloc failed");
-      return DART_ERR_OTHER;
-  }
   if (subdomain_rel_id < 0) {
     /* append at end of subdomains: */
     domain->children[domain->num_domains - 1] = subdomain;

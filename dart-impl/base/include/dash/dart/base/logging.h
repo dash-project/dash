@@ -80,7 +80,7 @@ inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf((char *)msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
@@ -101,7 +101,7 @@ inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf((char *)msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
@@ -132,7 +132,7 @@ inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf((char *)msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
@@ -158,7 +158,7 @@ inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf((char *)msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
@@ -184,7 +184,7 @@ inline char * dart_base_logging_basename(char *path) {
     int       sn_ret; \
     char      msg_buf[maxlen]; \
     pid_t     pid = getpid(); \
-    sn_ret = snprintf((char *)msg_buf, maxlen, __VA_ARGS__); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
@@ -208,7 +208,7 @@ inline char * dart_base_logging_basename(char *path) {
       char value_buf[32]; \
       value_buf[0] = '\0'; \
       snprintf(value_buf, 32, fmt " ", (array)[i]); \
-      strncat((char *)array_buf, value_buf, 32); \
+      strncat(array_buf, value_buf, 32); \
     } \
     DART_LOG_TRACE(context ": %s = { %s}", #array, array_buf); \
   } while (0)
