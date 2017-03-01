@@ -1166,6 +1166,8 @@ dart_ret_t dart_waitall_local(
       }
     } else {
       DART_LOG_DEBUG("dart_waitall_local > number of requests = 0");
+      free(mpi_req);
+      free(mpi_sta);
       return DART_OK;
     }
     /*
@@ -1283,6 +1285,8 @@ dart_ret_t dart_waitall(
       }
     } else {
       DART_LOG_DEBUG("dart_waitall > number of requests = 0");
+      free(mpi_req);
+      free(mpi_sta);
       return DART_OK;
     }
     /*
