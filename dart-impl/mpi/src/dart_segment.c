@@ -303,7 +303,6 @@ dart_ret_t dart_segment_free(
       } else {
         segdata->hashtab[slot] = elem->next;
       }
-      free_segment_info(&elem->data);
       // no need for locking since operations on the same segmentdata
       // are not thread-safe
       if (segid > 0) {
