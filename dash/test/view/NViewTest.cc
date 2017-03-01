@@ -360,9 +360,17 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
   auto nview_total  = dash::sub<0>(0, mat.extent(0), mat);
   auto nview_local  = dash::local(nview_total);
   auto nview_rows_g = dash::sub<0>(1, 3, mat);
+
+  dash::test::print_nview("index_rows_g", dash::index(nview_rows_g));
+  dash::test::print_nview("nview_rows_g", nview_rows_g);
+
   auto nview_cols_g = dash::sub<1>(2, 7, mat);
-  auto nview_cr_s_g = dash::sub<1>(2, 7, nview_rows_g);
-  auto nview_rc_s_g = dash::sub<0>(1, 3, nview_cols_g);
+
+  dash::test::print_nview("index_cols_g", dash::index(nview_cols_g));
+  dash::test::print_nview("nview_cols_g", nview_cols_g);
+
+  auto nview_cr_s_g = dash::sub<1>(2, 7, dash::sub<0>(1, 3, mat));
+  auto nview_rc_s_g = dash::sub<0>(1, 3, dash::sub<1>(2, 7, mat));
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
@@ -372,12 +380,6 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
                    "size:",    nview_cr_s_g.size());
     dash::test::print_nview("index_cr_s_g", dash::index(nview_cr_s_g));
     dash::test::print_nview("nview_cr_s_g", nview_cr_s_g);
-
-    auto exp_nview_cr_s_g = dash::test::region_values(
-                              mat, {{ 1,2 }, { 2,5 }} );
-    EXPECT_TRUE_U(
-      dash::test::expect_range_values_equal<double>(
-        exp_nview_cr_s_g, nview_cr_s_g));
  
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
                    "sub<0>(1,3, sub<0>(2,7, mat) ->",
@@ -387,14 +389,17 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
     dash::test::print_nview("index_rc_s_g", dash::index(nview_rc_s_g));
     dash::test::print_nview("nview_rc_s_g", nview_rc_s_g);
 
+    auto exp_nview_cr_s_g = dash::test::region_values(
+                              mat, {{ 1,2 }, { 2,5 }} );
+    EXPECT_TRUE_U(
+      dash::test::expect_range_values_equal<double>(
+        exp_nview_cr_s_g, nview_cr_s_g));
+
     auto exp_nview_rc_s_g = dash::test::region_values(
                               mat, {{ 1,2 }, { 2,5 }} );
     EXPECT_TRUE_U(
       dash::test::expect_range_values_equal<double>(
         exp_nview_rc_s_g, nview_rc_s_g));
-
-    dash::test::print_nview("index_rows_g", dash::index(nview_rows_g));
-    dash::test::print_nview("nview_rows_g", nview_rows_g);
   }
 
   auto nview_rows_l = dash::local(nview_rows_g);
@@ -409,6 +414,10 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
 
   EXPECT_EQ_U(2,             nview_rows_l.extent<0>());
   EXPECT_EQ_U(block_cols,    nview_rows_l.extent<1>());
+
+  auto nview_cols_l = dash::local(nview_cols_g);
+  dash::test::print_nview("index_cols_l", dash::index(nview_cols_l));
+  dash::test::print_nview("nview_cols_l", nview_cols_l);
 }
 
 TEST_F(NViewTest, MatrixBlocked1DimSubSection)
