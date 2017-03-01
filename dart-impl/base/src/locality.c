@@ -1014,6 +1014,13 @@ dart_ret_t dart__base__locality__group_subdomains(
     return DART_ERR_NOTFOUND;
   }
 
+  if (group_domain == NULL) {
+    DART_LOG_ERROR("dart__base__locality__group_subdomains: "
+                   "Group domain at relative index %d not defined",
+                   group_domain_rel_idx);
+    return DART_ERR_NOTFOUND;
+  }
+
   dart__base__locality__domain__init(group_domain);
 
   /* TODO: hwinfo of group domain is not initialized.
