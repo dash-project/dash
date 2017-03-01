@@ -38,7 +38,7 @@ char** dart_sharedmem_local_baseptr_set;
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
-  int16_t seg_id = gptr.segid;
+  int16_t segid = gptr.segid;
   uint64_t offset = gptr.addr_or_offs.offset;
   dart_team_unit_t myid;
   dart_team_myid(gptr.teamid, &myid);
@@ -50,9 +50,9 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
   }
 
   if (myid.id == gptr.unitid) {
-    if (seg_id != DART_SEGMENT_LOCAL) {
-      if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, (char **)addr) != DART_OK) {
-        DART_LOG_ERROR("dart_gptr_getaddr ! Unknown segment %i", seg_id);
+    if (segid != DART_SEGMENT_LOCAL) {
+      if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, (char **)addr) != DART_OK) {
+        DART_LOG_ERROR("dart_gptr_getaddr ! Unknown segment %i", segid);
         return DART_ERR_INVAL;
       }
 
@@ -79,7 +79,7 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs)
 
 dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 {
-  int16_t seg_id = gptr->segid;
+  int16_t segid = gptr->segid;
   /* The modification to addr is reflected in the fact that modifying
    * the offset.
    */
@@ -90,10 +90,10 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
     return DART_ERR_INVAL;
   }
 
-  if (seg_id != DART_SEGMENT_LOCAL) {
+  if (segid != DART_SEGMENT_LOCAL) {
     char * addr_base;
-    if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &addr_base) != DART_OK) {
-      DART_LOG_ERROR("dart_gptr_setaddr ! Unknown segment %i", seg_id);
+    if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, &addr_base) != DART_OK) {
+      DART_LOG_ERROR("dart_gptr_setaddr ! Unknown segment %i", segid);
       return DART_ERR_INVAL;
     }
     gptr->addr_or_offs.offset = (char *)addr - addr_base;
@@ -282,14 +282,14 @@ dart_team_memalloc_aligned(
       DART_LOG_ERROR("dart_team_memalloc_aligned: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
-      dart_segment_free(&team_data->segdata, segment->seg_id);
+      dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
   } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
-    dart_segment_free(&team_data->segdata, segment->seg_id);
+    dart_segment_free(&team_data->segdata, segment->segid);
     return DART_ERR_OTHER;
   }
 
@@ -329,14 +329,14 @@ dart_team_memalloc_aligned(
     if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
       DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
-      dart_segment_free(&team_data->segdata, segment->seg_id);
+      dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
 
     if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
       DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
-      dart_segment_free(&team_data->segdata, segment->seg_id);
+      dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
   } else {
@@ -358,7 +358,7 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
-    dart_segment_free(&team_data->segdata, segment->seg_id);
+    dart_segment_free(&team_data->segdata, segment->segid);
     return DART_ERR_OTHER;
   }
   segment->size    = nbytes;
@@ -370,7 +370,7 @@ dart_team_memalloc_aligned(
   /* -- Updating infos on gptr -- */
   /* Segid equals to dart_memid (always a positive integer), identifies an
    * unique collective global memory. */
-  gptr->segid  = segment->seg_id;
+  gptr->segid  = segment->segid;
   gptr->unitid = gptr_unitid;
   gptr->teamid = teamid;
   gptr->flags  = 0;
@@ -388,7 +388,7 @@ dart_team_memalloc_aligned(
 dart_ret_t dart_team_memfree(
   dart_gptr_t gptr)
 {
-  int16_t seg_id = gptr.segid;
+  int16_t segid = gptr.segid;
   char  * sub_mem;
   dart_team_t teamid = gptr.teamid;
 
@@ -405,8 +405,8 @@ dart_ret_t dart_team_memfree(
 
   MPI_Win win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &sub_mem) != DART_OK) {
-    DART_LOG_ERROR("dart_team_memfree ! Unknown segment %i", seg_id);
+  if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, &sub_mem) != DART_OK) {
+    DART_LOG_ERROR("dart_team_memfree ! Unknown segment %i", segid);
     return DART_ERR_INVAL;
   }
 
@@ -418,7 +418,7 @@ dart_ret_t dart_team_memfree(
 	/* Free the window's associated sub-memory */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   MPI_Win sharedmem_win;
-  if (dart_segment_get_win(&team_data->segdata, seg_id, &sharedmem_win) != DART_OK) {
+  if (dart_segment_get_win(&team_data->segdata, segid, &sharedmem_win) != DART_OK) {
     return DART_ERR_OTHER;
   }
   if (MPI_Win_free(&sharedmem_win) != MPI_SUCCESS) {
@@ -441,7 +441,7 @@ dart_ret_t dart_team_memfree(
                  unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
   /* Remove the related correspondence relation record from the related
    * translation table. */
-  if (dart_segment_free(&team_data->segdata, seg_id) != DART_OK) {
+  if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
@@ -497,7 +497,7 @@ dart_team_memregister_aligned(
   segment->flags   = 0;
 
   gptr->unitid = gptr_unitid;
-  gptr->segid  = segment->seg_id;
+  gptr->segid  = segment->segid;
   gptr->teamid = teamid;
   gptr->flags  = 0;
   gptr->addr_or_offs.offset = 0;
@@ -568,7 +568,7 @@ dart_team_memregister(
 
 
   gptr->unitid = gptr_unitid;
-  gptr->segid  = segment->seg_id;
+  gptr->segid  = segment->segid;
   gptr->teamid = teamid;
   gptr->flags  = 0;
   gptr->addr_or_offs.offset = 0;
@@ -588,7 +588,7 @@ dart_ret_t
 dart_team_memderegister(
    dart_gptr_t gptr)
 {
-  int16_t seg_id = gptr.segid;
+  int16_t segid = gptr.segid;
   char  * sub_mem;
   MPI_Win win;
   dart_team_t teamid = gptr.teamid;
@@ -606,13 +606,13 @@ dart_team_memderegister(
 
   win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&team_data->segdata, seg_id, &sub_mem) != DART_OK) {
-    DART_LOG_ERROR("dart_team_memderegister ! Unknown segment %i", seg_id);
+  if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, &sub_mem) != DART_OK) {
+    DART_LOG_ERROR("dart_team_memderegister ! Unknown segment %i", segid);
     return DART_ERR_INVAL;
   }
 
   MPI_Win_detach(win, sub_mem);
-  if (dart_segment_free(&team_data->segdata, seg_id) != DART_OK) {
+  if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {
     return DART_ERR_INVAL;
   }
 

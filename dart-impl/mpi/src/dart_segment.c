@@ -27,7 +27,7 @@ static inline int hash_segid(dart_segid_t segid)
 static inline void
 register_segment(dart_segmentdata_t *segdata, dart_seghash_elem_t *elem)
 {
-  int slot = hash_segid(elem->data.seg_id);
+  int slot = hash_segid(elem->data.segid);
   elem->next = segdata->hashtab[slot];
   segdata->hashtab[slot] = elem;
 }
@@ -62,7 +62,7 @@ static dart_segment_info_t * get_segment(
   dart_seghash_elem_t *elem = segdata->hashtab[slot];
 
   while (elem != NULL) {
-    if (elem->data.seg_id == segid) {
+    if (elem->data.segid == segid) {
       break;
     }
     elem = elem->next;
@@ -94,7 +94,7 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
   if (type == DART_SEGMENT_ALLOC) {
     if (segdata->mem_freelist != NULL) {
       elem  = segdata->mem_freelist;
-      segid = elem->data.seg_id;
+      segid = elem->data.segid;
       segdata->mem_freelist = elem->next;
     } else {
       if (segdata->memid == INT16_MAX || segdata->memid <= 0) {
@@ -105,12 +105,12 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
       }
       segid = segdata->memid++;
       elem = calloc(1, sizeof(dart_seghash_elem_t));
-      elem->data.seg_id = segid;
+      elem->data.segid = segid;
     }
   } else if (type == DART_SEGMENT_REGISTER) {
     if (segdata->reg_freelist != NULL) {
       elem  = segdata->reg_freelist;
-      segid = elem->data.seg_id;
+      segid = elem->data.segid;
       segdata->reg_freelist = elem->next;
     } else {
       if (segdata->registermemid == INT16_MIN || segdata->registermemid >= 0) {
@@ -122,7 +122,7 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
       }
       segid = segdata->registermemid--;
       elem = calloc(1, sizeof(dart_seghash_elem_t));
-      elem->data.seg_id = segid;
+      elem->data.segid = segid;
     }
   } else {
     // this should not happen!
@@ -139,12 +139,12 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_win(
     dart_segmentdata_t * segdata,
-    int16_t              seg_id,
+    int16_t              segid,
     MPI_Win            * win)
 {
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
-    DART_LOG_ERROR("Invalid segment ID %i on team %i", seg_id, segdata->team_id);
+    DART_LOG_ERROR("Invalid segment ID %i on team %i", segid, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
@@ -154,7 +154,7 @@ dart_ret_t dart_segment_get_win(
 #endif
 
 dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
-                                 int16_t              seg_id,
+                                 int16_t              segid,
                                  dart_team_unit_t     rel_unitid,
                                  MPI_Aint           * disp_s)
 {
@@ -162,13 +162,13 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
   *disp_s  = 0;
 
   DART_LOG_TRACE("dart_segment_get_disp() "
-                 "seq_id:%d rel_unitid:%d", seg_id, rel_unitid.id);
+                 "seq_id:%d rel_unitid:%d", segid, rel_unitid.id);
 
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
 
   if (segment == NULL) {
     DART_LOG_ERROR("dart_segment_get_disp ! Invalid segment ID %i on team %i",
-        seg_id, segdata->team_id);
+        segid, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
@@ -182,14 +182,14 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_baseptr(
   dart_segmentdata_t  * segdata,
-  int16_t               seg_id,
+  int16_t               segid,
   dart_team_unit_t      rel_unitid,
   char              **  baseptr_s)
 {
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
     DART_LOG_ERROR("dart_segment_get_baseptr ! Invalid segment ID %i on team %i",
-                   seg_id, segdata->team_id);
+                   segid, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
@@ -200,15 +200,15 @@ dart_ret_t dart_segment_get_baseptr(
 
 dart_ret_t dart_segment_get_selfbaseptr(
   dart_segmentdata_t  * segdata,
-  int16_t               seg_id,
+  int16_t               segid,
   char               ** baseptr)
 {
   *baseptr = NULL;
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
     DART_LOG_ERROR("dart_segment_get_selfbaseptr ! "
                    "Invalid segment ID %i on team %i",
-                   seg_id, segdata->team_id);
+                   segid, segdata->team_id);
     return DART_ERR_INVAL;
   }
 
@@ -218,12 +218,12 @@ dart_ret_t dart_segment_get_selfbaseptr(
 
 dart_ret_t dart_segment_get_size(
   dart_segmentdata_t  * segdata,
-  int16_t               seg_id,
+  int16_t               segid,
   size_t              * size)
 {
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
+    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", segid);
     return DART_ERR_INVAL;
   }
 
@@ -233,13 +233,13 @@ dart_ret_t dart_segment_get_size(
 
 dart_ret_t dart_segment_get_flags(
   dart_segmentdata_t * segdata,
-  int16_t              seg_id,
+  int16_t              segid,
   uint16_t           * flags)
 {
 
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
+    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", segid);
     return DART_ERR_INVAL;
   }
 
@@ -249,13 +249,13 @@ dart_ret_t dart_segment_get_flags(
 
 dart_ret_t dart_segment_set_flags(
   dart_segmentdata_t * segdata,
-  int16_t              seg_id,
+  int16_t              segid,
   uint16_t             flags)
 {
 
-  dart_segment_info_t *segment = get_segment(segdata, seg_id);
+  dart_segment_info_t *segment = get_segment(segdata, segid);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", seg_id);
+    DART_LOG_ERROR("dart_segment_get_size ! Invalid segment ID %i", segid);
     return DART_ERR_INVAL;
   }
 
@@ -297,7 +297,7 @@ dart_ret_t dart_segment_free(
   pred = NULL;
   while (elem != NULL) {
 
-    if (elem->data.seg_id == segid) {
+    if (elem->data.segid == segid) {
       if (pred != NULL) {
         pred->next = elem->next;
       } else {
@@ -316,7 +316,7 @@ dart_ret_t dart_segment_free(
         DART_ASSERT(segid != 0);
       }
       // set the segment ID again
-      elem->data.seg_id = segid;
+      elem->data.segid = segid;
       return DART_OK;
     }
 

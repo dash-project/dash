@@ -17,7 +17,7 @@ typedef int16_t dart_segid_t;
 
 typedef struct
 {
-  dart_segid_t seg_id; /* seg_id determines a global pointer uniquely */
+  dart_segid_t segid; /* seg_id determines a global pointer uniquely */
   size_t       size;
   MPI_Aint   * disp;   /* address set of memory location of all units in certain team. */
   char      ** baseptr;
