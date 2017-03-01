@@ -158,9 +158,19 @@ class ViewBlockMod
                           _index_set, 0);
   }
 
+  iterator begin() {
+    return iterator(dash::domain(*this).begin(),
+                    _index_set, 0);
+  }
+
   constexpr const_iterator end() const {
     return const_iterator(dash::domain(*this).begin(),
                           _index_set, _index_set.size());
+  }
+
+  iterator end() {
+    return iterator(dash::domain(*this).begin(),
+                    _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
@@ -394,14 +404,16 @@ class ViewBlocksMod
   { }
 
   constexpr const_iterator begin() const {
-    return const_iterator(*this, _index_set.first());
+    return const_iterator(*const_cast<self_t *>(this),
+                          _index_set.first());
   }
   iterator begin() {
     return iterator(*this, _index_set.first());
   }
 
   constexpr const_iterator end() const {
-    return const_iterator(*this, _index_set.last() + 1);
+    return const_iterator(*const_cast<self_t *>(this),
+                          _index_set.last() + 1);
   }
   iterator end() {
     return iterator(*this, _index_set.last() + 1);

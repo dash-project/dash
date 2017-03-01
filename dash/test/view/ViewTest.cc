@@ -120,6 +120,7 @@ TEST_F(ViewTest, ViewTraits)
   auto i_sub  = dash::index(v_sub);
   auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, array)));
   auto v_loc  = dash::local(array);
+  auto v_bsub = *dash::begin(dash::blocks(v_sub));
 
   static_assert(
       dash::view_traits<decltype(array)>::is_local::value == false,
@@ -129,7 +130,7 @@ TEST_F(ViewTest, ViewTraits)
       "view traits is_view for dash::Array not matched");
   static_assert(
       dash::view_traits<decltype(v_ssub)>::is_view::value == true,
-      "view traits is_view for sub(dash::Array) not matched");
+      "view traits is_view for sub(sub(dash::Array)) not matched");
 
   // TODO: Clarify if local container types should be considered views.
   //
@@ -138,8 +139,15 @@ TEST_F(ViewTest, ViewTraits)
   //     "view traits is_view for local(dash::Array) not matched");
   static_assert(
       dash::view_traits<decltype(i_sub)>::is_view::value == false,
-      "view traits is_origin for local(dash::Array) not matched");
+      "view traits is_view for local(dash::Array) not matched");
+  static_assert(
+      dash::view_traits<decltype(v_bsub)>::is_view::value == true,
+      "view traits is_view for begin(blocks(dash::Array)) not matched");
 
+  static_assert(
+      dash::view_traits<decltype(v_bsub)>::is_origin::value == false,
+      "view traits is_origin for begin(blocks(sub(dash::Array))) "
+      "not matched");
   static_assert(
       dash::view_traits<decltype(array)>::is_origin::value == true,
       "view traits is_origin for dash::Array not matched");
@@ -416,7 +424,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
 
     l_b_idx = 0;
     l_idx   = 0;
-    for (auto l_block : l_blocks_view) {
+    for (const auto & l_block : l_blocks_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                      "l_block[", l_b_idx, "]:", range_str(l_block));
       EXPECT_TRUE_U(std::equal(a.lbegin() + l_idx,
@@ -674,18 +682,18 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   auto lblocks_view  = dash::local(
                          dash::blocks(
                            array));
+// DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_view);
 
   auto lblocks_index = dash::index(lblocks_view);
-
-  std::vector<index_t> lblocks_indices(lblocks_index.begin(),
-                                       lblocks_index.end());
-  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_indices);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_index);
 
   auto blocksl_view  = dash::blocks(
                          dash::local(
                            array));
+// DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", blocksl_view);
 
   auto blocksl_index = dash::index(blocksl_view);
+  DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", blocksl_index);
 
   auto lsize      = array.pattern().local_extent(0);
   auto l_beg      = array.pattern().global_index(array.team().myid(),
@@ -701,7 +709,7 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   EXPECT_EQ_U(n_lblocks, blocksl_index.size());
 
   int b_idx = 0;
-  for (auto block : blocksl_view) {
+  for (const auto & block : blocksl_view) {
     auto block_index = dash::index(block);
 
     DASH_LOG_DEBUG("ViewTest.LocalBlocksView1Dim",
@@ -710,6 +718,7 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
     std::vector<index_t> block_indices(block_index.begin(),
                                        block_index.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_indices);
+  //DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block);
 
     std::vector<value_t> block_values(block.begin(), block.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_values);

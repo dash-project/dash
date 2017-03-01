@@ -7,6 +7,8 @@
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 
+#include <dash/internal/StreamConversion.h>
+
 #include <array>
 
 
@@ -17,6 +19,7 @@ TEST_F(RangeTest, RangeTraits)
   auto i_sub  = dash::index(v_sub);
   auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, array)));
   auto v_loc  = dash::local(array);
+  auto v_bsub = *dash::begin(dash::blocks(v_sub));
 
   static_assert(dash::is_range<
                    dash::Array<int>
@@ -40,6 +43,9 @@ TEST_F(RangeTest, RangeTraits)
                 "range type traits for sub(dash::Array) not matched");
   static_assert(dash::is_range<decltype(v_ssub)>::value == true,
                 "range type traits for sub(sub(dash::Array)) not matched");
+  static_assert(dash::is_range<decltype(v_bsub)>::value == true,
+                "range type traits for begin(blocks(sub(dash::Array))) "
+                "not matched");
   static_assert(dash::is_range<decltype(i_sub)>::value == true,
                 "range type traits for index(sub(dash::Array)) not matched");
 

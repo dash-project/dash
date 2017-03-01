@@ -61,12 +61,14 @@ private:
 
 public:
   /**
+   * TODO: Reference semantics forbid declaration without definition.
+   *
    * Default constructor, creates an GlobRef object referencing an element in
    * global memory.
    */
   GlobRef()
-  : _gptr(DART_GPTR_NULL) {
-  }
+  : _gptr(DART_GPTR_NULL)
+  { }
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -96,15 +98,19 @@ public:
    */
   explicit GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
-  }
+  { }
 
   /**
-   * Reference types cannot be copied.
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
    */
   GlobRef(const self_t & other) = delete;
  
+  /**
+   * Unlike native reference types, global reference types are moveable.
+   */
   GlobRef(self_t && other)      = default;
 
   GlobRef<T> & operator=(const T val) {
@@ -117,14 +123,6 @@ public:
    */
   GlobRef<T> & operator=(const self_t & other)
   {
-    // This results in a dart_put, required for STL algorithms like
-    // std::copy to work on global ranges.
-    // TODO: Not well-defined:
-    //       This violates copy semantics, as
-    //         GlobRef(const GlobRef & other)
-    //       copies the GlobRef instance while
-    //         GlobRef=(const GlobRef & other)
-    //       puts the value.
     set(static_cast<T>(other));
     return *this;
   }
@@ -135,14 +133,6 @@ public:
   template <typename GlobRefOrElementT>
   GlobRef<T> & operator=(GlobRefOrElementT && other)
   {
-    // This results in a dart_put, required for STL algorithms like
-    // std::copy to work on global ranges.
-    // TODO: Not well-defined:
-    //       This violates copy semantics, as
-    //         GlobRef(const GlobRef & other)
-    //       copies the GlobRef instance while
-    //         GlobRef=(const GlobRef & other)
-    //       puts the value.
     set(std::forward<GlobRefOrElementT>(other));
     return *this;
   }

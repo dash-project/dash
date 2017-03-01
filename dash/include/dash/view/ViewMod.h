@@ -317,11 +317,15 @@ class ViewModBase {
   self_t & operator=(const self_t &)    = default;
   self_t & operator=(self_t &&)         = default;
 
-  constexpr const domain_type & domain() const & {
+  constexpr const domain_member_type & domain() const & {
     return _domain;
   }
 
-  constexpr domain_type domain() const && {
+  domain_member_type & domain() & {
+    return _domain;
+  }
+
+  constexpr domain_member_type domain() const && {
     return _domain;
   }
 

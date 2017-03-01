@@ -57,6 +57,16 @@ public:
   , _index_set(index_set)
   { }
 
+  template <class DomainItType>
+  ViewIterator(
+    DomainItType        && domain_it, 
+    const IndexSetType   & index_set,
+    index_type             position)
+  : base_t(position)
+  , _domain_it(std::forward<DomainItType>(domain_it))
+  , _index_set(index_set)
+  { }
+
   ViewIterator(
     const self_t         & other, 
     index_type             position)
@@ -118,8 +128,9 @@ private:
 public:
   constexpr ViewIterator() = delete;
 
+  template <class DomainItType>
   ViewIterator(
-    DomainIterator       * domain_it, 
+    DomainItType         * domain_it, 
     const IndexSetType   & index_set,
     index_type             position)
   : base_t(position)
