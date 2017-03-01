@@ -701,6 +701,7 @@ dart_ret_t dart__base__host_topology__create(
         DART_ASSERT(host_units->units != NULL);
       } else {
         free(host_units->units);
+        host_units->units = NULL;
       }
     }
   }
