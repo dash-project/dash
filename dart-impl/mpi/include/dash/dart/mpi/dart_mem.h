@@ -42,7 +42,7 @@ void     dart_buddy_delete(struct dart_buddy *);
  * \return The offset relative to the starting adddress of the external
  *         memory block where the allocated memory begins.
  */
-uint64_t dart_buddy_alloc(struct dart_buddy *, size_t size);
+size_t dart_buddy_alloc(struct dart_buddy *, size_t size);
 
 /**
  * Return the previously allocated memory chunk to the allocator for reuse.
