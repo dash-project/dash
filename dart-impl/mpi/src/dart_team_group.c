@@ -494,7 +494,7 @@ dart_ret_t dart_group_locality_split(
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         for (int du = 0; du < domains[d]->num_units; ++du) {
           int u = group_unit_idx + du;
-          group_unit_ids[u] = domains[d]->unit_ids[du].id;
+          group_unit_ids[group_unit_idx + u] = domains[d]->unit_ids[du].id;
           DART_LOG_TRACE("dart_group_locality_split: "
                          "group[%zu].unit_ids[%d] = domain[%d].unit_ids[%d]",
                          g, u, d, du);
