@@ -269,8 +269,8 @@ class IndexSetBase
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  view_member_type              _view;
-  const pattern_type          & _pattern;
+  view_member_type      _view;
+  pattern_type          _pattern;
 
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);

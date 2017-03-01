@@ -329,7 +329,6 @@ class ViewBlocksMod
     typedef typename view_traits<ViewBlocksModType>::domain_type
       blocks_view_domain_type;
    private:
-//  const ViewBlocksModType & _blocks_view;
     const blocks_view_domain_type & _blocks_view_domain;
    public:
     constexpr block_iterator()                         = delete;

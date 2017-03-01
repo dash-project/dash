@@ -37,10 +37,9 @@ namespace test {
     if (sp.marker != 0) {
       ss << "<" << sp.marker << "> ";
     }
-    ss << sp.gindex
-       << "-u" << sp.unit
-       << ":b" << sp.lblock
-       << "-"  << sp.lindex;
+    ss << "u" << sp.unit
+       << "b" << sp.lblock
+       << "l" << sp.lindex;
     return operator<<(os, ss.str());
   }
 
@@ -1040,7 +1039,9 @@ TEST_F(ViewTest, Intersect1DimChain)
                      range_str(lview_isect));
 
   int lidx = 0;
-  for (auto gidx = sub_right_begin_gidx; gidx < sub_left_end_gidx; ++gidx) {
+  for (auto gidx = sub_right_begin_gidx;
+            gidx < sub_left_end_gidx;
+            ++gidx) {
     auto lptr = (array.begin() + gidx).local();
     if (nullptr != lptr) {
       EXPECT_EQ_U(*lptr, lview_isect[lidx]);
@@ -1052,19 +1053,13 @@ TEST_F(ViewTest, Intersect1DimChain)
 
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 {
-  int block_size        = 11;
+  int block_size        = 7;
   int array_size        = dash::size() * block_size;
   int lblock_begin_gidx = block_size * dash::myid();
   int lblock_end_gidx   = lblock_begin_gidx + block_size;
 
-  dash::Array<int> array(array_size);
-
-  for (auto li = 0; li != array.local.size(); ++li) {
-    array.local[li] = (1000 * (dash::myid() + 1)) +
-                      (100  * li) +
-                      (dash::myid() * block_size) + li;
-  }
-  array.barrier();
+  dash::Array<seq_pos_t> array(array_size);
+  initialize_array(array);
 
   DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
                  "array initialized");
@@ -1136,6 +1131,11 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   EXPECT_EQ_U(block_size, l_sub_view.size());
   EXPECT_EQ_U(block_size, l_sub_index.size());
 
+  EXPECT_TRUE_U(
+    std::equal(array.local.begin(),
+               array.local.end(),
+               l_sub_view.begin()));
+
   auto l_idx_set_begin = *dash::begin(l_sub_index);
   auto l_idx_set_end   = *dash::end(l_sub_index);
 
@@ -1196,8 +1196,8 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
               dash::index(l_sub_lblock).size());
 
     for (int lsi = 0; lsi != sub_lblock.size(); lsi++) {
-      int sub_elem   = sub_lblock[lsi];
-      int l_sub_elem = l_sub_lblock[lsi];
+      auto sub_elem   = sub_lblock[lsi];
+      auto l_sub_elem = l_sub_lblock[lsi];
       EXPECT_EQ(sub_elem, l_sub_elem);
     }
 
@@ -1212,16 +1212,40 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(sub_l_sub_lblock));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                       l_sub_lblock.size());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        sub_l_sub_lblock.size());
+
+    EXPECT_EQ(sub_l_sub_lblock.size(), l_sub_lblock.size() - 1 - 2);
     EXPECT_EQ(
       sub_l_sub_lblock.size(),
       dash::end(sub_l_sub_lblock) - dash::begin(sub_l_sub_lblock));
 
-    for (int slsi = 0; slsi != sub_l_sub_lblock.size(); slsi++) {
-      int sub_l_sub_elem = sub_l_sub_lblock[slsi];
-      int l_sub_elem     = l_sub_lblock[slsi+1];
+    for (int slsi = 0; slsi < sub_l_sub_lblock.size(); slsi++) {
+      auto sub_l_sub_elem = sub_l_sub_lblock[slsi];
+      auto l_sub_elem     = l_sub_lblock[slsi+1];
       EXPECT_EQ(l_sub_elem, sub_l_sub_elem);
     }
+  }
+  {
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockedPatternLocalView",
+                   "------- local inner -----");
+
+    auto sub_local_view = dash::sub(
+                            2, array.lsize() - 1,
+                            dash::local(
+                              array));
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                       range_str(sub_local_view));
+
+    EXPECT_EQ_U(array.lsize() - 2 - 1,
+                sub_local_view.size());
+
+    EXPECT_TRUE_U(
+        std::equal(array.lbegin() + 2,
+                   array.lbegin() + array.lsize() - 1,
+                   sub_local_view.begin()));
   }
   // Use case:
   //
@@ -1242,64 +1266,74 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     int sub_end_gidx      = lblock_end_gidx;
 
     if (dash::myid() > 0) {
-      sub_begin_gidx -= 3;
+      sub_begin_gidx -= 2;
     }
     if (dash::myid() < dash::size() - 1) {
       sub_end_gidx   += 3;
     }
 
     // View to global index range of local block:
-    auto sub_lblock = dash::sub(sub_begin_gidx,
-                                sub_end_gidx,
-                                array);
+    auto sub_block = dash::sub(sub_begin_gidx,
+                               sub_end_gidx,
+                               array);
     static_assert(
-      !dash::view_traits<decltype(sub_lblock)>::is_local::value,
+      !dash::view_traits<decltype(sub_block)>::is_local::value,
       "sub(range) expected have type trait local = false");
 
-    EXPECT_EQ(sub_end_gidx - sub_begin_gidx, sub_lblock.size());
-    EXPECT_EQ(sub_lblock.size(),
-              dash::end(sub_lblock) - dash::begin(sub_lblock));
+    EXPECT_EQ(sub_end_gidx - sub_begin_gidx, sub_block.size());
+    EXPECT_EQ(sub_block.size(),
+              dash::end(sub_block) - dash::begin(sub_block));
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       range_str(sub_lblock));
+                       range_str(sub_block));
 
-    auto l_sub_lblock = dash::local(sub_lblock);
+    EXPECT_TRUE_U(
+      std::equal(array.begin() + sub_begin_gidx,
+                 array.begin() + sub_end_gidx,
+                 sub_block.begin()));
+
+    auto l_sub_block       = dash::local(sub_block);
+    auto l_sub_block_index = dash::index(dash::local(sub_block));
 
     static_assert(
-      dash::view_traits<decltype(l_sub_lblock)>::is_local::value,
+      dash::view_traits<decltype(l_sub_block)>::is_local::value,
       "local(sub(range)) expected have type trait local = true");
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       range_str(l_sub_lblock));
+                       range_str(l_sub_block));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
+                       range_str(l_sub_block_index));
 
-    EXPECT_EQ(block_size, l_sub_lblock.size());
-    EXPECT_EQ(l_sub_lblock.size(),
-              dash::end(l_sub_lblock) - dash::begin(l_sub_lblock));
+    int exp_l_sub_block_size = array.lsize();
 
-    for (int lsi = 0; lsi != sub_lblock.size(); lsi++) {
-      int sub_elem   = sub_lblock[lsi];
-      int l_sub_elem = l_sub_lblock[lsi];
-      EXPECT_EQ(sub_elem, l_sub_elem);
-    }
+    EXPECT_EQ(l_sub_block_index.size(), l_sub_block.size());
+    EXPECT_EQ(exp_l_sub_block_size, l_sub_block.size());
+    EXPECT_EQ(l_sub_block.size(),
+              dash::distance(l_sub_block.begin(), l_sub_block.end()));
 
-    auto sub_l_sub_lblock = dash::sub(1,4, dash::local(l_sub_lblock));
+    EXPECT_TRUE_U(
+      std::equal(array.local.begin(), array.local.end(),
+                 l_sub_block.begin()));
+
+    // Applying dash::local twice without interleaving dash::global
+    // expected to have no effect:
+    auto sub_l_sub_block = dash::sub(1,4, dash::local(l_sub_block));
 
     static_assert(
-      dash::view_traits<decltype(sub_l_sub_lblock)>::is_local::value,
+      dash::view_traits<decltype(sub_l_sub_block)>::is_local::value,
       "sub(local(sub(range))) expected have type trait local = true");
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       range_str(sub_l_sub_lblock));
+                       range_str(sub_l_sub_block));
 
-    EXPECT_EQ(3, sub_l_sub_lblock.size());
-    EXPECT_EQ(sub_l_sub_lblock.size(),
-              dash::end(sub_l_sub_lblock) - dash::begin(sub_l_sub_lblock));
+    EXPECT_EQ(3, sub_l_sub_block.size());
+    EXPECT_EQ(sub_l_sub_block.size(),
+              dash::end(sub_l_sub_block) - dash::begin(sub_l_sub_block));
 
-    for (int slsi = 0; slsi != sub_l_sub_lblock.size(); slsi++) {
-      int sub_l_sub_elem = sub_l_sub_lblock[slsi];
-      int l_sub_elem     = l_sub_lblock[slsi+1];
-      EXPECT_EQ(l_sub_elem, sub_l_sub_elem);
-    }
+    EXPECT_TRUE_U(
+      std::equal(array.local.begin() + 1,
+                 array.local.begin() + 4,
+                 sub_l_sub_block.begin()));
   }
 }
 
