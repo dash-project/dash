@@ -16,6 +16,7 @@
 
 #include <dash/allocator/LocalBucketIter.h>
 #include <dash/allocator/GlobBucketIter.h>
+#include <dash/allocator/AllocatorTraits.h>
 #include <dash/allocator/internal/GlobDynamicMemTypes.h>
 
 #include <dash/internal/Logging.h>
@@ -203,12 +204,20 @@ private:
 public:
   typedef AllocatorType                                      allocator_type;
   typedef ElementType                                            value_type;
-  typedef typename AllocatorType::size_type                       size_type;
-  typedef typename AllocatorType::difference_type           difference_type;
-  typedef typename AllocatorType::difference_type                index_type;
-  typedef typename AllocatorType::pointer                       raw_pointer;
-  typedef typename AllocatorType::void_pointer                 void_pointer;
-  typedef typename AllocatorType::const_void_pointer     const_void_pointer;
+
+  typedef typename dash::allocator_traits<AllocatorType>::size_type
+    size_type;
+  typedef typename dash::allocator_traits<AllocatorType>::difference_type
+    difference_type;
+  typedef typename dash::allocator_traits<AllocatorType>::difference_type
+    index_type;
+  typedef typename dash::allocator_traits<AllocatorType>::pointer
+    raw_pointer;
+  typedef typename dash::allocator_traits<AllocatorType>::void_pointer
+    void_pointer;
+  typedef typename dash::allocator_traits<AllocatorType>::const_void_pointer
+    const_void_pointer;
+
   typedef GlobPtr<value_type>                                       pointer;
   typedef GlobPtr<const value_type>                           const_pointer;
   typedef GlobSharedRef<value_type>                               reference;
