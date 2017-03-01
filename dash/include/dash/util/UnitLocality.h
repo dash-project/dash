@@ -130,15 +130,20 @@ public:
       return node_domain();
     }
 
-    dart_domain_locality_t * parent_domain = nullptr;
+    dart_domain_locality_t * parent_domain = _unit_domain;
     for (int rlevel = _unit_locality->hwinfo.num_scopes;
          rlevel >= 0;
          rlevel--) {
-      parent_domain = parent_domain->parent;
+      if (parent_domain == nullptr) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Unit domain is undefined");
+      }
       if (static_cast<int>(_unit_locality->hwinfo.scopes[rlevel].scope) <=
           static_cast<int>(scope)) {
         return dash::util::LocalityDomain(*parent_domain);
       }
+      parent_domain = parent_domain->parent;
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
