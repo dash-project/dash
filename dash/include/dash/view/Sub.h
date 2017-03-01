@@ -97,11 +97,7 @@ template <
   class    DomainT,
   class    OffsetFirstT,
   class    OffsetFinalT,
-  typename DomainValueT =
-             typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-             >::type
->
+  typename DomainValueT = typename std::decay<DomainT>::type >
 constexpr auto
 sub(
     OffsetFirstT    begin,
@@ -126,11 +122,7 @@ template <
   class    DomainT,
   class    OffsetFirstT,
   class    OffsetFinalT,
-  typename DomainValueT =
-             typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-             >::type
->
+  typename DomainValueT = typename std::decay<DomainT>::type >
 constexpr auto
 sub(
     OffsetFirstT    begin,
@@ -158,11 +150,7 @@ template <
   class    DomainT,
   class    OffsetFirstT,
   class    OffsetFinalT,
-  typename DomainValueT =
-             typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-             >::type
->
+  typename DomainValueT = typename std::decay<DomainT>::type >
 constexpr auto
 sub(
     OffsetFirstT    begin,

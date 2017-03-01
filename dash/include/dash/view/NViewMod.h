@@ -325,8 +325,7 @@ struct view_traits<NViewLocalMod<DomainType, NDim> > {
 
   typedef typename view_traits<domain_type>::index_type         index_type;
   typedef typename view_traits<domain_type>::size_type           size_type;
-  typedef dash::IndexSetLocal<
-            NViewLocalMod<DomainType, NDim> >               index_set_type;
+  typedef dash::IndexSetLocal<DomainType>                   index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -356,8 +355,7 @@ private:
   typedef NViewModBase<
             NViewLocalMod<DomainType, NDim>, DomainType, NDim >     base_t;
 public:
-  typedef dash::IndexSetLocal<
-            NViewLocalMod<DomainType, NDim> >               index_set_type;
+  typedef dash::IndexSetLocal<DomainType>                   index_set_type;
   typedef self_t                                                local_type;
   typedef typename domain_type::global_type                    global_type;
 
@@ -415,7 +413,7 @@ public:
   constexpr explicit NViewLocalMod(
     domain_type && domain)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(*this)
+  , _index_set(this->domain())
   { }
 
   /**
@@ -424,7 +422,7 @@ public:
   constexpr explicit NViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
-  , _index_set(*this)
+  , _index_set(domain)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -569,8 +567,7 @@ struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim>, SubDim > index_set_type;
+  typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -608,8 +605,7 @@ public:
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-  typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim>, SubDim>  index_set_type;
+  typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
 
   typedef decltype(
             dash::begin(
@@ -664,7 +660,7 @@ public:
   : base_t(std::forward<domain_type>(domain))
   , _begin_idx(begin)
   , _end_idx(end)
-  , _index_set(*this, begin, end)
+  , _index_set(this->domain(), begin, end)
   { }
 
   constexpr NViewSubMod(
@@ -674,7 +670,7 @@ public:
   : base_t(domain)
   , _begin_idx(begin)
   , _end_idx(end)
-  , _index_set(*this, begin, end)
+  , _index_set(domain, begin, end)
   { }
 
   // ---- extents ---------------------------------------------------------

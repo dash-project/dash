@@ -18,11 +18,7 @@ namespace dash {
  */
 template <
   class    ViewT,
-  typename ViewValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ViewT>::type
-             >::type
->
+  typename ViewValueT = typename std::decay<ViewT>::type >
 constexpr auto
 domain(ViewT && view)
   -> typename std::enable_if<
@@ -52,11 +48,7 @@ domain(const ViewT & view)
  */
 template <
   class    ContainerT,
-  typename ContainerValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ContainerT>::type
-             >::type
->
+  typename ContainerValueT = typename std::decay<ContainerT>::type >
 constexpr typename std::enable_if<
   !dash::view_traits<ContainerValueT>::is_view::value,
   ContainerT &
@@ -71,11 +63,7 @@ domain(ContainerT & container) {
  */
 template <
   class    ContainerT,
-  typename ContainerValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ContainerT>::type
-             >::type
->
+  typename ContainerValueT = typename std::decay<ContainerT>::type >
 constexpr typename std::enable_if<
   !dash::view_traits<ContainerValueT>::is_view::value,
   const ContainerT &

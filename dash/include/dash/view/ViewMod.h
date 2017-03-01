@@ -389,7 +389,7 @@ struct view_traits<ViewLocalMod<DomainType> > {
 
   typedef typename view_traits<domain_type>::index_type         index_type;
   typedef typename view_traits<domain_type>::size_type           size_type;
-  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
+  typedef dash::IndexSetLocal< DomainType >                 index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -413,7 +413,7 @@ class ViewLocalMod
   typedef ViewLocalMod<DomainType>                                  self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
  public:
-  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
+  typedef dash::IndexSetLocal< DomainType >                 index_set_type;
   typedef self_t                                                local_type;
   typedef typename domain_type::global_type                    global_type;
 
@@ -471,7 +471,7 @@ class ViewLocalMod
   constexpr explicit ViewLocalMod(
     domain_type && domain)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(*this)
+  , _index_set(this->domain())
   { }
 
   /**
@@ -480,7 +480,7 @@ class ViewLocalMod
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
-  , _index_set(*this)
+  , _index_set(domain)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -569,8 +569,7 @@ struct view_traits<ViewSubMod<DomainType, SubDim> > {
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetSub<ViewSubMod<DomainType, SubDim>, SubDim>
-                                                            index_set_type;
+  typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -599,8 +598,7 @@ class ViewSubMod
   typedef ViewSubMod<DomainType, SubDim>                              self_t;
   typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
  public:
-  typedef dash::IndexSetSub< ViewSubMod<DomainType, SubDim>, SubDim >
-                                                              index_set_type;
+  typedef dash::IndexSetSub<DomainType, SubDim>               index_set_type;
   typedef ViewLocalMod<self_t>                                    local_type;
   typedef self_t                                                 global_type;
 
@@ -655,7 +653,7 @@ class ViewSubMod
     index_type     begin,
     index_type     end)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(*this, begin, end)
+  , _index_set(this->domain(), begin, end)
   { }
 
   constexpr ViewSubMod(
@@ -663,7 +661,7 @@ class ViewSubMod
     index_type     begin,
     index_type     end)
   : base_t(domain)
-  , _index_set(*this, begin, end)
+  , _index_set(domain, begin, end)
   { }
 
   constexpr const_iterator begin() const {
@@ -729,7 +727,7 @@ struct view_traits<ViewGlobalMod<DomainType> > {
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetLocal< ViewLocalMod<DomainType> >   index_set_type;
+  typedef dash::IndexSetLocal< DomainType >                 index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -752,7 +750,7 @@ class ViewGlobalMod
   typedef ViewGlobalMod<DomainType>                                 self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
  public:
-  typedef dash::IndexSetGlobal< ViewGlobalMod<DomainType> > index_set_type;
+  typedef dash::IndexSetGlobal< DomainType >                index_set_type;
   typedef self_t                                               global_type;
   typedef typename domain_type::local_type                      local_type;
 
@@ -772,18 +770,18 @@ class ViewGlobalMod
    * Constructor, creates a view on a given domain.
    */
   constexpr explicit ViewGlobalMod(
-    const domain_type & domain)
-  : base_t(domain)
-  , _index_set(*this)
+    domain_type && domain)
+  : base_t(std::forward<domain_type>(domain))
+  , _index_set(this->domain())
   { }
 
   /**
    * Constructor, creates a view on a given domain.
    */
   constexpr explicit ViewGlobalMod(
-    domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
-  , _index_set(*this)
+    const domain_type & domain)
+  : base_t(domain)
+  , _index_set(domain)
   { }
 
   constexpr auto begin() const

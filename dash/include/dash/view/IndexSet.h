@@ -54,34 +54,34 @@ using global_index_t
 
 // Forward-declarations
 
-template <class IndexSetType, class ViewType, std::size_t NDim>
+template <class IndexSetType, class DomainType, std::size_t NDim>
 class IndexSetBase;
 
-template <class ViewType>
+template <class DomainType>
 class IndexSetIdentity;
 
-template <class ViewType>
+template <class DomainType>
 class IndexSetLocal;
 
-template <class ViewType>
+template <class DomainType>
 class IndexSetGlobal;
 
-template <class ViewType, std::size_t SubDim>
+template <class DomainType, std::size_t SubDim>
 class IndexSetSub;
 
 
 
 template <
-  class    ViewType,
-  typename ViewValueType =
+  class    DomainType,
+  typename DomainValueType =
              typename std::remove_const<
-               typename std::remove_reference<ViewType>::type
+               typename std::remove_reference<DomainType>::type
              >::type
 >
 constexpr auto
-index(const ViewType & v)
+index(const DomainType & v)
   -> typename std::enable_if<
-       dash::view_traits<ViewValueType>::is_view::value,
+       dash::view_traits<DomainValueType>::is_view::value,
        decltype(v.index_set())
      >::type {
   return v.index_set();
@@ -177,39 +177,39 @@ class IndexSetIterator
 
 template <
   class       IndexSetType,
-  class       ViewType,
+  class       DomainType,
   std::size_t NDim >
 constexpr auto
 local(
-  const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
+  const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
 //  -> decltype(index_set.local()) {
-//  -> typename view_traits<IndexSetBase<ViewType>>::global_type & { 
-    -> const IndexSetLocal<ViewType> & { 
+//  -> typename view_traits<IndexSetBase<DomainType>>::global_type & { 
+    -> const IndexSetLocal<DomainType> & { 
   return index_set.local();
 }
 
 template <
   class       IndexSetType,
-  class       ViewType,
+  class       DomainType,
   std::size_t NDim >
 constexpr auto
 global(
-  const IndexSetBase<IndexSetType, ViewType, NDim> & index_set)
+  const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
 //   ->  decltype(index_set.global()) {
-//   -> typename view_traits<IndexSetSub<ViewType>>::global_type & { 
-     -> const IndexSetGlobal<ViewType> & { 
+//   -> typename view_traits<IndexSetSub<DomainType>>::global_type & { 
+     -> const IndexSetGlobal<DomainType> & { 
   return index_set.global();
 }
 
 
 namespace detail {
 
-template <class ViewT>
-struct index_set_view_member {
+template <class DomainT>
+struct index_set_domain_bind_t {
   typedef typename
-            std::conditional< dash::is_view<ViewT>::value,
-                              ViewT,
-                              const ViewT & >::type
+            std::conditional< dash::is_view<DomainT>::value,
+                              DomainT,
+                              const DomainT & >::type
     type;
 };
 
@@ -220,25 +220,25 @@ struct index_set_view_member {
  */
 template <
   class       IndexSetType,
-  class       ViewType,
-  std::size_t NDim = ViewType::ndim() >
+  class       DomainType,
+  std::size_t NDim = DomainType::ndim() >
 class IndexSetBase
 {
-  typedef IndexSetBase<IndexSetType, ViewType, NDim> self_t;
+  typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
 
   typedef typename std::remove_const<
-            typename std::remove_reference<ViewType>::type
+            typename std::remove_reference<DomainType>::type
           >::type
-    ViewValueT;
+    DomainValueT;
 
  public:
-  typedef typename dash::view_traits<ViewValueT>::origin_type
+  typedef typename dash::view_traits<DomainValueT>::origin_type
     view_origin_type;
-  typedef typename dash::view_traits<ViewValueT>::domain_type
+  typedef DomainValueT
     view_domain_type;
-  typedef typename ViewValueT::local_type
+  typedef typename DomainValueT::local_type
     view_local_type;
-  typedef typename dash::view_traits<ViewValueT>::global_type
+  typedef typename dash::view_traits<DomainValueT>::global_type
     view_global_type;
 
   typedef typename view_traits<view_origin_type>::pattern_type
@@ -252,16 +252,15 @@ class IndexSetBase
     iterator;
   typedef detail::IndexSetIterator<IndexSetType>
     const_iterator;
-  typedef typename ViewType::size_type
+  typedef typename DomainType::size_type
     size_type;
-  typedef typename ViewType::index_type
+  typedef typename DomainType::index_type
     index_type;
   typedef index_type
     value_type;
 
-// typedef typename detail::index_set_view_member<ViewType>::type
-//   view_member_type;
-  typedef const ViewType & view_member_type;
+  typedef typename detail::index_set_domain_bind_t<DomainType>::type
+    domain_member_type;
 
   typedef std::integral_constant<std::size_t, NDim>
     rank;
@@ -269,21 +268,21 @@ class IndexSetBase
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  view_member_type      _view;
-  const pattern_type  & _pattern;
+  domain_member_type      _domain;
+  const pattern_type   * _pattern;
 
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
   }
   
-  constexpr explicit IndexSetBase(const ViewType & view)
-  : _view(view)
-  , _pattern(dash::origin(view).pattern())
+  constexpr explicit IndexSetBase(const DomainType & domain)
+  : _domain(domain)
+  , _pattern(&dash::origin(domain).pattern())
   { }
 
-  constexpr explicit IndexSetBase(ViewType && view)
-  : _view(std::forward<ViewType>(view))
-  , _pattern(dash::origin(_view).pattern())
+  constexpr explicit IndexSetBase(DomainType && domain)
+  : _domain(std::forward<DomainType>(domain))
+  , _pattern(&dash::origin(view_domain()).pattern())
   { }
 
   typedef struct {
@@ -332,36 +331,36 @@ class IndexSetBase
   self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = default;
   
-  constexpr const ViewType & view() const & {
-    return _view;
+  constexpr const DomainType & view_domain() const & {
+    return _domain;
   }
 
-  constexpr ViewType view() const && {
-    return _view;
+  constexpr DomainType view_domain() const && {
+    return _domain;
   }
 
   constexpr auto domain() const
-    -> decltype(dash::index(dash::domain(view()))) {
-    return dash::index(dash::domain(view()));
+    -> decltype(dash::index(this->view_domain())) {
+    return dash::index(this->view_domain());
   }
 
   constexpr const pattern_type & pattern() const {
-    return _pattern;
+    return *_pattern;
   }
 
   constexpr const local_type local() const {
-    return dash::index(dash::local(_view));
+    return dash::index(dash::local(_domain));
   }
  
   constexpr const global_type global() const {
-    return dash::index(dash::global(_view));
+    return dash::index(dash::global(_domain));
   }
 
   // ---- extents ---------------------------------------------------------
 
   constexpr std::array<size_type, NDim>
   extents() const {
-    return _pattern.extents();
+    return pattern().extents();
   }
 
   template <std::size_t ShapeDim>
@@ -442,23 +441,23 @@ class IndexSetBase
 // IndexSetIdentity
 // -----------------------------------------------------------------------
 
-template <class ViewType>
-constexpr IndexSetIdentity<ViewType> &
-local(const IndexSetIdentity<ViewType> & index_set) {
+template <class DomainType>
+constexpr IndexSetIdentity<DomainType> &
+local(const IndexSetIdentity<DomainType> & index_set) {
   return index_set;
 }
 
 /**
  * \concept{DashRangeConcept}
  */
-template <class ViewType>
+template <class DomainType>
 class IndexSetIdentity
 : public IndexSetBase<
-           IndexSetIdentity<ViewType>,
-           ViewType >
+           IndexSetIdentity<DomainType>,
+           DomainType >
 {
-  typedef IndexSetIdentity<ViewType>            self_t;
-  typedef IndexSetBase<self_t, ViewType>        base_t;
+  typedef IndexSetIdentity<DomainType>            self_t;
+  typedef IndexSetBase<self_t, DomainType>        base_t;
  public:
   constexpr IndexSetIdentity()               = delete;
   constexpr IndexSetIdentity(self_t &&)      = default;
@@ -467,13 +466,13 @@ class IndexSetIdentity
   self_t & operator=(self_t &&)              = default;
   self_t & operator=(const self_t &)         = default;
  public:
-  typedef typename ViewType::index_type     index_type;
+  typedef typename DomainType::index_type     index_type;
  public:
-  constexpr explicit IndexSetIdentity(const ViewType & view)
+  constexpr explicit IndexSetIdentity(const DomainType & view)
   : base_t(view)
   { }
-  constexpr explicit IndexSetIdentity(ViewType && view)
-  : base_t(std::forward<ViewType>(view))
+  constexpr explicit IndexSetIdentity(DomainType && view)
+  : base_t(std::forward<DomainType>(view))
   { }
 
   constexpr index_type rel(index_type image_index) const {
@@ -481,7 +480,7 @@ class IndexSetIdentity
   }
 
   constexpr index_type size() const {
-    return this->view().size();
+    return this->view_domain().size();
   }
 
   constexpr index_type operator[](index_type image_index) const {
@@ -509,20 +508,20 @@ class IndexSetIdentity
  *   n-dimensional arrangement of blocks, however.
  */
 
-template <class ViewType>
+template <class DomainType>
 class IndexSetBlocks
 : public IndexSetBase<
-           IndexSetBlocks<ViewType>,
-           ViewType,
+           IndexSetBlocks<DomainType>,
+           DomainType,
            1 >
 {
-  typedef IndexSetBlocks<ViewType>                              self_t;
-  typedef IndexSetBase<self_t, ViewType, 1>                     base_t;
+  typedef IndexSetBlocks<DomainType>                            self_t;
+  typedef IndexSetBase<self_t, DomainType, 1>                   base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
+  typedef typename DomainType::index_type                   index_type;
 
   typedef self_t                                            local_type;
-  typedef IndexSetGlobal<ViewType>                         global_type;
+  typedef IndexSetGlobal<DomainType>                       global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -535,8 +534,8 @@ class IndexSetBlocks
   index_type _size;
 
   constexpr static dim_t NDim = 1;
-  constexpr static bool  view_is_local
-    = dash::view_traits<ViewType>::is_local::value;
+  constexpr static bool  view_domain_is_local
+    = dash::view_traits<DomainType>::is_local::value;
  public:
   constexpr IndexSetBlocks()               = delete;
   constexpr IndexSetBlocks(self_t &&)      = default;
@@ -549,7 +548,7 @@ class IndexSetBlocks
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetBlocks(const ViewType & view)
+  constexpr explicit IndexSetBlocks(const DomainType & view)
   : base_t(view)
   , _size(calc_size())
   { }
@@ -557,8 +556,8 @@ class IndexSetBlocks
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetBlocks(ViewType && view)
-  : base_t(std::forward<ViewType>(view))
+  constexpr explicit IndexSetBlocks(DomainType && view)
+  : base_t(std::forward<DomainType>(view))
   , _size(calc_size())
   { }
 
@@ -573,7 +572,7 @@ class IndexSetBlocks
   constexpr index_type rel(index_type block_index) const {
     return block_index +
            // index of block at first index in domain
-           ( view_is_local
+           ( view_domain_is_local
                // global coords to local block index:
              ? this->pattern().local_block_at(
                  // global offset to global coords:
@@ -608,7 +607,7 @@ class IndexSetBlocks
  private:
   constexpr index_type calc_size() const {
     return (
-      view_is_local
+      view_domain_is_local
       ? ( // index of block at last index in domain
           this->pattern().local_block_at(
             this->pattern().coords(
@@ -645,20 +644,20 @@ class IndexSetBlocks
 #if 0
 // Currently using IndexSetSub instead
 //
-template <class ViewType>
+template <class DomainType>
 class IndexSetBlock
 : public IndexSetBase<
-           IndexSetBlock<ViewType>,
-           ViewType,
+           IndexSetBlock<DomainType>,
+           DomainType,
            1 >
 {
-  typedef IndexSetBlock<ViewType>                               self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetBlock<DomainType>                               self_t;
+  typedef IndexSetBase<self_t, DomainType>                        base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
+  typedef typename DomainType::index_type                     index_type;
    
   typedef self_t                                            local_type;
-  typedef IndexSetGlobal<ViewType>                         global_type;
+  typedef IndexSetGlobal<DomainType>                         global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -672,8 +671,8 @@ class IndexSetBlock
   index_type _size;
 
   constexpr static dim_t NDim = 1;
-  constexpr static bool  view_is_local
-    = dash::view_traits<ViewType>::is_local::value;
+  constexpr static bool  view_domain_is_local
+    = dash::view_traits<DomainType>::is_local::value;
  public:
   constexpr IndexSetBlock()                = delete;
   constexpr IndexSetBlock(self_t &&)       = default;
@@ -684,7 +683,7 @@ class IndexSetBlock
 
  public:
   constexpr explicit IndexSetBlock(
-    const ViewType & view,
+    const DomainType & view,
     index_type       block_idx)
   : base_t(view)
   , _block_idx(block_idx)
@@ -701,7 +700,7 @@ class IndexSetBlock
 
   constexpr index_type rel(index_type block_phase) const {
     return block_phase +
-           ( view_is_local
+           ( view_domain_is_local
              ? ( // index of block at last index in domain
                  this->pattern().local_block_at(
                    this->pattern().coords(
@@ -734,7 +733,7 @@ class IndexSetBlock
 
  private:
   constexpr index_type calc_size() const {
-    return ( view_is_local
+    return ( view_domain_is_local
              ? ( // index of block at last index in domain
                  this->pattern().local_block_at(
                    {{ *( this->domain().begin()
@@ -763,22 +762,22 @@ class IndexSetBlock
 // -----------------------------------------------------------------------
 
 template <
-  class       ViewType,
+  class       DomainType,
   std::size_t SubDim >
 constexpr auto
-local(const IndexSetSub<ViewType, SubDim> & index_set) ->
+local(const IndexSetSub<DomainType, SubDim> & index_set) ->
 // decltype(index_set.local()) {
-  typename view_traits<IndexSetSub<ViewType, SubDim>>::local_type & {
+  typename view_traits<IndexSetSub<DomainType, SubDim>>::local_type & {
   return index_set.local();
 }
 
 template <
-  class       ViewType,
+  class       DomainType,
   std::size_t SubDim >
 constexpr auto
-global(const IndexSetSub<ViewType, SubDim> & index_set) ->
+global(const IndexSetSub<DomainType, SubDim> & index_set) ->
 // decltype(index_set.global()) {
-  typename view_traits<IndexSetSub<ViewType, SubDim>>::global_type & {
+  typename view_traits<IndexSetSub<DomainType, SubDim>>::global_type & {
   return index_set.global();
 }
 
@@ -786,15 +785,15 @@ global(const IndexSetSub<ViewType, SubDim> & index_set) ->
  * \concept{DashRangeConcept}
  */
 template <
-  class       ViewType,
+  class       DomainType,
   std::size_t SubDim = 0 >
 class IndexSetSub
 : public IndexSetBase<
-           IndexSetSub<ViewType, SubDim>,
-           ViewType >
+           IndexSetSub<DomainType, SubDim>,
+           DomainType >
 {
-  typedef IndexSetSub<ViewType, SubDim>                         self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetSub<DomainType, SubDim>                       self_t;
+  typedef IndexSetBase<self_t, DomainType>                      base_t;
  public:
   typedef typename base_t::index_type                       index_type;
   typedef typename base_t::size_type                         size_type;
@@ -804,7 +803,7 @@ class IndexSetSub
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-//typedef IndexSetSub<ViewType, SubDim>                  preimage_type;
+//typedef IndexSetSub<DomainType, SubDim>                preimage_type;
   typedef IndexSetSub<view_origin_type, SubDim>          preimage_type;
 
  public:
@@ -824,7 +823,7 @@ class IndexSetSub
    * Constructor, creates index set for given view.
    */
   constexpr IndexSetSub(
-    const ViewType   & view,
+    const DomainType   & view,
     index_type         begin_idx,
     index_type         end_idx)
   : base_t(view)
@@ -836,10 +835,10 @@ class IndexSetSub
    * Constructor, creates index set for given view.
    */
   constexpr IndexSetSub(
-    ViewType        && view,
+    DomainType        && view,
     index_type         begin_idx,
     index_type         end_idx)
-  : base_t(std::forward<ViewType>(view))
+  : base_t(std::forward<DomainType>(view))
   , _domain_begin_idx(begin_idx)
   , _domain_end_idx(end_idx)
   { }
@@ -943,9 +942,10 @@ class IndexSetSub
 
   constexpr preimage_type pre() const {
     return preimage_type(
-             dash::origin(this->view()),
+             dash::origin(this->view_domain()),
              -(this->operator[](0)),
-             -(this->operator[](0)) + dash::origin(this->view()).size()
+             -(this->operator[](0))
+               + dash::origin(this->view_domain()).size()
            );
   }
 }; // class IndexSetSub
@@ -954,37 +954,37 @@ class IndexSetSub
 // IndexSetLocal
 // -----------------------------------------------------------------------
 
-template <class ViewType>
-constexpr const IndexSetLocal<ViewType> &
-local(const IndexSetLocal<ViewType> & index_set) {
+template <class DomainType>
+constexpr const IndexSetLocal<DomainType> &
+local(const IndexSetLocal<DomainType> & index_set) {
   return index_set;
 }
 
-template <class ViewType>
+template <class DomainType>
 constexpr auto
-global(const IndexSetLocal<ViewType> & index_set) ->
+global(const IndexSetLocal<DomainType> & index_set) ->
 // decltype(index_set.global()) {
-  typename view_traits<IndexSetLocal<ViewType>>::global_type & { 
+  typename view_traits<IndexSetLocal<DomainType>>::global_type & { 
   return index_set.global();
 }
 
 /**
  * \concept{DashRangeConcept}
  */
-template <class ViewType>
+template <class DomainType>
 class IndexSetLocal
 : public IndexSetBase<
-           IndexSetLocal<ViewType>,
-           ViewType >
+           IndexSetLocal<DomainType>,
+           DomainType >
 {
-  typedef IndexSetLocal<ViewType>                               self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetLocal<DomainType>                             self_t;
+  typedef IndexSetBase<self_t, DomainType>                      base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
-  typedef typename ViewType::size_type                       size_type;
+  typedef typename DomainType::index_type                   index_type;
+  typedef typename DomainType::size_type                     size_type;
 
   typedef self_t                                            local_type;
-  typedef IndexSetGlobal<ViewType>                         global_type;
+  typedef IndexSetGlobal<DomainType>                       global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -1007,7 +1007,7 @@ class IndexSetLocal
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetLocal(const ViewType & view)
+  constexpr explicit IndexSetLocal(const DomainType & view)
   : base_t(view)
   , _size(calc_size())
   { }
@@ -1015,8 +1015,8 @@ class IndexSetLocal
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetLocal(ViewType && view)
-  : base_t(std::forward<ViewType>(view))
+  constexpr explicit IndexSetLocal(DomainType && view)
+  : base_t(std::forward<DomainType>(view))
   , _size(calc_size())
   { }
 
@@ -1025,11 +1025,11 @@ class IndexSetLocal
   }
 
   constexpr global_type global() const noexcept {
-    return global_type(this->view());
+    return global_type(this->view_domain());
   }
 
   constexpr preimage_type pre() const noexcept {
-    return preimage_type(this->view());
+    return preimage_type(this->view_domain());
   }
 
   // ---- extents ---------------------------------------------------------
@@ -1161,18 +1161,18 @@ class IndexSetLocal
 // IndexSetGlobal
 // -----------------------------------------------------------------------
 
-template <class ViewType>
+template <class DomainType>
 constexpr auto
-local(const IndexSetGlobal<ViewType> & index_set)
+local(const IndexSetGlobal<DomainType> & index_set)
     -> decltype(index_set.local())
 {
-//  -> typename view_traits<IndexSetGlobal<ViewType>>::local_type & {
+//  -> typename view_traits<IndexSetGlobal<DomainType>>::local_type & {
   return index_set.local();
 }
 
-template <class ViewType>
-constexpr const IndexSetGlobal<ViewType> &
-global(const IndexSetGlobal<ViewType> & index_set)
+template <class DomainType>
+constexpr const IndexSetGlobal<DomainType> &
+global(const IndexSetGlobal<DomainType> & index_set)
 {
   return index_set;
 }
@@ -1180,16 +1180,16 @@ global(const IndexSetGlobal<ViewType> & index_set)
 /**
  * \concept{DashRangeConcept}
  */
-template <class ViewType>
+template <class DomainType>
 class IndexSetGlobal
 : public IndexSetBase<
-           IndexSetGlobal<ViewType>,
-           ViewType >
+           IndexSetGlobal<DomainType>,
+           DomainType >
 {
-  typedef IndexSetGlobal<ViewType>                              self_t;
-  typedef IndexSetBase<self_t, ViewType>                        base_t;
+  typedef IndexSetGlobal<DomainType>                            self_t;
+  typedef IndexSetBase<self_t, DomainType>                      base_t;
  public:
-  typedef typename ViewType::index_type                     index_type;
+  typedef typename DomainType::index_type                   index_type;
 
   typedef IndexSetLocal<self_t>                             local_type;
   typedef self_t                                           global_type;
@@ -1213,7 +1213,7 @@ class IndexSetGlobal
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetGlobal(const ViewType & view)
+  constexpr explicit IndexSetGlobal(const DomainType & view)
   : base_t(view)
   , _size(calc_size())
   { }
@@ -1221,8 +1221,8 @@ class IndexSetGlobal
   /**
    * Constructor, creates index set for given view.
    */
-  constexpr explicit IndexSetGlobal(ViewType && view)
-  : base_t(std::forward<ViewType>(view))
+  constexpr explicit IndexSetGlobal(DomainType && view)
+  : base_t(std::forward<DomainType>(view))
   , _size(calc_size())
   { }
 
@@ -1247,7 +1247,7 @@ class IndexSetGlobal
   }
 
   constexpr const local_type & local() const {
-    return dash::index(dash::local(this->view()));
+    return dash::index(dash::local(this->domain()));
   }
 
   constexpr const global_type & global() const {
@@ -1255,7 +1255,7 @@ class IndexSetGlobal
   }
 
   constexpr const preimage_type & pre() const {
-    return dash::index(dash::local(this->view()));
+    return dash::index(dash::local(this->domain()));
   }
 }; // class IndexSetGlobal
 

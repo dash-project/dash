@@ -299,7 +299,7 @@ class ViewBlocksMod
   typedef ViewBlockMod<DomainType>                              block_type;
   typedef typename domain_type::local_type               domain_local_type;
  public:
-  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType>>   index_set_type;
+  typedef dash::IndexSetBlocks<DomainType>                  index_set_type;
   typedef self_t                                               global_type;
   typedef ViewBlocksMod<domain_local_type>                      local_type;
 
@@ -390,7 +390,7 @@ class ViewBlocksMod
   constexpr explicit ViewBlocksMod(
     const domain_type & domain)
   : base_t(domain)
-  , _index_set(*this)
+  , _index_set(domain)
   { }
 
   /**
@@ -399,7 +399,7 @@ class ViewBlocksMod
   constexpr explicit ViewBlocksMod(
     domain_type && domain)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(*this)
+  , _index_set(this->domain())
   { }
 
   constexpr const_iterator begin() const {

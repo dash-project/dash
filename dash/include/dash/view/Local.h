@@ -12,7 +12,9 @@ namespace dash {
 /**
  * \concept{DashViewConcept}
  */
-template <class ViewType>
+template <
+  class    ViewType,
+  typename ViewValueT = typename std::decay<ViewType>::type >
 constexpr auto
 local(ViewType & v)
 -> typename std::enable_if<
@@ -34,6 +36,18 @@ local(const ViewType & v)
      const typename ViewType::local_type
    >::type {
   return v.local();
+}
+
+template <
+  class    ViewType,
+  typename ViewValueT = typename std::decay<ViewType>::type >
+constexpr auto
+local(ViewType && v)
+-> typename std::enable_if<
+     dash::view_traits<ViewValueT>::is_view::value,
+     decltype(std::forward<ViewType>(v).local())
+   >::type {
+ return std::forward<ViewType>(v).local();
 }
 
 /**
