@@ -443,6 +443,7 @@ public:
     while (t && level > 0 && !(t->is_leaf())) {
       t = t->_child;
       level--;
+      DASH_ASSERT_MSG(t, "node is neither leaf nor has child");
     }
     return *t;
   }
@@ -452,6 +453,7 @@ public:
     Team *t = this;
     while (t && !(t->is_leaf())) {
       t = t->_child;
+      DASH_ASSERT_MSG(t, "node is neither leaf nor has child");
     }
     return *t;
   }
