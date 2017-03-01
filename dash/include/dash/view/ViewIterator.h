@@ -66,7 +66,7 @@ public:
   { }
 
   constexpr reference dereference(index_type idx) const {
-    return (_domain_it)[ (_index_set)[idx] ];
+    return *(_domain_it + (_index_set[idx]));
   }
 
   constexpr index_type gpos() const {

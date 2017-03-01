@@ -101,26 +101,11 @@ public:
   }
 
   /**
-   * TODO: Try deleting copy constructors to preserve unified copy semantics
-   *       ref_a = ref_b.
-   *
-   * Copy constructor.
+   * Reference types cannot be copied.
    */
-  GlobRef(const self_t & other) = default;
+  GlobRef(const self_t & other) = delete;
  
-  GlobRef(self_t && other) = default;
-
-  /**
-   * TODO: Try deleting copy constructors to preserve unified copy semantics
-   *       ref_a = ref_b.
-   *
-   * Copy constructor.
-   */
-  template <class ElementT>
-  GlobRef(
-    const GlobRef<ElementT> & other)
-  : _gptr(other._gptr)
-  { }
+  GlobRef(self_t && other)      = default;
 
   GlobRef<T> & operator=(const T val) {
     set(val);

@@ -192,39 +192,6 @@ public:
     _lbegin(_globmem->lbegin())
   { }
 
-#if 0
-  /**
-   * Copy constructor.
-   */
-  template <class GlobIterT>
-  GlobIter(
-    const GlobIterT & other)
-  : _globmem(other._globmem)
-  , _pattern(other._pattern)
-  , _idx    (other._idx)
-  , _max_idx(other._max_idx)
-  , _myid   (other._myid)
-  , _lbegin (other._lbegin)
-  { }
-
-  /**
-   * Copy constructor.
-   */
-  template <
-    class    P_,
-    class    GM_,
-    class    Ptr_,
-    class    Ref_ >
-  GlobIter(
-    const GlobIter<const ElementType, P_, GM_, Ptr_, Ref_> & other)
-  : _globmem(other._globmem)
-  , _pattern(other._pattern)
-  , _idx    (other._idx)
-  , _max_idx(other._max_idx)
-  , _myid   (other._myid)
-  , _lbegin (other._lbegin)
-  { }
-#endif
   template <
     class    P_,
     class    GM_,
