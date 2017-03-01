@@ -1,6 +1,7 @@
 #include <string.h>
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
@@ -23,8 +24,16 @@ static inline int hash_segid(dart_segid_t segid)
   return (abs(segid) % DART_SEGMENT_HASH_SIZE);
 }
 
+static inline void
+register_segment(dart_segmentdata_t *segdata, dart_seghash_elem_t *elem)
+{
+  int slot = hash_segid(elem->data.seg_id);
+  elem->next = segdata->hashtab[slot];
+  segdata->hashtab[slot] = elem;
+}
+
 /**
- * @brief Initialize the segment data hash table.
+ * Initialize the segment data hash table.
  */
 dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
 {
@@ -32,7 +41,16 @@ dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
     sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
 
   segdata->team_id = teamid;
+  segdata->mem_freelist = NULL;
+  segdata->reg_freelist = NULL;
+  segdata->memid = 1;
+  segdata->registermemid = -1;
 
+  // register the segment for non-global allocations on DART_TEAM_ALL
+  if (teamid == DART_TEAM_ALL) {
+    dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
+    register_segment(segdata, elem);
+  }
   return DART_OK;
 }
 
@@ -60,49 +78,63 @@ static dart_segment_info_t * get_segment(
   return &(elem->data);
 }
 
-static dart_ret_t
-dart_segment_copy_info(
-    dart_segment_info_t       *seginfo,
-    const dart_segment_info_t *item)
-{
-  seginfo->seg_id  = item->seg_id;
-  seginfo->size    = item->size;
-  seginfo->disp    = item->disp;
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  seginfo->win     = item->win;
-  seginfo->baseptr = item->baseptr;
-#endif
-  seginfo->selfbaseptr = item->selfbaseptr;
-  seginfo->flags       = item->flags;
-
-  return DART_OK;
-}
-
 /**
- * @brief Allocates a new segment data struct. May be served from a freelist.
+ * Allocates a new segment data struct. May be served from a freelist.
  *
- * @return A pointer to an empty segment data object.
+ * \return A pointer to an empty segment data object.
  */
-dart_ret_t dart_segment_alloc(
-    dart_segmentdata_t        *segdata,
-    const dart_segment_info_t *item)
+dart_segment_info_t *
+dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
 {
-  DART_LOG_DEBUG("dart_segment_alloc() segid:%d team_id:%d",
-                 item->seg_id, segdata->team_id);
+  DART_LOG_DEBUG("dart_segment_alloc() team_id:%d",
+                 segdata->team_id);
 
-  int slot = hash_segid(item->seg_id);
+  int16_t segid;
+  dart_seghash_elem_t *elem = NULL;
+  if (type == DART_SEGMENT_ALLOC) {
+    if (segdata->mem_freelist != NULL) {
+      elem  = segdata->mem_freelist;
+      segid = elem->data.seg_id;
+      segdata->mem_freelist = elem->next;
+    } else {
+      if (segdata->memid == INT16_MAX || segdata->memid <= 0) {
+        DART_LOG_ERROR(
+            "Failed to allocate segment ID, "
+            "too many segments already allocated? (memid: %i)", segdata->memid);
+        return NULL;
+      }
+      segid = segdata->memid++;
+      elem = calloc(1, sizeof(dart_seghash_elem_t));
+      elem->data.seg_id = segid;
+    }
+  } else if (type == DART_SEGMENT_REGISTER) {
+    if (segdata->reg_freelist != NULL) {
+      elem  = segdata->reg_freelist;
+      segid = elem->data.seg_id;
+      segdata->reg_freelist = elem->next;
+    } else {
+      if (segdata->registermemid == INT16_MIN || segdata->registermemid >= 0) {
+        DART_LOG_ERROR(
+            "Failed to allocate segment ID, "
+            "too many segments already registered? (registermemid: %i)",
+            segdata->registermemid);
+        return NULL;
+      }
+      segid = segdata->registermemid--;
+      elem = calloc(1, sizeof(dart_seghash_elem_t));
+      elem->data.seg_id = segid;
+    }
+  } else {
+    // this should not happen!
+    DART_ASSERT(type != DART_SEGMENT_REGISTER && type != DART_SEGMENT_ALLOC);
+  }
 
-  dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
-  elem->next = segdata->hashtab[slot];
-  segdata->hashtab[slot] = elem;
-
-  dart_segment_copy_info(&elem->data, item);
+  register_segment(segdata, elem);
 
   DART_LOG_DEBUG("dart_segment_alloc > segid:%d team_id:%d",
-                 item->seg_id, segdata->team_id);
-  return DART_OK;
+                 segid, segdata->team_id);
+  return &(elem->data);
 }
-
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_win(
@@ -247,9 +279,9 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
 }
 
 /**
- * @brief Deallocates the segment identified by the segment ID.
+ * Deallocates the segment identified by the segment ID.
  *
- * @return DART_OK on success.
+ * \return DART_OK on success.
  *         DART_ERR_INVAL if the segment was not found.
  *
  */
@@ -272,7 +304,20 @@ dart_ret_t dart_segment_free(
         segdata->hashtab[slot] = elem->next;
       }
       free_segment_info(&elem->data);
-      free(elem);
+      // no need for locking since operations on the same segmentdata
+      // are not thread-safe
+      if (segid > 0) {
+        elem->next            = segdata->mem_freelist;
+        segdata->mem_freelist = elem;
+      } else if (segid < 0){
+        elem->next            = segdata->reg_freelist;
+        segdata->reg_freelist = elem;
+      } else {
+        // This should not happen!
+        DART_ASSERT(segid != 0);
+      }
+      // set the segment ID again
+      elem->data.seg_id = segid;
       return DART_OK;
     }
 
@@ -305,6 +350,12 @@ dart_ret_t dart_segment_fini(
   // clear the hash table
   for (int i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
     clear_segdata_list(segdata->hashtab[i]);
+    segdata->hashtab[i] = NULL;
   }
+  clear_segdata_list(segdata->mem_freelist);
+  segdata->mem_freelist = NULL;
+
+  clear_segdata_list(segdata->reg_freelist);
+  segdata->reg_freelist = NULL;
   return DART_OK;
 }

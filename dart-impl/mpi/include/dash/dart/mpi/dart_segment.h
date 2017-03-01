@@ -30,34 +30,64 @@ typedef struct
 typedef struct dart_seghash_elem dart_seghash_elem_t;
 
 typedef struct {
+  dart_seghash_elem_t * hashtab[DART_SEGMENT_HASH_SIZE];
+  dart_team_t           team_id;
+  dart_seghash_elem_t * mem_freelist;
+  dart_seghash_elem_t * reg_freelist;
 
-  dart_seghash_elem_t* hashtab[DART_SEGMENT_HASH_SIZE];
-  dart_team_t team_id;
-
-  // TODO: Add free-segment-ID list here
-
+  /**
+   * For DART collective allocation/free: offset in the returned gptr
+   * represents the displacement relative to the beginning of sub-memory
+   * spanned by a DART collective allocation.
+   * For DART local allocation/free: offset in the returned gptr represents
+   * the displacement relative to the base address of memory region reserved
+   * for the dart local allocation/free (see dart_buddy_allocator).
+   * Local allocations are identified by Segment ID DART_SEGMENT_LOCAL.
+   */
+  int16_t memid;
+  int16_t registermemid;
 } dart_segmentdata_t;
+
+typedef enum {
+  DART_SEGMENT_ALLOC,
+  DART_SEGMENT_REGISTER
+} dart_segment_type;
 
 
 /**
- * @brief Initialize the segment data hash table.
+ * Initialize the segment data hash table.
  */
 dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid);
 
 /**
- * @brief Allocates a new segment data struct. May be served from a freelist.
+ * Allocates a new segment data struct. May be served from a freelist.
+ * The call also allocates the correct segment ID based on the \c type
+ * and registers the newly allocated segment in the segment data.
+ *
+ * \param segdata The segment data to of the team allocating this segment.
+ * \param type    Whether the segment is allocated or registered.
  */
-dart_ret_t dart_segment_alloc(dart_segmentdata_t *segdata, const dart_segment_info_t *item);
+dart_segment_info_t *
+dart_segment_alloc(
+  dart_segmentdata_t *segdata,
+  dart_segment_type type);
+
+dart_ret_t
+dart_segment_register(
+  dart_segmentdata_t  *segdata,
+  dart_segment_info_t *seg);
 
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-/** @brief Query the shared memory window object associated with the specified seg_id.
+
+/**
+ * Query the shared memory window object associated with the specified seg_id.
  *
- *  @param[in] seg_id
- *  @param[out] win A MPI window object.
+ * \param[in] seg_id
+ * \param[out] win A MPI window object.
  *
- *  @retval non-negative integer Search successfully.
- *  @retval negative integer Failure.
+ * \retval non-negative integer Search successfully.
+ * \retval negative integer Failure.
  */
 dart_ret_t dart_segment_get_win(dart_segmentdata_t *segdata, int16_t seg_id, MPI_Win * win);
 
@@ -73,22 +103,26 @@ dart_ret_t dart_segment_get_selfbaseptr(
   int16_t              seg_id,
   char              ** baseptr);
 
-/** @brief Query the address of the memory location of the specified rel_unit in specified team.
+/**
+ * Query the address of the memory location of the specified rel_unit in
+ * specified team.
  *
- *  The output disp_s information targets for the dart inter-node communication, which means
- *  the one-sided communication proceed within the dynamic window object instead of the
- *  shared memory window object.
+ * The output disp_s information targets for the dart inter-node communication,
+ * which means the one-sided communication proceed within the dynamic window
+ * object instead of the shared memory window object.
  *
- *  @retval ditto
+ * \retval ditto
  */
 dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
                                  int16_t              seg_id,
                                  dart_team_unit_t     rel_unitid,
                                  MPI_Aint           * disp_s);
 
-/** @brief Query the length of the global memory block indicated by the specified seg_id.
+/**
+ * Query the length of the global memory block indicated by the
+ * specified seg_id.
  *
- *  @retval ditto
+ * \retval ditto
  */
 dart_ret_t dart_segment_get_size(
   dart_segmentdata_t * segdata,
@@ -106,14 +140,14 @@ dart_ret_t dart_segment_set_flags(
   uint16_t             flags);
 
 /**
- * @brief Deallocates the segment identified by the segment ID.
+ * Deallocates the segment identified by the segment ID.
  */
 dart_ret_t dart_segment_free(dart_segmentdata_t * segdata,
                              dart_segid_t         segid);
 
 
 /**
- * @brief Clear the segment data hash table.
+ * Clear the segment data hash table.
  */
 dart_ret_t dart_segment_fini(dart_segmentdata_t *segdata);
 
