@@ -249,11 +249,18 @@ class ViewModBase {
   typedef typename view_traits<domain_type>::size_type             size_type;
   typedef typename origin_type::value_type                        value_type;
 
+  typedef typename std::conditional<
+                     view_traits<domain_type>::is_origin::value,
+                     const domain_type &,
+                     domain_type
+                   >::type
+    domain_member_type;
+
   typedef std::integral_constant<dim_t, domain_type::rank::value>       rank;
 
   static constexpr std::size_t ndim() { return domain_type::rank::value; }
  protected:
-  const domain_type & _domain;
+  domain_member_type _domain;
   //
   // Allows move semantics of view temporaries but leads to dangling
   // references as lifetime of temporaries:
@@ -303,13 +310,18 @@ class ViewModBase {
   { }
 
   constexpr ViewModBase()               = delete;
+  ~ViewModBase()                        = default;
  public:
   constexpr ViewModBase(const self_t &) = default;
-  self_t & operator=(const self_t &)    = default;
   constexpr ViewModBase(self_t &&)      = default;
+  self_t & operator=(const self_t &)    = default;
   self_t & operator=(self_t &&)         = default;
 
-  constexpr const domain_type & domain() const {
+  constexpr const domain_type & domain() const & {
+    return _domain;
+  }
+
+  constexpr domain_type domain() const && {
     return _domain;
   }
 

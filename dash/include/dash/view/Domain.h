@@ -16,7 +16,6 @@ namespace dash {
  *
  * \concept{DashViewConcept}
  */
-#if 0
 template <
   class    ViewT,
   typename ViewValueT =
@@ -32,7 +31,7 @@ domain(ViewT && view)
      >::type {
   return std::forward<ViewT>(view).domain();
 }
-#else
+
 template <class ViewT>
 constexpr auto
 domain(const ViewT & view)
@@ -43,26 +42,6 @@ domain(const ViewT & view)
       >::type {
   return view.domain();
 }
-#endif
-
-#if 0
-template <
-  class    ViewT,
-  typename ViewValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ViewT>::type
-             >::type
->
-constexpr auto
-domain(ViewT && view)
-  -> typename std::enable_if<
-       dash::view_traits<ViewValueT>::is_view::value,
-    // decltype(std::forward<ViewT>(view).domain())
-       const typename dash::view_traits<ViewValueT>::domain_type &
-     >::type {
-  return (view).domain();
-}
-#endif
 
 // ------------------------------------------------------------------------
 // dash::domain(Container)

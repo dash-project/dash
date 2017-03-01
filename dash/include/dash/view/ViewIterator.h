@@ -1,6 +1,7 @@
 #ifndef DASH__VIEW__VIEW_ITERATOR_H__INCLUDED
 #define DASH__VIEW__VIEW_ITERATOR_H__INCLUDED
 
+#include <dash/GlobPtr.h>
 #include <dash/util/internal/IteratorBase.h>
 #include <dash/internal/TypeInfo.h>
 
@@ -46,8 +47,9 @@ private:
 public:
   constexpr ViewIterator() = delete;
 
+  template <class DomainItType>
   ViewIterator(
-    const DomainIterator & domain_it, 
+    const DomainItType   & domain_it, 
     const IndexSetType   & index_set,
     index_type             position)
   : base_t(position)
@@ -69,6 +71,18 @@ public:
 
   constexpr index_type gpos() const {
     return (_index_set)[this->pos()];
+  }
+
+  constexpr dart_gptr_t dart_gptr() const {
+    return (_domain_it + _index_set[this->pos()]).dart_gptr();
+  }
+
+  constexpr explicit operator dart_gptr_t() const {
+    return dart_gptr();
+  }
+
+  constexpr explicit operator DomainIterator() const {
+    return (_domain_it + _index_set[this->pos()]);
   }
 };
 

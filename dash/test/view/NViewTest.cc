@@ -112,6 +112,9 @@ TEST_F(NViewTest, ViewTraits)
   auto v_loc  = dash::local(matrix);
 
   static_assert(
+      dash::view_traits<decltype(matrix)>::rank::value == 2,
+      "view traits rank for dash::Matrix not matched");
+  static_assert(
       dash::view_traits<decltype(v_sub)>::is_view::value == true,
       "view traits is_view for sub(dash::Matrix) not matched");
   static_assert(

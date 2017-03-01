@@ -70,17 +70,11 @@ sub(
  *
  * \concept{DashViewConcept}
  */
-#if 1
 template <
   dim_t    SubDim  = 0,
   class    DomainT,
   class    OffsetFirstT,
-  class    OffsetFinalT,
-  typename DomainValueT =
-             typename std::remove_const<
-               typename std::remove_reference<DomainT>::type
-             >::type
->
+  class    OffsetFinalT >
 constexpr auto
 sub(
     OffsetFirstT    begin,
@@ -97,7 +91,6 @@ sub(
            begin,
            end);
 }
-#endif
 
 template <
   dim_t    SubDim  = 0,
@@ -134,7 +127,41 @@ template <
   class    OffsetFirstT,
   class    OffsetFinalT,
   typename DomainValueT =
-             typename std::remove_reference<DomainT>::type
+             typename std::remove_const<
+               typename std::remove_reference<DomainT>::type
+             >::type
+>
+constexpr auto
+sub(
+    OffsetFirstT    begin,
+    OffsetFinalT    end,
+    const DomainT & domain)
+  -> typename std::enable_if<
+       (dash::view_traits<DomainValueT>::rank::value > 1),
+       NViewSubMod<
+         DomainValueT,
+         SubDim,
+         dash::view_traits<DomainValueT>::rank::value
+       >
+     >::type {
+  return NViewSubMod<
+           DomainValueT,
+           SubDim,
+           dash::view_traits<DomainValueT>::rank::value
+         >(domain,
+           begin,
+           end);
+}
+
+template <
+  dim_t    SubDim  = 0,
+  class    DomainT,
+  class    OffsetFirstT,
+  class    OffsetFinalT,
+  typename DomainValueT =
+             typename std::remove_const<
+               typename std::remove_reference<DomainT>::type
+             >::type
 >
 constexpr auto
 sub(
@@ -146,8 +173,7 @@ sub(
        NViewSubMod<
          DomainValueT,
          SubDim,
-         dash::view_traits<DomainValueT>::rank::value
-       >
+         dash::view_traits<DomainValueT>::rank::value >
      >::type {
   return NViewSubMod<
            DomainValueT,

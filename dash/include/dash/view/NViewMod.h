@@ -44,20 +44,36 @@ template <
 class NViewModBase;
 
 template <
-  class DomainType = NViewOrigin<1>,
-  dim_t NDim       = dash::view_traits<DomainType>::rank::value >
+  class DomainType,
+  dim_t NDim >
 class NViewLocalMod;
 
 template <
-  class DomainType = NViewOrigin<1>,
-  dim_t SubDim     = 0,
-  dim_t NDim       = dash::view_traits<DomainType>::rank::value >
+  class DomainType,
+  dim_t SubDim,
+  dim_t NDim >
 class NViewSubMod;
 
 template <
-  class DomainType = NViewOrigin<1>,
-  dim_t NDim       = dash::view_traits<DomainType>::rank::value >
+  class DomainType,
+  dim_t NDim >
 class NViewGlobalMod;
+
+
+template <class IndexSetType, class ViewType, std::size_t NDim>
+class IndexSetBase;
+
+template <class ViewType>
+class IndexSetIdentity;
+
+template <class ViewType>
+class IndexSetLocal;
+
+template <class ViewType>
+class IndexSetGlobal;
+
+template <class ViewType, std::size_t SubDim>
+class IndexSetSub;
 
 // --------------------------------------------------------------------
 // NViewOrigin
@@ -161,6 +177,7 @@ struct view_traits<NViewOrigin<NDim>> {
   typedef NViewOrigin<NDim>                                      origin_type;
   typedef NViewOrigin<NDim>                                      domain_type;
   typedef NViewOrigin<NDim>                                       image_type;
+
   typedef typename NViewOrigin<NDim>::index_type                  index_type;
   typedef typename NViewOrigin<NDim>::size_type                    size_type;
   typedef typename NViewOrigin<NDim>::index_set_type          index_set_type;
@@ -192,14 +209,20 @@ public:
   typedef typename view_traits<DomainType>::size_type            size_type;
   typedef typename origin_type::value_type                      value_type;
 
+  typedef typename std::conditional<
+                     view_traits<domain_type>::is_origin::value,
+                     const domain_type &,
+                     domain_type
+                   >::type
+    domain_member_type;
+
   typedef std::integral_constant<dim_t, DomainType::rank::value>
     rank;
 
   static constexpr dim_t ndim() { return NDim; }
 
 protected:
-//dash::UniversalMember<domain_type> _domain;
-  const domain_type & _domain;
+  domain_member_type _domain;
 
   NViewModType & derived() {
     return static_cast<NViewModType &>(*this);
@@ -227,11 +250,15 @@ protected:
 
 public:
   constexpr NViewModBase(const self_t &) = default;
-  self_t & operator=(const self_t &)     = default;
   constexpr NViewModBase(self_t &&)      = default;
+  self_t & operator=(const self_t &)     = default;
   self_t & operator=(self_t &&)          = default;
 
-  constexpr const domain_type & domain() const {
+  constexpr const domain_type & domain() const & {
+    return _domain;
+  }
+
+  constexpr domain_type domain() const && {
     return _domain;
   }
 
@@ -306,7 +333,7 @@ struct view_traits<NViewLocalMod<DomainType, NDim> > {
   typedef std::integral_constant<bool, false>                is_origin;
   typedef std::integral_constant<bool, true>                 is_local;
 
-  typedef std::integral_constant<dim_t, NDim>          rank;
+  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
 
 template <
@@ -536,9 +563,9 @@ struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename dash::view_traits<domain_type>::origin_type origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef NViewSubMod<DomainType, SubDim>                       image_type;
-  typedef NViewSubMod<DomainType, SubDim>                       local_type;
-  typedef NViewSubMod<DomainType, SubDim>                      global_type;
+  typedef NViewSubMod<DomainType, SubDim, NDim>                 image_type;
+  typedef NViewSubMod<DomainType, SubDim, NDim>                 local_type;
+  typedef NViewSubMod<DomainType, SubDim, NDim>                global_type;
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
@@ -551,7 +578,7 @@ struct view_traits<NViewSubMod<DomainType, SubDim, NDim> > {
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
 
-  typedef std::integral_constant<dim_t, NDim>                rank;
+  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
 
 
@@ -570,41 +597,52 @@ public:
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
-
-  using value_type      = typename domain_type::value_type;
-  using reference       = typename domain_type::reference;
-  using const_reference = typename domain_type::const_reference;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
             NViewSubMod<DomainType, SubDim, NDim>, DomainType, NDim
           >                                                         base_t;
 public:
-  typedef dash::IndexSetSub<
-            NViewSubMod<DomainType, SubDim, NDim>, SubDim>  index_set_type;
-  typedef NViewLocalMod<self_t>                                 local_type;
+  typedef NViewLocalMod<self_t, NDim>                           local_type;
   typedef self_t                                               global_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-  typedef decltype(
-            dash::begin(
-              std::declval<
-                typename std::add_lvalue_reference<domain_type>::type
-              >() ))
-    domain_iterator;
+  typedef dash::IndexSetSub<
+            NViewSubMod<DomainType, SubDim, NDim>, SubDim>  index_set_type;
 
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<const domain_type>::type
+                typename std::add_lvalue_reference<origin_type>::type
               >() ))
-    const_domain_iterator;
+    origin_iterator;
 
-  typedef ViewIterator<domain_iterator, index_set_type>
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<const origin_type>::type
+              >() ))
+    const_origin_iterator;
+
+  typedef ViewIterator<origin_iterator, index_set_type>
     iterator;
-  typedef ViewIterator<const_domain_iterator, index_set_type>
+  typedef ViewIterator<const_origin_iterator, index_set_type>
     const_iterator;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<origin_type>::type
+               >() ))
+    reference;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<const origin_type>::type
+               >() ))
+    const_reference;
 
 private:
   index_type     _begin_idx;
