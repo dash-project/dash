@@ -7,7 +7,7 @@
 TEST_F(CoArrayTest, TypesInterface)
 {
   dash::Co_array<int>         i;
-  //dash::Co_array<int[10][20]> x;
+  dash::Co_array<int[10][20]> x;
   //dash::Co_array<int[][20]>   y(n);
   
   // check scalar case
@@ -32,7 +32,6 @@ TEST_F(CoArrayTest, TypesInterface)
                   "base type must have rank 0");
   }
   // check fully specified array case
-#if 0  
   {
     using value_type             = decltype(x)::value_type;
     using difference_type        = decltype(x)::difference_type;
@@ -53,7 +52,6 @@ TEST_F(CoArrayTest, TypesInterface)
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
-#endif
 }
 TEST_F(CoArrayTest, ContainerInterface)
 {

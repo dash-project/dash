@@ -7,6 +7,7 @@
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/pattern/BlockPattern.h>
+#include <dash/util/ArrayExpr.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -58,7 +59,21 @@ private:
   struct _get_storage_type<__element_type, __index_type, __pattern_type, 0> { 
     typedef Array<__element_type, __index_type, __pattern_type> type;
   };
-  
+
+  template<typename __T, typename __S, int __rank>
+  struct __get_type_extens_as_array {
+    using array_t = std::array<__S,__rank>;
+    static constexpr array_t value = dash::ce::append(
+                      __get_type_extens_as_array<__T, __S, __rank-1>::value,
+                      static_cast<__S>(std::extent<__T, __rank>::value));
+  };
+
+  template<typename __T, typename __S>
+  struct __get_type_extens_as_array<__T, __S, 0> {
+    using array_t = std::array<__S,0>;
+    static constexpr array_t value = std::array<__S, 0>();
+  };
+
 private:
   static constexpr int _rank = std::rank<T>::value;
   
@@ -90,7 +105,10 @@ public:
   
 private:
   constexpr SizeSpec<_rank+1, size_type> _make_size_spec() const {
-    return SizeSpec<_rank+1, size_type>(static_cast<size_type>(dash::size()));
+    return SizeSpec<_rank+1, size_type>(
+            dash::ce::append(
+              std::array<size_type, 1> {static_cast<size_type>(dash::size())},
+              __get_type_extens_as_array<T, size_type, _rank>::value));
   }
   
 public:
