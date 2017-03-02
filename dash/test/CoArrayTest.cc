@@ -10,7 +10,6 @@ TEST_F(CoArrayTest, TypesInterface)
 
   dash::Co_array<int>         i;
   dash::Co_array<int[10][20]> x;
-#if 0
   dash::Co_array<int[][20]>   y(n);
   
   // check scalar case
@@ -77,7 +76,6 @@ TEST_F(CoArrayTest, TypesInterface)
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
-#endif
 }
 TEST_F(CoArrayTest, ContainerInterface)
 {

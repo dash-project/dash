@@ -64,8 +64,8 @@ private:
   struct __get_type_extens_as_array {
     using array_t = std::array<__S,__rank>;
     static constexpr array_t value = dash::ce::append(
-          std::array<__S,1> {static_cast<__S>(std::extent<__T, __rank-1>::value)},
-          __get_type_extens_as_array<__T, __S, __rank-1>::value);
+          __get_type_extens_as_array<__T, __S, __rank-1>::value,
+          static_cast<__S>(std::extent<__T, __rank-1>::value));
   };
 
   template<typename __T, typename __S>
@@ -126,13 +126,8 @@ public:
   constexpr Co_array():
     _storage(_pattern_type(_make_size_spec())) { }
     
-  constexpr Co_array(const size_type & first_dim):
-    _storage(_pattern_type(_make_size_spec(first_dim))) {
-    //constexpr const auto type_extents = __get_type_extens_as_array<T, size_type, _rank>::value;
-    //for(auto & e : type_extents){
-    //  std::cout << e << std::endl;
-    //}
-  }
+  explicit constexpr Co_array(const size_type & first_dim):
+    _storage(_pattern_type(_make_size_spec(first_dim))) {  }
 
 private:
   /// storage backend
