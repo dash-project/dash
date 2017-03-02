@@ -18,6 +18,7 @@
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
 
 #include <dash/experimental/HaloMatrix.h>

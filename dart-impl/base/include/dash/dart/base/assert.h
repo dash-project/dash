@@ -15,23 +15,23 @@
 #define DART_ASSERT(expr) do { \
   if (!(expr)) { \
     DART_LOG_ERROR("Assertion failed: %s", dart__tostr(expr)); \
-    assert(expr); \
   } \
+  assert(expr); \
 } while(0)
 
 #define DART_ASSERT_MSG(expr, msg) do { \
   if (!(expr)) { \
     DART_LOG_ERROR("Assertion failed: %s: %s", dart__tostr(expr), (msg)); \
-    assert(expr); \
   } \
+  assert(expr); \
 } while(0)
 
 #define DART_ASSERT_RETURNS(expr, exp_value) do { \
   if ((expr) != (exp_value)) { \
     DART_LOG_ERROR("Assertion failed: %s -- Expected return value %d", \
                    dart__tostr(expr), (exp_value)); \
-    assert((expr) == (exp_value)); \
   } \
+  assert((expr) == (exp_value)); \
 } while(0)
 
 #else /* DART_ENABLE_ASSERTIONS */
