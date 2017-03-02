@@ -64,8 +64,8 @@ private:
   struct __get_type_extens_as_array {
     using array_t = std::array<__S,__rank>;
     static constexpr array_t value = dash::ce::append(
-                      __get_type_extens_as_array<__T, __S, __rank-1>::value,
-                      static_cast<__S>(std::extent<__T, __rank>::value));
+          std::array<__S,1> {static_cast<__S>(std::extent<__T, __rank>::value)},
+          __get_type_extens_as_array<__T, __S, __rank-1>::value);
   };
 
   template<typename __T, typename __S>
@@ -78,6 +78,7 @@ private:
   static constexpr int _rank = std::rank<T>::value;
   
   using _index_type     = typename std::make_unsigned<IndexType>::type;
+  using _sspec_type     = SizeSpec<_rank+1, _index_type>;
   using _pattern_type   = BlockPattern<_rank+1, ROW_MAJOR, _index_type>;
   using _element_type   = typename std::remove_all_extents<T>::type;
   using _storage_type   = typename _get_storage_type<_element_type,
@@ -104,16 +105,34 @@ public:
   using pattern_type           = _pattern_type;
   
 private:
-  constexpr SizeSpec<_rank+1, size_type> _make_size_spec() const {
-    return SizeSpec<_rank+1, size_type>(
-            dash::ce::append(
+  constexpr _sspec_type _make_size_spec() const noexcept {
+    return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               __get_type_extens_as_array<T, size_type, _rank>::value));
+  }
+
+  constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
+    static_assert(std::get<0>(__get_type_extens_as_array<T, size_type, _rank>::value) == 0,
+                  "Array type is fully specified");
+    
+    return _sspec_type(dash::ce::append(
+              std::array<size_type, 1> {static_cast<size_type>(dash::size())},
+              dash::ce::replace_nth<0>(
+                first_dim,
+                __get_type_extens_as_array<T, size_type, _rank>::value)));
   }
   
 public:
   constexpr Co_array():
     _storage(_pattern_type(_make_size_spec())) { }
+    
+  constexpr Co_array(const size_type & first_dim):
+    _storage(_pattern_type(_make_size_spec(first_dim))) {
+    //constexpr const auto type_extents = __get_type_extens_as_array<T, size_type, _rank>::value;
+    //for(auto & e : type_extents){
+    //  std::cout << e << std::endl;
+    //}
+  }
 
 private:
   /// storage backend

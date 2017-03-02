@@ -6,9 +6,12 @@
 
 TEST_F(CoArrayTest, TypesInterface)
 {
+  int n = 10;
+
   dash::Co_array<int>         i;
   dash::Co_array<int[10][20]> x;
-  //dash::Co_array<int[][20]>   y(n);
+#if 0
+  dash::Co_array<int[][20]>   y(n);
   
   // check scalar case
   {
@@ -52,6 +55,29 @@ TEST_F(CoArrayTest, TypesInterface)
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
+
+  // check partially specified array case
+  {
+    using value_type             = decltype(y)::value_type;
+    using difference_type        = decltype(y)::difference_type;
+    using index_type             = decltype(y)::index_type;
+    using size_type              = decltype(y)::size_type;
+    using iterator               = decltype(y)::iterator;
+    using const_iterator         = decltype(y)::const_iterator;
+    using reverse_iterator       = decltype(y)::reverse_iterator;
+    using const_reverse_iterator = decltype(y)::const_reverse_iterator;
+    using reference              = decltype(y)::reference;
+    using const_reference        = decltype(y)::const_reference;
+    using local_pointer          = decltype(y)::local_pointer;
+    using const_local_pointer    = decltype(y)::const_local_pointer;
+    //using view_type              = decltype(y)::view_type;
+    //using local_type             = decltype(y)::local_type;
+    using pattern_type           = decltype(y)::pattern_type;
+    
+    static_assert(std::rank<value_type>::value == 0,
+                  "base type must have rank 0");
+  }
+#endif
 }
 TEST_F(CoArrayTest, ContainerInterface)
 {
