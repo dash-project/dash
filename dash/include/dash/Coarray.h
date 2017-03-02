@@ -394,4 +394,6 @@ Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs / static_cast<Lhs>(rhs);
 }
 
+#include <dash/co_array/utils.h>
+
 #endif /* COARRAY_H_INCLUDED */
