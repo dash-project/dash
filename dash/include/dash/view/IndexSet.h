@@ -81,7 +81,7 @@ template <
 constexpr auto
 index(const DomainType & v)
   -> typename std::enable_if<
-       dash::view_traits<DomainValueType>::is_view::value,
+       !dash::view_traits<DomainValueType>::is_origin::value,
        decltype(v.index_set())
      >::type {
   return v.index_set();
@@ -456,8 +456,10 @@ class IndexSetIdentity
            IndexSetIdentity<DomainType>,
            DomainType >
 {
-  typedef IndexSetIdentity<DomainType>            self_t;
-  typedef IndexSetBase<self_t, DomainType>        base_t;
+  typedef IndexSetIdentity<DomainType>          self_t;
+  typedef IndexSetBase<self_t, DomainType>      base_t;
+ public:
+  typedef typename base_t::iterator           iterator;
  public:
   constexpr IndexSetIdentity()               = delete;
   constexpr IndexSetIdentity(self_t &&)      = default;
@@ -481,6 +483,14 @@ class IndexSetIdentity
 
   constexpr index_type size() const {
     return this->view_domain().size();
+  }
+
+  constexpr iterator begin() const {
+    return iterator(*this, 0);
+  }
+
+  constexpr iterator end() const {
+    return iterator(*this, size());
   }
 
   constexpr index_type operator[](index_type image_index) const {

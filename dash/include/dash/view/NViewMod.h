@@ -718,10 +718,6 @@ public:
     //       Should return proxy iterator like:
     //
     //         view_iterator(this->domain().begin(), _index_set, 0)
-    //         => operator[](vi) { return _domain_it[ _index_set[vi] ]; }
-    // 
-    //       Alternative: use GlobViewIter
-    //
     return const_iterator(this->domain().begin(), _index_set, 0);
   }
 

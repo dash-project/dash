@@ -573,7 +573,15 @@ struct view_traits<ViewSubMod<DomainType, SubDim> > {
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
+
   typedef std::integral_constant<bool, false>                is_origin;
+//typedef typename std::conditional<
+//          view_traits<domain_type>::is_local::value,
+//          std::integral_constant<bool, true>,
+//          std::integral_constant<bool, false>
+//        >::type
+//  is_origin;
+
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
 
@@ -591,14 +599,23 @@ class ViewSubMod
 {
  public:
   typedef DomainType                                             domain_type;
-  typedef typename view_traits<DomainType>::origin_type          origin_type;
-  typedef typename view_traits<DomainType>::index_type            index_type;
-  typedef typename view_traits<DomainType>::size_type              size_type;
+
+  typedef typename std::conditional<
+            view_traits<domain_type>::is_local::value,
+            domain_type,
+            typename view_traits<domain_type>::origin_type
+          >::type
+    origin_type;
+//typedef typename view_traits<domain_type>::origin_type         origin_type;
+
+  typedef typename view_traits<domain_type>::origin_type  domain_origin_type;
+  typedef typename view_traits<domain_type>::index_type           index_type;
+  typedef typename view_traits<domain_type>::size_type             size_type;
  private:
-  typedef ViewSubMod<DomainType, SubDim>                              self_t;
-  typedef ViewModBase< ViewSubMod<DomainType, SubDim>, DomainType >   base_t;
+  typedef ViewSubMod<domain_type, SubDim>                             self_t;
+  typedef ViewModBase< ViewSubMod<domain_type, SubDim>, domain_type > base_t;
  public:
-  typedef dash::IndexSetSub<DomainType, SubDim>               index_set_type;
+  typedef dash::IndexSetSub<domain_type, SubDim>              index_set_type;
   typedef ViewLocalMod<self_t>                                    local_type;
   typedef self_t                                                 global_type;
 
@@ -677,7 +694,6 @@ class ViewSubMod
   }
 
   constexpr const_iterator end() const {
-    // return this->domain().begin() + *dash::index(*this).end();
     return const_iterator(dash::origin(*this).begin(),
                           _index_set, _index_set.size());
   }
