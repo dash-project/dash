@@ -3,6 +3,7 @@
 
 #include <type_traits>
 
+#include <dash/Types.h>
 #include <dash/GlobRef.h>
 #include <dash/iterator/GlobIter.h>
 
@@ -11,6 +12,8 @@
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+
+#include <dash/Dimensional.h>
 
 /**
  * \defgroup  DashCoArrayConcept  co_array Concept
@@ -42,24 +45,6 @@ template<
 class Co_array {
 private:
   
-  // storage type dispatching
-  template<
-    typename __element_type,
-    typename __index_type,
-    typename __pattern_type,
-    int      __rank>
-  struct _get_storage_type { 
-    typedef Matrix<__element_type, __rank+1, __index_type, __pattern_type> type;
-  };
-  
-  template<
-    typename __element_type,
-    typename __index_type,
-    typename __pattern_type>
-  struct _get_storage_type<__element_type, __index_type, __pattern_type, 0> { 
-    typedef Array<__element_type, __index_type, __pattern_type> type;
-  };
-
   template<typename __T, typename __S, int __rank>
   struct __get_type_extens_as_array {
     using array_t = std::array<__S,__rank>;
@@ -81,10 +66,10 @@ private:
   using _sspec_type     = SizeSpec<_rank+1, _index_type>;
   using _pattern_type   = BlockPattern<_rank+1, ROW_MAJOR, _index_type>;
   using _element_type   = typename std::remove_all_extents<T>::type;
-  using _storage_type   = typename _get_storage_type<_element_type,
-                                                     _index_type,
-                                                     _pattern_type,
-                                                     _rank>::type;
+  using _storage_type   = Matrix<_element_type, _rank+1, _index_type, _pattern_type>;
+  template<int _subrank = _rank>
+  using _view_type      = MatrixRef<_element_type, _rank+1, _subrank, _pattern_type>;
+  using _local_type     = LocalMatrixRef<_element_type, _rank+1, _rank-1, _pattern_type>;
 
 public:
   // Types
@@ -100,8 +85,9 @@ public:
   using const_reference        = GlobRef<_element_type>;
   using local_pointer          = _element_type *;
   using const_local_pointer    = const _element_type *;
-  //using view_type              = Co_arrayRef<>;
-  //using local_type             = LocalCo_arrayRef<>;
+  template<int subrank>
+  using view_type              = _view_type<subrank>;
+  using local_type             = _local_type;
   using pattern_type           = _pattern_type;
   
 private:
@@ -122,19 +108,76 @@ private:
                 __get_type_extens_as_array<T, size_type, _rank>::value)));
   }
   
+  constexpr std::array<index_type, _rank> & _offsets_unit(const team_unit_t & unit){
+    return _storage.pattern().global(unit, std::array<index_type,_rank> {});
+  }
+  
+  constexpr std::array<size_type, _rank> & _extents_unit(const team_unit_t & unit){
+    return _storage.pattern().local_extents(unit);
+  }
+  
 public:
+  /**
+   * Constructor for scalar types and fully specified array types:
+   * \code
+   *   dash::Co_array<int>         i;
+   *   dash::Co_array<int[10][20]> x;
+   * \endcode
+   */
   constexpr Co_array():
     _storage(_pattern_type(_make_size_spec())) { }
     
   explicit constexpr Co_array(const size_type & first_dim):
     _storage(_pattern_type(_make_size_spec(first_dim))) {  }
 
+  /* ======================================================================== */
+  /*                      Operators for element access                        */
+  /* ======================================================================== */
+  /**
+   * Operator to select remote unit
+   */
+  template<int __rank = _rank>
+  inline view_type<__rank> operator()(const team_unit_t & unit) {
+    return this->operator ()(static_cast<index_type>(unit));
+  }
+  /**
+   * Operator to select remote unit
+   */
+  template<int __rank = _rank>
+  inline view_type<__rank> operator()(const index_type & local_unit) {
+    return _storage[local_unit];
+  }
+
+  /**
+   * Provides access to local array part
+   * \code
+   *   dash::Co_array<int[10][20]> x;
+   *   x[2][3] = 42;
+   * \endcode
+   */
+  template<int __rank = _rank>
+  typename std::enable_if<(__rank != 0), local_type>::type
+  operator[](const index_type & idx) {
+    return _storage.local[0][0];
+  }
+  
+  /**
+   * allows fortran like local assignment of scalar
+   * \code
+   *   dash::Co_array<int> i;
+   *   i = 42;
+   * \endcode
+   */
+  template<int __rank = _rank>
+  typename std::enable_if<(__rank == 0), value_type>::type
+  inline operator=(const value_type & value){
+    return *(_storage.lbegin()) = value;
+  }
+  
 private:
   /// storage backend
   _storage_type _storage;
-
 };
-
 } // namespace dash
 
 #endif /* COARRAY_H_INCLUDED */

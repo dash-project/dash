@@ -3,7 +3,9 @@
 
 #include <type_traits>
 
+#include <dash/Types.h>
 
+#if 0
 TEST_F(CoArrayTest, TypesInterface)
 {
   int n = 10;
@@ -77,7 +79,21 @@ TEST_F(CoArrayTest, TypesInterface)
                   "base type must have rank 0");
   }
 }
+#endif
 TEST_F(CoArrayTest, ContainerInterface)
 {
-  // TODO
+  dash::Co_array<int>         i;
+  dash::Co_array<int[10][20]> x;
+  
+  int value = 10;
+  
+  // access syntax
+  // custom proxy reference necessary
+  i(0) = value; // global access
+  i    = value; // local access
+  x(0)[1][2] = value; // global access
+  // access using team_unit_t
+  x(static_cast<dash::team_unit_t>(0))[1][2] = value; // global access
+  x[2][3]    = value; // local access
+  
 }
