@@ -190,26 +190,27 @@ class TestBase : public ::testing::Test {
   virtual void SetUp() {
     const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-    LOG_MESSAGE("===> Running test case %s:%s with %lu units ...",
-                test_info->name(), test_info->test_case_name(),
-                dash::size());
+    LOG_MESSAGE("===> Running test case %s.%s ...",
+                test_info->test_case_name(), test_info->name());
     dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
     dash::barrier();
   }
 
   virtual void TearDown() {
+    auto myid = dash::myid();
+    size_t size = dash::size();
     const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-    LOG_MESSAGE("-==- Test case finished at unit %d", dash::myid().id);
+
+    LOG_MESSAGE("-==- Test case finished at unit %d", myid.id);
 
     dash::Team::All().barrier();
-    LOG_MESSAGE("-==- Finalize DASH at unit %d", dash::myid().id);
+    LOG_MESSAGE("-==- Finalize DASH at unit %d", myid.id);
     dash::finalize();
 
-    size_t size = dash::size();
-    LOG_MESSAGE("<=== Finished test case %s:%s with %lu units",
-                test_info->name(), test_info->test_case_name(),
+    LOG_MESSAGE("<=== Finished test case %s.%s with %lu units",
+                test_info->test_case_name(), test_info->name(),
                 size);
   }
 
