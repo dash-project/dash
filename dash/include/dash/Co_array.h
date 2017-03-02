@@ -64,7 +64,7 @@ private:
   struct __get_type_extens_as_array {
     using array_t = std::array<__S,__rank>;
     static constexpr array_t value = dash::ce::append(
-          std::array<__S,1> {static_cast<__S>(std::extent<__T, __rank>::value)},
+          std::array<__S,1> {static_cast<__S>(std::extent<__T, __rank-1>::value)},
           __get_type_extens_as_array<__T, __S, __rank-1>::value);
   };
 
