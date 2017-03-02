@@ -5,7 +5,7 @@
 
 #include "TestBase.h"
 
-#include <dash/Co_array.h>
+#include <dash/Coarray.h>
 
 /**
  * Test fixture for class dash::co_array

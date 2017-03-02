@@ -10,9 +10,9 @@ TEST_F(CoArrayTest, TypesInterface)
 {
   int n = 10;
 
-  dash::Co_array<int>         i;
-  dash::Co_array<int[10][20]> x;
-  dash::Co_array<int[][20]>   y(n);
+  dash::Coarray<int>         i;
+  dash::Coarray<int[10][20]> x;
+  dash::Coarray<int[][20]>   y(n);
   
   // check scalar case
   {
@@ -28,8 +28,8 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(i)::const_reference;
     using local_pointer          = decltype(i)::local_pointer;
     using const_local_pointer    = decltype(i)::const_local_pointer;
-    //using view_type              = decltype(i)::view_type;
-    //using local_type             = decltype(i)::local_type;
+    using view_type              = decltype(i)::view_type;
+    using local_type             = decltype(i)::local_type;
     using pattern_type           = decltype(i)::pattern_type;
     
     static_assert(std::rank<value_type>::value == 0,
@@ -49,8 +49,8 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(x)::const_reference;
     using local_pointer          = decltype(x)::local_pointer;
     using const_local_pointer    = decltype(x)::const_local_pointer;
-    //using view_type              = decltype(x)::view_type;
-    //using local_type             = decltype(x)::local_type;
+    using view_type              = decltype(x)::view_type;
+    using local_type             = decltype(x)::local_type;
     using pattern_type           = decltype(x)::pattern_type;
     
     static_assert(std::rank<value_type>::value == 0,
@@ -71,8 +71,8 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(y)::const_reference;
     using local_pointer          = decltype(y)::local_pointer;
     using const_local_pointer    = decltype(y)::const_local_pointer;
-    //using view_type              = decltype(y)::view_type;
-    //using local_type             = decltype(y)::local_type;
+    using view_type              = decltype(y)::view_type;
+    using local_type             = decltype(y)::local_type;
     using pattern_type           = decltype(y)::pattern_type;
     
     static_assert(std::rank<value_type>::value == 0,
@@ -82,8 +82,8 @@ TEST_F(CoArrayTest, TypesInterface)
 #endif
 TEST_F(CoArrayTest, ContainerInterface)
 {
-  dash::Co_array<int>         i;
-  dash::Co_array<int[10][20]> x;
+  dash::Coarray<int>         i;
+  dash::Coarray<int[10][20]> x;
   
   int value = 10;
   

@@ -42,7 +42,7 @@ namespace dash {
 template<
   typename T,
   typename IndexType = dash::default_index_t>
-class Co_array {
+class Coarray {
 private:
   
   template<typename __T, typename __S, int __rank>
@@ -124,11 +124,50 @@ public:
    *   dash::Co_array<int[10][20]> x;
    * \endcode
    */
-  constexpr Co_array():
+  constexpr Coarray():
     _storage(_pattern_type(_make_size_spec())) { }
     
-  explicit constexpr Co_array(const size_type & first_dim):
+  explicit constexpr Coarray(const size_type & first_dim):
     _storage(_pattern_type(_make_size_spec(first_dim))) {  }
+  
+  /* ======================================================================== */
+  /*                         DASH Container Concept                           */
+  /* ======================================================================== */
+  
+  constexpr pattern_type & pattern() const noexcept {
+    return _storage.pattern();
+  }
+  
+  constexpr iterator begin() const noexcept {
+    return _storage.begin();
+  }
+  
+  constexpr iterator end() const noexcept {
+    return _storage.end();
+  }
+  
+  constexpr local_pointer lbegin() const noexcept {
+    return _storage.lbegin();
+  }
+  
+  constexpr local_pointer lend() const noexcept {
+    return _storage.lend();
+  }
+  
+  constexpr size_type size() const noexcept {
+    return _storage.size();
+  }
+  
+  constexpr size_type local_size() const noexcept {
+    return _storage.local_size();
+  }
+  
+  constexpr bool is_local(index_type gi) const noexcept {
+    return _storage.is_local(gi);
+  }
+  /*
+  \TODO: allocate, deallocate
+   */
 
   /* ======================================================================== */
   /*                      Operators for element access                        */
@@ -330,28 +369,28 @@ private:
 template<
   typename Lhs,
   typename T>
-Lhs operator+(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+Lhs operator+(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs + static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator-(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+Lhs operator-(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs - static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator*(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+Lhs operator*(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs * static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator/(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs / static_cast<Lhs>(rhs);
 }
 
