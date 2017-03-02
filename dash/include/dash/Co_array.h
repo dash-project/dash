@@ -162,7 +162,7 @@ public:
   }
   
   /**
-   * allows fortran like local assignment of scalar
+   * allows fortran like local assignment of scalars
    * \code
    *   dash::Co_array<int> i;
    *   i = 42;
@@ -174,10 +174,185 @@ public:
     return *(_storage.lbegin()) = value;
   }
   
+  /**
+   * allows fortran like local access of scalars
+   * \code
+   *   dash::Co_array<int> i;
+   *   i = 42;
+   *   int b = i;
+   * \endcode
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  operator value_type() const {
+    return *(_storage.lbegin());
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   * \code
+   *   dash::Co_array<int> i;
+   *   i = 42;
+   *   i += 21;
+   * \endcode
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type & operator +=(const value_type & value) {
+    return *(_storage.lbegin()) += value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type & operator -=(const value_type & value) {
+    return *(_storage.lbegin()) -= value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type & operator *=(const value_type & value) {
+    return *(_storage.lbegin()) *= value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type & operator /=(const value_type & value) {
+    return *(_storage.lbegin()) /= value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   * \code
+   *   dash::Co_array<int> i;
+   *   i = 42;
+   *   int b = i + 21;
+   * \endcode
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator +(const value_type & value) const {
+    return *(_storage.lbegin()) + value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator -(const value_type & value) const {
+    return *(_storage.lbegin()) - value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator *(const value_type & value) const {
+    return *(_storage.lbegin()) * value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator /(const value_type & value) const {
+    return *(_storage.lbegin()) / value;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator ++() {
+    return ++(*(_storage.lbegin()));
+  }
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator ++(int) {
+    return (*(_storage.lbegin()))++;
+  }
+  
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator --() {
+    return --(*(_storage.lbegin()));
+  }
+  /**
+   * allows fortran like local access of scalars
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  value_type operator --(int) {
+    return (*(_storage.lbegin()))--;
+  }
+  
 private:
   /// storage backend
   _storage_type _storage;
 };
 } // namespace dash
+
+/* ======================================================================== */
+/* Ugly global overloads necessary to mimic fortran co_array interface      */
+/* All types are supported to which dash::Co_array can be converted         */
+/* ======================================================================== */
+template<
+  typename Lhs,
+  typename T>
+Lhs operator+(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+  return lhs + static_cast<Lhs>(rhs);
+}
+
+template<
+  typename Lhs,
+  typename T>
+Lhs operator-(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+  return lhs - static_cast<Lhs>(rhs);
+}
+
+template<
+  typename Lhs,
+  typename T>
+Lhs operator*(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+  return lhs * static_cast<Lhs>(rhs);
+}
+
+template<
+  typename Lhs,
+  typename T>
+Lhs operator/(const Lhs & lhs, const dash::Co_array<T> & rhs) {
+  return lhs / static_cast<Lhs>(rhs);
+}
 
 #endif /* COARRAY_H_INCLUDED */

@@ -96,4 +96,17 @@ TEST_F(CoArrayTest, ContainerInterface)
   x(static_cast<dash::team_unit_t>(0))[1][2] = value; // global access
   x[2][3]    = value; // local access
   
+  // conversion test
+  int b = i;
+#if 1
+  // inc / dec test
+  int c = i++;
+  int d = i--;
+  int e = ++i;
+  int f = --i;
+  
+  // expression test
+  int g = ((b + i) * i) / i;
+  int h = i + b;
+#endif
 }
