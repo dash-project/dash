@@ -189,15 +189,15 @@ make_block_pattern(
 {
   // Example: -n 30 30 -u 4 1 -t 10 10
   typedef dash::Pattern<2> pattern_t;
-  dash::Pattern<2> pattern(sizespec,
-                           dash::DistributionSpec<2>(
-                             (params.tile_y > 0
-                              ? dash::BLOCKCYCLIC(params.tile_y)
-                              : dash::NONE),
-                             (params.tile_x > 0
-                              ? dash::BLOCKCYCLIC(params.tile_x)
-                              : dash::NONE)),
-                           teamspec);
+  pattern_t pattern(sizespec,
+                    dash::DistributionSpec<2>(
+                      (params.tile_y > 0
+                       ? dash::BLOCKCYCLIC(params.tile_y)
+                       : dash::NONE),
+                      (params.tile_x > 0
+                       ? dash::BLOCKCYCLIC(params.tile_x)
+                       : dash::NONE)),
+                    teamspec);
   return pattern;
 }
 
