@@ -80,6 +80,14 @@ dart_task_create_handle(
                  taskref);
 }
 
+
+
+dart_taskref_t
+dart_tasking_current_task()
+{
+  return dart__base__tasking__current_task();
+}
+
 /**
  * Wait for the completion of a task created through
  * \c dart_task_create_handle.

@@ -89,14 +89,7 @@ dart_task_create_handle(
   size_t           data_size,
   dart_task_dep_t *deps,
   size_t           ndeps,
-  dart_taskref_t  *taskref)
-{
-  return dart__base__tasking__create_task_handle(
-                 fn, data,
-                 data_size,
-                 deps, ndeps,
-                 taskref);
-}
+  dart_taskref_t  *taskref);
 
 /**
  * Wait for the completion of a task created through
@@ -105,10 +98,11 @@ dart_task_create_handle(
  * task reference to \c dart_task_wait twice is erroneous.
  */
 dart_ret_t
-dart_task_wait(dart_taskref_t *taskref)
-{
-  return dart__base__tasking__task_wait(taskref);
-}
+dart_task_wait(dart_taskref_t *taskref);
+
+
+dart_taskref_t
+dart_tasking_current_task();
 
 
 /**
