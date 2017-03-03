@@ -46,15 +46,15 @@ class Coarray {
 private:
   
   template<typename __T, typename __S, int __rank>
-  struct __get_type_extens_as_array {
+  struct __get_type_extents_as_array {
     using array_t = std::array<__S,__rank>;
     static constexpr array_t value = dash::ce::append(
-          __get_type_extens_as_array<__T, __S, __rank-1>::value,
+          __get_type_extents_as_array<__T, __S, __rank-1>::value,
           static_cast<__S>(std::extent<__T, __rank-1>::value));
   };
 
   template<typename __T, typename __S>
-  struct __get_type_extens_as_array<__T, __S, 0> {
+  struct __get_type_extents_as_array<__T, __S, 0> {
     using array_t = std::array<__S,0>;
     static constexpr array_t value = {};
   };
@@ -95,25 +95,25 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              __get_type_extens_as_array<T, size_type, _rank>::value));
+              __get_type_extents_as_array<T, size_type, _rank>::value));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
-    static_assert(std::get<0>(__get_type_extens_as_array<T, size_type, _rank>::value) == 0,
+    static_assert(std::get<0>(__get_type_extents_as_array<T, size_type, _rank>::value) == 0,
                   "Array type is fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                __get_type_extens_as_array<T, size_type, _rank>::value)));
+                __get_type_extents_as_array<T, size_type, _rank>::value)));
   }
   
-  constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const {
+  constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().global(unit, std::array<index_type,_rank> {});
   }
   
-  constexpr _offset_type & _extents_unit(const team_unit_t & unit) const {
+  constexpr _offset_type & _extents_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().local_extents(unit);
   }
   
@@ -129,10 +129,10 @@ public:
    *   dash::Co_array<int[10][20]> x;
    * \endcode
    */
-  constexpr Coarray():
+  constexpr Coarray() noexcept :
     _storage(_pattern_type(_make_size_spec())) { }
     
-  explicit constexpr Coarray(const size_type & first_dim):
+  explicit constexpr Coarray(const size_type & first_dim) noexcept :
     _storage(_pattern_type(_make_size_spec(first_dim))) {  }
   
   /* ======================================================================== */
