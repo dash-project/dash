@@ -110,8 +110,12 @@ dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
        * in the dest queue.
        */
 
-      src->tail->next = dst->head;
-      dst->head->prev = src->tail;
+      if (dst->head != NULL) {
+        src->tail->next = dst->head;
+        dst->head->prev = src->tail;
+      } else {
+        dst->tail = src->tail;
+      }
       dst->head = src->head;
       src->tail = src->head = NULL;
 
