@@ -51,7 +51,6 @@ class UniversalMember {
   typedef UniversalMember<ValueType> self_t;
 
   std::shared_ptr<ValueType> _value;
-//ValueType _value;
 public:
   UniversalMember() = default;
 

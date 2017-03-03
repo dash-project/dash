@@ -136,9 +136,9 @@ TEST_F(ViewTest, ViewTraits)
   static_assert(
       dash::view_traits<decltype(v_sub)>::is_origin::value == false,
       "view traits is_origin for sub(dash::Array) not matched");
-//static_assert(
-//    dash::view_traits<decltype(i_sub)>::is_origin::value == true,
-//    "view traits is_origin for index(sub(dash::Array)) not matched");
+  static_assert(
+      dash::view_traits<decltype(i_sub)>::is_origin::value == true,
+      "view traits is_origin for index(sub(dash::Array)) not matched");
   static_assert(
       dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
       "view traits is_origin for sub(sub(dash::Array)) not matched");
@@ -980,6 +980,13 @@ TEST_F(ViewTest, Intersect1DimChain)
                  "array initialized");
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", array.size());
 
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     dash::index(dash::local(array)));
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     dash::global(dash::index(dash::local(array))));
+
+  array.barrier();
+
   // View to first two thirds of global array:
   auto gview_left   = dash::sub(sub_left_begin_gidx,
                                 sub_left_end_gidx,
@@ -1035,25 +1042,29 @@ TEST_F(ViewTest, Intersect1DimChain)
 
   static_assert(
     dash::detail::has_type_domain_type<decltype(lindex_isect)>::value,
-    "View trait is_range not set for index(local(intersect(...))) ");
+    "Type trait has_type_domain_type not matched "
+    "for index(local(intersect(...))) ");
 
   auto lindex_isect_dom = dash::domain(lindex_isect);
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      dash::internal::typestr(lindex_isect_dom));
 
+  static_assert(
+    dash::is_range<decltype(lindex_isect_dom)>::value,
+    "View trait is_range not matched for index(local(intersect(...)))");
+
+  auto lindex_isect_dom_pre = dash::domain(lindex_isect).pre();
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect_dom);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect_dom_pre);
   EXPECT_TRUE_U(
     dash::test::expect_range_values_equal<int>(
       dash::domain(lindex_isect),
       lindex_isect.domain()));
 
-  static_assert(
-    dash::is_range<decltype(lindex_isect_dom)>::value,
-    "View trait is_range not set for index(local(intersect(...))) ");
-
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lview_isect.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect.size());
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect);
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect_dom);
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", range_str(lview_isect));
 
   int lidx = 0;
