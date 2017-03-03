@@ -204,10 +204,6 @@ class NViewModBase
   typedef NViewModBase<NViewModType, DomainType, NDim> self_t;
 public:
   typedef DomainType                                           domain_type;
-  typedef typename view_traits<DomainType>::origin_type        origin_type;
-  typedef typename view_traits<DomainType>::index_type          index_type;
-  typedef typename view_traits<DomainType>::size_type            size_type;
-  typedef typename origin_type::value_type                      value_type;
 
   typedef typename std::conditional<
                      view_traits<domain_type>::is_origin::value,
@@ -215,6 +211,18 @@ public:
                      domain_type
                    >::type
     domain_member_type;
+
+  typedef typename std::conditional<
+            view_traits<domain_type>::is_local::value,
+            domain_type,
+            typename view_traits<domain_type>::origin_type
+          >::type
+    origin_type;
+//typedef typename view_traits<DomainType>::origin_type        origin_type;
+
+  typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
+  typedef typename origin_type::value_type                      value_type;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value>
     rank;
@@ -589,16 +597,17 @@ class NViewSubMod
            DomainType,
            NDim >
 {
-public:
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<DomainType>::origin_type        origin_type;
-  typedef typename view_traits<DomainType>::index_type          index_type;
-  typedef typename view_traits<DomainType>::size_type            size_type;
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
             NViewSubMod<DomainType, SubDim, NDim>, DomainType, NDim
           >                                                         base_t;
+public:
+  typedef DomainType                                           domain_type;
+//typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename base_t::origin_type                         origin_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
 public:
   typedef NViewLocalMod<self_t, NDim>                           local_type;
   typedef self_t                                               global_type;

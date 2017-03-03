@@ -88,23 +88,6 @@ namespace test {
     DASH_LOG_TRACE("ViewTest.initialize_array", "Array initialized");
   }
 
-  template <class ValueRange>
-  std::string range_str(
-    const ValueRange & vrange) {
-    typedef typename ValueRange::value_type value_t;
-    std::ostringstream ss;
-    auto idx = dash::index(vrange);
-    int        i   = 0;
-    for (const auto & v : vrange) {
-      ss // << dash::internal::typestr(v)
-         << std::setw(2) << *(dash::begin(idx) + i) << "|"
-         << std::fixed << std::setprecision(4)
-         << static_cast<const value_t>(v) << " ";
-      ++i;
-    }
-    return ss.str();
-  }
-
 }
 }
 
@@ -136,9 +119,9 @@ TEST_F(ViewTest, ViewTraits)
   // static_assert(
   //     dash::view_traits<decltype(v_loc)>::is_view::value == true,
   //     "view traits is_view for local(dash::Array) not matched");
-  static_assert(
-      dash::view_traits<decltype(i_sub)>::is_view::value == false,
-      "view traits is_view for local(dash::Array) not matched");
+//static_assert(
+//    dash::view_traits<decltype(i_sub)>::is_view::value == false,
+//    "view traits is_view for index(sub(dash::Array)) not matched");
   static_assert(
       dash::view_traits<decltype(v_bsub)>::is_view::value == true,
       "view traits is_view for begin(blocks(dash::Array)) not matched");
@@ -153,6 +136,9 @@ TEST_F(ViewTest, ViewTraits)
   static_assert(
       dash::view_traits<decltype(v_sub)>::is_origin::value == false,
       "view traits is_origin for sub(dash::Array) not matched");
+//static_assert(
+//    dash::view_traits<decltype(i_sub)>::is_origin::value == true,
+//    "view traits is_origin for index(sub(dash::Array)) not matched");
   static_assert(
       dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
       "view traits is_origin for sub(sub(dash::Array)) not matched");
@@ -1008,6 +994,8 @@ TEST_F(ViewTest, Intersect1DimChain)
   auto gindex_isect = dash::index(gview_isect);
 
   if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                       dash::internal::typestr(gview_isect));
     DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", gview_left.size());
     DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", gview_right.size());
     DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", gview_isect.size());
@@ -1032,11 +1020,41 @@ TEST_F(ViewTest, Intersect1DimChain)
   EXPECT_EQ_U(sub_right_begin_gidx, *gindex_isect.begin());
   EXPECT_EQ_U(sub_left_end_gidx,    *gindex_isect.end());
 
-  auto lview_isect  = dash::local(gview_isect);
-  auto lindex_isect = dash::index(lview_isect);
-
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
-                     range_str(lview_isect));
+                     array.pattern().local_size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     array.pattern().global(0));
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     array.pattern().global(array.pattern().local_size()));
+
+  auto lview_isect  = dash::local(gview_isect);
+
+  auto lindex_isect = dash::index(lview_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     dash::internal::typestr(lindex_isect));
+
+  static_assert(
+    dash::detail::has_type_domain_type<decltype(lindex_isect)>::value,
+    "View trait is_range not set for index(local(intersect(...))) ");
+
+  auto lindex_isect_dom = dash::domain(lindex_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     dash::internal::typestr(lindex_isect_dom));
+
+  EXPECT_TRUE_U(
+    dash::test::expect_range_values_equal<int>(
+      dash::domain(lindex_isect),
+      lindex_isect.domain()));
+
+  static_assert(
+    dash::is_range<decltype(lindex_isect_dom)>::value,
+    "View trait is_range not set for index(local(intersect(...))) ");
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lview_isect.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect.size());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect_dom);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", range_str(lview_isect));
 
   int lidx = 0;
   for (auto gidx = sub_right_begin_gidx;

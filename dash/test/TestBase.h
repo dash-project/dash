@@ -6,9 +6,11 @@
 #include <gtest/gtest.h>
 
 #include <dash/internal/Config.h>
-#include <dash/Init.h>
-#include <dash/Team.h>
 #include <dash/internal/Logging.h>
+
+#include <dash/Init.h>
+#include <dash/view/IndexSet.h>
+#include <dash/Team.h>
 
 #include "TestGlobals.h"
 #include "TestPrinter.h"
@@ -182,6 +184,42 @@ extern void ColoredPrintf(
 
 namespace dash {
 namespace test {
+
+template <class ValueRange>
+static std::string range_str(
+  const ValueRange & vrange) {
+  typedef typename ValueRange::value_type value_t;
+  std::ostringstream ss;
+  auto idx = dash::index(vrange);
+  int        i   = 0;
+  for (const auto & v : vrange) {
+    ss // << dash::internal::typestr(v)
+       << std::setw(2) << *(dash::begin(idx) + i) << "|"
+       << std::fixed << std::setprecision(4)
+       << static_cast<const value_t>(v) << " ";
+    ++i;
+  }
+  return ss.str();
+}
+
+template <class ValueT, class RangeA, class RangeB>
+static bool expect_range_values_equal(
+  const RangeA & rng_a,
+  const RangeB & rng_b) {
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_a);
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_b);
+  auto       it_a  = dash::begin(rng_a);
+  auto       it_b  = dash::begin(rng_b);
+  const auto end_a = dash::end(rng_a);
+  const auto end_b = dash::end(rng_b);
+  for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
+    if (static_cast<ValueT>(*it_a) !=
+        static_cast<ValueT>(*it_b)) {
+      return false;
+    }
+  }
+  return (end_a == it_a) && (end_b == it_b);
+}
 
 class TestBase : public ::testing::Test {
 

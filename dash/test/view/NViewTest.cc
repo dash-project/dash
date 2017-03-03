@@ -30,21 +30,6 @@ namespace test {
     matrix.barrier();
   }
 
-  template <class ValueRange>
-  std::string range_str(
-    const ValueRange & vrange) {
-    typedef typename ValueRange::value_type value_t;
-    std::ostringstream ss;
-    const auto & idx = dash::index(vrange);
-    int          i   = 0;
-    for (const auto & v : vrange) {
-      ss << *(dash::begin(idx) + i) << ":"
-         << static_cast<value_t>(v) << " ";
-      ++i;
-    }
-    return ss.str();
-  }
-
   template <class NViewType>
   void print_nview(
     const std::string & name,
@@ -76,25 +61,6 @@ namespace test {
       values.push_back(static_cast<value_t>(view.begin()[index]));
     }
     return values;
-  }
-
-  template <class ValueT, class RangeA, class RangeB>
-  bool expect_range_values_equal(
-    const RangeA & rng_a,
-    const RangeB & rng_b) {
-    DASH_LOG_TRACE_VAR("NViewTest.expect_range_values_equal", rng_a);
-    DASH_LOG_TRACE_VAR("NViewTest.expect_range_values_equal", rng_b);
-    auto       it_a  = dash::begin(rng_a);
-    auto       it_b  = dash::begin(rng_b);
-    const auto end_a = dash::end(rng_a);
-    const auto end_b = dash::end(rng_b);
-    for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
-      if (static_cast<ValueT>(*it_a) !=
-          static_cast<ValueT>(*it_b)) {
-        return false;
-      }
-    }
-    return (end_a == it_a) && (end_b == it_b);
   }
 }
 }

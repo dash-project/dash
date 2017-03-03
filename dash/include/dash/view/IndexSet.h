@@ -226,10 +226,7 @@ class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
 
-  typedef typename std::remove_const<
-            typename std::remove_reference<DomainType>::type
-          >::type
-    DomainValueT;
+  typedef typename std::decay<DomainType>::type DomainValueT;
 
  public:
   typedef typename dash::view_traits<DomainValueT>::origin_type
@@ -241,6 +238,8 @@ class IndexSetBase
   typedef typename dash::view_traits<DomainValueT>::global_type
     view_global_type;
 
+  typedef typename view_traits<DomainValueT>::index_set_type
+    domain_type;
   typedef typename view_traits<view_origin_type>::pattern_type
     pattern_type;
   typedef typename dash::view_traits<view_local_type>::index_set_type

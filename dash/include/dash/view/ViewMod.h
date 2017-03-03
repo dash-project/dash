@@ -244,10 +244,6 @@ class ViewModBase {
   typedef ViewModBase<ViewModType, DomainType> self_t;
  public:
   typedef DomainType                                             domain_type;
-  typedef typename view_traits<domain_type>::origin_type         origin_type;
-  typedef typename view_traits<domain_type>::index_type           index_type;
-  typedef typename view_traits<domain_type>::size_type             size_type;
-  typedef typename origin_type::value_type                        value_type;
 
   typedef typename std::conditional<
                      view_traits<domain_type>::is_origin::value,
@@ -255,6 +251,18 @@ class ViewModBase {
                      domain_type
                    >::type
     domain_member_type;
+
+//typedef typename view_traits<domain_type>::origin_type         origin_type;
+  typedef typename std::conditional<
+            view_traits<domain_type>::is_local::value,
+            domain_type,
+            typename view_traits<domain_type>::origin_type
+          >::type
+    origin_type;
+
+  typedef typename view_traits<domain_type>::index_type           index_type;
+  typedef typename view_traits<domain_type>::size_type             size_type;
+  typedef typename origin_type::value_type                        value_type;
 
   typedef std::integral_constant<dim_t, domain_type::rank::value>       rank;
 
@@ -573,14 +581,7 @@ struct view_traits<ViewSubMod<DomainType, SubDim> > {
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
-
   typedef std::integral_constant<bool, false>                is_origin;
-//typedef typename std::conditional<
-//          view_traits<domain_type>::is_local::value,
-//          std::integral_constant<bool, true>,
-//          std::integral_constant<bool, false>
-//        >::type
-//  is_origin;
 
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
@@ -599,21 +600,15 @@ class ViewSubMod
 {
  public:
   typedef DomainType                                             domain_type;
-
-  typedef typename std::conditional<
-            view_traits<domain_type>::is_local::value,
-            domain_type,
-            typename view_traits<domain_type>::origin_type
-          >::type
-    origin_type;
-//typedef typename view_traits<domain_type>::origin_type         origin_type;
-
-  typedef typename view_traits<domain_type>::origin_type  domain_origin_type;
-  typedef typename view_traits<domain_type>::index_type           index_type;
-  typedef typename view_traits<domain_type>::size_type             size_type;
  private:
   typedef ViewSubMod<domain_type, SubDim>                             self_t;
   typedef ViewModBase< ViewSubMod<domain_type, SubDim>, domain_type > base_t;
+ public:
+  typedef typename base_t::origin_type                           origin_type;
+//typedef typename view_traits<domain_type>::origin_type         origin_type;
+
+  typedef typename view_traits<domain_type>::index_type           index_type;
+  typedef typename view_traits<domain_type>::size_type             size_type;
  public:
   typedef dash::IndexSetSub<domain_type, SubDim>              index_set_type;
   typedef ViewLocalMod<self_t>                                    local_type;
@@ -757,20 +752,22 @@ class ViewGlobalMod
 : public ViewModBase< ViewGlobalMod<DomainType>, DomainType >
 {
  public:
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename domain_type::global_type                     image_type;
-  typedef typename view_traits<domain_type>::index_type         index_type;
-  typedef typename view_traits<domain_type>::size_type           size_type;
+  typedef DomainType                                             domain_type;
  private:
-  typedef ViewGlobalMod<DomainType>                                 self_t;
-  typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >       base_t;
+  typedef ViewGlobalMod<DomainType>                                   self_t;
+  typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
  public:
-  typedef dash::IndexSetGlobal< DomainType >                index_set_type;
-  typedef self_t                                               global_type;
-  typedef typename domain_type::local_type                      local_type;
+//typedef typename view_traits<domain_type>::origin_type         origin_type;
+  typedef typename base_t::origin_type                           origin_type;
+  typedef typename domain_type::global_type                       image_type;
+  typedef typename view_traits<domain_type>::index_type           index_type;
+  typedef typename view_traits<domain_type>::size_type             size_type;
+ public:
+  typedef dash::IndexSetGlobal< DomainType >                  index_set_type;
+  typedef self_t                                                 global_type;
+  typedef typename domain_type::local_type                        local_type;
 
-  typedef std::integral_constant<bool, false>                     is_local;
+  typedef std::integral_constant<bool, false>                       is_local;
 
  private:
   index_set_type  _index_set;

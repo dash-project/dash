@@ -59,6 +59,7 @@ namespace detail {
    * dependent type \c domain_type.
    */
   DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type);
 }
 
 /**
@@ -67,7 +68,8 @@ namespace detail {
  * of the View concept.
  */
 template <class ViewableType>
-struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
+// struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
+struct is_view : dash::detail::has_type_index_set_type<ViewableType> { };
 
 
 
@@ -85,7 +87,11 @@ namespace detail {
    * Specialization of \c dash::view_traits for view types.
    */
   template <class ViewT>
-  struct _view_traits<ViewT, true, true>
+  struct _view_traits<
+           ViewT,
+           true, // is view
+           true  // is range
+         >
   {
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
@@ -122,7 +128,12 @@ namespace detail {
    * Specialization of \c dash::view_traits for container types.
    */
   template <class ContainerT>
-  struct _view_traits<ContainerT, false, true> {
+  struct _view_traits<
+           ContainerT,
+           false, // is view
+           true   // is range
+         >
+  {
     typedef ContainerT                                           origin_type;
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
