@@ -5,7 +5,6 @@
 
 #include <dash/Types.h>
 
-#if 0
 TEST_F(CoArrayTest, TypesInterface)
 {
   int n = 10;
@@ -28,7 +27,7 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(i)::const_reference;
     using local_pointer          = decltype(i)::local_pointer;
     using const_local_pointer    = decltype(i)::const_local_pointer;
-    using view_type              = decltype(i)::view_type;
+    using view_type              = decltype(i)::view_type<decltype(i)::ndim()>;
     using local_type             = decltype(i)::local_type;
     using pattern_type           = decltype(i)::pattern_type;
     
@@ -49,7 +48,7 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(x)::const_reference;
     using local_pointer          = decltype(x)::local_pointer;
     using const_local_pointer    = decltype(x)::const_local_pointer;
-    using view_type              = decltype(x)::view_type;
+    using view_type              = decltype(x)::view_type<decltype(x)::ndim()>;
     using local_type             = decltype(x)::local_type;
     using pattern_type           = decltype(x)::pattern_type;
     
@@ -71,7 +70,7 @@ TEST_F(CoArrayTest, TypesInterface)
     using const_reference        = decltype(y)::const_reference;
     using local_pointer          = decltype(y)::local_pointer;
     using const_local_pointer    = decltype(y)::const_local_pointer;
-    using view_type              = decltype(y)::view_type;
+    using view_type              = decltype(y)::view_type<decltype(y)::ndim()>;
     using local_type             = decltype(y)::local_type;
     using pattern_type           = decltype(y)::pattern_type;
     
@@ -79,7 +78,7 @@ TEST_F(CoArrayTest, TypesInterface)
                   "base type must have rank 0");
   }
 }
-#endif
+
 TEST_F(CoArrayTest, ContainerInterface)
 {
   dash::Coarray<int>         i;
@@ -108,5 +107,30 @@ TEST_F(CoArrayTest, ContainerInterface)
   // expression test
   int g = ((b + i) * i) / i;
   int h = i + b;
+  
+  // Coarray to Coarray
+  if(dash::co_array::num_images() >= 2){
+    x(0)[3][4] = x(1)[1][2];
+  }
 #endif
+}
+
+TEST_F(CoArrayTest, Collectives)
+{
+  using namespace dash::co_array;
+  
+  dash::Coarray<int>         i;
+  dash::Coarray<int[10][20]> x;
+  
+  if(this_image() == 0){
+    i = 10;
+  }
+  cobroadcast(i, dash::team_unit_t{0});
+  ASSERT_EQ_U(static_cast<int>(i), 10);
+  
+  std::fill(x.begin(), x.end(), 2);
+  x.barrier();
+  coreduce(x, dash::plus<int>());
+  x.barrier();
+  ASSERT_EQ_U(static_cast<int>(x[5][0]), 2 * dash::size());
 }

@@ -117,6 +117,10 @@ private:
   }
   
 public:
+  
+  static constexpr dim_t ndim() noexcept {
+    return static_cast<dim_t>(_rank);
+  }
   /**
    * Constructor for scalar types and fully specified array types:
    * \code
@@ -134,23 +138,39 @@ public:
   /*                         DASH Container Concept                           */
   /* ======================================================================== */
   
-  constexpr pattern_type & pattern() const noexcept {
+  constexpr const pattern_type & pattern() const noexcept {
     return _storage.pattern();
   }
   
-  constexpr iterator begin() const noexcept {
+  iterator begin() noexcept {
     return _storage.begin();
   }
   
-  constexpr iterator end() const noexcept {
+  constexpr const_iterator begin() const noexcept {
+    return _storage.begin();
+  }
+  
+  iterator end() noexcept {
     return _storage.end();
   }
   
-  constexpr local_pointer lbegin() const noexcept {
+  constexpr const_iterator end() const noexcept {
+    return _storage.end();
+  }
+  
+  local_pointer lbegin() noexcept {
     return _storage.lbegin();
   }
   
-  constexpr local_pointer lend() const noexcept {
+  constexpr const_local_pointer lbegin() const noexcept {
+    return _storage.lbegin();
+  }
+  
+  local_pointer lend() noexcept {
+    return _storage.lend();
+  }
+  
+  constexpr const_local_pointer lend() const noexcept {
     return _storage.lend();
   }
   
@@ -165,9 +185,22 @@ public:
   constexpr bool is_local(index_type gi) const noexcept {
     return _storage.is_local(gi);
   }
+  
   /*
   \TODO: allocate, deallocate
    */
+  
+  inline Team & team() {
+    return _storage.team();
+  }
+  
+  inline void barrier() {
+    team().barrier();
+  }
+  
+  inline void sync_all() {
+    // \TODO: Blocked by issue 312
+  }
 
   /* ======================================================================== */
   /*                      Operators for element access                        */
