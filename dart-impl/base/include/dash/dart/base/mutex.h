@@ -48,9 +48,15 @@ dart_ret_t
 dart_mutex_lock(dart_mutex_t *mutex)
 {
 #ifdef DART_THREADING_PTHREADS
-  pthread_mutex_lock(&mutex->mutex);
-  return DART_OK;
+  if (pthread_mutex_lock(&mutex->mutex) == 0){
+    return DART_OK;
+  } else {
+    DART_LOG_ERROR("Failed to lock mutex!");
+    return DART_ERR_OTHER;
+  }
+
 #else
+  DART_LOG_ERROR("Failed to lock mutex!");
   return DART_ERR_INVAL;
 #endif
 }
@@ -60,9 +66,14 @@ dart_ret_t
 dart_mutex_unlock(dart_mutex_t *mutex)
 {
 #ifdef DART_THREADING_PTHREADS
-  pthread_mutex_unlock(&mutex->mutex);
-  return DART_OK;
+  if (pthread_mutex_unlock(&mutex->mutex) == 0) {
+    return DART_OK;
+  }else {
+    DART_LOG_ERROR("Failed to unlock mutex!");
+    return DART_ERR_OTHER;
+  }
 #else
+  DART_LOG_ERROR("Failed to unlock mutex!");
   return DART_ERR_INVAL;
 #endif
 }
