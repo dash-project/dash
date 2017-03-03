@@ -56,9 +56,9 @@ private:
   template<typename __T, typename __S>
   struct __get_type_extens_as_array<__T, __S, 0> {
     using array_t = std::array<__S,0>;
-    static constexpr array_t value = std::array<__S, 0>();
+    static constexpr array_t value = {};
   };
-
+  
 private:
   static constexpr int _rank = std::rank<T>::value;
   
