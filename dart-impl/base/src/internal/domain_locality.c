@@ -141,7 +141,7 @@ dart_ret_t dart__base__locality__domain__copy(
                      domain_src->domain_tag, domain_src->num_units);
       return DART_ERR_OTHER;
     }
-    domain_dst->unit_ids = malloc(sizeof(dart_unit_t) *
+    domain_dst->unit_ids = malloc(sizeof(dart_global_unit_t) *
                                   domain_src->num_units);
     for (int u = 0; u < domain_src->num_units; u++) {
       domain_dst->unit_ids[u] = domain_src->unit_ids[u];
@@ -227,11 +227,6 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
       domain->num_units += subdomain->num_units;
     }
   }
-  if (domain->num_units   == 0 && domain->unit_ids != NULL) {
-    DART_LOG_DEBUG("dart__base__locality__domain__destruct: "
-                   "free(domain->unit_ids)");
-    free(domain->unit_ids);
-  }
   if (domain->num_domains == 0 && domain->domains  != NULL) {
     DART_LOG_DEBUG("dart__base__locality__domain__destruct: "
                    "free(domain->domains)");
@@ -257,9 +252,7 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
       }
     }
   } else {
-    if (NULL != domain->unit_ids) {
-      free(domain->unit_ids);
-    }
+    free(domain->unit_ids);
     domain->unit_ids = NULL;
   }
   DART_LOG_TRACE("dart__base__locality__domain__update_subdomains > "
@@ -449,7 +442,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
       memcpy(domain->unit_ids + unit_idx,
              domain->domains[subdomain_idx].unit_ids,
              domain->domains[subdomain_idx].num_units *
-               sizeof(dart_unit_t));
+               sizeof(dart_global_unit_t));
       unit_idx += domain->domains[subdomain_idx].num_units;
     }
 
@@ -468,25 +461,27 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 
   if (NULL != domain->unit_ids) {
     if (domain->num_units != unit_idx) {
-      dart_global_unit_t * tmp =
-        realloc(domain->unit_ids, unit_idx * sizeof(dart_global_unit_t));
       if (unit_idx == 0) {
+        free(domain->unit_ids);
         domain->unit_ids = NULL;
-      } else if (tmp != NULL) {
-        domain->unit_ids = tmp;
+      } else {
+        domain->unit_ids =
+            realloc(domain->unit_ids, unit_idx * sizeof(dart_global_unit_t));
+        DART_ASSERT(domain->unit_ids != NULL);
       }
       domain->num_units = unit_idx;
     }
   }
   if (NULL != domain->domains) {
     if (domain->num_domains != subdomain_idx) {
-      dart_domain_locality_t * tmp =
-        realloc(domain->domains,
-                subdomain_idx * sizeof(dart_domain_locality_t));
       if (subdomain_idx == 0) {
+        free(domain->domains);
         domain->domains = NULL;
-      } else if (tmp != NULL) {
-        domain->domains = tmp;
+      } else {
+        domain->domains =
+            realloc(domain->domains,
+                    subdomain_idx * sizeof(dart_domain_locality_t));
+        DART_ASSERT(domain->domains != NULL);
       }
       domain->num_domains = subdomain_idx;
     }
@@ -556,7 +551,7 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
                                            sizeof(dart_global_unit_t));
       memcpy(node_domain->unit_ids + node_num_units_prev,
              node_subdomain->unit_ids,
-             node_subdomain->num_units * sizeof(dart_unit_t));
+             node_subdomain->num_units * sizeof(dart_global_unit_t));
     }
 
     /* Bottom-up recursion operations: */
@@ -632,9 +627,9 @@ dart_ret_t dart__base__locality__domain__create_node_subdomains(
       DART_OK);
 
     module_domain->unit_ids =
-      malloc(module_domain->num_units * sizeof(dart_unit_t));
+      malloc(module_domain->num_units * sizeof(dart_global_unit_t));
     memcpy(module_domain->unit_ids, module_unit_ids,
-           module_domain->num_units * sizeof(dart_unit_t));
+           module_domain->num_units * sizeof(dart_global_unit_t));
 
     DART_ASSERT_RETURNS(
       dart__base__locality__domain__create_module_subdomains(
@@ -664,7 +659,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                  module_domain->host, module_domain->domain_tag,
                  module_domain->num_units, module_domain->global_index);
 
-  DART_LOG_TRACE_ARRAY(
+  DART_LOG_TRACE_UNITID_ARRAY(
     "dart__base__locality__domain__create_module_subdomains", "%d",
     module_domain->unit_ids, module_domain->num_units);
   /*
@@ -790,7 +785,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
       "dart__base__locality__domain__create_module_subdomains: ---- "
       "module_domain.unit_ids[%d] => unit:%d sub_gid:%d level_gid:%d "
       "module_domain.global_index:%d",
-      u_idx, unit_lid, unit_sub_gid, unit_level_gid,
+      u_idx, unit_lid.id, unit_sub_gid, unit_level_gid,
       module_domain->global_index);
     /* Ignore units that are not contained in current module domain: */
     if (module_scope_level == 0 ||
@@ -868,7 +863,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
      * global index of the subdomain of this iteration: */
     subdomain->num_units = 0;
     subdomain->unit_ids  = malloc(module_domain->num_units *
-                                         sizeof(dart_unit_t));
+                                         sizeof(dart_global_unit_t));
     for (int u_idx = 0; u_idx < module_domain->num_units; u_idx++) {
       dart_global_unit_t unit_gid = module_domain->unit_ids[u_idx];
       dart_team_unit_t   unit_lid;
@@ -885,7 +880,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
         "dart__base__locality__domain__create_module_subdomains: ---- "
         "module_unit[%d](= unit:%d).scopes[%d].index:%d =?= "
         "subdomain.global_index:%d",
-        u_idx, unit_lid, subdomain_gid_idx,
+        u_idx, unit_lid.id, subdomain_gid_idx,
         unit_loc->hwinfo.scopes[subdomain_gid_idx].index,
         subdomain->global_index);
 
@@ -899,9 +894,14 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                    "-- module->domains[%d].num_units:%d",
                    sd, subdomain->num_units);
 
-    subdomain->unit_ids = realloc(subdomain->unit_ids,
-                                  subdomain->num_units * sizeof(dart_unit_t));
-    DART_ASSERT(NULL != subdomain->unit_ids);
+    if (subdomain->num_units) {
+      subdomain->unit_ids = realloc(subdomain->unit_ids,
+                            subdomain->num_units * sizeof(dart_global_unit_t));
+      DART_ASSERT(NULL != subdomain->unit_ids);
+    } else {
+      free(subdomain->unit_ids);
+      subdomain->unit_ids = NULL;
+    }
 
     /* Number of units in subdomain is set at this point.
      * Below module level, a module subdomain's number of affine cores is:
@@ -937,7 +937,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
           "dart__base__locality__domain__create_module_subdomains: "
           "reached CORE scope (num_units:%d), setting domain tag for "
           "unit_lid:%d to %s",
-          subdomain->num_units, unit_lid, subdomain->domain_tag);
+          subdomain->num_units, unit_lid.id, subdomain->domain_tag);
 
         dart_unit_locality_t * unit_loc;
         DART_ASSERT_RETURNS(

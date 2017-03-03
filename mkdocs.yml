@@ -23,4 +23,5 @@ pages:
     - NArray: Containers/NArray.md
   - Input Output:
     - HDF5 Driver: InputOutput/HDF5.md
+  - Atomic Operations: Atomic.md
   - Continuous Integration: CI.md

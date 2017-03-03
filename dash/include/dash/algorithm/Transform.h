@@ -6,9 +6,11 @@
 
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
+#include <dash/algorithm/Accumulate.h>
 
 #include <dash/iterator/GlobIter.h>
 
+#include <dash/internal/Config.h>
 #include <dash/util/Trace.h>
 
 #include <dash/dart/if/dart_communication.h>
@@ -27,20 +29,21 @@ namespace internal {
  * Wrapper of the blocking DART accumulate operation.
  */
 template< typename ValueType >
-inline dart_ret_t accumulate_blocking_impl(
+inline dart_ret_t transform_blocking_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
+  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
+      "Cannot accumulate unknown type!");
+
   dart_ret_t result = dart_accumulate(
                         dest,
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush(dest);
   return result;
 }
@@ -49,20 +52,21 @@ inline dart_ret_t accumulate_blocking_impl(
  * Wrapper of the non-blocking DART accumulate operation.
  */
 template< typename ValueType >
-dart_ret_t accumulate_impl(
+dart_ret_t transform_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team)
+  dart_operation_t   op)
 {
+  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
+      "Cannot accumulate unknown type!");
+
   dart_ret_t result = dart_accumulate(
                         dest,
                         reinterpret_cast<void *>(values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
-                        op,
-                        team);
+                        op);
   dart_flush_local(dest);
   return result;
 }
@@ -153,13 +157,14 @@ template<
   class BinaryOperation >
 GlobOutputIt transform(
   /// Iterator on begin of first local range
-  InputIt        in_a_first,
+  InputIt         in_a_first,
   /// Iterator after last element of local range
-  InputIt        in_a_last,
+  InputIt         in_a_last,
   /// Iterator on begin of second local range
-  GlobInputIt    in_b_first,
+  GlobInputIt     in_b_first,
   /// Iterator on first element of global output range 
-  GlobOutputIt   out_first,
+  GlobOutputIt    out_first,
+  /// Reduce operation
   BinaryOperation binary_op);
 
 /**
@@ -219,9 +224,9 @@ OutputIt transform_local(
   // Number of local elements:
   DASH_LOG_TRACE("dash::transform_local", "local elements:", lend_a-lbegin_a);
   // Local subrange of input range b:
-  ValueType * lbegin_b   = dash::local(in_b_first + g_offset_first);
+  ValueType * lbegin_b   = (in_b_first + g_offset_first).local();
   // Local pointer of initial output element:
-  ValueType * lbegin_out = dash::local(out_first  + g_offset_first);
+  ValueType * lbegin_out = (out_first  + g_offset_first).local();
   // Generate output values:
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;
@@ -287,22 +292,19 @@ GlobOutputIt transform(
 
   dash::util::Trace trace("transform");
 
-  // Resolve team from global iterator:
-  dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
   // Number of elements in local range:
   size_t num_local_elements     = std::distance(in_first, in_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
-  trace.enter_state("accumulate_blocking");
-  dash::internal::accumulate_blocking_impl(
+  trace.enter_state("transform_blocking");
+  dash::internal::transform_blocking_impl(
       dest_gptr,
       in_first,
       num_local_elements,
-      binary_op.dart_operation(),
-      team.dart_id());
-  trace.exit_state("accumulate_blocking");
+      binary_op.dart_operation());
+  trace.exit_state("transform_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
   // spans over more than one block. Otherwise, the difference of two global
@@ -340,7 +342,7 @@ GlobOutputIt transform(
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
   auto in_first = in_a_first;
   auto in_last  = in_a_last;
-  // dash::Array<ValueType> in_range;
+
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A
     // Input is (in_a_first, in_a_last).
@@ -409,14 +411,13 @@ GlobOutputIt transform(
   // Native pointer to local sub-range:
   ValueType * l_values          = (in_a_first + global_offset).local();
   // Send accumulate message:
-  trace.enter_state("accumulate_blocking");
-  dash::internal::accumulate_blocking_impl(
+  trace.enter_state("transform_blocking");
+  dash::internal::transform_blocking_impl(
       dest_gptr,
       l_values,
       num_local_elements,
-      binary_op.dart_operation(),
-      team_in_a.dart_id());
-  trace.exit_state("accumulate_blocking");
+      binary_op.dart_operation());
+  trace.exit_state("transform_blocking");
 
   return out_first + global_offset + num_local_elements;
 }
@@ -439,7 +440,10 @@ GlobAsyncRef<ValueType> transform(
   InputIt                 in_a_last,
   GlobInputIt             in_b_first,
   GlobAsyncRef<ValueType> out_first,
-  BinaryOperation         binary_op   = dash::plus<ValueType>()) {
+  BinaryOperation         binary_op  = dash::plus<ValueType>()) {
+  DASH_THROW(
+    dash::exception::NotImplemented,
+    "Async variant of dash::transform is not implemented");
 }
 
 } // namespace dash

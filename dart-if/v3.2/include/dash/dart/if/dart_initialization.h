@@ -23,7 +23,6 @@ extern "C" {
 #define DART_INTERFACE_ON
 /** \endcond */
 
-
 /**
  * Initialize the DART runtime
  *
@@ -38,14 +37,22 @@ extern "C" {
 dart_ret_t dart_init(int *argc, char ***argv);
 
 /**
- * Initialize the DART runtime with support for multiple concurrent threads.
+ * Initialize the DART runtime with support for thread-based concurrency.
  *
- * No other DART function may be called before dart_init() or after
- * dart_exit().
+ * \param argc  Pointer to the number of command line arguments.
+ * \param argv  Pointer to the array of command line arguments.
+ * \param[out] thread_safety The provided thread safety,
+ *                           one of \ref dart_thread_level_t.
  *
+ * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartInitialization
-*/
-dart_ret_t dart_init_thread(int *argc, char ***argv, dart_concurrency_t *concurrency);
+ */
+dart_ret_t dart_init_thread(
+  int*                  argc,
+  char***               argv,
+  dart_thread_support_level_t * thread_safety);
 
 /**
  * Finalize the DASH runtime.

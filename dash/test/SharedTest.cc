@@ -1,8 +1,7 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "SharedTest.h"
+
+#include <dash/Shared.h>
 
 
 TEST_F(SharedTest, SingleWriteMultiRead)
@@ -130,7 +129,7 @@ TEST_F(SharedTest, AtomicAdd)
   value_t  init_val = 123;
   value_t  my_val   = 1 + dash::myid();
 
-  if (_dash_id == 0) {
+  if (dash::myid().id == 0) {
     shared.set(init_val);
   }
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 0");

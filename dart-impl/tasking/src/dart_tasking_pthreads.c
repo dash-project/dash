@@ -202,7 +202,7 @@ void handle_task(dart_task_t *task)
     dart_mutex_unlock(&(task->mutex));
 
     // let the parent know that we are done
-    int32_t nc = DART_DEC32_AND_FETCH(&task->parent->num_children);
+    int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
     DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
     // clean up
@@ -360,7 +360,7 @@ dart__base__tasking__create_task(
 {
   dart_task_t *task = create_task(fn, data, data_size);
 
-  int32_t nc = DART_INC32_AND_FETCH(&task->parent->num_children);
+  int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
@@ -384,7 +384,7 @@ dart__base__tasking__create_task_handle(
   dart_task_t *task = create_task(fn, data, data_size);
   task->has_ref = true;
 
-  int32_t nc = DART_INC32_AND_FETCH(&task->parent->num_children);
+  int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);

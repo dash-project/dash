@@ -2,9 +2,9 @@
 #define DASH__TEST__ARRAY_LARGE_STRUCT_TEST_H_
 
 #include <gtest/gtest.h>
-#include <libdash.h>
 
 #include "TestBase.h"
+
 
 #if defined (DASH_ENABLE_REGRESSION_TEST)
 #  define FEAT_MAX_LEN 10000000
@@ -42,10 +42,6 @@ protected:
     dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-  }
-
-  virtual void TearDown() {
-    dash::test::TestBase::TearDown();
   }
 };
 

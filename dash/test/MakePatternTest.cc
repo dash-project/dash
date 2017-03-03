@@ -1,17 +1,20 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 
 #include "MakePatternTest.h"
+
+#include <dash/pattern/MakePattern.h>
+#include <dash/pattern/PatternProperties.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
 
 using namespace dash;
 
 TEST_F(MakePatternTest, DefaultTraits)
 {
-  size_t extent_x   = 20 * _dash_size;
-  size_t extent_y   = 30 * _dash_size;
+  size_t extent_x   = 20 * dash::size();
+  size_t extent_y   = 30 * dash::size();
   auto sizespec     = dash::SizeSpec<2>(extent_x, extent_y);
-  auto teamspec     = dash::TeamSpec<2>(_dash_size, 1);
+  auto teamspec     = dash::TeamSpec<2>(dash::size(), 1);
 
   auto dflt_pattern = dash::make_pattern(
                         sizespec,
@@ -33,10 +36,10 @@ TEST_F(MakePatternTest, DefaultTraits)
 
 TEST_F(MakePatternTest, VarArgTags)
 {
-  size_t extent_x   = 20 * _dash_size;
-  size_t extent_y   = 30 * _dash_size;
+  size_t extent_x   = 20 * dash::size();
+  size_t extent_y   = 30 * dash::size();
   auto sizespec     = dash::SizeSpec<2>(extent_x, extent_y);
-  auto teamspec     = dash::TeamSpec<2>(_dash_size, 1);
+  auto teamspec     = dash::TeamSpec<2>(dash::size(), 1);
 
   // Tiled pattern with one tag in partitioning property category and two tags
   // in mapping property category:

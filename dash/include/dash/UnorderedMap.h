@@ -5,9 +5,10 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <iterator>
 #include <utility>

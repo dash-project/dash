@@ -1,12 +1,18 @@
-#include <libdash.h>
+
+#include "TeamTest.h"
+
+#include <dash/Team.h>
+#include <dash/Array.h>
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
+#include <dash/util/TeamLocality.h>
+
 #include <array>
 #include <sstream>
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
 
-#include "TestBase.h"
-#include "TeamTest.h"
 
 TEST_F(TeamTest, Deallocate) {
   LOG_MESSAGE("Start dealloc test");
@@ -32,6 +38,13 @@ TEST_F(TeamTest, SplitTeamSync)
 {
   auto & team_all = dash::Team::All();
 
+  // TODO: This test case has portability issues and fails in
+  //       distributed test environments and NastyMPI.
+  //       Clarify use case and find variant without writing to
+  //       file in `pwd`.
+  //
+  SKIP_TEST_MSG("not writing to pwd");
+
   if (team_all.size() < 2) {
     SKIP_TEST_MSG("requires at least 2 units");
   }
@@ -39,10 +52,16 @@ TEST_F(TeamTest, SplitTeamSync)
     SKIP_TEST_MSG("team is already splitted. Skip test");
   }
 
-  LOG_MESSAGE("team_all contains %d units", team_all.size());
+  // Check if all units are on the same node
+  dash::util::TeamLocality tloc(dash::Team::All());
+  if(tloc.num_nodes() > 1){
+    SKIP_TEST_MSG("test supports only 1 node");
+  }
+
+  LOG_MESSAGE("team_all contains %lu units", team_all.size());
 
   auto & team_core = team_all.split(2);
-  LOG_MESSAGE("team_core (%d) contains %d units",
+  LOG_MESSAGE("team_core (%d) contains %lu units",
               team_core.dart_id(), team_core.size());
 
   if (team_core.num_siblings() < 2) {

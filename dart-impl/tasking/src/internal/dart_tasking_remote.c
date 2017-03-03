@@ -96,7 +96,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
     ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep, sizeof(rdep));
     if (ret == DART_OK) {
       // the message was successfully sent
-      int32_t unresolved_deps = DART_INC32_AND_FETCH(&task->unresolved_deps);
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_deps);
       DART_LOG_INFO("Sent remote dependency request for task %p (unit=%i, segid=%i, offset=%p, fn=%p, num_deps=%i)",
           task, dep->gptr.unitid, dep->gptr.segid, dep->gptr.addr_or_offs.offset, &enqueue_from_remote, unresolved_deps);
       break;

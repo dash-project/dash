@@ -13,88 +13,143 @@
 
 typedef int16_t dart_segid_t;
 
+#define DART_SEGMENT_HASH_SIZE 256
+
 typedef struct
 {
-  dart_segid_t seg_id; /* seg_id determines a global pointer uniquely */
+  dart_segid_t segid; /* seg_id determines a global pointer uniquely */
   size_t       size;
   MPI_Aint   * disp;   /* address set of memory location of all units in certain team. */
   char      ** baseptr;
   char       * selfbaseptr;
   MPI_Win      win;
+  uint16_t     flags;
 } dart_segment_info_t;
 
+// forward declaration to make the compiler happy
+typedef struct dart_seghash_elem dart_seghash_elem_t;
+
+typedef struct {
+  dart_seghash_elem_t * hashtab[DART_SEGMENT_HASH_SIZE];
+  dart_team_t           team_id;
+  dart_seghash_elem_t * mem_freelist;
+  dart_seghash_elem_t * reg_freelist;
+
+  /**
+   * For DART collective allocation/free: offset in the returned gptr
+   * represents the displacement relative to the beginning of sub-memory
+   * spanned by a DART collective allocation.
+   * For DART local allocation/free: offset in the returned gptr represents
+   * the displacement relative to the base address of memory region reserved
+   * for the dart local allocation/free (see dart_buddy_allocator).
+   * Local allocations are identified by Segment ID DART_SEGMENT_LOCAL.
+   */
+  int16_t memid;
+  int16_t registermemid;
+} dart_segmentdata_t;
+
+typedef enum {
+  DART_SEGMENT_ALLOC,
+  DART_SEGMENT_REGISTER
+} dart_segment_type;
+
 
 /**
- * @brief Initialize the segment data hash table.
+ * Initialize the segment data hash table.
  */
-dart_ret_t dart_segment_init();
+dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid);
 
 /**
- * @brief Allocates a new segment data struct. May be served from a freelist.
+ * Allocates a new segment data struct. May be served from a freelist.
+ * The call also allocates the correct segment ID based on the \c type
+ * and registers the newly allocated segment in the segment data.
+ *
+ * \param segdata The segment data to of the team allocating this segment.
+ * \param type    Whether the segment is allocated or registered.
  */
-dart_ret_t dart_segment_alloc(dart_segid_t segid, uint16_t team_idx);
+dart_segment_info_t *
+dart_segment_alloc(
+  dart_segmentdata_t *segdata,
+  dart_segment_type type);
 
-/**
- * @brief Returns the registered team index for the segment ID.
- */
-dart_ret_t dart_segment_get_teamidx(dart_segid_t segid, uint16_t *team_idx);
+dart_ret_t
+dart_segment_register(
+  dart_segmentdata_t  *segdata,
+  dart_segment_info_t *seg);
 
-/**
- * @brief Add segment information to the segment hash table.
- */
-dart_ret_t dart_segment_add_info(const dart_segment_info_t *item);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-/** @brief Query the shared memory window object associated with the specified seg_id.
+
+/**
+ * Query the shared memory window object associated with the specified seg_id.
  *
- *  @param[in] seg_id
- *  @param[out] win A MPI window object.
+ * \param[in] seg_id
+ * \param[out] win A MPI window object.
  *
- *  @retval non-negative integer Search successfully.
- *  @retval negative integer Failure.
+ * \retval non-negative integer Search successfully.
+ * \retval negative integer Failure.
  */
-dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win);
+dart_ret_t dart_segment_get_win(dart_segmentdata_t *segdata, int16_t seg_id, MPI_Win * win);
 
 dart_ret_t dart_segment_get_baseptr(
+  dart_segmentdata_t   * segdata,
   int16_t                seg_id,
   dart_team_unit_t       rel_unitid,
   char               **  baseptr_s);
 #endif
 
 dart_ret_t dart_segment_get_selfbaseptr(
-  int16_t    seg_id,
-  char   **  baseptr);
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  char              ** baseptr);
 
-/** @brief Query the address of the memory location of the specified rel_unit in specified team.
+/**
+ * Query the address of the memory location of the specified rel_unit in
+ * specified team.
  *
- *  The output disp_s information targets for the dart inter-node communication, which means
- *  the one-sided communication proceed within the dynamic window object instead of the
- *  shared memory window object.
+ * The output disp_s information targets for the dart inter-node communication,
+ * which means the one-sided communication proceed within the dynamic window
+ * object instead of the shared memory window object.
  *
- *  @retval ditto
+ * \retval ditto
  */
-dart_ret_t dart_segment_get_disp(int16_t             seg_id,
-                                 dart_team_unit_t    rel_unitid,
-                                 MPI_Aint          * disp_s);
+dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
+                                 int16_t              seg_id,
+                                 dart_team_unit_t     rel_unitid,
+                                 MPI_Aint           * disp_s);
 
-/** @brief Query the length of the global memory block indicated by the specified seg_id.
+/**
+ * Query the length of the global memory block indicated by the
+ * specified seg_id.
  *
- *  @retval ditto
+ * \retval ditto
  */
 dart_ret_t dart_segment_get_size(
-  int16_t   seg_id,
-  size_t  * size);
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  size_t             * size);
+
+dart_ret_t dart_segment_get_flags(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t           * flags);
+
+dart_ret_t dart_segment_set_flags(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  uint16_t             flags);
 
 /**
- * @brief Deallocates the segment identified by the segment ID.
+ * Deallocates the segment identified by the segment ID.
  */
-dart_ret_t dart_segment_free(dart_segid_t segid);
+dart_ret_t dart_segment_free(dart_segmentdata_t * segdata,
+                             dart_segid_t         segid);
 
 
 /**
- * @brief Clear the segment data hash table.
+ * Clear the segment data hash table.
  */
-dart_ret_t dart_segment_fini();
+dart_ret_t dart_segment_fini(dart_segmentdata_t *segdata);
 
 
 #endif /* DART_SEGMENT_H_ */

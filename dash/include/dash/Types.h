@@ -3,6 +3,7 @@
 
 #include <array>
 #include <type_traits>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/internal/Unit.h>
 
@@ -96,50 +97,47 @@ struct Extent {
  */
 template<typename Type>
 struct dart_datatype {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
 };
-
-template<typename Type>
-const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
 
 template<>
 struct dart_datatype<char> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
 };
 
 template<>
 struct dart_datatype<unsigned char> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
 };
 
 template<>
 struct dart_datatype<int> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_INT;
 };
 
 template<>
 struct dart_datatype<unsigned int> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_UINT;
 };
 
 template<>
 struct dart_datatype<float> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
 };
 
 template<>
 struct dart_datatype<long> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_LONG;
 };
 
 template<>
 struct dart_datatype<unsigned long> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_ULONG;
 };
 
 template<>
 struct dart_datatype<double> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
 template <typename T>

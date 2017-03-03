@@ -1,13 +1,14 @@
 config.defs
 build
-build.dev
-build.rel
-build.mkl
-build.mic
-build.min
-build.nasty
-build.cov
-build-ci
+build.dev*
+build.rel*
+build.mkl*
+build.mic*
+build.min*
+build.nasty*
+build.cov*
+build.analyze*
+build-ci*
 compile_commands.json
 dash/include/dash/util/StaticConfig.h
 *.o
@@ -26,6 +27,7 @@ my.*.sh
 tags
 *.orig*
 *.bac*
+*.mine*
 RELEASE/*
 dash/include/dash/util/StaticConfig.h
 .includes
@@ -33,3 +35,4 @@ dash/include/dash/util/StaticConfig.h
 .gutctags
 cscope.files
 .ycm_*
+TAGS

@@ -25,21 +25,12 @@ std::ostream & operator<<(
 
 namespace dash {
 
-#ifndef DOXYGEN
-template<
-    typename ElementType,
-    typename IndexType,
-    class    PatternType>
-class Array;
-#endif // DOXYGEN
-
 namespace util {
 
 class Locality
 {
 public:
   friend void dash::init(int *argc, char ***argv);
-  friend void dash::init_thread(int *argc, char ***argv, int *concurrency);
 
 public:
 

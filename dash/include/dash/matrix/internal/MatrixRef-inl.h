@@ -7,9 +7,10 @@
 namespace dash {
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <class T_>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::MatrixRef(
-  const MatrixRef<T, NumDim, CUR+1, PatternT> & previous,
+  const MatrixRef<T_, NumDim, CUR+1, PatternT> & previous,
   index_type coord)
   : _refview(previous._refview)
 {
@@ -33,51 +34,53 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-Team &
+constexpr const Team &
 MatrixRef<T, NumDim, CUR, PatternT>
-::team()
+::team() const noexcept
 {
-  return _refview._mat->_team;
-}
+  return *(_refview._mat->_team);
+} 
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::size() const noexcept
 {
   return _refview._viewspec.size();
-}
-
+} 
+ 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-inline MatrixRef<T, NumDim, CUR, PatternT>
+constexpr MatrixRef<T, NumDim, CUR, PatternT>
 ::local_size() const noexcept
 {
-  // TODO: Should be
-  //   sub_local().size();
-  DASH_THROW(
-    dash::exception::NotImplemented,
-    "MatrixRef.local_size: Matrix view projection order "
-    "matrix.sub().local() is not supported, yet. Use matrix.local().sub().");
-  return _refview._viewspec.size();
+  return dash::local(
+           dash::sub<CUR>(
+             std::get<CUR>(_refview._viewspec.offsets()),
+             ( std::get<CUR>(_refview._viewspec.offsets()) +
+               std::get<CUR>(_refview._viewspec.extents()) ),
+             *(_refview._mat)
+           )
+         ).size();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-inline MatrixRef<T, NumDim, CUR, PatternT>
+constexpr MatrixRef<T, NumDim, CUR, PatternT>
 ::local_capacity() const noexcept
 {
-  // TODO: Should be
-  //   sub_local().capacity();
-  DASH_THROW(
-    dash::exception::NotImplemented,
-    "MatrixRef.local_capacity: Matrix view projection order "
-    "matrix.sub().local() is not supported, yet. Use matrix.local().sub().");
-  return _refview._viewspec.size();
+  return dash::local(
+           dash::sub<CUR>(
+             std::get<CUR>(_refview._viewspec.offsets()),
+             ( std::get<CUR>(_refview._viewspec.offsets()) +
+               std::get<CUR>(_refview._viewspec.extents()) ),
+             *(_refview._mat)
+           )
+         ).size();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -86,7 +89,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline std::array<
+constexpr std::array<
   typename MatrixRef<T, NumDim, CUR, PatternT>::size_type,
   NumDim>
 MatrixRef<T, NumDim, CUR, PatternT>
@@ -96,7 +99,26 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline bool
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::index_type
+MatrixRef<T, NumDim, CUR, PatternT>
+::offset(
+  dim_t dim) const noexcept
+{
+  return _refview._viewspec.offset(dim);
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr std::array<
+  typename MatrixRef<T, NumDim, CUR, PatternT>::index_type,
+  NumDim >
+MatrixRef<T, NumDim, CUR, PatternT>
+::offsets() const noexcept
+{
+  return _refview._viewspec.offsets();
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::empty() const noexcept
 {
@@ -108,19 +130,19 @@ inline void
 MatrixRef<T, NumDim, CUR, PatternT>
 ::barrier() const
 {
-  _refview._mat->_team.barrier();
+  _refview._mat->_team->barrier();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
+constexpr const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
 MatrixRef<T, NumDim, CUR, PatternT>
-::pattern() const
+::pattern() const noexcept
 {
   return _refview._mat->_pattern;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
 MatrixRef<T, NumDim, CUR, PatternT>
 ::data() const noexcept
 {
@@ -128,105 +150,89 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+typename MatrixRef<T, NumDim, CUR, PatternT>::pointer
+MatrixRef<T, NumDim, CUR, PatternT>
+::data() noexcept
+{
+  return begin();
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::begin() const noexcept
 {
-  DASH_LOG_TRACE("MatrixRef.begin()",
-                 "viewspec:", _refview._viewspec,
-                 "coord:",    _refview._coord);
-  // Offset of first element in viewspec, e.g. offset of first element in
-  // block:
-  auto g_vs_begin_idx = _refview._mat->_pattern.global_at(
-                          _refview._coord,
-                          _refview._viewspec);
-  DASH_LOG_TRACE("MatrixRef.begin",
-                 "iterator offset:", g_vs_begin_idx);
-  auto git_begin = GlobViewIter_t(
-                     _refview._mat->_glob_mem,
-                     _refview._mat->_pattern,
-                     _refview._viewspec,
-                     0,                        // relative iterator position
-                     g_vs_begin_idx            // view index offset 
-                   );
-  DASH_LOG_TRACE("MatrixRef.begin= >", git_begin);
-  return git_begin;
+  return const_iterator(
+           _refview._mat->_glob_mem,
+           _refview._mat->_pattern,
+           _refview._viewspec,
+           // Relative iterator position
+           0,
+           // Offset of first element in viewspec, e.g. offset
+           // of first element in block:
+           _refview._mat->_pattern.global_at(
+                _refview._coord,
+                _refview._viewspec)
+         );
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
+typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::begin() noexcept
 {
-  DASH_LOG_TRACE("MatrixRef.begin=()",
-                 "viewspec:", _refview._viewspec,
-                 "coord:",    _refview._coord);
-  // Offset of first element in viewspec, e.g. offset of first element in
-  // block:
-  auto g_vs_begin_idx = _refview._mat->_pattern.global_at(
-                          _refview._coord,
-                          _refview._viewspec);
-  auto git_begin = GlobViewIter_t(
-                     _refview._mat->_glob_mem,
-                     _refview._mat->_pattern,
-                     _refview._viewspec,
-                     0,                         // relative iterator position
-                     g_vs_begin_idx             // view index offset 
-                   );
-  DASH_LOG_TRACE("MatrixRef.begin= >", git_begin);
-  return git_begin;
+  return iterator(
+           _refview._mat->_glob_mem,
+           _refview._mat->_pattern,
+           _refview._viewspec,
+           // Relative iterator position
+           0,
+           // Offset of first element in viewspec, e.g. offset
+           // of first element in block:
+           _refview._mat->_pattern.global_at(
+                _refview._coord,
+                _refview._viewspec)
+         );
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
+constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::end() const noexcept
 {
-  DASH_LOG_TRACE("MatrixRef.end()",
-                 "viewspec:", _refview._viewspec,
-                 "coord:",    _refview._coord);
-  // Offset of first element in viewspec, e.g. offset of first element in
-  // block:
-  auto g_vs_begin_idx = _refview._mat->_pattern.global_at(
-                          _refview._coord,
-                          _refview._viewspec);
-  auto git_end = GlobViewIter_t(
-                   _refview._mat->_glob_mem,
-                   _refview._mat->_pattern,
-                   _refview._viewspec,
-                   _refview._viewspec.size(), // relative iterator position
-                   g_vs_begin_idx              // view index offset
-                 );
-  DASH_LOG_TRACE("MatrixRef.end >", git_end);
-  return git_end;
+  return const_iterator(
+           _refview._mat->_glob_mem,
+           _refview._mat->_pattern,
+           _refview._viewspec,
+           // Relative iterator position
+           _refview._viewspec.size(),
+           // Offset of first element in viewspec
+           _refview._mat->_pattern.global_at(
+                  _refview._coord,
+                  _refview._viewspec)
+         );
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
+typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::end() noexcept
 {
-  DASH_LOG_TRACE("MatrixRef.end=()",
-                 "viewspec:", _refview._viewspec,
-                 "coord:",    _refview._coord);
-  // Offset of first element in viewspec, e.g. offset of first element in
-  // block:
-  auto g_vs_begin_idx = _refview._mat->_pattern.global_at(
-                          _refview._coord,
-                          _refview._viewspec);
-  auto git_end = GlobViewIter_t(
-                   _refview._mat->_glob_mem,
-                   _refview._mat->_pattern,
-                   _refview._viewspec,
-                   _refview._viewspec.size(), // relative iterator position
-                   g_vs_begin_idx              // view index offset
-                 );
-  DASH_LOG_TRACE("MatrixRef.end= >", git_end);
-  return git_end;
+  return iterator(
+           _refview._mat->_glob_mem,
+           _refview._mat->_pattern,
+           _refview._viewspec,
+           // Relative iterator position
+           _refview._viewspec.size(),
+           // Offset of first element in viewspec
+           _refview._mat->_pattern.global_at(
+                  _refview._coord,
+                  _refview._viewspec)
+         );
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline typename MatrixRef<T, NumDim, CUR, PatternT>::local_type
+typename MatrixRef<T, NumDim, CUR, PatternT>::local_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::sub_local() noexcept
 {
@@ -234,7 +240,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline T *
+T *
 MatrixRef<T, NumDim, CUR, PatternT>
 ::lbegin() noexcept
 {
@@ -249,7 +255,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline T *
+T *
 MatrixRef<T, NumDim, CUR, PatternT>
 ::lend() noexcept
 {
@@ -269,22 +275,16 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos)
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.[]=()", pos);
-  DASH_LOG_TRACE_VAR("MatrixRef.[]=", CUR);
-  MatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
-  return ref;
+  return MatrixRef<T, NumDim, CUR-1, PatternT>(*this, pos);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-const MatrixRef<T, NumDim, CUR-1, PatternT>
+constexpr MatrixRef<const T, NumDim, CUR-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.[]()", pos);
-  DASH_LOG_TRACE_VAR("MatrixRef.[]", CUR);
-  MatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
-  return ref;
+  return MatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -428,7 +428,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::is_local(
   index_type g_pos) const
@@ -439,7 +439,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t Dimension>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::is_local(
   index_type g_pos) const
@@ -487,7 +487,7 @@ MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline bool
+constexpr bool
 MatrixRef<T, NumDim, 0, PatternT>
 ::is_local() const
 {
@@ -498,22 +498,17 @@ MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline MatrixRef<T, NumDim, 0, PatternT>
+constexpr MatrixRef<T, NumDim, 0, PatternT>
 ::operator T() const
 {
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.T() >", ref);
-  return ref;
+  return _refview.global_reference();
 }
 
 template <typename T, dim_t NumDim, class PatternT>
-inline MatrixRef<T, NumDim, 0, PatternT>
+constexpr MatrixRef<T, NumDim, 0, PatternT>
 ::operator GlobPtr<T, PatternT>() const
 {
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.GlobPtr()", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  return GlobPtr<T, PatternT>(ref.dart_gptr());
+  return GlobPtr<T, PatternT>(_refview.global_reference().dart_gptr());
 }
 
 template <typename T, dim_t NumDim, class PatternT>

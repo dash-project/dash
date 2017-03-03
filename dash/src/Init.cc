@@ -1,13 +1,19 @@
+
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Types.h>
 #include <dash/Shared.h>
+
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+#include <dash/internal/Logging.h>
+
+#include <dash/internal/Annotation.h>
 
 
 namespace dash {
   static bool _initialized = false;
+  static bool _multithreaded = false;
 }
 
 namespace dash {
@@ -28,41 +34,31 @@ void dash::init(int * argc, char ** *argv)
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
 
+#if DASH_ENABLE_THREADSUPPORT
+  DASH_LOG_DEBUG("dash::init", "dart_init_thread()");
+  dart_thread_support_level_t provided_mt;
+  dart_init_thread(argc, argv, &provided_mt);
+  dash::_multithreaded = (provided_mt == DART_THREAD_MULTIPLE);
+  if (!dash::_multithreaded) {
+    DASH_LOG_WARN("Support for multi-threading requested at compile time but DART does not support multi-threaded access.");
+  }
+#else
+
   DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc, argv);
-  dash::_initialized = true;
-
-#if DASH_DEBUG
-  if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
-    dash::Shared<int> blockvar;
-    blockvar.set(1);
-    while (blockvar.get()) {
-      dash::internal::wait_breakpoint();
-    }
-  }
 #endif
 
-  DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
-  dash::util::Locality::init();
-  DASH_LOG_DEBUG("dash::init >");
-}
-
-void dash::init_thread(int *argc, char ***argv, int *concurrency)
-{
-  DASH_LOG_DEBUG("dash::init()");
-
-  DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
-  dash::util::Config::init();
-
-  DASH_LOG_DEBUG("dash::init", "dart_init()");
-  dart_concurrency_t provided;
-  dart_init_thread(argc,argv, &provided);
   dash::_initialized = true;
 
-  if (provided == DART_THREAD_SINGLE) {
-    *concurrency = DASH_THREAD_SINGLE;
-  } else {
-    *concurrency = DASH_THREAD_MULTIPLE;
+  if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
+    if (dash::myid() == 0) {
+      int blockvar = 1;
+      dash::prevent_opt_elimination(blockvar);
+      while (blockvar) {
+        dash::internal::wait_breakpoint();
+      }
+    }
+    dash::barrier();
   }
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
@@ -103,6 +99,11 @@ void dash::finalize()
 bool dash::is_initialized()
 {
   return dash::_initialized;
+}
+
+bool dash::is_multithreaded()
+{
+  return dash::_multithreaded;
 }
 
 void dash::barrier()

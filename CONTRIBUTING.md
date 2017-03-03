@@ -27,6 +27,62 @@ The
 are worth mentioning, too.
 
 
+Doxygen Style
+-------------
+
+We use the
+[`JAVADOC_AUTOBRIEF` Doxygen style](http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html)
+and some DASH-specific tags.
+
+This example should illustrate all you need:
+
+~~~c++
+/**
+ * Multi-line comment opened with double-star "/**".
+ * First paragraph is brief description.
+ *
+ * Paragraphs are separated by empty comment lines. This is
+ * the second paragraph and is not included in the brief
+ * description.
+ * 
+ * \note
+ * Note paragraphs will be rendered in a highlighted box
+ *
+ * \todo
+ * ToDo paragraphs will be rendered in a highlighted box and are
+ * also summarized on a single ToDo list page. Very useful!
+ *
+ * Return values are documented like this:
+ * 
+ * \returns   true   if the specified number of wombats has
+ *                   been successfully wombatified with the given
+ *                   factor
+ *            false  otherwise
+ *
+ * If the documented interface (class, method, function, trait, ...)
+ * implements a concept (formally: "is a model of a concept"),
+ * reference the implemented concepts like this (\concept is a
+ * DASH-specific tag):
+ *
+ * \concept DashMammalConcept
+ * \concept DashStralianMammalConcept
+ *
+ * To add references to otherwise (non-concept) related interface
+ * definitions, use:
+ *
+ * \see dash::wombatificate
+ */
+bool wombatify(
+   /// Single-line comments opened with *three* forward-slashes.
+   /// This is a convenient way to describe function parameters.
+   /// This style makes undocumented parameters easy to spot.
+   int     num_wombats,
+   double  wombat_factor  ///< Postfix-style with "<", comment placed *after* described parameter
+) {
+  // Any comment here is ignored, no matter how it is formatted.
+}
+~~~
+
 
 Contributing Code
 -----------------
@@ -85,7 +141,9 @@ passed review and has been merged.
 
 The development branch of DASH is merged to master periodically once all
 issues in the development branch associated with the next stable release
-are closed.
+are closed. We do not use squash merges as this wipes out the ownership
+of the code. A later `git blame` would only show the member which
+squash-merged the changes, but not author of the code.
 
 Before merging:
 
@@ -102,3 +160,17 @@ After merging:
 - Publish a new release: create a tarball distribution by running
  `release.pl` and add a link on the DASH project website.
 
+Contributing Tests
+-----------------
+
+Write your tests orienting yourself on existing ones.
+The tests can be found under `(dash-root)/dash/test`.
+For how to compile and run the tests take a look at `README.md`.
+
+If you want to check for equality at compile time use `static_assert` etc.
+For runtime equality check; normally a `assert_*` leads to abortion if failed
+and a `expect_*` leads to continuation but the test is accounted as failed.
+See `(dash-root)/dash/test/TestBase.h` for more functions.
+
+For the time being `assert_*` is synonym to `expect_*` but please write your tests
+as you "normally" would in case it will be adapted to the standard some day.

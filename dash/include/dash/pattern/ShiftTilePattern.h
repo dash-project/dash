@@ -762,7 +762,7 @@ public:
     // Local offset of the element within all of the unit's local
     // elements:
     auto unit = unit_at(global_coords);
-#if __OLD__
+#ifdef __OLD__
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords =
       local_coords(global_coords);

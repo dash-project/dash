@@ -188,7 +188,7 @@ release_deferred_remote_releases()
   while ((elem = next) != NULL) {
     next = elem->next;
     dart_task_t *task = elem->task.local;
-    int unresolved_deps = DART_DEC32_AND_FETCH(&task->unresolved_deps);
+    int unresolved_deps = DART_DEC_AND_FETCH32(&task->unresolved_deps);
     DART_LOG_DEBUG("release_defered : Task with remote dep %p has %i "
                    "unresolved dependencies left", task, unresolved_deps);
     if (unresolved_deps < 0) {
@@ -241,7 +241,7 @@ find_remote_direct_dependencies(dart_task_t *task, dart_dephash_elem_t *rdep)
           target,
           local->task.local,
           rdep->task);
-      int32_t unresolved_deps = DART_INC32_AND_FETCH(
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                   &local->task.local->unresolved_deps);
       DART_LOG_DEBUG("DIRECT task dep: task %p depends on remote task %p at "
                      "unit %i and has %i dependencies",
@@ -342,7 +342,7 @@ dart_tasking_datadeps_release_unhandled_remote()
           target,
           direct_dep_candidate,
           rdep->task);
-      int32_t unresolved_deps = DART_INC32_AND_FETCH(
+      int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                   &direct_dep_candidate->unresolved_deps);
       DART_LOG_DEBUG("DIRECT task dep: task %p (ph:%i) directly depends on "
                      "remote task %p (ph:%i) at unit %i and has %i dependencies",
@@ -442,7 +442,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
               (IS_OUT_DEP(dep) ||
                   (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
             // OUT dependencies have to wait for all previous dependencies
-            int32_t unresolved_deps = DART_INC32_AND_FETCH(
+            int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                           &task->unresolved_deps);
             DART_LOG_DEBUG("Making task %p a local successor of task %p "
                            "(successor: %p, num_deps: %i)",
@@ -545,7 +545,7 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   task_list_t *tl = task->successor;
   while (tl != NULL) {
     task_list_t *tmp = tl->next;
-    int32_t unresolved_deps = DART_DEC32_AND_FETCH(&tl->task->unresolved_deps);
+    int32_t unresolved_deps = DART_DEC_AND_FETCH32(&tl->task->unresolved_deps);
     DART_LOG_DEBUG("release_local_task: task %p has %i dependencies left",
                    tl->task, unresolved_deps);
 
@@ -583,7 +583,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
                    local_task, local_task->phase);
   } else {
     // immediately release the task
-    int unresolved_deps = DART_DEC32_AND_FETCH(&local_task->unresolved_deps);
+    int unresolved_deps = DART_DEC_AND_FETCH32(&local_task->unresolved_deps);
     DART_LOG_DEBUG("release_remote_dep : Task %p with remote dep has %i "
                    "unresolved dependencies left", local_task, unresolved_deps);
     if (unresolved_deps < 0) {

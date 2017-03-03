@@ -1,9 +1,13 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "ShiftTilePatternTest.h"
+
+#include <dash/pattern/ShiftTilePattern.h>
+
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
+#include <array>
 
 
 TEST_F(ShiftTilePatternTest, Distribute1DimTile)
@@ -101,7 +105,7 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
   size_t extent_y       = team_size * 2 * block_size_y;
   size_t size           = extent_x * extent_y;
   size_t max_per_unit   = size / team_size;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
+  LOG_MESSAGE("e:%zu,%zu, bs:%zu,%zu, nu:%zu, mpu:%zu",
               extent_x, extent_y,
               block_size_x, block_size_y,
               team_size,
@@ -214,7 +218,7 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
                                   std::array<index_t, 2> { x, y });
 //    auto local_coords_col   = pat_tile_col.local_coords(
 //                                std::array<index_t, 2> { x, y });
-      LOG_MESSAGE("R %d,%d u:%d b:%d,%d nlb:%d,%d lc: %d,%d lbi:%d p:%d",
+      LOG_MESSAGE("R %d,%d u:%d b:%d,%d nlb:%d,%d lc: %lu,%lu lbi:%d p:%d",
                   x, y,
                   unit_id.id,
                   block_index_x,       block_index_y,
@@ -263,7 +267,7 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
   size_t extent_y       = team_size * 2 * block_size_y;
   size_t size           = extent_x * extent_y;
   size_t max_per_unit   = size / team_size;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
+  LOG_MESSAGE("e:%zu,%zu, bs:%zu,%zu, nu:%zu, mpu:%zu",
               extent_x, extent_y,
               block_size_x, block_size_y,
               team_size,

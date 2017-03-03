@@ -1,8 +1,8 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "GlobDynamicMemTest.h"
+
+#include <dash/GlobDynamicMem.h>
+
 
 TEST_F(GlobDynamicMemTest, BalancedAlloc)
 {

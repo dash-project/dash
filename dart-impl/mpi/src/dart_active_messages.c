@@ -5,12 +5,13 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#include <dash/dart/base/mutex.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/base/mutex.h>
 
 /**
  * TODO:
@@ -67,7 +68,6 @@ dart_amsgq_t
 dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
 {
   dart_team_unit_t unitid;
-  MPI_Comm tcomm;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
   res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->dbuf = malloc(res->size);
@@ -100,14 +100,28 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
   *addr = 0;
   */
 
-  uint16_t index;
-  dart_adapt_teamlist_convert(team, &index);
-  tcomm = dart_team_data[index].comm;
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
+    return DART_ERR_INVAL;
+  }
 
-  MPI_Win_allocate(sizeof(uint64_t), 1, MPI_INFO_NULL, tcomm, (void*)&(res->tailpos_ptr), &(res->tailpos_win));
+  MPI_Win_allocate(
+    sizeof(uint64_t),
+    1,
+    MPI_INFO_NULL,
+    team_data->comm,
+    (void*)&(res->tailpos_ptr),
+    &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;
   MPI_Win_flush(unitid.id, res->tailpos_win);
-  MPI_Win_allocate(res->size, 1, MPI_INFO_NULL, tcomm, (void*)&(res->queue_ptr), &(res->queue_win));
+  MPI_Win_allocate(
+    res->size,
+    1,
+    MPI_INFO_NULL,
+    team_data->comm,
+    (void*)&(res->queue_ptr),
+    &(res->queue_win));
   memset(res->queue_ptr, 0, res->size);
   MPI_Win_fence(0, res->queue_win);
 
