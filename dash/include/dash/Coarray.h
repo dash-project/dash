@@ -70,6 +70,7 @@ private:
   template<int _subrank = _rank>
   using _view_type      = MatrixRef<_element_type, _rank+1, _subrank, _pattern_type>;
   using _local_type     = LocalMatrixRef<_element_type, _rank+1, _rank-1, _pattern_type>;
+  using _offset_type    = std::array<_index_type, _rank>;
 
 public:
   // Types
@@ -108,11 +109,11 @@ private:
                 __get_type_extens_as_array<T, size_type, _rank>::value)));
   }
   
-  constexpr std::array<index_type, _rank> & _offsets_unit(const team_unit_t & unit){
+  constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const {
     return _storage.pattern().global(unit, std::array<index_type,_rank> {});
   }
   
-  constexpr std::array<size_type, _rank> & _extents_unit(const team_unit_t & unit){
+  constexpr _offset_type & _extents_unit(const team_unit_t & unit) const {
     return _storage.pattern().local_extents(unit);
   }
   
