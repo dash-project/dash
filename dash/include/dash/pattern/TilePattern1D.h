@@ -826,6 +826,24 @@ public:
   {
     return g_coords[0] / _blocksize;
   }
+  
+  /**
+   * Local index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  constexpr local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const {
+    return local_index_t {
+             // unit id:
+             static_cast<team_unit_t>(
+                (g_coords[0] / _blocksize) % _teamspec.size()),
+             // local block index:
+             static_cast<index_type>(
+                (g_coords[0] / _blocksize) / _teamspec.size())
+           };
+  }
 
   /**
    * View spec (offset and extents) of block at global linear block index in

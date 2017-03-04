@@ -844,7 +844,7 @@ public:
   }
   
   /**
-   * Index of block at given global coordinates.
+   * Gobal index of block at given global coordinates.
    *
    * \see  DashPatternConcept
    */
@@ -855,7 +855,7 @@ public:
   }
   
   /**
-   * Index of block at given global coordinates.
+   * Local index of block at given global coordinates.
    *
    * \see  DashPatternConcept
    */
@@ -1127,16 +1127,6 @@ public:
              ? 0
              : _blocksize - (_size % _blocksize)
            );
-#if 0
-    auto ovf_blocksize = (_blocksize == 0)
-                         ? 0
-                         : _size % _blocksize;
-    if (ovf_blocksize == 0) {
-      return 0;
-    } else {
-      return _blocksize - ovf_blocksize;
-    }
-#endif
   }
 
 private:

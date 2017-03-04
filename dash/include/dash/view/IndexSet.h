@@ -523,9 +523,9 @@ template <
   class       DomainType,
   std::size_t SubDim >
 constexpr auto
-local(const IndexSetSub<DomainType, SubDim> & index_set) ->
-// decltype(index_set.local()) {
-  typename view_traits<IndexSetSub<DomainType, SubDim>>::local_type & {
+local(const IndexSetSub<DomainType, SubDim> & index_set)
+//-> decltype(index_set.local()) {
+  -> typename view_traits<IndexSetSub<DomainType, SubDim>>::local_type & {
   return index_set.local();
 }
 
@@ -533,9 +533,9 @@ template <
   class       DomainType,
   std::size_t SubDim >
 constexpr auto
-global(const IndexSetSub<DomainType, SubDim> & index_set) ->
-// decltype(index_set.global()) {
-  typename view_traits<IndexSetSub<DomainType, SubDim>>::global_type & {
+global(const IndexSetSub<DomainType, SubDim> & index_set)
+//-> decltype(index_set.global()) {
+  ->typename view_traits<IndexSetSub<DomainType, SubDim>>::global_type & {
   return index_set.global();
 }
 
@@ -796,10 +796,8 @@ class IndexSetLocal
     return *this;
   }
 
-//constexpr const global_type & global() const noexcept {
   constexpr auto global() const noexcept
     -> decltype(dash::index(dash::global(this->view_domain()))) {
-//  return global_type(this->view_domain());
     return dash::index(dash::global(this->view_domain()));
   }
 
@@ -884,19 +882,31 @@ class IndexSetLocal
                 // local range in global index space:
                 {
                   this->pattern().lbegin(),
-                  ( this->pattern().lend() < this->domain().last()
+                  ( this->pattern().lend() <= this->domain().last()
                     // domain range ends after local range:
-                    ? this->pattern().lend()
+                    ? this->pattern().lend() - 1
                     // domain range ends in local range, determine last
-                    // local index contained in domain:
-                    : this->pattern().lend() // TODO
+                    // local index contained in domain from last local
+                    // block contained in domain range:
+                    : this->pattern().local_block(
+                        std::min<index_type>(
+                          // global domain last index to global block index:
+                          this->pattern().local_block_at(
+                            this->pattern().coords(
+                              this->domain().last() )).index,
+                          // local last index to global block index:
+                          this->pattern().local_block_at(
+                            this->pattern().coords(
+                              this->pattern().lend() - 1 )).index
+                        )
+                      ).range(0).end - 1
                   )
                 },
                 // domain range in global index space;
                 { this->domain().first(),
-                  this->domain().last() }
-            )))
-          + 1
+                  this->domain().last()
+                })
+            )) + 1
     );
   }
 
@@ -1145,7 +1155,7 @@ class IndexSetBlocks
                    )
                  )
                ).index
-               // global coords to local block index:
+               // global coords to global block index:
              : this->pattern().block_at(
                  // global offset to global coords:
                  this->pattern().coords(this->domain()[0] ))

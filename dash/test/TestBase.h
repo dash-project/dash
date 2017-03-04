@@ -193,9 +193,10 @@ static std::string range_str(
   std::ostringstream ss;
   auto idx = dash::index(vrange);
   int        i   = 0;
+
+  ss << dash::internal::typestr(vrange);
   for (const auto & v : vrange) {
-    ss // << dash::internal::typestr(v)
-       << std::setw(2) << *(dash::begin(idx) + i) << "|"
+    ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(4)
        << static_cast<const value_t>(v) << " ";
     ++i;

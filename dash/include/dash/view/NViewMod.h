@@ -218,7 +218,34 @@ public:
             typename view_traits<domain_type>::origin_type
           >::type
     origin_type;
-//typedef typename view_traits<DomainType>::origin_type        origin_type;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<origin_type>::type
+              >() ))
+    origin_iterator;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<const origin_type>::type
+              >() ))
+    const_origin_iterator;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<origin_type>::type
+               >() ))
+    reference;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<const origin_type>::type
+               >() ))
+    const_reference;
 
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
@@ -600,11 +627,10 @@ class NViewSubMod
 private:
   typedef NViewSubMod<DomainType, SubDim, NDim>                     self_t;
   typedef NViewModBase<
-            NViewSubMod<DomainType, SubDim, NDim>, DomainType, NDim
-          >                                                         base_t;
+            NViewSubMod<DomainType, SubDim, NDim>,
+            DomainType, NDim >                                      base_t;
 public:
   typedef DomainType                                           domain_type;
-//typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename base_t::origin_type                         origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
@@ -616,38 +642,15 @@ public:
 
   typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
 
-  typedef decltype(
-            dash::begin(
-              std::declval<
-                typename std::add_lvalue_reference<origin_type>::type
-              >() ))
-    origin_iterator;
-
-  typedef decltype(
-            dash::begin(
-              std::declval<
-                typename std::add_lvalue_reference<const origin_type>::type
-              >() ))
-    const_origin_iterator;
-
-  typedef ViewIterator<origin_iterator, index_set_type>
+  typedef ViewIterator<
+            typename base_t::origin_iterator, index_set_type >
     iterator;
-  typedef ViewIterator<const_origin_iterator, index_set_type>
+  typedef ViewIterator<
+            typename base_t::const_origin_iterator, index_set_type >
     const_iterator;
 
-  typedef
-    decltype(*dash::begin(
-               std::declval<
-                 typename std::add_lvalue_reference<origin_type>::type
-               >() ))
-    reference;
-
-  typedef
-    decltype(*dash::begin(
-               std::declval<
-                 typename std::add_lvalue_reference<const origin_type>::type
-               >() ))
-    const_reference;
+  using reference       = typename base_t::reference;
+  using const_reference = typename base_t::const_reference;
 
 private:
   index_type     _begin_idx;
@@ -721,12 +724,6 @@ public:
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
-    // TODO: returned iterator will iterate domain starting at this
-    //       views first index but will not use index set of this
-    //       view (_index_set) to determine its position.
-    //       Should return proxy iterator like:
-    //
-    //         view_iterator(this->domain().begin(), _index_set, 0)
     return const_iterator(this->domain().begin(), _index_set, 0);
   }
 

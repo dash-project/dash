@@ -1047,6 +1047,8 @@ TEST_F(ViewTest, Intersect1DimChain)
                      array.pattern().global(array.pattern().local_size()));
 
   auto lview_isect  = dash::local(gview_isect);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     dash::internal::typestr(lview_isect.begin()));
 
   auto lindex_isect = dash::index(lview_isect);
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
@@ -1078,6 +1080,23 @@ TEST_F(ViewTest, Intersect1DimChain)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lview_isect.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_isect.size());
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", range_str(lview_isect));
+
+  auto && lindex_pattern         = lindex_isect.pattern();
+  auto    lindex_last_lblock_idx = lindex_pattern.local_block_at(
+                                     lindex_pattern.coords(
+                                       lindex_pattern.lend() - 1)).index;
+  auto    lindex_last_lblock     = lindex_pattern.local_block(
+                                     lindex_last_lblock_idx);
+  auto    lindex_last_dblock_idx = lindex_pattern.local_block_at(
+                                     lindex_pattern.coords(
+                                       lindex_isect.domain().last())).index;
+  auto    lindex_last_dblock     = lindex_pattern.local_block(
+                                     lindex_last_dblock_idx);
+
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_last_lblock_idx);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_last_lblock);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_last_dblock_idx);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lindex_last_dblock);
 
   int lidx = 0;
   for (auto gidx = sub_right_begin_gidx;
