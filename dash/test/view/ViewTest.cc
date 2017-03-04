@@ -1067,6 +1067,12 @@ TEST_F(ViewTest, Intersect1DimChain)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      lindex_isect.local_block_gidx_at_block_lidx(
                        lindex_isect.domain_block_lidx_last() - 1));
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.pattern().local_block(1)
+                                           .range(0).begin);
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.pattern().local_block(1)
+                                           .range(0).end);
 
   array.barrier();
 
