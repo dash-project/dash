@@ -9,7 +9,8 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
+
+#include <dash/view/Sub.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
