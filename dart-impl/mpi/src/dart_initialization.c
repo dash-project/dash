@@ -47,13 +47,6 @@ dart_ret_t do_init()
   /* Create a global translation table for all
    * the collective global memory segments */
   dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
-  // Segment ID zero is reserved for non-global memory allocations
-  dart_segment_info_t item = {
-                .seg_id = 0,
-                .baseptr = NULL,
-                .disp = NULL,
-                .size = 0};
-  dart_segment_alloc(&team_data->segdata, &item);
 
   dart_next_availteamid++;
 
