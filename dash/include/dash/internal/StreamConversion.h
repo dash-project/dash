@@ -115,7 +115,8 @@ auto operator<<(
        std::ostream &
     >::type
 {
-  typedef decltype(*dash::begin(std::declval<Range>())) value_t;
+  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+    value_t;
 
   auto && rng = std::forward<Range>(range);
 
@@ -160,7 +161,8 @@ auto operator<<(
        std::ostream &
     >::type
 {
-  typedef decltype(*dash::begin(std::declval<Range>())) value_t;
+  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+    value_t;
 
   auto && rng = std::forward<Range>(range);
 

@@ -377,8 +377,7 @@ class NViewLocalMod
 : public NViewModBase<
            NViewLocalMod<DomainType, NDim>,
            DomainType,
-           NDim >
-{
+           NDim > {
 public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
@@ -504,9 +503,9 @@ public:
              dash::local(
                dash::origin(
                  *this ) ) )
-         + _index_set.pre()[
-             _index_set.first()
-           ];
+           + _index_set.pre()[
+               _index_set.first()
+             ];
   }
 
   iterator begin() {
@@ -514,9 +513,9 @@ public:
              dash::local(
                dash::origin(
                  *this ) ) )
-         + _index_set.pre()[
-             _index_set.first()
-           ];
+           + _index_set.pre()[
+               _index_set.first()
+             ];
   }
 
   constexpr const_iterator end() const {
@@ -524,9 +523,9 @@ public:
              dash::local(
                dash::origin(
                  *this ) ) )
-         + _index_set.pre()[
-             _index_set.last()
-           ] + 1;
+           + _index_set.pre()[
+               _index_set.last()
+             ] + 1;
   }
 
   iterator end() {
@@ -534,9 +533,9 @@ public:
              dash::local(
                dash::origin(
                  *this ) ) )
-         + _index_set.pre()[
-             _index_set.last()
-           ] + 1;
+           + _index_set.pre()[
+               _index_set.last()
+             ] + 1;
   }
 
   constexpr const_reference operator[](int offset) const {
