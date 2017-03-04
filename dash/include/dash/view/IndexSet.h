@@ -469,8 +469,12 @@ template <class DomainType>
 constexpr auto
 global(const IndexSetIdentity<DomainType> & index_set)
   -> typename std::enable_if<
-       view_traits<DomainType>::is_local::value,
-       decltype(dash::local(dash::domain(index_set)))
+       view_traits<DomainType>::is_local::value &&
+       !std::is_same<
+         typename std::decay<decltype(index_set)>::type,
+         IndexSetIdentity<DomainType>
+       >::value,
+       decltype(dash::global(dash::domain(index_set)))
      >::type {
   return dash::global(dash::domain(index_set));
 }
@@ -478,7 +482,11 @@ template <class DomainType>
 constexpr auto
 global(const IndexSetIdentity<DomainType> & index_set)
   -> typename std::enable_if<
-       !view_traits<DomainType>::is_local::value,
+       !view_traits<DomainType>::is_local::value ||
+       std::is_same<
+         typename std::decay<decltype(index_set)>::type,
+         IndexSetIdentity<DomainType>
+       >::value,
        const IndexSetIdentity<DomainType> &
      >::type {
   return index_set;
