@@ -1055,6 +1055,21 @@ TEST_F(ViewTest, Intersect1DimChain)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      dash::internal::typestr(lindex_isect));
 
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.domain_block_gidx_last());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.domain_block_lidx_last());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.local_block_gidx_last());
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.local_block_gidx_at_block_lidx(
+                       lindex_isect.domain_block_lidx_last()));
+  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+                     lindex_isect.local_block_gidx_at_block_lidx(
+                       lindex_isect.domain_block_lidx_last() - 1));
+
+  array.barrier();
+
 //auto lrange_isect = dash::local_index_range(
 //                      array.begin() + sub_right_begin_gidx,
 //                      array.begin() + sub_left_end_gidx);
