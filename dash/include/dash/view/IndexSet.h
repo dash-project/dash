@@ -724,6 +724,14 @@ global(const IndexSetLocal<DomainType> & index_set) ->
   return index_set.global();
 }
 
+template <class DomainType>
+constexpr auto
+global(IndexSetLocal<DomainType> && index_set) ->
+  decltype(index_set.global()) {
+  // Note: Not a universal reference, index_set has partially defined type
+  return index_set.global();
+}
+
 /**
  * \concept{DashRangeConcept}
  */
@@ -944,8 +952,7 @@ template <class DomainType>
 constexpr auto
 local(IndexSetGlobal<DomainType> && index_set)
     -> decltype(index_set.local()) {
-  // Note: Not a universal reference, index_set has partially defined
-  //       type
+  // Note: Not a universal reference, index_set has partially defined type
   return index_set.local();
 }
 

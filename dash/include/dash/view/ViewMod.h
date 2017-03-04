@@ -252,7 +252,6 @@ class ViewModBase {
                    >::type
     domain_member_type;
 
-//typedef typename view_traits<domain_type>::origin_type         origin_type;
   typedef typename std::conditional<
             view_traits<domain_type>::is_local::value,
             domain_type,
@@ -605,7 +604,6 @@ class ViewSubMod
   typedef ViewModBase< ViewSubMod<domain_type, SubDim>, domain_type > base_t;
  public:
   typedef typename base_t::origin_type                           origin_type;
-//typedef typename view_traits<domain_type>::origin_type         origin_type;
 
   typedef typename view_traits<domain_type>::index_type           index_type;
   typedef typename view_traits<domain_type>::size_type             size_type;
@@ -757,7 +755,6 @@ class ViewGlobalMod
   typedef ViewGlobalMod<DomainType>                                   self_t;
   typedef ViewModBase< ViewLocalMod<DomainType>, DomainType >         base_t;
  public:
-//typedef typename view_traits<domain_type>::origin_type         origin_type;
   typedef typename base_t::origin_type                           origin_type;
   typedef typename domain_type::global_type                       image_type;
   typedef typename view_traits<domain_type>::index_type           index_type;

@@ -196,11 +196,6 @@ class ViewBlockMod
   constexpr index_type block_first_gidx(
       const DomainType & vdomain,
       index_type         block_idx) const {
-#if 0
-    return dash::index(vdomain)
-                     .pattern().block(block_idx).offsets()[0]
-           - dash::index(vdomain).first();
-#else
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
     //
@@ -218,7 +213,6 @@ class ViewBlockMod
              dash::index(vdomain).first()
            )
            - dash::index(vdomain).first();
-#endif
   }
 
   /// Index past block index of last element in view:
@@ -231,13 +225,6 @@ class ViewBlockMod
     //
     // TODO: Currently values passed as `block_idx` are global block indices
     //       even if domain is local
-#if 0
-    return dash::index(vdomain)
-                 .pattern().block(block_idx).offsets()[0] +
-           dash::index(vdomain)
-                 .pattern().block(block_idx).extents()[0]
-           - dash::index(vdomain).first();
-#else
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)
@@ -256,7 +243,6 @@ class ViewBlockMod
              )
            )
            - dash::index(vdomain).first();
-#endif
   }
 };
 
@@ -303,14 +289,16 @@ template <
   class DomainType >
 class ViewBlocksMod
 : public ViewModBase< ViewBlocksMod<DomainType>, DomainType > {
- public:
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<DomainType>::origin_type        origin_type;
-  typedef typename view_traits<DomainType>::index_type          index_type;
  private:
   typedef ViewBlocksMod<DomainType>                                 self_t;
   typedef ViewModBase<ViewBlocksMod<DomainType>, DomainType>        base_t;
   typedef ViewBlocksMod<const DomainType>                     const_self_t;
+ public:
+  typedef DomainType                                           domain_type;
+//typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename base_t::origin_type                         origin_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
+ private:
   typedef ViewBlockMod<DomainType>                              block_type;
   typedef typename domain_type::local_type               domain_local_type;
  public:
