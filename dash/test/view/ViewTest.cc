@@ -4,6 +4,8 @@
 #include <dash/Array.h>
 #include <dash/View.h>
 
+#include <dash/internal/StreamConversion.h>
+
 #include <array>
 #include <algorithm>
 #include <sstream>
@@ -982,8 +984,8 @@ TEST_F(ViewTest, Intersect1DimChain)
 
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      dash::index(dash::local(array)));
-  DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
-                     dash::global(dash::index(dash::local(array))));
+//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+//                   dash::global(dash::index(dash::local(array))));
 
   array.barrier();
 

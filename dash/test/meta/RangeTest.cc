@@ -19,6 +19,9 @@ TEST_F(RangeTest, RangeTraits)
   auto i_sub  = dash::index(v_sub);
   auto v_ssub = dash::sub(0, 5, (dash::sub(0, 10, array)));
   auto v_loc  = dash::local(array);
+  auto i_loc  = dash::index(dash::local(array));
+  auto v_gloc = dash::global(dash::local(array));
+  auto i_glo  = dash::global(dash::index(dash::local(array)));
   auto v_bsub = *dash::begin(dash::blocks(v_sub));
 
   static_assert(dash::is_range<
@@ -36,18 +39,41 @@ TEST_F(RangeTest, RangeTraits)
                 >::value == false,
                 "dash::is_range<dash::Array<...>>::value not matched");
   static_assert(dash::is_range<decltype(array)>::value == true,
-                "range type traits for dash::Array not matched");
+                "range type trait for dash::Array not matched");
   static_assert(dash::is_range<decltype(v_loc)>::value == true,
-                "range type traits for local(dash::Array) not matched");
+                "range type trait for local(dash::Array) not matched");
   static_assert(dash::is_range<decltype(v_sub)>::value == true,
-                "range type traits for sub(dash::Array) not matched");
+                "range type trait for sub(dash::Array) not matched");
   static_assert(dash::is_range<decltype(v_ssub)>::value == true,
-                "range type traits for sub(sub(dash::Array)) not matched");
+                "range type trait for sub(sub(dash::Array)) not matched");
   static_assert(dash::is_range<decltype(v_bsub)>::value == true,
-                "range type traits for begin(blocks(sub(dash::Array))) "
+                "range type trait for begin(blocks(sub(dash::Array))) "
                 "not matched");
   static_assert(dash::is_range<decltype(i_sub)>::value == true,
-                "range type traits for index(sub(dash::Array)) not matched");
+                "range type trait for index(sub(dash::Array)) not matched");
+  static_assert(dash::is_range<decltype(i_loc)>::value == true,
+                "range type trait for index(local(dash::Array)) not matched");
+
+  // Index set iterators implement random access iterator concept:
+  //
+  static_assert(std::is_same<
+                  typename decltype(i_sub.begin())::iterator_category,
+                  std::random_access_iterator_tag
+                >::value == true,
+                "iterator trait iterator_category of "
+                "index(local(dash::Array))::iterator not matched");
+  static_assert(std::is_same<
+                  typename decltype(i_loc.begin())::iterator_category,
+                  std::random_access_iterator_tag
+                >::value == true,
+                "iterator trait iterator_category of "
+                "index(local(dash::Array))::iterator not matched");
+  static_assert(std::is_same<
+                  typename decltype(i_glo.begin())::iterator_category,
+                  std::random_access_iterator_tag
+                >::value == true,
+                "iterator trait iterator_category of "
+                "global(index(local(dash::Array)))::iterator not matched");
 
   static_assert(
       dash::is_range<decltype(array)>::value == true,
