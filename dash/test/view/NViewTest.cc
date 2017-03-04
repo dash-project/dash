@@ -239,12 +239,12 @@ TEST_F(NViewTest, MatrixBlocked1DimBlocks)
     auto && cb_blocks = dash::blocks(v_mat_cb);
     EXPECT_EQ_U(nunits, cb_blocks.size());
 
-//  int bi = 0;
-//  for (auto block : cb_blocks) {
-//    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
-//                   "column block", bi, ":", range_str(block));
-//    bi++;
-//  }
+    int bi = 0;
+    for (auto block : cb_blocks) {
+      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                     "column block", bi, ":", range_str(block));
+      bi++;
+    }
   }
 
   // rows distributed in blocks of same size:
@@ -277,12 +277,12 @@ TEST_F(NViewTest, MatrixBlocked1DimBlocks)
     auto rb_blocks = dash::blocks(v_mat_rb);
     EXPECT_EQ_U(nunits, rb_blocks.size());
 
-//  int bi = 0;
-//  for (auto block : rb_blocks) {
-//    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
-//                   "row block", bi, ":", range_str(block));
-//    bi++;
-//  }
+    int bi = 0;
+    for (auto block : rb_blocks) {
+      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                     "row block", bi, ":", range_str(block));
+      bi++;
+    }
   }
 }
 

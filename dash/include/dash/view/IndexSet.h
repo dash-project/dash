@@ -888,6 +888,33 @@ class IndexSetLocal
                     // domain range ends in local range, determine last
                     // local index contained in domain from last local
                     // block contained in domain range:
+#if 1
+                    /*
+                     * gbi:     0    1     2    3     4     5
+                     * lbi:     0    0     1    1     2     2
+                     *          :                     :
+                     *       [  |  |xxxx|     |xxxx|  |  |xxxx]
+                     *          '---------------------'
+                     * --> domain.end.gbi = 4
+                     *     domain.end.lbi = 2 -.
+                     *                         |
+                     *     local.lblock(lbi = 2).gbi = 5
+                     *   ! 5 > domain.end.gbi = 4
+                     * --> local.lblock(lbi = 1)
+                     *
+                     */
+                    : ( domain_block_gidx_last() >= local_block_gidx_last()
+                        ? local_block_gidx_last()
+                        : this->pattern().local_block(
+                            ( local_block_gidx_at_block_lidx(
+                                  domain_block_lidx_last())
+                              > domain_block_gidx_last()
+                            ? local_block_gidx_at_block_lidx(
+                                domain_block_lidx_last() - 1)
+                            : local_block_gidx_at_block_lidx(
+                                domain_block_lidx_last()) )
+                            ).range(0).end - 1) 
+#else
                     : this->pattern().local_block(
                         std::min<index_type>(
                           // global domain last index to global block index:
@@ -900,6 +927,7 @@ class IndexSetLocal
                               this->pattern().lend() - 1 )).index
                         )
                       ).range(0).end - 1
+#endif
                   )
                 },
                 // domain range in global index space;
@@ -908,6 +936,27 @@ class IndexSetLocal
                 })
             )) + 1
     );
+  }
+
+  constexpr index_type domain_block_gidx_last() const {
+    return this->pattern().block_at(
+             this->pattern().coords(
+               this->domain().last()));
+  }
+  constexpr index_type local_block_gidx_at_block_lidx(index_type lidx) const {
+    return this->pattern().block_at(
+             this->pattern().coords(
+               this->pattern().lend() - 1));
+  }
+  constexpr index_type domain_block_lidx_last() const {
+    return this->pattern().local_block_at(
+             this->pattern().coords(
+               this->domain().last())).index;
+  }
+  constexpr index_type local_block_gidx_last() const {
+    return this->pattern().block_at(
+             this->pattern().coords(
+               this->pattern().lend() - 1));
   }
 
   // ---- access ----------------------------------------------------------

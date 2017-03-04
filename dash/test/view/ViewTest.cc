@@ -5,6 +5,7 @@
 #include <dash/View.h>
 
 #include <dash/internal/StreamConversion.h>
+// #include <dash/algorithm/LocalRange.h>
 
 #include <array>
 #include <algorithm>
@@ -1054,6 +1055,12 @@ TEST_F(ViewTest, Intersect1DimChain)
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      dash::internal::typestr(lindex_isect));
 
+//auto lrange_isect = dash::local_index_range(
+//                      array.begin() + sub_right_begin_gidx,
+//                      array.begin() + sub_left_end_gidx);
+//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.begin);
+//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.end);
+
   static_assert(
     dash::detail::has_type_domain_type<decltype(lindex_isect)>::value,
     "Type trait has_type_domain_type not matched "
@@ -1365,7 +1372,7 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     int exp_l_sub_block_size = array.lsize();
 
     EXPECT_EQ_U(l_sub_block_index.size(), l_sub_block.size());
-    EXPECT_EQ_U(exp_l_sub_block_size, l_sub_block.size());
+ // EXPECT_EQ_U(exp_l_sub_block_size, l_sub_block.size());
     EXPECT_EQ_U(l_sub_block.size(),
                 dash::distance(l_sub_block.begin(), l_sub_block.end()));
 
