@@ -7,6 +7,7 @@ build.mic*
 build.min*
 build.nasty*
 build.cov*
+build.analyze*
 build-ci*
 compile_commands.json
 dash/include/dash/util/StaticConfig.h

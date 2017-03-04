@@ -93,20 +93,16 @@ dart_ret_t dart__base__unit_locality__create(
   DART_ASSERT_RETURNS(dart_team_myid(team, &myid),   DART_OK);
   DART_ASSERT_RETURNS(dart_team_size(team, &nunits), DART_OK);
 
-  dart_unit_mapping_t * mapping = malloc(sizeof(dart_unit_mapping_t));
-  mapping->num_units            = nunits;
-  mapping->team                 = team;
-
   size_t nbytes = sizeof(dart_unit_locality_t);
 
   /* get local unit's locality information: */
-  dart_unit_locality_t * uloc;
-  uloc = (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
+  dart_unit_locality_t * uloc = malloc(sizeof(dart_unit_locality_t));
   ret  = dart__base__unit_locality__local_unit_new(team, uloc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__unit_locality__create ! "
                    "dart__base__unit_locality__local_unit_new failed: %d",
                    ret);
+    free(uloc);
     return ret;
   }
   DART_LOG_TRACE("dart__base__unit_locality__create: unit %d of %ld: "
@@ -117,8 +113,11 @@ dart_ret_t dart__base__unit_locality__create(
                  uloc->hwinfo.cpu_id, uloc->hwinfo.numa_id,
                  uloc->hwinfo.max_threads);
 
-  mapping->unit_localities = (dart_unit_locality_t *)(
-                                malloc(nunits * nbytes));
+  dart_unit_mapping_t * mapping = malloc(sizeof(dart_unit_mapping_t));
+  mapping->num_units            = nunits;
+  mapping->team                 = team;
+  mapping->unit_localities      = malloc(nunits *
+                                          sizeof(dart_unit_locality_t));
   dart_barrier(team);
 
   /* all-to-all exchange of locality data across all units:
@@ -136,6 +135,7 @@ dart_ret_t dart__base__unit_locality__create(
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__unit_locality__create ! "
                    "dart_allgather failed: %d", ret);
+    free(mapping);
     return ret;
   }
 #ifdef DART_ENABLE_LOGGING
