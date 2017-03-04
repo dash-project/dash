@@ -1,21 +1,18 @@
 #ifndef DASH__ALLOCATOR__ALLOCATOR_TRAITS_H__INCLUDED
 #define DASH__ALLOCATOR__ALLOCATOR_TRAITS_H__INCLUDED
 
+#include <dash/memory/MemorySpace.h>
+
 #include <memory>
 
 
 namespace dash {
 
 
-template <class Pointer>
-struct pointer_traits : public std::pointer_traits<Pointer>
-{ };
-
 
 struct collective_allocator_tag { };
 
 struct noncollective_allocator_tag { };
-
 
 template <
   class Allocator,
