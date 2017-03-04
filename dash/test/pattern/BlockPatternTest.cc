@@ -8,19 +8,8 @@
 #include <dash/Distribution.h>
 #include <dash/TeamSpec.h>
 
-#include <dash/pattern/BlockPattern.h>
+#include <dash/Pattern.h>
 
-
-namespace dash {
-
-template <
-  dash::dim_t      NumDimensions,
-  dash::MemArrange Arrangement   = dash::ROW_MAJOR,
-  typename         IndexType     = dash::default_index_t
->
-using Pattern = dash::BlockPattern<NumDimensions, Arrangement, IndexType>;
-
-} // namespace dash
 
 
 TEST_F(BlockPatternTest, SimpleConstructor)
