@@ -443,15 +443,39 @@ class IndexSetBase
 template <class DomainType>
 constexpr auto
 local(const IndexSetIdentity<DomainType> & index_set)
-  -> decltype(dash::local(dash::domain(index_set))) {
+  -> typename std::enable_if<
+       !view_traits<DomainType>::is_local::value,
+       decltype(dash::local(dash::domain(index_set)))
+     >::type {
   return dash::local(dash::domain(index_set));
+}
+template <class DomainType>
+constexpr auto
+local(const IndexSetIdentity<DomainType> & index_set)
+  -> typename std::enable_if<
+       view_traits<DomainType>::is_local::value,
+       const IndexSetIdentity<DomainType> &
+     >::type {
+  return index_set;
 }
 
 template <class DomainType>
 constexpr auto
 global(const IndexSetIdentity<DomainType> & index_set)
-  -> decltype(dash::global(dash::domain(index_set))) {
+  -> typename std::enable_if<
+       view_traits<DomainType>::is_local::value,
+       decltype(dash::local(dash::domain(index_set)))
+     >::type {
   return dash::global(dash::domain(index_set));
+}
+template <class DomainType>
+constexpr auto
+global(const IndexSetIdentity<DomainType> & index_set)
+  -> typename std::enable_if<
+       !view_traits<DomainType>::is_local::value,
+       const IndexSetIdentity<DomainType> &
+     >::type {
+  return index_set;
 }
 
 /**
