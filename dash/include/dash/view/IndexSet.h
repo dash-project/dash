@@ -882,7 +882,7 @@ class IndexSetLocal
                 // local range in global index space:
                 {
                   this->pattern().lbegin(),
-                  ( this->pattern().lend() <= this->domain().last()
+                  ( this->pattern().lend() < this->domain().last()
                     // domain range ends after local range:
                     ? this->pattern().lend() - 1
                     // domain range ends in local range, determine last

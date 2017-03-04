@@ -182,6 +182,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
     EXPECT_EQ_U(mat.extent(0), nview_cols_g.extent<0>());
     EXPECT_EQ_U(5,             nview_cols_g.extent<1>());
   }
+  mat.barrier();
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "local(sub<0>(1,3, mat)) ->",
@@ -189,7 +190,10 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
                  "extents:", nview_local.extents(),
                  "size:",    nview_local.size());
   dash::test::print_nview("index_local", dash::index(nview_local));
-  dash::test::print_nview("nview_local", nview_local);
+//dash::test::print_nview("nview_local", nview_local);
+
+  EXPECT_EQ_U(mat.local_size(), nview_local.size());
+  EXPECT_EQ_U(mat.local_size(), dash::index(nview_local).size());
 
   EXPECT_EQ_U(mat.extent(0), nview_local.extent<0>());
   EXPECT_EQ_U(block_cols,    nview_local.extent<1>());

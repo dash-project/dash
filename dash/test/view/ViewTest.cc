@@ -1340,9 +1340,9 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
       !dash::view_traits<decltype(sub_block)>::is_local::value,
       "sub(range) expected have type trait local = false");
 
-    EXPECT_EQ(sub_end_gidx - sub_begin_gidx, sub_block.size());
-    EXPECT_EQ(sub_block.size(),
-              dash::end(sub_block) - dash::begin(sub_block));
+    EXPECT_EQ_U(sub_end_gidx - sub_begin_gidx, sub_block.size());
+    EXPECT_EQ_U(sub_block.size(),
+                dash::end(sub_block) - dash::begin(sub_block));
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(sub_block));
@@ -1361,15 +1361,13 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(l_sub_block));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
-                       range_str(l_sub_block_index));
 
     int exp_l_sub_block_size = array.lsize();
 
-    EXPECT_EQ(l_sub_block_index.size(), l_sub_block.size());
-    EXPECT_EQ(exp_l_sub_block_size, l_sub_block.size());
-    EXPECT_EQ(l_sub_block.size(),
-              dash::distance(l_sub_block.begin(), l_sub_block.end()));
+    EXPECT_EQ_U(l_sub_block_index.size(), l_sub_block.size());
+    EXPECT_EQ_U(exp_l_sub_block_size, l_sub_block.size());
+    EXPECT_EQ_U(l_sub_block.size(),
+                dash::distance(l_sub_block.begin(), l_sub_block.end()));
 
     EXPECT_TRUE_U(
       std::equal(array.local.begin(), array.local.end(),
@@ -1386,9 +1384,9 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternLocalView",
                        range_str(sub_l_sub_block));
 
-    EXPECT_EQ(3, sub_l_sub_block.size());
-    EXPECT_EQ(sub_l_sub_block.size(),
-              dash::end(sub_l_sub_block) - dash::begin(sub_l_sub_block));
+    EXPECT_EQ_U(3, sub_l_sub_block.size());
+    EXPECT_EQ_U(sub_l_sub_block.size(),
+                dash::end(sub_l_sub_block) - dash::begin(sub_l_sub_block));
 
     EXPECT_TRUE_U(
       std::equal(array.local.begin() + 1,

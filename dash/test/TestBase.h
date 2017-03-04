@@ -194,7 +194,7 @@ static std::string range_str(
   auto idx = dash::index(vrange);
   int        i   = 0;
 
-  ss << dash::internal::typestr(vrange);
+  ss << "<" << dash::internal::typestr(*vrange.begin()) << "> ";
   for (const auto & v : vrange) {
     ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(4)
