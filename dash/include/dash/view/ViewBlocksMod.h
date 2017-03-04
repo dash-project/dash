@@ -72,14 +72,14 @@ class ViewBlockMod
            ViewBlockMod<DomainType>,
            DomainType >
 {
+ private:
+  typedef ViewBlockMod<DomainType>                                  self_t;
+  typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >       base_t;
  public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
-  typedef typename view_traits<DomainType>::origin_type        origin_type;
- private:
-  typedef ViewBlockMod<DomainType>                                  self_t;
-  typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >
-                                                                    base_t;
+//typedef typename view_traits<DomainType>::origin_type        origin_type;
+  typedef typename base_t::origin_type                         origin_type;
  public:
   // TODO: Defaulting to SubDim = 0 here, clarify
   typedef dash::IndexSetSub< DomainType, 0 >                index_set_type;
@@ -91,33 +91,33 @@ class ViewBlockMod
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<domain_type>::type
+                typename std::add_lvalue_reference<origin_type>::type
               >() ))
-    domain_iterator;
+    origin_iterator;
 
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<const domain_type>::type
+                typename std::add_lvalue_reference<const origin_type>::type
               >() ))
-    const_domain_iterator;
+    const_origin_iterator;
 
-  typedef ViewIterator<domain_iterator, index_set_type>
+  typedef ViewIterator<origin_iterator, index_set_type>
     iterator;
-  typedef ViewIterator<const_domain_iterator, index_set_type>
+  typedef ViewIterator<const_origin_iterator, index_set_type>
     const_iterator;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<domain_type>::type
+                 typename std::add_lvalue_reference<origin_type>::type
                >() ))
     reference;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<const domain_type>::type
+                 typename std::add_lvalue_reference<const origin_type>::type
                >() ))
     const_reference;
 
@@ -134,7 +134,7 @@ class ViewBlockMod
 
   constexpr ViewBlockMod(
     const domain_type & domain,
-    index_type    block_idx)
+    index_type          block_idx)
   : base_t(domain)
   , _index_set(domain,
                block_first_gidx(domain, block_idx),
@@ -148,33 +148,37 @@ class ViewBlockMod
     domain_type     && domain,
     index_type         block_idx)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(domain,
-               block_first_gidx(domain, block_idx),
-               block_final_gidx(domain, block_idx))
+  , _index_set(this->domain(),
+               block_first_gidx(this->domain(), block_idx),
+               block_final_gidx(this->domain(), block_idx))
   { }
 
   constexpr const_iterator begin() const {
-    return const_iterator(dash::domain(*this).begin(),
+    return const_iterator(dash::origin(*this).begin(),
                           _index_set, 0);
   }
 
   iterator begin() {
-    return iterator(dash::domain(*this).begin(),
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
                     _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    return const_iterator(dash::domain(*this).begin(),
+    return const_iterator(dash::origin(*this).begin(),
                           _index_set, _index_set.size());
   }
 
   iterator end() {
-    return iterator(dash::domain(*this).begin(),
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
                     _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(const_iterator(dash::domain(*this).begin(),
+    return *(const_iterator(dash::origin(*this).begin(),
                             _index_set, offset));
   }
 
@@ -192,6 +196,11 @@ class ViewBlockMod
   constexpr index_type block_first_gidx(
       const DomainType & vdomain,
       index_type         block_idx) const {
+#if 0
+    return dash::index(vdomain)
+                     .pattern().block(block_idx).offsets()[0]
+           - dash::index(vdomain).first();
+#else
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
     //
@@ -209,6 +218,7 @@ class ViewBlockMod
              dash::index(vdomain).first()
            )
            - dash::index(vdomain).first();
+#endif
   }
 
   /// Index past block index of last element in view:
@@ -221,6 +231,13 @@ class ViewBlockMod
     //
     // TODO: Currently values passed as `block_idx` are global block indices
     //       even if domain is local
+#if 0
+    return dash::index(vdomain)
+                 .pattern().block(block_idx).offsets()[0] +
+           dash::index(vdomain)
+                 .pattern().block(block_idx).extents()[0]
+           - dash::index(vdomain).first();
+#else
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)
@@ -239,6 +256,7 @@ class ViewBlockMod
              )
            )
            - dash::index(vdomain).first();
+#endif
   }
 };
 
@@ -253,12 +271,9 @@ blocks(const ViewType & domain) {
 }
 
 template <
-  class    ViewType,
-  typename ViewValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ViewType>::type
-             >::type
->
+  class ViewType,
+  class ViewValueT
+          = typename std::decay<ViewType>::type >
 constexpr ViewBlocksMod<ViewValueT>
 blocks(ViewType && domain) {
   return ViewBlocksMod<ViewValueT>(std::forward<ViewType>(domain));
@@ -365,8 +380,6 @@ class ViewBlocksMod
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
       return ViewBlockMod<DomainType>(
-            // dash::domain(
-            //   static_cast<const ViewBlocksModType &>(_blocks_view) ),
                _blocks_view_domain,
                idx);
     }

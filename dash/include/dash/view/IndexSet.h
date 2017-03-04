@@ -441,7 +441,6 @@ class IndexSetBase
 // -----------------------------------------------------------------------
 
 template <class DomainType>
-// constexpr IndexSetIdentity<DomainType> &
 constexpr auto
 local(const IndexSetIdentity<DomainType> & index_set)
   -> decltype(dash::local(dash::domain(index_set))) {
@@ -449,7 +448,6 @@ local(const IndexSetIdentity<DomainType> & index_set)
 }
 
 template <class DomainType>
-// constexpr IndexSetIdentity<DomainType> &
 constexpr auto
 global(const IndexSetIdentity<DomainType> & index_set)
   -> decltype(dash::global(dash::domain(index_set))) {
@@ -563,7 +561,6 @@ class IndexSetSub
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
-//typedef IndexSetSub<DomainType, SubDim>                preimage_type;
   typedef IndexSetSub<view_origin_type, SubDim>          preimage_type;
 
  public:
@@ -583,7 +580,7 @@ class IndexSetSub
    * Constructor, creates index set for given view.
    */
   constexpr IndexSetSub(
-    const DomainType   & view,
+    const DomainType & view,
     index_type         begin_idx,
     index_type         end_idx)
   : base_t(view)
@@ -595,7 +592,7 @@ class IndexSetSub
    * Constructor, creates index set for given view.
    */
   constexpr IndexSetSub(
-    DomainType        && view,
+    DomainType      && view,
     index_type         begin_idx,
     index_type         end_idx)
   : base_t(std::forward<DomainType>(view))
@@ -723,8 +720,7 @@ local(const IndexSetLocal<DomainType> & index_set) {
 template <class DomainType>
 constexpr auto
 global(const IndexSetLocal<DomainType> & index_set) ->
-// decltype(index_set.global()) {
-  typename view_traits<IndexSetLocal<DomainType>>::global_type & { 
+  decltype(index_set.global()) {
   return index_set.global();
 }
 
@@ -739,12 +735,20 @@ class IndexSetLocal
 {
   typedef IndexSetLocal<DomainType>                             self_t;
   typedef IndexSetBase<self_t, DomainType>                      base_t;
+
+  constexpr static bool  view_domain_is_local
+    = dash::view_traits<DomainType>::is_local::value;
  public:
   typedef typename DomainType::index_type                   index_type;
   typedef typename DomainType::size_type                     size_type;
 
   typedef self_t                                            local_type;
-  typedef IndexSetGlobal<DomainType>                       global_type;
+//typedef IndexSetGlobal<DomainType>                       global_type;
+  typedef decltype(
+            dash::global(
+              dash::index(
+                std::declval<typename base_t::view_domain_type>())
+            ))                                             global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -784,8 +788,11 @@ class IndexSetLocal
     return *this;
   }
 
-  constexpr global_type global() const noexcept {
-    return global_type(this->view_domain());
+//constexpr const global_type & global() const noexcept {
+  constexpr auto global() const noexcept
+    -> decltype(dash::index(dash::global(this->view_domain()))) {
+//  return global_type(this->view_domain());
+    return dash::index(dash::global(this->view_domain()));
   }
 
   constexpr preimage_type pre() const noexcept {
@@ -881,7 +888,6 @@ class IndexSetLocal
                 { this->domain().first(),
                   this->domain().last() }
             )))
-          + this->domain().pre()[ this->first() ]
           + 1
     );
   }
@@ -938,13 +944,14 @@ template <class DomainType>
 constexpr auto
 local(IndexSetGlobal<DomainType> && index_set)
     -> decltype(index_set.local()) {
+  // Note: Not a universal reference, index_set has partially defined
+  //       type
   return index_set.local();
 }
 
 template <class DomainType>
 constexpr const IndexSetGlobal<DomainType> &
-global(const IndexSetGlobal<DomainType> & index_set)
-{
+global(const IndexSetGlobal<DomainType> & index_set) {
   return index_set;
 }
 
@@ -959,10 +966,18 @@ class IndexSetGlobal
 {
   typedef IndexSetGlobal<DomainType>                            self_t;
   typedef IndexSetBase<self_t, DomainType>                      base_t;
+
+  constexpr static bool  view_domain_is_local
+    = dash::view_traits<DomainType>::is_local::value;
  public:
   typedef typename DomainType::index_type                   index_type;
 
-  typedef IndexSetLocal<self_t>                             local_type;
+//typedef IndexSetLocal<DomainType>                         local_type;
+  typedef decltype(
+            dash::local(
+              dash::index(
+                std::declval<typename base_t::view_domain_type>())
+            ))                                              local_type;
   typedef self_t                                           global_type;
   typedef local_type                                     preimage_type;
 
@@ -971,6 +986,8 @@ class IndexSetGlobal
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
 
+ private:
+//index_type _size;
  public:
   constexpr IndexSetGlobal()               = delete;
   constexpr IndexSetGlobal(self_t &&)      = default;
@@ -978,15 +995,14 @@ class IndexSetGlobal
   ~IndexSetGlobal()                        = default;
   self_t & operator=(self_t &&)            = default;
   self_t & operator=(const self_t &)       = default;
- private:
-  index_type _size;
+
  public:
   /**
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetGlobal(const DomainType & view)
   : base_t(view)
-  , _size(calc_size())
+//, _size(calc_size())
   { }
 
   /**
@@ -994,39 +1010,46 @@ class IndexSetGlobal
    */
   constexpr explicit IndexSetGlobal(DomainType && view)
   : base_t(std::forward<DomainType>(view))
-  , _size(calc_size())
+//, _size(calc_size())
   { }
 
-  constexpr index_type rel(index_type global_index) const {
-    // NOTE:
-    // Random access operator must allow access at [end] because
-    // end iterator of an index range may be dereferenced.
-    return this->pattern().local(
-             global_index
-           ).index;
+//constexpr local_type local() const {
+  constexpr auto local() const noexcept
+    -> decltype(dash::index(dash::local(this->view_domain()))) {
+    return dash::index(dash::local(this->view_domain()));
+//  return local_type(this->view_domain());
   }
 
-  constexpr index_type calc_size() const {
-    return std::max<index_type>(
-             this->pattern().size(),
-             this->domain().size()
-           );
-  }
-
-  constexpr index_type size() const {
-    return _size; // calc_size();
-  }
-
-  constexpr const local_type & local() const {
-    return dash::index(dash::local(this->domain()));
-  }
-
-  constexpr const global_type & global() const {
+  constexpr const global_type & global() const noexcept {
     return *this;
   }
 
-  constexpr const preimage_type & pre() const {
+  constexpr const preimage_type & pre() const noexcept {
     return dash::index(dash::local(this->domain()));
+  }
+
+  // ---- access ----------------------------------------------------------
+
+  constexpr index_type rel(index_type global_index) const noexcept {
+    return ( view_domain_is_local
+             ? this->pattern().local(
+                 global_index
+               ).index
+             : global_index );
+  }
+
+  constexpr index_type operator[](index_type global_index) const noexcept {
+    return this->domain()[this->rel(global_index)];
+  }
+
+  template <dim_t NDim>
+  constexpr index_type operator[](
+    const std::array<index_type, NDim> & local_coords) const noexcept {
+    return -1;
+  }
+
+  constexpr index_type size() const noexcept {
+    return this->domain().size();
   }
 }; // class IndexSetGlobal
 

@@ -302,18 +302,21 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   dash::Array<float> a(array_size, dash::BLOCKCYCLIC(block_size));
   dash::test::initialize_array(a);
 
+  if (dash::myid() == 0) {
+    auto blocks_view = dash::blocks(dash::sub(0, a.size(), a));
+    int  b_idx      = 0;
+    for (auto block : blocks_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                     "a.block[", b_idx, "]:", range_str(block));
+      ++b_idx;
+    }
+  }
+  a.barrier();
+
   // View to global index range of local block:
   auto block_gview = dash::sub(block_begin_gidx,
                                block_end_gidx,
                                a);
-
-  if (dash::myid() == 0) {
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
-                       range_str(a));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
-                       range_str(block_gview));
-  }
-  a.barrier();
 
   EXPECT_EQ(block_size, block_gview.size());
 
@@ -323,17 +326,24 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   EXPECT_EQ(a.end(),    dash::end(block_domain));
 
   if (dash::myid() == 0) {
-    auto blocks_view = dash::blocks(
-                         dash::sub(
-                           block_size / 2,
-                           a.size() - (block_size / 2),
-                           a));
+    auto sub_begin_gidx  = block_size / 2;
+    auto sub_end_gidx    = a.size() - (block_size / 2);
+    auto sub_view        = dash::sub(sub_begin_gidx, sub_end_gidx, a);
+   
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternGlobalView",
+                       range_str(sub_view));
+
+    auto blocks_sub_view = dash::blocks(
+                             dash::sub(
+                               sub_begin_gidx,
+                               sub_end_gidx,
+                               a));
     int b_idx      = 0;
     int begin_idx  = block_size / 2;
     int num_blocks = a.pattern().blockspec().size();
-    for (auto block : blocks_view) {
+    for (auto block : blocks_sub_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternGlobalView",
-                     "block[", b_idx, "]:", range_str(block));
+                     "a.sub.block[", b_idx, "]:", range_str(block));
       int exp_block_size = block_size;
       if (b_idx == 0) {
         exp_block_size -= (block_size / 2);     // 5 - 2   = 3
