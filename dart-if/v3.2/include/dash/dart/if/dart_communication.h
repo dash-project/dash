@@ -45,6 +45,7 @@ extern "C" {
 dart_ret_t dart_barrier(
   dart_team_t team);
 
+
 /**
  * DART Equivalent to MPI broadcast.
  *
@@ -356,6 +357,21 @@ dart_ret_t dart_put(
   size_t            nelem,
   dart_datatype_t   dtype);
 
+
+/**
+ * A fence is equivalent to a \ref dart_barrier but also guarantees
+ * the completion of all previously issued communication operations.
+ * This is a collective operation.
+ *
+ * \param gptr A pointer to the segment to be synchronized.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_fence(
+  dart_gptr_t gptr);
 
 /**
  * Guarantee completion of all outstanding operations involving a segment on a certain unit

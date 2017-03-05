@@ -871,6 +871,47 @@ dart_ret_t dart_get_blocking(
 
 /* -- Dart RMA Synchronization Operations -- */
 
+dart_ret_t dart_fence(
+  dart_gptr_t gptr)
+{
+  MPI_Win          win;
+  dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
+  int16_t          seg_id       = gptr.segid;
+
+  DART_LOG_DEBUG("dart_fence() gptr: "
+                 "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
+                 gptr.unitid, gptr.addr_or_offs.offset,
+                 gptr.segid,  gptr.teamid);
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_fence ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_fence ! failed: Unknown team %i!", gptr.teamid);
+    return DART_ERR_INVAL;
+  }
+
+  if (seg_id) {
+    win = team_data->window;
+  } else {
+    win = dart_win_local_alloc;
+  }
+
+  MPI_Request req;
+  MPI_Ibarrier(team_data->comm, &req);
+
+  int flag = 0;
+  do {
+    MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
+    MPI_Win_flush_local_all(team_data->window);
+  } while (!flag);
+
+  return DART_OK;
+}
+
 dart_ret_t dart_flush(
   dart_gptr_t gptr)
 {
@@ -1424,12 +1465,11 @@ dart_ret_t dart_testall_local(
 
 /* -- Dart collective operations -- */
 
-static int _dart_barrier_count = 0;
 
 dart_ret_t dart_barrier(
   dart_team_t teamid)
 {
-  MPI_Comm comm;
+  static int _dart_barrier_count = 0;
 
   DART_LOG_DEBUG("dart_barrier() barrier count: %d", _dart_barrier_count);
 
@@ -1438,20 +1478,20 @@ dart_ret_t dart_barrier(
     return DART_ERR_INVAL;
   }
 
-  _dart_barrier_count++;
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_barrier ! failed: unknown team ID");
     return DART_ERR_INVAL;
   }
+
+  _dart_barrier_count++;
   /* Fetch proper communicator from teams. */
-  comm = team_data->comm;
-  if (MPI_Barrier(comm) == MPI_SUCCESS) {
+  if (MPI_Barrier(team_data->comm) == MPI_SUCCESS) {
     DART_LOG_DEBUG("dart_barrier > finished");
     return DART_OK;
   }
   DART_LOG_DEBUG("dart_barrier ! MPI_Barrier failed");
-  return DART_ERR_INVAL;
+  return DART_OK;
 }
 
 dart_ret_t dart_bcast(
