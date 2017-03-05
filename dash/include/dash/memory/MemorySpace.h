@@ -62,8 +62,25 @@ struct pointer_traits : public std::pointer_traits<Pointer>
 };
 
 template <
-  class MemorySpace,
   class MSpaceCategory
+class MemorySpace
+{
+   using self_t  = MemorySpace<MSpaceCategory>;
+ public:
+   // Resolve void pointer type for this MemorySpace, typically
+   // `GlobPtr<void>` for global and `void *` for local memory.
+   // Allocators use rebind to obtain a fully specified type like
+   // `GlobPtr<double>` and can then cast the `void_pointer`
+   // returned from a memory space to their value type.
+   using void_pointer
+           = typename dash::memory_space_traits<self_t>::void_pointer;
+
+   void_pointer allocate(
+      size_t      bytes,
+      std::size_t alignment = alignof(std::max_align_t));
+}
+
+
 struct memory_space_traits
 {
 
