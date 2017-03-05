@@ -170,8 +170,10 @@ dart_ret_t dart_allgatherv(
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
- * \param nelem   Number of elements sent by each process and received from each unit.
- * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
+ * \param nelem   Number of elements sent by each process and received
+ *                from each unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to
+ *                use in \c op.
  * \param op      The reduction operation to perform.
  * \param team The team to participate in the allreduce.
  *
@@ -192,8 +194,10 @@ dart_ret_t dart_allreduce(
  * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
- * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
- * \param nelem   The number of elements of type \c dtype in \c sendbuf and \c recvbuf.
+ * \param recvbuf Buffer of size \c nelem to store the result of the
+ *                element-wise operation \c op in.
+ * \param nelem   The number of elements of type \c dtype in \c sendbuf and
+ *                \c recvbuf.
  * \param dtype   The data type of values stored in \c sendbuf and \c recvbuf.
  * \param op      The reduce operation to perform.
  * \param root    The unit receiving the reduced values.
@@ -226,7 +230,8 @@ dart_ret_t dart_reduce(
 /**
  * DART Equivalent to MPI_Accumulate.
  *
- * \param gptr    A global pointer determining the target of the accumulate operation.
+ * \param gptr    A global pointer determining the target of the accumulate
+ *                operation.
  * \param values  The local buffer holding the elements to accumulate.
  * \param nelem   The number of local elements to accumulate per unit.
  * \param dtype   The data type to use in the accumulate operation \c op.
@@ -275,12 +280,12 @@ dart_ret_t dart_fetch_and_op(
 /**
  * DART Equivalent to MPI_Compare_and_swap.
  *
- * \param gptr    A global pointer determining the target of the compare-and-swap
- *                operation.
- * \param value   Pointer to an element of type \c dtype to be swapped with the
- *                the value in \c gptr.
- * \param compare Pointer to the value to compare \c gptr with. The swap will be
- *                performed if \c *(gptr) \c == \c *(compare).
+ * \param gptr    A global pointer determining the target of the
+ *                compare-and-swap operation.
+ * \param value   Pointer to an element of type \c dtype to be swapped with
+ *                the the value in \c gptr.
+ * \param compare Pointer to the value to compare \c gptr with. The swap will
+ *                be performed if \c *(gptr) \c == \c *(compare).
  * \param result  Pointer to an element of type \c dtype to hold the value of
  *                the element referenced by \c gptr before the operation before
  *                the swap.
@@ -374,14 +379,16 @@ dart_ret_t dart_fence(
   dart_gptr_t gptr);
 
 /**
- * Guarantee completion of all outstanding operations involving a segment on a certain unit
+ * Guarantee completion of all outstanding locally issued operations involving
+ * a segment.
  *
- * Guarantees local and remote completion of all pending puts and
- * gets on a certain memory allocation / window / segment for the
+ * Guarantees local and remote completion of all locally issued pending
+ * puts and gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr.
  * Similar to \c MPI_Win_flush().
  *
- * \param gptr Global pointer identifying the segment and unit to complete outstanding operations for.
+ * \param gptr Global pointer identifying the segment and unit to complete
+ *             outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
@@ -391,14 +398,16 @@ dart_ret_t dart_flush(
   dart_gptr_t gptr);
 
 /**
- * Guarantee completion of all outstanding operations involving a segment on all units
+ * Guarantee completion of all outstanding locally issued operations involving
+ * a segment on all units.
  *
- * Guarantees local and remote completion of all pending puts and
- * gets on a certain memory allocation / window / segment for all
+ * Guarantees local and remote completion of all pending locally issued
+ * puts and gets on a certain memory allocation / window / segment for all
  * target units.
  * Similar to \c MPI_Win_flush_all().
  *
- * \param gptr Global pointer identifying the segment to complete outstanding operations for.
+ * \param gptr Global pointer identifying the segment to complete outstanding
+ *             operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
@@ -408,13 +417,15 @@ dart_ret_t dart_flush_all(
   dart_gptr_t gptr);
 
 /**
- * Guarantee local completion of all outstanding operations involving a segment on a certain unit
+ * Guarantee local completion of all outstanding locally issued operations
+ * involving a segment on a certain unit.
  *
  * Guarantees local completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush_local()
  *
- * \param gptr Global pointer identifying the segment and unit to complete outstanding operations for.
+ * \param gptr Global pointer identifying the segment and unit to complete
+ *             outstanding operations for.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -425,13 +436,15 @@ dart_ret_t dart_flush_local(
   dart_gptr_t gptr);
 
 /**
- * Guarantee completion of all outstanding operations involving a segment on all units
+ * Guarantee completion of all outstanding locally issued operations involving
+ * a segment on all units
  *
  * Guarantees local completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * all units. -> MPI_Win_flush_local_all()
  *
- * \param gptr Global pointer identifying the segment to complete outstanding operations for.
+ * \param gptr Global pointer identifying the segment to complete outstanding
+ *             operations for.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -446,14 +459,15 @@ dart_ret_t dart_flush_local_all(
 
 /**
  * \name Non-blocking single-sided communication operations using handles
- * The handle can be used to wait for a specific operation to complete using \c wait functions.
+ * The handle can be used to wait for a specific operation to complete using
+ * \c wait functions.
  */
 
 /** \{ */
 
 /**
- * Handle returned by \c dart_get_handle and the like used to wait for a specific
- * operation to complete using \c dart_wait etc.
+ * Handle returned by \c dart_get_handle and the like used to wait for a
+ * specific operation to complete using \c dart_wait etc.
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
@@ -467,7 +481,8 @@ typedef struct dart_handle_struct * dart_handle_t;
  * \param gptr   Global pointer being the source of the data transfer.
  * \param nelem  The number of elements of \c dtype in buffer \c dest.
  * \param dtype  The data type of the values in buffer \c dest.
- * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ * \param[out] handle Pointer to DART handle to instantiate for later use with
+ *                    \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -491,7 +506,8 @@ dart_ret_t dart_get_handle(
  * \param src    Local source memory to transfer data from.
  * \param nelem  The number of elements of type \c dtype to transfer.
  * \param dtype  The data type of the values in buffer \c dest.
- * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ * \param[out] handle Pointer to DART handle to instantiate for later use with
+ *                    \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
