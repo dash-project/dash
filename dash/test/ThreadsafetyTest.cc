@@ -1,5 +1,5 @@
 
-#if defined(DASH_ENABLE_THREADSUPPORT
+#if defined(DASH_ENABLE_THREADSUPPORT)
 
 #include "ThreadsafetyTest.h"
 
