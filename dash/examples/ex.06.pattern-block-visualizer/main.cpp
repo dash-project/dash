@@ -28,6 +28,8 @@ typedef dash::default_index_t  index_t;
 typedef dash::default_extent_t extent_t;
 
 typedef struct cli_params_t {
+  cli_params_t()
+  { }
   std::string type    = "summa";
   extent_t    size_x  = 110;
   extent_t    size_y  = 110;
