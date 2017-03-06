@@ -51,3 +51,67 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
     DART_OK,
     dart_memfree(gptr));
 }
+
+
+TEST_F(DARTMemAllocTest, SegmentReuseTest)
+{
+  const size_t block_size = 10;
+  dart_gptr_t gptr;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memalloc_aligned(DART_TEAM_ALL, block_size, DART_TYPE_INT, &gptr)
+  );
+  int16_t segid = gptr.segid;
+
+  // check that all allocations have the same segment ID
+  dash::Array<dart_gptr_t> arr(_dash_size);
+  arr.local[0] = gptr;
+  arr.barrier();
+  if (_dash_id == 0) {
+    for (int i = 0; i < _dash_size; ++i) {
+      ASSERT_EQ_U(
+          gptr.segid,
+          static_cast<dart_gptr_t>(arr[i]).segid);
+    }
+  }
+
+  // check that consecutive allocations do not share segment IDs
+  dart_gptr_t gptr2;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memalloc_aligned(
+        DART_TEAM_ALL, block_size, DART_TYPE_INT, &gptr2)
+  );
+
+  ASSERT_NE_U(gptr2.segid, gptr.segid);
+  arr.local[0] = gptr2;
+  arr.barrier();
+  if (_dash_id == 0) {
+    for (int i = 0; i < _dash_size; ++i) {
+      ASSERT_EQ_U(
+          gptr2.segid,
+          static_cast<dart_gptr_t>(arr[i]).segid);
+    }
+  }
+
+  // check that a released segment ID is re-used
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memfree(gptr));
+
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memalloc_aligned(DART_TEAM_ALL, block_size, DART_TYPE_INT, &gptr)
+  );
+
+  ASSERT_EQ_U(gptr.segid, segid);
+
+  // tear-down
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memfree(gptr));
+
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_team_memfree(gptr2));
+}

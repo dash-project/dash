@@ -9,7 +9,6 @@
 #include <dash/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
 
 #include <dash/iterator/GlobIter.h>
 
