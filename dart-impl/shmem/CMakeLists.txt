@@ -92,9 +92,6 @@ DeployBinary(${DARTRUN_BINARY})
 
 ## Installation
 
-# Headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
 # Library
 install(TARGETS ${DASH_DART_IMPL_SHMEM_LIBRARY} DESTINATION lib)
 # Binary
