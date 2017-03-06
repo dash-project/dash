@@ -5,6 +5,7 @@
 #define DART__BASE__INTERNAL__HOST_TOPOLOGY_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 #include <dash/dart/base/internal/unit_locality.h>
 
 
@@ -45,28 +46,33 @@ dart_host_topology_t;
  * Expects host names in array ordered by unit rank such that the jth entry
  * in the array contains the host name of unit j.
  */
+DART_API
 dart_ret_t dart__base__host_topology__create(
   dart_unit_mapping_t   * unit_mapping,
   dart_host_topology_t ** topo);
 
+DART_API
 dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t  * topo);
 
-
+DART_API
 dart_ret_t dart__base__host_topology__num_nodes(
   dart_host_topology_t  * topo,
   int                   * num_nodes);
 
+DART_API
 dart_ret_t dart__base__host_topology__node(
   dart_host_topology_t  * topo,
   int                     node_index,
   const char           ** node_hostname);
 
+DART_API
 dart_ret_t dart__base__host_topology__num_node_modules(
   dart_host_topology_t  * topo,
   const char            * node_hostname,
   int                   * num_modules);
 
+DART_API
 dart_ret_t dart__base__host_topology__node_module(
   dart_host_topology_t  * topo,
   const char            * node_hostname,
@@ -79,6 +85,7 @@ dart_ret_t dart__base__host_topology__node_module(
  * NOTE: Array returned in output parameter `units` is allocated in
  *       this function and must be deallocated by the caller.
  */
+DART_API
 dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * node_hostname,
@@ -92,6 +99,7 @@ dart_ret_t dart__base__host_topology__node_units(
  *       an internal index structure and must not be deallcoated by
  *       the caller.
  */
+DART_API
 dart_ret_t dart__base__host_topology__host_domain(
   dart_host_topology_t      * topo,
   const char                * hostname,

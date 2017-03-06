@@ -1,7 +1,8 @@
 #ifndef DART_INITIALIZATION_H_INCLUDED
 #define DART_INITIALIZATION_H_INCLUDED
 
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 /**
  * \file dart_initialization.h
@@ -34,6 +35,7 @@ extern "C" {
  * \threadsafe_none
  * \ingroup DartInitialization
 */
+DART_API
 dart_ret_t dart_init(int *argc, char ***argv);
 
 /**
@@ -49,6 +51,7 @@ dart_ret_t dart_init(int *argc, char ***argv);
  * \threadsafe_none
  * \ingroup DartInitialization
  */
+DART_API
 dart_ret_t dart_init_thread(
   int*                  argc,
   char***               argv,
@@ -62,6 +65,7 @@ dart_ret_t dart_init_thread(
  * \threadsafe_none
  * \ingroup DartInitialization
  */
+DART_API
 dart_ret_t dart_exit();
 
 /**
@@ -72,6 +76,7 @@ dart_ret_t dart_exit();
  * \threadsafe
  * \ingroup DartInitialization
  */
+DART_API
 char       dart_initialized();
 
 /** \cond DART_HIDDEN_SYMBOLS */

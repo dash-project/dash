@@ -1,7 +1,8 @@
 #ifndef DART_TEAM_GROUP_H_INCLUDED
 #define DART_TEAM_GROUP_H_INCLUDED
 
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 
 /**
@@ -71,6 +72,7 @@ typedef struct dart_group_struct* dart_group_t;
  * \threadsafe
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_create(dart_group_t *group);
 
 /**
@@ -83,6 +85,7 @@ dart_ret_t dart_group_create(dart_group_t *group);
  * \threadsafe
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_destroy(dart_group_t *group);
 
 
@@ -97,6 +100,7 @@ dart_ret_t dart_group_destroy(dart_group_t *group);
  * \threadsafe
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_clone(const dart_group_t   gin,
                             dart_group_t       * gout);
 
@@ -113,6 +117,7 @@ dart_ret_t dart_group_clone(const dart_group_t   gin,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_union(const dart_group_t   g1,
                             const dart_group_t   g2,
                             dart_group_t       * gout);
@@ -130,6 +135,7 @@ dart_ret_t dart_group_union(const dart_group_t   g1,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_intersect(const dart_group_t   g1,
                                 const dart_group_t   g2,
                                 dart_group_t       * gout);
@@ -146,6 +152,7 @@ dart_ret_t dart_group_intersect(const dart_group_t   g1,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_addmember(dart_group_t       g,
                                 dart_global_unit_t unitid);
 
@@ -161,6 +168,7 @@ dart_ret_t dart_group_addmember(dart_group_t       g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_delmember(dart_group_t        g,
                                 dart_global_unit_t  unitid);
 
@@ -177,6 +185,7 @@ dart_ret_t dart_group_delmember(dart_group_t        g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_ismember(const dart_group_t   g,
                                dart_global_unit_t   unitid,
                                int32_t            * ismember);
@@ -193,6 +202,7 @@ dart_ret_t dart_group_ismember(const dart_group_t   g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_size(const dart_group_t   g,
                            size_t             * size);
 
@@ -210,6 +220,7 @@ dart_ret_t dart_group_size(const dart_group_t   g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_getmembers(const dart_group_t   g,
                                  dart_global_unit_t * unitids);
 
@@ -230,6 +241,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t   g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_group_split(const dart_group_t    g,
                             size_t                n,
                             size_t              * nout,
@@ -257,6 +269,7 @@ dart_ret_t dart_group_split(const dart_group_t    g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
 */
+DART_API
 dart_ret_t dart_group_locality_split(const dart_group_t        g,
                                      dart_domain_locality_t  * domain,
                                      dart_locality_scope_t     scope,
@@ -306,6 +319,7 @@ dart_ret_t dart_group_locality_split(const dart_group_t        g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
 
 
@@ -353,6 +367,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_create(dart_team_t          teamid,
                             const dart_group_t   group,
                             dart_team_t        * newteam);
@@ -367,6 +382,7 @@ dart_ret_t dart_team_create(dart_team_t          teamid,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_destroy(dart_team_t * teamid);
 
 
@@ -380,6 +396,7 @@ dart_ret_t dart_team_destroy(dart_team_t * teamid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
 
 /**
@@ -424,6 +441,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid);
 
 /**
@@ -437,6 +455,7 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
 
 /**
@@ -449,6 +468,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_myid(dart_global_unit_t *myid);
 
 /**
@@ -461,6 +481,7 @@ dart_ret_t dart_myid(dart_global_unit_t *myid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_size(size_t *size);
 
 
@@ -477,6 +498,7 @@ dart_ret_t dart_size(size_t *size);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_unit_l2g(dart_team_t          team,
                               dart_team_unit_t     localid,
                               dart_global_unit_t * globalid);
@@ -494,6 +516,7 @@ dart_ret_t dart_team_unit_l2g(dart_team_t          team,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
+DART_API
 dart_ret_t dart_team_unit_g2l(dart_team_t         team,
                               dart_global_unit_t  globalid,
                               dart_team_unit_t * localid);

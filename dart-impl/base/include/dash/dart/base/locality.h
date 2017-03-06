@@ -5,6 +5,7 @@
 #define DART__BASE__LOCALITY_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 #include <dash/dart/base/internal/domain_locality.h>
 
@@ -13,17 +14,21 @@
  * Init / Finalize                                                          *
  * ======================================================================== */
 
+DART_API
 dart_ret_t dart__base__locality__init();
 
+DART_API
 dart_ret_t dart__base__locality__finalize();
 
 /* ======================================================================== *
  * Create / Delete                                                          *
  * ======================================================================== */
 
+DART_API
 dart_ret_t dart__base__locality__create(
   dart_team_t team);
 
+DART_API
 dart_ret_t dart__base__locality__delete(
   dart_team_t team);
 
@@ -91,15 +96,18 @@ dart_ret_t dart__base__locality__domain_exclude_subdomains(
            domain, subdomain_tags, num_subdomain_tags, remove_matches);
 }
 
+DART_API
 dart_ret_t dart__base__locality__team_domain(
   dart_team_t                        team,
   dart_domain_locality_t          ** domain_out);
 
+DART_API
 dart_ret_t dart__base__locality__domain(
   const dart_domain_locality_t     * domain_in,
   const char                       * domain_tag,
   dart_domain_locality_t          ** domain_out);
 
+DART_API
 dart_ret_t dart__base__locality__domain_split_tags(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
@@ -107,18 +115,21 @@ dart_ret_t dart__base__locality__domain_split_tags(
   int                             ** group_sizes_out,
   char                          **** group_domain_tags_out);
 
+DART_API
 dart_ret_t dart__base__locality__domain_group(
   dart_domain_locality_t           * domain,
   int                                group_size,
   const char                      ** group_subdomain_tags,
   char                             * group_domain_tag_out);
 
+DART_API
 dart_ret_t dart__base__locality__scope_domains(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
   dart_domain_locality_t         *** domains_out);
 
+DART_API
 dart_ret_t dart__base__locality__scope_domain_tags(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
@@ -129,6 +140,7 @@ dart_ret_t dart__base__locality__scope_domain_tags(
  * Unit Locality                                                            *
  * ======================================================================== */
 
+DART_API
 dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
   dart_team_unit_t                   unit,

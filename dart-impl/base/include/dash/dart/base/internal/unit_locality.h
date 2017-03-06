@@ -5,6 +5,7 @@
 #define DART__BASE__INTERNAL__UNIT_LOCALITY_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 typedef struct
 {
@@ -13,13 +14,16 @@ typedef struct
   dart_team_t             team;
 } dart_unit_mapping_t;
 
+DART_API
 dart_ret_t dart__base__unit_locality__create(
   dart_team_t             team,
   dart_unit_mapping_t  ** unit_mapping);
 
+DART_API
 dart_ret_t dart__base__unit_locality__destruct(
   dart_unit_mapping_t   * unit_mapping);
 
+DART_API
 dart_ret_t dart__base__unit_locality__at(
   dart_unit_mapping_t   * unit_mapping,
   dart_team_unit_t        unit,

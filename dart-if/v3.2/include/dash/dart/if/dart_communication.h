@@ -3,6 +3,8 @@
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_util.h>
+
 
 /**
  * \file dart_communication.h
@@ -42,6 +44,7 @@ extern "C" {
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_barrier(
   dart_team_t team);
 
@@ -60,6 +63,7 @@ dart_ret_t dart_barrier(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_bcast(
   void              * buf,
   size_t              nelem,
@@ -83,6 +87,7 @@ dart_ret_t dart_bcast(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_scatter(
   const void         * sendbuf,
   void               * recvbuf,
@@ -107,6 +112,7 @@ dart_ret_t dart_scatter(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_gather(
   const void        * sendbuf,
   void              * recvbuf,
@@ -130,6 +136,7 @@ dart_ret_t dart_gather(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_allgather(
   const void      * sendbuf,
   void            * recvbuf,
@@ -155,6 +162,7 @@ dart_ret_t dart_allgather(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_allgatherv(
   const void      * sendbuf,
   size_t            nsendelem,
@@ -179,6 +187,7 @@ dart_ret_t dart_allgatherv(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_allreduce(
   const void     * sendbuf,
   void           * recvbuf,
@@ -203,6 +212,7 @@ dart_ret_t dart_allreduce(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_reduce(
   const void        * sendbuf,
   void              * recvbuf,
@@ -237,6 +247,7 @@ dart_ret_t dart_reduce(
  * \threadsafe_data{team}
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
   const void     * values,
@@ -263,6 +274,7 @@ dart_ret_t dart_accumulate(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,
   const void *     value,
@@ -291,6 +303,7 @@ dart_ret_t dart_fetch_and_op(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_compare_and_swap(
   dart_gptr_t      gptr,
   const void     * value,
@@ -327,6 +340,7 @@ dart_ret_t dart_compare_and_swap(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
@@ -350,6 +364,7 @@ dart_ret_t dart_get(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_put(
   dart_gptr_t       gptr,
   const void      * src,
@@ -371,6 +386,7 @@ dart_ret_t dart_put(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_flush(
   dart_gptr_t gptr);
 
@@ -388,6 +404,7 @@ dart_ret_t dart_flush(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_flush_all(
   dart_gptr_t gptr);
 
@@ -405,6 +422,7 @@ dart_ret_t dart_flush_all(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_flush_local(
   dart_gptr_t gptr);
 
@@ -422,6 +440,7 @@ dart_ret_t dart_flush_local(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr);
 
@@ -458,6 +477,7 @@ typedef struct dart_handle_struct * dart_handle_t;
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_get_handle(
   void            * dest,
   dart_gptr_t       gptr,
@@ -482,6 +502,7 @@ dart_ret_t dart_get_handle(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_put_handle(
   dart_gptr_t       gptr,
   const void      * src,
@@ -499,7 +520,7 @@ dart_ret_t dart_put_handle(
  * \threadsafe
  * \ingroup DartCommunication
  */
-
+DART_API
 dart_ret_t dart_wait(
   dart_handle_t handle);
 /**
@@ -513,6 +534,7 @@ dart_ret_t dart_wait(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_waitall(
   dart_handle_t *handles,
   size_t n);
@@ -527,6 +549,7 @@ dart_ret_t dart_waitall(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_wait_local(
     dart_handle_t handle);
 
@@ -541,6 +564,7 @@ dart_ret_t dart_wait_local(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_waitall_local(
     dart_handle_t *handles,
     size_t n);
@@ -556,6 +580,7 @@ dart_ret_t dart_waitall_local(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_test_local(
   dart_handle_t handle,
   int32_t *result);
@@ -572,6 +597,7 @@ dart_ret_t dart_test_local(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_testall_local(
   dart_handle_t *handles,
   size_t n,
@@ -600,6 +626,7 @@ dart_ret_t dart_testall_local(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_get_blocking(
   void         *  dest,
   dart_gptr_t     gptr,
@@ -620,6 +647,7 @@ dart_ret_t dart_get_blocking(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_put_blocking(
   dart_gptr_t     gptr,
   const void    * src,
@@ -651,6 +679,7 @@ dart_ret_t dart_put_blocking(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_send(
   const void         * sendbuf,
   size_t               nelem,
@@ -672,6 +701,7 @@ dart_ret_t dart_send(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_recv(
   void               * recvbuf,
   size_t               nelem,
@@ -701,6 +731,7 @@ dart_ret_t dart_recv(
  * \threadsafe
  * \ingroup DartCommunication
  */
+DART_API
 dart_ret_t dart_sendrecv(
   const void         * sendbuf,
   size_t               send_nelem,

@@ -5,10 +5,12 @@
 #define DART__BASE__HWINFO_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 /**
  * Initializes hwinfo object with uninitialized defaults.
  */
+DART_API
 dart_ret_t dart_hwinfo_init(
   dart_hwinfo_t * hwinfo);
 
@@ -22,6 +24,7 @@ dart_ret_t dart_hwinfo_init(
  * If a locality property cannot be reliably resolved or deduced, the
  * respective entry is set to \c -1 or an empty string.
  */
+DART_API
 dart_ret_t dart_hwinfo(
   dart_hwinfo_t * hwinfo);
 

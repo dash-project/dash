@@ -11,6 +11,9 @@
  *
  */
 
+#include <dash/dart/if/dart_util.h>
+#include <dash/dart/if/dart_types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -150,6 +153,7 @@ typedef struct
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
 
 /**
@@ -164,6 +168,7 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
 
 /**
@@ -177,6 +182,7 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
 
 /**
@@ -190,6 +196,7 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
 
 /**
@@ -203,6 +210,7 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
 
 
@@ -221,6 +229,7 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
 
 /**
@@ -239,6 +248,7 @@ dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_memalloc(
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -256,6 +266,7 @@ dart_ret_t dart_memalloc(
  * \threadsafe
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
 /**
@@ -288,6 +299,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_team_memalloc_aligned(
   dart_team_t       teamid,
 	size_t            nelem,
@@ -311,6 +323,7 @@ dart_ret_t dart_team_memalloc_aligned(
  * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_team_memfree(
   dart_gptr_t gptr);
 
@@ -332,6 +345,7 @@ dart_ret_t dart_team_memfree(
  * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_team_memregister_aligned(
   dart_team_t       teamid,
 	size_t            nelem,
@@ -354,6 +368,7 @@ dart_ret_t dart_team_memregister_aligned(
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_team_memregister(
   dart_team_t       teamid,
 	size_t            nelem,
@@ -377,6 +392,7 @@ dart_ret_t dart_team_memregister(
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
+DART_API
 dart_ret_t dart_team_memderegister(dart_gptr_t gptr);
 
 

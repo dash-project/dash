@@ -5,6 +5,9 @@
 #ifndef DART__BASE__ARRAY_H__
 #define DART__BASE__ARRAY_H__
 
+#include <dash/dart/if/dart_util.h>
+
+DART_API
 int dart__base__intsunique(
   int * values,
   int   num_values);
