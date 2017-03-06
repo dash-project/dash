@@ -638,6 +638,7 @@ dart_ret_t dart__base__locality__domain__remove_subdomain(
   domain->num_domains--;
 
   if (domain->num_domains <= 0) {
+    free(domain->children);
     domain->children    = NULL;
     domain->num_domains = 0;
   } else {
