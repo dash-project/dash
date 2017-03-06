@@ -1,6 +1,9 @@
 #ifndef DASH__META_H__INCLUDED
 #define DASH__META_H__INCLUDED
 
+#include <type_traits>
+
+
 #ifndef DOXYGEN
 
 #define DASH__META__DEFINE_TRAIT__HAS_TYPE(DepType) \
@@ -18,6 +21,21 @@
 #endif // DOXYGEN
 
 namespace dash {
+
+
+template<class...> struct conjunction : std::true_type { };
+
+template<class Cond0> struct conjunction<Cond0> : Cond0 { };
+
+template<class Cond0, class... CondN>
+struct conjunction<Cond0, CondN...> 
+: std::conditional<
+    bool(Cond0::value),
+    conjunction<CondN...>,
+    Cond0 >
+{ };
+
+
 
 /**
  * Definition of type trait \c dash::has_type_iterator<T>
@@ -49,6 +67,19 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
  * dependent type \c value_type.
  */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
+
+
+template <class T>
+struct is_container_compatible :
+  public std::integral_constant<bool,
+              std::is_standard_layout<T>::value
+#if !defined(__CRAYC) && false
+              // The Cray compiler (as of CCE8.5.6) does not support
+              // std::is_trivially_copyable.
+           && std::is_trivially_copyable<T>::value
+#endif
+         >
+{ };
 
 } // namespace dash
 

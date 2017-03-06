@@ -9,6 +9,15 @@
 
 namespace dash {
 
+namespace detail {
+  /**
+   * Definition of type trait \c dash::detail::has_type_local_type<T>
+   * with static member \c value indicating whether type \c T provides
+   * dependent type \c local_type.
+   */
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(local_type);
+}
+
 /**
  * \concept{DashViewConcept}
  */
@@ -23,6 +32,24 @@ local(ViewType & v)
    >::type {
   return v;
 }
+
+#if 0
+/**
+ * \concept{DashViewConcept}
+ */
+template <class ViewType>
+constexpr auto
+local(const ViewType & v)
+-> typename std::enable_if<
+     !dash::view_traits<ViewType>::is_view::value &&
+     !dash::view_traits<ViewType>::is_local::value &&
+     dash::detail::has_type_local_type<ViewType>::value,
+     dash::IndexSetIdentity<const typename ViewType::local_type>
+   >::type {
+  return IndexSetIdentity<const typename ViewType::local_type>(
+           v.local());
+}
+#endif
 
 /**
  * \concept{DashViewConcept}

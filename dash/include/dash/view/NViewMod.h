@@ -567,21 +567,6 @@ public:
   }
 };
 
-#if 0
-template <class ViewType>
-constexpr auto
-local(const ViewType & v)
--> typename std::enable_if<
-     (dash::view_traits<ViewType>::rank::value > 1),
-     NViewLocalMod< ViewType, dash::view_traits<ViewType>::rank::value >
-   >::type {
-  return NViewLocalMod<
-           ViewType,
-           dash::view_traits<ViewType>::rank::value >(
-             v);
-}
-#endif
-
 
 // ------------------------------------------------------------------------
 // NViewSubMod
@@ -675,9 +660,9 @@ public:
   { }
 
   constexpr NViewSubMod(
-    domain_type  & domain,
-    index_type     begin,
-    index_type     end)
+    const domain_type  & domain,
+    index_type           begin,
+    index_type           end)
   : base_t(domain)
   , _begin_idx(begin)
   , _end_idx(end)

@@ -197,6 +197,10 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
   dash::test::print_nview("index_local", dash::index(nview_local));
 //dash::test::print_nview("nview_local", nview_local);
 
+  auto nview_rows_l = dash::sub<0>(2,4, dash::local(mat));
+  dash::test::print_nview("rows_local", dash::index(nview_rows_l));
+  dash::test::print_nview("rows_local", nview_rows_l);
+
   EXPECT_EQ_U(mat.local_size(), dash::distance(nview_local.begin(),
                                                nview_local.end()));
   EXPECT_EQ_U(mat.local_size(), nview_local.size());

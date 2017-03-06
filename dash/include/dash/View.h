@@ -108,10 +108,6 @@ template <
   class Sentinel >
 class IteratorViewOrigin;
 
-// Currently only supporting
-//  - global iterators
-//  - 1-dimensional IteratorViewOrigin types.
-
 template <
   class Iterator,
   class Sentinel >
@@ -121,7 +117,7 @@ struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
   typedef IteratorViewOrigin<Iterator, Sentinel>                image_type;
 
   // Uses container::local_type directly, e.g. dash::LocalArrayRef:
-//typedef typename dash::view_traits<domain_type>::local_type   local_type;
+  // typedef typename dash::view_traits<domain_type>::local_type local_type;
   // Uses ViewLocalMod wrapper on domain, e.g. ViewLocalMod<dash::Array>:
   typedef ViewLocalMod<domain_type>                             local_type;
   typedef ViewGlobalMod<domain_type>                           global_type;
@@ -139,7 +135,6 @@ struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
 template <
   class Iterator,
   class Sentinel
-//class DomainType = dash::IteratorViewOriginOrigin<1>
 >
 class IteratorViewOrigin
 : public dash::IteratorRange<Iterator, Sentinel>
