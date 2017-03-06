@@ -73,8 +73,6 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
   res->dbuf = malloc(res->size);
   res->team = team;
 
-  dart_team_myid (team, &unitid);
-
   dart_mutex_init(&res->send_mutex);
   dart_mutex_init(&res->processing_mutex);
 
@@ -103,7 +101,7 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
-    return DART_ERR_INVAL;
+    return NULL;
   }
 
   MPI_Win_allocate(
@@ -114,7 +112,7 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
     (void*)&(res->tailpos_ptr),
     &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;
-  MPI_Win_flush(unitid.id, res->tailpos_win);
+
   MPI_Win_allocate(
     res->size,
     1,
@@ -123,7 +121,8 @@ dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team)
     (void*)&(res->queue_ptr),
     &(res->queue_win));
   memset(res->queue_ptr, 0, res->size);
-  MPI_Win_fence(0, res->queue_win);
+
+  MPI_Barrier(team_data->comm);
 
   return res;
 }
