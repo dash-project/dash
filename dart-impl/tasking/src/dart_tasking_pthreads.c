@@ -62,7 +62,7 @@ static dart_task_t root_task = {
 static void wait_for_work()
 {
   pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
-  DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+  DART_LOG_INFO("Thread %i received signal", dart__tasking__thread_num());
 }
 
 static void destroy_tsd(void *tsd)
@@ -171,7 +171,7 @@ void handle_task(dart_task_t *task)
 {
   if (task != NULL)
   {
-    DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
+    DART_LOG_INFO("Thread %i executing task %p", dart__tasking__thread_num(), task);
 
     // save current task and set to new task
     dart_task_t *current_task = get_current_task();
@@ -190,7 +190,7 @@ void handle_task(dart_task_t *task)
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
 
     // Implicit wait for child tasks
-    dart__base__tasking__task_complete();
+    dart__tasking__task_complete();
 
     // we need to lock the task shortly here
     // to allow for atomic check and update
@@ -234,9 +234,16 @@ void* thread_main(void *data)
     dart_tasking_remote_progress();
     // only go to sleep if no tasks are in flight
     if (DART_FETCH32(&(root_task.num_children)) == 0) {
-      pthread_mutex_lock(&thread_pool_mutex);
-      wait_for_work();
-      pthread_mutex_unlock(&thread_pool_mutex);
+      if (dart__tasking__thread_num() == dart__tasking__num_threads() - 1)
+      {
+        // the last thread is responsible for ensuring progress on the
+        // message queue
+        dart_tasking_remote_progress();
+      } else {
+        pthread_mutex_lock(&thread_pool_mutex);
+        wait_for_work();
+        pthread_mutex_unlock(&thread_pool_mutex);
+      }
     }
     dart_task_t *task = next_task(thread);
     handle_task(task);
@@ -267,7 +274,7 @@ void dart_thread_finalize(dart_thread_t *thread)
 dart_thread_t *
 dart__base__tasking_current_thread()
 {
-  return &thread_pool[dart__base__tasking__thread_num()];
+  return &thread_pool[dart__tasking__thread_num()];
 }
 
 
@@ -321,27 +328,27 @@ dart__base__tasking__init()
 }
 
 int
-dart__base__tasking__thread_num()
+dart__tasking__thread_num()
 {
   return (initialized ? ((tpd_t*)pthread_getspecific(tpd_key))->thread_id : 0);
 }
 
 int
-dart__base__tasking__num_threads()
+dart__tasking__num_threads()
 {
   return (initialized ? num_threads : 1);
 }
 
 uint64_t
-dart__base__tasking__phase_bound()
+dart__tasking__phase_bound()
 {
   return phase_bound;
 }
 
 void
-dart__base__tasking__enqueue_runnable(dart_task_t *task)
+dart__tasking__enqueue_runnable(dart_task_t *task)
 {
-  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
   dart_taskqueue_t *q = &thread->queue;
   if (task->phase > phase_bound) {
     // if the task's phase is outside the phase bound we defer it
@@ -351,7 +358,7 @@ dart__base__tasking__enqueue_runnable(dart_task_t *task)
 }
 
 dart_ret_t
-dart__base__tasking__create_task(
+dart__tasking__create_task(
     void           (*fn) (void *),
     void            *data,
     size_t           data_size,
@@ -366,14 +373,14 @@ dart__base__tasking__create_task(
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
   if (task->unresolved_deps == 0) {
-    dart__base__tasking__enqueue_runnable(task);
+    dart__tasking__enqueue_runnable(task);
   }
 
   return DART_OK;
 }
 
 dart_ret_t
-dart__base__tasking__create_task_handle(
+dart__tasking__create_task_handle(
     void           (*fn) (void *),
     void            *data,
     size_t           data_size,
@@ -390,7 +397,7 @@ dart__base__tasking__create_task_handle(
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
   if (task->unresolved_deps == 0) {
-    dart__base__tasking__enqueue_runnable(task);
+    dart__tasking__enqueue_runnable(task);
   }
 
   *ref = task;
@@ -400,9 +407,9 @@ dart__base__tasking__create_task_handle(
 
 
 dart_ret_t
-dart__base__tasking__task_complete()
+dart__tasking__task_complete()
 {
-  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {
     DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task "
@@ -450,9 +457,9 @@ dart__base__tasking__task_complete()
 
 
 dart_ret_t
-dart__base__tasking__task_wait(dart_taskref_t *tr)
+dart__tasking__task_wait(dart_taskref_t *tr)
 {
-  dart_thread_t *thread = &thread_pool[dart__base__tasking__thread_num()];
+  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
 
   if (tr == NULL || *tr == NULL || (*tr)->state == DART_TASK_DESTROYED) {
     return DART_ERR_INVAL;
@@ -475,9 +482,9 @@ dart__base__tasking__task_wait(dart_taskref_t *tr)
 
 
 dart_ret_t
-dart__base__tasking__phase()
+dart__tasking__phase()
 {
-  if (dart__base__tasking__thread_num() != 0) {
+  if (dart__tasking__thread_num() != 0) {
     DART_LOG_ERROR("Switching phases can only be done by the master thread!");
     return DART_ERR_INVAL;
   }
@@ -490,13 +497,13 @@ dart__base__tasking__phase()
 }
 
 dart_taskref_t
-dart__base__tasking__current_task()
+dart__tasking__current_task()
 {
-  return thread_pool[dart__base__tasking__thread_num()].current_task;
+  return thread_pool[dart__tasking__thread_num()].current_task;
 }
 
 dart_ret_t
-dart__base__tasking__fini()
+dart__tasking__fini()
 {
   int i;
 

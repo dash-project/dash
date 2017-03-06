@@ -70,16 +70,16 @@ dart_ret_t
 dart__base__tasking__init();
 
 int
-dart__base__tasking__thread_num();
+dart__tasking__thread_num();
 
 int
-dart__base__tasking__num_threads();
+dart__tasking__num_threads();
 
 uint64_t
-dart__base__tasking__phase_bound();
+dart__tasking__phase_bound();
 
 dart_ret_t
-dart__base__tasking__create_task(
+dart__tasking__create_task(
   void           (*fn) (void *),
   void            *data,
   size_t           data_size,
@@ -88,7 +88,7 @@ dart__base__tasking__create_task(
 
 
 dart_ret_t
-dart__base__tasking__create_task_handle(
+dart__tasking__create_task_handle(
   void           (*fn) (void *),
   void            *data,
   size_t           data_size,
@@ -98,19 +98,19 @@ dart__base__tasking__create_task_handle(
 
 
 dart_ret_t
-dart__base__tasking__task_wait(dart_taskref_t *tr);
+dart__tasking__task_wait(dart_taskref_t *tr);
 
 dart_ret_t
-dart__base__tasking__task_complete();
+dart__tasking__task_complete();
 
 dart_ret_t
-dart__base__tasking__phase();
+dart__tasking__phase();
 
 dart_taskref_t
-dart__base__tasking__current_task();
+dart__tasking__current_task();
 
 void
-dart__base__tasking__enqueue_runnable(dart_task_t *task);
+dart__tasking__enqueue_runnable(dart_task_t *task);
 //void
 //dart__base__tasking_print_taskgraph();
 //
@@ -118,7 +118,7 @@ dart__base__tasking__enqueue_runnable(dart_task_t *task);
 //dart__base__tasking_sync_taskgraph();
 
 dart_ret_t
-dart__base__tasking__fini();
+dart__tasking__fini();
 
 dart_thread_t *
 dart__base__tasking_current_thread();

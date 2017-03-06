@@ -102,7 +102,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
-      // TODO: anything more sensible to do here? We could execute a task in between...
+      dart_amsg_process(amsgq);
       continue;
     } else {
       DART_LOG_ERROR("Failed to send active message to unit %i", dep->gptr.unitid);

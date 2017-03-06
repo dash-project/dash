@@ -196,7 +196,7 @@ release_deferred_remote_releases()
                      "have unresolved dependencies!", task);
     } else if (unresolved_deps == 0) {
       // enqueue as runnable
-      dart__base__tasking__enqueue_runnable(task);
+      dart__tasking__enqueue_runnable(task);
     }
     dephash_recycle_elem(elem);
   }
@@ -553,7 +553,7 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
       DART_LOG_ERROR("release_local_task: task %p has negative number "
                      "of dependencies:  %i", tl->task, unresolved_deps);
     } else if (unresolved_deps == 0) {
-      dart__base__tasking__enqueue_runnable(tl->task);
+      dart__tasking__enqueue_runnable(tl->task);
     }
 
     dart_tasking_tasklist_deallocate_elem(tl);
@@ -569,7 +569,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
 {
   // block the release of the task if it's not to be executed yet
   dart_mutex_lock(&deferred_remote_mutex);
-  if (local_task->phase > dart__base__tasking__phase_bound()) {
+  if (local_task->phase > dart__tasking__phase_bound()) {
     // dummy dependency
     dart_task_dep_t dep = {
         .gptr = DART_GPTR_NULL,
@@ -591,7 +591,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
                      "have unresolved dependencies!", local_task);
     } else if (unresolved_deps == 0) {
       // enqueue as runnable
-      dart__base__tasking__enqueue_runnable(local_task);
+      dart__tasking__enqueue_runnable(local_task);
     }
   }
   dart_mutex_unlock(&deferred_remote_mutex);

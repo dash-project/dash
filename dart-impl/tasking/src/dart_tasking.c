@@ -19,19 +19,19 @@ dart_tasking_init()
 dart_ret_t
 dart_tasking_fini()
 {
-  return dart__base__tasking__fini();
+  return dart__tasking__fini();
 }
 
 int
 dart_tasking_thread_num()
 {
-  return dart__base__tasking__thread_num();
+  return dart__tasking__thread_num();
 }
 
 int
 dart_tasking_num_threads()
 {
-  return dart__base__tasking__num_threads();
+  return dart__tasking__num_threads();
 }
 
 /**
@@ -51,7 +51,7 @@ dart_task_create(
   dart_task_dep_t *deps,
   size_t           ndeps)
 {
-  return dart__base__tasking__create_task(
+  return dart__tasking__create_task(
                   fn, data,
                   data_size,
                   deps, ndeps);
@@ -73,7 +73,7 @@ dart_task_create_handle(
   size_t           ndeps,
   dart_taskref_t  *taskref)
 {
-  return dart__base__tasking__create_task_handle(
+  return dart__tasking__create_task_handle(
                  fn, data,
                  data_size,
                  deps, ndeps,
@@ -85,7 +85,7 @@ dart_task_create_handle(
 dart_taskref_t
 dart_tasking_current_task()
 {
-  return dart__base__tasking__current_task();
+  return dart__tasking__current_task();
 }
 
 /**
@@ -97,7 +97,7 @@ dart_tasking_current_task()
 dart_ret_t
 dart_task_wait(dart_taskref_t *taskref)
 {
-  return dart__base__tasking__task_wait(taskref);
+  return dart__tasking__task_wait(taskref);
 }
 
 /**
@@ -106,13 +106,13 @@ dart_task_wait(dart_taskref_t *taskref)
 dart_ret_t
 dart_task_complete()
 {
-  return dart__base__tasking__task_complete();
+  return dart__tasking__task_complete();
 }
 
 
 dart_ret_t
 dart_tasking_phase()
 {
-  return dart__base__tasking__phase();
+  return dart__tasking__phase();
 }
 
