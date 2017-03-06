@@ -64,12 +64,12 @@ TEST_F(DARTMemAllocTest, SegmentReuseTest)
   int16_t segid = gptr.segid;
 
   // check that all allocations have the same segment ID
-  dash::Array<dart_gptr_t> arr(_dash_size);
+  dash::Array<dart_gptr_t> arr(dash::size());
   arr.local[0] = gptr;
   arr.barrier();
-  if (_dash_id == 0) {
-    for (int i = 0; i < _dash_size; ++i) {
-      ASSERT_EQ_U(
+  if (dash::myid() == 0) {
+    for (int i = 0; i < dash::size(); ++i) {
+      EXPECT_EQ_U(
           gptr.segid,
           static_cast<dart_gptr_t>(arr[i]).segid);
     }
@@ -86,8 +86,8 @@ TEST_F(DARTMemAllocTest, SegmentReuseTest)
   ASSERT_NE_U(gptr2.segid, gptr.segid);
   arr.local[0] = gptr2;
   arr.barrier();
-  if (_dash_id == 0) {
-    for (int i = 0; i < _dash_size; ++i) {
+  if (dash::myid() == 0) {
+    for (int i = 0; i < dash::size(); ++i) {
       ASSERT_EQ_U(
           gptr2.segid,
           static_cast<dart_gptr_t>(arr[i]).segid);
