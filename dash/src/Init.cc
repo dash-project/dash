@@ -40,7 +40,8 @@ void dash::init(int * argc, char ** *argv)
   dart_init_thread(argc, argv, &provided_mt);
   dash::_multithreaded = (provided_mt == DART_THREAD_MULTIPLE);
   if (!dash::_multithreaded) {
-    DASH_LOG_WARN("Support for multi-threading requested at compile time but DART does not support multi-threaded access.");
+    DASH_LOG_WARN("Support for multi-threading requested at compile "
+                  "time but DART does not support multi-threaded access.");
   }
 #else
 

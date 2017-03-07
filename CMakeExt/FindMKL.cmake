@@ -56,7 +56,8 @@ elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(_MKL_INTEL64 TRUE)
     message(STATUS "Searching MKL Intel64")
 else()
-    message(FATAL_ERROR "Unsupported 'void *' size (${SIZEOF_VOID_P})")
+    set(_MKL_IA32 TRUE)
+    message(WARNING "Unsupported 'void *' size (${SIZEOF_VOID_P})")
 endif()
 
 # Versions should be listed is decreasing order of preference
