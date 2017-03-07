@@ -313,7 +313,7 @@ dart_ret_t dart_fetch_and_op(
   }
 
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
-                 "offset:%p segid:%d",
+                 "offset:%"PRIu64" segid:%d",
                  dtype, op, team_unit_id.id,
                  gptr.addr_or_offs.offset, gptr.segid);
   if (seg_id) {
@@ -338,12 +338,12 @@ dart_ret_t dart_fetch_and_op(
     offset += disp_s;
     win = team_data->window;
     DART_LOG_TRACE("dart_fetch_and_op:  (from coll. allocation) "
-                   "target unit: %d offset: %"PRIu64" mpi_dtype:%i mpi_op:%i",
-                   team_unit_id.id, offset, mpi_dtype, mpi_op);
+                   "target unit: %d offset: %"PRIu64,
+                   team_unit_id.id, offset);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_TRACE("dart_fetch_and_op:  (from local allocation) "
-                   "target unit: %d offset: %"PRIu64"",
+                   "target unit: %d offset: %"PRIu64,
                    team_unit_id.id, offset);
   }
   MPI_Fetch_and_op(
@@ -383,7 +383,7 @@ dart_ret_t dart_compare_and_swap(
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%p",
+  DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%"PRIu64,
                  dtype, team_unit_id.id, gptr.addr_or_offs.offset);
 
   if (seg_id) {
