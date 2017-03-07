@@ -15,6 +15,14 @@
 #include <pthread.h>
 #endif
 
+
+#ifdef DART_HAVE_PTHREADS
+#define DART_MUTEX_INITIALIZER { PTHREAD_MUTEX_INITIALIZER }
+#else
+#define DART_MUTEX_INITIALIZER { 0 }
+#endif
+
+
 typedef struct dart_mutex {
 #ifdef DART_HAVE_PTHREADS
 pthread_mutex_t mutex;
