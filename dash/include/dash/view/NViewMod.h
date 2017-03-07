@@ -94,7 +94,7 @@ public:
   typedef IndexSetIdentity<self_t>                          index_set_type;
 
 public:
-  typedef std::integral_constant<bool, false>        is_local;
+  typedef std::integral_constant<bool, false>  is_local;
   typedef std::integral_constant<dim_t, NDim>  rank;
 
 private:

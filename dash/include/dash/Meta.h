@@ -73,7 +73,7 @@ template <class T>
 struct is_container_compatible :
   public std::integral_constant<bool,
               std::is_standard_layout<T>::value
-#if !defined(__CRAYC)
+#if !defined(__CRAYC) && false
               // The Cray compiler (as of CCE8.5.6) does not support
               // std::is_trivially_copyable.
            && std::is_trivially_copyable<T>::value

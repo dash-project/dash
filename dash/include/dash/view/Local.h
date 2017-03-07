@@ -5,6 +5,10 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewTraits.h>
+#if 0
+#include <dash/view/ViewMod.h>
+#include <dash/view/NViewMod.h>
+#endif
 
 
 namespace dash {
@@ -59,8 +63,8 @@ constexpr auto
 local(const ViewType & v)
 -> typename std::enable_if<
      dash::view_traits<ViewType>::is_view::value,
-//   decltype(v.local())
-     const typename ViewType::local_type
+     decltype(v.local())
+//   const typename ViewType::local_type
    >::type {
   return v.local();
 }
@@ -80,6 +84,7 @@ local(ViewType && v)
 /**
  * \concept{DashViewConcept}
  */
+#if 1
 template <class ContainerType>
 constexpr
 typename std::enable_if<
@@ -89,6 +94,28 @@ typename std::enable_if<
 local(const ContainerType & c) {
   return c.local;
 }
+#else
+
+template <class ContainerType>
+constexpr auto local(const ContainerType & c)
+  -> typename std::enable_if<
+         !dash::view_traits< ContainerType >::is_view::value
+       && dash::view_traits< ContainerType  >::rank::value == 1,
+       dash::ViewSubMod<ContainerType, 0>
+     >::type {
+  return dash::ViewSubMod<ContainerType, 0>(0, c.size(), c);
+}
+
+template <class ContainerType>
+constexpr auto local(const ContainerType & c)
+  -> typename std::enable_if<
+         !dash::view_traits< ContainerType >::is_view::value
+       && (dash::view_traits< ContainerType  >::rank::value > 1),
+       dash::NViewSubMod<ContainerType, 0>
+     >::type {
+  return dash::NViewSubMod<ContainerType, 0>(0, c.extents()[0], c);
+}
+#endif
 
 /**
  * Convert global iterator referencing an element the active unit's
