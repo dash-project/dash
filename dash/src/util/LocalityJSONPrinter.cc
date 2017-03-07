@@ -135,10 +135,10 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
 
   if (domain->num_domains > 0) {
     *this << indent << "'ndomains' : " << domain->num_domains << ",\n";
-    *this << indent << "'domains'  : {\n";
+    *this << indent << "'children' : {\n";
 
     for (int d = 0; d < domain->num_domains; ++d) {
-      if (static_cast<int>(domain->domains[d].scope) <=
+      if (static_cast<int>(domain->children[d]->scope) <=
           static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
 
         *this << indent;
@@ -150,9 +150,9 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
         }
         sub_indent += std::string(3, ' ');
 
-        *this << " '" << domain->domains[d].domain_tag << "' : ";
+        *this << " '" << domain->children[d]->domain_tag << "' : ";
 
-        print_domain(team, &domain->domains[d], sub_indent);
+        print_domain(team, domain->children[d], sub_indent);
 
         if (d < domain->num_domains-1) {
           *this << ",";
