@@ -1,5 +1,5 @@
 
-ONEHEADER = ../spec/oneheader.pl
+ONEHEADER = ./spec/oneheader.pl
 
 DART_SPEC = dart_spec
 
@@ -13,7 +13,7 @@ all : html
 publish : html
 	cp highlight.css $(DART_SPEC).html $(HOME)/Dropbox/Public
 
-html : $(DART_SPEC).html 
+html : $(DART_SPEC).html
 
 $(DART_SPEC).html : $(DART_SPEC).h
 	highlight --style moria --syntax c -i $(DART_SPEC).h  -o $(DART_SPEC).html
@@ -24,7 +24,7 @@ $(DART_SPEC).h : $(DART_H) $(addprefix include/dash/dart/if/, $(DART_FILES))
 
 clean :
 	rm -f *~
-	rm -f *.o 
+	rm -f *.o
 	rm -f $(DART_SPEC).h
 	rm -f $(DART_SPEC).html
 	rm -f highlight.css

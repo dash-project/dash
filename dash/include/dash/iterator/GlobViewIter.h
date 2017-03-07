@@ -139,7 +139,7 @@ protected:
   /// Maximum position relative to the viewspec allowed for this iterator.
   IndexType                    _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t                  _myid;
+  team_unit_t                  _myid;
   /// Pointer to first element in local memory
   ElementType                * _lbegin          = nullptr;
 

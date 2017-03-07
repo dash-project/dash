@@ -575,7 +575,7 @@ struct dart_domain_locality_s
     int                              num_domains;
     /** Array of subordinate domains of size \c num_domains or 0 if no
      *  subdomains are specified. */
-    struct dart_domain_locality_s  * domains;
+    struct dart_domain_locality_s ** children;
 
     /** Whether sub-domains have identical hardware configuration. */
     int                              is_symmetric;
