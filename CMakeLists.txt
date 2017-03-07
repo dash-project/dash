@@ -40,6 +40,10 @@ option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
+option(BUILD_SHARED_LIBS
+       "Specify whether libraries should be built as shared objects" off)
+option(BUILD_GENERIC
+       "Specify whether libraries should built for generic archictecture" off)
 option(ENABLE_DEV_COMPILER_WARNINGS
        "Specify whether excessive compiler warnings should be enabled" off)
 option(ENABLE_EXT_COMPILER_WARNINGS
@@ -244,6 +248,10 @@ message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
 message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
         ${CMAKE_BUILD_TYPE})
+message(EMPH "Generic build:            (BUILD_GENERIC)                  "
+        ${BUILD_GENERIC})
+message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
+        ${BUILD_SHARED_LIBS})
 
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
