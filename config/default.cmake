@@ -9,7 +9,6 @@ if (NOT BUILD_GENERIC)
       OR "${CMAKE_C_COMPILER_ID}" MATCHES "Clang")
     set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -mtune=native")
     set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -march=native")
-    # TODO: why restrict ourselves to SSE here?
     set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -mfpmath=sse")
 
     set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -mtune=native")
