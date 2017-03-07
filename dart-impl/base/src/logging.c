@@ -90,7 +90,7 @@ dart__logging__message(
   ...
 )
 {
-  if (level <= env_loglevel() ||
+  if (level > env_loglevel() ||
       level > DART_LOGLEVEL_TRACE) {
     return;
   }
