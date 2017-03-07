@@ -345,7 +345,10 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-    -> decltype(dash::index(this->view_domain())) {
+//  -> decltype(dash::index(this->view_domain())) {
+    -> decltype(dash::index(
+                  std::declval<const view_domain_type &>()
+                )) {
     return dash::index(this->view_domain());
   }
 
@@ -359,6 +362,14 @@ class IndexSetBase
  
   constexpr const global_type global() const {
     return dash::index(dash::global(_domain));
+  }
+
+  constexpr bool is_strided() const noexcept {
+    return (
+         this->pattern().blockspec().size() > this->pattern().team().size()
+      || ( this->pattern().ndim() > 1 &&
+           this->domain().extent(1) < this->pattern().extents()[1] )
+    );
   }
 
   // ---- extents ---------------------------------------------------------
@@ -765,9 +776,9 @@ global(const IndexSetLocal<DomainType> & index_set) ->
 template <class DomainType>
 constexpr auto
 global(IndexSetLocal<DomainType> && index_set) ->
-  decltype(index_set.global()) {
+  decltype(std::move(index_set).global()) {
   // Note: Not a universal reference, index_set has partially defined type
-  return index_set.global();
+  return std::move(index_set).global();
 }
 
 /**
@@ -793,7 +804,7 @@ class IndexSetLocal
 //typedef decltype(
 //          dash::global(
 //            dash::index(
-//              std::declval<typename base_t::view_domain_type>())
+//              std::declval<typename const base_t::view_domain_type &>())
 //          ))                                             global_type;
   typedef global_type                                    preimage_type;
 
@@ -835,7 +846,10 @@ class IndexSetLocal
   }
 
   constexpr auto global() const noexcept
-    -> decltype(dash::index(dash::global(this->view_domain()))) {
+//  -> decltype(dash::index(dash::global(this->view_domain()))) {
+    -> decltype(dash::index(dash::global(
+                  std::declval<const typename base_t::view_domain_type &>()
+                ))) {
     return dash::index(dash::global(this->view_domain()));
   }
 
@@ -898,7 +912,7 @@ class IndexSetLocal
              );
     */
     return (
-      this->pattern().blockspec().size() <= this->pattern().team().size()
+        !this->is_strided()
        // blocked (not blockcyclic) distribution: single local
        // element space with contiguous global index range
         ? this->index_range_size(
@@ -1071,7 +1085,7 @@ class IndexSetGlobal
   typedef decltype(
             dash::local(
               dash::index(
-                std::declval<typename base_t::view_domain_type>())
+                std::declval<const typename base_t::view_domain_type &>())
             ))                                              local_type;
   typedef self_t                                           global_type;
   typedef local_type                                     preimage_type;
@@ -1110,7 +1124,10 @@ class IndexSetGlobal
 
 //constexpr local_type local() const {
   constexpr auto local() const noexcept
-    -> decltype(dash::index(dash::local(this->view_domain()))) {
+//  -> decltype(dash::index(dash::local(this->view_domain()))) {
+    -> decltype(dash::index(dash::local(
+                  std::declval<const typename base_t::view_domain_type &>()
+                ))) {
     return dash::index(dash::local(this->view_domain()));
 //  return local_type(this->view_domain());
   }
