@@ -634,4 +634,7 @@ public:
 #include <dash/pattern/PatternProperties.h>
 #include <dash/pattern/MakePattern.h>
 
+// dynamic graph pattern types:
+#include <dash/graph/pattern/VertexPartitionedDynamicPattern.h>
+
 #endif // DASH__PATTERN_H_

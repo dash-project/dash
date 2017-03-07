@@ -1,5 +1,8 @@
 #ifndef DASH__VERTEX_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
 #define  DASH__VERTEX_PARTITIONED_DYNAMIC_PATTERN_H__INCLUDED
+
+#include <type_traits>
+
 namespace dash {
 
 namespace graph {
@@ -20,7 +23,7 @@ class VertexHashDistribution {
    * Maps a vertex ID to the corresponding unit.
    * TODO: argument should be Graph::size_type
    */
-  dart_unit_t operator()(std::size_t id);
+  dart_unit_t operator()(int id);
 
 };
 
@@ -35,7 +38,7 @@ class VertexHashDistribution {
  */
 template<
   class DistributionMethod = dash::graph::detail::VertexHashDistribution,
-  typename IndexType       = std::size_t>
+  typename IndexType       = int>
 class VertexPartitionedDynamicPattern {
 
   typedef IndexType                                      index_type;

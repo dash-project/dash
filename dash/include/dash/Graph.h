@@ -1,6 +1,10 @@
 #ifndef DASH__GRAPH_H__INCLUDED
 #define DASH__GRAPH_H__INCLUDED
 
+#include <vector>
+#include <dash/graph/VertexIterator.h>
+#include <dash/graph/internal/Graph.h>
+
 namespace dash {
 
 /**
@@ -29,119 +33,47 @@ namespace dash {
  * 
  */
 
-namespace graph {
-
-enum GraphDirection {
-  DirectedGraph,
-  BidirectionalGraph,
-  UndirectedGraph
-};
-
-}
-
-namespace detail {
-
-class vertex {
-  // TODO: define vertex interface
-}
-
-template<
-  GraphDirection Direction,
-  typename VertexDescriptor>
-class edge {
-  // TODO: define edge interface
-};
-
-// TODO: find template paramters
-class VertexIterator {
-
-}
-
-/**
- * Wrapper for the vertex iterators of the graph.
- */
-struct VertexIteratorWrapper {
-
-  typedef VertexIterator             iterator;
-  typedef const VertexIterator       const_iterator;
-  typedef LocalVertexIterator        local_iterator;
-  typedef const LocalVertexIterator  const_local_iterator;
-  
-  /**
-   * Returns global iterator to the beginning of the vertex list.
-   */
-  iterator begin();
-  
-  /**
-   * Returns global iterator to the beginning of the vertex list.
-   */
-  const_iterator begin() const;
-  
-  /**
-   * Returns global iterator to the end of the vertex list.
-   */
-  iterator end();
-  
-  /**
-   * Returns global iterator to the end of the vertex list.
-   */
-  const_iterator end() const;
-  
-  /**
-   * Returns local iterator to the beginning of the vertex list.
-   */
-  local_iterator lbegin();
-  
-  /**
-   * Returns local iterator to the beginning of the vertex list.
-   */
-  const_local_iterator lbegin() const;
-  
-  /**
-   * Returns local iterator to the end of the vertex list.
-   */
-  local_iterator lend();
-  
-  /**
-   * Returns local iterator to the end of the vertex list.
-   */
-  const_local_iterator lend() const;
-
-};
-
-// TODO: add all iterator types + wrappers
-
-}
 
 /**
  * Distributed, dynamic graph container for sparse graphs.
  */
 template<
-  GraphDirection Direction  = dash::graph::DirectedGraph,
-  typename DynamicPattern   = dash::graph::VertexPartitionedDynamicPattern,
-  typename VertexProperties = Empty,           // user-defined struct
-  typename EdgeProperties   = Empty,           // user-defined struct
-  typename VertexContainer  = std::vector,
-  typename EdgeContainer    = std::vector,
-  typename VertexSizeType   = std::size_t,
-  typename EdgeSizeType     = std::size_t>
+  GraphDirection Direction  = DirectedGraph,
+  //typename DynamicPattern   = dash::graph::VertexPartitionedDynamicPattern,
+  typename DynamicPattern   = void,
+  typename VertexProperties = internal::EmptyProperties,  // user-defined struct
+  typename EdgeProperties   = internal::EmptyProperties,  // user-defined struct
+  typename VertexContainer  = std::vector<internal::vertex>,
+  typename EdgeContainer    = std::vector<internal::vertex>,
+  typename VertexIndexType  = int,
+  typename EdgeIndexType    = int>
 class Graph {
 
-  typedef detail::VertexIteratorWrapper               vertex_it_wrapper;
-  typedef detail::EdgeIteratorWrapper                 edge_it_wrapper;
-  typedef detail::InEdgeIteratorWrapper               in_edge_it_wrapper;
-  typedef detail::OutEdgeIteratorWrapper              out_edge_it_wrapper;
-  typedef detail::AdjacencyIteratorWrapper            adjacency_it_wrapper;
+  // TODO: add wrapper for all iterator types
+  typedef VertexIteratorWrapper 
+    <VertexIndexType, VertexProperties>               vertex_it_wrapper;
+  typedef VertexIteratorWrapper  
+    <VertexIndexType, VertexProperties>               edge_it_wrapper;
+  typedef VertexIteratorWrapper 
+    <VertexIndexType, VertexProperties>               in_edge_it_wrapper;
+  typedef VertexIteratorWrapper  
+    <VertexIndexType, VertexProperties>               out_edge_it_wrapper;
+  typedef VertexIteratorWrapper  
+    <VertexIndexType, VertexProperties>               adjacency_it_wrapper;
 
 public:
 
-  typedef typename detail::vertex::index_type         vertex_index_type;
-  typedef typename detail::edge<Direction, 
-          vertex_index_type>::index_type              edge_index_type;
-  typedef VertexSizeType                              vertex_size_type;
-  typedef EdgeSizeType                                edge_size_type;
+  typedef Graph<Direction, DynamicPattern, 
+          VertexProperties, EdgeProperties,
+          VertexContainer, EdgeContainer, 
+          VertexIndexType, EdgeIndexType>             graph_type;
+  typedef VertexIndexType                             vertex_index_type;
+  typedef EdgeIndexType                               edge_index_type;
+  typedef typename 
+    std::make_unsigned<VertexIndexType>::type         vertex_size_type;
+  typedef typename 
+    std::make_unsigned<EdgeIndexType>::type           edge_size_type;
 
-  typedef Direction                                   direction_type;
   typedef DynamicPattern                              pattern_type;
   typedef VertexContainer                             vertex_container_type;
   typedef EdgeContainer                               edge_container_type;
@@ -156,40 +88,28 @@ public:
 
 public:
 
-  vertex_it_wrapper     vertices;
-  edge_it_wrapper       edges;
-  in_edge_it_wrapper    in_edges;
-  out_edge_it_wrapper   out_edges;
-  adjacency_it_wrapper  adjacent_vertices;
+  vertex_it_wrapper      vertices;
+  edge_it_wrapper        edges;
+  in_edge_it_wrapper     in_edges;
+  out_edge_it_wrapper    out_edges;
+  adjacency_it_wrapper   adjacent_vertices;
 
 public:
 
   /**
-   * Constructs a graph with given properties
-   * NOTE: GraphProperties() probably won't work, if the template argument 
-   *       is empty
+   * Constructs an empty graph.
    */
-  Graph(const GraphProperties & prop = GraphProperties());
-
+  Graph();
+  
   /**
    * Copy-constructs graph from another one.
    */
-  Graph(const Graph & other);
+  Graph(const graph_type & other);
 
   /**
    * Copy-assigns data from another graph.
    */
-  Graph & operator=(const Graph & other);
-
-  /**
-   * Returns a property object for the given vertex.
-   */
-  VertexProperties & operator[](const vertex_index_type & v) const;
-
-  /**
-   * Returns a property object for the given edge.
-   */
-  EdgeProperties & operator[](const edge_index_type & e) const;
+  graph_type & operator=(const graph_type & other);
 
   /**
    * Returns the number of vertices in the whole graph.
@@ -276,10 +196,11 @@ public:
    * the whole data structure.
    */
   void barrier();
-
 };
 
 }
+
+#include <dash/graph/Graph-impl.h>
 
 #endif // DASH__GRAPH_H__INCLUDED
 
