@@ -58,7 +58,6 @@ dart_ret_t dart_group_destroy(
       MPI_Group_free(&(*g)->mpi_group);
       (*g)->mpi_group = MPI_GROUP_NULL;
     }
-
     free(*g);
     *g = NULL;
   }

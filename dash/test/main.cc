@@ -51,10 +51,6 @@ int main(int argc, char * argv[])
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
 
-  std::cout << "#### "
-            << "Starting test on unit " << team_myid << " "
-            << "(" << host << " PID: " << getpid() << ")"
-            << std::endl;
 #ifdef MPI_SUPPORT
   MPI_Barrier(MPI_COMM_WORLD);
 #endif

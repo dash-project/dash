@@ -144,6 +144,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
     message(FATAL_ERROR "Insufficient Clang version detected (3.8.0) or above required")
   endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
@@ -156,8 +157,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.1.0")
-    message(FATAL_ERROR "Insufficient GCC version detected (5.1.0 or above required)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
+    message(FATAL_ERROR "Insufficient GCC version detected (4.9.0 or above required)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")

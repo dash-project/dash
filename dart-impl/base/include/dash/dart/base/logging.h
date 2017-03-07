@@ -80,7 +80,7 @@ static inline double dart_base_logging_timestamp() {
 }
 
 //
-// Always log error messages:
+// Always log error messages and warnings:
 //
 #define DART_LOG_ERROR(...) \
   do { \
@@ -98,6 +98,27 @@ static inline double dart_base_logging_timestamp() {
       "[ %*d:%d ERROR ] [ %f ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
+      DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
+      DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
+      msg_buf); \
+  } while (0)
+
+#define DART_LOG_WARN(...) \
+  do { \
+    const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
+    int       sn_ret; \
+    char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
+    sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
+    if (sn_ret < 0 || sn_ret >= maxlen) { \
+      break; \
+    } \
+    dart_global_unit_t unit_id; \
+    dart_myid(&unit_id); \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
+      "[ %*d WARN  ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
