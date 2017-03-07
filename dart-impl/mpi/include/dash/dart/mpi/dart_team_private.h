@@ -166,18 +166,6 @@ typedef struct dart_team_data {
 
   dart_segmentdata_t segdata;
 
-  /**
-   * For DART collective allocation/free: offset in the returned gptr
-   * represents the displacement relative to the beginning of sub-memory
-   * spanned by a DART collective allocation.
-   * For DART local allocation/free: offset in the returned gptr represents
-   * the displacement relative to the base address of memory region reserved
-   * for the dart local allocation/free (see dart_buddy_allocator).
-   * Local allocations are identified by Segment ID DART_SEGMENT_LOCAL.
-   */
-  int16_t dart_memid;
-  int16_t dart_registermemid;
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /**
    * @brief Store the sub-communicator with regard to certain node, where the units can

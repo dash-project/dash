@@ -73,7 +73,7 @@ public:
   typedef const value_type &                                 const_reference;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index;
 
@@ -383,7 +383,7 @@ private:
   /// Current position of the iterator in local canonical index space.
   index_type               _idx           = -1;
   /// Unit id of the active unit.
-  dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _myid          = DART_UNDEFINED_TEAM_UNIT_ID;
   /// Whether the iterator represents a null pointer.
   bool                     _is_nullptr    = false;
 

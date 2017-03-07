@@ -9,13 +9,29 @@
 BUILD_DIR=./build.analyze
 REPORT_DIR=report            # relative to BUILD_DIR
 BUILD_WRAPPER="${SCANBUILD_BIN}";
-ANALYZE_OPTS="-o $REPORT_DIR -analyze-headers -plist-html"
+
+
+
+## !! NOTE !!
+#
+#  See documentation of scan-build for details on recommended build
+#  configuration:
+#
+#  https://clang-analyzer.llvm.org/scan-build.html#recommended_debug
+#
+##
+
 
 
 # try to find build wrapper
 if [ "$BUILD_WRAPPER" = "" ]; then
   BUILD_WRAPPER="scan-build"
 fi
+if [ "$SCANBUILD_OPTS" = "" ]; then
+  SCANBUILD_OPTS="-analyze-headers -plist-html"
+fi
+SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
+SCANBUILD_OPTS="--force-analyze-debug-code -v ${SCANBUILD_OPTS}"
 
 which $BUILD_WRAPPER ||
   (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
@@ -29,7 +45,7 @@ fi
 await_confirm() {
   if ! $FORCE_BUILD; then
     echo ""
-    echo "   To build using these settings, hit ENTER"
+    echo "   To build and analyze using these settings, hit ENTER"
     read confirm
   fi
 }
@@ -71,12 +87,13 @@ fi
 # installed.
 
 # Configure with default release build settings:
-mkdir -p $BUILD_DIR
-mkdir -p $REPORT_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && $BUILD_WRAPPER $ANALYZE_OPTS \
-                  cmake -DCMAKE_BUILD_TYPE=Release \
+mkdir -p $BUILD_DIR/$REPORT_DIR
+(cd $BUILD_DIR && $BUILD_WRAPPER $SCANBUILD_OPTS \
+                  cmake3 -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
+                        -DENABLE_COMPTIME_RED=OFF \
+                        \
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
@@ -98,16 +115,16 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
+                        -DENABLE_MKL=OFF \
                         -DENABLE_BLAS=ON \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=ON \
-                        -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_TESTS=OFF \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
@@ -115,7 +132,7 @@ rm -Rf $BUILD_DIR/*
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- $BUILD_WRAPPER $ANALYZE_OPTS make -j 4) &&
+ $BUILD_WRAPPER $SCANBUILD_OPTS make) && \
  (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 

@@ -18,9 +18,9 @@
 #include <stdio.h>
 #include <sched.h>
 
-/* ======================================================================== *
- * Domain Locality                                                          *
- * ======================================================================== */
+/* ==================================================================== *
+ * Domain Locality                                                      *
+ * ==================================================================== */
 
 dart_ret_t dart_team_locality_init(
   dart_team_t                     team)
@@ -43,13 +43,17 @@ dart_ret_t dart_domain_team_locality(
                  team, domain_tag);
   dart_ret_t ret;
 
-  dart_domain_locality_t * team_domain;
+  *team_domain_out = NULL;
+
+  dart_domain_locality_t * team_domain = NULL;
   ret = dart__base__locality__team_domain(team, &team_domain);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_domain_team_locality: "
                    "dart__base__locality__team_domain failed (%d)", ret);
     return ret;
   }
+  DART_ASSERT(team_domain != NULL);
+
   *team_domain_out = team_domain;
 
   if (strcmp(domain_tag, team_domain->domain_tag) != 0) {
@@ -60,10 +64,13 @@ dart_ret_t dart_domain_team_locality(
       DART_LOG_ERROR("dart_domain_team_locality: "
                      "dart__base__locality__domain failed "
                      "for domain tag '%s' -> (%d)", domain_tag, ret);
+      *team_domain_out = NULL;
       return ret;
     }
     *team_domain_out = team_subdomain;
   }
+
+  DART_ASSERT(*team_domain_out != NULL);
 
   DART_LOG_DEBUG("dart_domain_team_locality > team(%d) domain(%s) -> %p",
                  team, domain_tag, (void *)(*team_domain_out));
@@ -83,7 +90,7 @@ dart_ret_t dart_domain_clone(
   return dart__base__locality__clone_domain(domain_in, domain_out);
 }
 
-dart_ret_t dart_domain_destruct(
+dart_ret_t dart_domain_destroy(
   dart_domain_locality_t        * domain)
 {
   return dart__base__locality__destruct_domain(domain);
@@ -114,7 +121,7 @@ dart_ret_t dart_domain_select(
   int                             num_subdomain_tags,
   const char                   ** subdomain_tags)
 {
-  return dart__base__locality__domain_select_subdomains(
+  return dart__base__locality__select_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
@@ -123,19 +130,46 @@ dart_ret_t dart_domain_exclude(
   int                             num_subdomain_tags,
   const char                   ** subdomain_tags)
 {
-  return dart__base__locality__domain_exclude_subdomains(
+  return dart__base__locality__exclude_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
-dart_ret_t dart_domain_split(
+dart_ret_t dart_domain_add_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * subdomain,
+  int                             subdomain_rel_id)
+{
+  return dart__base__locality__add_subdomain(
+           domain, subdomain, subdomain_rel_id);
+}
+
+dart_ret_t dart_domain_remove_subdomain(
+  dart_domain_locality_t        * domain,
+  int                             subdomain_rel_id)
+{
+  return dart__base__locality__remove_subdomain(
+           domain, subdomain_rel_id);
+}
+
+dart_ret_t dart_domain_move_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * new_parent_domain,
+  int                             new_domain_rel_id)
+{
+  return dart__base__locality__move_subdomain(
+           domain, new_parent_domain, new_domain_rel_id);
+}
+
+dart_ret_t dart_domain_split_scope(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                             num_parts,
   dart_domain_locality_t        * domains_out)
 {
-  DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
+  DART_LOG_DEBUG("dart_domain_split_scope() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 domain_in->team, domain_in->domain_tag, num_parts, scope);
+                 domain_in->team, domain_in->domain_tag, num_parts, 
+                 scope);
 
   int    * group_sizes       = NULL;
   char *** group_domain_tags = NULL;
@@ -158,11 +192,11 @@ dart_ret_t dart_domain_split(
    * hierarchy:
    */
   for (int p = 0; p < num_parts; p++) {
-    DART_LOG_DEBUG("dart_domain_split: split %d / %d",
+    DART_LOG_DEBUG("dart_domain_split_scope: split %d / %d",
                    p + 1, num_parts);
 
 #ifdef DART_ENABLE_LOGGING
-    DART_LOG_TRACE("dart_domain_split: groups[%d] size: %d",
+    DART_LOG_TRACE("dart_domain_split_scope: groups[%d] size: %d",
                    p, group_sizes[p]);
     for (int g = 0; g < group_sizes[p]; g++) {
       DART_LOG_TRACE("dart_domain_split:            |- tags[%d]: %s",
@@ -172,7 +206,7 @@ dart_ret_t dart_domain_split(
 
     /* Deep copy of grouped domain so we do not have to recalculate
      * groups for every split group : */
-    DART_LOG_TRACE("dart_domain_split: copying input domain");
+    DART_LOG_TRACE("dart_domain_split_scope: copying input domain");
     DART_ASSERT_RETURNS(
       dart__base__locality__domain__init(
         domains_out + p),
@@ -184,16 +218,16 @@ dart_ret_t dart_domain_split(
       DART_OK);
 
     /* Drop domains that are not in split group: */
-    DART_LOG_TRACE("dart_domain_split: selecting subdomains");
+    DART_LOG_TRACE("dart_domain_split_scope: selecting subdomains");
     DART_ASSERT_RETURNS(
-      dart__base__locality__domain_select_subdomains(
+      dart__base__locality__select_subdomains(
         domains_out + p,
         (const char **)(group_domain_tags[p]),
         group_sizes[p]),
       DART_OK);
   }
 
-  DART_LOG_DEBUG("dart_domain_split >");
+  DART_LOG_DEBUG("dart_domain_split_scope >");
   return DART_OK;
 }
 
@@ -242,9 +276,9 @@ dart_ret_t dart_domain_group(
            group_domain_tag_out);
 }
 
-/* ====================================================================== *
- * Unit Locality                                                          *
- * ====================================================================== */
+/* ==================================================================== *
+ * Unit Locality                                                        *
+ * ==================================================================== */
 
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
