@@ -203,19 +203,19 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
                  dash::internal::typestr(nview_local));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "local(mat) ->",
-                 "it:",         dash::internal::typestr(nview_local.begin()));
+                 "it:",       dash::internal::typestr(nview_local.begin()));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "local(mat) ->",
-                 "offsets:",    nview_local.offsets(),
-                 "extents:",    nview_local.extents(),
-                 "size:",       nview_local.size());
+                 "offsets:",  nview_local.offsets(),
+                 "extents:",  nview_local.extents(),
+                 "size:",     nview_local.size());
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "index(local(mat)) ->",
-                 "strided:",    dash::index(nview_local).is_strided(),
-                 "pat.lbegin:", dash::index(nview_local).pattern().lbegin(),
-                 "pat.lend:",   dash::index(nview_local).pattern().lend(),
-                 "distance:",   dash::distance(nview_local.begin(),
-                                               nview_local.end()));
+                 "strided:",  dash::index(nview_local).is_strided(),
+                 "pat.lbeg:", dash::index(nview_local).pattern().lbegin(),
+                 "pat.lend:", dash::index(nview_local).pattern().lend(),
+                 "distance:", dash::distance(nview_local.begin(),
+                                             nview_local.end()));
   dash::test::print_nview("nview_local", nview_local);
 
   mat.barrier();
@@ -226,16 +226,19 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
                  dash::internal::typestr(nview_cols_l));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "cols(local(mat)) ->",
-                 "offsets:",    nview_cols_l.offsets(),
-                 "extents:",    nview_cols_l.extents(),
-                 "size:",       nview_cols_l.size());
+                 "it:",       dash::internal::typestr(nview_cols_l.begin()));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "cols(local(mat)) ->",
+                 "offsets:",  nview_cols_l.offsets(),
+                 "extents:",  nview_cols_l.extents(),
+                 "size:",     nview_cols_l.size());
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "index(cols(local(mat))) ->",
-                 "strided:",    dash::index(nview_cols_l).is_strided(),
-                 "pat.lbegin:", dash::index(nview_cols_l).pattern().lbegin(),
-                 "pat.lend:",   dash::index(nview_cols_l).pattern().lend(),
-                 "distance:",   dash::distance(nview_cols_l.begin(),
-                                               nview_cols_l.end()));
+                 "strided:",  dash::index(nview_cols_l).is_strided(),
+                 "pat.lbeg:", dash::index(nview_cols_l).pattern().lbegin(),
+                 "pat.lend:", dash::index(nview_cols_l).pattern().lend(),
+                 "distance:", dash::distance(nview_cols_l.begin(),
+                                             nview_cols_l.end()));
   dash::test::print_nview("cols_local_v", nview_cols_l);
 
   mat.barrier();
@@ -246,17 +249,19 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
                  dash::internal::typestr(nview_rows_l));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "rows(local(mat)) ->",
-                 "offsets:",    nview_rows_l.offsets(),
-                 "extents:",    nview_rows_l.extents(),
-                 "size:",       nview_rows_l.size());
+                 "it:",       dash::internal::typestr(nview_rows_l.begin()));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "rows(local(mat)) ->",
+                 "offsets:",  nview_rows_l.offsets(),
+                 "extents:",  nview_rows_l.extents(),
+                 "size:",     nview_rows_l.size());
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "index(rows(local(mat))) ->",
-                 "strided:",    dash::index(nview_rows_l).is_strided(),
-                 "pat.lbegin:", dash::index(nview_rows_l).pattern().lbegin(),
-                 "pat.lend:",   dash::index(nview_rows_l).pattern().lend(),
-                 "distance:",   dash::distance(nview_rows_l.begin(),
-                                               nview_rows_l.end()));
-
+                 "strided:",  dash::index(nview_rows_l).is_strided(),
+                 "pat.lbeg:", dash::index(nview_rows_l).pattern().lbegin(),
+                 "pat.lend:", dash::index(nview_rows_l).pattern().lend(),
+                 "distance:", dash::distance(nview_rows_l.begin(),
+                                             nview_rows_l.end()));
   dash::test::print_nview("rows_local_v", nview_rows_l);
 
   return;
@@ -401,8 +406,7 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
   }
   mat.barrier();
 
-// dash::test::print_nview("nview_local", nview_local);
-
+  dash::test::print_nview("nview_local", nview_local);
   mat.barrier();
 
   auto nview_rows_g = dash::sub<0>(1, 3, mat);
@@ -413,7 +417,6 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
 
   if (dash::myid() == 0) {
     dash::test::print_nview("nview_rows_g", nview_rows_g);
-
     dash::test::print_nview("nview_cols_g", nview_cols_g);
 
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
