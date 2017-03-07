@@ -200,8 +200,12 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
                      mat.pattern().local_size());
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "local(mat) ->",
-                 dash::internal::typestr(nview_local),
-                 "it:",         dash::internal::typestr(nview_local.begin()),
+                 dash::internal::typestr(nview_local));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "local(mat) ->",
+                 "it:",         dash::internal::typestr(nview_local.begin()));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "local(mat) ->",
                  "offsets:",    nview_local.offsets(),
                  "extents:",    nview_local.extents(),
                  "size:",       nview_local.size());
@@ -219,7 +223,9 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
   auto nview_cols_l = dash::sub<1>(2,4, dash::local(dash::sub<0>(0,6, mat)));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "cols(local(mat)) ->",
-                 dash::internal::typestr(nview_cols_l),
+                 dash::internal::typestr(nview_cols_l));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "cols(local(mat)) ->",
                  "offsets:",    nview_cols_l.offsets(),
                  "extents:",    nview_cols_l.extents(),
                  "size:",       nview_cols_l.size());
@@ -237,7 +243,9 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
   auto nview_rows_l = dash::sub<0>(2,4, dash::local(dash::sub<0>(0,6, mat)));
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                  "rows(local(mat)) ->",
-                 dash::internal::typestr(nview_rows_l),
+                 dash::internal::typestr(nview_rows_l));
+  DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+                 "rows(local(mat)) ->",
                  "offsets:",    nview_rows_l.offsets(),
                  "extents:",    nview_rows_l.extents(),
                  "size:",       nview_rows_l.size());

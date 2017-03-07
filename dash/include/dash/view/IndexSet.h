@@ -364,11 +364,18 @@ class IndexSetBase
     return dash::index(dash::global(_domain));
   }
 
+  constexpr bool is_local() const noexcept {
+    return dash::view_traits<DomainValueT>::is_local::value;
+  }
+
   constexpr bool is_strided() const noexcept {
     return (
          this->pattern().blockspec().size() > this->pattern().team().size()
       || ( this->pattern().ndim() > 1 &&
-           this->domain().extent(1) < this->pattern().extents()[1] )
+           this->domain().extent(1) < 
+           ( this->domain().is_local()
+             ? this->pattern().local_extents()[1]
+             : this->pattern().extents()[1] ))
     );
   }
 
