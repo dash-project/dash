@@ -34,7 +34,7 @@ file(GLOB_RECURSE DASH_DART_IMPL_TASKING_HEADERS "include/*.h")
 
 # Include directory to selected version of DART interface
 set(DASH_DART_IF_INCLUDE_DIR
-   ${CMAKE_CURRENT_SOURCE_DIR}/../../dart-if/v${DART_IF_VERSION}/include)
+   ${CMAKE_CURRENT_SOURCE_DIR}/../../dart-if/include)
 
 ## Build targets
 
