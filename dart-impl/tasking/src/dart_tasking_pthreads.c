@@ -12,6 +12,7 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 
+#include <stdlib.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <time.h>
