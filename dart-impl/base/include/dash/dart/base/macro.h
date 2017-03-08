@@ -22,7 +22,7 @@
  * Note that symbols defined in DART base and called from DART MPI
  * should not be marked internal.
  */
-#define DART_INTERNAL __attribute__((visibility("internal")))
+#define DART_INTERNAL __attribute__((visibility("hidden")))
 #else
 /* the Cray Compiler does not seem to support this attribute */
 #define DART_INTERNAL
