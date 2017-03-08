@@ -2,6 +2,9 @@
 
 BUILD_DIR=./build
 
+#export CC=clang
+#export CXX=clang++
+
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
@@ -56,9 +59,9 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-tasking/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=OFF \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
@@ -71,17 +74,19 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
+                        -DGTEST_LIBRARY_PATH=/home/joseph/opt/googletest/lib \
+                        -DGTEST_INCLUDE_PATH=/home/joseph/opt/googletest/include \
                         \
                         -DENABLE_LIBNUMA=ON \
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=ON \
-                        -DENABLE_LAPACK=ON \
-                        -DENABLE_SCALAPACK=ON \
-                        -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=ON \
+                        -DENABLE_MKL=OFF \
+                        -DENABLE_BLAS=OFF \
+                        -DENABLE_LAPACK=OFF \
+                        -DENABLE_SCALAPACK=OFF \
+                        -DENABLE_PLASMA=OFF \
+                        -DENABLE_HDF5=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
