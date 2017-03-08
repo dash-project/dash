@@ -7,9 +7,10 @@
 
 #ifndef DART_SEGMENT_H_
 #define DART_SEGMENT_H_
+#include <mpi.h>
 
 #include <dash/dart/if/dart_types.h>
-#include <mpi.h>
+#include <dash/dart/base/macro.h>
 
 typedef int16_t dart_segid_t;
 
@@ -57,7 +58,9 @@ typedef enum {
 /**
  * Initialize the segment data hash table.
  */
-dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid);
+dart_ret_t dart_segment_init(
+  dart_segmentdata_t *segdata,
+  dart_team_t teamid) DART_INTERNAL;
 
 /**
  * Allocates a new segment data struct. May be served from a freelist.
@@ -70,12 +73,12 @@ dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid);
 dart_segment_info_t *
 dart_segment_alloc(
   dart_segmentdata_t *segdata,
-  dart_segment_type type);
+  dart_segment_type type) DART_INTERNAL;
 
 dart_ret_t
 dart_segment_register(
   dart_segmentdata_t  *segdata,
-  dart_segment_info_t *seg);
+  dart_segment_info_t *seg) DART_INTERNAL;
 
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -89,19 +92,22 @@ dart_segment_register(
  * \retval non-negative integer Search successfully.
  * \retval negative integer Failure.
  */
-dart_ret_t dart_segment_get_win(dart_segmentdata_t *segdata, int16_t seg_id, MPI_Win * win);
+dart_ret_t dart_segment_get_win(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  MPI_Win            * win) DART_INTERNAL;
 
 dart_ret_t dart_segment_get_baseptr(
   dart_segmentdata_t   * segdata,
   int16_t                seg_id,
   dart_team_unit_t       rel_unitid,
-  char               **  baseptr_s);
+  char               **  baseptr_s) DART_INTERNAL;
 #endif
 
 dart_ret_t dart_segment_get_selfbaseptr(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
-  char              ** baseptr);
+  char              ** baseptr) DART_INTERNAL;
 
 /**
  * Query the address of the memory location of the specified rel_unit in
@@ -113,10 +119,11 @@ dart_ret_t dart_segment_get_selfbaseptr(
  *
  * \retval ditto
  */
-dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
-                                 int16_t              seg_id,
-                                 dart_team_unit_t     rel_unitid,
-                                 MPI_Aint           * disp_s);
+dart_ret_t dart_segment_get_disp(
+  dart_segmentdata_t * segdata,
+  int16_t              seg_id,
+  dart_team_unit_t     rel_unitid,
+  MPI_Aint           * disp_s) DART_INTERNAL;
 
 /**
  * Query the length of the global memory block indicated by the
@@ -127,29 +134,30 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
 dart_ret_t dart_segment_get_size(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
-  size_t             * size);
+  size_t             * size) DART_INTERNAL;
 
 dart_ret_t dart_segment_get_flags(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
-  uint16_t           * flags);
+  uint16_t           * flags) DART_INTERNAL;
 
 dart_ret_t dart_segment_set_flags(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
-  uint16_t             flags);
+  uint16_t             flags) DART_INTERNAL;
 
 /**
  * Deallocates the segment identified by the segment ID.
  */
-dart_ret_t dart_segment_free(dart_segmentdata_t * segdata,
-                             dart_segid_t         segid);
+dart_ret_t dart_segment_free(
+  dart_segmentdata_t * segdata,
+  dart_segid_t         segid) DART_INTERNAL;
 
 
 /**
  * Clear the segment data hash table.
  */
-dart_ret_t dart_segment_fini(dart_segmentdata_t *segdata);
+dart_ret_t dart_segment_fini(dart_segmentdata_t *segdata) DART_INTERNAL;
 
 
 #endif /* DART_SEGMENT_H_ */
