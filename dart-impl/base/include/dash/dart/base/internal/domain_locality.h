@@ -45,6 +45,20 @@ dart_ret_t dart__base__locality__domain__filter_subdomains_if(
   dart_domain_locality_t       * domain,
   dart_domain_predicate_t        pred);
 
+dart_ret_t dart__base__locality__domain__add_subdomain(
+  dart_domain_locality_t       * domain,
+  dart_domain_locality_t       * subdomain,
+  int                            subdomain_rel_id);
+
+dart_ret_t dart__base__locality__domain__remove_subdomain(
+  dart_domain_locality_t       * domain,
+  int                            subdomain_rel_id);
+
+dart_ret_t dart__base__locality__domain__move_subdomain(
+  dart_domain_locality_t       * subdomain,
+  dart_domain_locality_t       * new_parent_domain,
+  int                            new_subdomain_rel_id);
+
 dart_ret_t dart__base__locality__domain__create_subdomains(
   dart_domain_locality_t       * domain,
   dart_host_topology_t         * host_topology,

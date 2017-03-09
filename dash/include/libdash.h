@@ -21,24 +21,25 @@ namespace dash {
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
 #include <dash/TeamSpec.h>
+
+#include <dash/Iterator.h>
 #include <dash/View.h>
+#include <dash/Range.h>
+
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
-#include <dash/iterator/GlobIter.h>
-#include <dash/iterator/GlobViewIter.h>
-#include <dash/iterator/GlobStencilIter.h>
-
 #include <dash/Onesided.h>
+
+#include <dash/LaunchPolicy.h>
 
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
-#include <dash/Halo.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
 

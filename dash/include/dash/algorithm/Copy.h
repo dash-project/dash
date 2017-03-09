@@ -2,7 +2,8 @@
 #define DASH__ALGORITHM__COPY_H__
 
 #include <dash/Future.h>
-#include <dash/iterator/GlobIter.h>
+#include <dash/Iterator.h>
+
 #include <dash/algorithm/LocalRange.h>
 
 #include <dash/dart/if/dart_communication.h>
@@ -11,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <future>
+
 
 // #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 #define DASH__ALGORITHM__COPY__USE_FLUSH
@@ -631,7 +633,7 @@ dash::Future<ValueType *> copy_async(
   ValueType   * out_first)
 {
   auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team.myid());
+  dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
@@ -842,7 +844,7 @@ ValueType * copy(
   ValueType   * out_first)
 {
   auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team.myid());
+  dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
@@ -1133,7 +1135,7 @@ GlobOutputIt copy(
 // Other Specializations
 // =========================================================================
 
-#if DASH_EXPERIMENTAL
+#ifdef DASH_EXPERIMENTAL
 /*
  * Specialization of \c dash::copy as global-to-local blocking copy operation
  * returning an allocated range.

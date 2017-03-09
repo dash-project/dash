@@ -11,6 +11,5 @@ foreach(DASH_MODULE ${DASH_MODULES})
 endforeach()
 
 foreach(DASH_ALGO ${DASH_ALGORITHMS})
-  message("ALGO: ${DASH_ALGO}")
   set(CONF_AVAIL_ALGO_${DASH_ALGO} "false")
 endforeach()

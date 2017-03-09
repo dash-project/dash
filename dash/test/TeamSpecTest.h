@@ -1,25 +1,18 @@
 #ifndef DASH__TEST__TEAM_SPEC_TEST_H_
 #define DASH__TEST__TEAM_SPEC_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
 
 /**
  * Test fixture for class dash::TeamSpec
  */
-class TeamSpecTest : public ::testing::Test {
+class TeamSpecTest : public dash::test::TestBase {
 protected:
 
   TeamSpecTest() {
   }
 
   virtual ~TeamSpecTest() {
-  }
-
-  virtual void SetUp() {
-  }
-
-  virtual void TearDown() {
   }
 };
 

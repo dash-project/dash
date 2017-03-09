@@ -20,13 +20,15 @@ usage()
   echo ""
 }
 
+nocolor()
+{
+  sed 's/\x1b\[[0-9;]*m//g'
+}
 
 if [ $# -lt 2 ]; then
   usage
   exit -1
 fi
-
-alias nocolor="sed 's/\x1b\[[0-9;]*m//g'"
 
 if [ "$LOGFILE" = "" ]; then
   # Use temporary log file
@@ -41,8 +43,8 @@ if [ $DART_IMPL = "shmem" ]; then
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
 # if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
-#   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
 # fi
+  MPI_EXEC_FLAGS="-map-by core ${MPI_EXEC_FLAGS}"
   RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
@@ -51,18 +53,24 @@ else
 fi
 
 if [ "$GTEST_FILTER" = "" ] ; then
-  TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests | grep -v '^\s' | grep -v '^#'`
+  OUTPUT=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests`
 else
-  TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER | grep -v '^\s' | grep -v '^#'`
+  OUTPUT=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER`
 fi
+
+ret=$?
+if [ $ret -ne 0 ] ; then
+  echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ]:"
+  echo "$OUTPUT"
+  exit  $ret
+fi
+
+TEST_SUITES=$(echo "$OUTPUT" | grep -v '^\s' | grep -v '^#')
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 
-TIMEOUT="5m"
-
-RUN_CMD="timeout -s 15 -k $TIMEOUT --foreground $TIMEOUT $RUN_CMD"
 
 run_suite()
 {
@@ -78,10 +86,13 @@ run_suite()
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
-  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
+  TESTREPORT_XML="dash-tests-${NUNITS}.xml"
   for TESTSUITE in $TEST_SUITES ; do
+    TESTSUITE_XML="dash-tests-${TESTSUITE}${NUNITS}.xml"
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="${TESTSUITE}*"
+
+    export GTEST_OUTPUT="xml:$TESTSUITE_XML"
     if [ "$GTEST_FILTER" != "" ] ; then
       TEST_PATTERN="${TEST_PATTERN}:${GTEST_FILTER}"
     fi
@@ -94,6 +105,8 @@ run_suite()
          | tee -a $LOGFILE \
          | grep -v 'LOG' | grep -v '^#' \
          | tee $TESTSUITE_LOG
+
+    cat $TESTSUITE_XML >> $TESTREPORT_XML
 
     TEST_RET="$?"
 
@@ -124,6 +137,6 @@ run_suite 12
 if $TESTS_PASSED; then
   exit 0
 else
-  exit -1
+  exit 127
 fi
 

@@ -109,11 +109,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -461,7 +461,7 @@ public:
   /**
    * Update the number of local elements of the specified unit.
    */
-  inline void local_resize(dart_unit_t unit, size_type local_size)
+  inline void local_resize(team_unit_t unit, size_type local_size)
   {
     _local_sizes[unit] = local_size;
   }
@@ -491,7 +491,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -499,8 +499,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
-    dart_unit_t unit_id = ((coords[0] + viewspec[0].offset) / _blocksize)
-                          % _nunits;
+    team_unit_t unit_id(((coords[0] + viewspec[0].offset) / _blocksize)
+                          % _nunits);
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_id);
     return unit_id;
   }
@@ -510,13 +510,12 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", g_coords);
-    dart_unit_t unit_idx = 0;
     auto g_coord         = g_coords[0];
-    for (; unit_idx < _nunits - 1; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
         DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
@@ -531,7 +530,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType global_pos,
     /// View to apply global position
@@ -539,10 +538,9 @@ public:
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", global_pos);
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", viewspec);
-    dart_unit_t unit_idx = 0;
     // Apply viewspec offsets to coordinates:
     auto g_coord         = global_pos + viewspec[0].offset;
-    for (; unit_idx < _nunits - 1; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= static_cast<size_type>(g_coord)) {
         DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
@@ -557,19 +555,19 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", g_index);
-    for (size_type unit_idx = 0; unit_idx < _nunits - 1; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] > static_cast<size_type>(g_index)) {
         DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
     DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", _nunits-1);
-    return _nunits-1;
+    return team_unit_t(_nunits-1);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -626,7 +624,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit) const
+      team_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("DynamicPattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("DynamicPattern.local_extents >", _local_size);
@@ -792,8 +790,8 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    dart_unit_t unit,
-    const std::array<IndexType, NumDimensions> & local_coords) const
+      team_unit_t unit,
+      const std::array<IndexType, NumDimensions> & local_coords) const
   {
     DASH_LOG_DEBUG_VAR("DynamicPattern.global()", unit);
     DASH_LOG_DEBUG_VAR("DynamicPattern.global()", local_coords);
@@ -827,7 +825,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global(
-    dart_unit_t unit,
+    team_unit_t unit,
     IndexType l_index) const
   {
     return global(unit, std::array<IndexType, 1> { l_index })[0];
@@ -856,7 +854,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global_index(
-    dart_unit_t unit,
+    team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const
   {
     auto g_index = global(unit, l_coords[0]);
@@ -932,7 +930,7 @@ public:
     /// Offset in dimension
     IndexType dim_offset,
     /// DART id of the unit
-    dart_unit_t unit,
+    team_unit_t unit,
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const
   {
@@ -955,7 +953,7 @@ public:
    */
   inline bool is_local(
     IndexType index,
-    dart_unit_t unit) const
+    team_unit_t unit) const
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.is_local()", index);
     DASH_LOG_TRACE_VAR("DynamicPattern.is_local()", unit);
@@ -1007,9 +1005,8 @@ public:
     const std::array<index_type, NumDimensions> & g_coords) const
   {
     DASH_LOG_TRACE_VAR("DynamicPattern.block_at()", g_coords);
-    dart_unit_t block_idx = 0;
     auto g_coord         = g_coords[0];
-    for (; block_idx < _nunits - 1; ++block_idx) {
+    for (index_type block_idx = 0; block_idx < _nunits - 1; ++block_idx) {
       if (_block_offsets[block_idx+1] >= g_coord) {
         DASH_LOG_TRACE_VAR("DynamicPattern.block_at >", block_idx);
         return block_idx;
@@ -1106,7 +1103,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_capacity(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_capacity;
   }
@@ -1122,7 +1119,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_size;
   }
@@ -1440,7 +1437,7 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const
+    team_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_extent()", _nunits);
@@ -1471,7 +1468,7 @@ private:
   /// Team containing the units to which the patterns element are mapped
   dash::Team *                _team            = nullptr;
   /// The active unit's id.
-  dart_unit_t                 _myid;
+  team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// Total amount of units to which this pattern's elements are mapped

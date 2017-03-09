@@ -1,13 +1,15 @@
 #ifndef DASH__TEST__GENERATE_TEST_H_
 #define DASH__TEST__GENERATE_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
+
+#include <dash/Array.h>
+
 
 /**
  * Test fixture for class dash::generate
  */
-class GenerateTest : public ::testing::Test
+class GenerateTest : public dash::test::TestBase
 {
 protected:
   typedef double                         Element_t;
@@ -22,12 +24,6 @@ protected:
   }
 
   virtual ~GenerateTest() {
-  }
-
-  virtual void SetUp() {
-  }
-
-  virtual void TearDown() {
   }
 };
 #endif // DASH__TEST__GENERATE_TEST_H_

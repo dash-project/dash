@@ -73,7 +73,7 @@ public:
   typedef const value_type &                                 const_reference;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index;
 
@@ -93,7 +93,7 @@ public:
     index_type    local_position)
   : _map(map),
     _idx(local_position),
-    _myid(dash::myid())
+    _myid(dash::Team::GlobalUnitID())
   {
     DASH_LOG_TRACE("UnorderedMapLocalIter(map,lpos)()");
     DASH_LOG_TRACE_VAR("UnorderedMapLocalIter(map,lpos)", _idx);
@@ -383,7 +383,7 @@ private:
   /// Current position of the iterator in local canonical index space.
   index_type               _idx           = -1;
   /// Unit id of the active unit.
-  dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _myid          = DART_UNDEFINED_TEAM_UNIT_ID;
   /// Whether the iterator represents a null pointer.
   bool                     _is_nullptr    = false;
 

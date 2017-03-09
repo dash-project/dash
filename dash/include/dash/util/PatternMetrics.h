@@ -86,7 +86,7 @@ public:
   /**
    * Number of blocks mapped to given unit.
    */
-  inline int unit_local_blocks(dart_unit_t unit) const {
+  inline int unit_local_blocks(team_unit_t unit) const {
     return _unit_blocks[unit];
   }
 
@@ -98,10 +98,10 @@ private:
   {
     _num_blocks  = pattern.blockspec().size();
 
-    int nunits   = pattern.teamspec().size();
+    size_t nunits   = pattern.teamspec().size();
     _unit_blocks = new int[nunits];
 
-    for (int u = 0; u < nunits; ++u) {
+    for (size_t u = 0; u < nunits; ++u) {
       _unit_blocks[u] = 0;
     }
     for (int bi = 0; bi < _num_blocks; ++bi) {

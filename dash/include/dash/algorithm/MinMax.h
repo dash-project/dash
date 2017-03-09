@@ -3,7 +3,6 @@
 
 #include <dash/internal/Config.h>
 
-#include <dash/Array.h>
 #include <dash/Allocator.h>
 
 #include <dash/algorithm/LocalRange.h>
@@ -34,22 +33,25 @@ namespace dash {
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      Compare      Binary comparison function with signature
+ *                           \c bool (const TypeA &a, const TypeB &b)
+ *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
  * \ingroup     DashAlgorithms
  */
-template<typename ElementType>
+template <
+  class ElementType,
+  class Compare = std::less<const ElementType &> >
 const ElementType * min_element(
   /// Iterator to the initial position in the sequence
   const ElementType * l_range_begin,
   /// Iterator to the final position in the sequence
   const ElementType * l_range_end,
   /// Element comparison function, defaults to std::less
-  const std::function<
-          bool(const ElementType &, const ElementType)
-        > & compare
-        = std::less<const ElementType &>())
+  Compare             compare
+    = std::less<const ElementType &>())
 {
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;
@@ -138,24 +140,26 @@ const ElementType * min_element(
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      Compare      Binary comparison function with signature
+ *                           \c bool (const TypeA &a, const TypeB &b)
+ *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType>
+template <
+  class ElementType,
+  class PatternType,
+  class Compare = std::less<const ElementType &> >
 GlobIter<ElementType, PatternType> min_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
   const GlobIter<ElementType, PatternType> & last,
   /// Element comparison function, defaults to std::less
-  const std::function<
-          bool(const ElementType &, const ElementType)
-        > & compare
-        = std::less<const ElementType &>())
+  Compare                                    compare
+    = std::less<const ElementType &>())
 {
   typedef dash::GlobIter<ElementType, PatternType> globiter_t;
   typedef PatternType                               pattern_t;
@@ -190,8 +194,7 @@ GlobIter<ElementType, PatternType> min_element(
     trace.enter_state("local");
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin(
-                                          team.myid());
+    const ElementType * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
@@ -275,13 +278,11 @@ GlobIter<ElementType, PatternType> min_element(
     return last;
   }
 
-  auto min_elem_unit = static_cast<dart_unit_t>(
-                         gmin_elem_it - local_min_values.begin());
   auto gi_minimum    = gmin_elem_it->g_index;
 
   DASH_LOG_TRACE("dash::min_element",
                  "min. value:", gmin_elem_it->value,
-                 "at unit:",    min_elem_unit,
+                 "at unit:",    (gmin_elem_it - local_min_values.begin()),
                  "global idx:", gi_minimum);
 
   DASH_LOG_TRACE_VAR("dash::min_element", gi_minimum);
@@ -307,24 +308,26 @@ GlobIter<ElementType, PatternType> min_element(
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      Compare      Binary comparison function with signature
+ *                           \c bool (const TypeA &a, const TypeB &b)
+ *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType>
+template <
+  class ElementType,
+  class PatternType,
+  class Compare = std::greater<const ElementType &> >
 GlobIter<ElementType, PatternType> max_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
   const GlobIter<ElementType, PatternType> & last,
   /// Element comparison function, defaults to std::less
-  const std::function<
-          bool(const ElementType &, const ElementType)
-        > & compare
-        = std::greater<const ElementType &>())
+  Compare                                    compare
+    = std::greater<const ElementType &>())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);
@@ -339,22 +342,25 @@ GlobIter<ElementType, PatternType> max_element(
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      Compare      Binary comparison function with signature
+ *                           \c bool (const TypeA &a, const TypeB &b)
+ *
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
  * \ingroup     DashAlgorithms
  */
-template< typename ElementType >
+template <
+  class ElementType,
+  class Compare = std::greater<const ElementType &> >
 const ElementType * max_element(
   /// Iterator to the initial position in the sequence
   const ElementType * first,
   /// Iterator to the final position in the sequence
   const ElementType * last,
   /// Element comparison function, defaults to std::less
-  const std::function<
-          bool(const ElementType &, const ElementType)
-        > & compare
-        = std::greater<const ElementType &>())
+  Compare             compare
+    = std::greater<const ElementType &>())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);

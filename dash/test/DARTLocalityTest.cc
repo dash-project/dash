@@ -1,10 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "DARTLocalityTest.h"
+
+#include <dash/dart/if/dart.h>
 
 #include <string>
 
-#include "TestBase.h"
-#include "DARTLocalityTest.h"
 
 bool domains_are_equal(
   const dart_domain_locality_t * loc_a,
@@ -28,14 +28,14 @@ bool domains_are_equal(
     return false;
   }
   for (int u = 0; u < loc_a->num_units; u++) {
-    if (loc_a->unit_ids[u] != loc_b->unit_ids[u]) { return false; }
+    if (loc_a->unit_ids[u].id != loc_b->unit_ids[u].id) { return false; }
   }
   for (int d = 0; d < loc_a->num_domains; d++) {
-    EXPECT_EQ_U(loc_a, loc_a->domains[d].parent);
-    EXPECT_EQ_U(loc_b, loc_b->domains[d].parent);
-    EXPECT_EQ_U(d, loc_a->domains[d].relative_index);
-    EXPECT_EQ_U(d, loc_b->domains[d].relative_index);
-    if (!domains_are_equal(&loc_a->domains[d], &loc_b->domains[d])) {
+    EXPECT_EQ_U(loc_a, loc_a->children[d]->parent);
+    EXPECT_EQ_U(loc_b, loc_b->children[d]->parent);
+    EXPECT_EQ_U(d, loc_a->children[d]->relative_index);
+    EXPECT_EQ_U(d, loc_b->children[d]->relative_index);
+    if (!domains_are_equal(loc_a->children[d], loc_b->children[d])) {
       return false;
     }
   }
@@ -60,7 +60,7 @@ bool domains_find_each_recursive(
     return false;
   }
   for (int d = 0; d < domain->num_domains; d++) {
-    const dart_domain_locality_t * subdomain = domain->domains + d;
+    const dart_domain_locality_t * subdomain = domain->children[d];
     if (!domains_find_each_recursive(root_domain, subdomain)) {
       return false;
     }
@@ -92,7 +92,7 @@ TEST_F(DARTLocalityTest, CloneLocalityDomain)
   // Compare attributes of original and copied locality domains:
   EXPECT_EQ_U(true, domains_are_equal(loc_team_all_orig, loc_team_all_copy));
 
-  dart_domain_destruct(loc_team_all_copy);
+  dart_domain_destroy(loc_team_all_copy);
 }
 
 TEST_F(DARTLocalityTest, FindLocalityDomain)
@@ -123,8 +123,11 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
 
   // Remove the active unit's domain:
   const char * excluded_domain = ul->domain_tag;
-  dart_domain_exclude(
-    loc_team_all_copy, 1, &excluded_domain);
+
+  DASH_LOG_TRACE("DARTLocalityTest.ExcludeLocalityDomain",
+                 "excluding domain", excluded_domain);
+  EXPECT_EQ_U(DART_OK, dart_domain_exclude(
+    loc_team_all_copy, 1, &excluded_domain));
 
   // Lookup of excluded domain should fail and return null pointer:
   dart_domain_locality_t * no_domain;
@@ -134,7 +137,7 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
   EXPECT_EQ_U(
     NULL, no_domain);
 
-  dart_domain_destruct(loc_team_all_copy);
+  dart_domain_destroy(loc_team_all_copy);
 }
 
 TEST_F(DARTLocalityTest, UnitLocality)
@@ -158,7 +161,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.min_threads);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.max_threads);
 
-  EXPECT_EQ_U(_dash_id, ul->unit);
+  EXPECT_EQ_U(_dash_id, ul->unit.id);
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      -1); // -1 if unknown, >= 0 if set

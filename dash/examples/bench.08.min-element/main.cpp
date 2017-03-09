@@ -185,7 +185,6 @@ measurement perform_test(
   result.time_max_us   = 0;
   result.mkeys_per_s   = 0;
 
-  auto myid = dash::myid();
 
   // Total time:
   dash::Shared<double> time_us;
@@ -212,12 +211,10 @@ measurement perform_test(
 #endif
 
   ArrayType arr(pattern);
+  auto myid = pattern.team().myid();
 
   ElementType min_value_exp   = 17;
-  dart_unit_t min_value_unit  = std::max<dart_unit_t>(
-                                  static_cast<dart_unit_t>(
-                                    (arr.team().size() / 2) - 1),
-                                  0);
+  dash::team_unit_t min_value_unit(std::max((arr.team().size() / 2) - 1, size_t(0)));
 
   DASH_LOG_DEBUG("perform_test.verify",
                  "num.elem:",         NELEM,
@@ -470,7 +467,7 @@ void print_local_sizes(
 
   bench_cfg.print_section_start("Data Partitioning");
   bench_cfg.print_param("global", "cpu  mbw  ldw", pattern.size());
-  for (size_t u = 0; u < pattern.team().size(); u++) {
+  for (dash::team_unit_t u{0}; u < pattern.team().size(); u++) {
     std::ostringstream uss;
     uss << "u:" << setw(4) << u;
 

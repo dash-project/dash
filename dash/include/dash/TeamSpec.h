@@ -8,6 +8,7 @@
 #include <dash/internal/Logging.h>
 
 #include <array>
+#include <set>
 #include <algorithm>
 #include <sstream>
 #include <iostream>
@@ -47,7 +48,8 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All())
-  : _is_linear(true)
+  : _is_linear(true),
+    _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
     auto team_size = team.is_null() ? 0 : team.size();
@@ -87,7 +89,8 @@ public:
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All())
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
-      other.extents())
+      other.extents()),
+      _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", team.is_null());
 #if 0
@@ -139,6 +142,7 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All())
+  : _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     bool distrib_dim_set = false;
@@ -187,7 +191,8 @@ public:
   template<typename ... Types>
   TeamSpec(SizeType value, Types ... values)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(value, values...)
+      CartesianIndexSpace(value, values...),
+      _myid(dash::Team::All().myid())
   {
     update_rank();
     this->resize(this->_extents);
@@ -206,7 +211,8 @@ public:
    */
   TeamSpec(const std::array<SizeType, MaxDimensions> & extents)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(extents)
+      CartesianIndexSpace(extents),
+      _myid(dash::Team::All().myid())
   {
     update_rank();
     this->resize(this->_extents);
@@ -214,49 +220,55 @@ public:
   }
 
   /**
-   * Copy constructor.
+   * Tries to equally distribute the units across the dimensions.
+   * The number of units is determined by the current state of the extents.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<3> ts({ 21,2,3 }); // extents 21x2x3 == 126 units
+   *   ts.balance_extents();       // extents 7x6x3
+   * \endcode
    */
-  TeamSpec(
-    /// Teamspec instance to copy
-    const self_t & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(other.extents()),
-    _rank(other._rank)
-  { }
-
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", size());
+    if(MaxDimensions <= 1) {
+      return;
+    }
+
+    std::multiset<SizeType> new_extents;
+
     SizeType num_units = 1;
     for (auto d = 0; d < MaxDimensions; ++d) {
       num_units *= this->_extents[d];
       this->_extents[d] = 1;
+      new_extents.insert(1);
     }
     _is_linear = false;
 
-    // Find best surface-to-volume for two-dimensional team:
+    // Find best surface-to-volume:
     auto teamsize_prime_factors = dash::math::factorize(num_units);
-    SizeType surface = 0;
-    for (auto it : teamsize_prime_factors) {
-      DASH_LOG_TRACE("TeamSpec.balance_extents",
-                     "factor:", it.first, "x", it.second);
-      for (auto i = 1; i < it.second + 1; ++i) {
-        SizeType extent_x = it.first * this->_extents[0];
-        SizeType extent_y = num_units / extent_x;
-        SizeType surface_new = (2 * extent_x) + (2 * extent_y);
-        DASH_LOG_TRACE("TeamSpec.balance_extents", "Testing extents",
-                       extent_x, "x", extent_y, " - surface:", surface_new);
-        if (surface == 0 || surface_new < surface) {
-          surface           = surface_new;
-          this->_extents[0] = extent_x;
-          this->_extents[1] = extent_y;
-        }
+    // Equally distribute factors to extents.
+    // Start with the largest factors and multiply them onto the lowest value
+    for (auto it = teamsize_prime_factors.rbegin(); it != teamsize_prime_factors.rend(); ++it) {
+      DASH_LOG_TRACE("TeamSpec.balance_extents()",
+                     "factor:", it->first, "x", it->second);
+      for (auto i = 1; i < it->second + 1; ++i) {
+        new_extents.insert(it->first * *new_extents.begin());
+        new_extents.erase(new_extents.begin());
       }
     }
+
+    int d = 0;
+    for (auto it = new_extents.rbegin(); it != new_extents.rend(); ++it, ++d) {
+      this->_extents[d] = *it;
+    }
+
     this->resize(this->_extents);
     update_rank();
-    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents ->", this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents() ->", this->_extents);
   }
 
   /**
@@ -268,16 +280,16 @@ public:
    * \code
    *   TeamSpec<2> teamspec(7,4);
    *   // west neighbor is offset -1 in column dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
    *   // second south neighbor is offset -2 in row dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
    * \endcode
    *
    * \returns  The unit id at given offset in the team grid, relative to the
    *           active unit's position in the team, or DART_UNDEFINED_UNIT_ID
    *           if the offset is out of bounds.
    */
-  dart_unit_t neighbor(std::initializer_list<int> offsets) const
+  team_unit_t neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -285,7 +297,7 @@ public:
       neighbor_coords[d] += offset_d;
       if (neighbor_coords[d] < 0 ||
           neighbor_coords[d] >= this->_extents[d]) {
-        return DART_UNDEFINED_UNIT_ID;
+        return UNDEFINED_TEAM_UNIT_ID;
       }
       ++d;
     }
@@ -303,11 +315,11 @@ public:
    *   // assuming dash::myid() == 1, i.e. team spec coordinates are (0,1)
    *   TeamSpec<2> teamspec(2,2);
    *   // west neighbor is offset -1 in column dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
    *   // -> unit 0
    *   // second south neighbor at offset -2 in row dimension wraps around
    *   // to row coordinate 0:
-   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
    *   // -> unit 1
    * \endcode
    *
@@ -316,7 +328,7 @@ public:
    *           If an offset is out of bounds, it is wrapped around in the
    *           respective dimension as in a torus topology.
    */
-  dart_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
+  team_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -423,11 +435,11 @@ private:
 
 protected:
   /// Actual number of dimensions of the team layout specification.
-  dim_t _rank       = 0;
+  dim_t       _rank       = 0;
   /// Whether the team spec is linear
-  bool  _is_linear  = false;
+  bool        _is_linear  = false;
   /// Unit id of active unit
-  dart_unit_t _myid = dash::myid();
+  team_unit_t _myid;
 
 }; // class TeamSpec
 

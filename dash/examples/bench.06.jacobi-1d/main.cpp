@@ -68,7 +68,7 @@ void jacobi_init(dash::Array<T>& v1, dash::Array<T>& v2)
   for(int i=0; i<v1.lsize(); i++) {
     std::array<index_t, 1> arr1, arr2;
     arr1[0]=i;
-    arr2 = pat.global(dash::myid(), arr1);
+    arr2 = pat.global(pat.team().myid(), arr1);
 
     if( arr2[0]>v2.size()/2 )
       arr2[0]=v2.size()-1-arr2[0];

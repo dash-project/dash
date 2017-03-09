@@ -50,16 +50,17 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
-                        -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_COMPILER_WARNINGS=ON \
+                        -DENABLE_THREADSUPPORT=OFF \
+                        -DENABLE_DEV_COMPILER_WARNINGS=OFF \
+                        -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
-                        -DENABLE_SHARED_WINDOWS=ON \
+                        -DENABLE_SHARED_WINDOWS=OFF \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
-                        -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
+                        -DENABLE_DEFAULT_INDEX_TYPE_LONG=OFF \
                         \
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \

@@ -1,9 +1,16 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "SeqTilePatternTest.h"
+
+#include <dash/pattern/SeqTilePattern.h>
+#include <dash/pattern/MakePattern.h>
+
+#include <dash/util/PatternMetrics.h>
+
+#include <dash/algorithm/SUMMA.h>
+
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
+
 
 TEST_F(SeqTilePatternTest, Distribute2DimTile)
 {
@@ -13,9 +20,8 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
   typedef typename pattern_t::index_type             index_t;
 
   if (dash::size() % 2 != 0) {
-    LOG_MESSAGE("Team size must be multiple of 2 for "
-                "SeqTilePatternTest.Distribute2DimTile");
-    return;
+    SKIP_TEST_MSG("Team size must be multiple of 2 for "
+                  "SeqTilePatternTest.Distribute2DimTile");
   }
 
   size_t team_size    = dash::Team::All().size();
@@ -26,10 +32,6 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
   size_t size_rows    = (team_size+1) * 3 * block_rows;
   size_t size_cols    = (team_size-1) * 2 * block_cols;
   size_t size         = size_rows * size_cols;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
-              size_rows,  size_cols,
-              block_rows, block_cols,
-              team_size);
 
   dash::SizeSpec<2> sizespec(size_rows, size_cols);
   auto teamspec = dash::make_team_spec<
@@ -46,10 +48,10 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
     teamspec, dash::Team::All());
 
   dash::util::PatternMetrics<pattern_t> pm(pattern);
-  for (int unit = 0; unit < dash::size(); ++unit) {
+  for (dash::team_unit_t unit{0}; unit < dash::size(); ++unit) {
     auto unit_local_blocks = pattern.local_blockspec(unit).size();
     LOG_MESSAGE("Blocks mapped to unit %d: %d",
-                unit, unit_local_blocks);
+                unit.id, unit_local_blocks);
     EXPECT_EQ_U(pm.unit_local_blocks(unit), unit_local_blocks);
   }
 

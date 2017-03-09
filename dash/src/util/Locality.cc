@@ -40,7 +40,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dart_unit_locality_t("
-     <<   "unit:"      << unit_loc.unit                << " "
+     <<   "unit:"      << unit_loc.unit.id             << " "
      <<   "domain:'"   << unit_loc.domain_tag          << "' "
      <<   "host:'"     << unit_loc.hwinfo.host         << "' "
      <<   "numa_id:'"  << unit_loc.hwinfo.numa_id      << "' "
@@ -90,17 +90,17 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+  if (dart_unit_locality(DART_TEAM_ALL, dash::Team::All().myid(), &_unit_loc)
       != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   DASH_LOG_TRACE_VAR("dash::util::Locality::init", _unit_loc);
   if (_unit_loc == nullptr) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality returned nullptr " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   if (dart_domain_team_locality(
         DART_TEAM_ALL, _unit_loc->domain_tag, &_team_loc)
@@ -147,10 +147,23 @@ static void print_domain(
 {
   using namespace std;
 
-  ostr << indent << "scope:   " << domain->scope << " "
-                                << "(level " << domain->level << ")"
-       << '\n'
-       << indent << "rel.idx: " << domain->relative_index
+  ostr << "(" << domain->domain_tag;
+
+  if (domain->num_aliases > 0) {
+    ostr << " = ";
+    for (int a = 0; a < domain->num_aliases; a++) {
+      ostr << domain->aliases[a]->domain_tag;
+      if (a+1 < domain->num_aliases) {
+        ostr << ", ";
+      }
+    }
+  }
+  ostr << ") @ " << static_cast<const void *>(domain) << "\n";
+
+  ostr << indent << "scope:   " << domain->scope << " ("
+                                << "level "   << domain->level << ", "
+                                << "rel.idx " << domain->relative_index
+                                << ")"
        << '\n';
 
   if (static_cast<int>(domain->scope) <
@@ -160,10 +173,8 @@ static void print_domain(
 
   if (domain->num_units > 0) {
     ostr << indent << "units:   " << "{ ";
-    for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t g_unit_id;
-      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-      ostr << g_unit_id;
+    for (team_unit_t u{0}; u < domain->num_units; ++u) {
+      ostr << domain->unit_ids[u].id;
       if (u < domain->num_units-1) {
         ostr << ", ";
       }
@@ -172,22 +183,33 @@ static void print_domain(
   }
 
   if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
-    std::string uindent = indent;
-    uindent += std::string(9, ' ');
+    std::string uind = indent;
+    uind += std::string(4, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u];
-      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
+      dart_team_unit_t        unit_lid;
+      dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
-      dart_unit_locality(team, unit_id, &uloc);
-      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      ostr << uindent << "unit id:   " << uloc->unit << "  ("
-                                       << "in team " << uloc->team << ", "
-                                       << "global: " << unit_gid   << ")"
-                      << '\n';
-      ostr << uindent << "domain:    " << uloc->domain_tag  << '\n';
-      ostr << uindent << "host:      " << uloc->hwinfo.host << '\n';
-      ostr << uindent << "hwinfo:    " << uloc->hwinfo      << '\n';
+
+      dart_team_unit_g2l(domain->team, unit_gid, &unit_lid);
+      dart_unit_locality(domain->team, unit_lid, &uloc);
+
+      ostr << uind << "unit id: " << uloc->unit.id << "  ("
+                                  << "in team " << uloc->team  << ", "
+                                  << "global: " << unit_gid.id << ")"
+                   << '\n';
+      ostr << uind << "domain:  " << uloc->domain_tag     << '\n';
+      ostr << uind << "host:    " << uloc->hwinfo.host    << '\n';
+      ostr << uind << "hwinfo:  numa:  " << uloc->hwinfo.numa_id     << " "
+                                         << "#numa: "
+                                         << uloc->hwinfo.num_numa    << '\n';
+      ostr << uind << "         core:  " << uloc->hwinfo.core_id     << " "
+                                         << "#cores: "
+                                         << uloc->hwinfo.num_cores   << '\n';
+      ostr << uind << "         x #smt " << uloc->hwinfo.min_threads << "..."
+                                         << uloc->hwinfo.max_threads << "\n";
+      ostr << uind << "         @freq: " << uloc->hwinfo.min_cpu_mhz << "..."
+                                         << uloc->hwinfo.max_cpu_mhz << "\n";
     }
   }
 
@@ -195,7 +217,7 @@ static void print_domain(
     ostr << indent << "domains: " << domain->num_domains << '\n';
 
     for (int d = 0; d < domain->num_domains; ++d) {
-      if (static_cast<int>(domain->domains[d].scope) <=
+      if (static_cast<int>(domain->children[d]->scope) <=
           static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
 
         ostr << indent;
@@ -203,18 +225,17 @@ static void print_domain(
 
         if (d < domain->num_domains - 1) {
           sub_indent += "|";
-          ostr << "|";
+          if (d > 0) {
+            ostr << "|";
+          }
         } else if (d == domain->num_domains - 1) {
           sub_indent += " ";
-          ostr << "'";
         }
-        sub_indent += std::string(8, ' ');
+        sub_indent += std::string(3, ' ');
 
-        ostr << "-- [" << d << "]: "
-             << "(" << domain->domains[d].domain_tag << ")"
-             << '\n';
+        ostr << "[" << d << "] ";
 
-        print_domain(ostr, team, &domain->domains[d], sub_indent);
+        print_domain(ostr, team, domain->children[d], sub_indent);
       }
     }
   }

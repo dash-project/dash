@@ -1,6 +1,13 @@
 
-#include <libdash.h>
 #include <gtest/gtest.h>
+
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+
+#include <dash/algorithm/Copy.h>
+#include <dash/pattern/ShiftTilePattern1D.h>
+#include <dash/pattern/TilePattern1D.h>
+#include <dash/pattern/BlockPattern1D.h>
 
 #include "TestBase.h"
 #include "TestLogHelpers.h"
@@ -19,7 +26,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
   for (auto l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+    array.local[l] = ((dash::myid().id + 1) * 1000) + l;
   }
   array.barrier();
 
@@ -63,8 +70,8 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     return;
   }
 
-  LOG_MESSAGE("nunits:%d elem_total:%d "
-              "elem_per_unit:%d blocks_per_unit:%d",
+  LOG_MESSAGE("nunits:%zu elem_total:%zu "
+              "elem_per_unit:%zu blocks_per_unit:%zu",
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -86,7 +93,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
 
   // Assign initial values:
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
-    LOG_MESSAGE("initialize values in local block %d", lb);
+    LOG_MESSAGE("initialize values in local block %zu", lb);
     auto lblock         = matrix.local.block(lb);
     auto lblock_view    = lblock.begin().viewspec();
     auto lblock_extents = lblock_view.extents();
@@ -94,7 +101,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     dash__unused(lblock_offsets);
     EXPECT_EQ_U(block_size_x, lblock_extents[0]);
     EXPECT_EQ_U(block_size_y, lblock_extents[1]);
-    LOG_MESSAGE("local block %d offset: (%d,%d) extent: (%d,%d)",
+    LOG_MESSAGE("local block %zu offset: (%li,%li) extent: (%lu,%lu)",
                 lb,
                 lblock_offsets[0], lblock_offsets[1],
                 lblock_extents[0], lblock_extents[1]);
@@ -105,13 +112,13 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
         index_t gy       = lblock_view.offset(1) + by;
         dash__unused(gx);
         dash__unused(gy);
-        value_t value    = static_cast<value_t>(dash::myid() + 1) +
+        value_t value    = static_cast<value_t>(dash::myid().id + 1) +
                            (0.00001 * (
                              ((lb + 1) * 10000) +
                              ((bx + 1) * 100) +
                              by + 1
                            ));
-        LOG_MESSAGE("set local block %d at phase:(%d,%d) g:(%d,%d) = %f",
+        LOG_MESSAGE("set local block %zu at phase:(%d,%d) g:(%li,%li) = %f",
                     lb, bx, by, gx, gy, value);
         lblock[bx][by] = value;
       }
@@ -121,7 +128,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   matrix.barrier();
 
   // Log matrix values:
-  if (dash::myid() == 0) {
+  if (dash::myid().id == 0) {
     std::vector< std::vector<value_t> > matrix_values;
     for (size_t x = 0; x < extent_x; ++x) {
       std::vector<value_t> row;
@@ -150,9 +157,10 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   //
   // Create local copy of all blocks from a single remote unit:
   //
-  dart_unit_t remote_unit_id = (dash::myid() + 1) % _dash_size;
+  dash::team_unit_t remote_unit_id(
+                       (dash::Team::All().myid().id + 1) % _dash_size);
   LOG_MESSAGE("Creating local copy of blocks at remote unit %d",
-              remote_unit_id);
+              remote_unit_id.id);
   int rb = 0;
   for (size_t gb = 0; gb < num_blocks_total; ++gb) {
     // View of block at global block index gb:
@@ -161,15 +169,15 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     auto g_block_unit = pattern.unit_at(
                           std::array<index_t, 2> {0,0},
                           g_block_view);
-    LOG_MESSAGE("Block %d: assigned to unit %d", gb, g_block_unit);
+    LOG_MESSAGE("Block %zu: assigned to unit %d", gb, g_block_unit.id);
     if (g_block_unit == remote_unit_id) {
       // Block is assigned to selecte remote unit, create local copy:
-      LOG_MESSAGE("Creating local copy of block %d", gb);
+      LOG_MESSAGE("Creating local copy of block %zu", gb);
       auto remote_block      = matrix.block(gb);
       auto remote_block_view = remote_block.begin().viewspec();
       dash__unused(remote_block_view);
-      LOG_MESSAGE("Block %d index range: (%d..%d] "
-                  "offset: (%d,%d) extent: (%d,%d)",
+      LOG_MESSAGE("Block %zu index range: (%li..%li] "
+                  "offset: (%li,%li) extent: (%lu,%lu)",
                   gb, remote_block.begin().pos(), remote_block.end().pos(),
                   remote_block_view.offset(0), remote_block_view.offset(1),
                   remote_block_view.extent(0), remote_block_view.extent(1));
@@ -238,7 +246,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   for (size_t bx = 0; bx < block_size_x; ++bx) {
     for (size_t by = 0; by < block_size_y; ++by) {
       auto    l_offset = (bx * block_size_y) + by;
-      value_t expected = static_cast<value_t>(dash::myid() + 1) +
+      value_t expected = static_cast<value_t>(dash::myid().id + 1) +
                          (0.00001 * (
                            ((lb + 1) * 10000) +
                            ((bx + 1) * 100) +
@@ -269,12 +277,12 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   auto      l_start_idx       = array.pattern().lbegin();
   auto      l_end_idx         = array.pattern().lend();
 
-  LOG_MESSAGE("lstart:%d lend:%d ncopy:%d",
+  LOG_MESSAGE("lstart:%li lend:%li ncopy:%zu",
               l_start_idx, l_end_idx, num_copy_elem);
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
   for (int l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+    array.local[l] = ((dash::myid().id + 1) * 1000) + l;
   }
   array.barrier();
 
@@ -282,16 +290,16 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   int * local_copy = new int[num_copy_elem];
   int * dest_first = local_copy;
   int * dest_last  = local_copy;
-  if (dash::myid() == 0) {
+  if (dash::myid().id == 0) {
     // Copy elements in front of local range:
-    LOG_MESSAGE("Copying from global range (%d-%d]",
+    LOG_MESSAGE("Copying from global range (%d-%ld]",
                 0, l_start_idx);
     dest_first = dash::copy(
                    array.begin(),
                    array.begin() + l_start_idx,
                    dest_first);
     // Copy elements after local range:
-    LOG_MESSAGE("Copying from global range (%d-%d]",
+    LOG_MESSAGE("Copying from global range (%li-%zu]",
                 l_end_idx, array.size());
     dest_last  = dash::copy(
                    array.begin() + l_end_idx,
@@ -301,7 +309,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
     LOG_MESSAGE("Validating elements");
     int l = 0;
     for (size_t g = 0; g < array.size(); ++g) {
-      if (array.pattern().unit_at(g) != dash::myid()) {
+      if (array.pattern().unit_at(g) != dash::myid().id) {
         int expected = array[g];
         EXPECT_EQ_U(expected, local_copy[l]);
         ++l;
@@ -313,7 +321,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
 
 TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
 {
-  dart_unit_t myid       = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units       = dash::Team::All().size();
   size_t num_elems_unit  = 20;
   size_t start_index     = 7;
@@ -327,10 +335,10 @@ TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
   std::vector<int> local_array(num_elems_copy);
   dash::Array<int> array(num_elems_total);
 
-  LOG_MESSAGE("Elements per unit: %d", num_elems_unit);
-  LOG_MESSAGE("Start index:       %d", start_index);
-  LOG_MESSAGE("Elements to copy:  %d", num_elems_copy);
-  LOG_MESSAGE("Array size:        %d", array.size());
+  LOG_MESSAGE("Elements per unit: %zu", num_elems_unit);
+  LOG_MESSAGE("Start index:       %zu", start_index);
+  LOG_MESSAGE("Elements to copy:  %zu", num_elems_copy);
+  LOG_MESSAGE("Array size:        %zu", array.size());
 
   std::fill(array.lbegin(), array.lend(), myid);
 
@@ -358,19 +366,40 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
   dash::Array<int> array(num_elem_total, dash::BLOCKED);
   // Local range to copy:
   int local_range[num_elem_per_unit];
+  int target_range[num_elem_per_unit];
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
   for (auto l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = 0;
+    array.local[l] = ((dash::myid() + 1) * 10000) + (l * 10);
     local_range[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+
+  // Block- and global offset of target range:
+  auto block_offset  = _dash_size - 1 - dash::myid();
+  auto global_offset = block_offset * num_elem_per_unit;
+
+  // First, create local copy of remote target region and check
+  // its initial values:
+  dash::copy(array.begin() + global_offset,
+             array.begin() + global_offset + num_elem_per_unit,
+             target_range);
+
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    int target_unit_id = _dash_size - 1 - dash::myid();
+    int expected_value = ((target_unit_id + 1) * 10000) + (l * 10);
+    // Test values when obtained from dash::copy:
+    EXPECT_EQ_U(expected_value,
+                target_range[l]);
+    // Test values when obtained from single dart_get requests:
+    EXPECT_EQ_U(expected_value,
+                static_cast<int>(array[global_offset + l]));
   }
   array.barrier();
 
   // Copy values from local range to remote global range.
   // All units (u) copy into block (nblocks-1-u), so unit 0 copies into
   // last block.
-  auto block_offset  = _dash_size - 1 - dash::myid();
-  auto global_offset = block_offset * num_elem_per_unit;
   dash::copy(local_range,
              local_range + num_elem_per_unit,
              array.begin() + global_offset);
@@ -381,12 +410,14 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
     EXPECT_EQ_U(local_range[l],
                 static_cast<int>(array[global_offset + l]));
   }
+
+  array.barrier();
 }
 
 TEST_F(CopyTest, AsyncLocalToGlobPtr)
 {
   // Copy all elements contained in a single, continuous block.
-  const int num_elem_per_unit = 50;
+  const int num_elem_per_unit = 5;
   size_t num_elem_total       = _dash_size * num_elem_per_unit;
 
   // Global target range:
@@ -408,12 +439,17 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
   auto global_offset = block_offset * num_elem_per_unit;
 
   dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
+  LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call copy_async");
+
   auto copy_fut = dash::copy_async(local_range,
                                    local_range + num_elem_per_unit,
                                    gptr_dest);
 
   // Blocks until remote completion:
+  LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call fut.wait");
   copy_fut.wait();
+
+  array.barrier();
 
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     // Compare local buffer and global array dest range:
@@ -457,7 +493,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
   array.barrier();
 
   for (size_t l = 0; l < num_elems_copy; ++l) {
-    LOG_MESSAGE("Testing local value %d", l);
+    LOG_MESSAGE("Testing local value %zu", l);
     EXPECT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
 }
@@ -633,7 +669,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
 
   EXPECT_EQ_U(num_local_blocks_a, num_local_blocks_b);
 
-  LOG_MESSAGE("lblockspec_a(%lu,%lu)[%d] lblockspec_b(%lu,%lu)[%d]",
+  LOG_MESSAGE("lblockspec_a(%lu,%lu)[%zu] lblockspec_b(%lu,%lu)[%zu]",
               lblockspec_a.extent(0), lblockspec_a.extent(1),
               num_local_blocks_a,
               lblockspec_b.extent(0), lblockspec_b.extent(1),
@@ -680,7 +716,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     auto gblock_a          = matrix_a.block(block_a_index);
 
     LOG_MESSAGE("local block %d: copy_async: "
-                "A.block((%d,%d):%d) -> B.block((%d,%d):%d)",
+                "A.block((%lu,%lu):%lu) -> B.block((%lu,%lu):%d)",
                 lb,
                 block_a_gcoord_x,  block_a_gcoord_y,  block_a_index,
                 lblock_b_gcoord_x, lblock_b_gcoord_y, lb);

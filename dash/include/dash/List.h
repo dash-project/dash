@@ -168,6 +168,17 @@ template<
   class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
 class List
 {
+   /**
+    * The Cray compiler (as of CCE8.5.6) does not support
+    * std::is_trivially_copyable.
+    *
+    * TODO: Remove the guard once this has been fixed by Cray.
+    */
+ #ifndef __CRAYC
+   static_assert(std::is_trivially_copyable<ElementType>::value,
+     "Element type must be trivially copyable");
+ #endif
+
   template<typename T_, class A_>
   friend class LocalListRef;
 
@@ -392,7 +403,7 @@ public:
   /**
    * Global pointer to the beginning of the list.
    */
-  const_iterator begin() const noexcept
+  constexpr const_iterator begin() const noexcept
   {
     return _begin;
   }
@@ -408,7 +419,7 @@ public:
   /**
    * Global pointer to the end of the list.
    */
-  const_iterator end() const noexcept
+  constexpr const_iterator end() const noexcept
   {
     return _end;
   }
@@ -424,7 +435,7 @@ public:
   /**
    * Native pointer to the first local element in the list.
    */
-  const_local_iterator lbegin() const noexcept
+  constexpr const_local_iterator lbegin() const noexcept
   {
     return _lbegin;
   }
@@ -440,7 +451,7 @@ public:
   /**
    * Native pointer to the end of the list.
    */
-  const_local_iterator lend() const noexcept
+  constexpr const_local_iterator lend() const noexcept
   {
     return _lend;
   }
@@ -460,7 +471,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type size() const noexcept
+  constexpr size_type size() const noexcept
   {
     return _remote_size + _local_sizes.local[0];
   }
@@ -480,7 +491,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type capacity() const noexcept
+  constexpr size_type capacity() const noexcept
   {
     return _globmem->size();
   }
@@ -515,7 +526,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  inline const Team & team() const noexcept
+  constexpr const Team & team() const noexcept
   {
     return *_team;
   }
@@ -526,7 +537,7 @@ public:
    * \return  The number of elements in the list that are local to the
    *          calling unit.
    */
-  inline size_type lsize() const noexcept
+  constexpr size_type lsize() const noexcept
   {
     return _local_sizes.local[0];
   }
@@ -537,7 +548,7 @@ public:
    * \return  The number of allocated elements in the list that are local
    *          to the calling unit.
    */
-  inline size_type lcapacity() const noexcept
+  constexpr size_type lcapacity() const noexcept
   {
     return _globmem != nullptr
            ? _globmem->local_size()
@@ -549,7 +560,7 @@ public:
    *
    * \return  true if \c size() is 0, otherwise false
    */
-  inline bool empty() const noexcept
+  constexpr bool empty() const noexcept
   {
     return size() == 0;
   }
@@ -616,7 +627,7 @@ public:
     _begin       = iterator(_globmem, _nil_node);
     _end         = _begin;
     // Local iterators:
-    _lbegin      = _globmem->lbegin(_myid);
+    _lbegin      = _globmem->lbegin();
     // More efficient than using _globmem->lend as this a second mapping
     // of the local memory segment:
     _lend        = _lbegin;
@@ -671,7 +682,7 @@ private:
   dash::Team         * _team
                          = nullptr;
   /// DART id of the unit that created the list.
-  dart_unit_t          _myid;
+  team_unit_t          _myid;
   /// Global memory allocation and -access.
   glob_mem_type      * _globmem
                          = nullptr;

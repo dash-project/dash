@@ -7,7 +7,6 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
@@ -55,6 +54,8 @@ template <
 class LocalMatrixRef
 {
 private:
+  typedef LocalMatrixRef<T, NumDimensions, CUR, PatternT> self_t;
+
   typedef MatrixRefView<T, NumDimensions, PatternT>
     MatrixRefView_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
@@ -89,25 +90,30 @@ public:
   typedef typename PatternT::size_type                              size_type;
   typedef typename PatternT::index_type                       difference_type;
 
-  typedef       GlobViewIter<value_type, PatternT>                   iterator;
-  typedef const GlobViewIter<value_type, PatternT>             const_iterator;
+  typedef GlobViewIter<      value_type, PatternT>                   iterator;
+  typedef GlobViewIter<const value_type, PatternT>             const_iterator;
+
   typedef std::reverse_iterator<iterator>                    reverse_iterator;
   typedef std::reverse_iterator<const_iterator>        const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                 reference;
-  typedef const GlobRef<value_type>                           const_reference;
+  typedef GlobRef<      value_type>                                 reference;
+  typedef GlobRef<const value_type>                           const_reference;
 
-  typedef       GlobViewIter<value_type, PatternT>                    pointer;
-  typedef const GlobViewIter<value_type, PatternT>              const_pointer;
+  typedef GlobViewIter<      value_type, PatternT>                    pointer;
+  typedef GlobViewIter<const value_type, PatternT>              const_pointer;
 
   typedef       T *                                             local_pointer;
   typedef const T *                                       const_local_pointer;
+
+  typedef self_t                                                   local_type;
 
   template <dim_t NumViewDim>
     using view_type =
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
 
 public:
+  typedef std::integral_constant<dim_t, CUR>
+    rank;
 
   static constexpr dim_t ndim() {
     return CUR;
@@ -123,23 +129,17 @@ public:
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
   }
 
+  template <class T_>
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
-    const LocalMatrixRef<T, NumDimensions, CUR+1, PatternT> & previous,
+    const LocalMatrixRef<T_, NumDimensions, CUR+1, PatternT> & previous,
     index_type coord);
-
-#if 0
-  /**
-   * Constructor, creates a local view reference to a Matrix.
-   */
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
-    MatrixRef<T, NumDimensions, CUR, PatternT> * matref);
-#endif
 
   /**
    * Constructor, creates a local view reference to a Matrix view.
    */
+  template <class T_>
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
-    Matrix<T, NumDimensions, index_type, PatternT> * mat
+    Matrix<T_, NumDimensions, index_type, PatternT> * mat
   );
 
   /**
@@ -162,25 +162,25 @@ public:
   // Different operation semantics.
   inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
 
-  inline T                 & local_at(size_type pos);
+  inline    T                   & local_at(size_type pos);
 
-  inline Team              & team();
+  constexpr const Team          & team()                const noexcept;
 
-  inline size_type           size()                const noexcept;
-  inline size_type           local_size()          const noexcept;
-  inline size_type           local_capacity()      const noexcept;
-  inline size_type           extent(dim_t dim)     const noexcept;
-  inline Extents_t           extents()             const noexcept;
-  inline index_type          offset(dim_t dim)     const noexcept;
-  inline Offsets_t           offsets()             const noexcept;
-  inline bool                empty()               const noexcept;
+  constexpr size_type             size()                const noexcept;
+  constexpr size_type             local_size()          const noexcept;
+  constexpr size_type             local_capacity()      const noexcept;
+  inline    size_type             extent(dim_t dim)     const noexcept;
+  constexpr Extents_t             extents()             const noexcept;
+  inline    index_type            offset(dim_t dim)     const noexcept;
+  constexpr Offsets_t             offsets()             const noexcept;
+  constexpr bool                  empty()               const noexcept;
 
   /**
    * Synchronize units associated with the matrix.
    *
    * \see  DashContainerConcept
    */
-  inline void                barrier()             const;
+  inline    void                  barrier()             const;
 
   /**
    * The pattern used to distribute matrix elements to units in its
@@ -190,17 +190,17 @@ public:
    *       not have a pattern. The pattern of the referenced matrix
    *       refers to the global data domain.
    */
-  inline const PatternT    & pattern()             const;
+  constexpr const PatternT      & pattern()             const;
 
-  inline       iterator      begin()                     noexcept;
-  inline const_iterator      begin()               const noexcept;
-  inline       iterator      end()                       noexcept;
-  inline const_iterator      end()                 const noexcept;
+  inline          iterator        begin()                     noexcept;
+  constexpr const_iterator        begin()               const noexcept;
+  inline          iterator        end()                       noexcept;
+  constexpr const_iterator        end()                 const noexcept;
 
-  inline       local_pointer lbegin()                    noexcept;
-  inline const_local_pointer lbegin()              const noexcept;
-  inline       local_pointer lend()                      noexcept;
-  inline const_local_pointer lend()                const noexcept;
+  inline          local_pointer   lbegin()                    noexcept;
+  constexpr const_local_pointer   lbegin()              const noexcept;
+  inline          local_pointer   lend()                      noexcept;
+  constexpr const_local_pointer   lend()                const noexcept;
 
   /**
    * Fortran-style subscript operator.
@@ -240,21 +240,36 @@ public:
    * Subscript operator, access element at given offset in
    * global element range.
    */
-  const LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
+  constexpr LocalMatrixRef<const T, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
+
+  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+    col(size_type n);
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+    col(size_type n) const;
+
+  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+    row(size_type n);
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+    row(size_type n) const;
 
   template<dim_t NumSubDimensions>
   LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
-    col(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
-    row(size_type n);
+
+  template<dim_t NumSubDimensions>
+  LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+    sub(size_type n) const;
+  
+  template<dim_t SubDimension>
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+    sub(size_type n,
+        size_type range);
 
   template<dim_t SubDimension>
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> sub(
-    size_type n,
-    size_type range);
+  LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  sub(size_type n,
+      size_type range) const;
 
   /**
    * Create a view representing the matrix slice within a row
@@ -265,11 +280,19 @@ public:
    *
    * \see  sub
    */
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+  rows(
     /// Offset of first row in range
     size_type offset,
     /// Number of rows in the range
     size_type range);
+  
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  rows(
+    /// Offset of first row in range
+    size_type offset,
+    /// Number of rows in the range
+    size_type range) const;
 
   /**
    * Create a view representing the matrix slice within a column
@@ -280,11 +303,19 @@ public:
    *
    * \see  sub
    */
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+  cols(
     /// Offset of first column in range
     size_type offset,
     /// Number of columns in the range
     size_type extent);
+  
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  cols(
+    /// Offset of first column in range
+    size_type offset,
+    /// Number of columns in the range
+    size_type extent) const;
 
 private:
   MatrixRefView_t _refview;
@@ -335,15 +366,17 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
   /**
    * Copy constructor.
    */
+  template <class T_>
   LocalMatrixRef<T, NumDimensions, 0, PatternT>(
-    const self_t & other)
+    const LocalMatrixRef<T_, NumDimensions, 0, PatternT> & other)
   : _refview(other._refview)
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,0>(other)", NumDimensions);
   }
 
+  template <class T_>
   LocalMatrixRef<T, NumDimensions, 0, PatternT>(
-    const LocalMatrixRef<T, NumDimensions, 1, PatternT> & previous,
+    const LocalMatrixRef<T_, NumDimensions, 1, PatternT> & previous,
     index_type coord);
 
   inline T * local_at(index_type pos) const;

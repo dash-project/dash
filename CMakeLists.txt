@@ -40,16 +40,21 @@ option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
-option(ENABLE_COMPILER_WARNINGS
-       "Specify whether strict compiler warnings should be enabled" on)
+option(ENABLE_DEV_COMPILER_WARNINGS
+       "Specify whether excessive compiler warnings should be enabled" off)
+option(ENABLE_EXT_COMPILER_WARNINGS
+       "Specify whether extended compiler warnings should be enabled" off)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
 option(ENABLE_CC_REPORTS
-       "Specify whether compiler reports should be generated" on)
+       "Specify whether compiler reports should be generated" off)
 option(ENABLE_COMPTIME_RED
-  "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
+       "Specify whether opts to reduce the build time should be used"
+       ${DEFAULT_COMPTIME_RED})
+option(ENABLE_THREADSUPPORT
+       "Specify whether support for multithreading should be compiled" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING
@@ -104,6 +109,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+
+if (ENABLE_THREADSUPPORT)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
+endif()
+
 if (ENABLE_COMPTIME_RED)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
 endif()
@@ -115,10 +125,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
+
+if (ENABLE_MKL)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+endif()
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
@@ -145,8 +158,6 @@ set(DASH_VERSION
 set(DASH_VERSIONED_PROJECT_NAME
     "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
-set(DART_IF_VERSION "3.2" CACHE STRING
-    "Version of the DART interface")
 
 set(CMAKE_RULE_MESSAGES OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -186,7 +197,7 @@ string(REPLACE "," ";"
 
 ## Include path of selected DART interface:
 set(DASH_DART_IF_INCLUDE_DIR
-    ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/include
     CACHE PATH INTERNAL FORCE)
 set(DASH_DART_BASE_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
@@ -228,7 +239,6 @@ if (BUILD_DOCS)
 endif()
 
 message(EMPH "DASH version ${DASH_VERSION}")
-message(EMPH "DART interface version " ${DART_IF_VERSION})
 message(EMPH "-----------------------------------------------------------")
 message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
@@ -237,8 +247,10 @@ message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
 
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
-message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
-        ${ENABLE_COMPILER_WARNINGS})
+message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
+        ${ENABLE_DEV_COMPILER_WARNINGS})
+message(INFO "Style compiler warnings:  (ENABLE_EXT_COMPILER_WARNINGS)   "
+        ${ENABLE_EXT_COMPILER_WARNINGS})
 message(INFO "Link Time Optimization:   (ENABLE_LT_OPTIMIZATION)         "
         ${ENABLE_LT_OPTIMIZATION})
 message(INFO "Compiler reports:         (ENABLE_CC_REPORTS)              "
@@ -257,6 +269,8 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
+message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
+        ${ENABLE_THREADSUPPORT})
 message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
         ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
 message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "

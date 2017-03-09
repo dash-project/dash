@@ -1,4 +1,10 @@
+
 #include "GlobMemTest.h"
+
+#include <dash/GlobMem.h>
+#include <dash/GlobRef.h>
+#include <dash/GlobPtr.h>
+
 
 TEST_F(GlobMemTest, ConstructorInitializerList)
 {
@@ -6,7 +12,7 @@ TEST_F(GlobMemTest, ConstructorInitializerList)
   auto target = dash::GlobMem<int>(target_local_elements);
 
   std::vector<int> glob_values;
-  for (int u = 0; u < dash::size(); u++) {
+  for (dash::team_unit_t u{0}; u < dash::size(); u++) {
     for (int l = 0; l < target_local_elements.size(); l++) {
       int val = *(target.at(u,l));
       EXPECT_EQ_U(l+1, val);
@@ -29,8 +35,7 @@ TEST_F(GlobMemTest, LocalBegin)
   auto   target_local_elements = { 1, 2, 3, 4 };
 
   if(!dash::Team::All().is_leaf()){
-    LOG_MESSAGE("team is already splitted. Skip test");
-    SKIP_TEST();
+    SKIP_TEST_MSG("Team is already split");
   }
 
   auto & sub_team = dash::size() < 4

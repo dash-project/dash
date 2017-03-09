@@ -1,12 +1,9 @@
 
-#include <iostream>
-
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 #include "DomainTest.h"
 
 #include <dash/Domain.h>
+
+#include <array>
 
 
 TEST_F(DomainTest, Basic3Dim)

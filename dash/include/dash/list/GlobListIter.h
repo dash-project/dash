@@ -66,7 +66,7 @@ public:
     node_type    & node)
   : _globmem(gmem),
     _node(&node),
-    _myid(dash::myid())
+    _myid(dash::Team::GlobalUnitID())
   {
     DASH_LOG_TRACE("GlobListIter(gmem,node,pat)");
   }
@@ -223,7 +223,7 @@ private:
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit
-  dart_unit_t            _myid;
+  team_unit_t            _myid;
 
 }; // class GlobListIter
 
