@@ -11,18 +11,46 @@ enum GraphDirection {
 
 namespace internal {
 
-class vertex {
-  // TODO: define vertex interface
+template<
+  typename EdgeContainer,
+  typename VertexProperties>
+struct vertex {
+  
+  /**
+   * Creates a vertex with given properties.
+   */
+  vertex(VertexProperties properties = VertexProperties()) 
+    : _properties(properties)
+  { }
+
+  /** Outgoing edges from this vertex */
+  EdgeContainer     _out_edges;
+  /** Properties of this vertex */
+  VertexProperties  _properties;
+
 };
 
 template<
-  GraphDirection Direction,
-  typename VertexDescriptor>
-class edge {
-  // TODO: define edge interface
+  typename VertexIndexType,
+  typename EdgeProperties>
+struct out_edge {
+  
+  /**
+   * Creates an edge from its parent vertex to target.
+   */
+  out_edge(VertexIndexType target, EdgeProperties properties = EdgeProperties()) 
+    : _target(target),
+      _properties(properties)
+  { }
+
+  /** Target vertex the edge is pointing to */
+  VertexIndexType      _target;
+  /** Properties of this edge */
+  EdgeProperties  _properties;
+
 };
 
-class EmptyProperties { };
+struct EmptyProperties { };
 
 }
 

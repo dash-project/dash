@@ -4,6 +4,9 @@
 #include <vector>
 #include <dash/graph/VertexIterator.h>
 #include <dash/graph/internal/Graph.h>
+#include <dash/GlobDynamicSequentialMem.h>
+#include <dash/Team.h>
+#include <dash/internal/Math.h>
 
 namespace dash {
 
@@ -43,23 +46,31 @@ template<
   typename DynamicPattern   = void,
   typename VertexProperties = internal::EmptyProperties,  // user-defined struct
   typename EdgeProperties   = internal::EmptyProperties,  // user-defined struct
-  typename VertexContainer  = std::vector<internal::vertex>,
-  typename EdgeContainer    = std::vector<internal::vertex>,
   typename VertexIndexType  = int,
-  typename EdgeIndexType    = int>
+  typename EdgeIndexType    = int,
+  typename EdgeContainer    
+    = std::vector<internal::out_edge<VertexIndexType, EdgeProperties>>,
+  typename VertexContainer  
+    = std::vector<internal::vertex<EdgeContainer, VertexProperties>>>
 class Graph {
 
   // TODO: add wrapper for all iterator types
   typedef VertexIteratorWrapper 
-    <VertexIndexType, VertexProperties>               vertex_it_wrapper;
+    <VertexIndexType, VertexProperties>                vertex_it_wrapper;
   typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>               edge_it_wrapper;
+    <VertexIndexType, VertexProperties>                edge_it_wrapper;
   typedef VertexIteratorWrapper 
-    <VertexIndexType, VertexProperties>               in_edge_it_wrapper;
+    <VertexIndexType, VertexProperties>                in_edge_it_wrapper;
   typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>               out_edge_it_wrapper;
+    <VertexIndexType, VertexProperties>                out_edge_it_wrapper;
   typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>               adjacency_it_wrapper;
+    <VertexIndexType, VertexProperties>                adjacency_it_wrapper;
+
+  typedef internal::vertex<EdgeContainer, 
+          VertexProperties>                            vertex_type;
+  typedef internal::out_edge<VertexIndexType, 
+          EdgeProperties>                              edge_type;
+  typedef GlobDynamicSequentialMem<VertexContainer>    glob_mem_seq_type;
 
 public:
 
@@ -99,17 +110,11 @@ public:
   /**
    * Constructs an empty graph.
    */
-  Graph();
-  
-  /**
-   * Copy-constructs graph from another one.
-   */
-  Graph(const graph_type & other);
+  Graph(vertex_size_type nvertices = 0, Team & team  = dash::Team::All());
 
-  /**
-   * Copy-assigns data from another graph.
+  /** Destructs the graph.
    */
-  graph_type & operator=(const graph_type & other);
+  ~Graph();
 
   /**
    * Returns the number of vertices in the whole graph.
@@ -137,16 +142,11 @@ public:
   bool empty() const;
 
   /**
-   * Adds a vertex with default properties.
-   * NOTE: global method.
-   */
-  vertex_index_type add_vertex();
-
-  /**
    * Adds a vertex with the given properties.
    * NOTE: global method.
    */
-  vertex_index_type add_vertex(const VertexProperties & prop);
+  vertex_index_type add_vertex(const VertexProperties & prop 
+      = VertexProperties());
 
   /**
    * Removes a given vertex.
@@ -161,22 +161,13 @@ public:
   void clear_vertex(vertex_index_type & v);
 
   /**
-   * Adds an edge between two given vertices with default properties.
-   * NOTE: global method.
-   * 
-   * \return pair, with pair::first set to the edge_descriptor of the added 
-   * edge 
-   */
-  std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
-      const vertex_index_type & v2);
-
-  /**
    * Adds an edge between two given vertices with the given properties 
    * locally.
    * NOTE: global method.
    */
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
-      const vertex_index_type & v2, const EdgeProperties & prop);
+      const vertex_index_type & v2, 
+      const EdgeProperties & prop = EdgeProperties());
 
   /**
    * Removes an edge between two given vertices.
@@ -196,6 +187,30 @@ public:
    * the whole data structure.
    */
   void barrier();
+
+  /**
+   * Globally allocates memory for vertex storage.
+   */
+  bool allocate(vertex_size_type nvertices);
+
+  /**
+   * Deallocates global memory of this container.
+   */
+  void deallocate();
+
+private:
+
+  /** Stores all local vertices */
+  VertexContainer       _vertices;
+  /** Stores edge properties in undirected graphs */
+  EdgeContainer         _edges;
+  /** the team containing all units using the container */
+  Team *                _team     = nullptr;
+  /** Global memory allocation and access for sequential memory regions */
+  glob_mem_seq_type *   _glob_mem_seq = nullptr;
+  /** Unit ID of the current unit */
+  team_unit_t          _myid{DART_UNDEFINED_UNIT_ID};
+
 };
 
 }
