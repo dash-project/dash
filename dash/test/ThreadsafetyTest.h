@@ -28,7 +28,6 @@ protected:
     LOG_MESSAGE("Running ThreadsafetyTests with %i threads", _num_threads);
 
 #endif // DASH_ENABLE_OPENMP
-
   }
 
   virtual ~ThreadsafetyTest() {

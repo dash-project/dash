@@ -259,8 +259,6 @@ message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
         ${ENABLE_DEV_COMPILER_WARNINGS})
 message(INFO "Style compiler warnings:  (ENABLE_EXT_COMPILER_WARNINGS)   "
         ${ENABLE_EXT_COMPILER_WARNINGS})
-message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
-        ${ENABLE_THREADSUPPORT})
 message(INFO "Link Time Optimization:   (ENABLE_LT_OPTIMIZATION)         "
         ${ENABLE_LT_OPTIMIZATION})
 message(INFO "Compiler reports:         (ENABLE_CC_REPORTS)              "
@@ -279,6 +277,8 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
+message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
+        ${ENABLE_THREADSUPPORT})
 message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
         ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
 message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "
