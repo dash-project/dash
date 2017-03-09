@@ -328,8 +328,7 @@ public:
   typedef typename view_traits<DomainType>::size_type            size_type;
   typedef typename origin_type::value_type                      value_type;
 
-  typedef std::integral_constant<dim_t, DomainType::rank::value>
-    rank;
+  typedef std::integral_constant<dim_t, NDim>                         rank;
 
   static constexpr dim_t ndim() { return NDim; }
 

@@ -130,7 +130,7 @@ sub(
     OffsetFinalT    end,
     const DomainT & domain)
   -> typename std::enable_if<
-       (dash::view_traits<DomainValueT>::rank::value > 1),
+       (dash::view_traits<DomainValueT>::rank::value > 0),
        ViewSubMod<
          DomainValueT,
          SubDim,
@@ -158,7 +158,7 @@ sub(
     OffsetFinalT    end,
     DomainT      && domain)
   -> typename std::enable_if<
-       (dash::view_traits<DomainValueT>::rank::value > 1),
+       (dash::view_traits<DomainValueT>::rank::value > 0),
        ViewSubMod<
          DomainValueT,
          SubDim,

@@ -416,8 +416,8 @@ class ViewBlocksMod
 
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(dim_t sub_dim = 0) const {
-    return index_set().size(sub_dim);
+  constexpr size_type size() const {
+    return index_set().size();
   }
 
   // ---- access ----------------------------------------------------------

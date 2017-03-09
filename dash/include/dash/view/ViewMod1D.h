@@ -180,7 +180,7 @@ struct view_traits<ViewSubMod<DomainType, SubDim, 1> > {
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
 
-  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
+  typedef std::integral_constant<dim_t, 1>                            rank;
 };
 
 
