@@ -5,7 +5,6 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewMod.h>
-#include <dash/view/NViewMod.h>
 
 
 namespace dash {
@@ -65,6 +64,7 @@ sub(
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
+#if 0
 /**
  * Sub-section, view dimensions maintain domain dimensions.
  *
@@ -112,6 +112,7 @@ sub(
            begin,
            end);
 }
+#endif
 
 // =========================================================================
 // Multidimensional Views
@@ -130,13 +131,13 @@ sub(
     const DomainT & domain)
   -> typename std::enable_if<
        (dash::view_traits<DomainValueT>::rank::value > 1),
-       NViewSubMod<
+       ViewSubMod<
          DomainValueT,
          SubDim,
          dash::view_traits<DomainValueT>::rank::value
        >
      >::type {
-  return NViewSubMod<
+  return ViewSubMod<
            DomainValueT,
            SubDim,
            dash::view_traits<DomainValueT>::rank::value
@@ -158,12 +159,12 @@ sub(
     DomainT      && domain)
   -> typename std::enable_if<
        (dash::view_traits<DomainValueT>::rank::value > 1),
-       NViewSubMod<
+       ViewSubMod<
          DomainValueT,
          SubDim,
          dash::view_traits<DomainValueT>::rank::value >
      >::type {
-  return NViewSubMod<
+  return ViewSubMod<
            DomainValueT,
            SubDim,
            dash::view_traits<DomainValueT>::rank::value

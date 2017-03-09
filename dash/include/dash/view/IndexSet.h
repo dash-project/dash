@@ -227,7 +227,7 @@ struct index_set_domain_bind_t {
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim = DomainType::ndim() >
+  std::size_t NDim = DomainType::rank::value >
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
