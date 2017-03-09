@@ -6,6 +6,9 @@
 #ifndef DART__BASE__LOGGING_H__
 #define DART__BASE__LOGGING_H__
 
+#include <stdio.h>
+#include <string.h>
+
 #ifdef DART_LOG_OUTPUT_STDOUT
 #define DART_LOG_OUTPUT_TARGET stdout
 #else
@@ -47,7 +50,7 @@ enum dart__base__logging_loglevel{
 };
 
 void
-dart__logging__message(
+dart__base__log_message(
   const char *filename,
   int         line,
   int         level,
@@ -59,14 +62,14 @@ dart__logging__message(
 // Always log error messages and warnings:
 //
 #define DART_LOG_ERROR(...) \
-  dart__logging__message(   \
+  dart__base__log_message(   \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_ERROR,    \
     __VA_ARGS__);
 
 #define DART_LOG_WARN(...)   \
-  dart__logging__message(   \
+  dart__base__log_message(   \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_WARN,     \
@@ -78,21 +81,21 @@ dart__logging__message(
 #ifdef DART_ENABLE_LOGGING
 
 #define DART_LOG_TRACE(...) \
-  dart__logging__message(   \
+  dart__base__log_message(   \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_TRACE,    \
     __VA_ARGS__);
 
 #define DART_LOG_DEBUG(...) \
-  dart__logging__message(   \
+  dart__base__log_message(   \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_DEBUG,    \
     __VA_ARGS__);
 
 #define DART_LOG_INFO(...)    \
-    dart__logging__message(   \
+  dart__base__log_message(   \
       __FILE__,               \
       __LINE__,               \
       DART_LOGLEVEL_INFO,     \

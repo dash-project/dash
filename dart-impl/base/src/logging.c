@@ -94,7 +94,7 @@ const char * dart_base_logging_basename(const char *path) {
 }
 
 void
-dart__logging__message(
+dart__base__log_message(
   const char *filename,
   int         line,
   int         level,
@@ -119,7 +119,7 @@ dart__logging__message(
   dart_global_unit_t unit_id;
   dart_myid(&unit_id);
   // avoid inter-thread log interference
-  dart_mutex_lock(&logmutex);
+  dart__base__mutex_lock(&logmutex);
   fprintf(DART_LOG_OUTPUT_TARGET,
     "[ %*d %.5s ] [ %*d ] %-*s:%-*d %.3s DART: %s\n",
     UNIT_WIDTH, unit_id.id,
@@ -130,5 +130,5 @@ dart__logging__message(
     (level < DART_LOGLEVEL_INFO) ? "!!!" : "",
     msg_buf);
   va_end(argp);
-  dart_mutex_unlock(&logmutex);
+  dart__base__mutex_unlock(&logmutex);
 }
