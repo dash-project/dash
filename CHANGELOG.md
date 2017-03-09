@@ -30,22 +30,23 @@ Features:
 Bugfixes:
 
 - Fixed element access of `.local.begin()` in `dash::Matrix`.
+- Fixed memory leaks in dart-mpi.
 - Numerous stability fixes and performance improvements.
 
 ## Build System
 
+- Added Docker container builds.
 - Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
-- Generate cmake package for DASH and DART
-- Added code coverage tests
+- Generate CMake package for DASH and DART
+- Added build configuration for code coverage tests
 
 - New compiler flags:
 
     - `DASH_ENABLE_LIKWID`: Whether DASH has been compiled with likwid
       support.
     - `DASH_ENABLE_HDF5`: Whether DASH has been compiled with HDF5 support.
-
     - `DASH__ARCH__HAS_RDTSC`: Whether the target architecture provides
       an RDTSC micro-instruction.
 
