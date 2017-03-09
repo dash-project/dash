@@ -54,30 +54,32 @@ template<
     = std::vector<internal::vertex<EdgeContainer, VertexProperties>>>
 class Graph {
 
-  // TODO: add wrapper for all iterator types
-  typedef VertexIteratorWrapper 
-    <VertexIndexType, VertexProperties>                vertex_it_wrapper;
-  typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>                edge_it_wrapper;
-  typedef VertexIteratorWrapper 
-    <VertexIndexType, VertexProperties>                in_edge_it_wrapper;
-  typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>                out_edge_it_wrapper;
-  typedef VertexIteratorWrapper  
-    <VertexIndexType, VertexProperties>                adjacency_it_wrapper;
-
-  typedef internal::vertex<EdgeContainer, 
-          VertexProperties>                            vertex_type;
-  typedef internal::out_edge<VertexIndexType, 
-          EdgeProperties>                              edge_type;
-  typedef GlobDynamicSequentialMem<VertexContainer>    glob_mem_seq_type;
-
 public:
 
   typedef Graph<Direction, DynamicPattern, 
           VertexProperties, EdgeProperties,
-          VertexContainer, EdgeContainer, 
-          VertexIndexType, EdgeIndexType>             graph_type;
+          VertexIndexType, EdgeIndexType, 
+          EdgeContainer, VertexContainer>             graph_type;
+
+private:
+
+  // TODO: add wrapper for all iterator types
+  typedef VertexIteratorWrapper<graph_type>           vertex_it_wrapper;
+  typedef VertexIteratorWrapper<graph_type>           edge_it_wrapper;
+  typedef VertexIteratorWrapper<graph_type>           in_edge_it_wrapper;
+  typedef VertexIteratorWrapper<graph_type>           out_edge_it_wrapper;
+  typedef VertexIteratorWrapper<graph_type>           adjacency_it_wrapper;
+
+  friend vertex_it_wrapper;
+
+  typedef internal::vertex<EdgeContainer, 
+          VertexProperties>                           vertex_type;
+  typedef internal::out_edge<VertexIndexType, 
+          EdgeProperties>                             edge_type;
+  typedef GlobDynamicSequentialMem<VertexContainer>   glob_mem_seq_type;
+
+public:
+
   typedef VertexIndexType                             vertex_index_type;
   typedef EdgeIndexType                               edge_index_type;
   typedef typename 
@@ -91,6 +93,8 @@ public:
   typedef VertexProperties                            vertex_properties_type;
   typedef EdgeProperties                              edge_properties_type;
 
+  typedef typename glob_mem_seq_type::local_iterator  local_vertex_iterator;
+
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
   typedef typename edge_it_wrapper::iterator          edge_iterator;
   typedef typename in_edge_it_wrapper::iterator       in_edge_iterator;
@@ -99,11 +103,11 @@ public:
 
 public:
 
-  vertex_it_wrapper      vertices;
-  edge_it_wrapper        edges;
-  in_edge_it_wrapper     in_edges;
-  out_edge_it_wrapper    out_edges;
-  adjacency_it_wrapper   adjacent_vertices;
+  vertex_it_wrapper      vertices = vertex_it_wrapper(this);
+  edge_it_wrapper        edges = edge_it_wrapper(this);
+  in_edge_it_wrapper     in_edges = in_edge_it_wrapper(this);
+  out_edge_it_wrapper    out_edges = out_edge_it_wrapper(this);
+  adjacency_it_wrapper   adjacent_vertices = adjacency_it_wrapper(this);
 
 public:
 
@@ -200,16 +204,12 @@ public:
 
 private:
 
-  /** Stores all local vertices */
-  VertexContainer       _vertices;
-  /** Stores edge properties in undirected graphs */
-  EdgeContainer         _edges;
   /** the team containing all units using the container */
-  Team *                _team     = nullptr;
+  Team *                      _team     = nullptr;
   /** Global memory allocation and access for sequential memory regions */
-  glob_mem_seq_type *   _glob_mem_seq = nullptr;
+  glob_mem_seq_type *         _glob_mem_seq = nullptr;
   /** Unit ID of the current unit */
-  team_unit_t          _myid{DART_UNDEFINED_UNIT_ID};
+  team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
 
 };
 

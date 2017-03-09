@@ -14,17 +14,23 @@ class LocalVertexIterator {
 /**
  * Wrapper for the vertex iterators of the graph.
  */
-template<
-  typename VertexIndexType,
-  typename VertexProperties>
+template<typename Graph>
 struct VertexIteratorWrapper {
 
-  typedef VertexIterator             iterator;
-  typedef const VertexIterator       const_iterator;
-  typedef LocalVertexIterator        local_iterator;
-  typedef const LocalVertexIterator  const_local_iterator;
-  typedef VertexIndexType            vertex_index_type;
-  typedef VertexProperties           vertex_properties_type;
+  typedef Graph                                    graph_type;
+  typedef VertexIterator                           iterator;
+  typedef const VertexIterator                     const_iterator;
+  typedef typename Graph::local_vertex_iterator    local_iterator;
+  typedef const local_iterator                     const_local_iterator;
+  typedef typename Graph::vertex_index_type        vertex_index_type;
+  typedef typename Graph::vertex_properties_type   vertex_properties_type;
+
+  /**
+   * Constructs the wrapper.
+   */
+  VertexIteratorWrapper(graph_type * graph) 
+    : _graph(graph)
+  { }
 
  /**
    * Returns a property object for the given vertex.
@@ -65,29 +71,33 @@ struct VertexIteratorWrapper {
    * Returns local iterator to the beginning of the vertex list.
    */
   local_iterator lbegin() {
-
+    return _graph->_glob_mem_seq->lbegin();
   }
   
   /**
    * Returns local iterator to the beginning of the vertex list.
    */
   const_local_iterator lbegin() const {
-
+     return _graph->_glob_mem_seq->lbegin();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   local_iterator lend() {
-
+    return _graph->_glob_mem_seq->lend();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   const_local_iterator lend() const {
-
+    return _graph->_glob_mem_seq->lend();
   }
+
+private:
+   
+  graph_type *     _graph;
 
 };
 

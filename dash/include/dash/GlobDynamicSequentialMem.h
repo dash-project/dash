@@ -52,11 +52,10 @@ public:
    * \concept{DashMemorySpaceConcept}
    */
   GlobDynamicSequentialMem(
-    ContainerType & container,
     size_type   n_local_elem = 0,
     Team      & team         = dash::Team::All())
-  : _container(&container),
-    _public_container(&container),
+  : _container(new container_type()),
+    _public_container(_container),
     _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
@@ -120,7 +119,11 @@ public:
       // container, but this implicates another memory copy.
       container_type new_container(_container->capacity() * 2);
       new_container = *_container;
-      _container = &new_container;
+      if(_public_container != _container) {
+        delete _public_container;
+        _public_container = _container;
+      }
+       _container = &new_container;
     }
     _container->push_back(val);
   }
