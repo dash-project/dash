@@ -15,6 +15,18 @@
 #include <dash/dart/base/mutex.h>
 
 
+/* Width of unit id field in log messages in number of characters */
+#define UNIT_WIDTH 4
+/* Width of process id field in log messages in number of characters */
+#define PROC_WIDTH 5
+/* Width of file name field in log messages in number of characters */
+#define FILE_WIDTH 25
+/* Width of line number field in log messages in number of characters */
+#define LINE_WIDTH 4
+/* Maximum length of a single log message in number of characters */
+#define MAX_MESSAGE_LENGTH 256;
+
+
 static dart_mutex_t logmutex = DART_MUTEX_INITIALIZER;
 
 #define DART_LOGLEVEL_ENVSTR "DART_LOG_LEVEL"
@@ -96,7 +108,7 @@ dart__logging__message(
   }
   va_list argp;
   va_start(argp, format);
-  const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH;
+  const int maxlen = MAX_MESSAGE_LENGTH;
   int       sn_ret;
   char      msg_buf[maxlen];
   pid_t     pid = getpid();
@@ -110,11 +122,11 @@ dart__logging__message(
   dart_mutex_lock(&logmutex);
   fprintf(DART_LOG_OUTPUT_TARGET,
     "[ %*d %.5s ] [ %*d ] %-*s:%-*d %.3s DART: %s\n",
-    DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id,
+    UNIT_WIDTH, unit_id.id,
     loglevel_names[level],
-    DASH__DART_LOGGING__PROC__WIDTH, pid,
-    DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(filename),
-    DASH__DART_LOGGING__LINE__WIDTH, line,
+    PROC_WIDTH, pid,
+    FILE_WIDTH, dart_base_logging_basename(filename),
+    LINE_WIDTH, line,
     (level < DART_LOGLEVEL_INFO) ? "!!!" : "",
     msg_buf);
   va_end(argp);

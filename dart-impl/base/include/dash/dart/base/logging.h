@@ -6,17 +6,6 @@
 #ifndef DART__BASE__LOGGING_H__
 #define DART__BASE__LOGGING_H__
 
-/* Width of unit id field in log messages in number of characters */
-#define DASH__DART_LOGGING__UNIT__WIDTH 4
-/* Width of process id field in log messages in number of characters */
-#define DASH__DART_LOGGING__PROC__WIDTH 5
-/* Width of file name field in log messages in number of characters */
-#define DASH__DART_LOGGING__FILE__WIDTH 25
-/* Width of line number field in log messages in number of characters */
-#define DASH__DART_LOGGING__LINE__WIDTH 4
-/* Maximum length of a single log message in number of characters */
-#define DASH__DART_LOGGING__MAX_MESSAGE_LENGTH 256;
-
 #ifdef DART_LOG_OUTPUT_STDOUT
 #define DART_LOG_OUTPUT_TARGET stdout
 #else
