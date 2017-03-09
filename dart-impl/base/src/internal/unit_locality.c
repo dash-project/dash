@@ -17,6 +17,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #include <unistd.h>
 #include <inttypes.h>
