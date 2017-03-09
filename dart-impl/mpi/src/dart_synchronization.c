@@ -15,13 +15,24 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/mpi/dart_synchronization_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <malloc.h>
+
+
+struct dart_lock_struct
+{
+  /** Pointer to the tail of lock queue. Stored in unit 0 by default. */
+  dart_gptr_t gptr_tail;
+  /** Pointer to next waiting unit, realizes distributed list across team. */
+  dart_gptr_t gptr_list;
+  dart_team_t teamid;
+  /** Whether certain unit has acquired the lock. */
+  int32_t is_acquired;
+};
 
 dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
