@@ -27,6 +27,62 @@ The
 are worth mentioning, too.
 
 
+Doxygen Style
+-------------
+
+We use the
+[`JAVADOC_AUTOBRIEF` Doxygen style](http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html)
+and some DASH-specific tags.
+
+This example should illustrate all you need:
+
+~~~c++
+/**
+ * Multi-line comment opened with double-star "/**".
+ * First paragraph is brief description.
+ *
+ * Paragraphs are separated by empty comment lines. This is
+ * the second paragraph and is not included in the brief
+ * description.
+ * 
+ * \note
+ * Note paragraphs will be rendered in a highlighted box
+ *
+ * \todo
+ * ToDo paragraphs will be rendered in a highlighted box and are
+ * also summarized on a single ToDo list page. Very useful!
+ *
+ * Return values are documented like this:
+ * 
+ * \returns   true   if the specified number of wombats has
+ *                   been successfully wombatified with the given
+ *                   factor
+ *            false  otherwise
+ *
+ * If the documented interface (class, method, function, trait, ...)
+ * implements a concept (formally: "is a model of a concept"),
+ * reference the implemented concepts like this (\concept is a
+ * DASH-specific tag):
+ *
+ * \concept DashMammalConcept
+ * \concept DashStralianMammalConcept
+ *
+ * To add references to otherwise (non-concept) related interface
+ * definitions, use:
+ *
+ * \see dash::wombatificate
+ */
+bool wombatify(
+   /// Single-line comments opened with *three* forward-slashes.
+   /// This is a convenient way to describe function parameters.
+   /// This style makes undocumented parameters easy to spot.
+   int     num_wombats,
+   double  wombat_factor  ///< Postfix-style with "<", comment placed *after* described parameter
+) {
+  // Any comment here is ignored, no matter how it is formatted.
+}
+~~~
+
 
 Contributing Code
 -----------------

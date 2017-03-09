@@ -62,7 +62,7 @@ void print_example(
   dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
   pv.set_title(pattern_desc);
 
-  std::array<index_t, pattern.ndim()> coords = {{0}};
+  std::array<index_t, PatternT::ndim()> coords = {{0}};
 
   cerr << "Generating visualization of "
        << endl
@@ -292,7 +292,7 @@ std::string pattern_to_string(
 
   std::ostringstream ss;
   ss << "dash::"
-     << pattern.PatternName
+     << PatternType::PatternName
      << "<"
      << ndim << ","
      << storage_order << ","
@@ -326,7 +326,7 @@ std::string pattern_to_filename(
   auto bspc = pattern.blockspec();
 
   std::ostringstream ss;
-  ss << pattern.PatternName
+  ss << PatternType::PatternName
      << "--"
      << ndim << "-"
      << storage_order << "-"

@@ -1,27 +1,26 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+
+#include "MinElementTest.h"
+
+#include <dash/algorithm/MinMax.h>
+#include <dash/Array.h>
+#include <dash/Matrix.h>
 
 #include <limits>
 
-#include "TestBase.h"
-#include "MinElementTest.h"
 
 TEST_F(MinElementTest, TestFindArrayDefault)
 {
-  _num_elem           = dash::Team::All().size();
+  int num_elem        = dash::Team::All().size();
   Element_t min_value = 11;
   // Initialize global array:
-  Array_t array(_num_elem);
+  Array_t array(num_elem);
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 41;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element in the center position:
     index_t min_pos = array.size() / 2;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization
@@ -91,13 +90,10 @@ TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element somewhere in the first half:
     index_t min_pos = array.size() / 3;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization
@@ -133,14 +129,11 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element in the last position which is located
     // in the underfilled block, for extra nastyness:
     index_t min_pos = array.size() - 1;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization

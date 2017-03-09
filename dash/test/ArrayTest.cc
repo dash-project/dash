@@ -1,5 +1,12 @@
-#include <libdash.h>
+
 #include <gtest/gtest.h>
+
+#include <dash/Array.h>
+
+#include <dash/algorithm/ForEach.h>
+
+#include <dash/pattern/BlockPattern1D.h>
+#include <dash/pattern/TilePattern1D.h>
 
 #include "TestBase.h"
 #include "ArrayTest.h"
@@ -40,7 +47,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
 
   size_t array_size = _num_elem * _dash_size;
   // Create array instances using varying constructor options
-  LOG_MESSAGE("Array size: %d", array_size);
+  LOG_MESSAGE("Array size: %zu", array_size);
   try {
     // Initialize arrays
     LOG_MESSAGE("Initialize arr1");
@@ -208,7 +215,12 @@ TEST_F(ArrayTest, TeamSplit)
     SKIP_TEST();
   }
 
+  dash::barrier();
+
+  LOG_MESSAGE("Splitting team ...");
   auto & myteam = team_all.split(2);
+  LOG_MESSAGE("... Team split finished");
+
   dash::Array<double> array_a(ext_x, myteam);
 
   array_a.barrier();

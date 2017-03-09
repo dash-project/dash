@@ -200,14 +200,14 @@ dart_ret_t dart_domain_group(
   char                          * group_domain_tag_out);
 
 /**
- * Locality information of the unit with the specified global id.
+ * Locality information of the unit with the specified team-relative id.
  *
  * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
-  dart_unit_t                     unit,
+  dart_team_unit_t                unit,
   dart_unit_locality_t         ** loc);
 
 /** \cond DART_HIDDEN_SYMBOLS */

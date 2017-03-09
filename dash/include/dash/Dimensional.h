@@ -10,7 +10,79 @@
 #include <array>
 #include <sstream>
 
+/**
+ * \defgroup  DashNDimConcepts  Multidimensional Concepts
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * Concepts supporting multidimensional expressions.
+ *
+ * \}
+ *
+ */
+
+/**
+ * \defgroup  DashDimensionalConcept  Multidimensional Value Concept
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ * 
+ * Definitions for multidimensional value expressions.
+ *
+ * \see DashIteratorConcept
+ * \see DashViewConcept
+ * \see DashRangeConcept
+ * \see DashDimensionalConcept
+ *
+ * \see \c dash::view_traits
+ *
+ * \par Expressions
+ *
+ * - \c dash::ndim
+ * - \c dash::rank
+ * - \c dash::extent
+ *
+ * \}
+ */
+
 namespace dash {
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr dim_t ndim(const DimensionalType & d) {
+  return d.ndim();
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr dim_t rank(const DimensionalType & d) {
+  return d.rank();
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <dim_t Dim, typename DimensionalType>
+constexpr typename DimensionalType::extent_type
+extent(const DimensionalType & d) {
+  return d.extent(Dim);
+}
+
+/**
+ * \concept{DashDimensionalConcept}
+ */
+template <typename DimensionalType>
+constexpr typename DimensionalType::extent_type
+extent(dim_t dim, const DimensionalType & d) {
+  return d.extent(dim);
+}
 
 /**
  * Base class for dimensional attributes, stores an
@@ -26,11 +98,11 @@ namespace dash {
  * \see SizeSpec
  * \see CartesianIndexSpace
  */
-template<typename ElementType, dim_t NumDimensions>
+template <typename ElementType, dim_t NumDimensions>
 class Dimensional
 {
-  template<typename E_, dim_t ND_>
-  friend std::ostream& operator<<(
+  template <typename E_, dim_t ND_>
+  friend std::ostream & operator<<(
     std::ostream & os,
     const Dimensional<E_, ND_> & dimensional);
 
@@ -44,8 +116,8 @@ public:
   /**
    * Constructor, expects one value for every dimension.
    */
-  template<typename ... Values>
-  Dimensional(
+  template <typename ... Values>
+  constexpr Dimensional(
     ElementType & value, Values ... values)
   : _values {{ value, (ElementType)values... }} {
     static_assert(
@@ -56,30 +128,19 @@ public:
   /**
    * Constructor, expects array containing values for every dimension.
    */
-  Dimensional(
+  constexpr Dimensional(
     const std::array<ElementType, NumDimensions> & values)
   : _values(values) {
   }
 
-  /**
-   * Copy-constructor.
-   */
-  Dimensional(const self_t & other) {
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
-      _values[d] = other._values[d];
-    }
-  }
-
-  self_t & operator=(const self_t & other) {
-    _values = other._values;
-    return *this;
-  }
+  constexpr Dimensional(const self_t & other) = default;
+  self_t & operator=(const self_t & other)    = default;
 
   /**
    * Return value with all dimensions as array of \c NumDimensions
    * elements.
    */
-  const std::array<ElementType, NumDimensions> & values() const {
+  constexpr std::array<ElementType, NumDimensions> & values() const {
     return _values;
   }
 
@@ -90,12 +151,10 @@ public:
    * \returns  The value in the given dimension
    */
   ElementType dim(dim_t dimension) const {
-    if (dimension >= NumDimensions) {
-      DASH_THROW(
-        dash::exception::OutOfRange,
-        "Dimension for Dimensional::extent() must be lower than " <<
-        NumDimensions);
-    }
+    DASH_ASSERT_LT(
+      dimension, NumDimensions,
+      "Dimension for Dimensional::extent() must be lower than " <<
+      NumDimensions);
     return _values[dimension];
   }
 
@@ -106,7 +165,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  ElementType operator[](size_t dimension) const {
+  constexpr ElementType operator[](size_t dimension) const {
     return _values[dimension];
   }
 
@@ -125,11 +184,8 @@ public:
   /**
    * Equality comparison operator.
    */
-  inline bool operator==(const self_t & other) const {
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      if (dim(d) != other.dim(d)) return false;
-    }
-    return true;
+  constexpr bool operator==(const self_t & other) const {
+    return this == &other || _values == other._values;
   }
 
   /**
@@ -142,29 +198,28 @@ public:
   /**
    * The number of dimensions of the value.
    */
-  dim_t rank() const {
+  constexpr dim_t rank() const {
     return NumDimensions;
   }
 
   /**
    * The number of dimensions of the value.
    */
-  dim_t ndim() const {
+  constexpr static dim_t ndim() {
     return NumDimensions;
   }
 
 protected:
   /// Prevent default-construction for non-derived types, as initial values
   /// for \c _values have unknown defaults.
-  Dimensional() {
-  }
+  Dimensional() = default;
 };
 
 /**
  * DistributionSpec describes distribution patterns of all dimensions,
  * \see dash::Distribution.
  */
-template<dim_t NumDimensions>
+template <dim_t NumDimensions>
 class DistributionSpec : public Dimensional<Distribution, NumDimensions>
 {
   template<dim_t NumDimensions_>
@@ -200,7 +255,7 @@ public:
    *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
    * \endcode
    */
-  template<typename ... Values>
+  template <typename ... Values>
   DistributionSpec(
     Distribution value, Values ... values)
   : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
@@ -427,7 +482,7 @@ public:
   /**
    * Copy constructor.
    */
-  ViewSpec(const self_t & other)
+  constexpr ViewSpec(const self_t & other)
   : _size(other._size),
     _rank(other._rank),
     _extents(other._extents),
@@ -437,7 +492,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  inline bool operator==(const self_t & other) const
+  constexpr bool operator==(const self_t & other) const
   {
     return (_extents == other._extents &&
             _offsets == other._offsets &&
@@ -570,31 +625,31 @@ public:
     update_size();
   }
 
-  SizeType size() const
+  constexpr SizeType size() const
   {
     return _size;
   }
 
-  SizeType size(dim_t dimension) const
+  constexpr SizeType size(dim_t dimension) const
   {
     return _extents[dimension];
   }
 
-  std::array<SizeType, NumDimensions> extents() const
+  constexpr std::array<SizeType, NumDimensions> extents() const
   {
     return _extents;
   }
 
-  SizeType extent(dim_t dim) const {
+  constexpr SizeType extent(dim_t dim) const {
     return _extents[dim];
   }
 
-  std::array<IndexType, NumDimensions> offsets() const
+  constexpr std::array<IndexType, NumDimensions> offsets() const
   {
     return _offsets;
   }
 
-  IndexType offset(dim_t dim) const
+  constexpr IndexType offset(dim_t dim) const
   {
     return _offsets[dim];
   }

@@ -70,6 +70,9 @@ int main(int argc, char * argv[])
   int ret = RUN_ALL_TESTS();
 
   #ifdef MPI_SUPPORT
+  if (dash::is_initialized()) {
+    dash::finalize();
+  }
   MPI_Finalize();
   #endif
   return ret;

@@ -9,6 +9,7 @@
  * \see DashMapConcept
  * \see DashMatrixConcept
  * \see DashViewConcept
+ * \see DashRangeConcept
  * \see DashIteratorConcept
  *
  * \ingroup DashConcept
@@ -40,7 +41,7 @@
  * <tt>local_type</tt>             | Reference to local element range, allows range-based iteration.
  * <tt>pattern_type</tt>           | Concrete model of the Pattern concept that specifies the container's data distribution and cartesian access pattern.
  *
- * \par Methods
+ * \par Member Functions
  *
  * Return Type              | Method                | Parameters                                            | Description
  * ------------------------ | --------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
@@ -55,6 +56,13 @@
  * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
  * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec<DD> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
  * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                | Deallocation of the container and its elements.
+ *
+ * \par Non-member Functions
+ *
+ * Return Type              | Method                | Parameters                                            | Description
+ * ------------------------ | --------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
+ * <tt>C::size_type</tt>    | <tt>dash::size</tt>   | <tt>const C & container</tt>                          | Returns the size of a container
+ * <tt>bool</tt>            | <tt>dash::empty</tt>  | <tt>const C & container</tt>                          | Checks whether a container is empty
  *
  * \}
  */

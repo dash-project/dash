@@ -5,8 +5,10 @@
 
 #include <dash/Types.h>
 #include <dash/Team.h>
+#include <dash/GlobPtr.h>
 
 #include <dash/internal/Logging.h>
+#include <dash/internal/StreamConversion.h>
 
 #include <vector>
 #include <algorithm>
@@ -21,6 +23,8 @@ namespace allocator {
  * Encapsulates a memory allocation and deallocation strategy of global
  * memory regions distributed across local memory of units in a specified
  * team.
+ * 
+ * \note This allocator allocates a symmetric amount of memory on each node.
  *
  * Satisfied STL concepts:
  *
@@ -66,8 +70,7 @@ public:
    */
   explicit CollectiveAllocator(
     Team & team = dash::Team::All()) noexcept
-  : _team_id(team.dart_id()),
-    _nunits(team.size())
+  : _team_id(team.dart_id())
   { }
 
   /**
@@ -76,11 +79,8 @@ public:
    */
   CollectiveAllocator(self_t && other) noexcept
   : _team_id(other._team_id),
-    _nunits(other._nunits),
-    _allocated(other._allocated)
-  {
-    other._allocated.clear();
-  }
+    _allocated(std::move(other._allocated))
+  { }
 
   /**
    * Copy constructor.
@@ -88,8 +88,7 @@ public:
    * \see DashAllocatorConcept
    */
   CollectiveAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -98,8 +97,7 @@ public:
    */
   template<class U>
   CollectiveAllocator(const CollectiveAllocator<U> & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -128,9 +126,10 @@ public:
   self_t & operator=(const self_t && other) noexcept
   {
     // Take ownership of other instance's allocation vector:
-    clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    if (this != &other) {
+      std::swap(_allocated, other._allocated);
+      _team_id = other._team_id;
+    }
     return *this;
   }
 
@@ -170,6 +169,9 @@ public:
   /**
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
+   * 
+   * \note As allocation is symmetric, each unit has to allocate
+   *       an equal number of local elements.
    *
    * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL
    *          if \c num_local_elem is 0 or less.
@@ -181,14 +183,12 @@ public:
     DASH_LOG_DEBUG("CollectiveAllocator.allocate(nlocal)",
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
-    if (num_local_elem > 0) {
-      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
-      if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
-          == DART_OK) {
-        _allocated.push_back(gptr);
-      } else {
-        gptr = DART_GPTR_NULL;
-      }
+    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+    if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+        == DART_OK) {
+      _allocated.push_back(gptr);
+    } else {
+      gptr = DART_GPTR_NULL;
     }
     DASH_LOG_DEBUG_VAR("CollectiveAllocator.allocate >", gptr);
     return gptr;
@@ -241,8 +241,7 @@ private:
   }
 
 private:
-  dart_team_t          _team_id   = DART_TEAM_NULL;
-  size_t               _nunits    = 0;
+  dart_team_t          _team_id;
   std::vector<pointer> _allocated;
 
 }; // class CollectiveAllocator
@@ -253,8 +252,7 @@ bool operator==(
   const CollectiveAllocator<U> & rhs)
 {
   return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id &&
-          lhs._nunits  == rhs._nunits );
+          lhs._team_id == rhs._team_id );
 }
 
 template <class T, class U>

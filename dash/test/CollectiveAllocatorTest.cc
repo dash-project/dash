@@ -1,8 +1,7 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 
-#include "TestBase.h"
 #include "CollectiveAllocatorTest.h"
+
+#include <dash/allocator/CollectiveAllocator.h>
 
 
 TEST_F(CollectiveAllocatorTest, Constructor)

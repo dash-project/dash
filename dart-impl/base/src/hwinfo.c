@@ -329,7 +329,7 @@ dart_ret_t dart_hwinfo(
   hwloc_topology_destroy(topology);
   DART_LOG_TRACE("dart_hwinfo: hwloc: "
                  "num_numa:%d numa_id:%d "
-                 "num_cores:%d core_id:%d cpu_id:d%",
+                 "num_cores:%d core_id:%d cpu_id:%d",
                  hw.num_numa, hw.numa_id,
                  hw.num_cores, hw.core_id, hw.cpu_id);
 #endif /* DART_ENABLE_HWLOC */

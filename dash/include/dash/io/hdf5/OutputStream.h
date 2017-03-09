@@ -27,13 +27,14 @@ class OutputStream
   typedef dash::io::IOSBase<StreamMode>  base_t;
   typedef StreamMode                     mode_t;
 
-  private:
-
+private:
   std::string                _filename;
   std::string                _dataset;
   hdf5_options               _foptions;
+  type_converter             _converter;
+  bool           _use_cust_conv = false;
 
-  public:
+public:
     OutputStream(
         std::string filename,
         mode_t open_mode = DeviceMode::no_flags)
@@ -49,60 +50,48 @@ class OutputStream
     // IO Manipulators
 
     friend OutputStream & operator<<(
-        OutputStream & os,
-        const dataset    & tbl)
+        OutputStream  & os,
+        const dataset   tbl)
     {
         os._dataset = tbl._dataset;
         return os;
     }
 
     friend OutputStream & operator<<(
-        OutputStream & os,
-        setpattern_key     pk)
+        OutputStream         & os,
+        const setpattern_key   pk)
     {
         os._foptions.pattern_metadata_key = pk._key;
         return os;
     }
 
     friend OutputStream & operator<<(
-        OutputStream & os,
-        store_pattern      sp) {
+        OutputStream         & os,
+        const store_pattern    sp) {
         os._foptions.store_pattern = sp._store;
         return os;
     }
 
     friend OutputStream & operator<<(
-        OutputStream & os,
-        modify_dataset     md)
+        OutputStream         & os,
+        const modify_dataset   md)
     {
         os._foptions.modify_dataset = md._modify;
         return os;
     }
 
+    friend OutputStream & operator<< (
+      OutputStream         & os,
+      const type_converter   conv) {
+      os._converter = conv;
+      os._use_cust_conv = true;
+      return os;
+    }
 
-    // Array Implementation
-    template <
-        typename value_t,
-        typename index_t,
-        class    pattern_t >
+    template < typename Container_t >
     friend OutputStream & operator<<(
-        OutputStream         & os,
-        dash::Array< value_t,
-                     index_t,
-                     pattern_t > & array);
-
-    // Matrix Implementation
-    template <
-        typename value_t,
-        dim_t    ndim,
-        typename index_t,
-        class    pattern_t >
-    friend OutputStream & operator<<(
-        OutputStream          & os,
-        dash::Matrix< value_t,
-                      ndim,
-                      index_t,
-                      pattern_t > & matrix);
+        OutputStream & os,
+        Container_t  & container);
 
 };
 

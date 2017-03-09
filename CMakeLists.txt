@@ -40,8 +40,10 @@ option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
-option(ENABLE_COMPILER_WARNINGS
-       "Specify whether strict compiler warnings should be enabled" on)
+option(ENABLE_DEVELOPER_COMPILER_WARNINGS
+       "Specify whether excessive compiler warnings should be enabled" off)
+option(ENABLE_EXTENDED_COMPILER_WARNINGS
+       "Specify whether mainly style-related compiler warnings should be enabled" off)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION
@@ -49,7 +51,8 @@ option(ENABLE_LT_OPTIMIZATION
 option(ENABLE_CC_REPORTS
        "Specify whether compiler reports should be generated" on)
 option(ENABLE_COMPTIME_RED
-  "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
+       "Specify whether opts to reduce the build time should be used"
+       ${DEFAULT_COMPTIME_RED})
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING

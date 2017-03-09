@@ -17,9 +17,11 @@ EXAMPLE_PATH            = "@PROJECT_SOURCE_DIR@/dash/examples"
 EXAMPLE_RECURSIVE       = YES
 EXCLUDE_PATTERNS        = */test/* \
                           */gtest/* \
-                          */internal/*
+                          */internal/* \
+                          */detail/*
 EXCLUDE_SYMBOLS         = *::test::* \
                           *::testing::* \
+                          *::detail::* \
                           *::internal::*
 RECURSIVE               = YES
 USE_MDFILE_AS_MAINPAGE  = @doxy_main_page@

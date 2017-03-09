@@ -26,9 +26,11 @@ EXAMPLE_PATH            = "./dash/examples"
 EXAMPLE_RECURSIVE       = YES
 EXCLUDE_PATTERNS        = */test/* \
                           */gtest/* \
+                          */detail/* \
                           */internal/*
 EXCLUDE_SYMBOLS         = *::test::* \
                           *::testing::* \
+                          *::detail::* \
                           *::internal::*
 RECURSIVE               = YES
 USE_MDFILE_AS_MAINPAGE  = "./doc/config/mainpage.dox"

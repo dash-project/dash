@@ -1,7 +1,8 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
+
 #include "DARTCollectiveTest.h"
+
+#include <dash/dart/if/dart.h>
+
 
 TEST_F(DARTCollectiveTest, Send_Recv) {
   // we need an even amount of participating units

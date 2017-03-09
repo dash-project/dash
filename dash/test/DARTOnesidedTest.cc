@@ -1,8 +1,8 @@
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 #include "DARTOnesidedTest.h"
+
+#include <dash/Array.h>
+#include <dash/Onesided.h>
 
 
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
@@ -109,7 +109,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             ds.dtype,
             &handle)
       );
-      std::cout << "dart_get_handle returned handle " << handle << std::endl;
+      LOG_MESSAGE("dart_get_handle returned handle %p", static_cast<void*>(handle));
       handles.push_back(handle);
       ++block;
     }

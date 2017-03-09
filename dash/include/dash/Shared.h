@@ -57,7 +57,7 @@ public:
    */
   Shared(
     /// Unit id of the shared value's owner.
-    dart_unit_t   owner = 0,
+    team_unit_t   owner = team_unit_t(0),
     /// Team containing all units accessing the element in shared memory
     Team     &    team  = dash::Team::All())
     : _team(&team),
@@ -187,7 +187,7 @@ public:
 
 private:
   dash::Team          *          _team    = nullptr;
-  dart_unit_t                    _owner   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t                     _owner;
   std::shared_ptr<GlobMem_t>     _globmem = nullptr;
   pointer                        _ptr;
 

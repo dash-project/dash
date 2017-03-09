@@ -12,12 +12,18 @@ usage()
   echo ""
 }
 
+nocolor()
+{
+  sed 's/\x1b\[[0-9;]*m//g'
+}
+
 if [ $# -lt 2 ]; then
   usage
   exit -1
 fi
 
 TIMESTAMP=`date +%Y%m%d-%H%M%S`
+NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
 DART_IMPL="$1"
 BIN_PATH="$2"
 LOGFILE="$3"
@@ -68,7 +74,7 @@ run_suite()
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
     tee -a $LOGFILE
-  eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
+  eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | nocolor | \
     tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#'
   TEST_RET=$?
   # Cannot use exit code as dartrun-shmem seems to always return 0
@@ -104,6 +110,6 @@ run_suite 12
 if $TESTS_PASSED; then
   exit 0
 else
-  exit -1
+  exit 127
 fi
 
