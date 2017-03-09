@@ -22,6 +22,7 @@
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #include <inttypes.h>
 #include <string.h>
@@ -552,8 +553,8 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
     if (domain->num_domains != subdomain_idx) {
       if (subdomain_idx > domain->num_domains) {
         DART_LOG_WARN("dart__base__locality__domain__filter_subdomains: "
-                      "number of subdomains increased from",
-                      domain->num_domains, "to", subdomain_idx, "in",
+                      "number of subdomains increased from %d to %d in %s",
+                      domain->num_domains, subdomain_idx,
                       domain->domain_tag);
         // Filtering should never increase number of subdomains:
         DART_ASSERT(subdomain_idx <= domain->num_domains);

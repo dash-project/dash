@@ -1,9 +1,12 @@
 #include <string.h>
-#include <dash/dart/mpi/dart_segment.h>
-#include <dash/dart/base/logging.h>
-#include <dash/dart/base/assert.h>
 #include <stdlib.h>
 #include <inttypes.h>
+
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
+#include <dash/dart/if/dart_team_group.h>
+
+#include <dash/dart/mpi/dart_segment.h>
 
 #define DART_SEGMENT_INVALID   (INT32_MAX)
 
