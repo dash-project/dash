@@ -1189,7 +1189,7 @@ class IndexSetBlocks
            DomainType >
 {
   typedef IndexSetBlocks<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType, 1>                   base_t;
+  typedef IndexSetBase<self_t, DomainType>                      base_t;
  public:
   typedef typename DomainType::index_type                   index_type;
 
@@ -1206,7 +1206,8 @@ class IndexSetBlocks
  private:
   index_type _size;
 
-  constexpr static dim_t NDim = 1;
+//constexpr static dim_t NDim = 1;
+  static constexpr std::size_t NDim = base_t::ndim();
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
