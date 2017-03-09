@@ -8,6 +8,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_locality.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
