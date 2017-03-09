@@ -65,13 +65,16 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
     loffs++;
   }
 
-  // Every unit adds a local range of elements to every block in a global
-  // array.
-
   // Initialize local values, e.g. unit 2: [ 3, 3, 3, ... ]
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     local[l_idx] = (dash::myid() + 1);
   }
+
+  // wait for all units to update their local parts
+  dash::barrier();
+
+  // Every unit adds a local range of elements to every block in a global
+  // array.
 
   // Accumulate local range to every block in the array:
   for (size_t block_idx = 0; block_idx < dash::size(); ++block_idx) {
@@ -129,6 +132,9 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     array_values.local[l_idx] = ((dash::myid() + 1) * 1000) + (l_idx + 1);
   }
+
+  // wait for all units to finish setup
+  dash::barrier();
 
   // Accumulate local range to every block in the array:
   dash::transform<int>(array_values.begin(), array_values.end(), // A
