@@ -96,7 +96,6 @@
 
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewBlocksMod.h>
-// #include <dash/view/NViewMod.h>
 
 #include <dash/Range.h>
 

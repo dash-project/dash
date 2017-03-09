@@ -64,79 +64,21 @@ sub(
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
-#if 0
-/**
- * Sub-section, view dimensions maintain domain dimensions.
- *
- * \concept{DashViewConcept}
- */
-template <
-  dim_t    SubDim  = 0,
-  class    DomainT,
-  class    OffsetFirstT,
-  class    OffsetFinalT >
-constexpr auto
-sub(
-    OffsetFirstT    begin,
-    OffsetFinalT    end,
-    const DomainT & domain)
-  -> typename std::enable_if<
-       dash::view_traits<
-         DomainT
-       >::rank::value == 1,
-       ViewSubMod<DomainT, SubDim>
-     >::type {
-  return ViewSubMod<DomainT, SubDim>(
-           domain,
-           begin,
-           end);
-}
-
 template <
   dim_t    SubDim  = 0,
   class    DomainT,
   class    OffsetFirstT,
   class    OffsetFinalT,
   typename DomainValueT = typename std::decay<DomainT>::type >
-constexpr auto
+constexpr
+ViewSubMod<
+  DomainValueT,
+  SubDim,
+  dash::view_traits<DomainValueT>::rank::value >
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    DomainT      && domain)
-  -> typename std::enable_if<
-       dash::view_traits< DomainValueT >::rank::value == 1,
-       ViewSubMod<DomainValueT, SubDim>
-     >::type {
-  return ViewSubMod<DomainValueT, SubDim>(
-           std::forward<DomainT>(domain),
-           begin,
-           end);
-}
-#endif
-
-// =========================================================================
-// Multidimensional Views
-// =========================================================================
-
-template <
-  dim_t    SubDim  = 0,
-  class    DomainT,
-  class    OffsetFirstT,
-  class    OffsetFinalT,
-  typename DomainValueT = typename std::decay<DomainT>::type >
-constexpr auto
-sub(
-    OffsetFirstT    begin,
-    OffsetFinalT    end,
-    const DomainT & domain)
-  -> typename std::enable_if<
-       (dash::view_traits<DomainValueT>::rank::value > 0),
-       ViewSubMod<
-         DomainValueT,
-         SubDim,
-         dash::view_traits<DomainValueT>::rank::value
-       >
-     >::type {
+    const DomainT & domain) {
   return ViewSubMod<
            DomainValueT,
            SubDim,
@@ -152,18 +94,15 @@ template <
   class    OffsetFirstT,
   class    OffsetFinalT,
   typename DomainValueT = typename std::decay<DomainT>::type >
-constexpr auto
+constexpr
+ViewSubMod<
+  DomainValueT,
+  SubDim,
+  dash::view_traits<DomainValueT>::rank::value >
 sub(
     OffsetFirstT    begin,
     OffsetFinalT    end,
-    DomainT      && domain)
-  -> typename std::enable_if<
-       (dash::view_traits<DomainValueT>::rank::value > 0),
-       ViewSubMod<
-         DomainValueT,
-         SubDim,
-         dash::view_traits<DomainValueT>::rank::value >
-     >::type {
+    DomainT      && domain) {
   return ViewSubMod<
            DomainValueT,
            SubDim,

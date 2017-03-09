@@ -5,7 +5,6 @@
 #include <dash/View.h>
 
 #include <dash/internal/StreamConversion.h>
-// #include <dash/algorithm/LocalRange.h>
 
 #include <array>
 #include <algorithm>
@@ -117,14 +116,14 @@ TEST_F(ViewTest, ViewTraits)
       dash::view_traits<decltype(v_ssub)>::is_view::value == true,
       "view traits is_view for sub(sub(dash::Array)) not matched");
 
-  // TODO: Clarify if local container types should be considered views.
-  //
-  // static_assert(
-  //     dash::view_traits<decltype(v_loc)>::is_view::value == true,
-  //     "view traits is_view for local(dash::Array) not matched");
-//static_assert(
-//    dash::view_traits<decltype(i_sub)>::is_view::value == false,
-//    "view traits is_view for index(sub(dash::Array)) not matched");
+  // Local container proxy types are not considered views as they do
+  // not specify an index set:
+  static_assert(
+      dash::view_traits<decltype(v_loc)>::is_view::value == false,
+      "view traits is_view for local(dash::Array) not matched");
+  static_assert(
+      dash::view_traits<decltype(i_sub)>::is_view::value == false,
+      "view traits is_view for index(sub(dash::Array)) not matched");
   static_assert(
       dash::view_traits<decltype(v_bsub)>::is_view::value == true,
       "view traits is_view for begin(blocks(dash::Array)) not matched");

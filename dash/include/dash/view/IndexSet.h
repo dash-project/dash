@@ -1176,12 +1176,6 @@ class IndexSetGlobal
 // IndexSetBlocks
 // -----------------------------------------------------------------------
 
-/*
- * TODO:
- *   Assuming 1-dimensional views for blocks, some patterns provide
- *   n-dimensional arrangement of blocks, however.
- */
-
 template <class DomainType>
 class IndexSetBlocks
 : public IndexSetBase<
@@ -1206,7 +1200,8 @@ class IndexSetBlocks
  private:
   index_type _size;
 
-//constexpr static dim_t NDim = 1;
+  // TODO: Rank of blocks index set should depend on blockspec dimensions of
+  //       the domain's pattern type.
   static constexpr std::size_t NDim = base_t::ndim();
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;

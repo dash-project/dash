@@ -5,10 +5,6 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewTraits.h>
-#if 0
-#include <dash/view/ViewMod.h>
-#include <dash/view/NViewMod.h>
-#endif
 
 
 namespace dash {
