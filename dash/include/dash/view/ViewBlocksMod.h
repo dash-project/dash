@@ -29,7 +29,9 @@ namespace dash {
 // ------------------------------------------------------------------------
 //
 template <
-  class DomainType = ViewOrigin<1> >
+  class DomainType,
+  dim_t NDim       = dash::view_traits<
+                       typename std::decay<DomainType>::type>::rank::value >
 class ViewBlocksMod;
 
 // ------------------------------------------------------------------------
@@ -266,45 +268,52 @@ blocks(ViewType && domain) {
 }
 
 template <
-  class DomainType >
-struct view_traits<ViewBlocksMod<DomainType> > {
+  class DomainType,
+  dim_t NDim >
+struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef ViewBlocksMod<DomainType>                             image_type;
+  typedef ViewBlocksMod<DomainType, NDim>                       image_type;
   typedef typename domain_type::local_type                      local_type;
-  typedef ViewBlocksMod<DomainType>                            global_type;
+  typedef ViewBlocksMod<DomainType, NDim>                      global_type;
 
   typedef typename DomainType::index_type                       index_type;
-  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType>>   index_set_type;
+  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType, NDim>>
+                                                            index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
+
+  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
 
 template <
-  class DomainType >
+  class DomainType,
+  dim_t NDim >
 class ViewBlocksMod
-: public ViewModBase< ViewBlocksMod<DomainType>, DomainType > {
+: public ViewModBase< ViewBlocksMod<DomainType, NDim>, DomainType, NDim > {
  private:
-  typedef ViewBlocksMod<DomainType>                                 self_t;
-  typedef ViewModBase<ViewBlocksMod<DomainType>, DomainType>        base_t;
-  typedef ViewBlocksMod<const DomainType>                     const_self_t;
+  typedef ViewBlocksMod<DomainType, NDim>                           self_t;
+  typedef ViewModBase<ViewBlocksMod<DomainType, NDim>, DomainType, NDim>
+                                                                    base_t;
+  typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
  public:
   typedef DomainType                                           domain_type;
 //typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename base_t::origin_type                         origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
  private:
   typedef ViewBlockMod<DomainType>                              block_type;
   typedef typename domain_type::local_type               domain_local_type;
  public:
   typedef dash::IndexSetBlocks<DomainType>                  index_set_type;
   typedef self_t                                               global_type;
-  typedef ViewBlocksMod<domain_local_type>                      local_type;
+  typedef ViewBlocksMod<domain_local_type, NDim>                local_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
 
@@ -402,6 +411,16 @@ class ViewBlocksMod
   : base_t(std::forward<domain_type>(domain))
   , _index_set(this->domain())
   { }
+
+  // ---- offsets ---------------------------------------------------------
+
+  // ---- size ------------------------------------------------------------
+
+  constexpr size_type size(dim_t sub_dim = 0) const {
+    return index_set().size(sub_dim);
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
     return const_iterator(*const_cast<self_t *>(this),

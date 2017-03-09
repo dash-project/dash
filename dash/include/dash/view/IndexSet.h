@@ -1186,8 +1186,7 @@ template <class DomainType>
 class IndexSetBlocks
 : public IndexSetBase<
            IndexSetBlocks<DomainType>,
-           DomainType,
-           1 >
+           DomainType >
 {
   typedef IndexSetBlocks<DomainType>                            self_t;
   typedef IndexSetBase<self_t, DomainType, 1>                   base_t;
