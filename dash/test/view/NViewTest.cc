@@ -79,29 +79,82 @@ using dash::test::range_str;
 
 TEST_F(NViewTest, ViewTraits)
 {
-  dash::Matrix<int, 2> matrix(dash::size() * 10,
-                              dash::size() * 10);
+  {
+    dash::Matrix<int, 2> matrix(
+        dash::SizeSpec<2>(
+          dash::size() * 10,
+          dash::size() * 10),
+        dash::DistributionSpec<2>(
+          dash::NONE,
+          dash::TILE(10)),
+        dash::Team::All(),
+        dash::TeamSpec<2>(
+          1,
+          dash::size()));
 
-  auto v_sub  = dash::sub<0>(0, 10, matrix);
-  auto i_sub  = dash::index(v_sub);
-  auto v_ssub = dash::sub<0>(0, 5, (dash::sub<1>(0, 10, matrix)));
-  auto v_loc  = dash::local(matrix);
+    auto v_sub  = dash::sub<0>(0, 10, matrix);
+    auto i_sub  = dash::index(v_sub);
+    auto v_ssub = dash::sub<0>(0, 5, (dash::sub<1>(0, 10, matrix)));
+    auto v_loc  = dash::local(matrix);
+    auto v_sblk = dash::blocks(dash::sub<0>(0, 10, matrix));
 
-  static_assert(
-      dash::view_traits<decltype(matrix)>::rank::value == 2,
-      "view traits rank for dash::Matrix not matched");
-  static_assert(
-      dash::view_traits<decltype(v_sub)>::is_view::value == true,
-      "view traits is_view for sub(dash::Matrix) not matched");
-  static_assert(
-      dash::view_traits<decltype(v_ssub)>::is_view::value == true,
-      "view traits is_view for sub(sub(dash::Matrix)) not matched");
-  static_assert(
-      dash::view_traits<decltype(v_sub)>::is_origin::value == false,
-      "view traits is_origin for sub(dash::Matrix) not matched");
-  static_assert(
-      dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
-      "view traits is_origin for sub(sub(dash::Matrix)) not matched");
+    static_assert(
+        dash::view_traits<decltype(matrix)>::rank::value == 2,
+        "view traits rank for dash::Matrix not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sub)>::is_view::value == true,
+        "view traits is_view for sub(dash::Matrix) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_ssub)>::is_view::value == true,
+        "view traits is_view for sub(sub(dash::Matrix)) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sub)>::is_origin::value == false,
+        "view traits is_origin for sub(dash::Matrix) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
+        "view traits is_origin for sub(sub(dash::Matrix)) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
+        "view traits rank for blocks(sub(dash::Matrix)) not matched");
+  }
+  {
+    dash::NArray<int, 2> narray(
+        dash::SizeSpec<2>(
+          dash::size() * 10,
+          dash::size() * 10),
+        dash::DistributionSpec<2>(
+          dash::NONE,
+          dash::BLOCKCYCLIC(10)),
+        dash::Team::All(),
+        dash::TeamSpec<2>(
+          1,
+          dash::size()));
+
+    auto v_sub  = dash::sub<0>(0, 10, narray);
+    auto i_sub  = dash::index(v_sub);
+    auto v_ssub = dash::sub<0>(0, 5, (dash::sub<1>(0, 10, narray)));
+    auto v_loc  = dash::local(narray);
+    auto v_sblk = dash::blocks(dash::sub<0>(0, 10, narray));
+
+    static_assert(
+        dash::view_traits<decltype(narray)>::rank::value == 2,
+        "view traits rank for dash::NArray not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sub)>::is_view::value == true,
+        "view traits is_view for sub(dash::NArray) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_ssub)>::is_view::value == true,
+        "view traits is_view for sub(sub(dash::NArray)) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sub)>::is_origin::value == false,
+        "view traits is_origin for sub(dash::NArray) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
+        "view traits is_origin for sub(sub(dash::NArray)) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
+        "view traits rank for blocks(sub(dash::NArray)) not matched");
+  }
 }
 
 TEST_F(NViewTest, MatrixBlocked1DimSingle)

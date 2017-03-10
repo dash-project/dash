@@ -792,6 +792,10 @@ struct pattern_traits
                      decltype(std::declval<PatternType>().blockspec())
                    >::type
           blockspec_type;
+  typedef typename std::decay<
+                     decltype(std::declval<PatternType>().local_blockspec())
+                   >::type
+          local_blockspec_type;
 };
 
 //////////////////////////////////////////////////////////////////////////////
