@@ -124,8 +124,10 @@ public:
         _public_container = _container;
       }
        _container = &new_container;
+       _lbegin = _container->begin();
     }
     _container->push_back(val);
+    _lend = _container->end();
   }
 
 private:
