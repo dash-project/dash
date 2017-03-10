@@ -11,6 +11,7 @@
 #define DART__LOCALITY_H_
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 
 /**
@@ -32,7 +33,7 @@ extern "C" {
  * \ingroup DartLocality
  */
 dart_ret_t dart_team_locality_init(
-  dart_team_t                     team);
+  dart_team_t                     team)                 DART_NOTHROW;
 
 /**
  * Initialize information of the specified team.
@@ -41,7 +42,7 @@ dart_ret_t dart_team_locality_init(
  * \ingroup DartLocality
  */
 dart_ret_t dart_team_locality_finalize(
-  dart_team_t                     team);
+  dart_team_t                     team)                 DART_NOTHROW;
 
 /**
  * Locality information of the team domain with the specified id tag.
@@ -52,7 +53,7 @@ dart_ret_t dart_team_locality_finalize(
 dart_ret_t dart_domain_team_locality(
   dart_team_t                     team,
   const char                    * domain_tag,
-  dart_domain_locality_t       ** team_domain_out);
+  dart_domain_locality_t       ** team_domain_out)      DART_NOTHROW;
 
 /**
  * Default constructor.
@@ -62,7 +63,7 @@ dart_ret_t dart_domain_team_locality(
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_create(
-  dart_domain_locality_t       ** domain_out);
+  dart_domain_locality_t       ** domain_out)           DART_NOTHROW;
 
 /**
  * Copy-constructor.
@@ -74,7 +75,7 @@ dart_ret_t dart_domain_create(
  */
 dart_ret_t dart_domain_clone(
   const dart_domain_locality_t  * domain_in,
-  dart_domain_locality_t       ** domain_out);
+  dart_domain_locality_t       ** domain_out)           DART_NOTHROW;
 
 /**
  * Destructor.
@@ -84,7 +85,7 @@ dart_ret_t dart_domain_clone(
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_destroy(
-  dart_domain_locality_t        * domain);
+  dart_domain_locality_t        * domain)               DART_NOTHROW;
 
 /**
  * Assignment operator.
@@ -96,7 +97,7 @@ dart_ret_t dart_domain_destroy(
  */
 dart_ret_t dart_domain_assign(
   dart_domain_locality_t        * domain_lhs,
-  const dart_domain_locality_t  * domain_rhs);
+  const dart_domain_locality_t  * domain_rhs)           DART_NOTHROW;
 
 /**
  * Locality information of the subdomain with the specified id tag.
@@ -107,7 +108,7 @@ dart_ret_t dart_domain_assign(
 dart_ret_t dart_domain_find(
   const dart_domain_locality_t  * domain_in,
   const char                    * domain_tag,
-  dart_domain_locality_t       ** subdomain_out);
+  dart_domain_locality_t       ** subdomain_out)        DART_NOTHROW;
 
 /**
  * Remove domains in locality domain hierarchy that do not match the
@@ -119,7 +120,7 @@ dart_ret_t dart_domain_find(
 dart_ret_t dart_domain_select(
   dart_domain_locality_t        * domain_in,
   int                             num_subdomain_tags,
-  const char                   ** subdomain_tags);
+  const char                   ** subdomain_tags)       DART_NOTHROW;
 
 /**
  * Remove domains in locality domain hierarchy matching the specified domain
@@ -131,7 +132,7 @@ dart_ret_t dart_domain_select(
 dart_ret_t dart_domain_exclude(
   dart_domain_locality_t        * domain_in,
   int                             num_subdomain_tags,
-  const char                   ** subdomain_tags);
+  const char                   ** subdomain_tags)       DART_NOTHROW;
 
 /**
  * Insert locality domain into subdomains of a domain at the specified
@@ -148,7 +149,7 @@ dart_ret_t dart_domain_exclude(
 dart_ret_t dart_domain_add_subdomain(
   dart_domain_locality_t        * domain,
   dart_domain_locality_t        * subdomain,
-  int                             subdomain_rel_id);
+  int                             subdomain_rel_id)     DART_NOTHROW;
 
 /**
  * Move locality domain in the locality hierarchy.
@@ -167,7 +168,7 @@ dart_ret_t dart_domain_add_subdomain(
 dart_ret_t dart_domain_move_subdomain(
   dart_domain_locality_t        * domain,
   dart_domain_locality_t        * new_parent_domain,
-  int                             new_domain_rel_id);
+  int                             new_domain_rel_id)    DART_NOTHROW;
 
 /**
  * Split locality domain hierarchy at given domain tag into \c num_parts
@@ -180,7 +181,7 @@ dart_ret_t dart_domain_split_scope(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                             num_parts,
-  dart_domain_locality_t        * split_domain_out);
+  dart_domain_locality_t        * split_domain_out)     DART_NOTHROW;
 
 /**
  * Domain tags of domains at the specified locality scope.
@@ -192,7 +193,7 @@ dart_ret_t dart_domain_scope_tags(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
-  char                        *** domain_tags_out);
+  char                        *** domain_tags_out)      DART_NOTHROW;
 
 /**
  * Locality domains at the specified locality scope.
@@ -204,7 +205,7 @@ dart_ret_t dart_domain_scope_domains(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
-  dart_domain_locality_t      *** domains_out);
+  dart_domain_locality_t      *** domains_out)          DART_NOTHROW;
 
 /**
  * Adds entries to locality hierarchy to group locality domains.
@@ -216,7 +217,7 @@ dart_ret_t dart_domain_group(
   dart_domain_locality_t        * domain_in,
   int                             num_group_subdomains,
   const char                   ** group_subdomain_tags,
-  char                          * group_domain_tag_out);
+  char                          * group_domain_tag_out) DART_NOTHROW;
 
 /**
  * Locality information of the unit with the specified team-relative id.
@@ -227,7 +228,7 @@ dart_ret_t dart_domain_group(
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
   dart_team_unit_t                unit,
-  dart_unit_locality_t         ** loc);
+  dart_unit_locality_t         ** loc)                  DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
