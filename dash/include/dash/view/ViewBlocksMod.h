@@ -303,7 +303,6 @@ class ViewBlocksMod
   typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
  public:
   typedef DomainType                                           domain_type;
-//typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename base_t::origin_type                         origin_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;

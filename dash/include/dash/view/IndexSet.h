@@ -345,7 +345,6 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-//  -> decltype(dash::index(this->view_domain())) {
     -> decltype(dash::index(
                   std::declval<const view_domain_type &>()
                 )) {
@@ -1180,7 +1179,14 @@ template <class DomainType>
 class IndexSetBlocks
 : public IndexSetBase<
            IndexSetBlocks<DomainType>,
-           DomainType >
+           DomainType,
+           // Number of dimensions in the domain pattern's block spec:
+           dash::pattern_traits<
+             typename dash::view_traits<
+               typename std::decay<DomainType>::type
+             >::pattern_type
+           >::blockspec_type::ndim::value
+         >
 {
   typedef IndexSetBlocks<DomainType>                            self_t;
   typedef IndexSetBase<self_t, DomainType>                      base_t;
@@ -1200,9 +1206,10 @@ class IndexSetBlocks
  private:
   index_type _size;
 
-  // TODO: Rank of blocks index set should depend on blockspec dimensions of
-  //       the domain's pattern type.
-  static constexpr std::size_t NDim = base_t::ndim();
+  // Rank of blocks index set should depend on blockspec dimensions of
+  // the domain's pattern type.
+  static constexpr std::size_t NBlocksDim = base_t::rank::value;
+
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
@@ -1238,6 +1245,14 @@ class IndexSetBlocks
     return iterator(*this, size());
   }
 
+  template <typename... Args>
+  constexpr index_type rel(
+              index_type block_coord, Args... block_coords) const {
+    return rel(std::array<index_type, NBlocksDim> {{
+                 block_coord, (index_type)(block_coords)...
+               }});
+  }
+
   constexpr index_type rel(index_type block_index) const {
     return block_index +
            // index of block at first index in domain
@@ -1263,9 +1278,9 @@ class IndexSetBlocks
     return rel(block_index);
   }
 
-  template <dim_t NDim>
+  template <dim_t NBlocksDim>
   constexpr index_type operator[](
-    const std::array<index_type, NDim> & block_coords) const noexcept {
+    const std::array<index_type, NBlocksDim> & block_coords) const noexcept {
     return -1;
   }
 
