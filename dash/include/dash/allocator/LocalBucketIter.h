@@ -395,8 +395,9 @@ private:
     } else {
       // find bucket containing element at given offset:
       for (; _bucket_it != _bucket_last; ++_bucket_it) {
-        if (offset >= _bucket_it->size) {
-          offset -= _bucket_it->size;
+        if (offset + _bucket_phase >= _bucket_it->size) {
+          offset -= _bucket_it->size - _bucket_phase;
+          _bucket_phase = 0;
         } else if (offset < _bucket_it->size) {
           _bucket_phase = offset;
           break;
