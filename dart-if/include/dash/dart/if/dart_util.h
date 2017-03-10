@@ -16,4 +16,6 @@
 
 #define DART_MAYBE_UNUSED __attribute__((unused))
 
+#define DART_INLINE static inline DART_MAYBE_UNUSED
+
 #endif /* DART_UTIL_H_ */

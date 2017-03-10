@@ -184,8 +184,7 @@ dart_ret_t dart_gptr_setaddr(
  * \threadsafe
  * \ingroup DartGlobMem
  */
-static inline
-DART_MAYBE_UNUSED DART_NOTHROW
+DART_INLINE DART_NOTHROW
 dart_ret_t
 dart_gptr_incaddr(
   dart_gptr_t * gptr,
@@ -206,8 +205,7 @@ dart_gptr_incaddr(
  * \threadsafe
  * \ingroup DartGlobMem
  */
-static inline
-DART_MAYBE_UNUSED DART_NOTHROW
+DART_INLINE DART_NOTHROW
 dart_ret_t dart_gptr_setunit(
   dart_gptr_t      * gptr,
   dart_team_unit_t   unit)
