@@ -95,6 +95,7 @@ public:
   void shrink(size_type num_elements) {
     if(num_elements > 0) {
       _container->reserve(_container->capacity() - num_elements);
+      _lend = _container->end();
     }
   }
 
