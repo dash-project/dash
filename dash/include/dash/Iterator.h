@@ -102,6 +102,7 @@ template<
   class    Reference >
 typename Pattern::index_type
 distance(
+  /// Global pointer to the initial position in the global sequence
   const GlobIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence

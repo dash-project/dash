@@ -2,6 +2,7 @@
 #include "UnorderedMapTest.h"
 
 #include <dash/UnorderedMap.h>
+#include <dash/Atomic.h>
 
 #include <vector>
 #include <algorithm>
@@ -102,6 +103,12 @@ TEST_F(UnorderedMapTest, BalancedGlobalInsert)
   EXPECT_TRUE_U(insertion_a.second);
   auto existing_b  = map.insert(value_b);
   EXPECT_FALSE_U(existing_b.second);
+
+  const mapped_t & lookup_a = map[key_a];
+  EXPECT_EQ(lookup_a, mapped_a);
+
+  const mapped_t & lookup_b = map[key_b];
+  EXPECT_EQ(lookup_b, mapped_b);
 
   DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
                  "map size before commit:", map.size(),
@@ -231,6 +238,9 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
     auto existing  = map.insert(value);
     EXPECT_FALSE(existing.second);
     EXPECT_EQ(insertion.first, existing.first);
+
+    const mapped_t & lookup  = map[key];
+    EXPECT_EQ(lookup, mapped);
 
     map_value value_res = *insertion.first;
     DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
@@ -415,6 +425,9 @@ TEST_F(UnorderedMapTest, Local)
     EXPECT_FALSE_U(existing.second);
     EXPECT_EQ_U(insertion.first, existing.first);
 
+    const mapped_t & lookup = map[key];
+    EXPECT_EQ(lookup, mapped);
+
     EXPECT_EQ_U(1, map.local.count(key));
     EXPECT_NE_U(map.local.end(), map.local.find(key));
   }
@@ -451,3 +464,81 @@ TEST_F(UnorderedMapTest, Local)
     }
   }
 }
+
+TEST_F(UnorderedMapTest, MappedAtomics)
+{
+  typedef int                                           key_t;
+  typedef dash::Atomic<double>                          mapped_t;
+  typedef HashCyclic<key_t>                             hash_t;
+  typedef dash::UnorderedMap<key_t, mapped_t, hash_t>   map_t;
+  typedef typename map_t::iterator                      map_iterator;
+  typedef typename map_t::value_type                    map_value;
+  typedef typename map_t::size_type                     size_type;
+
+  if (dash::size() < 2) {
+    LOG_MESSAGE(
+      "UnorderedMapTest.MappedAtomics requires at least two units");
+    return;
+  }
+
+  size_type nunits            = dash::size();
+  // Number of preallocated elements:
+  size_type init_global_size  = 0;
+  // Use small local buffer size to enforce reallocation.
+  // Also determines eager allocation size:
+  size_type local_buffer_size = dash::myid().id == 0 ? 2 : 3;
+
+  map_t map(init_global_size,
+            local_buffer_size);
+  DASH_LOG_DEBUG("UnorderedMapTest.MappedAtomics", "map initialized");
+
+  // Wait for validation of all units:
+  dash::barrier();
+
+  size_type local_elements = 5;
+
+  for (int li = 0; li < local_elements; ++li) {
+    key_t     key    = (nunits * (100 + li)) + dash::myid().id;
+    mapped_t  mapped(1.0 * (dash::myid().id + 1) + (0.01 * (li + 1)));
+    map_value value({ key, mapped });
+
+    DASH_LOG_DEBUG("UnorderedMapTest.MappedAtomics",
+                   "insert new element:", value.first);
+    auto      insertion     = map.local.insert(value);
+    map_value insertion_val = *insertion.first;
+    DASH_LOG_DEBUG("UnorderedMapTest.MappedAtomics",
+                   "first insert returned:",
+                   "inserted:", insertion.second,
+                   "iterator:", insertion.first,
+                   "value:",    insertion_val.first,
+                   "->",        insertion_val.second);
+    EXPECT_TRUE_U(insertion.second);
+  }
+
+  map.barrier();
+
+  // Test elements added by all units:
+  for (int li = 0; li < local_elements; ++li) {
+    for (int unit = 0; unit < nunits; ++unit) {
+      key_t     key    = (nunits * (100 + li)) + unit;
+      mapped_t  mapped(1.0 * (unit + 1) + (0.01 * (li + 1)));
+      map_value value({ key, mapped });
+
+      DASH_LOG_DEBUG("UnorderedMapTest.Local", "look up element",
+                     value.first);
+
+      auto found = map.find(key);
+
+      DASH_LOG_DEBUG("UnorderedMapTest.Local",
+                     "return type of map.find(key):",
+                     dash::internal::typestr(found));
+
+      EXPECT_NE_U(map.end(), found);
+      map_value found_value = *found;
+      EXPECT_EQ_U(value, found_value);
+
+      EXPECT_EQ_U(1, map.count(key));
+    }
+  }
+}
+

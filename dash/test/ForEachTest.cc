@@ -23,7 +23,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     // Run for_each on complete array
     dash::for_each(array.begin(), array.end(), invoke);
     // Should have been invoked on every local index in the array:
-    LOG_MESSAGE("Local number of inspected indices: %d",
+    LOG_MESSAGE("Local number of inspected indices: %zu",
                 _invoked_indices.size());
     EXPECT_EQ(array.lsize(), _invoked_indices.size());
     // Count number of local invokes
@@ -32,7 +32,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     array.barrier();
     // Test number of total invokes
     size_t num_invoked_indices_all = count_invokes.get();
-    LOG_MESSAGE("Total number of inspected indices: %d",
+    LOG_MESSAGE("Total number of inspected indices: %zu",
                 num_invoked_indices_all);
     EXPECT_EQ(_num_elem, num_invoked_indices_all);
 }
@@ -65,10 +65,9 @@ TEST_F(ForEachTest, ForEachWithIndex)
         dummy_fct);
 
     // Test Matrix
-    auto matrix = dash::Matrix<Element_t, 2>(
-                      dash::SizeSpec<2>(
-                          dash::size(),
-                          dash::size()));
+    dash::Matrix<Element_t, 2> matrix(dash::SizeSpec<2>(
+                                        dash::size(),
+                                        dash::size()));
     dash::fill(
         matrix.begin(),
         matrix.end(),
@@ -132,3 +131,38 @@ TEST_F(ForEachTest, ModifyValues)
   // Verify
   dash::for_each(array.begin(), array.end(), verify);
 }
+
+TEST_F(ForEachTest, Lambdas)
+{
+  dash::Array<int> array(100, dash::TILE(10));
+  dash::fill(array.begin(), array.end(), dash::myid());
+
+  // -- dash::for_each -------------------------------------------
+
+  // Increment by 100:
+  dash::for_each(array.begin(), array.end(),
+                 [](int & el) {
+                   el += 100;
+                 });
+  // Verify:
+  dash::for_each(array.begin(), array.end(),
+                 [](int & el) {
+                   EXPECT_EQ_U(100 + dash::myid(), el);
+                 });
+
+  // -- dash::for_each_with_index --------------------------------
+
+  // Increment by element index:
+  dash::for_each_with_index(
+                 array.begin(), array.end(),
+                 [](int & el, index_t gindex) {
+                   el += gindex;
+                 });
+  // Verify:
+  dash::for_each_with_index(
+                 array.begin(), array.end(),
+                 [](int & el, index_t gindex) {
+                   EXPECT_EQ_U(100 + dash::myid() + gindex, el);
+                 });
+}
+

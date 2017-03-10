@@ -2,24 +2,15 @@
 #include "STLAlgorithmTest.h"
 
 #include <dash/Array.h>
+#include <dash/Pair.h>
 
 #include <algorithm>
 #include <vector>
 #include <utility>
 
 
-namespace std {
-  template <class T1, class T2>
-  std::ostream & operator<<(
-    std::ostream & os,
-    const std::pair<T1, T2> & p) {
-    os << "(" << p.first << "," << p.second << ")";
-    return os;
-  }
-}
-
 TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
-  typedef std::pair<dart_unit_t, int> element_t;
+  typedef dash::Pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;
   typedef array_t::const_iterator     const_it_t;
   typedef array_t::index_type         index_t;
@@ -28,7 +19,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
   // Initialize local elements
   index_t l_off = 0;
   for (auto l_it = array.lbegin(); l_it != array.lend(); ++l_it, ++l_off) {
-    *l_it = std::make_pair(dash::myid().id, l_off);
+    *l_it = dash::make_pair(dash::myid().id, l_off);
   }
   // Wait for all units to initialize their assigned range
   array.barrier();
@@ -72,7 +63,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
 }
 
 TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
-  typedef std::pair<dart_unit_t, int> element_t;
+  typedef dash::Pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;
   typedef array_t::const_iterator     const_it_t;
   typedef array_t::index_type         index_t;
@@ -85,7 +76,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   index_t lidx = 0;
   for (auto l_it = array_a.lbegin(); l_it != array_a.lend();
        ++l_it, ++lidx) {
-    *l_it = std::make_pair(dash::myid().id, lidx);
+    *l_it = dash::make_pair(dash::myid().id, lidx);
   }
   // Wait for all units to initialize their assigned range:
   array_a.barrier();
@@ -93,6 +84,22 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   // Global-to-global copy using std::copy:
   if (dash::myid() == 0) {
     std::copy(array_a.begin(), array_a.end(), array_b.begin());
+
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_a);
+
+    auto a_first = array_a.begin();
+    auto b_first = array_b.begin();
+    while (a_first != array_a.end()) {
+      *b_first++ == *a_first++;
+    }
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
+
+    for (int l = 0; l < array_a.size(); l++) {
+      DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal",
+                         dash::internal::typestr(array_b[l]));
+      array_b[l] = array_a[l];
+    }
+    DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);
   }
   // Wait until copy operation is completed:
   dash::barrier();
@@ -101,7 +108,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
   lidx = 0;
   for (auto l_it = array_b.lbegin(); l_it != array_b.lend();
        ++l_it, ++lidx) {
-    ASSERT_EQ_U(array_a.local[lidx], static_cast<element_t>(*l_it));
+    ASSERT_EQ_U(array_a.local[lidx], (*l_it));
   }
 }
 

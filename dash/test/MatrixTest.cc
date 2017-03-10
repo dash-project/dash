@@ -5,7 +5,9 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include <iostream>
 #include <iomanip>
@@ -28,6 +30,40 @@ TEST_F(MatrixTest, OddSize)
   }
 }
 
+TEST_F(MatrixTest, LocalAccess)
+{
+  const int n_brow = 4;
+  const int n_bcol = 3;
+
+  auto myid = dash::myid();
+
+  dash::NArray<int, 2> mat(n_brow * dash::size(),
+                           n_bcol * dash::size());
+
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix extents:", mat.extent(0), "x", mat.extent(1));
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                 "matrix local view:", mat.local.extents());
+
+  int lcount = (myid + 1) * 1000;
+  dash::generate(mat.begin(), mat.end(), 
+                 [&]() {
+                   return (lcount++);
+                 });
+  mat.barrier();
+
+  DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+
+  for (int i = 0; i < mat.local.extent(0); i++) {
+    for (int j = 0; j < mat.local.extent(1); j++) {
+      DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                     "mat.local[", i, "][", j, "]");
+      EXPECT_EQ(mat.local(i,j),
+                mat.local[i][j]);
+    }
+  }
+}
+
 TEST_F(MatrixTest, Views)
 {
   const size_t block_size_x  = 3;
@@ -45,7 +81,8 @@ TEST_F(MatrixTest, Views)
   size_t num_elem_per_unit   = num_elem_total / dash::size();
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
-  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
+  LOG_MESSAGE("nunits:%lu elem_total:%lu elem_per_unit:%lu "
+              "blocks_per_unit:%lu",
               dash::size(), num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -100,7 +137,7 @@ TEST_F(MatrixTest, Views)
     auto g_block       = matrix.block(b);
     auto g_block_first = g_block.begin();
     auto g_block_view  = g_block_first.viewspec();
-    LOG_MESSAGE("Checking if block %d is local", b);
+    LOG_MESSAGE("Checking if block %lu is local", b);
     if (g_block_first.is_local()) {
       LOG_MESSAGE("Testing viewspec of local block %d", lb);
       auto l_block       = matrix.local.block(lb);
@@ -143,7 +180,7 @@ TEST_F(MatrixTest, SingleWriteMultipleRead)
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
   ASSERT_EQ(extent_rows, matrix.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %lu", matrix_size);
   // Fill matrix
   if(dash::myid().id == 0) {
     LOG_MESSAGE("Assigning matrix values");
@@ -192,7 +229,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
   ASSERT_EQ(extent_rows, matrix.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %lu", matrix_size);
   // Fill matrix
   if(dash::myid().id == 0) {
     LOG_MESSAGE("Assigning matrix values");
@@ -247,7 +284,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_rows, matrix.extent(0));
   ASSERT_EQ(extent_cols, matrix.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %lu", matrix_size);
   // Fill matrix
   if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
@@ -305,7 +342,7 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
   ASSERT_EQ(extent_rows, matrix.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %lu", matrix_size);
   // Fill matrix
   if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
@@ -417,7 +454,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
   ASSERT_EQ_U(matrix_size / num_units, matrix.local_size());
   element_t * lit  = matrix.lbegin();
   element_t * lend = matrix.lend();
-  LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %d",
+  LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %ld",
               static_cast<void*>(lend), static_cast<void*>(lit),
               lend - lit);
   ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
@@ -893,7 +930,7 @@ TEST_F(MatrixTest, DelayedAlloc)
                          "phase:",       phase_coords, "=", phase,
                          "expected:",    expected,
                          "actual:",      actual);
-          EXPECT_DOUBLE_EQ_U(expected, actual);
+          EXPECT_EQ_U(expected, actual);
         }
       }
     }
@@ -1041,19 +1078,36 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
   narray.barrier();
   
   if ( 0 == myid ) {
-    LOG_MESSAGE("global extent is %lu x %lu", narray.extent(0), narray.extent(1));
+    LOG_MESSAGE("global extent is %lu x %lu",
+                narray.extent(0), narray.extent(1));
   }
-  LOG_MESSAGE("local extent is %lu x %lu", narray.local.extent(0), narray.local.extent(1));
+  LOG_MESSAGE("local extent is %lu x %lu",
+              narray.local.extent(0), narray.local.extent(1));
 
   narray.barrier();
 
-  std::fill(narray.lbegin(), narray.lend(), 0);
+  // test lbegin, lend
+  std::fill(narray.lbegin(), narray.lend(), 1);
+  std::for_each(narray.lbegin(), narray.lend(), 
+      [](uint32_t & el){
+        ASSERT_EQ_U(el, 1);
+      });
+  dash::barrier();
+  // test local view
+  std::fill(narray.local.begin(), narray.local.end(), 2);
+  std::for_each(narray.local.begin(), narray.local.end(), 
+      [](uint32_t el){
+        ASSERT_EQ_U(el, 2);
+      });
 
   uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
   
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());
+
+  elementsvisited = std::distance(narray.local.begin(), narray.local.end());
+  ASSERT_EQ_U(elementsvisited, local_elements);
 }
 
 
@@ -1202,5 +1256,104 @@ TEST_F(MatrixTest, CopyRow)
     EXPECT_EQ_U(expected, actual);
     li++;
   }
+}
+
+TEST_F(MatrixTest, ConstMatrixRefs)
+{
+  typedef dash::Pattern<2>                 pattern_t;
+  typedef typename pattern_t::index_type   index_t;
+
+  dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
+  
+  auto const & matrix_by_ref = matrix;
+  auto & matrix_local  = matrix.local;
+  
+  dash::fill(matrix.begin(), matrix.end(), 0);
+  dash::barrier();
+  
+  int el = matrix(0,0);
+  el = matrix[0][0];
+  ASSERT_EQ_U(el, 0);
+  
+  el = matrix.local[0][0];
+  ASSERT_EQ_U(el, 0);
+
+  el = *(matrix.local.lbegin());
+  ASSERT_EQ_U(el, 0);
+
+  dash::barrier();
+  el = ++(*(matrix.local.lbegin()));
+  ASSERT_EQ_U(el, 1);
+  el = ++(*(matrix.local.row(0).lbegin()));
+  ASSERT_EQ_U(el, 2);
+  matrix.barrier();
+
+  // test access using const & matrix
+  el = matrix_by_ref[0][0];
+  ASSERT_EQ_U(el, 2);
+
+  el = matrix_by_ref.local[0][0];
+  ASSERT_EQ_U(el, 2);
+
+  // should not compile
+  // el = ++(*(matrix_by_ref.local.lbegin()));
+  // el = ++(*(matrix_by_ref.local.row(0).lbegin()));
+  // matrix_by_ref.local.row(0)[0] = 5;
+  
+  // test access using non-const & matrix.local
+  matrix.barrier();
+  *(matrix_local.lbegin()) = 5;
+}
+
+template <
+  class MatrixT,
+  class ValueT = typename MatrixT::value_type >
+ValueT local_sum_rows(const int       nelts,
+                      const MatrixT & matIn,
+                      const int       myid)
+{
+  auto   lclRows   = matIn.pattern().local_extents()[0];
+  ValueT local_sum = 0;
+
+  // Accumulate local values by row to test combinations of
+  // `sub` and `local` view qualifiers:
+  ValueT const * mPtr;
+  for (int i = 0; i < lclRows; ++i) {
+    mPtr = matIn.local.row(i).lbegin();
+
+    for (int j = 0; j < nelts; ++j) {
+      local_sum += *(mPtr++);
+    }
+  }
+  return local_sum;
+}
+
+TEST_F(MatrixTest, ConstLocalMatrixRefs)
+{
+  using value_t = unsigned int;
+  using uint    = unsigned int;
+
+  uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
+
+  const uint nelts = 40;
+
+  dash::NArray<value_t, 2> mat(nelts, nelts);
+
+  // Initialize matrix values:
+  uint counter = myid + 20;
+  if (0 == myid) {
+    for (uint *i = mat.lbegin(); i < mat.lend(); ++i) {
+      *i = ++counter;
+    }
+  }
+  dash::barrier();
+
+  auto local_rows_sum = local_sum_rows(nelts, mat, myid);
+  auto local_elem_sum = std::accumulate(
+                          mat.lbegin(),
+                          mat.lend(),
+                          0, std::plus<value_t>());
+
+  EXPECT_EQ_U(local_elem_sum, local_rows_sum);
 }
 
