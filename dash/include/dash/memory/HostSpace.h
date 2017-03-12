@@ -48,8 +48,8 @@ class HostSpace {
 
   block reallocate(block& b, std::size_t const nbytes) noexcept
   {
-    DASH_THROW(dash::exception::NotImplemented,
-               "reallocation not supported yet");
+    DASH_ASSERT("Not implemented");
+    return b;
   }
   /**
    * Allocator Equality: Two HostSpace Allocators are always equal since we use
