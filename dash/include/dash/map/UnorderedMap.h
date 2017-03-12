@@ -14,6 +14,7 @@
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
 #include <dash/map/UnorderedMapGlobIter.h>
+#include <dash/map/HashPolicy.h>
 
 #include <iterator>
 #include <utility>
@@ -25,47 +26,6 @@
 
 namespace dash {
 
-template<typename Key>
-class HashLocal
-{
-private:
-  typedef dash::default_size_t size_type;
-
-public:
-  typedef Key          argument_type;
-  typedef team_unit_t result_type;
-
-public:
-  /**
-   * Default constructor.
-   */
-  HashLocal()
-  : _team(nullptr),
-    _nunits(0),
-    _myid(DART_UNDEFINED_UNIT_ID)
-  { }
-
-  /**
-   * Constructor.
-   */
-  HashLocal(
-    dash::Team & team)
-  : _team(&team),
-    _nunits(team.size()),
-    _myid(team.myid())
-  { }
-
-  result_type operator()(
-    const argument_type & key) const
-  {
-    return _myid;
-  }
-
-private:
-  dash::Team * _team   = nullptr;
-  size_type    _nunits = 0;
-  team_unit_t   _myid;
-}; // class HashLocal
 
 #ifndef DOXYGEN
 
@@ -108,16 +68,17 @@ private:
     Timer;
 
 public:
-  typedef Key                                                       key_type;
-  typedef Mapped                                                 mapped_type;
-  typedef Hash                                                        hasher;
-  typedef Pred                                                     key_equal;
-  typedef Alloc                                               allocator_type;
+  typedef Key                                                                  key_type;
+  typedef Mapped                                                            mapped_type;
+  typedef Hash                                                                   hasher;
+  typedef Pred                                                                key_equal;
+  typedef dash::detail::HashNode<std::pair<const key_type, mapped_type>>      value_type;
 
-  typedef dash::default_index_t                                   index_type;
-  typedef dash::default_index_t                              difference_type;
-  typedef dash::default_size_t                                     size_type;
-  typedef std::pair<const key_type, mapped_type>                  value_type;
+  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<value_type> allocator_type;
+
+  typedef dash::default_index_t                                              index_type;
+  typedef dash::default_index_t                                         difference_type;
+  typedef dash::default_size_t                                                size_type;
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
@@ -148,9 +109,9 @@ public:
   typedef typename glob_mem_type::const_reverse_local_iterator
     const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::local_pointer
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_local_pointer
     const_local_node_pointer;
 
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>

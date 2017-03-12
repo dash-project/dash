@@ -182,9 +182,9 @@ public:
   typedef typename glob_mem_type::const_reverse_local_iterator
     const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::local_iterator
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_local_iterator
     const_local_node_pointer;
 
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
