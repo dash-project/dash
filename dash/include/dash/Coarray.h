@@ -68,7 +68,7 @@ private:
   using _element_type   = typename std::remove_all_extents<T>::type;
   using _storage_type   = Matrix<_element_type, _rank+1, _index_type, _pattern_type>;
   template<int _subrank = _rank>
-  using _view_type      = MatrixRef<_element_type, _rank+1, _subrank, _pattern_type>;
+  using _view_type      = typename _storage_type::template view_type<_subrank>;
   using _local_type     = LocalMatrixRef<_element_type, _rank+1, _rank-1, _pattern_type>;
   using _offset_type    = std::array<_index_type, _rank>;
 
