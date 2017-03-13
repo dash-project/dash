@@ -2,6 +2,7 @@
 #define DART__COMMUNICATION_H_
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 #include <dash/dart/if/dart_globmem.h>
 
 /**
@@ -43,7 +44,7 @@ extern "C" {
  * \ingroup DartCommunication
  */
 dart_ret_t dart_barrier(
-  dart_team_t team);
+  dart_team_t team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI broadcast.
@@ -65,7 +66,7 @@ dart_ret_t dart_bcast(
   size_t              nelem,
   dart_datatype_t     dtype,
   dart_team_unit_t    root,
-  dart_team_t         team);
+  dart_team_t         team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI scatter.
@@ -89,7 +90,7 @@ dart_ret_t dart_scatter(
   size_t               nelem,
   dart_datatype_t      dtype,
   dart_team_unit_t     root,
-  dart_team_t          team);
+  dart_team_t          team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI gather.
@@ -113,7 +114,7 @@ dart_ret_t dart_gather(
   size_t              nelem,
   dart_datatype_t     dtype,
   dart_team_unit_t    root,
-  dart_team_t         team);
+  dart_team_t         team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allgather.
@@ -135,7 +136,7 @@ dart_ret_t dart_allgather(
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
-	dart_team_t       team);
+	dart_team_t       team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allgatherv.
@@ -162,7 +163,7 @@ dart_ret_t dart_allgatherv(
   void            * recvbuf,
   const size_t    * nrecvelem,
   const size_t    * recvdispls,
-  dart_team_t       teamid);
+  dart_team_t       teamid) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI allreduce.
@@ -185,7 +186,7 @@ dart_ret_t dart_allreduce(
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,
-  dart_team_t      team);
+  dart_team_t      team) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI_Reduce.
@@ -210,7 +211,7 @@ dart_ret_t dart_reduce(
   dart_datatype_t     dtype,
   dart_operation_t    op,
   dart_team_unit_t    root,
-  dart_team_t         team);
+  dart_team_t         team) DART_NOTHROW;
 
 /** \} */
 
@@ -242,7 +243,7 @@ dart_ret_t dart_accumulate(
   const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
-  dart_operation_t op);
+  dart_operation_t op) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI_Fetch_and_op.
@@ -268,7 +269,7 @@ dart_ret_t dart_fetch_and_op(
   const void *     value,
   void *           result,
   dart_datatype_t  dtype,
-  dart_operation_t op);
+  dart_operation_t op) DART_NOTHROW;
 
 
 /**
@@ -296,7 +297,7 @@ dart_ret_t dart_compare_and_swap(
   const void     * value,
   const void     * compare,
   void           * result,
-  dart_datatype_t  dtype);
+  dart_datatype_t  dtype) DART_NOTHROW;
 
 
 /** \} */
@@ -331,7 +332,7 @@ dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype);
+  dart_datatype_t   dtype) DART_NOTHROW;
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -354,7 +355,7 @@ dart_ret_t dart_put(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype);
+  dart_datatype_t   dtype) DART_NOTHROW;
 
 
 /**
@@ -372,7 +373,7 @@ dart_ret_t dart_put(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Guarantee completion of all outstanding operations involving a segment on all units
@@ -389,7 +390,7 @@ dart_ret_t dart_flush(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_all(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Guarantee local completion of all outstanding operations involving a segment on a certain unit
@@ -406,7 +407,7 @@ dart_ret_t dart_flush_all(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Guarantee completion of all outstanding operations involving a segment on all units
@@ -423,7 +424,7 @@ dart_ret_t dart_flush_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local_all(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 
 /** \} */
@@ -463,7 +464,7 @@ dart_ret_t dart_get_handle(
   dart_gptr_t       gptr,
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_handle_t   * handle);
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * 'HANDLE' variant of dart_put.
@@ -487,7 +488,7 @@ dart_ret_t dart_put_handle(
   const void      * src,
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_handle_t   * handle);
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * Wait for the local and remote completion of an operation.
@@ -501,7 +502,7 @@ dart_ret_t dart_put_handle(
  */
 
 dart_ret_t dart_wait(
-  dart_handle_t handle);
+  dart_handle_t handle) DART_NOTHROW;
 /**
  * Wait for the local and remote completion of operations.
  *
@@ -514,8 +515,8 @@ dart_ret_t dart_wait(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
-  dart_handle_t *handles,
-  size_t n);
+  dart_handle_t * handles,
+  size_t          n) DART_NOTHROW;
 
 /**
  * Wait for the local completion of an operation.
@@ -542,8 +543,8 @@ dart_ret_t dart_wait_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall_local(
-    dart_handle_t *handles,
-    size_t n);
+    dart_handle_t * handles,
+    size_t          n) DART_NOTHROW;
 
 /**
  * Test for the local completion of an operation.
@@ -557,8 +558,8 @@ dart_ret_t dart_waitall_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
-  dart_handle_t handle,
-  int32_t *result);
+  dart_handle_t   handle,
+  int32_t       * result) DART_NOTHROW;
 
 /**
  * Test for the local completion of operations.
@@ -573,9 +574,9 @@ dart_ret_t dart_test_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
-  dart_handle_t *handles,
-  size_t n,
-  int32_t *result);
+  dart_handle_t * handles,
+  size_t          n,
+  int32_t       * result) DART_NOTHROW;
 
 /** \} */
 
@@ -604,7 +605,7 @@ dart_ret_t dart_get_blocking(
   void         *  dest,
   dart_gptr_t     gptr,
   size_t          nelem,
-  dart_datatype_t dtype);
+  dart_datatype_t dtype) DART_NOTHROW;
 
 /**
  * 'BLOCKING' variant of dart_put.
@@ -621,10 +622,10 @@ dart_ret_t dart_get_blocking(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
-  dart_gptr_t     gptr,
-  const void    * src,
-  size_t          nelem,
-  dart_datatype_t dtype);
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype) DART_NOTHROW;
 
 /** \} */
 
@@ -656,7 +657,7 @@ dart_ret_t dart_send(
   size_t               nelem,
   dart_datatype_t      dtype,
 	int                  tag,
-	dart_global_unit_t   unit);
+	dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI recv.
@@ -677,7 +678,7 @@ dart_ret_t dart_recv(
   size_t               nelem,
   dart_datatype_t      dtype,
 	int                  tag,
-	dart_global_unit_t   unit);
+	dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI sendrecv.
@@ -711,7 +712,7 @@ dart_ret_t dart_sendrecv(
   size_t               recv_nelem,
   dart_datatype_t      recv_dtype,
   int                  recv_tag,
-  dart_global_unit_t   src);
+  dart_global_unit_t   src) DART_NOTHROW;
 
 
 /** \} */

@@ -1,7 +1,9 @@
 #ifndef DART_INITIALIZATION_H_INCLUDED
 #define DART_INITIALIZATION_H_INCLUDED
 
-#include "dart_types.h"
+#include <stdbool.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 /**
  * \file dart_initialization.h
@@ -34,7 +36,7 @@ extern "C" {
  * \threadsafe_none
  * \ingroup DartInitialization
 */
-dart_ret_t dart_init(int *argc, char ***argv);
+dart_ret_t dart_init(int *argc, char ***argv) DART_NOTHROW;
 
 /**
  * Initialize the DART runtime with support for thread-based concurrency.
@@ -50,9 +52,9 @@ dart_ret_t dart_init(int *argc, char ***argv);
  * \ingroup DartInitialization
  */
 dart_ret_t dart_init_thread(
-  int*                  argc,
-  char***               argv,
-  dart_thread_support_level_t * thread_safety);
+  int*                          argc,
+  char***                       argv,
+  dart_thread_support_level_t * thread_safety) DART_NOTHROW;
 
 /**
  * Finalize the DASH runtime.
@@ -62,17 +64,18 @@ dart_ret_t dart_init_thread(
  * \threadsafe_none
  * \ingroup DartInitialization
  */
-dart_ret_t dart_exit();
+dart_ret_t dart_exit() DART_NOTHROW;
 
 /**
  * Whether the DASH runtime has been initialized.
  *
- * \return 0 if DART has not been initialized or has been shut down already, >0 otherwise.
+ * \return false if DART has not been initialized or has been shut down already,
+ *         true  otherwise.
  *
  * \threadsafe
  * \ingroup DartInitialization
  */
-char       dart_initialized();
+bool       dart_initialized() DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

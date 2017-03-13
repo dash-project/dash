@@ -10,6 +10,8 @@
  *
  */
 
+#include <dash/dart/if/dart_util.h>
+#include <dash/dart/if/dart_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,8 +39,9 @@ typedef struct dart_lock_struct *dart_lock_t;
  * \threadsafe_none
  * \ingroup DartSync
  */
-dart_ret_t dart_team_lock_init(dart_team_t teamid,
-			       dart_lock_t* lock);
+dart_ret_t dart_team_lock_init(
+  dart_team_t   teamid,
+  dart_lock_t * lock)   DART_NOTHROW;
 
 /**
  * Free a \c lock initialized using \ref dart_team_lock_init.
@@ -50,8 +53,9 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid,
  * \threadsafe_none
  * \ingroup DartSync
  */
-dart_ret_t dart_team_lock_free(dart_team_t teamid,
-			       dart_lock_t* lock);
+dart_ret_t dart_team_lock_free(
+  dart_team_t   teamid,
+  dart_lock_t * lock)   DART_NOTHROW;
 
 /**
  * Block until the \c lock was acquired.
@@ -62,7 +66,8 @@ dart_ret_t dart_team_lock_free(dart_team_t teamid,
  * \threadsafe_none
  * \ingroup DartSync
  */
-dart_ret_t dart_lock_acquire(dart_lock_t lock);
+dart_ret_t dart_lock_acquire(
+  dart_lock_t   lock)   DART_NOTHROW;
 
 /**
  * Try to acquire the lock and return immediately.
@@ -75,7 +80,9 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock);
  * \threadsafe_none
  * \ingroup DartSync
  */
-dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *result);
+dart_ret_t dart_lock_try_acquire(
+  dart_lock_t   lock,
+  int32_t     * result) DART_NOTHROW;
 
 /**
  * Release the lock acquired through \ref dart_lock_acquire or \ref dart_lock_try_acquire.
@@ -86,7 +93,8 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *result);
  * \threadsafe_none
  * \ingroup DartSync
  */
-dart_ret_t dart_lock_release(dart_lock_t lock);
+dart_ret_t dart_lock_release(
+  dart_lock_t   lock)   DART_NOTHROW;
 
 
 /** \cond DART_HIDDEN_SYMBOLS */
