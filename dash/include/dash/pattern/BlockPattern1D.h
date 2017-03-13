@@ -670,15 +670,16 @@ public:
     return (_nunits < 2)
             ? local_coords
             : std::array<IndexType, 1> {{
-                ((
-                  _distspec[0].local_index_to_block_coord(
-                    static_cast<IndexType>(unit),
-                    local_coords[0],
-                    _nunits,
-                    _nblocks,
-                    _blocksize)
-                 ) * _blocksize)
-                + (local_coords[0] % _blocksize);
+                static_cast<IndexType>(
+                  (( _distspec[0].local_index_to_block_coord(
+                       static_cast<IndexType>(unit),
+                       local_coords[0],
+                       _nunits,
+                       _nblocks,
+                       _blocksize)
+                   ) * _blocksize)
+                  + (local_coords[0] % _blocksize)
+                )
               }};
   }
 
