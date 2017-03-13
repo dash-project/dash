@@ -299,7 +299,7 @@ void Graph<Direction,
   VertexIndexType, 
   EdgeIndexType>
 ::barrier() {
-
+  _glob_mem_con->commit();
 }
 
 template<GraphDirection Direction,

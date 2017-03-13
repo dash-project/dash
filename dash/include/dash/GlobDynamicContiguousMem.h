@@ -82,7 +82,6 @@ public:
     };
     _buckets.push_back(cont_bucket);
     _buckets.push_back(unattached_cont_bucket);
-    commit();
   }
 
   /**
@@ -104,6 +103,30 @@ public:
 
   void commit()
   {
+    // merge public and local containers together
+    _container->insert(_container->end(), 
+        _unattached_container->begin(), 
+        _unattached_container->end());
+    _unattached_container->clear();
+    // update memory location & size of _container
+    auto it = _buckets.begin();
+    it->lptr = _container->data();
+    it->size = _container->size();
+    // update memory location & size of _unattached_container
+    ++it;
+    it->lptr = _unattached_container->data();
+    it->size = 0;
+
+    update_lbegin();
+    update_lend();
+
+    // attach new container to global memory space
+    dart_gptr_t gptr = DART_GPTR_NULL;
+    dart_storage_t ds = dart_storage<value_type>(_container->size());
+    dart_team_memregister(
+        _team->dart_id(), ds.nelem, ds.dtype, _container->data(), &gptr);
+    it = _buckets.begin();
+    it->gptr = gptr;
   }
 
   local_iterator lbegin() {
@@ -134,6 +157,30 @@ public:
     update_lend();
   }
 
+   /**
+   * Global pointer referencing an element position in a unit's bucket.
+   */
+  dart_gptr_t dart_gptr_at(team_unit_t unit, index_type bucket_phase) {
+    // we only have 1 global pointer for _container
+    auto bucket = *_buckets.begin();
+    auto dart_gptr = bucket.gptr;
+
+    if (DART_GPTR_ISNULL(dart_gptr)) {
+      dart_gptr = DART_GPTR_NULL;
+    } else {
+      // Move dart_gptr to unit and local offset:
+      DASH_ASSERT_RETURNS(
+        dart_gptr_setunit(&dart_gptr, unit),
+        DART_OK);
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(
+          &dart_gptr,
+          bucket_phase * sizeof(value_type)),
+        DART_OK);
+    }
+    return dart_gptr;
+  }
+
 private:
     /**
    * Native pointer of the initial address of the local memory of
@@ -142,7 +189,6 @@ private:
    */
   void update_lbegin() noexcept
   {
-    DASH_LOG_TRACE("GlobDynamicMem.update_lbegin()");
     local_iterator unit_lbegin(
              // iteration space
              _buckets.begin(), _buckets.end(),
@@ -151,7 +197,6 @@ private:
              // bucket at position in iteration space,
              // offset in bucket
              _buckets.begin(), 0);
-    DASH_LOG_TRACE("GlobDynamicMem.update_lbegin >", unit_lbegin);
     _lbegin = unit_lbegin;
   }
 
@@ -161,7 +206,6 @@ private:
    */
   void update_lend() noexcept
   {
-    DASH_LOG_TRACE("GlobDynamicMem.update_lend()");
     local_iterator unit_lend(
              // iteration space
              _buckets.begin(), _buckets.end(),
@@ -170,7 +214,6 @@ private:
              // bucket at position in iteration space,
              // offset in bucket
              _buckets.end(), 0);
-    DASH_LOG_TRACE("GlobDynamicMem.update_lend >", unit_lend);
     _lend = unit_lend;
   }
 

@@ -93,6 +93,8 @@ public:
   typedef VertexProperties                            vertex_properties_type;
   typedef EdgeProperties                              edge_properties_type;
 
+  typedef GlobRef<vertex_type>                        reference;
+
   typedef typename glob_mem_con_type::local_iterator  local_vertex_iterator;
 
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
@@ -201,6 +203,11 @@ public:
    * Deallocates global memory of this container.
    */
   void deallocate();
+
+  vertex_type test() {
+    auto gptr = _glob_mem_con->dart_gptr_at(team_unit_t(0), 0);
+    return reference(gptr);
+  }
 
 private:
 
