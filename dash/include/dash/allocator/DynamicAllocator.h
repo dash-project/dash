@@ -9,8 +9,11 @@
 #include <dash/internal/Logging.h>
 #include <dash/memory/HostSpace.h>
 
+#include <dash/allocator/AllocatorTraits.h>
+
 #include <algorithm>
 #include <utility>
+#include <vector>
 #include <vector>
 
 namespace dash {
@@ -33,7 +36,6 @@ class DynamicAllocator {
   template <class T, class U>
   friend bool operator==(const DynamicAllocator<T> &lhs,
                          const DynamicAllocator<U> &rhs);
-
   template <class T, class U>
   friend bool operator!=(const DynamicAllocator<T> &lhs,
                          const DynamicAllocator<U> &rhs);
@@ -49,19 +51,18 @@ class DynamicAllocator {
   using value_type                              = ElementType;
   using size_type                               = dash::default_size_t;
   using propagate_on_container_move_assignment  = std::true_type;
-  using local_alloc_traits                      = std::allocator_traits<LocalAlloc>;
+//  using local_alloc_traits                      = dash::allocator_traits<LocalAlloc>;
+  using allocator_category                      = dash::noncollective_allocator_tag;
   // clang-format on
 
-  /// Type definitions required for dash::allocator concept:
  public:
-  // clang-format off
-  typedef dash::gptrdiff_t        difference_type;
-  typedef dart_gptr_t                     pointer;
-  typedef dart_gptr_t                void_pointer;
-  typedef dart_gptr_t const         const_pointer;
-  typedef dart_gptr_t          const_void_pointer;
-  typedef value_type              * local_pointer;
-  typedef const value_type *  const_local_pointer;
+  typedef dash::gptrdiff_t difference_type;
+  typedef dart_gptr_t pointer;
+  typedef dart_gptr_t void_pointer;
+  typedef dart_gptr_t const const_pointer;
+  typedef dart_gptr_t const_void_pointer;
+  typedef value_type *local_pointer;
+  typedef const value_type *const_local_pointer;
   // clang-format on
 
  public:
@@ -218,8 +219,8 @@ class DynamicAllocator {
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    DASH_LOG_DEBUG("DynamicAllocator.attach(nlocal)",
-                   "number of local values:", num_local_elem, "pointer: ", lptr);
+    DASH_LOG_DEBUG("DynamicAllocator.attach(nlocal)", "number of local values:",
+                   num_local_elem, "pointer: ", lptr);
 
     size_t const nbytes = num_local_elem * sizeof(value_type);
 
@@ -280,7 +281,7 @@ class DynamicAllocator {
     }
 
     auto const end = std::end(_allocated);
-    //Look up if we can
+    // Look up if we can
     auto const found = std::find_if(
         std::begin(_allocated), end,
         [&gptr](internal_value_type const &val) { return val.second == gptr; });
@@ -299,7 +300,7 @@ class DynamicAllocator {
 
     found->second = DART_GPTR_NULL;
 
-    //Local Memory already deallocated so we can remove it from tracked memory
+    // Local Memory already deallocated so we can remove it from tracked memory
     if (!found->first) {
       _allocated.erase(found);
     }
@@ -324,9 +325,8 @@ class DynamicAllocator {
 
     _allocated.push_back(std::make_pair(mem, DART_GPTR_NULL));
 
-    DASH_LOG_TRACE("DynamicAllocator.allocate_local",
-                     "allocated local pointer",
-                     mem.ptr);
+    DASH_LOG_TRACE("DynamicAllocator.allocate_local", "allocated local pointer",
+                   mem.ptr);
 
     return static_cast<local_pointer>(mem.ptr);
   }
@@ -450,23 +450,23 @@ class DynamicAllocator {
       }
     }
     */
-    auto & alloc_capture = _alloc;
+    auto &alloc_capture = _alloc;
     auto const teamId = _team->dart_id();
-    std::for_each(std::begin(_allocated), std::end(_allocated),
-                  [&alloc_capture, &teamId](internal_value_type &val) {
-                    //Deallocate local memory
-                    DASH_LOG_DEBUG("DynamicAllocator.clear",
-                                   "deallocate local memory block:", val.first.ptr);
-                    alloc_capture.deallocate(val.first);
-                    //Deregister global memory
-                    if (val.second) {
-                      DASH_LOG_DEBUG("DynamicAllocator.clear",
-                                     "detach global memory:", val.second);
-                      // Cannot use DASH_ASSERT due to noexcept qualifier:
-                      DASH_ASSERT_RETURNS(
-                          dart_team_memderegister(val.second), DART_OK);
-                    }
-                  });
+    std::for_each(
+        std::begin(_allocated), std::end(_allocated),
+        [&alloc_capture, &teamId](internal_value_type &val) {
+          // Deallocate local memory
+          DASH_LOG_DEBUG("DynamicAllocator.clear",
+                         "deallocate local memory block:", val.first.ptr);
+          alloc_capture.deallocate(val.first);
+          // Deregister global memory
+          if (val.second) {
+            DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
+                           val.second);
+            // Cannot use DASH_ASSERT due to noexcept qualifier:
+            DASH_ASSERT_RETURNS(dart_team_memderegister(val.second), DART_OK);
+          }
+        });
     _allocated.clear();
     DASH_LOG_DEBUG("DynamicAllocator.clear >");
   }

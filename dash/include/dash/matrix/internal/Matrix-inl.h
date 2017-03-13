@@ -1,19 +1,18 @@
 #ifndef DASH__MATRIX__INTERNAL__MATRIX_INL_H_INCLUDED
 #define DASH__MATRIX__INTERNAL__MATRIX_INL_H_INCLUDED
 
-#include <dash/dart/if/dart.h>
+#include<dash/dart/if/dart.h>
+#include<dash/Team.h>
+#include<dash/Pattern.h>
+#include<dash/memory/GlobMem.h>
+#include<dash/GlobRef.h>
+#include<dash/HView.h>
+#include<dash/Exception.h>
+#include<dash/internal/Logging.h>
 
-#include <dash/Team.h>
-#include <dash/Pattern.h>
-#include <dash/GlobMem.h>
-#include <dash/GlobRef.h>
-#include <dash/HView.h>
-#include <dash/Exception.h>
-#include <dash/internal/Logging.h>
+#include<dash/iterator/GlobIter.h>
 
-#include <dash/iterator/GlobIter.h>
-
-#include <dash/Matrix.h>
+#include<dash/Matrix.h>
 
 #include <type_traits>
 

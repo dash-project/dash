@@ -1,7 +1,7 @@
 #ifndef DASH__GLOBREF_H_
 #define DASH__GLOBREF_H_
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobMem.h>
 #include <dash/Init.h>
 
 
@@ -42,14 +42,14 @@ class GlobRef
   template <
     typename ElementT >
   friend class GlobRef;
-  
+
   typedef typename std::remove_const<T>::type
     nonconst_value_type;
 public:
   typedef T                 value_type;
 
   typedef GlobRef<const T>  const_type;
-  
+
 private:
   typedef GlobRef<T>
     self_t;
@@ -107,7 +107,7 @@ public:
    * Copy constructor.
    */
   GlobRef(const self_t & other) = default;
- 
+
   GlobRef(self_t && other) = default;
 
   /**

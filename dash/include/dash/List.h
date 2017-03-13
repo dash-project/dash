@@ -5,7 +5,7 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
 

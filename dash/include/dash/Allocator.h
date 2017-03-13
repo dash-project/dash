@@ -5,6 +5,8 @@
 #include <dash/allocator/CollectiveAllocator.h>
 #include <dash/allocator/DynamicAllocator.h>
 
+#include <dash/memory/SimpleMemoryPool.h>
+
 namespace dash {
 
 /**

@@ -1,7 +1,7 @@
 
 #include "GlobDynamicMemTest.h"
 
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobDynamicMem.h>
 
 
 TEST_F(GlobDynamicMemTest, BalancedAlloc)

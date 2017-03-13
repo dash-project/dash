@@ -71,7 +71,8 @@ public:
    * Takes ownership of the moved instance's allocation.
    */
   LocalAllocator(self_t && other) noexcept
-  : _team_id(other._team_id), _allocated(std::move(other._allocated))
+  : _team_id(other._team_id),
+    _allocated(std::move(other._allocated))
   {
     // clear origin without deallocating gptrs
     other._allocated.clear();

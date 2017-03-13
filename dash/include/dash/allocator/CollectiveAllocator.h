@@ -10,6 +10,8 @@
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
 
+#include <dash/allocator/AllocatorTraits.h>
+
 #include <vector>
 #include <algorithm>
 #include <utility>
@@ -54,6 +56,8 @@ public:
   using value_type                             = ElementType;
   using size_type                              = dash::default_size_t;
   using propagate_on_container_move_assignment = std::true_type;
+
+  using allocator_category = dash::collective_allocator_tag;
 
 /// Type definitions required for dash::allocator concept:
 public:

@@ -10,7 +10,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
 #include <dash/list/internal/ListTypes.h>

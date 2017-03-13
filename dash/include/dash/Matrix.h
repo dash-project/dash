@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
 

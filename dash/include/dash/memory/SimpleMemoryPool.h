@@ -6,6 +6,19 @@
 
 #include <dash/Exception.h>
 
+/*
+ * \par Methods
+ *
+ * Return Type          | Method             | Parameters                  | Description                                                                                                |
+ * ------------------- | ------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>ValueType *</tt> | <tt>resize</tt>    | <tt>size lsize_new</tt>     | Resize the local segment of the global memory space to the specified number of values.                     |
+ * <tt>void</tt>        | <tt>grow</tt>      | <tt>size lsize_diff</tt>    | Extend the size of the local segment of the global memory space by the specified number of values.         |
+ * <tt>void</tt>        | <tt>shrink</tt>    | <tt>size lsize_diff</tt>    | Reduce the size of the local segment of the global memory space by the specified number of values.         |
+ * <tt>void</tt>        | <tt>commit</tt>    | nbsp;                       | Publish changes to local memory across all units.                                                          |
+ *
+ */
+namespace dash {
+
 template <typename ValueType, typename LocalAlloc>
 class SimpleMemoryPool {
  private:
@@ -30,10 +43,11 @@ class SimpleMemoryPool {
   typedef std::size_t size_type;
 
   typedef typename std::allocator_traits<LocalAlloc> AllocatorTraits;
+  typedef typename AllocatorTraits::allocator_type AllocatorType;
 
  public:
   // CONSTRUCTOR
-  explicit SimpleMemoryPool(LocalAlloc& alloc) noexcept;
+  explicit SimpleMemoryPool(const LocalAlloc& alloc) noexcept;
   // MOVE CONSTRUCTOR
   SimpleMemoryPool(SimpleMemoryPool&& other) noexcept;
 
@@ -47,9 +61,9 @@ class SimpleMemoryPool {
   ~SimpleMemoryPool() noexcept;
 
  private:
-  //provide more space in the pool
+  // provide more space in the pool
   void refill();
-  //allocate a Chunk for at least nbytes
+  // allocate a Chunk for at least nbytes
   Block* allocateChunk(size_type nbytes);
 
  public:
@@ -60,7 +74,7 @@ class SimpleMemoryPool {
   // Reserve Space for at least n Memory Blocks of size ValueType
   void reserve(std::size_t nblocks);
   // returns the underlying memory allocator
-  LocalAlloc allocator();
+  AllocatorType& allocator();
   // deallocate all memory blocks of all chunks
   void release();
 
@@ -74,7 +88,7 @@ class SimpleMemoryPool {
 // CONSTRUCTOR
 template <typename ValueType, typename Alloc>
 inline SimpleMemoryPool<ValueType, Alloc>::SimpleMemoryPool(
-    Alloc& alloc) noexcept
+    const Alloc& alloc) noexcept
   : _chunklist(nullptr)
   , _freelist(nullptr)
   , _alloc(alloc)
@@ -105,7 +119,17 @@ template <typename ValueType, typename Alloc>
 inline void SimpleMemoryPool<ValueType, Alloc>::reserve(std::size_t nblocks)
 {
   // allocate a chunk with header and space for nblocks
-  if (!_freelist) reserve(_blocks_per_chunk);
+    DASH_ASSERT(0 < nblocks);
+
+    Block *begin = allocateChunk(
+                            nblocks * static_cast<size_type>(sizeof(Block)));
+    Block *end   = begin + nblocks - 1;
+
+    for (Block *p = begin; p < end; ++p) {
+        p->next = p + 1;
+    }
+    end->next = _freelist;
+    _freelist  = begin;
 }
 
 template <typename ValueType, typename Alloc>
@@ -117,9 +141,10 @@ inline void SimpleMemoryPool<ValueType, Alloc>::deallocate(void* address)
 }
 
 template <typename ValueType, typename Alloc>
-inline Alloc SimpleMemoryPool<ValueType, Alloc>::allocator()
+inline typename SimpleMemoryPool<ValueType, Alloc>::AllocatorType&
+SimpleMemoryPool<ValueType, Alloc>::allocator()
 {
-  return this->_allocator;
+  return this->_alloc;
 }
 
 template <typename ValueType, typename Alloc>
@@ -162,5 +187,12 @@ SimpleMemoryPool<ValueType, Alloc>::allocateChunk(size_type nbytes)
 
   return reinterpret_cast<Block*>(chunkPtr + 1);
 }
+
+template <typename ValueType, typename Alloc>
+SimpleMemoryPool<ValueType, Alloc>::~SimpleMemoryPool() noexcept {
+  release();
+}
+
+}  // namespace dash
 
 #endif

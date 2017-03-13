@@ -6,7 +6,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 #include <dash/Shared.h>
@@ -884,7 +884,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());
@@ -906,7 +906,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());

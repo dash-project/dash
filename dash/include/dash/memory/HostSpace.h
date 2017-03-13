@@ -4,6 +4,7 @@
 #include <dash/Exception.h>
 #include <dash/Types.h>
 #include <dash/memory/MemorySpace.h>
+#include <stdlib.h>
 
 namespace dash {
 namespace memory {
@@ -21,15 +22,14 @@ class HostSpace {
   HostSpace(HostSpace&& other) = default;
   HostSpace& operator=(HostSpace const& other) = default;
   HostSpace& operator=(HostSpace&& other) = default;
-
-  block allocate(std::size_t const n) noexcept
+  block allocate(std::size_t const n, std::size_t alignment = alignof(std::max_align_t)) noexcept
   {
     block result;
 
     if (n == 0) {
       return result;
     }
-    auto p = std::malloc(n);
+    auto p = aligned_alloc(alignment, n);
     if (p != nullptr) {
       result.ptr = p;
       result.length = n;

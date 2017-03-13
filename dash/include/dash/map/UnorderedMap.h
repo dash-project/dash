@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
@@ -72,9 +72,13 @@ public:
   typedef Mapped                                                            mapped_type;
   typedef Hash                                                                   hasher;
   typedef Pred                                                                key_equal;
-  typedef dash::detail::HashNode<std::pair<const key_type, mapped_type>>      value_type;
+  typedef std::pair<const key_type, mapped_type>                             value_type;
+  //TODO rko: replace value_type with node_type
+  //typedef dash::detail::HashNode<std::pair<const key_type, mapped_type>>     value_type;
 
-  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<value_type> allocator_type;
+  typedef Alloc                                                            allocator_type;
+  //TODO rko: replace type definitin of alloc with allocator traits
+  //typedef typename std::allocator_traits<Alloc>::template rebind_alloc<value_type> allocator_type;
 
   typedef dash::default_index_t                                              index_type;
   typedef dash::default_index_t                                         difference_type;
