@@ -4,6 +4,7 @@
  *  Implementations of the dart init and exit operations.
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <mpi.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -209,10 +210,10 @@ dart_ret_t dart_init_thread(
 #if defined(DART_ENABLE_THREADSUPPORT)
     int thread_required = MPI_THREAD_MULTIPLE;
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
-    DART_LOG_DEBUG("MPI_Init_thread provided = %i\n", thread_provided);
+    DART_LOG_DEBUG("MPI_Init_thread provided = %i", thread_provided);
   } else {
     MPI_Query_thread(&thread_provided);
-    DART_LOG_DEBUG("MPI_Query_thread provided = %i\n", thread_provided);
+    DART_LOG_DEBUG("MPI_Query_thread provided = %i", thread_provided);
   }
 #else
     MPI_Init(argc, argv);
@@ -222,7 +223,7 @@ dart_ret_t dart_init_thread(
   *provided = (thread_provided == MPI_THREAD_MULTIPLE) ?
                 DART_THREAD_MULTIPLE :
                 DART_THREAD_SINGLE;
-  DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s\n",
+  DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s",
             (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
   return do_init();
@@ -235,16 +236,16 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-	dart_global_unit_t unitid;
-	dart_myid(&unitid);
+  dart_global_unit_t unitid;
+  dart_myid(&unitid);
 
   dart__mpi__locality_finalize();
 
   _dart_initialized = 0;
 
-	DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);
-	dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
-	if (team_data == NULL) {
+  DART_LOG_DEBUG("%2d: dart_exit()", unitid.id);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+  if (team_data == NULL) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
                    unitid.id);
     return DART_ERR_OTHER;
@@ -256,18 +257,18 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
-	/* End the shared access epoch in dart_win_local_alloc. */
-	if (MPI_Win_unlock_all(dart_win_local_alloc) != MPI_SUCCESS) {
+  /* End the shared access epoch in dart_win_local_alloc. */
+  if (MPI_Win_unlock_all(dart_win_local_alloc) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
 
-	/* -- Free up all the resources for dart programme -- */
-	MPI_Win_free(&dart_win_local_alloc);
+  /* -- Free up all the resources for dart programme -- */
+  MPI_Win_free(&dart_win_local_alloc);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /* Has MPI shared windows: */
-	MPI_Win_free(&dart_sharedmem_win_local_alloc);
-	MPI_Comm_free(&(team_data->sharedmem_comm));
+  MPI_Win_free(&dart_sharedmem_win_local_alloc);
+  MPI_Comm_free(&(team_data->sharedmem_comm));
 #else
   /* No MPI shared windows: */
   if (dart_mempool_localalloc) {
@@ -282,21 +283,21 @@ dart_ret_t dart_exit()
   free(dart_sharedmem_local_baseptr_set);
 #endif
 
-	dart_adapt_teamlist_destroy();
+  dart_adapt_teamlist_destroy();
 
   MPI_Comm_free(&dart_comm_world);
 
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid.id);
-		MPI_Finalize();
+    MPI_Finalize();
   }
 
-	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid.id);
+  DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid.id);
 
-	return DART_OK;
+  return DART_OK;
 }
 
-char dart_initialized()
+bool dart_initialized()
 {
-  return _dart_initialized;
+  return (_dart_initialized > 0);
 }
