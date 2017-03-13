@@ -6,15 +6,20 @@
 
 #include <dash/Exception.h>
 
-/*
+/**
+ * This class is a simple memory pool which holds allocates elements of size
+ * ValueType. Efficient allocation is achieved in terms of the memory regions.
+ * Each region represents a chunk of memory blocks and each block
+ * is a single element of size ValueType.
+ *
  * \par Methods
  *
- * Return Type          | Method             | Parameters                  | Description                                                                                                |
- * ------------------- | ------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------- |
- * <tt>ValueType *</tt> | <tt>resize</tt>    | <tt>size lsize_new</tt>     | Resize the local segment of the global memory space to the specified number of values.                     |
- * <tt>void</tt>        | <tt>grow</tt>      | <tt>size lsize_diff</tt>    | Extend the size of the local segment of the global memory space by the specified number of values.         |
- * <tt>void</tt>        | <tt>shrink</tt>    | <tt>size lsize_diff</tt>    | Reduce the size of the local segment of the global memory space by the specified number of values.         |
- * <tt>void</tt>        | <tt>commit</tt>    | nbsp;                       | Publish changes to local memory across all units.                                                          |
+ * Return Type          | Method              | Parameters                  | Description                                                                                                |
+ * -------------------- | ------------------  | --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>ValueType *</tt> | <tt>allocate</tt>   | nbsp;                       | Allocates an aligned block to store a single element of size ValueType                                     |
+ * <tt>void</tt>        | <tt>deallocate</tt> | <tt>addr</tt>               | Deallocates the specified memory address and keeps memory internall in a freelist.                         |
+ * <tt>void</tt>        | <tt>reserve</tt>    | <tt>nblocks</tt>            | Reserve a chunk of memory blocks to hold at least n elements of size ValueType.                            |
+ * <tt>void</tt>        | <tt>release</tt>    | nbsp;                       | Release all memory chunks and deallocate everything at one.                                                |
  *
  */
 namespace dash {
