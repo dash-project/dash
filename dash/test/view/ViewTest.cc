@@ -1,6 +1,7 @@
 
 #include "ViewTest.h"
 
+#include <dash/Types.h>
 #include <dash/Array.h>
 #include <dash/View.h>
 
@@ -54,10 +55,10 @@ namespace test {
     auto block_size = array.pattern().blocksize(0);
     for (auto li = 0; li != array.local.size(); ++li) {
       auto block_lidx = li / block_size;
-      auto block_gidx = (block_lidx * dash::size()) + dash::myid();
+      auto block_gidx = (block_lidx * dash::size()) + dash::myid().id;
       auto gi         = (block_gidx * block_size) + (li % block_size);
       array.local[li] = // unit
-                        (1.0000 * dash::myid()) +
+                        (1.0000 * dash::myid().id) +
                         // local offset
                         (0.0001 * (li+1)) +
                         // global offset
@@ -75,7 +76,7 @@ namespace test {
     auto block_size = array.pattern().blocksize(0);
     for (auto li = 0; li != array.local.size(); ++li) {
       auto block_lidx = li / block_size;
-      auto block_gidx = (block_lidx * dash::size()) + dash::myid();
+      auto block_gidx = (block_lidx * dash::size()) + dash::myid().id;
       auto gi         = (block_gidx * block_size) + (li % block_size);
       seq_pos_t val {
                       static_cast<int>(dash::myid().id), // unit
@@ -167,10 +168,12 @@ TEST_F(ViewTest, ViewTraits)
 
 TEST_F(ViewTest, NestedTemporaries)
 {
-  int block_size       = 16;
+  typedef float value_t;
+
+  int block_size       = 5;
   int array_size       = dash::size() * block_size;
 
-  dash::Array<float> a(array_size);
+  dash::Array<value_t> a(array_size);
   dash::test::initialize_array(a);
 
   if (dash::myid() != 0) {
@@ -180,30 +183,31 @@ TEST_F(ViewTest, NestedTemporaries)
   DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
                      range_str(a));
 
-  auto gview_tmp     = dash::sub(1, array_size - 1,
-                         dash::sub(1, array_size - 3,
-                           a ));
+  auto gview_sub      = dash::sub(1, array_size - 2, a);
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries", range_str(gview_sub));
 
-  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
-                     gview_tmp);
+  auto gview_ssub     = dash::sub(1, array_size - 3,
+                         dash::sub(1, array_size - 2, a));
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries", range_str(gview_ssub));
 
-  auto gview_nested  = dash::sub(1, array_size - 1,
-                         dash::sub(1, array_size - 3,
-                           dash::sub(1, 4,
-                             a )));
+  auto gview_lref     = dash::sub(1, array_size - 5,
+                         gview_ssub);
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries", range_str(gview_lref));
 
-  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries",
-                     gview_nested);
+  auto gview_temp     = dash::sub(1, array_size - 5,
+                          dash::sub(1, array_size - 3,
+                            dash::sub(1, array_size - 2, a)));
+  DASH_LOG_DEBUG_VAR("ViewTest.NestedTemporaries", range_str(gview_temp));
 
-  auto gindex_nested = dash::index(
-                         dash::sub(1, array_size - 1,
-                           dash::sub(1, array_size - 3,
-                             dash::sub(1, array_size - 6,
-                               a ))));
+  EXPECT_EQ(a.size() - 3 - 3,
+            gview_lref.size());
+  EXPECT_EQ(gview_temp.size(), gview_lref.size());
 
-  int i = 0;
-  for (auto iv : gindex_nested) {
-    DASH_LOG_DEBUG("ViewTest.NestedTemporaries", i, ":", iv);
+  int v_idx = 0;
+  for (const auto & view_elem : gview_temp) {
+    EXPECT_EQ(static_cast<value_t>(a[v_idx + 3]),
+              static_cast<value_t>(view_elem));
+    ++v_idx;
   }
 }
 
@@ -496,7 +500,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
                        l_blocks_sub_view.size());
     l_b_idx = 0;
     l_idx   = 0;
-    for (auto l_block : l_blocks_sub_view) {
+    for (const auto & l_block : l_blocks_sub_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                      "l_block_sub[", l_b_idx, "]:", range_str(l_block));
       ++l_b_idx;

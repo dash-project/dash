@@ -150,9 +150,9 @@ class ViewGlobalMod;
 #endif // DOXYGEN
 
 
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // ViewOrigin
-// --------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /**
  * Monotype for the logical symbol that represents a view origin.
@@ -362,8 +362,8 @@ protected:
 public:
   constexpr ViewModBase(const self_t &) = default;
   constexpr ViewModBase(self_t &&)      = default;
-  self_t & operator=(const self_t &)     = default;
-  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)    = default;
+  self_t & operator=(self_t &&)         = default;
 
   constexpr const domain_type & domain() const & {
     return _domain;
@@ -514,8 +514,8 @@ public:
   constexpr ViewLocalMod(self_t &&)      = default;
   constexpr ViewLocalMod(const self_t &) = default;
   ~ViewLocalMod()                        = default;
-  self_t & operator=(self_t &&)           = default;
-  self_t & operator=(const self_t &)      = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
 
   /**
    * Constructor, creates a view on a given domain.
@@ -722,8 +722,8 @@ public:
   constexpr ViewSubMod(self_t &&)      = default;
   constexpr ViewSubMod(const self_t &) = default;
   ~ViewSubMod()                        = default;
-  self_t & operator=(self_t &&)         = default;
-  self_t & operator=(const self_t &)    = default;
+  self_t & operator=(self_t &&)        = default;
+  self_t & operator=(const self_t &)   = default;
 
   constexpr ViewSubMod(
     domain_type && domain,

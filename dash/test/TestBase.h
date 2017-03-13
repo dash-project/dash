@@ -9,6 +9,7 @@
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
 
+#include <dash/Types.h>
 #include <dash/Init.h>
 #include <dash/view/IndexSet.h>
 #include <dash/Team.h>
