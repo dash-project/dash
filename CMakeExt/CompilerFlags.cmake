@@ -19,8 +19,8 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-if (ENABLE_DEV_COMPILER_WARNINGS 
-  OR ENABLE_EXT_COMPILER_WARNINGS 
+if ((ENABLE_DEV_COMPILER_WARNINGS 
+  OR ENABLE_EXT_COMPILER_WARNINGS)
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -181,9 +181,12 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
-  message(FATAL_ERROR,
-          "Cray compiler does not support C++11 features and is only "
-          "eligible for building DART.")
+#  message(FATAL_ERROR,
+#          "Cray compiler does not support C++11 features and is only "
+#          "eligible for building DART.")
+  
+  set (CXX_STD_FLAG "-hstd=c++11"
+       CACHE STRING "C++ compiler std flag")
 endif()
 
 # Set C compiler flags:
@@ -237,15 +240,24 @@ set(CMAKE_C_FLAGS_RELEASE
   "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
   "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+if (NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
+  # the CRAY compiler does not understand -Ofast
+  set(CMAKE_C_FLAGS_RELEASE
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+endif()
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -DDASH_RELEASE")
 
 set(CMAKE_CXX_FLAGS_RELEASE
   "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
   "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+if (NOT "${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
+  set(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast")
+endif()
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:

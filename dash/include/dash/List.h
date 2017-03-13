@@ -174,7 +174,7 @@ class List
     *
     * TODO: Remove the guard once this has been fixed by Cray.
     */
- #ifndef __CRAYC
+ #ifndef _CRAYC
    static_assert(std::is_trivially_copyable<ElementType>::value,
      "Element type must be trivially copyable");
  #endif

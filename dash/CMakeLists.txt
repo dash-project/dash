@@ -241,8 +241,10 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (DART_LIBRARY "dart-${dart_variant}")
   set (DASH_LIBRARY "dash-${dart_variant}")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR})
-  set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
+    set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
+  endif()
   if (${dart_variant} STREQUAL "mpi")
     if (IPM_FOUND)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
@@ -386,7 +388,7 @@ endif()
         set_target_properties(
           ${exampletarget} PROPERTIES
           COMPILE_FLAGS
-          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
@@ -444,10 +446,15 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
           ${IPM_LIBRARIES})
       endif()
     endif()
+    if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
+      set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+           "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare -Wno-unused")
+    endif()
+
     set_target_properties(
       ${DASH_TEST} PROPERTIES
       COMPILE_FLAGS
-      "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
+      "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
