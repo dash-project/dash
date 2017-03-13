@@ -167,23 +167,20 @@ public:
   /**
    * Default constructor.
    */
-  GlobIter()
+  constexpr GlobIter()
   : _globmem(nullptr),
     _pattern(nullptr),
     _idx(0),
     _max_idx(0),
     _myid(dash::Team::All().myid()),
     _lbegin(nullptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobIter()", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter()", _max_idx);
-  }
+  { }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern.
    */
-  GlobIter(
+  constexpr GlobIter(
     GlobMemType       * gmem,
 	  const PatternType & pat,
 	  index_type          position = 0)
@@ -193,16 +190,13 @@ public:
     _max_idx(pat.size() - 1),
     _myid(pat.team().myid()),
     _lbegin(_globmem->lbegin())
-  {
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _max_idx);
-  }
+  { }
 
   /**
    * Copy constructor.
    */
   template <class GlobIterT>
-  GlobIter(
+  constexpr GlobIter(
     const GlobIterT & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
@@ -235,7 +229,7 @@ public:
   /**
    * The number of dimensions of the iterator's underlying pattern.
    */
-  static dim_t ndim()
+  static constexpr dim_t ndim()
   {
     return NumDimensions;
   }
