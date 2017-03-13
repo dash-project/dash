@@ -71,28 +71,28 @@ struct VertexIteratorWrapper {
    * Returns local iterator to the beginning of the vertex list.
    */
   local_iterator lbegin() {
-    return _graph->_glob_mem_seq->lbegin();
+    return _graph->_glob_mem_con->lbegin();
   }
   
   /**
    * Returns local iterator to the beginning of the vertex list.
    */
   const_local_iterator lbegin() const {
-     return _graph->_glob_mem_seq->lbegin();
+     return _graph->_glob_mem_con->lbegin();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   local_iterator lend() {
-    return _graph->_glob_mem_seq->lend();
+    return _graph->_glob_mem_con->lend();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   const_local_iterator lend() const {
-    return _graph->_glob_mem_seq->lend();
+    return _graph->_glob_mem_con->lend();
   }
 
 private:

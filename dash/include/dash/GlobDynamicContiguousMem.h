@@ -32,10 +32,10 @@ namespace dash {
 
 template<
   typename ContainerType>
-class GlobDynamicSequentialMem
+class GlobDynamicContiguousMem
 {
 private:
-  typedef GlobDynamicSequentialMem<ContainerType>
+  typedef GlobDynamicContiguousMem<ContainerType>
     self_t;
 
 public:
@@ -56,7 +56,7 @@ public:
    * \concept{DashDynamicMemorySpaceConcept}
    * \concept{DashMemorySpaceConcept}
    */
-  GlobDynamicSequentialMem(
+  GlobDynamicContiguousMem(
     size_type   n_local_elem = 0,
     Team      & team         = dash::Team::All())
   : _container(new container_type()),
@@ -88,14 +88,14 @@ public:
   /**
    * Destructor, collectively frees underlying global memory.
    */
-  ~GlobDynamicSequentialMem() { }
+  ~GlobDynamicContiguousMem() { }
 
-  GlobDynamicSequentialMem() = delete;
+  GlobDynamicContiguousMem() = delete;
 
   /**
    * Copy constructor.
    */
-  GlobDynamicSequentialMem(const self_t & other) = default;
+  GlobDynamicContiguousMem(const self_t & other) = default;
 
   /**
    * Assignment operator.

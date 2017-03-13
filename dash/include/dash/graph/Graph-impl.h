@@ -175,7 +175,7 @@ typename Graph<Direction, DynamicPattern, VertexProperties, EdgeProperties,
   EdgeIndexType>
 ::add_vertex(const VertexProperties & prop) {
   vertex_type v(prop);
-  _glob_mem_seq->push_back(v);
+  _glob_mem_con->push_back(v);
 }
 
 template<GraphDirection Direction,
@@ -320,7 +320,7 @@ bool Graph<Direction,
   EdgeIndexType>
 ::allocate(vertex_size_type nvertices) {
   auto lcap = dash::math::div_ceil(nvertices, _team->size());
-  _glob_mem_seq = new glob_mem_seq_type(lcap, *_team);
+  _glob_mem_con = new glob_mem_con_type(lcap, *_team);
   // Register deallocator of this list instance at the team
   // instance that has been used to initialize it:
   _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
@@ -343,8 +343,8 @@ void Graph<Direction,
   VertexIndexType, 
   EdgeIndexType>
 ::deallocate() { 
-  if(_glob_mem_seq != nullptr) {
-    delete _glob_mem_seq;
+  if(_glob_mem_con != nullptr) {
+    delete _glob_mem_con;
   }
   // Remove this function from team deallocator list to avoid
   // double-free:

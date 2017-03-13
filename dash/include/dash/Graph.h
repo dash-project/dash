@@ -4,7 +4,7 @@
 #include <vector>
 #include <dash/graph/VertexIterator.h>
 #include <dash/graph/internal/Graph.h>
-#include <dash/GlobDynamicSequentialMem.h>
+#include <dash/GlobDynamicContiguousMem.h>
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
 
@@ -76,7 +76,7 @@ private:
           VertexProperties>                           vertex_type;
   typedef internal::out_edge<VertexIndexType, 
           EdgeProperties>                             edge_type;
-  typedef GlobDynamicSequentialMem<VertexContainer>   glob_mem_seq_type;
+  typedef GlobDynamicContiguousMem<VertexContainer>   glob_mem_con_type;
 
 public:
 
@@ -93,7 +93,7 @@ public:
   typedef VertexProperties                            vertex_properties_type;
   typedef EdgeProperties                              edge_properties_type;
 
-  typedef typename glob_mem_seq_type::local_iterator  local_vertex_iterator;
+  typedef typename glob_mem_con_type::local_iterator  local_vertex_iterator;
 
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
   typedef typename edge_it_wrapper::iterator          edge_iterator;
@@ -207,7 +207,7 @@ private:
   /** the team containing all units using the container */
   Team *                      _team     = nullptr;
   /** Global memory allocation and access for sequential memory regions */
-  glob_mem_seq_type *         _glob_mem_seq = nullptr;
+  glob_mem_con_type *         _glob_mem_con = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
 
