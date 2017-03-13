@@ -27,7 +27,7 @@ template<
   typename LayoutTags,
   class    SizeSpecType
 >
-TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
+TeamSpec<SizeSpecType::ndim::value, typename SizeSpecType::index_type>
 make_team_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
   const SizeSpecType               & sizespec,
@@ -40,7 +40,7 @@ make_team_spec(
   typedef typename SizeSpecType::index_type index_t;
 
   // Deduce number of dimensions from size spec:
-  const dim_t ndim  = SizeSpecType::ndim();
+  const dim_t ndim  = SizeSpecType::ndim::value;
 
   // Default team spec:
   std::array<extent_t, ndim> team_extents;
@@ -181,7 +181,7 @@ template<
   typename LayoutTags,
   class    SizeSpecType
 >
-TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
+TeamSpec<SizeSpecType::ndim::value, typename SizeSpecType::index_type>
 make_team_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
   const SizeSpecType               & sizespec,
@@ -242,7 +242,7 @@ template<
   class SizeSpecType,
   class TeamSpecType
 >
-DistributionSpec<SizeSpecType::ndim()>
+DistributionSpec<SizeSpecType::ndim::value>
 make_distribution_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
   const SizeSpecType & sizespec,
@@ -253,7 +253,7 @@ make_distribution_spec(
 
   DASH_LOG_TRACE("dash::make_distribution_spec()");
   // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
+  const dim_t ndim = SizeSpecType::ndim::value;
   // Array of distribution specifiers in all dimensions,
   // e.g. { TILE(10), TILE(120) }:
   std::array<dash::Distribution, ndim> distributions = {{ }};
@@ -261,7 +261,7 @@ make_distribution_spec(
   if (PartitioningTags::minimal) {
     // Find minimal block size in minimal partitioning, initialize with
     // pattern size (maximum):
-    for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+    for (auto d = 0; d < SizeSpecType::ndim::value; ++d) {
       auto extent_d    = sizespec.extent(d);
       auto nunits_d    = teamspec.extent(d);
       auto blocksize_d = extent_d / nunits_d;
@@ -274,7 +274,7 @@ make_distribution_spec(
                    min_block_extent);
   }
   // Resolve balanced tile extents from size spec and team spec:
-  for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+  for (auto d = 0; d < SizeSpecType::ndim::value; ++d) {
     auto extent_d  = sizespec.extent(d);
     auto nunits_d  = teamspec.extent(d);
     DASH_LOG_TRACE("dash::make_distribution_spec",
@@ -366,7 +366,7 @@ typename std::enable_if<
   PartitioningTags::balanced &&
   !PartitioningTags::unbalanced &&
   LayoutTags::blocked,
-  TilePattern<SizeSpecType::ndim(),
+  TilePattern<SizeSpecType::ndim::value,
               dash::ROW_MAJOR,
               typename SizeSpecType::index_type>
 >::type
@@ -377,7 +377,7 @@ make_pattern(
   const TeamSpecType & teamspec)
 {
   // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
+  const dim_t ndim = SizeSpecType::ndim::value;
   // Deduce index type from size spec:
   typedef typename SizeSpecType::index_type                 index_t;
   typedef dash::TilePattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
@@ -431,8 +431,8 @@ typename std::enable_if<
   MappingTags::diagonal &&
   (LayoutTags::blocked ||
    (PartitioningTags::balanced &&
-    SizeSpecType::ndim() == 1)),
-  ShiftTilePattern<SizeSpecType::ndim(),
+    SizeSpecType::ndim::value == 1)),
+  ShiftTilePattern<SizeSpecType::ndim::value,
                    dash::ROW_MAJOR,
                    typename SizeSpecType::index_type>
 >::type
@@ -443,7 +443,7 @@ make_pattern(
   const TeamSpecType & teamspec)
 {
   // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
+  const dim_t ndim = SizeSpecType::ndim::value;
   // Deduce index type from size spec:
   typedef typename SizeSpecType::index_type                      index_t;
   typedef dash::ShiftTilePattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
@@ -490,7 +490,7 @@ template<
 >
 typename std::enable_if<
   LayoutTags::canonical,
-  BlockPattern<SizeSpecType::ndim(),
+  BlockPattern<SizeSpecType::ndim::value,
                dash::ROW_MAJOR,
                typename SizeSpecType::index_type >
 >::type
@@ -501,7 +501,7 @@ make_pattern(
   const TeamSpecType & teamspec)
 {
   // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
+  const dim_t ndim = SizeSpecType::ndim::value;
   // Deduce index type from size spec:
   typedef typename SizeSpecType::index_type             index_t;
   typedef dash::BlockPattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;

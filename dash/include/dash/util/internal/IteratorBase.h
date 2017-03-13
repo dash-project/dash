@@ -15,7 +15,14 @@ template <
   class IndexType    = dash::default_index_t,
   class Pointer      = ValueType *,
   class Reference    = ValueType & >
-class IndexIteratorBase {
+class IndexIteratorBase
+: public std::iterator<
+            std::random_access_iterator_tag,
+            ValueType,
+            IndexType,
+            Pointer,
+            Reference >
+{
   typedef IndexIteratorBase<
             IteratorType,
             ValueType,
@@ -61,12 +68,20 @@ class IndexIteratorBase {
     return _pos;
   }
 
+  constexpr index_type gpos() const {
+    return _pos;
+  }
+
   constexpr reference operator*() const {
     return derived().dereference(_pos);
   }
 
   constexpr reference operator->() const {
     return derived().dereference(_pos);
+  }
+
+  constexpr reference operator[](int pos) const {
+    return derived().dereference(pos);
   }
 
   derived_t & operator++() {

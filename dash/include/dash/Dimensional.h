@@ -370,6 +370,15 @@ struct ViewRegion {
   std::array<IndexType, NumDimensions> end;
 };
 
+template<
+  typename IndexType = dash::default_index_t>
+struct ViewRange {
+  // Range begin offset.
+  IndexType begin;
+  // Range end offset.
+  IndexType end;
+};
+
 /**
  * Equality comparison operator for ViewPair.
  */
@@ -425,6 +434,7 @@ private:
 
 public:
   typedef ViewRegion<NumDimensions, IndexType> region_type;
+  typedef ViewRange<IndexType>                 range_type;
 
 public:
   template<dim_t NDim_, typename IndexType_>
@@ -635,7 +645,7 @@ public:
     return _extents[dimension];
   }
 
-  constexpr std::array<SizeType, NumDimensions> extents() const
+  constexpr const std::array<SizeType, NumDimensions> & extents() const
   {
     return _extents;
   }
@@ -644,9 +654,16 @@ public:
     return _extents[dim];
   }
 
-  constexpr std::array<IndexType, NumDimensions> offsets() const
+  constexpr const std::array<IndexType, NumDimensions> & offsets() const
   {
     return _offsets;
+  }
+
+  constexpr range_type range(dim_t dim) const
+  {
+    return range_type {
+             static_cast<IndexType>(_offsets[dim]),
+             static_cast<IndexType>(_offsets[dim] + _extents[dim]) };
   }
 
   constexpr IndexType offset(dim_t dim) const

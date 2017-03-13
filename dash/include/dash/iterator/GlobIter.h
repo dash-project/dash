@@ -174,10 +174,7 @@ public:
     _max_idx(0),
     _myid(dash::Team::All().myid()),
     _lbegin(nullptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobIter()", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter()", _max_idx);
-  }
+  { }
 
   /**
    * Constructor, creates a global iterator on global memory following
@@ -193,17 +190,15 @@ public:
     _max_idx(pat.size() - 1),
     _myid(pat.team().myid()),
     _lbegin(_globmem->lbegin())
-  {
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _max_idx);
-  }
+  { }
 
-  /**
-   * Copy constructor.
-   */
-  template <class GlobIterT>
+  template <
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   GlobIter(
-    const GlobIterT & other)
+    const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
@@ -230,6 +225,29 @@ public:
     _max_idx = other._max_idx;
     _myid    = other._myid;
     _lbegin  = other._lbegin;
+    return *this;
+  }
+
+  /**
+   * Move-assignment operator.
+   */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  self_t & operator=(
+    GlobIter<T_, P_, GM_, Ptr_, Ref_ > && other)
+  {
+    _globmem = other._globmem;
+    _pattern = other._pattern;
+    _idx     = other._idx;
+    _max_idx = other._max_idx;
+    _myid    = other._myid;
+    _lbegin  = other._lbegin;
+    // no ownership to transfer
+    return *this;
   }
 
   /**
@@ -241,6 +259,8 @@ public:
   }
 
   /**
+   * <fuchsto> TODO: Conversion from iterator to pointer looks dubios
+   *
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
@@ -270,6 +290,8 @@ public:
   }
 
   /**
+   * <fuchsto> TODO: Conversion from iterator to pointer looks dubios
+   *
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
@@ -433,16 +455,18 @@ public:
 
   /**
    * Convert global iterator to native pointer.
-   *
-   * TODO: Evaluate alternative:
-   *         auto l_idx_this = _container.pattern().local(this->pos());
-   *         return (l_idx_this.unit == _myid
-   *                 ? _lbegin + l_idx_this
-   *                 : nullptr
-   *                );
    */
   local_pointer local() const
   {
+    /*
+     *
+     * TODO: Evaluate alternative:
+     *         auto l_idx_this = _container.pattern().local(this->pos());
+     *         return (l_idx_this.unit == _myid
+     *                 ? _lbegin + l_idx_this
+     *                 : nullptr
+     *                );
+     */
     DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;

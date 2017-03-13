@@ -798,12 +798,12 @@ public:
             lhs_local.index != rhs_local.index);
   }
 
-  inline const PatternType & pattern() const
+  constexpr const PatternType & pattern() const noexcept
   {
     return *_pattern;
   }
 
-  inline dash::Team & team() const
+  constexpr dash::Team & team() const noexcept
   {
     return _pattern->team();
   }
