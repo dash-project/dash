@@ -12,6 +12,9 @@
  *
  */
 
+#include <dash/dart/if/dart_util.h>
+#include <dash/dart/if/dart_types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -166,7 +169,9 @@ typedef struct dart_gptr
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
+dart_ret_t dart_gptr_getaddr(
+  const dart_gptr_t    gptr,
+        void        ** addr) DART_NOTHROW;
 
 /**
  * Set the local memory address for the specified global pointer such
@@ -180,7 +185,9 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
+dart_ret_t dart_gptr_setaddr(
+  dart_gptr_t * gptr,
+  void        * addr) DART_NOTHROW;
 
 /**
  * Add 'offs' to the address specified by the global pointer
@@ -193,7 +200,15 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
+DART_INLINE DART_NOTHROW
+dart_ret_t
+dart_gptr_incaddr(
+  dart_gptr_t * gptr,
+  int64_t       offs)
+{
+  gptr->addr_or_offs.offset += offs;
+  return DART_OK;
+}
 
 /**
  * Set the unit information for the specified global pointer.
@@ -206,7 +221,14 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
+DART_INLINE DART_NOTHROW
+dart_ret_t dart_gptr_setunit(
+  dart_gptr_t      * gptr,
+  dart_team_unit_t   unit)
+{
+  gptr->unitid = unit.id;
+  return DART_OK;
+}
 
 /**
  * Get the flags field for the segment specified by the global pointer.
@@ -219,7 +241,9 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
+dart_ret_t dart_gptr_getflags(
+  dart_gptr_t   gptr,
+  uint16_t    * flags) DART_NOTHROW;
 
 
 /**
@@ -237,7 +261,9 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
+dart_ret_t dart_gptr_setflags(
+  dart_gptr_t * gptr,
+  uint16_t      flags) DART_NOTHROW;
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
@@ -255,8 +281,10 @@ dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_memalloc(size_t nelem, dart_datatype_t dtype,
-                         dart_gptr_t *gptr);
+dart_ret_t dart_memalloc(
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Frees memory in the global address space allocated by a previous call
@@ -270,7 +298,7 @@ dart_ret_t dart_memalloc(size_t nelem, dart_datatype_t dtype,
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_memfree(dart_gptr_t gptr);
+dart_ret_t dart_memfree(dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Collective function on the specified team to allocate \c nelem elements
@@ -302,8 +330,11 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nelem,
-                                      dart_datatype_t dtype, dart_gptr_t *gptr);
+dart_ret_t dart_team_memalloc_aligned(
+  dart_team_t       teamid,
+	size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Collective function to free global memory previously allocated
@@ -324,7 +355,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nelem,
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Collective function similar to \ref dart_team_memalloc_aligned but on
@@ -344,9 +375,12 @@ dart_ret_t dart_team_memfree(
  * \threadsafe_data{team}
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memregister_aligned(dart_team_t teamid, size_t nelem,
-                                         dart_datatype_t dtype, void *addr,
-                                         dart_gptr_t *gptr);
+dart_ret_t dart_team_memregister_aligned(
+  dart_team_t       teamid,
+	size_t            nelem,
+  dart_datatype_t   dtype,
+	void            * addr,
+	dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Attaches external memory previously allocated by the user.
@@ -363,9 +397,12 @@ dart_ret_t dart_team_memregister_aligned(dart_team_t teamid, size_t nelem,
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memregister(dart_team_t teamid, size_t nelem,
-                                 dart_datatype_t dtype, void *addr,
-                                 dart_gptr_t *gptr);
+dart_ret_t dart_team_memregister(
+  dart_team_t       teamid,
+	size_t            nelem,
+  dart_datatype_t   dtype,
+	void            * addr,
+	dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Collective function similar to dart_team_memfree() but on previously
@@ -383,7 +420,7 @@ dart_ret_t dart_team_memregister(dart_team_t teamid, size_t nelem,
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memderegister(dart_gptr_t gptr);
+dart_ret_t dart_team_memderegister(dart_gptr_t gptr) DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

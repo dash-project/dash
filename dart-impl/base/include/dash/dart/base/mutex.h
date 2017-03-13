@@ -15,6 +15,14 @@
 #include <pthread.h>
 #endif
 
+
+#ifdef DART_HAVE_PTHREADS
+#define DART_MUTEX_INITIALIZER { PTHREAD_MUTEX_INITIALIZER }
+#else
+#define DART_MUTEX_INITIALIZER { 0 }
+#endif
+
+
 typedef struct dart_mutex {
 #ifdef DART_HAVE_PTHREADS
 pthread_mutex_t mutex;
@@ -27,7 +35,7 @@ char __dummy;
 
 static inline
 dart_ret_t
-dart_mutex_init(dart_mutex_t *mutex)
+dart__base__mutex_init(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   pthread_mutex_init(&mutex->mutex, NULL);
@@ -39,7 +47,7 @@ dart_mutex_init(dart_mutex_t *mutex)
 
 static inline
 dart_ret_t
-dart_mutex_lock(dart_mutex_t *mutex)
+dart__base__mutex_lock(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   pthread_mutex_lock(&mutex->mutex);
@@ -51,7 +59,7 @@ dart_mutex_lock(dart_mutex_t *mutex)
 
 static inline
 dart_ret_t
-dart_mutex_unlock(dart_mutex_t *mutex)
+dart__base__mutex_unlock(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   pthread_mutex_unlock(&mutex->mutex);
@@ -63,7 +71,7 @@ dart_mutex_unlock(dart_mutex_t *mutex)
 
 static inline
 dart_ret_t
-dart_mutex_trylock(dart_mutex_t *mutex)
+dart__base__mutex_trylock(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   pthread_mutex_trylock(&mutex->mutex);
@@ -76,7 +84,7 @@ dart_mutex_trylock(dart_mutex_t *mutex)
 
 static inline
 dart_ret_t
-dart_mutex_destroy(dart_mutex_t *mutex)
+dart__base__mutex_destroy(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   pthread_mutex_destroy(&mutex->mutex);
