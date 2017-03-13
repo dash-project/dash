@@ -167,7 +167,7 @@ public:
   /**
    * Default constructor.
    */
-  GlobIter()
+  constexpr GlobIter()
   : _globmem(nullptr),
     _pattern(nullptr),
     _idx(0),
@@ -180,7 +180,7 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern.
    */
-  GlobIter(
+  constexpr GlobIter(
     GlobMemType       * gmem,
 	  const PatternType & pat,
 	  index_type          position = 0)
@@ -197,7 +197,7 @@ public:
     class    GM_,
     class    Ptr_,
     class    Ref_ >
-  GlobIter(
+  constexpr GlobIter(
     const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
@@ -253,7 +253,7 @@ public:
   /**
    * The number of dimensions of the iterator's underlying pattern.
    */
-  static dim_t ndim()
+  static constexpr dim_t ndim()
   {
     return NumDimensions;
   }
