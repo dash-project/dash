@@ -221,6 +221,12 @@ TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
   dash::Array<float> a(array_size);
   dash::test::initialize_array(a);
 
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
+                       range_str(a));
+  }
+  a.barrier();
+
   // View to global index range of local block:
   auto block_gview = dash::sub(block_begin_gidx,
                                block_end_gidx,
@@ -260,19 +266,45 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
   dash::Array<float> a(array_size);
   dash::test::initialize_array(a);
 
-  // View to global index range of local block:
-  auto block_gview_outer = dash::sub(block_begin_gidx,
-                                     block_end_gidx,
-                                     a);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
-                     block_gview_outer);
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternChainedGlobalView",
+                       range_str(a));
+  }
+  a.barrier();
 
-  // Sub-range in block from block index 10 to -10:
+  // View to global index range of local block:
+  auto l_block_gview = dash::sub(block_begin_gidx,
+                                 block_end_gidx,
+                                 a);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternChainedGlobalView",
+                     range_str(l_block_gview));
+  EXPECT_TRUE_U(
+    std::equal(l_block_gview.begin(),
+               l_block_gview.end(),
+               a.local.begin()));
+
+  // View to global index range spanning over local block:
+  int block_outer_begin_gidx = (dash::myid() == 0
+                                ? block_begin_gidx
+                                : block_begin_gidx - 2);
+  int block_outer_end_gidx   = (dash::myid() == dash::size() - 1
+                                ? block_end_gidx
+                                : block_end_gidx + 2);
+  auto block_gview_outer     = dash::sub(block_outer_begin_gidx,
+                                         block_outer_end_gidx,
+                                         a);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternChainedGlobalView",
+                     range_str(block_gview_outer));
+
+  EXPECT_EQ_U(block_outer_end_gidx - block_outer_begin_gidx,
+              block_gview_outer.size());
+
+  // Sub-range in block from block index 2 to -2:
   auto block_gview_inner = dash::sub(2,
                                      block_size - 2, 
-                                     block_gview_outer);
-  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternGlobalView",
-                     block_gview_inner);
+                                     l_block_gview);
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockedPatternChainedGlobalView",
+                     range_str(block_gview_inner));
 
   EXPECT_EQ(block_size - 4,  block_gview_inner.size());
   EXPECT_EQ(block_begin_gidx + 2,
@@ -283,8 +315,8 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
   // Origin of inner view is outer view:
   auto & block_gview_inner_domain = dash::domain(block_gview_inner);
   EXPECT_TRUE_U(
-    std::equal(block_gview_outer.begin(),
-               block_gview_outer.end(),
+    std::equal(l_block_gview.begin(),
+               l_block_gview.end(),
                block_gview_inner_domain.begin()));
 
   // Origin of outer view is array:
@@ -329,6 +361,8 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   EXPECT_EQ(a.begin(),  dash::begin(block_domain));
   EXPECT_EQ(a.end(),    dash::end(block_domain));
 
+  // --- blocks(sub(array)) ----------------------------------------------
+  //
   if (dash::myid() == 0) {
     auto sub_begin_gidx  = block_size / 2;
     auto sub_end_gidx    = a.size() - (block_size / 2);
@@ -343,7 +377,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
                                sub_end_gidx,
                                a));
     int b_idx      = 0;
-    int begin_idx  = block_size / 2;
+    int begin_idx  = sub_begin_gidx;
     int num_blocks = a.pattern().blockspec().size();
     for (auto block : blocks_sub_view) {
       DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternGlobalView",
@@ -457,6 +491,39 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
     }
     EXPECT_EQ_U(l_idx, a.lsize());
   }
+}
+
+TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
+{
+  int block_size       = 5;
+  // minimum number of blocks per unit:
+  int blocks_per_unit  = 3;
+  // two extra blocks, last block underfilled:
+  int array_size       = dash::size() * block_size * blocks_per_unit
+                         + (block_size * 2)
+                         - 2;
+  int num_blocks       = (dash::size() * blocks_per_unit)
+                         + 2;
+  int num_local_blocks = dash::size() == 1
+                         ? num_blocks
+                         : ( dash::myid() < 2
+                             ? blocks_per_unit + 1
+                             : blocks_per_unit );
+
+  dash::Array<float> a(array_size, dash::BLOCKCYCLIC(block_size));
+  dash::test::initialize_array(a);
+
+  if (dash::myid() == 0) {
+    auto blocks_view   = dash::blocks(a);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::internal::typestr(blocks_view));
+    int b_idx = 0;
+    for (auto block : blocks_view) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                     "blocks[", b_idx, "]", range_str(block));
+      ++b_idx;
+    }
+  }
   a.barrier();
 
   // local(blocks(sub(array)))
@@ -470,10 +537,12 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
                                  a.size() - (block_size / 2),
                                  a));
     if (dash::myid() == 0) {
+      DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                         dash::internal::typestr(blocks_sub_view));
       int b_idx = 0;
       int idx   = 0;
       for (auto block : blocks_sub_view) {
-        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+        DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        "blocks_sub[", b_idx, "]", range_str(block));
         ++b_idx;
       }
@@ -482,38 +551,32 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
 
     EXPECT_EQ_U(num_blocks, blocks_sub_view.size());
 
-    auto sub_array         = dash::sub(
-                                 block_size / 2,
-                                 a.size() - (block_size / 2),
-                                 a);
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                       range_str(sub_array));
-
     auto l_blocks_sub_view = dash::local(
-                               dash::blocks(
-                                 sub_array));
+                               blocks_sub_view);
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::internal::typestr(l_blocks_sub_view));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       l_blocks_sub_view.size());
+
     EXPECT_EQ_U(num_local_blocks, l_blocks_sub_view.size());
 
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                       dash::internal::typestr(l_blocks_sub_view));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
-                       l_blocks_sub_view.size());
     l_b_idx = 0;
     l_idx   = 0;
     for (const auto & l_block : l_blocks_sub_view) {
-      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                      "l_block_sub[", l_b_idx, "]:", range_str(l_block));
       ++l_b_idx;
       l_idx += l_block.size();
     }
-    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                    "l_idx:", l_idx, "l_b_idx:", l_b_idx);
 
     a.barrier();
 
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        a.pattern().unit_at(0));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        a.pattern().unit_at(a.size() - 1));
 
     int exp_l_idx = a.lsize();
@@ -697,7 +760,7 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   auto lblocks_view  = dash::local(
                          dash::blocks(
                            array));
-// DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_view);
+  // DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_view);
 
   auto lblocks_index = dash::index(lblocks_view);
   DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", lblocks_index);
@@ -705,7 +768,7 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
   auto blocksl_view  = dash::blocks(
                          dash::local(
                            array));
-// DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", blocksl_view);
+  // DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", blocksl_view);
 
   auto blocksl_index = dash::index(blocksl_view);
   DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", blocksl_index);
@@ -1012,8 +1075,8 @@ TEST_F(ViewTest, Intersect1DimChain)
 
   DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
                      dash::index(dash::local(array)));
-//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
-//                   dash::global(dash::index(dash::local(array))));
+  //DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain",
+  //                   dash::global(dash::index(dash::local(array))));
 
   array.barrier();
 
@@ -1093,11 +1156,11 @@ TEST_F(ViewTest, Intersect1DimChain)
 
   array.barrier();
 
-//auto lrange_isect = dash::local_index_range(
-//                      array.begin() + sub_right_begin_gidx,
-//                      array.begin() + sub_left_end_gidx);
-//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.begin);
-//DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.end);
+  //auto lrange_isect = dash::local_index_range(
+  //                      array.begin() + sub_right_begin_gidx,
+  //                      array.begin() + sub_left_end_gidx);
+  //DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.begin);
+  //DASH_LOG_DEBUG_VAR("ViewTest.Intersect1DimChain", lrange_isect.end);
 
   static_assert(
     dash::detail::has_type_domain_type<decltype(lindex_isect)>::value,
