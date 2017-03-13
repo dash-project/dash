@@ -669,20 +669,19 @@ public:
     team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
     return (_nunits < 2)
-           ? local_coords
-           : std::array<IndexType, 1> {{
-               static_cast<IndexType>(
-                 // Global coords of the element's block within all blocks:
-                 ( _distspec[0].local_index_to_block_coord(
-                                  static_cast<IndexType>(unit),
-                                  local_coords[0],
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
-                    ) * _blocksize
-                 ) + (local_coords[0] % _blocksize)
-               )
-             }};
+            ? local_coords
+            : std::array<IndexType, 1> {{
+                static_cast<IndexType>(
+                  (( _distspec[0].local_index_to_block_coord(
+                       static_cast<IndexType>(unit),
+                       local_coords[0],
+                       _nunits,
+                       _nblocks,
+                       _blocksize)
+                   ) * _blocksize)
+                  + (local_coords[0] % _blocksize)
+                )
+              }};
   }
 
   /**
