@@ -664,39 +664,22 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  constexpr std::array<IndexType, NumDimensions> global(
     team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", unit);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", local_coords);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nunits);
-    if (_nunits < 2) {
-      return local_coords;
-    }
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nblocks);
-    // Global coords of the element's block within all blocks.
-    // Use initializer so elements are initialized with 0s:
-    IndexType block_index;
-    // Index of the element:
-    IndexType glob_index;
-
-    const Distribution & dist = _distspec[0];
-    IndexType local_index     = local_coords[0];
-    IndexType elem_phase      = local_index % _blocksize;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", local_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", elem_phase);
-    // Global coords of the element's block within all blocks:
-    block_index               = dist.local_index_to_block_coord(
-                                  static_cast<IndexType>(unit),
-                                  local_index,
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
-                                );
-    glob_index  = (block_index * _blocksize) + elem_phase;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", block_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global >", glob_index);
-    return std::array<IndexType, 1> {{ glob_index }};
+    return (_nunits < 2)
+            ? local_coords
+            : std::array<IndexType, 1> {{
+                ((
+                  _distspec[0].local_index_to_block_coord(
+                    static_cast<IndexType>(unit),
+                    local_coords[0],
+                    _nunits,
+                    _nblocks,
+                    _blocksize)
+                 ) * _blocksize)
+                + (local_coords[0] % _blocksize);
+              }};
   }
 
   /**
