@@ -485,21 +485,15 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        range_str(sub_array));
 
-    auto tmp_2             = dash::blocks(
-                               sub_array);
     auto l_blocks_sub_view = dash::local(
-                               tmp_2);
+                               dash::blocks(
+                                 sub_array));
     EXPECT_EQ_U(num_local_blocks, l_blocks_sub_view.size());
 
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        dash::internal::typestr(l_blocks_sub_view));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
                        l_blocks_sub_view.size());
-
-
-    // TODO
-    return;
-
     l_b_idx = 0;
     l_idx   = 0;
     for (auto l_block : l_blocks_sub_view) {
@@ -508,7 +502,27 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
       ++l_b_idx;
       l_idx += l_block.size();
     }
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                   "l_idx:", l_idx, "l_b_idx:", l_b_idx);
+
     a.barrier();
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       a.pattern().unit_at(0));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalBlocks",
+                       a.pattern().unit_at(a.size() - 1));
+
+    int exp_l_idx = a.lsize();
+    if (dash::myid().id == a.pattern().unit_at(0)) {
+      // Owner of first global block:
+      exp_l_idx -= (block_size / 2);
+    }
+    if (dash::myid().id == a.pattern().unit_at(a.size() - 1)) {
+      // Owner of last global block:
+      exp_l_idx -= (block_size / 2);
+    }
+    EXPECT_EQ_U(exp_l_idx,        l_idx);
+    EXPECT_EQ_U(num_local_blocks, l_b_idx);
   }
 }
 
