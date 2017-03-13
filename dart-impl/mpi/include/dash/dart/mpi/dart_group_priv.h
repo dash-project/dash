@@ -5,15 +5,13 @@
 #ifndef DART_ADAPT_GROUP_PRIV_H_INCLUDED
 #define DART_ADAPT_GROUP_PRIV_H_INCLUDED
 
-#include <stdio.h>
 #include <mpi.h>
-#include <dash/dart/if/dart_team_group.h>
 
 /** @brief Dart group type.
  */
 
- struct dart_group_struct {
-	 MPI_Group mpi_group;
- };
+struct dart_group_struct {
+  MPI_Group mpi_group;
+};
 
 #endif /* DART_ADAPT_GROUP_PRIV_H_INCLUDED */

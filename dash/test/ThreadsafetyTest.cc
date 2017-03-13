@@ -1,4 +1,6 @@
 
+#if defined(DASH_ENABLE_THREADSUPPORT)
+
 #include "ThreadsafetyTest.h"
 
 #include <dash/Types.h>
@@ -340,3 +342,4 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
 #endif // !defined(DASH_ENABLE_OPENMP)
 }
 
+#endif // DASH_ENABLE_THREADSUPPORT

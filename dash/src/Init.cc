@@ -12,7 +12,7 @@
 
 
 namespace dash {
-  static bool _initialized = false;
+  static bool _initialized   = false;
   static bool _multithreaded = false;
 }
 
@@ -34,17 +34,17 @@ void dash::init(int * argc, char ** *argv)
   DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
 
-#if DASH_ENABLE_THREADSUPPORT
+#if defined(DASH_ENABLE_THREADSUPPORT)
   DASH_LOG_DEBUG("dash::init", "dart_init_thread()");
   dart_thread_support_level_t provided_mt;
   dart_init_thread(argc, argv, &provided_mt);
   dash::_multithreaded = (provided_mt == DART_THREAD_MULTIPLE);
   if (!dash::_multithreaded) {
-    DASH_LOG_WARN("Support for multi-threading requested at compile "
-                  "time but DART does not support multi-threaded access.");
+    DASH_LOG_WARN("dash::init",
+                  "Support for multi-threading requested at compile time but "
+                  "DART does not support multi-threaded access.");
   }
 #else
-
   DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc, argv);
 #endif
