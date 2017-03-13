@@ -54,7 +54,10 @@ namespace internal {
 #pragma GCC diagnostic ignored "-Wconversion-null"
 #endif // defined(__GNUC__)
 template<typename T, typename S>
-typename std::enable_if<!std::is_floating_point<T>::value, ::testing::AssertionResult>::type
+typename std::enable_if<
+           !std::is_floating_point<T>::value,
+           ::testing::AssertionResult
+         >::type
 assert_float_eq(
   const char *exp_e,
   const char *exp_a,
@@ -95,29 +98,42 @@ struct float_type_helper<double, S> {
 };
 
 template<typename S>
+struct float_type_helper<float, S> {
+  using type = float;
+};
+
+template<typename S>
 struct float_type_helper<S, double> {
   using type = double;
+};
+template<typename S>
+struct float_type_helper<S, float> {
+  using type = float;
 };
 
 template<>
 struct float_type_helper<double, double> {
   using type = double;
 };
+template<>
+struct float_type_helper<float, float> {
+  using type = float;
+};
 
-#define ASSERT_EQ_U(e,a)                                         \
-  do {                                                           \
-    if (std::is_floating_point<decltype(e)>::value               \
-     || std::is_floating_point<decltype(a)>::value) {            \
-      using value_type =                                         \
-              typename ::testing::internal::float_type_helper<   \
-                                decltype(e), decltype(a)>::type; \
-      EXPECT_PRED_FORMAT2(                                       \
-        ::testing::internal::assert_float_eq<value_type>, e, a)  \
-            << "Unit " << dash::myid().id;                       \
-    }                                                            \
-    else {                                                       \
-      EXPECT_EQ(e,a)        << "Unit " << dash::myid().id;       \
-    }                                                            \
+#define ASSERT_EQ_U(_e,_a)                                          \
+  do {                                                              \
+    if (std::is_floating_point<decltype(_e)>::value                 \
+     || std::is_floating_point<decltype(_a)>::value) {              \
+      using value_type =                                            \
+              typename ::testing::internal::float_type_helper<      \
+                                decltype(_e), decltype(_a)>::type;  \
+      EXPECT_PRED_FORMAT2(                                          \
+        ::testing::internal::assert_float_eq<value_type>,(_e),(_a)) \
+            << "Unit " << dash::myid().id;                          \
+    }                                                               \
+    else {                                                          \
+      EXPECT_EQ(_e,_a)        << "Unit " << dash::myid().id;        \
+    }                                                               \
   } while(0)
 
 #define EXPECT_EQ_U(e,a) ASSERT_EQ_U(e,a)
@@ -195,7 +211,7 @@ static std::string range_str(
   auto idx = dash::index(vrange);
   int        i   = 0;
 
-  ss << "<" << dash::internal::typestr(*vrange.begin()) << "> ";
+  // ss << "<" << dash::internal::typestr(*vrange.begin()) << "> ";
   for (const auto & v : vrange) {
     ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(4)
