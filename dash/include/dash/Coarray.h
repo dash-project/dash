@@ -33,7 +33,8 @@
  * \par Types
  *
  * \TODO: Types
- *
+ * 
+ * \}
  */
 
 namespace dash {
@@ -123,18 +124,18 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              __get_type_extents_as_array<T, size_type, _rank>::value));
+              __get_type_extents_as_array<_underl_type, size_type, _rank>::value));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
-    static_assert(std::get<0>(__get_type_extents_as_array<T, size_type, _rank>::value) == 0,
+    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank>::value) == 0,
                   "Array type is fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                __get_type_extents_as_array<T, size_type, _rank>::value)));
+                __get_type_extents_as_array<_underl_type, size_type, _rank>::value)));
   }
   
   constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const noexcept {

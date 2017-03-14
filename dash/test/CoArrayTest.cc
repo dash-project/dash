@@ -178,13 +178,13 @@ TEST_F(CoArrayTest, MemoryModel)
 {
   using namespace dash::co_array;
   
+  int i = static_cast<int>(this_image()); 
   {
     // scalar case
     using Coarray_t = dash::Coarray<dash::Atomic<int>>;
     using Reference = Coarray_t::reference;
 
     Coarray_t x;
-    int i = static_cast<int>(this_image());
     x(i) = i;
     x.barrier();
     x(i) += 1;
@@ -195,14 +195,15 @@ TEST_F(CoArrayTest, MemoryModel)
   }
   
   dash::barrier();
-  
-#if 0
+
   // blocked by issue 322
   {
     // array case
-    dash::Coarray<dash::Atomic<int[10][20]>> y;
-    y[0][0] = static_cast<int>(this_image());
-    y[0][0]
+    using coarr_atom_t = dash::Coarray<dash::Atomic<int[10][20]>>;
+    coarr_atom_t y;
+    y(i)[0][0] = i;
+    y(i)[0][0] += 1;
+    int result = y(i)[0][0].load();
+    EXPECT_EQ_U(result, i+1);
   }
-#endif
 }
