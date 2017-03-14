@@ -8,6 +8,7 @@
 #define DART__IO_H_
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 
 /**
@@ -24,7 +25,7 @@ extern "C" {
  */
 dart_ret_t dart__io__hdf5__prep_mpio(
     hid_t plist_id,
-    dart_team_t teamid);
+    dart_team_t teamid) DART_NOTHROW;
 
 #define DART_INTERFACE_OFF
 
