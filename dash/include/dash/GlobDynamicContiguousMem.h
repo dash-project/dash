@@ -30,6 +30,18 @@
 
 namespace dash {
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// NOTE: Must be compatible (= same interface) to GlobDynamicMem so it
+//       can be replaced in e.g.
+//
+//       dash::Grap<T, ... , dash::GlobDynamicMem>
+//       dash::Grap<T, ... , dash::GlobDynamicContiguousMem>
+//
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+template<
+  typename ContainerType>
+class GlobDynamicContiguousMem
+{
 template<
   typename ContainerType>
 class GlobDynamicContiguousMem
@@ -60,6 +72,7 @@ public:
     size_type   n_local_elem = 0,
     Team      & team         = dash::Team::All())
   : _container(new container_type()),
+  // TODO: use std::make_shared<container_type>()
     _unattached_container(new container_type()),
     _buckets(),
     _team(&team),
