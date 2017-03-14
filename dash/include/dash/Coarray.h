@@ -15,6 +15,8 @@
 
 #include <dash/Dimensional.h>
 
+#include <dash/atomic/Type_traits.h>
+
 /**
  * \defgroup  DashCoArrayConcept  co_array Concept
  *
@@ -59,14 +61,40 @@ private:
     static constexpr array_t value = {};
   };
   
+  /**
+   * Trait to transform \cdash::Atomic<T[]...> to 
+   * \cdash::Atomic<T>
+   * __T  denotes the full type including \cdash::Atomic<>
+   * __UT denotes the underlying type without extens
+   */
+  template<typename __T, typename __UT>
+  struct __insert_atomic_if_necessary {
+    typedef __UT type;
+  };
+  template<typename __T, typename __UT>
+  struct __insert_atomic_if_necessary<dash::Atomic<__T>, __UT> {
+    typedef dash::Atomic<__UT> type;
+  };
+  
 private:
-  static constexpr int _rank = std::rank<T>::value;
+  
+  using _underl_type    = typename dash::remove_atomic<T>::type;
+  using _native_type    = typename std::remove_all_extents<_underl_type>::type;
+  
+  static constexpr int _rank = std::rank<_underl_type>::value;
   
   using _index_type     = typename std::make_unsigned<IndexType>::type;
   using _sspec_type     = SizeSpec<_rank+1, _index_type>;
   using _pattern_type   = BlockPattern<_rank+1, ROW_MAJOR, _index_type>;
-  using _element_type   = typename std::remove_all_extents<T>::type;
+  
+  /**
+   * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
+   * was declared with \cdash::Atomic<T>
+   */
+  using _element_type   = typename __insert_atomic_if_necessary<T, _native_type>::type;
+  
   using _storage_type   = Matrix<_element_type, _rank+1, _index_type, _pattern_type>;
+  
   template<int _subrank = _rank>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
   using _local_type     = LocalMatrixRef<_element_type, _rank+1, _rank-1, _pattern_type>;
@@ -214,11 +242,22 @@ public:
     return this->operator ()(static_cast<index_type>(unit));
   }
   /**
-   * Operator to select remote unit
+   * Operator to select remote unit for array types
    */
   template<int __rank = _rank>
-  inline view_type<__rank> operator()(const index_type & local_unit) {
+  typename std::enable_if<(__rank != 0), view_type<__rank>>::type
+  inline operator()(const index_type & local_unit) {
     return _storage[local_unit];
+  }
+  
+  /**
+   * Operator to select remote unit for scalar types
+   * \TODO: Hack to avoid issue 322
+   */
+  template<int __rank = _rank>
+  typename std::enable_if<(__rank == 0), reference>::type
+  inline operator()(const index_type & local_unit) {
+    return _storage.at(local_unit);
   }
 
   /**
@@ -246,7 +285,7 @@ public:
   inline operator=(const value_type & value){
     return *(_storage.lbegin()) = value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    * \code
@@ -260,6 +299,17 @@ public:
     typename = typename std::enable_if<(__rank == 0)>::type>
   operator value_type() const {
     return *(_storage.lbegin());
+  }
+  
+  /**
+   * support 
+   * @return 
+   */
+  template<
+    int __rank = _rank,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  explicit operator reference() {
+    return *(_storage.begin()+static_cast<index_type>(dash::myid()));
   }
   
   /**

@@ -4,6 +4,7 @@
 #include <type_traits>
 
 #include <dash/Types.h>
+#include <dash/Atomic.h>
 
 TEST_F(CoArrayTest, TypesInterface)
 {
@@ -133,4 +134,75 @@ TEST_F(CoArrayTest, Collectives)
   coreduce(x, dash::plus<int>());
   x.barrier();
   ASSERT_EQ_U(static_cast<int>(x[5][0]), 2 * dash::size());
+}
+
+TEST_F(CoArrayTest, Iterators)
+{
+  using namespace dash::co_array;
+  
+  dash::Coarray<int>         i;
+  dash::Coarray<int[10][20]> x;
+  
+  EXPECT_EQ_U(std::distance(i.begin(), i.end()), dash::size());
+  
+  // -------------------------------------------------------------------------
+  // Bug in DASH Matrix
+  EXPECT_EQ_U(std::distance(x(0).begin(), x(0).end()), 10*20);
+  
+  dash::NArray<int, 3> matrix(dash::size(), 10, 20);
+  EXPECT_EQ_U(std::distance(matrix[0].begin(), matrix[0].end()), 10*20);
+  
+  int visited = 0;
+  auto curpos = matrix[0].begin();
+  while(curpos != matrix[0].end()){
+    ++curpos;
+    ++visited;
+  }
+  // -------------------------------------------------------------------------
+}
+
+TEST_F(CoArrayTest, CoFutures)
+{
+  using namespace dash::co_array;
+  
+  dash::Coarray<int> x;
+  int i = static_cast<int>(this_image());
+  x = i;
+  x.barrier();
+  
+  // at this point, there is no possibility to get an async MatrixRef
+  //auto a = x(i).async;
+}
+
+TEST_F(CoArrayTest, MemoryModel)
+{
+  using namespace dash::co_array;
+  
+  {
+    // scalar case
+    using Coarray_t = dash::Coarray<dash::Atomic<int>>;
+    using Reference = Coarray_t::reference;
+
+    Coarray_t x;
+    int i = static_cast<int>(this_image());
+    x(i) = i;
+    x.barrier();
+    x(i) += 1;
+    int result = x(i).load();
+    EXPECT_EQ_U(result, i+1);
+    // at this point, there is no possibility to get an async MatrixRef
+    //auto a = x(i).async;
+  }
+  
+  dash::barrier();
+  
+#if 0
+  // blocked by issue 322
+  {
+    // array case
+    dash::Coarray<dash::Atomic<int[10][20]>> y;
+    y[0][0] = static_cast<int>(this_image());
+    y[0][0]
+  }
+#endif
 }
