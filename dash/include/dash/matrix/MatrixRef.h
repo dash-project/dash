@@ -204,15 +204,35 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim != 0), 
+    MatrixRef<ElementT, NumDimensions, __NumViewDim, PatternT>>::type
     operator[](index_type n);
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr MatrixRef<const ElementT, NumDimensions, NumViewDim-1, PatternT>
-    operator[](index_type n) const;
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim != 0), 
+    MatrixRef<const ElementT, NumDimensions, __NumViewDim, PatternT>>::type
+  constexpr operator[](index_type n) const;
+    
+  /**
+   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * in global element range for last dimension.
+   */
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim == 0), reference>::type
+  operator[](index_type n);
+  
+  /**
+   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * in global element range for last dimension.
+   */
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim == 0), const_reference>::type
+  operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
