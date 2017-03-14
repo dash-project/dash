@@ -253,7 +253,7 @@ public:
     /// dimensions
     const DistributionSpec_t & dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec = typename TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         & teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
     dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
