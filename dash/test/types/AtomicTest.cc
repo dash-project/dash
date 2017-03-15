@@ -145,15 +145,19 @@ TEST_F(AtomicTest, AtomicInContainer){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
+  using matrix_t = dash::Matrix<atom_t,1>;
 
   array_t array(dash::size());
+  matrix_t matrix(dash::size());
 
   // supported as Atomic<value_t>(value_t T) is available
   dash::fill(array.begin(), array.end(), 0);
+  dash::fill(matrix.begin(), matrix.end(), 0);
   dash::barrier();
 
   for(int i=0; i<dash::size(); ++i){
     array[i].add(i+1);
+    matrix[i].add(i+1);
   }
   
   dash::barrier();
@@ -165,6 +169,10 @@ TEST_F(AtomicTest, AtomicInContainer){
 
   for(int i=0; i<dash::size(); ++i){
     value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(matrix[i]);
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
   }
 }

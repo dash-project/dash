@@ -301,6 +301,11 @@ public:
     operator=(val);
     return *this;
   }
+  
+  template<class PatternT>
+  explicit constexpr operator GlobPtr<T, PatternT>() const {
+    return GlobPtr<T, PatternT>(_gptr);
+  }
 
   dart_gptr_t dart_gptr() const {
     return _gptr;
