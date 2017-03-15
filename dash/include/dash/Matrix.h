@@ -442,7 +442,18 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr const_view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim != 0), const_view_type<__NumViewDim>>::type
+  constexpr operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  ) const;
+  
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim == 0), const_reference>::type
+  constexpr operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
 
@@ -450,7 +461,18 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim != 0), view_type<__NumViewDim>>::type
+  operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  );
+
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim == 0), reference>::type
+  operator[](
     size_type n       ///< Offset in highest matrix dimension.
   );
 

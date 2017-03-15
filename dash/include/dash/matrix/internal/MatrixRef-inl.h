@@ -271,23 +271,47 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-MatrixRef<T, NumDim, CUR-1, PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim != 0), 
+  MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos)
 {
-  return MatrixRef<T, NumDim, CUR-1, PatternT>(*this, pos);
+  return MatrixRef<T, NumDim, __NumViewDim, PatternT>(*this, pos);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr MatrixRef<const T, NumDim, CUR-1, PatternT>
-MatrixRef<T, NumDim, CUR, PatternT>
-::operator[](
-  index_type pos) const
-{
-  return MatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim != 0), 
+  MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
+constexpr MatrixRef<T, NumDim, CUR, PatternT>
+::operator[](index_type pos) const {
+  return MatrixRef<const T, NumDim, __NumViewDim, PatternT>(*this, pos);
 }
 
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim == 0), GlobRef<T> >::type
+MatrixRef<T, NumDim, CUR, PatternT>
+::operator[](index_type pos)
+{
+  auto coords = _refview._coord;
+  coords[0] = pos;
+  return _refview.global_reference(coords);
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim == 0), GlobRef<const T> >::type
+MatrixRef<T, NumDim, CUR, PatternT>
+::operator[](index_type pos) const
+{
+  auto coords = _refview._coord;
+  coords[0] = pos;
+  return _refview.global_reference(coords);
+}
+ 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
@@ -465,159 +489,6 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::hview()
 {
   return dash::HView<Matrix<T, NumDim, index_type, PatternT>, level>(*this);
-}
-
-// MatrixRef<T, NumDim, 0>
-// Partial Specialization for value deferencing.
-
-template <typename T, dim_t NumDim, class PatternT>
-MatrixRef<T, NumDim, 0, PatternT>
-::MatrixRef(
-  const MatrixRef<T, NumDim, 1, PatternT> & previous,
-  typename PatternT::index_type             coord)
-  : _refview(previous._refview)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", 0);
-  // Copy proxy of MatrixRef from last dimension:
-  _refview._coord[_refview._dim] = coord;
-  _refview._dim++;
-  _refview._viewspec.set_rank(NumDim);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _refview._coord);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _refview._dim);
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-constexpr bool
-MatrixRef<T, NumDim, 0, PatternT>
-::is_local() const
-{
-  return (_refview._mat->_pattern.unit_at(
-                                     _refview._coord,
-                                     _refview._viewspec) ==
-          _refview._mat->_team->myid());
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-constexpr MatrixRef<T, NumDim, 0, PatternT>
-::operator T() const
-{
-  return _refview.global_reference();
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-constexpr MatrixRef<T, NumDim, 0, PatternT>
-::operator GlobPtr<T, PatternT>() const
-{
-  return GlobPtr<T, PatternT>(_refview.global_reference().dart_gptr());
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator=(
-  const T & value)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.=()", value);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.=", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  ref = value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator+=(
-  const T & value)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.+=()", value);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.+=", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  ref += value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator+(
-  const T & value)
-{
-  auto res  = self_t(*this);
-  res      += value;
-  return res;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator-=(
-  const T & value)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.-=()", value);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.-=", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  ref -= value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator-(
-  const T & value)
-{
-  auto res  = self_t(*this);
-  res      -= value;
-  return res;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator*=(
-  const T & value)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.*=()", value);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.*=", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  ref *= value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator*(
-  const T & value)
-{
-  auto res  = self_t(*this);
-  res      *= value;
-  return res;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator/=(
-  const T & value)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef<0>./=()", value);
-  DASH_LOG_TRACE_VAR("MatrixRef<0>./=", _refview._coord);
-  GlobRef<T> ref = _refview.global_reference();
-  ref /= value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-MatrixRef<T, NumDim, 0, PatternT>
-::operator/(
-  const T & value)
-{
-  auto res  = self_t(*this);
-  res      /= value;
-  return res;
 }
 
 } // namespace dash
