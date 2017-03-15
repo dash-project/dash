@@ -379,6 +379,16 @@ struct ViewRange {
   IndexType end;
 };
 
+template<typename IndexType>
+std::ostream & operator<<(
+  std::ostream & os,
+  const ViewRange<IndexType> & viewrange) {
+  os << "dash::ViewRange<" << typeid(IndexType).name() << ">("
+     << "begin:" << viewrange.begin << " "
+     << "end:"   << viewrange.end << ")";
+  return os;
+}
+
 /**
  * Equality comparison operator for ViewPair.
  */
@@ -408,9 +418,9 @@ template<typename IndexType>
 std::ostream & operator<<(
   std::ostream & os,
   const ViewPair<IndexType> & viewpair) {
-  os << "dash::ViewPair<" << typeid(IndexType).name() << ">(offset:"
-     << viewpair.offset << " extent:"
-     << viewpair.extent << ")";
+  os << "dash::ViewPair<" << typeid(IndexType).name() << ">("
+     << "offset:" << viewpair.offset << " "
+     << "extent:" << viewpair.extent << ")";
   return os;
 }
 

@@ -852,7 +852,6 @@ class IndexSetLocal
   }
 
   constexpr auto global() const noexcept
-//  -> decltype(dash::index(dash::global(this->view_domain()))) {
     -> decltype(dash::index(dash::global(
                   std::declval<const typename base_t::view_domain_type &>()
                 ))) {
@@ -965,9 +964,11 @@ class IndexSetLocal
                     // Resolve global index past the last element:
                     //
                     : ( domain_block_gidx_last() >= local_block_gidx_last()
-                          ? this->pattern().local_block(
+                          // Last local block is included in domain:
+                          ? this->pattern().block(
                               local_block_gidx_last()
                             ).range(0).end - 1
+                          // Domain ends before last local block:
                           : local_block_gidx_at_block_lidx(
                                 domain_block_lidx_last())
                               > domain_block_gidx_last()

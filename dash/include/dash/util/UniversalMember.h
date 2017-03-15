@@ -50,6 +50,17 @@ template <class ValueType>
 class UniversalMember {
   typedef UniversalMember<ValueType> self_t;
 
+  // References related to reference / temporary binding:
+  //
+  // - `shared_view` in range-v3, seems similar top the `std::shared_ptr`
+  //   variant:
+  //   https://github.com/ericniebler/range-v3/pull/557/files
+  //
+  // - `common_reference` proposal:
+  //    http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0022r2.html
+  //
+  // - ref-qualified member functions:
+  //   http://kukuruku.co/hub/cpp/ref-qualified-member-functions
   std::shared_ptr<ValueType> _value;
 public:
   UniversalMember() = default;
@@ -66,7 +77,6 @@ public:
   constexpr explicit UniversalMember(const ValueType & value)
   : _value(&const_cast<ValueType &>(value),
            [](ValueType *) { /* no deleter */ })
-//: _value(value)
   { }
 
             operator       ValueType & ()       { return *(_value.get()); }

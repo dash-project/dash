@@ -416,6 +416,10 @@ public:
   }
 
   // ---- size ------------------------------------------------------------
+
+  constexpr index_type size() const {
+    return dash::index(derived()).size();
+  }
 };
 
 

@@ -497,7 +497,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
 {
   int block_size       = 5;
   // minimum number of blocks per unit:
-  int blocks_per_unit  = 3;
+  int blocks_per_unit  = 2;
   // two extra blocks, last block underfilled:
   int array_size       = dash::size() * block_size * blocks_per_unit
                          + (block_size * 2)
@@ -544,6 +544,16 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
   }
   a.barrier();
 
+  if (dash::myid() == 0) {
+    auto sub_view = dash::sub(
+                      block_size / 2,
+                      a.size() - (block_size / 2),
+                      a);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       range_str(sub_view));
+  }
+  a.barrier();
+
   // local(sub(array))
   //
   {
@@ -552,12 +562,27 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
                           block_size / 2,
                           a.size() - (block_size / 2),
                           a));
+
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        dash::internal::typestr(l_sub_view));
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        l_sub_view.size());
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        range_str(l_sub_view));
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::index(l_sub_view).is_strided());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::index(l_sub_view).domain_block_gidx_last());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::index(l_sub_view).local_block_gidx_last());
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       dash::index(l_sub_view).domain_block_lidx_last());
+
+    auto l_sub_view_pattern = dash::index(l_sub_view).pattern();
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                       l_sub_view_pattern.block(
+                         dash::index(l_sub_view).local_block_gidx_last()
+                       ).range(0));
 
     int g_idx;
     int l_idx = 0;
