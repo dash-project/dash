@@ -650,7 +650,7 @@ TEST_F(MatrixTest, ViewIteration)
       (dash::GlobPtr<int, pattern_t>)(b_it);
     // Compare with GlobPtr from global iterator without view projection:
     dash::GlobPtr<int, pattern_t> glob_elem_gptr  =
-      (dash::GlobPtr<int, pattern_t>)(matrix[gcoord_x][gcoord_y]);
+      static_cast<dash::GlobPtr<int, pattern_t>>(matrix[gcoord_x][gcoord_y]);
     int block_value = *block_elem_gptr;
     int glob_value  = *glob_elem_gptr;
     ASSERT_EQ_U(glob_value,
