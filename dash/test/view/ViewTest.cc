@@ -608,8 +608,6 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
   }
   a.barrier();
 
-  return; // TODO: fix local(sub(array)) first
-
   // local(blocks(sub(array)))
   //
   {
