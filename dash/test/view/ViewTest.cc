@@ -181,7 +181,7 @@ TEST_F(ViewTest, NestedTemporaries)
 {
   typedef float value_t;
 
-  int block_size       = 5;
+  int block_size       = 15;
   int array_size       = dash::size() * block_size;
 
   dash::Array<value_t> a(array_size);
