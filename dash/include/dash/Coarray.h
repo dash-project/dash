@@ -82,11 +82,12 @@ private:
   using _underl_type    = typename dash::remove_atomic<T>::type;
   using _native_type    = typename std::remove_all_extents<_underl_type>::type;
   
-  static constexpr int _rank = std::rank<_underl_type>::value;
+  using _rank           = std::integral_constant<int,
+                            std::rank<_underl_type>::value>;
   
   using _index_type     = typename std::make_unsigned<IndexType>::type;
-  using _sspec_type     = SizeSpec<_rank+1, _index_type>;
-  using _pattern_type   = BlockPattern<_rank+1, ROW_MAJOR, _index_type>;
+  using _sspec_type     = SizeSpec<_rank::value+1, _index_type>;
+  using _pattern_type   = BlockPattern<_rank::value+1, ROW_MAJOR, _index_type>;
   
   /**
    * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
@@ -94,12 +95,15 @@ private:
    */
   using _element_type   = typename __insert_atomic_if_necessary<T, _native_type>::type;
   
-  using _storage_type   = Matrix<_element_type, _rank+1, _index_type, _pattern_type>;
+  using _storage_type   = Matrix<_element_type, _rank::value+1, _index_type, _pattern_type>;
   
-  template<int _subrank = _rank>
+  template<int _subrank = _rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
-  using _local_type     = LocalMatrixRef<_element_type, _rank+1, _rank-1, _pattern_type>;
-  using _offset_type    = std::array<_index_type, _rank>;
+  using _local_type     = LocalMatrixRef<_element_type,
+                                         _rank::value+1,
+                                         _rank::value-1,
+                                         _pattern_type>;
+  using _offset_type    = std::array<_index_type, _rank::value>;
 
 public:
   // Types
@@ -124,22 +128,22 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              __get_type_extents_as_array<_underl_type, size_type, _rank>::value));
+              __get_type_extents_as_array<_underl_type, size_type, _rank::value>::value));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
-    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank>::value) == 0,
+    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank::value>::value) == 0,
                   "Array type is fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                __get_type_extents_as_array<_underl_type, size_type, _rank>::value)));
+                __get_type_extents_as_array<_underl_type, size_type, _rank::value>::value)));
   }
   
   constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const noexcept {
-    return _storage.pattern().global(unit, std::array<index_type,_rank> {});
+    return _storage.pattern().global(unit, std::array<index_type,_rank::value> {});
   }
   
   constexpr _offset_type & _extents_unit(const team_unit_t & unit) const noexcept {
@@ -149,7 +153,7 @@ private:
 public:
   
   static constexpr dim_t ndim() noexcept {
-    return static_cast<dim_t>(_rank);
+    return static_cast<dim_t>(_rank::value);
   }
   /**
    * Constructor for scalar types and fully specified array types:
@@ -238,14 +242,14 @@ public:
   /**
    * Operator to select remote unit
    */
-  template<int __rank = _rank>
+  template<int __rank = _rank::value>
   inline view_type<__rank> operator()(const team_unit_t & unit) {
     return this->operator ()(static_cast<index_type>(unit));
   }
   /**
    * Operator to select remote unit for array types
    */
-  template<int __rank = _rank>
+  template<int __rank = _rank::value>
   typename std::enable_if<(__rank != 0), view_type<__rank>>::type
   inline operator()(const index_type & local_unit) {
     return _storage[local_unit];
@@ -255,7 +259,7 @@ public:
    * Operator to select remote unit for scalar types
    * \TODO: Hack to avoid issue 322
    */
-  template<int __rank = _rank>
+  template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 0), reference>::type
   inline operator()(const index_type & local_unit) {
     return _storage.at(local_unit);
@@ -268,7 +272,7 @@ public:
    *   x[2][3] = 42;
    * \endcode
    */
-  template<int __rank = _rank>
+  template<int __rank = _rank::value>
   typename std::enable_if<(__rank != 0), local_type>::type
   operator[](const index_type & idx) {
     return _storage.local[0][0];
@@ -281,7 +285,7 @@ public:
    *   i = 42;
    * \endcode
    */
-  template<int __rank = _rank>
+  template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 0), value_type>::type
   inline operator=(const value_type & value){
     return *(_storage.lbegin()) = value;
@@ -296,7 +300,7 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   operator value_type() const {
     return *(_storage.lbegin());
@@ -307,7 +311,7 @@ public:
    * @return 
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   explicit operator reference() {
     return *(_storage.begin()+static_cast<index_type>(dash::myid()));
@@ -322,7 +326,7 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type & operator +=(const value_type & value) {
     return *(_storage.lbegin()) += value;
@@ -332,7 +336,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type & operator -=(const value_type & value) {
     return *(_storage.lbegin()) -= value;
@@ -342,7 +346,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type & operator *=(const value_type & value) {
     return *(_storage.lbegin()) *= value;
@@ -352,7 +356,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type & operator /=(const value_type & value) {
     return *(_storage.lbegin()) /= value;
@@ -367,7 +371,7 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator +(const value_type & value) const {
     return *(_storage.lbegin()) + value;
@@ -377,7 +381,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator -(const value_type & value) const {
     return *(_storage.lbegin()) - value;
@@ -387,7 +391,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator *(const value_type & value) const {
     return *(_storage.lbegin()) * value;
@@ -397,7 +401,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator /(const value_type & value) const {
     return *(_storage.lbegin()) / value;
@@ -407,7 +411,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator ++() {
     return ++(*(_storage.lbegin()));
@@ -416,7 +420,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator ++(int) {
     return (*(_storage.lbegin()))++;
@@ -426,7 +430,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator --() {
     return --(*(_storage.lbegin()));
@@ -435,7 +439,7 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   value_type operator --(int) {
     return (*(_storage.lbegin()))--;
