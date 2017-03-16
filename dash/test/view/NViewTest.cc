@@ -697,7 +697,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   dash::test::print_nview("lsub_view",  lsub_view);
 }
 
-TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
+TEST_F(NViewTest, MatrixBlockCyclic1DimSub)
 {
   auto nunits = dash::size();
 
@@ -727,10 +727,10 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
 
   dash::test::initialize_matrix(mat);
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat.extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", mat.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      mat.pattern().local_extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      mat.pattern().local_size());
 
   if (dash::myid() == 0) {
@@ -738,30 +738,34 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
                      0, mat.extents()[0],
                      mat);
 
-    DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSub",
+    DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic1DSub",
                    dash::internal::typestr(all_sub));
 
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", all_sub.extents());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", all_sub.offsets());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", all_sub.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", all_sub.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                        index(all_sub).size());
 
     dash::test::print_nview("mat_view",  all_sub);
 
     auto nview_rows  = dash::sub<0>(1, mat.extent(0) - 1, mat);
 
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows.offsets());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_rows.extents());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
+                       nview_rows.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
+                       nview_rows.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                        index(nview_rows).size());
 
     dash::test::print_nview("nview_rows", nview_rows);
 
     auto nview_cols  = dash::sub<1>(1, mat.extent(1) - 1, mat);
 
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols.offsets());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", nview_cols.extents());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
+                       nview_cols.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
+                       nview_cols.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                        index(nview_cols).size());
 
     dash::test::print_nview("nview_cols", nview_cols);
@@ -770,7 +774,7 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
 
     int bi = 0;
     for (const auto & block : nview_blocks) {
-      DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic1DSingle",
                      "block", bi, ":", "extents:", block.extents(), 
                      range_str(block));
       bi++;
@@ -780,9 +784,9 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
 
   auto mat_loc  = dash::local(dash::sub<0>(0, mat.extent(0), mat));
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat_loc.offsets());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat_loc.extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", mat_loc.offsets());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", mat_loc.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      index(mat_loc).size());
 
   dash::test::print_nview("mat_loc", mat_loc);
@@ -791,22 +795,22 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSubSection)
 
   auto loc_rows  = dash::local(dash::sub<0>(1, mat.extent(0) - 1, mat));
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_rows.offsets());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_rows.extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", loc_rows.offsets());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", loc_rows.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      index(loc_rows).size());
 
-  dash::test::print_nview("loc_rows", loc_rows);
+//dash::test::print_nview("loc_rows", loc_rows);
 
   mat.barrier();
 
   auto loc_cols  = local(dash::sub<1>(1, mat.extent(1) - 1, mat));
 
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_cols.offsets());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", loc_cols.extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", loc_cols.offsets());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub", loc_cols.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      index(loc_cols).size());
 
-  dash::test::print_nview("loc_cols", loc_cols);
+//dash::test::print_nview("loc_cols", loc_cols);
 }
 
