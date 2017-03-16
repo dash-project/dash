@@ -48,7 +48,7 @@ namespace test {
         row_ss << std::fixed << std::setw(2)
                << nindex[offset]
                << ":"
-               << std::fixed << std::setprecision(5)
+               << std::fixed << std::setprecision(3)
                << static_cast<value_t>(nview[offset])
                << " ";
       }
@@ -800,7 +800,7 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      index(loc_rows).size());
 
-//dash::test::print_nview("loc_rows", loc_rows);
+  //dash::test::print_nview("loc_rows", loc_rows);
 
   mat.barrier();
 
@@ -811,6 +811,106 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic1DSub",
                      index(loc_cols).size());
 
-//dash::test::print_nview("loc_cols", loc_cols);
+  //dash::test::print_nview("loc_cols", loc_cols);
 }
 
+TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
+{
+  auto nunits = dash::size();
+
+  int block_rows = 2;
+  int block_cols = 2;
+
+  int nrows = nunits * block_rows;
+  int ncols = nunits * block_cols * 2;
+
+  if (nunits % 2 == 0 && nunits > 2) {
+    nrows /= 2;
+  }
+
+  auto team_spec = dash::TeamSpec<2>(
+                     nunits,
+                     1);
+  team_spec.balance_extents();
+
+  auto pattern = dash::TilePattern<2>(
+                   dash::SizeSpec<2>(
+                     nrows,
+                     ncols),
+                   dash::DistributionSpec<2>(
+                     dash::TILE(block_rows),
+                     dash::TILE(block_cols)),
+                   team_spec);
+
+  using pattern_t = decltype(pattern);
+  using index_t   = typename pattern_t::index_type;
+
+  // columns distributed in blocks of same size:
+  //
+  //  0 0 | 1 1 | 2 2 | 0 0 ...
+  //  0 0 | 1 1 | 2 2 | 0 0 ...
+  //  ----+-----+-----+----
+  //  1 1 | 2 2 | 0 0 | 1 1 ...
+  //  1 1 | 2 2 | 0 0 | 1 1 ...
+  //  ...   ...   ...   ...
+  //
+  dash::Matrix<double, 2, index_t, pattern_t> mat(pattern);
+
+  dash::test::initialize_matrix(mat);
+
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", team_spec.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().local_extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().local_size());
+
+  if (dash::myid() == 0) {
+    auto all_sub = dash::sub<0>(
+                     0, mat.extents()[0],
+                     mat);
+
+    DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                   dash::internal::typestr(all_sub));
+
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", all_sub.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", all_sub.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       index(all_sub).size());
+
+    dash::test::print_nview("mat_view",  all_sub);
+
+    auto nview_rows  = dash::sub<0>(1, mat.extent(0) - 1, mat);
+
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_rows.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_rows.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       index(nview_rows).size());
+
+    dash::test::print_nview("nview_rows", nview_rows);
+
+    auto nview_cols  = dash::sub<1>(1, mat.extent(1) - 1, mat);
+
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_cols.offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_cols.extents());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       index(nview_cols).size());
+
+    dash::test::print_nview("nview_cols", nview_cols);
+
+    auto nview_blocks  = dash::blocks(mat);
+
+    int bi = 0;
+    for (const auto & block : nview_blocks) {
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSingle",
+                     "block", bi, ":", "extents:", block.extents(), 
+                     range_str(block));
+      bi++;
+    }
+  }
+  mat.barrier();
+}
