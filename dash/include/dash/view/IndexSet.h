@@ -71,36 +71,32 @@ class IndexSetSub;
 
 
 
+// -----------------------------------------------------------------------
+// dash::index
+// -----------------------------------------------------------------------
+
 template <
   class DomainType,
-  class DomainValueType = typename std::decay<DomainType>::type >
+  class DomainDecayType = typename std::decay<DomainType>::type >
 constexpr auto
 index(DomainType && v)
   -> typename std::enable_if<
-       dash::view_traits<DomainValueType>::is_view::value,
+       dash::view_traits<DomainDecayType>::is_view::value,
        decltype(std::forward<DomainType>(v).index_set())
      >::type {
   return std::forward<DomainType>(v).index_set();
 }
 
-template <class DomainType>
+template <
+  class DomainType,
+  class DomainDecayType = typename std::decay<DomainType>::type >
 constexpr auto
 index(const DomainType & v)
   -> typename std::enable_if<
-       dash::view_traits<DomainType>::is_view::value,
+       dash::view_traits<DomainDecayType>::is_view::value,
        decltype(v.index_set())
      >::type {
   return v.index_set();
-}
-
-template <class ContainerType>
-constexpr auto
-index(const ContainerType & c)
--> typename std::enable_if <
-     !dash::view_traits<ContainerType>::is_view::value,
-     const IndexSetIdentity<ContainerType>
-   >::type {
-  return IndexSetIdentity<ContainerType>(c);
 }
 
 
@@ -155,18 +151,30 @@ class IndexSetIterator
   constexpr index_type dereference(index_type idx) const {
     return (idx * _stride) < dash::size(*_index_set)
               ? (*_index_set)[idx * _stride]
-              : ((*_index_set)[dash::size(*_index_set)-1]
-                  + ((idx * _stride) - (dash::size(*_index_set) - 1))
+              : ((*_index_set)[_index_set->size() - 1]
+                  + ((idx * _stride) - (_index_set->size() - 1))
                 );
   }
 };
 
 } // namespace detail
 
+
+template <
+  class ContainerType,
+  class ContainerDecayType = typename std::decay<ContainerType>::type >
+constexpr auto
+index(const ContainerType & c)
+-> typename std::enable_if <
+     !dash::view_traits<ContainerDecayType>::is_view::value,
+     const IndexSetIdentity<ContainerDecayType>
+   >::type {
+  return IndexSetIdentity<ContainerDecayType>(c);
+}
+
 // -----------------------------------------------------------------------
 // IndexSetBase
 // -----------------------------------------------------------------------
-
 
 /* NOTE: Local and global mappings of index sets should be implemented
  *       without IndexSet member functions like this:
@@ -179,7 +187,6 @@ class IndexSetIterator
  *                );
  *
  */
-
 
 template <
   class       IndexSetType,
@@ -345,9 +352,10 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-    -> decltype(dash::index(
-                  std::declval<const view_domain_type &>()
-                )) {
+//  -> decltype(dash::index(
+//                std::declval<const view_domain_type &>()
+//              )) {
+    -> typename view_traits<view_domain_type>::index_set_type {
     return dash::index(this->view_domain());
   }
 
