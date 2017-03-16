@@ -207,3 +207,27 @@ TEST_F(CoArrayTest, MemoryModel)
     EXPECT_EQ_U(result, i+1);
   }
 }
+
+// declare befor dash is initialized
+dash::Coarray<int> delay_alloc_arr;
+
+TEST_F(CoArrayTest, DelayedAllocation)
+{
+  using namespace dash::co_array;
+  
+  int i = static_cast<int>(this_image()); 
+  EXPECT_EQ_U(delay_alloc_arr.size(), 0);  
+  dash::barrier();
+
+  delay_alloc_arr.allocate();
+  delay_alloc_arr(i) = i;
+  delay_alloc_arr.barrier();
+  
+  int result = delay_alloc_arr(i);
+  EXPECT_EQ_U(result, i);
+  
+  dash::barrier();
+  
+  delay_alloc_arr.deallocate();
+  EXPECT_EQ_U(delay_alloc_arr.size(), 0);
+}

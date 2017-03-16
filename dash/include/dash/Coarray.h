@@ -155,6 +155,7 @@ public:
   static constexpr dim_t ndim() noexcept {
     return static_cast<dim_t>(_rank::value);
   }
+  
   /**
    * Constructor for scalar types and fully specified array types:
    * \code
@@ -162,11 +163,23 @@ public:
    *   dash::Co_array<int[10][20]> x;
    * \endcode
    */
-  constexpr Coarray() noexcept :
-    _storage(_pattern_type(_make_size_spec())) { }
+  Coarray() {
+    if(dash::is_initialized()){
+      _storage.allocate(_pattern_type(_make_size_spec()));
+    }
+  }
     
-  explicit constexpr Coarray(const size_type & first_dim) noexcept :
-    _storage(_pattern_type(_make_size_spec(first_dim))) {  }
+  /**
+   * Constructor for array types with one unspecified dimension:
+   * \code
+   *   dash::Co_array<int[10][]> y;
+   * \endcode
+   */
+  explicit Coarray(const size_type & first_dim) {
+    if(dash::is_initialized()){
+      _storage.allocate(_pattern_type(_make_size_spec(first_dim)));
+    }
+  }
   
   /* ======================================================================== */
   /*                         DASH Container Concept                           */
@@ -220,9 +233,20 @@ public:
     return _storage.is_local(gi);
   }
   
-  /*
-  \TODO: allocate, deallocate
+  /**
+   * allocate an array which was initialized before dash has been initialized
    */
+  inline void allocate(){
+    _storage.allocate(_pattern_type(_make_size_spec()));
+  }
+  
+  /**
+   * free the memory allocated by this coarray. After deallocation, the coarray
+   * cannot be used anymore.
+   */
+  inline void deallocate(){
+    _storage.deallocate();
+  }
   
   inline Team & team() {
     return _storage.team();
