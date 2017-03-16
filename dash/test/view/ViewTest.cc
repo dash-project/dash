@@ -705,21 +705,6 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
                        l_sub_view.size());
     DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                        range_str(l_sub_view));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       dash::index(l_sub_view).is_strided());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       dash::index(l_sub_view).domain_block_gidx_last());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       dash::index(l_sub_view).local_block_gidx_last());
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       dash::index(l_sub_view).domain_block_lidx_last());
-
-    auto l_sub_view_pattern = dash::index(l_sub_view).pattern();
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       l_sub_view_pattern.block(
-                         dash::index(l_sub_view).local_block_gidx_last()
-                       ).range(0));
-
     int g_idx;
     int l_idx = 0;
     for (g_idx  = block_size / 2;
@@ -749,6 +734,10 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
   {
     int  l_b_idx;
     int  l_idx;
+    auto sub_view          = dash::sub(
+                               block_size / 2,
+                               a.size() - (block_size / 2),
+                               a);
     auto blocks_sub_view   = dash::blocks(
                                dash::sub(
                                  block_size / 2,
@@ -831,6 +820,8 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
 
     EXPECT_EQ_U(num_local_blocks, l_blocks_sub_view.size());
 
+    std::vector<float> l_blocks_sub_values;
+
     l_b_idx = 0;
     l_idx   = 0;
     for (const auto & l_block : l_blocks_sub_view) {
@@ -841,18 +832,24 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
       EXPECT_EQ_U(dash::distance(l_block.begin(), l_block.end()),
                   l_block.size());
       EXPECT_EQ_U(l_block_index.size(), l_block.size());
+
+      l_blocks_sub_values.insert(l_blocks_sub_values.end(),
+                                 l_block.begin(),
+                                 l_block.end());
       ++l_b_idx;
       l_idx += l_block.size();
     }
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
                    "l_idx:", l_idx, "l_b_idx:", l_b_idx);
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
+                   "l_blocks_sub:", l_blocks_sub_values);
 
+    EXPECT_EQ_U(dash::local(sub_view).size(),
+                l_blocks_sub_values.size());
+    EXPECT_TRUE_U(std::equal(l_blocks_sub_values.begin(),
+                             l_blocks_sub_values.end(),
+                             dash::local(sub_view).begin()));
     a.barrier();
-
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       a.pattern().unit_at(0));
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternSubLocalBlocks",
-                       a.pattern().unit_at(a.size() - 1));
 
     int exp_l_idx = a.lsize();
     if (dash::myid().id == a.pattern().unit_at(0)) {
@@ -919,9 +916,7 @@ TEST_F(ViewTest, IndexSet)
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index.pre().first());
     DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_index.pre().last());
 
-    std::vector<value_t> sub_values(sub_gview.begin(),
-                                    sub_gview.end());
-    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", sub_values);
+    DASH_LOG_DEBUG_VAR("ViewTest.IndexSet", range_str(sub_gview));
 
     EXPECT_EQ_U(array_size - (2 * (block_size / 2)), sub_gview.size());
     EXPECT_EQ_U(array_size - (2 * (block_size / 2)), sub_index.size());
@@ -1574,6 +1569,7 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
                             array) ) );
   EXPECT_EQ_U(block_size, l_sub_view.size());
   EXPECT_EQ_U(block_size, l_sub_index.size());
+  EXPECT_EQ_U(block_size, array.lsize());
 
   EXPECT_TRUE_U(
     std::equal(array.local.begin(),
