@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <iostream>
 
+#include "Team.h"
+
 
 namespace dash {
 
@@ -43,9 +45,9 @@ public:
    * @param team team for mutual exclusive accesses
    */
   explicit Mutex(Team & team = dash::Team::All()):
-    _dart_team(team.dart_id())
+    _team(team)
   {
-    dart_ret_t ret = dart_team_lock_init(_dart_team, &_mutex);
+    dart_ret_t ret = dart_team_lock_init(_team.dart_id(), &_mutex);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_init failed");
   }
   
@@ -58,15 +60,22 @@ public:
    * This function is not thread-safe
    */
   ~Mutex(){
-    dart_ret_t ret = dart_team_lock_free(_dart_team, &_mutex);
+    dart_ret_t ret = dart_team_lock_free(_team.dart_id(), &_mutex);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_free failed");
   }
   
+  /**
+   * Block until the lock was acquired.
+   */
   void lock(){
     dart_ret_t ret = dart_lock_acquire(_mutex);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_lock_acquire failed");
   }
   
+  /**
+   * Try to acquire the lock and return immediately.
+   * @return True if lock was successfully aquired, False otherwise
+   */
   bool try_lock(){
     int32_t result;
     dart_ret_t ret = dart_lock_try_acquire(_mutex, &result);
@@ -74,14 +83,17 @@ public:
     return static_cast<bool>(result);
   }
   
+  /**
+   * Release the lock acquired through \clock() or \ctry_lock().
+   */
   void unlock(){
     dart_ret_t ret = dart_lock_release(_mutex);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_lock_acquire failed");
   }
 
 private:
-  dart_lock_t _mutex;
-  dart_team_t _dart_team;
+  dart_lock_t   _mutex;
+  Team        & _team;
 }; // class Atomic
 
 } // namespace dash
