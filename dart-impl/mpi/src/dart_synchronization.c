@@ -5,6 +5,7 @@
  */
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/mutex.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -29,12 +30,16 @@ struct dart_lock_struct
    * Global memory storing the unit at the tail of lock queue.
    * Stored in team-unit 0 by default.
    */
-  dart_gptr_t gptr_tail;
+  dart_gptr_t  gptr_tail;
   /**
    * Pointer to the current unit's successor in the waiting list,
    * to which we send a release message.
    */
-  dart_gptr_t gptr_list;
+  dart_gptr_t  gptr_list;
+  /**
+   * Local mutex to ensure mutual exclusion between threads.
+   */
+  dart_mutex_t mutex;
   dart_team_t teamid;
   /** Whether this unit has acquired the lock. */
   int32_t is_acquired;
@@ -47,6 +52,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   dart_team_unit_t unitid;
 
   *lock = NULL;
+
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
@@ -95,13 +101,14 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   (*lock)->gptr_list   = gptr_list;
   (*lock)->teamid      = teamid;
   (*lock)->is_acquired = 0;
+  dart__base__mutex_init(&(*lock)->mutex);
 
   DART_LOG_DEBUG("dart_team_lock_init: INIT - done");
 
   return DART_OK;
 }
 
-dart_ret_t dart_lock_acquire (dart_lock_t lock)
+dart_ret_t dart_lock_acquire(dart_lock_t lock)
 {
   if (lock->is_acquired == 1)
   {
@@ -127,6 +134,8 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
     return DART_ERR_INVAL;
   }
 
+  /* lock the local mutex and keep it until the global lock is released */
+  dart__base__mutex_lock(&lock->mutex);
 
   /* Fetch the current unit's tail and make this unit the new tail */
   MPI_Fetch_and_op(
@@ -148,13 +157,11 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
     int16_t    seg_id = gptr_list.segid;
     MPI_Aint   disp_list;
 
-    if (dart_segment_get_disp(
+    DART_ASSERT(DART_OK == dart_segment_get_disp(
           &team_data->segdata,
           seg_id,
           DART_TEAM_UNIT_ID(predecessor),
-          &disp_list) != DART_OK) {
-      return DART_ERR_INVAL;
-    }
+          &disp_list));
     win = team_data->window;
 
     /* Atomicity: Update its predecessor's next pointer */
@@ -172,18 +179,18 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
     /* Waiting for notification from its predecessor*/
     DART_LOG_DEBUG("dart_lock_acquire: waiting for notification from "
                    "%d in team %d",
-                   predecessor, (lock -> teamid));
+                   predecessor, lock->teamid);
 
     MPI_Recv(NULL, 0, MPI_INT, predecessor, 0, team_data->comm,
         &status);
   }
 
-  DART_LOG_DEBUG("LOCK - lock required in team %d", (lock -> teamid));
+  DART_LOG_DEBUG("dart_lock_acquire: lock acquired in team %d", lock->teamid);
   lock->is_acquired = 1;
   return DART_OK;
 }
 
-dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
+dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
 {
   dart_team_unit_t unitid;
   dart_team_myid(lock->teamid, &unitid);
@@ -196,6 +203,8 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 
   int32_t result;
   int32_t compare = -1;
+
+  dart__base__mutex_lock(&lock->mutex);
 
   dart_gptr_t gptr_tail   = lock->gptr_tail;
   dart_unit_t tail_unit   = gptr_tail.unitid;
@@ -220,14 +229,17 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
     *is_acquired = 1;
   } else {
     *is_acquired = 0;
+    // unlock the local mutex if we have not acqcuired the global lock
+    dart__base__mutex_unlock(&lock->mutex);
   }
+
   DART_LOG_DEBUG("dart_lock_try_acquire: trylock %s in team %d",
-                 ((*is_acquired) ? "succeeded" : "failed"),
-                 (lock -> teamid));
+                 (*is_acquired) ? "succeeded" : "failed",
+                 lock->teamid);
   return DART_OK;
 }
 
-dart_ret_t dart_lock_release (dart_lock_t lock)
+dart_ret_t dart_lock_release(dart_lock_t lock)
 {
   if (lock->is_acquired == 0) {
     DART_LOG_ERROR("dart_lock_release: LOCK has not been acquired before\n");
@@ -237,7 +249,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
   dart_gptr_t gptr_tail = lock->gptr_tail;
   dart_gptr_t gptr_list = lock->gptr_list;
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr_list.teamid);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(lock->teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_lock_release ! failed: Unknown team %i!",
                    gptr_list.teamid);
@@ -277,13 +289,11 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
                    "(tail = %d) in team %d",
                    result, (lock -> teamid));
 
-    if (DART_OK != dart_segment_get_disp(
+    DART_ASSERT(DART_OK == dart_segment_get_disp(
           &team_data->segdata,
           gptr_list.segid,
           unitid,
-          &disp_list)) {
-      return DART_ERR_INVAL;
-    }
+          &disp_list));
 
     /* Wait for the update of our next pointer. */
     do {
@@ -302,18 +312,18 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
                    (lock->teamid));
 
     /* Notifying the next unit waiting on the lock queue. */
-
     MPI_Send(NULL, 0, MPI_INT, next, 0, team_data->comm);
     *addr = -1;
     MPI_Win_sync(win);
   }
   lock->is_acquired = 0;
+  dart__base__mutex_unlock(&lock->mutex);
   DART_LOG_DEBUG("dart_lock_release: release lock in team %d",
                  (lock -> teamid));
   return DART_OK;
 }
 
-dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
+dart_ret_t dart_team_lock_free(dart_team_t teamid, dart_lock_t* lock)
 {
   dart_gptr_t gptr_tail = (*lock)->gptr_tail;
   dart_gptr_t gptr_list = (*lock)->gptr_list;
@@ -328,6 +338,7 @@ dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
   dart_team_memfree(gptr_list);
   (*lock)->gptr_tail = DART_GPTR_NULL;
   (*lock)->gptr_list = DART_GPTR_NULL;
+  dart__base__mutex_destroy(&(*lock)->mutex);
   DART_LOG_DEBUG("dart_team_lock_free: done in team %d", teamid);
   free(*lock);
   *lock = NULL;
