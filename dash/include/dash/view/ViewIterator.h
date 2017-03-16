@@ -40,6 +40,7 @@ class ViewIterator
     const ViewIterator<DomainT, IndexSetT> & view_it);
 public:
   typedef typename base_t::reference                    reference;
+  typedef typename base_t::value_type                  value_type;
   typedef typename IndexSetType::index_type            index_type;
 private:
   DomainIterator  _domain_it;
@@ -83,6 +84,14 @@ public:
     return (_index_set)[this->pos()];
   }
 
+  constexpr const value_type * local() const {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  inline value_type * local() {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
   constexpr dart_gptr_t dart_gptr() const {
     return (_domain_it + _index_set[this->pos()]).dart_gptr();
   }
@@ -121,6 +130,7 @@ class ViewIterator<DomainIterator *, IndexSetType>
     const ViewIterator<DomainT, IndexSetT> & view_it);
 public:
   typedef DomainIterator &                              reference;
+  typedef DomainIterator                               value_type;
   typedef std::ptrdiff_t                               index_type;
 private:
   DomainIterator * _domain_it;
@@ -152,6 +162,14 @@ public:
 
   constexpr index_type gpos() const {
     return (_index_set)[this->pos()];
+  }
+
+  constexpr const value_type * local() const {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  inline value_type * local() {
+    return (_domain_it + (_index_set[this->pos()])).local();
   }
 };
 

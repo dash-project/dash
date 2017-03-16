@@ -1235,6 +1235,8 @@ TEST_F(ViewTest, BlocksView1Dim)
                    ",", *(dash::index(gview_blocks).end()),
                    ")", "size:", dash::index(gview_blocks).size());
 
+    std::vector<value_t> gview_blocks_values;
+
     int b_idx = 0;
     for (auto block : gview_blocks) {
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "--",
@@ -1251,9 +1253,17 @@ TEST_F(ViewTest, BlocksView1Dim)
 
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      range_str(block));
-      // TODO: Assert
+
+      gview_blocks_values.insert(gview_blocks_values.end(),
+                                 block.begin(),
+                                 block.end());
       b_idx++;
     }
+    EXPECT_EQ_U(gview_isect.size(),
+                gview_blocks_values.size());
+    EXPECT_TRUE(std::equal(gview_isect.begin(),
+                           gview_isect.end(),
+                           gview_blocks_values.begin()));
   }
 }
 
@@ -1801,12 +1811,16 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalView)
                              array);
 
   if (dash::myid() == 0) {
-    for (int si = 0; si != sub_range.size(); si++) {
-      double sub_elem     = sub_range[si];
-      DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
-                         sub_elem);
-      // TODO: Assert
-    }
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                       range_str(sub_range));
+
+    EXPECT_EQ_U(sub_end_gidx - sub_begin_gidx,
+                sub_range.size());
+    EXPECT_EQ_U(sub_range.size(),
+                dash::distance(sub_range.begin(), sub_range.end()));
+    EXPECT_TRUE(std::equal(array.begin() + sub_begin_gidx,
+                           array.begin() + sub_end_gidx,
+                           sub_range.begin()));
   }
   array.barrier();
 
@@ -1827,11 +1841,19 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalView)
   DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
                      *dash::end(dash::index(lsub_range)));
 
-  for (int lsi = 0; lsi != lsub_range.size(); lsi++) {
-    double lsub_elem     = lsub_range[lsi];
-    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
-                       lsub_elem);
-    // TODO: Assert
+  DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternLocalView",
+                     range_str(lsub_range));
+
+  int lsi = 0;
+  for (int si = 0; si != sub_range.size(); si++) {
+    auto     git = (sub_range.begin() + si);
+    double * lp  = git.local();
+    if (lp != nullptr) {
+      double lsub_elem = *lp;
+      double arr_elem  = array[si + sub_begin_gidx];
+      EXPECT_EQ(arr_elem, lsub_elem);
+      lsi++;
+    }
   }
 }
 
