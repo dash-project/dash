@@ -96,11 +96,16 @@ TEST_F(NViewTest, ViewTraits)
     auto i_sub  = dash::index(v_sub);
     auto v_ssub = dash::sub<0>(0, 5, (dash::sub<1>(0, 10, matrix)));
     auto v_loc  = dash::local(matrix);
+    auto v_lsub = dash::local(dash::sub<1>(0, 10, matrix));
     auto v_sblk = dash::blocks(dash::sub<0>(0, 10, matrix));
 
     static_assert(
         dash::view_traits<decltype(matrix)>::rank::value == 2,
         "view traits rank for dash::Matrix not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
+        "view traits rank for blocks(sub(dash::Matrix)) not matched");
+
     static_assert(
         dash::view_traits<decltype(v_sub)>::is_view::value == true,
         "view traits is_view for sub(dash::Matrix) not matched");
@@ -108,14 +113,28 @@ TEST_F(NViewTest, ViewTraits)
         dash::view_traits<decltype(v_ssub)>::is_view::value == true,
         "view traits is_view for sub(sub(dash::Matrix)) not matched");
     static_assert(
+        dash::view_traits<decltype(v_lsub)>::is_view::value == true,
+        "view traits is_view for local(sub(dash::Matrix)) not matched");
+
+    static_assert(
+        dash::view_traits<decltype(v_loc)>::is_origin::value == true,
+        "view traits is_origin for local(dash::Matrix) not matched");
+    static_assert(
         dash::view_traits<decltype(v_sub)>::is_origin::value == false,
         "view traits is_origin for sub(dash::Matrix) not matched");
     static_assert(
         dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
         "view traits is_origin for sub(sub(dash::Matrix)) not matched");
     static_assert(
-        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
-        "view traits rank for blocks(sub(dash::Matrix)) not matched");
+        dash::view_traits<decltype(v_lsub)>::is_origin::value == false,
+        "view traits is_origin for local(sub(dash::Matrix)) not matched");
+
+    static_assert(
+        dash::view_traits<decltype(v_loc)>::is_local::value == true,
+        "view traits is_local for local(dash::Matrix) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_lsub)>::is_local::value == true,
+        "view traits is_local for local(sub(dash::Matrix)) not matched");
   }
   {
     dash::NArray<int, 2> narray(
@@ -134,11 +153,16 @@ TEST_F(NViewTest, ViewTraits)
     auto i_sub  = dash::index(v_sub);
     auto v_ssub = dash::sub<0>(0, 5, (dash::sub<1>(0, 10, narray)));
     auto v_loc  = dash::local(narray);
+    auto v_lsub = dash::local(dash::sub<1>(0, 10, narray));
     auto v_sblk = dash::blocks(dash::sub<0>(0, 10, narray));
 
     static_assert(
         dash::view_traits<decltype(narray)>::rank::value == 2,
         "view traits rank for dash::NArray not matched");
+    static_assert(
+        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
+        "view traits rank for blocks(sub(dash::NArray)) not matched");
+
     static_assert(
         dash::view_traits<decltype(v_sub)>::is_view::value == true,
         "view traits is_view for sub(dash::NArray) not matched");
@@ -146,14 +170,28 @@ TEST_F(NViewTest, ViewTraits)
         dash::view_traits<decltype(v_ssub)>::is_view::value == true,
         "view traits is_view for sub(sub(dash::NArray)) not matched");
     static_assert(
+        dash::view_traits<decltype(v_lsub)>::is_view::value == true,
+        "view traits is_view for local(sub(dash::NArray)) not matched");
+
+    static_assert(
+        dash::view_traits<decltype(v_loc)>::is_origin::value == true,
+        "view traits is_origin for local(dash::NArray) not matched");
+    static_assert(
         dash::view_traits<decltype(v_sub)>::is_origin::value == false,
         "view traits is_origin for sub(dash::NArray) not matched");
     static_assert(
         dash::view_traits<decltype(v_ssub)>::is_origin::value == false,
         "view traits is_origin for sub(sub(dash::NArray)) not matched");
     static_assert(
-        dash::view_traits<decltype(v_sblk)>::rank::value == 2,
-        "view traits rank for blocks(sub(dash::NArray)) not matched");
+        dash::view_traits<decltype(v_lsub)>::is_origin::value == false,
+        "view traits is_origin for local(sub(dash::NArray)) not matched");
+
+    static_assert(
+        dash::view_traits<decltype(v_loc)>::is_local::value == true,
+        "view traits is_local for local(dash::NArray) not matched");
+    static_assert(
+        dash::view_traits<decltype(v_lsub)>::is_local::value == true,
+        "view traits is_local for local(sub(dash::NArray)) not matched");
   }
 }
 

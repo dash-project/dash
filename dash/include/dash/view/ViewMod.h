@@ -175,16 +175,16 @@ public:
   //       then view_traits<domain>::is_local resolves to `true`
   //       and domain_type is defined as ViewSub<ViewLocal<Array>>
   //       instead of ViewLocal<Array> or Array::local_type.
+  //
+  //       Note that the origin of ViewLocalMod is the global origin
+  //       while the origin of and view on ViewLocalMod is the local
+  //       origin.
   typedef typename std::conditional<
             view_traits<domain_type>::is_local::value,
-            domain_type,
-         // Does not work as origin type of sub(local(sub(array)))
-         // would resolve to array.local and drop the sub-range
-         // expression.
-         //
-         // typename view_traits<
-         //   typename view_traits<domain_type>::origin_type
-         // >::local_type,
+         // domain_type,
+            typename view_traits<
+              typename view_traits<domain_type>::origin_type
+            >::local_type,
             typename view_traits<domain_type>::origin_type
           >::type
     origin_type;

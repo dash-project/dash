@@ -256,12 +256,14 @@ public:
    * Copy constructor.
    */
   template <
+    typename T_,
     class    P_,
     class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobViewIter(
-    const GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+//  const GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+    const GlobViewIter<T_, P_, GM_, Ptr_, Ref_> && other)
   : _globmem        (other._globmem)
   , _pattern        (other._pattern)
   , _viewspec       (other._viewspec)
@@ -276,12 +278,14 @@ public:
    * Move constructor.
    */
   template <
+    typename T_,
     class    P_,
     class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobViewIter(
-    GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
+//  GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
+    GlobViewIter<T_, P_, GM_, Ptr_, Ref_> && other)
   : _globmem        (other._globmem)
   , _pattern        (other._pattern)
   , _viewspec       (other._viewspec)
@@ -393,7 +397,7 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  explicit operator pointer() const
+  explicit operator pointer()
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
