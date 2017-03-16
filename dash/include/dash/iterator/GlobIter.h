@@ -192,6 +192,9 @@ public:
     _lbegin(_globmem->lbegin())
   { }
 
+  /**
+   * Copy constructor.
+   */
   template <
     class    P_,
     class    GM_,
@@ -199,6 +202,24 @@ public:
     class    Ref_ >
   constexpr GlobIter(
     const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+  : _globmem(other._globmem)
+  , _pattern(other._pattern)
+  , _idx    (other._idx)
+  , _max_idx(other._max_idx)
+  , _myid   (other._myid)
+  , _lbegin (other._lbegin)
+  { }
+
+  /**
+   * Move constructor.
+   */
+  template <
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  constexpr GlobIter(
+    GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)

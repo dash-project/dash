@@ -193,7 +193,7 @@ class ViewBlockMod
   }
 
  private:
-  /// Block index of first element in view
+  /// Index of first element in block view
   ///
   constexpr index_type block_first_gidx(
       const DomainType & vdomain,
@@ -205,7 +205,8 @@ class ViewBlockMod
     //       even if domain is local
     return std::max(
              ( // block viewspec (extents, offsets)
-               ( false && dash::view_traits<DomainType>::is_local::value
+               ( false &&
+                 dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).offsets()[0]
                  : dash::index(vdomain)
@@ -217,7 +218,7 @@ class ViewBlockMod
            - dash::index(vdomain).first();
   }
 
-  /// Index past block index of last element in view:
+  /// Index past last element in block view:
   ///
   constexpr index_type block_final_gidx(
       const DomainType & vdomain,
@@ -230,13 +231,15 @@ class ViewBlockMod
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)
-               ( false && dash::view_traits<DomainType>::is_local::value
+               ( false &&
+                 dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).offsets()[0]
                  : dash::index(vdomain)
                      .pattern().block(block_idx).offsets()[0]
                )
-             + ( false && dash::view_traits<DomainType>::is_local::value
+             + ( false &&
+                 dash::view_traits<DomainType>::is_local::value
                  ? dash::index(vdomain)
                      .pattern().local_block(block_idx).extents()[0]
                  : dash::index(vdomain)

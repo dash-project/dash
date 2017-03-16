@@ -47,10 +47,10 @@ class LocalMatrixRef;
  */
 template <
   typename T,
-  dim_t NumDimensions,
-  dim_t CUR = NumDimensions,
-  class PatternT =
-    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+  dim_t    NumDimensions,
+  dim_t    CUR      = NumDimensions,
+  class    PatternT =
+             TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class LocalMatrixRef
 {
 private:
@@ -71,15 +71,15 @@ private:
 public:
   template<
     typename T_,
-    dim_t NumDimensions_,
+    dim_t    NumDimensions_,
     typename IndexT_,
-    class PatternT_ >
+    class    PatternT_ >
   friend class Matrix;
   template<
     typename T_,
-    dim_t NumDimensions1,
-    dim_t NumDimensions2,
-    class PatternT_ >
+    dim_t    NumDimensions1,
+    dim_t    NumDimensions2,
+    class    PatternT_ >
   friend class LocalMatrixRef;
 
 public:

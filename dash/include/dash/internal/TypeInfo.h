@@ -16,6 +16,13 @@ std::string typestr(const T & obj) {
          );
 }
 
+template <class T>
+std::string typestr() {
+  return dash::internal::demangle(
+           typeid(T).name()
+         );
+}
+
 } // namespace internal
 } // namespace dash
 
