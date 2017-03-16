@@ -21,7 +21,7 @@
 
 
 // true if threads should process tasks. Set to false to quit parallel processing
-static bool parallel;
+static bool parallel = false;
 
 static int num_threads;
 
@@ -35,11 +35,11 @@ typedef struct {
   int           thread_id;
 } tpd_t;
 
-static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static dart_task_t *task_recycle_list = NULL;
-static dart_task_t *task_free_list = NULL;
+static dart_task_t *task_recycle_list     = NULL;
+static dart_task_t *task_free_list        = NULL;
 static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t *thread_pool;
@@ -62,8 +62,9 @@ static dart_task_t root_task = {
 
 static void wait_for_work()
 {
+  pthread_mutex_lock(&thread_pool_mutex);
   pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
-  DART_LOG_INFO("Thread %i received signal", dart__tasking__thread_num());
+  pthread_mutex_unlock(&thread_pool_mutex);
 }
 
 static void destroy_tsd(void *tsd)
@@ -233,22 +234,22 @@ void* thread_main(void *data)
   while (parallel) {
     // look for incoming remote tasks and responses
     dart_tasking_remote_progress();
+    dart_task_t *task = next_task(thread);
+    handle_task(task);
     // only go to sleep if no tasks are in flight
     if (DART_FETCH32(&(root_task.num_children)) == 0) {
       if (dart__tasking__thread_num() == dart__tasking__num_threads() - 1)
       {
         // the last thread is responsible for ensuring progress on the
-        // message queue
+        // message queue even if all others are sleeping
         dart_tasking_remote_progress();
       } else {
-        pthread_mutex_lock(&thread_pool_mutex);
         wait_for_work();
-        pthread_mutex_unlock(&thread_pool_mutex);
       }
     }
-    dart_task_t *task = next_task(thread);
-    handle_task(task);
   }
+
+  DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
 
   return NULL;
 }
@@ -302,6 +303,7 @@ dart__base__tasking__init()
   dart_tasking_datadeps_init();
 
   // initialize all task threads before creating them
+  thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
   for (int i = 0; i < num_threads; i++)
   {
     dart_thread_init(&thread_pool[i], i);
@@ -313,7 +315,6 @@ dart__base__tasking__init()
   tpd->thread_id = 0;
   pthread_setspecific(tpd_key, tpd);
 
-  thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
   set_current_task(&root_task);
   for (int i = 1; i < num_threads; i++)
   {
@@ -512,10 +513,16 @@ dart__tasking__fini()
 {
   int i;
 
+  DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
+
   parallel = false;
 
+  // wake up all threads waiting for work
+  pthread_cond_broadcast(&task_avail_cond);
+
+  // wait for all threads to finish
   for (i = 1; i < num_threads; i++) {
-    pthread_cancel(thread_pool[i].pthread);
+    pthread_join(thread_pool[i].pthread, NULL);
     dart_thread_finalize(&thread_pool[i]);
   }
 
@@ -531,6 +538,7 @@ dart__tasking__fini()
   task_recycle_list = NULL;
 
   initialized = false;
+  DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
 
   return DART_OK;
 }
