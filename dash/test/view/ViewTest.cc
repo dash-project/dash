@@ -441,23 +441,40 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalSub)
   // sub(local(array))
   //
   {
+    auto l_begin  = block_size / 2;
+    auto l_end    = a.lsize() - (block_size / 2);
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub", "==",
-                   "sub(",
-                   (block_size / 2), ",", (a.lsize() - (block_size / 2)),
-                   ", local(array))");
+                   "sub(", l_begin, ",", l_end, ", local(array))");
+
     auto s_l_view = dash::sub(
                       block_size / 2,
                       a.lsize() - (block_size / 2),
                       dash::local(
                         a));
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
+                   "lbegin:", l_begin, "lend:", l_end);
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
                    range_str(s_l_view));
+
+    EXPECT_EQ_U(l_end - l_begin, s_l_view.size());
+    EXPECT_TRUE_U(std::equal(a.lbegin() + l_begin,
+                             a.lbegin() + l_end,
+                             s_l_view.begin()));
   }
   a.barrier();
 
   // local(sub(array))
   //
   {
+    auto l_begin  = 0;
+    auto l_end    = a.lsize();
+    if (a.pattern().unit_at(0) == dash::myid().id) {
+      l_begin += block_size / 2;
+    }
+    if (a.pattern().unit_at(a.size() - 1) == dash::myid().id) {
+      l_end   -= block_size / 2;
+    }
+
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub", "==",
                    "local(sub(",
                    (block_size / 2), ",", (a.size() - (block_size / 2)),
@@ -468,13 +485,31 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalSub)
                         a.size() - (block_size / 2),
                         a));
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
+                   "lbegin:", l_begin, "lend:", l_end);
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
                    range_str(l_s_view));
+
+    EXPECT_EQ_U(l_end - l_begin, l_s_view.size());
+    EXPECT_TRUE_U(std::equal(a.lbegin() + l_begin,
+                             a.lbegin() + l_end,
+                             l_s_view.begin()));
   }
   a.barrier();
 
   // sub(local(sub(array)))
   //
   {
+    auto l_begin  = 0;
+    auto l_end    = a.lsize();
+    if (a.pattern().unit_at(0) == dash::myid().id) {
+      l_begin += block_size / 2;
+    }
+    if (a.pattern().unit_at(a.size() - 1) == dash::myid().id) {
+      l_end   -= block_size / 2;
+    }
+    l_begin      += 1;
+    l_end        -= 1;
+
     auto l_s_view   = dash::local(
                         dash::sub(
                           block_size / 2,
@@ -485,12 +520,20 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalSub)
                    ", local(sub(",
                    (block_size / 2), ",", (a.size() - (block_size / 2)),
                    ", array)))");
+
     auto s_l_s_view = dash::sub(
                         1,
                         l_s_view.size() - 1,
                         l_s_view);
     DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
+                   "lbegin:", l_begin, "lend:", l_end);
+    DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalSub",
                    range_str(s_l_s_view));
+
+    EXPECT_EQ_U(l_end - l_begin, s_l_s_view.size());
+    EXPECT_TRUE_U(std::equal(a.lbegin() + l_begin,
+                             a.lbegin() + l_end,
+                             s_l_s_view.begin()));
   }
   a.barrier();
 }
