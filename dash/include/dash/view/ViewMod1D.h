@@ -35,7 +35,9 @@ struct view_traits<ViewSubMod<DomainType, SubDim, 1> > {
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewSubMod<DomainType, SubDim, 1>                     image_type;
-  typedef ViewSubMod<DomainType, SubDim, 1>                     local_type;
+//typedef ViewSubMod<DomainType, SubDim, 1>                     local_type;
+  typedef ViewLocalMod<
+           ViewSubMod<DomainType, SubDim, 1>, 1>                local_type;
   typedef ViewSubMod<DomainType, SubDim, 1>                    global_type;
 
   typedef typename DomainType::index_type                       index_type;
@@ -190,7 +192,9 @@ struct view_traits<ViewLocalMod<DomainType, 1> > {
 template <
   class DomainType >
 class ViewLocalMod<DomainType, 1>
-: public ViewModBase< ViewLocalMod<DomainType, 1>, DomainType > {
+: public ViewModBase<
+           ViewLocalMod<DomainType, 1>,
+           DomainType > {
  public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
@@ -199,7 +203,8 @@ class ViewLocalMod<DomainType, 1>
   typedef typename domain_type::size_type                        size_type;
  private:
   typedef ViewLocalMod<DomainType, 1>                               self_t;
-  typedef ViewModBase< ViewLocalMod<DomainType, 1>, DomainType >    base_t;
+  typedef ViewModBase<
+            ViewLocalMod<DomainType, 1>, DomainType, 1 >            base_t;
  public:
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
   typedef self_t                                                local_type;

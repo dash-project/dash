@@ -474,49 +474,46 @@ public:
   constexpr const_iterator begin() const {
     return dash::begin(
              dash::local(
-               dash::origin(
-                 *this ) ) )
-           + _index_set.pre()[
-               _index_set.first()
-             ];
+               dash::origin(*this) ))
+           + _index_set[0];
   }
 
   iterator begin() {
     return dash::begin(
              dash::local(
-               dash::origin(
-                 *this ) ) )
-           + _index_set.pre()[
-               _index_set.first()
-             ];
+               const_cast<origin_type &>(dash::origin(*this))
+             ))
+           + _index_set[0];
   }
 
   constexpr const_iterator end() const {
     return dash::begin(
              dash::local(
-               dash::origin(
-                 *this ) ) )
-           + _index_set.pre()[
-               _index_set.last()
-             ] + 1;
+               dash::origin(*this) ))
+           + _index_set[_index_set.size() - 1] + 1;
   }
 
   iterator end() {
     return dash::begin(
              dash::local(
-               dash::origin(
-                 *this ) ) )
-           + _index_set.pre()[
-               _index_set.last()
-             ] + 1;
+               const_cast<origin_type &>(dash::origin(*this))
+             ))
+           + _index_set[_index_set.size() - 1] + 1;
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(this->begin() + offset);
+    return *(dash::begin(
+               dash::local(
+                 dash::origin(*this) ))
+             + _index_set[offset]);
   }
 
   reference operator[](int offset) {
-    return *(this->begin() + offset);
+    return *(dash::begin(
+               dash::local(
+                 const_cast<origin_type &>(dash::origin(*this))
+               ))
+             + _index_set[offset]);
   }
 
   constexpr const local_type & local() const {
@@ -528,10 +525,6 @@ public:
   }
 
   constexpr const global_type & global() const {
-    return dash::global(dash::domain(*this));
-  }
-
-  global_type & global() {
     return dash::global(dash::domain(*this));
   }
 
@@ -551,11 +544,13 @@ template <
   dim_t NDim >
 struct view_traits<ViewSubMod<DomainType, SubDim, NDim> > {
   typedef DomainType                                           domain_type;
-  typedef typename dash::view_traits<domain_type>::origin_type origin_type;
+  typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef ViewSubMod<DomainType, SubDim, NDim>                 image_type;
-  typedef ViewSubMod<DomainType, SubDim, NDim>                 local_type;
-  typedef ViewSubMod<DomainType, SubDim, NDim>                global_type;
+  typedef ViewSubMod<DomainType, SubDim, NDim>                  image_type;
+//typedef ViewSubMod<DomainType, SubDim, NDim>                  local_type;
+  typedef ViewLocalMod<
+           ViewSubMod<DomainType, SubDim, NDim>, NDim>          local_type;
+  typedef ViewSubMod<DomainType, SubDim, NDim>                 global_type;
 
   typedef typename DomainType::index_type                       index_type;
   typedef typename DomainType::size_type                         size_type;
@@ -581,23 +576,25 @@ class ViewSubMod
            DomainType,
            NDim >
 {
-private:
-  typedef ViewSubMod<DomainType, SubDim, NDim>                     self_t;
-  typedef ViewModBase<
-            ViewSubMod<DomainType, SubDim, NDim>,
-            DomainType, NDim >                                      base_t;
-public:
+ public:
   typedef DomainType                                           domain_type;
+ private:
+  typedef ViewSubMod<domain_type, SubDim, NDim>                     self_t;
+  typedef ViewModBase<
+            ViewSubMod<domain_type, SubDim, NDim>,
+            domain_type, NDim >                                     base_t;
+ public:
   typedef typename base_t::origin_type                         origin_type;
-  typedef typename view_traits<DomainType>::index_type          index_type;
-  typedef typename view_traits<DomainType>::size_type            size_type;
-public:
-  typedef ViewLocalMod<self_t, NDim>                           local_type;
+
+  typedef typename view_traits<domain_type>::index_type         index_type;
+  typedef typename view_traits<domain_type>::size_type           size_type;
+ public:
+  typedef ViewLocalMod<self_t, NDim>                            local_type;
   typedef self_t                                               global_type;
 
   typedef std::integral_constant<bool, false>                     is_local;
 
-  typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
+  typedef dash::IndexSetSub<domain_type, SubDim>            index_set_type;
 
   typedef ViewIterator<
             typename base_t::origin_iterator, index_set_type >
@@ -609,12 +606,10 @@ public:
   using reference       = typename base_t::reference;
   using const_reference = typename base_t::const_reference;
 
-private:
-  index_type     _begin_idx;
-  index_type     _end_idx;
+ private:
   index_set_type _index_set;
 
-public:
+ public:
   constexpr ViewSubMod()               = delete;
   constexpr ViewSubMod(self_t &&)      = default;
   constexpr ViewSubMod(const self_t &) = default;
@@ -627,8 +622,6 @@ public:
     index_type     begin,
     index_type     end)
   : base_t(std::forward<domain_type>(domain))
-  , _begin_idx(begin)
-  , _end_idx(end)
   , _index_set(this->domain(), begin, end)
   { }
 
@@ -637,8 +630,6 @@ public:
     index_type           begin,
     index_type           end)
   : base_t(domain)
-  , _begin_idx(begin)
-  , _end_idx(end)
   , _index_set(domain, begin, end)
   { }
 
@@ -681,37 +672,43 @@ public:
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
-    return const_iterator(this->domain().begin(), _index_set, 0);
+    return const_iterator(
+             dash::origin(*this).begin(),
+             _index_set, 0);
   }
 
   iterator begin() {
     return iterator(
-             const_cast<domain_type &>(this->domain()).begin(),
+             const_cast<origin_type &>(
+               dash::origin(*this)
+             ).begin(),
              _index_set, 0);
   }
 
   constexpr const_iterator end() const {
     return const_iterator(
-             this->domain().begin(),
+             dash::origin(*this).begin(),
              _index_set, _index_set.size());
   }
 
   iterator end() {
     return iterator(
-             const_cast<domain_type &>(this->domain()).begin(),
+             const_cast<origin_type &>(
+               dash::origin(*this)
+             ).begin(),
              _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(const_iterator(
-               this->domain().begin(),
-               _index_set, offset));
+    return *(const_iterator(dash::origin(*this).begin(),
+                            _index_set, offset));
   }
 
   reference operator[](int offset) {
-    return *(iterator(
-               const_cast<domain_type &>(this->domain()).begin(),
-               _index_set, offset));
+    return *(iterator(const_cast<origin_type &>(
+                        dash::origin(*this)
+                      ).begin(),
+                      _index_set, offset));
   }
 
   constexpr const index_set_type & index_set() const {
