@@ -301,6 +301,12 @@ dart__base__tasking__init()
   // set up the active message queue
   dart_tasking_datadeps_init();
 
+  // initialize all task threads before creating them
+  for (int i = 0; i < num_threads; i++)
+  {
+    dart_thread_init(&thread_pool[i], i);
+  }
+
   pthread_key_create(&tpd_key, &destroy_tsd);
   // set master thread id
   tpd_t *tpd = malloc(sizeof(tpd_t));
@@ -308,13 +314,11 @@ dart__base__tasking__init()
   pthread_setspecific(tpd_key, tpd);
 
   thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
-  dart_thread_init(&thread_pool[0], 0);
   set_current_task(&root_task);
   for (int i = 1; i < num_threads; i++)
   {
     tpd = malloc(sizeof(tpd_t));
     tpd->thread_id = i; // 0 is reserved for master thread
-    dart_thread_init(&thread_pool[i], i);
     int ret = pthread_create(&thread_pool[i].pthread, NULL, &thread_main, tpd);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
