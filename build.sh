@@ -74,8 +74,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
-                        -DGTEST_LIBRARY_PATH=/home/joseph/opt/googletest/lib \
-                        -DGTEST_INCLUDE_PATH=/home/joseph/opt/googletest/include \
+                        -DGTEST_LIBRARY_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest/lib \
+                        -DGTEST_INCLUDE_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest/include \
                         \
                         -DENABLE_LIBNUMA=ON \
                         -DENABLE_LIKWID=OFF \
@@ -95,9 +95,9 @@ rm -Rf $BUILD_DIR/*
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
-                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        -DBUILD_SHARED_LIBS=ON \
-                        -DENABLE_AYUDAME=ON \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DENABLE_AYUDAME=OFF \
                         -DAYUDAME_PREFIX=${HOME}/local/temanejo \
                         ../ && \
  await_confirm && \
