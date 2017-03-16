@@ -24,17 +24,17 @@ if (ENABLE_THREADSUPPORT)
       MESSAGE(FATAL_ERROR "Support for builtin __sync atomics required if "
                           "building with thread support enabled!")
     endif()
-    
+
     # Find support for pthreads
     find_package(Threads REQUIRED)
     set(CMAKE_C_FLAGS
         "${CMAKE_C_FLAGS} -pthread")
     set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} -DDART_HAVE_PTHREADS")
+        "${CMAKE_C_FLAGS} -DDART_HAVE_PTHREADS -DDART_ENABLE_THREADSUPPORT")
     set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -pthread")
     set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} -DDART_HAVE_PTHREADS")
+        "${CMAKE_CXX_FLAGS} -DDART_HAVE_PTHREADS -DDART_ENABLE_THREADSUPPORT")
     set(CMAKE_EXE_LINKER_FLAGS
         "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
