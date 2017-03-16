@@ -17,6 +17,7 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
   dart_mutex_lock(&tq->mutex);
   dart_task_t *task = tq->head;
   if (tq->head != NULL) {
+    DART_ASSERT(tq->head != NULL && tq->tail != NULL);
     if (tq->head == tq->tail) {
       DART_LOG_INFO("dart_tasking_taskqueue_pop: taking last element from queue tq:%p tq->head:%p", tq, tq->head);
       tq->head = tq->tail = NULL;
@@ -59,8 +60,10 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
     tq->head->prev = task;
     tq->head       = task;
   }
+  DART_ASSERT(tq->head != NULL && tq->tail != NULL);
   dart_mutex_unlock(&tq->mutex);
 }
+
 
 dart_task_t *
 dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
@@ -73,6 +76,7 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
     // re-check
     if (tq->tail != NULL)
     {
+      DART_ASSERT(tq->head != NULL && tq->tail != NULL);
       DART_LOG_INFO("dart_tasking_taskqueue_popback: tq:%p tq->head:%p tq->tail=%p", tq, tq->head, tq->tail);
       task = tq->tail;
       tq->tail = task->prev;

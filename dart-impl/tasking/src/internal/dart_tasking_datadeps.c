@@ -406,7 +406,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(
                    task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
                    dep.gptr.addr_or_offs.addr);
 
-    if (dep.gptr.unitid != myid.id) {
+    if (dep.type == DART_DEP_IGNORE) {
+      // ignored
+      continue;
+    } else if (dep.gptr.unitid != myid.id) {
       if (task->parent->state == DART_TASK_ROOT) {
         dart_tasking_remote_datadep(&dep, task);
       } else {
