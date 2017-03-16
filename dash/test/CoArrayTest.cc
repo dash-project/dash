@@ -5,6 +5,12 @@
 
 #include <dash/Types.h>
 #include <dash/Atomic.h>
+#include <dash/Mutex.h>
+
+// for std::lock_guard
+#include <mutex>
+
+using namespace dash::co_array;
 
 TEST_F(CoArrayTest, TypesInterface)
 {
@@ -118,8 +124,6 @@ TEST_F(CoArrayTest, ContainerInterface)
 
 TEST_F(CoArrayTest, Collectives)
 {
-  using namespace dash::co_array;
-  
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
   
@@ -138,8 +142,6 @@ TEST_F(CoArrayTest, Collectives)
 
 TEST_F(CoArrayTest, Iterators)
 {
-  using namespace dash::co_array;
-  
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
   
@@ -163,8 +165,6 @@ TEST_F(CoArrayTest, Iterators)
 
 TEST_F(CoArrayTest, CoFutures)
 {
-  using namespace dash::co_array;
-  
   dash::Coarray<int> x;
   int i = static_cast<int>(this_image());
   x = i;
@@ -176,8 +176,6 @@ TEST_F(CoArrayTest, CoFutures)
 
 TEST_F(CoArrayTest, MemoryModel)
 {
-  using namespace dash::co_array;
-  
   int i = static_cast<int>(this_image()); 
   {
     // scalar case
@@ -208,13 +206,48 @@ TEST_F(CoArrayTest, MemoryModel)
   }
 }
 
+TEST_F(CoArrayTest, Mutex){
+  dash::Mutex mx;
+  
+  dash::Coarray<int> arr;
+  
+  arr = 0;
+  
+  mx.lock();
+  int tmp = arr(0);
+  arr(0) = tmp + 1;
+  LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
+  // I guess here a flush is required, blocked by issue 322
+  mx.unlock();
+  
+  dash::barrier();
+  
+  if(this_image() == 0){
+    int result = arr;
+    EXPECT_EQ_U(result, static_cast<int>(dash::size()));
+  }
+  
+  dash::barrier();
+  // this even works with std::lock_guard
+  {
+    std::lock_guard<dash::Mutex> lg(mx);
+    int tmp = arr(0);
+    arr(0) = tmp + 1;
+  }
+  
+  dash::barrier();
+  
+  if(this_image() == 0){
+    int result = arr;
+    EXPECT_EQ_U(result, static_cast<int>(dash::size())*2);
+  }
+}
+
 // declare befor dash is initialized
 dash::Coarray<int> delay_alloc_arr;
 
 TEST_F(CoArrayTest, DelayedAllocation)
-{
-  using namespace dash::co_array;
-  
+{ 
   int i = static_cast<int>(this_image()); 
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);  
   dash::barrier();
