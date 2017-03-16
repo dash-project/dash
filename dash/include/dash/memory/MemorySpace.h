@@ -2,9 +2,10 @@
 #define DASH__MEMORY__MEMORY_SPACE_H__INCLUDED
 
 #include <algorithm>
+#include <atomic>
+#include <cstddef>
 #include <memory>
 #include <ostream>
-#include <cstddef>
 
 namespace dash {
 
@@ -62,110 +63,54 @@ struct pointer_traits : public std::pointer_traits<Pointer> {
    */
 };
 
+struct memory_space_host_tag {
+};
+struct memory_space_hbw_tag {
+};
+struct memory_space_pmem_tag {
+};
+
 template <class MemorySpace>
 struct memory_space_traits {
- public:
+};
+
+template <>
+struct memory_space_traits<memory_space_host_tag> {
   typedef void *void_pointer;
 };
 
 template <class MSpaceCategory>
 class MemorySpace {
-  using self_t = MemorySpace<MSpaceCategory>;
-
  public:
   // Resolve void pointer type for this MemorySpace, typically
   // `GlobPtr<void>` for global and `void *` for local memory.
   // Allocators use rebind to obtain a fully specified type like
   // `GlobPtr<double>` and can then cast the `void_pointer`
   // returned from a memory space to their value type.
-  using void_pointer = typename dash::memory_space_traits<self_t>::void_pointer;
+  using void_pointer =
+      typename dash::memory_space_traits<MSpaceCategory>::void_pointer;
 
-  void_pointer allocate(size_t bytes,
-                        std::size_t alignment = alignof(std::max_align_t));
+ public:
+  virtual ~MemorySpace();
+  virtual void_pointer allocate(size_t bytes, size_t alignment = 0) = 0;
+  virtual void deallocate(void_pointer p, size_t bytes) = 0;
 
-  void deallocate(void_pointer addr, size_t nbytes);
+  virtual bool is_equal(MemorySpace const &other) const = 0;
 };
 
+template <typename MSpaceCategory>
+inline bool operator==(MemorySpace<MSpaceCategory> const &a,
+                       MemorySpace<MSpaceCategory> const &b)
+{
+  return &a == &b || a.is_equal(b);
+}
 
-namespace memory {
-namespace internal {
+// Default Memory Space is HostSpace
+//TODO rko: maybe there is a better solution to solve this??
+using default_memory_space = dash::MemorySpace<dash::memory_space_host_tag>;
 
-struct memory_block {
-  // friend std::ostream& operator<<(std::ostream& stream, struct memory_block
-  // const& block);
-  // Default Constructor
-  memory_block() noexcept
-    : ptr(nullptr)
-    , length(0)
-  {
-  }
+default_memory_space *get_default_memory_space();
 
-  memory_block(void *ptr, size_t length) noexcept
-    : ptr(ptr)
-    , length(length)
-  {
-  }
-
-  // Move Constructor
-  memory_block(memory_block &&x) noexcept { *this = std::move(x); }
-  // Copy Constructor
-  memory_block(const memory_block &x) noexcept = default;
-
-  // Move Assignment
-  memory_block &operator=(memory_block &&x) noexcept
-  {
-    ptr = x.ptr;
-    length = x.length;
-    x.reset();
-    return *this;
-  }
-
-  // Copy Assignment
-  memory_block &operator=(const memory_block &x) noexcept = default;
-
-  /**
-  * The Memory Block is not freed
-  */
-  ~memory_block() {}
-  /**
-   * Clear the memory block
-   */
-  void reset() noexcept
-  {
-    ptr = nullptr;
-    length = 0;
-  }
-
-  /**
-   * Bool operator to make the Allocator code better readable
-   */
-  explicit operator bool() const noexcept
-  {
-    return length != 0 && ptr != nullptr;
-  }
-
-  bool operator==(const memory_block &rhs) const noexcept
-  {
-    return static_cast<void *>(ptr) == static_cast<void *>(rhs.ptr) &&
-           length == rhs.length;
-  }
-
-  bool operator!=(const memory_block &rhs) const noexcept
-  {
-    return !(*this == rhs);
-  }
-
-  std::ostream &operator<<(std::ostream &stream) const noexcept
-  {
-    stream << "memory_block { ptr: " << ptr << ", length: " << length << "}";
-    return stream;
-  }
-
-  void *ptr;
-  std::size_t length;
-};
-}  // namespace internal
-}  // namespace memory
 }  // namespace dash
 
 #endif  // DASH__MEMORY__MEMORY_SPACE_H__INCLUDED

@@ -442,6 +442,11 @@ public:
     dart_team_myid(_dart_gptr.teamid, &luid);
     return _dart_gptr.unitid == luid.id;
   }
+
+  constexpr explicit operator bool() const noexcept {
+    return !DART_GPTR_ISNULL(_dart_gptr);
+
+  }
 };
 
 template<typename T, class PatternT>

@@ -14,15 +14,13 @@ struct collective_allocator_tag { };
 
 struct noncollective_allocator_tag { };
 
-template <
-  class Allocator,
-  class AllocCategory
-         = typename Allocator::allocator_category >
-struct allocator_traits
+template <class Allocator>
+struct allocator_traits : public std::allocator_traits<Allocator>
 {
-  typedef Allocator                                         allocator_type;
-  typedef AllocCategory                                 allocator_category;
+  typedef typename Allocator::allocator_category      allocator_category;
 
+  /* std::allocator_traits takes care of this stuff */
+  /*
   typedef typename allocator_type::value_type                   value_type;
   typedef typename allocator_type::pointer                         pointer;
 
@@ -47,6 +45,7 @@ struct allocator_traits
   template <class U>
   using rebind_traits = dash::allocator_traits<
                           typename Allocator::template rebind<U> >;
+                          */
 
 };
 

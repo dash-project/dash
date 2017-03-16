@@ -7,14 +7,11 @@
 #include <stdlib.h>
 
 namespace dash {
-namespace memory {
 
-class HostSpace {
+class HostSpace : public dash::MemorySpace<dash::memory_space_host_tag>{
  private:
-  using block = dash::memory::internal::memory_block;
-
- public:
-  static constexpr unsigned alignment = 4;
+  using void_pointer = HostSpace::void_pointer;
+  using Base = dash::MemorySpace<dash::memory_space_host_tag>;
 
  public:
   HostSpace() = default;
@@ -22,50 +19,29 @@ class HostSpace {
   HostSpace(HostSpace&& other) = default;
   HostSpace& operator=(HostSpace const& other) = default;
   HostSpace& operator=(HostSpace&& other) = default;
-  block allocate(std::size_t const n, std::size_t alignment = alignof(std::max_align_t)) noexcept
-  {
-    block result;
+  ~HostSpace() {}
 
+  void_pointer allocate(std::size_t const n, std::size_t alignment = alignof(std::max_align_t)) noexcept
+  {
     if (n == 0) {
-      return result;
+      return nullptr;
     }
     auto p = aligned_alloc(alignment, n);
-    if (p != nullptr) {
-      result.ptr = p;
-      result.length = n;
-      return result;
-    }
-    return result;
+    return p;
   }
 
-  void deallocate(block& b, std::size_t const nbytes = 0) noexcept
+  void deallocate(void_pointer p, std::size_t bytes) noexcept
   {
-    if (b) {
-      std::free(b.ptr);
-      b.reset();
+    if (p) {
+      std::free(p);
     }
   }
 
-  block reallocate(block& b, std::size_t const nbytes) noexcept
-  {
-    DASH_ASSERT("Not implemented");
-    return b;
-  }
   /**
-   * Allocator Equality: Two HostSpace Allocators are always equal since we use
+   * Space Equality: Two HostSpaces are always equal since we use
    * the system heap
    */
-  bool operator==(HostSpace const& other) const noexcept { return true; }
-  /**
-   * Allocator Equality: Two HostSpace Allocators are always equal since we use
-   * the system heap
-   */
-  bool operator!=(HostSpace const& other) const noexcept
-  {
-    return !(*this == other);
-  }
+  bool is_equal(Base const& other) const noexcept { return true; }
 };
-
-}  // memory
 }  // dash
 #endif  // DASH__MEMORY__HOST_SPACE_H__INCLUDED
