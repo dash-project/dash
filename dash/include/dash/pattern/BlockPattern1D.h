@@ -259,67 +259,6 @@ public:
   { }
 
   /**
-   * Constructor, initializes a pattern from explicit instances of
-   * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
-   *
-   * Examples:
-   *
-   * \code
-   *   // 500 elements with blocked distribution:
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   *   // Same as
-   *   Pattern p1(500, BLOCKED);
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED));
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()));
-   * \endcode
-   */
-  BlockPattern(
-    /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t dist = DistributionSpec_t(),
-    /// Team containing units to which this pattern maps its elements
-    Team &                   team = dash::Team::All())
-  : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _distspec(dist),
-    _team(&team),
-    _teamspec(_distspec, *_team),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _nlblocks(initialize_num_local_blocks(
-        _nblocks,
-        _blocksize,
-        _distspec,
-        _nunits,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()),
-    _lbegin_lend(initialize_local_range(_local_size))
-  { }
-
-  /**
    * Move constructor.
    */
   constexpr BlockPattern(self_t && other)      = default;
@@ -664,39 +603,23 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  constexpr std::array<IndexType, NumDimensions> global(
     team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", unit);
-    DASH_LOG_DEBUG_VAR("BlockPattern<1>.global()", local_coords);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nunits);
-    if (_nunits < 2) {
-      return local_coords;
-    }
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", _nblocks);
-    // Global coords of the element's block within all blocks.
-    // Use initializer so elements are initialized with 0s:
-    IndexType block_index;
-    // Index of the element:
-    IndexType glob_index;
-
-    const Distribution & dist = _distspec[0];
-    IndexType local_index     = local_coords[0];
-    IndexType elem_phase      = local_index % _blocksize;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", local_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", elem_phase);
-    // Global coords of the element's block within all blocks:
-    block_index               = dist.local_index_to_block_coord(
-                                  static_cast<IndexType>(unit),
-                                  local_index,
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
-                                );
-    glob_index  = (block_index * _blocksize) + elem_phase;
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global", block_index);
-    DASH_LOG_TRACE_VAR("BlockPattern<1>.global >", glob_index);
-    return std::array<IndexType, 1> {{ glob_index }};
+    return (_nunits < 2)
+            ? local_coords
+            : std::array<IndexType, 1> {{
+                static_cast<IndexType>(
+                  (( _distspec[0].local_index_to_block_coord(
+                       static_cast<IndexType>(unit),
+                       local_coords[0],
+                       _nunits,
+                       _nblocks,
+                       _blocksize)
+                   ) * _blocksize)
+                  + (local_coords[0] % _blocksize)
+                )
+              }};
   }
 
   /**
