@@ -34,23 +34,25 @@ class SimpleMemoryPool {
  private:
   // PRIVATE TYPES
 
-  union Block {
+   union alignas(ValueType) Block {
     Block* next;
 
     char _data[sizeof(ValueType)];
   };
 
-  union Chunk {
+  union alignas(Block) Chunk {
     Chunk* next;
   };
 
   // Ensure properly aligned Blocks and Chunks
   //
+  /*
   typedef
       typename std::aligned_union<sizeof(Block), Block*,
-                                  char[sizeof(ValueType)]>::type Aligned_Block;
-  typedef typename std::aligned_union<sizeof(Chunk), Aligned_Block>::type
+                                  char[sizeof(ValueType)]>::type Block;
+  typedef typename std::aligned_union<sizeof(Chunk), Block>::type
       Aligned_Chunk;
+      */
 
  private:
   typedef std::allocator_traits<PoolAlloc> PoolAllocTraits;
@@ -68,11 +70,7 @@ class SimpleMemoryPool {
   typedef typename AllocatorTraits::size_type                    size_type;
   typedef typename AllocatorTraits::difference_type        difference_type;
 
-  typedef typename PoolAllocTraits::value_type                  value_type;
-  typedef typename PoolAllocTraits::pointer                        pointer;
-  typedef typename PoolAllocTraits::const_pointer            const_pointer;
-  typedef typename PoolAllocTraits::void_pointer              void_pointer;
-  typedef typename PoolAllocTraits::const_void_pointer  const_void_pointer;
+  typedef  ValueType                  value_type;
 
   // clang-format on
 
@@ -95,25 +93,26 @@ class SimpleMemoryPool {
   // provide more space in the pool
   void refill();
   // allocate a Chunk for at least nbytes
-  Aligned_Block* allocateChunk(size_type nbytes);
+  Block* allocateChunk(size_type nbytes);
 
  public:
   // Allocate Memory Blocks of size ValueType
-  pointer allocate(size_type = 0 /* internally not used */);
+  value_type * allocate(size_type = 0 /* internally not used */);
   // Deallocate a specific Memory Block
-  void deallocate(void_pointer address,
+  void deallocate(void * address,
                   size_type = 0 /* internally not used */);
   // Reserve Space for at least n Memory Blocks of size ValueType
   void reserve(size_type nblocks);
   // returns the underlying memory allocator
-  allocator_type& allocator() const;
+  allocator_type& allocator();
   // deallocate all memory blocks of all chunks
   void release();
 
  private:
-  Aligned_Chunk* _chunklist = nullptr;
-  Aligned_Block* _freelist = nullptr;
+  Chunk* _chunklist = nullptr;
+  Block* _freelist = nullptr;
   int _blocks_per_chunk;
+  allocator_type _alloc;
 };
 
 // CONSTRUCTOR
@@ -123,6 +122,7 @@ inline SimpleMemoryPool<ValueType, PoolAlloc>::SimpleMemoryPool(
   : _chunklist(nullptr)
   , _freelist(nullptr)
   , _blocks_per_chunk(1)
+  , _alloc(alloc)
 {
 }
 
@@ -134,7 +134,7 @@ inline SimpleMemoryPool<ValueType, PoolAlloc>::SimpleMemoryPool(
   // TODO rko
 }
 template <typename ValueType, typename PoolAlloc>
-typename SimpleMemoryPool<ValueType, PoolAlloc>::pointer
+typename SimpleMemoryPool<ValueType, PoolAlloc>::value_type *
     SimpleMemoryPool<ValueType, PoolAlloc>::allocate(size_type)
 {
   if (!_freelist) {
@@ -152,11 +152,11 @@ inline void SimpleMemoryPool<ValueType, PoolAlloc>::reserve(size_type nblocks)
   // allocate a chunk with header and space for nblocks
   DASH_ASSERT(0 < nblocks);
 
-  Aligned_Block* begin =
-      allocateChunk(nblocks * static_cast<size_type>(sizeof(Aligned_Block)));
-  Aligned_Block* end = begin + nblocks - 1;
+  Block* begin =
+      allocateChunk(nblocks * static_cast<size_type>(sizeof(Block)));
+  Block* end = begin + nblocks - 1;
 
-  for (Aligned_Block* p = begin; p < end; ++p) {
+  for (Block* p = begin; p < end; ++p) {
     p->next = p + 1;
   }
   end->next = _freelist;
@@ -165,18 +165,18 @@ inline void SimpleMemoryPool<ValueType, PoolAlloc>::reserve(size_type nblocks)
 
 template <typename ValueType, typename PoolAlloc>
 inline void SimpleMemoryPool<ValueType, PoolAlloc>::deallocate(
-    void_pointer address, size_type)
+    void * address, size_type)
 {
   DASH_ASSERT(address);
-  reinterpret_cast<Aligned_Block*>(address)->next = _freelist;
-  _freelist = reinterpret_cast<Aligned_Block*>(address);
+  reinterpret_cast<Block*>(address)->next = _freelist;
+  _freelist = reinterpret_cast<Block*>(address);
 }
 
 template <typename ValueType, typename PoolAlloc>
 inline typename SimpleMemoryPool<ValueType, PoolAlloc>::allocator_type&
-SimpleMemoryPool<ValueType, PoolAlloc>::allocator() const
+SimpleMemoryPool<ValueType, PoolAlloc>::allocator()
 {
-  return *this;
+  return _alloc;
 }
 
 template <typename ValueType, typename PoolAlloc>
@@ -203,24 +203,26 @@ inline void SimpleMemoryPool<ValueType, PoolAlloc>::refill()
 }
 
 template <typename ValueType, typename PoolAlloc>
-typename SimpleMemoryPool<ValueType, PoolAlloc>::Aligned_Block*
+typename SimpleMemoryPool<ValueType, PoolAlloc>::Block*
 SimpleMemoryPool<ValueType, PoolAlloc>::allocateChunk(size_type nbytes)
 {
-  size_type numBytes = static_cast<size_type>(sizeof(Aligned_Chunk)) + nbytes;
+  size_type numBytes = static_cast<size_type>(sizeof(Chunk)) + nbytes;
 
   std::size_t const maxAlign = alignof(std::max_align_t);
   size_type max_aligned = (numBytes + maxAlign - 1) / maxAlign;
 
-  Aligned_Chunk* chunkPtr = reinterpret_cast<Aligned_Chunk*>(
+  Chunk* chunkPtr = reinterpret_cast<Chunk*>(
       AllocatorTraits::allocate(allocator(), max_aligned));
 
+  /*
   DASH_ASSERT(
-      0 == reinterpret_cast<std::uintptr_t>(chunkPtr) % sizeof(Aligned_Chunk));
+      0 == reinterpret_cast<std::uintptr_t>(chunkPtr) % sizeof(Chunk));
+      */
 
   chunkPtr->next = _chunklist;
   _chunklist = chunkPtr;
 
-  return reinterpret_cast<Aligned_Block*>(chunkPtr + 1);
+  return reinterpret_cast<Block*>(chunkPtr + 1);
 }
 
 template <typename ValueType, typename PoolAlloc>

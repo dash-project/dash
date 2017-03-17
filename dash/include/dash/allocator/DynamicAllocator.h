@@ -87,6 +87,14 @@ class DynamicAllocator {
   */
 
  public:
+  //Default Constructor
+  explicit DynamicAllocator(Team &team = dash::Team::All()) noexcept
+    : _team(&team)
+    , _nunits(team.size())
+    , _alloc(get_default_memory_space<MSpaceCategory>())
+  {
+  }
+
   /**
    * Constructor.
    * Creates a new instance of \c dash::DynamicAllocator for a given team.
@@ -312,7 +320,7 @@ class DynamicAllocator {
       DASH_ASSERT(false);
     }
 
-    found->second = DART_GPTR_NULL;
+    found->second = pointer(DART_GPTR_NULL);
 
     DASH_LOG_DEBUG("DynamicAllocator.detach >");
   }
@@ -337,7 +345,7 @@ class DynamicAllocator {
     _allocated.push_back(std::make_pair(b, pointer(DART_GPTR_NULL)));
 
     DASH_LOG_TRACE("DynamicAllocator.allocate_local", "allocated local pointer",
-                   mem.ptr);
+                   lp);
 
     return lp;
   }
@@ -424,7 +432,7 @@ class DynamicAllocator {
       // Unregister from global memory space, removes gptr from _allocated:
       detach(found->second);
       // Free local memory:
-      AllocatorTraits::deallocate(_alloc, found->first.ptr, num_local_elem);
+      AllocatorTraits::deallocate(_alloc, static_cast<local_pointer>(found->first.ptr), num_local_elem);
 
       //erase from locally tracked blocks
       _allocated.erase(found);

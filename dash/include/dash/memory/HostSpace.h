@@ -43,5 +43,6 @@ class HostSpace : public dash::MemorySpace<dash::memory_space_host_tag>{
    */
   bool is_equal(Base const& other) const noexcept { return true; }
 };
+
 }  // dash
 #endif  // DASH__MEMORY__HOST_SPACE_H__INCLUDED

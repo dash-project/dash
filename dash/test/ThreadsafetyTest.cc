@@ -187,15 +187,15 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
       allocator_t allocator(*team);
-      elem_t *vals = allocator.allocate_local(elem_per_thread);
+      auto vals = allocator.allocate_local(elem_per_thread);
       for (size_t j = 0; j < elem_per_thread; ++j) {
         vals[j] = thread_id;
       }
-      dart_gptr_t gptr = allocator.attach(vals, elem_per_thread);
-      ASSERT_NE_U(DART_GPTR_NULL, gptr);
-      ASSERT_LT_U(gptr.segid, 0); // attached memory has segment ID < 0
+      dash::GlobPtr<elem_t> gptr = allocator.attach(vals, elem_per_thread);
+      ASSERT_NE_U(DART_GPTR_NULL, gptr.dart_gptr());
+      auto gptr_r = gptr.dart_gptr();
+      ASSERT_LT_U(gptr_r.segid, 0); // attached memory has segment ID < 0
       elem_t check[elem_per_thread];
-      dart_gptr_t gptr_r = gptr;
       gptr_r.unitid = (team->myid() + 1) % team->size();
       dart_storage_t ds = dash::dart_storage<elem_t>(elem_per_thread);
       ASSERT_EQ_U(
@@ -209,7 +209,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
       }
       team->barrier();
 
-      allocator.deallocate(gptr);
+      allocator.deallocate(gptr, elem_per_thread);
     }
 #pragma omp barrier
   }

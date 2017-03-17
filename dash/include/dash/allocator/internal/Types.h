@@ -1,12 +1,13 @@
+#ifndef DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
+#define DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
 #include <cstddef>
 #include <ostream>
 
 namespace dash {
 namespace allocator {
 
+
 struct memory_block {
-  // friend std::ostream& operator<<(std::ostream& stream, struct memory_block
-  // const& block);
   // Default Constructor
   memory_block() noexcept
     : ptr(nullptr)
@@ -62,22 +63,9 @@ struct memory_block {
   std::size_t length;
 };
 
-bool operator==(const memory_block & lhs, const memory_block &rhs) noexcept
-{
-  return static_cast<void *>(lhs.ptr) == static_cast<void *>(rhs.ptr) &&
-         lhs.length == rhs.length;
-}
-
-bool operator!=(const memory_block & lhs, const memory_block &rhs) noexcept
-{
-  return !(lhs == rhs);
-}
-
-std::ostream & operator<<(std::ostream &stream, const memory_block & block) noexcept
-{
-  stream << "memory_block { ptr: " << block.ptr << ", length: " << block.length << "}";
-  return stream;
-}
-
+bool operator==(const memory_block & lhs, const memory_block &rhs);
+bool operator!=(const memory_block & lhs, const memory_block &rhs);
+std::ostream & operator<<(std::ostream &stream, const memory_block & block);
 }  // namespace allocator
 }  // namespace dash
+#endif

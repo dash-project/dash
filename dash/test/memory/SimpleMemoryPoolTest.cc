@@ -16,7 +16,7 @@ TEST_F(SimpleMemoryPoolTest, usageExampleStack)
   using Alloc = std::allocator<ValueType>;
   using IntStack = Stack<ValueType, Alloc>;
 
-  int wait = 1;
+  int wait = 0;
   while(wait);
 
   IntStack stack{};

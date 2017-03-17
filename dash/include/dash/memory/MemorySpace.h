@@ -99,6 +99,11 @@ class MemorySpace {
 };
 
 template <typename MSpaceCategory>
+inline MemorySpace<MSpaceCategory>::~MemorySpace()
+{
+}
+
+template <typename MSpaceCategory>
 inline bool operator==(MemorySpace<MSpaceCategory> const &a,
                        MemorySpace<MSpaceCategory> const &b)
 {
@@ -107,9 +112,21 @@ inline bool operator==(MemorySpace<MSpaceCategory> const &a,
 
 // Default Memory Space is HostSpace
 //TODO rko: maybe there is a better solution to solve this??
-using default_memory_space = dash::MemorySpace<dash::memory_space_host_tag>;
 
-default_memory_space *get_default_memory_space();
+MemorySpace<memory_space_host_tag> * get_default_host_space();
+
+template <typename MSpaceCategory>
+inline
+MemorySpace<MSpaceCategory> * get_default_memory_space() {
+  //Current we have only a default host space
+  return nullptr;
+}
+
+template <>
+inline
+MemorySpace<memory_space_host_tag> * get_default_memory_space<memory_space_host_tag>() {
+  return get_default_host_space();
+}
 
 }  // namespace dash
 
