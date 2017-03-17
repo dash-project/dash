@@ -5,6 +5,7 @@
  */
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/base/mutex.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -101,7 +102,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   (*lock)->gptr_list   = gptr_list;
   (*lock)->teamid      = teamid;
   (*lock)->is_acquired = 0;
-  dart__base__mutex_init(&(*lock)->mutex);
+  dart__base__mutex_init_recursive(&(*lock)->mutex);
 
   DART_LOG_DEBUG("dart_team_lock_init: INIT - done");
 
@@ -110,9 +111,13 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 
 dart_ret_t dart_lock_acquire(dart_lock_t lock)
 {
+  /* lock the local mutex and keep it until the global lock is released */
+  dart__base__mutex_lock(&lock->mutex);
+
   if (lock->is_acquired == 1)
   {
     DART_LOG_ERROR("dart_lock_acquire: LOCK has already been acquired\n");
+    dart__base__mutex_unlock(&lock->mutex);
     return DART_ERR_INVAL;
   }
 
@@ -131,11 +136,9 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown team %i!",
                    lock->teamid);
+    dart__base__mutex_unlock(&lock->mutex);
     return DART_ERR_INVAL;
   }
-
-  /* lock the local mutex and keep it until the global lock is released */
-  dart__base__mutex_lock(&lock->mutex);
 
   /* Fetch the current unit's tail and make this unit the new tail */
   MPI_Fetch_and_op(
@@ -192,19 +195,26 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
 
 dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
 {
-  dart_team_unit_t unitid;
-  dart_team_myid(lock->teamid, &unitid);
+  if (dart__base__mutex_trylock(&lock->mutex) != 0) {
+    *is_acquired = 0;
+    return DART_OK;
+  }
+
   if (lock->is_acquired == 1)
   {
     DART_LOG_ERROR("dart_lock_try_acquire: LOCK has already been acquired\n");
     *is_acquired = 1;
+    /* we are using a recursive lock so give up this recursion */
+    dart__base__mutex_unlock(&lock->mutex);
     return DART_ERR_INVAL;
   }
+
+  dart_team_unit_t unitid;
+  dart_team_myid(lock->teamid, &unitid);
 
   int32_t result;
   int32_t compare = -1;
 
-  dart__base__mutex_lock(&lock->mutex);
 
   dart_gptr_t gptr_tail   = lock->gptr_tail;
   dart_unit_t tail_unit   = gptr_tail.unitid;
@@ -229,7 +239,7 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
     *is_acquired = 1;
   } else {
     *is_acquired = 0;
-    // unlock the local mutex if we have not acqcuired the global lock
+    /* unlock the local mutex if we have not acqcuired the global lock */
     dart__base__mutex_unlock(&lock->mutex);
   }
 
@@ -250,11 +260,7 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
   dart_gptr_t gptr_list = lock->gptr_list;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(lock->teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_lock_release ! failed: Unknown team %i!",
-                   gptr_list.teamid);
-    return DART_ERR_INVAL;
-  }
+  DART_ASSERT(team_data != NULL);
 
   uint64_t      offset_tail = gptr_tail.addr_or_offs.offset;
   dart_unit_t   tail        = gptr_tail.unitid;
