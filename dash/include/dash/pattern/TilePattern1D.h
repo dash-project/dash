@@ -95,11 +95,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    team_unit_t                            unit;
-    IndexType                             index;
+    team_unit_t                             unit;
+    IndexType                              index;
   } local_index_t;
   typedef struct {
-    team_unit_t                            unit;
+    team_unit_t                             unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -328,25 +328,7 @@ public:
   /**
    * Copy constructor.
    */
-  TilePattern(const self_t & other)
-  : _size(other._size),
-    _memory_layout(other._memory_layout),
-    _distspec(other._distspec),
-    _team(other._team),
-    _teamspec(other._teamspec),
-    _nunits(other._nunits),
-    _blocksize(other._blocksize),
-    _nblocks(other._nblocks),
-    _local_size(other._local_size),
-    _local_memory_layout(other._local_memory_layout),
-    _nlblocks(other._nlblocks),
-    _local_capacity(other._local_capacity),
-    _lbegin(other._lbegin),
-    _lend(other._lend) {
-    // No need to copy _arguments as it is just used to
-    // initialize other members.
-    DASH_LOG_TRACE("TilePattern<1>(other)", "TilePattern copied");
-  }
+  constexpr TilePattern(const self_t & other) = default;
 
   /**
    * Copy constructor using non-const lvalue reference parameter.
@@ -354,7 +336,7 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  TilePattern(self_t & other)
+  constexpr TilePattern(self_t & other)
   : TilePattern(static_cast<const self_t &>(other)) {
   }
 
@@ -393,34 +375,14 @@ public:
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) {
-    DASH_LOG_TRACE("TilePattern<1>.=(other)");
-    if (this != &other) {
-      _size                = other._size;
-      _memory_layout       = other._memory_layout;
-      _distspec            = other._distspec;
-      _team                = other._team;
-      _teamspec            = other._teamspec;
-      _local_size          = other._local_size;
-      _local_memory_layout = other._local_memory_layout;
-      _blocksize           = other._blocksize;
-      _nblocks             = other._nblocks;
-      _nlblocks            = other._nlblocks;
-      _local_capacity      = other._local_capacity;
-      _nunits              = other._nunits;
-      _lbegin              = other._lbegin;
-      _lend                = other._lend;
-      DASH_LOG_TRACE("TilePattern<1>.=(other)", "TilePattern assigned");
-    }
-    return *this;
-  }
+  self_t & operator=(const self_t & other) = default;
 
   /**
    * Resolves the global index of the first local element in the pattern.
    *
    * \see DashPatternConcept
    */
-  IndexType lbegin() const {
+  constexpr IndexType lbegin() const {
     return _lbegin;
   }
 
@@ -429,7 +391,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType lend() const {
+  constexpr IndexType lend() const {
     return _lend;
   }
 
@@ -492,14 +454,11 @@ public:
    *
    * \see DashPatternConcept
    */
-  team_unit_t unit_at(
+  constexpr team_unit_t unit_at(
     /// Global linear element offset
     IndexType global_pos
   ) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", global_pos);
-    team_unit_t unit_id((global_pos / _blocksize) % _nunits);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
-    return unit_id;
+    return team_unit_t((global_pos / _blocksize) % _nunits);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -515,11 +474,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType extent(dim_t dim) const {
-    DASH_ASSERT_EQ(
-      0, dim,
-      "Wrong dimension for TilePattern<1>::local_extent. " <<
-      "Expected dimension = 0, got " << dim);
+  constexpr IndexType extent(dim_t dim) const {
     return _size;
   }
 
@@ -534,11 +489,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType local_extent(dim_t dim) const {
-    DASH_ASSERT_EQ(
-      0, dim,
-      "Wrong dimension for TilePattern<1>::local_extent. " <<
-      "Expected dimension = 0, got " << dim);
+  constexpr IndexType local_extent(dim_t dim) const {
     return _local_size;
   }
 
@@ -553,10 +504,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<SizeType, NumDimensions> local_extents(
+  constexpr std::array<SizeType, NumDimensions> local_extents(
       team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents >", _local_size);
     return std::array<SizeType, 1> {{ _local_size }};
   }
 
@@ -570,7 +519,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType local_at(
+  constexpr IndexType local_at(
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
@@ -583,7 +532,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType local_at(
+  constexpr IndexType local_at(
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords) const {
     return local_coords[0];
@@ -593,22 +542,22 @@ public:
    * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
-   * TODO: Unoptimized
+   * \todo Unoptimized
    *
    * \see  DashPatternConcept
    */
-  local_coords_t local(
+  constexpr local_coords_t local(
     const std::array<IndexType, NumDimensions> & global_coords) const {
-    local_coords_t l_coords;
-    l_coords.coords = local_coords(global_coords);
-    l_coords.unit   = unit_at(global_coords);
-    return l_coords;
+    return local_coords_t {{
+             unit_at(global_coords),
+             local_coords(global_coords)
+           }};
   }
 
   /**
    * Converts global index to its associated unit and respective local index.
    *
-   * TODO: Unoptimized
+   * \todo Unoptimized
    *
    * \see  DashPatternConcept
    */
@@ -705,7 +654,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  constexpr std::array<IndexType, NumDimensions> global(
     const std::array<IndexType, NumDimensions> & l_coords) const {
     return global(_team->myid(), l_coords);
   }
@@ -718,7 +667,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global(
+  constexpr IndexType global(
     team_unit_t unit,
     IndexType l_index) const {
     return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
@@ -732,7 +681,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global(
+  constexpr IndexType global(
     IndexType l_index) const {
     return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
@@ -745,11 +694,10 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global_index(
+  constexpr IndexType global_index(
     team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const {
-    auto g_index = global(unit, l_coords[0]);
-    return g_index;
+    return global(unit, l_coords[0]);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -764,7 +712,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType at(
+  constexpr IndexType at(
     const std::array<IndexType, NumDimensions> & g_coords) const {
     return local_coords(g_coords)[0];
   }
@@ -792,14 +740,13 @@ public:
    * \see  DashPatternConcept
    */
   template<typename ... Values>
-  IndexType at(IndexType value, Values ... values) const {
+  constexpr IndexType at(IndexType value, Values ... values) const {
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
-    std::array<IndexType, NumDimensions> inputindex = {
-      value, (IndexType)values...
-    };
-    return at(inputindex);
+    return at(std::array<IndexType, NumDimensions> {{
+                value, (IndexType)values...
+              }} );
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -840,12 +787,10 @@ public:
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
+  constexpr bool is_local(
     IndexType index,
     team_unit_t unit) const {
-    auto coords_unit = unit_at(index);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.is_local >", (coords_unit == unit));
-    return coords_unit == unit;
+    return unit_at(index) == unit;
   }
 
   /**
@@ -854,7 +799,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
+  constexpr bool is_local(
     IndexType index) const {
     return is_local(index, team().myid());
   }
@@ -866,9 +811,8 @@ public:
   /**
    * Cartesian arrangement of pattern blocks.
    */
-  BlockSpec_t blockspec() const {
-    BlockSpec_t bspec({ dash::math::div_ceil(_size, _blocksize) });
-    return bspec;
+  constexpr BlockSpec_t blockspec() const {
+    return BlockSpec_t({ dash::math::div_ceil(_size, _blocksize) });
   }
 
   /**
@@ -876,15 +820,29 @@ public:
    *
    * \see  DashPatternConcept
    */
-  index_type block_at(
+  constexpr index_type block_at(
     /// Global coordinates of element
     const std::array<index_type, 1> & g_coords) const
   {
-    index_type block_idx = g_coords[0] / _blocksize;
-    DASH_LOG_TRACE("TilePattern<1>.block_at",
-                   "coords", g_coords,
-                   "> block index", block_idx);
-    return block_idx;
+    return g_coords[0] / _blocksize;
+  }
+  
+  /**
+   * Local index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  constexpr local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const {
+    return local_index_t {
+             // unit id:
+             static_cast<team_unit_t>(
+                (g_coords[0] / _blocksize) % _teamspec.size()),
+             // local block index:
+             static_cast<index_type>(
+                (g_coords[0] / _blocksize) / _teamspec.size())
+           };
   }
 
   /**
@@ -941,7 +899,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType blocksize(
+  constexpr SizeType blocksize(
     /// The dimension in the pattern
     dim_t dimension) const {
     return _blocksize;
@@ -955,7 +913,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const {
+  constexpr SizeType max_blocksize() const {
     return _blocksize;
   }
 
@@ -1021,7 +979,7 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const {
+  constexpr const DistributionSpec_t & distspec() const {
     return _distspec;
   }
 
@@ -1030,7 +988,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const {
+  constexpr SizeSpec_t sizespec() const {
     return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
@@ -1039,7 +997,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> extents() const {
+  constexpr const std::array<SizeType, NumDimensions> extents() const {
     return std::array<SizeType, 1> {{ _size }};
   }
 
@@ -1049,7 +1007,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const MemoryLayout_t & memory_layout() const {
+  constexpr const MemoryLayout_t & memory_layout() const {
     return _memory_layout;
   }
 
@@ -1058,7 +1016,7 @@ public:
    * of this pattern for the calling unit.
    * Not part of DASH Pattern concept.
    */
-  const LocalMemoryLayout_t & local_memory_layout() const {
+  constexpr const LocalMemoryLayout_t & local_memory_layout() const {
     return _local_memory_layout;
   }
 

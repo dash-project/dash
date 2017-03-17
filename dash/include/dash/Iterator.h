@@ -48,6 +48,16 @@
 
 namespace dash {
 
+namespace detail {
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(iterator);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_iterator);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(reference);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(pointer);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer);
+}
+
 /**
  *
  * \concept{DashIteratorConcept}
@@ -63,9 +73,33 @@ index(IndexType idx) {
  *
  * \concept{DashIteratorConcept}
  */
+// template <class Iterator>
+// constexpr auto index(Iterator it) -> decltype((++it).pos()) {
+//   return it.pos();
+// }
+
+/**
+ *
+ * \concept{DashIteratorConcept}
+ */
 template <class Iterator>
-constexpr auto index(Iterator it) -> decltype((++it).pos()) {
-  return it.pos();
+constexpr auto index(Iterator it) -> decltype((++it).gpos()) {
+  return it.gpos();
+}
+
+
+/**
+ * Resolve the number of elements between two iterators.
+ *
+ * \concept{DashIteratorConcept}
+ */
+template <class RandomAccessIt>
+typename RandomAccessIt::difference_type
+distance(
+  const RandomAccessIt & first,
+  const RandomAccessIt & last)
+{
+  return last - first;
 }
 
 /**

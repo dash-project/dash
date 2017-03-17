@@ -470,10 +470,10 @@ class StoreHDF {
     using index_t = typename pattern_t::index_type;
     constexpr auto ndim = pattern_t::ndim();
     hdf5_hyperslab_spec<ndim> hs;
-    auto& ms = hs.memory;
-    auto& ts = hs.dataset;
+    auto & ms = hs.memory;
+    auto & ts = hs.dataset;
 
-    auto& lblockspec = pattern.local_blockspec();
+    const auto & lblockspec = pattern.local_blockspec();
 
     // get the index of the start block of the current slab
     // if local space is not empty
