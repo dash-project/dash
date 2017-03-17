@@ -61,21 +61,16 @@ private:
 
 public:
   /**
-   * TODO: Reference semantics forbid declaration without definition.
-   *
-   * Default constructor, creates an GlobRef object referencing an element in
-   * global memory.
+   * Reference semantics forbid declaration without definition.
    */
-  GlobRef()
-  : _gptr(DART_GPTR_NULL)
-  { }
+  GlobRef() = delete;
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
   template<class PatternT, class ElementT>
-  explicit GlobRef(
+  explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -86,7 +81,7 @@ public:
    * memory.
    */
   template<class PatternT, class ElementT>
-  explicit GlobRef(
+  explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
     const GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -96,7 +91,7 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  explicit GlobRef(dart_gptr_t dart_gptr)
+  explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   { }
 
@@ -113,6 +108,9 @@ public:
    */
   GlobRef(self_t && other)      = default;
 
+  /**
+   * Value-assignment operator.
+   */
   GlobRef<T> & operator=(const T val) {
     set(val);
     return *this;
@@ -307,7 +305,7 @@ public:
     return GlobPtr<T, PatternT>(_gptr);
   }
 
-  dart_gptr_t dart_gptr() const {
+  constexpr dart_gptr_t dart_gptr() const noexcept {
     return _gptr;
   }
 

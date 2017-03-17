@@ -228,6 +228,9 @@ public:
 /**
  * Defines a cartesian, totally-ordered index space by mapping linear
  * indices to cartesian coordinates depending on memory order.
+ *
+ * \note Not derived from CartesianSpace to provide resizing in O(d)
+ *       instead of O(2d).
  */
 template<
   dim_t      NumDimensions,
@@ -248,14 +251,10 @@ public:
   typedef SizeType                            size_type;
   typedef std::array<SizeType, NumDimensions> extents_type;
 
-/*
- * Note: Not derived from CartesianSpace to provide resizing in O(d)
- *       instead of O(2d).
- */
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
   SizeType     _size             = 0;
-  /// Number of dimensions of the cartesian space, initialized with 0's.
+  /// Number of dimensions in the cartesian space.
   SizeType     _rank             = NumDimensions;
   /// Extents of the cartesian space by dimension.
   extents_type _extents          = {  };
