@@ -9,6 +9,7 @@
 #include <dash/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
+#include <dash/Meta.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -134,16 +135,10 @@ template<
   class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
-  /**
-   * The Cray compiler (as of CCE8.5.6) does not support
-   * std::is_trivially_copyable.
-   *
-   * TODO: Remove the guard once this has been fixed by Cray.
-   */
-#ifndef __CRAYC
-  static_assert(std::is_trivially_copyable<ElementT>::value,
-    "Element type must be trivially copyable");
-#endif
+  static_assert(
+    dash::is_container_compatible<ElementT>::value,
+    "Type not supported for DASH containers");
+
   static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
     "Index type IndexT must be the same for Matrix and specified pattern");
 
@@ -650,3 +645,4 @@ using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
+

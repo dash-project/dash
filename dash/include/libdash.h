@@ -17,6 +17,7 @@ namespace dash {
 #include <dash/internal/Config.h>
 
 #include <dash/Types.h>
+#include <dash/Meta.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
