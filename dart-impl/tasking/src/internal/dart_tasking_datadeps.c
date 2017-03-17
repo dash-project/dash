@@ -399,16 +399,24 @@ dart_ret_t dart_tasking_datadeps_handle_task(
                  task, ndeps, task->phase);
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t dep = deps[i];
-    // translate the offset to an absolute address
-    dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
-    int slot = hash_gptr(dep.gptr);
-    DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i seg:%i addr:%p",
-                   task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
-                   dep.gptr.addr_or_offs.addr);
-
     if (dep.type == DART_DEP_IGNORE) {
       // ignored
       continue;
+    }
+
+    // translate the offset to an absolute address
+    dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
+    int slot = hash_gptr(dep.gptr);
+    DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
+                   "seg:%i addr:%p",
+                   task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
+                   dep.gptr.addr_or_offs.addr);
+
+    if (dep.type == DART_DEP_DIRECT) {
+      dart_task_t *deptask = dep.task;
+      dart_mutex_lock(&(deptask->mutex));
+      dart_tasking_tasklist_prepend(&(deptask->successor), task);
+      dart_mutex_unlock(&(deptask->mutex));
     } else if (dep.gptr.unitid != myid.id) {
       if (task->parent->state == DART_TASK_ROOT) {
         dart_tasking_remote_datadep(&dep, task);
@@ -417,7 +425,8 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       }
     } else {
       /*
-       * iterate over all dependent tasks until we find the first task with OUT|INOUT dependency on the same pointer
+       * iterate over all dependent tasks until we find the first task with
+       * OUT|INOUT dependency on the same pointer
        */
       for (dart_dephash_elem_t *elem = local_deps[slot];
            elem != NULL; elem = elem->next)

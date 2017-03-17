@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+typedef struct dart_task_data dart_task_t;
+typedef dart_task_t* dart_taskref_t;
+
 typedef enum dart_task_deptype {
   DART_DEP_IN,
   DART_DEP_OUT,
@@ -27,13 +30,15 @@ typedef enum dart_task_deptype {
 } dart_task_deptype_t;
 
 typedef struct dart_task_dep {
-  dart_gptr_t         gptr;
+  union {
+    /// use for type INPUT, OUTPUT or INOUT dependencies
+    dart_gptr_t       gptr;
+    /// use for type DIRECT dependencies
+    dart_taskref_t    task;
+  };
   dart_task_deptype_t type;
 } dart_task_dep_t;
 
-typedef struct dart_task_data dart_task_t;
-
-typedef dart_task_t* dart_taskref_t;
 
 /**
  * Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
