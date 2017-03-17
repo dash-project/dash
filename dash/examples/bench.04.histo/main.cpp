@@ -29,11 +29,11 @@ int main(int argc, char **argv)
   dash::Array<int> key_array(NUM_KEYS, dash::BLOCKED);
   dash::Array<int> key_histo(MAX_KEY,  dash::BLOCKED);
   
-  dash::Array<dash::GlobPtr<int>> work_buffers(size, dash::CYCLIC);
+  dash::Array<dash::GlobConstPtr<int>> work_buffers(size, dash::CYCLIC);
   work_buffers[myid] = dash::memalloc<int>(MAX_KEY);
   
-  dash::GlobPtr<int> gptr = work_buffers[myid];
-  int* work_buf = (int*) gptr;
+  dash::GlobConstPtr<int> gptr = work_buffers[myid];
+  int * work_buf = static_cast<int *>(gptr);
   
   if(myid==0) {
     for(int i=0; i<key_array.size(); i++ ) {
@@ -72,10 +72,10 @@ int main(int argc, char **argv)
   }
 
   for(int unit=1; unit<size; unit++ ) {
-    dash::GlobPtr<int> remote = work_buffers[(myid+unit)%size];
+    dash::GlobConstPtr<int> remote = work_buffers[(myid+unit)%size];
     
     for(int i=0; i<key_histo.lsize(); i++ ) { 
-      key_histo.local[i] += remote[goffs+i];
+      key_histo.local[i] += static_cast<int *>(remote)[goffs+i];
     }
   }
   dash::barrier();

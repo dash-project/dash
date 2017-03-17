@@ -43,9 +43,10 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType
-             = GlobMem< typename std::remove_const<ElementType>::type >,
-  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    GlobMemType   = GlobMem<
+                             typename std::decay<ElementType>::type
+                           >,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -357,12 +358,12 @@ public:
    */
   explicit operator const_pointer() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -370,8 +371,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -382,8 +383,10 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.index + offset);
     // Create global pointer from unit and local offset:
     const_pointer gptr(
       _globmem->at(local_pos.unit, local_pos.index)
@@ -399,12 +402,12 @@ public:
    */
   explicit operator pointer()
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -412,8 +415,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -424,8 +427,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.index + offset);
     // Create global pointer from unit and local offset:
     pointer gptr(
       _globmem->at(local_pos.unit, local_pos.index)
@@ -1088,7 +1091,7 @@ std::ostream & operator<<(
           ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, Pattern> ptr(it);
+  dash::GlobPtr<ElementType, GlobMem> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

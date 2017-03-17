@@ -63,7 +63,7 @@ public:
     Team     &    team  = dash::Team::All())
     : _team(&team),
       _owner(owner),
-      _ptr(DART_GPTR_NULL)
+      _ptr(nullptr)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner)()", owner);
     // Shared value is only allocated at unit 0:

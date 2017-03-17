@@ -7,17 +7,22 @@
 
 namespace dash {
 
-// Forward declaration
+// Forward declarations
 template<typename T, class A> class GlobMem;
-// Forward declaration
-template<typename T, class PatternT> class GlobPtr;
-// Forward declaration
-template<typename T, class PatternT>
-void put_value(const T & newval, const GlobPtr<T, PatternT> & gptr);
-// Forward declaration
-template<typename T, class PatternT>
-void get_value(T* ptr, const GlobPtr<T, PatternT> & gptr);
+template<typename T> class GlobConstPtr;
+template<typename T, class MemSpaceT> class GlobPtr;
 
+#if 0
+template<typename T>
+void put_value(const T & newval, const GlobConstPtr<T> & gptr);
+template<typename T, class MemSpaceT>
+void put_value(const T & newval, const GlobPtr<T, MemSpaceT> & gptr);
+
+template<typename T>
+void get_value(T* ptr, const GlobConstPtr<T> & gptr);
+template<typename T, class MemSpaceT>
+void get_value(T* ptr, const GlobPtr<T, MemSpaceT> & gptr);
+#endif
 
 template<typename T>
 struct has_subscript_operator
@@ -69,10 +74,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class PatternT, class ElementT>
+  template<class ElementT, class MemSpaceT>
   explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<ElementT, PatternT> & gptr)
+    GlobPtr<ElementT, MemSpaceT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -80,10 +85,32 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class PatternT, class ElementT>
+  template<class ElementT>
   explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<ElementT, PatternT> & gptr)
+    GlobConstPtr<ElementT> & gptr)
+  : GlobRef(gptr.dart_gptr())
+  { }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
+   */
+  template<class ElementT, class MemSpaceT>
+  explicit constexpr GlobRef(
+    /// Pointer to referenced object in global memory
+    const GlobPtr<ElementT, MemSpaceT> & gptr)
+  : GlobRef(gptr.dart_gptr())
+  { }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
+   */
+  template<class ElementT>
+  explicit constexpr GlobRef(
+    /// Pointer to referenced object in global memory
+    const GlobConstPtr<ElementT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -300,10 +327,10 @@ public:
     return *this;
   }
   
-  template<class PatternT>
-  explicit constexpr operator GlobPtr<T, PatternT>() const {
-    return GlobPtr<T, PatternT>(_gptr);
-  }
+// template<class MemSpaceT>
+// explicit constexpr operator GlobPtr<T, MemSpaceT>() const {
+//   return GlobPtr<T, MemSpaceT>(_gptr);
+// }
 
   constexpr dart_gptr_t dart_gptr() const noexcept {
     return _gptr;
@@ -327,7 +354,9 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    return GlobPtr<T>(_gptr).is_local();
+    dart_team_unit_t luid;
+    dart_team_myid(_gptr.teamid, &luid);
+    return _gptr.unitid == luid.id;
   }
 
   /**
@@ -340,7 +369,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
-    GlobPtr<MEMTYPE> gptr(dartptr);
+    GlobConstPtr<MEMTYPE> gptr(dartptr);
     return GlobRef<MEMTYPE>(gptr);
   }
 

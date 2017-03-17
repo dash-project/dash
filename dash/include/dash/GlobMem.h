@@ -85,16 +85,25 @@ private:
 
 public:
   typedef AllocatorType                                    allocator_type;
-  typedef ElementType                                          value_type;
+//typedef ElementType                                          value_type;
+  typedef typename std::decay<ElementType>::type               value_type;
   typedef typename allocator_type::size_type                    size_type;
   typedef typename allocator_type::difference_type        difference_type;
   typedef typename allocator_type::difference_type             index_type;
+
+#if 0
   typedef typename allocator_type::pointer                        pointer;
-  typedef typename allocator_type::void_pointer              void_pointer;
   typedef typename allocator_type::const_pointer            const_pointer;
+  typedef typename allocator_type::void_pointer              void_pointer;
   typedef typename allocator_type::const_void_pointer  const_void_pointer;
-  typedef          value_type *                             local_pointer;
-  typedef const    value_type *                       local_const_pointer;
+#else
+  typedef       GlobPtr<value_type, self_t>                       pointer;
+  typedef const GlobPtr<value_type, self_t>                 const_pointer;
+  typedef       GlobPtr<void,       self_t>                  void_pointer;
+  typedef const GlobPtr<void,       self_t>            const_void_pointer;
+#endif
+  typedef value_type *                                      local_pointer;
+  typedef value_type * const                          const_local_pointer;
 
 public:
   /**
@@ -228,24 +237,24 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  inline const GlobPtr<value_type> begin() const
+  constexpr const_pointer begin() const
   {
-    return GlobPtr<value_type>(_begptr);
+    return const_pointer(*this, _begptr);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  inline GlobPtr<value_type> begin()
+  inline pointer begin()
   {
-    return GlobPtr<value_type>(_begptr);
+    return pointer(*this, _begptr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  constexpr local_const_pointer lbegin() const
+  constexpr const_local_pointer lbegin() const
   {
     return _lbegin;
   }
@@ -264,7 +273,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  constexpr local_const_pointer lend() const
+  constexpr const_local_pointer lend() const
   {
     return _lend;
   }
@@ -289,7 +298,10 @@ public:
     index_type        global_index)
   {
     DASH_LOG_TRACE("GlobMem.put_value(newval, gidx = %d)", global_index);
-    dash::put_value(newval, GlobPtr<ValueType>(_begptr) + global_index);
+    dash::put_value(newval,
+                    GlobPtr<ValueType, self_t>(
+                      *this, _begptr
+                    ) + global_index);
   }
 
   /**
@@ -303,7 +315,10 @@ public:
     index_type   global_index) const
   {
     DASH_LOG_TRACE("GlobMem.get_value(newval, gidx = %d)", global_index);
-    dash::get_value(ptr, GlobPtr<ValueType>(_begptr) + global_index);
+    dash::get_value(ptr,
+                    GlobPtr<ValueType, self_t>(
+                      *this, _begptr
+                    ) + global_index);
   }
 
   /**
@@ -347,7 +362,7 @@ public:
    * local memory.
    */
   template<typename IndexType>
-  dash::GlobPtr<value_type> at(
+  pointer at(
     /// The unit id
     team_unit_t unit,
     /// The unit's local address offset
@@ -357,7 +372,7 @@ public:
     if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
       DASH_LOG_DEBUG("GlobMem.at(unit,l_idx) >",
                      "global memory not allocated");
-      return dash::GlobPtr<value_type>(nullptr);
+      return pointer(nullptr);
     }
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
@@ -371,7 +386,7 @@ public:
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, lunit);
     // Apply local offset to global pointer:
-    dash::GlobPtr<value_type> res_gptr(gptr);
+    pointer res_gptr(*this, gptr);
     res_gptr += local_index;
     DASH_LOG_DEBUG("GlobMem.at (+g_unit) >", res_gptr);
     return res_gptr;
@@ -389,7 +404,7 @@ private:
     void *addr;
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobMem.update_lbegin",
-                       GlobPtr<value_type>((dart_gptr_t)gptr));
+                       pointer(*this, gptr));
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, _team.myid()),
       DART_OK);
@@ -430,21 +445,32 @@ private:
   local_pointer           _lend       = nullptr;
 };
 
-template<typename T>
-GlobPtr<T> memalloc(size_t nelem)
+template<typename T, class MemSpaceT>
+GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
 {
   dart_gptr_t gptr;
   dart_storage_t ds = dart_storage<T>(nelem);
   if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
-    return GlobPtr<T>(nullptr);
+    return GlobPtr<T, MemSpaceT>(nullptr);
   }
-  return GlobPtr<T>(gptr);
+  return GlobPtr<T, MemSpaceT>(mspace, gptr);
 }
 
 template<typename T>
-void memfree(GlobPtr<T> ptr)
+GlobConstPtr<T> memalloc(size_t nelem)
 {
-  dart_memfree(ptr.dart_gptr());
+  dart_gptr_t gptr;
+  dart_storage_t ds = dart_storage<T>(nelem);
+  if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
+    return GlobConstPtr<T>(nullptr);
+  }
+  return GlobConstPtr<T>(gptr);
+}
+
+template<class GlobPtrT>
+void memfree(GlobPtrT gptr)
+{
+  dart_memfree(gptr.dart_gptr());
 }
 
 } // namespace dash

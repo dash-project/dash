@@ -929,6 +929,15 @@ public:
   }
 
   /**
+   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * in global memory.
+   */
+  constexpr const glob_mem_type & globmem() const noexcept
+  {
+    return *m_globmem;
+  }
+
+  /**
    * Global const pointer to the beginning of the array.
    */
   constexpr const_pointer data() const noexcept

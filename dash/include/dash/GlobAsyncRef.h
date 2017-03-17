@@ -99,15 +99,15 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
-  template<class PatternT>
+  template<class MemSpaceT>
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
     GlobMem_t            * globmem,
     /// Pointer to referenced object in global memory
-    GlobPtr<T, PatternT> & gptr)
-  : _gptr(gptr.dart_gptr()),
-    _is_local(gptr.is_local())
+    GlobPtr<T, MemSpaceT> & gptr)
+  : _gptr(gptr.dart_gptr())
   {
+    _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -119,13 +119,13 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
-  template<class PatternT>
+  template<class MemSpaceT>
   GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<T, PatternT> & gptr)
-  : _gptr(gptr.dart_gptr()),
-    _is_local(gptr.is_local())
+    GlobPtr<T, MemSpaceT> & gptr)
+  : _gptr(gptr.dart_gptr())
   {
+    _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -144,7 +144,7 @@ public:
     dart_gptr_t   dart_gptr)
   : _gptr(dart_gptr)
   {
-    GlobPtr<T> gptr(dart_gptr);
+    GlobConstPtr<T> gptr(dart_gptr);
     _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
@@ -162,7 +162,7 @@ public:
     dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   {
-    GlobPtr<T> gptr(dart_gptr);
+    GlobConstPtr<T> gptr(dart_gptr);
     _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
