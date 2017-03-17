@@ -1176,6 +1176,20 @@ public:
   }
 
   /**
+   * Unit and local block index at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "ShiftTilePattern.local_block_at is not implemented");
+  }
+
+  /**
    * View spec (offset and extents) of block at global linear block index in
    * global cartesian element space.
    */

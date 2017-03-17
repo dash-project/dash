@@ -99,7 +99,7 @@ public:
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  constexpr GlobPtr(std::nullptr_t p) : _dart_gptr(DART_GPTR_NULL)
+  constexpr explicit GlobPtr(std::nullptr_t p) : _dart_gptr(DART_GPTR_NULL)
   { }
 
   /**

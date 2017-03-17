@@ -1,5 +1,5 @@
 
-#include <dash/internal/TypeInfo.h>
+#include <dash/meta/TypeInfo.h>
 
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>

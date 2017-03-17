@@ -3,6 +3,7 @@
 
 #include <type_traits>
 
+#include <dash/Meta.h>
 #include <dash/Range.h>
 
 
@@ -52,24 +53,23 @@ template <class ViewType>
 class IndexSetIdentity;
 
 namespace detail {
+  /**
+   * Definition of type trait \c dash::detail::has_type_domain_type<T>
+   * with static member \c value indicating whether type \c T provides
+   * dependent type \c domain_type.
+   */
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type);
+}
 
-  template<typename T>
-  struct _has_domain_type
-  {
-  private:
-    typedef char                      yes;
-    typedef struct { char array[2]; } no;
-
-    template<typename C> static yes test(typename C::domain_type*);
-    template<typename C> static no  test(...);
-  public:
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
-  };
-
-} // namespace detail
-
+/**
+ * Definition of type trait \c dash::is_view<T>
+ * with static member \c value indicating whether type \c T is a model
+ * of the View concept.
+ */
 template <class ViewableType>
-struct is_view : dash::detail::_has_domain_type<ViewableType> { };
+// struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
+struct is_view : dash::detail::has_type_index_set_type<ViewableType> { };
 
 
 
@@ -87,14 +87,19 @@ namespace detail {
    * Specialization of \c dash::view_traits for view types.
    */
   template <class ViewT>
-  struct _view_traits<ViewT, true, true>
+  struct _view_traits<
+           ViewT,
+           true, // is view
+           true  // is range
+         >
   {
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
     /// Whether the view is the origin domain.
-    typedef std::integral_constant<bool, false>                is_origin;
+    typedef std::integral_constant<bool, false>                 is_origin;
 
     typedef typename ViewT::index_type                            index_type;
+    typedef typename ViewT::size_type                              size_type;
     typedef typename ViewT::index_set_type                    index_set_type;
     typedef typename ViewT::domain_type                          domain_type;
     typedef std::integral_constant<bool,
@@ -123,13 +128,19 @@ namespace detail {
    * Specialization of \c dash::view_traits for container types.
    */
   template <class ContainerT>
-  struct _view_traits<ContainerT, false, true> {
+  struct _view_traits<
+           ContainerT,
+           false, // is view
+           true   // is range
+         >
+  {
     typedef ContainerT                                           origin_type;
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
     typedef ContainerT                                           global_type;
     typedef typename ContainerT::local_type                       local_type;
     typedef typename ContainerT::index_type                       index_type;
+    typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 
     typedef typename ContainerT::pattern_type                   pattern_type;

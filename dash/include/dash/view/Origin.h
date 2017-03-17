@@ -7,6 +7,7 @@
 
 #include <dash/view/Domain.h>
 #include <dash/view/ViewTraits.h>
+#include <dash/view/Local.h>
 
 
 namespace dash {
@@ -17,18 +18,18 @@ namespace dash {
  *
  * \concept{DashViewConcept}
  */
-template <class ContainerT>
-typename dash::view_traits<ContainerT>::origin_type
-origin(const ContainerT & container);
+template <class ViewT>
+typename dash::view_traits<ViewT>::origin_type
+origin(ViewT & view);
 
 #else
 
 template <class ContainerT>
-constexpr typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
-  const typename dash::view_traits<ContainerT>::origin_type &
+typename std::enable_if<
+  dash::view_traits<ContainerT>::is_origin::value,
+  ContainerT &
 >::type
-origin(const ContainerT & container) {
+origin(ContainerT & container) {
   return container;
 }
 
@@ -36,12 +37,62 @@ template <class ViewT>
 constexpr auto
 origin(const ViewT & view)
   -> typename std::enable_if<
-       dash::view_traits<ViewT>::is_view::value,
+       ( dash::view_traits<ViewT>::is_view::value &&
+        !dash::view_traits<ViewT>::is_local::value ),
        const typename dash::view_traits<ViewT>::origin_type &
-    // decltype(dash::origin(dash::domain(view)))
      >::type {
-  // recurse upwards:
-  return dash::origin(dash::domain(view));
+  // Recurse to origin of global view:
+  return dash::origin(view.domain());
+}
+
+
+template <class ContainerT>
+typename std::enable_if<
+  dash::view_traits<ContainerT>::is_origin::value,
+  ContainerT &
+>::type
+global_origin(ContainerT & container) {
+  return container;
+}
+
+template <class ViewT>
+constexpr auto
+global_origin(const ViewT & view)
+  -> typename std::enable_if<
+       !dash::view_traits<ViewT>::is_origin::value,
+       const typename dash::view_traits<ViewT>::origin_type &
+     >::type {
+  // Recurse to origin of local view:
+  return dash::global_origin(view.domain());
+}
+
+template <class ViewT>
+constexpr auto
+origin(const ViewT & view)
+  -> typename std::enable_if<
+       ( dash::view_traits<ViewT>::is_view::value &&
+         dash::view_traits<
+           typename dash::view_traits<ViewT>::domain_type
+         >::is_local::value ),
+       const typename dash::view_traits<ViewT>::origin_type::local_type &
+     >::type {
+  // Recurse to origin of local view:
+  return dash::local(dash::global_origin(view.domain()));
+}
+
+template <class ViewT>
+constexpr auto
+origin(const ViewT & view)
+  -> typename std::enable_if<
+       ( dash::view_traits<ViewT>::is_view::value &&
+         dash::view_traits<ViewT>::is_local::value &&
+        !dash::view_traits<
+           typename dash::view_traits<ViewT>::domain_type
+         >::is_local::value ),
+       const typename dash::view_traits<ViewT>::origin_type &
+     >::type {
+  // Recurse to global origin of local view:
+  return dash::global_origin(view.domain());
 }
 
 #endif // DOXYGEN
