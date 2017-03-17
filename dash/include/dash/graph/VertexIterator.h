@@ -18,8 +18,8 @@ template<typename Graph>
 struct VertexIteratorWrapper {
 
   typedef Graph                                    graph_type;
-  typedef VertexIterator                           iterator;
-  typedef const VertexIterator                     const_iterator;
+  typedef typename Graph::global_vertex_iterator   iterator;
+  typedef const iterator                           const_iterator;
   typedef typename Graph::local_vertex_iterator    local_iterator;
   typedef const local_iterator                     const_local_iterator;
   typedef typename Graph::vertex_index_type        vertex_index_type;
@@ -28,7 +28,7 @@ struct VertexIteratorWrapper {
   /**
    * Constructs the wrapper.
    */
-  VertexIteratorWrapper(graph_type * graph) 
+  VertexIteratorWrapper(graph_type * graph)
     : _graph(graph)
   { }
 
@@ -43,28 +43,28 @@ struct VertexIteratorWrapper {
    * Returns global iterator to the beginning of the vertex list.
    */
   iterator begin() {
-
+    return _graph->_glob_mem_con->begin();
   }
   
   /**
    * Returns global iterator to the beginning of the vertex list.
    */
   const_iterator begin() const {
-
+    return _graph->_glob_mem_con->begin();
   }
   
   /**
    * Returns global iterator to the end of the vertex list.
    */
   iterator end() {
-
+    return _graph->_glob_mem_con->end();
   }
   
   /**
    * Returns global iterator to the end of the vertex list.
    */
   const_iterator end() const {
-
+    return _graph->_glob_mem_con->end();
   }
   
   /**

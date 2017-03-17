@@ -42,23 +42,30 @@ template<
   typename ContainerType>
 class GlobDynamicContiguousMem
 {
-template<
-  typename ContainerType>
-class GlobDynamicContiguousMem
-{
 private:
-  typedef GlobDynamicContiguousMem<ContainerType>
-    self_t;
+  typedef GlobDynamicContiguousMem<ContainerType>         self_t;
+
 
 public:
-  typedef ContainerType                                      container_type;
-  typedef typename ContainerType::value_type                 value_type;
-  typedef typename ContainerType::difference_type            index_type;
-  typedef LocalBucketIter<value_type, index_type>            local_iterator;
-  typedef typename ContainerType::size_type                  size_type;
-  typedef typename local_iterator::bucket_type               bucket_type;
+  typedef ContainerType                                   container_type;
+  typedef typename ContainerType::value_type              value_type;
+  typedef typename ContainerType::difference_type         index_type;
+  typedef LocalBucketIter<value_type, index_type>         local_iterator;
+  typedef GlobBucketIter<value_type, self_t>              global_iterator;
+  typedef typename ContainerType::size_type               size_type;
+  typedef typename local_iterator::bucket_type            bucket_type;
   // TODO: use std::array instead of list -> change LocalBucketIter
-  typedef typename std::list<bucket_type>                    bucket_list;
+  typedef typename std::list<bucket_type>                 bucket_list;
+  typedef local_iterator                                  local_pointer;
+  typedef local_iterator                                  const_local_pointer;
+
+private:
+  
+  typedef std::vector<std::vector<size_type> >
+    bucket_cumul_sizes_map;
+
+  template<typename T_, class GMem_, class Ptr_, class Ref_>
+  friend class dash::GlobBucketIter;
 
 public:
   /**
@@ -78,7 +85,8 @@ public:
     _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
-    _myid(team.myid())
+    _myid(team.myid()),
+    _bucket_cumul_sizes(team.size())
   {
     _container->reserve(n_local_elem);
     bucket_type cont_bucket { 
@@ -95,6 +103,10 @@ public:
     };
     _buckets.push_back(cont_bucket);
     _buckets.push_back(unattached_cont_bucket);
+    for(auto it = _bucket_cumul_sizes.begin(); 
+        it != _bucket_cumul_sizes.end(); ++it) {
+      it->resize(1);
+    }
   }
 
   /**
@@ -140,6 +152,28 @@ public:
         _team->dart_id(), ds.nelem, ds.dtype, _container->data(), &gptr);
     it = _buckets.begin();
     it->gptr = gptr;
+
+    // distribute bucket sizes between all units
+    size_type current_size = _container->size();
+    std::vector<size_type> bucket_sizes(_team->size());
+    dart_allgather(&current_size, bucket_sizes.data(), 
+        sizeof(size_type), DART_TYPE_BYTE, _team->dart_id());
+    _size = 0;
+    for(int i = 0; i < _team->size(); ++i) {
+      _bucket_cumul_sizes[i][0] = bucket_sizes[i];
+      _size += bucket_sizes[i];
+    }
+
+    _begin = global_iterator(this, 0);
+    _end = _begin + _size;
+  }
+
+  global_iterator begin() {
+    return _begin;
+  }
+
+  global_iterator end() {
+    return _end;
   }
 
   local_iterator lbegin() {
@@ -168,12 +202,14 @@ public:
     ++(it->size);
     update_lbegin();
     update_lend();
+    _bucket_cumul_sizes[_myid][0] += 1;
   }
 
    /**
    * Global pointer referencing an element position in a unit's bucket.
    */
-  dart_gptr_t dart_gptr_at(team_unit_t unit, index_type bucket_phase) {
+  dart_gptr_t dart_gptr_at(team_unit_t unit, 
+      index_type bucket_index, index_type bucket_phase) {
     // we only have 1 global pointer for _container
     auto bucket = *_buckets.begin();
     auto dart_gptr = bucket.gptr;
@@ -192,6 +228,14 @@ public:
         DART_OK);
     }
     return dart_gptr;
+  }
+
+  size_type size() {
+    return _size;
+  }
+
+  Team & team() {
+    return (_team != nullptr) ? *_team : dash::Team::Null();
   }
 
 private:
@@ -239,8 +283,12 @@ private:
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
   team_unit_t                _myid{DART_UNDEFINED_UNIT_ID};
+  global_iterator            _begin;
+  global_iterator            _end;
   local_iterator             _lbegin;
   local_iterator             _lend;
+  bucket_cumul_sizes_map     _bucket_cumul_sizes;
+  size_type                  _size = 0;
 
 };
 

@@ -72,14 +72,14 @@ private:
 
   friend vertex_it_wrapper;
 
-  typedef internal::vertex<EdgeContainer, 
-          VertexProperties>                           vertex_type;
-  typedef internal::out_edge<VertexIndexType, 
-          EdgeProperties>                             edge_type;
   typedef GlobDynamicContiguousMem<VertexContainer>   glob_mem_con_type;
 
 public:
 
+  typedef internal::vertex<EdgeContainer, 
+          VertexProperties>                           vertex_type;
+  typedef internal::out_edge<VertexIndexType, 
+          EdgeProperties>                             edge_type;
   typedef VertexIndexType                             vertex_index_type;
   typedef EdgeIndexType                               edge_index_type;
   typedef typename 
@@ -95,6 +95,7 @@ public:
 
   typedef GlobRef<vertex_type>                        reference;
 
+  typedef typename glob_mem_con_type::global_iterator global_vertex_iterator;
   typedef typename glob_mem_con_type::local_iterator  local_vertex_iterator;
 
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
@@ -205,7 +206,7 @@ public:
   void deallocate();
 
   vertex_type test() {
-    auto gptr = _glob_mem_con->dart_gptr_at(team_unit_t(0), 0);
+    auto gptr = _glob_mem_con->dart_gptr_at(team_unit_t(1), 0, 0);
     return reference(gptr);
   }
 
