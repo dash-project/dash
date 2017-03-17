@@ -335,7 +335,7 @@ void perform_test(
 
   if (myid == 0) {
     if (iteration == 0) {
-      cout << "-- Pattern: " << dash::internal::typestr(pattern) << endl
+      cout << "-- Pattern: " << dash::typestr(pattern) << endl
            << "--" << endl;
       // Print data set column headers:
       cout << std::right

@@ -2,7 +2,8 @@
 #define DASH__INTERNAL__STREAM_CONVERSION_H_
 
 #include <dash/internal/Macro.h>
-#include <dash/internal/TypeInfo.h>
+
+#include <dash/meta/TypeInfo.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -122,7 +123,7 @@ auto operator<<(
 
   std::ostringstream ss;
   int pos = 0;
-  ss << dash::internal::typestr(*dash::begin(rng))
+  ss << dash::typestr(*dash::begin(rng))
      << " { ";
   for (auto it = dash::begin(rng); it != dash::end(rng); ++it, ++pos) {
     ss << static_cast<const value_t>(*it) << " ";
@@ -167,7 +168,7 @@ auto operator<<(
   auto && rng = std::forward<Range>(range);
 
   std::ostringstream ss;
-  ss << dash::internal::typestr(*dash::begin(rng))
+  ss << dash::typestr(*dash::begin(rng))
      << " { ";
   for (auto it = dash::begin(rng); it != dash::end(rng); ++it) {
     ss << static_cast<const value_t>(*it) << " ";

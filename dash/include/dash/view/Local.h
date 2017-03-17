@@ -28,7 +28,7 @@ constexpr auto
 local(ViewType & v)
 -> typename std::enable_if<
      ( std::is_pointer< typename ViewType::iterator >::value ||
-       ( dash::view_traits<ViewValueT>::is_origin::value &&
+       ( // dash::view_traits<ViewValueT>::is_origin::value &&
          dash::view_traits<ViewValueT>::is_local::value ) ),
      ViewType &
    >::type {
@@ -103,7 +103,8 @@ template <
 constexpr auto
 local(ViewType && v)
 -> typename std::enable_if<
-     dash::view_traits<ViewValueT>::is_view::value,
+    ( dash::view_traits<ViewValueT>::is_view::value &&
+     !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(std::forward<ViewType>(v).local())
    >::type {
  return std::forward<ViewType>(v).local();

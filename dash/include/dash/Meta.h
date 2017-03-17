@@ -1,6 +1,8 @@
 #ifndef DASH__META_H__INCLUDED
 #define DASH__META_H__INCLUDED
 
+#include <dash/meta/TypeInfo.h>
+
 #include <type_traits>
 
 
@@ -69,6 +71,10 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
 
 
+/**
+ * Type trait indicating whether the specified type is eligible for
+ * elements of DASH containers.
+ */
 template <class T>
 struct is_container_compatible :
   public std::integral_constant<bool,
@@ -127,7 +133,8 @@ template<typename T> adv<T> make_adv(T && value) {
 
 } // namespace dash
 
-namespace std { 
+namespace std {
+  // Must be defined in global std namespace.
   template<typename T> 
   struct is_bind_expression< dash::adv<T> > : std::true_type {}; 
 } 

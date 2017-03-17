@@ -2,8 +2,8 @@
 #define DASH__VIEW__VIEW_ITERATOR_H__INCLUDED
 
 #include <dash/GlobPtr.h>
-#include <dash/util/internal/IteratorBase.h>
-#include <dash/internal/TypeInfo.h>
+#include <dash/iterator/internal/IteratorBase.h>
+#include <dash/meta/TypeInfo.h>
 
 #include <iostream>
 #include <sstream>
@@ -179,7 +179,7 @@ std::ostream & operator<<(
   const ViewIterator<DomainT, IndexSetT> & view_it)
 {
   std::ostringstream ss;
-  ss << dash::internal::typestr(view_it) << " "
+  ss << dash::typestr(view_it) << " "
      << "{ "
      << "domain_it: " << view_it._domain_it << ", "
      << "rpos: "      << view_it.pos()      << ", "

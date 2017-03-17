@@ -384,20 +384,9 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*()
+  inline reference operator*()
   {
-    DASH_LOG_TRACE("GlobIter.*()", _idx);
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    index_type idx = _idx;
-    // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE("GlobIter.* >",
-                   "unit:", local_pos.unit, "index:", local_pos.index);
-    // Global reference to element at given position:
-    return reference(
-             _globmem->at(local_pos.unit,
-                          local_pos.index));
+    return this->operator[](_idx);
   }
 
   /**
@@ -405,20 +394,9 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  const_reference operator*() const
+  inline const_reference operator*() const
   {
-    DASH_LOG_TRACE("GlobIter.*", _idx);
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    index_type idx = _idx;
-    // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
-    // Global reference to element at given position:
-    return const_reference(
-             _globmem->at(local_pos.unit,
-                          local_pos.index));
+    return this->operator[](_idx);
   }
 
   /**
@@ -429,15 +407,14 @@ public:
     /// The global position of the element
     index_type g_index)
   {
-    DASH_LOG_TRACE("GlobIter.[]", g_index);
-    index_type idx = g_index;
     typedef typename pattern_type::local_index_t
       local_pos_t;
     // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
+    local_pos_t local_pos = _pattern->local(g_index);
     // Global reference to element at given position:
+    DASH_LOG_TRACE("GlobIter.[]",
+                   "(index:", g_index, ") ->",
+                   "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     return reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));
@@ -451,15 +428,14 @@ public:
     /// The global position of the element
     index_type g_index) const
   {
-    DASH_LOG_TRACE("GlobIter.[]", g_index);
-    index_type idx = g_index;
     typedef typename pattern_type::local_index_t
       local_pos_t;
     // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
+    local_pos_t local_pos = _pattern->local(g_index);
     // Global reference to element at given position:
+    DASH_LOG_TRACE("GlobIter.[]",
+                   "(index:", g_index, ") ->",
+                   "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     return const_reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));

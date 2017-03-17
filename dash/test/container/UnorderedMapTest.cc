@@ -1,6 +1,7 @@
 
 #include "UnorderedMapTest.h"
 
+#include <dash/Meta.h>
 #include <dash/UnorderedMap.h>
 #include <dash/Atomic.h>
 
@@ -531,7 +532,7 @@ TEST_F(UnorderedMapTest, MappedAtomics)
 
       DASH_LOG_DEBUG("UnorderedMapTest.Local",
                      "return type of map.find(key):",
-                     dash::internal::typestr(found));
+                     dash::typestr(found));
 
       EXPECT_NE_U(map.end(), found);
       map_value found_value = *found;

@@ -1,6 +1,7 @@
 
 #include "STLAlgorithmTest.h"
 
+#include <dash/Meta.h>
 #include <dash/Array.h>
 #include <dash/Pair.h>
 
@@ -96,7 +97,7 @@ TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
 
     for (int l = 0; l < array_a.size(); l++) {
       DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal",
-                         dash::internal::typestr(array_b[l]));
+                         dash::typestr(array_b[l]));
       array_b[l] = array_a[l];
     }
     DASH_LOG_DEBUG_VAR("STLAlgorithmTest.StdCopyGlobalToGlobal", array_b);

@@ -3,6 +3,7 @@
 
 #include <dash/algorithm/SUMMA.h>
 #include <dash/Matrix.h>
+#include <dash/Meta.h>
 
 #include <sstream>
 #include <iomanip>
@@ -77,7 +78,7 @@ TEST_F(SUMMATest, Deduction)
   LOG_MESSAGE("Deduced pattern: %s "
               "size(%lu,%lu) tilesize(%lu,%lu) "
               "teamsize(%lu,%lu) disttype(%d,%d)",
-              dash::internal::typestr(pattern).c_str(),
+              dash::typestr(pattern).c_str(),
               pattern.extent(0),
               pattern.extent(1),
               pattern.block(0).extent(0),

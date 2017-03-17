@@ -17,7 +17,7 @@
 #include <dash/util/ArrayExpr.h>
 #include <dash/util/IndexSequence.h>
 
-#include <dash/util/internal/IteratorBase.h>
+#include <dash/iterator/internal/IteratorBase.h>
 
 #include <memory>
 
