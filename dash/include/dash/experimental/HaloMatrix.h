@@ -16,7 +16,7 @@
 namespace dash {
 namespace experimental {
 
-template<typename MatrixT>
+template<typename MatrixT,typename StencilSpecT>
 class HaloMatrixWrapper
 {
 private:
@@ -25,7 +25,7 @@ private:
   using index_type   = typename MatrixT::index_type;
   using ElementT     = typename MatrixT::value_type;
   using ViewSpecT    = ViewSpec<MatrixT::ndim(), index_type>;
-  using SelfT        = HaloMatrixWrapper<MatrixT>;
+  using SelfT        = HaloMatrixWrapper<MatrixT, StencilSpecT>;
   using HaloSpecT = HaloSpec<MatrixT::ndim()>;
   using CycleSpecT   = CycleSpec<MatrixT::ndim()>;
   using HaloBlockT   = HaloBlock<ElementT, PatternT>;
@@ -53,9 +53,9 @@ public:
   using const_iterator_bnd   = const iterator_inner;
 
 public:
-  HaloMatrixWrapper(MatrixT& matrix, const HaloSpecT& halo_reg_spec,
+  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,
                     const CycleSpecT& cycle_spec = CycleSpecT())
-      : _matrix(matrix), _halo_reg_spec(halo_reg_spec), _view_local(matrix.local.extents()),
+      : _matrix(matrix), _stencil_spec(stencil_spec), _halo_reg_spec(stencil_spec), _view_local(matrix.local.extents()),
         _view_global(ViewSpecT(matrix.local.offsets(), matrix.local.extents())),
         _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global, _halo_reg_spec,
                    cycle_spec),
@@ -210,8 +210,9 @@ private:
   }
 
 private:
-  MatrixT &              _matrix;
-  const HaloSpecT &      _halo_reg_spec;
+  MatrixT&               _matrix;
+  const StencilSpecT&    _stencil_spec;
+  const HaloSpecT        _halo_reg_spec;
   const ViewSpecT        _view_local;
   const ViewSpecT        _view_global;
   const HaloBlockT       _haloblock;

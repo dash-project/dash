@@ -106,28 +106,47 @@ public:
 
   index_type rpos() const { return _idx; }
 
-  /*ElementT stencil_value(index_t index) {
+  /*ElementT valueAt(const index_t index) {
     // TODO: is the given offset in halospec range?
 
-    auto halo_coords{_coords};
-    for (auto d(0); d < NumDimensions; ++d)
-      halo_coords[d] += position[d];
-
     if (Scope == StencilViewScope::INNER) {
-      return _local_memory[_local_layout.at(halo_coords)];
+      return *haloPos(stencil);
     } else {
+      auto halo_coords{_coords};
+
       for (auto d(0); d < NumDimensions; ++d) {
+        halo_coords[d] += stencil[d];
+        //TODO check wether region is nullptr or not
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d)) {
+          //TODO implement as method in HaloRegionSpec
+          index_t index = 0;
+          using signed_extent_t =
+              typename std::make_signed<typename local_layout_t::size_type>::type;
+          if (halo_coords[0] >= 0 &&
+              halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
+            index = 1;
+          else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
+            index = 2;
+          for(auto d_tmp(1); d_tmp < NumDimensions; ++d_tmp) {
+            if(halo_coords[d_tmp] < 0)
+              index *= 3;
+            else if (halo_coords[d_tmp] < static_cast<signed_extent_t>(_local_layout.extent(0)))
+              index = 1 + index * 3;
+            else
+              index = 2 + index * 3;
+          }
+
           const auto& extents = _haloblock.halo_region(index)->region().extents();
           for (auto d_tmp(d); d_tmp < NumDimensions; ++d_tmp) {
+            if(d_tmp > d)
+              halo_coords[d_tmp] += stencil[d_tmp];
             if (halo_coords[d_tmp] < 0) {
               halo_coords[d_tmp] = extents[d_tmp] + halo_coords[d_tmp];
               continue;
             }
-            if (halo_coords[d] >= _haloblock.view().extent(d))
-              halo_coords[d_tmp] -= _haloblock.view().extent(d);
+            if (halo_coords[d_tmp] >= _haloblock.view().extent(d_tmp))
+              halo_coords[d_tmp] -= _haloblock.view().extent(d_tmp);
           }
-
           size_type off = 0;
           if (MemoryArrange == ROW_MAJOR) {
             off = halo_coords[0];
@@ -143,7 +162,7 @@ public:
         }
       }
 
-      return _local_memory[_local_layout.at(halo_coords)];
+      return *haloPos(stencil);
     }
   }*/
 
@@ -161,21 +180,22 @@ public:
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d)) {
           //TODO implement as method in HaloRegionSpec
           index_t index = 0;
-
-          if (halo_coords[0] >= 0 && halo_coords[0] < _local_layout.extent(0))
+          using signed_extent_t =
+              typename std::make_signed<typename local_layout_t::size_type>::type;
+          if (halo_coords[0] >= 0 &&
+              halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
             index = 1;
-          else if (halo_coords[0] >= _local_layout.extent(0))
+          else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
             index = 2;
           for(auto d_tmp(1); d_tmp < NumDimensions; ++d_tmp) {
             if(halo_coords[d_tmp] < 0)
               index *= 3;
-            else if (halo_coords[d_tmp] < _local_layout.extent(d_tmp))
+            else if (halo_coords[d_tmp] < static_cast<signed_extent_t>(_local_layout.extent(0)))
               index = 1 + index * 3;
             else
               index = 2 + index * 3;
           }
 
-          std::cout << halo_coords[0] << "," << halo_coords[1] << " " << index << std::endl;
           const auto& extents = _haloblock.halo_region(index)->region().extents();
           for (auto d_tmp(d); d_tmp < NumDimensions; ++d_tmp) {
             if(d_tmp > d)
