@@ -542,7 +542,7 @@ public:
    * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
-   * TODO: Unoptimized
+   * \todo Unoptimized
    *
    * \see  DashPatternConcept
    */
@@ -557,7 +557,7 @@ public:
   /**
    * Converts global index to its associated unit and respective local index.
    *
-   * TODO: Unoptimized
+   * \todo Unoptimized
    *
    * \see  DashPatternConcept
    */

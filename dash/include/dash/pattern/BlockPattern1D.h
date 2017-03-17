@@ -1194,41 +1194,6 @@ private:
              )
            );
 
-#if 0
-    if (_nunits == 0) {
-      return 0;
-    }
-    // Coordinates of local unit id in team spec:
-    SizeType l_extent     = 0;
-    // Minimum number of blocks local to every unit in dimension:
-    auto min_local_blocks = _nblocks / _nunits;
-    // Possibly there are more blocks than units in dimension and no
-    // block left for this unit. Local extent in d then becomes 0.
-    l_extent = min_local_blocks * _blocksize;
-    if (_nblocks == 1 && _nunits == 1) {
-      // One block assigned to one unit, use full extent in dimension:
-      l_extent = _size;
-    } else {
-      // Number of additional blocks for this unit, if any:
-      IndexType num_add_blocks = static_cast<IndexType>(
-                                   _nblocks % _nunits);
-      // Unit id assigned to the last block in dimension:
-      team_unit_t last_block_unit(((_nblocks % _nunits == 0)
-                                        ? _nunits - 1
-                                        : (_nblocks % _nunits) - 1));
-      if (unit < num_add_blocks) {
-        // Unit is assigned to an additional block:
-        l_extent += _blocksize;
-      }
-      if (unit == last_block_unit) {
-        // If the last block in the dimension is underfilled and
-        // assigned to the local unit, subtract the missing extent:
-        SizeType undfill_blocksize = underfilled_blocksize(0);
-        l_extent -= undfill_blocksize;
-      }
-    }
-    return l_extent;
-#endif
   }
 };
 
