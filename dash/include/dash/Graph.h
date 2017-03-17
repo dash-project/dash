@@ -117,55 +117,79 @@ public:
   /**
    * Constructs an empty graph.
    */
-  Graph(vertex_size_type nvertices = 0, Team & team  = dash::Team::All());
+  Graph(vertex_size_type nvertices = 0, Team & team  = dash::Team::All()) 
+    : _team(&team),
+      _myid(team.myid())
+  {
+    allocate(nvertices);
+  }
 
   /** Destructs the graph.
    */
-  ~Graph();
+  ~Graph() {
+    deallocate();
+  }
 
   /**
    * Returns the number of vertices in the whole graph.
    */
-  const vertex_size_type num_vertices() const;
+  const vertex_size_type num_vertices() const {
+
+  }
 
   /**
    * Returns the index of the vertex with the highest index in the whole graph.
    */
-  const vertex_index_type max_vertex_index() const;
+  const vertex_index_type max_vertex_index() const {
+
+  }
 
   /**
    * Returns the number of edges in the whole graph.
    */
-  const edge_size_type num_edges() const;
+  const edge_size_type num_edges() const {
+
+  }
 
   /**
    * Returns the index of the edge with the highest index in the whole graph.
    */
-  const edge_index_type max_edge_index() const;
+  const edge_index_type max_edge_index() const {
+
+  }
 
   /**
    * Returns, whether the graph is empty.
    */
-  bool empty() const;
+  bool empty() const {
+    return true;
+  }
 
   /**
    * Adds a vertex with the given properties.
    * NOTE: global method.
    */
   vertex_index_type add_vertex(const VertexProperties & prop 
-      = VertexProperties());
+      = VertexProperties()) {
+    vertex_type v(prop);
+    _glob_mem_con->push_back(v);
+  }
 
   /**
    * Removes a given vertex.
    * NOTE: global method.
    */
-  void remove_vertex(const vertex_index_type & v);
+  void remove_vertex(const vertex_index_type & v) {
+    
+  }
 
   /**
    * Removes all edges (in & out) from the given vertex).
    * NOTE: global method.
    */
-  void clear_vertex(vertex_index_type & v);
+  void clear_vertex(vertex_index_type & v) {
+
+  }
 
   /**
    * Adds an edge between two given vertices with the given properties 
@@ -174,36 +198,54 @@ public:
    */
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
       const vertex_index_type & v2, 
-      const EdgeProperties & prop = EdgeProperties());
+      const EdgeProperties & prop = EdgeProperties()) {
 
+  }
   /**
    * Removes an edge between two given vertices.
    * NOTE: global method.
    */
   void remove_edge(const vertex_index_type & v1, 
-      const vertex_index_type & v2);
+      const vertex_index_type & v2) {
+
+  }
 
   /**
    * Removes a given edge.a9f5c03d9de8dda4
    * NOTE: global method.
    */
-  void remove_edge(const edge_index_type & e);
+  void remove_edge(const edge_index_type & e) {
+
+  }
 
   /**
    * Commits local changes performed by methods classified as "global" to
    * the whole data structure.
    */
-  void barrier();
+  void barrier() {
+    _glob_mem_con->commit();
+  }
 
   /**
    * Globally allocates memory for vertex storage.
    */
-  bool allocate(vertex_size_type nvertices);
+  bool allocate(vertex_size_type nvertices) {
+    auto lcap = dash::math::div_ceil(nvertices, _team->size());
+    _glob_mem_con = new glob_mem_con_type(lcap, *_team);
+    // Register deallocator at the respective team instance
+    _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
+  }
 
   /**
    * Deallocates global memory of this container.
    */
-  void deallocate();
+  void deallocate() {
+    if(_glob_mem_con != nullptr) {
+      delete _glob_mem_con;
+    }
+    // Remove deallocator from the respective team instance
+    _team->unregister_deallocator(this, std::bind(&Graph::deallocate, this));
+  }
 
   vertex_type test() {
     auto gptr = _glob_mem_con->dart_gptr_at(team_unit_t(1), 0, 0);
@@ -222,8 +264,6 @@ private:
 };
 
 }
-
-#include <dash/graph/Graph-impl.h>
 
 #endif // DASH__GRAPH_H__INCLUDED
 
