@@ -85,7 +85,6 @@ public:
   typedef ElementType                                  value_type;
   typedef GlobPtr<const ElementType, MemorySpace>      const_type;
   typedef typename dash::default_index_t               index_type;
-//typedef PatternType                                pattern_type;
 
   typedef index_type                                   gptrdiff_t;
 
@@ -659,6 +658,76 @@ class GlobConstPtr
   constexpr GlobRef<const value_type> operator*() const
   {
     return base_t::operator*();
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator==(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator==(other);
+  }
+
+  /**
+   * Inequality comparison operator.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator!=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator!=(other);
+  }
+
+  /**
+   * Less comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator<(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator<(other);
+  }
+
+  /**
+   * Less-equal comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator<=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator<=(other);
+  }
+
+  /**
+   * Greater comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator>(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator>(other);
+  }
+
+  /**
+   * Greater-equal comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator>=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator>=(other);
   }
 };
 

@@ -646,14 +646,14 @@ TEST_F(MatrixTest, ViewIteration)
     int gcoord_y = block_base_coord_y + phase_y;
     ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
 
-    using glob_it_t  = decltype(matrix.begin());
-    using glob_ptr_t = typename glob_it_t::pointer;
+    using glob_it_t   = decltype(matrix.begin());
+    using glob_ptr_t  = typename glob_it_t::pointer;
+    using glob_cptr_t = dash::GlobConstPtr<int>;
 
     // Apply view projection by converting to GlobPtr:
-    glob_ptr_t block_elem_gptr = static_cast<glob_ptr_t>(b_it);
+    glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
     // Compare with GlobPtr from global iterator without view projection:
-    glob_ptr_t glob_elem_gptr  = static_cast<glob_ptr_t>(
-                                   matrix[gcoord_x].begin() + gcoord_y);
+    glob_cptr_t glob_elem_gptr(matrix[gcoord_x][gcoord_y].dart_gptr());
     int block_value = *block_elem_gptr;
     int glob_value  = *glob_elem_gptr;
     ASSERT_EQ_U(glob_value,

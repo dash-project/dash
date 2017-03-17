@@ -85,7 +85,6 @@ private:
 
 public:
   typedef AllocatorType                                    allocator_type;
-//typedef ElementType                                          value_type;
   typedef typename std::decay<ElementType>::type               value_type;
   typedef typename allocator_type::size_type                    size_type;
   typedef typename allocator_type::difference_type        difference_type;
@@ -97,13 +96,13 @@ public:
   typedef typename allocator_type::void_pointer              void_pointer;
   typedef typename allocator_type::const_void_pointer  const_void_pointer;
 #else
-  typedef       GlobPtr<value_type, self_t>                       pointer;
-  typedef const GlobPtr<value_type, self_t>                 const_pointer;
-  typedef       GlobPtr<void,       self_t>                  void_pointer;
-  typedef const GlobPtr<void,       self_t>            const_void_pointer;
+  typedef GlobPtr<      value_type, self_t>                       pointer;
+  typedef GlobPtr<const value_type, self_t>                 const_pointer;
+  typedef GlobPtr<      void,       self_t>                  void_pointer;
+  typedef GlobPtr<const void,       self_t>            const_void_pointer;
 #endif
-  typedef value_type *                                      local_pointer;
-  typedef value_type * const                          const_local_pointer;
+  typedef       value_type *                                local_pointer;
+  typedef const value_type *                          const_local_pointer;
 
 public:
   /**
