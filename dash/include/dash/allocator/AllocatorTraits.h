@@ -5,50 +5,57 @@
 
 #include <memory>
 
-
 namespace dash {
 
-
-
-struct collective_allocator_tag { };
-
-struct noncollective_allocator_tag { };
-
-template <class Allocator>
-struct allocator_traits : public std::allocator_traits<Allocator>
-{
-  typedef typename Allocator::allocator_category      allocator_category;
-
-  /* std::allocator_traits takes care of this stuff */
-  /*
-  typedef typename allocator_type::value_type                   value_type;
-  typedef typename allocator_type::pointer                         pointer;
-
-  typedef typename
-      dash::pointer_traits<pointer>::template rebind<const value_type>
-    const_pointer;
-  typedef typename
-      dash::pointer_traits<pointer>::template rebind<void>
-    void_pointer;
-  typedef typename
-      dash::pointer_traits<pointer>::template rebind<const void>
-    const_void_pointer;
-
-  typedef typename dash::pointer_traits<pointer>::difference_type
-    difference_type;
-  typedef typename std::make_unsigned<difference_type>::type
-    size_type;
-
-  template <class U>
-  using rebind_alloc  = typename Allocator::template rebind<U>::other;
-
-  template <class U>
-  using rebind_traits = dash::allocator_traits<
-                          typename Allocator::template rebind<U> >;
-                          */
-
+struct collective_allocator_tag {
 };
 
-} // namespace dash
+struct noncollective_allocator_tag {
+};
 
-#endif // DASH__ALLOCATOR__ALLOCATOR_TRAITS_H__INCLUDED
+template <class Allocator>
+struct allocator_traits {
+
+  typedef Allocator allocator_type;
+
+  typedef typename allocator_type::allocator_category allocator_category;
+  typedef typename allocator_type::local_pointer local_pointer;
+
+  //
+  typedef typename allocator_type::value_type value_type;
+  typedef typename allocator_type::pointer pointer;
+
+  /*
+  typedef
+      typename dash::pointer_traits<pointer>::template rebind<const value_type>
+          const_pointer;
+  typedef typename dash::pointer_traits<pointer>::template rebind<void>
+      void_pointer;
+  typedef typename dash::pointer_traits<pointer>::template rebind<const void>
+      const_void_pointer;
+      */
+
+  typedef typename allocator_type::const_pointer const_pointer;
+  typedef typename allocator_type::void_pointer void_pointer;
+  typedef typename allocator_type::const_void_pointer const_void_pointer;
+
+  typedef typename allocator_type::difference_type difference_type;
+  typedef typename allocator_type::size_type size_type;
+
+  /*
+  typedef
+      typename dash::pointer_traits<pointer>::difference_type difference_type;
+  typedef typename std::make_unsigned<difference_type>::type size_type;
+  */
+
+  template <class U>
+  using rebind_alloc = typename allocator_type::template rebind<U>::other;
+
+  template <class U>
+  using rebind_traits =
+      dash::allocator_traits<rebind_alloc<U>>;
+};
+
+}  // namespace dash
+
+#endif  // DASH__ALLOCATOR__ALLOCATOR_TRAITS_H__INCLUDED
