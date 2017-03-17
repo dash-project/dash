@@ -237,6 +237,7 @@ TEST_F(AtomicTest, MutexInterface){
   
   mx.lock();
   int tmp = shared.get();
+  std::this_thread::sleep_for(std::chrono::microseconds(100));
   shared.set(tmp + 1);
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(shared.get()));
   // I guess here a flush is required, blocked by issue 322
@@ -244,11 +245,10 @@ TEST_F(AtomicTest, MutexInterface){
   
   dash::barrier();
   
-  while(!mx.try_lock()){
-    std::this_thread::sleep_for(std::chrono::microseconds(100));
-  }
+  while(!mx.try_lock()){  }
   // lock aquired
   tmp = shared.get();
+  std::this_thread::sleep_for(std::chrono::microseconds(100));
   shared.set(tmp + 1);
   mx.unlock();
   
