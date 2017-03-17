@@ -1,4 +1,7 @@
+
 #include <map>
+
+#ifdef DART_ENABLE_AYUDAME
 
 #include <ayudame.h>
 #include <pthread.h>
@@ -100,3 +103,5 @@ void dart__tasking__ayudame_add_dependency(void *srctask, void *dsttask)
     ayu_event(AYU_ADDDEPENDENCY, data);
   }
 }
+
+#endif // DART_ENABLE_AYUDAME

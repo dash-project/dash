@@ -326,7 +326,9 @@ dart__base__tasking__init()
     }
   }
 
+#ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_init();
+#endif // DART_ENABLE_AYUDAME
 
   initialized = true;
 
@@ -526,7 +528,9 @@ dart__tasking__fini()
     dart_thread_finalize(&thread_pool[i]);
   }
 
+#ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_fini();
+#endif // DART_ENABLE_AYUDAME
 
   dart_task_t *task = task_recycle_list;
   while (task != NULL) {

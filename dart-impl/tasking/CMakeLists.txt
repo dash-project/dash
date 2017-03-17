@@ -75,7 +75,7 @@ endforeach()
 # Compile flags
 set_target_properties(
   ${DASH_DART_IMPL_TASKING_LIBRARY} PROPERTIES
-  COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR}
+  COMPILE_FLAGS "${ADDITIONAL_COMPILE_FLAGS_STR}"
 )
 
 ## Installation
