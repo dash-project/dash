@@ -38,6 +38,8 @@ std::ostream & operator<<(
  * types which perform a mapping of local and global index sets
  * specified by a \c Pattern.
  *
+ * \todo Distance between two global pointers is not well-defined yet.
+ *
  * \see GlobIter
  * \see GlobViewIter
  * \see DashPatternConcept
@@ -201,8 +203,9 @@ public:
   /**
    * Pointer distance operator.
    *
-   * TODO: Distance between two global pointers is not well-defined yet.
-   *       This method is only provided to comply to the pointer concept.
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
    */
   constexpr index_type operator-(const self_t & rhs) const noexcept
   {
@@ -254,8 +257,9 @@ public:
   /**
    * Less comparison operator.
    *
-   * TODO: Distance between two global pointers is not well-defined yet.
-   *       This method is only provided to comply to the pointer concept.
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
   constexpr bool operator<(const GlobPtrT & other) const noexcept
@@ -278,8 +282,9 @@ public:
   /**
    * Less-equal comparison operator.
    *
-   * TODO: Distance between two global pointers is not well-defined yet.
-   *       This method is only provided to comply to the pointer concept.
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
   constexpr bool operator<=(const GlobPtrT & other) const noexcept
@@ -302,8 +307,9 @@ public:
   /**
    * Greater comparison operator.
    *
-   * TODO: Distance between two global pointers is not well-defined yet.
-   *       This method is only provided to comply to the pointer concept.
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
   constexpr bool operator>(const GlobPtrT & other) const noexcept
@@ -326,8 +332,9 @@ public:
   /**
    * Greater-equal comparison operator.
    *
-   * TODO: Distance between two global pointers is not well-defined yet.
-   *       This method is only provided to comply to the pointer concept.
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
   constexpr bool operator>=(const GlobPtrT & other) const noexcept

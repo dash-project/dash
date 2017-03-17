@@ -554,7 +554,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-      team_unit_t unit) const {
+      team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents >", _local_size);
     return std::array<SizeType, 1> {{ _local_size }};
@@ -1039,7 +1039,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const {
+  const std::array<SizeType, NumDimensions> extents() const {
     return std::array<SizeType, 1> {{ _size }};
   }
 
