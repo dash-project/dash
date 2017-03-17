@@ -3,7 +3,7 @@
 
 #include <dash/memory/GlobDynamicMem.h>
 
-
+/*
 TEST_F(GlobDynamicMemTest, BalancedAlloc)
 {
   typedef int value_t;
@@ -452,6 +452,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
     SKIP_TEST_MSG("Test case requires at least three units");
   }
 
+*/
   /* Illustration of the test case:
    *
    *  unit 0:
@@ -490,6 +491,8 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
    *     globally                                globally      deallocated
    *     visible                                 visible
    */
+
+  /*
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
@@ -579,3 +582,4 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
     }
   }
 }
+*/
