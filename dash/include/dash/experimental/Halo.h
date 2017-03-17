@@ -18,9 +18,9 @@ constexpr T pow(T base, T exp) {
 }
 
 template<dim_t NumDimensions>
-class Stencil  : public Dimensional<int16_t, NumDimensions> {
+class Stencil  : public Dimensional<int, NumDimensions> {
 private:
-  using base_t = Dimensional<uint16_t, NumDimensions>;
+  using base_t = Dimensional<int, NumDimensions>;
 
 public:
   Stencil() {
@@ -30,10 +30,20 @@ public:
   }
 
   template <typename... Values>
-  Stencil(uint16_t value, Values... values)
+  Stencil(int value, Values... values)
   : base_t::Dimensional(value, values...)
   {
+    for (dim_t i(0); i < NumDimensions; ++i)
+      _max = std::max(_max, std::abs(this->_values[i]));
   }
+
+  //TODO as constexpr
+  constexpr int max() const {
+    return _max;
+  }
+
+private:
+  int _max{0};
 };
 
 template<dim_t NumDimensions, std::size_t NumStencils>
@@ -51,11 +61,11 @@ public:
     _specs = other._specs;
   }
 
-  constexpr SpecsT& specs() const {
+  constexpr const SpecsT& stencilSpecs() const {
     return _specs;
   }
 
-  constexpr StencilT& operator[](std::size_t index) const {
+  constexpr const StencilT& operator[](std::size_t index) const {
     return _specs[index];
   }
 
@@ -105,7 +115,8 @@ public:
   constexpr HaloRegionSpec(const coords_t& coords, const extent_t extent)
       : _coords(coords), _index(index(coords)), _extent(extent) {}
 
-  constexpr HaloRegionSpec(index_t index) : _index(index), _coords(coords(index)), _extent(extent) {}
+  constexpr HaloRegionSpec(index_t index, const extent_t extent)
+      : _index(index), _coords(coords(index)), _extent(extent) {}
 
   constexpr HaloRegionSpec() {}
 
@@ -120,15 +131,36 @@ public:
   static coords_t coords(const index_t index){
     coords_t coords{};
     index_t index_tmp = static_cast<long>(index);
+    std::cout << index_tmp << std::endl;
     for(auto i(NumDimensions - 1); i >= 1; --i)
     {
       auto res = std::div(index_tmp, 3);
       coords[i] = res.rem;
       index_tmp = res.quot;
+      std::cout << index_tmp << std::endl;
     }
     coords[0] = index_tmp;
 
     return coords;
+  }
+
+  template<typename StencilT>
+  static index_t index(const StencilT& stencil) {
+    index_t index = 0;
+    if (stencil[0] == 0)
+      index = 1;
+    else if (stencil[0] > 0)
+      index = 2;
+    for (auto d(1); d < NumDimensions; ++d) {
+      if (stencil[d] < 0)
+        index *= 3;
+      else if (stencil[d] == 0)
+        index = 1 + index * 3;
+      else
+        index = 2 + index * 3;
+    }
+
+    return index;
   }
 
   constexpr index_t index() const { return _index; }
@@ -181,6 +213,19 @@ public:
 public:
 
   constexpr HaloSpec(const specs_t& specs) : _specs(specs) {}
+
+  template<typename StencilSpecT>
+  constexpr HaloSpec(const StencilSpecT& stencil_specs) {
+    for(const auto& stencil : stencil_specs.stencilSpecs()) {
+      auto index = HaloRegionSpecT::index(stencil);
+      auto max = stencil.max();
+      if(_specs[index].extent() == 0)
+        ++_num_regions;
+      if(max >_specs[index].extent())
+        _specs[index] = HaloRegionSpecT(index,max);
+      std::cout << index << " " << _specs[index] << std::endl;
+    }
+  }
 
 
   template<typename... ARGS>
@@ -512,13 +557,13 @@ public:
   using const_iterator       = const iterator;
 
 public:
-  Region(const HaloRegionSpecT& coords, const viewspec_t& region, GlobMem_t& globmem, const PatternT& pattern)
-      : _coords(coords), _region(region), _beg(globmem, pattern, _region, 0, _region.size()),
+  Region(const HaloRegionSpecT& region_spec, const viewspec_t& region, GlobMem_t& globmem, const PatternT& pattern)
+      : _region_spec(region_spec), _region(region), _beg(globmem, pattern, _region, 0, _region.size()),
         _end(globmem, pattern, _region, _region.size(), _region.size()) {}
 
-  const index_t index() const { return _coords.index(); }
+  const index_t index() const { return _region_spec.index(); }
 
-  const HaloRegionSpecT& coords() const { return _coords; }
+  const HaloRegionSpecT& regionSpec() const { return _region_spec; }
 
   const viewspec_t& region() const { return _region; }
 
@@ -533,10 +578,10 @@ public:
   }
 
 private:
-  const HaloRegionSpecT    _coords;
-  const viewspec_t _region;
-  iterator _beg;
-  iterator _end;
+  const HaloRegionSpecT _region_spec;
+  const viewspec_t      _region;
+  iterator              _beg;
+  iterator              _end;
 };
 
 template <typename ElementT, typename PatternT>
@@ -573,10 +618,9 @@ public:
     _halo_regions.reserve(_halo_reg_spec.numRegions());
     _boundary_regions.reserve(_halo_reg_spec.numRegions());
     for (const auto& spec : _halo_reg_spec.haloSpecs()) {
-      if (!spec.extent)
+      auto halo_extent = spec.extent();
+      if (!halo_extent)
         continue;
-
-      const auto& coords = spec.coords;
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -584,14 +628,14 @@ public:
       auto bnd_region_extents  = view.extents();
 
       for (auto d(0); d < NumDimensions; ++d) {
-        if (coords[d] == 1)
+        if (spec[d] == 1)
           continue;
 
         auto view_offset    = view.offset(d);
         auto view_extent    = view.extent(d);
 
-        if (coords[d] < 1) {
-          halo_extents_max[d].first = std::max(halo_extents_max[d].first, spec.extent);
+        if (spec[d] < 1) {
+          halo_extents_max[d].first = std::max(halo_extents_max[d].first, halo_extent);
           if (view_offset < halo_extents_max[d].first) {
             if (cycle_spec[d] == Cycle::NONCYCLIC) {
               halo_region_offsets[d] = 0;
@@ -599,19 +643,19 @@ public:
               bnd_region_offsets[d] = 0;
               bnd_region_extents[d] = 0;
             } else {
-              halo_region_offsets[d] = _pattern.extent(d) - spec.extent;
-              halo_region_extents[d] = spec.extent;
-              bnd_region_extents[d] = spec.extent;
+              halo_region_offsets[d] = _pattern.extent(d) - halo_extent;
+              halo_region_extents[d] = halo_extent;
+              bnd_region_extents[d] = halo_extent;
             }
 
           } else {
-            halo_region_offsets[d] -= spec.extent;
-            halo_region_extents[d] = spec.extent;
-            bnd_region_extents[d] = spec.extent;
+            halo_region_offsets[d] -= halo_extent;
+            halo_region_extents[d] = halo_extent;
+            bnd_region_extents[d] = halo_extent;
           }
           continue;
         } else {
-          halo_extents_max[d].second = std::max(halo_extents_max[d].second, spec.extent);
+          halo_extents_max[d].second = std::max(halo_extents_max[d].second, halo_extent);
           auto check_extent = view_offset + view_extent + halo_extents_max[d].second;
           if (check_extent > _pattern.extent(d)) {
             if (cycle_spec[d] == Cycle::NONCYCLIC) {
@@ -621,24 +665,24 @@ public:
               bnd_region_extents[d] = 0;
             } else {
               halo_region_offsets[d] = 0;
-              halo_region_extents[d] = spec.extent;
-              bnd_region_offsets[d] += view_extent - spec.extent;
-              bnd_region_extents[d] = spec.extent;
+              halo_region_extents[d] = halo_extent;
+              bnd_region_offsets[d] += view_extent - halo_extent;
+              bnd_region_extents[d] = halo_extent;
             }
           } else {
             halo_region_offsets[d] += halo_region_extents[d];
-            halo_region_extents[d] = spec.extent;
-            bnd_region_offsets[d] += view_extent - spec.extent;
-            bnd_region_extents[d] = spec.extent;
+            halo_region_extents[d] = halo_extent;
+            bnd_region_offsets[d] += view_extent - halo_extent;
+            bnd_region_extents[d] = halo_extent;
           }
         }
       }
-      auto index = spec.coords.index();
+      auto index = spec.index();
       _halo_regions.push_back(
-          region_t(spec.coords, viewspec_t(halo_region_offsets, halo_region_extents), _globmem, _pattern));
+          region_t(spec, viewspec_t(halo_region_offsets, halo_region_extents), _globmem, _pattern));
       _halo_reg_mapping[index] = &_halo_regions.back();
       _boundary_regions.push_back(
-          region_t(spec.coords, viewspec_t(bnd_region_offsets, bnd_region_extents), _globmem, _pattern));
+          region_t(spec, viewspec_t(bnd_region_offsets, bnd_region_extents), _globmem, _pattern));
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
