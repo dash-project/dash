@@ -51,8 +51,8 @@ int main(int argc, char * argv[])
 
 
 	if(myid == 0){
-		cout << "DASH HDF5 API example. After each change in the hdf5 file"
-         << " the contents are printed using h5dump" << endl;
+		cout << "DASH HDF5 API example. After each change in the hdf5 file "
+         << "the contents are printed using h5dump" << endl;
 	}
 	// Write Array to HDF5 file using defaults
 	{
@@ -69,8 +69,8 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / group/data into Array C,"
-					 << " reconstruct pattern" << endl;
+			cout << "Read " << FILENAME << " / group/data into Array C, "
+					 << "reconstruct pattern" << endl;
 		}
 		// Use delayed allocation
 		array_t array_c;
@@ -83,14 +83,17 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / group/data into already allocated Array C" << endl;
+			cout << "Read " << FILENAME
+           << " / group/data into already allocated Array C" << endl;
 		}
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
 		StoreHDF::read(array_c, FILENAME, "group/data");
 		if(myid == 0){
-			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
-			cout << "Array C Pattern: Tilesize: " << array_c.pattern().blocksize(0) << endl;
+			cout << "Array A Pattern: Tilesize: "
+           << array_a.pattern().blocksize(0) << endl;
+			cout << "Array C Pattern: Tilesize: "
+           << array_c.pattern().blocksize(0) << endl;
 		}
 	}
 

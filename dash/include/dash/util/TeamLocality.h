@@ -47,7 +47,7 @@ namespace util {
  *                                 domain_min_core_threads;
  *
  *   size_t num_module_units = domain.units().size();
- *   for (dart_unit_t module_unit_id : domain.unit_ids()) {
+ *   for (global_unit_t module_unit_id : domain.unit_ids()) {
  *     dash::util::UnitLocality uloc(team, module_unit_id);
  *
  *     std::string unit_host = uloc.host();
@@ -116,13 +116,13 @@ public:
   }
 
   //inline const dash::util::UnitLocality & unit_locality(
-  //  dart_unit_t unit) const
+  //  team_unit_t unit) const
   //{
   //  return _domain.unit_locality(unit);
   //}
   //
   //inline dash::util::UnitLocality & unit_locality(
-  //  dart_unit_t unit)
+  //  team_unit_t unit)
   //{
   //  return _domain.unit_locality(unit);
   //}

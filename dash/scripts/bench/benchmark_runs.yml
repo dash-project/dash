@@ -1,0 +1,11 @@
+config:
+  - mpicmd: mpirun -map-by core -n ${NUNITS}
+
+benchmarks:
+  bench.10.summa:
+    runs:
+      - -sb $((100 * NUNITS)) -nt 2
+  bench.05.pattern:
+    runs:
+      - -params none
+ 
