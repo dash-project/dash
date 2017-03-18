@@ -914,11 +914,11 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat_local.extents());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat_local.size());
 
+  return;
+
   dash::test::print_nview("mat_local",  mat_local);
 
   mat.barrier();
-
-  return;
 
   if (dash::myid() == 0) {
     auto nview_rows  = dash::sub<0>(1, mat.extent(0) - 1, mat);
