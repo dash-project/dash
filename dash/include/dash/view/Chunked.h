@@ -19,7 +19,9 @@ namespace dash {
 // ------------------------------------------------------------------------
 
 template <
-  class DomainType >
+  class DomainType,
+  dim_t NDim        = dash::view_traits<
+                        typename std::decay<DomainType>::type>::rank::value >
 class ViewBlockMod;
 
 #if 0
@@ -30,11 +32,11 @@ constexpr auto
 block(
   OffsetT               block_idx,
   const ContainerType & container)
--> typename std::enable_if<
-     !dash::view_traits<ContainerType>::is_view::value,
-     decltype(container.block(0))
-   >::type {
-  return container.block(block_idx);
+    -> typename std::enable_if<
+         !dash::view_traits<ContainerType>::is_view::value,
+         decltype(container.blocks()[0])
+       >::type {
+  return container.blocks()[block_idx];
 }
 #endif
 
@@ -47,13 +49,13 @@ template <
   class OffsetT >
 constexpr auto
 block(
-  OffsetT    block_idx,
+  OffsetT          block_idx,
   const ViewType & view)
--> typename std::enable_if<
-     (//  dash::view_traits<ViewType>::is_view::value &&
-         !dash::view_traits<ViewType>::is_local::value   ),
-     ViewBlockMod<ViewType>
-   >::type {
+    -> typename std::enable_if<
+         (//  dash::view_traits<ViewType>::is_view::value &&
+             !dash::view_traits<ViewType>::is_local::value   ),
+         ViewBlockMod<ViewType>
+       >::type {
   return ViewBlockMod<ViewType>(view, block_idx);
 }
 
@@ -68,11 +70,11 @@ constexpr auto
 block(
   OffsetT          block_idx,
   const ViewType & view)
--> typename std::enable_if<
-     (// dash::view_traits<ViewType>::is_view::value &&
-         dash::view_traits<ViewType>::is_local::value   ),
-     decltype(dash::block(block_idx, dash::local(dash::origin(view))))
-   >::type {
+    -> typename std::enable_if<
+         (// dash::view_traits<ViewType>::is_view::value &&
+             dash::view_traits<ViewType>::is_local::value   ),
+         decltype(dash::block(block_idx, dash::local(dash::origin(view))))
+       >::type {
   return dash::local(dash::origin(view)).block(block_idx);
 }
 

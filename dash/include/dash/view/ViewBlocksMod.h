@@ -34,23 +34,28 @@ template <
                        typename std::decay<DomainType>::type>::rank::value >
 class ViewBlocksMod;
 
+
 // ------------------------------------------------------------------------
 // ViewBlockMod
 // ------------------------------------------------------------------------
 
 template <
-  class DomainType >
-struct view_traits<ViewBlockMod<DomainType> > {
+  class DomainType,
+  dim_t NDim >
+struct view_traits<ViewBlockMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef ViewBlockMod<DomainType>                              image_type;
-  typedef ViewBlockMod<DomainType>                              local_type;
-  typedef ViewBlockMod<DomainType>                             global_type;
+  typedef ViewBlockMod<DomainType, NDim>                        image_type;
+  typedef ViewBlockMod<DomainType, NDim>                        local_type;
+  typedef ViewBlockMod<DomainType, NDim>                       global_type;
 
   typedef typename DomainType::index_type                       index_type;
-  // TODO: Defaulting to SubDim = 0 here, clarify
-  typedef dash::IndexSetSub<DomainType, 0>                  index_set_type;
+  typedef typename std::conditional<
+                     NDim == 1,
+                     dash::IndexSetSub<DomainType, 0>,
+                     dash::IndexSetBlock<DomainType>
+                   >::type                                  index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
@@ -58,31 +63,165 @@ struct view_traits<ViewBlockMod<DomainType> > {
   typedef std::integral_constant<bool,
     view_traits<domain_type>::is_local::value >              is_local;
 
-  typedef std::integral_constant<dim_t, 1>                            rank;
+  typedef std::integral_constant<dim_t, NDim>                rank;
 };
 
 
+// ------------------------------------------------------------------------
+// ViewBlockMod<N>
+// ------------------------------------------------------------------------
+
+template <
+  class DomainType,
+  dim_t NDim >
+class ViewBlockMod
+: public ViewModBase <
+           ViewBlockMod<DomainType, NDim>,
+           DomainType,
+           NDim >
+{
+ private:
+  typedef ViewBlockMod<DomainType, NDim>                            self_t;
+  typedef ViewModBase<
+            ViewBlockMod<DomainType, NDim>, DomainType, NDim>       base_t;
+ public:
+  typedef DomainType                                           domain_type;
+  typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename base_t::origin_type                         origin_type;
+ public:
+  typedef dash::IndexSetBlock<DomainType>                   index_set_type;
+  typedef ViewLocalMod<self_t>                                  local_type;
+  typedef self_t                                               global_type;
+
+  typedef std::integral_constant<bool, false>                     is_local;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<origin_type>::type
+              >() ))
+    origin_iterator;
+
+  typedef decltype(
+            dash::begin(
+              std::declval<
+                typename std::add_lvalue_reference<const origin_type>::type
+              >() ))
+    const_origin_iterator;
+
+  typedef ViewIterator<origin_iterator, index_set_type>
+    iterator;
+  typedef ViewIterator<const_origin_iterator, index_set_type>
+    const_iterator;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<origin_type>::type
+               >() ))
+    reference;
+
+  typedef
+    decltype(*dash::begin(
+               std::declval<
+                 typename std::add_lvalue_reference<const origin_type>::type
+               >() ))
+    const_reference;
+
+ private:
+  index_set_type _index_set;
+
+ public:
+  constexpr ViewBlockMod()               = delete;
+  constexpr ViewBlockMod(self_t &&)      = default;
+  constexpr ViewBlockMod(const self_t &) = default;
+  ~ViewBlockMod()                        = default;
+  self_t & operator=(self_t &&)          = default;
+  self_t & operator=(const self_t &)     = default;
+
+  constexpr ViewBlockMod(
+    const domain_type & domain,
+    index_type          block_idx)
+  : base_t(domain)
+  , _index_set(domain,
+               block_idx)
+  { }
+
+  /**
+   * Constructor, creates a view on a block in the specified domain.
+   */
+  constexpr ViewBlockMod(
+    domain_type     && domain,
+    index_type         block_idx)
+  : base_t(std::forward<domain_type>(domain))
+  , _index_set(this->domain(),
+               block_idx)
+  { }
+
+  constexpr const_iterator begin() const {
+    return const_iterator(dash::origin(*this).begin(),
+                          _index_set, 0);
+  }
+
+  iterator begin() {
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
+                    _index_set, 0);
+  }
+
+  constexpr const_iterator end() const {
+    return const_iterator(dash::origin(*this).begin(),
+                          _index_set, _index_set.size());
+  }
+
+  iterator end() {
+    return iterator(const_cast<origin_type &>(
+                      dash::origin(*this)
+                    ).begin(),
+                    _index_set, _index_set.size());
+  }
+
+  constexpr const_reference operator[](int offset) const {
+    return *(const_iterator(dash::origin(*this).begin(),
+                            _index_set, offset));
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
+
+  constexpr local_type local() const {
+    return local_type(*this);
+  }
+}; // class ViewBlockMod<N>
+
+
+// ------------------------------------------------------------------------
+// ViewBlockMod<1>
+// ------------------------------------------------------------------------
+
 template <
   class DomainType >
-class ViewBlockMod
+class ViewBlockMod<DomainType, 1>
 // Actually just an adapter for block_idx -> sub(begin_idx, end_idx),
 // should sublass
 //
 //   public ViewSubMod<DomainType, 0>
 //
 : public ViewModBase <
-           ViewBlockMod<DomainType>,
-           DomainType >
+           ViewBlockMod<DomainType, 1>,
+           DomainType,
+           1 >
 {
  private:
-  typedef ViewBlockMod<DomainType>                                  self_t;
-  typedef ViewModBase< ViewBlockMod<DomainType>, DomainType >       base_t;
+  typedef ViewBlockMod<DomainType, 1>                               self_t;
+  typedef ViewModBase< ViewBlockMod<DomainType, 1>, DomainType, 1 > base_t;
  public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename base_t::origin_type                         origin_type;
  public:
-  // TODO: Defaulting to SubDim = 0 here, clarify
   typedef dash::IndexSetSub< DomainType, 0 >                index_set_type;
   typedef ViewLocalMod<self_t>                                  local_type;
   typedef self_t                                               global_type;
@@ -248,7 +387,7 @@ class ViewBlockMod
            )
            - dash::index(vdomain).first();
   }
-};
+}; // class ViewBlockMod<1>
 
 // ------------------------------------------------------------------------
 // ViewBlocksMod
@@ -309,7 +448,7 @@ class ViewBlocksMod
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
  private:
-  typedef ViewBlockMod<DomainType>                              block_type;
+  typedef ViewBlockMod<DomainType, NDim>                        block_type;
   typedef typename domain_type::local_type               domain_local_type;
  public:
   typedef dash::IndexSetBlocks<DomainType>                  index_set_type;
@@ -377,9 +516,7 @@ class ViewBlocksMod
       // with iterator position.
       // Note that block index is relative to the domain and is
       // translated to global block index in IndexSetBlocks.
-      return ViewBlockMod<DomainType>(
-               _blocks_view_domain,
-               idx);
+      return block_type(_blocks_view_domain, idx);
     }
   };
 

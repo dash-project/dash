@@ -1352,33 +1352,31 @@ class IndexSetBlocks
   }
 }; // class IndexSetBlocks
 
+
 // -----------------------------------------------------------------------
 // IndexSetBlock
 // -----------------------------------------------------------------------
-#if 0
-// Currently using IndexSetSub instead
-//
+
 template <class DomainType>
 class IndexSetBlock
 : public IndexSetBase<
            IndexSetBlock<DomainType>,
-           DomainType,
-           1 >
+           DomainType >
 {
   typedef IndexSetBlock<DomainType>                               self_t;
   typedef IndexSetBase<self_t, DomainType>                        base_t;
  public:
   typedef typename DomainType::index_type                     index_type;
    
-  typedef self_t                                            local_type;
+  typedef self_t                                              local_type;
   typedef IndexSetGlobal<DomainType>                         global_type;
-  typedef global_type                                    preimage_type;
+  typedef global_type                                      preimage_type;
 
-  typedef typename base_t::iterator                           iterator;
-  typedef typename base_t::pattern_type                   pattern_type;
+  typedef typename base_t::iterator                             iterator;
+  typedef typename base_t::pattern_type                     pattern_type;
   
-  typedef dash::local_index_t<index_type>             local_index_type;
-  typedef dash::global_index_t<index_type>           global_index_type;
+  typedef dash::local_index_t<index_type>               local_index_type;
+  typedef dash::global_index_t<index_type>             global_index_type;
   
  private:
   index_type _block_idx;
@@ -1398,7 +1396,7 @@ class IndexSetBlock
  public:
   constexpr explicit IndexSetBlock(
     const DomainType & view,
-    index_type       block_idx)
+    index_type         block_idx)
   : base_t(view)
   , _block_idx(block_idx)
   , _size(calc_size())
@@ -1469,7 +1467,6 @@ class IndexSetBlock
            );
   }
 }; // class IndexSetBlock
-#endif
 
 } // namespace dash
 #endif // DOXYGEN

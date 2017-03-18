@@ -929,6 +929,13 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                        nview_blocks.extents());
 
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_blocks[0].size());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_blocks[0].offsets());
+    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                       nview_blocks[0].extents());
+
     int bi = 0;
     for (const auto & block : nview_blocks) {
       DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSingle",
