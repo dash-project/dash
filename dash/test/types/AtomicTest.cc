@@ -3,6 +3,7 @@
 
 #include <dash/Atomic.h>
 #include <dash/Array.h>
+#include <dash/Mutex.h>
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
 
@@ -16,7 +17,8 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
-
+#include <thread>
+#include <chrono>
 
 TEST_F(AtomicTest, FetchAndOp)
 {
@@ -230,4 +232,54 @@ TEST_F(AtomicTest, AtomicInterface){
     ASSERT_EQ_U(false, ret);
   }
   array.barrier();
+}
+
+TEST_F(AtomicTest, MutexInterface){
+  dash::Mutex mx;
+  
+  dash::Shared<int> shared(dash::team_unit_t{0});
+  
+  if(dash::myid() == 0){
+    shared.set(0);
+  }
+  
+  mx.lock();
+  int tmp = shared.get();
+  std::this_thread::sleep_for(std::chrono::microseconds(100));
+  shared.set(tmp + 1);
+  LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(shared.get()));
+  // I guess here a flush is required, blocked by issue 322
+  mx.unlock();
+  
+  dash::barrier();
+  
+  while(!mx.try_lock()){  }
+  // lock aquired
+  tmp = shared.get();
+  std::this_thread::sleep_for(std::chrono::microseconds(100));
+  shared.set(tmp + 1);
+  mx.unlock();
+  
+  dash::barrier();
+  
+  if(dash::myid() == 0){
+    int result = shared.get();
+    EXPECT_EQ_U(result, static_cast<int>(dash::size()*2));
+  }
+  
+  dash::barrier();
+  
+  // this even works with std::lock_guard
+  {
+    std::lock_guard<dash::Mutex> lg(mx);
+    int tmp = shared.get();
+    shared.set(tmp + 1);
+  }
+  
+  dash::barrier();
+  
+  if(dash::myid() == 0){
+    int result = shared.get();
+    EXPECT_EQ_U(result, static_cast<int>(dash::size())*3);
+  }
 }
