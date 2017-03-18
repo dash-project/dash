@@ -283,7 +283,6 @@ public:
     return _lbegin;
   }
 
-
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobUnitMem instance.
@@ -387,21 +386,18 @@ public:
   {
     DASH_LOG_DEBUG("GlobUnitMem.at(unit,l_idx)", unit, local_index);
     if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
-      DASH_LOG_DEBUG("GlobUnitMem.at(unit,l_idx) >",
+      DASH_LOG_ERROR("GlobUnitMem.at(unit,l_idx) >",
                      "global memory not allocated");
+      return pointer(nullptr);
+    }
+    if (unit.id != _begptr.unitid) {
+      DASH_LOG_ERROR("GlobUnitMem.at(unit,l_idx) >",
+                     "address in global unit memory requested for", unit,
+                     "but only allocated at unit", _begptr.unitid);
       return pointer(nullptr);
     }
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
-    // Resolve global unit id
-    DASH_LOG_TRACE_VAR("GlobUnitMem.at (=g_begptr)", gptr);
-    DASH_LOG_TRACE_VAR("GlobUnitMem.at", gptr.unitid);
-    team_unit_t lunit{gptr.unitid};
-    DASH_LOG_TRACE_VAR("GlobUnitMem.at", lunit);
-    lunit = (lunit + unit) % _nunits;
-    DASH_LOG_TRACE_VAR("GlobUnitMem.at", lunit);
-    // Apply global unit to global pointer:
-    dart_gptr_setunit(&gptr, lunit);
     // Apply local offset to global pointer:
     pointer res_gptr(*this, gptr);
     res_gptr += local_index;
@@ -410,7 +406,6 @@ public:
   }
 
 private:
-
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
@@ -455,19 +450,6 @@ private:
 
 template<
   typename T,
-  class    MemSpaceT >
-GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
-{
-  dart_gptr_t gptr;
-  dart_storage_t ds = dart_storage<T>(nelem);
-  if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
-    return GlobPtr<T, MemSpaceT>(nullptr);
-  }
-  return GlobPtr<T, MemSpaceT>(mspace, gptr);
-}
-
-template<
-  typename T,
   class    MemSpaceT = dash::GlobUnitMem<T> >
 GlobPtr<T, MemSpaceT> memalloc(size_t nelem)
 {
@@ -477,12 +459,6 @@ GlobPtr<T, MemSpaceT> memalloc(size_t nelem)
     return GlobPtr<T, MemSpaceT>(nullptr);
   }
   return GlobPtr<T, MemSpaceT>(MemSpaceT(gptr, nelem), gptr);
-}
-
-template<class GlobPtrT>
-void memfree(GlobPtrT gptr)
-{
-  dart_memfree(gptr.dart_gptr());
 }
 
 } // namespace dash

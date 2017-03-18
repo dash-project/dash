@@ -335,7 +335,6 @@ public:
     return _lbegin;
   }
 
-
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
@@ -503,6 +502,28 @@ private:
     _lend = static_cast<local_pointer>(addr);
   }
 };
+
+template<
+  typename T,
+  class    MemSpaceT >
+GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
+{
+  dart_gptr_t gptr;
+  dart_storage_t ds = dart_storage<T>(nelem);
+  if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
+    return GlobPtr<T, MemSpaceT>(nullptr);
+  }
+  return GlobPtr<T, MemSpaceT>(mspace, gptr);
+}
+
+template<class GlobPtrT>
+void memfree(GlobPtrT gptr)
+{
+  // TODO: Should notify GlobPtrT instance gptr of this deallocation
+  //       as it might be owner of its referenced global memory space
+  //       (see GlobUnitMem).
+  dart_memfree(gptr.dart_gptr());
+}
 
 } // namespace dash
 
