@@ -79,10 +79,13 @@ template <class T>
 struct is_container_compatible :
   public std::integral_constant<bool,
               std::is_standard_layout<T>::value
-#if !defined(__CRAYC) && false
+#if ( !defined(__CRAYC) && !defined(__GNUC__) ) || \
+    ( defined(__GNUG__) && __GNUC__ >= 5 )
               // The Cray compiler (as of CCE8.5.6) does not support
               // std::is_trivially_copyable.
            && std::is_trivially_copyable<T>::value
+#elif defined(__GNUG__) && __GNUC__ < 5
+           && std::has_trivial_copy_constructor<T>::value
 #endif
          >
 { };
