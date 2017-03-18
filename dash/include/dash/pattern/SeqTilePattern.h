@@ -41,9 +41,9 @@ namespace dash {
  *
  */
 template<
-  dim_t NumDimensions,
-  MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = dash::default_index_t>
+  dim_t      NumDimensions,
+  MemArrange Arrangement   = ROW_MAJOR,
+  typename   IndexType     = dash::default_index_t>
 class SeqTilePattern
 {
 public:
@@ -218,7 +218,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_myid)),
+        initialize_local_extents(_local_blockspec)),
     _local_capacity(
         initialize_local_capacity(_local_memory_layout)) {
     DASH_LOG_TRACE("SeqTilePattern()", "Constructor with Argument list");
@@ -292,7 +292,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_myid)),
+        initialize_local_extents(_local_blockspec)),
     _local_capacity(
         initialize_local_capacity(_local_memory_layout)) {
     DASH_LOG_TRACE("SeqTilePattern()", "(sizespec, dist, teamspec, team)");
@@ -361,7 +361,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_myid)),
+        initialize_local_extents(_local_blockspec)),
     _local_capacity(
         initialize_local_capacity(_local_memory_layout)) {
     DASH_LOG_TRACE("SeqTilePattern()", "(sizespec, dist, team)");
@@ -1600,12 +1600,22 @@ private:
     // Number of local blocks in all dimensions:
     std::array<SizeType, NumDimensions> l_blocks;
     auto min_local_blocks = num_blocks_total / _nunits;
-    l_blocks[0] = min_local_blocks;
-    if (unit_id < num_blocks_total % _nunits) {
-      l_blocks[0]++;
-    }
-    for (auto d = 1; d < NumDimensions; ++d) {
-      l_blocks[d] = 1;
+    if (Arrangement == dash::COL_MAJOR) {
+      l_blocks[0] = min_local_blocks;
+      if (unit_id < num_blocks_total % _nunits) {
+        l_blocks[0]++;
+      }
+      for (auto d = 1; d < NumDimensions; ++d) {
+        l_blocks[d] = 1;
+      }
+    } else {
+      l_blocks[NumDimensions - 1] = min_local_blocks;
+      if (unit_id < num_blocks_total % _nunits) {
+        l_blocks[NumDimensions - 1]++;
+      }
+      for (auto d = NumDimensions - 2; d >= 0; --d) {
+        l_blocks[d] = 1;
+      }
     }
     DASH_LOG_TRACE_VAR("SeqTilePattern.init_local_blockspec >", l_blocks);
     return BlockSpec_t(l_blocks);
@@ -1652,12 +1662,27 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   std::array<SizeType, NumDimensions> initialize_local_extents(
-      team_unit_t unit) const
+      team_unit_t         unit) const
   {
-    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", unit);
     auto l_blockspec = initialize_local_blockspec(
                         _blockspec, _blocksize_spec, _teamspec, unit);
 
+    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()",
+                       l_blockspec.extents());
+    ::std::array<SizeType, NumDimensions> l_extents;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      l_extents[d] = _blocksize_spec.extent(d) * l_blockspec.extent(d);
+    }
+    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents >", l_extents);
+    return l_extents;
+  }
+
+  /**
+   * Resolve extents of local memory layout for a specified local blockspec.
+   */
+  std::array<SizeType, NumDimensions> initialize_local_extents(
+      const BlockSpec_t & l_blockspec) const
+  {
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()",
                        l_blockspec.extents());
     ::std::array<SizeType, NumDimensions> l_extents;

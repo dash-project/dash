@@ -260,7 +260,7 @@ protected:
   /// Number of elements in the cartesian space spanned by this instance.
   SizeType     _size             = 0;
   /// Number of dimensions in the cartesian space.
-  SizeType     _rank             = NumDimensions;
+  SizeType     _rank             = 0;
   /// Extents of the cartesian space by dimension.
   extents_type _extents          = {  };
   /// Cumulative index offsets of the index space by dimension respective
@@ -348,12 +348,10 @@ public:
    */
   template<typename... Args>
   void resize(SizeType arg, Args... args) {
-    static_assert(
-      sizeof...(Args) == NumDimensions-1,
-      "Invalid number of arguments");
-    std::array<SizeType, NumDimensions> extents =
-      {{ arg, (SizeType)(args)... }};
-    resize(extents);
+    resize(
+      std::array<SizeType, NumDimensions> {{
+        arg, (SizeType)(args)...
+      }} );
   }
 
   /**
@@ -363,9 +361,18 @@ public:
   void resize(const std::array<SizeType_, NumDimensions> & extents) {
     // Update size:
     _size = 1;
+    _rank = 0;
     for(auto i = 0; i < NumDimensions; i++ ) {
       _extents[i] = static_cast<SizeType>(extents[i]);
       _size      *= _extents[i];
+      if (_extents[i] > 1) {
+        ++_rank;
+      }
+    }
+    if (_size == 0) {
+      _rank = 0;
+    } else if (_rank == 0) {
+      _rank = 1;
     }
     // Update offsets:
     _offset_row_major[NumDimensions-1] = 1;

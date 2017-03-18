@@ -820,7 +820,7 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
 {
   auto nunits = dash::size();
 
-  int block_rows = 2;
+  int block_rows = 3;
   int block_cols = 2;
 
   int nrows = nunits * block_rows;
@@ -868,6 +868,16 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                      mat.pattern().blockspec());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().blockspec().rank());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().blocksize(0));
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().blocksize(1));
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().local_blockspec());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().local_blockspec().rank());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                      mat.pattern().teamspec());
 
   if (dash::myid() == 0) {
@@ -883,8 +893,34 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                        index(all_sub).size());
 
-    dash::test::print_nview("mat_view",  all_sub);
+    dash::test::print_nview("mat_global",  all_sub);
+  }
+  mat.barrier();
 
+  auto mat_local = dash::local(
+                     dash::sub<0>(
+                       0, mat.extents()[0],
+                       mat));
+
+  EXPECT_TRUE_U(index(mat_local).is_strided());
+  EXPECT_TRUE_U(index(mat_local).is_shifted());
+  EXPECT_TRUE_U(index(mat_local).is_sub());
+  EXPECT_FALSE_U(index(dash::domain(mat_local)).is_sub());
+
+  EXPECT_EQ_U(mat.pattern().local_size(),    mat_local.size());
+  EXPECT_EQ_U(mat.pattern().local_extents(), mat_local.extents());
+
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat_local.offsets());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat_local.extents());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat_local.size());
+
+  dash::test::print_nview("mat_local",  mat_local);
+
+  mat.barrier();
+
+  return;
+
+  if (dash::myid() == 0) {
     auto nview_rows  = dash::sub<0>(1, mat.extent(0) - 1, mat);
 
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",

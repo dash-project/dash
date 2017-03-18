@@ -364,7 +364,7 @@ public:
           std::declval<
             typename std::add_lvalue_reference<domain_type>::type >()
       ))))
-    iterator;
+    origin_iterator;
 
   typedef
     decltype(
@@ -373,6 +373,13 @@ public:
           std::declval<
             typename std::add_lvalue_reference<const domain_type>::type >()
       ))))
+    const_origin_iterator;
+
+  typedef ViewIterator<
+            origin_iterator, index_set_type >
+    iterator;
+  typedef ViewIterator<
+            const_origin_iterator, index_set_type >
     const_iterator;
 
   typedef
@@ -461,48 +468,51 @@ public:
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
-    return dash::begin(
-             dash::local(
-               dash::origin(*this) ))
-           + _index_set[0];
+    return const_iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(*this) )),
+             _index_set, 0);
   }
 
   iterator begin() {
-    return dash::begin(
-             dash::local(
-               const_cast<origin_type &>(dash::origin(*this))
-             ))
-           + _index_set[0];
+    return iterator(
+             dash::begin(
+               dash::local(
+                 const_cast<origin_type &>(dash::origin(*this)) )),
+             _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    return dash::begin(
-             dash::local(
-               dash::origin(*this) ))
-           + _index_set[_index_set.size() - 1] + 1;
+    return const_iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(*this) )),
+             _index_set, _index_set.size());
   }
 
   iterator end() {
-    return dash::begin(
-             dash::local(
-               const_cast<origin_type &>(dash::origin(*this))
-             ))
-           + _index_set[_index_set.size() - 1] + 1;
+    return iterator(
+             dash::begin(
+               dash::local(
+                 const_cast<origin_type &>(dash::origin(*this)) )),
+             _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(dash::begin(
+    return *const_iterator(
+             dash::begin(
                dash::local(
-                 dash::origin(*this) ))
-             + _index_set[offset]);
+                 dash::origin(*this) )),
+             _index_set, offset);
   }
 
   reference operator[](int offset) {
-    return *(dash::begin(
+    return *iterator(
+             dash::begin(
                dash::local(
-                 const_cast<origin_type &>(dash::origin(*this))
-               ))
-             + _index_set[offset]);
+                 const_cast<origin_type &>(dash::origin(*this)) )),
+             _index_set, offset);
   }
 
   constexpr const local_type & local() const {
