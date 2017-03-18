@@ -196,8 +196,6 @@ constexpr auto
 local(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
     -> decltype(index_set.local()) {
-//  -> typename view_traits<IndexSetBase<DomainType>>::global_type & {
-//  -> const IndexSetLocal<DomainType> & {
   return index_set.local();
 }
 
@@ -208,9 +206,7 @@ template <
 constexpr auto
 global(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
-     -> decltype(index_set.global()) {
-//   -> typename view_traits<IndexSetSub<DomainType>>::global_type & {
-//   -> const IndexSetGlobal<DomainType> & {
+    -> decltype(index_set.global()) {
   return index_set.global();
 }
 
@@ -1206,7 +1202,8 @@ class IndexSetBlocks
   typedef IndexSetBlocks<DomainType>                            self_t;
   typedef IndexSetBase<self_t, DomainType>                      base_t;
  public:
-  typedef typename DomainType::index_type                   index_type;
+  typedef typename base_t::index_type                       index_type;
+  typedef typename base_t::size_type                         size_type;
 
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<DomainType>                       global_type;
@@ -1251,6 +1248,24 @@ class IndexSetBlocks
   : base_t(std::forward<DomainType>(view))
   , _size(calc_size())
   { }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NBlocksDim>
+  extents() const {
+    return ( this->is_local()
+             ? this->pattern().local_blockspec().extents()
+             : this->pattern().blockspec().extents() );
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  constexpr std::array<index_type, NBlocksDim>
+  offsets() const {
+    return std::array<index_type, NBlocksDim> { };
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr iterator begin() const {
     return iterator(*this, 0);

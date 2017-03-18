@@ -80,7 +80,6 @@ class ViewBlockMod
  public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
-//typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename base_t::origin_type                         origin_type;
  public:
   // TODO: Defaulting to SubDim = 0 here, clarify
@@ -414,7 +413,35 @@ class ViewBlocksMod
   , _index_set(this->domain())
   { }
 
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NDim> extents() const {
+    return _index_set.extents();
+  }
+
+  template <dim_t ExtDim>
+  constexpr size_type extent() const {
+    return _index_set.template extent<ExtDim>();
+  }
+
+  constexpr size_type extent(dim_t shape_dim) const {
+    return _index_set.extent(shape_dim);
+  }
+
   // ---- offsets ---------------------------------------------------------
+
+  template <dim_t ExtDim>
+  constexpr index_type offset() const {
+    return _index_set.template offset<ExtDim>();
+  }
+
+  constexpr std::array<index_type, NDim> offsets() const {
+    return _index_set.offsets();
+  }
+
+  constexpr index_type offset(dim_t shape_dim) const {
+    return _index_set.offset(shape_dim);
+  }
 
   // ---- size ------------------------------------------------------------
 
