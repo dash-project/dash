@@ -1,16 +1,18 @@
 #ifndef DASH__GLOB_PTR_H_
 #define DASH__GLOB_PTR_H_
 
-#include <cstddef>
-#include <sstream>
-#include <iostream>
-
 #include <dash/dart/if/dart.h>
+
 #include <dash/internal/Logging.h>
+
 #include <dash/Pattern.h>
 #include <dash/Exception.h>
 #include <dash/Init.h>
 #include <dash/Allocator.h>
+
+#include <cstddef>
+#include <sstream>
+#include <iostream>
 
 
 std::ostream & operator<<(
@@ -30,22 +32,9 @@ namespace dash {
 // Forward-declarations
 template<typename T>                  class GlobRef;
 template<typename T,
-         class    AllocT // = dash::allocator::CollectiveAllocator<T>
-        >                             class GlobMem;
-#if 0
+         class    AllocT>             class GlobMem;
 template<typename T,
-         class    MemorySpace =
-                    GlobMem<
-                      typename std::remove_const<T>::type,
-                      dash::allocator::CollectiveAllocator<
-                        typename std::remove_const<T>::type > >
-        >                             class GlobPtr;
-
-template<typename T, class MemSpaceT>
-std::ostream & operator<<(
-  std::ostream                & os,
-  const GlobPtr<T, MemSpaceT> & it);
-#endif
+         class    AllocT>             class GlobDynamicMem;
 template<typename T>                  class GlobConstPtr;
 
 /**
@@ -133,9 +122,19 @@ public:
    */
   constexpr GlobPtr(
     const MemorySpace & mem_space,
-    dart_gptr_t gptr)
+    dart_gptr_t         gptr)
   : _dart_gptr(gptr)
   , _mem_space(reinterpret_cast<const MemorySpace *>(&mem_space))
+  { }
+
+  /**
+   * Constructor, specifies underlying global address.
+   */
+  constexpr GlobPtr(
+    MemorySpace && mem_space,
+    dart_gptr_t    gptr)
+  : _dart_gptr(gptr)
+  , _mem_space(nullptr)
   { }
 
   /**

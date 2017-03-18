@@ -202,17 +202,26 @@ private:
 
 public:
   typedef AllocatorType                                      allocator_type;
-  typedef ElementType                                            value_type;
+  typedef typename std::decay<ElementType>::type                 value_type;
+  
   typedef typename AllocatorType::size_type                       size_type;
   typedef typename AllocatorType::difference_type           difference_type;
   typedef typename AllocatorType::difference_type                index_type;
+
   typedef typename AllocatorType::pointer                       raw_pointer;
+#if 0
+  typedef typename AllocatorType::pointer                           pointer;
+  typedef typename AllocatorType::const_pointer               const_pointer;
   typedef typename AllocatorType::void_pointer                 void_pointer;
   typedef typename AllocatorType::const_void_pointer     const_void_pointer;
-  typedef GlobPtr<value_type>                                       pointer;
-  typedef GlobPtr<const value_type>                           const_pointer;
-  typedef GlobSharedRef<value_type>                               reference;
-  typedef GlobSharedRef<const value_type>                   const_reference;
+#else
+  typedef GlobPtr<      value_type, self_t>                         pointer;
+  typedef GlobPtr<const value_type, self_t>                   const_pointer;
+  typedef GlobPtr<      void,       self_t>                    void_pointer;
+  typedef GlobPtr<const void,       self_t>              const_void_pointer;
+#endif
+  typedef GlobSharedRef<      value_type,       pointer>          reference;
+  typedef GlobSharedRef<const value_type, const_pointer>    const_reference;
 
   typedef       value_type &                                local_reference;
   typedef const value_type &                          const_local_reference;
@@ -260,6 +269,44 @@ private:
   template<typename T_, class GMem_, class Ptr_, class Ref_>
   friend class dash::GlobBucketIter;
 
+private:
+  allocator_type             _allocator;
+  dash::Team               * _team;
+  dart_team_t                _teamid;
+  size_type                  _nunits = 0;
+  local_iterator             _lbegin = nullptr;
+  local_iterator             _lend   = nullptr;
+  team_unit_t                _myid   { DART_UNDEFINED_UNIT_ID };
+  /// Buckets in local memory space, partitioned by allocated state:
+  ///   [ attached buckets, ... , unattached buckets, ... ]
+  /// Buckets in this list represent the local iteration- and memory space.
+  bucket_list                _buckets;
+  /// List of buckets marked for detach.
+  bucket_list                _detach_buckets;
+  /// Iterator to first unattached bucket.
+  bucket_iterator            _attach_buckets_first;
+  /// Mapping unit id to number of elements in the unit's attached local
+  /// memory space.
+  local_sizes_map            _local_sizes;
+  /// An array mapping units to a list of their cumulative bucket sizes
+  /// (i.e. postfix sum) which is required to iterate over the
+  /// non-contigous global dynamic memory space.
+  /// For example, if unit 2 allocated buckets with sizes 1,3,5, the
+  /// list at _bucket_cumul_sizes[2] has values 1,4,9.
+  bucket_cumul_sizes_map     _bucket_cumul_sizes;
+  /// Mapping unit id to number of buckets marked for attach in the unit's
+  /// memory space.
+  local_sizes_map            _num_attach_buckets;
+  /// Mapping unit id to number of buckets marked for detach in the unit's
+  /// memory space.
+  local_sizes_map            _num_detach_buckets;
+  /// Total number of elements in attached memory space of remote units.
+  size_type                  _remote_size = 0;
+  /// Global iterator referencing start of global memory space.
+  global_iterator            _begin;
+  /// Global iterator referencing the final position in global memory space.
+  global_iterator            _end;
+
 public:
   /**
    * Constructor, collectively allocates the given number of elements in
@@ -306,28 +353,24 @@ public:
   ~GlobDynamicMem()
   {
     DASH_LOG_TRACE("GlobDynamicMem.~GlobDynamicMem()");
-    DASH_LOG_TRACE("GlobDynamicMem.~GlobDynamicMem >");
   }
 
-  GlobDynamicMem() = delete;
+  GlobDynamicMem()                        = delete;
 
   /**
    * Copy constructor.
    */
-  GlobDynamicMem(const self_t & other)
-    = default;
+  GlobDynamicMem(const self_t & other)    = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)
-    = default;
+  self_t & operator=(const self_t & rhs)  = default;
 
   /**
    * Equality comparison operator.
    */
-  constexpr bool
-  operator==(const self_t & rhs) const noexcept
+  constexpr bool operator==(const self_t & rhs) const noexcept
   {
     return (_teamid         == rhs._teamid &&
             _nunits         == rhs._nunits &&
@@ -338,10 +381,18 @@ public:
   }
 
   /**
+   * Inequality comparison operator.
+   */
+  constexpr bool operator!=(const self_t & rhs) const noexcept
+  {
+    return !(*this == rhs);
+  }
+
+  /**
    * Total number of elements in attached memory space, including size of
    * local unattached memory segments.
    */
-  constexpr size_type size() const
+  constexpr size_type size() const noexcept
   {
     return _remote_size + local_size();
   }
@@ -349,8 +400,7 @@ public:
   /**
    * Number of elements in local memory space.
    */
-  constexpr size_type
-  local_size() const noexcept
+  constexpr size_type local_size() const noexcept
   {
     return _local_sizes.local[0];
   }
@@ -380,22 +430,12 @@ public:
   }
 
   /**
-   * Inequality comparison operator.
-   */
-  constexpr
-  bool operator!=(const self_t & rhs) const noexcept
-  {
-    return !(*this == rhs);
-  }
-
-  /**
    * The team containing all units accessing the global memory space.
    *
    * \return  A reference to the Team containing the units associated with
    *          the global dynamic memory space.
    */
-  constexpr
-  dash::Team & team() const noexcept
+  constexpr dash::Team & team() const noexcept
   {
     return (_team != nullptr) ? *_team : dash::Team::Null();
   }
@@ -715,7 +755,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  global_iterator & begin()
+  global_iterator & begin() noexcept
   {
     return _begin;
   }
@@ -723,7 +763,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_global_iterator & begin() const
+  constexpr const_global_iterator & begin() const noexcept
   {
     return _begin;
   }
@@ -731,7 +771,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  reverse_global_iterator rbegin()
+  reverse_global_iterator rbegin() noexcept
   {
     return reverse_global_iterator(_end);
   }
@@ -739,7 +779,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_reverse_global_iterator rbegin() const
+  constexpr const_reverse_global_iterator rbegin() const noexcept
   {
     return reverse_global_iterator(_end);
   }
@@ -747,7 +787,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  global_iterator & end()
+  global_iterator & end() noexcept
   {
     return _end;
   }
@@ -755,7 +795,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_global_iterator & end() const
+  const_global_iterator & end() const noexcept
   {
     return _end;
   }
@@ -763,7 +803,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  reverse_global_iterator rend()
+  reverse_global_iterator rend() noexcept
   {
     return reverse_global_iterator(_begin);
   }
@@ -771,7 +811,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_reverse_global_iterator rend() const
+  constexpr const_reverse_global_iterator rend() const noexcept
   {
     return reverse_global_iterator(_begin);
   }
@@ -780,7 +820,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline local_iterator & lbegin()
+  inline local_iterator & lbegin() noexcept
   {
     return _lbegin;
   }
@@ -789,7 +829,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline const_local_iterator lbegin() const
+  inline const_local_iterator lbegin() const noexcept
   {
     return _lbegin;
   }
@@ -798,7 +838,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline local_iterator & lend()
+  inline local_iterator & lend() noexcept
   {
     return _lend;
   }
@@ -807,7 +847,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline const_local_iterator & lend() const
+  inline const_local_iterator & lend() const noexcept
   {
     return _lend;
   }
@@ -1079,14 +1119,13 @@ private:
     // TODO: Unoptimized, use dash::min_max_element once it is available
     //
     DASH_LOG_TRACE("GlobDynamicMem.gather_min_max()");
-    size_type * lcopy     = new ValueType[dash::distance(first, last)];
-    size_type * lcopy_end = dash::copy(first, last, lcopy);
-    auto min_lptr  = std::min_element(lcopy, lcopy_end);
-    auto max_lptr  = std::max_element(lcopy, lcopy_end);
+    std::vector<ValueType> lcopy(dash::distance(first, last));
+    auto lcopy_end = dash::copy(first, last, lcopy.data());
+    auto min_lptr  = std::min_element(lcopy.data(), lcopy_end);
+    auto max_lptr  = std::max_element(lcopy.data(), lcopy_end);
     std::pair<ValueType, ValueType> min_max;
     min_max.first  = *min_lptr;
     min_max.second = *max_lptr;
-    delete[] lcopy;
     DASH_LOG_TRACE("GlobDynamicMem.gather_min_max >",
                    "min:", min_max.first,
                    "max:", min_max.second);
@@ -1284,44 +1323,6 @@ private:
     DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
     return dart_gptr;
   }
-
-private:
-  allocator_type             _allocator;
-  dash::Team               * _team;
-  dart_team_t                _teamid;
-  size_type                  _nunits = 0;
-  local_iterator             _lbegin = nullptr;
-  local_iterator             _lend   = nullptr;
-  team_unit_t                _myid{DART_UNDEFINED_UNIT_ID};
-  /// Buckets in local memory space, partitioned by allocated state:
-  ///   [ attached buckets, ... , unattached buckets, ... ]
-  /// Buckets in this list represent the local iteration- and memory space.
-  bucket_list                _buckets;
-  /// List of buckets marked for detach.
-  bucket_list                _detach_buckets;
-  /// Iterator to first unattached bucket.
-  bucket_iterator            _attach_buckets_first;
-  /// Mapping unit id to number of elements in the unit's attached local
-  /// memory space.
-  local_sizes_map            _local_sizes;
-  /// An array mapping units to a list of their cumulative bucket sizes
-  /// (i.e. postfix sum) which is required to iterate over the
-  /// non-contigous global dynamic memory space.
-  /// For example, if unit 2 allocated buckets with sizes 1,3,5, the
-  /// list at _bucket_cumul_sizes[2] has values 1,4,9.
-  bucket_cumul_sizes_map     _bucket_cumul_sizes;
-  /// Mapping unit id to number of buckets marked for attach in the unit's
-  /// memory space.
-  local_sizes_map            _num_attach_buckets;
-  /// Mapping unit id to number of buckets marked for detach in the unit's
-  /// memory space.
-  local_sizes_map            _num_detach_buckets;
-  /// Total number of elements in attached memory space of remote units.
-  size_type                  _remote_size = 0;
-  /// Global iterator referencing start of global memory space.
-  global_iterator            _begin;
-  /// Global iterator referencing the final position in global memory space.
-  global_iterator            _end;
 
 }; // class GlobDynamicMem
 

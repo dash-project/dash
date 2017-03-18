@@ -29,12 +29,10 @@ class GlobSharedRef
     const GlobSharedRef<U> & gref);
 
 private:
-
   typedef GlobSharedRef<T, GlobalPointerType>
     self_t;
 
 public:
-
   typedef GlobalPointerType              global_pointer;
   typedef GlobalPointerType        const_global_pointer;
   typedef       T *                       local_pointer;
@@ -132,6 +130,16 @@ public:
   : _gptr(other._gptr),
     _lptr(other._lptr)
   { }
+
+#if 0
+  /**
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
+   */
+  GlobSharedRef(const self_t & other) = delete;
+#endif
 
   /**
    * Assignment operator.
