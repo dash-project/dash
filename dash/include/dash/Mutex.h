@@ -46,6 +46,8 @@ public:
   explicit Mutex(Team & team = dash::Team::All());
   
   Mutex(const Mutex & other)               = delete;
+  Mutex(Mutex && other)                    = default;
+
   self_t & operator=(const self_t & other) = delete;
   
   /**
