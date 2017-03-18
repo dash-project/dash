@@ -39,7 +39,7 @@ public:
 public:
   template<dim_t NDim_, typename SizeType_>
   friend std::ostream & operator<<(
-    std::ostream & os,
+    std::ostream                           & os,
     const CartesianSpace<NDim_, SizeType_> & cartesian_space);
 
 protected:
@@ -250,6 +250,11 @@ public:
   typedef IndexType                           index_type;
   typedef SizeType                            size_type;
   typedef std::array<SizeType, NumDimensions> extents_type;
+
+  template<dim_t NDim_>
+  friend std::ostream & operator<<(
+    std::ostream                     & os,
+    const CartesianIndexSpace<NDim_> & cartesian_space);
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
@@ -787,8 +792,27 @@ std::ostream & operator<<(
   const dash::CartesianSpace<NumDimensions, SizeType> & cartesian_space)
 {
   std::ostringstream ss;
-  ss << "dash::CartesianSpace"
-     << "< " << NumDimensions << ", " << typeid(SizeType).name() << ">"
+  ss << dash::typestr(cartesian_space)
+     << ": "
+     << "extents(";
+  for (auto dim = 0; dim < NumDimensions; ++dim) {
+    if (dim > 0) {
+      ss << ",";
+    }
+    ss << cartesian_space.extents()[dim];
+  }
+  ss << ")";
+  return operator<<(os, ss.str());
+}
+
+template <
+  dash::dim_t NumDimensions >
+std::ostream & operator<<(
+  std::ostream & os,
+  const dash::CartesianIndexSpace<NumDimensions> & cartesian_space)
+{
+  std::ostringstream ss;
+  ss << dash::typestr(cartesian_space)
      << ": "
      << "extents(";
   for (auto dim = 0; dim < NumDimensions; ++dim) {
