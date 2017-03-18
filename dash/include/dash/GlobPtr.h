@@ -173,6 +173,7 @@ public:
   {
     _dart_gptr = other._dart_gptr;
     _mem_space = reinterpret_cast<const MemorySpace *>(other._mem_space);
+    return *this;
   }
 
   /**
