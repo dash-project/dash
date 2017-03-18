@@ -1,7 +1,7 @@
 #ifndef DASH__GLOB_SHARED_EF_H_
 #define DASH__GLOB_SHARED_EF_H_
 
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Init.h>
 #include <dash/algorithm/Operation.h>
 

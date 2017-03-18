@@ -1,7 +1,7 @@
 
 #include "GlobStaticMemTest.h"
 
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
 

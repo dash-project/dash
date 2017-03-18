@@ -1,7 +1,7 @@
 #ifndef DASH__EXPERIMENTAL__HALO_H__
 #define DASH__EXPERIMENTAL__HALO_H__
 
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>

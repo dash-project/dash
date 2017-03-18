@@ -3,7 +3,7 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 

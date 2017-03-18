@@ -2,7 +2,7 @@
 #define DASH__HALO_H__
 
 #include <dash/Allocator.h>
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 

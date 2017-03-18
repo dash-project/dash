@@ -1,7 +1,7 @@
 
 #include "GlobHeapMemTest.h"
 
-#include <dash/GlobHeapMem.h>
+#include <dash/memory/GlobHeapMem.h>
 
 
 TEST_F(GlobHeapMemTest, BalancedAlloc)

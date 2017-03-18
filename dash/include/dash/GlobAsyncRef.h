@@ -3,7 +3,7 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/Allocator.h>
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <iostream>
 

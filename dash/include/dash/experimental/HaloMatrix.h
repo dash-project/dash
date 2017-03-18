@@ -4,7 +4,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/Pattern.h>
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Matrix.h>
 
 #include <dash/experimental/Halo.h>

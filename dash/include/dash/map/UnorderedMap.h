@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobHeapMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 #include <dash/Meta.h>
 

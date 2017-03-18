@@ -10,7 +10,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobHeapMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 
 #include <dash/iterator/GlobIter.h>

@@ -29,7 +29,7 @@ int main(int argc, char **argv)
   dash::Array<int> key_array(NUM_KEYS, dash::BLOCKED);
   dash::Array<int> key_histo(MAX_KEY,  dash::BLOCKED);
   
-  using glob_ptr_t = dash::GlobPtr< int, dash::GlobUnitHeap<int> >;
+  using glob_ptr_t = dash::GlobPtr< int, dash::GlobUnitMem<int> >;
 
   dash::Array<glob_ptr_t> work_buffers(size, dash::CYCLIC);
 

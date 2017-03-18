@@ -135,7 +135,7 @@ public:
     dart_gptr_t    gptr)
   : _dart_gptr(gptr)
     // TODO: Should bind temporary, see dash::memalloc in
-    //       dash/GlobUnitHeap.h
+    //       dash/memory/GlobUnitMem.h
   , _mem_space(nullptr)
   { }
 
@@ -569,7 +569,7 @@ std::ostream & operator<<(
  *
  * TODO: Will be replaced by specialization of GlobPtr for global
  *       memory space tagged as unit-scope address space
- *       (see GlobUnitHeap).
+ *       (see GlobUnitMem).
  */
 template<typename T>
 class GlobConstPtr

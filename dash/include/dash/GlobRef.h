@@ -1,7 +1,7 @@
 #ifndef DASH__GLOBREF_H_
 #define DASH__GLOBREF_H_
 
-#include <dash/GlobStaticMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
