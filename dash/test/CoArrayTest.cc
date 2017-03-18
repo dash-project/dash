@@ -6,9 +6,11 @@
 #include <dash/Types.h>
 #include <dash/Atomic.h>
 #include <dash/Mutex.h>
+#include <dash/Algorithm.h>
 
 // for std::lock_guard
 #include <mutex>
+#include <thread>
 
 using namespace dash::co_array;
 
@@ -240,6 +242,44 @@ TEST_F(CoArrayTest, Mutex){
   if(this_image() == 0){
     int result = arr;
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*2);
+  }
+}
+
+TEST_F(CoArrayTest, Comutex){
+  const int repetitions = 10;
+  
+  dash::Comutex comx;
+  dash::Coarray<int> arr;
+  
+  std::random_device rd;
+  std::default_random_engine dre(rd());
+  std::uniform_int_distribution<int> uniform_dist(0, dash::size()-1);
+  
+  arr = 0;
+  dash::barrier();
+  
+  // only for logging
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // each unit adds 1 to a random unit exactly n times
+  for(int i=0; i<repetitions; ++i){
+    int rand_unit = uniform_dist(dre);
+    LOG_MESSAGE("Update unit %d", rand_unit);
+    {
+      std::lock_guard<dash::Mutex> lg(comx(rand_unit));
+      int tmp = arr(rand_unit);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      arr(rand_unit) = tmp + 1;
+    }
+  }
+  dash::barrier();
+  // only for logging
+  std::this_thread::sleep_for(std::chrono::microseconds(100));
+  
+  // sum should be dash::size() * repetitions
+  auto sum = dash::accumulate(arr.begin(), arr.end(), 0, dash::plus<int>());
+  if(this_image() == 0){
+    ASSERT_EQ_U(sum, dash::size() * repetitions);
   }
 }
 

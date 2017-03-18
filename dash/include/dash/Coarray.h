@@ -253,7 +253,7 @@ public:
   }
   
   inline void barrier() {
-    team().barrier();
+    _storage.barrier();
   }
   
   inline void sync_all() {

@@ -6,6 +6,7 @@
 #include "TestBase.h"
 
 #include <dash/Coarray.h>
+#include <dash/Comutex.h>
 
 /**
  * Test fixture for class dash::co_array
