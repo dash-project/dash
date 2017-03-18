@@ -162,7 +162,7 @@ struct pattern_partitioning_spec<void>
 template <class... PartitioningType>
 struct pattern_partitioning_spec<void, PartitioningType... >
 {
-  typedef 
+  typedef ...
 };
 
 #endif

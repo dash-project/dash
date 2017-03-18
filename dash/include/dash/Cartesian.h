@@ -44,20 +44,25 @@ public:
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType     _size;
+  SizeType     _size    = 0;
   /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType     _ndim;
+  SizeType     _rank    = NumDimensions;
   /// Extents of the cartesian space by dimension.
   extents_type _extents = {{  }};
 
 public:
+  /**
+   * The number of dimension in the cartesian space.
+   */
+  typedef std::integral_constant<dim_t, NumDimensions> ndim;
+
   /**
    * Default constructor, creates a cartesian space of extent 0 in all
    * dimensions.
    */
   constexpr CartesianSpace()
   : _size(0),
-    _ndim(NumDimensions)
+    _rank(NumDimensions)
   { }
 
   /**
@@ -67,7 +72,7 @@ public:
   template <typename... Args>
   CartesianSpace(SizeType arg, Args... args)
   : _size(0),
-    _ndim(NumDimensions) {
+    _rank(NumDimensions) {
     resize(arg, args...);
   }
 
@@ -77,15 +82,8 @@ public:
   CartesianSpace(
     const extents_type & extents)
   : _size(0),
-    _ndim(NumDimensions) {
+    _rank(NumDimensions) {
     resize(extents);
-  }
-
-  /**
-   * Number of dimensions of the cartesian space.
-   */
-  constexpr static dim_t ndim() {
-    return NumDimensions;
   }
 
   /**
@@ -149,23 +147,12 @@ public:
    * The number of dimension in the cartesian space with extent greater
    * than 1.
    *
-   * \see num_dimensions()
+   * \see ndim
    *
    * \return The number of dimensions in the coordinate
    */
-  constexpr SizeType rank() const {
-    return NumDimensions;
-  }
-
-  /**
-   * The number of dimension in the cartesian space.
-   *
-   * \see rank()
-   *
-   * \return The number of dimensions in the coordinate
-   */
-  constexpr SizeType num_dimensions() const noexcept {
-    return NumDimensions;
+  constexpr dim_t rank() const noexcept {
+    return _rank;
   }
 
   /**
@@ -241,6 +228,9 @@ public:
 /**
  * Defines a cartesian, totally-ordered index space by mapping linear
  * indices to cartesian coordinates depending on memory order.
+ *
+ * \note Not derived from CartesianSpace to provide resizing in O(d)
+ *       instead of O(2d).
  */
 template<
   dim_t      NumDimensions,
@@ -261,17 +251,13 @@ public:
   typedef SizeType                            size_type;
   typedef std::array<SizeType, NumDimensions> extents_type;
 
-/*
- * Note: Not derived from CartesianSpace to provide resizing in O(d)
- *       instead of O(2d).
- */
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType     _size    = 0;
-  /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType     _ndim    = NumDimensions;
+  SizeType     _size             = 0;
+  /// Number of dimensions in the cartesian space.
+  SizeType     _rank             = NumDimensions;
   /// Extents of the cartesian space by dimension.
-  extents_type _extents = {  };
+  extents_type _extents          = {  };
   /// Cumulative index offsets of the index space by dimension respective
   /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<ROW_ORDER>().
@@ -283,6 +269,11 @@ protected:
 
 public:
   /**
+   * The number of dimension in the cartesian space.
+   */
+  typedef std::integral_constant<dim_t, NumDimensions> ndim;
+
+  /**
    * Default constructor, creates a cartesian index space of extent 0
    * in all dimensions.
    */
@@ -293,9 +284,7 @@ public:
    */
   CartesianIndexSpace(
     const extents_type & extents)
-  : _size(0),
-    _ndim(NumDimensions),
-    _extents(extents)
+  : _extents(extents)
   {
     resize(extents);
   }
@@ -305,11 +294,21 @@ public:
    */
   template<typename... Args>
   CartesianIndexSpace(SizeType arg, Args... args)
-  : _size(0),
-    _ndim(NumDimensions),
-    _extents({{ }})
+  : _extents({{ }})
   {
     resize(arg, args...);
+  }
+
+  /**
+   * The number of dimension in the cartesian space with extent greater
+   * than 1.
+   *
+   * \see num_dimensions()
+   *
+   * \return The number of dimensions in the coordinate
+   */
+  constexpr dim_t rank() const noexcept {
+    return _rank;
   }
 
   /**
@@ -380,29 +379,6 @@ public:
   void resize(dim_t dim, SizeType extent) {
     _extents[dim] = extent;
     resize(_extents);
-  }
-
-  /**
-   * The number of dimension in the cartesian space with extent greater
-   * than 1.
-   *
-   * \see num_dimensions()
-   *
-   * \return The number of dimensions in the coordinate
-   */
-  constexpr SizeType rank() const noexcept {
-    return NumDimensions;
-  }
-
-  /**
-   * The number of dimension in the cartesian space.
-   *
-   * \see rank()
-   *
-   * \return The number of dimensions in the coordinate
-   */
-  constexpr SizeType num_dimensions() const noexcept {
-    return NumDimensions;
   }
 
   /**
@@ -585,7 +561,7 @@ public:
     IndexType index,
     dim_t dimension,
     IndexType dim_offset) const {
-    if (_ndim == 1) {
+    if (_rank == 1) {
       // Shortcut for trivial case
       return (index >= 0 && index < size());
     }

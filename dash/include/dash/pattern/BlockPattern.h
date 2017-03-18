@@ -1018,6 +1018,36 @@ public:
   }
 
   /**
+   * Unit and local block index at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    local_index_t l_pos;
+
+    std::array<IndexType, NumDimensions> l_block_coords;
+    std::array<IndexType, NumDimensions> unit_ts_coords;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      auto nunits_d      = _teamspec.extent(d);
+      auto blocksize_d   = _blocksize_spec.extent(d);
+      auto block_coord_d = g_coords[d] / blocksize_d;
+      l_block_coords[d]  = block_coord_d / nunits_d;
+      unit_ts_coords[d]  = block_coord_d % nunits_d;
+    }
+    l_pos.unit  = _teamspec.at(unit_ts_coords);
+    l_pos.index = _local_blockspec.at(l_block_coords);
+
+    DASH_LOG_TRACE("BlockPattern.local_block_at >",
+                   "coords",             g_coords,
+                   "unit:",              l_pos.unit,
+                   "local block index:", l_pos.index);
+    return l_pos;
+  }
+
+  /**
    * View spec (offset and extents) of block at global linear block index in
    * cartesian element space.
    */
