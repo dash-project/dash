@@ -5,12 +5,16 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
+
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
 #include <dash/algorithm/Generate.h>
 
+#include <dash/pattern/internal/PatternLogging.h>
+
 #include <iostream>
 #include <iomanip>
+
 
 
 TEST_F(MatrixTest, OddSize)
@@ -1263,13 +1267,27 @@ TEST_F(MatrixTest, CopyRow)
 
 TEST_F(MatrixTest, ConstMatrixRefs)
 {
-  typedef dash::Pattern<2>                 pattern_t;
-  typedef typename pattern_t::index_type   index_t;
+  typedef dash::BlockPattern<2>            pattern_t;
+  typedef typename pattern_t::index_type     index_t;
 
-  dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
+  int block_rows = 3;
+  int block_cols = 4;
+
+  int nrows = dash::size() * block_rows * 2;
+  int ncols = dash::size() * block_cols;
+
+  dash::Matrix<int, 2, index_t, pattern_t> matrix(
+      dash::SizeSpec<2>(nrows, ncols));
+
+  if (dash::myid().id == 0) {
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+                       matrix.pattern().blockspec());
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+                       matrix.pattern().teamspec());
+  }
   
   auto const & matrix_by_ref = matrix;
-  auto & matrix_local  = matrix.local;
+  auto       & matrix_local  = matrix.local;
   
   dash::fill(matrix.begin(), matrix.end(), 0);
   dash::barrier();

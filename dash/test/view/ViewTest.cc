@@ -1756,7 +1756,7 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
     int exp_l_sub_block_size = array.lsize();
 
     EXPECT_EQ_U(l_sub_block_index.size(), l_sub_block.size());
- // EXPECT_EQ_U(exp_l_sub_block_size, l_sub_block.size());
+    EXPECT_EQ_U(exp_l_sub_block_size, l_sub_block.size());
     EXPECT_EQ_U(l_sub_block.size(),
                 dash::distance(l_sub_block.begin(), l_sub_block.end()));
 
