@@ -780,12 +780,22 @@ struct pattern_traits
           index_type;
   typedef typename PatternType::size_type
           size_type;
+
   typedef typename dash::pattern_partitioning_traits<PatternType>::type
           partitioning;
   typedef typename dash::pattern_mapping_traits<PatternType>::type
           mapping;
   typedef typename dash::pattern_layout_traits<PatternType>::type
           layout;
+
+  typedef typename std::decay<
+                     decltype(std::declval<PatternType>().blockspec())
+                   >::type
+          blockspec_type;
+  typedef typename std::decay<
+                     decltype(std::declval<PatternType>().local_blockspec())
+                   >::type
+          local_blockspec_type;
 };
 
 //////////////////////////////////////////////////////////////////////////////
