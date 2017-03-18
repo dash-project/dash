@@ -118,12 +118,6 @@ public:
    * \see DashAllocatorConcept
    */
   self_t & operator=(const self_t & other) = delete;
-#if 0
-  {
-    // noop
-    return *this;
-  }
-#endif
 
   /**
    * Move-assignment operator.

@@ -5,7 +5,7 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobMem.h>
+#include <dash/GlobStaticHeap.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -125,7 +125,7 @@ private:
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobMem<ElementType>,
+  class    GlobStaticHeapType   = GlobStaticHeap<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobStencilIter
@@ -144,7 +144,7 @@ private:
   typedef GlobStencilIter<
             ElementType,
             PatternType,
-            GlobMemType,
+            GlobStaticHeapType,
             PointerType,
             ReferenceType>
     self_t;
@@ -191,7 +191,7 @@ public:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType         * _globmem         = nullptr;
+  GlobStaticHeapType         * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType   * _pattern         = nullptr;
   /// View that specifies the iterator's index range relative to the global
@@ -233,7 +233,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMemType        * gmem,
+    GlobStaticHeapType        * gmem,
 	  const PatternType  & pat,
     const ViewSpecType & viewspec,
     const HaloSpecType & halospec,
@@ -261,7 +261,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMemType        * gmem,
+    GlobStaticHeapType        * gmem,
 	  const PatternType  & pat,
     const HaloSpecType & halospec,
 	  IndexType            position          = 0,
@@ -315,7 +315,7 @@ public:
   GlobStencilIter(
     const GlobViewIter<ElementType,
                        PatternType,
-                       GlobMemType,
+                       GlobStaticHeapType,
                        PtrT,
                        RefT> & other,
     const HaloSpecType       & halospec)
@@ -845,23 +845,23 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobMemType & globmem() const
+  inline const GlobStaticHeapType & globmem() const
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobMemType & globmem()
+  inline GlobStaticHeapType & globmem()
   {
     return *_globmem;
   }
@@ -1163,15 +1163,15 @@ private:
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticHeap,
   class    Pointer,
   class    Reference >
 auto distance(
   /// Global iterator to the initial position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobStencilIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobStencilIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
     last
 ) -> typename Pattern::index_type
 {
@@ -1181,13 +1181,13 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticHeap,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::experimental::GlobStencilIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticHeap, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);

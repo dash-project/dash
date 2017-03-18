@@ -220,7 +220,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
 
   using elem_t    = int;
-  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitMem<elem_t> >;
+  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitHeap<elem_t> >;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");

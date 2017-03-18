@@ -5,7 +5,7 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/GlobHeap.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
 #include <dash/Meta.h>
@@ -197,7 +197,7 @@ private:
                      internal::ListNode<ElementType> >::other
     node_allocator_type;
 
-  typedef dash::GlobDynamicMem<node_type, node_allocator_type>
+  typedef dash::GlobHeap<node_type, node_allocator_type>
     glob_mem_type;
 
   typedef dash::Array<

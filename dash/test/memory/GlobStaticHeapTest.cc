@@ -1,15 +1,15 @@
 
-#include "GlobMemTest.h"
+#include "GlobStaticHeapTest.h"
 
-#include <dash/GlobMem.h>
+#include <dash/GlobStaticHeap.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
 
 
-TEST_F(GlobMemTest, ConstructorInitializerList)
+TEST_F(GlobStaticHeapTest, ConstructorInitializerList)
 {
   auto target_local_elements = { 1, 2, 3, 4, 5, 6 };
-  auto target = dash::GlobMem<int>(target_local_elements);
+  auto target = dash::GlobStaticHeap<int>(target_local_elements);
 
   std::vector<int> glob_values;
   for (dash::team_unit_t u{0}; u < dash::size(); u++) {
@@ -20,7 +20,7 @@ TEST_F(GlobMemTest, ConstructorInitializerList)
     }
   }
   for (auto val : glob_values) {
-    DASH_LOG_DEBUG_VAR("GlobMemTest.ConstructorInitializerList", val);
+    DASH_LOG_DEBUG_VAR("GlobStaticHeapTest.ConstructorInitializerList", val);
   }
 
   int target_element;
@@ -30,7 +30,7 @@ TEST_F(GlobMemTest, ConstructorInitializerList)
   }
 }
 
-TEST_F(GlobMemTest, LocalBegin)
+TEST_F(GlobStaticHeapTest, LocalBegin)
 {
   auto   target_local_elements = { 1, 2, 3, 4 };
 
@@ -42,7 +42,7 @@ TEST_F(GlobMemTest, LocalBegin)
                     ? dash::Team::All()
                     : dash::Team::All().split(2);
 
-  auto   target = dash::GlobMem<int>(target_local_elements, sub_team);
+  auto   target = dash::GlobStaticHeap<int>(target_local_elements, sub_team);
 
   for (int l = 0; l < target_local_elements.size(); l++) {
     EXPECT_EQ_U(*(target_local_elements.begin() + l), target.lbegin()[l]);

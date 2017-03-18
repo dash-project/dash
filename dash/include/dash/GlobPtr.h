@@ -32,9 +32,9 @@ namespace dash {
 // Forward-declarations
 template<typename T>                  class GlobRef;
 template<typename T,
-         class    AllocT>             class GlobMem;
+         class    AllocT>             class GlobStaticHeap;
 template<typename T,
-         class    AllocT>             class GlobDynamicMem;
+         class    AllocT>             class GlobHeap;
 template<typename T>                  class GlobConstPtr;
 
 /**
@@ -59,7 +59,7 @@ template<typename T>                  class GlobConstPtr;
  */
 template<
   typename ElementType,
-  class    MemorySpace  = GlobMem<
+  class    MemorySpace  = GlobStaticHeap<
                             typename std::remove_const<ElementType>::type,
                             dash::allocator::CollectiveAllocator<
                               typename std::remove_const<ElementType>::type
@@ -135,7 +135,7 @@ public:
     dart_gptr_t    gptr)
   : _dart_gptr(gptr)
     // TODO: Should bind temporary, see dash::memalloc in
-    //       dash/GlobUnitMem.h
+    //       dash/GlobUnitHeap.h
   , _mem_space(nullptr)
   { }
 
@@ -569,7 +569,7 @@ std::ostream & operator<<(
  *
  * TODO: Will be replaced by specialization of GlobPtr for global
  *       memory space tagged as unit-scope address space
- *       (see GlobUnitMem).
+ *       (see GlobUnitHeap).
  */
 template<typename T>
 class GlobConstPtr

@@ -1,7 +1,7 @@
 #ifndef DASH__GLOBREF_H_
 #define DASH__GLOBREF_H_
 
-#include <dash/GlobMem.h>
+#include <dash/GlobStaticHeap.h>
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
@@ -9,7 +9,7 @@
 namespace dash {
 
 // Forward declarations
-template<typename T, class A> class GlobMem;
+template<typename T, class A> class GlobStaticHeap;
 template<typename T> class GlobConstPtr;
 template<typename T, class MemSpaceT> class GlobPtr;
 

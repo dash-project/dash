@@ -19,7 +19,7 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    PointerType   = GlobPtr<ElementType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobListIter
@@ -33,7 +33,7 @@ class GlobListIter
 private:
   typedef GlobListIter<
             ElementType,
-            GlobMemType,
+            GlobStaticHeapType,
             PointerType,
             ReferenceType>
     self_t;
@@ -45,7 +45,7 @@ public:
   typedef       PointerType                          pointer;
   typedef const PointerType                    const_pointer;
 
-  typedef typename GlobMemType::local_pointer  local_pointer;
+  typedef typename GlobStaticHeapType::local_pointer  local_pointer;
 
   typedef internal::ListNode<value_type>           node_type;
 
@@ -62,7 +62,7 @@ public:
    * Constructor, creates a global iterator on a \c dash::List instance.
    */
   GlobListIter(
-    GlobMemType  * gmem,
+    GlobStaticHeapType  * gmem,
     node_type    & node)
   : _globmem(gmem),
     _node(&node),
@@ -136,19 +136,19 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  inline const GlobStaticHeapType & globmem() const
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMemType & globmem()
+  inline GlobStaticHeapType & globmem()
   {
     return *_globmem;
   }
@@ -219,7 +219,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobStaticHeapType          * _globmem;
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit

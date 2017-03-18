@@ -16,7 +16,7 @@ namespace dash {
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    PointerType,
   class    ReferenceType >
 class GlobStencilIter;
@@ -24,7 +24,7 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    PointerType,
   class    ReferenceType >
 class GlobViewIter;
@@ -56,10 +56,10 @@ class GlobViewIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobMem<
+  class    GlobStaticHeapType   = GlobStaticHeap<
                              typename std::decay<ElementType>::type
                            >,
-  class    PointerType   = typename GlobMemType::pointer,
+  class    PointerType   = typename GlobStaticHeapType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
 : public std::iterator<
@@ -73,7 +73,7 @@ private:
   typedef GlobIter<
             ElementType,
             PatternType,
-            GlobMemType,
+            GlobStaticHeapType,
             PointerType,
             ReferenceType>
     self_t;
@@ -89,8 +89,8 @@ public:
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobMemType::local_pointer       local_pointer;
-  typedef typename GlobMemType::local_pointer          local_type;
+  typedef typename GlobStaticHeapType::local_pointer       local_pointer;
+  typedef typename GlobStaticHeapType::local_pointer          local_type;
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
@@ -99,7 +99,7 @@ private:
   typedef GlobIter<
             const ElementType,
             PatternType,
-            GlobMemType,
+            GlobStaticHeapType,
             const_pointer,
             const_reference >
     self_const_t;
@@ -152,7 +152,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobStaticHeapType          * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType    * _pattern;
   /// Current position of the iterator in global canonical index space.
@@ -182,7 +182,7 @@ public:
    * the element order specified by the given pattern.
    */
   constexpr GlobIter(
-    GlobMemType       * gmem,
+    GlobStaticHeapType       * gmem,
 	  const PatternType & pat,
 	  index_type          position = 0)
   : _globmem(gmem),
@@ -563,19 +563,19 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const GlobMemType & globmem() const noexcept
+  constexpr const GlobStaticHeapType & globmem() const noexcept
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMemType & globmem()
+  inline GlobStaticHeapType & globmem()
   {
     return *_globmem;
   }
@@ -720,16 +720,16 @@ public:
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticHeap,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticHeap, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<const ElementType, GlobMem> ptr(*it._globmem,
+  dash::GlobPtr<const ElementType, GlobStaticHeap> ptr(*it._globmem,
                                                 it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "

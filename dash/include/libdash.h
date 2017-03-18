@@ -27,7 +27,7 @@ namespace dash {
 #include <dash/View.h>
 #include <dash/Range.h>
 
-#include <dash/GlobMem.h>
+#include <dash/GlobStaticHeap.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>

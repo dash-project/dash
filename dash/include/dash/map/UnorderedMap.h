@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/GlobHeap.h>
 #include <dash/Allocator.h>
 #include <dash/Meta.h>
 
@@ -111,7 +111,7 @@ public:
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeap<value_type, allocator_type>     glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;

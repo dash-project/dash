@@ -10,7 +10,7 @@
 #include <dash/Onesided.h>
 
 #include <dash/internal/Logging.h>
-#include <dash/internal/allocator/GlobDynamicMemTypes.h>
+#include <dash/internal/allocator/GlobHeapTypes.h>
 #include <dash/internal/allocator/LocalBucketIter.h>
 
 #include <type_traits>
@@ -27,7 +27,7 @@ namespace dash {
 template<
   typename ElementType,
   class    AllocatorType >
-class GlobDynamicMem;
+class GlobHeap;
 
 namespace internal {
 
@@ -36,37 +36,37 @@ namespace internal {
  */
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    PointerType   = dash::GlobPtr<ElementType>,
   class    ReferenceType = dash::GlobRef<ElementType> >
 class GlobBucketIter
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
-           typename GlobMemType::index_type,
+           typename GlobStaticHeapType::index_type,
            PointerType,
            ReferenceType >
 {
   template<
     typename ElementType_,
-    class    GlobMemType_,
+    class    GlobStaticHeapType_,
     class    Pointer_,
     class    Reference_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
     const dash::internal::GlobBucketIter<
-            ElementType_, GlobMemType_, Pointer_, Reference_> & it);
+            ElementType_, GlobStaticHeapType_, Pointer_, Reference_> & it);
 
 private:
   typedef GlobBucketIter<
             ElementType,
-            GlobMemType,
+            GlobStaticHeapType,
             PointerType,
             ReferenceType>
     self_t;
 
 public:
-  typedef typename GlobMemType::index_type                       index_type;
+  typedef typename GlobStaticHeapType::index_type                       index_type;
   typedef typename std::make_unsigned<index_type>::type           size_type;
 
   typedef       ElementType                                      value_type;
@@ -78,8 +78,8 @@ public:
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      typename GlobMemType::const_local_pointer,
-      typename GlobMemType::local_pointer
+      typename GlobStaticHeapType::const_local_pointer,
+      typename GlobStaticHeapType::local_pointer
     >::type
     local_pointer;
 
@@ -116,7 +116,7 @@ public:
    * offset in logical storage order.
    */
   GlobBucketIter(
-    GlobMemType * gmem,
+    GlobStaticHeapType * gmem,
 	  index_type    position = 0)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
@@ -158,7 +158,7 @@ public:
    * local offset in logical storage order.
    */
   GlobBucketIter(
-    GlobMemType * gmem,
+    GlobStaticHeapType * gmem,
     team_unit_t   unit,
 	  index_type    local_index)
   : _globmem(gmem),
@@ -311,19 +311,19 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  inline const GlobStaticHeapType & globmem() const
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMemType & globmem()
+  inline GlobStaticHeapType & globmem()
   {
     return *_globmem;
   }
@@ -594,7 +594,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMemType            * _globmem            = nullptr;
+  GlobStaticHeapType            * _globmem            = nullptr;
   /// Mapping unit id to buckets in the unit's attached local storage.
   bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
   /// Pointer to first element in local data space.
@@ -625,17 +625,17 @@ private:
  */
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    Pointer,
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
   const dash::internal::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & first,
+          ElementType, GlobStaticHeapType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
   const dash::internal::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & last)
--> typename GlobMemType::index_type
+          ElementType, GlobStaticHeapType, Pointer, Reference> & last)
+-> typename GlobStaticHeapType::index_type
 {
   return last - first;
 }
@@ -644,13 +644,13 @@ auto distance(
 
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticHeapType,
   class    Pointer,
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
   const dash::internal::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & it)
+          ElementType, GlobStaticHeapType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   ss << "dash::internal::GlobBucketIter<"
