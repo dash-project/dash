@@ -9,7 +9,7 @@
 #include <dash/Distribution.h>
 #include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
-#include <dash/allocator/DynamicAllocator.h>
+#include <dash/allocator/EpochSynchronizedAllocator.h>
 #include <dash/util/TeamLocality.h>
 
 #include <mpi.h>
@@ -161,7 +161,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
   using elem_t = int;
-  using allocator_t = dash::allocator::DynamicAllocator<elem_t>;
+  using allocator_t = dash::allocator::EpochSynchronizedAllocator<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");

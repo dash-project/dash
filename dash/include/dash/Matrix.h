@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/GlobStaticHeap.h>
+#include <dash/GlobStaticMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
@@ -156,8 +156,8 @@ private:
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticHeap<ElementT, dash::allocator::CollectiveAllocator<ElementT>>
-    GlobStaticHeap_t;
+  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
+    GlobStaticMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
   typedef SizeSpec<NumDimensions, typename PatternT::size_type>
@@ -618,7 +618,7 @@ private:
   /// The matrix elements' distribution pattern
   Pattern_t                    _pattern;
   /// Global memory allocation and -access
-  GlobStaticHeap_t                  * _glob_mem;
+  GlobStaticMem_t                  * _glob_mem;
   /// Native pointer to first local element in the array
   ElementT                   * _lbegin;
   /// Native pointer past last local element in the array

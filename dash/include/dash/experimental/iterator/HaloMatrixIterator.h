@@ -43,7 +43,7 @@ private:
   static constexpr MemArrange MemoryArrange = PatternT::memory_order();
 
   using self_t         = HaloMatrixIterator<ElementT, PatternT, Scope>;
-  using GlobStaticHeap_t      = GlobStaticHeap<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobStaticMem_t      = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
   using HaloBlock_t    = HaloBlock<ElementT, PatternT>;
   using HaloSpec_t     = HaloSpec<NumDimensions>;
   using HaloMemory_t   = HaloMemory<HaloBlock_t>;

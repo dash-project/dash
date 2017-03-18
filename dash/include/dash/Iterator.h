@@ -131,16 +131,16 @@ distance(
 template<
   typename ElementType,
   class    Pattern,
-  class    GlobStaticHeap,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 typename Pattern::index_type
 distance(
   /// Global pointer to the initial position in the global sequence
-  const GlobIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
+  const GlobIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
+  const GlobIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     last)
 {
   return last - first;

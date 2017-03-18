@@ -1,14 +1,14 @@
 #ifndef DASH__GLOB_SHARED_EF_H_
 #define DASH__GLOB_SHARED_EF_H_
 
-#include <dash/GlobStaticHeap.h>
+#include <dash/GlobStaticMem.h>
 #include <dash/Init.h>
 #include <dash/algorithm/Operation.h>
 
 namespace dash {
 
 // Forward declaration
-template<typename T, class A> class GlobStaticHeap;
+template<typename T, class A> class GlobStaticMem;
 // Forward declaration
 template<typename T, class MemSpaceT> class GlobPtr;
 // Forward declaration

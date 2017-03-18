@@ -32,9 +32,9 @@ namespace dash {
 // Forward-declarations
 template<typename T>                  class GlobRef;
 template<typename T,
-         class    AllocT>             class GlobStaticHeap;
+         class    AllocT>             class GlobStaticMem;
 template<typename T,
-         class    AllocT>             class GlobHeap;
+         class    AllocT>             class GlobHeapMem;
 template<typename T>                  class GlobConstPtr;
 
 /**
@@ -59,9 +59,9 @@ template<typename T>                  class GlobConstPtr;
  */
 template<
   typename ElementType,
-  class    MemorySpace  = GlobStaticHeap<
+  class    MemorySpace  = GlobStaticMem<
                             typename std::remove_const<ElementType>::type,
-                            dash::allocator::CollectiveAllocator<
+                            dash::allocator::SymmetricAllocator<
                               typename std::remove_const<ElementType>::type
                             > >
 >

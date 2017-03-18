@@ -4,22 +4,22 @@
 #include "../TestBase.h"
 
 /**
- * Test fixture for class dash::GlobHeap
+ * Test fixture for class dash::GlobHeapMem
  */
-class GlobHeapTest : public dash::test::TestBase {
+class GlobHeapMemTest : public dash::test::TestBase {
 protected:
   size_t _dash_id;
   size_t _dash_size;
 
-  GlobHeapTest()
+  GlobHeapMemTest()
   : _dash_id(0),
     _dash_size(0)
   {
-    LOG_MESSAGE(">>> Test suite: GlobHeapTest");
+    LOG_MESSAGE(">>> Test suite: GlobHeapMemTest");
   }
 
-  virtual ~GlobHeapTest() {
-    LOG_MESSAGE("<<< Closing test suite: GlobHeapTest");
+  virtual ~GlobHeapMemTest() {
+    LOG_MESSAGE("<<< Closing test suite: GlobHeapMemTest");
   }
 };
 

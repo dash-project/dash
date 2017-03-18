@@ -5,7 +5,7 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobStaticHeap.h>
+#include <dash/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -21,7 +21,7 @@ namespace dash {
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticHeapType,
+  class    GlobStaticMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobIter;
@@ -29,7 +29,7 @@ class GlobIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticHeapType,
+  class    GlobStaticMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobStencilIter;
@@ -43,10 +43,10 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticHeapType   = GlobStaticHeap<
+  class    GlobStaticMemType   = GlobStaticMem<
                              typename std::decay<ElementType>::type
                            >,
-  class    PointerType   = typename GlobStaticHeapType::pointer,
+  class    PointerType   = typename GlobStaticMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -59,7 +59,7 @@ private:
   typedef GlobViewIter<
             ElementType,
             PatternType,
-            GlobStaticHeapType,
+            GlobStaticMemType,
             PointerType,
             ReferenceType>
     self_t;
@@ -67,7 +67,7 @@ private:
   typedef GlobIter<
             ElementType,
             PatternType,
-            GlobStaticHeapType,
+            GlobStaticMemType,
             PointerType,
             ReferenceType>
     global_type;
@@ -75,7 +75,7 @@ private:
   typedef GlobIter<
             const ElementType,
             PatternType,
-            GlobStaticHeapType,
+            GlobStaticMemType,
             PointerType,
             ReferenceType>
     const_global_type;
@@ -97,8 +97,8 @@ public:
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobStaticHeapType::local_pointer       local_pointer;
-  typedef typename GlobStaticHeapType::local_pointer          local_type;
+  typedef typename GlobStaticMemType::local_pointer       local_pointer;
+  typedef typename GlobStaticMemType::local_pointer          local_type;
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
@@ -107,7 +107,7 @@ private:
   typedef GlobViewIter<
             const ElementType,
             PatternType,
-            GlobStaticHeapType,
+            GlobStaticMemType,
             const_pointer,
             const_reference >
     self_const_t;
@@ -158,7 +158,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobStaticHeapType                * _globmem;
+  GlobStaticMemType                * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType          * _pattern;
   /// View that specifies the iterator's index range relative to the global
@@ -194,14 +194,14 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  template <class GlobStaticHeapT_>
+  template <class GlobStaticMemT_>
   constexpr GlobViewIter(
-    GlobStaticHeapT_            * gmem,
+    GlobStaticMemT_            * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(reinterpret_cast<GlobStaticHeapType *>(gmem))
+  : _globmem(reinterpret_cast<GlobStaticMemType *>(gmem))
   , _pattern(&pat)
   , _viewspec(&viewspec)
   , _idx(position)
@@ -215,13 +215,13 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  template <class GlobStaticHeapT_>
+  template <class GlobStaticMemT_>
   constexpr GlobViewIter(
-    GlobStaticHeapT_         * gmem,
+    GlobStaticMemT_         * gmem,
 	  const PatternType & pat,
 	  IndexType           position          = 0,
     IndexType           view_index_offset = 0)
-  : _globmem(reinterpret_cast<GlobStaticHeapType *>(gmem))
+  : _globmem(reinterpret_cast<GlobStaticMemType *>(gmem))
   , _pattern(&pat)
   , _viewspec(nullptr)
   , _idx(position)
@@ -749,19 +749,19 @@ public:
   }
 
   /**
-   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const GlobStaticHeapType & globmem() const noexcept
+  constexpr const GlobStaticMemType & globmem() const noexcept
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobStaticHeap used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobStaticHeapType & globmem() noexcept
+  inline GlobStaticMemType & globmem() noexcept
   {
     return *_globmem;
   }
@@ -1065,14 +1065,14 @@ private:
 template<
   typename ElementType,
   class    Pattern,
-  class    GlobStaticHeap,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 auto distance(
-  const GlobViewIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, Pattern, GlobStaticHeap, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     last)
 -> typename Pattern::index_type
 {
@@ -1082,16 +1082,16 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobStaticHeap,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobViewIter<
-          ElementType, Pattern, GlobStaticHeap, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, GlobStaticHeap> ptr(it);
+  dash::GlobPtr<ElementType, GlobStaticMem> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

@@ -5,7 +5,7 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Array.h>
-#include <dash/GlobHeap.h>
+#include <dash/GlobHeapMem.h>
 #include <dash/Allocator.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
@@ -135,7 +135,7 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::DynamicAllocator<
+  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
@@ -155,7 +155,7 @@ public:
 
   typedef typename dash::container_traits<self_type>::local_type  local_type;
 
-  typedef dash::GlobHeap<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;

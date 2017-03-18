@@ -3,7 +3,7 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/Allocator.h>
-#include <dash/GlobStaticHeap.h>
+#include <dash/GlobStaticMem.h>
 
 #include <iostream>
 
@@ -47,12 +47,12 @@ class GlobAsyncRef
 private:
   typedef GlobAsyncRef<T>
     self_t;
-  typedef GlobStaticHeap<T, dash::allocator::CollectiveAllocator<T> >
-    GlobStaticHeap_t;
+  typedef GlobStaticMem<T, dash::allocator::SymmetricAllocator<T> >
+    GlobStaticMem_t;
 
 private:
-  /// Instance of GlobStaticHeap that issued this global reference
-  GlobStaticHeap_t  * _globmem;
+  /// Instance of GlobStaticMem that issued this global reference
+  GlobStaticMem_t  * _globmem;
   /// Value of the referenced element, initially not loaded
   mutable T    _value;
   /// Pointer to referenced element in global memory
@@ -72,8 +72,8 @@ public:
    * global memory.
    */
   GlobAsyncRef(
-    /// Instance of GlobStaticHeap that issued this global reference
-    GlobStaticHeap_t * globmem,
+    /// Instance of GlobStaticMem that issued this global reference
+    GlobStaticMem_t * globmem,
     /// Pointer to referenced object in global memory
     T         * lptr)
   : _value(*lptr),
@@ -101,8 +101,8 @@ public:
    */
   template<class MemSpaceT>
   GlobAsyncRef(
-    /// Instance of GlobStaticHeap that issued this global reference
-    GlobStaticHeap_t            * globmem,
+    /// Instance of GlobStaticMem that issued this global reference
+    GlobStaticMem_t            * globmem,
     /// Pointer to referenced object in global memory
     GlobPtr<T, MemSpaceT> & gptr)
   : _gptr(gptr.dart_gptr())
@@ -138,8 +138,8 @@ public:
    * global memory.
    */
   GlobAsyncRef(
-    /// Instance of GlobStaticHeap that issued this global reference
-    GlobStaticHeap_t   * globmem,
+    /// Instance of GlobStaticMem that issued this global reference
+    GlobStaticMem_t   * globmem,
     /// Pointer to referenced object in global memory
     dart_gptr_t   dart_gptr)
   : _gptr(dart_gptr)
@@ -176,8 +176,8 @@ public:
    * global memory.
    */
   GlobAsyncRef(
-    /// Instance of GlobStaticHeap that issued this global reference
-    GlobStaticHeap_t  * globmem,
+    /// Instance of GlobStaticMem that issued this global reference
+    GlobStaticMem_t  * globmem,
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
   : GlobAsyncRef(globmem, gref.gptr())
