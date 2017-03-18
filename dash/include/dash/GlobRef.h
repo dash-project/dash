@@ -3,6 +3,7 @@
 
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
+#include <dash/Meta.h>
 
 
 namespace dash {
@@ -326,11 +327,6 @@ public:
     operator=(val);
     return *this;
   }
-  
-// template<class MemSpaceT>
-// explicit constexpr operator GlobPtr<T, MemSpaceT>() const {
-//   return GlobPtr<T, MemSpaceT>(_gptr);
-// }
 
   constexpr dart_gptr_t dart_gptr() const noexcept {
     return _gptr;
@@ -399,7 +395,7 @@ std::ostream & operator<<(
           gref._gptr.segid,
           gref._gptr.teamid,
           gref._gptr.addr_or_offs.offset);
-  os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
+  os << dash::typestr(gref) << buf;
   return os;
 }
 
