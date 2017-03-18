@@ -30,34 +30,6 @@ namespace dash {
 template <
   class DomainType,
   dim_t SubDim >
-struct view_traits<ViewSubMod<DomainType, SubDim, 1> > {
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef ViewSubMod<DomainType, SubDim, 1>                     image_type;
-//typedef ViewSubMod<DomainType, SubDim, 1>                     local_type;
-  typedef ViewLocalMod<
-           ViewSubMod<DomainType, SubDim, 1>, 1>                local_type;
-  typedef ViewSubMod<DomainType, SubDim, 1>                    global_type;
-
-  typedef typename DomainType::index_type                       index_type;
-  typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetSub<DomainType, SubDim>             index_set_type;
-
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
-
-  typedef std::integral_constant<dim_t, 1>                            rank;
-};
-
-
-template <
-  class DomainType,
-  dim_t SubDim >
 class ViewSubMod<DomainType, SubDim, 1>
 : public ViewModBase<
            ViewSubMod<DomainType, SubDim, 1>,
@@ -166,28 +138,6 @@ class ViewSubMod<DomainType, SubDim, 1>
 // ------------------------------------------------------------------------
 // ViewLocalMod
 // ------------------------------------------------------------------------
-
-template <
-  class DomainType >
-struct view_traits<ViewLocalMod<DomainType, 1> > {
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef typename domain_type::local_type                      image_type;
-  typedef ViewLocalMod<DomainType, 1>                           local_type;
-  typedef domain_type                                          global_type;
-
-  typedef typename view_traits<domain_type>::index_type         index_type;
-  typedef typename view_traits<domain_type>::size_type           size_type;
-  typedef dash::IndexSetLocal<DomainType>                   index_set_type;
-
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, true>                 is_local;
-
-  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
-};
 
 template <
   class DomainType >
@@ -348,28 +298,6 @@ class ViewLocalMod<DomainType, 1>
 // ------------------------------------------------------------------------
 // ViewGlobalMod
 // ------------------------------------------------------------------------
-
-template <
-  class DomainType >
-struct view_traits<ViewGlobalMod<DomainType, 1> > {
-  typedef DomainType                                           domain_type;
-  typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef typename domain_type::global_type                     image_type;
-  typedef typename domain_type::local_type                      local_type;
-  typedef ViewGlobalMod<DomainType, 1>                         global_type;
-
-  typedef typename DomainType::index_type                       index_type;
-  typedef typename DomainType::size_type                         size_type;
-  typedef dash::IndexSetLocal< DomainType >                 index_set_type;
-
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, false>                is_local;
-
-  typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
-};
 
 template <
   class DomainType >

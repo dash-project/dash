@@ -7,6 +7,7 @@
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 #include <dash/Meta.h>
+#include <dash/Pattern.h>
 
 #include <array>
 #include <string>
@@ -823,7 +824,7 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   int block_cols = 2;
 
   int nrows = nunits * block_rows;
-  int ncols = nunits * block_cols * 2;
+  int ncols = nunits * block_cols * 2 - block_cols;
 
   if (nunits % 2 == 0 && nunits > 2) {
     nrows /= 2;
@@ -834,7 +835,7 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                      1);
   team_spec.balance_extents();
 
-  auto pattern = dash::TilePattern<2>(
+  auto pattern = dash::SeqTilePattern<2>(
                    dash::SizeSpec<2>(
                      nrows,
                      ncols),
@@ -860,11 +861,14 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   dash::test::initialize_matrix(mat);
 
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", mat.extents());
-  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub", team_spec.extents());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                      mat.pattern().local_extents());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                      mat.pattern().local_size());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().blockspec());
+  DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
+                     mat.pattern().teamspec());
 
   if (dash::myid() == 0) {
     auto all_sub = dash::sub<0>(

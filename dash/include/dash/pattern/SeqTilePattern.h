@@ -1198,6 +1198,35 @@ public:
   }
 
   /**
+   * Local index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    std::array<index_type, NumDimensions> block_coords;
+    // Coord to block coord to unit coord:
+    for (auto d = 0; d < NumDimensions; ++d) {
+      block_coords[d] = g_coords[d] / _blocksize_spec.extent(d);
+    }
+    // Block coord to block index:
+    auto block_idx = _blockspec.at(block_coords);
+    DASH_LOG_TRACE("SeqTilePattern.block_at",
+                   "coords", g_coords,
+                   "> block index", block_idx);
+    return local_index_t {
+             // unit id:
+             static_cast<team_unit_t>(
+               block_idx % _teamspec.size()),
+             // local block index:
+             static_cast<index_type>(
+               block_idx / _teamspec.size())
+           };
+  }
+
+  /**
    * View spec (offset and extents) of block at global linear block index
    * in global cartesian element space.
    *

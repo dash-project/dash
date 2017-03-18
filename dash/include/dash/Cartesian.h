@@ -251,10 +251,10 @@ public:
   typedef SizeType                            size_type;
   typedef std::array<SizeType, NumDimensions> extents_type;
 
-  template<dim_t NDim_>
+  template<dim_t NDim_, MemArrange MA_, typename Ix_>
   friend std::ostream & operator<<(
-    std::ostream                     & os,
-    const CartesianIndexSpace<NDim_> & cartesian_space);
+    std::ostream                               & os,
+    const CartesianIndexSpace<NDim_, MA_, Ix_> & cartesian_space);
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
@@ -805,17 +805,16 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
-template <
-  dash::dim_t NumDimensions >
+template<dim_t NDim_, MemArrange MA_, typename Ix_>
 std::ostream & operator<<(
-  std::ostream & os,
-  const dash::CartesianIndexSpace<NumDimensions> & cartesian_space)
+    std::ostream                               & os,
+    const CartesianIndexSpace<NDim_, MA_, Ix_> & cartesian_space)
 {
   std::ostringstream ss;
   ss << dash::typestr(cartesian_space)
      << ": "
      << "extents(";
-  for (auto dim = 0; dim < NumDimensions; ++dim) {
+  for (auto dim = 0; dim < NDim_; ++dim) {
     if (dim > 0) {
       ss << ",";
     }

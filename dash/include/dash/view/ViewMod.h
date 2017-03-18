@@ -169,19 +169,8 @@ public:
                    >::type
     domain_member_type;
 
-  // TODO: BUG!
-  //       For example, assume
-  //         domain = sub(local(array))
-  //       then view_traits<domain>::is_local resolves to `true`
-  //       and domain_type is defined as ViewSub<ViewLocal<Array>>
-  //       instead of ViewLocal<Array> or Array::local_type.
-  //
-  //       Note that the origin of ViewLocalMod is the global origin
-  //       while the origin of and view on ViewLocalMod is the local
-  //       origin.
   typedef typename std::conditional<
             view_traits<domain_type>::is_local::value,
-         // domain_type,
             typename view_traits<
               typename view_traits<domain_type>::origin_type
             >::local_type,
@@ -328,7 +317,7 @@ struct view_traits<ViewLocalMod<DomainType, NDim> > {
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef typename domain_type::local_type                      image_type;
-  typedef ViewLocalMod<DomainType, NDim>                       local_type;
+  typedef ViewLocalMod<DomainType, NDim>                        local_type;
   typedef domain_type                                          global_type;
 
   typedef typename view_traits<domain_type>::index_type         index_type;
@@ -547,7 +536,6 @@ struct view_traits<ViewSubMod<DomainType, SubDim, NDim> > {
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewSubMod<DomainType, SubDim, NDim>                  image_type;
-//typedef ViewSubMod<DomainType, SubDim, NDim>                  local_type;
   typedef ViewLocalMod<
            ViewSubMod<DomainType, SubDim, NDim>, NDim>          local_type;
   typedef ViewSubMod<DomainType, SubDim, NDim>                 global_type;
