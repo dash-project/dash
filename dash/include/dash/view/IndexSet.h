@@ -195,9 +195,9 @@ template <
 constexpr auto
 local(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
-//  -> decltype(index_set.local()) {
-//  -> typename view_traits<IndexSetBase<DomainType>>::global_type & { 
-    -> const IndexSetLocal<DomainType> & { 
+    -> decltype(index_set.local()) {
+//  -> typename view_traits<IndexSetBase<DomainType>>::global_type & {
+//  -> const IndexSetLocal<DomainType> & {
   return index_set.local();
 }
 
@@ -208,9 +208,9 @@ template <
 constexpr auto
 global(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
-//   ->  decltype(index_set.global()) {
-//   -> typename view_traits<IndexSetSub<DomainType>>::global_type & { 
-     -> const IndexSetGlobal<DomainType> & { 
+     -> decltype(index_set.global()) {
+//   -> typename view_traits<IndexSetSub<DomainType>>::global_type & {
+//   -> const IndexSetGlobal<DomainType> & {
   return index_set.global();
 }
 
@@ -377,12 +377,12 @@ class IndexSetBase
 
   constexpr bool is_strided() const noexcept {
     return (
-         this->pattern().blockspec().size() > this->pattern().team().size()
-      || ( this->pattern().ndim() > 1 &&
-           this->domain().extent(1) < 
-           ( this->domain().is_local()
-             ? this->pattern().local_extents()[1]
-             : this->pattern().extents()[1] ))
+      ( this->pattern().blockspec().size() > this->pattern().team().size() )
+      ||
+      ( this->pattern().ndim() > 1 &&
+        this->domain().extent(1) < ( this->domain().is_local()
+                                     ? this->pattern().local_extents()[1]
+                                     : this->pattern().extents()[1] ))
     );
   }
 
@@ -588,7 +588,6 @@ template <
 constexpr auto
 local(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.local()) {
-//-> typename view_traits<IndexSetSub<DomainType, SubDim>>::local_type & {
   return index_set.local();
 }
 
@@ -598,7 +597,6 @@ template <
 constexpr auto
 global(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.global()) {
-//-> typename view_traits<IndexSetSub<DomainType, SubDim>>::global_type & {
   return index_set.global();
 }
 
@@ -818,7 +816,7 @@ class IndexSetLocal
 //typedef decltype(
 //          dash::global(
 //            dash::index(
-//              std::declval<typename const base_t::view_domain_type &>())
+//              std::declval<const typename base_t::view_domain_type &>())
 //          ))                                             global_type;
   typedef global_type                                    preimage_type;
 
@@ -1096,7 +1094,6 @@ class IndexSetGlobal
  public:
   typedef typename DomainType::index_type                   index_type;
 
-//typedef IndexSetLocal<DomainType>                         local_type;
   typedef decltype(
             dash::local(
               dash::index(
@@ -1110,8 +1107,6 @@ class IndexSetGlobal
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
 
- private:
-//index_type _size;
  public:
   constexpr IndexSetGlobal()               = delete;
   constexpr IndexSetGlobal(self_t &&)      = default;
@@ -1126,7 +1121,6 @@ class IndexSetGlobal
    */
   constexpr explicit IndexSetGlobal(const DomainType & view)
   : base_t(view)
-//, _size(calc_size())
   { }
 
   /**
@@ -1134,17 +1128,13 @@ class IndexSetGlobal
    */
   constexpr explicit IndexSetGlobal(DomainType && view)
   : base_t(std::forward<DomainType>(view))
-//, _size(calc_size())
   { }
 
-//constexpr local_type local() const {
   constexpr auto local() const noexcept
-//  -> decltype(dash::index(dash::local(this->view_domain()))) {
     -> decltype(dash::index(dash::local(
                   std::declval<const typename base_t::view_domain_type &>()
                 ))) {
     return dash::index(dash::local(this->view_domain()));
-//  return local_type(this->view_domain());
   }
 
   constexpr const global_type & global() const noexcept {

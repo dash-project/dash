@@ -142,7 +142,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
   
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
-    message(FATAL_ERROR "Insufficient Clang version detected (3.8.0) or above required")
+    message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -157,8 +157,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
-    message(FATAL_ERROR "Insufficient GCC version detected (4.9.0 or above required)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.1")
+    message(FATAL_ERROR "Insufficient GCC version (< 4.8.1)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
@@ -176,7 +176,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
 
 
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
-    message(FATAL_ERROR "Insufficient Intel compiler version detected (15.0.0 or above required)")
+    message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
