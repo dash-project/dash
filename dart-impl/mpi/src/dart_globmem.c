@@ -19,6 +19,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_globmem_priv.h>
 
 #include <stdio.h>
 #include <mpi.h>
@@ -66,17 +67,6 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
   return DART_OK;
 }
 
-
-/**
- * TODO: Put this in the header file to allow inlining?
- */
-dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs)
-{
-  gptr->addr_or_offs.offset += offs;
-  return DART_OK;
-}
-
-
 dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 {
   int16_t segid = gptr->segid;
@@ -100,15 +90,6 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
   } else {
     gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
   }
-  return DART_OK;
-}
-
-/**
- * TODO: Put this in the header file to allow inlining?
- */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit)
-{
-  gptr->unitid = unit.id;
   return DART_OK;
 }
 

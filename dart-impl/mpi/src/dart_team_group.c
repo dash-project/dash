@@ -58,7 +58,6 @@ dart_ret_t dart_group_destroy(
       MPI_Group_free(&(*g)->mpi_group);
       (*g)->mpi_group = MPI_GROUP_NULL;
     }
-
     free(*g);
     *g = NULL;
   }
@@ -401,7 +400,7 @@ dart_ret_t dart_group_locality_split(
       dart_global_unit_t * unit_ids        = domains[g]->unit_ids;
 
       if (group_num_units <= 0) {
-        DART_LOG_DEBUG("dart_group_locality_split: no units in group %d", g);
+        DART_LOG_DEBUG("dart_group_locality_split: no units in group %zu", g);
         gout[g] = NULL;
       } else {
         int * group_unit_ids = malloc(group_num_units * sizeof(int));
@@ -487,7 +486,7 @@ dart_ret_t dart_group_locality_split(
         group_unit_ids = malloc(sizeof(dart_global_unit_t) *
                                   group_num_units);
       } else {
-        DART_LOG_DEBUG("dart_group_locality_split: no units in group %d", g);
+        DART_LOG_DEBUG("dart_group_locality_split: no units in group %zu", g);
         gout[g] = NULL;
         continue;
       }

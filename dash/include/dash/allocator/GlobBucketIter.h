@@ -11,7 +11,7 @@
 #include <dash/Onesided.h>
 
 #include <dash/allocator/LocalBucketIter.h>
-#include <dash/allocator/internal/GlobDynamicMemTypes.h>
+#include <dash/allocator/internal/GlobHeapMemTypes.h>
 
 #include <dash/internal/Logging.h>
 
@@ -29,44 +29,44 @@ namespace dash {
 template<
   typename ElementType,
   class    AllocatorType >
-class GlobDynamicMem;
+class GlobHeapMem;
 
 /**
  * Iterator on global buckets. Represents global pointer type.
  */
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticMemType,
   class    PointerType   = dash::GlobPtr<ElementType>,
   class    ReferenceType = dash::GlobSharedRef<ElementType> >
 class GlobBucketIter
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
-           typename GlobMemType::index_type,
+           typename GlobStaticMemType::index_type,
            PointerType,
            ReferenceType >
 {
   template<
     typename ElementType_,
-    class    GlobMemType_,
+    class    GlobStaticMemType_,
     class    Pointer_,
     class    Reference_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
     const dash::GlobBucketIter<
-            ElementType_, GlobMemType_, Pointer_, Reference_> & it);
+            ElementType_, GlobStaticMemType_, Pointer_, Reference_> & it);
 
 private:
   typedef GlobBucketIter<
             ElementType,
-            GlobMemType,
+            GlobStaticMemType,
             PointerType,
             ReferenceType>
     self_t;
 
 public:
-  typedef typename GlobMemType::index_type                       index_type;
+  typedef typename GlobStaticMemType::index_type                       index_type;
   typedef typename std::make_unsigned<index_type>::type           size_type;
 
   typedef ElementType                                            value_type;
@@ -80,16 +80,16 @@ public:
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      const GlobMemType,
-      GlobMemType
+      const GlobStaticMemType,
+      GlobStaticMemType
     >::type
     globmem_type;
 
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      typename GlobMemType::const_local_pointer,
-      typename GlobMemType::local_pointer
+      typename GlobStaticMemType::const_local_pointer,
+      typename GlobStaticMemType::local_pointer
     >::type
     local_pointer;
 
@@ -367,7 +367,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline const globmem_type & globmem() const
@@ -376,7 +376,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline globmem_type & globmem()
@@ -693,30 +693,30 @@ private:
  */
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticMemType,
   class    Pointer,
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
   const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & first,
+          ElementType, GlobStaticMemType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
   const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & last)
--> typename GlobMemType::index_type
+          ElementType, GlobStaticMemType, Pointer, Reference> & last)
+-> typename GlobStaticMemType::index_type
 {
   return last - first;
 }
 
 template<
   typename ElementType,
-  class    GlobMemType,
+  class    GlobStaticMemType,
   class    Pointer,
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & it)
+          ElementType, GlobStaticMemType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   ss << "dash::GlobBucketIter<"

@@ -38,7 +38,7 @@ void halo_swap2d(MatrixT & mat)
   auto ext0 = mat.local.extent(0);
   auto ext1 = mat.local.extent(1);
 
-  dash::Array<ElemT> corners( 4 * size );   // 4 corners
+  dash::Array<ElemT> corners( 4 * size );      // 4 corners
   dash::Array<ElemT> edge0( 2 * ext0 * size ); // 2 edges dim0
   dash::Array<ElemT> edge1( 2 * ext1 * size ); // 2 edges dim1
 
@@ -55,30 +55,28 @@ void halo_swap2d(MatrixT & mat)
   dash::team_unit_t left( (my_y > 0)                ? ts.at(my_x  , my_y - 1) : -1);
   dash::team_unit_t right((my_y + 1) < ts.extent(1) ? ts.at(my_x  , my_y + 1) : -1);
 
-  /*
-  cout << "I'm " << myid << "(" << my_x << " " << my_y << ") "
-       << "r=" << right << " "
-       << "l=" << left << " "
-       << "t=" << top << " "
-       << "b=" << bot << endl;
-  */
-
   if (top >= 0) {
     auto gidx = edge1.pattern().global(top, std::array<IndexT, 1> {{ 0 }});
-    dash::copy( tl, tl + ext1, edge1.begin() + gidx[0] );
+    dash::copy(tl, tl + ext1,
+               edge1.begin() + gidx[0]);
   }
   if (bot >= 0) {
     auto gidx = edge1.pattern().global(bot, std::array<IndexT, 1> {{ 0 }});
-    dash::copy( tl, tl + ext1, edge1.begin() + gidx[0] + ext1 );
+    dash::copy(tl, tl + ext1,
+               edge1.begin() + gidx[0] + ext1 );
   }
   dash::barrier();
 
   if ( top >= 0 ) {
-    std::copy(edge1.lbegin() + ext1 + 1, edge1.lbegin() + 2 * ext1 - 1, tl + 1);
+    std::copy(edge1.lbegin() + ext1 + 1,
+              edge1.lbegin() + 2 * ext1 - 1,
+              tl + 1);
   }
 
   if ( bot >= 0 ) {
-    std::copy(edge1.lbegin() + 1     , edge1.lbegin() + ext1 - 1  , bl + 1);
+    std::copy(edge1.lbegin() + 1,
+              edge1.lbegin() + ext1 - 1,
+              bl + 1);
   }
 }
 

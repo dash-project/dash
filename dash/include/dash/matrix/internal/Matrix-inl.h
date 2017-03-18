@@ -5,7 +5,7 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Exception.h>
@@ -153,7 +153,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
   // use _lcapacity as tje collective allocator requires symmetric allocations
-  _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
+  _glob_mem        = new GlobStaticMem_t(_lcapacity, _pattern.team());
   _begin           = iterator(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _lbegin + _lsize;
@@ -378,19 +378,40 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-constexpr MatrixRef<const T, NumDim, NumDim-1, PatternT>
-Matrix<T, NumDim, IndexT, PatternT>
-::operator[](size_type pos) const
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim != 0),
+  MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
+constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 {
   return _ref.operator[](pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-MatrixRef<T, NumDim, NumDim-1, PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim == 0),
+  GlobRef<const T>>::type
+constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
+{
+  return _ref.at(pos);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim != 0),
+  MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos)
 {
   return _ref.operator[](pos);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim == 0),
+  GlobRef<T>>::type
+Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos)
+{
+  return _ref.at(pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
