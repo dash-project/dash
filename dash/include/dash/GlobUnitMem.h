@@ -232,8 +232,12 @@ public:
     return _nlelem;
   }
 
-  constexpr size_type local_size(
-    dash::team_unit_t unit = DART_UNDEFINED_UNIT_ID) const noexcept
+  constexpr size_type local_size(dash::team_unit_t) const noexcept
+  {
+    return _nlelem;
+  }
+
+  constexpr size_type local_size() const noexcept
   {
     return _nlelem;
   }
