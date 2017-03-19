@@ -1,9 +1,9 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
-#include <dash/internal/TypeInfo.h>
+#include <dash/meta/TypeInfo.h>
 
-#include <iostream>
+#include <sstream>
 
 
 namespace dash {
@@ -67,9 +67,10 @@ public:
   /**
    * Disabled assignment as this violates the atomic semantics
    *
-   * TODO: Assignment semantics are not well-defined:
-   *       - Constructor Atomic(T)  is default-defined
-   *       - Assignment  Atomic=(T) is deleted
+   * \todo
+   * Assignment semantics are not well-defined:
+   * - Constructor Atomic(T)  is default-defined
+   * - Assignment  Atomic=(T) is deleted
    */
   T operator=(T value) = delete;
 
@@ -115,7 +116,7 @@ std::ostream & operator<<(
   const Atomic<T> & at)
 {
   std::ostringstream ss;
-  ss << dash::internal::typestr(at) << "<phantom>";
+  ss << dash::typestr(at) << "<phantom>";
   return operator<<(os, ss.str());
 }
 

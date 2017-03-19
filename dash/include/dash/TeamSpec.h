@@ -252,8 +252,11 @@ public:
     // Find best surface-to-volume:
     auto teamsize_prime_factors = dash::math::factorize(num_units);
     // Equally distribute factors to extents.
-    // Start with the largest factors and multiply them onto the lowest value
-    for (auto it = teamsize_prime_factors.rbegin(); it != teamsize_prime_factors.rend(); ++it) {
+    // Start with the largest factors and multiply them onto the lowest
+    // value.
+    for (auto it = teamsize_prime_factors.rbegin();
+         it != teamsize_prime_factors.rend();
+         ++it) {
       DASH_LOG_TRACE("TeamSpec.balance_extents()",
                      "factor:", it->first, "x", it->second);
       for (auto i = 1; i < it->second + 1; ++i) {
@@ -263,7 +266,9 @@ public:
     }
 
     int d = 0;
-    for (auto it = new_extents.rbegin(); it != new_extents.rend(); ++it, ++d) {
+    for (auto it = new_extents.rbegin();
+         it != new_extents.rend();
+         ++it, ++d) {
       this->_extents[d] = *it;
     }
 
