@@ -48,6 +48,7 @@ struct dart_lock_struct
 
 dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 {
+  int ret;
   dart_gptr_t gptr_tail;
   dart_gptr_t gptr_list;
   dart_team_unit_t unitid;
@@ -66,27 +67,38 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   /* Unit 0 is the process holding the gptr_tail by default. */
   if (unitid.id == 0) {
     int32_t *tail_ptr;
-    dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
-    dart_gptr_getaddr(gptr_tail, (void*)&tail_ptr);
+    ret = dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
+    if (ret != DART_OK) {
+      DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+      return ret;
+    }
+    DART_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr_tail, (void*)&tail_ptr),
+      DART_OK);
 
     /* Local store is safe and effective followed by the sync call. */
     *tail_ptr = -1;
     MPI_Win_sync (dart_win_local_alloc);
   }
 
-  dart_bcast(
+  ret = dart_bcast(
     &gptr_tail,
     sizeof(dart_gptr_t),
     DART_TYPE_BYTE,
     DART_TEAM_UNIT_ID(0),
     teamid);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __FUNCTION__);
+    return ret;
+  }
 
   /* Create a global memory region across the team.
    * Every local memory segment holds the next unit
    * waiting on the lock. */
-  if (DART_OK !=
-        dart_team_memalloc_aligned(teamid, 1, DART_TYPE_INT, &gptr_list)) {
-    return DART_ERR_OTHER;
+  ret = dart_team_memalloc_aligned(teamid, 1, DART_TYPE_INT, &gptr_list);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("%s: Failed to allocate global memory!", __FUNCTION__);
+    return ret;
   }
 
   int32_t *list_ptr;
@@ -102,7 +114,9 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   (*lock)->gptr_list   = gptr_list;
   (*lock)->teamid      = teamid;
   (*lock)->is_acquired = 0;
-  dart__base__mutex_init_recursive(&(*lock)->mutex);
+  DART_ASSERT_RETURNS(
+    dart__base__mutex_init_recursive(&(*lock)->mutex),
+    DART_OK);
 
   DART_LOG_DEBUG("dart_team_lock_init: INIT - done");
 
@@ -112,18 +126,22 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 dart_ret_t dart_lock_acquire(dart_lock_t lock)
 {
   /* lock the local mutex and keep it until the global lock is released */
-  dart__base__mutex_lock(&lock->mutex);
+  DART_ASSERT(DART_OK == dart__base__mutex_lock(&lock->mutex));
 
   if (lock->is_acquired == 1)
   {
     DART_LOG_ERROR("dart_lock_acquire: LOCK has already been acquired\n");
-    dart__base__mutex_unlock(&lock->mutex);
+    DART_ASSERT_RETURNS(dart__base__mutex_unlock(&lock->mutex), DART_OK);
     return DART_ERR_INVAL;
   }
 
-  dart_team_unit_t unitid;
-  dart_team_myid(lock->teamid, &unitid);
-
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(lock->teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown team %i!",
+                   lock->teamid);
+    DART_ASSERT_RETURNS(dart__base__mutex_unlock(&lock->mutex), DART_OK);
+    return DART_ERR_INVAL;
+  }
 
   int32_t predecessor, result;
   dart_gptr_t gptr_tail = lock->gptr_tail;
@@ -132,24 +150,23 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
   uint64_t    tail_offset = gptr_tail.addr_or_offs.offset;
   dart_unit_t tail_unit   = gptr_tail.unitid;
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(lock->teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown team %i!",
-                   lock->teamid);
-    dart__base__mutex_unlock(&lock->mutex);
-    return DART_ERR_INVAL;
-  }
+  dart_team_unit_t unitid;
+  dart_team_myid(lock->teamid, &unitid);
 
   /* Fetch the current unit's tail and make this unit the new tail */
-  MPI_Fetch_and_op(
-    &unitid.id,
-    &predecessor,
-    MPI_INT32_T,
-    tail_unit,
-    tail_offset,
-    MPI_REPLACE,
-    dart_win_local_alloc);
-  MPI_Win_flush(tail_unit, dart_win_local_alloc);
+  DART_ASSERT_RETURNS(
+    MPI_Fetch_and_op(
+      &unitid.id,
+      &predecessor,
+      MPI_INT32_T,
+      tail_unit,
+      tail_offset,
+      MPI_REPLACE,
+      dart_win_local_alloc),
+    MPI_SUCCESS);
+  DART_ASSERT_RETURNS(
+      MPI_Win_flush(tail_unit, dart_win_local_alloc),
+      MPI_SUCCESS);
 
   /* If there was a previous tail (predecessor), update the previous tail's
    * next pointer with unitid and wait for notification from its predecessor.
@@ -168,16 +185,20 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
     win = team_data->window;
 
     /* Atomicity: Update its predecessor's next pointer */
-    MPI_Fetch_and_op(
-      &unitid.id,
-      &result,
-      MPI_INT32_T,
-      predecessor,
-      disp_list,
-      MPI_REPLACE,
-      win);
+    DART_ASSERT_RETURNS(
+      MPI_Fetch_and_op(
+        &unitid.id,
+        &result,
+        MPI_INT32_T,
+        predecessor,
+        disp_list,
+        MPI_REPLACE,
+        win),
+      MPI_SUCCESS);
 
-    MPI_Win_flush(predecessor, win);
+    DART_ASSERT_RETURNS(
+      MPI_Win_flush(predecessor, win),
+      DART_OK);
 
     /* Waiting for notification from its predecessor*/
     DART_LOG_DEBUG("dart_lock_acquire: waiting for notification from "
@@ -197,6 +218,7 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
 {
   if (dart__base__mutex_trylock(&lock->mutex) != 0) {
     *is_acquired = 0;
+    DART_LOG_ERROR("dart_lock_try_acquire: LOCK held in another thread\n");
     return DART_OK;
   }
 
@@ -205,7 +227,7 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
     DART_LOG_ERROR("dart_lock_try_acquire: LOCK has already been acquired\n");
     *is_acquired = 1;
     /* we are using a recursive lock so give up this recursion */
-    dart__base__mutex_unlock(&lock->mutex);
+    DART_ASSERT_RETURNS(dart__base__mutex_unlock(&lock->mutex), DART_OK);
     return DART_ERR_INVAL;
   }
 
@@ -221,15 +243,19 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
   uint64_t    tail_offset = gptr_tail.addr_or_offs.offset;
 
   /* Atomicity: Check if the lock is available and claim it if it is. */
-  MPI_Compare_and_swap(
-    &unitid.id,
-    &compare,
-    &result,
-    MPI_INT32_T,
-    tail_unit,
-    tail_offset,
-    dart_win_local_alloc);
-  MPI_Win_flush (tail_unit, dart_win_local_alloc);
+  DART_ASSERT_RETURNS(
+    MPI_Compare_and_swap(
+      &unitid.id,
+      &compare,
+      &result,
+      MPI_INT32_T,
+      tail_unit,
+      tail_offset,
+      dart_win_local_alloc),
+    MPI_SUCCESS);
+  DART_ASSERT_RETURNS(
+    MPI_Win_flush (tail_unit, dart_win_local_alloc),
+    MPI_SUCCESS);
 
   /* If the old predecessor was -1, we have claimed the lock,
    * otherwise, do nothing. */
@@ -240,7 +266,7 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
   } else {
     *is_acquired = 0;
     /* unlock the local mutex if we have not acqcuired the global lock */
-    dart__base__mutex_unlock(&lock->mutex);
+    DART_ASSERT_RETURNS(dart__base__mutex_unlock(&lock->mutex), DART_OK);
   }
 
   DART_LOG_DEBUG("dart_lock_try_acquire: trylock %s in team %d",
@@ -265,7 +291,7 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
   uint64_t      offset_tail = gptr_tail.addr_or_offs.offset;
   dart_unit_t   tail        = gptr_tail.unitid;
   int32_t     * addr;
-  dart_gptr_getaddr(gptr_list, (void *)&addr);
+  DART_ASSERT_RETURNS(dart_gptr_getaddr(gptr_list, (void *)&addr), DART_OK);
 
   dart_team_unit_t unitid;
   dart_team_myid(lock->teamid, &unitid);
@@ -277,15 +303,19 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
   /* Check if we are at the tail of this lock queue and reset the tail pointer
    * if we are. If that is the case we are done.
    * Otherwise, the reset fails and we need to send notification. */
-  MPI_Compare_and_swap(
-    &reset,
-    &unitid.id,
-    &result,
-    MPI_INT32_T,
-    tail,
-    offset_tail,
-    dart_win_local_alloc);
-  MPI_Win_flush(tail, dart_win_local_alloc);
+  DART_ASSERT_RETURNS(
+    MPI_Compare_and_swap(
+      &reset,
+      &unitid.id,
+      &result,
+      MPI_INT32_T,
+      tail,
+      offset_tail,
+      dart_win_local_alloc),
+    MPI_SUCCESS);
+  DART_ASSERT_RETURNS(
+    MPI_Win_flush(tail, dart_win_local_alloc),
+    MPI_SUCCESS);
 
   if (result != unitid.id) {
     /* We are not at the tail of this lock queue. */
@@ -295,23 +325,27 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
                    "(tail = %d) in team %d",
                    result, (lock -> teamid));
 
-    DART_ASSERT(DART_OK == dart_segment_get_disp(
+    DART_ASSERT_RETURNS(dart_segment_get_disp(
           &team_data->segdata,
           gptr_list.segid,
           unitid,
-          &disp_list));
+          &disp_list), DART_OK);
 
     /* Wait for the update of our next pointer. */
     do {
-      MPI_Fetch_and_op(
+      DART_ASSERT_RETURNS(
+        MPI_Fetch_and_op(
           NULL,
           &next,
           MPI_INT,
           unitid.id,
           disp_list,
           MPI_NO_OP,
-          win);
-      MPI_Win_flush(unitid.id, win);
+          win),
+        MPI_SUCCESS);
+      DART_ASSERT_RETURNS(
+        MPI_Win_flush(unitid.id, win),
+        MPI_SUCCESS);
     } while (next == -1);
 
     DART_LOG_DEBUG("dart_lock_release: notifying %d in team %d", next,
@@ -323,7 +357,7 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
     MPI_Win_sync(win);
   }
   lock->is_acquired = 0;
-  dart__base__mutex_unlock(&lock->mutex);
+  DART_ASSERT_RETURNS(dart__base__mutex_unlock(&lock->mutex), DART_OK);
   DART_LOG_DEBUG("dart_lock_release: release lock in team %d",
                  (lock -> teamid));
   return DART_OK;
@@ -333,15 +367,18 @@ dart_ret_t dart_team_lock_free(dart_team_t teamid, dart_lock_t* lock)
 {
   dart_gptr_t gptr_tail = (*lock)->gptr_tail;
   dart_gptr_t gptr_list = (*lock)->gptr_list;
-  dart_team_unit_t unitid;
 
-  dart_team_myid(teamid, &unitid);
-  if (unitid.id == 0)
-  {
-    dart_memfree(gptr_tail);
+  dart_ret_t ret;
+  ret = dart_memfree(gptr_tail);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("Failed to free global mmeory");
+    return ret;
   }
-
-  dart_team_memfree(gptr_list);
+  ret = dart_team_memfree(gptr_list);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("Failed to free global mmeory");
+    return ret;
+  }
   (*lock)->gptr_tail = DART_GPTR_NULL;
   (*lock)->gptr_list = DART_GPTR_NULL;
   dart__base__mutex_destroy(&(*lock)->mutex);
