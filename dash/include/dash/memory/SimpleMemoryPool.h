@@ -34,7 +34,7 @@ class SimpleMemoryPool {
  private:
   // PRIVATE TYPES
 
-   union alignas(ValueType) Block {
+  union alignas(ValueType) Block {
     Block* next;
 
     char _data[sizeof(ValueType)];
@@ -72,11 +72,22 @@ class SimpleMemoryPool {
 
   typedef  ValueType                  value_type;
 
+  template <class T>
+  struct rebind {
+    typedef SimpleMemoryPool<T, typename std::allocator_traits<
+                                 PoolAlloc>::template rebind_alloc<T>>
+        other;
+  };
+
   // clang-format on
 
  public:
   // CONSTRUCTOR
-  explicit SimpleMemoryPool(const PoolAlloc& alloc) noexcept;
+  explicit SimpleMemoryPool(const PoolAlloc& alloc = PoolAlloc()) noexcept;
+
+  // COPY CONSTRUCTOR
+  SimpleMemoryPool(SimpleMemoryPool const&) noexcept;
+
   // MOVE CONSTRUCTOR
   SimpleMemoryPool(SimpleMemoryPool&& other) noexcept;
 
@@ -84,8 +95,6 @@ class SimpleMemoryPool {
   SimpleMemoryPool& operator=(SimpleMemoryPool&&) = delete;
   // DELETED COPY ASSIGNMENT
   SimpleMemoryPool& operator=(SimpleMemoryPool const&) = delete;
-  // DELETED COPY CONSTRUCTOR
-  SimpleMemoryPool(SimpleMemoryPool const&) = delete;
 
   ~SimpleMemoryPool() noexcept;
 
@@ -97,10 +106,9 @@ class SimpleMemoryPool {
 
  public:
   // Allocate Memory Blocks of size ValueType
-  value_type * allocate(size_type = 0 /* internally not used */);
+  value_type* allocate(size_type = 0 /* internally not used */);
   // Deallocate a specific Memory Block
-  void deallocate(void * address,
-                  size_type = 0 /* internally not used */);
+  void deallocate(void* address, size_type = 0 /* internally not used */);
   // Reserve Space for at least n Memory Blocks of size ValueType
   void reserve(size_type nblocks);
   // returns the underlying memory allocator
@@ -126,15 +134,32 @@ inline SimpleMemoryPool<ValueType, PoolAlloc>::SimpleMemoryPool(
 {
 }
 
+// COPY CONSTRUCTOR
+template <typename ValueType, typename PoolAlloc>
+inline SimpleMemoryPool<ValueType, PoolAlloc>::SimpleMemoryPool(
+    SimpleMemoryPool const& other) noexcept
+  : _chunklist(nullptr)
+  , _freelist(nullptr)
+  , _blocks_per_chunk(other._blocks_per_chunk)
+  , _alloc(other._alloc)
+{
+}
+
 // MOVE CONSTRUCTOR
 template <typename ValueType, typename PoolAlloc>
 inline SimpleMemoryPool<ValueType, PoolAlloc>::SimpleMemoryPool(
     SimpleMemoryPool&& other) noexcept
+  : _chunklist(other._chunklist)
+  , _freelist(other._freelist)
+  , _blocks_per_chunk(other._blocks_per_chunk)
+  , _alloc(other._alloc)
 {
-  // TODO rko
+  other._chunklist = nullptr;
+  other._freelist = nullptr;
+  other._blocks_per_chunk = 1;
 }
 template <typename ValueType, typename PoolAlloc>
-typename SimpleMemoryPool<ValueType, PoolAlloc>::value_type *
+typename SimpleMemoryPool<ValueType, PoolAlloc>::value_type*
     SimpleMemoryPool<ValueType, PoolAlloc>::allocate(size_type)
 {
   if (!_freelist) {
@@ -152,8 +177,7 @@ inline void SimpleMemoryPool<ValueType, PoolAlloc>::reserve(size_type nblocks)
   // allocate a chunk with header and space for nblocks
   DASH_ASSERT(0 < nblocks);
 
-  Block* begin =
-      allocateChunk(nblocks * static_cast<size_type>(sizeof(Block)));
+  Block* begin = allocateChunk(nblocks * static_cast<size_type>(sizeof(Block)));
   Block* end = begin + nblocks - 1;
 
   for (Block* p = begin; p < end; ++p) {
@@ -164,8 +188,8 @@ inline void SimpleMemoryPool<ValueType, PoolAlloc>::reserve(size_type nblocks)
 }
 
 template <typename ValueType, typename PoolAlloc>
-inline void SimpleMemoryPool<ValueType, PoolAlloc>::deallocate(
-    void * address, size_type)
+inline void SimpleMemoryPool<ValueType, PoolAlloc>::deallocate(void* address,
+                                                               size_type)
 {
   DASH_ASSERT(address);
   reinterpret_cast<Block*>(address)->next = _freelist;

@@ -74,14 +74,8 @@ class DynamicAllocator {
   using memory_space = dash::MemorySpace<MSpaceCategory>;
 
  public:
-  /// Convert DynamicAllocator<T> to DynamicAllocator<U>.
-  /*
-  template <typename U>
-  struct rebind {
-    typedef DynamicAllocator<U, MSpaceCategory, LocalAllocator> other;
-  };
-  */
 
+  /// Convert DynamicAllocator<T> to DynamicAllocator<U>.
   template <class T>
   struct rebind {
     typedef DynamicAllocator<T, MSpaceCategory,
@@ -95,18 +89,24 @@ class DynamicAllocator {
   explicit DynamicAllocator(Team &team = dash::Team::All()) noexcept
     : _team(&team)
     , _nunits(team.size())
-    , _alloc(get_default_memory_space<MSpaceCategory>())
+    , _alloc()
   {
+  }
+
+  explicit DynamicAllocator(allocator_type const & localAlloc, Team &team = dash::Team::All()) noexcept
+  : _team(&team),
+    _nunits(team.size()),
+    _alloc(localAlloc) {
   }
 
   /**
    * Constructor.
    * Creates a new instance of \c dash::DynamicAllocator for a given team.
    */
-  DynamicAllocator(memory_space *space, Team &team = dash::Team::All()) noexcept
+  DynamicAllocator(allocator_type && alloc, Team &team = dash::Team::All()) noexcept
     : _team(&team)
     , _nunits(team.size())
-    , _alloc(space)
+    , _alloc(std::move(alloc))
   {
   }
 
@@ -403,7 +403,7 @@ class DynamicAllocator {
     pointer gp = attach(lp, num_local_elem);
     if (!gp) {
       // Attach failed, free requested local memory:
-      deallocate_local(lp);
+      deallocate_local(lp, num_local_elem);
     }
     return gp;
   }

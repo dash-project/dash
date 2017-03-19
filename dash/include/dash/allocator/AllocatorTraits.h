@@ -54,6 +54,14 @@ struct allocator_traits {
   template <class U>
   using rebind_traits =
       dash::allocator_traits<rebind_alloc<U>>;
+
+
+  static pointer allocate(allocator_type& a, size_type n)
+      { return a.allocate(n); }
+
+  static void deallocate(allocator_type& a, pointer p, size_type n)
+      { a.deallocate(p, n); }
+
 };
 
 }  // namespace dash

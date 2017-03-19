@@ -3,6 +3,9 @@
 
 #include <dash/memory/MemorySpace.h>
 
+namespace dash {
+namespace allocator {
+
 template <typename T, typename MSpaceCategory = dash::memory_space_host_tag>
 class LocalSpaceAllocator {
   using memory_space = dash::MemorySpace<MSpaceCategory>;
@@ -22,16 +25,18 @@ class LocalSpaceAllocator {
 
  public:
   // Constructor
+  LocalSpaceAllocator();
   explicit LocalSpaceAllocator(memory_space* space);
 
-  // Copy Constructors
+  // Copy Constructor
   LocalSpaceAllocator(LocalSpaceAllocator const&) = default;
+
   template <typename U>
   LocalSpaceAllocator(LocalSpaceAllocator<U> const& other);
 
   // Move Constructor
   // TODO rko: this depends on the underlying memory space
-  LocalSpaceAllocator(LocalSpaceAllocator&& other) = default;
+  LocalSpaceAllocator(LocalSpaceAllocator&& other);
   // Move Assignment
   // TODO rko: this depends on the underlying memory space
   LocalSpaceAllocator& operator=(LocalSpaceAllocator&& other) = delete;
@@ -44,17 +49,26 @@ class LocalSpaceAllocator {
   pointer allocate(size_t n);
   void deallocate(pointer, size_t n);
 
+  /*
   template <typename... Args>
   void construct(pointer, Args&&...);
 
   void destroy(pointer p);
 
   LocalSpaceAllocator select_on_copy_container_construction() const;
+  */
 
   memory_space* space() const { return _space; };
  private:
   memory_space* _space;
 };
+
+template <typename T, typename MSpaceCategory>
+inline LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator()
+  : _space(get_default_memory_space<MSpaceCategory>())
+{
+  DASH_ASSERT(_space);
+}
 
 template <typename T, typename MSpaceCategory>
 inline LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator(
@@ -65,10 +79,20 @@ inline LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator(
 }
 
 template <typename T, typename MSpaceCategory>
+LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator(
+    LocalSpaceAllocator &&  other)
+  : _space(other.space())
+{
+  other.space = nullptr;
+}
+
+//TODO rko: Enable if memory resource is copyable (e.g. HostSpace, but not
+//Persistent Memory Space
+template <typename T, typename MSpaceCategory>
 template <typename U>
 LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator(
     const LocalSpaceAllocator<U>& other)
-  : _space(other.space)
+  : _space(other.space())
 {
 }
 
@@ -86,6 +110,7 @@ inline void LocalSpaceAllocator<T, MSpaceCategory>::deallocate(
   _space->deallocate(p, n);
 }
 
+/*
 template <typename T, typename MSpaceCategory, typename... Args>
 void construct(typename LocalSpaceAllocator<T, MSpaceCategory>::pointer p,
                Args&&... args)
@@ -105,9 +130,14 @@ void destroy(typename LocalSpaceAllocator<T, MSpaceCategory>::pointer p)
 {
   p->~T();
 }
+*/
+
 template <typename T, typename MSpaceCategory>
 inline LocalSpaceAllocator<T, MSpaceCategory>::~LocalSpaceAllocator()
 {
 }
+
+} //namespace alloator
+} //namespace dash
 
 #endif
