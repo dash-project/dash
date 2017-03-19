@@ -2,9 +2,8 @@
 #include "GlobHeapMemTest.h"
 
 #include <dash/memory/GlobHeapMem.h>
-
-
 TEST_F(GlobHeapMemTest, BalancedAlloc)
+
 {
   typedef int value_t;
 
@@ -490,6 +489,7 @@ TEST_F(GlobHeapMemTest, RemoteAccess)
    *     globally                                globally      deallocated
    *     visible                                 visible
    */
+
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);

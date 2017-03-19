@@ -8,6 +8,8 @@
 #include <dash/allocator/EpochSynchronizedAllocator.h>
 
 
+#include <dash/memory/SimpleMemoryPool.h>
+
 namespace dash {
 
 /**

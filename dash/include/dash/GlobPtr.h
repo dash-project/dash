@@ -19,14 +19,6 @@ std::ostream & operator<<(
   std::ostream      & os,
   const dart_gptr_t & dartptr);
 
-bool operator==(
-  const dart_gptr_t & lhs,
-  const dart_gptr_t & rhs);
-
-bool operator!=(
-  const dart_gptr_t & lhs,
-  const dart_gptr_t & rhs);
-
 namespace dash {
 
 // Forward-declarations
@@ -539,6 +531,11 @@ public:
     dart_team_unit_t luid;
     dart_team_myid(_dart_gptr.teamid, &luid);
     return _dart_gptr.unitid == luid.id;
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !DART_GPTR_ISNULL(_dart_gptr);
+
   }
 };
 

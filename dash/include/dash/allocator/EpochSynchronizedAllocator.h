@@ -3,16 +3,21 @@
 
 #include <dash/dart/if/dart.h>
 
-#include <dash/Types.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
 
 #include <dash/internal/Logging.h>
 
+#include <dash/GlobPtr.h>
 #include <dash/allocator/AllocatorTraits.h>
+#include <dash/allocator/LocalSpaceAllocator.h>
+#include <dash/allocator/internal/Types.h>
+#include <dash/memory/MemorySpace.h>
 
-#include <vector>
 #include <algorithm>
 #include <utility>
+#include <vector>
+#include <vector>
 
 namespace dash {
 namespace allocator {
@@ -29,106 +34,133 @@ namespace allocator {
  *
  * \concept{DashAllocatorConcept}
  */
-template<typename ElementType>
-class EpochSynchronizedAllocator
-{
+template <
+    typename ElementType, typename MSpaceCategory = dash::memory_space_host_tag,
+    typename LocalAllocator = LocalSpaceAllocator<ElementType, MSpaceCategory>>
+class EpochSynchronizedAllocator {
   template <class T, class U>
-  friend bool operator==(
-    const EpochSynchronizedAllocator<T> & lhs,
-    const EpochSynchronizedAllocator<U> & rhs);
-
+  friend bool operator==(const EpochSynchronizedAllocator<T> &lhs,
+                         const EpochSynchronizedAllocator<U> &rhs);
   template <class T, class U>
-  friend bool operator!=(
-    const EpochSynchronizedAllocator<T> & lhs,
-    const EpochSynchronizedAllocator<U> & rhs);
+  friend bool operator!=(const EpochSynchronizedAllocator<T> &lhs,
+                         const EpochSynchronizedAllocator<U> &rhs);
 
-private:
-  typedef EpochSynchronizedAllocator<ElementType> self_t;
-
-/// Type definitions required for std::allocator concept:
-public:
-  using value_type                             = ElementType;
-  using size_type                              = dash::default_size_t;
-  using propagate_on_container_move_assignment = std::true_type;
-
+  /// Type definitions required for std::allocator concept:
+ public:
+  using AllocatorTraits = std::allocator_traits<LocalAllocator>;
+  using allocator_type  = typename AllocatorTraits::allocator_type;
+  //  using propagate_on_container_move_assignment  = std::true_type;
   using allocator_category = dash::noncollective_allocator_tag;
 
-/// Type definitions required for dash::allocator concept:
-public:
-  typedef dash::gptrdiff_t        difference_type;
-  typedef dart_gptr_t                     pointer;
-  typedef dart_gptr_t                void_pointer;
-  typedef dart_gptr_t               const_pointer;
-  typedef dart_gptr_t          const_void_pointer;
-  typedef value_type              * local_pointer;
-  typedef const value_type *  const_local_pointer;
+ public:
+  typedef typename AllocatorTraits::value_type value_type;
+  typedef dash::gptrdiff_t                     difference_type;
+  typedef dash::default_size_t                 size_type;
+  typedef dart_gptr_t                          pointer;
+  typedef dart_gptr_t                          void_pointer;
+  typedef dart_gptr_t                          const_pointer;
+  typedef dart_gptr_t                          const_void_pointer;
 
-public:
+  typedef typename AllocatorTraits::pointer       local_pointer;
+  typedef typename AllocatorTraits::const_pointer const_local_pointer;
+
+ private:
+  using self_t =
+      EpochSynchronizedAllocator<ElementType, MSpaceCategory, LocalAllocator>;
+  using block_t             = dash::allocator::memory_block;
+  using internal_value_type = std::pair<block_t, pointer>;
+  using memory_space =
+      dash::MemorySpace<memory_space_global_domain_tag, MSpaceCategory>;
+
+ public:
   /// Convert EpochSynchronizedAllocator<T> to EpochSynchronizedAllocator<U>.
-  template<typename U>
+  template <class T>
   struct rebind {
-    typedef EpochSynchronizedAllocator<U> other;
+    typedef EpochSynchronizedAllocator<
+        T, MSpaceCategory, typename std::allocator_traits<
+                               LocalAllocator>::template rebind_alloc<T>>
+        other;
   };
 
-public:
+ public:
   /**
    * Constructor.
-   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a given team.
+   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a given
+   * team.
    */
-  EpochSynchronizedAllocator(
-    Team & team = dash::Team::All()) noexcept
-  : _team(&team),
-    _nunits(team.size())
-  { }
+  explicit EpochSynchronizedAllocator(Team &team = dash::Team::All()) noexcept
+    : _team(&team)
+    , _nunits(team.size())
+    , _alloc()
+  {
+  }
+
+  explicit EpochSynchronizedAllocator(allocator_type const &localAlloc,
+                                      Team &team = dash::Team::All()) noexcept
+    : _team(&team)
+    , _nunits(team.size())
+    , _alloc(localAlloc)
+  {
+  }
+
+  EpochSynchronizedAllocator(allocator_type &&alloc,
+                             Team &           team = dash::Team::All()) noexcept
+    : _team(&team)
+    , _nunits(team.size())
+    , _alloc(std::move(alloc))
+  {
+  }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
-  EpochSynchronizedAllocator(self_t && other) noexcept
-  : _team(nullptr)
+  EpochSynchronizedAllocator(self_t &&other) noexcept
+    : _team(nullptr)
   {
     std::swap(_allocated, other._allocated);
     std::swap(_team, other._team);
+    std::swap(_alloc, other._alloc);
   }
 
   /**
    * Default constructor, deleted.
    */
-  EpochSynchronizedAllocator() noexcept
-    = delete;
+  //  EpochSynchronizedAllocator() noexcept = delete;
 
   /**
    * Copy constructor.
    *
-   * \todo[TF] This copy constructor does not copy _allocated. Correct?
+   * This copy constructor does not copy _allocated since memory is strictly
+   * coupled to a specific team.
    *
    * \see DashAllocatorConcept
    */
-  EpochSynchronizedAllocator(const self_t & other) noexcept
-  : _team(other._team),
-    _nunits(other._nunits)
-  { }
+  EpochSynchronizedAllocator(const self_t &other) noexcept
+    : _team(other._team)
+    , _nunits(other._nunits)
+    , _alloc(other._alloc)
+  {
+  }
 
   /**
    * Copy-constructor.
    * Does not take ownership of the copied instance's allocation.
    */
-  template<class U>
-  EpochSynchronizedAllocator(const EpochSynchronizedAllocator<U> & other) noexcept
-  : _team(other._team),
-    _nunits(other._nunits)
-  { }
+  template <class U>
+  EpochSynchronizedAllocator(
+      const EpochSynchronizedAllocator<U> &other) noexcept
+    : _team(other._team)
+    , _nunits(other._nunits)
+    , _alloc(other._alloc)
+  {
+  }
 
   /**
    * Destructor.
    * Frees all global memory regions allocated by this allocator instance.
    */
-  ~EpochSynchronizedAllocator() noexcept
-  {
-    clear();
-  }
-
+  ~EpochSynchronizedAllocator() noexcept { clear(); }
   /**
    * Assignment operator.
    *
@@ -136,7 +168,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  self_t & operator=(const self_t & other) noexcept
+  self_t &operator=(const self_t &other) noexcept
   {
     // noop
     return *this;
@@ -145,7 +177,7 @@ public:
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(const self_t && other) noexcept
+  self_t &operator=(const self_t &&other) noexcept
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.=(&&)()");
     if (this != &other) {
@@ -154,6 +186,14 @@ public:
     }
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.=(&&) >");
     return *this;
+  }
+
+  /**
+   * Estimate the largest supported size
+   */
+  size_type max_size() const noexcept
+  {
+    return size_type(-1) / sizeof(ElementType);
   }
 
   /**
@@ -167,7 +207,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  bool operator==(const self_t & rhs) const noexcept
+  bool operator==(const self_t &rhs) const noexcept
   {
     return (_team->dart_id() == rhs._team->dart_id());
   }
@@ -184,15 +224,11 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  bool operator!=(const self_t & rhs) const noexcept
-  {
-    return !(*this == rhs);
-  }
-
+  bool operator!=(const self_t &rhs) const noexcept { return !(*this == rhs); }
   /**
    * Team containing units associated with the allocator's memory space.
    */
-  inline dash::Team & team() const noexcept
+  inline dash::Team &team() const noexcept
   {
     if (_team == nullptr) {
       return dash::Team::Null();
@@ -211,18 +247,47 @@ public:
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.allocate(nlocal)",
-                   "number of local values:", num_local_elem);
-    pointer gptr      = DART_GPTR_NULL;
-    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
-    if (dart_team_memregister(
-        _team->dart_id(), ds.nelem, ds.dtype, lptr, &gptr) == DART_OK) {
-      _allocated.push_back(std::make_pair(lptr, gptr));
-    } else {
-      gptr = DART_GPTR_NULL;
+    DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach(nlocal)",
+                   "number of local values:", num_local_elem, "pointer: ",
+                   lptr);
+
+    block_t pseudoBlock(lptr, num_local_elem);
+
+    // Search for corresponding memory block
+    auto const end = std::end(_allocated);
+    auto const found =
+        std::find_if(std::begin(_allocated), end,
+                     [&pseudoBlock](internal_value_type const &val) {
+                       return val.first == pseudoBlock;
+                     });
+
+    if (found == end) {
+      // memory block not found
+      DASH_THROW(dash::exception::InvalidArgument, "attach invalid pointer");
     }
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.allocate > ", gptr);
-    return gptr;
+    else if (found->second) {
+      // memory block is already attached
+      DASH_LOG_ERROR("local memory alread attach to memory", found->second);
+
+      DASH_THROW(dash::exception::InvalidArgument,
+                 "cannot repeatedly attach local pointer");
+    }
+
+    // Attach the block
+    dart_storage_t ds = dart_storage<value_type>(num_local_elem);
+    dart_gptr_t    dgptr;
+    if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype,
+                              found->first.ptr, &dgptr) != DART_OK) {
+      // reset to DART_GPTR_NULL
+      found->second = pointer(DART_GPTR_NULL);
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.attach",
+                     "cannot attach local memory", found->first.ptr);
+    }
+    else {
+      found->second = pointer(dgptr);
+    }
+    DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", found->second);
+    return found->second;
   }
 
   /**
@@ -244,17 +309,27 @@ public:
                      "DASH not initialized, abort");
       return;
     }
-    DASH_ASSERT_RETURNS(
-      dart_team_memderegister(gptr),
-      DART_OK);
-    _allocated.erase(
-      std::remove_if(
-        _allocated.begin(),
-        _allocated.end(),
-        [&](std::pair<value_type *, pointer> e) {
-          return e.second == gptr;
-        }),
-      _allocated.end());
+
+    auto const end = std::end(_allocated);
+    // Look up if we can
+    auto const found = std::find_if(
+        std::begin(_allocated), end,
+        [&gptr](internal_value_type const &val) { return val.second == gptr; });
+
+    if (found == end) {
+      DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach >",
+                     "cannot detach untracked pointer");
+      return;
+    }
+
+    if (dart_team_memderegister(gptr) != DART_OK) {
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.detach >",
+                     "cannot detach global pointer", gptr);
+      DASH_ASSERT(false);
+    }
+
+    found->second = pointer(DART_GPTR_NULL);
+
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach >");
   }
 
@@ -268,7 +343,18 @@ public:
    */
   local_pointer allocate_local(size_type num_local_elem)
   {
-    return new value_type[num_local_elem];
+    local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
+
+    if (!lp) return nullptr;
+
+    block_t b{lp, num_local_elem};
+
+    _allocated.push_back(std::make_pair(b, pointer(DART_GPTR_NULL)));
+
+    DASH_LOG_TRACE("EpochSynchronizedAllocator.allocate_local",
+                   "allocated local pointer", lp);
+
+    return lp;
   }
 
   /**
@@ -278,11 +364,32 @@ public:
    *
    * \see DashEpochSynchronizedAllocatorConcept
    */
-  void deallocate_local(local_pointer lptr)
+  void deallocate_local(local_pointer lptr, size_type num_local_elem)
   {
-    if (lptr != nullptr) {
-      delete[] lptr;
+    block_t pseudoBlock(lptr, num_local_elem);
+
+    auto const end = std::end(_allocated);
+    auto const found =
+        std::find_if(std::begin(_allocated), end,
+                     [&pseudoBlock](internal_value_type const &val) {
+                       return val.first == pseudoBlock;
+                     });
+
+    if (found == end) return;
+
+    bool const attached = found->second;
+    if (attached) {
+      // TODO rko: detach memory from window...
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.deallocate_local",
+                     "deallocating local pointer which is still attached",
+                     found->second);
     }
+
+    // TODO rko: first call the destructor??
+    AllocatorTraits::deallocate(
+        _alloc, static_cast<local_pointer>(found->first.ptr), num_local_elem);
+
+    if (!attached) _allocated.erase(found);
   }
 
   /**
@@ -296,13 +403,13 @@ public:
    */
   pointer allocate(size_type num_local_elem)
   {
-    local_pointer lmem = allocate_local(num_local_elem);
-    pointer       gmem = attach(lmem, num_local_elem);
-    if (DART_GPTR_ISNULL(gmem)) {
+    local_pointer lp = allocate_local(num_local_elem);
+    pointer       gp = attach(lp, num_local_elem);
+    if (!gp) {
       // Attach failed, free requested local memory:
-      deallocate_local(lmem);
+      deallocate_local(lp, num_local_elem);
     }
-    return gmem;
+    return gp;
   }
 
   /**
@@ -313,7 +420,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  void deallocate(pointer gptr)
+  void deallocate(pointer gptr, size_type num_local_elem)
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate()", "gptr:", gptr);
     if (!dash::is_initialized()) {
@@ -324,29 +431,33 @@ public:
                      "DASH not initialized, abort");
       return;
     }
-    // Free local memory:
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate", "deallocate local memory");
-    bool do_detach = false;
-    std::for_each(
-      _allocated.begin(),
-      _allocated.end(),
-      [&](std::pair<value_type *, pointer> e) mutable {
-        if (e.second == gptr && e.first != nullptr) {
-          delete[] e.first;
-          e.first   = nullptr;
-          do_detach = true;
-          DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate",
-                         "gptr", e.second, "marked for detach");
-        }
-      });
-    // Unregister from global memory space, removes gptr from _allocated:
-    if (do_detach) {
-      detach(gptr);
+
+    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate",
+                   "deallocate local memory");
+    auto const end   = std::end(_allocated);
+    auto const found = std::find_if(
+        std::begin(_allocated), end,
+        [&gptr](internal_value_type &val) { return val.second == gptr; });
+    if (found != end) {
+      // Unregister from global memory space, removes gptr from _allocated:
+      detach(found->second);
+      // Free local memory:
+      AllocatorTraits::deallocate(
+          _alloc, static_cast<local_pointer>(found->first.ptr), num_local_elem);
+
+      // erase from locally tracked blocks
+      _allocated.erase(found);
     }
+    else {
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.deallocate",
+                     "cannot deallocate gptr", gptr);
+    }
+
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate >");
   }
 
-private:
+  allocator_type allocator() { return _alloc; }
+ private:
   /**
    * Frees and detaches all global memory regions allocated by this allocator
    * instance.
@@ -354,52 +465,58 @@ private:
   void clear() noexcept
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear()");
-    for (auto & e : _allocated) {
-      // Null-buckets have lptr set to nullptr
-      if (e.first != nullptr) {
-        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear", "deallocate local memory:",
-                       e.first);
-        delete[] e.first;
-        e.first = nullptr;
-      }
-      if (!DART_GPTR_ISNULL(e.second)) {
-        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear", "detach global memory:",
-                       e.second);
-        // Cannot use DASH_ASSERT due to noexcept qualifier:
-        dart_ret_t ret = dart_team_memderegister(e.second);
-        assert(ret == DART_OK);
-      }
-    }
+
+    auto &     alloc_capture = _alloc;
+    auto const teamId        = _team->dart_id();
+    std::for_each(
+        std::begin(_allocated), std::end(_allocated),
+        [&alloc_capture, &teamId](internal_value_type &block) {
+          // Deallocate local memory
+          DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
+                         "deallocate local memory block:", block.first.ptr);
+          AllocatorTraits::deallocate(
+              alloc_capture, static_cast<local_pointer>(block.first.ptr),
+              block.first.length);
+          // Deregister global memory
+          if (block.second) {
+            DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
+                           "detach global memory:", block.second);
+            // Cannot use DASH_ASSERT due to noexcept qualifier:
+            DASH_ASSERT_RETURNS(
+                dart_team_memderegister(block.second), DART_OK);
+          }
+        });
     _allocated.clear();
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear >");
   }
 
-private:
-  dash::Team                                    * _team;
-  size_t                                          _nunits    = 0;
-  std::vector< std::pair<value_type *, pointer> > _allocated;
+ private:
+  dash::Team *                     _team;
+  size_t                           _nunits = 0;
+  std::vector<internal_value_type> _allocated;
+  LocalAllocator                   _alloc;
 
-}; // class EpochSynchronizedAllocator
+};  // class EpochSynchronizedAllocator
 
 template <class T, class U>
-bool operator==(
-  const EpochSynchronizedAllocator<T> & lhs,
-  const EpochSynchronizedAllocator<U> & rhs)
+bool
+operator==(const EpochSynchronizedAllocator<T> &lhs,
+           const EpochSynchronizedAllocator<U> &rhs)
 {
-  return (sizeof(T)            == sizeof(U) &&
+  return (sizeof(T) == sizeof(U) &&
           lhs._team->dart_id() == rhs._team->dart_id() &&
-          lhs._nunits          == rhs._nunits );
+          lhs._nunits == rhs._nunits && lhs._alloc == rhs._alloc);
 }
 
 template <class T, class U>
-bool operator!=(
-  const EpochSynchronizedAllocator<T> & lhs,
-  const EpochSynchronizedAllocator<U> & rhs)
+bool
+operator!=(const EpochSynchronizedAllocator<T> &lhs,
+           const EpochSynchronizedAllocator<U> &rhs)
 {
   return !(lhs == rhs);
 }
 
-} // namespace allocator
-} // namespace dash
+}  // namespace allocator
+}  // namespace dash
 
-#endif // DASH__ALLOCATOR__EPOCH_SYNCHRONIZED_ALLOCATOR_H__INCLUDED
+#endif  // DASH__ALLOCATOR__EPOCH_SYNCHRONIZED_ALLOCATOR_H__INCLUDED

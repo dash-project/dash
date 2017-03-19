@@ -203,7 +203,7 @@ private:
 public:
   typedef AllocatorType                                      allocator_type;
   typedef typename std::decay<ElementType>::type                 value_type;
-  
+
   typedef typename AllocatorType::size_type                       size_type;
   typedef typename AllocatorType::difference_type           difference_type;
   typedef typename AllocatorType::difference_type                index_type;
@@ -1007,7 +1007,7 @@ private:
       // Detach bucket from global memory region and deallocate its local
       // memory segment:
       if (bucket_it->attached) {
-        _allocator.deallocate(bucket_it->gptr);
+        _allocator.deallocate(bucket_it->gptr, bucket_it->size);
         num_detached_elem   += bucket_it->size;
         bucket_it->attached  = false;
       }
@@ -1187,13 +1187,17 @@ private:
     }
     DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                        attach_buckets_sizes);
-    // Use same allocator type as used for values in global memory:
-    typedef typename allocator_type::template rebind<size_type>::other
-      size_type_allocator_t;
-    size_type_allocator_t attach_buckets_sizes_allocator(_allocator.team());
-    auto attach_buckets_sizes_gptr = attach_buckets_sizes_allocator.attach(
-                                       &attach_buckets_sizes[0],
-                                       attach_buckets_sizes.size());
+
+    dart_storage_t ds = dart_storage<size_type>(attach_buckets_sizes.size());
+
+    dart_gptr_t attach_buckets_sizes_gptr;
+    if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype,
+                              &attach_buckets_sizes[0], &attach_buckets_sizes_gptr) != DART_OK) {
+
+      DASH_LOG_ERROR("GlobDynamicMem.update_remote_size()", "cannot attach local memory",
+                     attach_buckets_sizes_gptr);
+    }
+
     _team->barrier();
     // Implicit barrier in allocator.attach
     DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
@@ -1261,8 +1265,10 @@ private:
         u_bucket_cumul_sizes.back() += u_local_size_diff;
       }
     }
-    // Detach array of local unattached bucket sizes, implicit barrier:
-    attach_buckets_sizes_allocator.detach(attach_buckets_sizes_gptr);
+    // Detach temporary memory
+    DASH_ASSERT_RETURNS(
+      dart_team_memderegister(attach_buckets_sizes_gptr),
+      DART_OK);
     // Implicit barrier in allocator.detach
     _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING

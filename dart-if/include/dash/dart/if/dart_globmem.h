@@ -7,7 +7,8 @@
  * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
  *
- * Routines for allocation and reclamation of global memory regions and pointer semantics in partitioned global address space.
+ * Routines for allocation and reclamation of global memory regions and pointer
+ * semantics in partitioned global address space.
  *
  */
 
@@ -17,6 +18,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
@@ -56,57 +60,15 @@ extern "C" {
 
   */
 
-  /*
- PROPOSAL: use 128 bit global pointers with the following layout:
+/*
+PROPOSAL: use 128 bit global pointers with the following layout:
 
 
  0       1       2       3       4       5       6       7
  0123456701234567012345670123456701234567012345670123456701234567
  |----<24 bit unit id>---|-flags-|-<segment id>--|---<team id>--|
  |-----------<64 bit virtual address or offset>-----------------|
-
-  */
-
-/**
- * DART Global pointer type.
- *
- * \ingroup DartGlobMem
- */
-typedef struct
-{
-  /**
-   * The unit holding the memory element.
-   * The ID is relative to the team identified by \c teamid.
-   */
-  dart_unit_t  unitid : 24;
-  /** Reserved */
-  unsigned int flags  :  8;
-  /** The segment ID of the allocation. */
-  int16_t     segid;
-  /** The team associated with the allocation. */
-  int16_t     teamid;
-  /** Absolute address or relative offset. */
-  union
-  {
-    uint64_t offset;
-    void*    addr;
-  } addr_or_offs;
-} dart_gptr_t;
-
-/**
- * A NULL global pointer
- * \ingroup DartGlobMem
- */
-#ifdef __cplusplus
-#define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, DART_TEAM_NULL, { 0 } })
-#else
-#define DART_GPTR_NULL \
-(dart_gptr_t){ .unitid = -1, \
-               .flags  =  0, \
-               .segid  =  0, \
-               .teamid  =  DART_TEAM_NULL, \
-               .addr_or_offs.offset = 0 }
-#endif
+*/
 
 /**
  * Test for NULL global pointer
@@ -129,6 +91,59 @@ typedef struct
    (gptr1_.teamid == gptr2_.teamid) &&      \
    (gptr1_.addr_or_offs.offset ==           \
     gptr2_.addr_or_offs.offset) )
+/**
+ * DART Global pointer type.
+ *
+ * \ingroup DartGlobMem
+ */
+typedef struct dart_gptr
+{
+  /**
+   * The unit holding the memory element.
+   * The ID is relative to the team identified by \c teamid.
+   */
+  dart_unit_t  unitid : 24;
+  /** Reserved */
+  unsigned int flags  :  8;
+  /** The segment ID of the allocation. */
+  int16_t     segid;
+  /** The team associated with the allocation. */
+  int16_t     teamid;
+  /** Absolute address or relative offset. */
+  union
+  {
+    uint64_t offset;
+    void *addr;
+  } addr_or_offs;
+#ifdef __cplusplus
+  explicit operator bool() const noexcept { return !DART_GPTR_ISNULL((*this)); }
+
+  bool operator==(const dart_gptr &rhs) const noexcept
+  {
+    return DART_GPTR_EQUAL((*this), rhs);
+  }
+  bool operator!=(const dart_gptr &rhs) const noexcept
+  {
+    return !(*this == rhs);
+  }
+#endif
+} dart_gptr_t;
+
+/**
+ * A NULL global pointer
+ * \ingroup DartGlobMem
+ */
+#ifdef __cplusplus
+#define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, DART_TEAM_NULL, { 0 } })
+#else
+#define DART_GPTR_NULL \
+(dart_gptr_t){ .unitid = -1, \
+               .flags  =  0, \
+               .segid  =  0, \
+               .teamid  =  DART_TEAM_NULL, \
+               .addr_or_offs.offset = 0 }
+#endif
+
 
 
 /**
@@ -146,7 +161,8 @@ typedef struct
  * return the local memory address.
  *
  * \param gptr Global pointer
- * \param[out] addr Pointer to a pointer that will hold the local address if the \c gptr points to a local memory element.
+ * \param[out] addr Pointer to a pointer that will hold the local address if the
+ * \c gptr points to a local memory element.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -325,7 +341,8 @@ dart_ret_t dart_team_memalloc_aligned(
  * using \ref dart_team_memalloc_aligned.
  * After this operation, the global pointer should not be used in any
  * communication unless re-used in another allocation.
- * After this operation, the global pointer can be reset using \ref DART_GPTR_NULL.
+ * After this operation, the global pointer can be reset using \ref
+ * DART_GPTR_NULL.
  *
  * \param teamid The team to participate in the collective deallocation.
  * \param gptr Global pointer pointing to the memory to deallocate.
@@ -405,7 +422,6 @@ dart_ret_t dart_team_memregister(
  */
 dart_ret_t dart_team_memderegister(dart_gptr_t gptr) DART_NOTHROW;
 
-
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
 /** \endcond */
@@ -415,4 +431,3 @@ dart_ret_t dart_team_memderegister(dart_gptr_t gptr) DART_NOTHROW;
 #endif
 
 #endif /* DART_GLOBMEM_H_INCLUDED */
-

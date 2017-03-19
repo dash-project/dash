@@ -182,9 +182,9 @@ public:
   typedef typename glob_mem_type::const_reverse_local_iterator
     const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::local_iterator
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_local_iterator
     const_local_node_pointer;
 
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
@@ -548,6 +548,28 @@ public:
    */
   std::pair<iterator, bool> insert(
     /// The element to insert.
+    const value_type & value);
+
+  /**
+   * inserts value, using hint as a non-binding suggestion to where the search should start.
+   *
+   * Iterator validity:
+   *
+   * - All iterators in the container remain valid after the insertion unless
+   *   it forces a rehash. In this case, all iterators in the container are
+   *   invalidated.
+   * - A rehash is forced if the new container size after the insertion
+   *   operation would increase above its capacity threshold.
+   * - References to elements in the map container remain valid in all cases,
+   *   even after a rehash.
+   *
+   * \return  an iterator to the inserted element, or to the element that prevented the
+   *          insertion.
+   */
+  iterator insert(
+    //Iterator hint
+    const_iterator hint,
+    //The element to insert
     const value_type & value);
 
   /**
