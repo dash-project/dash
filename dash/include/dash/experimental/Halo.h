@@ -46,14 +46,15 @@ private:
   int _max{0};
 };
 
-template<dim_t NumDimensions, std::size_t NumStencils>
+template<dim_t NumDimensions, std::size_t NumStencilPoints>
 class StencilSpec {
 public:
-  using self = StencilSpec<NumDimensions, NumStencils>;
+  using self = StencilSpec<NumDimensions, NumStencilPoints>;
   using StencilT = Stencil<NumDimensions>;
 
-  using SpecsT  = std::array<StencilT, NumStencils>;
+  using SpecsT  = std::array<StencilT, NumStencilPoints>;
 
+  static constexpr std::size_t numStencilPoints() { return NumStencilPoints; }
 public:
   constexpr StencilSpec(const SpecsT& specs) : _specs(specs) {}
 
@@ -133,13 +134,11 @@ public:
   static coords_t coords(const index_t index){
     coords_t coords{};
     index_t index_tmp = static_cast<long>(index);
-    std::cout << index_tmp << std::endl;
     for(auto i(NumDimensions - 1); i >= 1; --i)
     {
       auto res = std::div(index_tmp, 3);
       coords[i] = res.rem;
       index_tmp = res.quot;
-      std::cout << index_tmp << std::endl;
     }
     coords[0] = index_tmp;
 
@@ -225,7 +224,6 @@ public:
         ++_num_regions;
       if(max >_specs[index].extent())
         _specs[index] = HaloRegionSpecT(index,max);
-      std::cout << index << " " << _specs[index] << std::endl;
     }
   }
 
