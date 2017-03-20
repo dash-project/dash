@@ -51,7 +51,8 @@ template<
   typename EdgeContainer    
     = std::vector<internal::out_edge<VertexIndexType, EdgeProperties>>,
   typename VertexContainer  
-    = std::vector<internal::vertex<EdgeContainer, VertexProperties>>>
+    = std::vector<internal::vertex<VertexIndexType, EdgeContainer, 
+                  VertexProperties>>>
 class Graph {
 
 public:
@@ -73,10 +74,13 @@ private:
   friend vertex_it_wrapper;
 
   typedef GlobDynamicContiguousMem<VertexContainer>   glob_mem_con_type;
+  typedef typename 
+    glob_mem_con_type::container_list_iter            vertex_cont_ref_type;
 
 public:
 
-  typedef internal::vertex<EdgeContainer, 
+  typedef internal::vertex<VertexIndexType,
+          EdgeContainer, 
           VertexProperties>                           vertex_type;
   typedef internal::out_edge<VertexIndexType, 
           EdgeProperties>                             edge_type;
@@ -173,7 +177,7 @@ public:
       = VertexProperties()) {
     vertex_type v(prop);
     v._local_id = ++_local_vertex_max_index;
-    _glob_mem_con->push_back(v);
+    _glob_mem_con->push_back(_vertex_container_ref, v);
     // TODO: return global index
     return _local_vertex_max_index;
   }
@@ -234,7 +238,8 @@ public:
    */
   bool allocate(vertex_size_type nvertices) {
     auto lcap = dash::math::div_ceil(nvertices, _team->size());
-    _glob_mem_con = new glob_mem_con_type(lcap, *_team);
+    _glob_mem_con = new glob_mem_con_type(*_team);
+    _vertex_container_ref = _glob_mem_con->add_container(lcap);
     // Register deallocator at the respective team instance
     _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
   }
@@ -265,6 +270,8 @@ private:
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
   /** Index of last added vertex */
   vertex_index_type           _local_vertex_max_index = -1;
+  /** Iterator to the vertex container in GlobMem object */ 
+  vertex_cont_ref_type        _vertex_container_ref;
 
 };
 
