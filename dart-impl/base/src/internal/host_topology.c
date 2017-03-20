@@ -205,7 +205,9 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
     dart_host_domain_t * host_domain = &topo->host_domains[h];
     /* Select first unit id at local host as leader: */
     dart_global_unit_t leader_unit_id = host_units->units[0];
-    dart_group_addmember(leader_group, leader_unit_id);
+    DART_ASSERT_RETURNS(
+      dart_group_addmember(leader_group, leader_unit_id),
+      DART_OK);
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "num. units on host %s: %d",
                    topo->host_names[h], host_units->num_units);
@@ -227,7 +229,9 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
         DART_LOG_TRACE("dart__base__host_topology__init: "
                        "add unit %d to local group",
                        host_units->units[u_idx].id);
-        dart_group_addmember(local_group, host_units->units[u_idx]);
+        DART_ASSERT_RETURNS(
+          dart_group_addmember(local_group, host_units->units[u_idx]),
+          DART_OK);
       }
     }
   }
@@ -260,7 +264,7 @@ static dart_ret_t dart__base__host_topology__update_module_locations(
 
   if (my_id.id == local_leader_unit_id.id) {
     dart_module_location_t * module_locations = NULL;
-    dart_team_unit_t my_leader_id;
+    dart_team_unit_t         my_leader_id;
     DART_ASSERT_RETURNS(
       dart_team_myid(leader_team, &my_leader_id),
       DART_OK);
@@ -607,6 +611,10 @@ dart_ret_t dart__base__host_topology__create(
     /* All units mapped to same host: */
     max_host_units = num_host_units;
   }
+
+  DART_ASSERT_MSG(max_host_units > 0,
+                  "Resolved max. units per host is <= 0");
+
   /* All entries after index last_host_ids are duplicates now: */
   int num_hosts = last_host_idx + 1;
   DART_LOG_TRACE("dart__base__host_topology__init: number of hosts: %d",
@@ -624,7 +632,8 @@ dart_ret_t dart__base__host_topology__create(
     /* Histogram of NUMA ids: */
     int numa_id_hist[DART_LOCALITY_MAX_NUMA_ID] = { 0 };
     /* Allocate array with capacity of maximum units on a single host: */
-    host_units->units      = malloc(sizeof(dart_unit_t) * max_host_units);
+    host_units->units      = malloc(sizeof(dart_global_unit_t)
+                                          * max_host_units);
     host_units->num_units  = 0;
     host_domain->host[0]   = '\0';
     host_domain->parent[0] = '\0';
@@ -682,10 +691,22 @@ dart_ret_t dart__base__host_topology__create(
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
                      max_host_units, host_units->num_units);
-      host_units->units = realloc(host_units->units,
-                                  host_units->num_units *
-                                    sizeof(dart_unit_t));
-      DART_ASSERT(host_units->units != NULL);
+      // Either   realloc(addr != 0, n >= 0) -> free or realloc
+      // or       realloc(addr  = 0, n >  0) -> malloc
+      DART_ASSERT(host_units->units     != NULL ||
+                  host_units->num_units  > 0);
+      // Note: realloc with zero-size is argued unsafe in certain scenarios:
+      // https://www.securecoding.cert.org/confluence/display/c/\
+      //   MEM04-C.+Beware+of+zero-length+allocations
+      if (host_units->num_units > 0) {
+        host_units->units = realloc(host_units->units,
+                                    host_units->num_units *
+                                      sizeof(dart_global_unit_t));
+        DART_ASSERT(host_units->units != NULL);
+      } else {
+        free(host_units->units);
+        host_units->units = NULL;
+      }
     }
   }
 

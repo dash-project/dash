@@ -6,9 +6,11 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+#include <dash/Meta.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/map/UnorderedMapLocalRef.h>
 #include <dash/map/UnorderedMapLocalIter.h>
@@ -77,6 +79,11 @@ template<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
+  static_assert(
+    dash::is_container_compatible<Key>::value &&
+    dash::is_container_compatible<Mapped>::value,
+    "Type not supported for DASH containers");
+
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class UnorderedMapLocalRef;
 
@@ -211,11 +218,10 @@ public:
   UnorderedMap(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
-    _key_hash(team)
+    _key_hash(team),
+    local(this)
   {
     DASH_LOG_TRACE_VAR("UnorderedMap(nelem,team)", nelem);
     if (_team->size() > 0) {
@@ -228,12 +234,11 @@ public:
     size_type   nelem,
     size_type   nlbuf,
     Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
+  : _team(&team),
     _myid(team.myid()),
-    _remote_size(0),
     _key_hash(team),
-    _local_buffer_size(nlbuf)
+    _local_buffer_size(nlbuf),
+    local(this)
   {
     DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);
@@ -614,9 +619,9 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
+    auto && key = value.first;
+    DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
+
     auto result = std::make_pair(_end, false);
 
     DASH_ASSERT(_globmem != nullptr);
@@ -789,19 +794,16 @@ private:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
     DASH_LOG_TRACE("UnorderedMap._insert_at()",
                    "unit:",   unit,
-                   "key:",    key,
-                   "mapped:", mapped);
+                   "key:",    value.first);
     auto result = std::make_pair(_end, false);
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
-    size_type old_local_size   = dash::Atomic<size_type>(
+    size_type old_local_size   = GlobRef<Atomic<size_type>>(
                                     _local_size_gptr
-                                 ).fetch_and_add(1);
+                                 ).fetch_add(1);
     size_type new_local_size   = old_local_size + 1;
     size_type local_capacity   = _globmem->local_size();
     _local_cumul_sizes[unit]  += 1;

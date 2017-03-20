@@ -223,7 +223,7 @@ private:
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit
-  dart_unit_t            _myid;
+  team_unit_t            _myid;
 
 }; // class GlobListIter
 

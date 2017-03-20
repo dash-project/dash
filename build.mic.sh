@@ -48,11 +48,11 @@ rm -Rf $BUILD_DIR/*
                         -DENVIRONMENT_TYPE=supermic \
                         -DCMAKE_C_COMPILER=mpiicc \
                         -DCMAKE_CXX_COMPILER=mpiicc \
-                        -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_DEVELOPER_COMPILER_WARNINGS=OFF \
-                        -DENABLE_EXTENDED_COMPILER_WARNINGS=OFF \
+                        -DENABLE_THREADSUPPORT=OFF \
+                        -DENABLE_DEV_COMPILER_WARNINGS=OFF \
+                        -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_ASSERTIONS=OFF \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \

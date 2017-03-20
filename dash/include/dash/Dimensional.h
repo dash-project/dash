@@ -140,7 +140,7 @@ public:
    * Return value with all dimensions as array of \c NumDimensions
    * elements.
    */
-  constexpr std::array<ElementType, NumDimensions> & values() const {
+  constexpr const std::array<ElementType, NumDimensions> & values() const {
     return _values;
   }
 
@@ -370,6 +370,25 @@ struct ViewRegion {
   std::array<IndexType, NumDimensions> end;
 };
 
+template<
+  typename IndexType = dash::default_index_t>
+struct ViewRange {
+  // Range begin offset.
+  IndexType begin;
+  // Range end offset.
+  IndexType end;
+};
+
+template<typename IndexType>
+std::ostream & operator<<(
+  std::ostream & os,
+  const ViewRange<IndexType> & viewrange) {
+  os << "dash::ViewRange<" << typeid(IndexType).name() << ">("
+     << "begin:" << viewrange.begin << " "
+     << "end:"   << viewrange.end << ")";
+  return os;
+}
+
 /**
  * Equality comparison operator for ViewPair.
  */
@@ -399,9 +418,9 @@ template<typename IndexType>
 std::ostream & operator<<(
   std::ostream & os,
   const ViewPair<IndexType> & viewpair) {
-  os << "dash::ViewPair<" << typeid(IndexType).name() << ">(offset:"
-     << viewpair.offset << " extent:"
-     << viewpair.extent << ")";
+  os << "dash::ViewPair<" << typeid(IndexType).name() << ">("
+     << "offset:" << viewpair.offset << " "
+     << "extent:" << viewpair.extent << ")";
   return os;
 }
 
@@ -425,6 +444,7 @@ private:
 
 public:
   typedef ViewRegion<NumDimensions, IndexType> region_type;
+  typedef ViewRange<IndexType>                 range_type;
 
 public:
   template<dim_t NDim_, typename IndexType_>
@@ -635,7 +655,7 @@ public:
     return _extents[dimension];
   }
 
-  constexpr std::array<SizeType, NumDimensions> extents() const
+  constexpr const std::array<SizeType, NumDimensions> & extents() const
   {
     return _extents;
   }
@@ -644,9 +664,16 @@ public:
     return _extents[dim];
   }
 
-  constexpr std::array<IndexType, NumDimensions> offsets() const
+  constexpr const std::array<IndexType, NumDimensions> & offsets() const
   {
     return _offsets;
+  }
+
+  constexpr range_type range(dim_t dim) const
+  {
+    return range_type {
+             static_cast<IndexType>(_offsets[dim]),
+             static_cast<IndexType>(_offsets[dim] + _extents[dim]) };
   }
 
   constexpr IndexType offset(dim_t dim) const

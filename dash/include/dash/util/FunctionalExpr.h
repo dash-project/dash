@@ -63,17 +63,18 @@ template <typename T,         ///< result type
           typename ReduceOp > ///< binary reduce operation
 constexpr T accumulate(
     const std::array<T, N> &arr, ///< array to accumulate
-    const size_t first,          ///< start index for accumulation
-    const size_t length,         ///< number of values to accumulate
+    const size_t first_idx,      ///< start index for accumulation
+    const size_t final_idx,      ///< index past last element to accumulate
     const T initialValue,        ///< initial accumulation value
     const ReduceOp & op          ///< binary operation
   ) {
-  return (first < (first + length))
-             ? op(arr[first],
+  return (first_idx < final_idx)
+             ? op(arr[first_idx],
                   dash::ce::accumulate(
                     arr,
-                    first  + 1,   length - 1,
-                    initialValue, op))
+                    first_idx  + 1, final_idx,
+                    initialValue,
+                    op))
              : initialValue;
 }
 

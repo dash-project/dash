@@ -117,11 +117,13 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  self_t & operator=(const self_t & other) noexcept
+  self_t & operator=(const self_t & other) = delete;
+#if 0
   {
     // noop
     return *this;
   }
+#endif
 
   /**
    * Move-assignment operator.
@@ -249,7 +251,7 @@ private:
       DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
-      dart_team_memfree(_team_id, gptr),
+      dart_team_memfree(gptr),
       DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
     if(!keep_reference){

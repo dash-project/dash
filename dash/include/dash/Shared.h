@@ -6,7 +6,8 @@
 #include <dash/GlobMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
-#include <dash/Atomic.h>
+
+#include <dash/atomic/GlobAtomicRef.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -37,7 +38,7 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>                 atomic_type;
+  typedef GlobRef<Atomic<ElementType>>          atomic_ref_type;
 
 private:
   typedef dash::GlobMem<
@@ -49,7 +50,7 @@ private:
   friend void swap(Shared<T_> & a, Shared<T_> & b);
 
 public:
-  atomic_type atomic;
+  atomic_ref_type atomic;
 
 public:
   /**
@@ -80,7 +81,9 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-    atomic = atomic_type(_ptr.dart_gptr(), team);
+    atomic._set_dart_gptr(_ptr.dart_gptr());
+    // ensure that atomic proxy is initialized on all units
+    team.barrier();
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _ptr);
   }
 
@@ -136,9 +139,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.cget", _owner);
     DASH_LOG_DEBUG_VAR("Shared.cget", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    const_reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.cget >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**
@@ -150,9 +151,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.get", _owner);
     DASH_LOG_DEBUG_VAR("Shared.get", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.get >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**
