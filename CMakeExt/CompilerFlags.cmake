@@ -277,7 +277,9 @@ if (ENABLE_ASSERTIONS)
       "${CMAKE_CXX_FLAGS_RELEASE} -DDART_ENABLE_ASSERTIONS")
 endif()
 
-if (DASH_PLATFORM_IS_LINUX)
+if (DASH_PLATFORM_IS_LINUX OR 
+    DASH_PLATFORM_IS_OSX   OR 
+    DASH_PLATFORM_IS_FREEBSD)
   # -D_XOPEN_SOURCE=700 is required for pthread_mutexattr_settype
   # and gethostname
   set(CMAKE_C_FLAGS_DEBUG
