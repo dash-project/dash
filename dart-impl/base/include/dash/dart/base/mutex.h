@@ -2,6 +2,7 @@
 #define DASH_DART_BASE_MUTEX__H_
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/config.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_util.h>
 
@@ -37,7 +38,7 @@ dart__base__mutex_init(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   // pthread_mutex_init always succeeds
-  pthread_mutex_init(&mutex->mutex,
+  pthread_mutex_init(&mutex->mutex, NULL);
   DART_LOG_TRACE("%s: Initialized fast mutex %p", __FUNCTION__, mutex);
   return DART_OK;
 #else

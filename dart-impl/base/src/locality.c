@@ -2,7 +2,6 @@
  * \file dash/dart/base/locality.c
  */
 
-#define _GNU_SOURCE
 #include <string.h>
 #include <inttypes.h>
 #include <unistd.h>

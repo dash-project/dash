@@ -216,10 +216,10 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
 
 dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
 {
-  if (dart__base__mutex_trylock(&lock->mutex) != 0) {
+  if (dart__base__mutex_trylock(&lock->mutex) != DART_OK) {
     *is_acquired = 0;
     DART_LOG_ERROR("dart_lock_try_acquire: LOCK held in another thread\n");
-    return DART_OK;
+    return DART_PENDING;
   }
 
   if (lock->is_acquired == 1)
