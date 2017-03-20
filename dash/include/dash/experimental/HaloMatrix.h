@@ -39,16 +39,19 @@ public:
   using iterator             = HaloMatrixIterator<
                                  ElementT,
                                  PatternT,
+                                 StencilSpecT,
                                  StencilViewScope::ALL>;
   using const_iterator       = const iterator;
   using iterator_inner       = HaloMatrixIterator<
                                  ElementT,
                                  PatternT,
+                                 StencilSpecT,
                                  StencilViewScope::INNER>;
   using const_iterator_inner = const iterator_inner;
   using iterator_bnd         = HaloMatrixIterator<
                                  ElementT,
                                  PatternT,
+                                 StencilSpecT,
                                  StencilViewScope::BOUNDARY>;
   using const_iterator_bnd   = const iterator_inner;
 
@@ -59,12 +62,13 @@ public:
         _view_global(ViewSpecT(matrix.local.offsets(), matrix.local.extents())),
         _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global, _halo_reg_spec,
                    cycle_spec),
-        _halomemory(_haloblock), _begin(_haloblock, _halomemory, 0),
-        _end(_haloblock, _halomemory, _haloblock.view_safe().size()),
-        _ibegin(_haloblock, _halomemory, 0),
-        _iend(_haloblock, _halomemory, _haloblock.view_inner().size()),
-        _bbegin(_haloblock, _halomemory, 0),
-        _bend(_haloblock, _halomemory, _haloblock.boundary_size()) {
+        _halomemory(_haloblock),
+        _begin(_haloblock, _halomemory, _stencil_spec, 0),
+        _end(_haloblock, _halomemory, _stencil_spec, _haloblock.view_safe().size()),
+        _ibegin(_haloblock, _halomemory, _stencil_spec, 0),
+        _iend(_haloblock, _halomemory, _stencil_spec, _haloblock.view_inner().size()),
+        _bbegin(_haloblock, _halomemory, _stencil_spec, 0),
+        _bend(_haloblock, _halomemory, _stencil_spec, _haloblock.boundary_size()) {
 
     for (const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
