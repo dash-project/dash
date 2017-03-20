@@ -1068,7 +1068,6 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
     std::vector<index_t> block_indices(block_index.begin(),
                                        block_index.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_indices);
-  //DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block);
 
     std::vector<value_t> block_values(block.begin(), block.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_values);

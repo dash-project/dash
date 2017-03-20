@@ -163,6 +163,7 @@ public:
   typedef DomainType                                           domain_type;
 
   typedef typename std::conditional<
+              // try is_copyable, is_moveable
                      view_traits<domain_type>::is_origin::value,
                      const domain_type &,
                      domain_type
