@@ -172,7 +172,10 @@ public:
   vertex_index_type add_vertex(const VertexProperties & prop 
       = VertexProperties()) {
     vertex_type v(prop);
+    v._local_id = ++_local_vertex_max_index;
     _glob_mem_con->push_back(v);
+    // TODO: return global index
+    return _local_vertex_max_index;
   }
 
   /**
@@ -260,6 +263,8 @@ private:
   glob_mem_con_type *         _glob_mem_con = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
+  /** Index of last added vertex */
+  vertex_index_type           _local_vertex_max_index = -1;
 
 };
 

@@ -12,6 +12,7 @@ enum GraphDirection {
 namespace internal {
 
 template<
+  typename IndexType,
   typename EdgeContainer,
   typename VertexProperties>
 struct vertex {
@@ -27,6 +28,8 @@ struct vertex {
   EdgeContainer     _out_edges;
   /** Properties of this vertex */
   VertexProperties  _properties;
+  /** Index of the vertex in local index space */
+  IndexType         _local_id;
 
 };
 
