@@ -17,21 +17,15 @@ enum class StencilViewScope: std::uint8_t{
   ALL
 };
 
-template <
-  typename         ElementT,
-  typename         PatternT,
-  StencilViewScope Scope >
-class HaloMatrixIterator
-: public std::iterator<
-    std::random_access_iterator_tag,
-    ElementT,
-    typename PatternT::index_type,
-    ElementT*,
-    ElementT > // TODO: Clarify: Why no reference type?
+template <typename ElementT, typename PatternT, typename StencilSpecT, StencilViewScope Scope>
+class HaloMatrixIterator : public std::iterator<std::random_access_iterator_tag, ElementT,
+                                                typename PatternT::index_type, ElementT*,
+                                                ElementT&> // TODO: Clarify: Why no reference type?
 {
 public:
   using index_type  = typename PatternT::index_type;
   using size_type   = typename PatternT::size_type;
+  using signed_size_type = typename std::make_signed<size_type>::type;
 
   using reference       = ElementT;
   using const_reference = const reference;
@@ -40,10 +34,11 @@ public:
 
 private:
   static constexpr dim_t NumDimensions = PatternT::ndim();
+  static constexpr std::size_t NumStencilPoints = StencilSpecT::numStencilPoints();
   static constexpr MemArrange MemoryArrange = PatternT::memory_order();
 
-  using self_t         = HaloMatrixIterator<ElementT, PatternT, Scope>;
-  using GlobMem_t      = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using self_t         = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
+  using GlobMem_t      = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
   using HaloBlock_t    = HaloBlock<ElementT, PatternT>;
   using HaloMemory_t   = HaloMemory<HaloBlock_t>;
   using viewspec_t     = typename PatternT::viewspec_type;
@@ -53,8 +48,9 @@ private:
   using StencilT      = Stencil<NumDimensions>;
 
 public:
-  HaloMatrixIterator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory, index_type idx)
-      : _haloblock(haloblock), _halomemory(halomemory),
+  HaloMatrixIterator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory,
+                     const StencilSpecT& stencil_spec, index_type idx)
+      : _haloblock(haloblock), _halomemory(halomemory), _stencil_spec(stencil_spec),
         _local_memory((ElementT*)_haloblock.globmem().lbegin()),
         _local_layout(_haloblock.pattern().local_memory_layout()), _idx(idx)
 
@@ -74,6 +70,7 @@ public:
       _size = _view_local.size();
 
     setCoords();
+    setStencilOffsets(stencil_spec);
   }
 
   /**
@@ -130,17 +127,18 @@ public:
     return _local_layout.at(_coords);
   }
 
-  /*ElementT valueAt(const index_t index) {
+  ElementT valueAt(const index_t index) {
     // TODO: is the given offset in halospec range?
 
     if (Scope == StencilViewScope::INNER) {
-      return *haloPos(stencil);
+      return *(_current_lmemory_addr + _stencil_offsets[index]);
     } else {
       auto halo_coords{_coords};
-
+      const auto& stencil = _stencil_spec[index];
       for (auto d(0); d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         //TODO check wether region is nullptr or not
+        //TODO duplicated code (stencilValue(stencil)) -> extra method
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d)) {
           //TODO implement as method in HaloRegionSpec
           index_t index = 0;
@@ -186,9 +184,9 @@ public:
         }
       }
 
-      return *haloPos(stencil);
+      return *(_current_lmemory_addr + _stencil_offsets[index]);
     }
-  }*/
+  }
 
   ElementT valueAt(const StencilT& stencil) {
     // TODO: is the given offset in halospec range?
@@ -476,13 +474,31 @@ private:
     return halo_pos;
   }
 
+  void setStencilOffsets(const StencilSpecT& stencil_spec) {
+
+    for (auto i(0); i < NumStencilPoints; ++i) {
+      signed_size_type offset = 0;
+      if (MemoryArrange == ROW_MAJOR) {
+        offset += stencil_spec[i][NumDimensions - 1];
+        for (auto d(NumDimensions - 2); d >= 0; --d)
+          offset += stencil_spec[i][d] * _local_layout.extent(d);
+      } else {
+        offset += stencil_spec[i][NumDimensions - 1];
+        for (auto d(1); d < NumDimensions; ++d)
+          offset += stencil_spec[i][d] * _local_layout.extent(d);
+      }
+      _stencil_offsets[i] = offset;
+    }
+  }
+
 private:
   const HaloBlock_t &                _haloblock;
   HaloMemory_t &                     _halomemory;
+  const StencilSpecT&                      _stencil_spec;
   ElementT*                          _local_memory;
   viewspec_t                         _view_local;
   std::vector<viewspec_t>            _bnd_elements;
-
+  std::array<signed_size_type, NumStencilPoints> _stencil_offsets;
   const local_layout_t &             _local_layout;
   index_type                         _idx{0};
   index_type                         _size{0};
