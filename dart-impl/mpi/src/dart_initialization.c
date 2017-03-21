@@ -15,6 +15,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
@@ -38,8 +39,12 @@ dart_ret_t do_init()
   }
 
   dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
-	if (ret != DART_OK) {
+  if (ret != DART_OK) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
+    return DART_ERR_OTHER;
+  }
+
+  if (dart__mpi__datatype_init() != DART_OK) {
     return DART_ERR_OTHER;
   }
 
