@@ -125,6 +125,14 @@ dart_ret_t dart_get(
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
                    nelem, (unsigned long)win, team_unit_id.id, offset, dest);
+
+    if (team_data->unitid == team_unit_id.id) {
+      // use direct memcpy if we are on the same unit
+      memcpy(dest, (void*)offset, nelem * dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_get_blocking: finished memcpy");
+      return DART_OK;
+    }
+
   } else {
     win      = dart_win_local_alloc;
     DART_LOG_TRACE("dart_get:  nelem:%zu "
@@ -132,6 +140,8 @@ dart_ret_t dart_get(
                    "-> dest:%p",
                    nelem, (unsigned long)win, team_unit_id.id, offset, dest);
   }
+
+
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
               nelem,
@@ -195,9 +205,18 @@ dart_ret_t dart_put(
     }
     offset += disp_s;
 
+    /* copy data directly if we are on the same unit */
+    if (team_unit_id.id == team_data->unitid) {
+      memcpy((void*)offset, src, nelem*dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_put: memcpy nelem:%zu "
+                     "target unit: %d offset: %"PRIu64"",
+                     nelem, team_unit_id.id, offset);
+      return DART_OK;
+    }
   } else {
     win = dart_win_local_alloc;
   }
+
 
   MPI_Put(
     src,
@@ -729,6 +748,16 @@ dart_ret_t dart_put_blocking(
                    "<- source: %p",
                    nelem, win, team_unit_id.id,
                    offset, src);
+
+    /* copy data directly if we are on the same unit */
+    if (team_unit_id.id == team_data->unitid) {
+      memcpy((void*)offset, src, nelem*dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_put: memcpy nelem:%zu "
+                     "target unit: %d offset: %"PRIu64"",
+                     nelem, team_unit_id.id, offset);
+      return DART_OK;
+    }
+
   } else {
     win      = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
@@ -834,6 +863,14 @@ dart_ret_t dart_get_blocking(
                    "-> dest: %p",
                    nelem, win, team_unit_id.id,
                    offset, dest);
+
+    if (team_data->unitid == team_unit_id.id) {
+      // use direct memcpy if we are on the same unit
+      memcpy(dest, (void*)offset, nelem * dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_get_blocking: finished memcpy");
+      return DART_OK;
+    }
+
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
