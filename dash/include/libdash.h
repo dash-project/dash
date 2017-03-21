@@ -43,6 +43,7 @@ namespace dash {
 #include <dash/Algorithm.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
+#include <dash/Mutex.h>
 
 #include <dash/Pattern.h>
 
