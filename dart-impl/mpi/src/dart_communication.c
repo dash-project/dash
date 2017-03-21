@@ -846,22 +846,24 @@ dart_ret_t dart_get_blocking(
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
    */
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Get");
-  if (MPI_Get(dest,
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
+  MPI_Request req;
+  if (MPI_Rget(dest,
               nelem,
               mpi_dtype,
               team_unit_id.id,
               offset,
               nelem,
               mpi_dtype,
-              win)
+              win,
+              &req)
       != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Get failed");
+    DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
     return DART_ERR_INVAL;
   }
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Win_flush");
-  if (MPI_Win_flush(team_unit_id.id, win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Win_flush failed");
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
+  if (MPI_Wait(&req, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_get_blocking ! MPI_Wait failed");
     return DART_ERR_INVAL;
   }
 
