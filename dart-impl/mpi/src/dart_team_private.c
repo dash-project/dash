@@ -232,6 +232,7 @@ dart_adapt_teamlist_alloc(dart_team_t teamid)
   int slot = dart_adapt_teamlist_hash(teamid);
   dart_team_data_t *res = calloc(1, sizeof(dart_team_data_t));
   res->teamid = teamid;
+  res->unitid = DART_UNDEFINED_UNIT_ID;
   res->next = dart_team_data[slot];
   dart_team_data[slot] = res;
   dart_segment_init(&(res->segdata), teamid);

@@ -629,6 +629,11 @@ dart_ret_t dart_team_create(
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
     team_data->window = win;
 
+    int rank;
+    MPI_Comm_rank(team_data->comm, &rank);
+    team_data->unitid = rank;
+    MPI_Comm_size(team_data->comm, &team_data->size);
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);
 #endif
@@ -695,8 +700,12 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam)
 
 dart_ret_t dart_myid(dart_global_unit_t *unitid)
 {
+  static dart_unit_t mpi_id = DART_UNDEFINED_UNIT_ID;
   if (dart_initialized()) {
-    MPI_Comm_rank(MPI_COMM_WORLD, &(unitid->id));
+    if (mpi_id == DART_UNDEFINED_UNIT_ID) {
+      MPI_Comm_rank(MPI_COMM_WORLD, &(mpi_id));
+    }
+    unitid->id = mpi_id;
   } else {
     unitid->id = -1;
   }
@@ -705,9 +714,15 @@ dart_ret_t dart_myid(dart_global_unit_t *unitid)
 
 dart_ret_t dart_size(size_t *size)
 {
-  int s;
-  MPI_Comm_size (DART_COMM_WORLD, &s);
-  (*size) = s;
+  static int mpi_size = -1;
+  if (dart_initialized()) {
+    if (mpi_size == -1) {
+      MPI_Comm_size (DART_COMM_WORLD, &mpi_size);
+    }
+    (*size) = mpi_size;
+  } else {
+    *size = 0;
+  }
   return DART_OK;
 }
 
@@ -715,6 +730,7 @@ dart_ret_t dart_team_myid(
   dart_team_t        teamid,
   dart_team_unit_t * unitid)
 {
+  unitid->id = DART_UNDEFINED_UNIT_ID;
   if (teamid == DART_TEAM_NULL) {
     return DART_ERR_INVAL;
   }
@@ -723,7 +739,8 @@ dart_ret_t dart_team_myid(
   {
     return DART_ERR_INVAL;
   }
-  MPI_Comm_rank(team_data->comm, &(unitid->id));
+
+  unitid->id = team_data->unitid;
 
   return DART_OK;
 }
@@ -742,11 +759,7 @@ dart_ret_t dart_team_size(
     return DART_ERR_INVAL;
   }
 
-  // TODO: This should be a local operation.
-  //       Team sizes could be cached and updated in dart_team_create.
-  int s;
-  MPI_Comm_size(team_data->comm, &s);
-  (*size) = s;
+  (*size) = team_data->size;
   return DART_OK;
 }
 
