@@ -43,56 +43,56 @@ struct VertexIteratorWrapper {
    * Returns global iterator to the beginning of the vertex list.
    */
   iterator begin() {
-    return _graph->_glob_mem_con->begin();
+    return _graph->_glob_mem_vertex->begin();
   }
   
   /**
    * Returns global iterator to the beginning of the vertex list.
    */
   const_iterator begin() const {
-    return _graph->_glob_mem_con->begin();
+    return _graph->_glob_mem_vertex->begin();
   }
   
   /**
    * Returns global iterator to the end of the vertex list.
    */
   iterator end() {
-    return _graph->_glob_mem_con->end();
+    return _graph->_glob_mem_vertex->end();
   }
   
   /**
    * Returns global iterator to the end of the vertex list.
    */
   const_iterator end() const {
-    return _graph->_glob_mem_con->end();
+    return _graph->_glob_mem_vertex->end();
   }
   
   /**
    * Returns local iterator to the beginning of the vertex list.
    */
   local_iterator lbegin() {
-    return _graph->_glob_mem_con->lbegin();
+    return _graph->_glob_mem_vertex->lbegin();
   }
   
   /**
    * Returns local iterator to the beginning of the vertex list.
    */
   const_local_iterator lbegin() const {
-     return _graph->_glob_mem_con->lbegin();
+     return _graph->_glob_mem_vertex->lbegin();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   local_iterator lend() {
-    return _graph->_glob_mem_con->lend();
+    return _graph->_glob_mem_vertex->lend();
   }
   
   /**
    * Returns local iterator to the end of the vertex list.
    */
   const_local_iterator lend() const {
-    return _graph->_glob_mem_con->lend();
+    return _graph->_glob_mem_vertex->lend();
   }
 
 private:

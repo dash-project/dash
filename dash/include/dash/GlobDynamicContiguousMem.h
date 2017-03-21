@@ -183,8 +183,16 @@ public:
     c_data.unattached_container_bucket = &(*it);
     // insert won't invalidate iterators for std::list, so we can use them
     // to access the container
-
     return _container_list.insert(_container_list.end(), c_data);
+  }
+
+  value_type & get(container_list_iter cont, index_type pos) {
+    auto c_data = *cont;
+    if(c_data.container->size() > pos) {
+      return c_data.container->operator[](pos);
+    }
+    pos -= c_data.container->size();
+    return c_data.unattached_container->operator[](pos);
   }
 
   /**
@@ -278,8 +286,8 @@ public:
     return _lend;
   }
 
-  void push_back(container_list_iter pos, value_type val) {
-    auto c_data = *pos;
+  void push_back(container_list_iter cont, value_type val) {
+    auto c_data = *cont;
     // bucket of _container
     auto it = c_data.buckets.begin();
     // use _unattached container, if _container is full

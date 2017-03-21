@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <dash/graph/VertexIterator.h>
+#include <dash/graph/EdgeIterator.h>
 #include <dash/graph/internal/Graph.h>
 #include <dash/GlobDynamicContiguousMem.h>
 #include <dash/Team.h>
@@ -48,11 +49,9 @@ template<
   typename EdgeProperties   = internal::EmptyProperties,  // user-defined struct
   typename VertexIndexType  = int,
   typename EdgeIndexType    = int,
-  typename EdgeContainer    
-    = std::vector<internal::out_edge<VertexIndexType, EdgeProperties>>,
-  typename VertexContainer  
-    = std::vector<internal::vertex<VertexIndexType, EdgeContainer, 
-                  VertexProperties>>>
+  template<class, class> typename EdgeContainer = std::vector,
+  template<class, class> typename VertexContainer = std::vector
+>
 class Graph {
 
 public:
@@ -61,29 +60,37 @@ public:
           VertexProperties, EdgeProperties,
           VertexIndexType, EdgeIndexType, 
           EdgeContainer, VertexContainer>             graph_type;
+  typedef internal::vertex<graph_type>                vertex_type;
+  typedef internal::out_edge<graph_type>              edge_type;
+  typedef VertexContainer<vertex_type, 
+          std::allocator<vertex_type>>                vertex_container_type;
+  typedef EdgeContainer<edge_type, 
+          std::allocator<edge_type>>                  edge_container_type;
 
 private:
 
   // TODO: add wrapper for all iterator types
   typedef VertexIteratorWrapper<graph_type>           vertex_it_wrapper;
-  typedef VertexIteratorWrapper<graph_type>           edge_it_wrapper;
+  typedef EdgeIteratorWrapper<graph_type>             edge_it_wrapper;
   typedef VertexIteratorWrapper<graph_type>           in_edge_it_wrapper;
   typedef VertexIteratorWrapper<graph_type>           out_edge_it_wrapper;
   typedef VertexIteratorWrapper<graph_type>           adjacency_it_wrapper;
 
   friend vertex_it_wrapper;
+  friend edge_it_wrapper;
 
-  typedef GlobDynamicContiguousMem<VertexContainer>   glob_mem_con_type;
-  typedef typename 
-    glob_mem_con_type::container_list_iter            vertex_cont_ref_type;
+  typedef GlobDynamicContiguousMem<
+    vertex_container_type>                            glob_mem_vert_type;
+  typedef GlobDynamicContiguousMem<
+    edge_container_type>                              glob_mem_edge_type;
+
 
 public:
 
-  typedef internal::vertex<VertexIndexType,
-          EdgeContainer, 
-          VertexProperties>                           vertex_type;
-  typedef internal::out_edge<VertexIndexType, 
-          EdgeProperties>                             edge_type;
+  typedef typename 
+    glob_mem_vert_type::container_list_iter           vertex_cont_ref_type;
+  typedef typename 
+    glob_mem_edge_type::container_list_iter           edge_cont_ref_type;
   typedef VertexIndexType                             vertex_index_type;
   typedef EdgeIndexType                               edge_index_type;
   typedef typename 
@@ -92,16 +99,20 @@ public:
     std::make_unsigned<EdgeIndexType>::type           edge_size_type;
 
   typedef DynamicPattern                              pattern_type;
-  typedef VertexContainer                             vertex_container_type;
-  typedef EdgeContainer                               edge_container_type;
   typedef VertexProperties                            vertex_properties_type;
   typedef EdgeProperties                              edge_properties_type;
 
   typedef GlobRef<vertex_type>                        reference;
 
-  typedef typename glob_mem_con_type::global_iterator global_vertex_iterator;
-  typedef typename glob_mem_con_type::local_iterator  local_vertex_iterator;
-
+  typedef typename 
+    glob_mem_vert_type::global_iterator               global_vertex_iterator;
+  typedef typename 
+    glob_mem_vert_type::local_iterator                local_vertex_iterator;
+  typedef typename 
+    glob_mem_edge_type::global_iterator               global_edge_iterator;
+  typedef typename 
+    glob_mem_edge_type::local_iterator                local_edge_iterator;
+  
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
   typedef typename edge_it_wrapper::iterator          edge_iterator;
   typedef typename in_edge_it_wrapper::iterator       in_edge_iterator;
@@ -121,11 +132,15 @@ public:
   /**
    * Constructs an empty graph.
    */
-  Graph(vertex_size_type nvertices = 0, Team & team  = dash::Team::All()) 
+  Graph(
+      vertex_size_type n_vertices = 0, 
+      edge_size_type n_vertex_edges = 0, 
+      Team & team  = dash::Team::All()
+  ) 
     : _team(&team),
       _myid(team.myid())
   {
-    allocate(nvertices);
+    allocate(n_vertices, n_vertex_edges);
   }
 
   /** Destructs the graph.
@@ -175,9 +190,10 @@ public:
    */
   vertex_index_type add_vertex(const VertexProperties & prop 
       = VertexProperties()) {
-    vertex_type v(prop);
-    v._local_id = ++_local_vertex_max_index;
-    _glob_mem_con->push_back(_vertex_container_ref, v);
+    ++_local_vertex_max_index;
+    auto ref = _glob_mem_edge->add_container(_alloc_edges_per_vertex);
+    vertex_type v(_local_vertex_max_index, ref, prop);
+    _glob_mem_vertex->push_back(_vertex_container_ref, v);
     // TODO: return global index
     return _local_vertex_max_index;
   }
@@ -206,7 +222,20 @@ public:
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
       const vertex_index_type & v2, 
       const EdgeProperties & prop = EdgeProperties()) {
-
+    //TODO: Check, whether the edge already exists
+    //TODO:_Handle removed vertices
+    //      (vertex index is no longer == vertex container index)
+    auto vertex1 = _glob_mem_vertex->get(_vertex_container_ref, v1);
+    auto vertex2 = _glob_mem_vertex->get(_vertex_container_ref, v2);
+    //TODO: if feasible, use pointer to prop, so it gets saved only once
+    ++_local_edge_max_index;
+    edge_type edge1 = edge_type(_local_edge_max_index, v2, prop);
+    edge_type edge2 = edge_type(_local_edge_max_index, v1, prop);
+    //TODO: find out, how to save edges for different graph types 
+    //      (directed, undirected)
+    _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
+    _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
+    return std::make_pair(_local_edge_max_index, true);
   }
   /**
    * Removes an edge between two given vertices.
@@ -230,16 +259,21 @@ public:
    * the whole data structure.
    */
   void barrier() {
-    _glob_mem_con->commit();
+    _glob_mem_vertex->commit();
+    _glob_mem_edge->commit();
   }
 
   /**
    * Globally allocates memory for vertex storage.
    */
-  bool allocate(vertex_size_type nvertices) {
-    auto lcap = dash::math::div_ceil(nvertices, _team->size());
-    _glob_mem_con = new glob_mem_con_type(*_team);
-    _vertex_container_ref = _glob_mem_con->add_container(lcap);
+  bool allocate(vertex_size_type n_vertices, edge_size_type n_vertex_edges) {
+    auto vertex_lcap = dash::math::div_ceil(n_vertices, _team->size());
+    _glob_mem_vertex = new glob_mem_vert_type(*_team);
+    _vertex_container_ref = _glob_mem_vertex->add_container(vertex_lcap);
+    // no edge list allocation yet, this will happen once the vertices are 
+    // created. Each edge list will have n_vertex_edges elements reserved.
+    _alloc_edges_per_vertex = n_vertex_edges;
+    _glob_mem_edge = new glob_mem_edge_type(*_team);
     // Register deallocator at the respective team instance
     _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
   }
@@ -248,15 +282,15 @@ public:
    * Deallocates global memory of this container.
    */
   void deallocate() {
-    if(_glob_mem_con != nullptr) {
-      delete _glob_mem_con;
+    if(_glob_mem_vertex != nullptr) {
+      delete _glob_mem_vertex;
     }
     // Remove deallocator from the respective team instance
     _team->unregister_deallocator(this, std::bind(&Graph::deallocate, this));
   }
 
   vertex_type test() {
-    auto gptr = _glob_mem_con->dart_gptr_at(team_unit_t(1), 0, 0);
+    auto gptr = _glob_mem_vertex->dart_gptr_at(team_unit_t(1), 0, 0);
     return reference(gptr);
   }
 
@@ -265,13 +299,19 @@ private:
   /** the team containing all units using the container */
   Team *                      _team     = nullptr;
   /** Global memory allocation and access for sequential memory regions */
-  glob_mem_con_type *         _glob_mem_con = nullptr;
+  glob_mem_vert_type *        _glob_mem_vertex = nullptr;
+
+  glob_mem_edge_type *        _glob_mem_edge = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
   /** Index of last added vertex */
   vertex_index_type           _local_vertex_max_index = -1;
+
+  edge_index_type             _local_edge_max_index = -1;
   /** Iterator to the vertex container in GlobMem object */ 
   vertex_cont_ref_type        _vertex_container_ref;
+
+  edge_size_type              _alloc_edges_per_vertex;
 
 };
 
