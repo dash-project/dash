@@ -60,11 +60,11 @@ rm -Rf $BUILD_DIR/*
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=OFF \
-                        -DENABLE_ASSERTIONS=ON \
-                        -DENABLE_LT_OPTIMIZATION=OFF \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=ON \
                         -DENABLE_EXT_COMPILER_WARNINGS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
+                        -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
@@ -83,7 +83,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=OFF \
+                        -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \

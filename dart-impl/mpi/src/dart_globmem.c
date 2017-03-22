@@ -130,7 +130,7 @@ dart_ret_t dart_memalloc(
   dart_datatype_t   dtype,
   dart_gptr_t     * gptr)
 {
-  size_t      nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
+  size_t      nbytes = nelem * dart__mpi__datatype_sizeof(dtype);
   dart_global_unit_t unitid;
   dart_myid(&unitid);
   gptr->unitid  = unitid.id;
@@ -176,9 +176,8 @@ dart_team_memalloc_aligned(
 {
   char * sub_mem;
   dart_unit_t gptr_unitid = 0; // the team-local ID 0 has the beginning
-  int         dtype_size  = dart_mpi_sizeof_datatype(dtype);
+  int         dtype_size  = dart__mpi__datatype_sizeof(dtype);
   MPI_Aint    nbytes      = nelem * dtype_size;
-  char     ** baseptr_set = NULL;
   size_t      team_size;
   MPI_Win     sharedmem_win = MPI_WIN_NULL;
   dart_team_size(teamid, &team_size);
@@ -202,6 +201,7 @@ dart_team_memalloc_aligned(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
+  char     ** baseptr_set = NULL;
 	/* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
   /* NOTE:
@@ -438,7 +438,7 @@ dart_team_memregister_aligned(
    dart_gptr_t     * gptr)
 {
   size_t   size;
-  int      dtype_size = dart_mpi_sizeof_datatype(dtype);
+  int      dtype_size = dart__mpi__datatype_sizeof(dtype);
   size_t   nbytes     = nelem * dtype_size;
   MPI_Aint disp;
   dart_unit_t gptr_unitid = 0;
@@ -504,7 +504,7 @@ dart_team_memregister(
 {
   int    nil;
   size_t size;
-  int    dtype_size = dart_mpi_sizeof_datatype(dtype);
+  int    dtype_size = dart__mpi__datatype_sizeof(dtype);
   size_t nbytes     = nelem * dtype_size;
   dart_unit_t gptr_unitid = 0;
   dart_team_size(teamid, &size);
