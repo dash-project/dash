@@ -17,6 +17,11 @@ struct vertex {
   typedef typename GraphType::edge_cont_ref_type       edge_container_ref;
   typedef typename GraphType::vertex_index_type        index_type;
   typedef typename GraphType::vertex_properties_type   properties_type;
+
+  /**
+   * Default constructor needed for GlobRef / GlobSharedRef dereference op
+   */
+  vertex() = default;
   
   /**
    * Creates a vertex with given properties.
@@ -50,6 +55,11 @@ struct out_edge {
   typedef typename GraphType::edge_index_type          index_type;
   typedef typename GraphType::edge_properties_type     properties_type;
   
+  /**
+   * Default constructor needed for GlobRef / GlobSharedRef dereference op
+   */
+  out_edge() = default;
+
   /**
    * Creates an edge from its parent vertex to target.
    */
