@@ -1,7 +1,7 @@
 BSD 3-Clause License
 
 Copyright (c) 2017, The DASH Project:
-LMU Munich (MNM-Team), TU-Dresden (ZIH), HLRS Stuttgart, IHR Stuttgart
+LMU Munich (MNM-Team), TU-Dresden (ZIH), University of Stuttgart (HLRS)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
