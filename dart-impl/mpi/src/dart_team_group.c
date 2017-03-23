@@ -701,6 +701,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam)
 dart_ret_t dart_myid(dart_global_unit_t *unitid)
 {
   static dart_unit_t mpi_id = DART_UNDEFINED_UNIT_ID;
+  dart_ret_t ret = DART_OK;
   if (dart_initialized()) {
     if (mpi_id == DART_UNDEFINED_UNIT_ID) {
       MPI_Comm_rank(MPI_COMM_WORLD, &(mpi_id));
@@ -708,22 +709,25 @@ dart_ret_t dart_myid(dart_global_unit_t *unitid)
     unitid->id = mpi_id;
   } else {
     unitid->id = -1;
+    ret = DART_ERR_OTHER;
   }
-  return DART_OK;
+  return ret;
 }
 
 dart_ret_t dart_size(size_t *size)
 {
   static int mpi_size = -1;
+  dart_ret_t ret = DART_OK;
   if (dart_initialized()) {
     if (mpi_size == -1) {
-      MPI_Comm_size (DART_COMM_WORLD, &mpi_size);
+      MPI_Comm_size(DART_COMM_WORLD, &mpi_size);
     }
     (*size) = mpi_size;
   } else {
     *size = 0;
+    ret = DART_ERR_OTHER;
   }
-  return DART_OK;
+  return ret;
 }
 
 dart_ret_t dart_team_myid(
@@ -731,36 +735,31 @@ dart_ret_t dart_team_myid(
   dart_team_unit_t * unitid)
 {
   unitid->id = DART_UNDEFINED_UNIT_ID;
-  if (teamid == DART_TEAM_NULL) {
-    return DART_ERR_INVAL;
+  dart_ret_t ret = DART_ERR_INVAL;
+  if (teamid != DART_TEAM_NULL) {
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+    if (team_data == NULL)
+    {
+      unitid->id = team_data->unitid;
+      ret = DART_OK;
+    }
   }
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL)
-  {
-    return DART_ERR_INVAL;
-  }
-
-  unitid->id = team_data->unitid;
-
-  return DART_OK;
+  return ret;
 }
 
 dart_ret_t dart_team_size(
   dart_team_t   teamid,
   size_t      * size)
 {
-  if (teamid == DART_TEAM_NULL) {
-    return DART_ERR_INVAL;
+  dart_ret_t ret = DART_ERR_INVAL;
+  if (teamid != DART_TEAM_NULL) {
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+    if (team_data != NULL) {
+      (*size) = team_data->size;
+      ret = DART_OK;
+    }
   }
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-
-  if (team_data == NULL) {
-    return DART_ERR_INVAL;
-  }
-
-  (*size) = team_data->size;
-  return DART_OK;
+  return ret;
 }
 
 dart_ret_t dart_team_unit_l2g(
