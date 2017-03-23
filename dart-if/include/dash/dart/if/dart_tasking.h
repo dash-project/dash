@@ -39,6 +39,8 @@ typedef struct dart_task_dep {
   dart_task_deptype_t type;
 } dart_task_dep_t;
 
+#define DART_TASK_NULL ((dart_taskref_t)NULL)
+
 
 /**
  * Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.

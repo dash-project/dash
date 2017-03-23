@@ -403,25 +403,37 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // ignored
       continue;
     }
-
+    int slot;
     // translate the offset to an absolute address
-    dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
-    int slot = hash_gptr(dep.gptr);
-    DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
-                   "seg:%i addr:%p",
-                   task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
-                   dep.gptr.addr_or_offs.addr);
+    if (dep.type != DART_DEP_DIRECT) {
+      dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
+      slot = hash_gptr(dep.gptr);
+      DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
+                     "seg:%i addr:%p",
+                     task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
+                     dep.gptr.addr_or_offs.addr);
+    }
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_task_t *deptask = dep.task;
-      dart_mutex_lock(&(deptask->mutex));
-      dart_tasking_tasklist_prepend(&(deptask->successor), task);
-      dart_mutex_unlock(&(deptask->mutex));
+      if (deptask != DART_TASK_NULL) {
+        dart_mutex_lock(&(deptask->mutex));
+        if (deptask->state != DART_TASK_FINISHED) {
+          dart_tasking_tasklist_prepend(&(deptask->successor), task);
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a direct local successor of task %p "
+                         "(successor: %p, num_deps: %i)",
+                         task, deptask,
+                         deptask->successor, unresolved_deps);
+        }
+        dart_mutex_unlock(&(deptask->mutex));
+      }
     } else if (dep.gptr.unitid != myid.id) {
       if (task->parent->state == DART_TASK_ROOT) {
         dart_tasking_remote_datadep(&dep, task);
       } else {
-        DART_LOG_ERROR("Ignoring remote dependency in nested task!");
+        DART_LOG_WARN("Ignoring remote dependency in nested task!");
       }
     } else {
       /*
@@ -456,7 +468,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
             // OUT dependencies have to wait for all previous dependencies
             int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                           &task->unresolved_deps);
-            DART_LOG_DEBUG("Making task %p a local successor of task %p "
+            DART_LOG_TRACE("Making task %p a local successor of task %p "
                            "(successor: %p, num_deps: %i)",
                            task, elem->task.local,
                            elem->task.local->successor, unresolved_deps);
