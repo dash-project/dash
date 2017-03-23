@@ -16,7 +16,7 @@ namespace dash {
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType,
+  class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobStencilIter;
@@ -24,7 +24,7 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType,
+  class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobViewIter;
@@ -56,10 +56,10 @@ class GlobViewIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType   = GlobStaticMem<
+  class    GlobMemType   = GlobStaticMem<
                              typename std::decay<ElementType>::type
                            >,
-  class    PointerType   = typename GlobStaticMemType::pointer,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
 : public std::iterator<
@@ -73,7 +73,7 @@ private:
   typedef GlobIter<
             ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
@@ -89,8 +89,8 @@ public:
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobStaticMemType::local_pointer       local_pointer;
-  typedef typename GlobStaticMemType::local_pointer          local_type;
+  typedef typename GlobMemType::local_pointer       local_pointer;
+  typedef typename GlobMemType::local_pointer          local_type;
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
@@ -99,7 +99,7 @@ private:
   typedef GlobIter<
             const ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             const_pointer,
             const_reference >
     self_const_t;
@@ -152,7 +152,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobStaticMemType          * _globmem;
+  GlobMemType          * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType    * _pattern;
   /// Current position of the iterator in global canonical index space.
@@ -182,7 +182,7 @@ public:
    * the element order specified by the given pattern.
    */
   constexpr GlobIter(
-    GlobStaticMemType       * gmem,
+    GlobMemType       * gmem,
 	  const PatternType & pat,
 	  index_type          position = 0)
   : _globmem(gmem),
@@ -566,7 +566,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const GlobStaticMemType & globmem() const noexcept
+  constexpr const GlobMemType & globmem() const noexcept
   {
     return *_globmem;
   }
@@ -575,7 +575,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobStaticMemType & globmem()
+  inline GlobMemType & globmem()
   {
     return *_globmem;
   }

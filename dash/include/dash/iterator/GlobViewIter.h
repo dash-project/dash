@@ -21,7 +21,7 @@ namespace dash {
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType,
+  class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobIter;
@@ -29,7 +29,7 @@ class GlobIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType,
+  class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobStencilIter;
@@ -43,10 +43,10 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType   = GlobStaticMem<
+  class    GlobMemType   = GlobStaticMem<
                              typename std::decay<ElementType>::type
                            >,
-  class    PointerType   = typename GlobStaticMemType::pointer,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -59,7 +59,7 @@ private:
   typedef GlobViewIter<
             ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
@@ -67,7 +67,7 @@ private:
   typedef GlobIter<
             ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     global_type;
@@ -75,7 +75,7 @@ private:
   typedef GlobIter<
             const ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     const_global_type;
@@ -97,8 +97,8 @@ public:
   typedef          PointerType                            pointer;
   typedef typename PointerType::const_type          const_pointer;
 
-  typedef typename GlobStaticMemType::local_pointer       local_pointer;
-  typedef typename GlobStaticMemType::local_pointer          local_type;
+  typedef typename GlobMemType::local_pointer       local_pointer;
+  typedef typename GlobMemType::local_pointer          local_type;
 
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
@@ -107,7 +107,7 @@ private:
   typedef GlobViewIter<
             const ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             const_pointer,
             const_reference >
     self_const_t;
@@ -158,7 +158,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobStaticMemType                * _globmem;
+  GlobMemType                * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType          * _pattern;
   /// View that specifies the iterator's index range relative to the global
@@ -201,7 +201,7 @@ public:
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(reinterpret_cast<GlobStaticMemType *>(gmem))
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem))
   , _pattern(&pat)
   , _viewspec(&viewspec)
   , _idx(position)
@@ -221,7 +221,7 @@ public:
 	  const PatternType & pat,
 	  IndexType           position          = 0,
     IndexType           view_index_offset = 0)
-  : _globmem(reinterpret_cast<GlobStaticMemType *>(gmem))
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem))
   , _pattern(&pat)
   , _viewspec(nullptr)
   , _idx(position)
@@ -752,7 +752,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  constexpr const GlobStaticMemType & globmem() const noexcept
+  constexpr const GlobMemType & globmem() const noexcept
   {
     return *_globmem;
   }
@@ -761,7 +761,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobStaticMemType & globmem() noexcept
+  inline GlobMemType & globmem() noexcept
   {
     return *_globmem;
   }
