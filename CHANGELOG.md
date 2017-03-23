@@ -12,6 +12,8 @@ Features:
 - Introduced locality domain concepts and unit locality discovery
   (`dash::util::Locality`, `dash::util::LocalityDomain`).
 - Introduced dynamic containers `dash::List` and `dash::UnorderedMap`.
+- Fixed iteration and pointer arithmets of `dash::GloPtr` in global address
+  space.
 - Global dynamic memory allocation: concepts and reference implementations
   (`dash::GlobHeapMem`, `dash::GlobStaticMem`).
 - Supporting `dash::Atomic<T>` as container element type
@@ -38,6 +40,7 @@ Features:
 
 Bugfixes:
 
+- Index calculations in BlockPattern with underfilled blocks
 - Fixed element access of `.local.begin()` in `dash::Matrix`.
 - Fixed memory leaks in dart-mpi.
 - Numerous stability fixes and performance improvements.
