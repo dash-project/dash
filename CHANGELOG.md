@@ -52,12 +52,9 @@ Bugfixes:
 - Added codedocs (http://codedocs.xyz) in deploy chain to automate API
   documentation updates
 - Added readthedocs in deploy chain to generate user guides in distribution
-  documentation
-
+  documentation
 - Added NastyMPI test target in continuous integration
-
 - Added docker container build configurations
-
 - Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
