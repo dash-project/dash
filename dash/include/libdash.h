@@ -44,6 +44,7 @@ namespace dash {
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
 #include <dash/Atomic.h>
+#include <dash/Mutex.h>
 
 #include <dash/Pattern.h>
 
