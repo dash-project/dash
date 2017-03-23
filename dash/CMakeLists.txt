@@ -419,6 +419,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
     set(DASH_LIBRARY "dash-${dart_variant}")
     set(DART_LIBRARY "dart-${dart_variant}")
     set(DASH_TEST "dash-test-${dart_variant}")
+    if (ENABLE_THREADSUPPORT)
+      set(DASH_TASK_LIBRARY "dart-tasking")
+    else ()
+      set(DASH_TASK_LIBRARY "")
+    endif()
     include_directories(
       ${GTEST_INCLUDES}
       ${CMAKE_SOURCE_DIR}/dash/include
@@ -432,6 +437,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       ${DASH_TEST}
       GTest
       ${DASH_LIBRARY}
+      ${DASH_TASK_LIBRARY}
       ${DART_LIBRARY}
       ${ADDITIONAL_LIBRARIES}
     )
