@@ -47,6 +47,93 @@ TEST_F(AtomicTest, FetchAndOp)
   dash::barrier();
 }
 
+
+TEST_F(AtomicTest, CompareExchange)
+{
+  typedef size_t value_t;
+
+  value_t           val_init  = 10 * dash::size();
+  dash::team_unit_t owner(dash::size() - 1);
+
+  dash::Shared< dash::Atomic<value_t> > shared(owner);
+
+  if (dash::myid() == 0) {
+    shared.set(val_init);
+  }
+  // wait for initialization:
+  shared.barrier();
+  size_t i;
+  for (i = 0; i < 2*dash::size(); ++i) {
+    value_t expected = shared.get().get();
+    value_t desired  = expected / 2;
+    bool    result   = shared.get().compare_exchange(expected, desired);
+    if (result) {
+      break;
+    }
+  }
+
+  // we should not need more tries than there are units
+  ASSERT_LT(i, dash::size());
+
+  dash::barrier();
+}
+
+template<typename T>
+struct container {
+  typedef struct container<T> self_t;
+  bool operator==(const self_t &other) const {
+    return val[0] == other.val[0] && val[1] == other.val[1];
+  }
+
+  self_t operator++(int) {
+    self_t res = *this;
+    res.val[0]++;
+    res.val[1]++;
+    return res;
+  }
+
+  T& operator[](int idx) {
+    return val[idx];
+  }
+
+  T val[2];
+};
+
+
+
+TEST_F(AtomicTest, PunnedType)
+{
+
+  typedef struct container<char> value_t;
+
+  value_t           val_init  = {1, 12};
+  dash::team_unit_t owner(dash::size() - 1);
+
+  dash::Shared< dash::Atomic<value_t> > shared(owner);
+
+  if (dash::myid() == 0) {
+    shared.set(val_init);
+  }
+  // wait for initialization:
+  shared.barrier();
+  size_t i;
+  for (i = 0; i < 2*dash::size(); ++i) {
+    value_t expected = shared.get().get();
+    value_t desired  = expected;
+    bool    result   = shared.get().compare_exchange(expected, desired);
+    if (result) {
+      break;
+    }
+  }
+
+  // we should not need more tries than there are units
+  ASSERT_LT(i, dash::size());
+
+  dash::barrier();
+}
+
+
+
 TEST_F(AtomicTest, ArrayElements)
 {
   typedef int value_t;
