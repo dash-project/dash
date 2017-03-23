@@ -306,6 +306,25 @@ TEST_F(TeamLocalityTest, SplitGroups)
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 1:", group_1_tags);
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 2:", group_2_tags);
 
+  std::vector<int> unit_core_ids;
+
+  for (dash::global_unit_t u : group_1_units) {
+    const auto & unit_loc = tloc.unit_locality(u);
+    group_1_tags.push_back(unit_loc.domain_tag());
+    unit_core_ids.push_back(unit_loc.hwinfo().core_id);
+  }
+  for (dash::global_unit_t u : group_2_units) {
+    const auto & unit_loc = tloc.unit_locality(u);
+    group_2_tags.push_back(unit_loc.domain_tag());
+    unit_core_ids.push_back(unit_loc.hwinfo().core_id);
+  }
+
+  std::sort(unit_core_ids.begin(), unit_core_ids.end());
+  if (std::unique(unit_core_ids.begin(), unit_core_ids.end())
+      != unit_core_ids.end()) {
+    SKIP_TEST_MSG("Multiple units mapped to same core is not supported yet");
+  }
+
   if (group_1_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_1_tags);
     const auto & group_1 = tloc.group(group_1_tags);
