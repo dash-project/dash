@@ -220,20 +220,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 add_subdirectory(dart-if)
 
 # DART base:
-add_subdirectory(dart-impl/base)
-
-# DART implementation of every enabled DART variant:
-if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
-  set(DART_IMPLEMENTATION_MPI_ENABLED ON
-      CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/mpi)
-endif()
-
-if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
-  set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
-      CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/shmem)
-endif()
+add_subdirectory(dart-impl)
 
 add_subdirectory(dash)
 
