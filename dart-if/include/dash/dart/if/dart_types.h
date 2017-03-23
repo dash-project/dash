@@ -93,7 +93,9 @@ typedef enum
     DART_TYPE_LONGLONG,
     /** floating point data types */
     DART_TYPE_FLOAT,
-    DART_TYPE_DOUBLE
+    DART_TYPE_DOUBLE,
+    /** Reserved, do not use! */
+    DART_TYPE_COUNT
 } dart_datatype_t;
 
 

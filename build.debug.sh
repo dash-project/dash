@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BUILD_DIR=./build
+BUILD_DIR=./build.dev
 
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
@@ -48,20 +48,20 @@ fi
 #
 #                    -DIPM_PREFIX=<IPM install path> \
 
+# To build with MKL support, set environment variables MKLROOT and INTELROOT.
+
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# Configure with default release build settings:
+# Configure with default debug build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
-                        -DBUILD_SHARED_LIBS=OFF \
-                        -DBUILD_GENERIC=OFF \
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
-                        -DENABLE_DEV_COMPILER_WARNINGS=OFF \
+                        -DENABLE_DEV_COMPILER_WARNINGS=ON \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
@@ -70,9 +70,9 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
-                        -DENABLE_LOGGING=OFF \
-                        -DENABLE_TRACE_LOGGING=OFF \
-                        -DENABLE_DART_LOGGING=OFF \
+                        -DENABLE_LOGGING=ON \
+                        -DENABLE_TRACE_LOGGING=ON \
+                        -DENABLE_DART_LOGGING=ON \
                         \
                         -DENABLE_LIBNUMA=ON \
                         -DENABLE_LIKWID=OFF \
@@ -87,7 +87,7 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
