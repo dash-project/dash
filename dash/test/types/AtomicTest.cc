@@ -20,6 +20,7 @@
 #include <thread>
 #include <chrono>
 
+#if 0
 TEST_F(AtomicTest, FetchAndOp)
 {
   typedef size_t value_t;
@@ -49,6 +50,7 @@ TEST_F(AtomicTest, FetchAndOp)
 
   dash::barrier();
 }
+#endif
 
 TEST_F(AtomicTest, ArrayElements)
 {

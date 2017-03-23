@@ -116,6 +116,7 @@ TEST_F(SharedTest, SpecifyOwner)
   EXPECT_EQ_U(value_a, new_b);
 }
 
+#if 0
 TEST_F(SharedTest, AtomicAdd)
 {
   typedef int                   value_t;
@@ -157,3 +158,5 @@ TEST_F(SharedTest, AtomicAdd)
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 3");
   shared.barrier();
 }
+#endif
+

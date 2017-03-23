@@ -90,6 +90,19 @@ struct is_container_compatible :
          >
 { };
 
+/**
+ * Type trait indicating whether a type can be used for global atomic
+ * operations.
+ */
+template <typename T>
+struct is_atomic_compatible
+: public std::integral_constant<
+           bool,
+              dash::is_container_compatible<T>::value
+           && sizeof(T) <= sizeof(std::size_t)
+         >
+{ };
+
 } // namespace dash
 
 #include <type_traits>
