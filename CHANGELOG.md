@@ -116,10 +116,6 @@
 
 - Locality discovery does not support multiple units mapped to same domain
   (issues #239, #161, #153)
-- Thread support features (build option `ENABLE_THREADSUPPORT`) lead to
-  consistency failures with OpenMPI (issue #292)
-  
-
 
 ## DART-MPI
 
@@ -131,8 +127,11 @@
 
 ### Known limitations:
 
-- Elements allocated in shared windows are not aligned for some versions of
-  OpenMPI (issue #280)
+- Elements allocated in shared windows are not properly aligned for some 
+  versions of OpenMPI (issue #280, fixed since OpenMPI 2.0.2)
+- Thread-concurrent access may lead to failures with OpenMPI even if 
+  thread support is enabled in DART (build option `ENABLE_THREADSUPPORT`, 
+  issue #292)
 
 
 
