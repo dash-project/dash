@@ -393,19 +393,19 @@ public:
    * Complete all outstanding non-blocking operations executed by the
    * local unit on the narray's underlying global memory.
    */
-  inline void                 flush_local() const;
+  inline void                 flush_local();
 
   /**
    * Complete all outstanding non-blocking operations executed by all units
    * on the narray's underlying global memory.
    */
-  inline void                 flush_all() const;
+  inline void                 flush_all();
 
   /**
    * Complete all outstanding non-blocking operations executed by the
    * local unit on the narray's underlying global memory.
    */
-  inline void                 flush_local_all() const;
+  inline void                 flush_local_all();
 
   /**
    * The pattern used to distribute matrix elements to units in its
