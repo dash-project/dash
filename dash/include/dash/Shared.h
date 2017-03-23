@@ -139,9 +139,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.cget", _owner);
     DASH_LOG_DEBUG_VAR("Shared.cget", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    const_reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.cget >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**
@@ -153,9 +151,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.get", _owner);
     DASH_LOG_DEBUG_VAR("Shared.get", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.get >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**

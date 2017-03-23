@@ -1,5 +1,5 @@
-#ifndef DASH__PATTERN_H_
-#define DASH__PATTERN_H_
+#ifndef DASH__PATTERN_H__INCLUDED
+#define DASH__PATTERN_H__INCLUDED
 
 #ifdef DOXYGEN
 
@@ -654,4 +654,4 @@ using Pattern = dash::BlockPattern<NumDimensions, Arrangement, IndexType>;
 #include <dash/pattern/PatternProperties.h>
 #include <dash/pattern/MakePattern.h>
 
-#endif // DASH__PATTERN_H_
+#endif // DASH__PATTERN_H__INCLUDED

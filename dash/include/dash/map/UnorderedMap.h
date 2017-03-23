@@ -8,6 +8,7 @@
 #include <dash/Array.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+#include <dash/Meta.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
 
@@ -78,18 +79,10 @@ template<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
-  /**
-   * The Cray compiler (as of CCE8.5.6) does not support
-   * std::is_trivially_copyable.
-   *
-   * TODO: Remove the guard once this has been fixed by Cray.
-   */
-#ifndef __CRAYC
-  static_assert(std::is_trivially_copyable<Key>::value,
-    "Element type must be trivially copyable");
-  static_assert(std::is_trivially_copyable<Mapped>::value,
-    "Element type must be trivially copyable");
-#endif
+  static_assert(
+    dash::is_container_compatible<Key>::value &&
+    dash::is_container_compatible<Mapped>::value,
+    "Type not supported for DASH containers");
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class UnorderedMapLocalRef;

@@ -61,19 +61,16 @@ private:
 
 public:
   /**
-   * Default constructor, creates an GlobRef object referencing an element in
-   * global memory.
+   * Reference semantics forbid declaration without definition.
    */
-  GlobRef()
-  : _gptr(DART_GPTR_NULL) {
-  }
+  GlobRef() = delete;
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
   template<class PatternT, class ElementT>
-  explicit GlobRef(
+  explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -84,7 +81,7 @@ public:
    * memory.
    */
   template<class PatternT, class ElementT>
-  explicit GlobRef(
+  explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
     const GlobPtr<ElementT, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
@@ -94,34 +91,26 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  explicit GlobRef(dart_gptr_t dart_gptr)
+  explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
-  }
-
-  /**
-   * TODO: Try deleting copy constructors to preserve unified copy semantics
-   *       ref_a = ref_b.
-   *
-   * Copy constructor.
-   */
-  GlobRef(const self_t & other) = default;
- 
-  GlobRef(self_t && other) = default;
-
-  /**
-   * TODO: Try deleting copy constructors to preserve unified copy semantics
-   *       ref_a = ref_b.
-   *
-   * Copy constructor.
-   */
-  template <class ElementT>
-  GlobRef(
-    const GlobRef<ElementT> & other)
-  : _gptr(other._gptr)
   { }
 
+  /**
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
+   */
+  GlobRef(const self_t & other) = delete;
+ 
+  /**
+   * Unlike native reference types, global reference types are moveable.
+   */
+  GlobRef(self_t && other)      = default;
+
+  /**
+   * Value-assignment operator.
+   */
   GlobRef<T> & operator=(const T val) {
     set(val);
     return *this;
@@ -132,14 +121,6 @@ public:
    */
   GlobRef<T> & operator=(const self_t & other)
   {
-    // This results in a dart_put, required for STL algorithms like
-    // std::copy to work on global ranges.
-    // TODO: Not well-defined:
-    //       This violates copy semantics, as
-    //         GlobRef(const GlobRef & other)
-    //       copies the GlobRef instance while
-    //         GlobRef=(const GlobRef & other)
-    //       puts the value.
     set(static_cast<T>(other));
     return *this;
   }
@@ -150,14 +131,6 @@ public:
   template <typename GlobRefOrElementT>
   GlobRef<T> & operator=(GlobRefOrElementT && other)
   {
-    // This results in a dart_put, required for STL algorithms like
-    // std::copy to work on global ranges.
-    // TODO: Not well-defined:
-    //       This violates copy semantics, as
-    //         GlobRef(const GlobRef & other)
-    //       copies the GlobRef instance while
-    //         GlobRef=(const GlobRef & other)
-    //       puts the value.
     set(std::forward<GlobRefOrElementT>(other));
     return *this;
   }
@@ -326,8 +299,13 @@ public:
     operator=(val);
     return *this;
   }
+  
+  template<class PatternT>
+  explicit constexpr operator GlobPtr<T, PatternT>() const {
+    return GlobPtr<T, PatternT>(_gptr);
+  }
 
-  dart_gptr_t dart_gptr() const {
+  constexpr dart_gptr_t dart_gptr() const noexcept {
     return _gptr;
   }
 

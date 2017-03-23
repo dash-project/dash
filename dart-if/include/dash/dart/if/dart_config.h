@@ -2,6 +2,7 @@
 #define DART__IF__CONFIG_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_util.h>
 
 /**
  * \file dart_config.h
@@ -23,7 +24,7 @@ extern "C" {
  * \ingroup DartConfig
  */
 void dart_config(
-  dart_config_t ** config_out);
+  dart_config_t ** config_out) DART_NOTHROW;
 
 #define DART_INTERFACE_OFF
 

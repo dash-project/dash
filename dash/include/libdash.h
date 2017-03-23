@@ -17,6 +17,7 @@ namespace dash {
 #include <dash/internal/Config.h>
 
 #include <dash/Types.h>
+#include <dash/Meta.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
@@ -42,6 +43,7 @@ namespace dash {
 #include <dash/Algorithm.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
+#include <dash/Mutex.h>
 
 #include <dash/Pattern.h>
 

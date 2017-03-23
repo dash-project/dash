@@ -9,6 +9,7 @@
 #include <dash/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
+#include <dash/Meta.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -134,16 +135,10 @@ template<
   class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
-  /**
-   * The Cray compiler (as of CCE8.5.6) does not support
-   * std::is_trivially_copyable.
-   *
-   * TODO: Remove the guard once this has been fixed by Cray.
-   */
-#ifndef __CRAYC
-  static_assert(std::is_trivially_copyable<ElementT>::value,
-    "Element type must be trivially copyable");
-#endif
+  static_assert(
+    dash::is_container_compatible<ElementT>::value,
+    "Type not supported for DASH containers");
+
   static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
     "Index type IndexT must be the same for Matrix and specified pattern");
 
@@ -442,7 +437,18 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr const_view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim != 0), const_view_type<__NumViewDim>>::type
+  constexpr operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  ) const;
+  
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim == 0), const_reference>::type
+  constexpr operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
 
@@ -450,7 +456,18 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim != 0), view_type<__NumViewDim>>::type
+  operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  );
+
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim == 0), reference>::type
+  operator[](
     size_type n       ///< Offset in highest matrix dimension.
   );
 
@@ -628,3 +645,4 @@ using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
+

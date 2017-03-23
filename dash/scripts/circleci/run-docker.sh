@@ -3,17 +3,19 @@
 MPIENVS=(mpich openmpi)
 BUILD_CONFIG=$1
 COMPILER=$2
-
-DASH_ENV_EXPORTS="export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF';"
+MAKE_PROCS=4
 
 if [[ "$COMPILER" == "clang" ]]; then
   C_COMPILER="clang-3.8"
   CXX_COMPILER="clang++-3.8"
+  MAKE_PROCS=2
 else
   COMPILER="gnu"
   C_COMPILER="gcc"
   CXX_COMPILER="g++"
 fi
+
+DASH_ENV_EXPORTS="export DASH_MAKE_PROCS='${MAKE_PROCS}'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF';"
 
 DASH_ENV_EXPORTS="${DASH_ENV_EXPORTS} export CC='${C_COMPILER}'; export CXX='${CXX_COMPILER}';"
 

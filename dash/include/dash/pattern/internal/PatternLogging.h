@@ -1,8 +1,12 @@
 #ifndef DASH__INTERNAL__PATTERN_LOGGING_H__
 #define DASH__INTERNAL__PATTERN_LOGGING_H__
 
+#include <dash/util/PatternMetrics.h>
+#include <dash/internal/Logging.h>
+
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <functional>
 #include <string>
 #include <vector>
@@ -158,6 +162,37 @@ print_pattern_mapping(
     }
     DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
   }
+}
+
+template<typename PatternT>
+void print_pattern_metrics(const PatternT & pattern)
+{
+  using std::cout;
+  using std::endl;
+
+  dash::util::PatternMetrics<PatternT> pm(pattern);
+
+  size_t block_kbytes = pattern.blocksize(0) * pattern.blocksize(1) *
+                        sizeof(double) /
+                        1024;
+
+  cout << "Pattern Metrics:\n"
+       << "    Partitioning:\n"
+       << "        block size:         " << block_kbytes    << " KB\n"
+       << "        number of blocks:   " << pm.num_blocks() << "\n"
+       << "        blockspec:          " << pattern.blockspec() << "\n"
+       << "    Mapping imbalance:\n"
+       << "        teamspec:           " << pattern.teamspec() << "\n"
+       << "        min. blocks/unit:   " << pm.min_blocks_per_unit()
+       << " = " << pm.min_elements_per_unit() << " elements\n"
+       << "        max. blocks/unit:   " << pm.max_blocks_per_unit()
+       << " = " << pm.max_elements_per_unit() << " elements\n"
+       << "        imbalance factor:   " << std::setprecision(4)
+                                         << pm.imbalance_factor()     << "\n"
+       << "        balanced units:     " << pm.num_balanced_units()   << "\n"
+       << "        imbalanced units:   " << pm.num_imbalanced_units() << "\n"
+       << "\n"
+       << endl;
 }
 
 } // namespace internal

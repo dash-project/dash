@@ -1,7 +1,6 @@
 #include <libdash.h>
 
 #include "../bench.h"
-#include "MockPattern.h"
 
 #include <array>
 #include <vector>
@@ -21,11 +20,11 @@ typedef dash::util::Timer<
 #define TYPE int
 #endif
 
-typedef dash::MockPattern<
+typedef dash::BlockPattern<
   1,
   dash::ROW_MAJOR,
   int
-> MockPattern_t;
+> BlockPattern_t;
 typedef dash::CSRPattern<
   1,
   dash::ROW_MAJOR,
@@ -40,8 +39,8 @@ typedef dash::TilePattern<
 typedef dash::Array<
   TYPE,
   int,
-  MockPattern_t
-> ArrayMockDist_t;
+  BlockPattern_t
+> ArrayBlockDist_t;
 typedef dash::Array<
   TYPE,
   int,
@@ -123,7 +122,7 @@ void perform_test(
            << "iterations"
            << ", "
            << std::setw(11)
-           << "mock"
+           << "block"
            << ", "
            << std::setw(11)
            << "irreg"
@@ -143,12 +142,11 @@ void perform_test(
     local_sizes.push_back(ELEM_PER_UNIT);
   }
 
-  MockPattern_t mock_pat(
-    // Local sizes
-    local_sizes
+  BlockPattern_t block_pat(
+    ELEM_PER_UNIT * num_units
   );
-  ArrayMockDist_t arr_mock_dist(
-    mock_pat
+  ArrayBlockDist_t arr_block_dist(
+    block_pat
   );
   IrregPattern_t irreg_pat(
     // Local sizes
@@ -165,7 +163,7 @@ void perform_test(
       dash::TILE(ELEM_PER_UNIT))
   );
 
-  double t_mock  = test_pattern_gups(arr_mock_dist,  ELEM_PER_UNIT, REPEAT);
+  double t_block = test_pattern_gups(arr_block_dist, ELEM_PER_UNIT, REPEAT);
   double t_irreg = test_pattern_gups(arr_irreg_dist, ELEM_PER_UNIT, REPEAT);
   double t_tiled = test_pattern_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
   double t_raw   = test_raw_gups(    arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
@@ -173,7 +171,7 @@ void perform_test(
   dash::barrier();
 
   if (dash::myid() == 0) {
-    double gups_mock  = gups(num_units, t_mock,  ELEM_PER_UNIT, REPEAT);
+    double gups_block = gups(num_units, t_block, ELEM_PER_UNIT, REPEAT);
     double gups_irreg = gups(num_units, t_irreg, ELEM_PER_UNIT, REPEAT);
     double gups_tiled = gups(num_units, t_tiled, ELEM_PER_UNIT, REPEAT);
     double gups_raw   = gups(num_units, t_raw,   ELEM_PER_UNIT, REPEAT);
@@ -188,7 +186,7 @@ void perform_test(
          << REPEAT
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
-         << gups_mock
+         << gups_block
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
          << gups_irreg
