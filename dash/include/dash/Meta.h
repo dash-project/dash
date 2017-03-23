@@ -1,6 +1,7 @@
 #ifndef DASH__META_H__INCLUDED
 #define DASH__META_H__INCLUDED
 
+#include <dash/Types.h>
 #include <dash/meta/TypeInfo.h>
 
 #include <type_traits>

@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <memory>
 
+#include <dash/Types.h>
 #include <dash/Exception.h>
+
 
 // clang-format off
 
@@ -63,7 +65,7 @@ class SimpleMemoryPool {
 
   // Ensure that we have maximum aligned chunks
   typedef typename PoolAllocTraits::
-    template rebind_traits<std::size_t>                    AllocatorTraits;
+    template rebind_traits<dash::max_align_t>              AllocatorTraits;
 
   typedef typename AllocatorTraits::allocator_type          allocator_type;
   typedef typename AllocatorTraits::size_type                    size_type;
@@ -242,7 +244,7 @@ SimpleMemoryPool<ValueType, PoolAlloc>::allocateChunk(size_type nbytes)
 {
   size_type numBytes = static_cast<size_type>(sizeof(Chunk)) + nbytes;
 
-  std::size_t const maxAlign = alignof(std::size_t);
+  std::size_t const maxAlign = alignof(dash::max_align_t);
   size_type max_aligned = (numBytes + maxAlign - 1) / maxAlign;
 
   Chunk* chunkPtr = reinterpret_cast<Chunk*>(

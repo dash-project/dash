@@ -189,10 +189,10 @@ class MemorySpace {
 
  public:
   void_pointer allocate(std::size_t bytes,
-                        std::size_t alignment = alignof(std::size_t));
+                        std::size_t alignment = alignof(dash::max_align_t));
 
   void deallocate(void_pointer p, std::size_t bytes,
-                  std::size_t alignment = alignof(std::size_t));
+                  std::size_t alignment = alignof(dash::max_align_t));
 
   /**
    * Two memory spaces compare equal if and only if memory allocated
