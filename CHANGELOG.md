@@ -23,6 +23,7 @@ Features:
   arithmetic expressions.
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5.
+- Using strict unit ID types to distinguish global and team scope
 - Introduced stencil iterator and halo block concepts.
 - Using new DASH locality domain concept to provide automatic configuration
   of OpenMP for node-level parallelization.
@@ -40,12 +41,18 @@ Features:
 
 Bugfixes:
 
-- Index calculations in BlockPattern with underfilled blocks
-- Fixed element access of `.local.begin()` in `dash::Matrix`.
-- Fixed memory leaks in dart-mpi.
-- Numerous stability fixes and performance improvements.
+- Index calculations in `BlockPattern` with underfilled blocks
+- Fixed element access of `.local.begin()` in `dash::Matrix`
+- Fixed delayed allocation of `dash::Matrix`
+- Conversions of `GlobPtr<T>`, `GlobRef<T>`, `GlobIter<T>`, ... now
+  const-correct (e.g. to `GlobIter<const T>` instead of `const GlobIter<T>`)
+- Consistent usage of index- and size types
+- Numerous stability fixes and performance improvements
+- Move-semantics of allocators
 
 ## Build System
+
+Features:
 
 - Drastically improved continuous integration, CI configurations for
   Travis and CircleCI
@@ -61,12 +68,11 @@ Bugfixes:
 - Generate cmake package for DASH and DART
 - Added build configuration for code coverage tests
 - Enforce minimum C++ compiler versions:
-    - GCC: 5.1.0
+    - GCC: 4.8.0
     - Clang: 3.8.0
     - Intel: 15.0.0
 
 - New compiler flags:
-
     - `DASH_ENABLE_LIKWID`: Whether DASH has been compiled with likwid
       support.
     - `DASH_ENABLE_HDF5`: Whether DASH has been compiled with HDF5 support.
@@ -85,23 +91,18 @@ Features:
 
 - Introduced strong typing of unit ids depending on reference scope
   (global or relative to team) as `dart_team_unit_t` / `dash::team_unit_t`
-  and `dart_global_unit_t` / `dash::global_unit_t`.
-
-- Added function `dart_allreduce` and `dart_reduce`
-
+  and `dart_global_unit_t` / `dash::global_unit_t`
+- Added function `dart_allreduce` and `dart_reduce
 - Made global memory allocation and communication operations aware of the underlying 
   data type to improve stability and performance
-
 - Made DART global pointer globally unique to allow copying of global pointer between
   members of the team that allocated the global memory. Note that a global now 
   contains unit IDs relative to the team that allocated the memory instead of 
-  global unit IDs. 
-
-- Extended use of `const` specifier in DART communication interface 
-
+  global unit IDs.
+- Extended use of `const` specifier in DART communication interface
 - Introduced typed unit IDs to safely distinguish between global IDs 
   (`dart_global_unit_t`) and IDs that are relative to a team (`dart_team_unit_t`).
-
+  
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
 
@@ -147,7 +148,7 @@ Fixes:
 
 Bugfixes:
 
-- Fixed numerous memory leaks
+- Fixed numerous memory leaks in dart-mpi
 
 
 # DASH 0.2.0 (2016-03-03)
