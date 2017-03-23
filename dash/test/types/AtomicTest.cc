@@ -20,37 +20,32 @@
 #include <thread>
 #include <chrono>
 
-#if 0
 TEST_F(AtomicTest, FetchAndOp)
 {
   typedef size_t value_t;
 
-  value_t     val_init  = 100;
+  value_t           val_init  = 100;
   dash::team_unit_t owner(dash::size() - 1);
-  dash::Shared<value_t> shared(owner);
+
+  dash::Shared< dash::Atomic<value_t> > shared(owner);
 
   if (dash::myid() == 0) {
     shared.set(val_init);
   }
   // wait for initialization:
-  dash::barrier();
-  
-  auto & atomic = shared.atomic;
+  shared.barrier();
 
-  atomic.fetch_add(2);
+  shared.get().fetch_add(2);
   // wait for completion of all atomic operations:
-  dash::barrier();
+  shared.barrier();
 
   // incremented by 2 by every unit:
   value_t val_expect   = val_init + (dash::size() * 2);
-  value_t a_val_actual = atomic.load();
   value_t s_val_actual = shared.get();
-  EXPECT_EQ_U(val_expect, a_val_actual);
   EXPECT_EQ_U(val_expect, s_val_actual);
 
   dash::barrier();
 }
-#endif
 
 TEST_F(AtomicTest, ArrayElements)
 {

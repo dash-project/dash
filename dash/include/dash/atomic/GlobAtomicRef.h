@@ -138,7 +138,7 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  void store(const T & value) const
+  void set(const T & value) const
   {
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
@@ -152,9 +152,16 @@ public:
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobRef<Atomic>.store >");
   }
+  
+  /**
+   * Set the value of the shared atomic variable.
+   */
+  inline void store(const T & value) const {
+    set(value);
+  }
 
   /// atomically fetches value
-  T load() const
+  T get() const
   {
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
@@ -170,6 +177,13 @@ public:
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.get >", result);
     return result;
+  }
+  
+  /**
+   * Set the value of the shared atomic variable.
+   */
+  inline T load() const {
+    return get();
   }
   
   /**

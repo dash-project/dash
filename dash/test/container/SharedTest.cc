@@ -2,6 +2,7 @@
 #include "SharedTest.h"
 
 #include <dash/Shared.h>
+#include <dash/Atomic.h>
 
 
 TEST_F(SharedTest, SingleWriteMultiRead)
@@ -116,11 +117,10 @@ TEST_F(SharedTest, SpecifyOwner)
   EXPECT_EQ_U(value_a, new_b);
 }
 
-#if 0
 TEST_F(SharedTest, AtomicAdd)
 {
-  typedef int                   value_t;
-  typedef dash::Shared<value_t> shared_t;
+  typedef int                                   value_t;
+  typedef dash::Shared< dash::Atomic<value_t> > shared_t;
 
   if (dash::size() < 2) {
     SKIP_TEST();
@@ -142,8 +142,8 @@ TEST_F(SharedTest, AtomicAdd)
 
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "sleep");
   sleep(3);
-  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
-  shared.atomic.add(my_val);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.get().add");
+  shared.get().add(my_val);
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
   shared.barrier();
 
@@ -158,5 +158,4 @@ TEST_F(SharedTest, AtomicAdd)
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 3");
   shared.barrier();
 }
-#endif
 
