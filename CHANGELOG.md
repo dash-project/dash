@@ -4,13 +4,21 @@
 
 Features:
 
+- Added meta-type traits and helpers.
+- Added range types and range expressions.
+- Added view types and view expressions for views on multidimensional ranges
+  with projections between local and global index space; full support of
+  1-dimensional ranges, restricted support of multidimensional projections.
 - Introduced locality domain concepts and unit locality discovery
   (`dash::util::Locality`, `dash::util::LocalityDomain`).
+- Introduced dynamic containers `dash::List` and `dash::UnorderedMap`.
 - Global dynamic memory allocation: concepts and reference implementations
-  (`dash::GlobDynamicMem`, `dash::DynamicAllocator`).
-- Dynamic data structures: `dash::list`, `dash::unordered_map`.
+  (`dash::GlobHeapMem`, `dash::GlobStaticMem`).
+- Supporting `dash::Atomic<T>` as container element type
 - Added load balance patterns and automatic data distribution based on
   locality information to aid in load balancing.
+- Improved pattern implementations, rewriting pattern methods as single
+  arithmetic expressions.
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5.
 - Introduced stencil iterator and halo block concepts.
