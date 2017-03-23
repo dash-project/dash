@@ -738,7 +738,7 @@ dart_ret_t dart_team_myid(
   dart_ret_t ret = DART_ERR_INVAL;
   if (teamid != DART_TEAM_NULL) {
     dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-    if (team_data == NULL)
+    if (team_data != NULL)
     {
       unitid->id = team_data->unitid;
       ret = DART_OK;
