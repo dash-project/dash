@@ -315,8 +315,7 @@ public:
   }
 
   /**
-   * Complete all outstanding asynchronous operations on the referenced
-   * global memory on all units.
+   * Complete all outstanding non-blocking operations executed by all units.
    */
   void flush()
   {
@@ -324,19 +323,26 @@ public:
   }
 
   /**
-   * Complete all outstanding asynchronous operations on the referenced
-   * global memory on all units.
+   * Complete all outstanding non-blocking operations executed by all units.
    */
   void flush_all()
   {
     dart_flush_all(_begptr);
   }
 
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit.
+   */
   void flush_local()
   {
     dart_flush_local(_begptr);
   }
 
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit.
+   */
   void flush_local_all()
   {
     dart_flush_local_all(_begptr);
