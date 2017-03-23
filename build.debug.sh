@@ -53,7 +53,7 @@ fi
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# Configure with default developer build settings:
+# Configure with default debug build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
@@ -62,7 +62,7 @@ rm -Rf $BUILD_DIR/*
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=ON \
-                        -DENABLE_EXT_COMPILER_WARNINGS=ON \
+                        -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
