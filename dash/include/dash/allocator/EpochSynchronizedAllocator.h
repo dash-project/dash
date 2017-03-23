@@ -377,7 +377,7 @@ class EpochSynchronizedAllocator {
 
     if (found == end) return;
 
-    bool const attached = found->second;
+    bool const attached = found->second == DART_GPTR_NULL;
     if (attached) {
       // TODO rko: detach memory from window...
       DASH_LOG_ERROR("EpochSynchronizedAllocator.deallocate_local",
