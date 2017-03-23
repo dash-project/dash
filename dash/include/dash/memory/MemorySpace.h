@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <atomic>
 #include <cstddef>
-#include <cstddef>
 #include <memory>
 
 #include <dash/Types.h>
@@ -190,10 +189,10 @@ class MemorySpace {
 
  public:
   void_pointer allocate(std::size_t bytes,
-                        std::size_t alignment = alignof(std::max_align_t));
+                        std::size_t alignment = alignof(std::size_t));
 
   void deallocate(void_pointer p, std::size_t bytes,
-                  std::size_t alignment = alignof(std::max_align_t));
+                  std::size_t alignment = alignof(std::size_t));
 
   /**
    * Two memory spaces compare equal if and only if memory allocated
