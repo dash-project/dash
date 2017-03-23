@@ -26,7 +26,6 @@ public:
   typedef ValueType value_type;
 
 public:
-
   constexpr dart_operation_t dart_operation() const {
     return _op;
   }
@@ -45,10 +44,10 @@ private:
  */
 template< typename ValueType >
 struct min : public ReduceOperation<ValueType, DART_OP_MIN> {
-
-public:
-
-  ValueType operator()(
+  typename std::enable_if<
+             std::is_arithmetic<ValueType>::value, ValueType
+           >::type
+  operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return (lhs < rhs) ? lhs : rhs;
@@ -64,10 +63,10 @@ public:
  */
 template< typename ValueType >
 struct max : public ReduceOperation<ValueType, DART_OP_MAX> {
-
-public:
-
-  ValueType operator()(
+  typename std::enable_if<
+             std::is_arithmetic<ValueType>::value, ValueType
+           >::type
+  operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return (lhs > rhs) ? lhs : rhs;
@@ -83,10 +82,10 @@ public:
  */
 template< typename ValueType >
 struct plus : public ReduceOperation<ValueType, DART_OP_SUM> {
-
-public:
-
-  ValueType operator()(
+  typename std::enable_if<
+             std::is_arithmetic<ValueType>::value, ValueType
+           >::type
+  operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return lhs + rhs;
@@ -102,10 +101,10 @@ public:
  */
 template< typename ValueType >
 struct multiply : public ReduceOperation<ValueType, DART_OP_PROD> {
-
-public:
-
-  ValueType operator()(
+  typename std::enable_if<
+             std::is_arithmetic<ValueType>::value, ValueType
+           >::type
+  operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return lhs * rhs;
@@ -121,9 +120,6 @@ public:
  */
 template< typename ValueType >
 struct second : public ReduceOperation<ValueType, DART_OP_REPLACE> {
-
-public:
-
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {

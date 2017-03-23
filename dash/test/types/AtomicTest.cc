@@ -16,9 +16,12 @@
 
 #include <vector>
 #include <algorithm>
+#include <iostream>
+#include <sstream>
 #include <numeric>
 #include <thread>
 #include <chrono>
+
 
 TEST_F(AtomicTest, FetchAndOp)
 {
@@ -78,12 +81,9 @@ TEST_F(AtomicTest, CompareExchange)
   dash::barrier();
 }
 
-template<typename T>
+template <typename T>
 struct container {
   typedef struct container<T> self_t;
-  bool operator==(const self_t &other) const {
-    return val[0] == other.val[0] && val[1] == other.val[1];
-  }
 
   self_t operator++(int) {
     self_t res = *this;
@@ -92,21 +92,40 @@ struct container {
     return res;
   }
 
-  T& operator[](int idx) {
+  T & operator[](int idx) {
     return val[idx];
+  }
+
+  const T & operator[](int idx) const {
+    return val[idx];
+  }
+
+  constexpr bool operator==(const self_t & rhs) const {
+    return val[0] == rhs.val[0] &&
+           val[1] == rhs.val[1];
+  }
+  constexpr bool operator!=(const self_t & rhs) const {
+    return !(*this == rhs);
   }
 
   T val[2];
 };
 
-
+template <typename T>
+std::ostream & operator<<(
+  std::ostream & os,
+  const container<T> & ct)
+{
+  std::ostringstream ss;
+  ss << dash::typestr(ct) << "(" << ct[0] << "," << ct[1] << ")";
+  return operator<<(os, ss.str());
+}
 
 TEST_F(AtomicTest, PunnedType)
 {
-
   typedef struct container<char> value_t;
 
-  value_t           val_init  = {1, 12};
+  value_t           val_init = { 1, 12 };
   dash::team_unit_t owner(dash::size() - 1);
 
   dash::Shared< dash::Atomic<value_t> > shared(owner);
@@ -116,12 +135,14 @@ TEST_F(AtomicTest, PunnedType)
   }
   // wait for initialization:
   shared.barrier();
+
   size_t i;
-  for (i = 0; i < 2*dash::size(); ++i) {
-    value_t expected = shared.get().get();
+  for (i = 0; i < 2 * dash::size(); ++i) {
+    value_t expected = shared.get().load();
     value_t desired  = expected;
     bool    result   = shared.get().compare_exchange(expected, desired);
     if (result) {
+      EXPECT_EQ_U(expected, desired);
       break;
     }
   }

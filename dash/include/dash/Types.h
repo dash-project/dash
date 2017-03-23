@@ -104,6 +104,16 @@ struct dart_datatype<unsigned char> {
 };
 
 template<>
+struct dart_datatype<short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
+};
+
+template<>
+struct dart_datatype<unsigned short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
+};
+
+template<>
 struct dart_datatype<int> {
   static constexpr const dart_datatype_t value = DART_TYPE_INT;
 };

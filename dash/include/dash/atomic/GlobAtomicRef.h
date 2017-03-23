@@ -9,16 +9,37 @@ namespace dash {
 
 namespace internal {
 
-template<typename T>
-constexpr dart_datatype_t atomic_punned_type() {
-  return (std::is_integral<T>::value) ?
-      dash::dart_datatype<T>::value :
-        (sizeof(T) == 1) ? DART_TYPE_BYTE :
-          (sizeof(T) == 2) ? DART_TYPE_SHORT :
-            (sizeof(T) == 4) ? DART_TYPE_INT :
-              (sizeof(T) == 8) ? DART_TYPE_LONGLONG :
-                DART_TYPE_UNDEFINED;
-}
+template <std::size_t Size>
+struct atomic_size_punned_type
+: public std::integral_constant<dart_datatype_t, DART_TYPE_UNDEFINED>
+{ };
+
+template <>
+struct atomic_size_punned_type<1>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_BYTE>
+{ };
+
+template <>
+struct atomic_size_punned_type<2>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_SHORT>
+{ };
+
+template <>
+struct atomic_size_punned_type<4>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_INT>
+{ };
+
+template <>
+struct atomic_size_punned_type<8>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_LONGLONG>
+{ };
+
+template <typename T>
+struct atomic_punned_type {
+  static constexpr const dart_datatype_t value
+                           = atomic_size_punned_type<sizeof(T)>::value;
+};
+
 } // namespace internal
 
 // forward decls
@@ -35,6 +56,16 @@ class Shared;
 template<typename T>
 class GlobRef<dash::Atomic<T>>
 {
+  /* Notes on type compatibility:
+   *
+   * - The general support of atomic operations on values of type T is
+   *   checked in `dash::Atomic` and is not verified here.
+   * - Whether arithmetic operations (like `fetch_add`) are supported
+   *   for values of type T is implicitly tested in the DASH operation
+   *   types (like `dash::plus<T>`) and is not verified here.
+   *
+   */
+
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
@@ -151,16 +182,13 @@ public:
    */
   void set(const T & value) const
   {
-    static_assert(
-        dash::internal::atomic_punned_type<T>() != DART_TYPE_UNDEFINED,
-        "Only types of size 1, 2, 4, or 8 byte allowed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        1,
-                       dash::internal::atomic_punned_type<T>(),
+                       dash::internal::atomic_punned_type<T>::value,
                        DART_OP_REPLACE);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
@@ -177,9 +205,6 @@ public:
   /// atomically fetches value
   T get() const
   {
-    static_assert(
-        dash::internal::atomic_punned_type<T>() != DART_TYPE_UNDEFINED,
-        "Only types of size 1, 2, 4, or 8 byte allowed");
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
     value_type nothing;
@@ -188,7 +213,7 @@ public:
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
                        reinterpret_cast<void * const>(&result),
-                       dash::internal::atomic_punned_type<T>(),
+                       dash::internal::atomic_punned_type<T>::value,
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
@@ -212,9 +237,6 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
-    static_assert(
-        std::is_integral<T>::value || std::is_floating_point<T>::value,
-        "Atomic operations only valid on integral and floating point types");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
     value_type acc = value;
@@ -242,9 +264,6 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
-    static_assert(
-        std::is_integral<T>::value || std::is_floating_point<T>::value,
-        "Atomic operations only valid on integral and floating point types");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
@@ -262,24 +281,21 @@ public:
   }
 
   /**
-   * atomically exchanges value
+   * Atomically exchanges value
    */
   T exchange(const T & value) const {
     return fetch_op(dash::second<T>(), value);
   }
 
   /**
-   * Atomically compares the value with the value of expected and if those are
-   * bitwise-equal, replaces the former with desired.
+   * Atomically compares the value with the value of expected and if thosei
+   * are bitwise-equal, replaces the former with desired.
    * 
    * \return  True if value is exchanged
    * 
    * \see \c dash::atomic::compare_exchange
    */
   bool compare_exchange(const T & expected, const T & desired) const {
-    static_assert(
-        dash::internal::atomic_punned_type<T>() != DART_TYPE_UNDEFINED,
-        "Only types of size 1, 2, 4, or 8 byte allowed in compare_exchange");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
@@ -291,22 +307,13 @@ public:
                        reinterpret_cast<const void * const>(&desired),
                        reinterpret_cast<const void * const>(&expected),
                        reinterpret_cast<void * const>(&result),
-                       dash::internal::atomic_punned_type<T>());
+                       dash::internal::atomic_punned_type<T>::value);
     dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange >",
       (expected == result));
     return (expected == result);
   }
-
-  /*
-   * ---------------------------------------------------------------------------
-   * ------------ specializations for atomic integral types --------------------
-   * ---------------------------------------------------------------------------
-   *
-   *  As the check for integral type is already implemented in constructor, 
-   *  no check is performed here
-   */
 
   /**
    * DASH specific variant which is faster than \cfetch_add
