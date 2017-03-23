@@ -4,6 +4,9 @@
 #include <dash/Shared.h>
 #include <dash/Atomic.h>
 
+#include <iostream>
+#include <sstream>
+
 
 TEST_F(SharedTest, SingleWriteMultiRead)
 {
@@ -117,6 +120,63 @@ TEST_F(SharedTest, SpecifyOwner)
   EXPECT_EQ_U(value_a, new_b);
 }
 
+struct CompositeValue {
+  char  c1;
+  char  c2;
+  char  c3;
+  char  c4;
+  short s;
+
+  constexpr bool operator==(const CompositeValue & rhs) const {
+    return (c1 == rhs.c1 &&
+            c2 == rhs.c2 &&
+            c3 == rhs.c3 &&
+            c4 == rhs.c4 &&
+            s  == rhs.s);
+  }
+  constexpr bool operator!=(const CompositeValue & rhs) const {
+    return !(*this == rhs);
+  }
+};
+
+std::ostream & operator<<(
+    std::ostream & os,
+    const CompositeValue & cv)
+{
+  std::ostringstream ss;
+  ss << "composite_value_t("
+     << cv.c1 << "," << cv.c2 << "," << cv.c3 << "," << cv.c4 << ","
+     << cv.s << ")";
+  return operator<<(os, ss.str());
+}
+
+TEST_F(SharedTest, CompositeValue)
+{
+  typedef CompositeValue        value_t;
+  typedef dash::Shared<value_t> shared_t;
+
+  shared_t shared;
+  value_t  init_val { 'a', 'b', 'c', 'd',
+                      static_cast<short>(-1) };
+  value_t  my_val   { 'a', 'b', 'c', 'd',
+                      static_cast<short>(1 + dash::myid()) };
+  value_t  exp_val  { 'a', 'b', 'c', 'd',
+                      static_cast<short>(dash::size()) };
+
+  if (dash::myid().id == 0) {
+    shared.set(init_val);
+  }
+  shared.barrier();
+
+  if (dash::myid().id == dash::size() - 1) {
+    shared.set(my_val);
+  }
+  shared.barrier();
+
+  value_t shared_val = shared.get();
+  EXPECT_EQ_U(exp_val, shared_val);
+}
+
 TEST_F(SharedTest, AtomicAdd)
 {
   typedef int                                   value_t;
@@ -141,7 +201,7 @@ TEST_F(SharedTest, AtomicAdd)
   shared.barrier();
 
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "sleep");
-  sleep(3);
+  sleep(1);
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.get().add");
   shared.get().add(my_val);
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
