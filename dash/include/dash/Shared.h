@@ -7,8 +7,6 @@
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 
-#include <dash/Atomic.h>
-
 #include <dash/iterator/GlobIter.h>
 
 #include <memory>
@@ -38,13 +36,6 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-// using atomic_ref_type =
-//         typename std::conditional<
-//                    dash::is_atomic_compatible<ElementType>::value,
-//                    GlobRef<Atomic<ElementType>>,
-//                    void,
-//                  >::type;
-
 private:
   typedef dash::GlobMem<
             value_type,
@@ -53,9 +44,6 @@ private:
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
-
-public:
-//  atomic_ref_type atomic;
 
 public:
   /**
@@ -86,8 +74,6 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-//  atomic._set_dart_gptr(_ptr.dart_gptr());
-    // ensure that atomic proxy is initialized on all units
     team.barrier();
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _ptr);
   }

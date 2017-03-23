@@ -29,8 +29,6 @@ class GlobRef<dash::Atomic<T>>
     std::ostream & os,
     const GlobRef<U> & gref);
   
-  friend class Shared<T>;
-  
 public:
   typedef T
     value_type;
@@ -40,6 +38,9 @@ public:
 private:
   typedef dash::Atomic<T>      atomic_t;
   typedef GlobRef<atomic_t>      self_t;
+  
+private:
+  dart_gptr_t _gptr;
   
 public:
   /**
@@ -271,7 +272,8 @@ public:
    * DASH specific variant which is faster than \cfetch_add
    * but does not return value
    */
-  void add (const T & value) const
+  typename std::enable_if< std::is_integral<T>::value, void >::type
+  add(const T & value) const
   {
     op(dash::plus<T>(), value);
   }
@@ -282,7 +284,8 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  T fetch_add (
+  typename std::enable_if< std::is_integral<T>::value, T >::type
+  fetch_add(
     /// Value to be added to global atomic variable.
     const T & value) const
   {
@@ -293,7 +296,8 @@ public:
    * DASH specific variant which is faster than \cfetch_sub
    * but does not return value
    */
-  void sub (const T & value) const
+  typename std::enable_if< std::is_integral<T>::value, void >::type
+  sub(const T & value) const
   {
     op(dash::plus<T>(), -value);
   }
@@ -304,7 +308,8 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  T fetch_sub (
+  typename std::enable_if< std::is_integral<T>::value, T >::type
+  fetch_sub (
     /// Value to be subtracted from global atomic variable.
     const T & value) const
   {
@@ -340,20 +345,6 @@ public:
   T operator-=(const T & value) const {
     return fetch_sub(value) - value;
   }
-
-private:
-  /**
-   * Assignment of \c GlobRef<Atomic> is prohibited but in some cases
-   * (e.g. \c dash::Shared) it is necessary and useful.
-   * 
-   * \note this operation is not atomic
-   */
-  void _set_dart_gptr(const dart_gptr_t & gptr){
-    _gptr = gptr;
-  }
-  
-private:
-  dart_gptr_t _gptr;
   
 };
 
