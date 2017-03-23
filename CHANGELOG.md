@@ -13,6 +13,8 @@
 - Introduced locality domain concepts and unit locality discovery
   (`dash::util::Locality`, `dash::util::LocalityDomain`)
 - Introduced dynamic containers `dash::List` and `dash::UnorderedMap`
+- Fixed iteration and pointer arithmetics of `dash::GloPtr` in global address
+  space.
 - Global dynamic memory allocation: concepts and reference implementations
   (`dash::GlobHeapMem`, `dash::GlobStaticMem`)
 - Supporting `dash::Atomic<T>` as container element type
@@ -24,6 +26,7 @@
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5
 - Introduced stencil iterator and halo block concepts
+- Using strict unit ID types to distinguish global and team scope
 - Using new DASH locality domain concept to provide automatic configuration
   of OpenMP for node-level parallelization
 - New algorithms, including `dash::fill`, `dash::generate`, `dash::find`.
@@ -35,14 +38,19 @@
 - Runtime configuration interface (`dash::util::Config`)
 - Improved output format and log targets in unit tests
 - Added support for HDF5 groups
-- Support patterns with underfilled blocks in dash::io::hdf5
 - Relaxed restrictions on container element types
+- Support patterns with underfilled blocks in `dash::io::hdf5`
 
 ### Bugfixes:
 
-- Fixed element access of `.local.begin()` in `dash::Matrix`.
-- Fixed memory leaks in dart-mpi.
-- Numerous stability fixes and performance improvements.
+- Index calculations in `BlockPattern` with underfilled blocks
+- Fixed element access of `.local.begin()` in `dash::Matrix`
+- Fixed delayed allocation of `dash::Matrix`
+- Conversions of `GlobPtr<T>`, `GlobRef<T>`, `GlobIter<T>`, ... now
+  const-correct (e.g., to `GlobIter<const T>` instead of `const GlobIter<T>`)
+- Consistent usage of index- and size types
+- Numerous stability fixes and performance improvements
+- Move-semantics of allocators
 
 ### Known limitations:
 
@@ -56,20 +64,17 @@
 
 ### Features:
 
-- Introduced strong typing of unit ids depending on reference scope
-  (global or relative to team) as `dart_team_unit_t` / `dash::team_unit_t`
-  and `dart_global_unit_t` / `dash::global_unit_t`.
-- Added function `dart_allreduce` and `dart_reduce`
-- Made global memory allocation and communication operations aware of the
-  underlying data type to improve stability and performance
-- Made DART global pointer globally unique to allow copying of global pointer
-  between members of the team that allocated the global memory.
-  Note that a global now contains unit IDs relative to the team that allocated
-  the memory instead of global unit IDs. 
-- Extended use of `const` specifier in DART communication interface 
-- Introduced typed unit IDs to safely distinguish between global IDs 
-  (`dart_global_unit_t`) and IDs that are relative to a team
+- Introduced strong typing of unit IDs to safely distinguish between global
+  IDs (`dart_global_unit_t`) and IDs that are relative to a team
   (`dart_team_unit_t`).
+- Added function `dart_allreduce` and `dart_reduce`
+- Made global memory allocation and communication operations aware of the 
+  underlying data type to improve stability and performance
+- Made DART global pointer globally unique to allow copying of global pointer 
+  between members of the team that allocated the global memory. Note that a 
+  global pointer now contains unit IDs relative to the team that allocated 
+  the memory instead of global unit IDs.
+- Extended use of `const` specifier in DART communication interface
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
 
@@ -122,7 +127,7 @@
 
 ### Bugfixes:
 
-- Fixed numerous memory leaks
+- Fixed numerous memory leaks in dart-mpi
 
 ### Known limitations:
 
