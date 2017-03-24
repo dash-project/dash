@@ -10,7 +10,7 @@
 #include <dash/Onesided.h>
 
 #include <dash/internal/Logging.h>
-#include <dash/internal/allocator/GlobDynamicMemTypes.h>
+#include <dash/internal/allocator/GlobHeapMemTypes.h>
 #include <dash/internal/allocator/LocalBucketIter.h>
 
 #include <type_traits>
@@ -27,7 +27,7 @@ namespace dash {
 template<
   typename ElementType,
   class    AllocatorType >
-class GlobDynamicMem;
+class GlobHeapMem;
 
 namespace internal {
 
@@ -311,7 +311,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline const GlobMemType & globmem() const
@@ -320,7 +320,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline GlobMemType & globmem()

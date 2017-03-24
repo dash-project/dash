@@ -2,8 +2,8 @@
 #define DASH__ALLOCATOR_H__INCLUDED
 
 #include <dash/allocator/LocalAllocator.h>
-#include <dash/allocator/CollectiveAllocator.h>
-#include <dash/allocator/DynamicAllocator.h>
+#include <dash/allocator/SymmetricAllocator.h>
+#include <dash/allocator/EpochSynchronizedAllocator.h>
 
 namespace dash {
 

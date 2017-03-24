@@ -1,15 +1,19 @@
 #ifndef DASH__GLOB_PTR_H_
 #define DASH__GLOB_PTR_H_
 
+#include <dash/dart/if/dart.h>
+
+#include <dash/internal/Logging.h>
+
+#include <dash/Pattern.h>
+#include <dash/Exception.h>
+#include <dash/Init.h>
+#include <dash/Allocator.h>
+
 #include <cstddef>
 #include <sstream>
 #include <iostream>
 
-#include <dash/dart/if/dart.h>
-#include <dash/internal/Logging.h>
-#include <dash/Pattern.h>
-#include <dash/Exception.h>
-#include <dash/Init.h>
 
 std::ostream & operator<<(
   std::ostream      & os,
@@ -26,12 +30,12 @@ bool operator!=(
 namespace dash {
 
 // Forward-declarations
-template<typename T> class GlobRef;
-template<typename T, class PatternT> class GlobPtr;
-template<typename T, class PatternT>
-std::ostream & operator<<(
-  std::ostream               & os,
-  const GlobPtr<T, PatternT> & it);
+template<typename T>                  class GlobRef;
+template<typename T,
+         class    AllocT>             class GlobStaticMem;
+template<typename T,
+         class    AllocT>             class GlobHeapMem;
+template<typename T>                  class GlobConstPtr;
 
 /**
  * Pointer in global memory space.
@@ -55,67 +59,160 @@ std::ostream & operator<<(
  */
 template<
   typename ElementType,
-  class    PatternType  = Pattern<1> >
+  class    MemorySpace  = GlobStaticMem<
+                            typename std::remove_const<ElementType>::type,
+                            dash::allocator::SymmetricAllocator<
+                              typename std::remove_const<ElementType>::type
+                            > >
+>
 class GlobPtr
 {
 private:
-  typedef GlobPtr<ElementType, PatternType> self_t;
-  typedef typename PatternType::index_type  IndexType;
+  typedef GlobPtr<ElementType, MemorySpace>                self_t;
 
 public:
-  typedef GlobPtr<const ElementType, PatternType>   const_type;
-  typedef IndexType                                 index_type;
-  typedef PatternType                             pattern_type;
-  typedef IndexType                                 gptrdiff_t;
+  typedef ElementType                                  value_type;
+  typedef GlobPtr<const ElementType, MemorySpace>      const_type;
+  typedef typename dash::default_index_t               index_type;
+
+  typedef index_type                                   gptrdiff_t;
 
 public:
-  /// Convert GlobPtr<T, PatternType> to GlobPtr<U, PatternType>.
-  template<typename U>
+  /// Convert GlobPtr<T> to GlobPtr<U>.
+  template<typename U, class MSp = MemorySpace>
   struct rebind {
-    typedef GlobPtr<U, PatternType> other;
+    typedef GlobPtr<U, MSp> other;
   };
 
 private:
-  dart_gptr_t _dart_gptr;
+  dart_gptr_t         _dart_gptr = DART_GPTR_NULL;
+  const MemorySpace * _mem_space = nullptr;
 
 public:
-  template<typename T, class PatternT>
+  template <typename T, class MemSpaceT>
+  friend class GlobPtr;
+
+  template <typename T, class MemSpaceT>
   friend std::ostream & operator<<(
-    std::ostream               & os,
-    const GlobPtr<T, PatternT> & gptr);
+    std::ostream                & os,
+    const GlobPtr<T, MemSpaceT> & gptr);
+
+protected:
+  /**
+   * Constructor, specifies underlying global address.
+   *
+   * Allows to instantiate GlobPtr without a valid memory
+   * space reference.
+   */
+  constexpr GlobPtr(
+    const MemorySpace * mem_space,
+    dart_gptr_t gptr)
+  : _dart_gptr(gptr)
+  , _mem_space(reinterpret_cast<const MemorySpace *>(mem_space))
+  { }
 
 public:
   /**
    * Default constructor, underlying global address is unspecified.
    */
-  constexpr explicit GlobPtr() = default;
+  constexpr GlobPtr() = default;
 
   /**
    * Constructor, specifies underlying global address.
    */
-  constexpr explicit GlobPtr(dart_gptr_t gptr) : _dart_gptr(gptr)
+  constexpr GlobPtr(
+    const MemorySpace & mem_space,
+    dart_gptr_t         gptr)
+  : _dart_gptr(gptr)
+  , _mem_space(reinterpret_cast<const MemorySpace *>(&mem_space))
   { }
+
+  /**
+   * Constructor, specifies underlying global address.
+   */
+  constexpr GlobPtr(
+    MemorySpace && mem_space,
+    dart_gptr_t    gptr)
+  : _dart_gptr(gptr)
+  , _mem_space(nullptr)
+  {
+    // For a use case, see dash::memalloc in dash/memory/GlobUnitMem.h.
+    // No need to bind temporary, the pointer instance would be rather
+    // heavy-weight with memory space as a member.
+
+    // TODO: save local size as _lsize = _mem_space.local_size() and
+    //       restrict this pointer's iteration range to the owner of
+    //       _mem_space, the temporary can then be safely destroyed.
+  }
 
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  constexpr explicit GlobPtr(std::nullptr_t p) : _dart_gptr(DART_GPTR_NULL)
+  explicit constexpr GlobPtr(std::nullptr_t p)
+  : _dart_gptr(DART_GPTR_NULL)
+  , _mem_space(nullptr)
   { }
 
   /**
    * Copy constructor.
    */
-  constexpr GlobPtr(const self_t & other) = default;
+  constexpr GlobPtr(const self_t & other)      = default;
+
+  /**
+   * Copy constructor.
+   */
+  template <typename T, class MemSpaceT>
+  constexpr GlobPtr(const GlobPtr<T, MemSpaceT> & other)
+  : _dart_gptr(other._dart_gptr)
+  , _mem_space(reinterpret_cast<const MemorySpace *>(other._mem_space))
+  { }
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs) = default;
+  self_t & operator=(const self_t & rhs)       = default;
+
+  /**
+   * Assignment operator.
+   */
+  template <typename T, class MemSpaceT>
+  self_t & operator=(const GlobPtr<T, MemSpaceT> & other)
+  {
+    _dart_gptr = other._dart_gptr;
+    _mem_space = reinterpret_cast<const MemorySpace *>(other._mem_space);
+    return *this;
+  }
+
+  /**
+   * Move constructor.
+   */
+  constexpr GlobPtr(self_t && other)           = default;
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && rhs)            = default;
 
   /**
    * Converts pointer to its underlying global address.
    */
-  constexpr operator dart_gptr_t() const noexcept
+  explicit constexpr operator dart_gptr_t() const noexcept
+  {
+    return _dart_gptr;
+  }
+
+  /**
+   * Converts global pointer to global const pointer.
+   */
+  explicit constexpr operator GlobConstPtr<value_type>() const noexcept
+  {
+    return GlobConstPtr<value_type>(_dart_gptr);
+  }
+
+  /**
+   * The pointer's underlying global address.
+   */
+  constexpr dart_gptr_t dart_gptr() const noexcept
   {
     return _dart_gptr;
   }
@@ -125,17 +222,9 @@ public:
    * \c nullptr if the \c GlobPtr does not point to a local
    * address.
    */
-  explicit constexpr operator ElementType*() const noexcept
+  explicit constexpr operator value_type *() const noexcept
   {
     return local();
-  }
-
-  /**
-   * The pointer's underlying global address.
-   */
-  constexpr dart_gptr_t dart_gptr() const noexcept
-  {
-    return _dart_gptr;
   }
 
   /**
@@ -170,7 +259,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, n * sizeof(ElementType)),
       DART_OK);
-    return self_t(gptr);
+    return self_t(*_mem_space, gptr);
   }
 
   /**
@@ -229,7 +318,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, -(n * sizeof(ElementType))),
       DART_OK);
-    return self_t(gptr);
+    return self_t(*_mem_space, gptr);
   }
 
   /**
@@ -401,7 +490,7 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  explicit operator ElementType*() {
+  explicit operator value_type*() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(_dart_gptr, &addr),
@@ -416,7 +505,7 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  ElementType * local() {
+  value_type * local() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(_dart_gptr, &addr),
@@ -431,7 +520,7 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  const ElementType * local() const {
+  const value_type * local() const {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(_dart_gptr, &addr),
@@ -459,21 +548,227 @@ public:
   }
 };
 
-template<typename T, class PatternT>
+template<typename T, class MemSpaceT>
 std::ostream & operator<<(
-  std::ostream               & os,
-  const GlobPtr<T, PatternT> & gptr)
+  std::ostream                & os,
+  const GlobPtr<T, MemSpaceT> & gptr)
 {
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%06X|%02X|%04X|%04X|%016lX",
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.flags,
           gptr._dart_gptr.segid,
           gptr._dart_gptr.teamid,
           gptr._dart_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
+  return operator<<(os, ss.str());
+}
+
+
+/**
+ * Wraps underlying global address as global const pointer.
+ *
+ * As pointer arithmetics are inaccessible for const pointer types,
+ * no coupling to global memory space is required.
+ *
+ * TODO: Will be replaced by specialization of GlobPtr for global
+ *       memory space tagged as unit-scope address space
+ *       (see GlobUnitMem).
+ */
+template<typename T>
+class GlobConstPtr
+: GlobPtr<T> // NOTE: non-public subclassing
+{
+  typedef GlobConstPtr<T> self_t;
+  typedef GlobPtr<T>      base_t;
+ public:
+  typedef T                                            value_type;
+  typedef typename base_t::const_type                  const_type;
+  typedef typename base_t::index_type                  index_type;
+  typedef typename base_t::gptrdiff_t                  gptrdiff_t;
+
+  template <typename T_>
+  friend std::ostream & operator<<(
+    std::ostream           & os,
+    const GlobConstPtr<T_> & gptr);
+
+ public:
+  /**
+   * Default constructor.
+   *
+   * Pointer arithmetics are undefined for the created instance.
+   */
+  constexpr GlobConstPtr()
+  : base_t(nullptr, DART_GPTR_NULL)
+  { }
+
+  /**
+   * Constructor for conversion of std::nullptr_t.
+   */
+  explicit constexpr GlobConstPtr(std::nullptr_t p)
+  : base_t(nullptr, DART_GPTR_NULL)
+  { }
+
+  /**
+   * Constructor, wraps underlying global address without coupling
+   * to global memory space.
+   *
+   * Pointer arithmetics are undefined for the created instance.
+   */
+  explicit constexpr GlobConstPtr(dart_gptr_t gptr)
+  : base_t(nullptr, gptr)
+  { }
+
+  /**
+   * Copy constructor.
+   */
+  constexpr GlobConstPtr(const self_t & other) = default;
+
+  /**
+   * Move constructor.
+   */
+  constexpr GlobConstPtr(self_t && other)      = default;
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & rhs)       = default;
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && rhs)            = default;
+
+
+  value_type * local() {
+    return base_t::local();
+  }
+
+  const value_type * local() const {
+    return base_t::local();
+  }
+
+  bool is_local() const {
+    return base_t::is_local();
+  }
+
+  explicit constexpr operator dart_gptr_t() const noexcept
+  {
+    return base_t::dart_gptr();
+  }
+
+  constexpr dart_gptr_t dart_gptr() const noexcept
+  {
+    return base_t::dart_gptr();
+  }
+
+  explicit constexpr operator value_type *() const noexcept
+  {
+    return local();
+  }
+
+  explicit operator value_type*() {
+    return local();
+  }
+
+  GlobRef<value_type> operator*()
+  {
+    return base_t::operator*();
+  }
+
+  constexpr GlobRef<const value_type> operator*() const
+  {
+    return base_t::operator*();
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator==(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator==(other);
+  }
+
+  /**
+   * Inequality comparison operator.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator!=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator!=(other);
+  }
+
+  /**
+   * Less comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator<(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator<(other);
+  }
+
+  /**
+   * Less-equal comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator<=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator<=(other);
+  }
+
+  /**
+   * Greater comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator>(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator>(other);
+  }
+
+  /**
+   * Greater-equal comparison operator.
+   *
+   * \note
+   * Distance between two global pointers is not well-defined, yet.
+   * This method is only provided to comply to the pointer concept.
+   */
+  template <class GlobPtrT>
+  constexpr bool operator>=(const GlobPtrT & other) const noexcept
+  {
+    return base_t::operator>=(other);
+  }
+};
+
+template<typename T>
+std::ostream & operator<<(
+  std::ostream          & os,
+  const GlobConstPtr<T> & gptr)
+{
+  std::ostringstream ss;
+  char buf[100];
+  sprintf(buf,
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
+          gptr.dart_gptr().unitid,
+          gptr.dart_gptr().flags,
+          gptr.dart_gptr().segid,
+          gptr.dart_gptr().teamid,
+          gptr.dart_gptr().addr_or_offs.offset);
+  ss << "dash::GlobConstPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
 
