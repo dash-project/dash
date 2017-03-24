@@ -194,14 +194,12 @@ public:
   /**
    * Copy constructor.
    */
-  GlobUnitMem(const self_t & other)
-    = default;
+  GlobUnitMem(const self_t & other)      = delete;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)
-    = default;
+  self_t & operator=(const self_t & rhs) = delete;
 
   /**
    * Equality comparison operator.
