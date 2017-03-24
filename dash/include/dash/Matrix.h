@@ -157,7 +157,7 @@ private:
   typedef PatternT
     Pattern_t;
   typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
-    GlobStaticMem_t;
+    GlobMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
   typedef SizeSpec<NumDimensions, typename PatternT::size_type>
@@ -618,7 +618,7 @@ private:
   /// The matrix elements' distribution pattern
   Pattern_t                    _pattern;
   /// Global memory allocation and -access
-  GlobStaticMem_t                  * _glob_mem;
+  GlobMem_t                  * _glob_mem;
   /// Native pointer to first local element in the array
   ElementT                   * _lbegin;
   /// Native pointer past last local element in the array
