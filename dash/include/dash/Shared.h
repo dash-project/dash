@@ -44,7 +44,7 @@ private:
   typedef dash::GlobStaticMem<
             value_type,
             dash::allocator::LocalAllocator<value_type> >
-          GlobStaticMem_t;
+          GlobMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
@@ -70,7 +70,7 @@ public:
     if (_team->myid() == _owner) {
       DASH_LOG_DEBUG("Shared.Shared(team,owner)",
                      "allocating shared value in local memory");
-      _globmem = std::make_shared<GlobStaticMem_t>(1, team);
+      _globmem = std::make_shared<GlobMem_t>(1, team);
       _ptr     = _globmem->begin();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
@@ -187,7 +187,7 @@ public:
 private:
   dash::Team          *          _team    = nullptr;
   team_unit_t                     _owner;
-  std::shared_ptr<GlobStaticMem_t>     _globmem = nullptr;
+  std::shared_ptr<GlobMem_t>     _globmem = nullptr;
   pointer                        _ptr;
 
 };
