@@ -14,7 +14,7 @@ PROJECT_NUMBER          = "0.3.0"
 STRIP_FROM_PATH         = src \
                           bin
 INPUT                   = "./doc/config/mainpage.dox" \
-                          "./dart-if/v3.2/include" \
+                          "./dart-if/include" \
                           "./dash/include" \
                           "./dash/examples"
 OUTPUT_DIRECTORY        = "doc"
