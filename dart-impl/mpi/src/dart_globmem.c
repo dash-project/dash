@@ -134,6 +134,7 @@ dart_ret_t dart_memalloc(
   dart_global_unit_t unitid;
   dart_myid(&unitid);
   gptr->unitid  = unitid.id;
+  gptr->flags   = 0;
   gptr->segid   = DART_SEGMENT_LOCAL; /* For local allocation, the segid is marked as '0'. */
   gptr->teamid  = DART_TEAM_ALL;      /* Locally allocated gptr belong to the global team. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
