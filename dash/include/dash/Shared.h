@@ -3,7 +3,7 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 
@@ -39,10 +39,7 @@ public:
   typedef typename reference::value_type             value_type;
 
 private:
-  typedef GlobPtr<      element_t>                      pointer;
-  typedef GlobPtr<const element_t>                const_pointer;
-
-  typedef dash::GlobMem<
+  typedef dash::GlobStaticMem<
             value_type,
             dash::allocator::LocalAllocator<value_type> >
           GlobMem_t;

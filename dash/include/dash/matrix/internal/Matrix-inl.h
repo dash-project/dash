@@ -5,7 +5,7 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Exception.h>
@@ -153,7 +153,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
   // use _lcapacity as tje collective allocator requires symmetric allocations
-  _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
+  _glob_mem        = new GlobStaticMem_t(_lcapacity, _pattern.team());
   _begin           = iterator(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _lbegin + _lsize;

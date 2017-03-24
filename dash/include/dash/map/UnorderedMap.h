@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 #include <dash/Meta.h>
 
@@ -75,7 +75,7 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::DynamicAllocator<
+  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
@@ -111,7 +111,7 @@ public:
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;
