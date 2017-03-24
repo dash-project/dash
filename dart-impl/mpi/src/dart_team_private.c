@@ -258,11 +258,9 @@ dart_ret_t dart_adapt_teamlist_destroy()
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
-  int    i;
-  size_t n;
-  size_t      size;
+  int size;
 
-  dart_size(&size);
+  MPI_Comm_size(DART_COMM_WORLD, &size);
 
   MPI_Comm sharedmem_comm;
   MPI_Group sharedmem_group, group_all;
@@ -291,7 +289,7 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
         team_data->sharedmem_nodesize * sizeof(int));
     team_data->sharedmem_tab = malloc(size * sizeof(dart_team_unit_t));
 
-    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+    for (int i = 0; i < team_data->sharedmem_nodesize; i++) {
       sharedmem_ranks[i] = i;
     }
 
@@ -304,10 +302,10 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
       group_all,
       dart_unit_mapping);
 
-    for (n = 0; n < size; n++) {
+    for (int n = 0; n < size; n++) {
       team_data->sharedmem_tab[n] = DART_UNDEFINED_TEAM_UNIT_ID;
     }
-    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+    for (int i = 0; i < team_data->sharedmem_nodesize; i++) {
       team_data->sharedmem_tab[dart_unit_mapping[i]] = DART_TEAM_UNIT_ID(i);
     }
     free(sharedmem_ranks);
