@@ -16,6 +16,24 @@ TEST_F(LocalAllocatorTest, Constructor)
   }
 }
 
+TEST_F(LocalAllocatorTest, MemAlloc)
+{
+  using elem_t = int;
+
+  int elem_per_thread = 1 + dash::myid().id;
+
+  auto ptr1 = dash::memalloc<elem_t>(elem_per_thread);
+  DASH_LOG_DEBUG_VAR("LocalAllocatorTest.MemAlloc", ptr1);
+
+  auto ptr2 = dash::memalloc<elem_t>(elem_per_thread);
+  DASH_LOG_DEBUG_VAR("LocalAllocatorTest.MemAlloc", ptr2);
+
+  EXPECT_NE_U(ptr1, ptr2);
+
+  dash::memfree(ptr1);
+  dash::memfree(ptr2);
+}
+
 TEST_F(LocalAllocatorTest, MoveAssignment)
 {
   using GlobPtr_t = dash::GlobConstPtr<int>;
