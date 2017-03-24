@@ -19,14 +19,15 @@ namespace dash {
  *
  * \ingroup  DashReduceOperations
  */
-template< typename ValueType, dart_operation_t OP >
+template< typename ValueType, dart_operation_t OP, bool enabled = true >
 class ReduceOperation {
 
 public:
   typedef ValueType value_type;
 
 public:
-  constexpr dart_operation_t dart_operation() const {
+  constexpr typename std::enable_if< enabled, dart_operation_t >::type
+  dart_operation() const {
     return _op;
   }
 
@@ -43,11 +44,10 @@ private:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct min : public ReduceOperation<ValueType, DART_OP_MIN> {
-  typename std::enable_if<
-             std::is_arithmetic<ValueType>::value, ValueType
-           >::type
-  operator()(
+struct min : public ReduceOperation<
+                      ValueType, DART_OP_MIN,
+                      std::is_arithmetic<ValueType>::value > {
+  ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return (lhs < rhs) ? lhs : rhs;
@@ -62,11 +62,10 @@ struct min : public ReduceOperation<ValueType, DART_OP_MIN> {
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct max : public ReduceOperation<ValueType, DART_OP_MAX> {
-  typename std::enable_if<
-             std::is_arithmetic<ValueType>::value, ValueType
-           >::type
-  operator()(
+struct max : public ReduceOperation<
+                      ValueType, DART_OP_MAX,
+                      std::is_arithmetic<ValueType>::value > {
+  ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return (lhs > rhs) ? lhs : rhs;
@@ -81,11 +80,10 @@ struct max : public ReduceOperation<ValueType, DART_OP_MAX> {
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct plus : public ReduceOperation<ValueType, DART_OP_SUM> {
-  typename std::enable_if<
-             std::is_arithmetic<ValueType>::value, ValueType
-           >::type
-  operator()(
+struct plus : public ReduceOperation<
+                      ValueType, DART_OP_SUM,
+                      std::is_arithmetic<ValueType>::value > {
+  ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return lhs + rhs;
@@ -100,11 +98,10 @@ struct plus : public ReduceOperation<ValueType, DART_OP_SUM> {
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct multiply : public ReduceOperation<ValueType, DART_OP_PROD> {
-  typename std::enable_if<
-             std::is_arithmetic<ValueType>::value, ValueType
-           >::type
-  operator()(
+struct multiply : public ReduceOperation<
+                      ValueType, DART_OP_PROD,
+                      std::is_arithmetic<ValueType>::value > {
+  ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return lhs * rhs;
@@ -119,7 +116,8 @@ struct multiply : public ReduceOperation<ValueType, DART_OP_PROD> {
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct second : public ReduceOperation<ValueType, DART_OP_REPLACE> {
+struct second : public ReduceOperation<
+                         ValueType, DART_OP_REPLACE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
