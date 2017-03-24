@@ -151,8 +151,9 @@ dart_ret_t dart_memalloc(
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
-  if (gptr.segid != DART_SEGMENT_LOCAL) {
-    DART_LOG_ERROR("dart_memfree: invalid segment id: %d", gptr.segid);
+  if (gptr.segid != DART_SEGMENT_LOCAL || gptr.teamid != DART_TEAM_ALL) {
+    DART_LOG_ERROR("dart_memfree: invalid segment id:%d or team id:%d",
+                   gptr.segid, gptr.teamid);
     return DART_ERR_INVAL;
   }
 
