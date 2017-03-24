@@ -600,7 +600,7 @@ TEST_F(MatrixTest, ViewIteration)
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
-        auto value = (i * 1000) + (k * 1);
+        auto value = ((i + 1) * 1000) + (k * 1);
         matrix[i][k] = value;
       }
     }
@@ -1265,7 +1265,7 @@ TEST_F(MatrixTest, CopyRow)
   }
 }
 
-TEST_F(MatrixTest, ConstMatrixRefs)
+TEST_F(MatrixTest, ConstMatrix)
 {
   typedef dash::BlockPattern<2>            pattern_t;
   typedef typename pattern_t::index_type     index_t;
@@ -1280,9 +1280,9 @@ TEST_F(MatrixTest, ConstMatrixRefs)
       dash::SizeSpec<2>(nrows, ncols));
 
   if (dash::myid().id == 0) {
-    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().blockspec());
-    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().teamspec());
   }
   
@@ -1330,8 +1330,7 @@ template <
   class MatrixT,
   class ValueT = typename MatrixT::value_type >
 ValueT local_sum_rows(const int       nelts,
-                      const MatrixT & matIn,
-                      const int       myid)
+                      const MatrixT & matIn)
 {
   auto   lclRows   = matIn.pattern().local_extents()[0];
   ValueT local_sum = 0;
@@ -1349,7 +1348,24 @@ ValueT local_sum_rows(const int       nelts,
   return local_sum;
 }
 
-TEST_F(MatrixTest, ConstLocalMatrixRefs)
+template <
+  class MatrixT,
+  class ValueT = typename MatrixT::value_type >
+ValueT global_sum_rows(const int       nelts,
+                       const MatrixT & matIn)
+{
+  auto   glbRows    = matIn.pattern().extents()[0];
+  ValueT global_sum = 0;
+
+  for (int i = 0; i < glbRows; ++i) {
+    for (const auto & row_val : matIn.row(i)) {
+      global_sum += row_val;
+    }
+  }
+  return global_sum;
+}
+
+TEST_F(MatrixTest, ConstMatrixRefs)
 {
   using value_t = unsigned int;
   using uint    = unsigned int;
@@ -1369,13 +1385,23 @@ TEST_F(MatrixTest, ConstLocalMatrixRefs)
   }
   dash::barrier();
 
-  auto local_rows_sum = local_sum_rows(nelts, mat, myid);
+  auto local_rows_sum = local_sum_rows(nelts, mat);
   auto local_elem_sum = std::accumulate(
                           mat.lbegin(),
                           mat.lend(),
                           0, std::plus<value_t>());
 
   EXPECT_EQ_U(local_elem_sum, local_rows_sum);
+
+  dash::barrier();
+
+  auto global_rows_sum = global_sum_rows(nelts, mat);
+  auto global_elem_sum = std::accumulate(
+                           mat.begin(),
+                           mat.end(),
+                           0, std::plus<value_t>());
+
+  EXPECT_EQ_U(global_elem_sum, global_rows_sum);
 }
 
 TEST_F(MatrixTest, SubViewMatrix3Dim)
@@ -1416,18 +1442,18 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   }
   matrix.barrier();
 
-  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix[0].viewspec());
-  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix[0].extents());
-
   EXPECT_EQ_U(1,         matrix[0].extent(0));
   EXPECT_EQ_U(dim_1_ext, matrix[0].extent(1));
   EXPECT_EQ_U(dim_2_ext, matrix[0].extent(2));
 
   if (dash::myid() == 0) {
     dash::test::print_matrix("Matrix<3>", matrix, 3);
-  //dash::test::print_matrix("Matrix<2>", matrix[0], 3);
     for (int i = 0; i < matrix.extent(0); ++i) {
+      DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim",
+                         matrix[i].viewspec());
       for (int j = 0; j < matrix.extent(1); ++j) {
+        DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim",
+                           matrix[i][j].viewspec());
         std::vector<double> row(matrix[i][j].begin(),
                                 matrix[i][j].end());
         DASH_LOG_DEBUG("MatrixTest.SubViewMatrix3Dim",
