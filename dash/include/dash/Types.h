@@ -85,10 +85,26 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+#ifdef DOXYGEN
 
 /**
- * Type traits for mapping to DART data types.
+ * Type trait for mapping to DART data types.
  */
+template<typename Type>
+struct dart_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+/**
+ * Type trait for mapping to punned DART data type for reduce operations.
+ */
+template <typename T>
+struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+#else
+
 template<typename Type>
 struct dart_datatype {
   static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
@@ -102,6 +118,16 @@ struct dart_datatype<char> {
 template<>
 struct dart_datatype<unsigned char> {
   static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
+};
+
+template<>
+struct dart_datatype<short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
+};
+
+template<>
+struct dart_datatype<unsigned short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
 };
 
 template<>
@@ -133,6 +159,94 @@ template<>
 struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
+
+
+namespace internal {
+
+template <std::size_t Size>
+struct dart_pun_datatype_size
+: public std::integral_constant<dart_datatype_t, DART_TYPE_UNDEFINED>
+{ };
+
+template <>
+struct dart_pun_datatype_size<1>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_BYTE>
+{ };
+
+template <>
+struct dart_pun_datatype_size<2>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_SHORT>
+{ };
+
+template <>
+struct dart_pun_datatype_size<4>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_INT>
+{ };
+
+template <>
+struct dart_pun_datatype_size<8>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_LONGLONG>
+{ };
+
+} // namespace internal
+
+template <typename T>
+struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value
+                           = std::conditional<
+                               // only use type punning if T is not a DART
+                               // data type:
+                               dash::dart_datatype<T>::value
+                                 == DART_TYPE_UNDEFINED,
+                               internal::dart_pun_datatype_size<sizeof(T)>,
+                               dash::dart_datatype<T>
+                             >::type::value;
+};
+
+#endif // DOXYGEN
+
+/**
+ * Type trait indicating whether the specified type is eligible for
+ * elements of DASH containers.
+ */
+template <class T>
+struct is_container_compatible :
+  public std::integral_constant<bool,
+              std::is_standard_layout<T>::value
+#if ( !defined(__CRAYC) && !defined(__GNUC__) ) || \
+    ( defined(__GNUG__) && __GNUC__ >= 5 )
+              // The Cray compiler (as of CCE8.5.6) does not support
+              // std::is_trivially_copyable.
+           && std::is_trivially_copyable<T>::value
+#elif defined(__GNUG__) && __GNUC__ < 5
+           && std::has_trivial_copy_constructor<T>::value
+#endif
+         >
+{ };
+
+/**
+ * Type trait indicating whether a type can be used for global atomic
+ * operations.
+ */
+template <typename T>
+struct is_atomic_compatible
+: public std::integral_constant<
+           bool,
+              dash::is_container_compatible<T>::value
+           && sizeof(T) <= sizeof(std::size_t)
+         >
+{ };
+
+/**
+ * Type trait indicating whether a type can be used for arithmetic
+ * operations in global memory space.
+ */
+template <typename T>
+struct is_arithmetic
+: public std::integral_constant<
+           bool,
+           dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED >
+{ };
 
 template <typename T>
 inline dart_storage_t dart_storage(int nvalues) {
@@ -178,7 +292,7 @@ global_unit_t;
  *
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
-constexpr team_unit_t    UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr team_unit_t   UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 /**
  * Invalid global unit ID.

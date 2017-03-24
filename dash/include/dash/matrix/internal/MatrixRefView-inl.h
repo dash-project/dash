@@ -51,6 +51,7 @@ MatrixRefView<T, NumDim, PatternT>
 ::global_reference() const
 {
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference()", _coord);
+  DASH_LOG_TRACE_VAR("MatrixRefView.global_reference",   _viewspec);
   const auto & pattern       = _mat->pattern();
   const auto & memory_layout = pattern.memory_layout();
   // MatrixRef coordinate and viewspec to global linear index:
@@ -69,6 +70,7 @@ MatrixRefView<T, NumDim, PatternT>
 ::global_reference()
 {
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference()", _coord);
+  DASH_LOG_TRACE_VAR("MatrixRefView.global_reference",   _viewspec);
   const auto & pattern       = _mat->pattern();
   const auto & memory_layout = pattern.memory_layout();
   // MatrixRef coordinate and viewspec to global linear index:
