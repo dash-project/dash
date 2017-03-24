@@ -16,6 +16,19 @@ TEST_F(LocalAllocatorTest, Constructor)
   }
 }
 
+TEST_F(LocalAllocatorTest, MemAlloc)
+{
+  using elem_t    = int;
+  int elem_per_thread = 1;
+  auto ptr1 = dash::memalloc<elem_t>(elem_per_thread);
+  std::cout << ptr1 << std::endl;
+  auto ptr2 = dash::memalloc<elem_t>(elem_per_thread);
+  std::cout << ptr2 << std::endl;
+
+  ASSERT_NE(ptr1, ptr2);
+
+}
+
 TEST_F(LocalAllocatorTest, MoveAssignment)
 {
   using GlobPtr_t = dash::GlobConstPtr<int>;
