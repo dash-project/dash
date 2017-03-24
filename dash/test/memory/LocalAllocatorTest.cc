@@ -18,15 +18,20 @@ TEST_F(LocalAllocatorTest, Constructor)
 
 TEST_F(LocalAllocatorTest, MemAlloc)
 {
-  using elem_t    = int;
-  int elem_per_thread = 1;
+  using elem_t = int;
+
+  int elem_per_thread = 1 + dash::myid().id;
+
   auto ptr1 = dash::memalloc<elem_t>(elem_per_thread);
-  std::cout << ptr1 << std::endl;
+  DASH_LOG_DEBUG_VAR("LocalAllocatorTest.MemAlloc", ptr1);
+
   auto ptr2 = dash::memalloc<elem_t>(elem_per_thread);
-  std::cout << ptr2 << std::endl;
+  DASH_LOG_DEBUG_VAR("LocalAllocatorTest.MemAlloc", ptr2);
 
-  ASSERT_NE(ptr1, ptr2);
+  EXPECT_NE_U(ptr1, ptr2);
 
+  dash::memfree(ptr1);
+  dash::memfree(ptr2);
 }
 
 TEST_F(LocalAllocatorTest, MoveAssignment)

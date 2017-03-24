@@ -317,6 +317,31 @@ public:
    * \returns  A global reference to the element at the given global
    *           coordinates.
    */
+  template<typename ... Args>
+  const_reference at(
+    /// Global coordinates
+    Args... args) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  const_reference at(
+    /// Global coordinates
+    const ::std::array<index_type, NumDimensions> & coords) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
   reference at(
     /// Global coordinates
     const ::std::array<index_type, NumDimensions> & coords);
