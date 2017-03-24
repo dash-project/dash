@@ -11,7 +11,7 @@
 #include <dash/Onesided.h>
 
 #include <dash/allocator/LocalBucketIter.h>
-#include <dash/allocator/internal/GlobDynamicMemTypes.h>
+#include <dash/allocator/internal/GlobHeapMemTypes.h>
 
 #include <dash/internal/Logging.h>
 
@@ -29,7 +29,7 @@ namespace dash {
 template<
   typename ElementType,
   class    AllocatorType >
-class GlobDynamicMem;
+class GlobHeapMem;
 
 /**
  * Iterator on global buckets. Represents global pointer type.
@@ -367,7 +367,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline const globmem_type & globmem() const
@@ -376,7 +376,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline globmem_type & globmem()

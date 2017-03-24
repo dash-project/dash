@@ -27,7 +27,9 @@ namespace dash {
 #include <dash/View.h>
 #include <dash/Range.h>
 
-#include <dash/GlobMem.h>
+#include <dash/Memory.h>
+#include <dash/Allocator.h>
+
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
@@ -41,7 +43,6 @@ namespace dash {
 #include <dash/SharedCounter.h>
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
-#include <dash/Allocator.h>
 #include <dash/Atomic.h>
 #include <dash/Mutex.h>
 

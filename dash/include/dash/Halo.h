@@ -2,7 +2,7 @@
 #define DASH__HALO_H__
 
 #include <dash/Allocator.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -249,10 +249,10 @@ private:
             ReferenceType>
     self_t;
 
-  typedef GlobMem<
+  typedef GlobStaticMem<
             ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
-    GlobMem_t;
+            dash::allocator::SymmetricAllocator<ElementType> >
+    GlobStaticMem_t;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -699,23 +699,23 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobMem_t & globmem() const
+  inline const GlobStaticMem_t & globmem() const
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobMem_t & globmem()
+  inline GlobStaticMem_t & globmem()
   {
     return *_globmem;
   }
@@ -995,7 +995,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem_t                        * _globmem          = nullptr;
+  GlobStaticMem_t                        * _globmem          = nullptr;
   /// View specifying the block region. Iteration space contains the view
   /// elements within the boundary defined by the halo spec.
   const viewspec_type              * _viewspec         = nullptr;
@@ -1249,10 +1249,10 @@ private:
   typedef HaloBlock<ElementType, PatternType>
     self_t;
 
-  typedef GlobMem<
+  typedef GlobStaticMem<
             ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
-    GlobMem_t;
+            dash::allocator::SymmetricAllocator<ElementType> >
+    GlobStaticMem_t;
 
 public:
   typedef PatternType                                           pattern_type;
@@ -1275,7 +1275,7 @@ public:
    */
   HaloBlock(
     /// Global memory used to dereference iterated values.
-    GlobMem_t           * globmem,
+    GlobStaticMem_t           * globmem,
     // Pattern that created the encapsulated block.
     const pattern_type  & pattern,
     // View specifying the inner block region.
@@ -1323,7 +1323,7 @@ public:
   /**
    * Global memory accessor used to dereference iterated values.
    */
-  inline GlobMem_t & globmem()
+  inline GlobStaticMem_t & globmem()
   {
     return *_globmem;
   }
@@ -1548,7 +1548,7 @@ private:
 
 private:
   /// Global memory accessor used to dereference iterated values.
-  GlobMem_t               * _globmem        = nullptr;
+  GlobStaticMem_t               * _globmem        = nullptr;
 
   /// The pattern that created the encapsulated block.
   const pattern_type      * _pattern        = nullptr;

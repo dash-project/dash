@@ -9,7 +9,7 @@
 #include <dash/Distribution.h>
 #include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
-#include <dash/allocator/DynamicAllocator.h>
+#include <dash/allocator/EpochSynchronizedAllocator.h>
 #include <dash/util/TeamLocality.h>
 
 #include <mpi.h>
@@ -161,7 +161,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
   using elem_t = int;
-  using allocator_t = dash::allocator::DynamicAllocator<elem_t>;
+  using allocator_t = dash::allocator::EpochSynchronizedAllocator<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -219,8 +219,8 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
 
-  using elem_t = int;
-  using pointer_t = dash::GlobPtr<elem_t>;
+  using elem_t    = int;
+  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitMem<elem_t> >;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -250,7 +250,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
     dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
     dash::Array<pointer_t> arr;
     arr.allocate(team->size(),
-            dash::DistributionSpec<1>(), *team);
+                 dash::DistributionSpec<1>(), *team);
 
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier

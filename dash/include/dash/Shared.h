@@ -3,7 +3,7 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 
@@ -41,10 +41,10 @@ public:
   typedef GlobRef<Atomic<ElementType>>          atomic_ref_type;
 
 private:
-  typedef dash::GlobMem<
+  typedef dash::GlobStaticMem<
             value_type,
             dash::allocator::LocalAllocator<value_type> >
-          GlobMem_t;
+          GlobStaticMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
@@ -63,14 +63,14 @@ public:
     Team     &    team  = dash::Team::All())
     : _team(&team),
       _owner(owner),
-      _ptr(DART_GPTR_NULL)
+      _ptr(nullptr)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner)()", owner);
     // Shared value is only allocated at unit 0:
     if (_team->myid() == _owner) {
       DASH_LOG_DEBUG("Shared.Shared(team,owner)",
                      "allocating shared value in local memory");
-      _globmem = std::make_shared<GlobMem_t>(1, team);
+      _globmem = std::make_shared<GlobStaticMem_t>(1, team);
       _ptr     = _globmem->begin();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
@@ -187,7 +187,7 @@ public:
 private:
   dash::Team          *          _team    = nullptr;
   team_unit_t                     _owner;
-  std::shared_ptr<GlobMem_t>     _globmem = nullptr;
+  std::shared_ptr<GlobStaticMem_t>     _globmem = nullptr;
   pointer                        _ptr;
 
 };

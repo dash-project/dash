@@ -1,7 +1,7 @@
 #ifndef DASH__EXPERIMENTAL__HALO_H__
 #define DASH__EXPERIMENTAL__HALO_H__
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>
@@ -243,7 +243,7 @@ class HaloBlockIter
 {
 private:
   using self_t    = HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobStaticMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
   static const dim_t      NumDimensions = PatternT::ndim();
 //static const MemArrange Arrangement   = PatternT::memory_order();
@@ -269,7 +269,7 @@ public:
    * Constructor, creates a block boundary iterator on multiple boundary
    * regions.
    */
-  HaloBlockIter(GlobMem_t & globmem, const PatternT & pattern,
+  HaloBlockIter(GlobStaticMem_t & globmem, const PatternT & pattern,
       const viewspec_t & halo_region, index_type pos, index_type size)
   : _globmem(globmem),
     _pattern(pattern),
@@ -410,12 +410,12 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
    */
-  const GlobMem_t & globmem() const
+  const GlobStaticMem_t & globmem() const
   {
     return _globmem;
   }
@@ -562,7 +562,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem_t &                        _globmem;
+  GlobStaticMem_t &                        _globmem;
   /// Pattern that created the encapsulated block.
   const PatternT &                   _pattern;
 
@@ -611,7 +611,7 @@ class HaloBlockView
 {
 private:
   using self_t = HaloBlockView<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobStaticMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
   static const dim_t NumDimensions = PatternT::ndim();
 
@@ -624,7 +624,7 @@ public:
   using viewspec_t  = typename PatternT::viewspec_type;
 
 public:
-  HaloBlockView(GlobMem_t & globmem, const PatternT & pattern, const viewspec_t &  halo_region)
+  HaloBlockView(GlobStaticMem_t & globmem, const PatternT & pattern, const viewspec_t &  halo_region)
   : _halo_region(halo_region), _size(_halo_region.size()),
     _beg(globmem, pattern, halo_region,     0, _size),
     _end(globmem, pattern, halo_region, _size, _size)
@@ -687,7 +687,7 @@ class HaloBlock
 {
 private:
   using self_t = HaloBlock<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobStaticMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
 public:
   static constexpr dim_t NumDimensions = PatternT::ndim();
@@ -704,7 +704,7 @@ public:
    * Creates a new instance of HaloBlock that extends a given pattern block
    * by halo semantics.
    */
-  HaloBlock(GlobMem_t & globmem, const PatternT & pattern, const viewspec_t &  view,
+  HaloBlock(GlobStaticMem_t & globmem, const PatternT & pattern, const viewspec_t &  view,
     const halospec_t & halospec)
   : _globmem(globmem), _pattern(pattern), _view(view), _halospec(halospec)
   {
@@ -806,7 +806,7 @@ public:
     return _pattern;
   }
 
-  const GlobMem_t & globmem() const
+  const GlobStaticMem_t & globmem() const
   {
     return _globmem;
   }
@@ -922,7 +922,7 @@ private:
   }
 
 private:
-  GlobMem_t &               _globmem;
+  GlobStaticMem_t &               _globmem;
 
   const PatternT &          _pattern;
 

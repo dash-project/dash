@@ -18,7 +18,7 @@ TEST_F(LocalAllocatorTest, Constructor)
 
 TEST_F(LocalAllocatorTest, MoveAssignment)
 {
-  using GlobPtr_t = dash::GlobPtr<int, dash::Pattern<1>>;
+  using GlobPtr_t = dash::GlobConstPtr<int>;
   using Alloc_t   = dash::allocator::LocalAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t target_new;
@@ -50,7 +50,7 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
 
 TEST_F(LocalAllocatorTest, MoveCtor)
 {
-  using GlobPtr_t = dash::GlobPtr<int, dash::Pattern<1>>;
+  using GlobPtr_t = dash::GlobConstPtr<int>;
   using Alloc_t   = dash::allocator::LocalAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t target_new;
