@@ -575,24 +575,24 @@ TEST_F(MatrixTest, BlockViews)
 TEST_F(MatrixTest, ViewIteration)
 {
   typedef int                                   element_t;
-  typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
+  typedef dash::TilePattern<2, dash::ROW_MAJOR> pattern_t;
 
   int    myid        = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
-  size_t extent_cols = tilesize_x * num_units * 2;
-  size_t extent_rows = tilesize_y * num_units * 2;
+  size_t ncols       = tilesize_x * num_units * 2;
+  size_t nrows       = tilesize_y * num_units * 2;
 
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
-                   extent_cols,
-                   extent_rows),
+                   nrows,
+                   ncols),
                  dash::DistributionSpec<2>(
-                   dash::TILE(tilesize_x),
-                   dash::TILE(tilesize_y)),
+                   dash::TILE(tilesize_y),
+                   dash::TILE(tilesize_x)),
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
@@ -600,69 +600,92 @@ TEST_F(MatrixTest, ViewIteration)
     LOG_MESSAGE("Assigning matrix values");
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
-        auto value = (i * 1000) + (k * 1);
+        auto value = ((i + 1) * 1000) + (k * 1);
         matrix[i][k] = value;
       }
     }
   }
-  LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
-  LOG_MESSAGE("Team barrier passed");
 
-  // Partition matrix into 4 blocks (upper/lower left/right):
+  if (myid == 0) {
+    // Partition matrix into 4 blocks (upper/lower left/right):
 
-  // First create two views for left and right half:
-  auto left        = matrix.sub<0>(0,               extent_cols / 2);
-  auto right       = matrix.sub<0>(extent_cols / 2, extent_cols / 2);
+    // First create two views for left and right half:
+    auto left        = matrix.sub<1>(0,         ncols / 2);
+    auto right       = matrix.sub<1>(ncols / 2, ncols / 2);
 
-  // Refine views on left and right half into top/bottom:
-  auto topleft     = left.sub<1>(0,               extent_rows / 2);
-  auto bottomleft  = left.sub<1>(extent_rows / 2, extent_rows / 2);
-  auto topright    = right.sub<1>(0,               extent_rows / 2);
-  auto bottomright = right.sub<1>(extent_rows / 2, extent_rows / 2);
+    // Refine views on left and right half into top/bottom:
+    auto topleft     = left.sub<0> (0,         nrows / 2);
+    auto bottomleft  = left.sub<0> (nrows / 2, nrows / 2);
+    auto topright    = right.sub<0>(0,         nrows / 2);
+    auto bottomright = right.sub<0>(nrows / 2, nrows / 2);
 
-  dash__unused(topleft);
-  dash__unused(bottomleft);
-  dash__unused(topright);
+    dash__unused(topleft);
+    dash__unused(bottomleft);
+    dash__unused(topright);
 
-  auto g_br_x      = extent_cols / 2;
-  auto g_br_y      = extent_rows / 2;
+    auto g_br_x      = ncols / 2;
+    auto g_br_y      = nrows / 2;
 
-  // Initial plausibility check: Access same element by global- and view
-  // coordinates:
-  ASSERT_EQ_U((int)bottomright[0][0],
-              (int)matrix[g_br_x][g_br_y]);
+    // Initial plausibility check: Access same element by global- and view
+    // coordinates:
+    ASSERT_EQ_U((int)bottomright[0][0],
+                (int)matrix[g_br_y][g_br_x]);
 
-  int  phase              = 0;
-  // Extents of the view projection:
-  int  view_size_x        = extent_cols / 2;
-  // Global coordinates of first element in bottom right block:
-  int  block_base_coord_x = extent_cols / 2;
-  int  block_base_coord_y = extent_rows / 2;
-  auto b_it               = bottomright.begin();
-  auto b_end              = bottomright.end();
-  int  block_index_offset = b_it.pos();
-  LOG_MESSAGE("Testing block values");
-  for (; b_it != b_end; ++b_it, ++phase) {
-    int phase_x  = phase % view_size_x;
-    int phase_y  = phase / view_size_x;
-    int gcoord_x = block_base_coord_x + phase_x;
-    int gcoord_y = block_base_coord_y + phase_y;
-    ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
+    dash::test::print_matrix("Matrix<2>", matrix, 3);
 
-    using glob_it_t   = decltype(matrix.begin());
-    using glob_ptr_t  = typename glob_it_t::pointer;
-    using glob_cptr_t = dash::GlobConstPtr<int>;
+    for (int i = 0; i < bottomright.extent(0); ++i) {
+      DASH_LOG_DEBUG_VAR("MatrixTest.ViewIteration",
+                         bottomright[i].viewspec());
+      std::vector<int> row(bottomright[i].begin(),
+                           bottomright[i].end());
+      DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                     "bottomright[",i,"]", row);
+    }
 
-    // Apply view projection by converting to GlobPtr:
-    glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
-    // Compare with GlobPtr from global iterator without view projection:
-    glob_cptr_t glob_elem_gptr(matrix[gcoord_x][gcoord_y].dart_gptr());
-    int block_value = *block_elem_gptr;
-    int glob_value  = *glob_elem_gptr;
-    ASSERT_EQ_U(glob_value,
-                block_value);
-    ASSERT_EQ_U(glob_elem_gptr, block_elem_gptr);
+    int  phase              = 0;
+    // Extents of the view projection:
+    int  view_size_x        = ncols / 2;
+    // Global coordinates of first element in bottom right block:
+    int  block_base_coord_x = ncols / 2;
+    int  block_base_coord_y = nrows / 2;
+    auto b_it               = bottomright.begin();
+    auto b_end              = bottomright.end();
+    int  block_index_offset = b_it.pos();
+    for (; b_it != b_end; ++b_it, ++phase) {
+      int phase_x  = phase % view_size_x;
+      int phase_y  = phase / view_size_x;
+      int gcoord_x = block_base_coord_x + phase_x;
+      int gcoord_y = block_base_coord_y + phase_y;
+      ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
+
+      using glob_it_t   = decltype(matrix.begin());
+      using glob_ptr_t  = typename glob_it_t::pointer;
+      using glob_cptr_t = dash::GlobConstPtr<int>;
+
+      // Apply view projection by converting to GlobPtr:
+      glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
+      // Compare with GlobPtr from global iterator without view projection:
+      glob_cptr_t glob_elem_gptr(matrix[gcoord_y][gcoord_x].dart_gptr());
+      int block_value = *block_elem_gptr;
+      int glob_value  = *glob_elem_gptr;
+
+      if (glob_value != block_value) {
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "gcoords:(", gcoord_y, ",", gcoord_x, ")",
+                       "vcoords:(", phase_y,  ",", phase_x,  ")",
+                       "v.phase:",  phase);
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "it:",       dash::typestr(b_it),
+                       "it.pos:",   b_it.pos(),
+                       "it.gpos:",  b_it.gpos());
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "view.gptr:", block_elem_gptr,
+                       "glob.gptr:", glob_elem_gptr);
+      }
+      ASSERT_EQ_U(glob_value,     block_value);
+      ASSERT_EQ_U(glob_elem_gptr, block_elem_gptr);
+    }
   }
 }
 
@@ -676,7 +699,7 @@ TEST_F(MatrixTest, BlockCopy)
   size_t extent_cols = tilesize_x * num_units * 4;
   size_t extent_rows = tilesize_y * num_units * 4;
   typedef dash::TilePattern<2> pattern_t;
-  LOG_MESSAGE("Initialize matrix ...");
+
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t>
                matrix_a(
@@ -1265,7 +1288,7 @@ TEST_F(MatrixTest, CopyRow)
   }
 }
 
-TEST_F(MatrixTest, ConstMatrixRefs)
+TEST_F(MatrixTest, ConstMatrix)
 {
   typedef dash::BlockPattern<2>            pattern_t;
   typedef typename pattern_t::index_type     index_t;
@@ -1280,9 +1303,9 @@ TEST_F(MatrixTest, ConstMatrixRefs)
       dash::SizeSpec<2>(nrows, ncols));
 
   if (dash::myid().id == 0) {
-    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().blockspec());
-    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrixRefs",
+    DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().teamspec());
   }
   
@@ -1330,8 +1353,7 @@ template <
   class MatrixT,
   class ValueT = typename MatrixT::value_type >
 ValueT local_sum_rows(const int       nelts,
-                      const MatrixT & matIn,
-                      const int       myid)
+                      const MatrixT & matIn)
 {
   auto   lclRows   = matIn.pattern().local_extents()[0];
   ValueT local_sum = 0;
@@ -1349,7 +1371,24 @@ ValueT local_sum_rows(const int       nelts,
   return local_sum;
 }
 
-TEST_F(MatrixTest, ConstLocalMatrixRefs)
+template <
+  class MatrixT,
+  class ValueT = typename MatrixT::value_type >
+ValueT global_sum_rows(const int       nelts,
+                       const MatrixT & matIn)
+{
+  auto   glbRows    = matIn.pattern().extents()[0];
+  ValueT global_sum = 0;
+
+  for (int i = 0; i < glbRows; ++i) {
+    for (const auto & row_val : matIn.row(i)) {
+      global_sum += row_val;
+    }
+  }
+  return global_sum;
+}
+
+TEST_F(MatrixTest, ConstMatrixRefs)
 {
   using value_t = unsigned int;
   using uint    = unsigned int;
@@ -1369,12 +1408,95 @@ TEST_F(MatrixTest, ConstLocalMatrixRefs)
   }
   dash::barrier();
 
-  auto local_rows_sum = local_sum_rows(nelts, mat, myid);
+  auto local_rows_sum = local_sum_rows(nelts, mat);
   auto local_elem_sum = std::accumulate(
                           mat.lbegin(),
                           mat.lend(),
                           0, std::plus<value_t>());
 
   EXPECT_EQ_U(local_elem_sum, local_rows_sum);
+
+  dash::barrier();
+
+  auto global_rows_sum = global_sum_rows(nelts, mat);
+  auto global_elem_sum = std::accumulate(
+                           mat.begin(),
+                           mat.end(),
+                           0, std::plus<value_t>());
+
+  EXPECT_EQ_U(global_elem_sum, global_rows_sum);
+}
+
+TEST_F(MatrixTest, SubViewMatrix3Dim)
+{
+  int dim_0_ext  = dash::size();
+  int dim_1_ext  = 3;
+  int dim_2_ext  = 2;
+
+  int sub_0_size = dim_1_ext * dim_2_ext;
+
+  dash::NArray<double, 3> matrix(dim_0_ext, dim_1_ext, dim_2_ext);
+
+  EXPECT_EQ_U(3, matrix.ndim());
+  EXPECT_EQ_U(2, matrix[0].ndim());
+  EXPECT_EQ_U(1, matrix[0][0].ndim());
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix.extents());
+
+  EXPECT_EQ_U(dim_0_ext, matrix.extent(0));
+  EXPECT_EQ_U(dim_1_ext, matrix.extent(1));
+  EXPECT_EQ_U(dim_2_ext, matrix.extent(2));
+
+  dash::fill(matrix.begin(), matrix.end(), 0.0);
+  
+  if (dash::myid() == 0) {
+    for (int i = 0; i < matrix.extent(0); ++i) {
+      for (int j = 0; j < matrix.extent(1); ++j) {
+        for (int k = 0; k < matrix.extent(2); ++k) {
+          matrix[i][j][k] = 0.1   * i +
+                            0.01  * j +
+                            0.001 * k;
+        } } }
+  }
+  matrix.barrier();
+
+  for (double * lp = matrix.lbegin(); lp != matrix.lend(); ++lp) {
+    *lp += dash::myid().id;
+  }
+  matrix.barrier();
+
+  EXPECT_EQ_U(1,         matrix[0].extent(0));
+  EXPECT_EQ_U(dim_1_ext, matrix[0].extent(1));
+  EXPECT_EQ_U(dim_2_ext, matrix[0].extent(2));
+
+  if (dash::myid() == 0) {
+    dash::test::print_matrix("Matrix<3>", matrix, 3);
+    for (int i = 0; i < matrix.extent(0); ++i) {
+      DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim",
+                         matrix[i].viewspec());
+      for (int j = 0; j < matrix.extent(1); ++j) {
+        DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim",
+                           matrix[i][j].viewspec());
+        std::vector<double> row(matrix[i][j].begin(),
+                                matrix[i][j].end());
+        DASH_LOG_DEBUG("MatrixTest.SubViewMatrix3Dim",
+                       "matrix[",i,"][",j,"]", row);
+      }
+    }
+  }
+  matrix.barrier();
+
+  EXPECT_EQ_U(sub_0_size, matrix[0].size());
+  EXPECT_EQ_U(sub_0_size, std::distance(matrix[0].begin(),
+                                        matrix[0].end()));
+  
+  if (dash::myid().id == 0) {
+  int visited = 0;
+    for (auto it = matrix[0].begin(); it != matrix[0].end();
+         ++it, ++visited) {
+      double val = *it;
+    }
+    EXPECT_EQ_U(visited, sub_0_size);
+  }
 }
 
