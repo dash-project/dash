@@ -136,9 +136,9 @@ public:
   : _dart_gptr(gptr)
   , _mem_space(nullptr)
   {
-    // Do not bind temporary as destructor of memory space would be
-    // called on destruction of this pointer.
     // For a use case, see dash::memalloc in dash/memory/GlobUnitMem.h.
+    // No need to bind temporary, the pointer instance would be rather
+    // heavy-weight with memory space as a member.
 
     // TODO: save local size as _lsize = _mem_space.local_size() and
     //       restrict this pointer's iteration range to the owner of
