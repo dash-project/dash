@@ -1,8 +1,13 @@
 #ifndef DASH__ALGORITHM__OPERATION_H__
 #define DASH__ALGORITHM__OPERATION_H__
 
+#include <dash/Types.h>
+#include <dash/Meta.h>
+
 #include <dash/dart/if/dart_types.h>
+
 #include <functional>
+
 
 /**
  * \defgroup DashReduceOperations DASH Reduce Operations
@@ -13,15 +18,20 @@
 
 namespace dash {
 
+namespace internal {
+
 /**
  * Base type of all reduce operations, primarily acts as a container of a
  * \c dart_operation_t.
  *
  * \ingroup  DashReduceOperations
  */
-template< typename ValueType, dart_operation_t OP, bool enabled = true >
+template <
+  typename         ValueType,
+  dart_operation_t OP,
+  bool             enabled = true >
 class ReduceOperation {
-
+  static constexpr const dart_operation_t _op = OP;
 public:
   typedef ValueType value_type;
 
@@ -30,11 +40,9 @@ public:
   dart_operation() const {
     return _op;
   }
-
-private:
-  static constexpr const dart_operation_t _op = OP;
-
 };
+
+} // namespace internal
 
 /**
  * Reduce operands to their minimum value.
@@ -44,9 +52,9 @@ private:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct min : public ReduceOperation<
-                      ValueType, DART_OP_MIN,
-                      std::is_arithmetic<ValueType>::value > {
+struct min
+: public internal::ReduceOperation< ValueType, DART_OP_MIN,
+                                    dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -62,9 +70,9 @@ struct min : public ReduceOperation<
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct max : public ReduceOperation<
-                      ValueType, DART_OP_MAX,
-                      std::is_arithmetic<ValueType>::value > {
+struct max
+: public internal::ReduceOperation< ValueType, DART_OP_MAX,
+                                    dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -80,9 +88,9 @@ struct max : public ReduceOperation<
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct plus : public ReduceOperation<
-                      ValueType, DART_OP_SUM,
-                      std::is_arithmetic<ValueType>::value > {
+struct plus
+: public internal::ReduceOperation< ValueType, DART_OP_SUM,
+                                    dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -98,9 +106,9 @@ struct plus : public ReduceOperation<
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct multiply : public ReduceOperation<
-                      ValueType, DART_OP_PROD,
-                      std::is_arithmetic<ValueType>::value > {
+struct multiply
+: public internal::ReduceOperation< ValueType, DART_OP_PROD,
+                                    dash::is_arithmetic<ValueType>::value > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -116,12 +124,63 @@ struct multiply : public ReduceOperation<
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct second : public ReduceOperation<
-                         ValueType, DART_OP_REPLACE, true > {
+struct second
+: public internal::ReduceOperation< ValueType, DART_OP_REPLACE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
     return rhs;
+  }
+};
+
+/**
+ * Reduce operands with binary AND
+ *
+ * \see      dart_operation_t::DART_OP_BAND
+ *
+ * \ingroup  DashReduceOperations
+ */
+template< typename ValueType >
+struct bit_and
+: public internal::ReduceOperation< ValueType, DART_OP_BAND, true > {
+  ValueType operator()(
+    const ValueType & lhs,
+    const ValueType & rhs) const {
+    return lhs & rhs;
+  }
+};
+
+/**
+ * Reduce operands with binary OR
+ *
+ * \see      dart_operation_t::DART_OP_BOR
+ *
+ * \ingroup  DashReduceOperations
+ */
+template< typename ValueType >
+struct bit_or
+: public internal::ReduceOperation< ValueType, DART_OP_BOR, true > {
+  ValueType operator()(
+    const ValueType & lhs,
+    const ValueType & rhs) const {
+    return lhs | rhs;
+  }
+};
+
+/**
+ * Reduce operands with binary XOR
+ *
+ * \see      dart_operation_t::DART_OP_BXOR
+ *
+ * \ingroup  DashReduceOperations
+ */
+template< typename ValueType >
+struct bit_xor
+: public internal::ReduceOperation< ValueType, DART_OP_BXOR, true > {
+  ValueType operator()(
+    const ValueType & lhs,
+    const ValueType & rhs) const {
+    return lhs ^ rhs;
   }
 };
 

@@ -252,7 +252,7 @@ private:
   typedef GlobStaticMem<
             ElementType,
             dash::allocator::SymmetricAllocator<ElementType> >
-    GlobStaticMem_t;
+    GlobMem_t;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -704,7 +704,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobStaticMem_t & globmem() const
+  inline const GlobMem_t & globmem() const
   {
     return *_globmem;
   }
@@ -715,7 +715,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobStaticMem_t & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }
@@ -995,7 +995,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobStaticMem_t                        * _globmem          = nullptr;
+  GlobMem_t                        * _globmem          = nullptr;
   /// View specifying the block region. Iteration space contains the view
   /// elements within the boundary defined by the halo spec.
   const viewspec_type              * _viewspec         = nullptr;
@@ -1252,7 +1252,7 @@ private:
   typedef GlobStaticMem<
             ElementType,
             dash::allocator::SymmetricAllocator<ElementType> >
-    GlobStaticMem_t;
+    GlobMem_t;
 
 public:
   typedef PatternType                                           pattern_type;
@@ -1275,7 +1275,7 @@ public:
    */
   HaloBlock(
     /// Global memory used to dereference iterated values.
-    GlobStaticMem_t           * globmem,
+    GlobMem_t           * globmem,
     // Pattern that created the encapsulated block.
     const pattern_type  & pattern,
     // View specifying the inner block region.
@@ -1323,7 +1323,7 @@ public:
   /**
    * Global memory accessor used to dereference iterated values.
    */
-  inline GlobStaticMem_t & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }
@@ -1548,7 +1548,7 @@ private:
 
 private:
   /// Global memory accessor used to dereference iterated values.
-  GlobStaticMem_t               * _globmem        = nullptr;
+  GlobMem_t               * _globmem        = nullptr;
 
   /// The pattern that created the encapsulated block.
   const pattern_type      * _pattern        = nullptr;

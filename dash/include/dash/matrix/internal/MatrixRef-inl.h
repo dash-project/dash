@@ -12,26 +12,40 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::MatrixRef(
   const MatrixRef<T_, NumDim, CUR+1, PatternT> & previous,
   index_type coord)
-  : _refview(previous._refview)
+: _refview(previous._refview)
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", CUR);
-  _refview._coord[_refview._dim] = coord;
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)()", CUR);
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", coord);
+  dim_t target_dim = NumDim-(CUR+1);
+  // Coordinate in active dimension is 0 as it is relative to the
+  // MatrixRefView's viewspec which contains the coord as view offset:
+  _refview._coord[_refview._dim] = 0;
   _refview._dim++;
-  _refview._viewspec.set_rank(_refview._dim);
-  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _refview._dim);
-  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _refview._coord);
+  _refview._viewspec.resize_dim(
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + coord,
+                           1);
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev) >", _refview);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <class T_>
 MatrixRef<T, NumDim, CUR, PatternT>
-::operator MatrixRef<T, NumDim, CUR-1, PatternT> && ()
+::MatrixRef(
+  const MatrixRef<T_, NumDim, CUR, PatternT> & other)
+: _refview(other._refview)
+{ }
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+MatrixRef<T, NumDim, CUR, PatternT>
+::operator MatrixRef<T, NumDim, CUR-1, PatternT> ()
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.() &&", CUR);
+  DASH_LOG_TRACE_VAR("MatrixRef.MatrixRef<NDim,NVDim-1>()", CUR);
   MatrixRef<T, NumDim, CUR-1, PatternT> ref =
     MatrixRef<T, NumDim, CUR-1, PatternT>();
   ref._refview = _refview;
-  DASH_LOG_TRACE("MatrixRef.&&", "move");
-  return ::std::move(ref);
+  DASH_LOG_TRACE("MatrixRef.MatrixRef<NDim,NVDim-1> >");
+  return ref;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -314,6 +328,18 @@ MatrixRef<T, NumDim, CUR, PatternT>
  
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
+MatrixRef<const T, NumDim, NumDim-1, PatternT>
+MatrixRef<T, NumDim, CUR, PatternT>
+::sub(
+  size_type offset) const
+{
+  return const_cast<
+           MatrixRef<T, NumDim, CUR, PatternT> *
+         >(this)->sub<SubDimension>(offset);
+}
+ 
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
@@ -342,7 +368,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
   // sub-dimension:
   ref._refview._viewspec.resize_dim(
                            target_dim,
-                           _refview._viewspec.offset(target_dim) + offset, 1);
+                           _refview._viewspec.offset(target_dim) + offset,
+                           1);
   ref._refview._viewspec.set_rank(NumDim-1);
 
   ref._refview._mat = _refview._mat;

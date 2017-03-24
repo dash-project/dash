@@ -233,17 +233,17 @@ public:
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
-    value_type acc;
+    value_type res;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
-                       reinterpret_cast<void * const>(&acc),
+                       reinterpret_cast<void * const>(&res),
                        dash::dart_punned_datatype<T>::value,
                        binary_op.dart_operation());
     dart_flush_all(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
-    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", acc);
-    return acc;
+    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", res);
+    return res;
   }
 
   /**

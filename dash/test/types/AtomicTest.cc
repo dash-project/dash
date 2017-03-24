@@ -17,6 +17,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <numeric>
 #include <thread>
@@ -121,6 +122,20 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
+template <>
+std::ostream & operator<<(
+  std::ostream                   & os,
+  const container<unsigned char> & ct)
+{
+  std::ostringstream ss;
+  ss << dash::typestr(ct) << "("
+     << "0x" << std::hex << std::setw(2) << std::setfill('0')
+             << static_cast<int>(ct[0]) << ","
+     << "0x" << std::hex << std::setw(2) << std::setfill('0')
+             << static_cast<int>(ct[1]) << ")";
+  return operator<<(os, ss.str());
+}
+
 TEST_F(AtomicTest, PunnedType)
 {
   typedef struct container<short> value_t;
@@ -194,6 +209,39 @@ TEST_F(AtomicTest, PunnedType)
   dash::barrier();
 }
 
+TEST_F(AtomicTest, PunnedTypeFetchOp)
+{
+  typedef struct container<unsigned char> value_t;
+
+  value_t           val_init = { 0xa0, 0xa0 }; // 1010.0000 1010.0000
+  value_t           val_op   = { 0xf0, 0x0f }; // 1111.0000 0000.1111
+  value_t           val_xor  = { 0x50, 0xaf }; // 0101.0000 1010.1111
+  value_t           val_zero = { 0x00, 0x00 };
+  dash::team_unit_t owner(dash::size() - 1);
+
+  dash::Shared< dash::Atomic<value_t> > shared(owner);
+
+  if (dash::myid() == 0) {
+    shared.set(val_init);
+  }
+  shared.barrier();
+
+  DASH_LOG_DEBUG_VAR("AtomicTest.PunnedTypeFetchOp", shared.get().load());
+
+  // Test in several repetitions:
+  for (short rep = 0; rep < 50; ++rep) {
+    value_t prev_val = shared.get().fetch_op(
+                                      dash::bit_xor<value_t>(),
+                                      val_op);
+    DASH_LOG_DEBUG_VAR("AtomicTest.PunnedTypeFetchOp", val_op);
+    DASH_LOG_DEBUG_VAR("AtomicTest.PunnedTypeFetchOp", prev_val);
+    shared.barrier();
+
+    EXPECT_TRUE_U(prev_val == val_zero ||
+                  prev_val == val_xor  ||
+                  prev_val == val_init);
+  }
+}
 
 TEST_F(AtomicTest, ArrayElements)
 {

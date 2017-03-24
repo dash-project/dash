@@ -204,6 +204,48 @@ struct dart_punned_datatype {
 
 #endif // DOXYGEN
 
+/**
+ * Type trait indicating whether the specified type is eligible for
+ * elements of DASH containers.
+ */
+template <class T>
+struct is_container_compatible :
+  public std::integral_constant<bool,
+              std::is_standard_layout<T>::value
+#if ( !defined(__CRAYC) && !defined(__GNUC__) ) || \
+    ( defined(__GNUG__) && __GNUC__ >= 5 )
+              // The Cray compiler (as of CCE8.5.6) does not support
+              // std::is_trivially_copyable.
+           && std::is_trivially_copyable<T>::value
+#elif defined(__GNUG__) && __GNUC__ < 5
+           && std::has_trivial_copy_constructor<T>::value
+#endif
+         >
+{ };
+
+/**
+ * Type trait indicating whether a type can be used for global atomic
+ * operations.
+ */
+template <typename T>
+struct is_atomic_compatible
+: public std::integral_constant<
+           bool,
+              dash::is_container_compatible<T>::value
+           && sizeof(T) <= sizeof(std::size_t)
+         >
+{ };
+
+/**
+ * Type trait indicating whether a type can be used for arithmetic
+ * operations in global memory space.
+ */
+template <typename T>
+struct is_arithmetic
+: public std::integral_constant<
+           bool,
+           dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED >
+{ };
 
 template <typename T>
 inline dart_storage_t dart_storage(int nvalues) {
@@ -249,7 +291,7 @@ global_unit_t;
  *
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
-constexpr team_unit_t    UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr team_unit_t   UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 /**
  * Invalid global unit ID.
