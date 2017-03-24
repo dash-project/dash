@@ -232,10 +232,9 @@ dart_adapt_teamlist_alloc(dart_team_t teamid)
   int slot = dart_adapt_teamlist_hash(teamid);
   dart_team_data_t *res = calloc(1, sizeof(dart_team_data_t));
   res->teamid = teamid;
-  res->dart_memid = 1;
-  res->dart_registermemid = -1;
   res->next = dart_team_data[slot];
   dart_team_data[slot] = res;
+  dart_segment_init(&(res->segdata), teamid);
   return DART_OK;
 }
 
@@ -285,11 +284,11 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
     MPI_Comm_group(sharedmem_comm, &sharedmem_group);
     MPI_Comm_group(DART_COMM_WORLD, &group_all);
 
-    int * dart_unit_mapping = malloc(
+    int * dart_unit_mapping  = malloc(
         team_data->sharedmem_nodesize * sizeof(int));
-    int * sharedmem_ranks = malloc(
+    int * sharedmem_ranks    = malloc(
         team_data->sharedmem_nodesize * sizeof(int));
-    team_data->sharedmem_tab = malloc(size * sizeof(int));
+    team_data->sharedmem_tab = malloc(size * sizeof(dart_team_unit_t));
 
     for (i = 0; i < team_data->sharedmem_nodesize; i++) {
       sharedmem_ranks[i] = i;

@@ -1,7 +1,7 @@
 #ifndef DASH_DASH_INCLUDE_DASH_PAIR_H_
 #define DASH_DASH_INCLUDE_DASH_PAIR_H_
 
-#include <dash/internal/TypeInfo.h>
+#include <dash/Meta.h>
 
 #include <type_traits>
 #include <iostream>
@@ -215,7 +215,7 @@ namespace dash {
     const Pair<T1, T2> & pair)
   {
     std::ostringstream ss;
-    ss << dash::internal::typestr(pair)
+    ss << dash::typestr(pair)
        << " { " << pair.first
        << " , " << pair.second
        << " } ";

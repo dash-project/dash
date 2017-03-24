@@ -299,7 +299,7 @@ void perform_test(
     std::array<extent_t, 2> team_extents {{ params.units_y, params.units_x }};
     team_spec.resize(team_extents);
   }
-#if 1
+#if 0
   auto pattern   = dash::make_pattern<
                      dash::summa_pattern_partitioning_constraints,
                      dash::summa_pattern_mapping_constraints,
@@ -335,7 +335,7 @@ void perform_test(
 
   if (myid == 0) {
     if (iteration == 0) {
-      cout << "-- Pattern: " << pattern << endl
+      cout << "-- Pattern: " << dash::typestr(pattern) << endl
            << "--" << endl;
       // Print data set column headers:
       cout << std::right

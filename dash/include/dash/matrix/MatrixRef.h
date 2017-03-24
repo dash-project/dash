@@ -9,7 +9,8 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
+
+#include <dash/view/Sub.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
@@ -203,15 +204,35 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim != 0), 
+    MatrixRef<ElementT, NumDimensions, __NumViewDim, PatternT>>::type
     operator[](index_type n);
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr MatrixRef<const ElementT, NumDimensions, NumViewDim-1, PatternT>
-    operator[](index_type n) const;
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim != 0), 
+    MatrixRef<const ElementT, NumDimensions, __NumViewDim, PatternT>>::type
+  constexpr operator[](index_type n) const;
+    
+  /**
+   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * in global element range for last dimension.
+   */
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim == 0), reference>::type
+  operator[](index_type n);
+  
+  /**
+   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * in global element range for last dimension.
+   */
+  template<dim_t __NumViewDim = NumViewDim-1>
+  typename std::enable_if<(__NumViewDim == 0), const_reference>::type
+  operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
@@ -312,105 +333,6 @@ public:
   template <int level>
   dash::HView<Matrix<ElementT, NumDimensions, Index_t, PatternT>, level>
   inline hview();
-
- private:
-  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
-};
-
-/**
- * A view on a referenced \c Matrix object, such as a dimensional
- * projection returned by \c Matrix::sub.
- * Partial Specialization for value deferencing.
- *
- * \ingroup Matrix
- */
-template <
-  typename ElementT,
-  dim_t NumDimensions,
-  class PatternT >
-class MatrixRef< ElementT, NumDimensions, 0, PatternT >
-{
- private:
-   typedef MatrixRef<ElementT, NumDimensions, 0, PatternT> self_t;
-
- public:
-  template<
-    typename T_,
-    dim_t NumDimensions_,
-    typename IndexT_,
-    class PatternT_ >
-  friend class Matrix;
-  template<
-    typename T_,
-    dim_t NumDimensions1,
-    dim_t NumDimensions2,
-    class PatternT_ >
-  friend class MatrixRef;
-
- public:
-  typedef PatternT                       pattern_type;
-  typedef typename PatternT::index_type  index_type;
-  typedef ElementT                       value_type;
-
-  /**
-   * Default constructor.
-   */
-  MatrixRef<ElementT, NumDimensions, 0, PatternT>()
-  {
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>()", NumDimensions);
-  }
-
-  /**
-   * Copy constructor.
-   */
-  MatrixRef<ElementT, NumDimensions, 0, PatternT>(
-    const self_t & other)
-  : _refview(other._refview) {
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>(other)", NumDimensions);
-  }
-
-  MatrixRef<ElementT, NumDimensions, 0, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, 1, PatternT> & previous,
-    index_type coord);
-
-  /**
-   * TODO[TF] The following two functions don't seem to be implemented.
-   */
-  constexpr GlobRef<const ElementT> local_at(
-    team_unit_t unit,
-    index_type   elem) const;
-
-  inline GlobRef<ElementT> local_at(
-    team_unit_t unit,
-    index_type   elem);
-
-  constexpr bool is_local() const;
-
-  constexpr ViewSpec<NumDimensions, index_type> &
-  viewspec() const {
-    return _refview._viewspec;
-  }
-
-  inline ViewSpec<NumDimensions, index_type> &
-  viewspec() {
-    return _refview._viewspec;
-  }
-
-  constexpr operator ElementT() const;
-  constexpr operator GlobPtr<ElementT, PatternT>() const;
-
-  /**
-   * Assignment operator.
-   */
-  inline ElementT operator= (const ElementT & value);
-  inline ElementT operator+=(const ElementT & value);
-  inline ElementT operator+ (const ElementT & value);
-  inline ElementT operator-=(const ElementT & value);
-  inline ElementT operator- (const ElementT & value);
-  inline ElementT operator*=(const ElementT & value);
-  inline ElementT operator* (const ElementT & value);
-  inline ElementT operator/=(const ElementT & value);
-  inline ElementT operator/ (const ElementT & value);
 
  private:
   MatrixRefView<ElementT, NumDimensions, PatternT> _refview;

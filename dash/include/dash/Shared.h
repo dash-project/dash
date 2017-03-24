@@ -3,7 +3,7 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 
@@ -41,7 +41,7 @@ public:
   typedef GlobRef<Atomic<ElementType>>          atomic_ref_type;
 
 private:
-  typedef dash::GlobMem<
+  typedef dash::GlobStaticMem<
             value_type,
             dash::allocator::LocalAllocator<value_type> >
           GlobMem_t;
@@ -63,7 +63,7 @@ public:
     Team     &    team  = dash::Team::All())
     : _team(&team),
       _owner(owner),
-      _ptr(DART_GPTR_NULL)
+      _ptr(nullptr)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner)()", owner);
     // Shared value is only allocated at unit 0:
@@ -139,9 +139,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.cget", _owner);
     DASH_LOG_DEBUG_VAR("Shared.cget", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    const_reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.cget >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**
@@ -153,9 +151,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.get", _owner);
     DASH_LOG_DEBUG_VAR("Shared.get", _ptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
-    reference ref = *_ptr;
-    DASH_LOG_DEBUG_VAR("Shared.get >", static_cast<ElementType>(ref));
-    return ref;
+    return *_ptr;
   }
 
   /**

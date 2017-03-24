@@ -6,7 +6,7 @@
 
 #include <dash/internal/Logging.h>
 
-#include <dash/allocator/internal/GlobDynamicMemTypes.h>
+#include <dash/allocator/internal/GlobHeapMemTypes.h>
 
 #include <type_traits>
 #include <list>

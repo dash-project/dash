@@ -639,7 +639,7 @@ dash::Future<ValueType *> copy_async(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  auto & team = in_first.team();
+  const auto & team = in_first.team();
   dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
@@ -850,7 +850,7 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  auto & team = in_first.team();
+  const auto & team = in_first.team();
   dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
@@ -860,8 +860,8 @@ ValueType * copy(
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 
   ValueType * dest_first = out_first;
-  // Return value, initialize with begin of output range, indicating no values
-  // have been copied:
+  // Return value, initialize with begin of output range, indicating no
+  // values have been copied:
   ValueType * out_last   = out_first;
   // Check if part of the input range is local:
   DASH_LOG_TRACE_VAR("dash::copy", in_first.dart_gptr());
@@ -873,9 +873,9 @@ ValueType * copy(
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
 
-  // Instead of testing in_first.local() and in_last.local(), this test for a
-  // local-only range only requires one call to in_first.local() which increases
-  // throughput by ~10% for local ranges.
+  // Instead of testing in_first.local() and in_last.local(), this test for
+  // a local-only range only requires one call to in_first.local() which 
+  // increases throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy", "entire input range is local");

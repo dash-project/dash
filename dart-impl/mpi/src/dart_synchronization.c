@@ -15,13 +15,24 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/mpi/dart_synchronization_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <malloc.h>
+
+
+struct dart_lock_struct
+{
+  /** Pointer to the tail of lock queue. Stored in unit 0 by default. */
+  dart_gptr_t gptr_tail;
+  /** Pointer to next waiting unit, realizes distributed list across team. */
+  dart_gptr_t gptr_list;
+  dart_team_t teamid;
+  /** Whether certain unit has acquired the lock. */
+  int32_t is_acquired;
+};
 
 dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
@@ -66,10 +77,10 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	*addr = -1;
 	MPI_Win_sync (win);
 
-	DART_GPTR_COPY((*lock) -> gptr_tail, gptr_tail);
-	DART_GPTR_COPY((*lock) -> gptr_list, gptr_list);
-	(*lock) -> teamid = teamid;
-	(*lock) -> is_acquired = 0;
+  (*lock)->gptr_tail   = gptr_tail;
+  (*lock)->gptr_list   = gptr_list;
+  (*lock)->teamid      = teamid;
+  (*lock)->is_acquired = 0;
 
 	DART_LOG_DEBUG ("INIT - done");
 
@@ -78,8 +89,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 
 dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
-	dart_team_unit_t unitid;
-	dart_team_myid(lock->teamid, &unitid);
+  dart_team_unit_t unitid;
+  dart_team_myid(lock->teamid, &unitid);
 
 	if (lock->is_acquired == 1)
 	{
@@ -87,15 +98,12 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 		return DART_OK;
 	}
 
-	dart_gptr_t gptr_tail;
-	dart_gptr_t gptr_list;
-	int32_t predecessor[1], result[1];
 
-	MPI_Win win;
-	MPI_Status status;
-
-	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
-	DART_GPTR_COPY(gptr_list, lock -> gptr_list);
+  int32_t predecessor[1], result[1];
+  MPI_Win win;
+  MPI_Status status;
+  dart_gptr_t gptr_tail = lock->gptr_tail;
+  dart_gptr_t gptr_list = lock->gptr_list;
 
   uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
   int16_t seg_id       = gptr_list.segid;
@@ -148,14 +156,13 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 		printf ("Warning: TRYLOCK - %2d has acquired the lock already\n", unitid.id);
 		return DART_OK;
 	}
-	dart_gptr_t gptr_tail;
 
 	int32_t result[1];
 	int32_t compare[1] = {-1};
 
-	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
-	dart_unit_t tail = gptr_tail.unitid;
-	uint64_t offset  = gptr_tail.addr_or_offs.offset;
+	dart_gptr_t gptr_tail = lock->gptr_tail;
+	dart_unit_t tail      = gptr_tail.unitid;
+	uint64_t offset       = gptr_tail.addr_or_offs.offset;
 
 	/* Atomicity: Check if the lock is available and claim it if it is. */
   MPI_Compare_and_swap (&unitid.id, compare, result, MPI_INT32_T, tail, offset, dart_win_local_alloc);
@@ -185,16 +192,15 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
     printf("Warning: RELEASE - %2d has not yet required the lock\n", unitid.id);
     return DART_OK;
   }
-  dart_gptr_t gptr_tail;
-  dart_gptr_t gptr_list;
+
   MPI_Win win;
   int32_t * addr2, next, result[1];
 
   MPI_Aint disp_list;
   int32_t origin[1] = { -1};
 
-  DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
-  DART_GPTR_COPY(gptr_list, lock -> gptr_list);
+  dart_gptr_t gptr_tail = lock->gptr_tail;
+  dart_gptr_t gptr_list = lock->gptr_list;
 
   uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
   int16_t  seg_id      = gptr_list.segid;
@@ -250,11 +256,9 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 
 dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 {
-	dart_gptr_t gptr_tail;
-	dart_gptr_t gptr_list;
+	dart_gptr_t gptr_tail = (*lock)->gptr_tail;
+	dart_gptr_t gptr_list = (*lock)->gptr_list;
 	dart_team_unit_t unitid;
-	DART_GPTR_COPY(gptr_tail, (*lock) -> gptr_tail);
-	DART_GPTR_COPY(gptr_list, (*lock) -> gptr_list);
 
 	dart_team_myid(teamid, &unitid);
 	if (unitid.id == 0)

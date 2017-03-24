@@ -42,8 +42,8 @@ struct dart_buddy  *  dart_localpool;
 static inline int
 num_level(size_t size)
 {
-  int level = 1;
-  while ((1 << level) < size) {
+  unsigned int level  = 1;
+  while ((((unsigned int) 1) << level) < size) {
     level++;
   }
   return level;
@@ -58,19 +58,24 @@ struct dart_buddy *
 dart_buddy_new(size_t size)
 {
   DART_ASSERT(is_pow_of_2(size));
-  int level = num_level(size) - DART_MEM_ALIGN_BITS;
-	int lsize = 1 << level;
+  unsigned int level  = num_level(size) - DART_MEM_ALIGN_BITS;
+  // do not shift more than 31 bit
+  if(level > sizeof(unsigned int) * 8){
+    DART_LOG_ERROR("Level of buddy allocator invalid");
+    return NULL;
+  }
+  unsigned int lsize  = (((unsigned int) 1) << level);
 	struct dart_buddy * self =
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (lsize * 2 - 2));
 	self->level = level;
 	memset(self->tree, NODE_UNUSED, lsize * 2 - 1);
-	dart_mutex_init(&self->mutex);
+	dart__base__mutex_init(&self->mutex);
 	return self;
 }
 
 void
 dart_buddy_delete(struct dart_buddy * self) {
-  dart_mutex_destroy(&self->mutex);
+  dart__base__mutex_destroy(&self->mutex);
 	free(self);
 }
 
@@ -130,14 +135,14 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 	int index = 0;
 	int level = 0;
 
-	dart_mutex_lock(&self->mutex);
+	dart__base__mutex_lock(&self->mutex);
 
 	while (index >= 0) {
 		if (size == length) {
 			if (self->tree[index] == NODE_UNUSED) {
 				self->tree[index] = NODE_USED;
 				_mark_parent(self, index);
-			  dart_mutex_unlock(&self->mutex);
+			  dart__base__mutex_unlock(&self->mutex);
 				return _index_offset(index, level, self->level);
 			}
 		}
@@ -168,9 +173,10 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 			level--;
 			length *= 2;
 			index = (index + 1) / 2 - 1;
-			if (index < 0)
-			  dart_mutex_unlock(&self->mutex);
-				return -1;
+			if (index < 0) {
+			  dart__base__mutex_unlock(&self->mutex);
+			  return -1;
+			}
 			if (index & 1) {
 				++index;
 				break;
@@ -178,7 +184,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 		}
 	}
 
-  dart_mutex_unlock(&self->mutex);
+  dart__base__mutex_unlock(&self->mutex);
 	return -1;
 }
 
@@ -211,21 +217,21 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 		return -1;
 	}
 
-  dart_mutex_lock(&self->mutex);
+  dart__base__mutex_lock(&self->mutex);
 	for (;;) {
 		switch (self->tree[index]) {
 		case NODE_USED:
 			if (offset != left){
 				assert (offset == left);
-			  dart_mutex_unlock(&self->mutex);
+			  dart__base__mutex_unlock(&self->mutex);
 				return -1;
 			}
 			_combine(self, index);
-		  dart_mutex_unlock(&self->mutex);
+		  dart__base__mutex_unlock(&self->mutex);
 			return 0;
 		case NODE_UNUSED:
 			assert (0);
-		  dart_mutex_unlock(&self->mutex);
+		  dart__base__mutex_unlock(&self->mutex);
 			return -1;
 		default:
 			length /= 2;
@@ -240,7 +246,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 		}
 	}
 
-  dart_mutex_unlock(&self->mutex);
+  dart__base__mutex_unlock(&self->mutex);
   // TODO: is this ever reached?
 	return -1;
 }

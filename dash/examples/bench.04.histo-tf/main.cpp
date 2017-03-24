@@ -84,6 +84,8 @@ int main(int argc, char **argv)
   // result histograms, one per unit
   dash::Array<int> key_histo(MAX_KEY * num_units, dash::BLOCKED);
 
+  // {{{
+  //
   // PROCEDURE STEP 1 ----------------------------------------------------
   // "In a scalar sequential manner and using the key generation algorithm
   //  described above, generate the sequence of N keys."
@@ -121,6 +123,8 @@ int main(int argc, char **argv)
          << std::setw(18) << MAX_KEY
          << endl;
   }
+
+  // }}}
 
   // Wait for initialization of input values:
   dash::barrier();

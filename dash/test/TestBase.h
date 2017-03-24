@@ -6,9 +6,13 @@
 #include <gtest/gtest.h>
 
 #include <dash/internal/Config.h>
-#include <dash/Init.h>
-#include <dash/Team.h>
 #include <dash/internal/Logging.h>
+#include <dash/internal/StreamConversion.h>
+
+#include <dash/Types.h>
+#include <dash/Init.h>
+#include <dash/view/IndexSet.h>
+#include <dash/Team.h>
 
 #include "TestGlobals.h"
 #include "TestPrinter.h"
@@ -50,7 +54,10 @@ namespace internal {
 #pragma GCC diagnostic ignored "-Wconversion-null"
 #endif // defined(__GNUC__)
 template<typename T, typename S>
-typename std::enable_if<!std::is_floating_point<T>::value, ::testing::AssertionResult>::type
+typename std::enable_if<
+           !std::is_floating_point<T>::value,
+           ::testing::AssertionResult
+         >::type
 assert_float_eq(
   const char *exp_e,
   const char *exp_a,
@@ -91,29 +98,42 @@ struct float_type_helper<double, S> {
 };
 
 template<typename S>
+struct float_type_helper<float, S> {
+  using type = float;
+};
+
+template<typename S>
 struct float_type_helper<S, double> {
   using type = double;
+};
+template<typename S>
+struct float_type_helper<S, float> {
+  using type = float;
 };
 
 template<>
 struct float_type_helper<double, double> {
   using type = double;
 };
+template<>
+struct float_type_helper<float, float> {
+  using type = float;
+};
 
-#define ASSERT_EQ_U(e,a)                                         \
-  do {                                                           \
-    if (std::is_floating_point<decltype(e)>::value               \
-     || std::is_floating_point<decltype(a)>::value) {            \
-      using value_type =                                         \
-              typename ::testing::internal::float_type_helper<   \
-                                decltype(e), decltype(a)>::type; \
-      EXPECT_PRED_FORMAT2(                                       \
-        ::testing::internal::assert_float_eq<value_type>, e, a)  \
-            << "Unit " << dash::myid().id;                       \
-    }                                                            \
-    else {                                                       \
-      EXPECT_EQ(e,a)        << "Unit " << dash::myid().id;       \
-    }                                                            \
+#define ASSERT_EQ_U(_e,_a)                                          \
+  do {                                                              \
+    if (std::is_floating_point<decltype(_e)>::value                 \
+     || std::is_floating_point<decltype(_a)>::value) {              \
+      using value_type =                                            \
+              typename ::testing::internal::float_type_helper<      \
+                                decltype(_e), decltype(_a)>::type;  \
+      EXPECT_PRED_FORMAT2(                                          \
+        ::testing::internal::assert_float_eq<value_type>,(_e),(_a)) \
+            << "Unit " << dash::myid().id;                          \
+    }                                                               \
+    else {                                                          \
+      EXPECT_EQ(_e,_a)        << "Unit " << dash::myid().id;        \
+    }                                                               \
   } while(0)
 
 #define EXPECT_EQ_U(e,a) ASSERT_EQ_U(e,a)
@@ -183,6 +203,43 @@ extern void ColoredPrintf(
 namespace dash {
 namespace test {
 
+template <class ValueRange>
+static std::string range_str(
+  const ValueRange & vrange) {
+  typedef typename ValueRange::value_type value_t;
+  std::ostringstream ss;
+  auto idx = dash::index(vrange);
+  int        i   = 0;
+
+  // ss << "<" << dash::internal::typestr(*vrange.begin()) << "> ";
+  for (const auto & v : vrange) {
+    ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
+       << std::fixed << std::setprecision(4)
+       << static_cast<const value_t>(v) << " ";
+    ++i;
+  }
+  return ss.str();
+}
+
+template <class ValueT, class RangeA, class RangeB>
+static bool expect_range_values_equal(
+  const RangeA & rng_a,
+  const RangeB & rng_b) {
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_a);
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_b);
+  auto       it_a  = dash::begin(rng_a);
+  auto       it_b  = dash::begin(rng_b);
+  const auto end_a = dash::end(rng_a);
+  const auto end_b = dash::end(rng_b);
+  for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
+    if (static_cast<ValueT>(*it_a) !=
+        static_cast<ValueT>(*it_b)) {
+      return false;
+    }
+  }
+  return (end_a == it_a) && (end_b == it_b);
+}
+
 class TestBase : public ::testing::Test {
 
  protected:
@@ -190,26 +247,28 @@ class TestBase : public ::testing::Test {
   virtual void SetUp() {
     const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-    LOG_MESSAGE("===> Running test case %s:%s with %lu units ...",
-                test_info->name(), test_info->test_case_name(),
-                dash::size());
+    LOG_MESSAGE("===> Running test case %s.%s ...",
+                test_info->test_case_name(), test_info->name());
     dash::init(&TESTENV.argc, &TESTENV.argv);
+    
     LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
     dash::barrier();
   }
 
   virtual void TearDown() {
+    auto myid = dash::myid();
+    size_t size = dash::size();
     const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-    LOG_MESSAGE("-==- Test case finished at unit %d", dash::myid().id);
+
+    LOG_MESSAGE("-==- Test case finished at unit %d", myid.id);
 
     dash::Team::All().barrier();
-    LOG_MESSAGE("-==- Finalize DASH at unit %d", dash::myid().id);
+    LOG_MESSAGE("-==- Finalize DASH at unit %d", myid.id);
     dash::finalize();
 
-    size_t size = dash::size();
-    LOG_MESSAGE("<=== Finished test case %s:%s with %lu units",
-                test_info->name(), test_info->test_case_name(),
+    LOG_MESSAGE("<=== Finished test case %s.%s with %lu units",
+                test_info->test_case_name(), test_info->name(),
                 size);
   }
 

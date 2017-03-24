@@ -17,6 +17,7 @@ namespace dash {
 #include <dash/internal/Config.h>
 
 #include <dash/Types.h>
+#include <dash/Meta.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
@@ -26,7 +27,9 @@ namespace dash {
 #include <dash/View.h>
 #include <dash/Range.h>
 
-#include <dash/GlobMem.h>
+#include <dash/Memory.h>
+#include <dash/Allocator.h>
+
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
@@ -38,6 +41,7 @@ namespace dash {
 #include <dash/LaunchPolicy.h>
 
 #include <dash/Atomic.h>
+#include <dash/Mutex.h>
 
 #include <dash/Container.h>
 #include <dash/Array.h>
@@ -52,6 +56,7 @@ namespace dash {
 
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
+
 #include <dash/Allocator.h>
 
 #include <dash/util/BenchmarkParams.h>
