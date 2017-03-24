@@ -518,10 +518,27 @@ public:
   );
 
   template<dim_t SubDimension>
+  const_view_type<NumDimensions> sub(
+    size_type n,      ///< Offset of the sub-range.
+    size_type range   ///< Width of the sub-range.
+  ) const;
+
+  template<dim_t SubDimension>
   view_type<NumDimensions> sub(
     size_type n,      ///< Offset of the sub-range.
     size_type range   ///< Width of the sub-range.
   );
+
+  /**
+   * Projection to given offset in a sub-dimension.
+   *
+   * \see  row
+   * \see  col
+   */
+  template<dim_t SubDimension>
+  const_view_type<NumDimensions-1> sub(
+    size_type n       ///< Offset in selected dimension.
+  ) const;
 
   /**
    * Projection to given offset in a sub-dimension.
@@ -549,9 +566,35 @@ public:
    * \see  sub
    * \see  row
    */
+  const_view_type<NumDimensions-1> col(
+    size_type n       ///< Column offset.
+  ) const;
+
+  /**
+   * Projection to given offset in first sub-dimension (column), same as
+   * \c sub<0>(n).
+   *
+   * \returns  A \c MatrixRef object representing the nth column
+   *
+   * \see  sub
+   * \see  row
+   */
   view_type<NumDimensions-1> col(
     size_type n       ///< Column offset.
   );
+
+  /**
+   * Projection to given offset in second sub-dimension (rows), same as
+   * \c sub<1>(n).
+   *
+   * \returns  A \c MatrixRef object representing the nth row
+   *
+   * \see  sub
+   * \see  col
+   */
+  const_view_type<NumDimensions-1> row(
+    size_type n       ///< Row offset.
+  ) const;
 
   /**
    * Projection to given offset in second sub-dimension (rows), same as
@@ -603,9 +646,36 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
+  const_reference at(
+    Args... args      ///< Global coordinates
+  ) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  template<typename ... Args>
   reference at(
     Args... args      ///< Global coordinates
   );
+
+  /**
+   * Fortran-style subscript operator, alias for \c at().
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   * \see  at
+   */
+  template<typename... Args>
+  const_reference operator()(
+    Args... args      ///< Global coordinates
+  ) const;
 
   /**
    * Fortran-style subscript operator, alias for \c at().
