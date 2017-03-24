@@ -1378,3 +1378,76 @@ TEST_F(MatrixTest, ConstLocalMatrixRefs)
   EXPECT_EQ_U(local_elem_sum, local_rows_sum);
 }
 
+TEST_F(MatrixTest, SubViewMatrix3Dim)
+{
+  int dim_0_ext  = dash::size();
+  int dim_1_ext  = 3;
+  int dim_2_ext  = 2;
+
+  int sub_0_size = dim_1_ext * dim_2_ext;
+
+  dash::NArray<double, 3> matrix(dim_0_ext, dim_1_ext, dim_2_ext);
+
+  EXPECT_EQ_U(3, matrix.ndim());
+  EXPECT_EQ_U(2, matrix[0].ndim());
+  EXPECT_EQ_U(1, matrix[0][0].ndim());
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix.extents());
+
+  EXPECT_EQ_U(dim_0_ext, matrix.extent(0));
+  EXPECT_EQ_U(dim_1_ext, matrix.extent(1));
+  EXPECT_EQ_U(dim_2_ext, matrix.extent(2));
+
+  dash::fill(matrix.begin(), matrix.end(), 0.0);
+  
+  if (dash::myid() == 0) {
+    for (int i = 0; i < matrix.extent(0); ++i) {
+      for (int j = 0; j < matrix.extent(1); ++j) {
+        for (int k = 0; k < matrix.extent(2); ++k) {
+          matrix[i][j][k] = 0.1   * i +
+                            0.01  * j +
+                            0.001 * k;
+        } } }
+  }
+  matrix.barrier();
+
+  for (double * lp = matrix.lbegin(); lp != matrix.lend(); ++lp) {
+    *lp += dash::myid().id;
+  }
+  matrix.barrier();
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix[0].viewspec());
+  DASH_LOG_DEBUG_VAR("MatrixTest.SubViewMatrix3Dim", matrix[0].extents());
+
+  EXPECT_EQ_U(1,         matrix[0].extent(0));
+  EXPECT_EQ_U(dim_1_ext, matrix[0].extent(1));
+  EXPECT_EQ_U(dim_2_ext, matrix[0].extent(2));
+
+  if (dash::myid() == 0) {
+    dash::test::print_matrix("Matrix<3>", matrix, 3);
+  //dash::test::print_matrix("Matrix<2>", matrix[0], 3);
+    for (int i = 0; i < matrix.extent(0); ++i) {
+      for (int j = 0; j < matrix.extent(1); ++j) {
+        std::vector<double> row(matrix[i][j].begin(),
+                                matrix[i][j].end());
+        DASH_LOG_DEBUG("MatrixTest.SubViewMatrix3Dim",
+                       "matrix[",i,"][",j,"]", row);
+      }
+    }
+  }
+  matrix.barrier();
+
+  EXPECT_EQ_U(sub_0_size, matrix[0].size());
+  EXPECT_EQ_U(sub_0_size, std::distance(matrix[0].begin(),
+                                        matrix[0].end()));
+  
+  if (dash::myid().id == 0) {
+  int visited = 0;
+    for (auto it = matrix[0].begin(); it != matrix[0].end();
+         ++it, ++visited) {
+      double val = *it;
+    }
+    EXPECT_EQ_U(visited, sub_0_size);
+  }
+}
+
