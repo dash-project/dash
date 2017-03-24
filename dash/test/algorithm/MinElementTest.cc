@@ -27,9 +27,11 @@ TEST_F(MinElementTest, TestFindArrayDefault)
   LOG_MESSAGE("Waiting for other units to initialize array values");
   array.barrier();
   LOG_MESSAGE("Finished initialization of array values");
-  // Run min_element on complete array
-  auto found_gptr = dash::min_element(array.begin(),
-                                      array.end());
+  // Run min_element on complete array, use const reference to test
+  // const-correctness:
+  const Array_t & array_cref = array;
+  auto found_gptr = dash::min_element(array_cref.begin(),
+                                      array_cref.end());
   // Check that a minimum has been found (found != last):
   LOG_MESSAGE("Completed dash::min_element");
   // Run min_element on complete array
