@@ -447,19 +447,32 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <typename ... Args>
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_reference
+MatrixRef<T, NumDim, CUR, PatternT>
+::at(Args... args) const
+{
+  return at(std::array<index_type, NumDim> {{
+              static_cast<index_type>(args)...
+            }});
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <typename ... Args>
 inline typename MatrixRef<T, NumDim, CUR, PatternT>::reference
 MatrixRef<T, NumDim, CUR, PatternT>
 ::at(Args... args)
 {
-  if(sizeof...(Args) != (NumDim - _refview._dim)) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "MatrixRef.at(): Invalid number of arguments " <<
-      "expected " << (NumDim - _refview._dim) << " " <<
-      "got " << sizeof...(Args));
-  }
-  ::std::array<index_type, NumDim> coords = {{ static_cast<index_type>(args)... }};
-  return at(coords);
+  return at(std::array<index_type, NumDim> {{
+              static_cast<index_type>(args)...
+            }});
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_reference
+MatrixRef<T, NumDim, CUR, PatternT>
+::at(const ::std::array<typename PatternT::index_type, NumDim> & coords) const
+{
+  return _refview.global_reference(coords);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
