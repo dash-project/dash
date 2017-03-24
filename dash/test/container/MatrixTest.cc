@@ -1388,6 +1388,24 @@ ValueT global_sum_rows(const int       nelts,
   return global_sum;
 }
 
+template <
+  class MatrixT,
+  class ValueT = typename MatrixT::value_type >
+ValueT global_sum_elems(const int       nelts,
+                        const MatrixT & matIn)
+{
+  auto   glbRows    = matIn.pattern().extents()[0];
+  auto   glbCols    = matIn.pattern().extents()[1];
+  ValueT global_sum = 0;
+
+  for (int i = 0; i < glbRows; ++i) {
+    for (int j = 0; j < glbCols; ++j) {
+      global_sum += matIn(i,j);
+    }
+  }
+  return global_sum;
+}
+
 TEST_F(MatrixTest, ConstMatrixRefs)
 {
   using value_t = unsigned int;
@@ -1408,23 +1426,25 @@ TEST_F(MatrixTest, ConstMatrixRefs)
   }
   dash::barrier();
 
-  auto local_rows_sum = local_sum_rows(nelts, mat);
-  auto local_elem_sum = std::accumulate(
-                          mat.lbegin(),
-                          mat.lend(),
-                          0, std::plus<value_t>());
+  auto local_rows_sum  = local_sum_rows(nelts, mat);
+  auto local_range_sum = std::accumulate(
+                           mat.lbegin(),
+                           mat.lend(),
+                           0, std::plus<value_t>());
 
-  EXPECT_EQ_U(local_elem_sum, local_rows_sum);
+  EXPECT_EQ_U(local_range_sum, local_rows_sum);
 
   dash::barrier();
 
-  auto global_rows_sum = global_sum_rows(nelts, mat);
-  auto global_elem_sum = std::accumulate(
-                           mat.begin(),
-                           mat.end(),
-                           0, std::plus<value_t>());
+  auto global_rows_sum  = global_sum_rows(nelts, mat);
+  auto global_elems_sum = global_sum_elems(nelts, mat);
+  auto global_range_sum = std::accumulate(
+                            mat.begin(),
+                            mat.end(),
+                            0, std::plus<value_t>());
 
-  EXPECT_EQ_U(global_elem_sum, global_rows_sum);
+  EXPECT_EQ_U(global_range_sum, global_rows_sum);
+  EXPECT_EQ_U(global_range_sum, global_elems_sum);
 }
 
 TEST_F(MatrixTest, SubViewMatrix3Dim)
