@@ -166,7 +166,7 @@ TEST_F(AtomicTest, PunnedType)
       }
       shared.barrier();
       // Should not need more tries than there are units
-      ASSERT_LT(i, dash::size());
+      ASSERT_LE(i, dash::size());
     }
   }
 
@@ -181,19 +181,18 @@ TEST_F(AtomicTest, PunnedType)
       value_t desired { rep, static_cast<short>(rep + dash::myid().id) };
       bool   success = false;
       size_t i       = 0;
-      while (!success && i++ < dash::size()) {
+      while (!success && ++i < dash::size()) {
         value_t expected = shared.get().load();
         success          = shared.get().compare_exchange(expected, desired);
       }
       shared.barrier();
       // Should not need more tries than there are units
-      ASSERT_LT(i, dash::size());
+      ASSERT_LE(i, dash::size());
     }
   }
 
   dash::barrier();
 }
-
 
 
 TEST_F(AtomicTest, ArrayElements)
