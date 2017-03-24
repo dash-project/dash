@@ -6,7 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
@@ -156,7 +156,7 @@ private:
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>
+  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
     GlobMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;

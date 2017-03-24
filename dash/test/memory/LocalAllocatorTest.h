@@ -13,7 +13,7 @@ protected:
   }
 
   virtual ~LocalAllocatorTest() {
-    LOG_MESSAGE("<<< Closing test suite: CollectiveAllocatorTest");
+    LOG_MESSAGE("<<< Closing test suite: SymmetricAllocatorTest");
   }
 };
 
