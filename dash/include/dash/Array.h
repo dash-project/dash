@@ -6,7 +6,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 #include <dash/Shared.h>
@@ -621,7 +621,7 @@ private:
  * \concept{DashArrayConcept}
  *
  * \todo  Add template parameter:
- *        <tt>class GlobMemType = dash::GlobMem<ElementType></tt>
+ *        <tt>class GlobMemType = dash::GlobStaticMem<ElementType></tt>
  *
  * \note: Template parameter IndexType could be deduced from pattern
  *        type <tt>PatternT::index_type</tt>
@@ -662,7 +662,7 @@ public:
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
-  typedef dash::GlobMem<value_type>                            glob_mem_type;
+  typedef dash::GlobStaticMem<value_type>                            glob_mem_type;
 
 public:
   template<
@@ -926,6 +926,15 @@ public:
   constexpr const view_type block(index_type block_gindex) const
   {
     return View(this, ViewSpec<1>(pattern().block(block_gindex)));
+  }
+
+  /**
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
+   * in global memory.
+   */
+  constexpr const glob_mem_type & globmem() const noexcept
+  {
+    return *m_globmem;
   }
 
   /**

@@ -5,7 +5,7 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -43,9 +43,10 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType
-             = GlobMem< typename std::remove_const<ElementType>::type >,
-  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    GlobMemType   = GlobStaticMem<
+                             typename std::decay<ElementType>::type
+                           >,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -193,9 +194,9 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  template <class GlobMemT_>
+  template <class GlobStaticMemT_>
   constexpr GlobViewIter(
-    GlobMemT_            * gmem,
+    GlobStaticMemT_            * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
@@ -214,9 +215,9 @@ public:
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  template <class GlobMemT_>
+  template <class GlobStaticMemT_>
   constexpr GlobViewIter(
-    GlobMemT_         * gmem,
+    GlobStaticMemT_         * gmem,
 	  const PatternType & pat,
 	  IndexType           position          = 0,
     IndexType           view_index_offset = 0)
@@ -357,12 +358,12 @@ public:
    */
   explicit operator const_pointer() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -370,8 +371,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -382,8 +383,10 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.index + offset);
     // Create global pointer from unit and local offset:
     const_pointer gptr(
       _globmem->at(local_pos.unit, local_pos.index)
@@ -399,12 +402,12 @@ public:
    */
   explicit operator pointer()
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -412,8 +415,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -424,8 +427,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.index + offset);
     // Create global pointer from unit and local offset:
     pointer gptr(
       _globmem->at(local_pos.unit, local_pos.index)
@@ -746,7 +749,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   constexpr const GlobMemType & globmem() const noexcept
@@ -755,7 +758,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline GlobMemType & globmem() noexcept
@@ -1062,14 +1065,14 @@ private:
 template<
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 auto distance(
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     last)
 -> typename Pattern::index_type
 {
@@ -1079,16 +1082,16 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobViewIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, Pattern> ptr(it);
+  dash::GlobPtr<ElementType, GlobStaticMem> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";
