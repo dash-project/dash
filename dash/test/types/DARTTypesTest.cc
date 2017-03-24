@@ -8,7 +8,7 @@
 
 TEST_F(DARTTypesTest, DARTTypeConversions)
 {
-  typedef std::array<int> undef_t;
+  typedef std::array<int, 4> undef_t;
 
   static_assert(dash::dart_datatype<unsigned char>::value == DART_TYPE_BYTE,
                 "conversion dart_datatype<unsigned char> failed");
