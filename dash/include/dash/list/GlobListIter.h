@@ -19,7 +19,7 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    GlobStaticMemType,
+  class    GlobMemType,
   class    PointerType   = GlobPtr<ElementType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobListIter
@@ -33,7 +33,7 @@ class GlobListIter
 private:
   typedef GlobListIter<
             ElementType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
@@ -45,7 +45,7 @@ public:
   typedef       PointerType                          pointer;
   typedef const PointerType                    const_pointer;
 
-  typedef typename GlobStaticMemType::local_pointer  local_pointer;
+  typedef typename GlobMemType::local_pointer  local_pointer;
 
   typedef internal::ListNode<value_type>           node_type;
 
@@ -62,7 +62,7 @@ public:
    * Constructor, creates a global iterator on a \c dash::List instance.
    */
   GlobListIter(
-    GlobStaticMemType  * gmem,
+    GlobMemType  * gmem,
     node_type    & node)
   : _globmem(gmem),
     _node(&node),
@@ -139,7 +139,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobStaticMemType & globmem() const
+  inline const GlobMemType & globmem() const
   {
     return *_globmem;
   }
@@ -148,7 +148,7 @@ public:
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobStaticMemType & globmem()
+  inline GlobMemType & globmem()
   {
     return *_globmem;
   }
@@ -219,7 +219,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobStaticMemType          * _globmem;
+  GlobMemType          * _globmem;
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit

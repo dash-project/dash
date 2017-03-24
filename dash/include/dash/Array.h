@@ -621,7 +621,7 @@ private:
  * \concept{DashArrayConcept}
  *
  * \todo  Add template parameter:
- *        <tt>class GlobStaticMemType = dash::GlobStaticMem<ElementType></tt>
+ *        <tt>class GlobMemType = dash::GlobStaticMem<ElementType></tt>
  *
  * \note: Template parameter IndexType could be deduced from pattern
  *        type <tt>PatternT::index_type</tt>

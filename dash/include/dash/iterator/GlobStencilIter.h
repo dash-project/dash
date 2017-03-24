@@ -121,7 +121,7 @@ private:
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobStaticMemType   = GlobStaticMem<ElementType>,
+  class    GlobMemType   = GlobStaticMem<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobStencilIter
@@ -140,7 +140,7 @@ private:
   typedef GlobStencilIter<
             ElementType,
             PatternType,
-            GlobStaticMemType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
@@ -187,7 +187,7 @@ public:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobStaticMemType         * _globmem         = nullptr;
+  GlobMemType         * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType   * _pattern         = nullptr;
   /// View that specifies the iterator's index range relative to the global
@@ -229,7 +229,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobStaticMemType        * gmem,
+    GlobMemType        * gmem,
 	  const PatternType  & pat,
     const ViewSpecType & viewspec,
     const HaloSpecType & halospec,
@@ -257,7 +257,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobStaticMemType        * gmem,
+    GlobMemType        * gmem,
 	  const PatternType  & pat,
     const HaloSpecType & halospec,
 	  IndexType            position          = 0,
@@ -311,7 +311,7 @@ public:
   GlobStencilIter(
     const GlobViewIter<ElementType,
                        PatternType,
-                       GlobStaticMemType,
+                       GlobMemType,
                        PtrT,
                        RefT> & other,
     const HaloSpecType       & halospec)
@@ -846,7 +846,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobStaticMemType & globmem() const
+  inline const GlobMemType & globmem() const
   {
     return *_globmem;
   }
@@ -857,7 +857,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobStaticMemType & globmem()
+  inline GlobMemType & globmem()
   {
     return *_globmem;
   }
