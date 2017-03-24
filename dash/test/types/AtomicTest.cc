@@ -123,32 +123,73 @@ std::ostream & operator<<(
 
 TEST_F(AtomicTest, PunnedType)
 {
-  typedef struct container<char> value_t;
+  typedef struct container<short> value_t;
 
-  value_t           val_init = { 1, 12 };
+  value_t           val_init = { -1, 10 };
+  value_t           val_exch = {  1, 20 };
   dash::team_unit_t owner(dash::size() - 1);
 
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
   if (dash::myid() == 0) {
+    // Set value via interface of dash::Shared, should delegate to
+    // dash::GlobRef<Atomic<T>>.set():
     shared.set(val_init);
   }
-  // wait for initialization:
   shared.barrier();
 
-  size_t i;
-  for (i = 0; i < 2 * dash::size(); ++i) {
-    value_t expected = shared.get().load();
-    value_t desired  = expected;
-    bool    result   = shared.get().compare_exchange(expected, desired);
-    if (result) {
-      EXPECT_EQ_U(expected, desired);
-      break;
+  if (dash::myid() == (dash::size() > 2 ? 1 : 0)) {
+    // Set value via interface of dash::GlobRef<Atomic<T>>:
+    shared.get().exchange(val_exch);
+  }
+  shared.barrier();
+
+  EXPECT_EQ_U(val_exch, shared.get().load());
+
+  // Test compare-exchange with old value = new value,
+  // should always succeed:
+  //
+  // Note: Assuming CAS has no spurious failures
+  //
+  {
+    // Test in several repetitions:
+    for (short rep = 0; rep < 50; ++rep) {
+      size_t i;
+      for (i = 0; i < 2 * dash::size(); ++i) {
+        value_t expected = shared.get().load();
+        value_t desired  = expected;
+        bool    result   = shared.get().compare_exchange(expected, desired);
+        if (result) {
+          EXPECT_EQ_U(expected, desired);
+          break;
+        }
+      }
+      shared.barrier();
+      // Should not need more tries than there are units
+      ASSERT_LT(i, dash::size());
     }
   }
 
-  // we should not need more tries than there are units
-  ASSERT_LT(i, dash::size());
+  // Test compare-exchange with old value != new value,
+  // should not fail more than (nunits - 1) times:
+  //
+  // Note: Assuming CAS has no spurious failures
+  //
+  {
+    // Test in several repetitions:
+    for (short rep = 0; rep < 50; ++rep) {
+      value_t desired { rep, static_cast<short>(rep + dash::myid().id) };
+      bool   success = false;
+      size_t i       = 0;
+      while (!success && i++ < dash::size()) {
+        value_t expected = shared.get().load();
+        success          = shared.get().compare_exchange(expected, desired);
+      }
+      shared.barrier();
+      // Should not need more tries than there are units
+      ASSERT_LT(i, dash::size());
+    }
+  }
 
   dash::barrier();
 }

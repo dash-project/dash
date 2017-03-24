@@ -1,46 +1,12 @@
 #ifndef DASH__ATOMIC_GLOBREF_H_
 #define DASH__ATOMIC_GLOBREF_H_
 
+#include <dash/Types.h>
 #include <dash/GlobPtr.h>
 #include <dash/algorithm/Operation.h>
 
 
 namespace dash {
-
-namespace internal {
-
-template <std::size_t Size>
-struct atomic_size_punned_type
-: public std::integral_constant<dart_datatype_t, DART_TYPE_UNDEFINED>
-{ };
-
-template <>
-struct atomic_size_punned_type<1>
-: public std::integral_constant<dart_datatype_t, DART_TYPE_BYTE>
-{ };
-
-template <>
-struct atomic_size_punned_type<2>
-: public std::integral_constant<dart_datatype_t, DART_TYPE_SHORT>
-{ };
-
-template <>
-struct atomic_size_punned_type<4>
-: public std::integral_constant<dart_datatype_t, DART_TYPE_INT>
-{ };
-
-template <>
-struct atomic_size_punned_type<8>
-: public std::integral_constant<dart_datatype_t, DART_TYPE_LONGLONG>
-{ };
-
-template <typename T>
-struct atomic_punned_type {
-  static constexpr const dart_datatype_t value
-                           = atomic_size_punned_type<sizeof(T)>::value;
-};
-
-} // namespace internal
 
 // forward decls
 template<typename T>
@@ -188,9 +154,9 @@ public:
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        1,
-                       dash::internal::atomic_punned_type<T>::value,
+                       dash::dart_punned_datatype<T>::value,
                        DART_OP_REPLACE);
-    dart_flush(_gptr);
+    dart_flush_all(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobRef<Atomic>.store >");
   }
@@ -199,7 +165,7 @@ public:
    * Set the value of the shared atomic variable.
    */
   inline void store(const T & value) const {
-    set(value);
+    exchange(value);
   }
 
   /// atomically fetches value
@@ -213,7 +179,7 @@ public:
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
                        reinterpret_cast<void * const>(&result),
-                       dash::internal::atomic_punned_type<T>::value,
+                       dash::dart_punned_datatype<T>::value,
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
@@ -245,9 +211,9 @@ public:
                        _gptr,
                        reinterpret_cast<char *>(&acc),
                        1,
-                       dash::dart_datatype<T>::value,
+                       dash::dart_punned_datatype<T>::value,
                        binary_op.dart_operation());
-    dart_flush(_gptr);
+    dart_flush_all(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op >", acc);
   }
@@ -272,9 +238,9 @@ public:
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        reinterpret_cast<void * const>(&acc),
-                       dash::dart_datatype<T>::value,
+                       dash::dart_punned_datatype<T>::value,
                        binary_op.dart_operation());
-    dart_flush(_gptr);
+    dart_flush_all(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", acc);
     return acc;
@@ -307,8 +273,8 @@ public:
                        reinterpret_cast<const void * const>(&desired),
                        reinterpret_cast<const void * const>(&expected),
                        reinterpret_cast<void * const>(&result),
-                       dash::internal::atomic_punned_type<T>::value);
-    dart_flush(_gptr);
+                       dash::dart_punned_datatype<T>::value);
+    dart_flush_all(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange >",
       (expected == result));

@@ -84,10 +84,26 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+#ifdef DOXYGEN
 
 /**
- * Type traits for mapping to DART data types.
+ * Type trait for mapping to DART data types.
  */
+template<typename Type>
+struct dart_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+/**
+ * Type trait for mapping to punned DART data type for reduce operations.
+ */
+template <typename T>
+struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+#else
+
 template<typename Type>
 struct dart_datatype {
   static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
@@ -142,6 +158,52 @@ template<>
 struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
+
+
+namespace internal {
+
+template <std::size_t Size>
+struct dart_pun_datatype_size
+: public std::integral_constant<dart_datatype_t, DART_TYPE_UNDEFINED>
+{ };
+
+template <>
+struct dart_pun_datatype_size<1>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_BYTE>
+{ };
+
+template <>
+struct dart_pun_datatype_size<2>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_SHORT>
+{ };
+
+template <>
+struct dart_pun_datatype_size<4>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_INT>
+{ };
+
+template <>
+struct dart_pun_datatype_size<8>
+: public std::integral_constant<dart_datatype_t, DART_TYPE_LONGLONG>
+{ };
+
+} // namespace internal
+
+template <typename T>
+struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value
+                           = std::conditional<
+                               // only use type punning if T is not a DART
+                               // data type:
+                               dash::dart_datatype<T>::value
+                                 == DART_TYPE_UNDEFINED,
+                               internal::dart_pun_datatype_size<sizeof(T)>,
+                               dash::dart_datatype<T>
+                             >::type::value;
+};
+
+#endif // DOXYGEN
+
 
 template <typename T>
 inline dart_storage_t dart_storage(int nvalues) {
