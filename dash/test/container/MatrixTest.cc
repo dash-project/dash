@@ -575,24 +575,24 @@ TEST_F(MatrixTest, BlockViews)
 TEST_F(MatrixTest, ViewIteration)
 {
   typedef int                                   element_t;
-  typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
+  typedef dash::TilePattern<2, dash::ROW_MAJOR> pattern_t;
 
   int    myid        = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
-  size_t extent_cols = tilesize_x * num_units * 2;
-  size_t extent_rows = tilesize_y * num_units * 2;
+  size_t ncols       = tilesize_x * num_units * 2;
+  size_t nrows       = tilesize_y * num_units * 2;
 
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
-                   extent_cols,
-                   extent_rows),
+                   nrows,
+                   ncols),
                  dash::DistributionSpec<2>(
-                   dash::TILE(tilesize_x),
-                   dash::TILE(tilesize_y)),
+                   dash::TILE(tilesize_y),
+                   dash::TILE(tilesize_x)),
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
@@ -605,64 +605,87 @@ TEST_F(MatrixTest, ViewIteration)
       }
     }
   }
-  LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
-  LOG_MESSAGE("Team barrier passed");
 
-  // Partition matrix into 4 blocks (upper/lower left/right):
+  if (myid == 0) {
+    // Partition matrix into 4 blocks (upper/lower left/right):
 
-  // First create two views for left and right half:
-  auto left        = matrix.sub<0>(0,               extent_cols / 2);
-  auto right       = matrix.sub<0>(extent_cols / 2, extent_cols / 2);
+    // First create two views for left and right half:
+    auto left        = matrix.sub<1>(0,         ncols / 2);
+    auto right       = matrix.sub<1>(ncols / 2, ncols / 2);
 
-  // Refine views on left and right half into top/bottom:
-  auto topleft     = left.sub<1>(0,               extent_rows / 2);
-  auto bottomleft  = left.sub<1>(extent_rows / 2, extent_rows / 2);
-  auto topright    = right.sub<1>(0,               extent_rows / 2);
-  auto bottomright = right.sub<1>(extent_rows / 2, extent_rows / 2);
+    // Refine views on left and right half into top/bottom:
+    auto topleft     = left.sub<0> (0,         nrows / 2);
+    auto bottomleft  = left.sub<0> (nrows / 2, nrows / 2);
+    auto topright    = right.sub<0>(0,         nrows / 2);
+    auto bottomright = right.sub<0>(nrows / 2, nrows / 2);
 
-  dash__unused(topleft);
-  dash__unused(bottomleft);
-  dash__unused(topright);
+    dash__unused(topleft);
+    dash__unused(bottomleft);
+    dash__unused(topright);
 
-  auto g_br_x      = extent_cols / 2;
-  auto g_br_y      = extent_rows / 2;
+    auto g_br_x      = ncols / 2;
+    auto g_br_y      = nrows / 2;
 
-  // Initial plausibility check: Access same element by global- and view
-  // coordinates:
-  ASSERT_EQ_U((int)bottomright[0][0],
-              (int)matrix[g_br_x][g_br_y]);
+    // Initial plausibility check: Access same element by global- and view
+    // coordinates:
+    ASSERT_EQ_U((int)bottomright[0][0],
+                (int)matrix[g_br_y][g_br_x]);
 
-  int  phase              = 0;
-  // Extents of the view projection:
-  int  view_size_x        = extent_cols / 2;
-  // Global coordinates of first element in bottom right block:
-  int  block_base_coord_x = extent_cols / 2;
-  int  block_base_coord_y = extent_rows / 2;
-  auto b_it               = bottomright.begin();
-  auto b_end              = bottomright.end();
-  int  block_index_offset = b_it.pos();
-  LOG_MESSAGE("Testing block values");
-  for (; b_it != b_end; ++b_it, ++phase) {
-    int phase_x  = phase % view_size_x;
-    int phase_y  = phase / view_size_x;
-    int gcoord_x = block_base_coord_x + phase_x;
-    int gcoord_y = block_base_coord_y + phase_y;
-    ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
+    dash::test::print_matrix("Matrix<2>", matrix, 3);
 
-    using glob_it_t   = decltype(matrix.begin());
-    using glob_ptr_t  = typename glob_it_t::pointer;
-    using glob_cptr_t = dash::GlobConstPtr<int>;
+    for (int i = 0; i < bottomright.extent(0); ++i) {
+      DASH_LOG_DEBUG_VAR("MatrixTest.ViewIteration",
+                         bottomright[i].viewspec());
+      std::vector<int> row(bottomright[i].begin(),
+                           bottomright[i].end());
+      DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                     "bottomright[",i,"]", row);
+    }
 
-    // Apply view projection by converting to GlobPtr:
-    glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
-    // Compare with GlobPtr from global iterator without view projection:
-    glob_cptr_t glob_elem_gptr(matrix[gcoord_x][gcoord_y].dart_gptr());
-    int block_value = *block_elem_gptr;
-    int glob_value  = *glob_elem_gptr;
-    ASSERT_EQ_U(glob_value,
-                block_value);
-    ASSERT_EQ_U(glob_elem_gptr, block_elem_gptr);
+    int  phase              = 0;
+    // Extents of the view projection:
+    int  view_size_x        = ncols / 2;
+    // Global coordinates of first element in bottom right block:
+    int  block_base_coord_x = ncols / 2;
+    int  block_base_coord_y = nrows / 2;
+    auto b_it               = bottomright.begin();
+    auto b_end              = bottomright.end();
+    int  block_index_offset = b_it.pos();
+    for (; b_it != b_end; ++b_it, ++phase) {
+      int phase_x  = phase % view_size_x;
+      int phase_y  = phase / view_size_x;
+      int gcoord_x = block_base_coord_x + phase_x;
+      int gcoord_y = block_base_coord_y + phase_y;
+      ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
+
+      using glob_it_t   = decltype(matrix.begin());
+      using glob_ptr_t  = typename glob_it_t::pointer;
+      using glob_cptr_t = dash::GlobConstPtr<int>;
+
+      // Apply view projection by converting to GlobPtr:
+      glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);
+      // Compare with GlobPtr from global iterator without view projection:
+      glob_cptr_t glob_elem_gptr(matrix[gcoord_y][gcoord_x].dart_gptr());
+      int block_value = *block_elem_gptr;
+      int glob_value  = *glob_elem_gptr;
+
+      if (glob_value != block_value) {
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "gcoords:(", gcoord_y, ",", gcoord_x, ")",
+                       "vcoords:(", phase_y,  ",", phase_x,  ")",
+                       "v.phase:",  phase);
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "it:",       dash::typestr(b_it),
+                       "it.pos:",   b_it.pos(),
+                       "it.gpos:",  b_it.gpos());
+        DASH_LOG_DEBUG("MatrixTest.ViewIteration",
+                       "view.gptr:", block_elem_gptr,
+                       "glob.gptr:", glob_elem_gptr);
+      }
+      ASSERT_EQ_U(glob_value,     block_value);
+      ASSERT_EQ_U(glob_elem_gptr, block_elem_gptr);
+    }
   }
 }
 
@@ -676,7 +699,7 @@ TEST_F(MatrixTest, BlockCopy)
   size_t extent_cols = tilesize_x * num_units * 4;
   size_t extent_rows = tilesize_y * num_units * 4;
   typedef dash::TilePattern<2> pattern_t;
-  LOG_MESSAGE("Initialize matrix ...");
+
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t>
                matrix_a(

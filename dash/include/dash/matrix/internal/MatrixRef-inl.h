@@ -16,13 +16,14 @@ MatrixRef<T, NumDim, CUR, PatternT>
 {
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)()", CUR);
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", coord);
+  dim_t target_dim = NumDim-(CUR+1);
   // Coordinate in active dimension is 0 as it is relative to the
   // MatrixRefView's viewspec which contains the coord as view offset:
   _refview._coord[_refview._dim] = 0;
   _refview._dim++;
   _refview._viewspec.resize_dim(
-                           NumDim-(CUR+1),
-                           coord,
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + coord,
                            1);
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev) >", _refview);
 }

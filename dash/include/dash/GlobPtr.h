@@ -550,7 +550,7 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%06X|%02X|%04X|%04X|%016lX",
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.flags,
           gptr._dart_gptr.segid,
@@ -616,14 +616,25 @@ class GlobConstPtr
   { }
 
   /**
+   * Copy constructor.
+   */
+  constexpr GlobConstPtr(const self_t & other) = default;
+
+  /**
    * Move constructor.
    */
   constexpr GlobConstPtr(self_t && other)      = default;
 
   /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & rhs)       = default;
+
+  /**
    * Move-assignment operator.
    */
   self_t & operator=(self_t && rhs)            = default;
+
 
   value_type * local() {
     return base_t::local();
@@ -745,7 +756,7 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%06X|%02X|%04X|%04X|%016lX",
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
           gptr.dart_gptr().unitid,
           gptr.dart_gptr().flags,
           gptr.dart_gptr().segid,
