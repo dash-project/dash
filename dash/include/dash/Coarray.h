@@ -17,6 +17,16 @@
 
 #include <dash/atomic/Type_traits.h>
 
+namespace dash {
+
+// forward decls
+namespace co_array {
+
+template<typename Container>
+inline void sync_images(const Container & image_ids);
+
+}
+
 /**
  * \defgroup  DashCoArrayConcept  co_array Concept
  *
@@ -35,12 +45,6 @@
  * \TODO: Types
  * 
  * \}
- */
-
-namespace dash {
-
-/**
- * fortran style co_array
  */
 template<
   typename T,
@@ -181,6 +185,16 @@ public:
     }
   }
   
+  template<
+  int __rank = _rank::value,
+  typename = typename std::enable_if<(__rank == 0)>::type>
+  explicit Coarray(const value_type & value){
+    DASH_ASSERT_MSG(dash::is_initialized(), "DASH has to be initialized");
+    _storage.allocate(_pattern_type(_make_size_spec()));
+    *(_storage.lbegin()) = value;
+    sync_all();
+  }
+  
   /* ======================================================================== */
   /*                         DASH Container Concept                           */
   /* ======================================================================== */
@@ -256,8 +270,23 @@ public:
     _storage.barrier();
   }
   
+  /**
+   * Blocks until all team members of this container have reached the statement
+   * and flushes the memory.
+   */
   inline void sync_all() {
-    // \TODO: Blocked by issue 312
+    // this implies a flush
+    _storage.barrier();
+  }
+  
+  /**
+   * Blocks until all selected team members of this container have reached
+   * the statement and flushes the memory.
+   */
+  template<typename Container>
+  inline void sync_images(const Container & image_ids){
+    dash::co_array::sync_images(image_ids);
+    // TODO: flush memory
   }
 
   /* ======================================================================== */

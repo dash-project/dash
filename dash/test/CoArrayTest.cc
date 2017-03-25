@@ -142,6 +142,29 @@ TEST_F(CoArrayTest, Collectives)
   ASSERT_EQ_U(static_cast<int>(x[5][0]), 2 * dash::size());
 }
 
+/**
+ * Check sync_images by forcing a lost-update
+ */
+TEST_F(CoArrayTest, Synchronization)
+{
+  if(num_images() < 3){
+    SKIP_TEST_MSG("This test requires at least 3 units");
+  }
+  dash::Coarray<int> i;
+  dash::barrier();
+  if(this_image() != 2){
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  i = this_image();
+  sync_images(std::array<int,2>{0,1});
+  if(this_image() == 2){
+    // this update will be lost
+    i(0) = -1;
+  }
+  sync_all();
+  ASSERT_EQ_U(static_cast<int>(i), this_image());
+}
+
 TEST_F(CoArrayTest, Iterators)
 {
   dash::Coarray<int>         i;
