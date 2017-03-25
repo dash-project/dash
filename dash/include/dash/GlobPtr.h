@@ -85,8 +85,9 @@ public:
   };
 
 private:
-  dart_gptr_t         _dart_gptr = DART_GPTR_NULL;
-  const MemorySpace * _mem_space = nullptr;
+  dart_gptr_t         _rbegin_gptr = DART_GPTR_NULL;
+  const MemorySpace * _mem_space   = nullptr;
+  index_type          _rindex      = 0;
 
 public:
   template <typename T, class MemSpaceT>
@@ -106,9 +107,11 @@ protected:
    */
   constexpr GlobPtr(
     const MemorySpace * mem_space,
-    dart_gptr_t gptr)
-  : _dart_gptr(gptr)
+    dart_gptr_t gptr,
+    index_type rindex = 0)
+  : _rbegin_gptr(gptr)
   , _mem_space(reinterpret_cast<const MemorySpace *>(mem_space))
+  , _rindex(rindex)
   { }
 
 public:
@@ -123,7 +126,7 @@ public:
   constexpr GlobPtr(
     const MemorySpace & mem_space,
     dart_gptr_t         gptr)
-  : _dart_gptr(gptr)
+  : _rbegin_gptr(gptr)
   , _mem_space(reinterpret_cast<const MemorySpace *>(&mem_space))
   { }
 
@@ -133,7 +136,7 @@ public:
   constexpr GlobPtr(
     MemorySpace && mem_space,
     dart_gptr_t    gptr)
-  : _dart_gptr(gptr)
+  : _rbegin_gptr(gptr)
     // TODO: Should bind temporary, see dash::memalloc in
     //       dash/memory/GlobUnitMem.h
   , _mem_space(nullptr)
@@ -143,7 +146,7 @@ public:
    * Constructor for conversion of std::nullptr_t.
    */
   explicit constexpr GlobPtr(std::nullptr_t p)
-  : _dart_gptr(DART_GPTR_NULL)
+  : _rbegin_gptr(DART_GPTR_NULL)
   , _mem_space(nullptr)
   { }
 
@@ -157,7 +160,7 @@ public:
    */
   template <typename T, class MemSpaceT>
   constexpr GlobPtr(const GlobPtr<T, MemSpaceT> & other)
-  : _dart_gptr(other._dart_gptr)
+  : _rbegin_gptr(other._rbegin_gptr)
   , _mem_space(reinterpret_cast<const MemorySpace *>(other._mem_space))
   { }
 
@@ -172,7 +175,7 @@ public:
   template <typename T, class MemSpaceT>
   self_t & operator=(const GlobPtr<T, MemSpaceT> & other)
   {
-    _dart_gptr = other._dart_gptr;
+    _rbegin_gptr = other._rbegin_gptr;
     _mem_space = reinterpret_cast<const MemorySpace *>(other._mem_space);
     return *this;
   }
@@ -192,7 +195,7 @@ public:
    */
   explicit constexpr operator dart_gptr_t() const noexcept
   {
-    return _dart_gptr;
+    return _rbegin_gptr;
   }
 
   /**
@@ -200,7 +203,7 @@ public:
    */
   explicit constexpr operator GlobConstPtr<value_type>() const noexcept
   {
-    return GlobConstPtr<value_type>(_dart_gptr);
+    return GlobConstPtr<value_type>(_rbegin_gptr);
   }
 
   /**
@@ -208,7 +211,7 @@ public:
    */
   constexpr dart_gptr_t dart_gptr() const noexcept
   {
-    return _dart_gptr;
+    return _rbegin_gptr;
   }
 
   /**
@@ -226,9 +229,7 @@ public:
    */
   self_t & operator++()
   {
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, sizeof(ElementType)),
-      DART_OK);
+    ++_rindex;
     return *this;
   }
 
@@ -238,9 +239,7 @@ public:
   self_t operator++(int)
   {
     self_t result = *this;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, sizeof(ElementType)),
-      DART_OK);
+    ++_rindex;
     return result;
   }
 
@@ -249,11 +248,7 @@ public:
    */
   self_t operator+(gptrdiff_t n) const
   {
-    dart_gptr_t gptr = _dart_gptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, n * sizeof(ElementType)),
-      DART_OK);
-    return self_t(*_mem_space, gptr);
+    return self_t(*_mem_space, _rbegin_gptr, _rindex + n);
   }
 
   /**
@@ -263,7 +258,7 @@ public:
   {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, n * sizeof(ElementType)),
+      dart_gptr_incaddr(&_rbegin_gptr, n * sizeof(ElementType)),
       DART_OK);
     return result;
   }
@@ -274,7 +269,7 @@ public:
   self_t & operator--()
   {
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, -sizeof(ElementType)),
+      dart_gptr_incaddr(&_rbegin_gptr, -sizeof(ElementType)),
       DART_OK);
     return *this;
   }
@@ -286,7 +281,7 @@ public:
   {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, -sizeof(ElementType)),
+      dart_gptr_incaddr(&_rbegin_gptr, -sizeof(ElementType)),
       DART_OK);
     return result;
   }
@@ -300,7 +295,7 @@ public:
    */
   constexpr index_type operator-(const self_t & rhs) const noexcept
   {
-    return _dart_gptr - rhs._dart_gptr;
+    return _rbegin_gptr - rhs._rbegin_gptr;
   }
 
   /**
@@ -308,7 +303,7 @@ public:
    */
   self_t operator-(index_type n) const
   {
-    dart_gptr_t gptr = _dart_gptr;
+    dart_gptr_t gptr = _rbegin_gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, -(n * sizeof(ElementType))),
       DART_OK);
@@ -322,7 +317,7 @@ public:
   {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&_dart_gptr, -(n * sizeof(ElementType))),
+      dart_gptr_incaddr(&_rbegin_gptr, -(n * sizeof(ElementType))),
       DART_OK);
     return result;
   }
@@ -333,7 +328,7 @@ public:
   template <class GlobPtrT>
   constexpr bool operator==(const GlobPtrT & other) const noexcept
   {
-    return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
+    return DART_GPTR_EQUAL(_rbegin_gptr, other._rbegin_gptr);
   }
 
   /**
@@ -356,16 +351,16 @@ public:
   constexpr bool operator<(const GlobPtrT & other) const noexcept
   {
     return (
-      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+      ( _rbegin_gptr.unitid <  other._rbegin_gptr.unitid )
         ||
-      ( _dart_gptr.unitid == other._dart_gptr.unitid
+      ( _rbegin_gptr.unitid == other._rbegin_gptr.unitid
         &&
-        ( _dart_gptr.segid <  other._dart_gptr.segid
+        ( _rbegin_gptr.segid <  other._rbegin_gptr.segid
           ||
-        ( _dart_gptr.segid == other._dart_gptr.segid
+        ( _rbegin_gptr.segid == other._rbegin_gptr.segid
           &&
-          _dart_gptr.addr_or_offs.offset <
-          other._dart_gptr.addr_or_offs.offset ) )
+          _rbegin_gptr.addr_or_offs.offset <
+          other._rbegin_gptr.addr_or_offs.offset ) )
       )
     );
   }
@@ -381,16 +376,16 @@ public:
   constexpr bool operator<=(const GlobPtrT & other) const noexcept
   {
     return (
-      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+      ( _rbegin_gptr.unitid <  other._rbegin_gptr.unitid )
         ||
-      ( _dart_gptr.unitid == other._dart_gptr.unitid
+      ( _rbegin_gptr.unitid == other._rbegin_gptr.unitid
         &&
-        ( _dart_gptr.segid <  other._dart_gptr.segid
+        ( _rbegin_gptr.segid <  other._rbegin_gptr.segid
           ||
-        ( _dart_gptr.segid == other._dart_gptr.segid
+        ( _rbegin_gptr.segid == other._rbegin_gptr.segid
           &&
-          _dart_gptr.addr_or_offs.offset <=
-          other._dart_gptr.addr_or_offs.offset ) )
+          _rbegin_gptr.addr_or_offs.offset <=
+          other._rbegin_gptr.addr_or_offs.offset ) )
       )
     );
   }
@@ -406,16 +401,16 @@ public:
   constexpr bool operator>(const GlobPtrT & other) const noexcept
   {
     return (
-      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+      ( _rbegin_gptr.unitid >  other._rbegin_gptr.unitid )
         ||
-      ( _dart_gptr.unitid == other._dart_gptr.unitid
+      ( _rbegin_gptr.unitid == other._rbegin_gptr.unitid
         &&
-        ( _dart_gptr.segid >  other._dart_gptr.segid
+        ( _rbegin_gptr.segid >  other._rbegin_gptr.segid
           ||
-        ( _dart_gptr.segid == other._dart_gptr.segid
+        ( _rbegin_gptr.segid == other._rbegin_gptr.segid
           &&
-          _dart_gptr.addr_or_offs.offset >
-          other._dart_gptr.addr_or_offs.offset ) )
+          _rbegin_gptr.addr_or_offs.offset >
+          other._rbegin_gptr.addr_or_offs.offset ) )
       )
     );
   }
@@ -431,16 +426,16 @@ public:
   constexpr bool operator>=(const GlobPtrT & other) const noexcept
   {
     return (
-      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+      ( _rbegin_gptr.unitid >  other._rbegin_gptr.unitid )
         ||
-      ( _dart_gptr.unitid == other._dart_gptr.unitid
+      ( _rbegin_gptr.unitid == other._rbegin_gptr.unitid
         &&
-        ( _dart_gptr.segid >  other._dart_gptr.segid
+        ( _rbegin_gptr.segid >  other._rbegin_gptr.segid
           ||
-        ( _dart_gptr.segid == other._dart_gptr.segid
+        ( _rbegin_gptr.segid == other._rbegin_gptr.segid
           &&
-          _dart_gptr.addr_or_offs.offset >=
-          other._dart_gptr.addr_or_offs.offset ) )
+          _rbegin_gptr.addr_or_offs.offset >=
+          other._rbegin_gptr.addr_or_offs.offset ) )
       )
     );
   }
@@ -487,7 +482,7 @@ public:
   explicit operator value_type*() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_dart_gptr, &addr),
+      dart_gptr_getaddr(_rbegin_gptr, &addr),
       DART_OK);
     return static_cast<ElementType*>(addr);
   }
@@ -502,7 +497,7 @@ public:
   value_type * local() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_dart_gptr, &addr),
+      dart_gptr_getaddr(_rbegin_gptr, &addr),
       DART_OK);
     return static_cast<ElementType*>(addr);
   }
@@ -517,7 +512,7 @@ public:
   const value_type * local() const {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_dart_gptr, &addr),
+      dart_gptr_getaddr(_rbegin_gptr, &addr),
       DART_OK);
     return static_cast<const ElementType*>(addr);
   }
@@ -527,7 +522,7 @@ public:
    */
   void set_unit(team_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&_dart_gptr, unit_id),
+      dart_gptr_setunit(&_rbegin_gptr, unit_id),
       DART_OK);
   }
 
@@ -537,8 +532,8 @@ public:
    */
   bool is_local() const {
     dart_team_unit_t luid;
-    dart_team_myid(_dart_gptr.teamid, &luid);
-    return _dart_gptr.unitid == luid.id;
+    dart_team_myid(_rbegin_gptr.teamid, &luid);
+    return _rbegin_gptr.unitid == luid.id;
   }
 };
 
@@ -551,11 +546,11 @@ std::ostream & operator<<(
   char buf[100];
   sprintf(buf,
           "%06X|%02X|%04X|%04X|%016lX",
-          gptr._dart_gptr.unitid,
-          gptr._dart_gptr.flags,
-          gptr._dart_gptr.segid,
-          gptr._dart_gptr.teamid,
-          gptr._dart_gptr.addr_or_offs.offset);
+          gptr._rbegin_gptr.unitid,
+          gptr._rbegin_gptr.flags,
+          gptr._rbegin_gptr.segid,
+          gptr._rbegin_gptr.teamid,
+          gptr._rbegin_gptr.addr_or_offs.offset);
   ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
