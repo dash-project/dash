@@ -219,7 +219,6 @@ TEST_F(CoArrayTest, MemoryModel)
   
   dash::barrier();
 
-  // blocked by issue 322
   {
     // array case
     using coarr_atom_t = dash::Coarray<dash::Atomic<int[10][20]>>;
@@ -242,7 +241,7 @@ TEST_F(CoArrayTest, Mutex){
   int tmp = arr(0);
   arr(0) = tmp + 1;
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
-  // I guess here a flush is required, blocked by issue 322
+  arr.flush();
   mx.unlock();
   
   dash::barrier();

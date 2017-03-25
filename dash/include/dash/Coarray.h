@@ -275,8 +275,8 @@ public:
    * and flushes the memory.
    */
   inline void sync_all() {
-    // this implies a flush
     _storage.barrier();
+    _storage.flush_all();
   }
   
   /**
@@ -286,7 +286,23 @@ public:
   template<typename Container>
   inline void sync_images(const Container & image_ids){
     dash::coarray::sync_images(image_ids);
-    // TODO: flush memory
+    _storage.flush_all();
+  }
+  
+  inline void flush(){
+    _storage.flush();
+  }
+  
+  inline void flush_all(){
+    _storage.flush_all();
+  }
+  
+  inline void flush_local(){
+    _storage.flush_local();
+  }
+  
+  inline void flush_local_all(){
+    _storage.flush_local_all();
   }
 
   /* ======================================================================== */
@@ -310,7 +326,6 @@ public:
   
   /**
    * Operator to select remote unit for scalar types
-   * \TODO: Hack to avoid issue 322
    */
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 0), reference>::type
