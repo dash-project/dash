@@ -17,6 +17,27 @@
 
 #include <dash/atomic/Type_traits.h>
 
+/**
+ * \defgroup DashCoarrayConcept  Coarray Concept
+ *
+ * \ingroup DashContainerConcept
+ * \{
+ * \par Description
+ *
+ * A fortran style coarray.
+ *
+ * DASH Coarrays support delayed allocation (\c dash::Coarray::allocate),
+ * so global memory of an array instance can be allocated any time after
+ * declaring a \c dash::Coarray variable.
+ *
+ * \par Types
+ * 
+ * \sa DashCoarrayLib
+ * \sa dash::Comutex
+ * 
+ * \}
+ */
+
 namespace dash {
 
 // forward decls
@@ -28,23 +49,10 @@ inline void sync_images(const Container & image_ids);
 }
 
 /**
- * \defgroup  DashCoArrayConcept  co_array Concept
- *
- * \ingroup DashContainerConcept
- * \{
- * \par Description
- *
  * A fortran style co_array.
- *
- * DASH co_arrays support delayed allocation (\c dash::co_array::allocate),
- * so global memory of an array instance can be allocated any time after
- * declaring a \c dash::co_array variable.
- *
- * \par Types
- *
- * \TODO: Types
  * 
- * \}
+ * \ingroup DashCoarrayConcept
+ * 
  */
 template<
   typename T,
@@ -551,6 +559,6 @@ Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs / static_cast<Lhs>(rhs);
 }
 
-#include <dash/co_array/Utils.h>
+#include <dash/coarray/Utils.h>
 
 #endif /* COARRAY_H_INCLUDED */

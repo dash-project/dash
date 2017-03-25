@@ -1,21 +1,55 @@
 #ifndef DASH__COARRAY_UTILS_H__
 #define DASH__COARRAY_UTILS_H__
 
+#include <dash/Types.h>
+
+/**
+ * \defgroup  DashCoarrayLib  DASH Coarray Runtime Interface
+ * 
+ * \ingroup DashLib
+ *
+ * Functions of the \c dash::coarray extension to provide an interface similar to
+ * CAF 2008
+ */
+
 namespace dash {
 namespace coarray {
 
+/**
+  * Shortcut to query the global unit ID of the calling unit.
+  *
+  * \return The unit ID of the calling unit relative to \ref dash::Team::All
+  *
+  * \sa dash::myid()
+  *
+  * \ingroup DashCoarrayLib
+  */
 inline dash::global_unit_t this_image() {
   return dash::myid();
 }
 
+/**
+  * Return the number of units in the global team.
+  *
+  * \return The number of units available.
+  *         -1 if DASH is not initialized (anymore).
+  *
+  * \sa dash::size()
+  *
+  * \ingroup DashCoarrayLib
+  */
 inline ssize_t num_images() {
   return dash::size();
 }
 
 /**
  * blocks until all units reach this statement. This statement does not 
- * imply a flush. If a flush is required, use the \csync_all() method of
- * the Coarray
+ * imply a flush. If a flush is required, use the corresponding
+ * \c dash::Coarray::sync_all() method of Coarray.
+ * 
+ * \sa dash::coarray::sync_images()
+ * 
+ * \ingroup DashCoarrayLib
  */
 inline void sync_all(){
   dash::barrier();
@@ -23,12 +57,16 @@ inline void sync_all(){
 
 /**
  * blocks until all selected units reach this statement. This statement does
- * not imply a flush. If a flush is required, use the \csync_all() method of
+ * not imply a flush. If a flush is required, use the \c sync_all() method of
  * the Coarray
  * 
- * \note If possible use \csync_all() for performance reasons. \csync_images()
+ * \note If possible use \c sync_all() for performance reasons. \c sync_images()
  *       is implemented using two-sided operations based on the implementation
- *       of \cMPI_Barrier() in OpenMPI
+ *       of \c MPI_Barrier() in OpenMPI
+ * 
+ * \sa dash::coarray::sync_all()
+ * 
+ * \ingroup DashCoarrayLib
  */
 template<typename Container>
 inline void sync_images(const Container & image_ids){    
@@ -91,10 +129,13 @@ inline void sync_images(const Container & image_ids){
 
 /**
  * Broadcasts the value on master to all other members of this co_array
- * \note fortran defines this function only for scalar co_arrays.
- *       This implementation allows also arrays to be broadcastet
+ * \note fortran defines this function only for scalar Coarray.
+ *       This implementation allows you to broadcast arrays as well
+ * 
  * \param coarr  coarray which should be broadcasted
  * \param master the value of this unit will be broadcastet
+ * 
+ * \ingroup DashCoarrayLib
  */
 template<typename T>
 void cobroadcast(Coarray<T> & coarr, const team_unit_t & master){
@@ -114,6 +155,8 @@ void cobroadcast(Coarray<T> & coarr, const team_unit_t & master){
  * \param coarr   perform the reduction on this array
  * \param op      reduce operation
  * \param master  unit which recieves the result. -1 to broadcast to all units
+ * 
+ * \ingroup DashCoarrayLib
  */
 template<typename T, typename BinaryOp>
 void coreduce(Coarray<T> & coarr,

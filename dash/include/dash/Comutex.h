@@ -10,9 +10,8 @@
 namespace dash {
 
 /**
- * \ingroup DashCoArrayConcept
- * \{
- * \par Description
+ * \ingroup DashCoarrayConcept
+ * 
  *
  * A fortran style comutex.
  *
@@ -42,7 +41,7 @@ namespace dash {
  *        (Each \cdash::Mutex) contains the team itself.
  * 
  * 
- * \}
+ *
  */
 class Comutex {
 private:
