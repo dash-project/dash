@@ -1,9 +1,10 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
-#include <dash/internal/TypeInfo.h>
+#include <dash/Meta.h>
 
-#include <iostream>
+#include <type_traits>
+#include <sstream>
 
 
 namespace dash {
@@ -44,8 +45,13 @@ namespace dash {
  *   // array[10] == dash::size() + 5
  * \endcode
  */
-template<typename T>
-class Atomic {
+template <typename T>
+class Atomic
+{
+  static_assert(
+    dash::is_atomic_compatible<T>::value,
+    "Type not supported for atomic operations");
+
 private:
   T _value;
   typedef Atomic<T> self_t;
@@ -67,9 +73,10 @@ public:
   /**
    * Disabled assignment as this violates the atomic semantics
    *
-   * TODO: Assignment semantics are not well-defined:
-   *       - Constructor Atomic(T)  is default-defined
-   *       - Assignment  Atomic=(T) is deleted
+   * \todo
+   * Assignment semantics are not well-defined:
+   * - Constructor Atomic(T)  is default-defined
+   * - Assignment  Atomic=(T) is deleted
    */
   T operator=(T value) = delete;
 
@@ -100,7 +107,7 @@ std::ostream & operator<<(
   const Atomic<T> & at)
 {
   std::ostringstream ss;
-  ss << dash::internal::typestr(at) << "<phantom>";
+  ss << dash::typestr(at) << "<phantom>";
   return operator<<(os, ss.str());
 }
 

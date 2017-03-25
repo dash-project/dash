@@ -1,11 +1,9 @@
 #ifndef DASH__MUTEX_H__INCLUDED
 #define DASH__MUTEX_H__INCLUDED
 
-#include <dash/Exception.h>
-#include <dash/internal/TypeInfo.h>
+#include <dash/Team.h>
 
 #include <cstdint>
-#include <iostream>
 
 #include "Team.h"
 
@@ -17,6 +15,7 @@ namespace dash {
  * within a dash team.
  * 
  * \note This works properly with \cstd::lock_guard
+ * \note Mutex cannot be placed in DASH containers
  * 
  * \code
  * // just for demonstration, better use atomic operations
@@ -44,12 +43,7 @@ public:
    * This function is not thread-safe
    * @param team team for mutual exclusive accesses
    */
-  explicit Mutex(Team & team = dash::Team::All()):
-    _team(team)
-  {
-    dart_ret_t ret = dart_team_lock_init(_team.dart_id(), &_mutex);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_init failed");
-  }
+  explicit Mutex(Team & team = dash::Team::All());
   
   Mutex(const Mutex & other)               = delete;
   Mutex(Mutex && other)                    = default;
@@ -61,42 +55,28 @@ public:
    * 
    * This function is not thread-safe
    */
-  ~Mutex(){
-    dart_ret_t ret = dart_team_lock_free(_team.dart_id(), &_mutex);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_free failed");
-  }
+  ~Mutex();
   
   /**
    * Block until the lock was acquired.
    */
-  void lock(){
-    dart_ret_t ret = dart_lock_acquire(_mutex);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_lock_acquire failed");
-  }
+  void lock();
   
   /**
    * Try to acquire the lock and return immediately.
    * @return True if lock was successfully aquired, False otherwise
    */
-  bool try_lock(){
-    int32_t result;
-    dart_ret_t ret = dart_lock_try_acquire(_mutex, &result);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_lock_try_acquire failed");
-    return static_cast<bool>(result);
-  }
+  bool try_lock();
   
   /**
    * Release the lock acquired through \clock() or \ctry_lock().
    */
-  void unlock(){
-    dart_ret_t ret = dart_lock_release(_mutex);
-    DASH_ASSERT_EQ(DART_OK, ret, "dart_lock_acquire failed");
-  }
-
+  void unlock();
+  
 private:
   dart_lock_t   _mutex;
   Team        & _team;
-}; // class Atomic
+}; // class Mutex
 
 } // namespace dash
 

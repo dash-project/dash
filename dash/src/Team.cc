@@ -116,7 +116,9 @@ Team::split(
         sub_groups[i],
         &newteam),
       DART_OK);
-    dart_group_destroy(&sub_groups[i]);
+    DASH_ASSERT_RETURNS(
+      dart_group_destroy(&sub_groups[i]),
+      DART_OK);
     if(newteam != DART_TEAM_NULL) {
       // Create team instance of child team:
       DASH_ASSERT_EQ(
@@ -198,7 +200,9 @@ Team::locality_split(
         sub_groups[i],
         &newteam),
       DART_OK);
-    dart_group_destroy(&sub_groups[i]);
+    DASH_ASSERT_RETURNS(
+      dart_group_destroy(&sub_groups[i]),
+      DART_OK);
     if(newteam != DART_TEAM_NULL) {
       DASH_ASSERT_EQ(
         &(dash::Team::Null()), result,

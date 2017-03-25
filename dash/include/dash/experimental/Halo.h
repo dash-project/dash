@@ -1,7 +1,7 @@
 #ifndef DASH__EXPERIMENTAL__HALO_H__
 #define DASH__EXPERIMENTAL__HALO_H__
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>
@@ -243,7 +243,7 @@ class HaloBlockIter
 {
 private:
   using self_t    = HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
   static const dim_t      NumDimensions = PatternT::ndim();
 //static const MemArrange Arrangement   = PatternT::memory_order();
@@ -410,7 +410,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -611,7 +611,7 @@ class HaloBlockView
 {
 private:
   using self_t = HaloBlockView<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
   static const dim_t NumDimensions = PatternT::ndim();
 
@@ -687,7 +687,7 @@ class HaloBlock
 {
 private:
   using self_t = HaloBlock<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMem_t = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
 
 public:
   static constexpr dim_t NumDimensions = PatternT::ndim();

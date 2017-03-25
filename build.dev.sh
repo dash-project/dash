@@ -58,14 +58,13 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
-                        -DENABLE_ASSERTIONS=ON \
-                        -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=ON \
                         -DENABLE_EXT_COMPILER_WARNINGS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
+                        -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
@@ -84,7 +83,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=OFF \
+                        -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
