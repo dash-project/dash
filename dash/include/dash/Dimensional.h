@@ -452,6 +452,12 @@ public:
     std::ostream & os,
     const ViewSpec<NDim_, IndexType_> & viewspec);
 
+private:
+  SizeType                             _size    = 0;
+  SizeType                             _rank    = NumDimensions;
+  std::array<SizeType, NumDimensions>  _extents = {{ }};
+  std::array<IndexType, NumDimensions> _offsets = {{ }};
+
 public:
   /**
    * Default constructor, initialize with extent and offset 0 in all
@@ -502,12 +508,22 @@ public:
   /**
    * Copy constructor.
    */
-  constexpr ViewSpec(const self_t & other)
-  : _size(other._size),
-    _rank(other._rank),
-    _extents(other._extents),
-    _offsets(other._offsets)
-  { }
+  constexpr ViewSpec(const self_t & other) = default;
+
+  /**
+   * Move constructor.
+   */
+  constexpr ViewSpec(self_t && other)      = default;
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & other) = default;
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other)      = default;
 
   /**
    * Equality comparison operator.
@@ -525,18 +541,6 @@ public:
   constexpr bool operator!=(const self_t & other) const
   {
     return !(*this == other);
-  }
-
-  /**
-   * Assignment operator.
-   */
-  self_t & operator=(const self_t & other)
-  {
-    _offsets = other._offsets;
-    _extents = other._extents;
-    _rank    = other._rank;
-    _size    = other._size;
-    return *this;
   }
 
   /**
@@ -693,11 +697,6 @@ public:
   }
 
 private:
-  SizeType                             _size;
-  SizeType                             _rank;
-  std::array<SizeType, NumDimensions>  _extents;
-  std::array<IndexType, NumDimensions> _offsets;
-
   void update_size()
   {
     _size = 1;

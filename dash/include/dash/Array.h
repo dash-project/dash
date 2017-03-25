@@ -395,7 +395,7 @@ public:
    * \see DashAsyncProxyConcept
    */
   inline void push() const {
-    flush_local_all();
+    _array->m_globmem->flush_local_all();
   }
 
   /**
@@ -405,7 +405,7 @@ public:
    * \see DashAsyncProxyConcept
    */
   inline void fetch() const {
-    flush_all();
+    _array->m_globmem->flush_all();
   }
 };
 
@@ -621,7 +621,7 @@ private:
  * \concept{DashArrayConcept}
  *
  * \todo  Add template parameter:
- *        <tt>class GlobStaticMemType = dash::GlobStaticMem<ElementType></tt>
+ *        <tt>class GlobMemType = dash::GlobStaticMem<ElementType></tt>
  *
  * \note: Template parameter IndexType could be deduced from pattern
  *        type <tt>PatternT::index_type</tt>
@@ -1169,6 +1169,38 @@ public:
       m_team->barrier();
     }
     DASH_LOG_TRACE("Array.barrier >", "passed barrier");
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the array's underlying global memory.
+   */
+  inline void flush() const {
+    m_globmem->flush();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the array's underlying global memory.
+   */
+  inline void flush_local() const {
+    m_globmem->flush_local();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the array's underlying global memory.
+   */
+  inline void flush_all() const {
+    m_globmem->flush_all();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the array's underlying global memory.
+   */
+  inline void flush_local_all() const {
+    m_globmem->flush_local_all();
   }
 
   /**

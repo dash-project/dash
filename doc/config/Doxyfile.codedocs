@@ -14,7 +14,7 @@ PROJECT_NUMBER          = "0.3.0"
 STRIP_FROM_PATH         = src \
                           bin
 INPUT                   = "./doc/config/mainpage.dox" \
-                          "./dart-if/v3.2/include" \
+                          "./dart-if/include" \
                           "./dash/include" \
                           "./dash/examples"
 OUTPUT_DIRECTORY        = "doc"
@@ -88,7 +88,7 @@ ENABLE_PREPROCESSING    = YES
 MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = NO
 SEARCH_INCLUDES         = YES
-INCLUDE_PATH            = "./dart-if/v3.2/include" \
+INCLUDE_PATH            = "./dart-if/include" \
                           "./dash/include"
 INCLUDE_FILE_PATTERNS   = 
 PREDEFINED              = protected=private \

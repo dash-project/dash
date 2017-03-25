@@ -224,9 +224,14 @@ dart_ret_t dart_reduce(
 /** \{ */
 
 /**
+ * Perform an element-wise atomic update on the values pointed to by \c gptr
+ * by applying the operation \c op with the corresponding value in \c value
+ * on them.
+ *
  * DART Equivalent to MPI_Accumulate.
  *
- * \param gptr    A global pointer determining the target of the accumulate operation.
+ * \param gptr    A global pointer determining the target of the accumulate
+ *                operation.
  * \param values  The local buffer holding the elements to accumulate.
  * \param nelem   The number of local elements to accumulate per unit.
  * \param dtype   The data type to use in the accumulate operation \c op.
@@ -246,6 +251,10 @@ dart_ret_t dart_accumulate(
   dart_operation_t op) DART_NOTHROW;
 
 /**
+ * Perform an element-wise atomic update on the value of type \c dtype pointed
+ * to by \c gptr by applying the operation \c op with \c value on it and
+ * return the value beforethe update in \c result.
+ *
  * DART Equivalent to MPI_Fetch_and_op.
  *
  * \param gptr    A global pointer determining the target of the fetch-and-op
@@ -273,6 +282,10 @@ dart_ret_t dart_fetch_and_op(
 
 
 /**
+ * Atomically replace the single value pointed to by \c gptr with the the value
+ * in \c value if it is equal to \c compare. If the replacement succeeded, the
+ * resulting value is stored in \c result or the original value otherwise.
+ *
  * DART Equivalent to MPI_Compare_and_swap.
  *
  * \param gptr    A global pointer determining the target of the compare-and-swap

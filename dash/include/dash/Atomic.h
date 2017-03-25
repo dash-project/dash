@@ -1,8 +1,9 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
-#include <dash/meta/TypeInfo.h>
+#include <dash/Meta.h>
 
+#include <type_traits>
 #include <sstream>
 
 
@@ -44,8 +45,13 @@ namespace dash {
  *   // array[10] == dash::size() + 5
  * \endcode
  */
-template<typename T>
-class Atomic {
+template <typename T>
+class Atomic
+{
+  static_assert(
+    dash::is_atomic_compatible<T>::value,
+    "Type not supported for atomic operations");
+
 private:
   T _value;
   typedef Atomic<T> self_t;
