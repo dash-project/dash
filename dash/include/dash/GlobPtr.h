@@ -134,10 +134,16 @@ public:
     MemorySpace && mem_space,
     dart_gptr_t    gptr)
   : _dart_gptr(gptr)
-    // TODO: Should bind temporary, see dash::memalloc in
-    //       dash/memory/GlobUnitMem.h
   , _mem_space(nullptr)
-  { }
+  {
+    // For a use case, see dash::memalloc in dash/memory/GlobUnitMem.h.
+    // No need to bind temporary, the pointer instance would be rather
+    // heavy-weight with memory space as a member.
+
+    // TODO: save local size as _lsize = _mem_space.local_size() and
+    //       restrict this pointer's iteration range to the owner of
+    //       _mem_space, the temporary can then be safely destroyed.
+  }
 
   /**
    * Constructor for conversion of std::nullptr_t.
@@ -550,7 +556,7 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%06X|%02X|%04X|%04X|%016lX",
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.flags,
           gptr._dart_gptr.segid,
@@ -616,14 +622,25 @@ class GlobConstPtr
   { }
 
   /**
+   * Copy constructor.
+   */
+  constexpr GlobConstPtr(const self_t & other) = default;
+
+  /**
    * Move constructor.
    */
   constexpr GlobConstPtr(self_t && other)      = default;
 
   /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & rhs)       = default;
+
+  /**
    * Move-assignment operator.
    */
   self_t & operator=(self_t && rhs)            = default;
+
 
   value_type * local() {
     return base_t::local();
@@ -745,7 +762,7 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%06X|%02X|%04X|%04X|%016lX",
+          "u%06X|f%02X|s%04X|t%04X|o%016lX",
           gptr.dart_gptr().unitid,
           gptr.dart_gptr().flags,
           gptr.dart_gptr().segid,
