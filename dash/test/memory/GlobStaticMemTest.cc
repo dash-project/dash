@@ -30,6 +30,65 @@ TEST_F(GlobStaticMemTest, ConstructorInitializerList)
   }
 }
 
+TEST_F(GlobStaticMemTest, GlobalRandomAccess)
+{
+  auto globmem_local_elements = { 1, 2, 3 };
+  auto globmem = dash::GlobStaticMem<int>(globmem_local_elements);
+
+  DASH_LOG_DEBUG_VAR("GlobStaticMemTest", globmem.size());
+  EXPECT_EQ_U(globmem.size(), 3 * dash::size());
+
+  if (dash::myid() == 0) {
+    auto gbegin = globmem.begin();
+    auto glast  = gbegin + (globmem.size() - 1);
+    auto gend   = gbegin + globmem.size();
+
+    DASH_LOG_DEBUG_VAR("GlobStaticMemTest", gbegin);
+    DASH_LOG_DEBUG_VAR("GlobStaticMemTest", glast);
+    DASH_LOG_DEBUG_VAR("GlobStaticMemTest", gend);
+
+    // Test distance in global memory over multiple unit spaces:
+    EXPECT_EQ(gend  - gbegin, globmem.size());
+    EXPECT_EQ(glast - gbegin, globmem.size() - 1);
+
+    // Iterate entire global memory space, including end pointer:
+    for (int g = 0; g <= globmem.size(); ++g) {
+      DASH_LOG_DEBUG_VAR("GlobStaticMemTest", gbegin);
+      // Do not dereference end pointer:
+      if (g < globmem.size()) {
+        int gvalue = *gbegin;
+        EXPECT_EQ((g % 3) + 1, gvalue);
+      }
+
+      if (g % 2 == 0) { ++gbegin; }
+      else            { gbegin++; }
+      EXPECT_EQ( gbegin, globmem.begin() + g + 1);
+      EXPECT_EQ(*gbegin, globmem.begin()[g+1]);
+    }
+  }
+
+  dash::barrier();
+
+  if (dash::myid() == dash::size() - 1) {
+    auto gbegin = globmem.begin();
+    auto gend   = gbegin + globmem.size();
+    // Reverse iteratation on entire global memory space, starting at
+    // end pointer:
+    for (int g = globmem.size(); g >= 0; --g) {
+      DASH_LOG_DEBUG_VAR("GlobStaticMemTest", gend);
+      // Do not dereference end pointer:
+      if (g < globmem.size()) {
+        int gvalue = *gend;
+        EXPECT_EQ((g % 3) + 1, gvalue);
+      }
+
+      if (g % 2 == 0) { --gend; }
+      else            { gend--; }
+      EXPECT_EQ(gend, globmem.begin() + g - 1);
+    }
+  }
+}
+
 TEST_F(GlobStaticMemTest, LocalBegin)
 {
   auto   target_local_elements = { 1, 2, 3, 4 };

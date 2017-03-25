@@ -240,6 +240,13 @@ public:
     return _nlelem;
   }
 
+  constexpr index_type distance(
+      const pointer & gbegin,
+      const pointer & gend) const {
+    return ( gend.addr_or_offs.offset - gbegin.addr_or_offs.offset )
+             / sizeof(value_type);
+  }
+
   /**
    * The team containing all units accessing the global memory space.
    *

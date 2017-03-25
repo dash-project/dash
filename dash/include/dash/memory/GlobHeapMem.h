@@ -429,6 +429,23 @@ public:
     return unit_local_size;
   }
 
+  index_type distance(const pointer & gbegin, const pointer & gend) const {
+    if (gbegin.dart_gptr().unitid > gend.dart_gptr().unitid) {
+      return -(distance(gend, gbegin));
+    }
+    index_type dist = local_size(
+                        dart_team_unit_t { gbegin.dart_gptr().unitid })
+                      - (gbegin.dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type))
+                      + (gend.dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type));
+    for (int u = gbegin.dart_gptr().unitid+1;
+             u < gend.dart_gptr().unitid; ++u) {
+      dist += local_size(dart_team_unit_t { u });
+    }
+    return dist;
+  }
+
   /**
    * The team containing all units accessing the global memory space.
    *

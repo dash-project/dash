@@ -91,17 +91,11 @@ public:
   typedef typename allocator_type::difference_type        difference_type;
   typedef typename allocator_type::difference_type             index_type;
 
-#if 0
-  typedef typename allocator_type::pointer                        pointer;
-  typedef typename allocator_type::const_pointer            const_pointer;
-  typedef typename allocator_type::void_pointer              void_pointer;
-  typedef typename allocator_type::const_void_pointer  const_void_pointer;
-#else
   typedef GlobPtr<      value_type, self_t>                       pointer;
   typedef GlobPtr<const value_type, self_t>                 const_pointer;
   typedef GlobPtr<      void,       self_t>                  void_pointer;
   typedef GlobPtr<const void,       self_t>            const_void_pointer;
-#endif
+
   typedef       value_type *                                local_pointer;
   typedef const value_type *                          const_local_pointer;
 
@@ -292,6 +286,23 @@ public:
   constexpr size_type local_size() const noexcept
   {
     return _nlelem;
+  }
+
+  index_type distance(const pointer & gbegin, const pointer & gend) const {
+    if (gbegin.dart_gptr().unitid > gend.dart_gptr().unitid) {
+      return -(distance(gend, gbegin));
+    }
+    index_type dist = local_size(
+                        dart_team_unit_t { gbegin.dart_gptr().unitid })
+                      - (gbegin.dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type))
+                      + (gend.dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type));
+    for (int u = gbegin.dart_gptr().unitid+1;
+             u < gend.dart_gptr().unitid; ++u) {
+      dist += local_size(dart_team_unit_t { u });
+    }
+    return dist;
   }
 
   /**
