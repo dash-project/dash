@@ -122,8 +122,8 @@ protected:
        : mem_space->local_size(dart_team_unit_t { gptr.unitid }))
   , _unit_end(
        mem_space == nullptr
-       ? mem_space->team().size()
-       : gptr.unitid)
+       ? gptr.unitid
+       : mem_space->team().size())
   {
     if (rindex < 0) { decrement(-rindex); }
     if (rindex > 0) { increment(rindex); }
