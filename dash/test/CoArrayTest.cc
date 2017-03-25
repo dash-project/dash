@@ -12,7 +12,7 @@
 #include <mutex>
 #include <thread>
 
-using namespace dash::co_array;
+using namespace dash::coarray;
 
 TEST_F(CoArrayTest, TypesInterface)
 {
@@ -118,7 +118,7 @@ TEST_F(CoArrayTest, ContainerInterface)
   int h = i + b;
   
   // Coarray to Coarray
-  if(dash::co_array::num_images() >= 2){
+  if(num_images() >= 2){
     x(0)[3][4] = x(1)[1][2];
   }
 #endif

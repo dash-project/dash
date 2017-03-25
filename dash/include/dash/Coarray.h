@@ -20,7 +20,7 @@
 namespace dash {
 
 // forward decls
-namespace co_array {
+namespace coarray {
 
 template<typename Container>
 inline void sync_images(const Container & image_ids);
@@ -285,7 +285,7 @@ public:
    */
   template<typename Container>
   inline void sync_images(const Container & image_ids){
-    dash::co_array::sync_images(image_ids);
+    dash::coarray::sync_images(image_ids);
     // TODO: flush memory
   }
 
@@ -536,6 +536,6 @@ Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs / static_cast<Lhs>(rhs);
 }
 
-#include <dash/co_array/utils.h>
+#include <dash/co_array/Utils.h>
 
 #endif /* COARRAY_H_INCLUDED */

@@ -2,7 +2,7 @@
 #define DASH__COARRAY_UTILS_H__
 
 namespace dash {
-namespace co_array {
+namespace coarray {
 
 inline dash::global_unit_t this_image() {
   return dash::myid();
