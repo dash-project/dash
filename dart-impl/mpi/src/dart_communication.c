@@ -1044,11 +1044,6 @@ dart_ret_t dart_flush_all(
   } else {
     win = dart_win_local_alloc;
   }
-  DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
-  if (MPI_Win_sync(win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush_all ! MPI_Win_sync failed!");
-    return DART_ERR_OTHER;
-  }
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
   if (MPI_Win_flush_all(win) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_flush_all ! MPI_Win_flush_all failed!");
