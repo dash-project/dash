@@ -597,6 +597,7 @@ public:
                          "updating iterator to first unattached bucket");
           _attach_buckets_first--;
         }
+        _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
         _buckets.pop_back();
         if (_attach_buckets_first->attached) {
           // Updated iterator to first unattached bucket references attached
@@ -613,10 +614,16 @@ public:
         DASH_LOG_TRACE("GlobHeapMem.shrink", "shrink unattached bucket:",
                        "old size:", bucket_last.size,
                        "new size:", bucket_last.size - num_dealloc);
-        bucket_last.size                  -= num_dealloc;
         _local_sizes.local[0]             -= num_dealloc;
         _bucket_cumul_sizes[_myid].back() -= num_dealloc;
         num_dealloc = 0;
+
+        //Deallocate old local bucket
+        _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
+        //Allocate new bucket with specified size
+        auto const lsz = _local_sizes.local[0];
+        bucket_last.lptr = _allocator.allocate_local(lsz);
+        bucket_last.size = lsz;
       }
     }
     // Number of elements to deallocate exceeds capacity of un-attached
@@ -1176,32 +1183,70 @@ private:
     // Number of unattached buckets of every unit:
     std::vector<size_type> num_unattached_buckets(_nunits, 0);
     _num_attach_buckets.barrier();
-    dash::copy(_num_attach_buckets.begin(),
-               _num_attach_buckets.end(),
+    dash::copy(_num_attach_buckets.begin(), _num_attach_buckets.end(),
                num_unattached_buckets.data());
-    // Attach array of local unattached bucket sizes to allow remote units to
-    // query the sizes of this unit's unattached buckets.
+
+
     std::vector<size_type> attach_buckets_sizes;
-    for (auto bit = _attach_buckets_first; bit != _buckets.end(); ++bit) {
-      attach_buckets_sizes.push_back((*bit).size);
+    std::vector<size_type> displs;
+    std::vector<size_type> team_unattached_bucket_sizes;
+
+    auto atLeast2 = std::find_if(num_unattached_buckets.begin(),
+                                 num_unattached_buckets.end(),
+                                 [](size_type const& sz) { return sz > 1; });
+
+    //At least one remote unit has more than two buckets to attach
+    //so we make all to all communication
+    if (atLeast2 != num_unattached_buckets.end()) {
+      // Attach array of local unattached bucket sizes to allow remote units
+      // to
+      // query the sizes of this unit's unattached buckets.
+      for (auto bit = _attach_buckets_first; bit != _buckets.end(); ++bit) {
+        attach_buckets_sizes.push_back(bit->size);
+      }
+
+      DASH_ASSERT(attach_buckets_sizes.size() ==
+                  _num_attach_buckets.local[0]);
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
+                         attach_buckets_sizes);
+
+      dart_storage_t ds =
+          dart_storage<size_type>(attach_buckets_sizes.size());
+
+      // Accumulate number of unattached buckets of each unit
+      auto const n_team_unattached_buckets =
+          std::accumulate(std::begin(num_unattached_buckets),
+                          std::end(num_unattached_buckets), 0);
+
+      team_unattached_bucket_sizes.reserve(n_team_unattached_buckets);
+
+      displs.reserve(_team->size());
+      displs[0] = 0;
+
+      std::partial_sum(std::begin(num_unattached_buckets),
+                       // We stop at last element
+                       std::end(num_unattached_buckets) - 1,
+                       // We start at offset 1, since disp[0] = 0
+                       std::begin(displs) + 1);
+
+      DASH_ASSERT_RETURNS(dart_allgatherv(
+                              // array of locally unattached bucket sizes
+                              attach_buckets_sizes.data(),
+                              // number of locally unattached buckets
+                              ds.nelem,
+                              // DART Datatype
+                              ds.dtype,
+                              // receive buffer
+                              team_unattached_bucket_sizes.data(),
+                              // receive counts
+                              num_unattached_buckets.data(),
+                              // receive displs
+                              displs.data(),
+                              // DART Team
+                              _team->dart_id()),
+                          DART_OK);
     }
-    DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
-                       attach_buckets_sizes);
 
-    dart_storage_t ds = dart_storage<size_type>(attach_buckets_sizes.size());
-
-    dart_gptr_t attach_buckets_sizes_gptr;
-    if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype,
-                              &attach_buckets_sizes[0], &attach_buckets_sizes_gptr) != DART_OK) {
-
-      DASH_LOG_ERROR("GlobDynamicMem.update_remote_size()", "cannot attach local memory",
-                     attach_buckets_sizes_gptr);
-    }
-
-    _team->barrier();
-    // Implicit barrier in allocator.attach
-    DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
-                       attach_buckets_sizes_gptr);
     for (int u = 0; u < _nunits; ++u) {
       if (u == _myid) {
         continue;
@@ -1209,48 +1254,31 @@ private:
       DASH_LOG_TRACE("GlobHeapMem.update_remote_size",
                      "collecting local bucket sizes of unit", u);
       // Last known local attached capacity of remote unit:
-      auto & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
+      auto& u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
       // Request current locally allocated capacity of remote unit:
-      size_type u_local_size_old  = u_bucket_cumul_sizes.size() == 0
-                                    ? 0
-                                    : u_bucket_cumul_sizes.back();
-      size_type u_local_size_new  = _local_sizes[u];
-      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
-                         u_local_size_old);
-      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
-                         u_local_size_old);
-      int u_local_size_diff  = u_local_size_new - u_local_size_old;
-      new_remote_size       += u_local_size_new;
+      size_type u_local_size_old =
+          u_bucket_cumul_sizes.size() == 0 ? 0 : u_bucket_cumul_sizes.back();
+      size_type u_local_size_new = _local_sizes[u];
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_old);
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_old);
+      int u_local_size_diff = u_local_size_new - u_local_size_old;
+      new_remote_size += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                          u_num_attach_buckets);
       if (u_num_attach_buckets == 0) {
         // No unattached buckets at unit u.
-      } else if (u_num_attach_buckets == 1) {
+      }
+      else if (u_num_attach_buckets == 1) {
         // One unattached bucket at unit u, no need to request single bucket
         // sizes:
         u_bucket_cumul_sizes.push_back(u_local_size_new);
-      } else {
-        // Unit u has multiple unattached buckets.
-        // Request sizes of single unattached buckets of unit u:
-        std::vector<size_type> u_attach_buckets_sizes(
-                                 u_num_attach_buckets, 0);
-        dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
-        dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
-        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
-        DASH_ASSERT_RETURNS(
-          dart_get_blocking(
-            // local dest:
-            u_attach_buckets_sizes.data(),
-            // global source:
-            u_attach_buckets_sizes_gptr,
-            // request bytes (~= number of sizes) from unit u:
-            ds.nelem, ds.dtype),
-          DART_OK);
-        // Update local snapshot of cumulative bucket sizes at unit u:
-        for (int bi = 0; bi < u_num_attach_buckets; ++bi) {
-          size_type single_bkt_size = u_attach_buckets_sizes[bi];
+      }
+      else {
+        auto const u_end = displs[u] + u_num_attach_buckets;
+        for (int bi = displs[u]; bi < u_end; ++bi) {
+          size_type single_bkt_size = team_unattached_bucket_sizes[bi];
           size_type cumul_bkt_size  = single_bkt_size;
           DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                              single_bkt_size);
@@ -1265,16 +1293,11 @@ private:
         u_bucket_cumul_sizes.back() += u_local_size_diff;
       }
     }
-    // Detach temporary memory
-    DASH_ASSERT_RETURNS(
-      dart_team_memderegister(attach_buckets_sizes_gptr),
-      DART_OK);
-    // Implicit barrier in allocator.detach
+
     _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING
     for (int u = 0; u < _nunits; ++u) {
-      DASH_LOG_TRACE("GlobHeapMem.update_remote_size",
-                     "unit", u,
+      DASH_LOG_TRACE("GlobHeapMem.update_remote_size", "unit", u,
                      "cumulative bucket sizes:", _bucket_cumul_sizes[u]);
     }
 #endif
