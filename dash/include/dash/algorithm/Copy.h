@@ -493,17 +493,42 @@ GlobOutputIt copy_impl(
                  "l_in_last:",   in_last,
                  "g_out_first:", out_first.pos());
 
-  auto num_elements = std::distance(in_first, in_last);
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_elements);
-  DASH_ASSERT_RETURNS(
-    dart_put_blocking(
-      out_first.dart_gptr(),
-      in_first,
-      ds.nelem,
-      ds.dtype),
-    DART_OK);
 
-  auto out_last = out_first + num_elements;
+
+  auto num_elements = std::distance(in_first, in_last);
+
+  if (num_elements < 1) return out_first;
+
+  auto nremaining = static_cast<dash::default_size_t>(num_elements);
+  auto pattern = out_first.pattern();
+
+  while (nremaining) {
+    // global index to local unit and index
+    auto local_pos = pattern.local(out_first.pos());
+    // number of elements in unit
+    auto local_size = pattern.local_extents(team_unit_t{local_pos.unit});
+
+    auto ncopy = std::min(
+        std::initializer_list<dash::default_size_t>{local_size[0],
+        nremaining});
+
+    dart_storage_t ds = dash::dart_storage<ValueType>(ncopy);
+
+    DASH_ASSERT_RETURNS(
+        dart_put_blocking(
+          out_first.dart_gptr(),
+          in_first,
+          ds.nelem,
+          ds.dtype),
+        DART_OK);
+
+    std::advance(in_first, ncopy);
+    std::advance(out_first, ncopy);
+
+    nremaining = std::distance(in_first, in_last);
+  }
+
+  auto out_last = out_first;
   DASH_LOG_TRACE("dash::copy_impl >",
                  "g_out_last:", out_last.dart_gptr());
 
@@ -867,7 +892,7 @@ ValueType * copy(
   auto total_copy_elem = in_last - in_first;
 
   // Instead of testing in_first.local() and in_last.local(), this test for
-  // a local-only range only requires one call to in_first.local() which 
+  // a local-only range only requires one call to in_first.local() which
   // increases throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
@@ -1113,10 +1138,11 @@ GlobOutputIt copy(
     // Copy to remote elements succeeding the local subrange:
     if (g_l_offset_end < out_h_last.pos()) {
       DASH_LOG_TRACE("dash::copy", "copy to global succeeding local subrange");
+
       out_last = dash::internal::copy_impl(
-                   in_first + l_elem_offset + num_local_elem,
-                   in_last,
-                   out_first + num_local_elem);
+                 in_first + l_elem_offset + num_local_elem,
+                 in_last,
+                 out_first + num_local_elem);
     }
   } else {
     // All elements in output range are remote

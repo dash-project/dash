@@ -803,6 +803,25 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
   }
 }
 
+TEST_F(CopyTest, CArrayToDashArray)
+{
+  dash::Array<int> arr(100);
+
+  if (dash::myid() == 0) {
+    int buf[100];
+    std::iota(buf, buf + 100, 0);
+    // copy local buffer to global array
+    dash::copy(buf, buf + 100, arr.begin());
+  }
+
+  arr.barrier();
+
+  if (dash::myid() == 0) {
+    for (size_t idx = 0; idx < 100; ++idx) {
+      EXPECT_EQ_U(idx, static_cast<int>(arr[idx]));
+    }
+  }
+}
 #if 0
 // TODO
 TEST_F(CopyTest, AsyncAllToLocalVector)
