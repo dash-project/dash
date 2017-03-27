@@ -140,6 +140,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
        CACHE STRING "C++ compiler (clang++) debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+  
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
+    message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
+  endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
@@ -151,6 +156,11 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.1")
+    message(FATAL_ERROR "Insufficient GCC version (< 4.8.1)")
+  endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
@@ -163,6 +173,12 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   if(ENABLE_CC_REPORTS)
     set (CC_REPORT_FLAG "-qopt-report=4 -qopt-report-phase ipo")
   endif()
+
+
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
+    message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
+  endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,
@@ -207,29 +223,29 @@ set(CMAKE_C_FLAGS_DEBUG
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG}")
 set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} -Ofast -DDASH_DEBUG ${CC_GDB_FLAG}")
+    "${CMAKE_C_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CC_GDB_FLAG}")
 
 set(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:

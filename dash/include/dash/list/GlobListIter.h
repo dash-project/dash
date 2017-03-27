@@ -136,7 +136,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline const GlobMemType & globmem() const
@@ -145,7 +145,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline GlobMemType & globmem()
@@ -223,7 +223,7 @@ private:
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
   /// Unit id of the active unit
-  dart_unit_t            _myid;
+  team_unit_t            _myid;
 
 }; // class GlobListIter
 

@@ -5,7 +5,7 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -24,6 +24,14 @@ template<
   class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
+class GlobIter;
+// Forward-declaration
+template<
+  typename ElementType,
+  class    PatternType,
+  class    GlobMemType,
+  class    PointerType,
+  class    ReferenceType >
 class GlobStencilIter;
 #endif
 
@@ -35,8 +43,10 @@ class GlobStencilIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobMem<ElementType>,
-  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    GlobMemType   = GlobStaticMem<
+                             typename std::decay<ElementType>::type
+                           >,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -54,19 +64,53 @@ private:
             ReferenceType>
     self_t;
 
+  typedef GlobIter<
+            ElementType,
+            PatternType,
+            GlobMemType,
+            PointerType,
+            ReferenceType>
+    global_type;
+
+  typedef GlobIter<
+            const ElementType,
+            PatternType,
+            GlobMemType,
+            PointerType,
+            ReferenceType>
+    const_global_type;
+
+  typedef typename std::remove_const<ElementType>::type
+    nonconst_value_type;
+
   typedef typename PatternType::viewspec_type
     ViewSpecType;
   typedef typename PatternType::index_type
     IndexType;
 
 public:
-  typedef       ReferenceType                      reference;
-  typedef const ReferenceType                const_reference;
-  typedef       PointerType                          pointer;
-  typedef const PointerType                    const_pointer;
+  typedef          ElementType                         value_type;
 
-  typedef       PatternType                     pattern_type;
-  typedef       IndexType                         index_type;
+  typedef          ReferenceType                        reference;
+  typedef typename ReferenceType::const_type      const_reference;
+
+  typedef          PointerType                            pointer;
+  typedef typename PointerType::const_type          const_pointer;
+
+  typedef typename GlobMemType::local_pointer       local_pointer;
+  typedef typename GlobMemType::local_pointer          local_type;
+
+  typedef          PatternType                       pattern_type;
+  typedef typename PatternType::index_type             index_type;
+
+private:
+  typedef GlobViewIter<
+            const ElementType,
+            PatternType,
+            GlobMemType,
+            const_pointer,
+            const_reference >
+    self_const_t;
 
 public:
   typedef std::integral_constant<bool, true>        has_view;
@@ -92,6 +136,22 @@ public:
     class    Ref_ >
   friend class GlobStencilIter;
 
+  template<
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobViewIter;
+
+  template<
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobIter;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -111,110 +171,177 @@ protected:
   /// Maximum position relative to the viewspec allowed for this iterator.
   IndexType                    _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t                  _myid;
+  team_unit_t                  _myid;
   /// Pointer to first element in local memory
-  ElementType                * _lbegin          = nullptr;
+  local_pointer                _lbegin          = nullptr;
 
 public:
   /**
    * Default constructor.
    */
-  GlobViewIter()
-  : _globmem(nullptr),
-    _pattern(nullptr),
-    _viewspec(nullptr),
-    _idx(0),
-    _view_idx_offset(0),
-    _max_idx(0),
-    _myid(dash::Team::GlobalUnitID()),
-    _lbegin(nullptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobViewIter()", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter()", _max_idx);
-  }
+  constexpr GlobViewIter()
+  : _globmem(nullptr)
+  , _pattern(nullptr)
+  , _viewspec(nullptr)
+  , _idx(0)
+  , _view_idx_offset(0)
+  , _max_idx(0)
+  , _myid(dash::Team::All().myid())
+  , _lbegin(nullptr)
+  { }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  GlobViewIter(
-    GlobMemType          * gmem,
+  template <class GlobStaticMemT_>
+  constexpr GlobViewIter(
+    GlobStaticMemT_            * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(gmem),
-    _pattern(&pat),
-    _viewspec(&viewspec),
-    _idx(position),
-    _view_idx_offset(view_index_offset),
-    _max_idx(viewspec.size() - 1),
-    _myid(dash::Team::GlobalUnitID()),
-    _lbegin(_globmem->lbegin())
-  {
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", *_viewspec);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _view_idx_offset);
-  }
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem))
+  , _pattern(&pat)
+  , _viewspec(&viewspec)
+  , _idx(position)
+  , _view_idx_offset(view_index_offset)
+  , _max_idx(viewspec.size() - 1)
+  , _myid(pat.team().myid())
+  , _lbegin(_globmem->lbegin())
+  { }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  GlobViewIter(
-    GlobMemType       * gmem,
+  template <class GlobStaticMemT_>
+  constexpr GlobViewIter(
+    GlobStaticMemT_         * gmem,
 	  const PatternType & pat,
 	  IndexType           position          = 0,
     IndexType           view_index_offset = 0)
-  : _globmem(gmem),
-    _pattern(&pat),
-    _viewspec(nullptr),
-    _idx(position),
-    _view_idx_offset(view_index_offset),
-    _max_idx(pat.size() - 1),
-    _myid(dash::Team::GlobalUnitID()),
-    _lbegin(_globmem->lbegin())
-  {
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _view_idx_offset);
-  }
+  : _globmem(reinterpret_cast<GlobMemType *>(gmem))
+  , _pattern(&pat)
+  , _viewspec(nullptr)
+  , _idx(position)
+  , _view_idx_offset(view_index_offset)
+  , _max_idx(pat.size() - 1)
+  , _myid(dash::Team::GlobalUnitID())
+  , _lbegin(_globmem->lbegin())
+  { }
 
   /**
    * Constructor, creates a global view iterator from a global iterator.
    */
-  template<class PtrT, class RefT>
-  GlobViewIter(
-    const GlobIter<ElementType, PatternType, PtrT, RefT> & other,
-    const ViewSpecType                                   & viewspec,
-    IndexType                                              view_idx_offset = 0)
-  : _globmem(other._globmem),
-    _pattern(other._pattern),
-    _viewspec(&viewspec),
-    _idx(other._idx),
-    _view_idx_offset(view_idx_offset),
-    _max_idx(other._max_idx),
-    _myid(other._myid),
-    _lbegin(other._lbegin)
-  {
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", *_viewspec);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _view_idx_offset);
-  }
+  template <
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  constexpr GlobViewIter(
+    const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other,
+    const ViewSpecType                                       & viewspec,
+    IndexType                                                  view_offs = 0)
+  : _globmem(other._globmem)
+  , _pattern(other._pattern)
+  , _viewspec(&viewspec)
+  , _idx(other._idx)
+  , _view_idx_offset(view_offs)
+  , _max_idx(other._max_idx)
+  , _myid(other._myid)
+  , _lbegin(other._lbegin)
+  { }
 
   /**
    * Copy constructor.
    */
-  GlobViewIter(
-    const self_t & other) = default;
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  constexpr GlobViewIter(
+//  const GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+    const GlobViewIter<T_, P_, GM_, Ptr_, Ref_> & other)
+  : _globmem        (other._globmem)
+  , _pattern        (other._pattern)
+  , _viewspec       (other._viewspec)
+  , _idx            (other._idx)
+  , _view_idx_offset(other._view_idx_offset)
+  , _max_idx        (other._max_idx)
+  , _myid           (other._myid)
+  , _lbegin         (other._lbegin)
+  { }
+
+  /**
+   * Move constructor.
+   */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  constexpr GlobViewIter(
+//  GlobViewIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
+    GlobViewIter<T_, P_, GM_, Ptr_, Ref_> && other)
+  : _globmem        (other._globmem)
+  , _pattern        (other._pattern)
+  , _viewspec       (other._viewspec)
+  , _idx            (other._idx)
+  , _view_idx_offset(other._view_idx_offset)
+  , _max_idx        (other._max_idx)
+  , _myid           (other._myid)
+  , _lbegin         (other._lbegin)
+  { }
 
   /**
    * Assignment operator.
    */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   self_t & operator=(
-    const self_t & other) = default;
+    const GlobViewIter<T_, P_, GM_, Ptr_, Ref_ > & other)
+  {
+    _globmem         = other._globmem;
+    _pattern         = other._pattern;
+    _viewspec        = other._viewspec;
+    _idx             = other._idx;
+    _view_idx_offset = other._view_idx_offset;
+    _max_idx         = other._max_idx;
+    _myid            = other._myid;
+    _lbegin          = other._lbegin;
+  }
+
+  /**
+   * Move-assignment operator.
+   */
+  template <
+    typename T_,
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
+  self_t & operator=(
+    GlobViewIter<T_, P_, GM_, Ptr_, Ref_ > && other)
+  {
+    _globmem         = other._globmem;
+    _pattern         = other._pattern;
+    _viewspec        = other._viewspec;
+    _idx             = other._idx;
+    _view_idx_offset = other._view_idx_offset;
+    _max_idx         = other._max_idx;
+    _myid            = other._myid;
+    _lbegin          = other._lbegin;
+    // no ownership to transfer
+    return *this;
+  }
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -229,14 +356,14 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator PointerType() const
+  explicit operator const_pointer() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -244,8 +371,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -256,10 +383,54 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.const_pointer >",
+                       local_pos.index + offset);
     // Create global pointer from unit and local offset:
-    PointerType gptr(
+    const_pointer gptr(
+      _globmem->at(local_pos.unit, local_pos.index)
+    );
+    gptr += offset;
+    return gptr;
+  }
+
+  /**
+   * Type conversion operator to \c GlobPtr.
+   *
+   * \return  A global reference to the element at the iterator's position
+   */
+  explicit operator pointer()
+  {
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer", offset);
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.pointer >", local_pos.index + offset);
+    // Create global pointer from unit and local offset:
+    pointer gptr(
       _globmem->at(local_pos.unit, local_pos.index)
     );
     gptr += offset;
@@ -304,7 +475,7 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
-    dash::GlobPtr<ElementType, PatternType> gptr(
+    const_pointer gptr(
       _globmem->at(
         local_pos.unit,
         local_pos.index)
@@ -318,28 +489,19 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*() const
+  inline reference operator*()
   {
-    DASH_LOG_TRACE("GlobViewIter.*", _idx, _view_idx_offset);
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    IndexType idx = _idx;
-    // Global index to local index and unit:
-    local_pos_t local_pos;
-    if (_viewspec == nullptr) {
-      // No viewspec mapping required:
-      local_pos        = _pattern->local(idx);
-    } else {
-      // Viewspec projection required:
-      auto glob_coords = coords(idx);
-      local_pos        = _pattern->local_index(glob_coords);
-    }
-    DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.index);
-    // Global reference to element at given position:
-    return ReferenceType(
-             _globmem->at(local_pos.unit,
-                          local_pos.index));
+    return this->operator[](_idx);
+  }
+
+  /**
+   * Dereference operator.
+   *
+   * \return  A global reference to the element at the iterator's position.
+   */
+  inline const_reference operator*() const
+  {
+    return this->operator[](_idx);
   }
 
   /**
@@ -348,26 +510,54 @@ public:
    */
   reference operator[](
     /// The global position of the element
-    index_type g_index) const
+    index_type g_index)
   {
-    DASH_LOG_TRACE("GlobViewIter.[]", g_index, _view_idx_offset);
-    IndexType idx = g_index;
     typedef typename pattern_type::local_index_t
       local_pos_t;
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      local_pos        = _pattern->local(idx);
+      local_pos        = _pattern->local(g_index);
     } else {
       // Viewspec projection required:
-      auto glob_coords = coords(idx);
+      auto glob_coords = coords(g_index);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.[]", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.[]", local_pos.index);
+    DASH_LOG_TRACE("GlobViewIter.[]",
+                   "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
+                   "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     // Global reference to element at given position:
-    return ReferenceType(
+    return reference(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
+  }
+
+  /**
+   * Subscript operator, returns global reference to element at given
+   * global index.
+   */
+  const_reference operator[](
+    /// The global position of the element
+    index_type g_index) const
+  {
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(g_index);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(g_index);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE("GlobViewIter.[]",
+                   "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
+                   "(unit:", local_pos.unit, " index:", local_pos.index, ")");
+    // Global reference to element at given position:
+    return const_reference(
              _globmem->at(local_pos.unit,
                           local_pos.index));
   }
@@ -376,7 +566,7 @@ public:
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  inline bool is_local() const
+  constexpr bool is_local() const
   {
     return (_myid == lpos().unit);
   }
@@ -384,7 +574,7 @@ public:
   /**
    * Convert global iterator to native pointer.
    */
-  ElementType * local() const
+  local_pointer local() const
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
@@ -425,10 +615,10 @@ public:
   /**
    * Map iterator to global index domain by projecting the iterator's view.
    */
-  inline GlobIter<ElementType, PatternType, GlobMemType> global() const
+  inline const_global_type global() const
   {
     auto g_idx = gpos();
-    return dash::GlobIter<ElementType, PatternType, GlobMemType>(
+    return const_global_type(
              _globmem,
              *_pattern,
              g_idx
@@ -436,13 +626,23 @@ public:
   }
 
   /**
+   * Map iterator to global index domain by projecting the iterator's view.
+   */
+  inline global_type global()
+  {
+    return global_type(
+             _globmem,
+             *_pattern,
+             gpos()
+           );
+  }
+
+  /**
    * Position of the iterator in its view's iteration space and the view's
    * offset in global index space.
    */
-  inline index_type pos() const
+  constexpr index_type pos() const noexcept
   {
-    DASH_LOG_TRACE("GlobViewIter.pos()",
-                   "idx:", _idx, "vs_offset:", _view_idx_offset);
     return _idx + _view_idx_offset;
   }
 
@@ -450,7 +650,7 @@ public:
    * Position of the iterator in its view's iteration space, disregarding
    * the view's offset in global index space.
    */
-  inline index_type rpos() const
+  inline index_type rpos() const noexcept
   {
     return _idx;
   }
@@ -549,19 +749,19 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  constexpr const GlobMemType & globmem() const noexcept
   {
     return *_globmem;
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMemType & globmem()
+  inline GlobMemType & globmem() noexcept
   {
     return *_globmem;
   }
@@ -569,7 +769,7 @@ public:
   /**
    * Prefix increment operator.
    */
-  self_t & operator++()
+  self_t & operator++() noexcept
   {
     ++_idx;
     return *this;
@@ -578,7 +778,7 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int)
+  self_t operator++(int) noexcept
   {
     self_t result = *this;
     ++_idx;
@@ -588,7 +788,7 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--()
+  self_t & operator--() noexcept
   {
     --_idx;
     return *this;
@@ -597,26 +797,26 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int)
+  self_t operator--(int) noexcept
   {
     self_t result = *this;
     --_idx;
     return result;
   }
 
-  self_t & operator+=(index_type n)
+  self_t & operator+=(index_type n) noexcept
   {
     _idx += n;
     return *this;
   }
 
-  self_t & operator-=(index_type n)
+  self_t & operator-=(index_type n) noexcept
   {
     _idx -= n;
     return *this;
   }
 
-  self_t operator+(index_type n) const
+  self_t operator+(index_type n) const noexcept
   {
     if (_viewspec == nullptr) {
       self_t res(
@@ -635,7 +835,7 @@ public:
     return res;
   }
 
-  self_t operator-(index_type n) const
+  self_t operator-(index_type n) const noexcept
   {
     if (_viewspec == nullptr) {
       self_t res(
@@ -655,7 +855,7 @@ public:
   }
 
   index_type operator+(
-    const self_t & other) const
+    const self_t & other) const noexcept
   {
     return _idx + other._idx;
   }
@@ -666,7 +866,7 @@ public:
     return _idx - other._idx;
   }
 
-  inline bool operator<(const self_t & other) const
+  inline bool operator<(const self_t & other) const noexcept
   {
     // NOTE:
     // This function call is significantly slower than the explicit
@@ -676,7 +876,7 @@ public:
                    std::less<pointer>());
   }
 
-  inline bool operator<=(const self_t & other) const
+  inline bool operator<=(const self_t & other) const noexcept
   {
     // NOTE:
     // This function call is significantly slower than the explicit
@@ -686,7 +886,7 @@ public:
                    std::less_equal<pointer>());
   }
 
-  inline bool operator>(const self_t & other) const
+  inline bool operator>(const self_t & other) const noexcept
   {
     // NOTE:
     // This function call is significantly slower than the explicit
@@ -696,7 +896,7 @@ public:
                    std::greater<pointer>());
   }
 
-  inline bool operator>=(const self_t & other) const
+  inline bool operator>=(const self_t & other) const noexcept
   {
     // NOTE:
     // This function call is significantly slower than the explicit
@@ -706,7 +906,7 @@ public:
                    std::greater_equal<pointer>());
   }
 
-  inline bool operator==(const self_t & other) const
+  inline bool operator==(const self_t & other) const noexcept
   {
     // NOTE: See comments in method compare().
     if (_viewspec == other._viewspec) {
@@ -724,7 +924,7 @@ public:
             lhs_local.index == rhs_local.index);
   }
 
-  inline bool operator!=(const self_t & other) const
+  inline bool operator!=(const self_t & other) const noexcept
   {
     // NOTE: See comments in method compare().
     if (_viewspec == other._viewspec) {
@@ -742,12 +942,12 @@ public:
             lhs_local.index != rhs_local.index);
   }
 
-  inline const PatternType & pattern() const
+  constexpr const PatternType & pattern() const noexcept
   {
     return *_pattern;
   }
 
-  inline dash::Team & team() const
+  constexpr dash::Team & team() const noexcept
   {
     return _pattern->team();
   }
@@ -763,7 +963,7 @@ private:
   bool compare(
     const self_t & other,
     const GlobIndexCmpFun & gidx_cmp,
-    const GlobPtrCmpFun   & gptr_cmp) const
+    const GlobPtrCmpFun   & gptr_cmp) const noexcept
   {
 #if __REMARK__
     // Usually this is a best practice check, but it's an infrequent case
@@ -804,7 +1004,9 @@ private:
    * Convert a global offset within the global iterator's range to
    * corresponding global coordinates with respect to viewspec projection.
    *
-   * NOTE:
+   * This method is bounds-checked and might throw.
+   *
+   * \note
    * This method could be specialized for NumDimensions = 1 for performance
    * tuning.
    */
@@ -863,14 +1065,14 @@ private:
 template<
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 auto distance(
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobViewIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     last)
 -> typename Pattern::index_type
 {
@@ -880,16 +1082,16 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobViewIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, Pattern> ptr(it);
+  dash::GlobPtr<ElementType, GlobStaticMem> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

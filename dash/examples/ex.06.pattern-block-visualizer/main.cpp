@@ -14,6 +14,10 @@
 
 #include <dash/pattern/internal/PatternLogging.h>
 
+// needed for basename()
+#include <libgen.h>
+
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -24,33 +28,47 @@ typedef dash::default_index_t  index_t;
 typedef dash::default_extent_t extent_t;
 
 typedef struct cli_params_t {
-  std::string type;
-  extent_t    size_x;
-  extent_t    size_y;
-  extent_t    units_x;
-  extent_t    units_y;
-  int         tile_x;
-  int         tile_y;
-  bool        blocked_display;
-  bool        balance_extents;
-  bool        cout;
+  cli_params_t()
+  { }
+  std::string type    = "summa";
+  extent_t    size_x  = 110;
+  extent_t    size_y  = 110;
+  extent_t    units_x = 10;
+  extent_t    units_y = 10;
+  int         tile_x  = -1;
+  int         tile_y  = -1;
+  bool        blocked_display = false;
+  bool        balance_extents = false;
+  bool        cout    = false;
 } cli_params;
 
+static const
+cli_params default_params;
+
 template<typename PatternType>
+static
 std::string pattern_to_string(
   const PatternType & pattern);
 
 template<typename PatternType>
+static
 std::string pattern_to_filename(
   const PatternType & pattern);
 
+static
+void print_usage(char **argv);
+
+static
 cli_params parse_args(int argc, char * argv[]);
+static
 void print_params(const cli_params & params);
 
 template<typename PatternT>
+static
 void print_pattern_metrics(const PatternT & pattern);
 
 template<typename PatternT>
+static
 void print_example(
   const PatternT   & pattern,
   const cli_params & params)
@@ -82,6 +100,7 @@ void print_example(
   }
 }
 
+static
 dash::TilePattern<2, dash::ROW_MAJOR, index_t>
 make_summa_pattern(
   const cli_params                  & params,
@@ -112,6 +131,7 @@ make_summa_pattern(
   return pattern;
 }
 
+static
 dash::ShiftTilePattern<2, dash::ROW_MAJOR, index_t>
 make_shift_tile_pattern(
   const cli_params                  & params,
@@ -119,14 +139,16 @@ make_shift_tile_pattern(
   const dash::TeamSpec<2, index_t>  & teamspec)
 {
   // Example: -n 1680 1680 -u 28 1 -t 60 60
-  dash::ShiftTilePattern<2> pattern(sizespec,
-                                    dash::DistributionSpec<2>(
-                                      dash::TILE(params.tile_y),
-                                      dash::TILE(params.tile_x)),
-                                    teamspec);
+  typedef dash::ShiftTilePattern<2> pattern_t;
+  pattern_t pattern(sizespec,
+                    dash::DistributionSpec<2>(
+                      dash::TILE(params.tile_y),
+                      dash::TILE(params.tile_x)),
+                    teamspec);
   return pattern;
 }
 
+static
 dash::SeqTilePattern<2, dash::ROW_MAJOR, index_t>
 make_seq_tile_pattern(
   const cli_params                  & params,
@@ -135,14 +157,32 @@ make_seq_tile_pattern(
 {
   // Example: -n 30 30 -u 4 1 -t 10 10
   typedef dash::SeqTilePattern<2> pattern_t;
-  dash::SeqTilePattern<2> pattern(sizespec,
-                                  dash::DistributionSpec<2>(
-                                    dash::TILE(params.tile_y),
-                                    dash::TILE(params.tile_x)),
-                                  teamspec);
+  pattern_t pattern(sizespec,
+                    dash::DistributionSpec<2>(
+                      dash::TILE(params.tile_y),
+                      dash::TILE(params.tile_x)),
+                    teamspec);
   return pattern;
 }
 
+static
+dash::TilePattern<2, dash::ROW_MAJOR, index_t>
+make_tile_pattern(
+  const cli_params                  & params,
+  const dash::SizeSpec<2, extent_t> & sizespec,
+  const dash::TeamSpec<2, index_t>  & teamspec)
+{
+  // Example: -n 30 30 -u 4 1 -t 10 10
+  typedef dash::TilePattern<2> pattern_t;
+  pattern_t pattern(sizespec,
+                    dash::DistributionSpec<2>(
+                      dash::TILE(params.tile_y),
+                      dash::TILE(params.tile_x)),
+                    teamspec);
+  return pattern;
+}
+
+static
 dash::Pattern<2, dash::ROW_MAJOR, index_t>
 make_block_pattern(
   const cli_params                  & params,
@@ -151,15 +191,15 @@ make_block_pattern(
 {
   // Example: -n 30 30 -u 4 1 -t 10 10
   typedef dash::Pattern<2> pattern_t;
-  dash::Pattern<2> pattern(sizespec,
-                           dash::DistributionSpec<2>(
-                             (params.tile_y > 0
-                              ? dash::BLOCKCYCLIC(params.tile_y)
-                              : dash::NONE),
-                             (params.tile_x > 0
-                              ? dash::BLOCKCYCLIC(params.tile_x)
-                              : dash::NONE)),
-                           teamspec);
+  pattern_t pattern(sizespec,
+                    dash::DistributionSpec<2>(
+                      (params.tile_y > 0
+                       ? dash::BLOCKCYCLIC(params.tile_y)
+                       : dash::NONE),
+                      (params.tile_x > 0
+                       ? dash::BLOCKCYCLIC(params.tile_x)
+                       : dash::NONE)),
+                    teamspec);
   return pattern;
 }
 
@@ -191,6 +231,9 @@ int main(int argc, char* argv[])
       } else if (params.type == "block") {
         auto pattern = make_block_pattern(params, sizespec, teamspec);
         print_example(pattern, params);
+      } else if (params.type == "tile") {
+        auto pattern = make_tile_pattern(params, sizespec, teamspec);
+        print_example(pattern, params);
       } else if (params.type == "shift") {
         auto pattern = make_shift_tile_pattern(params, sizespec, teamspec);
         print_example(pattern, params);
@@ -198,10 +241,8 @@ int main(int argc, char* argv[])
         auto pattern = make_seq_tile_pattern(params, sizespec, teamspec);
         print_example(pattern, params);
       } else {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Invalid argument '" << params.type << "' for pattern type, " <<
-          "expected 'summa', 'shift', or 'seq'");
+        print_usage(argv);
+        exit(EXIT_FAILURE);
       }
 
     } catch (std::exception & excep) {
@@ -214,22 +255,42 @@ int main(int argc, char* argv[])
   return EXIT_SUCCESS;
 }
 
+static
+void print_usage(char **argv)
+{
+  if (dash::myid() == 0) {
+    cerr << "Usage: \n"
+         << basename(argv[0]) << " "
+         << "-h | "
+         << "[-s pattern] "
+         << "[-n size_spec] "
+         << "[-u unit_spec] "
+         << "[-t tile_spec] "
+         << "[-p] "
+         << "\n\n";
+    cerr << "-s pattern:   [summa|block|tile|seq|shift]\n"
+         << "-n size_spec: <size_y>  <size_x>  [ "
+         << default_params.size_y << " " << default_params.size_x << " ]\n"
+         << "-u unit_spec: <units_y> <units_x> [  "
+         << default_params.units_x << "  " << default_params.units_x << " ]\n"
+         << "-t tile_spec: <tile_y>  <tile_x>  [ automatically determined ]\n"
+         << "-p          : print to stdout instead of stderr\n"
+         << "-h          : print help and exit"
+         << std::endl;
+  }
+}
+
+static
 cli_params parse_args(int argc, char * argv[])
 {
-  cli_params params;
-  params.size_x  = 110;
-  params.size_y  = 110;
-  params.units_x = 10;
-  params.units_y = 10;
-  params.tile_x  = -1;
-  params.tile_y  = -1;
-  params.blocked_display = false;
-  params.balance_extents = false;
-  params.cout    = false;
-  params.type    = "summa";
+  cli_params params = default_params;
 
   for (auto i = 1; i < argc; i += 3) {
     std::string flag = argv[i];
+    if (flag == "-h") {
+      print_usage(argv);
+      exit(EXIT_SUCCESS);
+    }
     if (flag == "-s") {
       params.type    = argv[i+1];
       i -= 1;
@@ -251,11 +312,16 @@ cli_params parse_args(int argc, char * argv[])
     } else if (flag == "-b") {
       params.blocked_display = true;
       i -= 2;
+    } else {
+      print_usage(argv);
+      exit(EXIT_FAILURE);
     }
   }
+
   return params;
 }
 
+static
 void print_params(const cli_params & params)
 {
   int w_size  = std::log10(std::max(params.size_x,  params.size_y));
@@ -292,6 +358,7 @@ void print_params(const cli_params & params)
  * Create string describing of pattern instance.
  */
 template<typename PatternType>
+static
 std::string pattern_to_string(
   const PatternType & pattern)
 {
@@ -327,6 +394,7 @@ std::string pattern_to_string(
  * Create filename describing of pattern instance.
  */
 template<typename PatternType>
+static
 std::string pattern_to_filename(
   const PatternType & pattern)
 {
@@ -358,6 +426,7 @@ std::string pattern_to_filename(
 }
 
 template<typename PatternT>
+static
 void print_pattern_metrics(const PatternT & pattern)
 {
   dash::util::PatternMetrics<PatternT> pm(pattern);
@@ -393,6 +462,7 @@ void print_pattern_metrics(const PatternT & pattern)
 }
 
 template<typename PatternT>
+static
 void log_pattern_mapping(const PatternT & pattern)
 {
   typedef PatternT pattern_t;

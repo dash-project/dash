@@ -5,6 +5,7 @@
  * Implementation of typed unit IDs.
  */
 
+#include <iostream>
 
 #include <dash/dart/if/dart_types.h>
 

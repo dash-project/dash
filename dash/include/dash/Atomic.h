@@ -1,6 +1,12 @@
 #ifndef DASH__ATOMIC_H__INCLUDED
 #define DASH__ATOMIC_H__INCLUDED
 
+#include <dash/Meta.h>
+
+#include <type_traits>
+#include <sstream>
+
+
 namespace dash {
 
 /**
@@ -39,31 +45,60 @@ namespace dash {
  *   // array[10] == dash::size() + 5
  * \endcode
  */
-template<typename T>
-class Atomic {
+template <typename T>
+class Atomic
+{
+  static_assert(
+    dash::is_atomic_compatible<T>::value,
+    "Type not supported for atomic operations");
+
+private:
+  T _value;
+  typedef Atomic<T> self_t;
+
 public:
   typedef T value_type;
 
-  Atomic(const Atomic<T> & other) = delete;
+  constexpr Atomic()                                 = default;
+  constexpr Atomic(const Atomic<T> & other)          = default;
+  self_t & operator=(const self_t & other)           = default;
 
   /**
    * Initializes the underlying value with desired.
    * The initialization is not atomic
    */
-  Atomic(T value)
+  constexpr Atomic(T value)
   : _value(value) { }
 
-  /// disabled as this violates the atomic semantics
-  T operator= (T value) = delete;
+  /**
+   * Disabled assignment as this violates the atomic semantics
+   *
+   * \todo
+   * Assignment semantics are not well-defined:
+   * - Constructor Atomic(T)  is default-defined
+   * - Assignment  Atomic=(T) is deleted
+   */
+  T operator=(T value) = delete;
 
   /**
    * As \c Atomic is implemented as phantom type,
    * the value has to be queried using the \c dash::GlobRef
    */
-  operator T()          = delete;
+  operator T()         = delete;
 
-private:
-  T _value;
+  constexpr bool operator==(const self_t & other) const {
+    return _value == other._value;
+  }
+
+  constexpr bool operator!=(const self_t & other) const {
+    return !(*this == other);
+  }
+
+  template<typename T_>
+  friend std::ostream & operator<<(
+    std::ostream     & os,
+    const Atomic<T_> & at);
+
 }; // class Atomic
 
 /**
@@ -80,6 +115,16 @@ template<typename T>
 struct is_atomic<dash::Atomic<T>> {
   static constexpr bool value = true;
 };
+
+template<typename T>
+std::ostream & operator<<(
+  std::ostream    & os,
+  const Atomic<T> & at)
+{
+  std::ostringstream ss;
+  ss << dash::typestr(at) << "<phantom>";
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 

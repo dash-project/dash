@@ -53,6 +53,7 @@ const ElementType * min_element(
   Compare             compare
     = std::less<const ElementType &>())
 {
+  typedef typename std::decay<ElementType>::type      value_t;
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
@@ -65,7 +66,7 @@ const ElementType * min_element(
     int           min_idx_l  = 0;
     ElementType   min_val_l  = *l_range_begin;
 
-    typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
+    typedef struct min_pos_t { value_t val; size_t idx; } min_pos;
 
     DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
     int       align_bytes      = uloc.cache_line_size(0);
@@ -105,8 +106,6 @@ const ElementType * min_element(
       // Cannot use explicit private(min_val_t) as ElementType might
       // not be default-constructible:
       #pragma omp for schedule(static)
-//    #pragma ivdep
-//    #pragma vector aligned nontemporal
       for (int i = 0; i < l_size; i++) {
         const ElementType & val_t = *(l_range_begin + i);
         if (compare(val_t, min_vals_t[t_id].val)) {
@@ -164,6 +163,7 @@ GlobIter<ElementType, PatternType> min_element(
   typedef dash::GlobIter<ElementType, PatternType> globiter_t;
   typedef PatternType                               pattern_t;
   typedef typename pattern_t::index_type              index_t;
+  typedef typename std::decay<ElementType>::type      value_t;
 
   // return last for empty array
   if (first == last) {
@@ -194,8 +194,7 @@ GlobIter<ElementType, PatternType> min_element(
     trace.enter_state("local");
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin(
-                                          dash::Team::GlobalUnitID());
+    const ElementType * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
@@ -220,8 +219,8 @@ GlobIter<ElementType, PatternType> min_element(
   trace.exit_state("barrier");
 
   typedef struct {
-    ElementType value;
-    index_t     g_index;
+    value_t  value;
+    index_t  g_index;
   } local_min_t;
 
   std::vector<local_min_t> local_min_values(team.size());
@@ -353,7 +352,7 @@ GlobIter<ElementType, PatternType> max_element(
  */
 template <
   class ElementType,
-  class Compare = std::greater<const ElementType &> >
+  class Compare = std::greater<ElementType &> >
 const ElementType * max_element(
   /// Iterator to the initial position in the sequence
   const ElementType * first,
@@ -361,7 +360,7 @@ const ElementType * max_element(
   const ElementType * last,
   /// Element comparison function, defaults to std::less
   Compare             compare
-    = std::greater<const ElementType &>())
+    = std::greater<ElementType &>())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);

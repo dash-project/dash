@@ -3,13 +3,16 @@
 
 #include <dash/dart/if/dart.h>
 
+#include <dash/Meta.h>
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
 
 #include <dash/iterator/GlobIter.h>
+
+#include <iostream>
+#include <sstream>
 
 
 namespace dash {
@@ -70,9 +73,22 @@ class MatrixRefView
   template<
     typename T_,
     dim_t NumDimensions1,
+    class PatternT_ >
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const MatrixRefView<T_, NumDimensions1, PatternT_> & mrefview);
+
+  template<
+    typename T_,
+    dim_t NumDimensions1,
     dim_t NumDimensions2,
     class PatternT_ >
   friend class MatrixRef;
+  template<
+    typename T_,
+    dim_t NumDimensions1,
+    class PatternT_ >
+  friend class MatrixRefView;
   template<
     typename T_,
     dim_t NumDimensions1,
@@ -87,15 +103,42 @@ class MatrixRefView
   friend class Matrix;
 
   MatrixRefView<T, NumDimensions, PatternT>();
+
+  template <class T_>
   MatrixRefView<T, NumDimensions, PatternT>(
-    Matrix<T, NumDimensions, index_type, PatternT> * matrix);
+    const MatrixRefView<T_, NumDimensions, PatternT> & other);
 
-  GlobRef<T> global_reference() const;
+  template <class T_>
+  MatrixRefView<T, NumDimensions, PatternT>(
+    Matrix<T_, NumDimensions, index_type, PatternT> * matrix);
 
-  GlobRef<T> global_reference(
+  GlobRef<T>       global_reference();
+  GlobRef<const T> global_reference() const;
+
+  GlobRef<T>       global_reference(
+    const ::std::array<typename PatternT::index_type, NumDimensions> & coords
+  );
+  GlobRef<const T> global_reference(
     const ::std::array<typename PatternT::index_type, NumDimensions> & coords
   ) const;
 };
+
+template<
+  typename T_,
+  dim_t NumDimensions1,
+  class PatternT_ >
+std::ostream & operator<<(
+  std::ostream & os,
+  const MatrixRefView<T_, NumDimensions1, PatternT_> & mrefview) {
+  std::ostringstream ss;
+  ss << dash::typestr(mrefview)
+     << "("
+     << "dim:"    << mrefview._dim      << ", "
+     << "coords:" << mrefview._coord    << ", "
+     << "view:"   << mrefview._viewspec
+     << ")";
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 

@@ -1,22 +1,22 @@
 #ifndef DASH__GLOB_SHARED_EF_H_
 #define DASH__GLOB_SHARED_EF_H_
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Init.h>
 #include <dash/algorithm/Operation.h>
 
 namespace dash {
 
 // Forward declaration
-template<typename T, class A> class GlobMem;
+template<typename T, class A> class GlobStaticMem;
 // Forward declaration
-template<typename T, class PatternT> class GlobPtr;
+template<typename T, class MemSpaceT> class GlobPtr;
 // Forward declaration
-template<typename T, class PatternT>
-void put_value(const T & newval, const GlobPtr<T, PatternT> & gptr);
+template<typename T, class MemSpaceT>
+void put_value(const T & newval, const GlobPtr<T, MemSpaceT> & gptr);
 // Forward declaration
-template<typename T, class PatternT>
-void get_value(T* ptr, const GlobPtr<T, PatternT> & gptr);
+template<typename T, class MemSpaceT>
+void get_value(T* ptr, const GlobPtr<T, MemSpaceT> & gptr);
 
 template<
   typename T,
@@ -29,12 +29,10 @@ class GlobSharedRef
     const GlobSharedRef<U> & gref);
 
 private:
-
-  typedef GlobSharedRef<T>
+  typedef GlobSharedRef<T, GlobalPointerType>
     self_t;
 
 public:
-
   typedef GlobalPointerType              global_pointer;
   typedef GlobalPointerType        const_global_pointer;
   typedef       T *                       local_pointer;
@@ -53,6 +51,10 @@ public:
               typename GlobalPointerType::template rebind<U>::other
             > other;
   };
+
+private:
+  dart_gptr_t   _gptr;
+  local_pointer _lptr;
 
 public:
   /**
@@ -128,6 +130,16 @@ public:
   : _gptr(other._gptr),
     _lptr(other._lptr)
   { }
+
+#if 0
+  /**
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
+   */
+  GlobSharedRef(const self_t & other) = delete;
+#endif
 
   /**
    * Assignment operator.
@@ -210,11 +222,11 @@ public:
     DASH_LOG_TRACE("GlobSharedRef.put >");
   }
 
-  explicit operator global_pointer() const {
-    DASH_LOG_TRACE("GlobSharedRef.global_pointer()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
-    return global_pointer(_gptr);
-  }
+// explicit operator global_pointer() const {
+//   DASH_LOG_TRACE("GlobSharedRef.global_pointer()", "conversion operator");
+//   DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
+//   return global_pointer(_gptr);
+// }
 
   self_t & operator=(const T val) {
     DASH_LOG_TRACE_VAR("GlobSharedRef.=()", val);
@@ -224,7 +236,11 @@ public:
     } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _gptr);
       dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
+      dart_put_blocking(
+          _gptr,
+          static_cast<const void *>(&val),
+          ds.nelem,
+          ds.dtype);
     }
     DASH_LOG_TRACE("GlobSharedRef.= >");
     return *this;
@@ -323,13 +339,13 @@ public:
    */
   bool is_local() const
   {
-    return _lptr != nullptr || global_pointer(_gptr).is_local();
+    if (_lptr == nullptr) {
+      return false;
+    }
+    dart_team_unit_t luid;
+    dart_team_myid(_gptr.teamid, &luid);
+    return _gptr.unitid == luid.id;
   }
-
-private:
-
-  dart_gptr_t   _gptr;
-  local_pointer _lptr;
 
 };
 
@@ -339,8 +355,9 @@ std::ostream & operator<<(
   const GlobSharedRef<T> & gref) {
   char buf[100];
   sprintf(buf,
-          "(%08X|%04X|%04X|%016lX)",
+          "(%06X|%02X|%04X|%04X|%016lX)",
           gref._gptr.unitid,
+          gref._gptr.flags,
           gref._gptr.segid,
           gref._gptr.flags,
           gref._gptr.addr_or_offs.offset);

@@ -6,10 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
-#include <dash/Container.h>
+#include <dash/Meta.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -135,13 +135,10 @@ template<
   class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
-#if !defined(_CRAYC) && !defined(__INTEL_COMPILER)
-  // Cray and Intel compilers still does not support this feature
-  static_assert(std::is_trivially_copyable<ElementT>::value,
-    "Element type must be trivial copyable");
-#endif
-  static_assert(std::is_standard_layout<ElementT>::value,
-    "Element type must have standard layout");
+  static_assert(
+    dash::is_container_compatible<ElementT>::value,
+    "Type not supported for DASH containers");
+
   static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
     "Index type IndexT must be the same for Matrix and specified pattern");
 
@@ -154,11 +151,12 @@ private:
     MatrixRefView_t;
   typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
     LocalRef_t;
+  typedef LocalMatrixRef<
+            const ElementT, NumDimensions, NumDimensions, PatternT>
+    LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobIter<ElementT, Pattern_t>
-    GlobIter_t;
-  typedef GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>
+  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
     GlobMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -191,16 +189,17 @@ public:
   typedef typename PatternT::index_type                    difference_type;
   typedef typename PatternT::index_type                         index_type;
 
-  typedef       GlobIter_t                                        iterator;
-  typedef const GlobIter_t                                  const_iterator;
+  typedef GlobIter<      value_type, Pattern_t>                   iterator;
+  typedef GlobIter<const value_type, Pattern_t>             const_iterator;
+
   typedef std::reverse_iterator<iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>     const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                              reference;
-  typedef const GlobRef<value_type>                        const_reference;
+  typedef GlobRef<      value_type>                              reference;
+  typedef GlobRef<const value_type>                        const_reference;
 
-  typedef GlobIter_t                                               pointer;
-  typedef const GlobIter_t                                   const_pointer;
+  typedef GlobIter<      value_type, Pattern_t>                    pointer;
+  typedef GlobIter<const value_type, Pattern_t>              const_pointer;
 
   typedef       ElementT *                                   local_pointer;
   typedef const ElementT *                             const_local_pointer;
@@ -208,10 +207,14 @@ public:
 // Public types as required by dash container concept
 public:
   /// Type specifying the view on local matrix elements.
-  typedef LocalRef_t                                            local_type;
+  typedef LocalMatrixRef<
+            ElementT, NumDimensions, NumDimensions, PatternT>
+    local_type;
 
   /// Type specifying the view on const local matrix elements.
-  typedef const LocalRef_t                                const_local_type;
+  typedef LocalMatrixRef<
+            const ElementT, NumDimensions, NumDimensions, PatternT>
+    const_local_type;
 
   /// The type of the pattern specifying linear iteration order and how
   /// elements are distribute to units.
@@ -222,6 +225,12 @@ public:
   template <dim_t NumViewDim>
     using view_type =
           MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
+
+  /// Type of views on matrix elements such as sub-matrices, row- and
+  /// column vectors.
+  template <dim_t NumViewDim>
+    using const_view_type =
+          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT>;
 
 public:
   /// Local view proxy object.
@@ -234,6 +243,29 @@ public:
   static constexpr dim_t ndim() {
     return NumDimensions;
   }
+
+private:
+  /// Team containing all units that collectively instantiated the
+  /// Matrix instance
+  dash::Team                 * _team = nullptr;
+  /// Capacity (total number of elements) of the matrix
+  size_type                    _size;
+  /// Number of local elements in the array
+  size_type                    _lsize;
+  /// Number allocated local elements in the array
+  size_type                    _lcapacity;
+  /// Global pointer to initial element in the array
+  pointer                      _begin;
+  /// The matrix elements' distribution pattern
+  Pattern_t                    _pattern;
+  /// Global memory allocation and -access
+  GlobMem_t                  * _glob_mem;
+  /// Native pointer to first local element in the array
+  ElementT                   * _lbegin;
+  /// Native pointer past last local element in the array
+  ElementT                   * _lend;
+  /// Proxy instance for applying a view, e.g. in subscript operator
+  view_type<NumDimensions>     _ref;
 
 public:
   /**
@@ -302,15 +334,6 @@ public:
   view_type<NumDimensions> block(
     index_type block_gindex);
 
-#if 0
-  /**
-   * View at block at given global block offset with halo region.
-   */
-  halo_view_type<NumDimensions> block(
-    index_type                            block_gindex,
-    const dash::HaloSpec<NumDimensions> & halospec);
-#endif
-
   /**
    * Explicit allocation of matrix elements, used for delayed allocation
    * of default-constructed Matrix instance.
@@ -356,7 +379,33 @@ public:
    *
    * \see  DashContainerConcept
    */
-  void                       barrier()              const;
+  inline void                 barrier() const;
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the array's underlying global memory.
+   *
+   * \see  DashContainerConcept
+   */
+  inline void                 flush();
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the narray's underlying global memory.
+   */
+  inline void                 flush_local();
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the narray's underlying global memory.
+   */
+  inline void                 flush_all();
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the narray's underlying global memory.
+   */
+  inline void                 flush_local_all();
 
   /**
    * The pattern used to distribute matrix elements to units in its
@@ -364,21 +413,21 @@ public:
    *
    * \see  DashContainerConcept
    */
-  constexpr const Pattern_t & pattern()             const;
+  constexpr const Pattern_t & pattern() const;
 
   /**
    * Iterator referencing first matrix element in global index space.
    *
    * \see  DashContainerConcept
    */
-                  iterator    begin()        noexcept;
+                  iterator    begin()         noexcept;
 
   /**
    * Iterator referencing first matrix element in global index space.
    *
    * \see  DashContainerConcept
    */
-  constexpr const_iterator    begin()  const noexcept;
+  constexpr const_iterator    begin()   const noexcept;
 
   /**
    * Iterator referencing past the last matrix element in global index
@@ -386,7 +435,7 @@ public:
    *
    * \see  DashContainerConcept
    */
-                  iterator    end()          noexcept;
+                  iterator    end()           noexcept;
 
   /**
    * Iterator referencing past the last matrix element in global index
@@ -394,41 +443,58 @@ public:
    *
    * \see  DashContainerConcept
    */
-  constexpr const_iterator    end()    const noexcept;
+  constexpr const_iterator    end( )    const noexcept;
 
   /**
    * Pointer to first element in local range.
    *
    * \see  DashContainerConcept
    */
-                  ElementT *  lbegin()       noexcept;
+                  ElementT *  lbegin()        noexcept;
 
   /**
    * Pointer to first element in local range.
    *
    * \see  DashContainerConcept
    */
-  constexpr const ElementT *  lbegin() const noexcept;
+  constexpr const ElementT *  lbegin()  const noexcept;
 
   /**
    * Pointer past final element in local range.
    *
    * \see  DashContainerConcept
    */
-                  ElementT *  lend()         noexcept;
+                  ElementT *  lend()          noexcept;
 
   /**
    * Pointer past final element in local range.
    *
    * \see  DashContainerConcept
    */
-  constexpr const ElementT *  lend()   const noexcept;
+  constexpr const ElementT *  lend()    const noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  constexpr const view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<
+             (__NumViewDim != 0),
+             const_view_type<__NumViewDim>
+           >::type
+  constexpr operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  ) const;
+  
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<
+             (__NumViewDim == 0),
+             const_reference
+           >::type
+  constexpr operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
 
@@ -436,15 +502,43 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  view_type<NumDimensions-1> operator[](
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim != 0), view_type<__NumViewDim>>::type
+  operator[](
     size_type n       ///< Offset in highest matrix dimension.
   );
+
+  /**
+   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   */
+  template<dim_t __NumViewDim = NumDimensions-1>
+  typename std::enable_if<(__NumViewDim == 0), reference>::type
+  operator[](
+    size_type n       ///< Offset in highest matrix dimension.
+  );
+
+  template<dim_t SubDimension>
+  const_view_type<NumDimensions> sub(
+    size_type n,      ///< Offset of the sub-range.
+    size_type range   ///< Width of the sub-range.
+  ) const;
 
   template<dim_t SubDimension>
   view_type<NumDimensions> sub(
     size_type n,      ///< Offset of the sub-range.
     size_type range   ///< Width of the sub-range.
   );
+
+  /**
+   * Projection to given offset in a sub-dimension.
+   *
+   * \see  row
+   * \see  col
+   */
+  template<dim_t SubDimension>
+  const_view_type<NumDimensions-1> sub(
+    size_type n       ///< Offset in selected dimension.
+  ) const;
 
   /**
    * Projection to given offset in a sub-dimension.
@@ -472,9 +566,35 @@ public:
    * \see  sub
    * \see  row
    */
+  const_view_type<NumDimensions-1> col(
+    size_type n       ///< Column offset.
+  ) const;
+
+  /**
+   * Projection to given offset in first sub-dimension (column), same as
+   * \c sub<0>(n).
+   *
+   * \returns  A \c MatrixRef object representing the nth column
+   *
+   * \see  sub
+   * \see  row
+   */
   view_type<NumDimensions-1> col(
     size_type n       ///< Column offset.
   );
+
+  /**
+   * Projection to given offset in second sub-dimension (rows), same as
+   * \c sub<1>(n).
+   *
+   * \returns  A \c MatrixRef object representing the nth row
+   *
+   * \see  sub
+   * \see  col
+   */
+  const_view_type<NumDimensions-1> row(
+    size_type n       ///< Row offset.
+  ) const;
 
   /**
    * Projection to given offset in second sub-dimension (rows), same as
@@ -526,9 +646,36 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
+  const_reference at(
+    Args... args      ///< Global coordinates
+  ) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  template<typename ... Args>
   reference at(
     Args... args      ///< Global coordinates
   );
+
+  /**
+   * Fortran-style subscript operator, alias for \c at().
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   * \see  at
+   */
+  template<typename... Args>
+  const_reference operator()(
+    Args... args      ///< Global coordinates
+  ) const;
 
   /**
    * Fortran-style subscript operator, alias for \c at().
@@ -572,28 +719,6 @@ public:
   operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
 
-private:
-  /// Team containing all units that collectively instantiated the
-  /// Matrix instance
-  dash::Team                 * _team = nullptr;
-  /// Capacity (total number of elements) of the matrix
-  size_type                    _size;
-  /// Number of local elements in the array
-  size_type                    _lsize;
-  /// Number allocated local elements in the array
-  size_type                    _lcapacity;
-  /// Global pointer to initial element in the array
-  pointer                      _begin;
-  /// The matrix elements' distribution pattern
-  Pattern_t                    _pattern;
-  /// Global memory allocation and -access
-  GlobMem_t                  * _glob_mem;
-  /// Native pointer to first local element in the array
-  ElementT                   * _lbegin;
-  /// Native pointer past last local element in the array
-  ElementT                   * _lend;
-  /// Proxy instance for applying a view, e.g. in subscript operator
-  view_type<NumDimensions>     _ref;
 };
 
 /**
@@ -614,3 +739,4 @@ using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
 #include <dash/matrix/internal/Matrix-inl.h>
 
 #endif  // DASH__MATRIX_H_INCLUDED
+

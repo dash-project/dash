@@ -65,9 +65,8 @@ void dash__print_stacktrace(
                     &funcnamesize,
                     &status);
       if (status == 0) {
-        funcname = ret; // use possibly realloc()-ed string
         fprintf(out, "  %s : %s+%s\n",
-                symbollist[i], funcname, begin_offset);
+                symbollist[i], ret, begin_offset);
       } else {
         // demangling failed. Output function name as a
         // C function with no arguments.

@@ -18,17 +18,26 @@ namespace dash {
  */
 template <
   class    ViewT,
-  typename ViewValueT =
-             typename std::remove_const<
-               typename std::remove_reference<ViewT>::type
-             >::type
->
+  typename ViewValueT = typename std::decay<ViewT>::type >
 constexpr auto
 domain(ViewT && view)
   -> typename std::enable_if<
-       dash::view_traits<ViewValueT>::is_view::value,
-    // const typename dash::view_traits<ViewValueT>::domain_type &
+    // dash::view_traits<ViewValueT>::is_view::value,
+       dash::detail::has_type_domain_type<ViewValueT>::value,
+       decltype(std::forward<ViewT>(view).domain())
+     >::type {
+  return std::forward<ViewT>(view).domain();
+}
+
+template <class ViewT>
+constexpr auto
+domain(const ViewT & view)
+  -> typename std::enable_if<
+       dash::detail::has_type_domain_type<ViewT>::value,
+    // dash::view_traits<ViewT>::is_view::value,
        decltype(view.domain())
+    // const typename dash::view_traits<ViewT>::domain_type &
+    // const typename ViewT::domain_type &
      >::type {
   return view.domain();
 }
@@ -40,9 +49,28 @@ domain(ViewT && view)
  *
  * \concept{DashViewConcept}
  */
-template <class ContainerT>
+template <
+  class    ContainerT,
+  typename ContainerValueT = typename std::decay<ContainerT>::type >
 constexpr typename std::enable_if<
-  !dash::view_traits<ContainerT>::is_view::value,
+//!dash::view_traits<ContainerValueT>::is_view::value,
+  !dash::detail::has_type_domain_type<ContainerValueT>::value,
+  ContainerT &
+>::type
+domain(ContainerT & container) {
+  return container;
+}
+
+/**
+ *
+ * \concept{DashViewConcept}
+ */
+template <
+  class    ContainerT,
+  typename ContainerValueT = typename std::decay<ContainerT>::type >
+constexpr typename std::enable_if<
+//!dash::view_traits<ContainerValueT>::is_view::value,
+  !dash::detail::has_type_domain_type<ContainerValueT>::value,
   const ContainerT &
 >::type
 domain(const ContainerT & container) {

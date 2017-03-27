@@ -5,9 +5,10 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
+#include <dash/Meta.h>
 
 #include <dash/list/ListRef.h>
 #include <dash/list/LocalListRef.h>
@@ -165,9 +166,13 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
+  class    AllocatorType = dash::allocator::EpochSynchronizedAllocator<ElementType> >
 class List
 {
+  static_assert(
+    dash::is_container_compatible<ElementType>::value,
+    "Type not supported for DASH containers");
+
   template<typename T_, class A_>
   friend class LocalListRef;
 
@@ -192,7 +197,7 @@ private:
                      internal::ListNode<ElementType> >::other
     node_allocator_type;
 
-  typedef dash::GlobDynamicMem<node_type, node_allocator_type>
+  typedef dash::GlobHeapMem<node_type, node_allocator_type>
     glob_mem_type;
 
   typedef dash::Array<
@@ -241,6 +246,36 @@ public:
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type local;
+
+private:
+  /// Team containing all units interacting with the list.
+  dash::Team         * _team
+                         = nullptr;
+  /// DART id of the unit that created the list.
+  team_unit_t          _myid;
+  /// Global memory allocation and -access.
+  glob_mem_type      * _globmem
+                         = nullptr;
+  /// Iterator to initial element in the list.
+  iterator             _begin;
+  /// Iterator past the last element in the list.
+  iterator             _end;
+  /// Number of elements in the list.
+  size_type            _remote_size
+                         = 0;
+  /// Native pointer to first local element in the list.
+  local_iterator       _lbegin;
+  /// Native pointer past the last local element in the list.
+  local_iterator       _lend;
+  /// Sentinel node in empty list.
+  node_type            _nil_node;
+  /// Mapping units to their number of local list elements.
+  local_sizes_map      _local_sizes;
+  /// Capacity of local buffer containing locally added node elements that
+  /// have not been committed to global memory yet.
+  /// Default is 4 KB.
+  size_type            _local_buffer_size
+                         = 4096 / sizeof(value_type);
 
 public:
   /**
@@ -392,7 +427,7 @@ public:
   /**
    * Global pointer to the beginning of the list.
    */
-  const_iterator begin() const noexcept
+  constexpr const_iterator begin() const noexcept
   {
     return _begin;
   }
@@ -408,7 +443,7 @@ public:
   /**
    * Global pointer to the end of the list.
    */
-  const_iterator end() const noexcept
+  constexpr const_iterator end() const noexcept
   {
     return _end;
   }
@@ -424,7 +459,7 @@ public:
   /**
    * Native pointer to the first local element in the list.
    */
-  const_local_iterator lbegin() const noexcept
+  constexpr const_local_iterator lbegin() const noexcept
   {
     return _lbegin;
   }
@@ -440,7 +475,7 @@ public:
   /**
    * Native pointer to the end of the list.
    */
-  const_local_iterator lend() const noexcept
+  constexpr const_local_iterator lend() const noexcept
   {
     return _lend;
   }
@@ -460,7 +495,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type size() const noexcept
+  constexpr size_type size() const noexcept
   {
     return _remote_size + _local_sizes.local[0];
   }
@@ -480,7 +515,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type capacity() const noexcept
+  constexpr size_type capacity() const noexcept
   {
     return _globmem->size();
   }
@@ -515,7 +550,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  inline const Team & team() const noexcept
+  constexpr const Team & team() const noexcept
   {
     return *_team;
   }
@@ -526,7 +561,7 @@ public:
    * \return  The number of elements in the list that are local to the
    *          calling unit.
    */
-  inline size_type lsize() const noexcept
+  constexpr size_type lsize() const noexcept
   {
     return _local_sizes.local[0];
   }
@@ -537,7 +572,7 @@ public:
    * \return  The number of allocated elements in the list that are local
    *          to the calling unit.
    */
-  inline size_type lcapacity() const noexcept
+  constexpr size_type lcapacity() const noexcept
   {
     return _globmem != nullptr
            ? _globmem->local_size()
@@ -549,7 +584,7 @@ public:
    *
    * \return  true if \c size() is 0, otherwise false
    */
-  inline bool empty() const noexcept
+  constexpr bool empty() const noexcept
   {
     return size() == 0;
   }
@@ -616,7 +651,7 @@ public:
     _begin       = iterator(_globmem, _nil_node);
     _end         = _begin;
     // Local iterators:
-    _lbegin      = _globmem->lbegin(_myid);
+    _lbegin      = _globmem->lbegin();
     // More efficient than using _globmem->lend as this a second mapping
     // of the local memory segment:
     _lend        = _lbegin;
@@ -665,36 +700,6 @@ public:
     _remote_size          = 0;
     DASH_LOG_TRACE_VAR("List.deallocate >", this);
   }
-
-private:
-  /// Team containing all units interacting with the list.
-  dash::Team         * _team
-                         = nullptr;
-  /// DART id of the unit that created the list.
-  team_unit_t          _myid;
-  /// Global memory allocation and -access.
-  glob_mem_type      * _globmem
-                         = nullptr;
-  /// Iterator to initial element in the list.
-  iterator             _begin;
-  /// Iterator past the last element in the list.
-  iterator             _end;
-  /// Number of elements in the list.
-  size_type            _remote_size
-                         = 0;
-  /// Native pointer to first local element in the list.
-  local_iterator       _lbegin;
-  /// Native pointer past the last local element in the list.
-  local_iterator       _lend;
-  /// Sentinel node in empty list.
-  node_type            _nil_node;
-  /// Mapping units to their number of local list elements.
-  local_sizes_map      _local_sizes;
-  /// Capacity of local buffer containing locally added node elements that
-  /// have not been committed to global memory yet.
-  /// Default is 4 KB.
-  size_type            _local_buffer_size
-                         = 4096 / sizeof(value_type);
 
 };
 

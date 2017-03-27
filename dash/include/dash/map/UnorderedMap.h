@@ -6,8 +6,9 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
+#include <dash/Meta.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
 
@@ -74,10 +75,15 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::DynamicAllocator<
+  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
+  static_assert(
+    dash::is_container_compatible<Key>::value &&
+    dash::is_container_compatible<Mapped>::value,
+    "Type not supported for DASH containers");
+
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class UnorderedMapLocalRef;
 
@@ -105,7 +111,7 @@ public:
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;
@@ -168,10 +174,6 @@ public:
             size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
-public:
-  /// Local proxy object, allows use in range-based for loops.
-  local_type local;
-
 private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team            = nullptr;
@@ -207,6 +209,10 @@ private:
   /// Default is 4 KB.
   size_type              _local_buffer_size
                            = 4096 / sizeof(value_type);
+
+public:
+  /// Local proxy object, allows use in range-based for loops.
+  local_type local;
 
 public:
   UnorderedMap(
@@ -613,9 +619,9 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
+    auto && key = value.first;
+    DASH_LOG_TRACE("UnorderedMap.insert()", "key:", key);
+
     auto result = std::make_pair(_end, false);
 
     DASH_ASSERT(_globmem != nullptr);
@@ -788,12 +794,9 @@ private:
     /// The element to insert.
     const value_type & value)
   {
-    auto key    = value.first;
-    auto mapped = value.second;
     DASH_LOG_TRACE("UnorderedMap._insert_at()",
                    "unit:",   unit,
-                   "key:",    key,
-                   "mapped:", mapped);
+                   "key:",    value.first);
     auto result = std::make_pair(_end, false);
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform

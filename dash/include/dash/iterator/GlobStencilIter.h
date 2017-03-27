@@ -5,7 +5,7 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -121,7 +121,7 @@ private:
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobMem<ElementType>,
+  class    GlobMemType   = GlobStaticMem<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobStencilIter
@@ -200,7 +200,7 @@ protected:
   /// Maximum position relative to the viewspec allowed for this iterator.
   IndexType             _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t           _myid;
+  team_unit_t           _myid;
   /// Pointer to first element in local memory
   ElementType         * _lbegin          = nullptr;
   /// Specification of the iterator's stencil.
@@ -841,7 +841,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -852,7 +852,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -1159,15 +1159,15 @@ private:
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 auto distance(
   /// Global iterator to the initial position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobStencilIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  const GlobStencilIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> &
     last
 ) -> typename Pattern::index_type
 {
@@ -1177,13 +1177,13 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobStencilIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);

@@ -614,17 +614,11 @@ void mmult(
 
 #else // DOXYGEN
 
-template<
+template <
   typename MatrixTypeA,
   typename MatrixTypeB,
-  typename MatrixTypeC
->
-typename
-std::enable_if<
- summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
- summa_pattern_constraints<MatrixTypeB>::satisfied::value &&
- summa_pattern_constraints<MatrixTypeC>::satisfied::value,
- void>
+  typename MatrixTypeC >
+auto
 mmult(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,
@@ -633,7 +627,12 @@ mmult(
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC & C)
-{
+  -> typename std::enable_if<
+                summa_pattern_constraints<MatrixTypeA>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeB>::satisfied::value &&
+                summa_pattern_constraints<MatrixTypeC>::satisfied::value,
+                void
+              >::type {
   dash::summa(A, B, C);
 }
 

@@ -197,7 +197,7 @@ int main(int argc, char ** argv)
            << endl;
     }
 
-    dart_domain_destruct(
+    dart_domain_destroy(
       grouped_domain);
 
     cout << separator << endl;
