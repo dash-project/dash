@@ -438,16 +438,20 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
   auto block_offset  = (dash::myid() + 1) % dash::size();
   auto global_offset = block_offset * num_elem_per_unit;
 
-  using glob_it_t    = decltype(array.begin());
-  using glob_ptr_t   = typename glob_it_t::pointer;
+  //using glob_it_t    = decltype(array.begin());
+  //using glob_ptr_t   = typename glob_it_t::pointer;
+  //
+  auto globIt = array.begin();
 
+  /*
   glob_ptr_t gptr_dest = static_cast<glob_ptr_t>(
                            array.begin() + global_offset);
   LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call copy_async");
+  */
 
   auto copy_fut = dash::copy_async(local_range,
                                    local_range + num_elem_per_unit,
-                                   gptr_dest);
+                                   globIt + global_offset);
 
   // Blocks until remote completion:
   LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call fut.wait");
@@ -811,7 +815,9 @@ TEST_F(CopyTest, CArrayToDashArray)
     int buf[100];
     std::iota(buf, buf + 100, 0);
     // copy local buffer to global array
-    dash::copy(buf, buf + 100, arr.begin());
+    auto it_out = dash::copy(buf, buf + 100, arr.begin());
+    DASH_LOG_DEBUG_VAR("CopyTest.CArrayToDashArray", it_out);
+    EXPECT_EQ_U(arr.end(), it_out);
   }
 
   arr.barrier();

@@ -475,66 +475,6 @@ dash::Future<ValueType *> copy_async_impl(
 // =========================================================================
 // Local to Global
 // =========================================================================
-
-/**
- * Blocking implementation of \c dash::copy (local to global) without
- * optimization for local subrange.
- */
-template <
-  typename ValueType,
-  class GlobOutputIt >
-GlobOutputIt copy_impl(
-  ValueType    * in_first,
-  ValueType    * in_last,
-  GlobOutputIt   out_first)
-{
-  DASH_LOG_TRACE("dash::copy_impl()",
-                 "l_in_first:",  in_first,
-                 "l_in_last:",   in_last,
-                 "g_out_first:", out_first.pos());
-
-
-
-  auto num_elements = std::distance(in_first, in_last);
-
-  if (num_elements < 1) return out_first;
-
-  auto nremaining = static_cast<dash::default_size_t>(num_elements);
-  auto pattern = out_first.pattern();
-
-  while (nremaining) {
-    // global index to local unit and index
-    auto local_pos = pattern.local(out_first.pos());
-    // number of elements in unit
-    auto local_size = pattern.local_extents(team_unit_t{local_pos.unit});
-
-    auto ncopy = std::min(
-        std::initializer_list<dash::default_size_t>{local_size[0],
-        nremaining});
-
-    dart_storage_t ds = dash::dart_storage<ValueType>(ncopy);
-
-    DASH_ASSERT_RETURNS(
-        dart_put_blocking(
-          out_first.dart_gptr(),
-          in_first,
-          ds.nelem,
-          ds.dtype),
-        DART_OK);
-
-    std::advance(in_first, ncopy);
-    std::advance(out_first, ncopy);
-
-    nremaining = std::distance(in_first, in_last);
-  }
-
-  auto out_last = out_first;
-  DASH_LOG_TRACE("dash::copy_impl >",
-                 "g_out_last:", out_last.dart_gptr());
-
-  return out_last;
-}
-
 /**
  * Asynchronous implementation of \c dash::copy (local to global) without
  * optimization for local subrange.
@@ -552,6 +492,13 @@ dash::Future<GlobOutputIt> copy_async_impl(
                  "l_in_last:",   in_last,
                  "g_out_first:", out_first.dart_gptr());
 
+
+  auto num_copy_elem = std::distance(in_first, in_last);
+
+  if (num_copy_elem < 1) {
+    return dash::Future<GlobOutputIt>([=]() mutable { return out_first; });
+  }
+
   // Accessed global pointers to be flushed:
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
   std::vector<dart_gptr_t>   req_handles;
@@ -559,37 +506,56 @@ dash::Future<GlobOutputIt> copy_async_impl(
   std::vector<dart_handle_t> req_handles;
 #endif
 
-  auto num_copy_elem = std::distance(in_first, in_last);
-  auto src_ptr       = in_first;
-  auto dest_gptr     = out_first.dart_gptr();
+  auto nremaining = num_copy_elem;
+  auto pattern = out_first.pattern();
+  while (nremaining) {
+    // global index to local unit and index
+    auto local_pos = pattern.local(out_first.pos());
+    // number of elements in unit
+    auto local_size = pattern.local_extents(team_unit_t{local_pos.unit});
+
+    auto dest_gptr     = out_first.dart_gptr();
+
+    auto lsize = local_size[0];
+    using lsize_t = decltype(lsize);
+
+    num_copy_elem = std::min({lsize,
+        static_cast<lsize_t>(nremaining)});
+
+    dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
-  if (dart_put(
-        dest_gptr,
-        src_ptr,
-        ds.nelem,
-        ds.dtype)
-      != DART_OK) {
-    DASH_LOG_ERROR("dash::copy_async_impl", "dart_put failed");
-    DASH_THROW(
-      dash::exception::RuntimeError, "dart_put failed");
-  }
-  req_handles.push_back(dest_gptr);
+    if (dart_put(
+          dest_gptr,
+          in_first,
+          ds.nelem,
+          ds.dtype)
+        != DART_OK) {
+      DASH_LOG_ERROR("dash::copy_async_impl", "dart_put failed");
+      DASH_THROW(
+        dash::exception::RuntimeError, "dart_put failed");
+    }
+    req_handles.push_back(dest_gptr);
 #else
-  dart_handle_t  put_handle;
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
-  DASH_ASSERT_RETURNS(
-    dart_put_handle(
-        dest_gptr,
-        src_ptr,
-        ds.nelem,
-        ds.dtype,
-        &put_handle),
-    DART_OK);
-  if (put_handle != NULL) {
-    req_handles.push_back(put_handle);
-  }
+    dart_handle_t  put_handle;
+    DASH_ASSERT_RETURNS(
+      dart_put_handle(
+          dest_gptr,
+          in_first,
+          ds.nelem,
+          ds.dtype,
+          &put_handle),
+      DART_OK);
+    if (put_handle != NULL) {
+      req_handles.push_back(put_handle);
+    }
 #endif
+
+    std::advance(in_first, num_copy_elem);
+
+    nremaining = std::distance(in_first, in_last);
+
+    if (nremaining) std::advance(out_first, num_copy_elem);
+  }
 
 #ifdef DASH_ENABLE_TRACE_LOGGING
   for (auto gptr : req_handles) {
@@ -634,6 +600,34 @@ dash::Future<GlobOutputIt> copy_async_impl(
   DASH_LOG_TRACE("dash::copy_async_impl >", "  returning future");
   return result;
 }
+
+/**
+ * Blocking implementation of \c dash::copy (local to global) without
+ * optimization for local subrange.
+ */
+template <
+  typename ValueType,
+  class GlobOutputIt >
+GlobOutputIt copy_impl(
+  ValueType    * in_first,
+  ValueType    * in_last,
+  GlobOutputIt   out_first)
+{
+  DASH_LOG_TRACE("dash::copy_impl()",
+                 "l_in_first:",  in_first,
+                 "l_in_last:",   in_last,
+                 "g_out_first:", out_first.pos());
+
+
+  auto fut = copy_async_impl(in_first, in_last, out_first);
+  auto out_last = fut.get();
+
+  DASH_LOG_TRACE("dash::copy_impl >",
+                 "g_out_last:", out_last.dart_gptr());
+
+  return out_last;
+}
+
 
 } // namespace internal
 
