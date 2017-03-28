@@ -8,6 +8,14 @@
 #include <iomanip>
 #include <string>
 
+#if 0
+#define PATTERN_VISUALIZER_HSV
+#endif
+
+#ifdef PATTERN_VISUALIZER_HSV
+#include <dash/tools/Colorspace.h>
+#endif
+
 namespace dash {
 namespace tools {
 
@@ -59,8 +67,8 @@ private:
     }
     std::string hex() const {
       std::ostringstream ss;
-      ss << "#" << std::hex << std::uppercase << std::setw(2);
-      ss << std::setfill('0') << _r << _g << _b;
+      ss << "#" << std::hex << std::uppercase << std::setfill('0');
+      ss << std::setw(2) << _r << std::setw(2) << _g << std::setw(2) << _b;
       return ss.str();
     }
   };
@@ -370,6 +378,7 @@ public:
   }
 
 private:
+  #ifndef PATTERN_VISUALIZER_HSV
   RGB color(dart_unit_t unit) {
     unsigned r = 0, g = 0, b = 0;
     switch (unit % 8) {
@@ -421,6 +430,32 @@ private:
 
     return RGB(r % 255, g % 255, b % 255);
   }
+  #else
+  RGB color(dart_unit_t unit) {
+    float min = 0;
+    float max = _pattern.num_units();
+    float nx  = _pattern.teamspec().extent(1);
+    float ny  = _pattern.teamspec().extent(0);
+    auto  unit_coord = _pattern.teamspec().coords(unit);
+
+    // unit id to color wavelength:
+    float unit_h_perc = static_cast<float>(unit) / max;
+    float unit_s_perc = static_cast<float>(unit_coord[0]) / ny;
+    float unit_v_perc = static_cast<float>(unit_coord[1]) / nx;
+
+    dash::tools::color::hsv hsv;
+    hsv.h = 360.0 * unit_h_perc;
+    hsv.s = 0.5 + 0.5 * unit_s_perc;
+    hsv.v = 0.5 + 0.4 * unit_v_perc;
+
+    auto rgb = dash::tools::color::hsv2rgb(hsv);
+    int  r   = static_cast<int>(rgb.r * 255);
+    int  g   = static_cast<int>(rgb.g * 255);
+    int  b   = static_cast<int>(rgb.b * 255);
+
+    return RGB(r,g,b);
+  }
+  #endif
 
   std::string tilestyle(dart_unit_t unit)
   {
