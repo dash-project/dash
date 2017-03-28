@@ -62,23 +62,8 @@ public:
 
   typedef value_type *                                          raw_pointer;
 
-  typedef typename
-    std::conditional<
-      std::is_const<value_type>::value,
-   // const GlobHeapMemType,
-      GlobHeapMemType,
-      GlobHeapMemType
-    >::type
-    globmem_type;
-
-  typedef typename
-    std::conditional<
-      std::is_const<value_type>::value,
-   // typename GlobHeapMemType::const_local_pointer,
-      typename GlobHeapMemType::local_pointer,
-      typename GlobHeapMemType::local_pointer
-    >::type
-    local_pointer;
+  typedef GlobHeapMemType                                      globmem_type;
+  typedef typename GlobHeapMemType::local_pointer             local_pointer;
 
   typedef struct {
     team_unit_t unit;
