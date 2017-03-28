@@ -6,9 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 #include <dash/Meta.h>
+
+#include <dash/memory/GlobHeapMem.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
 
@@ -23,6 +24,7 @@
 #include <functional>
 #include <algorithm>
 #include <cstddef>
+
 
 namespace dash {
 
@@ -111,7 +113,7 @@ public:
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeapMem<value_type, allocator_type>        glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;
@@ -121,26 +123,18 @@ public:
   typedef typename const_reference::template rebind<mapped_type>::other
     const_mapped_type_reference;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::pointer
     node_iterator;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_pointer
     const_node_iterator;
-  typedef typename glob_mem_type::local_iterator
+  typedef typename glob_mem_type::local_pointer
     local_node_iterator;
-  typedef typename glob_mem_type::const_local_iterator
+  typedef typename glob_mem_type::const_local_pointer
     const_local_node_iterator;
-  typedef typename glob_mem_type::reverse_global_iterator
-    reverse_node_iterator;
-  typedef typename glob_mem_type::const_reverse_global_iterator
-    const_reverse_node_iterator;
-  typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_node_iterator;
-  typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::pointer
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_pointer
     const_local_node_pointer;
 
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>

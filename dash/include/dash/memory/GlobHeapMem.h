@@ -8,15 +8,14 @@
 #include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
-#include <dash/Onesided.h>
 #include <dash/Array.h>
+#include <dash/Onesided.h>
 
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Copy.h>
 
-#include <dash/allocator/LocalBucketIter.h>
-#include <dash/allocator/GlobBucketIter.h>
-#include <dash/allocator/internal/GlobHeapMemTypes.h>
+#include <dash/memory/GlobHeapPtr.h>
+#include <dash/memory/GlobHeapLocalPtr.h>
 
 #include <dash/internal/Logging.h>
 
@@ -28,6 +27,9 @@
 
 
 namespace dash {
+
+// Forward declarations
+template<typename T, class MemSpaceT> class GlobPtr;
 
 /**
  * \defgroup  DashDynamicMemorySpaceConcept  Global Dynamic Memory Concept
@@ -210,73 +212,41 @@ public:
   typedef typename AllocatorType::difference_type                index_type;
 
   typedef typename AllocatorType::pointer                       raw_pointer;
-#if 0
-  typedef typename AllocatorType::pointer                           pointer;
-  typedef typename AllocatorType::const_pointer               const_pointer;
-  typedef typename AllocatorType::void_pointer                 void_pointer;
-  typedef typename AllocatorType::const_void_pointer     const_void_pointer;
-#else
-  typedef GlobPtr<      value_type, self_t>                         pointer;
-  typedef GlobPtr<const value_type, self_t>                   const_pointer;
-  typedef GlobPtr<      void,       self_t>                    void_pointer;
-  typedef GlobPtr<const void,       self_t>              const_void_pointer;
-#endif
+
+  typedef GlobHeapLocalPtr<value_type, index_type>            local_pointer;
+  typedef GlobHeapLocalPtr<value_type, index_type>      const_local_pointer;
+
+  typedef GlobPtr<      value_type,       self_t>                   pointer;
+  typedef GlobPtr<const value_type,       self_t>             const_pointer;
+
   typedef GlobSharedRef<      value_type,       pointer>          reference;
   typedef GlobSharedRef<const value_type, const_pointer>    const_reference;
 
   typedef       value_type &                                local_reference;
   typedef const value_type &                          const_local_reference;
 
-  typedef LocalBucketIter<value_type, index_type>
-    local_iterator;
-  typedef LocalBucketIter<value_type, index_type>
-    const_local_iterator;
-
-  typedef GlobBucketIter<
-            value_type, self_t, pointer, reference>
-    global_iterator;
-  typedef GlobBucketIter<
-            const value_type, const self_t, const_pointer, const_reference>
-    const_global_iterator;
-
-  typedef std::reverse_iterator<      global_iterator>
-    reverse_global_iterator;
-  typedef std::reverse_iterator<const_global_iterator>
-    const_reverse_global_iterator;
-
-  typedef std::reverse_iterator<      local_iterator>
-    reverse_local_iterator;
-  typedef std::reverse_iterator<const_local_iterator>
-    const_reverse_local_iterator;
-
-  typedef       local_iterator                                local_pointer;
-  typedef const_local_iterator                          const_local_pointer;
-
-  typedef typename local_iterator::bucket_type                  bucket_type;
+  typedef typename local_pointer::bucket_type                   bucket_type;
 
 private:
-  typedef typename std::list<bucket_type>
-    bucket_list;
-  typedef typename bucket_list::iterator
-    bucket_iterator;
+  typedef typename std::list<bucket_type>                       bucket_list;
+  typedef typename bucket_list::iterator                    bucket_iterator;
 
   typedef dash::Array<
             size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
-  typedef std::vector<std::vector<size_type> >
-    bucket_cumul_sizes_map;
+  typedef std::vector<std::vector<size_type> >       bucket_cumul_sizes_map;
 
-  template<typename T_, class GMem_, class Ptr_, class Ref_>
-  friend class dash::GlobBucketIter;
+  template<typename T_, class GMem_>
+  friend class dash::GlobPtr;
 
 private:
   allocator_type             _allocator;
   dash::Team               * _team;
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
-  local_iterator             _lbegin = nullptr;
-  local_iterator             _lend   = nullptr;
+  local_pointer              _lbegin = nullptr;
+  local_pointer              _lend   = nullptr;
   team_unit_t                _myid   { DART_UNDEFINED_UNIT_ID };
   /// Buckets in local memory space, partitioned by allocated state:
   ///   [ attached buckets, ... , unattached buckets, ... ]
@@ -303,10 +273,10 @@ private:
   local_sizes_map            _num_detach_buckets;
   /// Total number of elements in attached memory space of remote units.
   size_type                  _remote_size = 0;
-  /// Global iterator referencing start of global memory space.
-  global_iterator            _begin;
-  /// Global iterator referencing the final position in global memory space.
-  global_iterator            _end;
+  /// Global pointer referencing start of global memory space.
+  index_type                 _begin_idx;
+  /// Global pointer referencing the final position in global memory space.
+  index_type                 _end_idx;
 
 public:
   /**
@@ -456,7 +426,7 @@ public:
    * \see shrink
    * \see commit
    */
-  local_iterator grow(size_type num_elements)
+  local_pointer grow(size_type num_elements)
   {
     DASH_LOG_DEBUG_VAR("GlobHeapMem.grow()", num_elements);
     size_type local_size_old = _local_sizes.local[0];
@@ -710,9 +680,9 @@ public:
     if (num_detached_elem > 0 || num_attached_elem > 0) {
       // Update _begin iterator:
       DASH_LOG_TRACE("GlobHeapMem.commit", "updating _begin");
-      _begin = global_iterator(this, 0);
+      _begin_idx = 0;
       DASH_LOG_TRACE("GlobHeapMem.commit", "updating _end");
-      _end   = _begin + size();
+      _end_idx   = size();
     }
     // Update local iterators as bucket iterators might have changed:
     DASH_LOG_TRACE("GlobHeapMem.commit", "updating _lbegin");
@@ -756,72 +726,40 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  global_iterator & begin() noexcept
+  pointer begin() noexcept
   {
-    return _begin;
+    return pointer(this, _begin_idx);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  constexpr const_global_iterator & begin() const noexcept
+  constexpr const_pointer begin() const noexcept
   {
-    return _begin;
+    return const_pointer(this, _begin_idx);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  reverse_global_iterator rbegin() noexcept
+  pointer end() noexcept
   {
-    return reverse_global_iterator(_end);
+    return pointer(this, _end_idx);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  constexpr const_reverse_global_iterator rbegin() const noexcept
+  const_pointer end() const noexcept
   {
-    return reverse_global_iterator(_end);
-  }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  global_iterator & end() noexcept
-  {
-    return _end;
-  }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  const_global_iterator & end() const noexcept
-  {
-    return _end;
-  }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  reverse_global_iterator rend() noexcept
-  {
-    return reverse_global_iterator(_begin);
-  }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  constexpr const_reverse_global_iterator rend() const noexcept
-  {
-    return reverse_global_iterator(_begin);
+    return const_pointer(this, _end_idx);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobHeapMem instance.
    */
-  inline local_iterator & lbegin() noexcept
+  inline local_pointer & lbegin() noexcept
   {
     return _lbegin;
   }
@@ -830,7 +768,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobHeapMem instance.
    */
-  inline const_local_iterator lbegin() const noexcept
+  inline const_local_pointer lbegin() const noexcept
   {
     return _lbegin;
   }
@@ -839,7 +777,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobHeapMem instance.
    */
-  inline local_iterator & lend() noexcept
+  inline local_pointer & lend() noexcept
   {
     return _lend;
   }
@@ -848,7 +786,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobHeapMem instance.
    */
-  inline const_local_iterator & lend() const noexcept
+  inline const_local_pointer & lend() const noexcept
   {
     return _lend;
   }
@@ -865,7 +803,7 @@ public:
   {
     DASH_LOG_TRACE("GlobHeapMem.put_value(newval, gidx = %d)",
                    global_index);
-    auto git = const_global_iterator(this, global_index);
+    auto git = pointer(this, global_index);
     dash::put_value(newval, git);
   }
 
@@ -881,7 +819,7 @@ public:
   {
     DASH_LOG_TRACE("GlobHeapMem.get_value(newval, gidx = %d)",
                    global_index);
-    auto git = const_global_iterator(this, global_index);
+    auto git = pointer(this, global_index);
     dash::get_value(ptr, git);
   }
 
@@ -903,7 +841,7 @@ public:
    * local memory.
    */
   template<typename IndexT>
-  global_iterator at(
+  pointer at(
     /// The unit id
     team_unit_t unit,
     /// The unit's local address offset
@@ -914,7 +852,7 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    global_iterator git(this, unit, local_index);
+    pointer git(this, unit, local_index);
     DASH_LOG_DEBUG_VAR("GlobHeapMem.at >", git);
     return git;
   }
@@ -924,7 +862,7 @@ public:
    * local memory.
    */
   template<typename IndexT>
-  const_global_iterator at(
+  const_pointer at(
     /// The unit id
     team_unit_t unit,
     /// The unit's local address offset
@@ -935,8 +873,7 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    // TODO
-    const_global_iterator git(this, unit, local_index);
+    const_pointer git(this, unit, local_index);
     DASH_LOG_DEBUG_VAR("GlobHeapMem.at const >", git);
     return git;
   }
@@ -956,7 +893,7 @@ private:
   void update_lbegin() noexcept
   {
     DASH_LOG_TRACE("GlobHeapMem.update_lbegin()");
-    local_iterator unit_lbegin(
+    local_pointer unit_lbegin(
              // iteration space
              _buckets.begin(), _buckets.end(),
              // position in iteration space
@@ -975,7 +912,7 @@ private:
   void update_lend() noexcept
   {
     DASH_LOG_TRACE("GlobHeapMem.update_lend()");
-    local_iterator unit_lend(
+    local_pointer unit_lend(
              // iteration space
              _buckets.begin(), _buckets.end(),
              // position in iteration space

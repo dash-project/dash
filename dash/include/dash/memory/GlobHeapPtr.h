@@ -1,24 +1,19 @@
-#ifndef DASH__ALLOCATOR__GLOB_BUCKET_ITER_H__INCLUDED
-#define DASH__ALLOCATOR__GLOB_BUCKET_ITER_H__INCLUDED
+#ifndef DASH__MEMORY__GLOB_HEAP_PTR_H__INCLUDED
+#define DASH__MEMORY__GLOB_HEAP_PTR_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 
 #include <dash/Types.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
-#include <dash/Onesided.h>
-
-#include <dash/allocator/LocalBucketIter.h>
-#include <dash/allocator/internal/GlobHeapMemTypes.h>
+#include <dash/GlobSharedRef.h>
 
 #include <dash/internal/Logging.h>
 
 #include <type_traits>
 #include <list>
 #include <vector>
-#include <iterator>
 #include <sstream>
 #include <iostream>
 
@@ -34,79 +29,106 @@ class GlobHeapMem;
 /**
  * Iterator on global buckets. Represents global pointer type.
  */
-template<
-  typename ElementType,
-  class    GlobMemType,
-  class    PointerType   = dash::GlobPtr<ElementType>,
-  class    ReferenceType = dash::GlobSharedRef<ElementType> >
-class GlobBucketIter
-: public std::iterator<
-           std::random_access_iterator_tag,
-           ElementType,
-           typename GlobMemType::index_type,
-           PointerType,
-           ReferenceType >
+template <typename ElementType, class AllocatorType>
+class GlobPtr<
+        ElementType,
+        GlobHeapMem<
+          typename std::remove_const<ElementType>::type,
+          AllocatorType >
+      >
 {
+  typedef GlobHeapMem<ElementType, AllocatorType> GlobHeapMemType;
+  typedef GlobPtr<ElementType, GlobHeapMemType>   self_t;
+
   template<
     typename ElementType_,
-    class    GlobMemType_,
-    class    Pointer_,
-    class    Reference_>
-  friend std::ostream & dash::operator<<(
+    class    AllocType_ >
+  friend std::ostream & operator<<(
     std::ostream & os,
-    const dash::GlobBucketIter<
-            ElementType_, GlobMemType_, Pointer_, Reference_> & it);
-
-private:
-  typedef GlobBucketIter<
-            ElementType,
-            GlobMemType,
-            PointerType,
-            ReferenceType>
-    self_t;
+    const dash::GlobPtr<
+            ElementType_,
+            GlobHeapMem<
+              typename std::remove_const<ElementType_>::type, AllocType_ >
+          > & gptr);
 
 public:
-  typedef typename GlobMemType::index_type                       index_type;
+  typedef typename GlobHeapMemType::index_type                   index_type;
   typedef typename std::make_unsigned<index_type>::type           size_type;
 
   typedef ElementType                                            value_type;
-  typedef ReferenceType                                           reference;
-  typedef ReferenceType                                     const_reference;
-  typedef PointerType                                               pointer;
-  typedef PointerType                                         const_pointer;
 
-  typedef ElementType *                                         raw_pointer;
+  typedef GlobSharedRef<      value_type, self_t>                 reference;
+  typedef GlobSharedRef<const value_type, self_t>           const_reference;
+
+  typedef value_type *                                          raw_pointer;
 
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      const GlobMemType,
-      GlobMemType
+   // const GlobHeapMemType,
+      GlobHeapMemType,
+      GlobHeapMemType
     >::type
     globmem_type;
 
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      typename GlobMemType::const_local_pointer,
-      typename GlobMemType::local_pointer
+   // typename GlobHeapMemType::const_local_pointer,
+      typename GlobHeapMemType::local_pointer,
+      typename GlobHeapMemType::local_pointer
     >::type
     local_pointer;
 
   typedef struct {
     team_unit_t unit;
-    index_type   index;
+    index_type  index;
   } local_index;
+
+  template <typename U>
+  struct rebind {
+    typedef GlobPtr<
+              U,
+              GlobHeapMem<
+                typename std::remove_const<U>::type,
+                typename AllocatorType::template rebind<
+                           typename std::remove_const<U>::type
+                         >::other
+              >
+            > other;
+  };
 
 private:
   typedef std::vector<std::vector<size_type> >
     bucket_cumul_sizes_map;
 
+private:
+  /// Global memory used to dereference iterated values.
+  const globmem_type           * _globmem            = nullptr;
+  /// Mapping unit id to buckets in the unit's attached local storage.
+  const bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
+  /// Pointer to first element in local data space.
+  local_pointer                  _lbegin;
+  /// Current position of the pointer in global canonical index space.
+  index_type                     _idx                = 0;
+  /// Maximum position allowed for this pointer.
+  index_type                     _max_idx            = 0;
+  /// Unit id of the active unit.
+  team_unit_t                    _myid;
+  /// Unit id at the pointer's current position.
+  team_unit_t                    _idx_unit_id;
+  /// Logical offset in local index space at the pointer's current position.
+  index_type                     _idx_local_idx      = -1;
+  /// Local bucket index at the pointer's current position.
+  index_type                     _idx_bucket_idx     = -1;
+  /// Element offset in bucket at the pointer's current position.
+  index_type                     _idx_bucket_phase   = -1;
+
 public:
   /**
    * Default constructor.
    */
-  GlobBucketIter()
+  GlobPtr()
   : _globmem(nullptr),
     _bucket_cumul_sizes(nullptr),
     _idx(0),
@@ -117,18 +139,19 @@ public:
     _idx_bucket_idx(-1),
     _idx_bucket_phase(-1)
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter()", _idx);
-    DASH_LOG_TRACE_VAR("GlobBucketIter()", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobPtr()", _max_idx);
   }
 
   /**
-   * Constructor, creates a global iterator on global memory from global
+   * Constructor, creates a global pointer on global memory from global
    * offset in logical storage order.
    */
-  GlobBucketIter(
-    globmem_type * gmem,
-	  index_type     position = 0)
-  : _globmem(gmem),
+  template<typename MemSpaceT>
+  GlobPtr(
+    const MemSpaceT    * gmem,
+	  index_type           position = 0)
+  : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(position),
@@ -139,15 +162,15 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE("GlobBucketIter(gmem,idx)", "gidx:", position);
+    DASH_LOG_TRACE("GlobPtr(gmem,idx)", "gidx:", position);
     for (auto unit_bucket_cumul_sizes : *_bucket_cumul_sizes) {
-      DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)",
+      DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)",
                          unit_bucket_cumul_sizes);
       size_type bucket_cumul_size_prev = 0;
       for (auto bucket_cumul_size : unit_bucket_cumul_sizes) {
-        DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", bucket_cumul_size);
+        DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)", bucket_cumul_size);
         if (position < bucket_cumul_size) {
-          DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
+          DASH_LOG_TRACE_VAR("GlobPtr(gmem,idx)", position);
           _idx_bucket_phase -= bucket_cumul_size;
           position           = 0;
           _idx_local_idx     = position;
@@ -165,7 +188,7 @@ public:
       position -= unit_bucket_cumul_sizes.back();
       ++_idx_unit_id;
     }
-    DASH_LOG_TRACE("GlobBucketIter(gmem,idx)",
+    DASH_LOG_TRACE("GlobPtr(gmem,idx)",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -174,14 +197,15 @@ public:
   }
 
   /**
-   * Constructor, creates a global iterator on global memory from unit and
+   * Constructor, creates a global pointer on global memory from unit and
    * local offset in logical storage order.
    */
-  GlobBucketIter(
-    globmem_type * gmem,
-    team_unit_t    unit,
-	  index_type     local_index)
-  : _globmem(gmem),
+  template<typename MemSpaceT>
+  GlobPtr(
+    const MemSpaceT    * gmem,
+    team_unit_t          unit,
+	  index_type           local_index)
+  : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(0),
@@ -192,7 +216,7 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)",
+    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
                    "unit:", unit,
                    "lidx:", local_index);
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
@@ -202,7 +226,7 @@ public:
       _idx += prec_unit_local_size;
     }
     increment(local_index);
-    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx) >",
+    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx) >",
                    "gidx:",   _idx,
                    "maxidx:", _max_idx,
                    "unit:",   _idx_unit_id,
@@ -214,9 +238,9 @@ public:
   /**
    * Copy constructor.
    */
-  template<typename E_, typename G_, typename P_, typename R_>
-  GlobBucketIter(
-    const GlobBucketIter<E_, G_, P_, R_> & other)
+  template<typename E_, typename M_>
+  GlobPtr(
+    const GlobPtr<E_, M_> & other)
   : _globmem(other._globmem),
     _bucket_cumul_sizes(other._bucket_cumul_sizes),
     _lbegin(other._lbegin),
@@ -231,9 +255,9 @@ public:
   /**
    * Assignment operator.
    */
-  template<typename E_, typename G_, typename P_, typename R_>
+  template<typename E_, typename M_>
   self_t & operator=(
-    const GlobBucketIter<E_, G_, P_, R_> & other)
+    const GlobPtr<E_, M_> & other)
   {
     _globmem            = other._globmem;
     _bucket_cumul_sizes = other._bucket_cumul_sizes;
@@ -247,37 +271,27 @@ public:
   }
 
   /**
-   * Type conversion operator to \c GlobPtr.
-   *
-   * \return  A global reference to the element at the iterator's position
-   */
-  operator pointer() const
-  {
-    return pointer(dart_gptr());
-  }
-
-  /**
    * Explicit conversion to \c dart_gptr_t.
    *
-   * \return  A DART global pointer to the element at the iterator's
+   * \return  A DART global pointer to the element at the pointer's
    *          position
    */
   dart_gptr_t dart_gptr() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobPtr.dart_gptr()", _idx);
     // Create global pointer from unit, bucket and phase:
     dart_gptr_t dart_gptr = _globmem->dart_gptr_at(
                               _idx_unit_id,
                               _idx_bucket_idx,
                               _idx_bucket_phase);
-    DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr >", dart_gptr);
+    DASH_LOG_TRACE_VAR("GlobPtr.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
 
   /**
    * Dereference operator.
    *
-   * \return  A global reference to the element at the iterator's position.
+   * \return  A global reference to the element at the pointer's position.
    */
   reference operator*() const
   {
@@ -297,7 +311,7 @@ public:
     /// The global position of the element
     index_type g_index) const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.[]()", g_index);
+    DASH_LOG_TRACE_VAR("GlobPtr.[]()", g_index);
     auto git = *this;
     git  += g_index;
     auto lptr = git.local();
@@ -305,13 +319,13 @@ public:
       return reference(lptr);
     } else {
       auto gref = *git;
-      DASH_LOG_TRACE_VAR("GlobBucketIter.[] >", gref);
+      DASH_LOG_TRACE_VAR("GlobPtr.[] >", gref);
       return gref;
     }
   }
 
   /**
-   * Checks whether the element referenced by this global iterator is in
+   * Checks whether the element referenced by this global pointer is in
    * the calling unit's local memory.
    */
   inline bool is_local() const
@@ -320,7 +334,7 @@ public:
   }
 
   /**
-   * Conversion to local bucket iterator.
+   * Conversion to local bucket pointer.
    */
   local_pointer local() const
   {
@@ -332,7 +346,7 @@ public:
   }
 
   /**
-   * Unit and local offset at the iterator's position.
+   * Unit and local offset at the pointer's position.
    */
   inline local_index lpos() const
   {
@@ -343,7 +357,7 @@ public:
   }
 
   /**
-   * Map iterator to global index domain.
+   * Map pointer to global index domain.
    */
   inline self_t global() const
   {
@@ -351,7 +365,7 @@ public:
   }
 
   /**
-   * Position of the iterator in global index space.
+   * Position of the pointer in global index space.
    */
   inline index_type pos() const
   {
@@ -359,7 +373,7 @@ public:
   }
 
   /**
-   * Position of the iterator in global index range.
+   * Position of the pointer in global index range.
    */
   inline index_type gpos() const
   {
@@ -367,8 +381,8 @@ public:
   }
 
   /**
-   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
-   * in global memory.
+   * The instance of \c GlobStaticMem used by this pointer to resolve
+   * addresses in global memory.
    */
   inline const globmem_type & globmem() const
   {
@@ -376,8 +390,8 @@ public:
   }
 
   /**
-   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
-   * in global memory.
+   * The instance of \c GlobStaticMem used by this pointer to resolve
+   * addresses in global memory.
    */
   inline globmem_type & globmem()
   {
@@ -460,38 +474,38 @@ public:
     return _idx - other._idx;
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator<(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator<(const GlobPtr<E_, M_> & other) const
   {
     return (_idx < other._idx);
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator<=(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator<=(const GlobPtr<E_, M_> & other) const
   {
     return (_idx <= other._idx);
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator>(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator>(const GlobPtr<E_, M_> & other) const
   {
     return (_idx > other._idx);
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator>=(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator>=(const GlobPtr<E_, M_> & other) const
   {
     return (_idx >= other._idx);
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator==(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator==(const GlobPtr<E_, M_> & other) const
   {
     return _idx == other._idx;
   }
 
-  template<typename E_, typename G_, typename P_, typename R_>
-  inline bool operator!=(const GlobBucketIter<E_, G_, P_, R_> & other) const
+  template<typename E_, typename M_>
+  inline bool operator!=(const GlobPtr<E_, M_> & other) const
   {
     return _idx != other._idx;
   }
@@ -502,7 +516,7 @@ private:
    */
   void increment(int offset)
   {
-    DASH_LOG_TRACE("GlobBucketIter.increment()",
+    DASH_LOG_TRACE("GlobPtr.increment()",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -513,12 +527,12 @@ private:
     auto current_bucket_size =
            (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx];
     if (_idx_local_idx + offset < current_bucket_size) {
-      DASH_LOG_TRACE("GlobBucketIter.increment", "position current bucket");
-      // element is in bucket currently referenced by this iterator:
+      DASH_LOG_TRACE("GlobPtr.increment", "position current bucket");
+      // element is in bucket currently referenced by this pointer:
       _idx_bucket_phase += offset;
       _idx_local_idx    += offset;
     } else {
-      DASH_LOG_TRACE("GlobBucketIter.increment",
+      DASH_LOG_TRACE("GlobPtr.increment",
                      "position in succeeding bucket");
       // iterate units:
       auto unit_id_max = _bucket_cumul_sizes->size() - 1;
@@ -529,18 +543,18 @@ private:
         auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
         auto unit_bkt_sizes_total = unit_bkt_sizes.back();
         auto unit_num_bkts        = unit_bkt_sizes.size();
-        DASH_LOG_TRACE("GlobBucketIter.increment",
+        DASH_LOG_TRACE("GlobPtr.increment",
                        "unit:", _idx_unit_id,
                        "remaining offset:", offset,
                        "total local bucket size:", unit_bkt_sizes_total);
         if (_idx_local_idx + offset >= unit_bkt_sizes_total) {
           // offset refers to next unit:
-          DASH_LOG_TRACE("GlobBucketIter.increment",
+          DASH_LOG_TRACE("GlobPtr.increment",
                          "position in remote range");
           // subtract remaining own local size from remaining offset:
           offset -= (unit_bkt_sizes_total - _idx_local_idx);
           if (_idx_unit_id == unit_id_max) {
-            // end iterator, offset exceeds iteration space:
+            // end pointer, offset exceeds iteration space:
             _idx_bucket_idx    = unit_num_bkts - 1;
             auto last_bkt_size = unit_bkt_sizes.back();
             if (unit_num_bkts > 1) {
@@ -555,7 +569,7 @@ private:
           _idx_bucket_phase = 0;
         } else {
           // offset refers to current unit:
-          DASH_LOG_TRACE("GlobBucketIter.increment",
+          DASH_LOG_TRACE("GlobPtr.increment",
                          "position in local range",
                          "current bucket phase:", _idx_bucket_phase,
                          "cumul. bucket sizes:",  unit_bkt_sizes);
@@ -579,7 +593,7 @@ private:
         }
       }
     }
-    DASH_LOG_TRACE("GlobBucketIter.increment >",
+    DASH_LOG_TRACE("GlobPtr.increment >",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -592,7 +606,7 @@ private:
    */
   void decrement(int offset)
   {
-    DASH_LOG_TRACE("GlobBucketIter.decrement()",
+    DASH_LOG_TRACE("GlobPtr.decrement()",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -605,7 +619,7 @@ private:
     }
     _idx -= offset;
     if (offset <= _idx_bucket_phase) {
-      // element is in bucket currently referenced by this iterator:
+      // element is in bucket currently referenced by this pointer:
       _idx_bucket_phase -= offset;
       _idx_local_idx    -= offset;
     } else {
@@ -652,7 +666,7 @@ private:
         }
       }
     }
-    DASH_LOG_TRACE("GlobBucketIter.decrement >",
+    DASH_LOG_TRACE("GlobPtr.decrement >",
                    "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
@@ -660,32 +674,10 @@ private:
                    "bphase:", _idx_bucket_phase);
   }
 
-private:
-  /// Global memory used to dereference iterated values.
-  globmem_type                 * _globmem            = nullptr;
-  /// Mapping unit id to buckets in the unit's attached local storage.
-  const bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
-  /// Pointer to first element in local data space.
-  local_pointer                  _lbegin;
-  /// Current position of the iterator in global canonical index space.
-  index_type                     _idx                = 0;
-  /// Maximum position allowed for this iterator.
-  index_type                     _max_idx            = 0;
-  /// Unit id of the active unit.
-  team_unit_t                    _myid;
-  /// Unit id at the iterator's current position.
-  team_unit_t                    _idx_unit_id;
-  /// Logical offset in local index space at the iterator's current position.
-  index_type                     _idx_local_idx      = -1;
-  /// Local bucket index at the iterator's current position.
-  index_type                     _idx_bucket_idx     = -1;
-  /// Element offset in bucket at the iterator's current position.
-  index_type                     _idx_bucket_phase   = -1;
-
-}; // class GlobBucketIter
+}; // class GlobPtr
 
 /**
- * Resolve the number of elements between two global bucket iterators.
+ * Resolve the number of elements between two global bucket pointers.
  *
  * \complexity  O(1)
  *
@@ -693,43 +685,43 @@ private:
  */
 template<
   typename ElementType,
-  class    GlobMemType,
-  class    Pointer,
-  class    Reference>
+  class    AlllocType >
 auto distance(
-  /// Global iterator to the first position in the global sequence
-  const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & first,
-  /// Global iterator to the final position in the global sequence
-  const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & last)
--> typename GlobMemType::index_type
+  /// Global pointer to the first position in the global sequence
+  const dash::GlobPtr<
+          ElementType, GlobHeapMem<ElementType, AlllocType>
+        > & first,
+  /// Global pointer to the final position in the global sequence
+  const dash::GlobPtr<
+          ElementType, GlobHeapMem<ElementType, AlllocType>
+        > & last)
+-> typename GlobHeapMem<ElementType, AlllocType>::index_type
 {
   return last - first;
 }
 
 template<
   typename ElementType,
-  class    GlobMemType,
-  class    Pointer,
-  class    Reference>
+  class    AllocType >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobBucketIter<
-          ElementType, GlobMemType, Pointer, Reference> & it)
+  const dash::GlobPtr<
+          ElementType,
+          GlobHeapMem<
+            typename std::remove_const<ElementType>::type, AllocType >
+        > & gptr)
 {
   std::ostringstream ss;
-  ss << "dash::GlobBucketIter<"
-     << typeid(ElementType).name() << ">("
-     << "gidx:"   << it._idx              << ", ("
-     << "unit:"   << it._idx_unit_id      << ", "
-     << "lidx:"   << it._idx_local_idx    << "), ("
-     << "bidx:"   << it._idx_bucket_idx   << ", "
-     << "bphase:" << it._idx_bucket_phase << ")"
+  ss << "dash::GlobPtr<" << typeid(ElementType).name() << ">("
+     << "gidx:"   << gptr._idx              << ", ("
+     << "unit:"   << gptr._idx_unit_id      << ", "
+     << "lidx:"   << gptr._idx_local_idx    << "), ("
+     << "bidx:"   << gptr._idx_bucket_idx   << ", "
+     << "bphase:" << gptr._idx_bucket_phase << ")"
      << ")";
   return operator<<(os, ss.str());
 }
 
 } // namespace dash
 
-#endif // DASH__ALLOCATOR__GLOB_BUCKET_ITER_H__INCLUDED
+#endif // DASH__MEMORY__GLOB_HEAP_PTR_H__INCLUDED
