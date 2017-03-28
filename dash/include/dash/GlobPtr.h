@@ -813,8 +813,8 @@ dash::gptrdiff_t distance(
   // Both pointers in same unit space:
   if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
       gbegin._mem_space == nullptr) {
-    return ( gbegin._rbegin_gptr.addr_or_offs.offset -
-             gend._rbegin_gptr.addr_or_offs.offset )
+    return ( gend._rbegin_gptr.addr_or_offs.offset -
+             gbegin._rbegin_gptr.addr_or_offs.offset )
            / sizeof(value_type);
   }
   // Pointers span multiple unit spaces, accumulate sizes of

@@ -59,11 +59,16 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
         int gvalue = *gbegin;
         EXPECT_EQ((g % 3) + 1, gvalue);
       }
+      EXPECT_EQ( gbegin, globmem.begin() + g);
+      EXPECT_EQ(*gbegin, globmem.begin()[g]);
+
+      EXPECT_EQ( (globmem.size() - g), dash::distance(gbegin, gend));
+      EXPECT_EQ(-(globmem.size() - g), dash::distance(gend,   gbegin));
+      EXPECT_EQ(gend   - gbegin,       dash::distance(gbegin, gend));
+      EXPECT_EQ(gbegin - gend,         dash::distance(gend,   gbegin));
 
       if (g % 2 == 0) { ++gbegin; }
       else            { gbegin++; }
-      EXPECT_EQ( gbegin, globmem.begin() + g + 1);
-      EXPECT_EQ(*gbegin, globmem.begin()[g+1]);
     }
   }
 
@@ -81,10 +86,13 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
         int gvalue = *gend;
         EXPECT_EQ((g % 3) + 1, gvalue);
       }
+      EXPECT_EQ(gend, globmem.begin() + g);
+
+      EXPECT_EQ(gend   - gbegin, dash::distance(gbegin, gend));
+      EXPECT_EQ(gbegin - gend,   dash::distance(gend,   gbegin));
 
       if (g % 2 == 0) { --gend; }
       else            { gend--; }
-      EXPECT_EQ(gend, globmem.begin() + g - 1);
     }
   }
 }
