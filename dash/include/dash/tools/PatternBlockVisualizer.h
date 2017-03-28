@@ -51,8 +51,8 @@ private:
     }
     std::string hex() const {
       std::ostringstream ss;
-      ss << "#" << std::hex << std::uppercase << std::setw(2);
-      ss << std::setfill('0') << _r << _g << _b;
+      ss << "#" << std::hex << std::uppercase << std::setfill('0');
+      ss << std::setw(2) << _r << std::setw(2) << _g << std::setw(2) << _b;
       return ss.str();
     }
   };
@@ -223,8 +223,8 @@ private:
 
     dash::tools::color::hsv hsv;
     hsv.h = 360.0 * unit_h_perc;
-    hsv.s = 0.3 + 0.5 * unit_s_perc;
-    hsv.v = 0.3 + 0.4 * unit_v_perc;
+    hsv.s = 0.5 + 0.5 * unit_s_perc;
+    hsv.v = 0.5 + 0.4 * unit_v_perc;
 
     auto rgb = dash::tools::color::hsv2rgb(hsv);
     int  r   = static_cast<int>(rgb.r * 255);
