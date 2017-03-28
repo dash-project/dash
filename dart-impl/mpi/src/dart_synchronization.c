@@ -81,17 +81,6 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
     MPI_Win_sync (dart_win_local_alloc);
   }
 
-  ret = dart_bcast(
-    &gptr_tail,
-    sizeof(dart_gptr_t),
-    DART_TYPE_BYTE,
-    DART_TEAM_UNIT_ID(0),
-    teamid);
-  if (ret != DART_OK) {
-    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __FUNCTION__);
-    return ret;
-  }
-
   /* Create a global memory region across the team.
    * Every local memory segment holds the next unit
    * waiting on the lock. */
@@ -107,7 +96,20 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   dart_gptr_setunit(&gptr_list, unitid);
   dart_gptr_getaddr(gptr_list, (void*)&list_ptr);
   *list_ptr = -1;
-  MPI_Win_sync (win);
+  MPI_Win_sync(win);
+
+  // communicate tail pointer
+  ret = dart_bcast(
+    &gptr_tail,
+    sizeof(dart_gptr_t),
+    DART_TYPE_BYTE,
+    DART_TEAM_UNIT_ID(0),
+    teamid);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("%s: Failed to broadcast lock information!", __FUNCTION__);
+    return ret;
+  }
+
 
   *lock = malloc(sizeof(struct dart_lock_struct));
   (*lock)->gptr_tail   = gptr_tail;
@@ -126,7 +128,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 dart_ret_t dart_lock_acquire(dart_lock_t lock)
 {
   /* lock the local mutex and keep it until the global lock is released */
-  DART_ASSERT(DART_OK == dart__base__mutex_lock(&lock->mutex));
+  DART_ASSERT_RETURNS(dart__base__mutex_lock(&lock->mutex), DART_OK);
 
   if (lock->is_acquired == 1)
   {
@@ -143,7 +145,6 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
     return DART_ERR_INVAL;
   }
 
-  int32_t predecessor, result;
   dart_gptr_t gptr_tail = lock->gptr_tail;
   dart_gptr_t gptr_list = lock->gptr_list;
 
@@ -153,7 +154,13 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
   dart_team_unit_t unitid;
   dart_team_myid(lock->teamid, &unitid);
 
+  int32_t predecessor;
+
   /* Fetch the current unit's tail and make this unit the new tail */
+  DART_LOG_TRACE(
+    "dart_lock_acquire: MPI_Fetch_and_op to set tail to unit %i on "
+    "tail_unit %i with offset %lu",
+    unitid.id, tail_unit, tail_offset);
   DART_ASSERT_RETURNS(
     MPI_Fetch_and_op(
       &unitid.id,
@@ -168,20 +175,26 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
       MPI_Win_flush(tail_unit, dart_win_local_alloc),
       MPI_SUCCESS);
 
+  DART_LOG_TRACE("dart_lock_acquire: predecessor: %i unitid.id: %i",
+    predecessor, unitid.id);
+
   /* If there was a previous tail (predecessor), update the previous tail's
    * next pointer with unitid and wait for notification from its predecessor.
    */
   if (predecessor != -1) {
+    int32_t    result;
     MPI_Win    win;
     MPI_Status status;
     int16_t    seg_id = gptr_list.segid;
     MPI_Aint   disp_list;
 
-    DART_ASSERT(DART_OK == dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          DART_TEAM_UNIT_ID(predecessor),
-          &disp_list));
+    DART_ASSERT_RETURNS(
+      dart_segment_get_disp(
+        &team_data->segdata,
+        seg_id,
+        DART_TEAM_UNIT_ID(predecessor),
+        &disp_list),
+      DART_OK);
     win = team_data->window;
 
     /* Atomicity: Update its predecessor's next pointer */

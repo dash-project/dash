@@ -5,6 +5,7 @@
  */
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <mpi.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -305,4 +306,13 @@ dart_ret_t dart_exit()
 bool dart_initialized()
 {
   return (_dart_initialized > 0);
+}
+
+
+void dart_abort(int errorcode)
+{
+  DART_LOG_INFO("dart_abort: aborting DART run with error code %i", errorcode);
+  MPI_Abort(MPI_COMM_WORLD, errorcode);
+  /* just in case MPI_Abort does not abort */
+  abort();
 }
