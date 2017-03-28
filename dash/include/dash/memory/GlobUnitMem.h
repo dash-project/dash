@@ -8,6 +8,7 @@
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
+#include <dash/Iterator.h>
 
 #include <dash/internal/Logging.h>
 
@@ -240,13 +241,6 @@ public:
     return _nlelem;
   }
 
-  constexpr index_type distance(
-      const pointer & gbegin,
-      const pointer & gend) const {
-    return ( gend.addr_or_offs.offset - gbegin.addr_or_offs.offset )
-             / sizeof(value_type);
-  }
-
   /**
    * The team containing all units accessing the global memory space.
    *
@@ -456,6 +450,28 @@ private:
     _lend = static_cast<local_pointer>(addr);
   }
 };
+
+/**
+ * Specialization of \c dash::distance for \c dash::GlobPtr as definition
+ * of pointer distance in global unit memory space.
+ *
+ * Equivalent to \c (gend - gbegin).
+ *
+ * \return  Number of elements in the range between the first and second
+ *          global pointer
+ *
+ */
+template <typename T1, typename T2>
+dash::gptrdiff_t distance(
+  // First global pointer in range
+  const GlobPtr<T1, dash::GlobUnitMem<T1>> & gbeg,
+  // Final global pointer in range
+  const GlobPtr<T2, dash::GlobUnitMem<T2>> & gend) {
+  using value_type = typename std::decay<decltype(gbeg)>::type::value_type;
+  return ( gend.dart_gptr().addr_or_offs.offset -
+           gbeg.dart_gptr().addr_or_offs.offset
+         ) / sizeof(value_type);
+}
 
 template<
   typename T,

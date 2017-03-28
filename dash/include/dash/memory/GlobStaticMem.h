@@ -288,23 +288,6 @@ public:
     return _nlelem;
   }
 
-  index_type distance(const pointer & gbegin, const pointer & gend) const {
-    if (gbegin.dart_gptr().unitid > gend.dart_gptr().unitid) {
-      return -(distance(gend, gbegin));
-    }
-    index_type dist = local_size(
-                        dart_team_unit_t { gbegin.dart_gptr().unitid })
-                      - (gbegin.dart_gptr().addr_or_offs.offset
-                          / sizeof(value_type))
-                      + (gend.dart_gptr().addr_or_offs.offset
-                          / sizeof(value_type));
-    for (int u = gbegin.dart_gptr().unitid+1;
-             u < gend.dart_gptr().unitid; ++u) {
-      dist += local_size(dart_team_unit_t { u });
-    }
-    return dist;
-  }
-
   /**
    * The team containing all units accessing the global memory space.
    *
@@ -378,7 +361,7 @@ public:
     const ValueType & newval,
     index_type        global_index)
   {
-    DASH_LOG_TRACE("GlobStaticMem.put_value(newval, gidx = %d)", global_index);
+    DASH_LOG_TRACE("GlobStaticMem.put_value(val, gidx = %d)", global_index);
     dash::put_value(newval,
                     GlobPtr<ValueType, self_t>(
                       *this, _begptr
@@ -395,7 +378,7 @@ public:
     ValueType  * ptr,
     index_type   global_index) const
   {
-    DASH_LOG_TRACE("GlobStaticMem.get_value(newval, gidx = %d)", global_index);
+    DASH_LOG_TRACE("GlobStaticMem.get_value(val, gidx = %d)", global_index);
     dash::get_value(ptr,
                     GlobPtr<ValueType, self_t>(
                       *this, _begptr

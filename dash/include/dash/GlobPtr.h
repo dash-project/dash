@@ -9,6 +9,7 @@
 #include <dash/Exception.h>
 #include <dash/Init.h>
 #include <dash/Allocator.h>
+#include <dash/Iterator.h>
 
 #include <cstddef>
 #include <sstream>
@@ -30,31 +31,27 @@ bool operator!=(
 namespace dash {
 
 // Forward-declarations
-template<typename T>                  class GlobRef;
-template<typename T,
-         class    AllocT>             class GlobStaticMem;
-template<typename T,
-         class    AllocT>             class GlobHeapMem;
-template<typename T>                  class GlobConstPtr;
+template <typename T>                  class GlobRef;
+template <typename T,
+          class    AllocT>             class GlobStaticMem;
+template <typename T,
+          class    AllocT>             class GlobHeapMem;
+template <typename T>                  class GlobConstPtr;
+
+template <typename T, class MemSpaceT> class GlobPtr;
+
+template <typename T1,
+          typename T2,
+          class    MemSpaceT1,
+          class    MemSpaceT2 >
+dash::gptrdiff_t distance(
+  const GlobPtr<T1, MemSpaceT1> & gbegin,
+  const GlobPtr<T2, MemSpaceT2> & gend);
 
 /**
- * Pointer in global memory space.
- *
- * \note
- * For performance considerations, the iteration space of \c GlobPtr
- * is restricted to *local address space*.
- * If an instance of \c GlobPtr is incremented past the last address
- * of the underlying local memory range, it is not advanced to the
- * next unit's local address range.
- * Iteration over unit borders is implemented by \c GlobalIterator
- * types which perform a mapping of local and global index sets
- * specified by a \c Pattern.
- *
- * \todo Distance between two global pointers is not well-defined yet.
+ * Pointer in global memory space with random access arithmetics.
  *
  * \see GlobIter
- * \see GlobViewIter
- * \see DashPatternConcept
  *
  */
 template<
@@ -78,6 +75,23 @@ public:
   typedef index_type                                   gptrdiff_t;
 
 public:
+  template <typename T, class MemSpaceT>
+  friend class GlobPtr;
+
+  template <typename T, class MemSpaceT>
+  friend std::ostream & operator<<(
+    std::ostream                & os,
+    const GlobPtr<T, MemSpaceT> & gptr);
+
+  template <typename T1,
+            typename T2,
+            class    MemSpaceT1,
+            class    MemSpaceT2 >
+  friend dash::gptrdiff_t dash::distance(
+    const GlobPtr<T1, MemSpaceT1> & gptr_begin,
+    const GlobPtr<T2, MemSpaceT2> & gptr_end);
+
+public:
   /// Convert GlobPtr<T> to GlobPtr<U>.
   template<typename U, class MSp = MemorySpace>
   struct rebind {
@@ -93,16 +107,6 @@ private:
   index_type          _lsize       = 0;
   // Unit id of last unit in referenced global memory space
   dart_team_unit_t    _unit_end    = 0;
-
-public:
-  template <typename T, class MemSpaceT>
-  friend class GlobPtr;
-
-  template <typename T, class MemSpaceT>
-  friend std::ostream & operator<<(
-    std::ostream                & os,
-    const GlobPtr<T, MemSpaceT> & gptr);
-
 protected:
   /**
    * Constructor, specifies underlying global address.
@@ -115,7 +119,7 @@ protected:
     dart_gptr_t         gptr,
     index_type          rindex = 0)
   : _rbegin_gptr(gptr)
-  , _mem_space(reinterpret_cast<const MemorySpace *>(mem_space))
+  , _mem_space(mem_space)
   , _lsize(
        mem_space == nullptr
        ? 0
@@ -142,7 +146,7 @@ public:
     const MemorySpace & mem_space,
     dart_gptr_t         gptr)
   : _rbegin_gptr(gptr)
-  , _mem_space(reinterpret_cast<const MemorySpace *>(&mem_space))
+  , _mem_space(&mem_space)
   , _lsize(mem_space.local_size(dart_team_unit_t { gptr.unitid }))
   , _unit_end(mem_space.team().size())
   { }
@@ -315,12 +319,7 @@ public:
    */
   constexpr index_type operator-(const self_t & rhs) const noexcept
   {
-    return ( _rbegin_gptr.unitid == rhs._rbegin_gptr.unitid ||
-             _mem_space == nullptr
-             ? ( _rbegin_gptr.addr_or_offs.offset
-                 - rhs._rbegin_gptr.addr_or_offs.offset )
-               / sizeof(value_type)
-             : _mem_space->distance(rhs, *this) );
+    return dash::distance(rhs, *this);
   }
 
   /**
@@ -496,21 +495,20 @@ public:
 
 private:
   void increment(index_type offs) {
+    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
     // Pointer position still in same unit space:
     if (_mem_space == nullptr ||
-        offs + (_rbegin_gptr.addr_or_offs.offset / sizeof(value_type))
-          < _lsize) {
+        offs + ptr_offset < _lsize) {
       _rbegin_gptr.addr_or_offs.offset += (offs * sizeof(value_type));
       return;
     }
     // Pointer position moved outside unit space:
-    while (offs + (_rbegin_gptr.addr_or_offs.offset / sizeof(value_type))
-           >= _lsize &&
+    while (offs + ptr_offset >= _lsize &&
            _rbegin_gptr.unitid <= _unit_end.id) {
-      offs -= (_lsize
-                - (_rbegin_gptr.addr_or_offs.offset / sizeof(value_type)));
+      offs  -= (_lsize - ptr_offset);
       _rbegin_gptr.unitid++;
       _rbegin_gptr.addr_or_offs.offset = 0;
+      ptr_offset = 0;
       _lsize = ( _rbegin_gptr.unitid < _unit_end.id
                  ? _mem_space->local_size(
                      dart_team_unit_t { _rbegin_gptr.unitid })
@@ -520,21 +518,20 @@ private:
   }
 
   void decrement(index_type offs) {
-    if (_mem_space == nullptr ||
-        (_rbegin_gptr.addr_or_offs.offset / sizeof(value_type)) >= offs) {
+    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
+    if (_mem_space == nullptr || ptr_offset >= offs) {
       _rbegin_gptr.addr_or_offs.offset -= (offs * sizeof(value_type));
       return;
     }
     // Pointer position moved outside unit space:
-    while ((_rbegin_gptr.addr_or_offs.offset / sizeof(value_type)) < offs &&
-           _rbegin_gptr.unitid > 0) {
-      offs  -= (_rbegin_gptr.addr_or_offs.offset / sizeof(value_type)) - 1;
+    while (ptr_offset < offs && _rbegin_gptr.unitid > 0) {
+      offs  -= (ptr_offset - 1);
       _rbegin_gptr.unitid--;
       _lsize = ( _rbegin_gptr.unitid < _unit_end.id
                  ? _mem_space->local_size(
                      dart_team_unit_t { _rbegin_gptr.unitid })
                  : 1);
-      _rbegin_gptr.addr_or_offs.offset = (_lsize - 1) * sizeof(value_type);
+      ptr_offset = _lsize - 1;
     }
     _rbegin_gptr.addr_or_offs.offset = (offs * sizeof(value_type));
   }
@@ -561,6 +558,7 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
+#ifndef DOXYGEN
 
 /**
  * Wraps underlying global address as global const pointer.
@@ -765,6 +763,65 @@ std::ostream & operator<<(
           gptr.dart_gptr().addr_or_offs.offset);
   ss << "dash::GlobConstPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
+}
+
+#endif // DOXYGEN
+
+/**
+ * Specialization of \c dash::distance for \c dash::GlobPtr as default
+ * definition of pointer distance in global memory spaces.
+ *
+ * Equivalent to \c (gend - gbegin).
+ *
+ * \note
+ * Defined with separate value types T1 and T2 to allow calculation
+ * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
+ *
+ * \todo
+ * Validate compatibility of memory space types using memory space traits
+ * once they are available.
+ *
+ * \return  Number of elements in the range between the first and second
+ *          global pointer
+ *
+ */
+template <typename T1,
+          typename T2,
+          class    MemSpaceT1,
+          class    MemSpaceT2 >
+dash::gptrdiff_t distance(
+  // First global pointer in range
+  const GlobPtr<T1, MemSpaceT1> & gbegin,
+  // Final global pointer in range
+  const GlobPtr<T2, MemSpaceT2> & gend) {
+  using value_type = typename std::decay<decltype(gbegin)>::type::value_type;
+  using index_type = typename std::decay<decltype(gbegin)>::type::index_type;
+
+  // If unit of begin pointer is after unit of end pointer,
+  // return negative distance with swapped argument order:
+  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
+    return -(dash::distance(gend, gbegin));
+  }
+  // Both pointers in same unit space:
+  if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
+      gbegin._mem_space == nullptr) {
+    return ( gbegin._rbegin_gptr.addr_or_offs.offset -
+             gend._rbegin_gptr.addr_or_offs.offset )
+           / sizeof(value_type);
+  }
+  // Pointers span multiple unit spaces, accumulate sizes of
+  // local unit memory ranges in the pointer range:
+  index_type dist = gbegin._mem_space->local_size(
+                      dart_team_unit_t { gbegin.dart_gptr().unitid })
+                    - (gbegin.dart_gptr().addr_or_offs.offset
+                        / sizeof(value_type))
+                    + (gend.dart_gptr().addr_or_offs.offset
+                        / sizeof(value_type));
+  for (int u = gbegin.dart_gptr().unitid+1;
+           u < gend.dart_gptr().unitid; ++u) {
+    dist += gend._mem_space->local_size(dart_team_unit_t { u });
+  }
+  return dist;
 }
 
 } // namespace dash
