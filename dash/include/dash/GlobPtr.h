@@ -224,6 +224,26 @@ public:
   self_t & operator=(self_t && rhs)            = default;
 
   /**
+   * Converts pointer to its referenced native pointer or
+   * \c nullptr if the \c GlobPtr does not point to a local
+   * address.
+   */
+  explicit operator value_type*() const noexcept {
+    return local();
+  }
+
+  /**
+   * Conversion operator to local pointer.
+   *
+   * \returns  A native pointer to the local element referenced by this
+   *           GlobPtr instance, or \c nullptr if the referenced element
+   *           is not local to the calling unit.
+   */
+  explicit operator value_type*() noexcept {
+    return local();
+  }
+
+  /**
    * Converts pointer to its underlying global address.
    */
   explicit constexpr operator dart_gptr_t() const noexcept
@@ -248,13 +268,11 @@ public:
   }
 
   /**
-   * Converts pointer to its referenced native pointer or
-   * \c nullptr if the \c GlobPtr does not point to a local
-   * address.
+   * Pointer offset difference operator.
    */
-  explicit constexpr operator value_type *() const noexcept
+  constexpr index_type operator-(const self_t & rhs) const noexcept
   {
-    return local();
+    return dash::distance(rhs, *this);
   }
 
   /**
@@ -271,7 +289,7 @@ public:
    */
   self_t operator++(int)
   {
-    self_t res = *this;
+    self_t res(*this);
     increment(1);
     return res;
   }
@@ -279,9 +297,9 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t operator+(gptrdiff_t n) const
+  self_t operator+(index_type n) const
   {
-    self_t res = *this;
+    self_t res(*this);
     res += n;
     return res;
   }
@@ -289,7 +307,7 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t & operator+=(gptrdiff_t n)
+  self_t & operator+=(index_type n)
   {
     increment(n);
     return *this;
@@ -309,17 +327,9 @@ public:
    */
   self_t operator--(int)
   {
-    self_t res = *this;
+    self_t res(*this);
     decrement(1);
     return res;
-  }
-
-  /**
-   * Pointer offset difference operator.
-   */
-  constexpr index_type operator-(const self_t & rhs) const noexcept
-  {
-    return dash::distance(rhs, *this);
   }
 
   /**
@@ -327,7 +337,7 @@ public:
    */
   self_t operator-(index_type n) const
   {
-    self_t res = *this;
+    self_t res(*this);
     res -= n;
     return res;
   }
@@ -428,21 +438,6 @@ public:
   }
 
   /**
-   * Conversion operator to local pointer.
-   *
-   * \returns  A native pointer to the local element referenced by this
-   *           GlobPtr instance, or \c nullptr if the referenced element
-   *           is not local to the calling unit.
-   */
-  explicit operator value_type*() {
-    void *addr = 0;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_rbegin_gptr, &addr),
-      DART_OK);
-    return static_cast<value_type*>(addr);
-  }
-
-  /**
    * Conversion to local pointer.
    *
    * \returns  A native pointer to the local element referenced by this
@@ -451,10 +446,10 @@ public:
    */
   value_type * local() {
     void *addr = 0;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_rbegin_gptr, &addr),
-      DART_OK);
-    return static_cast<value_type*>(addr);
+    if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
+      return static_cast<value_type*>(addr);
+    }
+    return nullptr;
   }
 
   /**
@@ -466,10 +461,10 @@ public:
    */
   const value_type * local() const {
     void *addr = 0;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(_rbegin_gptr, &addr),
-      DART_OK);
-    return static_cast<const value_type*>(addr);
+    if (dart_gptr_getaddr(_rbegin_gptr, &addr) = DART_OK) {
+      return static_cast<const value_type*>(addr);
+    }
+    return nullptr;
   }
 
   /**
@@ -479,6 +474,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&_rbegin_gptr, unit_id),
       DART_OK);
+    _lsize = _mem_space.local_size(dart_team_unit_t { _rbegin_gptr.unitid });
   }
 
   /**
@@ -561,7 +557,10 @@ std::ostream & operator<<(
 #ifndef DOXYGEN
 
 /**
- * Wraps underlying global address as global const pointer.
+ * Internal type.
+ * 
+ * Specialization of \c dash::GlobPtr, wraps underlying global address
+ * as global const pointer (not pointer to const).
  *
  * As pointer arithmetics are inaccessible for const pointer types,
  * no coupling to global memory space is required.
@@ -805,17 +804,17 @@ dash::gptrdiff_t distance(
     sizeof(val_type_b) == sizeof(val_type_e),
     "value types of global pointers are not compatible for dash::distance");
 
-  // If unit of begin pointer is after unit of end pointer,
-  // return negative distance with swapped argument order:
-  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
-    return -(dash::distance(gend, gbegin));
-  }
   // Both pointers in same unit space:
   if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
       gbegin._mem_space == nullptr) {
     return ( gend._rbegin_gptr.addr_or_offs.offset -
              gbegin._rbegin_gptr.addr_or_offs.offset )
            / sizeof(value_type);
+  }
+  // If unit of begin pointer is after unit of end pointer,
+  // return negative distance with swapped argument order:
+  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
+    return -(dash::distance(gend, gbegin));
   }
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
