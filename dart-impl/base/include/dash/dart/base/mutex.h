@@ -111,7 +111,7 @@ dart__base__mutex_trylock(dart_mutex_t *mutex)
 #ifdef DART_HAVE_PTHREADS
   int ret = pthread_mutex_trylock(&mutex->mutex);
   DART_LOG_TRACE("dart__base__mutex_trylock: lock %p aqcuired: %s",
-                 (ret == 0) ? "yes" : "no");
+                 mutex, (ret == 0) ? "yes" : "no");
   return (ret == 0) ? DART_OK : DART_PENDING;
 #else
   return DART_OK;
