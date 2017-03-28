@@ -365,14 +365,21 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
 
 dart_ret_t dart_team_lock_free(dart_team_t teamid, dart_lock_t* lock)
 {
+  dart_ret_t ret;
+  dart_team_unit_t unitid;
   dart_gptr_t gptr_tail = (*lock)->gptr_tail;
   dart_gptr_t gptr_list = (*lock)->gptr_list;
 
-  dart_ret_t ret;
-  ret = dart_memfree(gptr_tail);
-  if (ret != DART_OK) {
-    DART_LOG_ERROR("Failed to free global mmeory");
-    return ret;
+  dart_team_myid(teamid, &unitid);
+
+
+  /* Unit 0 is the process holding the gptr_tail by default. */
+  if (unitid.id == 0) {
+    ret = dart_memfree(gptr_tail);
+    if (ret != DART_OK) {
+      DART_LOG_ERROR("Failed to free global mmeory");
+      return ret;
+    }
   }
   ret = dart_team_memfree(gptr_list);
   if (ret != DART_OK) {
