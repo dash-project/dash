@@ -774,8 +774,9 @@ std::ostream & operator<<(
  * Equivalent to \c (gend - gbegin).
  *
  * \note
- * Defined with separate value types T1 and T2 to allow calculation
+ * Defined with independent value types T1 and T2 to allow calculation
  * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
+ * The pointer value types must have identical size.
  *
  * \todo
  * Validate compatibility of memory space types using memory space traits
@@ -801,7 +802,7 @@ dash::gptrdiff_t distance(
   using value_type = val_type_b;
 
   static_assert(
-    std::is_same<val_type_b, val_type_e>::value,
+    sizeof(val_type_b) = sizeof(val_type_e),
     "value types of global pointers are not compatible for dash::distance");
 
   // If unit of begin pointer is after unit of end pointer,
