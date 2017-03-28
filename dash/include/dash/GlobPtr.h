@@ -802,7 +802,7 @@ dash::gptrdiff_t distance(
   using value_type = val_type_b;
 
   static_assert(
-    sizeof(val_type_b) = sizeof(val_type_e),
+    sizeof(val_type_b) == sizeof(val_type_e),
     "value types of global pointers are not compatible for dash::distance");
 
   // If unit of begin pointer is after unit of end pointer,
