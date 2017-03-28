@@ -68,7 +68,12 @@ namespace dash {
 /**
  * Global memory with address space of static size.
  *
- * \concept{DashGlobalMemoryConcept}
+ * For global memory spaces with support for resizing, see
+ * \c dash::GlobHeapMem.
+ *
+ * \see dash::GlobHeapMem
+ *
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   /// Type of elements maintained in the global memory space
@@ -91,17 +96,11 @@ public:
   typedef typename allocator_type::difference_type        difference_type;
   typedef typename allocator_type::difference_type             index_type;
 
-#if 0
-  typedef typename allocator_type::pointer                        pointer;
-  typedef typename allocator_type::const_pointer            const_pointer;
-  typedef typename allocator_type::void_pointer              void_pointer;
-  typedef typename allocator_type::const_void_pointer  const_void_pointer;
-#else
   typedef GlobPtr<      value_type, self_t>                       pointer;
   typedef GlobPtr<const value_type, self_t>                 const_pointer;
   typedef GlobPtr<      void,       self_t>                  void_pointer;
   typedef GlobPtr<const void,       self_t>            const_void_pointer;
-#endif
+
   typedef       value_type *                                local_pointer;
   typedef const value_type *                          const_local_pointer;
 
@@ -367,7 +366,7 @@ public:
     const ValueType & newval,
     index_type        global_index)
   {
-    DASH_LOG_TRACE("GlobStaticMem.put_value(newval, gidx = %d)", global_index);
+    DASH_LOG_TRACE("GlobStaticMem.put_value(val, gidx = %d)", global_index);
     dash::put_value(newval,
                     GlobPtr<ValueType, self_t>(
                       *this, _begptr
@@ -384,7 +383,7 @@ public:
     ValueType  * ptr,
     index_type   global_index) const
   {
-    DASH_LOG_TRACE("GlobStaticMem.get_value(newval, gidx = %d)", global_index);
+    DASH_LOG_TRACE("GlobStaticMem.get_value(val, gidx = %d)", global_index);
     dash::get_value(ptr,
                     GlobPtr<ValueType, self_t>(
                       *this, _begptr
@@ -513,6 +512,13 @@ private:
   }
 };
 
+/**
+ * Allocate elements in the specified memory space.
+ *
+ * \returns  Global pointer to the beginning of the allocated memory region.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<
   typename T,
   class    MemSpaceT >
@@ -526,12 +532,15 @@ GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
   return GlobPtr<T, MemSpaceT>(mspace, gptr);
 }
 
+/**
+ * Deallocate segment in global memory space referenced by the specified
+ * global pointer.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<class GlobPtrT>
 void memfree(GlobPtrT gptr)
 {
-  // TODO: Should notify GlobPtrT instance gptr of this deallocation
-  //       as it might be owner of its referenced global memory space
-  //       (see GlobUnitMem).
   dart_memfree(gptr.dart_gptr());
 }
 

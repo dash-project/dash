@@ -10,20 +10,7 @@ namespace dash {
 
 // Forward declarations
 template<typename T, class A> class GlobStaticMem;
-template<typename T> class GlobConstPtr;
 template<typename T, class MemSpaceT> class GlobPtr;
-
-#if 0
-template<typename T>
-void put_value(const T & newval, const GlobConstPtr<T> & gptr);
-template<typename T, class MemSpaceT>
-void put_value(const T & newval, const GlobPtr<T, MemSpaceT> & gptr);
-
-template<typename T>
-void get_value(T* ptr, const GlobConstPtr<T> & gptr);
-template<typename T, class MemSpaceT>
-void get_value(T* ptr, const GlobPtr<T, MemSpaceT> & gptr);
-#endif
 
 template<typename T>
 struct has_subscript_operator
