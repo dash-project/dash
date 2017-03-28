@@ -44,15 +44,17 @@ class GlobAsyncRef
     std::ostream & os,
     const GlobAsyncRef<U> & gar);
 
+  template <
+    typename ElementT >
+  friend class GlobAsyncRef;
+
 private:
   typedef GlobAsyncRef<T>
     self_t;
-  typedef GlobStaticMem<T, dash::allocator::SymmetricAllocator<T> >
-    GlobMem_t;
+  typedef typename std::remove_const<T>::type
+    nonconst_value_type;
 
 private:
-  /// Instance of GlobStaticMem that issued this global reference
-  GlobMem_t  * _globmem;
   /// Value of the referenced element, initially not loaded
   mutable T    _value;
   /// Pointer to referenced element in global memory
@@ -69,24 +71,9 @@ private:
 public:
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
-   */
-  GlobAsyncRef(
-    /// Instance of GlobStaticMem that issued this global reference
-    GlobMem_t * globmem,
-    /// Pointer to referenced object in global memory
-    T         * lptr)
-  : _value(*lptr),
-    _lptr(lptr),
-    _is_local(true),
-    _has_value(true)
-  { }
-
-  /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
    * local memory.
    */
-  GlobAsyncRef(
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in local memory
     T * lptr)
   : _value(*lptr),
@@ -99,12 +86,10 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
-  template<class MemSpaceT>
-  GlobAsyncRef(
-    /// Instance of GlobStaticMem that issued this global reference
-    GlobMem_t            * globmem,
+  template<class ElementT, class MemSpaceT>
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<T, MemSpaceT> & gptr)
+    GlobPtr<ElementT, MemSpaceT> & gptr)
   : _gptr(gptr.dart_gptr())
   {
     _is_local = gptr.is_local();
@@ -119,27 +104,7 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
-  template<class MemSpaceT>
-  GlobAsyncRef(
-    /// Pointer to referenced object in global memory
-    GlobPtr<T, MemSpaceT> & gptr)
-  : _gptr(gptr.dart_gptr())
-  {
-    _is_local = gptr.is_local();
-    if (_is_local) {
-      _value     = *gptr;
-      _lptr      = (T*)(gptr);
-      _has_value = true;
-    }
-  }
-
-  /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
-   */
-  GlobAsyncRef(
-    /// Instance of GlobStaticMem that issued this global reference
-    GlobMem_t   * globmem,
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
     dart_gptr_t   dart_gptr)
   : _gptr(dart_gptr)
@@ -154,40 +119,21 @@ public:
   }
 
   /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
    */
-  GlobAsyncRef(
+  template<class ElementT>
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    dart_gptr_t dart_gptr)
-  : _gptr(dart_gptr)
-  {
-    GlobConstPtr<T> gptr(dart_gptr);
-    _is_local = gptr.is_local();
-    if (_is_local) {
-      _value     = *gptr;
-      _lptr      = (T*)(gptr);
-      _has_value = true;
-    }
-  }
-
-  /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * global memory.
-   */
-  GlobAsyncRef(
-    /// Instance of GlobStaticMem that issued this global reference
-    GlobMem_t  * globmem,
-    /// Pointer to referenced object in global memory
-    GlobRef<T> & gref)
-  : GlobAsyncRef(globmem, gref.gptr())
+    const GlobConstPtr<ElementT> & gptr)
+  : GlobAsyncRef(gptr.dart_gptr())
   { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
-  GlobAsyncRef(
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
   : GlobAsyncRef(gref.dart_gptr())
