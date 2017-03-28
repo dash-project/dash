@@ -7,7 +7,8 @@
  * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
  *
- * Routines for allocation and reclamation of global memory regions and pointer semantics in partitioned global address space.
+ * Routines for allocation and reclamation of global memory regions and
+ * local address resolution in partitioned global address space.
  *
  */
 
@@ -145,8 +146,9 @@ typedef struct
  * gptr. I.e., if the global pointer has affinity to the local unit,
  * return the local memory address.
  *
- * \param gptr Global pointer
- * \param[out] addr Pointer to a pointer that will hold the local address if the \c gptr points to a local memory element.
+ * \param      gptr Global pointer
+ * \param[out] addr Pointer to a pointer that will hold the local
+ *                  address if the \c gptr points to a local memory element.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -325,7 +327,8 @@ dart_ret_t dart_team_memalloc_aligned(
  * using \ref dart_team_memalloc_aligned.
  * After this operation, the global pointer should not be used in any
  * communication unless re-used in another allocation.
- * After this operation, the global pointer can be reset using \ref DART_GPTR_NULL.
+ * After this operation, the global pointer can be reset using
+ * \ref DART_GPTR_NULL.
  *
  * \param teamid The team to participate in the collective deallocation.
  * \param gptr Global pointer pointing to the memory to deallocate.
@@ -366,14 +369,16 @@ dart_ret_t dart_team_memregister_aligned(
 	dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
- * Attaches external memory previously allocated by the user.
+ * Collective function, attaches external memory previously allocated by
+ * the user.
  * Does not perform any memory allocation.
  *
- * \param teamid The team to participate in the collective operation.
- * \param nelem  The number of elements already allocated in \c addr.
- * \param dtype  The data type of elements in \c addr.
- * \param addr   Pointer to pre-allocated memory to be registered.
- * \param gptr   Pointer to a global pointer object to set up.
+ * \param teamid  The team to participate in the collective operation.
+ * \param nlelem  The number of local elements allocated in \c addr to
+ *                attach.
+ * \param dtype   The data type of elements in \c addr.
+ * \param addr    Pointer to pre-allocated memory to be registered.
+ * \param gptr    Pointer to a global pointer object to set up.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -382,7 +387,7 @@ dart_ret_t dart_team_memregister_aligned(
  */
 dart_ret_t dart_team_memregister(
   dart_team_t       teamid,
-	size_t            nelem,
+	size_t            nlelem,
   dart_datatype_t   dtype,
 	void            * addr,
 	dart_gptr_t     * gptr) DART_NOTHROW;
@@ -390,7 +395,7 @@ dart_ret_t dart_team_memregister(
 /**
  * Collective function similar to dart_team_memfree() but on previously
  * externally allocated memory.
- * Does not perform any memory de-allocation.
+ * Does not de-allocate memory.
  *
  * \param teamid The team to participate in the collective operation.
  * \param gptr   Pointer to a global pointer object to set up.
