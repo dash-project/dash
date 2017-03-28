@@ -16,7 +16,7 @@ namespace dash {
 /**
  * Global memory at a single unit with address space of static size.
  *
- * \concept{DashGlobalMemoryConcept}
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   /// Type of elements maintained in the global memory space
@@ -450,6 +450,36 @@ private:
   }
 };
 
+/**
+ * Specialization of \c dash::distance for \c dash::GlobPtr as definition
+ * of pointer distance in global unit memory space.
+ *
+ * Equivalent to \c (gend - gbegin).
+ *
+ * \return  Number of elements in the range between the first and second
+ *          global pointer
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
+template <typename T1, typename T2>
+dash::gptrdiff_t distance(
+  // First global pointer in range
+  const GlobPtr<T1, dash::GlobUnitMem<T1>> & gbeg,
+  // Final global pointer in range
+  const GlobPtr<T2, dash::GlobUnitMem<T2>> & gend) {
+  using value_type = typename std::decay<decltype(gbeg)>::type::value_type;
+  return ( gend.dart_gptr().addr_or_offs.offset -
+           gbeg.dart_gptr().addr_or_offs.offset
+         ) / sizeof(value_type);
+}
+
+/**
+ * Allocate elements in the active unit's shared global memory space.
+ *
+ * \returns  Global pointer to the beginning of the allocated memory region.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<
   typename T,
   class    MemSpaceT = dash::GlobUnitMem<T> >
