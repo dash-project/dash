@@ -68,7 +68,7 @@ namespace dash {
 /**
  * Global memory with address space of static size.
  *
- * \concept{DashGlobalMemoryConcept}
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   /// Type of elements maintained in the global memory space
@@ -507,6 +507,13 @@ private:
   }
 };
 
+/**
+ * Allocate elements in the specified memory space.
+ *
+ * \returns  Global pointer to the beginning of the allocated memory region.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<
   typename T,
   class    MemSpaceT >
@@ -520,12 +527,15 @@ GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
   return GlobPtr<T, MemSpaceT>(mspace, gptr);
 }
 
+/**
+ * Deallocate segment in global memory space referenced by the specified
+ * global pointer.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<class GlobPtrT>
 void memfree(GlobPtrT gptr)
 {
-  // TODO: Should notify GlobPtrT instance gptr of this deallocation
-  //       as it might be owner of its referenced global memory space
-  //       (see GlobUnitMem).
   dart_memfree(gptr.dart_gptr());
 }
 

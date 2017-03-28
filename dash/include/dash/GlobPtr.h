@@ -9,7 +9,6 @@
 #include <dash/Exception.h>
 #include <dash/Init.h>
 #include <dash/Allocator.h>
-#include <dash/Iterator.h>
 
 #include <cstddef>
 #include <sstream>
@@ -53,6 +52,7 @@ dash::gptrdiff_t distance(
  *
  * \see GlobIter
  *
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   typename ElementType,
@@ -784,6 +784,7 @@ std::ostream & operator<<(
  * \return  Number of elements in the range between the first and second
  *          global pointer
  *
+ * \concept{DashMemorySpaceConcept}
  */
 template <typename T1,
           typename T2,
@@ -794,8 +795,14 @@ dash::gptrdiff_t distance(
   const GlobPtr<T1, MemSpaceT1> & gbegin,
   // Final global pointer in range
   const GlobPtr<T2, MemSpaceT2> & gend) {
-  using value_type = typename std::decay<decltype(gbegin)>::type::value_type;
-  using index_type = typename std::decay<decltype(gbegin)>::type::index_type;
+  using index_type = dash::gptrdiff_t;
+  using val_type_b = typename std::decay<decltype(gbegin)>::type::value_type;
+  using val_type_e = typename std::decay<decltype(gend)>::type::value_type;
+  using value_type = val_type_b;
+
+  static_assert(
+    std::is_same<val_type_b, val_type_e>::value,
+    "value types of global pointers are not compatible for dash::distance");
 
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
@@ -822,6 +829,28 @@ dash::gptrdiff_t distance(
     dist += gend._mem_space->local_size(dart_team_unit_t { u });
   }
   return dist;
+}
+
+/**
+ * Resolve the number of elements between two global pointers.
+ *
+ * \tparam      ElementType  Type of the elements in the range
+ * \complexity  O(1)
+ *
+ * \ingroup     Algorithms
+ * 
+ * \concept{DashMemorySpaceConcept}
+ */
+template<typename ElementType, class MemSpaceT>
+dash::default_index_t distance(
+  /// Global pointer to the initial position in the global range
+  dart_gptr_t first,
+  /// Global pointer to the final position in the global range
+  dart_gptr_t last)
+{
+  GlobPtr<ElementType, MemSpaceT> gptr_first(first);
+  GlobPtr<ElementType, MemSpaceT> gptr_last(last);
+  return gptr_last - gptr_first;
 }
 
 } // namespace dash

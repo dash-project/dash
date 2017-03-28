@@ -30,11 +30,11 @@
 namespace dash {
 
 /**
- * \defgroup  DashGlobalDynamicMemoryConcept  Global Dynamic Memory Concept
+ * \defgroup  DashDynamicMemorySpaceConcept  Global Dynamic Memory Concept
  * Concept of distributed dynamic global memory space shared by units in a
  * specified team.
  *
- * \ingroup DashGlobalMemoryConcept
+ * \ingroup DashMemorySpaceConcept
  * \{
  * \par Description
  *
@@ -185,7 +185,8 @@ namespace dash {
  *   assert(unit_1_local_size == 1024 - 128);
  * \endcode
  *
- * \concept{DashGlobalDynamicMemoryConcept}
+ * \concept{DashMemorySpaceConcept}
+ * \concept{DashDynamicMemorySpaceConcept}
  */
 template<
   /// Type of values allocated in the global memory space

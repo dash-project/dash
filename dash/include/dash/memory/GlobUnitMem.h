@@ -8,7 +8,6 @@
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
-#include <dash/Iterator.h>
 
 #include <dash/internal/Logging.h>
 
@@ -17,7 +16,7 @@ namespace dash {
 /**
  * Global memory at a single unit with address space of static size.
  *
- * \concept{DashGlobalMemoryConcept}
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   /// Type of elements maintained in the global memory space
@@ -460,6 +459,7 @@ private:
  * \return  Number of elements in the range between the first and second
  *          global pointer
  *
+ * \concept{DashMemorySpaceConcept}
  */
 template <typename T1, typename T2>
 dash::gptrdiff_t distance(
@@ -473,6 +473,13 @@ dash::gptrdiff_t distance(
          ) / sizeof(value_type);
 }
 
+/**
+ * Allocate elements in the active unit's shared global memory space.
+ *
+ * \returns  Global pointer to the beginning of the allocated memory region.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<
   typename T,
   class    MemSpaceT = dash::GlobUnitMem<T> >
