@@ -67,6 +67,10 @@ public:
   typedef dart_gptr_t               const_pointer;
   typedef dart_gptr_t          const_void_pointer;
 
+private:
+  dart_team_t          _team_id;
+  std::vector<pointer> _allocated;
+
 public:
   /**
    * Constructor.
@@ -259,10 +263,6 @@ private:
     }
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate >");
   }
-
-private:
-  dart_team_t          _team_id;
-  std::vector<pointer> _allocated;
 
 }; // class SymmetricAllocator
 

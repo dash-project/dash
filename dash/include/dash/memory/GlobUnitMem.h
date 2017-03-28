@@ -16,7 +16,7 @@ namespace dash {
 /**
  * Global memory at a single unit with address space of static size.
  *
- * \concept{DashGlobalMemoryConcept}
+ * \concept{DashMemorySpaceConcept}
  */
 template<
   /// Type of elements maintained in the global memory space
@@ -39,25 +39,22 @@ public:
   typedef typename allocator_type::difference_type        difference_type;
   typedef typename allocator_type::difference_type             index_type;
 
-#if 0
-  typedef typename allocator_type::pointer                        pointer;
-  typedef typename allocator_type::const_pointer            const_pointer;
-  typedef typename allocator_type::void_pointer              void_pointer;
-  typedef typename allocator_type::const_void_pointer  const_void_pointer;
-#else
   typedef GlobPtr<      value_type, self_t>                       pointer;
   typedef GlobPtr<const value_type, self_t>                 const_pointer;
   typedef GlobPtr<      void,       self_t>                  void_pointer;
   typedef GlobPtr<const void,       self_t>            const_void_pointer;
-#endif
+
   typedef       value_type *                                local_pointer;
   typedef const value_type *                          const_local_pointer;
 
 private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
+  /// Whether memory region is owned (true) or only maintained by this
+  /// memory space.
+  bool                    _owns_mem   = true;
   dash::Team            * _team       = nullptr;
-  dart_team_t             _teamid;
+  dart_team_t             _teamid     = DART_UNDEFINED_TEAM_ID;
   size_type               _nunits     = 0;
   team_unit_t             _myid       { DART_UNDEFINED_UNIT_ID };
   size_type               _nlelem     = 0;
@@ -77,6 +74,7 @@ public:
     Team      & team = dash::Team::All())
   : _allocator(team),
     _begptr(gbegin),
+    _owns_mem(false),
     _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
@@ -187,21 +185,21 @@ public:
   ~GlobUnitMem()
   {
     DASH_LOG_TRACE_VAR("GlobUnitMem.~GlobUnitMem()", _begptr);
-    _allocator.deallocate(_begptr);
+    if (_owns_mem) {
+      _allocator.deallocate(_begptr);
+    }
     DASH_LOG_TRACE("GlobUnitMem.~GlobUnitMem >");
   }
 
   /**
    * Copy constructor.
    */
-  GlobUnitMem(const self_t & other)
-    = default;
+  GlobUnitMem(const self_t & other)      = delete;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)
-    = default;
+  self_t & operator=(const self_t & rhs) = delete;
 
   /**
    * Equality comparison operator.
@@ -452,6 +450,36 @@ private:
   }
 };
 
+/**
+ * Specialization of \c dash::distance for \c dash::GlobPtr as definition
+ * of pointer distance in global unit memory space.
+ *
+ * Equivalent to \c (gend - gbegin).
+ *
+ * \return  Number of elements in the range between the first and second
+ *          global pointer
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
+template <typename T1, typename T2>
+dash::gptrdiff_t distance(
+  // First global pointer in range
+  const GlobPtr<T1, dash::GlobUnitMem<T1>> & gbeg,
+  // Final global pointer in range
+  const GlobPtr<T2, dash::GlobUnitMem<T2>> & gend) {
+  using value_type = typename std::decay<decltype(gbeg)>::type::value_type;
+  return ( gend.dart_gptr().addr_or_offs.offset -
+           gbeg.dart_gptr().addr_or_offs.offset
+         ) / sizeof(value_type);
+}
+
+/**
+ * Allocate elements in the active unit's shared global memory space.
+ *
+ * \returns  Global pointer to the beginning of the allocated memory region.
+ *
+ * \concept{DashMemorySpaceConcept}
+ */
 template<
   typename T,
   class    MemSpaceT = dash::GlobUnitMem<T> >

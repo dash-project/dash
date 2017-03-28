@@ -2,6 +2,8 @@
 #include "GlobHeapMemTest.h"
 
 #include <dash/memory/GlobHeapMem.h>
+#include <dash/Onesided.h>
+
 TEST_F(GlobHeapMemTest, BalancedAlloc)
 
 {
@@ -236,35 +238,6 @@ TEST_F(GlobHeapMemTest, UnbalancedRealloc)
     }
   }
   dash::barrier();
-
-  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
-                 "testing reverse iteration");
-
-  // Test memory space of all units by iterating global index space:
-  dash::team_unit_t unit(dash::Team::All().size() - 1);
-  auto local_offset = gdmem.local_size(unit) - 1;
-  // Invert order to test reverse iterators:
-  auto rgend        = gdmem.rend();
-  EXPECT_EQ_U(gdmem.size(), gdmem.rend() - gdmem.rbegin());
-  for (auto rgit = gdmem.rbegin(); rgit != rgend; ++rgit) {
-    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
-                   "requesting element at",
-                   "local offset", local_offset,
-                   "from unit",    unit);
-    value_t expected   = 1000 * (unit + 1) + local_offset;
-    value_t rgit_value = *rgit;
-    DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc", rgit_value);
-    value_t git_value  = *gdmem.at(unit, local_offset);
-    DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc", git_value);
-
-    EXPECT_EQ_U(expected, rgit_value);
-    EXPECT_EQ_U(expected, git_value);
-    if (local_offset == 0 && unit > 0) {
-      --unit;
-      local_offset = gdmem.local_size(unit);
-    }
-    --local_offset;
-  }
 
   DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "testing reverse iteration completed");
