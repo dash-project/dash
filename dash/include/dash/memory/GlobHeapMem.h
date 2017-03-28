@@ -105,6 +105,10 @@ template<typename T, class MemSpaceT> class GlobPtr;
 /**
  * Global memory region with dynamic size.
  *
+ * For global memory spaces with static size, see \c dash::GlobStaticMem.
+ *
+ * \see dash::GlobStaticMem
+ *
  * Conventional global memory (see \c dash::GlobStaticMem) allocates a single
  * contiguous range of fixed size in local memory at every unit.
  * Iterating static memory space is trivial as native pointer arithmetics

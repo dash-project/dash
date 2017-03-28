@@ -68,6 +68,11 @@ namespace dash {
 /**
  * Global memory with address space of static size.
  *
+ * For global memory spaces with support for resizing, see
+ * \c dash::GlobHeapMem.
+ *
+ * \see dash::GlobHeapMem
+ *
  * \concept{DashMemorySpaceConcept}
  */
 template<

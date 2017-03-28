@@ -461,7 +461,7 @@ public:
    */
   const value_type * local() const {
     void *addr = 0;
-    if (dart_gptr_getaddr(_rbegin_gptr, &addr) = DART_OK) {
+    if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<const value_type*>(addr);
     }
     return nullptr;
@@ -474,7 +474,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&_rbegin_gptr, unit_id),
       DART_OK);
-    _lsize = _mem_space.local_size(dart_team_unit_t { _rbegin_gptr.unitid });
+    _lsize = _mem_space->local_size(dart_team_unit_t { _rbegin_gptr.unitid });
   }
 
   /**
