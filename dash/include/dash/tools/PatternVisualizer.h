@@ -74,8 +74,16 @@ private:
   };
 
 public:
+  /**
+   * Constructs the Pattern Visualizer with a pattern instance.
+   *
+   * The pattern instance is constant. For a different pattern a new
+   * PatternVisualizer has to be constructed.
+   */
   PatternVisualizer(const PatternT & pat,
+                    /// An optional title
                     const std::string & title = "",
+                    /// An optional describtion, currently not used
                     const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
@@ -89,16 +97,35 @@ public:
   PatternVisualizer() = delete;
   PatternVisualizer(const self_t & other) = delete;
 
+  /**
+   * Sets a description for the pattern.
+   * Currently not used.
+   */
   void set_description(const std::string & str) {
     _descr = str;
   }
+  /**
+   * Sets the title displayed above the pattern
+   */
   void set_title(const std::string & str) {
     _title = str;
   }
 
-  void draw_pattern(std::ostream & os, bool blocked_display = false,
-                    std::array<index_t, PatternT::ndim()> coords = {},
-                    int dimx = 1, int dimy = 0) {
+  /**
+   * Outputs the pattern as a svg over the given output stream.
+   * This method should only be called by a single unit.
+   */
+  void draw_pattern(
+      std::ostream & os,
+      /// If this option is false every tile of the pattern is displayed seperate.
+      /// If this option is true only the blocks (group of elements) get displayed.
+      bool blocked_display = false,
+      /// For higher dimensional patterns, defines which slice gets displayed
+      std::array<index_t, PatternT::ndim()> coords = {},
+      /// Defines which dimension gets displayed in x-direction
+      int dimx = 1,
+      /// Defines which dimension gets displayed in y-direction
+      int dimy = 0) {
     sizes sz;
     sz.tileszx   = sz.tileszy = _tile_base_size;
     sz.blockszx  = sz.blockszy = _block_base_size;
@@ -146,6 +173,11 @@ public:
     os << "</svg>" << std::endl;
   }
 
+  /**
+   * Draws a pane (svg group) containing axes, key, tiles/blocks
+   * For the non blocked display (tiles) the local blocks and
+   * the memory layout gets drawn, too.
+   */
   void draw_pane(std::ostream & os, bool blocked_display,
                  const sizes & sz,
                  std::array<index_t, PatternT::ndim()> coords,
@@ -167,6 +199,9 @@ public:
     os << "</g>" << std::endl;
   }
 
+  /**
+   * Draws the axes labeled with their dedicated dimension
+   */
   void draw_axes(std::ostream & os,
                  const sizes & sz,
                  int dimx, int dimy,
@@ -222,6 +257,9 @@ public:
     os << "</text>" << std::endl;
   }
 
+  /**
+   * Draws a list of units with their matching color
+   */
   void draw_key(std::ostream & os,
                 const sizes & sz,
                 int dimx, int dimy,
@@ -248,6 +286,9 @@ public:
     }
   }
 
+  /**
+   * Draws the seperate tiles of the pattern
+   */
   void draw_tiles(std::ostream & os,
                   const sizes & sz,
                   std::array<index_t, PatternT::ndim()> coords,
@@ -277,6 +318,9 @@ public:
     }
   }
 
+  /**
+   * Draws the blocks of the pattern
+   */
   void draw_blocks(std::ostream & os,
                    const sizes & sz,
                    std::array<index_t, PatternT::ndim()> coords,
@@ -307,6 +351,9 @@ public:
     }
   }
 
+  /**
+   * Draws the local blocks of the current unit (usually unit 0)
+   */
   void draw_local_blocks(std::ostream & os,
                          const sizes & sz,
                          std::array<index_t, PatternT::ndim()> coords,
@@ -345,6 +392,9 @@ public:
     }
   }
 
+  /**
+   * Draws the memory layout for the current unit (usually unit 0)
+   */
   void draw_local_memlayout(std::ostream & os,
                             const sizes & sz,
                             std::array<index_t, PatternT::ndim()> coords,
