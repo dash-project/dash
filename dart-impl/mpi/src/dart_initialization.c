@@ -58,6 +58,9 @@ dart_ret_t do_init()
 
   team_data->comm = DART_COMM_WORLD;
 
+  MPI_Comm_rank(team_data->comm, &team_data->unitid);
+  MPI_Comm_size(team_data->comm, &team_data->size);
+
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
