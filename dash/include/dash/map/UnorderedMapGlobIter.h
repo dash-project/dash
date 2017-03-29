@@ -224,8 +224,8 @@ public:
   {
     return _map->globmem().at(
                             _idx_unit_id,
-                            _idx_local_idx)
-                          .dart_gptr();
+                            _idx_local_idx
+                           ).dart_gptr();
   }
 
   /**

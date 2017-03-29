@@ -6,11 +6,12 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 #include <dash/Shared.h>
 #include <dash/HView.h>
+#include <dash/Meta.h>
 
 #include <dash/pattern/BlockPattern1D.h>
 
@@ -350,7 +351,6 @@ public:
    */
   constexpr const_async_reference operator[](const size_t n) const  {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -359,7 +359,6 @@ public:
    */
   async_reference operator[](const size_t n) {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -394,7 +393,7 @@ public:
    * \see DashAsyncProxyConcept
    */
   inline void push() const {
-    flush_local_all();
+    _array->m_globmem->flush_local_all();
   }
 
   /**
@@ -404,7 +403,7 @@ public:
    * \see DashAsyncProxyConcept
    */
   inline void fetch() const {
-    flush_all();
+    _array->m_globmem->flush_all();
   }
 };
 
@@ -620,7 +619,7 @@ private:
  * \concept{DashArrayConcept}
  *
  * \todo  Add template parameter:
- *        <tt>class GlobMemType = dash::GlobMem<ElementType></tt>
+ *        <tt>class GlobMemType = dash::GlobStaticMem<ElementType></tt>
  *
  * \note: Template parameter IndexType could be deduced from pattern
  *        type <tt>PatternT::index_type</tt>
@@ -635,16 +634,9 @@ template<
 >
 class Array
 {
-  /**
-   * The Cray compiler (as of CCE8.5.6) does not support
-   * std::is_trivially_copyable.
-   *
-   * TODO: Remove the guard once this has been fixed by Cray.
-   */
-#ifndef __CRAYC
-  static_assert(std::is_trivially_copyable<ElementType>::value,
-    "Element type must be trivially copyable");
-#endif
+  static_assert(
+    dash::is_container_compatible<ElementType>::value,
+    "Type not supported for DASH containers");
 
 private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
@@ -668,7 +660,7 @@ public:
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
-  typedef dash::GlobMem<value_type>                            glob_mem_type;
+  typedef dash::GlobStaticMem<value_type>                            glob_mem_type;
 
 public:
   template<
@@ -935,6 +927,15 @@ public:
   }
 
   /**
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
+   * in global memory.
+   */
+  constexpr const glob_mem_type & globmem() const noexcept
+  {
+    return *m_globmem;
+  }
+
+  /**
    * Global const pointer to the beginning of the array.
    */
   constexpr const_pointer data() const noexcept
@@ -1166,6 +1167,38 @@ public:
       m_team->barrier();
     }
     DASH_LOG_TRACE("Array.barrier >", "passed barrier");
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the array's underlying global memory.
+   */
+  inline void flush() const {
+    m_globmem->flush();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the array's underlying global memory.
+   */
+  inline void flush_local() const {
+    m_globmem->flush_local();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by all units
+   * on the array's underlying global memory.
+   */
+  inline void flush_all() const {
+    m_globmem->flush_all();
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations executed by the
+   * local unit on the array's underlying global memory.
+   */
+  inline void flush_local_all() const {
+    m_globmem->flush_local_all();
   }
 
   /**

@@ -27,6 +27,8 @@ set(ENABLE_SHARED_WINDOWS ${ENABLE_SHARED_WINDOWS}
     PARENT_SCOPE)
 set(ENABLE_SCALAPACK ${ENABLE_SCALAPACK}
     PARENT_SCOPE)
+set(ENABLE_BLAS ${ENABLE_BLAS}
+    PARENT_SCOPE)
 set(ENABLE_LIBNUMA ${ENABLE_LIBNUMA}
     PARENT_SCOPE)
 set(ENABLE_HWLOC ${ENABLE_HWLOC}
@@ -155,6 +157,7 @@ if (ENABLE_HDF5 AND HDF5_FOUND)
 endif()
 
 if (ENABLE_MKL AND MKL_FOUND)
+  message (STATUS "    Intel MKL enabled")
   set (CONF_AVAIL_MKL "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL)
@@ -168,6 +171,7 @@ if (ENABLE_MKL AND MKL_FOUND)
   endif()
 else()
   if (ENABLE_BLAS AND BLAS_FOUND)
+    message (STATUS "    BLAS enabled")
     set (CONF_AVAIL_BLAS "true")
     set (ADDITIONAL_COMPILE_FLAGS
          ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_BLAS)
@@ -184,6 +188,7 @@ else()
   endif()
 
   if (ENABLE_LAPACK AND LAPACK_FOUND)
+    message (STATUS "    LAPACK enabled")
     set (CONF_AVAIL_LAPACK "true")
     set (ADDITIONAL_COMPILE_FLAGS
          ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LAPACK)
@@ -194,16 +199,25 @@ else()
   endif()
 endif()
 
-if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
-  set (CONF_AVAIL_SCALAPACK "true")
-  set (ADDITIONAL_COMPILE_FLAGS
-       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK)
-  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       ${MKL_SCALAPACK_LIBRARIES})
+if (ENABLE_SCALAPACK)
+  if (MKL_SCALAPACK_FOUND)
+    set (CONF_AVAIL_SCALAPACK "true")
+    set (ADDITIONAL_COMPILE_FLAGS
+         ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK)
+    set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+         ${MKL_SCALAPACK_LIBRARIES})
+  elseif(SCALAPACK_FOUND)
+    set (CONF_AVAIL_SCALAPACK "true")
+    set (ADDITIONAL_COMPILE_FLAGS
+         ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK)
+    set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+         ${SCALAPACK_LIBRARIES})
+  endif()
 endif()
 
 # enable algorithms which are supported by current build config
 if (CONF_AVAIL_MKL OR CONF_AVAIL_BLAS OR (CMAKE_BUILD_TYPE MATCHES DEBUG))
+  message (STATUS "    SUMMA algorithm enabled")
   set(CONF_AVAIL_ALGO_SUMMA "true")
 endif()
 
@@ -305,13 +319,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   DeployLibrary(${DASH_LIBRARY})
 
   # cmake packaging
-if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+  if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
 	
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
-endif()
+  endif()
 
   string(TOUPPER ${dart_variant} DART_VARIANT)
 

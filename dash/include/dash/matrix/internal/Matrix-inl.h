@@ -5,7 +5,7 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Exception.h>
@@ -306,6 +306,34 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline void
+Matrix<T, NumDim, IndexT, PatternT>
+::flush() {
+  _glob_mem->flush();
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline void
+Matrix<T, NumDim, IndexT, PatternT>
+::flush_local() {
+  _glob_mem->flush_local();
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline void
+Matrix<T, NumDim, IndexT, PatternT>
+::flush_all() {
+  _glob_mem->flush_all();
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline void
+Matrix<T, NumDim, IndexT, PatternT>
+::flush_local_all() {
+  _glob_mem->flush_local_all();
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 constexpr typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::begin() const noexcept
@@ -378,19 +406,51 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-constexpr MatrixRef<const T, NumDim, NumDim-1, PatternT>
-Matrix<T, NumDim, IndexT, PatternT>
-::operator[](size_type pos) const
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim != 0),
+  MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
+constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 {
   return _ref.operator[](pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-MatrixRef<T, NumDim, NumDim-1, PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim == 0),
+  GlobRef<const T>>::type
+constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
+{
+  return _ref.at(pos);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim != 0),
+  MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos)
 {
   return _ref.operator[](pos);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t __NumViewDim>
+  typename std::enable_if<(__NumViewDim == 0),
+  GlobRef<T>>::type
+Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos)
+{
+  return _ref.at(pos);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t SubDimension>
+MatrixRef<const T, NumDim, NumDim, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
+::sub(
+  size_type offset,
+  size_type extent) const
+{
+  return this->_ref.template sub<SubDimension>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -406,6 +466,16 @@ Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t SubDimension>
+MatrixRef<const T, NumDim, NumDim-1, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
+::sub(
+  size_type n) const
+{
+  return this->_ref.template sub<SubDimension>(n);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template<dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::sub(
@@ -415,12 +485,30 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+MatrixRef<const T, NumDim, NumDim-1, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
+::col(
+  size_type n) const
+{
+  return this->_ref.template sub<1>(n);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
 ::col(
   size_type n)
 {
   return this->_ref.template sub<1>(n);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+MatrixRef<const T, NumDim, NumDim-1, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
+::row(
+  size_type n) const
+{
+  return this->_ref.template sub<0>(n);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -454,9 +542,27 @@ Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template <typename ... Args>
+typename Matrix<T, NumDim, IndexT, PatternT>::const_reference
+Matrix<T, NumDim, IndexT, PatternT>
+::at(Args... args) const
+{
+  return _ref.at(args...);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template <typename ... Args>
 typename Matrix<T, NumDim, IndexT, PatternT>::reference
 Matrix<T, NumDim, IndexT, PatternT>
 ::at(Args... args)
+{
+  return _ref.at(args...);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template <typename ... Args>
+typename Matrix<T, NumDim, IndexT, PatternT>::const_reference
+Matrix<T, NumDim, IndexT, PatternT>
+::operator()(Args... args) const
 {
   return _ref.at(args...);
 }

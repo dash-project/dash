@@ -5,6 +5,7 @@
  */
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <mpi.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -15,6 +16,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
@@ -38,8 +40,12 @@ dart_ret_t do_init()
   }
 
   dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
-	if (ret != DART_OK) {
+  if (ret != DART_OK) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
+    return DART_ERR_OTHER;
+  }
+
+  if (dart__mpi__datatype_init() != DART_OK) {
     return DART_ERR_OTHER;
   }
 
@@ -52,6 +58,9 @@ dart_ret_t do_init()
   dart_next_availteamid++;
 
   team_data->comm = DART_COMM_WORLD;
+
+  MPI_Comm_rank(team_data->comm, &team_data->unitid);
+  MPI_Comm_size(team_data->comm, &team_data->size);
 
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
@@ -300,4 +309,13 @@ dart_ret_t dart_exit()
 bool dart_initialized()
 {
   return (_dart_initialized > 0);
+}
+
+
+void dart_abort(int errorcode)
+{
+  DART_LOG_INFO("dart_abort: aborting DART run with error code %i", errorcode);
+  MPI_Abort(MPI_COMM_WORLD, errorcode);
+  /* just in case MPI_Abort does not abort */
+  abort();
 }

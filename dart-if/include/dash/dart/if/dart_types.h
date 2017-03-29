@@ -41,6 +41,22 @@ typedef enum
   DART_ERR_OTHER    = 999
 } dart_ret_t;
 
+
+/**
+ * Return values of DART applications.
+ *
+ * \ingroup DartTypes
+ */
+enum {
+  /** Signal success */
+  DART_EXIT_SUCCESS = EXIT_SUCCESS,
+  /** Signal generic abort */
+  DART_EXIT_ABORT   = EXIT_FAILURE,
+  /** Signal abort after failed assert */
+  DART_EXIT_ASSERT  = -6
+};
+
+
 /**
  * Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
@@ -93,7 +109,9 @@ typedef enum
     DART_TYPE_LONGLONG,
     /** floating point data types */
     DART_TYPE_FLOAT,
-    DART_TYPE_DOUBLE
+    DART_TYPE_DOUBLE,
+    /** Reserved, do not use! */
+    DART_TYPE_COUNT
 } dart_datatype_t;
 
 
