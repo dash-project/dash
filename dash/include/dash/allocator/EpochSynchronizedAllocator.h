@@ -69,7 +69,8 @@ public:
 public:
   /**
    * Constructor.
-   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a given team.
+   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a
+   * given team.
    */
   EpochSynchronizedAllocator(
     Team & team = dash::Team::All()) noexcept
@@ -111,7 +112,8 @@ public:
    * Does not take ownership of the copied instance's allocation.
    */
   template<class U>
-  EpochSynchronizedAllocator(const EpochSynchronizedAllocator<U> & other) noexcept
+  EpochSynchronizedAllocator(
+    const EpochSynchronizedAllocator<U> & other) noexcept
   : _team(other._team),
     _nunits(other._nunits)
   { }
@@ -321,7 +323,8 @@ public:
       return;
     }
     // Free local memory:
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate", "deallocate local memory");
+    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate",
+                   "deallocate local memory");
     bool do_detach = false;
     std::for_each(
       _allocated.begin(),
@@ -353,14 +356,14 @@ private:
     for (auto & e : _allocated) {
       // Null-buckets have lptr set to nullptr
       if (e.first != nullptr) {
-        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear", "deallocate local memory:",
-                       e.first);
+        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
+                       "deallocate local memory:", e.first);
         delete[] e.first;
         e.first = nullptr;
       }
       if (!DART_GPTR_ISNULL(e.second)) {
-        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear", "detach global memory:",
-                       e.second);
+        DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
+                       "detach global memory:", e.second);
         // Cannot use DASH_ASSERT due to noexcept qualifier:
         dart_ret_t ret = dart_team_memderegister(e.second);
         assert(ret == DART_OK);
