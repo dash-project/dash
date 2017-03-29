@@ -351,7 +351,6 @@ public:
    */
   constexpr const_async_reference operator[](const size_t n) const  {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -360,7 +359,6 @@ public:
    */
   async_reference operator[](const size_t n) {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
