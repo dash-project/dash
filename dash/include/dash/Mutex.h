@@ -75,7 +75,6 @@ public:
   
 private:
   dart_lock_t   _mutex;
-  Team        & _team;
 }; // class Mutex
 
 } // namespace dash

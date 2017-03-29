@@ -361,9 +361,9 @@ dart_team_memalloc_aligned(
 
 
   DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
-    "baseptr:%p across team %d",
-    nbytes, 0, gptr_unitid, sub_mem, teamid);
+    "dart_team_memalloc_aligned: bytes:%lu gptr_unitid:%d "
+    "baseptr:%p segid:%i across team %d",
+    nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
 	return DART_OK;
 }
