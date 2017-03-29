@@ -564,13 +564,13 @@ public:
         _bucket_cumul_sizes[_myid].pop_back();
         // End iterator of _buckets about to change, update iterator to first
         // unattached bucket if it references the removed bucket:
-        auto attach_buckets_first_it = _attach_buckets_first;
-        if (attach_buckets_first_it   != _buckets.end() &&
-            ++attach_buckets_first_it == _buckets.end()) {
+        auto it_last_bucket = _buckets.end();
+        std::advance(it_last_bucket, -1);
+        if (_attach_buckets_first == it_last_bucket) {
           // Iterator to first unattached bucket references last bucket:
           DASH_LOG_TRACE("GlobHeapMem.shrink",
                          "updating iterator to first unattached bucket");
-          _attach_buckets_first--;
+          std::advance(_attach_buckets_first, -1);
         }
         _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
         _buckets.pop_back();
@@ -585,10 +585,11 @@ public:
                        "for attach is 0");
         _num_attach_buckets.local[0] -= 1;
       } else if (bucket_last.size > num_dealloc) {
-        // TODO: Clarify if shrinking unattached buckets is allowed
+        auto const size_new = bucket_last.size - num_dealloc;
+
         DASH_LOG_TRACE("GlobHeapMem.shrink", "shrink unattached bucket:",
                        "old size:", bucket_last.size,
-                       "new size:", bucket_last.size - num_dealloc);
+                       "new size:", size_new);
         _local_sizes.local[0]             -= num_dealloc;
         _bucket_cumul_sizes[_myid].back() -= num_dealloc;
         num_dealloc = 0;
@@ -596,9 +597,12 @@ public:
         //Deallocate old local bucket
         _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
         //Allocate new bucket with specified size
-        auto const lsz = _local_sizes.local[0];
-        bucket_last.lptr = _allocator.allocate_local(lsz);
-        bucket_last.size = lsz;
+        bucket_last.lptr = _allocator.allocate_local(size_new);
+        if (bucket_last.lptr == nullptr) {
+          DASH_THROW(dash::exception::RuntimeError,
+                     "GlobHeapMem.shrink: Allocating bucket of size failed");
+        }
+        bucket_last.size = size_new;
       }
     }
     // Number of elements to deallocate exceeds capacity of un-attached
@@ -1128,6 +1132,14 @@ private:
     dash::copy(_num_attach_buckets.begin(), _num_attach_buckets.end(),
                num_unattached_buckets.data());
 
+#ifdef DASH_ENABLE_TRACE_LOGGING
+    std::for_each(std::begin(_num_attach_buckets),
+                  std::end(_num_attach_buckets),
+                  [](size_type const& bsz) {
+                    DASH_LOG_TRACE("GlobMemHeap.update_remote_size()",
+                                   "num_buckets at unit: ", bsz);
+                  });
+#endif
 
     std::vector<size_type> attach_buckets_sizes;
     std::vector<size_type> displs;
