@@ -8,6 +8,7 @@
 #include <dash/GlobDynamicContiguousMem.h>
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
+#include <dash/graph/GlobGraphIter.h>
 
 namespace dash {
 
@@ -106,12 +107,12 @@ public:
 
   typedef GlobRef<vertex_type>                        reference;
 
-  typedef typename 
-    glob_mem_vert_type::global_iterator               global_vertex_iterator;
+  typedef 
+    GlobGraphIter<vertex_type, glob_mem_vert_type>    global_vertex_iterator;
   typedef typename 
     glob_mem_vert_type::local_iterator                local_vertex_iterator;
-  typedef typename 
-    glob_mem_edge_type::global_iterator               global_edge_iterator;
+  typedef 
+    GlobGraphIter<edge_type, glob_mem_edge_type>      global_edge_iterator;
   typedef typename 
     glob_mem_edge_type::local_iterator                local_edge_iterator;
   

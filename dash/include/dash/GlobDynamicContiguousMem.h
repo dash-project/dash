@@ -14,8 +14,9 @@
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Copy.h>
 
-#include <dash/allocator/LocalBucketIter.h>
-#include <dash/allocator/internal/GlobDynamicMemTypes.h>
+#include <dash/memory/GlobHeapLocalPtr.h>
+#include <dash/memory/internal/GlobHeapMemTypes.h>
+#include <dash/graph/GlobGraphIter.h>
 
 #include <dash/internal/Logging.h>
 
@@ -40,7 +41,7 @@ struct container_data {
   typedef typename GlobMemType::value_type                value_type;
   typedef typename GlobMemType::index_type                index_type;
   typedef typename GlobMemType::size_type                 size_type;
-  typedef LocalBucketIter<value_type, index_type>         local_iterator;
+  typedef typename GlobMemType::local_iterator            local_iterator;
   typedef typename local_iterator::bucket_type            bucket_type;
   typedef typename std::list<bucket_type>                 bucket_list;
   typedef typename 
@@ -142,17 +143,19 @@ public:
   typedef typename container_list_type::iterator        container_list_iter;
   typedef typename ContainerType::value_type            value_type;
   typedef typename ContainerType::difference_type       index_type;
-  typedef LocalBucketIter<value_type, index_type>       local_iterator;
-  typedef GlobBucketIter<value_type, self_t>            global_iterator;
+  typedef GlobHeapLocalPtr<value_type, index_type>      local_iterator;
+  typedef GlobPtr<value_type, self_t>                   global_iterator;
   typedef typename ContainerType::size_type             size_type;
   typedef typename local_iterator::bucket_type          bucket_type;
   typedef typename std::list<bucket_type>               bucket_list;
   typedef local_iterator                                local_pointer;
   typedef local_iterator                                const_local_pointer;
   typedef std::vector<std::vector<size_type>>           bucket_cumul_sizes_map;
-
+  
+  //TODO: Use local_size function instead of _bucket_cumul_sizes in iterator
+  //      to remove this dependency
   template<typename T_, class GMem_, class Ptr_, class Ref_>
-  friend class dash::GlobBucketIter;
+  friend class dash::GlobGraphIter;
 
 public:
   /**
@@ -282,6 +285,7 @@ public:
     update_lend();
 
     int b_num = 0;
+    /*
     std::cout << "-----------------" << std::endl;
     for(auto el : _bucket_cumul_sizes) {
      for(auto el2 : el) {
@@ -290,9 +294,8 @@ public:
      b_num++;
     }
     std::cout << "-----------------" << std::endl;
-
-    _begin = global_iterator(this, 0);
-    _end = _begin + _size;
+    */
+    // TODO: set global iterators here
   }
 
   global_iterator begin() {
@@ -345,7 +348,7 @@ public:
     return _size;
   }
 
-  Team & team() {
+  Team & team() const {
     return (_team != nullptr) ? *_team : dash::Team::Null();
   }
 
@@ -394,6 +397,30 @@ public:
     }
     DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
     return dart_gptr;
+  }
+
+    /**
+   * Number of elements in local memory space of given unit.
+   *
+   * \return  Local capacity as published by the specified unit in last
+   *          commit.
+   */
+  inline size_type local_size(team_unit_t unit) const
+  {
+    DASH_LOG_TRACE("GlobHeapMem.local_size(u)", "unit:", unit);
+    DASH_ASSERT_RANGE(0, unit, _nunits-1, "unit id out of range");
+    DASH_LOG_TRACE_VAR("GlobHeapMem.local_size",
+                       _bucket_cumul_sizes[unit]);
+    size_type unit_local_size;
+    if (unit == _myid) {
+      // Value of _local_sizes[u] is the local size as visible by the unit,
+      // i.e. including size of unattached buckets.
+      unit_local_size = _local_size;
+    } else {
+      unit_local_size = _bucket_cumul_sizes[unit].back();
+    }
+    DASH_LOG_TRACE("GlobHeapMem.local_size >", unit_local_size);
+    return unit_local_size;
   }
 
 private:
