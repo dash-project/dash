@@ -11,11 +11,41 @@ enum GraphDirection {
 
 namespace internal {
 
+template <typename IndexType>
+struct VertexIndex {
+
+  VertexIndex() = default;
+
+  VertexIndex(team_unit_t u, IndexType o) 
+    : unit(u),
+      offset(o)
+  { }
+
+  team_unit_t     unit;
+  IndexType       offset;
+
+};
+
+template <typename IndexType>
+struct EdgeIndex {
+
+  EdgeIndex() = default;
+
+  EdgeIndex(team_unit_t u, IndexType o) 
+    : unit(u),
+      offset(o)
+  { }
+
+  team_unit_t     unit;
+  IndexType       offset;
+
+};
+
 template<typename GraphType>
 struct vertex {
 
   typedef typename GraphType::edge_cont_ref_type       edge_container_ref;
-  typedef typename GraphType::vertex_index_type        index_type;
+  typedef typename GraphType::vertex_offset_type       index_type;
   typedef typename GraphType::vertex_properties_type   properties_type;
 
   /**
@@ -52,7 +82,7 @@ template<typename GraphType>
 struct out_edge {
 
   typedef typename GraphType::vertex_index_type        vertex_index_type;
-  typedef typename GraphType::edge_index_type          index_type;
+  typedef typename GraphType::edge_offset_type         index_type;
   typedef typename GraphType::edge_properties_type     properties_type;
   
   /**

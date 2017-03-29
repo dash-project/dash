@@ -83,7 +83,7 @@ private:
     vertex_container_type>                            glob_mem_vert_type;
   typedef GlobDynamicContiguousMem<
     edge_container_type>                              glob_mem_edge_type;
-
+  typedef std::list<edge_type>                        edge_list_type;
 
 public:
 
@@ -91,8 +91,10 @@ public:
     glob_mem_vert_type::container_list_iter           vertex_cont_ref_type;
   typedef typename 
     glob_mem_edge_type::container_list_iter           edge_cont_ref_type;
-  typedef VertexIndexType                             vertex_index_type;
-  typedef EdgeIndexType                               edge_index_type;
+  typedef VertexIndexType                             vertex_offset_type;
+  typedef EdgeIndexType                               edge_offset_type;
+  typedef internal::VertexIndex<VertexIndexType>      vertex_index_type;
+  typedef internal::EdgeIndex<EdgeIndexType>          edge_index_type;
   typedef typename 
     std::make_unsigned<VertexIndexType>::type         vertex_size_type;
   typedef typename 
@@ -195,7 +197,7 @@ public:
     vertex_type v(_local_vertex_max_index, ref, prop);
     _glob_mem_vertex->push_back(_vertex_container_ref, v);
     // TODO: return global index
-    return _local_vertex_max_index;
+    return vertex_index_type(_myid, _local_vertex_max_index);
   }
 
   /**
@@ -222,20 +224,30 @@ public:
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
       const vertex_index_type & v2, 
       const EdgeProperties & prop = EdgeProperties()) {
-    //TODO: Check, whether the edge already exists
-    //TODO:_Handle removed vertices
-    //      (vertex index is no longer == vertex container index)
-    auto vertex1 = _glob_mem_vertex->get(_vertex_container_ref, v1);
-    auto vertex2 = _glob_mem_vertex->get(_vertex_container_ref, v2);
-    //TODO: if feasible, use pointer to prop, so it gets saved only once
     ++_local_edge_max_index;
-    edge_type edge1 = edge_type(_local_edge_max_index, v2, prop);
-    edge_type edge2 = edge_type(_local_edge_max_index, v1, prop);
+    //TODO: Handle errors, if vertices do not exist
+    auto edge1 = edge_type(_local_edge_max_index, v2, prop);
+    if(v1.unit == _myid) {
+      auto vertex1 = _glob_mem_vertex->get(_vertex_container_ref, v1.offset);
+      _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
+    } else {
+      _remote_edges.push_back(edge1);
+    }
+    auto edge2 = edge_type(_local_edge_max_index, v1, prop);
+    if(v2.unit == _myid) {
+      auto vertex2 = _glob_mem_vertex->get(_vertex_container_ref, v2.offset);
+      _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
+    } else {
+      _remote_edges.push_back(edge2);
+    }
+    //TODO: Check, whether the edge already exists
+    //TODO: if feasible, use pointer to prop, so it gets saved only once
     //TODO: find out, how to save edges for different graph types 
     //      (directed, undirected)
-    _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
-    _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
-    return std::make_pair(_local_edge_max_index, true);
+    return std::make_pair(
+        edge_index_type(_myid, _local_edge_max_index), 
+        true
+    );
   }
   /**
    * Removes an edge between two given vertices.
@@ -305,13 +317,15 @@ private:
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
   /** Index of last added vertex */
-  vertex_index_type           _local_vertex_max_index = -1;
+  vertex_offset_type          _local_vertex_max_index = -1;
 
-  edge_index_type             _local_edge_max_index = -1;
+  edge_offset_type            _local_edge_max_index = -1;
   /** Iterator to the vertex container in GlobMem object */ 
   vertex_cont_ref_type        _vertex_container_ref;
 
   edge_size_type              _alloc_edges_per_vertex;
+  /** edges that have to be added to vertices on another unit */
+  edge_list_type              _remote_edges;
 
 };
 
