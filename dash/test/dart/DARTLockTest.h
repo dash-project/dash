@@ -13,25 +13,10 @@
  */
 class DARTLockTest : public dash::test::TestBase {
 protected:
-  int _num_threads = 1;
 
-  DARTLockTest() {
+  DARTLockTest() {}
 
-#ifdef DASH_ENABLE_OPENMP
-#pragma omp parallel
-    {
-#pragma omp master
-    {
-      _num_threads = omp_get_num_threads();
-    }
-    }
-    LOG_MESSAGE("Running ThreadsafetyTests with %i threads", _num_threads);
-
-#endif // DASH_ENABLE_OPENMP
-  }
-
-  virtual ~DARTLockTest() {
-  }
+  virtual ~DARTLockTest() {}
 };
 
 
