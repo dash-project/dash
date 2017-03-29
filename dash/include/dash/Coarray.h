@@ -48,6 +48,27 @@ inline void sync_images(const Container & image_ids);
 
 }
 
+template <
+  class ArrayT,
+  class ValueT,
+  std::size_t Rank,
+  std::size_t... Is >
+constexpr std::array<ValueT, Rank>
+__get_type_extents_as_array_impl(
+    dash::ce::index_sequence<Is...>) {
+  return { ( static_cast<ValueT>(std::extent<ArrayT,Is>::value) )... };
+}
+
+template <
+  class ArrayT,
+  class ValueT,
+  std::size_t Rank >
+constexpr std::array<ValueT, Rank>
+__get_type_extents_as_array() {
+  return __get_type_extents_as_array_impl<ArrayT,ValueT,Rank>(
+      dash::ce::make_index_sequence<Rank>());
+}
+
 /**
  * A fortran style co_array.
  * 
@@ -59,21 +80,7 @@ template<
   typename IndexType = dash::default_index_t>
 class Coarray {
 private:
-  
-  template<typename __T, typename __S, int __rank>
-  struct __get_type_extents_as_array {
-    using array_t = std::array<__S,__rank>;
-    static constexpr array_t value = dash::ce::append(
-          __get_type_extents_as_array<__T, __S, __rank-1>::value,
-          static_cast<__S>(std::extent<__T, __rank-1>::value));
-  };
 
-  template<typename __T, typename __S>
-  struct __get_type_extents_as_array<__T, __S, 0> {
-    using array_t = std::array<__S,0>;
-    static constexpr array_t value = {};
-  };
-  
   /**
    * Trait to transform \cdash::Atomic<T[]...> to 
    * \cdash::Atomic<T>
@@ -140,18 +147,18 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              __get_type_extents_as_array<_underl_type, size_type, _rank::value>::value));
+              __get_type_extents_as_array<_underl_type, size_type, _rank::value>()));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
-    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank::value>::value) == 0,
+    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank::value>()) == 0,
                   "Array type is fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                __get_type_extents_as_array<_underl_type, size_type, _rank::value>::value)));
+                __get_type_extents_as_array<_underl_type, size_type, _rank::value>())));
   }
   
   constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const noexcept {
