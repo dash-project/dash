@@ -231,8 +231,8 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *is_acquired)
 {
   if (dart__base__mutex_trylock(&lock->mutex) != DART_OK) {
     *is_acquired = 0;
-    DART_LOG_ERROR("dart_lock_try_acquire: LOCK held in another thread\n");
-    return DART_PENDING;
+    DART_LOG_DEBUG("dart_lock_try_acquire: LOCK held in another thread\n");
+    return DART_OK;
   }
 
   if (lock->is_acquired == 1)
@@ -376,12 +376,13 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
   return DART_OK;
 }
 
-dart_ret_t dart_team_lock_free(dart_team_t teamid, dart_lock_t* lock)
+dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
 {
   dart_ret_t ret;
   dart_team_unit_t unitid;
   dart_gptr_t gptr_tail = (*lock)->gptr_tail;
   dart_gptr_t gptr_list = (*lock)->gptr_list;
+  dart_team_t teamid    = (*lock)->teamid;
 
   dart_team_myid(teamid, &unitid);
 
@@ -401,6 +402,7 @@ dart_ret_t dart_team_lock_free(dart_team_t teamid, dart_lock_t* lock)
   }
   (*lock)->gptr_tail = DART_GPTR_NULL;
   (*lock)->gptr_list = DART_GPTR_NULL;
+  (*lock)->teamid    = DART_TEAM_NULL;
   dart__base__mutex_destroy(&(*lock)->mutex);
   DART_LOG_DEBUG("dart_team_lock_free: done in team %d", teamid);
   free(*lock);
