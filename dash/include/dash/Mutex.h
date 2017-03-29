@@ -11,10 +11,10 @@
 namespace dash {
 
 /**
- * Behaves similar to \cstd::mutex and is used to ensure mutual exclusion
+ * Behaves similar to \c std::mutex and is used to ensure mutual exclusion
  * within a dash team.
  * 
- * \note This works properly with \cstd::lock_guard
+ * \note This works properly with \c std::lock_guard
  * \note Mutex cannot be placed in DASH containers
  * 
  * \code
