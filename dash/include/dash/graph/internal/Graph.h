@@ -95,14 +95,19 @@ struct out_edge {
    */
   out_edge(
       index_type index,
+      vertex_index_type source,
       vertex_index_type target, 
       properties_type properties = properties_type()
   ) 
     : _local_id(index),
+      _source(source),
       _target(target),
       _properties(properties)
   { }
 
+  //TODO: Examine, if saving source can be avoided
+  /** Source vertex the edge is pointing from */
+  vertex_index_type     _source;
   /** Target vertex the edge is pointing to */
   vertex_index_type     _target;
   /** Properties of this edge */

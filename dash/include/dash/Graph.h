@@ -83,7 +83,7 @@ private:
     vertex_container_type>                            glob_mem_vert_type;
   typedef GlobDynamicContiguousMem<
     edge_container_type>                              glob_mem_edge_type;
-  typedef std::list<edge_type>                        edge_list_type;
+  typedef std::vector<std::list<edge_type>>           edge_list_type;
 
 public:
 
@@ -140,7 +140,8 @@ public:
       Team & team  = dash::Team::All()
   ) 
     : _team(&team),
-      _myid(team.myid())
+      _myid(team.myid()),
+      _remote_edges(team.size())
   {
     allocate(n_vertices, n_vertex_edges);
   }
@@ -224,21 +225,23 @@ public:
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
       const vertex_index_type & v2, 
       const EdgeProperties & prop = EdgeProperties()) {
-    ++_local_edge_max_index;
     //TODO: Handle errors, if vertices do not exist
-    auto edge1 = edge_type(_local_edge_max_index, v2, prop);
+    auto edge1 = edge_type(0, v1, v2, prop);
     if(v1.unit == _myid) {
       auto vertex1 = _glob_mem_vertex->get(_vertex_container_ref, v1.offset);
+      edge1._local_id = ++_local_edge_max_index;
       _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
     } else {
-      _remote_edges.push_back(edge1);
+      //TODO: check, if unit ID is valid
+      _remote_edges[v1.unit].push_back(edge1);
     }
-    auto edge2 = edge_type(_local_edge_max_index, v1, prop);
+    auto edge2 = edge_type(0, v2, v1, prop);
     if(v2.unit == _myid) {
       auto vertex2 = _glob_mem_vertex->get(_vertex_container_ref, v2.offset);
+      edge2._local_id = ++_local_edge_max_index;
       _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
     } else {
-      _remote_edges.push_back(edge2);
+      _remote_edges[v2.unit].push_back(edge2);
     }
     //TODO: Check, whether the edge already exists
     //TODO: if feasible, use pointer to prop, so it gets saved only once
@@ -271,6 +274,52 @@ public:
    * the whole data structure.
    */
   void barrier() {
+    // move all edges that have to be added by other units in a contiguous 
+    // memory region
+    std::vector<edge_type> remote_edges;
+    std::vector<std::size_t> remote_edges_count(_team->size());
+    std::vector<std::size_t> remote_edges_displs(_team->size());
+    for(int i = 0; i < _remote_edges.size(); ++i) {
+      for(auto remote_edge : _remote_edges[i]) {
+        remote_edges.push_back(remote_edge);
+        remote_edges_count[i] += sizeof(edge_type);
+      }
+      for(int j = i + 1; j < remote_edges_displs.size(); ++j) {
+        remote_edges_displs[j] += remote_edges_count[i];
+      }
+    }
+    _remote_edges.clear();
+    // exchange amount of edges to be transferred with other units
+    std::vector<std::size_t> edge_count(_team->size());
+    dart_alltoall(remote_edges_count.data(), edge_count.data(), 
+        sizeof(std::size_t), DART_TYPE_BYTE, _team->dart_id());
+    int total_count = 0;
+    std::vector<std::size_t> edge_displs(_team->size());
+    for(int i = 0; i < edge_count.size(); ++i) {
+      total_count += edge_count[i];
+      for(int j = i + 1; j < edge_displs.size(); ++j) {
+        edge_displs[j] += edge_count[i];
+      }
+    }
+    // exchange edges
+    std::vector<edge_type> edges(total_count / sizeof(edge_type));
+    dart_alltoallv(remote_edges.data(), 
+        remote_edges_count.data(), 
+        remote_edges_displs.data(), 
+        DART_TYPE_BYTE, 
+        edges.data(), 
+        edge_count.data(), 
+        edge_displs.data(), 
+        _team->dart_id()
+    );
+    // add missing edges to local memory space
+    for(auto edge : edges) {
+      auto vertex = _glob_mem_vertex->get(_vertex_container_ref, 
+          edge._source.offset);
+      edge._local_id = ++_local_edge_max_index;
+      _glob_mem_edge->push_back(vertex._edge_ref, edge);
+    }
+    // commit changes in local memory space globally
     _glob_mem_vertex->commit();
     _glob_mem_edge->commit();
   }
