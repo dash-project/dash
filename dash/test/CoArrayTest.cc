@@ -11,6 +11,7 @@
 // for std::lock_guard
 #include <mutex>
 #include <thread>
+#include <random>
 
 using namespace dash::coarray;
 
