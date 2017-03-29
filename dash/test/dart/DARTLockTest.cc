@@ -176,8 +176,9 @@ TEST_F(DARTLockTest, ThreadedTryLockUnlock) {
   for (int i = 0; i < num_iterations; ++i) {
     int32_t acquired;
     do {
-      dart_ret_t ret = dart_lock_try_acquire(lock, &acquired);
-      EXPECT_TRUE_U(ret == DART_OK || ret == DART_PENDING);
+      ASSERT_EQ_U(
+        DART_OK,
+        dart_lock_try_acquire(lock, &acquired));
     } while (!acquired);
     shared.set(shared.get() + 1);
     dart_lock_release(lock);
