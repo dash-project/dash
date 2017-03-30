@@ -35,28 +35,32 @@ struct EdgeIteratorWrapper {
    * Returns global iterator to the beginning of the edge list.
    */
   iterator begin() {
-    return iterator(_graph->_glob_mem_edge, 0);
+    return _graph->_glob_mem_edge->begin();
+    //return iterator(_graph->_glob_mem_edge, 0);
   }
   
   /**
    * Returns global iterator to the beginning of the edge list.
    */
   const_iterator begin() const {
-    return iterator(_graph->_glob_mem_edge, 0);
+    return _graph->_glob_mem_edge->begin();
+    //return iterator(_graph->_glob_mem_edge, 0);
   }
   
   /**
    * Returns global iterator to the end of the edge list.
    */
   iterator end() {
-    return iterator(_graph->_glob_mem_edge, _graph->_glob_mem_edge->size());
+    return _graph->_glob_mem_edge->end();
+    //return iterator(_graph->_glob_mem_edge, _graph->_glob_mem_edge->size());
   }
   
   /**
    * Returns global iterator to the end of the edge list.
    */
   const_iterator end() const {
-    return iterator(_graph->_glob_mem_edge, _graph->_glob_mem_edge->size());
+    return _graph->_glob_mem_edge->end();
+    //return iterator(_graph->_glob_mem_edge, _graph->_glob_mem_edge->size());
   }
   
   /**

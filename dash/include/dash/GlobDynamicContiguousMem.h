@@ -17,6 +17,7 @@
 #include <dash/memory/GlobHeapLocalPtr.h>
 #include <dash/memory/internal/GlobHeapMemTypes.h>
 #include <dash/graph/GlobGraphIter.h>
+#include <dash/memory/GlobHeapContiguousPtr.h>
 
 #include <dash/internal/Logging.h>
 
@@ -128,12 +129,11 @@ struct container_data {
 //       dash::Grap<T, ... , dash::GlobDynamicContiguousMem>
 //
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-template<
-  typename ContainerType>
+template<typename ContainerType>
 class GlobDynamicContiguousMem
 {
 private:
-  typedef GlobDynamicContiguousMem<ContainerType>         self_t;
+  typedef GlobDynamicContiguousMem<ContainerType>       self_t;
 
 
 public:
@@ -152,10 +152,8 @@ public:
   typedef local_iterator                                const_local_pointer;
   typedef std::vector<std::vector<size_type>>           bucket_cumul_sizes_map;
   
-  //TODO: Use local_size function instead of _bucket_cumul_sizes in iterator
-  //      to remove this dependency
-  template<typename T_, class GMem_, class Ptr_, class Ref_>
-  friend class dash::GlobGraphIter;
+  template<typename T_, class GMem_>
+  friend class dash::GlobPtr;
 
 public:
   /**
@@ -295,22 +293,23 @@ public:
     }
     std::cout << "-----------------" << std::endl;
     */
-    // TODO: set global iterators here
+    _begin = global_iterator(this, 0);
+    _end = global_iterator(this, _size);
   }
 
-  global_iterator begin() {
+  global_iterator begin() const {
     return _begin;
   }
 
-  global_iterator end() {
+  global_iterator end() const {
     return _end;
   }
 
-  local_iterator lbegin() {
+  local_iterator lbegin() const {
     return _lbegin;
   }
 
-  local_iterator lend() {
+  local_iterator lend() const {
     return _lend;
   }
 
@@ -344,7 +343,7 @@ public:
 
 
 
-  size_type size() {
+  size_type size() const {
     return _size;
   }
 

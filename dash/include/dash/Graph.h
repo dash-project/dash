@@ -107,14 +107,13 @@ public:
 
   typedef GlobRef<vertex_type>                        reference;
 
-  typedef 
-    GlobGraphIter<vertex_type, glob_mem_vert_type>    global_vertex_iterator;
   typedef typename 
     glob_mem_vert_type::local_iterator                local_vertex_iterator;
-  typedef 
-    GlobGraphIter<edge_type, glob_mem_edge_type>      global_edge_iterator;
   typedef typename 
     glob_mem_edge_type::local_iterator                local_edge_iterator;
+
+  typedef typename glob_mem_vert_type::global_iterator global_vertex_iterator;
+  typedef typename glob_mem_edge_type::global_iterator global_edge_iterator;
   
   typedef typename vertex_it_wrapper::iterator        vertex_iterator;
   typedef typename edge_it_wrapper::iterator          edge_iterator;
