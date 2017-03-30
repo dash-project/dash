@@ -143,28 +143,38 @@ TEST_F(CoArrayTest, Collectives)
   ASSERT_EQ_U(static_cast<int>(x[5][0]), 2 * dash::size());
 }
 
-/**
- * Check sync_images by forcing a lost-update
- */
 TEST_F(CoArrayTest, Synchronization)
 {
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  
   if(num_images() < 3){
     SKIP_TEST_MSG("This test requires at least 3 units");
   }
-  dash::Coarray<int> i;
   dash::barrier();
+  
+  start = std::chrono::system_clock::now();
+  
   if(this_image() != 2){
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
-  i = this_image();
+
   sync_images(std::array<int,2>{0,1});
-  if(this_image() == 2){
-    // this update will be lost
-    i(0) = -1;
-    i.flush();
-  }
+  end = std::chrono::system_clock::now();
   sync_all();
-  ASSERT_EQ_U(static_cast<int>(i), this_image());
+  int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>
+                      (end-start).count();
+  
+  // sleeps for pretty printing only
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  LOG_MESSAGE("Unit %d finished after %d ms",
+              static_cast<int>(this_image()), elapsed_ms);
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  
+  if(this_image() != 2){
+    ASSERT_GE_U(elapsed_ms, 490);
+  } else {
+    ASSERT_LE_U(elapsed_ms, 200);
+  }
 }
 
 TEST_F(CoArrayTest, Iterators)
