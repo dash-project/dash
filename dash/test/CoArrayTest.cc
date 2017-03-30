@@ -161,6 +161,7 @@ TEST_F(CoArrayTest, Synchronization)
   if(this_image() == 2){
     // this update will be lost
     i(0) = -1;
+    i.flush();
   }
   sync_all();
   ASSERT_EQ_U(static_cast<int>(i), this_image());
@@ -237,6 +238,7 @@ TEST_F(CoArrayTest, Mutex){
   dash::Coarray<int> arr;
   
   arr = 0;
+  arr.barrier();
   
   mx.lock();
   int tmp = arr(0);
@@ -279,7 +281,7 @@ TEST_F(CoArrayTest, Comutex){
   std::uniform_int_distribution<int> uniform_dist(0, dash::size()-1);
   
   arr = 0;
-  dash::barrier();
+  arr.sync_all();
   
   // only for logging
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
