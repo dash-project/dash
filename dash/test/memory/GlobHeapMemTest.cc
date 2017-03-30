@@ -552,3 +552,64 @@ TEST_F(GlobHeapMemTest, RemoteAccess)
     }
   }
 }
+
+TEST_F(GlobHeapMemTest, Unbalanced_ShrinkAttachedBucket)
+{
+  typedef int value_t;
+
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("Test case requires at least two units");
+  }
+
+  LOG_MESSAGE("initializing GlobHeapMem<T>");
+
+  size_t initial_local_capacity  = 10;
+  size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);
+
+  LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
+              initial_global_capacity, initial_local_capacity);
+  dash::barrier();
+
+  // Total changes of local capacity:
+  int unit_0_lsize_diff =  5;
+  int unit_1_lsize_diff = 3;
+
+  if (dash::myid() == 0) {
+    // results in 2 buckets to attach, 0 to detach
+    gdmem.grow(3);
+    gdmem.shrink(2);
+    gdmem.grow(5);
+    gdmem.shrink(1);
+  }
+  if (dash::myid() == 1) {
+    //First shrink the already attached bucket
+    gdmem.shrink(2);
+    gdmem.grow(10);
+    gdmem.shrink(2);
+    gdmem.shrink(3);
+  }
+
+  // Collectively commit changes of local memory allocation to global
+  // memory space:
+  // register newly allocated local memory and remove local memory marked
+  // for deallocation.
+  gdmem.commit();
+
+  EXPECT_EQ_U(gdmem.size(),
+              initial_global_capacity + unit_0_lsize_diff + unit_1_lsize_diff);
+
+  if (dash::myid() == 0) {
+    EXPECT_EQ_U(gdmem.local_size(), initial_local_capacity + unit_0_lsize_diff);
+  } else if (dash::myid() == 1) {
+    EXPECT_EQ_U(gdmem.local_size(), initial_local_capacity + unit_1_lsize_diff);
+  }
+
+  if (dash::myid() == 1) {
+    gdmem.shrink(gdmem.local_size());
+  }
+
+  gdmem.commit();
+
+  EXPECT_EQ_U(gdmem.size(), gdmem.local_size(dash::team_unit_t{0}));
+}

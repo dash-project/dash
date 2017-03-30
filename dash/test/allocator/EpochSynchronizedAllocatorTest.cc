@@ -16,7 +16,7 @@ TEST_F(EpochSynchronizedAllocatorTest, AllocDealloc) {
   MyAllocTraits::pointer gp = alloc.attach(p, n_elem);
   EXPECT_TRUE_U(gp);
 
-  alloc.detach(gp);
+  alloc.detach(gp, n_elem);
   alloc.deallocate_local(p, n_elem);
 }
 

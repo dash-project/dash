@@ -9,6 +9,7 @@ template<
   typename ElementType >
 struct glob_dynamic_mem_bucket_type
 {
+  SizeType      allocated_size;
   SizeType      size;
   ElementType * lptr;
   dart_gptr_t   gptr;

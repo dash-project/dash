@@ -251,11 +251,15 @@ class EpochSynchronizedAllocator {
                    "number of local values:", num_local_elem, "pointer: ",
                    lptr);
 
+    block_t pseudoBlock(lptr, num_local_elem);
+
     if (!lptr && num_local_elem == 0) {
-      return _register_lmem(lptr, 0);
+      //PASS through without any allocation
+      pointer gptr = do_attach(lptr, 0);
+      _allocated.push_back(std::make_pair(pseudoBlock, gptr));
+      return gptr;
     }
 
-    block_t pseudoBlock(lptr, num_local_elem);
 
     // Search for corresponding memory block
     auto const end = std::end(_allocated);
@@ -277,7 +281,7 @@ class EpochSynchronizedAllocator {
                  "cannot repeatedly attach local pointer");
     }
 
-    found->second = _register_lmem(lptr, num_local_elem);
+    found->second = do_attach(lptr, num_local_elem);
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", found->second);
     return found->second;
   }
@@ -290,7 +294,7 @@ class EpochSynchronizedAllocator {
    *
    * \see DashEpochSynchronizedAllocatorConcept
    */
-  void detach(pointer gptr)
+  void detach(pointer gptr, size_type num_local_elem)
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach()", "gptr:", gptr);
     if (!dash::is_initialized()) {
@@ -305,20 +309,16 @@ class EpochSynchronizedAllocator {
     auto const end = std::end(_allocated);
     // Look up if we can
     auto const found = std::find_if(
-        std::begin(_allocated), end,
-        [&gptr](internal_value_type const &val) { return val.second == gptr; });
+        std::begin(_allocated), end, [gptr, num_local_elem](internal_value_type const &val) {
+          return val.second == gptr && val.first.length == num_local_elem;
+        });
 
     if (found == end) {
-      DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach >",
-                     "cannot detach untracked pointer");
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.detach >",
+                     "cannot detach untracked pointer", gptr);
       return;
     }
 
-    if (dart_team_memderegister(gptr) != DART_OK) {
-      DASH_LOG_ERROR("EpochSynchronizedAllocator.detach >",
-                     "cannot detach global pointer", gptr);
-      DASH_ASSERT(false);
-    }
 
     found->second = pointer(DART_GPTR_NULL);
 
@@ -423,25 +423,16 @@ class EpochSynchronizedAllocator {
    */
   void deallocate(pointer gptr, size_type num_local_elem)
   {
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate()", "gptr:", gptr);
-    if (!dash::is_initialized()) {
-      // If a DASH container is deleted after dash::finalize(), global
-      // memory has already been freed by dart_exit() and must not be
-      // deallocated again.
-      DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate >",
-                     "DASH not initialized, abort");
-      return;
-    }
-
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate",
                    "deallocate local memory");
     auto const end   = std::end(_allocated);
     auto const found = std::find_if(
-        std::begin(_allocated), end,
-        [&gptr](internal_value_type &val) { return val.second == gptr; });
+        std::begin(_allocated), end, [gptr, num_local_elem](internal_value_type &val) {
+          return val.second == gptr && val.first.length == num_local_elem;
+        });
     if (found != end) {
       // Unregister from global memory space, removes gptr from _allocated:
-      detach(found->second);
+      do_detach(found->second);
       // Free local memory:
       AllocatorTraits::deallocate(
           _alloc, static_cast<local_pointer>(found->first.ptr), num_local_elem);
@@ -491,7 +482,7 @@ class EpochSynchronizedAllocator {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear >");
   }
 
-  pointer _register_lmem(local_pointer ptr, size_type num_local_elem)
+  pointer do_attach(local_pointer ptr, size_type num_local_elem)
   {
     // Attach the block
     dart_storage_t ds = dart_storage<value_type>(num_local_elem);
@@ -508,6 +499,14 @@ class EpochSynchronizedAllocator {
     }
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", dgptr);
     return dgptr;
+  }
+
+  void do_detach(pointer gptr) {
+    if (dart_team_memderegister(gptr) != DART_OK) {
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.do_detach >",
+                     "cannot detach global pointer", gptr);
+      DASH_THROW(dash::exception::RuntimeError, "Cannot detach global pointer");
+    }
   }
 
  private:

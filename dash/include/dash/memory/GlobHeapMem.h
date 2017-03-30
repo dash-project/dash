@@ -449,10 +449,11 @@ public:
     DASH_LOG_TRACE("GlobHeapMem.grow", "creating new unattached bucket:",
                    "size:", num_elements);
     bucket_type bucket;
-    bucket.size     = num_elements;
-    bucket.lptr     = _allocator.allocate_local(bucket.size);
-    bucket.gptr     = DART_GPTR_NULL;
-    bucket.attached = false;
+    bucket.size               = num_elements;
+    bucket.allocated_size     = num_elements;
+    bucket.lptr               = _allocator.allocate_local(bucket.size);
+    bucket.gptr               = DART_GPTR_NULL;
+    bucket.attached           = false;
     // Add bucket to local memory space:
     _buckets.push_back(bucket);
     if (_attach_buckets_first == _buckets.end()) {
@@ -462,7 +463,7 @@ public:
     }
     _bucket_cumul_sizes[_myid].push_back(_local_sizes.local[0]);
     DASH_LOG_TRACE("GlobHeapMem.grow", "added unattached bucket:",
-                   "size:", bucket.size,
+                   "allocated size:", bucket.size,
                    "lptr:", bucket.lptr);
     // Update local iteration space:
     update_lbegin();
@@ -572,7 +573,7 @@ public:
                          "updating iterator to first unattached bucket");
           std::advance(_attach_buckets_first, -1);
         }
-        _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
+        _allocator.deallocate_local(bucket_last.lptr, bucket_last.allocated_size);
         _buckets.pop_back();
         if (_attach_buckets_first->attached) {
           // Updated iterator to first unattached bucket references attached
@@ -595,7 +596,7 @@ public:
         num_dealloc = 0;
 
         //Deallocate old local bucket
-        _allocator.deallocate_local(bucket_last.lptr, bucket_last.size);
+        _allocator.deallocate_local(bucket_last.lptr, bucket_last.allocated_size);
         //Allocate new bucket with specified size
         bucket_last.lptr = _allocator.allocate_local(size_new);
         if (bucket_last.lptr == nullptr) {
@@ -603,6 +604,7 @@ public:
                      "GlobHeapMem.shrink: Allocating bucket of size failed");
         }
         bucket_last.size = size_new;
+        bucket_last.allocated_size = size_new;
       }
     }
     // Number of elements to deallocate exceeds capacity of un-attached
@@ -960,7 +962,7 @@ private:
       // Detach bucket from global memory region and deallocate its local
       // memory segment:
       if (bucket_it->attached) {
-        _allocator.deallocate(bucket_it->gptr, bucket_it->size);
+        _allocator.deallocate(bucket_it->gptr, bucket_it->allocated_size);
         num_detached_elem   += bucket_it->size;
         bucket_it->attached  = false;
       }
@@ -1046,10 +1048,11 @@ private:
     while (num_attached_buckets < max_attach_buckets) {
       DASH_LOG_TRACE("GlobHeapMem.commit_attach", "attaching null bucket");
       bucket_type bucket;
-      bucket.size     = 0;
-      bucket.lptr     = _allocator.allocate_local(0);
-      bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
-      bucket.attached = true;
+      bucket.size               = 0;
+      bucket.allocated_size     = 0;
+      bucket.lptr               = _allocator.allocate_local(0);
+      bucket.gptr               = _allocator.attach(bucket.lptr, bucket.size);
+      bucket.attached           = true;
       DASH_ASSERT(!DART_GPTR_ISNULL(bucket.gptr));
       _buckets.push_back(bucket);
       num_attached_buckets++;
@@ -1215,22 +1218,19 @@ private:
           u_bucket_cumul_sizes.size() == 0 ? 0 : u_bucket_cumul_sizes.back();
       size_type u_local_size_new = _local_sizes[u];
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_old);
-      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_old);
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_new);
       int u_local_size_diff = u_local_size_new - u_local_size_old;
       new_remote_size += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                          u_num_attach_buckets);
-      if (u_num_attach_buckets == 0) {
-        // No unattached buckets at unit u.
-      }
-      else if (u_num_attach_buckets == 1) {
+      if (u_num_attach_buckets == 1) {
         // One unattached bucket at unit u, no need to request single bucket
         // sizes:
         u_bucket_cumul_sizes.push_back(u_local_size_new);
       }
-      else {
+      else if (u_num_attach_buckets > 1) {
         auto const u_end = displs[u] + u_num_attach_buckets;
         for (int bi = displs[u]; bi < u_end; ++bi) {
           size_type single_bkt_size = team_unattached_bucket_sizes[bi];
