@@ -251,6 +251,10 @@ class EpochSynchronizedAllocator {
                    "number of local values:", num_local_elem, "pointer: ",
                    lptr);
 
+    if (!lptr && num_local_elem == 0) {
+      return _register_lmem(lptr, 0);
+    }
+
     block_t pseudoBlock(lptr, num_local_elem);
 
     // Search for corresponding memory block
@@ -273,19 +277,7 @@ class EpochSynchronizedAllocator {
                  "cannot repeatedly attach local pointer");
     }
 
-    // Attach the block
-    dart_storage_t ds = dart_storage<value_type>(num_local_elem);
-    dart_gptr_t    dgptr;
-    if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype,
-                              found->first.ptr, &dgptr) != DART_OK) {
-      // reset to DART_GPTR_NULL
-      found->second = pointer(DART_GPTR_NULL);
-      DASH_LOG_ERROR("EpochSynchronizedAllocator.attach",
-                     "cannot attach local memory", found->first.ptr);
-    }
-    else {
-      found->second = pointer(dgptr);
-    }
+    found->second = _register_lmem(lptr, num_local_elem);
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", found->second);
     return found->second;
   }
@@ -345,7 +337,16 @@ class EpochSynchronizedAllocator {
   {
     local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
 
-    if (!lp) return nullptr;
+    if (!lp) {
+      if (num_local_elem > 0) {
+        std::stringstream ss;
+        ss << "Allocating " << num_local_elem * sizeof(value_type)
+           << " bytes failed!";
+        DASH_LOG_ERROR("EpochSynchronizedAllocator.allocate_local", ss.str());
+        DASH_THROW(dash::exception::RuntimeError, ss.str());
+      }
+      return nullptr;
+    }
 
     block_t b{lp, num_local_elem};
 
@@ -488,6 +489,25 @@ class EpochSynchronizedAllocator {
         });
     _allocated.clear();
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear >");
+  }
+
+  pointer _register_lmem(local_pointer ptr, size_type num_local_elem)
+  {
+    // Attach the block
+    dart_storage_t ds = dart_storage<value_type>(num_local_elem);
+    dart_gptr_t dgptr;
+    if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype, ptr,
+                              &dgptr) != DART_OK) {
+      // reset to DART_GPTR_NULL
+      // found->second = pointer(DART_GPTR_NULL);
+      DASH_LOG_ERROR("EpochSynchronizedAllocator.attach",
+                     "cannot attach local memory", ptr);
+    }
+    else {
+      // found->second = pointer(dgptr);
+    }
+    DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", dgptr);
+    return dgptr;
   }
 
  private:

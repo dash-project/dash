@@ -1047,9 +1047,9 @@ private:
       DASH_LOG_TRACE("GlobHeapMem.commit_attach", "attaching null bucket");
       bucket_type bucket;
       bucket.size     = 0;
-      bucket.lptr     = nullptr;
-      bucket.attached = true;
+      bucket.lptr     = _allocator.allocate_local(0);
       bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
+      bucket.attached = true;
       DASH_ASSERT(!DART_GPTR_ISNULL(bucket.gptr));
       _buckets.push_back(bucket);
       num_attached_buckets++;
@@ -1177,6 +1177,7 @@ private:
       displs.reserve(_team->size());
       displs[0] = 0;
 
+      //calculate the displs of each unit
       std::partial_sum(std::begin(num_unattached_buckets),
                        // We stop at last element
                        std::end(num_unattached_buckets) - 1,
