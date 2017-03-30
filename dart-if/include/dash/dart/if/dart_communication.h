@@ -236,7 +236,6 @@ dart_ret_t dart_reduce(
  * \param nelem   The number of local elements to accumulate per unit.
  * \param dtype   The data type to use in the accumulate operation \c op.
  * \param op      The accumulation operation to perform.
- * \param team    The team to participate in the accumulate.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -266,7 +265,6 @@ dart_ret_t dart_accumulate(
  *                \c op.
  * \param dtype   The data type to use in the operation \c op.
  * \param op      The operation to perform.
- * \param team    The team to participate in the operation.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *

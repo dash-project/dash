@@ -69,7 +69,7 @@ public:
   bool try_lock();
   
   /**
-   * Release the lock acquired through \clock() or \ctry_lock().
+   * Release the lock acquired through \c lock() or \c try_lock().
    */
   void unlock();
   
