@@ -164,7 +164,7 @@ void coreduce(Coarray<T> & coarr,
               team_unit_t master = team_unit_t{-1})
 {
   using value_type = typename Coarray<T>::value_type;
-  using size_type  = typename Coarray<T>::size_type;
+  using index_type = typename Coarray<T>::index_type;
 
   constexpr auto ndim     = Coarray<T>::ndim();
   const auto team_dart_id = coarr.team().dart_id();
@@ -173,7 +173,7 @@ void coreduce(Coarray<T> & coarr,
 
   // position of first element on master
   const auto & global_coords = coarr.pattern().global(master,
-                                 std::array<size_type,ndim+1> {});
+                                 std::array<index_type,ndim> {});
   const auto & global_idx    = coarr.pattern().at(global_coords);
 
   const auto dart_gptr       = (coarr.begin() + global_idx).dart_gptr();

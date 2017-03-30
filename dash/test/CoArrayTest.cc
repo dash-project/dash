@@ -125,6 +125,22 @@ TEST_F(CoArrayTest, ContainerInterface)
 #endif
 }
 
+TEST_F(CoArrayTest, ElementAccess)
+{
+  constexpr int size = 10;
+  dash::Coarray<int[size]> x;
+  for(int i=0; i<size; ++i){
+    x[i] = i + 100*this_image();
+  }
+  x.sync_all();
+  // every unit reads data of right neighbour
+  for(int i=0; i<size; ++i){
+    auto nextunit = (this_image() + 1) % num_images();
+    int value = x(nextunit)[i];
+    ASSERT_EQ_U(value, i + 100*nextunit);
+  }
+}
+
 TEST_F(CoArrayTest, Collectives)
 {
   dash::Coarray<int>         i;

@@ -8,6 +8,8 @@
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/pattern/BlockPattern.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
 #include <dash/util/ArrayExpr.h>
 
 #include <dash/Array.h>
@@ -104,9 +106,9 @@ private:
   using _rank           = std::integral_constant<int,
                             std::rank<_underl_type>::value>;
   
-  using _index_type     = typename std::make_unsigned<IndexType>::type;
-  using _sspec_type     = SizeSpec<_rank::value+1, _index_type>;
-  using _pattern_type   = BlockPattern<_rank::value+1, ROW_MAJOR, _index_type>;
+  using _size_type      = typename std::make_unsigned<IndexType>::type;
+  using _sspec_type     = SizeSpec<_rank::value+1, _size_type>;
+  using _pattern_type   = BlockPattern<_rank::value+1, ROW_MAJOR, IndexType>;
   
   /**
    * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
@@ -114,7 +116,7 @@ private:
    */
   using _element_type   = typename __insert_atomic_if_necessary<T, _native_type>::type;
   
-  using _storage_type   = Matrix<_element_type, _rank::value+1, _index_type, _pattern_type>;
+  using _storage_type   = Matrix<_element_type, _rank::value+1, IndexType, _pattern_type>;
   
   template<int _subrank = _rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
@@ -122,14 +124,14 @@ private:
                                          _rank::value+1,
                                          _rank::value-1,
                                          _pattern_type>;
-  using _offset_type    = std::array<_index_type, _rank::value>;
+  using _offset_type    = std::array<IndexType, _rank::value+1>;
 
 public:
   // Types
   using value_type             = _element_type;
   using difference_type        = IndexType;
   using index_type             = IndexType;
-  using size_type              = _index_type;
+  using size_type              = _size_type;
   using iterator               = GlobIter<_element_type, _pattern_type>; 
   using const_iterator         = GlobIter<const _element_type, _pattern_type>; 
   using reverse_iterator       = GlobIter<_element_type, _pattern_type>; 
@@ -161,18 +163,18 @@ private:
                 __get_type_extents_as_array<_underl_type, size_type, _rank::value>())));
   }
   
-  constexpr _offset_type & _offsets_unit(const team_unit_t & unit) const noexcept {
-    return _storage.pattern().global(unit, std::array<index_type,_rank::value> {});
+  constexpr _offset_type _offsets_unit(const team_unit_t & unit) const noexcept {
+    return _storage.pattern().global(unit, std::array<index_type, _rank::value+1> {});
   }
   
-  constexpr _offset_type & _extents_unit(const team_unit_t & unit) const noexcept {
+  constexpr _offset_type _extents_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().local_extents(unit);
   }
   
 public:
   
   static constexpr dim_t ndim() noexcept {
-    return static_cast<dim_t>(_rank::value);
+    return static_cast<dim_t>(_rank::value + 1);
   }
   
   /**
@@ -182,9 +184,13 @@ public:
    *   dash::Co_array<int[10][20]> x;
    * \endcode
    */
-  Coarray() {
+  explicit Coarray(Team & team = Team::All()) {
     if(dash::is_initialized()){
-      _storage.allocate(_pattern_type(_make_size_spec()));
+      _storage.allocate(_pattern_type(_make_size_spec(),
+                                      DistributionSpec<_rank::value+1>(),
+                                      TeamSpec<_rank::value+1,
+                                               IndexType>(team),
+                                      team));
     }
   }
     
@@ -194,18 +200,24 @@ public:
    *   dash::Co_array<int[10][]> y;
    * \endcode
    */
-  explicit Coarray(const size_type & first_dim) {
+  explicit Coarray(const size_type & first_dim, Team & team = Team::All()) {
     if(dash::is_initialized()){
-      _storage.allocate(_pattern_type(_make_size_spec(first_dim)));
+      _storage.allocate(_pattern_type(_make_size_spec(first_dim),
+                                      DistributionSpec<_rank::value+1>(),
+                                      TeamSpec<_rank::value+1>(team),
+                                      team));
     }
   }
   
   template<
   int __rank = _rank::value,
   typename = typename std::enable_if<(__rank == 0)>::type>
-  explicit Coarray(const value_type & value){
+  explicit Coarray(const value_type & value, Team & team = Team::All()){
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH has to be initialized");
-    _storage.allocate(_pattern_type(_make_size_spec()));
+    _storage.allocate(_pattern_type(_make_size_spec(),
+                                    DistributionSpec<_rank::value+1>(),
+                                    TeamSpec<_rank::value+1>(team),
+                                    team));
     *(_storage.lbegin()) = value;
     sync_all();
   }
@@ -358,7 +370,7 @@ public:
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank != 0), local_type>::type
   operator[](const index_type & idx) {
-    return _storage.local[0][0];
+    return _storage.local[0][idx];
   }
   
   /**
