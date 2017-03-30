@@ -89,42 +89,6 @@ struct make_coarray_symmetric_pattern {
                 IndexType>;
 };
 
-/**
- * helper to create a coarray pattern for coarrays where the local size of
- * each unit not equal (asymmetric allocation). This specialization is
- * a fallback to prohibit incompatible types.
- */
-template<
-  typename T,
-  typename IndexType = dash::default_index_t>
-struct make_coarray_asymmetric_pattern {
-  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
-};
-
-/**
- * helper to create a coarray pattern for coarrays where the local size of
- * each unit not equal (asymmetric allocation). This is currently only
- * supported for 1-dim arrays like \cdash::Coarray<int[]>
- */
-template<
-  typename T,
-  typename IndexType>
-struct make_coarray_asymmetric_pattern<T[], IndexType> {
-  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
-};
-
-/**
- * helper to create a coarray pattern for coarrays where the local size of
- * each unit not equal (asymmetric allocation). This is currently only
- * supported for 1-dim arrays like \cdash::Coarray<dash::Atomic<int[]>>
- */
-template<
-  typename T,
-  typename IndexType>
-struct make_coarray_asymmetric_pattern<dash::Atomic<T[]>, IndexType> {
-  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
-};
-
 }
 
 /**
@@ -254,7 +218,7 @@ public:
                                       team));
     }
   }
-  
+
   /**
    * Constructor for array types with one unspecified dimension:
    * \code
@@ -270,6 +234,8 @@ public:
     }
   }
   
+#if 0
+  // disabled as currently no at least 2-dimensional pattern supports this
   /**
    * Constructor for array types, where local size is not equal among
    * all units. Requires a pattern that supports an asymmetric layout.
@@ -293,6 +259,7 @@ public:
       _storage.allocate(a_pattern);
     }
   }
+#endif
   
   template<
   int __rank = _rank::value,
