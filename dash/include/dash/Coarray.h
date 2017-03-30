@@ -8,6 +8,7 @@
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/pattern/BlockPattern.h>
+#include <dash/pattern/CSRPattern.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/util/ArrayExpr.h>
@@ -42,13 +43,13 @@
 
 namespace dash {
 
-// forward decls
 namespace coarray {
 
+// forward decls
 template<typename Container>
 inline void sync_images(const Container & image_ids);
 
-}
+namespace detail {
 
 template <
   class ArrayT,
@@ -71,6 +72,61 @@ __get_type_extents_as_array() {
       dash::ce::make_index_sequence<Rank>());
 }
 
+}
+
+/**
+ * helper to create a coarray pattern for coarrays where the local size of
+ * each unit is equal (symmetric allocation).
+ */
+template<
+  typename T,
+  typename IndexType = dash::default_index_t>
+struct make_coarray_symmetric_pattern {
+  using type = BlockPattern<
+                std::rank<
+                  typename dash::remove_atomic<T>::type>::value+1,
+                ROW_MAJOR,
+                IndexType>;
+};
+
+/**
+ * helper to create a coarray pattern for coarrays where the local size of
+ * each unit not equal (asymmetric allocation). This specialization is
+ * a fallback to prohibit incompatible types.
+ */
+template<
+  typename T,
+  typename IndexType = dash::default_index_t>
+struct make_coarray_asymmetric_pattern {
+  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
+};
+
+/**
+ * helper to create a coarray pattern for coarrays where the local size of
+ * each unit not equal (asymmetric allocation). This is currently only
+ * supported for 1-dim arrays like \cdash::Coarray<int[]>
+ */
+template<
+  typename T,
+  typename IndexType>
+struct make_coarray_asymmetric_pattern<T[], IndexType> {
+  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
+};
+
+/**
+ * helper to create a coarray pattern for coarrays where the local size of
+ * each unit not equal (asymmetric allocation). This is currently only
+ * supported for 1-dim arrays like \cdash::Coarray<dash::Atomic<int[]>>
+ */
+template<
+  typename T,
+  typename IndexType>
+struct make_coarray_asymmetric_pattern<dash::Atomic<T[]>, IndexType> {
+  using type = CSRPattern<1, ROW_MAJOR, IndexType>;
+};
+
+}
+
 /**
  * A fortran style co_array.
  * 
@@ -79,7 +135,8 @@ __get_type_extents_as_array() {
  */
 template<
   typename T,
-  typename IndexType = dash::default_index_t>
+  typename IndexType = dash::default_index_t,
+  class PatternType  = typename coarray::make_coarray_symmetric_pattern<T,IndexType>::type >
 class Coarray {
 private:
 
@@ -108,7 +165,7 @@ private:
   
   using _size_type      = typename std::make_unsigned<IndexType>::type;
   using _sspec_type     = SizeSpec<_rank::value+1, _size_type>;
-  using _pattern_type   = BlockPattern<_rank::value+1, ROW_MAJOR, IndexType>;
+  using _pattern_type   = PatternType;
   
   /**
    * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
@@ -149,18 +206,22 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              __get_type_extents_as_array<_underl_type, size_type, _rank::value>()));
+              coarray::detail::__get_type_extents_as_array<_underl_type,
+                size_type, _rank::value>()));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
-    static_assert(std::get<0>(__get_type_extents_as_array<_underl_type, size_type, _rank::value>()) == 0,
-                  "Array type is fully specified");
+    static_assert(
+        std::get<0>(coarray::detail::__get_type_extents_as_array<_underl_type,
+          size_type, _rank::value>()) == 0,
+      "Array type is fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                __get_type_extents_as_array<_underl_type, size_type, _rank::value>())));
+                coarray::detail::__get_type_extents_as_array<_underl_type,
+                size_type, _rank::value>())));
   }
   
   constexpr _offset_type _offsets_unit(const team_unit_t & unit) const noexcept {
@@ -193,7 +254,7 @@ public:
                                       team));
     }
   }
-    
+  
   /**
    * Constructor for array types with one unspecified dimension:
    * \code
@@ -206,6 +267,30 @@ public:
                                       DistributionSpec<_rank::value+1>(),
                                       TeamSpec<_rank::value+1>(team),
                                       team));
+    }
+  }
+  
+  /**
+   * Constructor for array types, where local size is not equal among
+   * all units. Requires a pattern that supports an asymmetric layout.
+   * Possibly generated using
+   * 
+   * \todo enforce using pattern properties
+   * 
+   * \cdash::coarray::make_coarray_asymmetric_pattern
+   * \param extents vector of all extents
+   * \param team
+   */
+  explicit Coarray(std::vector<size_type> extents,
+                   Team & team = Team::All()){
+    if(dash::is_initialized()){
+      extents.insert(extents.begin(), static_cast<size_type>(dash::size()));
+      // asymmetric pattern
+      const _pattern_type a_pattern(extents,
+                                    DistributionSpec<_rank::value+1>(),
+                                    TeamSpec<_rank::value+1>(team),
+                                    team);
+      _storage.allocate(a_pattern);
     }
   }
   
