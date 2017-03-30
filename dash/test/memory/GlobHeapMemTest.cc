@@ -582,7 +582,7 @@ TEST_F(GlobHeapMemTest, Unbalanced_ShrinkAttachedBucket)
     gdmem.grow(5);
     gdmem.shrink(1);
   }
-  if (dash::myid() == 1) {
+  else if (dash::myid() == 1) {
     //First shrink the already attached bucket
     gdmem.shrink(2);
     gdmem.grow(10);
@@ -603,13 +603,11 @@ TEST_F(GlobHeapMemTest, Unbalanced_ShrinkAttachedBucket)
     EXPECT_EQ_U(gdmem.local_size(), initial_local_capacity + unit_0_lsize_diff);
   } else if (dash::myid() == 1) {
     EXPECT_EQ_U(gdmem.local_size(), initial_local_capacity + unit_1_lsize_diff);
-  }
-
-  if (dash::myid() == 1) {
+    //remove local size
     gdmem.shrink(gdmem.local_size());
   }
 
   gdmem.commit();
 
-  EXPECT_EQ_U(gdmem.size(), gdmem.local_size(dash::team_unit_t{0}));
+  EXPECT_EQ_U(gdmem.size(), (dash::size() - 1) * initial_local_capacity + unit_0_lsize_diff);
 }
