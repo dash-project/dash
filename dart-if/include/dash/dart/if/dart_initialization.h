@@ -77,6 +77,15 @@ dart_ret_t dart_exit() DART_NOTHROW;
  */
 bool       dart_initialized() DART_NOTHROW;
 
+
+/**
+ * Abort the application run without performing any cleanup.
+ *
+ * \c dart_abort tries to call the underlying runtime's abort function
+ * (such as \c MPI_Abort) and is guaranteed to not return.
+ */
+void       dart_abort(int errorcode) __attribute__((noreturn));
+
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
 /** \endcond */

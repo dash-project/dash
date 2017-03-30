@@ -62,10 +62,10 @@ static inline MPI_Datatype dart__mpi__datatype(dart_datatype_t dart_datatype) {
 }
 
 static inline int dart__mpi__datatype_sizeof(dart_datatype_t dart_datatype) {
-  int native_size;
-  if (MPI_Type_size(dart__mpi__datatype(dart_datatype), &native_size)
-      == MPI_SUCCESS) {
-    return native_size;
+
+  if (dart_datatype > DART_TYPE_UNDEFINED && dart_datatype < DART_TYPE_COUNT)
+  {
+    return dart__mpi__datatype_sizes[dart_datatype];
   }
   return -1;
 }

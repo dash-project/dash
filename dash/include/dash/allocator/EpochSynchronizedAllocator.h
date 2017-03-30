@@ -85,8 +85,8 @@ class EpochSynchronizedAllocator {
  public:
   /**
    * Constructor.
-   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a given
-   * team.
+   * Creates a new instance of \c dash::EpochSynchronizedAllocator for a
+   * given team.
    */
   explicit EpochSynchronizedAllocator(Team &team = dash::Team::All()) noexcept
     : _team(&team)
