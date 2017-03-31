@@ -86,19 +86,26 @@ GlobIter<ElementType, PatternType> find(
 }
 
 /**
+ * Returns an iterator to the first element in the range \c [first,last) that
+ * satisfies the predicate \c p.
+ * If no such element is found, the function returns \c last.
+ *
+ * \see dash::find
+ * \see dash::find_if_not
+ *
  * \ingroup     DashAlgorithms
  */
 template<
   typename ElementType,
   class    PatternType,
-	class    UnaryPredicate >
+  class    UnaryPredicate >
 GlobIter<ElementType, PatternType> find_if(
   /// Iterator to the initial position in the sequence
   GlobIter<ElementType, PatternType>   first,
   /// Iterator to the final position in the sequence
   GlobIter<ElementType, PatternType>   last,
   /// Predicate which will be applied to the elements in range [first, last)
-	UnaryPredicate                       predicate)
+  UnaryPredicate                       predicate)
 {
   typedef typename PatternType::index_type index_t;
 
@@ -140,6 +147,13 @@ GlobIter<ElementType, PatternType> find_if(
 }
 
 /**
+ * Returns an iterator to the first element in the range \c [first,last) that
+ * does not satisfy the predicate \c p.
+ * If no such element is found, the function returns \c last.
+ *
+ * \see dash::find
+ * \see dash::find_if_not
+ *
  * \ingroup     DashAlgorithms
  */
 template<

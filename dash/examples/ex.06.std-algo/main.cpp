@@ -1,3 +1,9 @@
+/**
+ * \example ex.06.std-algo/main.cpp
+ * Example demonstrating the use of STL
+ * algorithms on DASH global data structures.
+ */
+
 #include <iostream>
 #include <cstddef>
 #include <algorithm>
