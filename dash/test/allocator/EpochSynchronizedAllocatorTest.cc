@@ -9,7 +9,7 @@ TEST_F(EpochSynchronizedAllocatorTest, AllocDealloc) {
   using AllocatorTraits = dash::allocator_traits<Alloc>;
   //Rebind from int to double
   using MyAllocTraits = AllocatorTraits::template rebind_traits<double>;
-  MyAllocTraits::allocator_type alloc{};
+  MyAllocTraits::allocator_type alloc{dash::Team::All()};
 
   MyAllocTraits::size_type const n_elem = 10;
   MyAllocTraits::local_pointer p =  alloc.allocate_local(n_elem);
@@ -52,7 +52,7 @@ TEST_F(EpochSynchronizedAllocatorTest, SimplePoolAlloc) {
 
   using OtherDynAllocTraits = GlobDynAllocTraits::rebind_traits<struct my_type>;
 
-  OtherDynAllocTraits::allocator_type otherDynAlloc{};
+  OtherDynAllocTraits::allocator_type otherDynAlloc{dash::Team::All()};
   OtherDynAllocTraits::pointer gp2 = OtherDynAllocTraits::allocate(otherDynAlloc, n);
   OtherDynAllocTraits::deallocate(otherDynAlloc, gp2, n);
 }

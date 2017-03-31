@@ -12,10 +12,8 @@ class LocalSpaceAllocator {
   using memory_traits = dash::memory_space_traits<memory_space>;
 
  public:
-  // clang-format off
   typedef T value_type;
-  typedef T * pointer;
-  // clang-format on
+  typedef T* pointer;
 
   /*
   template <typename U>
@@ -36,11 +34,10 @@ class LocalSpaceAllocator {
   LocalSpaceAllocator(LocalSpaceAllocator<U> const& other);
 
   // Move Constructor
-  // TODO rko: this depends on the underlying memory space
   LocalSpaceAllocator(LocalSpaceAllocator&& other);
+
   // Move Assignment
-  // TODO rko: this depends on the underlying memory space
-  LocalSpaceAllocator& operator=(LocalSpaceAllocator&& other) = delete;
+  LocalSpaceAllocator& operator=(LocalSpaceAllocator&& other) = default;
 
   // Copy Assignment
   LocalSpaceAllocator& operator=(LocalSpaceAllocator const& other) = delete;
@@ -48,7 +45,7 @@ class LocalSpaceAllocator {
   ~LocalSpaceAllocator();
 
   pointer allocate(size_t n);
-  void deallocate(pointer, size_t n);
+  void deallocate(pointer p, size_t n);
 
   /*
   template <typename... Args>

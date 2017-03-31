@@ -74,11 +74,11 @@ class EpochSynchronizedAllocator {
 
  public:
   /// Convert EpochSynchronizedAllocator<T> to EpochSynchronizedAllocator<U>.
-  template <class T>
+  template <class U>
   struct rebind {
     typedef EpochSynchronizedAllocator<
-        T, MSpaceCategory, typename std::allocator_traits<
-                               LocalAllocator>::template rebind_alloc<T>>
+        U, MSpaceCategory, typename std::allocator_traits<
+                               LocalAllocator>::template rebind_alloc<U>>
         other;
   };
 
@@ -95,7 +95,7 @@ class EpochSynchronizedAllocator {
   {
   }
 
-  explicit EpochSynchronizedAllocator(allocator_type const &localAlloc,
+  EpochSynchronizedAllocator(allocator_type const &localAlloc,
                                       Team &team = dash::Team::All()) noexcept
     : _team(&team)
     , _nunits(team.size())
@@ -123,10 +123,7 @@ class EpochSynchronizedAllocator {
     std::swap(_alloc, other._alloc);
   }
 
-  /**
-   * Default constructor, deleted.
-   */
-  //  EpochSynchronizedAllocator() noexcept = delete;
+  EpochSynchronizedAllocator() noexcept = delete;
 
   /**
    * Copy constructor.
@@ -319,6 +316,7 @@ class EpochSynchronizedAllocator {
       return;
     }
 
+    do_detach(gptr);
 
     found->second = pointer(DART_GPTR_NULL);
 
@@ -340,8 +338,8 @@ class EpochSynchronizedAllocator {
     if (!lp) {
       if (num_local_elem > 0) {
         std::stringstream ss;
-        ss << "Allocating " << num_local_elem * sizeof(value_type)
-           << " bytes failed!";
+        ss << "Allocating local segment (nelem: " << num_local_elem
+           << ") failed!";
         DASH_LOG_ERROR("EpochSynchronizedAllocator.allocate_local", ss.str());
         DASH_THROW(dash::exception::RuntimeError, ss.str());
       }
@@ -380,13 +378,12 @@ class EpochSynchronizedAllocator {
 
     bool const attached = found->second != DART_GPTR_NULL;
     if (attached) {
-      // TODO rko: detach memory from window...
       DASH_LOG_ERROR("EpochSynchronizedAllocator.deallocate_local",
                      "deallocating local pointer which is still attached",
                      found->second);
     }
 
-    // TODO rko: first call the destructor??
+    //Maybe we should first call the destructor
     AllocatorTraits::deallocate(
         _alloc, static_cast<local_pointer>(found->first.ptr), num_local_elem);
 
