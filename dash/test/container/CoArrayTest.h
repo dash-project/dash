@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include "TestBase.h"
+#include "../TestBase.h"
 
 #include <dash/Coarray.h>
 #include <dash/Comutex.h>

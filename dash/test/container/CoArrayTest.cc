@@ -1,4 +1,3 @@
-#include "TestBase.h"
 #include "CoArrayTest.h"
 
 #include <type_traits>
