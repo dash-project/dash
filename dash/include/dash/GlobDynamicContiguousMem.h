@@ -148,6 +148,7 @@ public:
   typedef typename ContainerType::size_type             size_type;
   typedef typename local_iterator::bucket_type          bucket_type;
   typedef typename std::list<bucket_type>               bucket_list;
+  typedef typename std::list<bucket_type *>             bucket_ptr_list;
   typedef local_iterator                                local_pointer;
   typedef local_iterator                                const_local_pointer;
   typedef std::vector<std::vector<size_type>>           bucket_cumul_sizes_map;
@@ -214,7 +215,10 @@ public:
     int bucket_num = 0;
     int bucket_cumul = 0;
 
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // Important for performance:
     // TODO: put multiple containers into one bucket
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     for(auto c_data : _container_list) {
       // merge public and local containers
       c_data.container->insert(c_data.container->end(),
@@ -252,6 +256,8 @@ public:
       c_data.container_bucket->gptr = gptr;
       c_data.unattached_container_bucket->gptr = gptr;
       
+      //TODO: If possible, avoid adding unattached_container to global
+      //      iteration space with size 0
       // update cumulated bucket sizes
       bucket_cumul += c_data.container->size();
       _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
@@ -262,7 +268,7 @@ public:
 
     // distribute bucket sizes between all units
     // TODO: use one allgather for all buckets
-    // TODO: make it work for unevenls distributed amount of buckets
+    // TODO: make it work for unevenly distributed amount of buckets
     auto bucket_count = _bucket_cumul_sizes[_myid].size();
     for(auto c_data : _container_list) {
       std::vector<size_type> bucket_sizes(bucket_count * _team->size());
@@ -472,6 +478,7 @@ private:
   container_type *           _container;
   container_type *           _unattached_container = nullptr;
   bucket_list                _buckets;
+  bucket_ptr_list            _global_buckets;
   Team *                     _team;
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
