@@ -8,7 +8,6 @@
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/pattern/BlockPattern.h>
-#include <dash/pattern/CSRPattern.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/util/ArrayExpr.h>
