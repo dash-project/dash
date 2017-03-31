@@ -162,6 +162,7 @@ public:
    */
   GlobDynamicContiguousMem(Team & team = dash::Team::All())
   : _buckets(),
+    _global_buckets(),
     _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
@@ -178,6 +179,8 @@ public:
     auto it = _buckets.insert(_buckets.end(), 
         c_data.buckets.begin(), c_data.buckets.end());
     c_data.container_bucket = &(*it);
+    // for global iteration, only _container's bucket is needed
+    _global_buckets.push_back(&(*it));
     ++it;
     c_data.unattached_container_bucket = &(*it);
     // insert won't invalidate iterators for std::list, so we can use them
@@ -212,58 +215,80 @@ public:
   self_t & operator=(const self_t & rhs) = default;
 
   void commit() {
+    // Gather information about the max amount of containers a single unit
+    // currently holds
+    std::vector<size_type> container_count(_team->size());
+    int my_container_count = _container_list.size();
+    dart_allgather(&my_container_count, container_count.data(), 
+      sizeof(size_type), DART_TYPE_BYTE, _team->dart_id());
+    auto max_containers = std::max_element(container_count.begin(),
+                                           container_count.end());
+
     int bucket_num = 0;
     int bucket_cumul = 0;
 
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // Important for performance:
     // TODO: put multiple containers into one bucket
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    for(auto c_data : _container_list) {
-      // merge public and local containers
-      c_data.container->insert(c_data.container->end(),
-          c_data.unattached_container->begin(),
-          c_data.unattached_container->end());
-      c_data.unattached_container->clear();
-      // update memory location & size of _container
-      auto it = c_data.buckets.begin();
-      it->lptr = c_data.container->data();
-      it->size = c_data.container->size();
-      c_data.container_bucket->lptr = c_data.container->data();
-      c_data.container_bucket->size = c_data.container->size();
-      // update memory location & size of _unattached_container
-      ++it;
-      it->lptr = c_data.unattached_container->data();
-      it->size = 0;
-      c_data.unattached_container_bucket->lptr 
-        = c_data.unattached_container->data();
-      c_data.unattached_container_bucket->size = 0;
+    // TODO: update only containers with unattached_container.size() > 0
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // attach buckets for the maximum amount of containers, even if this unit
+    // holds less containers
+    {
+    data_type * c_data;
+    auto c_data_it = _container_list.begin();
+    auto current_size = _container_list.size();
+    for(int i = 0; i < *max_containers; ++i) {
+      if(i < current_size) {
+        c_data = &(*c_data_it);
+        // merge public and local containers
+        c_data->container->insert(c_data->container->end(),
+            c_data->unattached_container->begin(),
+            c_data->unattached_container->end());
+        c_data->unattached_container->clear();
+        // update memory location & size of _container
+        auto it = c_data->buckets.begin();
+        it->lptr = c_data->container->data();
+        it->size = c_data->container->size();
+        c_data->container_bucket->lptr = c_data->container->data();
+        c_data->container_bucket->size = c_data->container->size();
+        // update memory location & size of _unattached_container
+        ++it;
+        it->lptr = c_data->unattached_container->data();
+        it->size = 0;
+        c_data->unattached_container_bucket->lptr 
+          = c_data->unattached_container->data();
+        c_data->unattached_container_bucket->size = 0;
 
-      c_data.update_lbegin();
-      c_data.update_lend();
+        c_data->update_lbegin();
+        c_data->update_lend();
+        ++c_data_it;
+      } else {
+        // if other units add more containers, create an empty container to 
+        // store a dart_gptr for the collective allocation
+        c_data = &(*(add_container(0)));
+      }
 
       // attach new container to global memory space
       dart_gptr_t gptr = DART_GPTR_NULL;
-      dart_storage_t ds = dart_storage<value_type>(c_data.container->size());
+      dart_storage_t ds = dart_storage<value_type>(c_data->container->size());
       dart_team_memregister(
           _team->dart_id(), 
           ds.nelem, 
           ds.dtype, 
-          c_data.container->data(), 
+          c_data->container->data(), 
           &gptr
       );
       // no need to update gptr of local bucket list in c_data
-      c_data.container_bucket->gptr = gptr;
-      c_data.unattached_container_bucket->gptr = gptr;
+      c_data->container_bucket->gptr = gptr;
       
       //TODO: If possible, avoid adding unattached_container to global
       //      iteration space with size 0
       // update cumulated bucket sizes
-      bucket_cumul += c_data.container->size();
+      bucket_cumul += c_data->container->size();
       _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
       ++bucket_num;
-      _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
-      ++bucket_num;
+    }
     }
 
     // distribute bucket sizes between all units
@@ -374,15 +399,15 @@ public:
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
     // Get the referenced bucket's dart_gptr:
-    auto bucket_it = _buckets.begin();
+    auto bucket_it = _global_buckets.begin();
     std::advance(bucket_it, bucket_index);
-    auto dart_gptr = bucket_it->gptr;
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", bucket_it->attached);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", bucket_it->gptr);
+    auto dart_gptr = (*bucket_it)->gptr;
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->attached);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->gptr);
     if (unit == _myid) {
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", bucket_it->lptr);
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", bucket_it->size);
-      DASH_ASSERT_LT(bucket_phase, bucket_it->size,
+      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->lptr);
+      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->size);
+      DASH_ASSERT_LT(bucket_phase, (*bucket_it)->size,
                      "bucket phase out of bounds");
     }
     if (DART_GPTR_ISNULL(dart_gptr)) {
@@ -468,7 +493,7 @@ private:
     for(auto it = _bucket_cumul_sizes.begin(); 
         it != _bucket_cumul_sizes.end(); ++it) {
       // gets initiliazed with 0 automatically
-      it->resize(it->size() + 2);
+      it->resize(it->size() + 1);
     }
   }
 
