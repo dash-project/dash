@@ -102,7 +102,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size            = 0;
   /// Global memory layout of the pattern.
@@ -156,7 +155,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  constexpr BlockPattern(
+  BlockPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -165,32 +164,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _size(_arguments.sizespec().size()),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _nlblocks(initialize_num_local_blocks(
-        _nblocks,
-        _blocksize,
-        _distspec,
-        _nunits,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()),
-    _lbegin_lend(initialize_local_range(_local_size))
+  : BlockPattern(PatternArguments_t(arg, args...))
   { }
 
   /**
@@ -1128,6 +1102,35 @@ public:
   }
 
 private:
+
+  BlockPattern(const PatternArguments_t & arguments)
+  :  _size(arguments.sizespec().size()),
+     _memory_layout(std::array<SizeType, 1> {{ _size }}),
+     _distspec(arguments.distspec()),
+     _team(&arguments.team()),
+     _teamspec(arguments.teamspec()),
+     _nunits(_team->size()),
+     _blocksize(initialize_blocksize(
+         _size,
+         _distspec,
+         _nunits)),
+     _nblocks(initialize_num_blocks(
+         _size,
+         _blocksize,
+         _nunits)),
+     _local_size(
+         initialize_local_extent(_team->myid())),
+     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
+     _nlblocks(initialize_num_local_blocks(
+         _nblocks,
+         _blocksize,
+         _distspec,
+         _nunits,
+         _local_size)),
+     _local_capacity(initialize_local_capacity()),
+     _lbegin_lend(initialize_local_range(_local_size))
+  {}
+
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.

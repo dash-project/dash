@@ -121,7 +121,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size            = 0;
   /// Number of local elements for every unit in the active team.
@@ -169,28 +168,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _size(_arguments.sizespec().size()),
-    _local_sizes(initialize_local_sizes(
-        _size,
-        _arguments.distspec(),
-        _arguments.team())),
-    _block_offsets(initialize_block_offsets(
-        _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _blockspec(initialize_blockspec(
-        _size,
-        _local_sizes)),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()),
-    _nunits(_team->size()),
-    _local_size(
-        initialize_local_extent(
-          _team->myid(),
-          _local_sizes)),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity(_local_sizes))
+  : CSRPattern(PatternArguments_t(arg, args...))
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
@@ -310,25 +288,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _size(_arguments.sizespec().size()),
-    _local_sizes(local_sizes),
-    _block_offsets(initialize_block_offsets(
-        _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _blockspec(initialize_blockspec(
-        _size,
-        _local_sizes)),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()),
-    _nunits(_team->size()),
-    _local_size(
-        initialize_local_extent(
-          _team->myid(),
-          _local_sizes)),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity(_local_sizes))
+  : CSRPattern(local_sizes, PatternArguments_t(arg, args...))
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
@@ -1179,6 +1139,39 @@ public:
   }
 
 private:
+
+  CSRPattern(
+    const PatternArguments_t & arguments)
+  : CSRPattern(
+      initialize_local_sizes(
+        arguments.sizespec().size(),
+        arguments.distspec(),
+        arguments.team()),
+      arguments)
+  {}
+
+  CSRPattern(
+    const std::vector<size_type> & local_sizes,
+    const PatternArguments_t     & arguments)
+  : _size(arguments.sizespec().size()),
+    _local_sizes(local_sizes),
+    _block_offsets(initialize_block_offsets(
+        _local_sizes)),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
+    _distspec(arguments.distspec()),
+    _team(&arguments.team()),
+    _teamspec(arguments.teamspec()),
+    _nunits(_team->size()),
+    _local_size(
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
+    _local_capacity(initialize_local_capacity(_local_sizes))
+  {}
 
   /**
    * Initialize the size (number of mapped elements) of the Pattern.
