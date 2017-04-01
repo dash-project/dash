@@ -24,7 +24,7 @@
  * \defgroup  DashMatrixConcept  Matrix Concept
  * Concept for a distributed n-dimensional matrix.
  *
- * Extends concepts \c DashContainerConcept and \c DashArrayConcept.
+ * Extends concepts \ref DashContainerConcept and \ref DashArrayConcept.
  *
  * \see DashContainerConcept
  * \see DashArrayConcept
@@ -41,7 +41,7 @@
  *
  * \par Types
  *
- * As defined in \c DashContainerConcept.
+ * As defined in \ref DashContainerConcept.
  *
  * Type name                       | Description
  * ------------------------------- | -------------------------------------------------------------------------------------------------------------------
@@ -57,7 +57,7 @@
  * <tt>const_reference</tt>        | Reference on const container elements in global index space.
  * <tt>local_pointer</tt>          | Native pointer on local container elements.
  * <tt>const_local_pointer</tt>    | Native pointer on const local container elements.
- * <tt>view_type</tt>              | View specifier on container elements, model of \c DashViewConcept.
+ * <tt>view_type</tt>              | View specifier on container elements, model of \ref DashViewConcept.
  * <tt>local_type</tt>             | Reference to local element range, allows range-based iteration.
  * <tt>pattern_type</tt>           | Concrete model of the Pattern concept that specifies the container's data distribution and cartesian access pattern.
  *
@@ -69,21 +69,21 @@
  * <tt>view_type<d></tt>    | <tt>block</tt>        | <tt>index_type    bi</tt>       | Matrix proxy object representing a view specifier on the matrix block at canonical block index <tt>bi</tt>.
  * <tt>view_type<d></tt>    | <tt>block</tt>        | <tt>index_type[d] bp</tt>       | Matrix proxy object representing a view specifier on the matrix block at block coordinate <tt>bc</tt>.
  *
- * As defined in \c DashContainerConcept:
+ * As defined in \ref DashContainerConcept :
  *
- * Return Type              | Method                | Parameters                                            | Description
- * ------------------------ | --------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
- * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                | Container proxy object representing a view specifier on the container's local elements.
- * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
- * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                | Iterator referencing the first container element.
- * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                | Iterator referencing the element past the last container element.
- * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
- * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
- * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                | Number of elements in the container.
- * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                | Number of local elements in the container, same as <tt>local().size()</tt>.
- * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
- * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec<DD> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
- * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                | Deallocation of the container and its elements.
+ * Return Type              | Method                | Parameters                                              | Description
+ * ------------------------ | --------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
+ * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                  | Container proxy object representing a view specifier on the container's local elements.
+ * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                  | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
+ * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                  | Iterator referencing the first container element.
+ * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                  | Iterator referencing the element past the last container element.
+ * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                  | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
+ * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                  | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
+ * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                  | Number of elements in the container.
+ * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                  | Number of local elements in the container, same as <tt>local().size()</tt>.
+ * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                  | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
+ * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec\<DD\> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
+ * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                  | Deallocation of the container and its elements.
  *
  * \}
  */
@@ -272,7 +272,7 @@ public:
    * Default constructor, for delayed allocation.
    *
    * Sets the associated team to DART_TEAM_NULL for global matrix instances
-   * that are declared before \c dash::Init().
+   * that are declared before \ref dash::Init().
    */
   Matrix(
     Team & team = dash::Team::Null());
@@ -487,7 +487,7 @@ public:
   ) const;
   
   /**
-   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   * Subscript operator, returns a \ref GlobRef if matrix has only one dimension
    */
   template<dim_t __NumViewDim = NumDimensions-1>
   typename std::enable_if<
@@ -509,7 +509,7 @@ public:
   );
 
   /**
-   * Subscript operator, returns a \cGlobRef if matrix has only one dimension
+   * Subscript operator, returns a \ref GlobRef if matrix has only one dimension
    */
   template<dim_t __NumViewDim = NumDimensions-1>
   typename std::enable_if<(__NumViewDim == 0), reference>::type
@@ -561,7 +561,7 @@ public:
    * Projection to given offset in first sub-dimension (column), same as
    * \c sub<0>(n).
    *
-   * \returns  A \c MatrixRef object representing the nth column
+   * \returns  A \ref MatrixRef object representing the nth column
    *
    * \see  sub
    * \see  row
@@ -574,7 +574,7 @@ public:
    * Projection to given offset in first sub-dimension (column), same as
    * \c sub<0>(n).
    *
-   * \returns  A \c MatrixRef object representing the nth column
+   * \returns  A \ref MatrixRef object representing the nth column
    *
    * \see  sub
    * \see  row
@@ -587,7 +587,7 @@ public:
    * Projection to given offset in second sub-dimension (rows), same as
    * \c sub<1>(n).
    *
-   * \returns  A \c MatrixRef object representing the nth row
+   * \returns  A \ref MatrixRef object representing the nth row
    *
    * \see  sub
    * \see  col
@@ -600,7 +600,7 @@ public:
    * Projection to given offset in second sub-dimension (rows), same as
    * \c sub<1>(n).
    *
-   * \returns  A \c MatrixRef object representing the nth row
+   * \returns  A \ref MatrixRef object representing the nth row
    *
    * \see  sub
    * \see  col
@@ -664,7 +664,7 @@ public:
   );
 
   /**
-   * Fortran-style subscript operator, alias for \c at().
+   * Fortran-style subscript operator, alias for \ref at().
    * As an example, the operation \c matrix(i,j) is equivalent to
    * \c matrix[i][j].
    *
@@ -714,7 +714,7 @@ public:
   dash::HView<self_t, level> hview();
 
   /**
-   * Conversion operator to type \c MatrixRef.
+   * Conversion operator to type \ref MatrixRef.
    */
   operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();

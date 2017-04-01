@@ -11,10 +11,10 @@
 namespace dash {
 
 /**
- * Behaves similar to \cstd::mutex and is used to ensure mutual exclusion
+ * Behaves similar to \c std::mutex and is used to ensure mutual exclusion
  * within a dash team.
  * 
- * \note This works properly with \cstd::lock_guard
+ * \note This works properly with \c std::lock_guard
  * \note Mutex cannot be placed in DASH containers
  * 
  * \code
@@ -69,7 +69,7 @@ public:
   bool try_lock();
   
   /**
-   * Release the lock acquired through \clock() or \ctry_lock().
+   * Release the lock acquired through \c lock() or \c try_lock().
    */
   void unlock();
   
