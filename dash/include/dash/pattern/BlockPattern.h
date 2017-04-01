@@ -289,6 +289,78 @@ public:
   }
 
   /**
+   * Constructor, initializes a pattern from explicit instances of
+   * \c SizeSpec, \c DistributionSpec and a \c Team.
+   *
+   * Examples:
+   *
+   * \code
+   *   // A 5x3 rectangle with blocked distribution in the first dimension
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              // The team containing the units to which the pattern
+   *              // maps the global indices. Defaults to all all units:
+   *              dash::Team::All());
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              // How teams are arranged in all dimensions, default is
+   *              // an extent of all units in first, and 1 in all higher
+   *              // dimensions:
+   *              TeamSpec<2>(dash::Team::All(), 1),
+   *              // The team containing the units to which the pattern
+   *              // maps the global indices. Defaults to all all units:
+   *              dash::Team::All());
+   *   // Same as
+   *   Pattern p1(5,3, BLOCKED);
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE));
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              TeamSpec<2>(dash::Team::All(), 1));
+   * \endcode
+   */
+  BlockPattern(
+    /// Pattern size (extent, number of elements) in every dimension
+    const SizeSpec_t         & sizespec,
+    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+    /// dimensions
+    const DistributionSpec_t & dist = DistributionSpec_t(),
+    /// Team containing units to which this pattern maps its elements
+    Team                     & team = dash::Team::All())
+  : _distspec(dist),
+    _team(&team),
+    _teamspec(_distspec, *_team),
+    _nunits(_teamspec.size()),
+    _memory_layout(sizespec.extents()),
+    _blocksize_spec(initialize_blocksizespec(
+        sizespec,
+        _distspec,
+        _teamspec)),
+    _blockspec(initialize_blockspec(
+        sizespec,
+        _distspec,
+        _blocksize_spec,
+        _teamspec)),
+    _local_memory_layout(
+        initialize_local_extents(_team->myid())),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _blocksize_spec,
+        _distspec,
+        _teamspec,
+        _local_memory_layout)),
+    _local_capacity(initialize_local_capacity())
+  {
+    DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, team)");
+    initialize_local_range();
+    DASH_LOG_TRACE("BlockPattern()", "BlockPattern initialized");
+  }
+
+  /**
    * Copy constructor.
    */
   BlockPattern(const self_t & other)
