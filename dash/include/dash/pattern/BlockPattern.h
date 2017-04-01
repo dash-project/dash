@@ -249,11 +249,10 @@ public:
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    /// all dimensions.
+    const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         & teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
