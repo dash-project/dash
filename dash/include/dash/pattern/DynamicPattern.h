@@ -148,6 +148,58 @@ public:
 
   /**
    * Constructor, initializes a pattern from explicit instances of
+   * \c SizeSpec, \c DistributionSpec, \c TeamSpec and \c Team.
+   *
+   */
+  DynamicPattern(
+    /// Size spec of the pattern.
+    const SizeSpec_t         & sizespec,
+    /// Distribution spec.
+    const DistributionSpec_t & distspec,
+    /// Cartesian arrangement of units within the team
+    const TeamSpec_t         & teamspec,
+    /// Team containing units to which this pattern maps its elements.
+    Team                     & team = dash::Team::All())
+  : _size(sizespec.size()),
+    _local_sizes(initialize_local_sizes(
+        _size,
+        distspec,
+        team)),
+    _block_offsets(initialize_block_offsets(
+        _local_sizes)),
+    _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
+    _distspec(DistributionSpec_t()),
+    _team(&team),
+    _myid(_team->myid()),
+    _teamspec(
+      teamspec,
+      _distspec,
+      *_team),
+    _nunits(_team->size()),
+    _blocksize(initialize_blocksize(
+        _size,
+        _distspec,
+        _nunits)),
+    _nblocks(_nunits),
+    _local_size(
+        initialize_local_extent(_team->myid())),
+    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_capacity(initialize_local_capacity())
+  {
+    DASH_LOG_TRACE("DynamicPattern()", "(sizespec, dist, team)");
+    DASH_ASSERT_EQ(
+      _local_sizes.size(), _nunits,
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
+      "does not match number of units" << _nunits);
+    initialize_local_range();
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
+  }
+
+  /**
+   * Constructor, initializes a pattern from explicit instances of
    * \c SizeSpec, \c DistributionSpec and \c Team.
    *
    */
