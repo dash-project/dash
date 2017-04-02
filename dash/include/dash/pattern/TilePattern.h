@@ -234,8 +234,7 @@ public:
     /// TilePattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
+    /// all dimensions.
     const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
     const TeamSpec_t         & teamspec,
