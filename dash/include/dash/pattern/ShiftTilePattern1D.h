@@ -240,7 +240,7 @@ public:
 
   /**
    * Constructor, initializes a pattern from explicit instances of
-   * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
+   * \c SizeSpec, \c DistributionSpec and a \c Team.
    *
    * Examples:
    *
@@ -266,9 +266,8 @@ public:
   ShiftTilePattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
+    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE).
+    /// Defaults to BLOCKED in first.
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
