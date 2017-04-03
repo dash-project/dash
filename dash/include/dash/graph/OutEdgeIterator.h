@@ -1,5 +1,5 @@
-#ifndef DASH__GRAPH__EDGE_ITERATOR_H__INCLUDED
-#define DASH__GRAPH__EDGE_ITERATOR_H__INCLUDED
+#ifndef DASH__GRAPH__OUT_EDGE_ITERATOR_H__INCLUDED
+#define DASH__GRAPH__OUT_EDGE_ITERATOR_H__INCLUDED
 
 namespace dash {
 
@@ -7,7 +7,7 @@ namespace dash {
  * Wrapper for the edge iterators of the graph.
  */
 template<typename Graph>
-struct EdgeIteratorWrapper {
+struct OutEdgeIteratorWrapper {
 
   typedef Graph                                    graph_type;
   typedef typename Graph::global_edge_iterator     iterator;
@@ -20,7 +20,7 @@ struct EdgeIteratorWrapper {
   /**
    * Constructs the wrapper.
    */
-  EdgeIteratorWrapper(graph_type * graph)
+  OutEdgeIteratorWrapper(graph_type * graph)
     : _graph(graph)
   { }
 
@@ -99,4 +99,4 @@ private:
 
 }
 
-#endif // DASH__GRAPH__EDGE_ITERATOR_H__INCLUDED
+#endif // DASH__GRAPH__OUT_EDGE_ITERATOR_H__INCLUDED

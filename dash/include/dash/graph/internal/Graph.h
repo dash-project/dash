@@ -44,7 +44,7 @@ struct EdgeIndex {
 };
 
 template<typename GraphType>
-struct vertex {
+struct Vertex {
 
   typedef typename GraphType::edge_cont_ref_type       edge_container_ref;
   typedef typename GraphType::vertex_offset_type       index_type;
@@ -53,18 +53,20 @@ struct vertex {
   /**
    * Default constructor needed for GlobRef / GlobSharedRef dereference op
    */
-  vertex() = default;
+  Vertex() = default;
   
   /**
    * Creates a vertex with given properties.
    */
-  vertex(
-      index_type & index, 
-      edge_container_ref & edge_ref, 
+  Vertex(
+      index_type index, 
+      edge_container_ref & in_edge_ref, 
+      edge_container_ref & out_edge_ref, 
       properties_type properties = properties_type()
   ) 
     : _local_id(index),
-      _edge_ref(edge_ref),
+      _in_edge_ref(in_edge_ref),
+      _out_edge_ref(out_edge_ref),
       _properties(properties)
   { }
 
@@ -76,12 +78,13 @@ struct vertex {
    * Iterator to the position of the respective edge container in glob_mem 
    * object
    */
-  edge_container_ref    _edge_ref;
+  edge_container_ref    _in_edge_ref;
+  edge_container_ref    _out_edge_ref;
 
 };
 
 template<typename GraphType>
-struct out_edge {
+struct Edge {
 
   typedef typename GraphType::vertex_index_type        vertex_index_type;
   typedef typename GraphType::edge_offset_type         index_type;
@@ -90,12 +93,12 @@ struct out_edge {
   /**
    * Default constructor needed for GlobRef / GlobSharedRef dereference op
    */
-  out_edge() = default;
+  Edge() = default;
 
   /**
    * Creates an edge from its parent vertex to target.
    */
-  out_edge(
+  Edge(
       index_type index,
       vertex_index_type source,
       vertex_index_type target, 

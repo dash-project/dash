@@ -239,63 +239,63 @@ public:
     // attach buckets for the maximum amount of containers, even if this unit
     // holds less containers
     {
-    data_type * c_data;
-    auto c_data_it = _container_list.begin();
-    auto current_size = _container_list.size();
-    for(int i = 0; i < *max_containers; ++i) {
-      if(i < current_size) {
-        c_data = &(*c_data_it);
-        // merge public and local containers
-        c_data->container->insert(c_data->container->end(),
-            c_data->unattached_container->begin(),
-            c_data->unattached_container->end());
-        c_data->unattached_container->clear();
-        // update memory location & size of _container
-        auto it = c_data->buckets.begin();
-        it->lptr = c_data->container->data();
-        it->size = c_data->container->size();
-        c_data->container_bucket->lptr = c_data->container->data();
-        c_data->container_bucket->size = c_data->container->size();
-        // update memory location & size of _unattached_container
-        ++it;
-        it->lptr = c_data->unattached_container->data();
-        it->size = 0;
-        c_data->unattached_container_bucket->lptr 
-          = c_data->unattached_container->data();
-        c_data->unattached_container_bucket->size = 0;
+      data_type * c_data;
+      auto c_data_it = _container_list.begin();
+      auto current_size = _container_list.size();
+      for(int i = 0; i < *max_containers; ++i) {
+        if(i < current_size) {
+          c_data = &(*c_data_it);
+          // merge public and local containers
+          c_data->container->insert(c_data->container->end(),
+              c_data->unattached_container->begin(),
+              c_data->unattached_container->end());
+          c_data->unattached_container->clear();
+          // update memory location & size of _container
+          auto it = c_data->buckets.begin();
+          it->lptr = c_data->container->data();
+          it->size = c_data->container->size();
+          c_data->container_bucket->lptr = c_data->container->data();
+          c_data->container_bucket->size = c_data->container->size();
+          // update memory location & size of _unattached_container
+          ++it;
+          it->lptr = c_data->unattached_container->data();
+          it->size = 0;
+          c_data->unattached_container_bucket->lptr 
+            = c_data->unattached_container->data();
+          c_data->unattached_container_bucket->size = 0;
 
-        c_data->update_lbegin();
-        c_data->update_lend();
-        ++c_data_it;
-      } else {
-        // if other units add more containers, create an empty container to 
-        // store a dart_gptr for the collective allocation
-        auto cont_it = _container_list.begin();
-        auto cont_index = add_container(0);
-        std::advance(cont_it, cont_index);
-        c_data = &(*cont_it);
+          c_data->update_lbegin();
+          c_data->update_lend();
+          ++c_data_it;
+        } else {
+          // if other units add more containers, create an empty container to 
+          // store a dart_gptr for the collective allocation
+          auto cont_it = _container_list.begin();
+          auto cont_index = add_container(0);
+          std::advance(cont_it, cont_index);
+          c_data = &(*cont_it);
+        }
+
+        // attach new container to global memory space
+        dart_gptr_t gptr = DART_GPTR_NULL;
+        dart_storage_t ds = dart_storage<value_type>(c_data->container->size());
+        dart_team_memregister(
+            _team->dart_id(), 
+            ds.nelem, 
+            ds.dtype, 
+            c_data->container->data(), 
+            &gptr
+        );
+        // no need to update gptr of local bucket list in c_data
+        c_data->container_bucket->gptr = gptr;
+        
+        //TODO: If possible, avoid adding unattached_container to global
+        //      iteration space with size 0
+        // update cumulated bucket sizes
+        bucket_cumul += c_data->container->size();
+        _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
+        ++bucket_num;
       }
-
-      // attach new container to global memory space
-      dart_gptr_t gptr = DART_GPTR_NULL;
-      dart_storage_t ds = dart_storage<value_type>(c_data->container->size());
-      dart_team_memregister(
-          _team->dart_id(), 
-          ds.nelem, 
-          ds.dtype, 
-          c_data->container->data(), 
-          &gptr
-      );
-      // no need to update gptr of local bucket list in c_data
-      c_data->container_bucket->gptr = gptr;
-      
-      //TODO: If possible, avoid adding unattached_container to global
-      //      iteration space with size 0
-      // update cumulated bucket sizes
-      bucket_cumul += c_data->container->size();
-      _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
-      ++bucket_num;
-    }
     }
 
     // distribute bucket sizes between all units
@@ -382,7 +382,12 @@ public:
     return static_cast<size_type>(it->size);
   }
 
-
+  size_type container_size(container_list_index index) const {
+    auto cont_it = _container_list.begin();
+    std::advance(cont_it, index);
+    auto c_data = *cont_it;
+    return c_data.container->size() + c_data.unattached_container->size();
+  }
 
   size_type size() const {
     return _size;
