@@ -202,7 +202,7 @@ private:
       }
 
       for (auto i = 0; i < NumDimensions; i++) {
-        DASH_ASSERT(
+        DASH_ASSERT_ALWAYS(
           _sizespec.extent(i) % (_distspec.dim(i).blocksz)
           == 0);
       }
