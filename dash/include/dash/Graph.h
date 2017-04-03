@@ -89,9 +89,9 @@ private:
 public:
 
   typedef typename 
-    glob_mem_vert_type::container_list_iter           vertex_cont_ref_type;
+    glob_mem_vert_type::container_list_index          vertex_cont_ref_type;
   typedef typename 
-    glob_mem_edge_type::container_list_iter           edge_cont_ref_type;
+    glob_mem_edge_type::container_list_index          edge_cont_ref_type;
   typedef VertexIndexType                             vertex_offset_type;
   typedef EdgeIndexType                               edge_offset_type;
   typedef internal::VertexIndex<VertexIndexType>      vertex_index_type;
@@ -225,12 +225,16 @@ public:
   std::pair<edge_index_type, bool> add_edge(const vertex_index_type & v1, 
       const vertex_index_type & v2, 
       const EdgeProperties & prop = EdgeProperties()) {
+    edge_index_type local_index(_myid, 0, -1);
     //TODO: Handle errors, if vertices do not exist
     auto edge1 = edge_type(0, v1, v2, prop);
     if(v1.unit == _myid) {
       auto vertex1 = _glob_mem_vertex->get(_vertex_container_ref, v1.offset);
       edge1._local_id = ++_local_edge_max_index;
-      _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
+      auto local_offset = _glob_mem_edge->push_back(vertex1._edge_ref, edge1);
+      local_index.unit = v1.unit;
+      local_index.container = vertex1._edge_ref;
+      local_index.offset = local_offset;
     } else {
       //TODO: check, if unit ID is valid
       _remote_edges[v1.unit].push_back(edge1);
@@ -239,7 +243,12 @@ public:
     if(v2.unit == _myid) {
       auto vertex2 = _glob_mem_vertex->get(_vertex_container_ref, v2.offset);
       edge2._local_id = ++_local_edge_max_index;
-      _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
+      auto local_offset = _glob_mem_edge->push_back(vertex2._edge_ref, edge2);
+      if(local_index.offset == -1) {
+        local_index.unit = v2.unit;
+        local_index.container = vertex2._edge_ref;
+        local_index.offset = local_offset;
+      }
     } else {
       _remote_edges[v2.unit].push_back(edge2);
     }
@@ -247,10 +256,9 @@ public:
     //TODO: if feasible, use pointer to prop, so it gets saved only once
     //TODO: find out, how to save edges for different graph types 
     //      (directed, undirected)
-    return std::make_pair(
-        edge_index_type(_myid, _local_edge_max_index), 
-        true
-    );
+    //TODO: Find a way to return index, if both vertices reside on different
+    //      unit. 
+    return std::make_pair(local_index, true);
   }
   /**
    * Removes an edge between two given vertices.

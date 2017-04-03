@@ -31,12 +31,14 @@ struct EdgeIndex {
 
   EdgeIndex() = default;
 
-  EdgeIndex(team_unit_t u, IndexType o) 
+  EdgeIndex(team_unit_t u, IndexType c, IndexType o) 
     : unit(u),
+      container(c),
       offset(o)
   { }
 
   team_unit_t     unit;
+  IndexType       container;
   IndexType       offset;
 
 };

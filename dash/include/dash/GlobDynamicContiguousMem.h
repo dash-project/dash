@@ -140,7 +140,8 @@ public:
   typedef ContainerType                                 container_type;
   typedef internal::container_data<self_t>              data_type;
   typedef std::list<data_type>                          container_list_type;
-  typedef typename container_list_type::iterator        container_list_iter;
+  typedef typename 
+    container_list_type::difference_type                container_list_index;
   typedef typename ContainerType::value_type            value_type;
   typedef typename ContainerType::difference_type       index_type;
   typedef GlobHeapLocalPtr<value_type, index_type>      local_iterator;
@@ -170,7 +171,7 @@ public:
     _bucket_cumul_sizes(team.size())
   { }
 
-  container_list_iter add_container(size_type n_elements) {
+  container_list_index add_container(size_type n_elements) {
     increment_bucket_sizes();
     auto bucket_index = _bucket_cumul_sizes[_myid].size();
     auto c_data = data_type(n_elements, bucket_index);
@@ -185,11 +186,14 @@ public:
     c_data.unattached_container_bucket = &(*it);
     // insert won't invalidate iterators for std::list, so we can use them
     // to access the container
-    return _container_list.insert(_container_list.end(), c_data);
+    _container_list.push_back(c_data);
+    return _container_list.size() - 1;
   }
 
-  value_type & get(container_list_iter cont, index_type pos) {
-    auto c_data = *cont;
+  value_type & get(container_list_index cont, index_type pos) {
+    auto it = _container_list.begin();
+    std::advance(it, cont);
+    auto c_data = *it;
     if(c_data.container->size() > pos) {
       return c_data.container->operator[](pos);
     }
@@ -266,7 +270,10 @@ public:
       } else {
         // if other units add more containers, create an empty container to 
         // store a dart_gptr for the collective allocation
-        c_data = &(*(add_container(0)));
+        auto cont_it = _container_list.begin();
+        auto cont_index = add_container(0);
+        std::advance(cont_it, cont_index);
+        c_data = &(*cont_it);
       }
 
       // attach new container to global memory space
@@ -344,8 +351,10 @@ public:
     return _lend;
   }
 
-  void push_back(container_list_iter cont, value_type val) {
-    auto c_data = *cont;
+  size_type push_back(container_list_index cont, value_type val) {
+    auto cont_it = _container_list.begin();
+    std::advance(cont_it, cont);
+    auto c_data = *cont_it;
     // bucket of _container
     auto it = c_data.buckets.begin();
     // use _unattached container, if _container is full
@@ -370,6 +379,7 @@ public:
     c_data.update_lend();
     update_lbegin();
     update_lend();
+    return static_cast<size_type>(it->size);
   }
 
 
