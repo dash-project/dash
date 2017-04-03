@@ -18,7 +18,7 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   int extent_x = 21;
   int extent_y = 37;
   int extent_z = 41;
-  int size = extent_x * extent_y * extent_z;
+  int size = extent_x * extent_x * extent_z;
   // Should default to distribution BLOCKED, NONE, NONE:
   dash::BlockPattern<3> pat_default(extent_x, extent_y, extent_z);
   EXPECT_EQ(dash::DistributionSpec<3>(), pat_default.distspec());
@@ -26,6 +26,8 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
   EXPECT_EQ(size, pat_default.capacity());
 
+  dash::SizeSpec<3> sspec(
+      extent_x, extent_x, extent_z);
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
   dash::BlockPattern<3, dash::COL_MAJOR> pat_ds(
@@ -40,6 +42,23 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   dash::BlockPattern<3> pat_ds_t(
       extent_x, extent_y, extent_z,
       ds_blocked_z,
+      dash::Team::All());
+  EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
+  EXPECT_EQ(size, pat_ds_t.capacity());
+  EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
+
+  // As above but mix size and distribution specification.
+  // Has to start with a size specifier.
+  dash::BlockPattern<3> pat_mixed(
+      extent_x, dash::NONE, extent_y, dash::NONE, extent_z,
+      dash::BLOCKED,
+      dash::Team::All());
+  EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
+  EXPECT_EQ(size, pat_ds_t.capacity());
+  EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
+
+  dash::BlockPattern<3> pat_spec(
+      sspec, ds_blocked_z,
       dash::Team::All());
   EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
   EXPECT_EQ(size, pat_ds_t.capacity());
