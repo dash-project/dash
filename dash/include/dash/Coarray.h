@@ -453,8 +453,7 @@ public:
   }
   
   /**
-   * support 
-   * @return 
+   * convert scalar Coarray to a global reference.
    */
   template<
     int __rank = _rank::value,
@@ -463,6 +462,40 @@ public:
     return *(_storage.begin()+static_cast<index_type>(dash::myid()));
   }
   
+  /**
+   * Get a global ref to a member of a certain type at the
+   * specified offset
+   */
+  template<
+    typename MEMTYPE,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  GlobRef<MEMTYPE> member(size_t offs) const {
+    dart_gptr_t dartptr = _storage.begin().dart_gptr();
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&dartptr, offs),
+      DART_OK);
+    GlobConstPtr<MEMTYPE> gptr(dartptr);
+    return GlobRef<MEMTYPE>(gptr);
+  }
+
+  /**
+   * Get the member via pointer to member
+   * \code
+   * struct value_t {double a; int b;};
+   * dash::Coarray<value_t> x;
+   * int b = x.member(&value_t::b);
+   * \endcode
+   */
+  template<
+    class MEMTYPE,
+    class P=T,
+    typename = typename std::enable_if<(__rank == 0)>::type>
+  GlobRef<MEMTYPE> member(
+    const MEMTYPE P::*mem) const {
+    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    return member<MEMTYPE>(offs);
+  }
+
   /**
    * allows fortran like local access of scalars
    * \code

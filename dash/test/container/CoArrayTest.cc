@@ -354,3 +354,30 @@ TEST_F(CoArrayTest, DelayedAllocation)
   delay_alloc_arr.deallocate();
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);
 }
+
+TEST_F(CoArrayTest, StructType)
+{
+  struct value_t {double a; int b;};
+  Coarray<value_t> x;
+  double a_exp = static_cast<double>(this_image()) + 0.1;
+  int    b_exp = static_cast<int>(this_image());
+ 
+  x.member(&value_t::a) = a_exp;
+  x.member(&value_t::b) = b_exp; 
+  x.sync_images();
+  int a_got_loc = x.member(&value_t::a);
+  int b_got_loc = x.member(&value_t::b);
+  ASSERT_EQ(a_got_loc, a_exp);
+  ASSERT_EQ_DOUBLE(b_got_loc, b_exp);
+  
+  int next_image = (static_cast<int>(this_image()) + 1) % num_images();
+  int a_got_rem = x(next_image).member(&value_t::a);
+  int b_got_rem = x(next_image).member(&value_t::b);
+  if(this_image != (num_images()-1){
+    ASSERT_EQ(a_got_rem, (a_exp + 1));
+    ASSERT_EQ_DOUBLE(b_got_rem, (b_exp + 1));
+  } else {
+    ASSERT_EQ(a_got_rem, (a_exp - num_images() + 1));
+    ASSERT_EQ_DOUBLE(b_got_rem, (b_exp - num_images() + 1.0));
+  } 
+}
