@@ -463,19 +463,17 @@ public:
   }
   
   /**
-   * Get a global ref to a member of a certain type at the
+   * Get a reference to a member of a certain type at the
    * specified offset
    */
   template<
     typename MEMTYPE,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  GlobRef<MEMTYPE> member(size_t offs) const {
-    dart_gptr_t dartptr = _storage.begin().dart_gptr();
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&dartptr, offs),
-      DART_OK);
-    GlobConstPtr<MEMTYPE> gptr(dartptr);
-    return GlobRef<MEMTYPE>(gptr);
+  MEMTYPE & member(size_t offs) {
+    local_pointer s_begin = _storage.lbegin();
+    reinterpret_cast<char *>(s_begin);
+    s_begin += offs;
+    return *(reinterpret_cast<MEMTYPE>(s_begin));
   }
 
   /**
@@ -490,8 +488,7 @@ public:
     class MEMTYPE,
     class P=T,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  GlobRef<MEMTYPE> member(
-    const MEMTYPE P::*mem) const {
+  MEMTYPE & member(const MEMTYPE P::*mem) {
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
