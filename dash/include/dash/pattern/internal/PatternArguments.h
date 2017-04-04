@@ -110,6 +110,9 @@ private:
     static_assert(argc_size >= 0, "Cannot mix size and SizeSpec definition"
         "in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
+    static_assert(argc_size < NumDimensions, "Number of size specifier exceeds"
+        "the number of dimensions in variadic pattern constructor!");
+    DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
     _sizespec.resize(argc_size, extent);
     check<argc_size+1, argc_dist, has_team>(std::forward<Args>(args)...);
   }
@@ -164,6 +167,8 @@ private:
   void check(const Distribution & ds, Args && ... args) {
     static_assert(!(argc_dist < 0), "Cannot mix DistributionSpec and "
         "inidividual distributions in variadic pattern constructor!");
+    static_assert(argc_dist < NumDimensions, "Number of distribution specifier"
+        " exceeds the number of dimensions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(dist)");
     _distspec[argc_dist] = ds;
     check<argc_size, argc_dist+1, has_team>(std::forward<Args>(args)...);
