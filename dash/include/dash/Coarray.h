@@ -204,8 +204,8 @@ public:
   /**
    * Constructor for scalar types and fully specified array types:
    * \code
-   *   dash::Co_array<int>         i;
-   *   dash::Co_array<int[10][20]> x;
+   *   dash::Coarray<int>         i;
+   *   dash::Coarray<int[10][20]> x;
    * \endcode
    */
   explicit Coarray(Team & team = Team::All()) {
@@ -221,7 +221,7 @@ public:
   /**
    * Constructor for array types with one unspecified dimension:
    * \code
-   *   dash::Co_array<int[10][]> y;
+   *   dash::Coarray<int[10][]> y;
    * \endcode
    */
   explicit Coarray(const size_type & first_dim, Team & team = Team::All()) {
@@ -414,7 +414,7 @@ public:
   /**
    * Provides access to local array part
    * \code
-   *   dash::Co_array<int[10][20]> x;
+   *   dash::Coarray<int[10][20]> x;
    *   x[2][3] = 42;
    * \endcode
    */
@@ -427,7 +427,7 @@ public:
   /**
    * allows fortran like local assignment of scalars
    * \code
-   *   dash::Co_array<int> i;
+   *   dash::Coarray<int> i;
    *   i = 42;
    * \endcode
    */
@@ -440,7 +440,7 @@ public:
   /**
    * allows fortran like local access of scalars
    * \code
-   *   dash::Co_array<int> i;
+   *   dash::Coarray<int> i;
    *   i = 42;
    *   int b = i;
    * \endcode
@@ -499,7 +499,7 @@ public:
   /**
    * allows fortran like local access of scalars
    * \code
-   *   dash::Co_array<int> i;
+   *   dash::Coarray<int> i;
    *   i = 42;
    *   i += 21;
    * \endcode
@@ -544,7 +544,7 @@ public:
   /**
    * allows fortran like local access of scalars
    * \code
-   *   dash::Co_array<int> i;
+   *   dash::Coarray<int> i;
    *   i = 42;
    *   int b = i + 21;
    * \endcode
@@ -632,7 +632,7 @@ private:
 
 /* ======================================================================== */
 /* Ugly global overloads necessary to mimic fortran co_array interface      */
-/* All types are supported to which dash::Co_array can be converted         */
+/* All types are supported to which dash::Coarray can be converted         */
 /* ======================================================================== */
 template<
   typename Lhs,
