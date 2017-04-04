@@ -80,14 +80,16 @@ struct __get_local_type {
                               rank+1,
                               rank-1,
                               pattern_type>;
-}
+};
 
 template<
   typename element_type,
   typename pattern_type>
 struct __get_local_type<element_type, pattern_type, 1> {
   using type = element_type &;
-}
+};
+
+} // namespace detail
 
 /**
  * helper to create a coarray pattern for coarrays where the local size of
@@ -104,7 +106,7 @@ struct make_coarray_symmetric_pattern {
                 IndexType>;
 };
 
-}
+} // namespace coarray
 
 /**
  * A fortran style co_array.
@@ -156,9 +158,10 @@ private:
   
   template<int _subrank = _rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
-  using _local_type     = typename detail::__get_local_type<_element_type,
-                                                            _pattern_type,
-                                                            _rank::value>::type; 
+  using _local_type     = typename coarray::detail::__get_local_type<
+                                      _element_type,
+                                      _pattern_type,
+                                      _rank::value>::type; 
 
   using _offset_type    = std::array<IndexType, _rank::value+1>;
 
@@ -433,7 +436,7 @@ public:
    */
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 1),
-             const local_type>type
+             const local_type>::type
   operator[](const index_type & idx) const 
   {
     return *(_storage.lbegin()+idx);
@@ -505,12 +508,13 @@ public:
    */
   template<
     typename MEMTYPE,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   MEMTYPE & member(size_t offs) {
     local_pointer s_begin = _storage.lbegin();
     reinterpret_cast<char *>(s_begin);
     s_begin += offs;
-    return *(reinterpret_cast<MEMTYPE>(s_begin));
+    return *(reinterpret_cast<MEMTYPE*>(s_begin));
   }
 
   /**
@@ -524,6 +528,7 @@ public:
   template<
     class MEMTYPE,
     class P=T,
+    int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   MEMTYPE & member(const MEMTYPE P::*mem) {
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
