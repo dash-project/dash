@@ -71,6 +71,22 @@ __get_type_extents_as_array() {
       dash::ce::make_index_sequence<Rank>());
 }
 
+template<
+  typename element_type,
+  typename pattern_type,
+  int rank> 
+struct __get_local_type {
+  using type = LocalMatrixRef<element_type,
+                              rank+1,
+                              rank-1,
+                              pattern_type>;
+}
+
+template<
+  typename element_type,
+  typename pattern_type>
+struct __get_local_type<element_type, pattern_type, 1> {
+  using type = element_type &;
 }
 
 /**
@@ -140,10 +156,10 @@ private:
   
   template<int _subrank = _rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
-  using _local_type     = LocalMatrixRef<_element_type,
-                                         _rank::value+1,
-                                         _rank::value-1,
-                                         _pattern_type>;
+  using _local_type     = typename detail::__get_local_type<_element_type,
+                                                            _pattern_type,
+                                                            _rank::value>::type; 
+
   using _offset_type    = std::array<IndexType, _rank::value+1>;
 
 public:
@@ -412,6 +428,27 @@ public:
   }
 
   /**
+   * optimized bracket operator for accessing local elements
+   * of 1-D Coarray (const version)
+   */
+  template<int __rank = _rank::value>
+  typename std::enable_if<(__rank == 1),
+             const local_type>type
+  operator[](const index_type & idx) const 
+  {
+    return *(_storage.lbegin()+idx);
+  }
+
+  /**
+   * optimized bracket operator for accessing local elements
+   * of 1-D Coarray
+   */
+  template<int __rank = _rank::value>
+  typename std::enable_if<(__rank == 1), local_type>::type
+  operator[](const index_type & idx) {
+    return *(_storage.lbegin()+idx);
+  }
+  /**
    * Provides access to local array part
    * \code
    *   dash::Coarray<int[10][20]> x;
@@ -419,7 +456,7 @@ public:
    * \endcode
    */
   template<int __rank = _rank::value>
-  typename std::enable_if<(__rank != 0), local_type>::type
+  typename std::enable_if<(__rank > 1), local_type>::type
   operator[](const index_type & idx) {
     return _storage.local[0][idx];
   }
