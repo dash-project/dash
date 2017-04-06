@@ -50,7 +50,6 @@ public:
   TeamSpec(
     Team & team = dash::Team::All())
   : _is_linear(true),
-    _team(&team),
     _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
@@ -92,7 +91,6 @@ public:
     Team & team = dash::Team::All())
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
       other.extents()),
-      _team(&team),
       _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", team.is_null());
@@ -145,8 +143,7 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All())
-  : _team(&team),
-    _myid(team.myid())
+  : _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     bool distrib_dim_set = false;
@@ -196,8 +193,7 @@ public:
   TeamSpec(SizeType value, Types ... values)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(value, values...),
-      _team(&dash::Team::All()),
-      _myid(_team->myid())
+      _myid(dash::Team::All().myid())
   {
     update_rank();
     this->resize(this->_extents);
@@ -431,15 +427,6 @@ public:
     return _rank;
   }
 
-
-  /**
-   * The team used to create the TeamSpec.
-   */
-  Team& team() const
-  {
-    return *_team;
-  }
-
 private:
   void update_rank()
   {
@@ -457,8 +444,6 @@ protected:
   dim_t       _rank       = 0;
   /// Whether the team spec is linear
   bool        _is_linear  = false;
-  /// Unit id of active unit
-  Team     *  _team;
   /// Unit id of active unit
   team_unit_t _myid;
 

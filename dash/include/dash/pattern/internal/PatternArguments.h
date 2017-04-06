@@ -68,7 +68,7 @@ public:
   template<typename ... Args>
   PatternArguments(Args && ... args) {
     // Parse argument list:
-    check<0, 0, 0>(std::forward<Args>(args)...);
+    parse<0, 0, 0, 0>(std::forward<Args>(args)...);
   }
 
 
@@ -104,90 +104,156 @@ public:
   }
 
 private:
-  /// BlockPattern matching for extent value of type IndexType.
-  template<int argc_size, int argc_dist, int argc_team, typename ... Args>
-  void check(SizeType extent, Args && ... args) {
-    static_assert(argc_size >= 0, "Cannot mix size and SizeSpec definition"
+  /*
+   * Match for up to \c NumDimensions extent value of type SizeType.
+   *
+   * \tparam ArgcSize The number of arguments describing the extents of the
+   *                  pattern parsed so far.
+   *                  Set to -1 if a \c SizeSpec is encountered.
+   * \tparam ArgcDist The number of arguments describing the distribution of
+   *                  the pattern parsed so far.
+   *                  Set to -1 if a \c DistributionSpec is encountered.
+   * \tparam ArgcTeam The number of arguments describing the team/unit
+   *                  distribution of the pattern parsed so far.
+   *                  Set to -1 if a \c TeamSpec is encountered.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(SizeType extent, Args && ... args) {
+    static_assert(ArgcSize >= 0, "Cannot mix size and SizeSpec definition"
         "in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
-    static_assert(argc_size < NumDimensions, "Number of size specifier exceeds"
+    static_assert(ArgcSize < NumDimensions, "Number of size specifier exceeds"
         "the number of dimensions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
-    _sizespec.resize(argc_size, extent);
-    check<argc_size+1, argc_dist, argc_team>(std::forward<Args>(args)...);
+    _sizespec.resize(ArgcSize, extent);
+    parse<ArgcSize+1, ArgcDist, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for up to \c NumDimensions optional 
-  /// parameters specifying the distribution pattern.
-  template<int argc_size, int argc_dist, int argc_team, typename ... Args>
-  void check(const TeamSpec_t & teamSpec, Args && ... args) {
-    static_assert(argc_team == 0,
-        "Cannot mix Team and TeamSpec definition in variadic "
-        "pattern constructor!");
+
+  /*
+   * Match for one optional parameter specifying the size (extents).
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const SizeSpec_t & sizeSpec, Args && ... args) {
+    static_assert(ArgcSize == 0, "Cannot mix size and SizeSpec definition"
+        "in variadic pattern constructor!");
+    DASH_LOG_TRACE("PatternArguments.check(sizeSpec)");
+    _sizespec = sizeSpec;
+    parse<-1, ArgcDist, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
+  }
+
+  /*
+   * Match for \c TeamSpec describing the distribution among the units
+   * in the team.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const TeamSpec_t & teamSpec, Args && ... args) {
+    static_assert(ArgcTeamSpec == 0, "Cannot specify TeamSpec twice in "
+        "variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
-    _team       = &teamSpec.team();
     _teamspec   = teamSpec;
-    check<argc_size, argc_dist, -1>(std::forward<Args>(args)...);
+    parse<ArgcSize, ArgcDist, ArgcTeam, 1>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// team.
-  template<int argc_size, int argc_dist, int argc_team, typename ... Args>
-  void check(dash::Team & team, Args && ... args) {
-    static_assert(!(argc_team < 0),
-        "Cannot mix Team and TeamSpec definition in variadic "
-        "pattern constructor!");
-    static_assert(!(argc_team > 0),
+
+  /*
+   * Match for one optional parameter specifying the team.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(dash::Team & team, Args && ... args) {
+    static_assert(!(ArgcTeam > 0),
         "Cannot specify Team twice in variadic "
         "pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(team)");
     _team     = &team;
     _teamspec = TeamSpec_t(team);
-    check<argc_size, argc_dist, 1>(std::forward<Args>(args)...);
+    parse<ArgcSize, ArgcDist, 1,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// size (extents).
-  template<int argc_size, int argc_dist, int argc_team, typename ... Args>
-  void check(const SizeSpec_t & sizeSpec, Args && ... args) {
-    static_assert(argc_size == 0, "Cannot mix size and SizeSpec definition"
-        "in variadic pattern constructor!");
-    DASH_LOG_TRACE("PatternArguments.check(sizeSpec)");
-    _sizespec = sizeSpec;
-    check<-1, argc_dist, argc_team>(std::forward<Args>(args)...);
-  }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// distribution.
-  template<int argc_size, int argc_dist, int has_team, typename ... Args>
-  void check(const DistributionSpec_t & ds, Args && ... args) {
-    static_assert(argc_dist == 0, "Cannot mix DistributionSpec and inidividual"
+
+  /*
+   * Match for one optional parameter specifying the  distribution.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const DistributionSpec_t & ds, Args && ... args) {
+    static_assert(ArgcDist == 0, "Cannot mix DistributionSpec and inidividual"
         "distributions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(distSpec)");
     _distspec = ds;
-    check<argc_size, -1, has_team>(std::forward<Args>(args)...);
+    parse<ArgcSize, -1, ArgcTeam,
+    ArgcTeam>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for up to \c NumDimensions optional parameters
-  /// specifying the distribution.
-  template<int argc_size, int argc_dist, int argc_team, typename ... Args>
-  void check(const Distribution & ds, Args && ... args) {
-    static_assert(!(argc_dist < 0), "Cannot mix DistributionSpec and "
+
+  /*
+   * Match for up to \c NumDimensions optional parameters
+   * specifying the distribution.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const Distribution & ds, Args && ... args) {
+    static_assert(!(ArgcDist < 0), "Cannot mix DistributionSpec and "
         "inidividual distributions in variadic pattern constructor!");
-    static_assert(argc_dist < NumDimensions, "Number of distribution specifier"
+    static_assert(ArgcDist < NumDimensions, "Number of distribution specifier"
         " exceeds the number of dimensions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(dist)");
-    _distspec[argc_dist] = ds;
-    check<argc_size, argc_dist+1, argc_team>(std::forward<Args>(args)...);
+    _distspec[ArgcDist] = ds;
+    parse<ArgcSize, ArgcDist+1, ArgcTeam,
+      ArgcTeam>(std::forward<Args>(args)...);
   }
 
   /**
    * Stop recursion when all arguments are processed.
    */
-  template<int argc_size, int argc_dist, int argc_team>
-  void check() {
-    static_assert(!(argc_dist > 0 && argc_dist != NumDimensions),
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec>
+  void parse() {
+    static_assert(!(ArgcDist > 0 && ArgcDist != NumDimensions),
         "Incomplete distribution specification in "
         "variadic pattern constructor!");
 
-    static_assert(!(argc_size > 0 && argc_size != NumDimensions),
+    static_assert(!(ArgcSize > 0 && ArgcSize != NumDimensions),
         "Incomplete size specification in "
         "variadic pattern constructor!");
+
+    /*
+     * TODO: we have no way to statically check whether a TeamSpec was created
+     *       using the team specified by the user.
+     */
+    if (ArgcTeam && !ArgcTeamSpec) {
+      _teamspec = TeamSpec_t(_distspec, *_team);
+    }
 
     check_tile_constraints();
   }
