@@ -1,9 +1,10 @@
 #ifndef DASH__ONESIDED_H__
 #define DASH__ONESIDED_H__
 
-#include <dash/dart/if/dart.h>
-#include <dash/GlobPtr.h>
 #include <dash/Team.h>
+
+#include <dash/dart/if/dart.h>
+
 
 namespace dash {
 

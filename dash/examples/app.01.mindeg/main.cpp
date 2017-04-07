@@ -55,10 +55,12 @@ int read_adj(
 int read_mtx(const std::string & fname,
              nodearray_t & nodes);
 
+#if 0
 int init_nodes(
   nodearray_t & nodes,
   std::deque<int> & xadj,
   std::deque<int> & local_adj);
+#endif
 
 void get_reach(
   nodearray_t & nodes,
@@ -283,7 +285,9 @@ int read_mtx(const std::string & fname,
 
   // allocate memory of adjacency list in parallel
   for (size_t i = 0; i < nodes.lsize(); ++i) {
-    nodes.local[i].adj = dash::memalloc<int>(nodes.local[i].adj_sz);
+    nodes.local[i].adj = dash::memalloc<int>(
+                           nodes.globmem(),
+                           nodes.local[i].adj_sz);
   }
 
   nodes.barrier();

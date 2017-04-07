@@ -5,7 +5,7 @@
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
 #include <dash/Meta.h>
@@ -96,7 +96,8 @@ namespace dash {
  *
  * Usage examples:
  *
- * \code
+ * <code>
+ *
  * size_t initial_local_capacity = 100;
  * size_t initial_capacity       = dash::size() * initial_local_capacity;
  * dash::List<int> list(initial_capacity);
@@ -156,7 +157,7 @@ namespace dash {
  * //      .-- 3 <-' |  .-- 8 <-' |  .-- 13 --'
  * //      `-> 4 ----'  `-> 9 ----'  `-> 14 ---> Nil
  *
- * \endcode
+ * </code>
  */
 
 /**
@@ -166,7 +167,7 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
+  class    AllocatorType = dash::allocator::EpochSynchronizedAllocator<ElementType> >
 class List
 {
   static_assert(
@@ -197,7 +198,7 @@ private:
                      internal::ListNode<ElementType> >::other
     node_allocator_type;
 
-  typedef dash::GlobDynamicMem<node_type, node_allocator_type>
+  typedef dash::GlobHeapMem<node_type, node_allocator_type>
     glob_mem_type;
 
   typedef dash::Array<
@@ -223,14 +224,10 @@ public:
   typedef       iterator                                             pointer;
   typedef const_iterator                                       const_pointer;
 
-  typedef typename glob_mem_type::local_iterator
+  typedef typename glob_mem_type::local_pointer
     local_node_iterator;
-  typedef typename glob_mem_type::const_local_iterator
+  typedef typename glob_mem_type::const_local_pointer
     const_local_node_iterator;
-  typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_node_iterator;
-  typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_node_iterator;
 
   typedef typename glob_mem_type::local_reference
     local_node_reference;
@@ -240,12 +237,40 @@ public:
   // TODO: define ListLocalIter to dereference node iterators
   typedef               local_node_iterator                   local_iterator;
   typedef         const_local_node_iterator             const_local_iterator;
-  typedef       reverse_local_node_iterator           reverse_local_iterator;
-  typedef const_reverse_local_node_iterator     const_reverse_local_iterator;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type local;
+
+private:
+  /// Team containing all units interacting with the list.
+  dash::Team         * _team
+                         = nullptr;
+  /// DART id of the unit that created the list.
+  team_unit_t          _myid;
+  /// Global memory allocation and -access.
+  glob_mem_type      * _globmem
+                         = nullptr;
+  /// Iterator to initial element in the list.
+  iterator             _begin;
+  /// Iterator past the last element in the list.
+  iterator             _end;
+  /// Number of elements in the list.
+  size_type            _remote_size
+                         = 0;
+  /// Native pointer to first local element in the list.
+  local_iterator       _lbegin;
+  /// Native pointer past the last local element in the list.
+  local_iterator       _lend;
+  /// Sentinel node in empty list.
+  node_type            _nil_node;
+  /// Mapping units to their number of local list elements.
+  local_sizes_map      _local_sizes;
+  /// Capacity of local buffer containing locally added node elements that
+  /// have not been committed to global memory yet.
+  /// Default is 4 KB.
+  size_type            _local_buffer_size
+                         = 4096 / sizeof(value_type);
 
 public:
   /**
@@ -670,36 +695,6 @@ public:
     _remote_size          = 0;
     DASH_LOG_TRACE_VAR("List.deallocate >", this);
   }
-
-private:
-  /// Team containing all units interacting with the list.
-  dash::Team         * _team
-                         = nullptr;
-  /// DART id of the unit that created the list.
-  team_unit_t          _myid;
-  /// Global memory allocation and -access.
-  glob_mem_type      * _globmem
-                         = nullptr;
-  /// Iterator to initial element in the list.
-  iterator             _begin;
-  /// Iterator past the last element in the list.
-  iterator             _end;
-  /// Number of elements in the list.
-  size_type            _remote_size
-                         = 0;
-  /// Native pointer to first local element in the list.
-  local_iterator       _lbegin;
-  /// Native pointer past the last local element in the list.
-  local_iterator       _lend;
-  /// Sentinel node in empty list.
-  node_type            _nil_node;
-  /// Mapping units to their number of local list elements.
-  local_sizes_map      _local_sizes;
-  /// Capacity of local buffer containing locally added node elements that
-  /// have not been committed to global memory yet.
-  /// Default is 4 KB.
-  size_type            _local_buffer_size
-                         = 4096 / sizeof(value_type);
 
 };
 
