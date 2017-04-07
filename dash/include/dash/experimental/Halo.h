@@ -12,8 +12,12 @@ namespace dash {
 namespace experimental {
 
 //TODO move to util/FunctionalExpr.h
-template<typename T>
-constexpr T pow(T base, T exp) {
+template<typename BaseT, typename ExpT>
+constexpr BaseT pow(BaseT base, ExpT exp) {
+  static_assert(std::is_integral<BaseT>::value, "Base must be Integer.");
+  static_assert(std::is_integral<ExpT>::value && std::is_unsigned<ExpT>::value,
+      "Exponent must be unsigned Integer.");
+
   return (exp == 0 ? 1 : base * pow(base, exp - 1));
 }
 
@@ -75,9 +79,10 @@ private:
 };
 
 
-enum class Cycle : bool{
+enum class Cycle : uint8_t {
   NONCYCLIC,
-  CYCLIC
+  CYCLIC,
+  FIXED
 };
 
 template <dim_t NumDimensions>
