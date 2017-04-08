@@ -8,6 +8,7 @@
 #include <dash/graph/OutEdgeIterator.h>
 #include <dash/graph/internal/Graph.h>
 #include <dash/GlobDynamicContiguousMem.h>
+#include <dash/GlobDynamicCombinedMem.h>
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
 #include <dash/graph/GlobGraphIter.h>
@@ -84,46 +85,50 @@ private:
   friend out_edge_it_wrapper;
 
   typedef GlobDynamicContiguousMem<
-    vertex_container_type>                            glob_mem_vert_type;
+    vertex_container_type>                          glob_mem_vert_type;
   typedef GlobDynamicContiguousMem<
-    edge_container_type>                              glob_mem_edge_type;
-  typedef std::vector<std::list<edge_type>>           edge_list_type;
+    edge_container_type>                            glob_mem_edge_type;
+  typedef 
+    GlobDynamicCombinedMem<glob_mem_edge_type>      glob_mem_edge_comb_type;
+  typedef std::vector<std::list<edge_type>>         edge_list_type;
 
 public:
 
   typedef typename 
-    glob_mem_vert_type::container_list_index          vertex_cont_ref_type;
+    glob_mem_vert_type::container_list_index        vertex_cont_ref_type;
   typedef typename 
-    glob_mem_edge_type::container_list_index          edge_cont_ref_type;
-  typedef VertexIndexType                             vertex_offset_type;
-  typedef EdgeIndexType                               edge_offset_type;
-  typedef internal::VertexIndex<VertexIndexType>      vertex_index_type;
-  typedef internal::EdgeIndex<EdgeIndexType>          edge_index_type;
+    glob_mem_edge_type::container_list_index        edge_cont_ref_type;
+  typedef VertexIndexType                           vertex_offset_type;
+  typedef EdgeIndexType                             edge_offset_type;
+  typedef internal::VertexIndex<VertexIndexType>    vertex_index_type;
+  typedef internal::EdgeIndex<EdgeIndexType>        edge_index_type;
   typedef typename 
-    std::make_unsigned<VertexIndexType>::type         vertex_size_type;
+    std::make_unsigned<VertexIndexType>::type       vertex_size_type;
   typedef typename 
-    std::make_unsigned<EdgeIndexType>::type           edge_size_type;
+    std::make_unsigned<EdgeIndexType>::type         edge_size_type;
 
-  typedef DynamicPattern                              pattern_type;
-  typedef VertexProperties                            vertex_properties_type;
-  typedef EdgeProperties                              edge_properties_type;
+  typedef DynamicPattern                            pattern_type;
+  typedef VertexProperties                          vertex_properties_type;
+  typedef EdgeProperties                            edge_properties_type;
 
-  typedef GlobRef<vertex_type>                        reference;
-
-  typedef typename 
-    glob_mem_vert_type::local_iterator                local_vertex_iterator;
-  typedef typename 
-    glob_mem_edge_type::local_iterator                local_edge_iterator;
+  typedef GlobRef<vertex_type>                      reference;
 
   typedef typename 
-    glob_mem_vert_type::global_iterator               global_vertex_iterator;
+    glob_mem_vert_type::local_iterator              local_vertex_iterator;
   typedef typename 
-    glob_mem_edge_type::global_iterator               global_edge_iterator;
+    glob_mem_edge_type::local_iterator              local_edge_iterator;
+
+  typedef typename 
+    glob_mem_vert_type::global_iterator             global_vertex_iterator;
+  typedef typename 
+    glob_mem_edge_type::global_iterator             global_edge_iterator;
+  typedef typename 
+    glob_mem_edge_comb_type::global_iterator        global_edge_comb_iterator;
   
-  typedef typename vertex_it_wrapper::iterator        vertex_iterator;
-  typedef typename edge_it_wrapper::iterator          edge_iterator;
-  typedef typename in_edge_it_wrapper::iterator       in_edge_iterator;
-  typedef typename out_edge_it_wrapper::iterator      out_edge_iterator;
+  typedef typename vertex_it_wrapper::iterator      vertex_iterator;
+  typedef typename edge_it_wrapper::iterator        edge_iterator;
+  typedef typename in_edge_it_wrapper::iterator     in_edge_iterator;
+  typedef typename out_edge_it_wrapper::iterator    out_edge_iterator;
 
 public:
 
@@ -331,6 +336,7 @@ public:
     _glob_mem_vertex->commit();
     _glob_mem_out_edge->commit();
     _glob_mem_in_edge->commit();
+    _glob_mem_edge->commit();
   }
 
   /**
@@ -351,6 +357,9 @@ public:
       // graph
       _glob_mem_in_edge = _glob_mem_out_edge;
     }
+    _glob_mem_edge = new glob_mem_edge_comb_type(*_team);
+    _glob_mem_edge->add_globmem(*_glob_mem_out_edge);
+    _glob_mem_edge->add_globmem(*_glob_mem_in_edge);
     // Register deallocator at the respective team instance
     _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
   }
@@ -359,6 +368,8 @@ public:
    * Deallocates global memory of this container.
    */
   void deallocate() {
+    // TODO: Delete all objects created on the heap, and look for objects with
+    //       shared ownership
     if(_glob_mem_vertex != nullptr) {
       delete _glob_mem_vertex;
     }
@@ -410,6 +421,8 @@ private:
   glob_mem_edge_type *        _glob_mem_in_edge = nullptr;
   
   glob_mem_edge_type *        _glob_mem_out_edge = nullptr;
+
+  glob_mem_edge_comb_type *   _glob_mem_edge = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
   /** Index of last added vertex */

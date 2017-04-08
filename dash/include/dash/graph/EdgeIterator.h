@@ -9,13 +9,13 @@ namespace dash {
 template<typename Graph>
 struct EdgeIteratorWrapper {
 
-  typedef Graph                                    graph_type;
-  typedef typename Graph::global_edge_iterator     iterator;
-  typedef const iterator                           const_iterator;
-  typedef typename Graph::local_edge_iterator      local_iterator;
-  typedef const local_iterator                     const_local_iterator;
-  typedef typename Graph::edge_index_type          edge_index_type;
-  typedef typename Graph::edge_properties_type     edge_properties_type;
+  typedef Graph                                      graph_type;
+  typedef typename Graph::global_edge_comb_iterator  iterator;
+  typedef const iterator                             const_iterator;
+  typedef typename Graph::local_edge_iterator        local_iterator;
+  typedef const local_iterator                       const_local_iterator;
+  typedef typename Graph::edge_index_type            edge_index_type;
+  typedef typename Graph::edge_properties_type       edge_properties_type;
 
   /**
    * Constructs the wrapper.
@@ -35,7 +35,7 @@ struct EdgeIteratorWrapper {
    * Returns global iterator to the beginning of the edge list.
    */
   iterator begin() {
-    return _graph->_glob_mem_out_edge->begin();
+    return _graph->_glob_mem_edge->begin();
     //return iterator(_graph->_glob_mem_out_edge, 0);
   }
   
@@ -43,7 +43,7 @@ struct EdgeIteratorWrapper {
    * Returns global iterator to the beginning of the edge list.
    */
   const_iterator begin() const {
-    return _graph->_glob_mem_out_edge->begin();
+    return _graph->_glob_mem_edge->begin();
     //return iterator(_graph->_glob_mem_out_edge, 0);
   }
   
@@ -51,7 +51,7 @@ struct EdgeIteratorWrapper {
    * Returns global iterator to the end of the edge list.
    */
   iterator end() {
-    return _graph->_glob_mem_out_edge->end();
+    return _graph->_glob_mem_edge->end();
     //return iterator(_graph->_glob_mem_out_edge, _graph->_glob_mem_out_edge->size());
   }
   
@@ -59,7 +59,7 @@ struct EdgeIteratorWrapper {
    * Returns global iterator to the end of the edge list.
    */
   const_iterator end() const {
-    return _graph->_glob_mem_out_edge->end();
+    return _graph->_glob_mem_edge->end();
     //return iterator(_graph->_glob_mem_out_edge, _graph->_glob_mem_out_edge->size());
   }
   
@@ -67,28 +67,28 @@ struct EdgeIteratorWrapper {
    * Returns local iterator to the beginning of the edge list.
    */
   local_iterator lbegin() {
-    return _graph->_glob_mem_out_edge->lbegin();
+    return _graph->_glob_mem_edge->lbegin();
   }
   
   /**
    * Returns local iterator to the beginning of the edge list.
    */
   const_local_iterator lbegin() const {
-     return _graph->_glob_mem_out_edge->lbegin();
+     return _graph->_glob_mem_edge->lbegin();
   }
   
   /**
    * Returns local iterator to the end of the edge list.
    */
   local_iterator lend() {
-    return _graph->_glob_mem_out_edge->lend();
+    return _graph->_glob_mem_edge->lend();
   }
   
   /**
    * Returns local iterator to the end of the edge list.
    */
   const_local_iterator lend() const {
-    return _graph->_glob_mem_out_edge->lend();
+    return _graph->_glob_mem_edge->lend();
   }
 
 private:

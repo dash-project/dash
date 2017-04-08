@@ -18,6 +18,7 @@
 #include <dash/memory/internal/GlobHeapMemTypes.h>
 #include <dash/graph/GlobGraphIter.h>
 #include <dash/memory/GlobHeapContiguousPtr.h>
+#include <dash/GlobDynamicCombinedMem.h>
 
 #include <dash/internal/Logging.h>
 
@@ -156,6 +157,8 @@ public:
   
   template<typename T_, class GMem_>
   friend class dash::GlobPtr;
+
+  friend class GlobDynamicCombinedMem<self_t>;
 
 public:
   /**
