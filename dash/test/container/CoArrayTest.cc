@@ -402,7 +402,7 @@ TEST_F(CoArrayTest, StructType)
     ASSERT_EQ_U(a_got_rem, 0.1);
     ASSERT_EQ_U(b_got_rem, 0);
     ASSERT_EQ_U(val_rem.a, 0.1);
-    ASSERT_EQ_U(val_rem.a, 0);
+    ASSERT_EQ_U(val_rem.b, 0);
   }
   x.sync_all();
 }

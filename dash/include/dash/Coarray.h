@@ -372,8 +372,8 @@ public:
    * and flushes the memory.
    */
   inline void sync_all() {
-    _storage.barrier();
     _storage.flush_all();
+    _storage.barrier();
   }
   
   /**
@@ -511,8 +511,7 @@ public:
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   MEMTYPE & member(size_t offs) {
-    local_pointer s_begin = _storage.lbegin();
-    reinterpret_cast<char *>(s_begin);
+    char * s_begin = reinterpret_cast<char *>(_storage.lbegin());
     s_begin += offs;
     return *(reinterpret_cast<MEMTYPE*>(s_begin));
   }
