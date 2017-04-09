@@ -127,6 +127,18 @@ TEST_F(CoArrayTest, ContainerInterface)
 TEST_F(CoArrayTest, ElementAccess)
 {
   constexpr int size = 10;
+  dash::Coarray<int> x;
+  x = 100*this_image();
+  x.sync_all();
+  // every unit reads data of right neighbour
+  auto nextunit = (this_image() + 1) % num_images();
+  int value = x(nextunit);
+  ASSERT_EQ_U(value, 100*nextunit);
+}
+
+TEST_F(CoArrayTest, ArrayElementAccess)
+{
+  constexpr int size = 10;
   dash::Coarray<int[size]> x;
   for(int i=0; i<size; ++i){
     x[i] = i + 100*this_image();
@@ -367,17 +379,30 @@ TEST_F(CoArrayTest, StructType)
   x.sync_all();
   double a_got_loc = x.member(&value_t::a);
   int    b_got_loc = x.member(&value_t::b);
-  ASSERT_DOUBLE_EQ(a_got_loc, a_exp);
-  ASSERT_EQ(b_got_loc, b_exp);
-  
+  ASSERT_EQ_U(a_got_loc, a_exp);
+  ASSERT_EQ_U(b_got_loc, b_exp);
+
+  value_t val_loc = x;
+  ASSERT_EQ_U(val_loc.a, a_exp);
+  ASSERT_EQ_U(val_loc.b, b_exp);
+
   int next_image = (static_cast<int>(this_image()) + 1) % num_images();
   double a_got_rem = x(next_image).member(&value_t::a);
   int    b_got_rem = x(next_image).member(&value_t::b);
+
+  value_t val_rem = x(next_image);
+
   if(this_image() != (num_images()-1)){
-    ASSERT_DOUBLE_EQ(a_got_rem, (a_exp + 1));
-    ASSERT_EQ(b_got_rem, (b_exp + 1));
+    ASSERT_EQ_U(a_got_rem, (a_exp + 1));
+    ASSERT_EQ_U(b_got_rem, (b_exp + 1));
+    ASSERT_EQ_U(val_rem.a, (a_exp + 1));
+    ASSERT_EQ_U(val_rem.b, (b_exp + 1));
+
   } else {
-    ASSERT_DOUBLE_EQ(a_got_rem, 0.1);
-    ASSERT_EQ(b_got_rem, 0);
-  } 
+    ASSERT_EQ_U(a_got_rem, 0.1);
+    ASSERT_EQ_U(b_got_rem, 0);
+    ASSERT_EQ_U(val_rem.a, 0.1);
+    ASSERT_EQ_U(val_rem.a, 0);
+  }
+  x.sync_all();
 }
