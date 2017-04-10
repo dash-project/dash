@@ -285,7 +285,7 @@ dart__base__tasking__init()
 {
   if (initialized) {
     DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
-    return DART_ERROR_INVAL;
+    return DART_ERR_INVAL;
   }
   dart_hwinfo_t hw;
   dart_hwinfo(&hw);
@@ -519,7 +519,7 @@ dart__tasking__fini()
 {
   if (!initialized) {
     DART_LOG_ERROR("DART tasking subsystem has not been initialized!");
-    return DART_ERROR_INVAL;
+    return DART_ERR_INVAL;
   }
   int i;
 
