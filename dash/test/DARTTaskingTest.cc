@@ -12,6 +12,7 @@ static void testfn(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
   ASSERT_EQ(td->expected, *valptr);
+  LOG_MESSAGE("testfn: incrementing valptr %p from %i", valptr, *valptr);
   *valptr += 1;
 }
 
@@ -44,6 +45,8 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
         )
     );
   }
+
+  dart_task_complete();
 
   ASSERT_EQ(i, val);
 }
@@ -80,6 +83,8 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
         )
     );
   }
+
+  dart_task_complete();
 
   ASSERT_EQ(i, val);
 }
@@ -121,6 +126,8 @@ TEST_F(DARTTaskingTest, LocalInOutDependency)
         )
     );
   }
+
+  dart_task_complete();
 
   ASSERT_EQ(i, val);
 }
