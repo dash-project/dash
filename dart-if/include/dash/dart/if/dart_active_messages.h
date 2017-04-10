@@ -5,7 +5,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <stdbool.h>
 
-#define DART_AMSGQ_LOCKFREE 1
+//#define DART_AMSGQ_LOCKFREE 1
 
 struct dart_amsgq;
 
