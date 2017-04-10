@@ -1,6 +1,7 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/hwinfo.h>
@@ -63,7 +64,9 @@ static dart_task_t root_task = {
 static void wait_for_work()
 {
   pthread_mutex_lock(&thread_pool_mutex);
-  pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+  if (parallel) {
+    pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+  }
   pthread_mutex_unlock(&thread_pool_mutex);
 }
 
@@ -188,6 +191,7 @@ void handle_task(dart_task_t *task)
 
     DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
     //invoke the task function
+    DART_ASSERT(fn != NULL);
     fn(data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
 
@@ -525,7 +529,9 @@ dart__tasking__fini()
 
   DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
 
+  pthread_mutex_lock(&thread_pool_mutex);
   parallel = false;
+  pthread_mutex_unlock(&thread_pool_mutex);
 
   // wake up all threads waiting for work
   pthread_cond_broadcast(&task_avail_cond);
