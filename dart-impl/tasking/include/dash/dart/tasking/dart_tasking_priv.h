@@ -67,7 +67,7 @@ typedef struct {
 } dart_thread_t;
 
 dart_ret_t
-dart__base__tasking__init();
+dart__tasking__init();
 
 int
 dart__tasking__thread_num();
@@ -121,7 +121,7 @@ dart_ret_t
 dart__tasking__fini();
 
 dart_thread_t *
-dart__base__tasking_current_thread();
+dart__tasking_current_thread();
 
 
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */

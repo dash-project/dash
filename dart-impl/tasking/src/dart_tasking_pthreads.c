@@ -274,14 +274,14 @@ void dart_thread_finalize(dart_thread_t *thread)
 
 
 dart_thread_t *
-dart__base__tasking_current_thread()
+dart__tasking_current_thread()
 {
   return &thread_pool[dart__tasking__thread_num()];
 }
 
 
 dart_ret_t
-dart__base__tasking__init()
+dart__tasking__init()
 {
   if (initialized) {
     DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
@@ -424,7 +424,7 @@ dart__tasking__task_complete()
   dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
 
   if (thread->current_task == &(root_task) && thread->thread_id != 0) {
-    DART_LOG_ERROR("dart__base__tasking__task_complete() called on ROOT task "
+    DART_LOG_ERROR("dart__tasking__task_complete() called on ROOT task "
                    "only valid on MASTER thread!");
     return DART_ERR_INVAL;
   }

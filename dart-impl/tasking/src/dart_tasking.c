@@ -10,7 +10,7 @@
 dart_ret_t
 dart_tasking_init()
 {
-  return dart__base__tasking__init();
+  return dart__tasking__init();
 }
 
 /**
