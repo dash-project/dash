@@ -204,6 +204,9 @@ set(DASH_DART_IF_INCLUDE_DIR
 set(DASH_DART_BASE_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
     CACHE PATH INTERNAL FORCE)
+set(DASH_DART_TASKING_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/tasking/include
+    CACHE PATH INTERNAL FORCE)
 
 ## Set compiler flags (depend on CMake options)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
