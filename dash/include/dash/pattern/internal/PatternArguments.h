@@ -167,6 +167,8 @@ private:
     static_assert(ArgcTeamSpec == 0, "Cannot specify TeamSpec twice in "
         "variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
+    // TODO: there is no way to check whether this TeamSpec
+    //       was created from the team provided in the variadic arguments.
     _teamspec   = teamSpec;
     parse<ArgcSize, ArgcDist, ArgcTeam, 1>(std::forward<Args>(args)...);
   }
@@ -185,8 +187,9 @@ private:
         "Cannot specify Team twice in variadic "
         "pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(team)");
+    // assign team, TeamSpec will be created when parsing is finished
+    // and no TeamSpec has been found.
     _team     = &team;
-    _teamspec = TeamSpec_t(team);
     parse<ArgcSize, ArgcDist, 1,
       ArgcTeamSpec>(std::forward<Args>(args)...);
   }
@@ -206,7 +209,7 @@ private:
     DASH_LOG_TRACE("PatternArguments.check(distSpec)");
     _distspec = ds;
     parse<ArgcSize, -1, ArgcTeam,
-    ArgcTeam>(std::forward<Args>(args)...);
+      ArgcTeam>(std::forward<Args>(args)...);
   }
 
   /*
