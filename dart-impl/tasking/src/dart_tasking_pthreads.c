@@ -283,6 +283,10 @@ dart__base__tasking_current_thread()
 dart_ret_t
 dart__base__tasking__init()
 {
+  if (initialized) {
+    DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
+    return DART_ERROR_INVAL;
+  }
   dart_hwinfo_t hw;
   dart_hwinfo(&hw);
   if (hw.num_cores > 0) {
@@ -513,6 +517,10 @@ dart__tasking__current_task()
 dart_ret_t
 dart__tasking__fini()
 {
+  if (!initialized) {
+    DART_LOG_ERROR("DART tasking subsystem has not been initialized!");
+    return DART_ERROR_INVAL;
+  }
   int i;
 
   DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
