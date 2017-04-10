@@ -42,11 +42,6 @@ typedef struct dart_task_dep {
 #define DART_TASK_NULL ((dart_taskref_t)NULL)
 
 
-/**
- * Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
- */
-dart_ret_t
-dart_tasking_init();
 
 /**
  * Returns the current thread's number.
@@ -123,12 +118,6 @@ dart_tasking_current_task();
 dart_ret_t
 dart_task_complete();
 
-
-/**
- * Finalize and release all resource acquired during initialization.
- */
-dart_ret_t
-dart_tasking_fini();
 
 /**
  * Signal the end of an phase (or iteration) and the beginning of a new phase.

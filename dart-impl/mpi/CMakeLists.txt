@@ -182,6 +182,7 @@ include_directories(
   ${MPI_INCLUDE_PATH}
   ${DASH_DART_IF_INCLUDE_DIR}
   ${DASH_DART_BASE_INCLUDE_DIR}
+  ${DASH_DART_TASKING_INCLUDE_DIR}
   ${ADDITIONAL_INCLUDES}
 )
 # Library compilation sources
