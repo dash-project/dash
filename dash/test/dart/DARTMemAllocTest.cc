@@ -12,9 +12,8 @@ TEST_F(DARTMemAllocTest, SmallLocalAlloc)
   ASSERT_EQ_U(
     DART_OK,
     dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr1));
-  ASSERT_NE_U(
-    DART_GPTR_NULL,
-    gptr1);
+  ASSERT_FALSE_U(
+    DART_GPTR_ISNULL(gptr1));
   value_t *baseptr;
   ASSERT_EQ_U(
     DART_OK,
@@ -27,7 +26,7 @@ TEST_F(DARTMemAllocTest, SmallLocalAlloc)
     DART_OK,
     dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr2));
 
-  ASSERT_NE(gptr1, gptr2);
+  ASSERT_FALSE_U(DART_GPTR_EQUAL(gptr1, gptr2));
 
   ASSERT_EQ_U(
     DART_OK,
@@ -46,9 +45,8 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   ASSERT_EQ_U(
     DART_OK,
     dart_memalloc(block_size * sizeof(value_t), DART_TYPE_LONG, &gptr));
-  ASSERT_NE_U(
-    DART_GPTR_NULL,
-    gptr);
+  ASSERT_FALSE_U(
+    DART_GPTR_ISNULL(gptr));
   value_t *baseptr;
   ASSERT_EQ_U(
     DART_OK,
@@ -60,7 +58,8 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   ASSERT_EQ_U(
     DART_OK,
     dart_memalloc(block_size * sizeof(value_t), DART_TYPE_LONG, &gptr2));
-  ASSERT_NE(gptr, gptr2);
+
+  ASSERT_FALSE_U(DART_GPTR_EQUAL(gptr, gptr2));
 
   ASSERT_EQ_U(
     DART_OK,

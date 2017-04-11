@@ -115,18 +115,6 @@ typedef struct dart_gptr
     uint64_t offset;
     void *addr;
   } addr_or_offs;
-#ifdef __cplusplus
-  explicit operator bool() const noexcept { return !DART_GPTR_ISNULL((*this)); }
-
-  bool operator==(const dart_gptr &rhs) const noexcept
-  {
-    return DART_GPTR_EQUAL((*this), rhs);
-  }
-  bool operator!=(const dart_gptr &rhs) const noexcept
-  {
-    return !(*this == rhs);
-  }
-#endif
 } dart_gptr_t;
 
 /**

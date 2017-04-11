@@ -233,9 +233,12 @@ private:
       dart_memfree(gptr),
       DART_OK);
     if(!keep_reference){
-      _allocated.erase(
-        std::remove(_allocated.begin(), _allocated.end(), gptr),
-        _allocated.end());
+      _allocated.erase(std::remove_if(_allocated.begin(), _allocated.end(),
+                                      [gptr](const pointer allocated_gptr) {
+                                        return DART_GPTR_EQUAL(gptr,
+                                                               allocated_gptr);
+                                      }),
+                       _allocated.end());
     }
     DASH_LOG_DEBUG("LocalAllocator.deallocate >");
   }

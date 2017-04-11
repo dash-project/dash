@@ -14,7 +14,7 @@ TEST_F(EpochSynchronizedAllocatorTest, AllocDealloc) {
   MyAllocTraits::size_type const n_elem = 10;
   MyAllocTraits::local_pointer p =  alloc.allocate_local(n_elem);
   MyAllocTraits::pointer gp = alloc.attach(p, n_elem);
-  EXPECT_TRUE_U(gp);
+  EXPECT_TRUE_U(!DART_GPTR_ISNULL(gp));
 
   alloc.detach(gp, n_elem);
   alloc.deallocate_local(p, n_elem);
@@ -56,3 +56,4 @@ TEST_F(EpochSynchronizedAllocatorTest, SimplePoolAlloc) {
   OtherDynAllocTraits::pointer gp2 = OtherDynAllocTraits::allocate(otherDynAlloc, n);
   OtherDynAllocTraits::deallocate(otherDynAlloc, gp2, n);
 }
+

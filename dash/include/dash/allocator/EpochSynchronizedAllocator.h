@@ -270,7 +270,7 @@ class EpochSynchronizedAllocator {
       // memory block not found
       DASH_THROW(dash::exception::InvalidArgument, "attach invalid pointer");
     }
-    else if (found->second) {
+    else if (!DART_GPTR_ISNULL(found->second)) {
       // memory block is already attached
       DASH_LOG_ERROR("local memory alread attach to memory", found->second);
 
@@ -307,7 +307,7 @@ class EpochSynchronizedAllocator {
     // Look up if we can
     auto const found = std::find_if(
         std::begin(_allocated), end, [gptr, num_local_elem](internal_value_type const &val) {
-          return val.second == gptr && val.first.length == num_local_elem;
+          return DART_GPTR_EQUAL(val.second, gptr) && val.first.length == num_local_elem;
         });
 
     if (found == end) {
@@ -376,7 +376,7 @@ class EpochSynchronizedAllocator {
 
     if (found == end) return;
 
-    bool const attached = found->second != DART_GPTR_NULL;
+    bool const attached = !(DART_GPTR_ISNULL(found->second));
     if (attached) {
       DASH_LOG_ERROR("EpochSynchronizedAllocator.deallocate_local",
                      "deallocating local pointer which is still attached",
@@ -403,7 +403,7 @@ class EpochSynchronizedAllocator {
   {
     local_pointer lp = allocate_local(num_local_elem);
     pointer       gp = attach(lp, num_local_elem);
-    if (!gp) {
+    if (DART_GPTR_ISNULL(gp)) {
       // Attach failed, free requested local memory:
       deallocate_local(lp, num_local_elem);
     }
@@ -425,7 +425,7 @@ class EpochSynchronizedAllocator {
     auto const end   = std::end(_allocated);
     auto const found = std::find_if(
         std::begin(_allocated), end, [gptr, num_local_elem](internal_value_type &val) {
-          return val.second == gptr && val.first.length == num_local_elem;
+          return DART_GPTR_EQUAL(val.second, gptr) && val.first.length == num_local_elem;
         });
     if (found != end) {
       // Unregister from global memory space, removes gptr from _allocated:
@@ -467,7 +467,7 @@ class EpochSynchronizedAllocator {
               alloc_capture, static_cast<local_pointer>(block.first.ptr),
               block.first.length);
           // Deregister global memory
-          if (block.second) {
+          if (!DART_GPTR_ISNULL(block.second)) {
             DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
                            "detach global memory:", block.second);
             // Cannot use DASH_ASSERT due to noexcept qualifier:

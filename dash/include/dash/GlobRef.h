@@ -35,14 +35,14 @@ class GlobRef
   template <
     typename ElementT >
   friend class GlobRef;
-  
+
   typedef typename std::remove_const<T>::type
     nonconst_value_type;
 public:
   typedef T                 value_type;
 
   typedef GlobRef<const T>  const_type;
-  
+
 private:
   typedef GlobRef<T>
     self_t;
@@ -117,7 +117,7 @@ public:
    * of \c operator=(const self_t &).
    */
   GlobRef(const self_t & other) = delete;
- 
+
   /**
    * Unlike native reference types, global reference types are moveable.
    */
@@ -163,7 +163,7 @@ public:
   template <class GlobRefT>
   constexpr bool operator==(const GlobRefT & other) const noexcept
   {
-    return _gptr == other._gptr;
+    return DART_GPTR_EQUAL(_gptr, other._gptr);
   }
 
   template <class GlobRefT>

@@ -6,15 +6,15 @@
 #include <dash/memory/SimpleMemoryPool.h>
 #include <dash/Exception.h>
 
-/**
- * Test fixture for class DASH unit id types.
- */
 class SimpleMemoryPoolTest : public dash::test::TestBase {
  protected:
   SimpleMemoryPoolTest() {}
   virtual ~SimpleMemoryPoolTest() {}
 };
 
+/**
+ * Test fixture for class for SimpleMemoryPoolTest
+ */
 template <typename ValueType, class Alloc = std::allocator<ValueType>>
 class Stack {
   struct Node {

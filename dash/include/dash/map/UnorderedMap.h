@@ -59,20 +59,15 @@ private:
   typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
     self_t;
 
-  typedef dash::util::Timer<dash::util::TimeMeasure::Clock>
-    Timer;
-
 public:
   typedef Key                                                                  key_type;
   typedef Mapped                                                            mapped_type;
   typedef Hash                                                                   hasher;
   typedef Pred                                                                key_equal;
   typedef std::pair<const key_type, mapped_type>                             value_type;
-  //TODO rko: replace value_type with node_type
   //typedef dash::detail::HashNode<std::pair<const key_type, mapped_type>>     value_type;
 
   typedef Alloc                                                            allocator_type;
-  //TODO rko: replace type definitin of alloc with allocator traits
   //typedef typename std::allocator_traits<Alloc>::template rebind_alloc<value_type> allocator_type;
 
   typedef dash::default_index_t                                              index_type;
@@ -615,7 +610,6 @@ public:
     const_iterator hint,
     const value_type & value)
   {
-    Timer::timestamp_t ts_enter = Timer::Now(), ts_insert, ts_find, d_insert, d_find;
     auto key = value.first;
     auto mapped = value.second;
 
@@ -629,7 +623,6 @@ public:
     if (_myid == unit) {
       DASH_LOG_TRACE("UnorderedMap.insert", "local element key lookup");
 
-      ts_find = Timer::Now();
       auto lbegin = static_cast<value_type *>(_lbegin);
       auto lend = static_cast<value_type *>(_lend);
       const_local_iterator liter = std::find_if(
@@ -637,7 +630,6 @@ public:
                    [&](const value_type & v) {
                      return _key_equal(v.first, key);
                    });
-      d_find = Timer::ElapsedSince(ts_find);
 
       if (liter != _lend) {
         found = iterator(this, _myid, liter.pos());
@@ -659,17 +651,10 @@ public:
       // Unit mapped to the new element's key by the hash function:
       DASH_LOG_TRACE("UnorderedMap.insert", "target unit:", unit);
       // No element with specified key exists, insert new value.
-      ts_insert = Timer::Now();
       auto result = _insert_at(unit, value);
       res = result.first;
-      d_insert = Timer::ElapsedSince(ts_insert);
     }
 
-    auto d_exit = Timer::ElapsedSince(ts_enter);
-
-    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time:", d_exit * 10e-3);
-    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time (find):", d_find * 10e-3);
-    DASH_LOG_DEBUG("UnorderedMap.insert(iterator, value)", "elapsed time (insert_at):", d_insert * 10e-3);
     return res;
   }
 
@@ -822,12 +807,7 @@ private:
                    "unit:",   unit,
                    "key:",    value.first);
     auto result = std::make_pair(_end, false);
-    /* rkowalewski:
-     * Why do we increment local size and _local_cumul_size for the corresponding unit at the same time?
-     * This seems strange to me!!
-    */
 
-    //TODO rkowalewski: performance problem
     // Increase local size first to reserve storage for the new element.
     // Use atomic increment to prevent hazard when other units perform
     // remote insertion at the local unit:
