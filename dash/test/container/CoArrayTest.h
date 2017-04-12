@@ -7,6 +7,7 @@
 
 #include <dash/Coarray.h>
 #include <dash/Comutex.h>
+#include <dash/Coevent.h>
 
 /**
  * Test fixture for class dash::co_array

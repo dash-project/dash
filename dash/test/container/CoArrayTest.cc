@@ -406,3 +406,22 @@ TEST_F(CoArrayTest, StructType)
   }
   x.sync_all();
 }
+
+#if 0
+// currently wait, post is not implemented
+TEST_F(CoArrayTest, CoEvent)
+{
+  dash::Coevent events;
+  
+  if(num_images() < 2){
+    SKIP_TEST_MSG("This test requires at least 2 units");
+  }
+  
+  events(1).post();
+  if(this_image() == 1){
+    LOG_MESSAGE("waiting for incoming event");
+    events.wait();
+    LOG_MESSAGE("event recieved");
+  }
+}
+#endif
