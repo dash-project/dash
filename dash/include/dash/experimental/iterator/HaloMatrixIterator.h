@@ -43,6 +43,7 @@ private:
   using index_t        = typename HaloBlock_t::index_t;
   using local_layout_t = CartesianIndexSpace<NumDimensions, MemoryArrange, index_type>;
   using StencilT      = Stencil<NumDimensions>;
+  using CoordsT       = std::array<index_type, NumDimensions>;
 
 public:
   HaloMatrixIterator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory,
@@ -112,64 +113,24 @@ public:
 
   index_type rpos() const { return _idx; }
 
-  ElementT valueAt(const index_t index) {
+  ElementT valueAt(const index_t index_stencil) {
     // TODO: is the given offset in halospec range?
 
     if (Scope == StencilViewScope::INNER) {
-      return *(_current_lmemory_addr + _stencil_offsets[index]);
+      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
     } else {
       auto halo_coords{_coords};
-      const auto& stencil = _stencil_spec[index];
-      for (auto d(0); d < NumDimensions; ++d) {
+      const auto& stencil = _stencil_spec[index_stencil];
+      for (auto d = 0; d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         //TODO check wether region is nullptr or not
-        //TODO duplicated code (stencilValue(stencil)) -> extra method
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d)) {
           //TODO implement as method in HaloRegionSpec
-          index_t index = 0;
-          using signed_extent_t =
-              typename std::make_signed<typename local_layout_t::size_type>::type;
-          if (halo_coords[0] >= 0 &&
-              halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
-            index = 1;
-          else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
-            index = 2;
-          for(auto d_tmp(1); d_tmp < NumDimensions; ++d_tmp) {
-            if(halo_coords[d_tmp] < 0)
-              index *= 3;
-            else if (halo_coords[d_tmp] < static_cast<signed_extent_t>(_local_layout.extent(0)))
-              index = 1 + index * 3;
-            else
-              index = 2 + index * 3;
-          }
-
-          const auto& extents = _haloblock.halo_region(index)->region().extents();
-          for (auto d_tmp(d); d_tmp < NumDimensions; ++d_tmp) {
-            if(d_tmp > d)
-              halo_coords[d_tmp] += stencil[d_tmp];
-            if (halo_coords[d_tmp] < 0) {
-              halo_coords[d_tmp] = extents[d_tmp] + halo_coords[d_tmp];
-              continue;
-            }
-            if (halo_coords[d_tmp] >= _haloblock.view().extent(d_tmp))
-              halo_coords[d_tmp] -= _haloblock.view().extent(d_tmp);
-          }
-          size_type off = 0;
-          if (MemoryArrange == ROW_MAJOR) {
-            off = halo_coords[0];
-            for (auto d = 1; d < NumDimensions; ++d)
-              off = off * extents[d] + halo_coords[d];
-          } else {
-            off = halo_coords[NumDimensions - 1];
-            for (auto d = NumDimensions - 2; d >= 0; --d)
-              off = off * extents[d] + halo_coords[d];
-          }
-
-          return *(_halomemory.haloPos(index) + off);
+          return valueHaloAt(halo_coords, stencil, d);
         }
       }
 
-      return *(_current_lmemory_addr + _stencil_offsets[index]);
+      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
     }
   }
 
@@ -181,51 +142,12 @@ public:
     } else {
       auto halo_coords{_coords};
 
-      for (auto d(0); d < NumDimensions; ++d) {
+      for (auto d = 0; d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         //TODO check wether region is nullptr or not
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d)) {
           //TODO implement as method in HaloRegionSpec
-          index_t index = 0;
-          using signed_extent_t =
-              typename std::make_signed<typename local_layout_t::size_type>::type;
-          if (halo_coords[0] >= 0 &&
-              halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
-            index = 1;
-          else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
-            index = 2;
-          for(auto d_tmp(1); d_tmp < NumDimensions; ++d_tmp) {
-            if(halo_coords[d_tmp] < 0)
-              index *= 3;
-            else if (halo_coords[d_tmp] < static_cast<signed_extent_t>(_local_layout.extent(0)))
-              index = 1 + index * 3;
-            else
-              index = 2 + index * 3;
-          }
-
-          const auto& extents = _haloblock.halo_region(index)->region().extents();
-          for (auto d_tmp(d); d_tmp < NumDimensions; ++d_tmp) {
-            if(d_tmp > d)
-              halo_coords[d_tmp] += stencil[d_tmp];
-            if (halo_coords[d_tmp] < 0) {
-              halo_coords[d_tmp] = extents[d_tmp] + halo_coords[d_tmp];
-              continue;
-            }
-            if (halo_coords[d_tmp] >= _haloblock.view().extent(d_tmp))
-              halo_coords[d_tmp] -= _haloblock.view().extent(d_tmp);
-          }
-          size_type off = 0;
-          if (MemoryArrange == ROW_MAJOR) {
-            off = halo_coords[0];
-            for (auto d = 1; d < NumDimensions; ++d)
-              off = off * extents[d] + halo_coords[d];
-          } else {
-            off = halo_coords[NumDimensions - 1];
-            for (auto d = NumDimensions - 2; d >= 0; --d)
-              off = off * extents[d] + halo_coords[d];
-          }
-
-          return *(_halomemory.haloPos(index) + off);
+          return valueHaloAt(halo_coords, stencil, d);
         }
       }
 
@@ -414,15 +336,58 @@ private:
     }
   }
 
+  ElementT valueHaloAt(CoordsT& halo_coords, const StencilT& stencil, dim_t current_dim) {
+    using signed_extent_t = typename std::make_signed<typename local_layout_t::size_type>::type;
+
+    index_t index = 0;
+    if (halo_coords[0] >= 0 &&
+        halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
+      index = 1;
+    else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
+      index = 2;
+    for (auto d = 1; d < NumDimensions; ++d) {
+      if (halo_coords[d] < 0)
+        index *= 3;
+      else if (halo_coords[d] < static_cast<signed_extent_t>(_local_layout.extent(d)))
+        index = 1 + index * 3;
+      else
+        index = 2 + index * 3;
+    }
+
+    const auto& extents = _haloblock.halo_region(index)->region().extents();
+    for (auto d = current_dim; d < NumDimensions; ++d) {
+      if (d > current_dim)
+        halo_coords[d] += stencil[d];
+      if (halo_coords[d] < 0) {
+        halo_coords[d] = extents[d] + halo_coords[d];
+        continue;
+      }
+      if (halo_coords[d] >= _haloblock.view().extent(d))
+        halo_coords[d] -= _haloblock.view().extent(d);
+    }
+    size_type off = 0;
+    if (MemoryArrange == ROW_MAJOR) {
+      off = halo_coords[0];
+      for (auto d = 1; d < NumDimensions; ++d)
+        off = off * extents[d] + halo_coords[d];
+    } else {
+      off = halo_coords[NumDimensions - 1];
+      for (auto d = NumDimensions - 2; d >= 0; --d)
+        off = off * extents[d] + halo_coords[d];
+    }
+
+    return *(_halomemory.haloPos(index) + off);
+  }
+
   ElementT* haloPos(const StencilT& stencil) {
     ElementT* halo_pos = _current_lmemory_addr;
     if (MemoryArrange == ROW_MAJOR) {
       halo_pos += stencil[NumDimensions - 1];
-      for (auto d(NumDimensions - 2); d >= 0; --d)
+      for (auto d = NumDimensions - 2; d >= 0; --d)
         halo_pos += stencil[d] * _local_layout.extent(d);
     } else {
       halo_pos += stencil[NumDimensions - 1];
-      for (auto d(1); d < NumDimensions; ++d)
+      for (auto d = 1; d < NumDimensions; ++d)
         halo_pos += stencil[d] * _local_layout.extent(d);
     }
 
@@ -435,11 +400,11 @@ private:
       signed_size_type offset = 0;
       if (MemoryArrange == ROW_MAJOR) {
         offset += stencil_spec[i][NumDimensions - 1];
-        for (auto d(NumDimensions - 2); d >= 0; --d)
+        for (auto d = NumDimensions - 2; d >= 0; --d)
           offset += stencil_spec[i][d] * _local_layout.extent(d);
       } else {
         offset += stencil_spec[i][NumDimensions - 1];
-        for (auto d(1); d < NumDimensions; ++d)
+        for (auto d =1; d < NumDimensions; ++d)
           offset += stencil_spec[i][d] * _local_layout.extent(d);
       }
       _stencil_offsets[i] = offset;
@@ -459,8 +424,8 @@ private:
   index_type                         _size{0};
   dart_unit_t                        _myid;
 
-  std::array<index_type, NumDimensions> _coords;
-  ElementT*                             _current_lmemory_addr;
+  CoordsT                            _coords;
+  ElementT*                          _current_lmemory_addr;
 }; // class HaloMatrixIterator
 
 } // namespace experimental
