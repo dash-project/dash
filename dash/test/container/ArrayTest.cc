@@ -222,6 +222,7 @@ TEST_F(ArrayTest, TeamSplit)
   LOG_MESSAGE("... Team split finished");
 
   dash::Array<double> array_a(ext_x, myteam);
+  ASSERT_EQ_U(array_a.team(), myteam);
 
   array_a.barrier();
   // Check if array is allocated
