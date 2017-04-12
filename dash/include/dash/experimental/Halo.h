@@ -14,9 +14,9 @@ namespace experimental {
 //TODO move to util/FunctionalExpr.h
 template<typename BaseT, typename ExpT>
 constexpr BaseT pow(BaseT base, ExpT exp) {
-  static_assert(std::is_integral<BaseT>::value, "Base must be Integer.");
+  static_assert(std::is_integral<BaseT>::value, "Base must be an integer.");
   static_assert(std::is_integral<ExpT>::value && std::is_unsigned<ExpT>::value,
-      "Exponent must be unsigned Integer.");
+      "Exponent must be an unsigned integer.");
 
   return (exp == 0 ? 1 : base * pow(base, exp - 1));
 }
@@ -108,6 +108,7 @@ public:
 template<dim_t NumDimensions>
 class HaloRegionSpec{
 private:
+  using udim_t = std::make_unsigned<dim_t>::type;
   using self = HaloRegionSpec<NumDimensions>;
 
 public:
@@ -116,13 +117,13 @@ public:
   using coord_t  = uint8_t;
   using coords_t = std::array<coord_t, NumDimensions>;
 
-  static constexpr index_t MaxIndex = pow(3, NumDimensions);
+  static constexpr index_t MaxIndex = pow(3, static_cast<udim_t>(NumDimensions));
 
   constexpr HaloRegionSpec(const coords_t& coords, const extent_t extent)
       : _coords(coords), _index(index(coords)), _extent(extent) {}
 
   constexpr HaloRegionSpec(index_t index, const extent_t extent)
-      : _index(index), _coords(coords(index)), _extent(extent) {}
+      : _coords(coords(index)), _index(index), _extent(extent) {}
 
   constexpr HaloRegionSpec() {}
 
@@ -219,7 +220,7 @@ public:
   constexpr HaloSpec(const specs_t& specs) : _specs(specs) {}
 
   template<typename StencilSpecT>
-  constexpr HaloSpec(const StencilSpecT& stencil_specs) {
+  HaloSpec(const StencilSpecT& stencil_specs) {
     for(const auto& stencil : stencil_specs.stencilSpecs()) {
       auto index = HaloRegionSpecT::index(stencil);
       auto max = stencil.max();
@@ -779,7 +780,7 @@ public:
 
   size_type boundary_size() const { return _size_bnd_elems; }
 
-  private:
+private:
   void pushBndElems(dim_t dim, std::array<index_type, NumDimensions>& offsets,
                     std::array<size_type, NumDimensions>& extents, const HaloExtsMaxT& halo_exts_max,
                     const CycleSpecT& cycle_spec) {
