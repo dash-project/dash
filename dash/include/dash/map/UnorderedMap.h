@@ -106,6 +106,9 @@ public:
   typedef Pred                                                     key_equal;
   typedef Alloc                                               allocator_type;
 
+  typedef std::function< Mapped(const Mapped &, const Mapped &) >  reduce_op;
+
+
   typedef dash::default_index_t                                   index_type;
   typedef dash::default_index_t                              difference_type;
   typedef dash::default_size_t                                     size_type;
@@ -203,6 +206,9 @@ private:
   /// Default is 4 KB.
   size_type              _local_buffer_size
                            = 4096 / sizeof(value_type);
+  /// Reduction operation to maintain consistency, specifies how multiple
+  /// values at a distributed key are reduced in commit.
+  reduce_op              _reduce_op;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -210,11 +216,13 @@ public:
 
 public:
   UnorderedMap(
-    size_type   nelem = 0,
-    Team      & team  = dash::Team::All())
+    size_type         nelem  = 0,
+    const reduce_op & reduce = std::plus<Mapped>(),
+    Team            & team   = dash::Team::All())
   : _team(&team),
     _myid(team.myid()),
     _key_hash(team),
+    _reduce_op(reduce),
     local(this)
   {
     DASH_LOG_TRACE_VAR("UnorderedMap(nelem,team)", nelem);
@@ -225,13 +233,15 @@ public:
   }
 
   UnorderedMap(
-    size_type   nelem,
-    size_type   nlbuf,
-    Team      & team  = dash::Team::All())
+    size_type         nelem,
+    size_type         nlbuf,
+    const reduce_op & reduce = std::plus<const Mapped>(),
+    Team            & team   = dash::Team::All())
   : _team(&team),
     _myid(team.myid()),
     _key_hash(team),
     _local_buffer_size(nlbuf),
+    _reduce_op(reduce),
     local(this)
   {
     DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
