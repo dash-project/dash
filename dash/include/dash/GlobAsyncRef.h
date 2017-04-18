@@ -52,6 +52,12 @@ private:
   typedef GlobAsyncRef<T>
     self_t;
 
+  typedef typename std::remove_const<T>::type
+    nonconst_value_type;
+
+  typedef typename std::add_const<T>::type
+    const_value_type;
+
 private:
   /// Pointer to referenced element in global memory
   dart_gptr_t  _gptr        = DART_GPTR_NULL;
@@ -71,7 +77,7 @@ public:
    */
   explicit constexpr GlobAsyncRef(
     /// Pointer to referenced object in local memory
-    T * lptr)
+    nonconst_value_type * lptr)
   : _value(*lptr),
     _lptr(lptr),
     _is_local(true),
@@ -134,7 +140,7 @@ public:
   /**
    * Whether the referenced element is located in local memory.
    */
-  inline bool is_local() const
+  inline bool is_local() const noexcept
   {
     return _is_local;
   }
@@ -142,7 +148,7 @@ public:
   /**
    * Conversion operator to referenced element value.
    */
-  operator T() const
+  operator nonconst_value_type() const
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
     if (!_has_value) {
@@ -165,17 +171,118 @@ public:
    * Comparison operator, true if both GlobAsyncRef objects points to same
    * element in local / global memory.
    */
-  bool operator==(const self_t & other) const
+  bool operator==(const self_t & other) const noexcept
   {
     return (_lptr == other._lptr &&
             _gptr == other._gptr);
   }
 
   /**
+   * Inequality comparison operator, true if both GlobAsyncRef objects points
+   * to different elements in local / global memory.
+   */
+  template <class GlobRefT>
+  constexpr bool operator!=(const GlobRefT & other) const noexcept
+  {
+    return !(*this == other);
+  }
+
+  /**
+   * Value-based comparison operator, true if the value refernced by the
+   * GlobAsyncRef object is equal to \c value.
+   */
+  constexpr bool operator==(const_value_type & value) const
+  {
+    return static_cast<T>(*this) == value;
+  }
+
+  /**
+   * Value-based inequality comparison operator, true if the value refernced
+   * by the GlobAsyncRef object is not equal to \c value.
+   */
+  constexpr bool operator!=(const nonconst_value_type & value) const
+  {
+    return !(*this == value);
+  }
+
+  friend void swap(GlobAsyncRef<T> a, GlobAsyncRef<T> b) {
+    nonconst_value_type temp = static_cast<nonconst_value_type>(a);
+    a = b;
+    b = temp;
+  }
+
+
+  /**
+   * Set the value referenced by this \c GlobAsyncRef to \c val.
+   *
+   * \see operator=
+   */
+  void set(const_value_type & val) {
+    operator=(val);
+  }
+
+  /**
+   * Return the value referenced by this \c GlobAsyncRef.
+   */
+  nonconst_value_type get() const {
+    return operator nonconst_value_type();
+  }
+
+  /**
+   * Asynchronously write the value referenced by this \c GlobAsyncRef
+   * into \c tptr.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * at which point the referenced value can be used.
+   */
+  void get(nonconst_value_type *tptr) const {
+    if (_is_local) {
+      *tptr = *_lptr;
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
+    }
+  }
+
+  /**
+   * Asynchronously write  the value referenced by this \c GlobAsyncRef
+   * into \c tref.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * at which point the referenced value can be used.
+   */
+  void get(nonconst_value_type& tref) const {
+    get(&tref);
+  }
+
+  /**
+   * Asynchronously set the value referenced by this \c GlobAsyncRef
+   * to the value pointed to by \c tptr.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * at which point the pointer can be re-used.
+   */
+  void put(const_value_type* tptr) const {
+    if (_is_local) {
+      *tptr = *_lptr;
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_put(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
+    }
+  }
+
+  /**
+   * Asynchronously set the value referenced by this \c GlobAsyncRef
+   * to the value pointed to by \c tref.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * at which point the reference can be re-used.
+   */
+  void put(const_value_type& tref) const {
+    put(&tref);
+  }
+
+  /**
    * Value assignment operator, sets new value in local memory or calls
    * non-blocking put on remote memory.
    */
-  self_t & operator=(const T & new_value)
+  self_t & operator=(const_value_type & new_value)
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
@@ -200,9 +307,9 @@ public:
   /**
    * Value increment operator.
    */
-  self_t & operator+=(const T & ref)
+  self_t & operator+=(const_value_type & ref)
   {
-    T val = operator T();
+    T val = operator nonconst_value_type();
     val += ref;
     operator=(val);
     return *this;
@@ -213,7 +320,7 @@ public:
    */
   self_t & operator++()
   {
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return *this;
@@ -224,8 +331,8 @@ public:
    */
   self_t operator++(int)
   {
-    self_t result = *this;
-    T val = operator T();
+    self_t              result = *this;
+    nonconst_value_type val    = operator nonconst_value_type();
     ++val;
     operator=(val);
     return result;
@@ -234,9 +341,9 @@ public:
   /**
    * Value decrement operator.
    */
-  self_t & operator-=(const T & ref)
+  self_t & operator-=(const_value_type & ref)
   {
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     val  -= ref;
     operator=(val);
     return *this;
@@ -247,7 +354,7 @@ public:
    */
   self_t & operator--()
   {
-    T val = operator T();
+    nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return *this;
@@ -258,16 +365,55 @@ public:
    */
   self_t operator--(int)
   {
-    self_t result = *this;
-    T val = operator T();
+    self_t              result = *this;
+    nonconst_value_type val    = operator nonconst_value_type();
     --val;
     operator=(val);
     return result;
   }
 
+
   /**
-   * Flush all pending assignments on this asynchronous reference and
-   * invalidate cached copies.
+   * Multiplication operator.
+   */
+  GlobRef<T> & operator*=(const_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
+    val   *= ref;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Division operator.
+   */
+  GlobRef<T> & operator/=(const_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
+    val   /= ref;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Binary XOR operator.
+   */
+  GlobRef<T> & operator^=(const_value_type& ref) {
+    nonconst_value_type val = operator nonconst_value_type();
+    val   ^= ref;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Return the underlying DART pointer.
+   */
+  constexpr dart_gptr_t dart_gptr() const noexcept {
+    return _gptr;
+  }
+
+
+  /**
+   * Flush all pending asynchronous operations on this asynchronous reference
+   * and invalidate cached copies.
    */
   void flush()
   {
