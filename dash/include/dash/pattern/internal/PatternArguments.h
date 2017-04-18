@@ -27,7 +27,7 @@ template<
   dim_t NumDimensions,
   typename IndexType = dash::default_index_t>
 class PatternArguments {
-public:
+private:
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
@@ -40,7 +40,6 @@ public:
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
 
-private:
   /// The extents of the pattern space in every dimension
   SizeSpec_t           _sizespec;
   /// The distribution type for every pattern dimension
@@ -107,15 +106,17 @@ private:
   /*
    * Match for up to \c NumDimensions extent value of type SizeType.
    *
-   * \tparam ArgcSize The number of arguments describing the extents of the
-   *                  pattern parsed so far.
-   *                  Set to -1 if a \c SizeSpec is encountered.
-   * \tparam ArgcDist The number of arguments describing the distribution of
-   *                  the pattern parsed so far.
-   *                  Set to -1 if a \c DistributionSpec is encountered.
-   * \tparam ArgcTeam The number of arguments describing the team/unit
-   *                  distribution of the pattern parsed so far.
-   *                  Set to -1 if a \c TeamSpec is encountered.
+   * \tparam ArgcSize     The number of arguments describing the extents of the
+   *                      pattern parsed so far.
+   *                      Set to -1 if a \c SizeSpec is encountered.
+   * \tparam ArgcDist     The number of arguments describing the distribution
+   *                      of the pattern parsed so far.
+   *                      Set to -1 if a \c DistributionSpec is encountered.
+   * \tparam ArgcTeam     The number of arguments describing the team passed to
+   *                      the pattern parsed so far. Can be 0 or 1.
+   * \tparam ArgcTeamSpec The number of arguments describing the team/unit
+   *                      distribution (TeamSpec) of the pattern parsed so far.
+   *                      Can be 0 or 1.
    */
   template<
     int ArgcSize,
@@ -164,8 +165,8 @@ private:
     int ArgcTeamSpec,
     typename ... Args>
   void parse(const TeamSpec_t & teamSpec, Args && ... args) {
-    static_assert(ArgcTeamSpec == 0, "Cannot specify TeamSpec twice in "
-        "variadic pattern constructor!");
+    static_assert(ArgcTeamSpec == 0,
+        "Cannot specify TeamSpec twice in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
     // TODO: there is no way to check whether this TeamSpec
     //       was created from the team provided in the variadic arguments.
@@ -183,9 +184,8 @@ private:
     int ArgcTeamSpec,
     typename ... Args>
   void parse(dash::Team & team, Args && ... args) {
-    static_assert(!(ArgcTeam > 0),
-        "Cannot specify Team twice in variadic "
-        "pattern constructor!");
+    static_assert(ArgcTeam == 0,
+        "Cannot specify Team twice in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(team)");
     // assign team, TeamSpec will be created when parsing is finished
     // and no TeamSpec has been found.
@@ -209,7 +209,7 @@ private:
     DASH_LOG_TRACE("PatternArguments.check(distSpec)");
     _distspec = ds;
     parse<ArgcSize, -1, ArgcTeam,
-      ArgcTeam>(std::forward<Args>(args)...);
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
 
   /*
@@ -230,7 +230,7 @@ private:
     DASH_LOG_TRACE("PatternArguments.check(dist)");
     _distspec[ArgcDist] = ds;
     parse<ArgcSize, ArgcDist+1, ArgcTeam,
-      ArgcTeam>(std::forward<Args>(args)...);
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
 
   /**
