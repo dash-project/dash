@@ -51,18 +51,14 @@ class GlobAsyncRef
 private:
   typedef GlobAsyncRef<T>
     self_t;
-  typedef typename std::remove_const<T>::type
-    nonconst_value_type;
 
 private:
-  /// Value of the referenced element, initially not loaded
-  mutable T    _value;
   /// Pointer to referenced element in global memory
-  dart_gptr_t  _gptr;
+  dart_gptr_t  _gptr        = DART_GPTR_NULL;
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
-  /// Whether the value of the reference has been changed
-  bool         _has_changed = false;
+  /// Value of the referenced element, initially not loaded
+  mutable T    _value;
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
   /// Whether the value of the referenced element is known
@@ -73,7 +69,7 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * local memory.
    */
-  explicit GlobAsyncRef(
+  explicit constexpr GlobAsyncRef(
     /// Pointer to referenced object in local memory
     T * lptr)
   : _value(*lptr),
@@ -94,9 +90,7 @@ public:
   {
     _is_local = gptr.is_local();
     if (_is_local) {
-      _value     = *gptr;
       _lptr      = (T*)(gptr);
-      _has_value = true;
     }
   }
 
@@ -112,9 +106,7 @@ public:
     GlobConstPtr<T> gptr(dart_gptr);
     _is_local = gptr.is_local();
     if (_is_local) {
-      _value     = *gptr;
       _lptr      = (T*)(gptr);
-      _has_value = true;
     }
   }
 
@@ -153,9 +145,18 @@ public:
   operator T() const
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    if (!_is_local) {
-      dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_get(static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype);
+    if (!_has_value) {
+      if (_is_local) {
+        _value = *_lptr;
+      } else {
+        dart_storage_t ds = dash::dart_storage<T>(1);
+        DASH_ASSERT_RETURNS(
+          dart_get_blocking(
+            static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype),
+          DART_OK
+        );
+      }
+      _has_value = true;
     }
     return _value;
   }
@@ -181,14 +182,16 @@ public:
     // TODO: Comparison with current value could be inconsistent
     if (!_has_value || _value != new_value) {
       _value       = new_value;
-      _has_changed = true;
       _has_value   = true;
       if (_is_local) {
         *_lptr = _value;
       } else {
         dart_storage_t ds = dash::dart_storage<T>(1);
-        dart_put_blocking(
-          _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype);
+        DASH_ASSERT_RETURNS(
+          dart_put(
+            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
+          DART_OK
+        );
       }
     }
     return *this;
@@ -260,6 +263,23 @@ public:
     --val;
     operator=(val);
     return result;
+  }
+
+  /**
+   * Flush all pending assignments on this asynchronous reference and
+   * invalidate cached copies.
+   */
+  void flush()
+  {
+    // perform a flush irregardless of whether the reference is local or not
+    if (!DART_GPTR_ISNULL(_gptr)) {
+      DASH_ASSERT_RETURNS(
+        dart_flush(_gptr),
+        DART_OK
+      );
+      // require a re-read upon next reference
+      _has_value = false;
+    }
   }
 
 }; // class GlobAsyncRef
