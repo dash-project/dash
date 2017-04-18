@@ -138,6 +138,19 @@ public:
   { }
 
   /**
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
+   */
+  GlobAsyncRef(const self_t & other) = delete;
+
+  /**
+   * Unlike native reference types, global reference types are moveable.
+   */
+  GlobAsyncRef(self_t && other)      = default;
+
+  /**
    * Whether the referenced element is located in local memory.
    */
   inline bool is_local() const noexcept
@@ -371,7 +384,7 @@ public:
   /**
    * Multiplication operator.
    */
-  GlobRef<T> & operator*=(const_value_type& ref) {
+  self_t & operator*=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   *= ref;
     operator=(val);
@@ -381,7 +394,7 @@ public:
   /**
    * Division operator.
    */
-  GlobRef<T> & operator/=(const_value_type& ref) {
+  self_t & operator/=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   /= ref;
     operator=(val);
@@ -391,7 +404,7 @@ public:
   /**
    * Binary XOR operator.
    */
-  GlobRef<T> & operator^=(const_value_type& ref) {
+  self_t & operator^=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   ^= ref;
     operator=(val);
