@@ -32,10 +32,10 @@
  * A distributed array of fixed size.
  *
  * Like all DASH containers, \c dash::Array is initialized by specifying
-  * an arrangement of units in a team (\c dash::TeamSpec) and a
- * distribution pattern (\c dash::Pattern).
+  * an arrangement of units in a team (\ref dash::TeamSpec) and a
+ * distribution pattern (\ref dash::Pattern).
  *
- * DASH arrays support delayed allocation (\c dash::Array::allocate),
+ * DASH arrays support delayed allocation (\ref dash::Array::allocate),
  * so global memory of an array instance can be allocated any time after
  * declaring a \c dash::Array variable.
  *
@@ -61,19 +61,19 @@
  *
  * \par Methods
  *
- * Return Type              | Method                | Parameters                                            | Description
- * ------------------------ | --------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
- * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                | Container proxy object representing a view specifier on the container's local elements.
- * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
- * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                | Iterator referencing the first container element.
- * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                | Iterator referencing the element past the last container element.
- * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
- * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
- * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                | Number of elements in the container.
- * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                | Number of local elements in the container, same as <tt>local().size()</tt>.
- * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
- * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec<DD> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
- * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                | Deallocation of the container and its elements.
+ * Return Type              | Method                | Parameters                                              | Description
+ * ------------------------ | --------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
+ * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                  | Container proxy object representing a view specifier on the container's local elements.
+ * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                  | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
+ * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                  | Iterator referencing the first container element.
+ * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                  | Iterator referencing the element past the last container element.
+ * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                  | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
+ * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                  | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
+ * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                  | Number of elements in the container.
+ * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                  | Number of local elements in the container, same as <tt>local().size()</tt>.
+ * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                  | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
+ * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec\<DD\> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
+ * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                  | Deallocation of the container and its elements.
  *
  * \}
  *
@@ -351,7 +351,6 @@ public:
    */
   constexpr const_async_reference operator[](const size_t n) const  {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -360,7 +359,6 @@ public:
    */
   async_reference operator[](const size_t n) {
     return async_reference(
-             _array->m_globmem,
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -1211,6 +1209,10 @@ public:
     return m_pattern;
   }
 
+  /**
+   * Delayed allocation of global memory using a
+   * one-dimensional distribution spec.
+   */
   bool allocate(
     size_type                   nelem,
     dash::DistributionSpec<1>   distribution,
@@ -1241,6 +1243,11 @@ public:
     return ret;
   }
 
+  /**
+   * Delayed allocation of global memory using a
+   * one-dimensional distribution spec and
+   * initializing values.
+   */
   bool allocate(
     size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
@@ -1297,9 +1304,12 @@ public:
     DASH_LOG_TRACE_VAR("Array.deallocate >", this);
   }
 
+  /**
+   * Delayed allocation of global memory using the specified pattern.
+   */
   bool allocate(const PatternType & pattern)
   {
-		DASH_LOG_TRACE("Array._allocate()", "pattern",
+    DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
     if (&m_pattern != &pattern) {
       DASH_LOG_TRACE("Array.allocate()", "using specified pattern");

@@ -565,23 +565,7 @@ public:
       "Expected dimension = 0, got " << dim);
     return _local_size;
   }
-  
-  /**
-   * The actual number of elements in this pattern that are local to the
-   * calling unit, by dimension.
-   *
-   * \see  local_extent()
-   * \see  blocksize()
-   * \see  local_size()
-   * \see  extent()
-   *
-   * \see  DashPatternConcept
-   */
-  constexpr std::array<SizeType, NumDimensions>
-  local_extents() const noexcept
-  {
-    return std::array<SizeType, 1> {{ _local_sizes[_team->myid()] }};
-  }
+
   /**
    * The actual number of elements in this pattern that are local to the
    * given unit, by dimension.
@@ -1063,7 +1047,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  constexpr const std::array<SizeType, NumDimensions>
+  constexpr const std::array<SizeType, NumDimensions> &
     extents() const noexcept
   {
     return std::array<SizeType, 1> {{ _size }};

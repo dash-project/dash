@@ -134,6 +134,7 @@ dart_ret_t dart_memalloc(
   dart_global_unit_t unitid;
   dart_myid(&unitid);
   gptr->unitid  = unitid.id;
+  gptr->flags   = 0;
   gptr->segid   = DART_SEGMENT_LOCAL; /* For local allocation, the segid is marked as '0'. */
   gptr->teamid  = DART_TEAM_ALL;      /* Locally allocated gptr belong to the global team. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
@@ -151,8 +152,9 @@ dart_ret_t dart_memalloc(
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
-  if (gptr.segid != DART_SEGMENT_LOCAL) {
-    DART_LOG_ERROR("dart_memfree: invalid segment id: %d", gptr.segid);
+  if (gptr.segid != DART_SEGMENT_LOCAL || gptr.teamid != DART_TEAM_ALL) {
+    DART_LOG_ERROR("dart_memfree: invalid segment id:%d or team id:%d",
+                   gptr.segid, gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -359,9 +361,9 @@ dart_team_memalloc_aligned(
 
 
   DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
-    "baseptr:%p across team %d",
-    nbytes, 0, gptr_unitid, sub_mem, teamid);
+    "dart_team_memalloc_aligned: bytes:%lu gptr_unitid:%d "
+    "baseptr:%p segid:%i across team %d",
+    nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
 	return DART_OK;
 }

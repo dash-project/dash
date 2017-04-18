@@ -96,7 +96,8 @@ namespace dash {
  *
  * Usage examples:
  *
- * \code
+ * <code>
+ *
  * size_t initial_local_capacity = 100;
  * size_t initial_capacity       = dash::size() * initial_local_capacity;
  * dash::List<int> list(initial_capacity);
@@ -156,7 +157,7 @@ namespace dash {
  * //      .-- 3 <-' |  .-- 8 <-' |  .-- 13 --'
  * //      `-> 4 ----'  `-> 9 ----'  `-> 14 ---> Nil
  *
- * \endcode
+ * </code>
  */
 
 /**
@@ -223,14 +224,10 @@ public:
   typedef       iterator                                             pointer;
   typedef const_iterator                                       const_pointer;
 
-  typedef typename glob_mem_type::local_iterator
+  typedef typename glob_mem_type::local_pointer
     local_node_iterator;
-  typedef typename glob_mem_type::const_local_iterator
+  typedef typename glob_mem_type::const_local_pointer
     const_local_node_iterator;
-  typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_node_iterator;
-  typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_node_iterator;
 
   typedef typename glob_mem_type::local_reference
     local_node_reference;
@@ -240,8 +237,6 @@ public:
   // TODO: define ListLocalIter to dereference node iterators
   typedef               local_node_iterator                   local_iterator;
   typedef         const_local_node_iterator             const_local_iterator;
-  typedef       reverse_local_node_iterator           reverse_local_iterator;
-  typedef const_reverse_local_node_iterator     const_reverse_local_iterator;
 
 public:
   /// Local proxy object, allows use in range-based for loops.

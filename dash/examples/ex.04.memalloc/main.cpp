@@ -1,3 +1,9 @@
+/**
+ * \example ex.04.memalloc/main.cpp
+ * Example demonstrating non-collective 
+ * global memory allocation.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>
