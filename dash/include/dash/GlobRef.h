@@ -240,7 +240,7 @@ public:
     );
   }
 
-  void put(const_value_type& tref) const {
+  void put(const_value_type& tref) {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dart_storage_t ds = dash::dart_storage<T>(1);
@@ -251,7 +251,7 @@ public:
     );
   }
 
-  void put(const_value_type* tptr) const {
+  void put(const_value_type* tptr) {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dart_storage_t ds = dash::dart_storage<T>(1);

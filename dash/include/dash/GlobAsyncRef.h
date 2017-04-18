@@ -257,25 +257,20 @@ public:
    * Asynchronously set the value referenced by this \c GlobAsyncRef
    * to the value pointed to by \c tptr.
    * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the pointer can be re-used.
+   * but the pointer \c tptr can be re-used immediately.
    */
-  void put(const_value_type* tptr) const {
-    if (_is_local) {
-      *tptr = *_lptr;
-    } else {
-      dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_put(_gptr, static_cast<void *>(tptr), ds.nelem, ds.dtype);
-    }
+  void put(const_value_type* tptr) {
+    operator=(*tptr);
   }
 
   /**
    * Asynchronously set the value referenced by this \c GlobAsyncRef
    * to the value pointed to by \c tref.
    * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the reference can be re-used.
+   * but the value referenced by \c tref can be re-used immediately.
    */
-  void put(const_value_type& tref) const {
-    put(&tref);
+  void put(const_value_type& tref) {
+    operator=(tref);
   }
 
   /**

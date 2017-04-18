@@ -81,6 +81,10 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
   garef.flush();
   array.barrier();
+  garef.put(dash::myid());
+  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
+  garef.flush();
+  array.barrier();
   int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
   ASSERT_EQ_U(left_neighbor, array.local[0]);
 }
