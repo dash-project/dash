@@ -129,7 +129,7 @@ public:
   /**
    * Value-assignment operator.
    */
-  GlobRef<T> & operator=(const T val) {
+  self_t & operator=(const T val) {
     set(val);
     return *this;
   }
@@ -137,7 +137,7 @@ public:
   /**
    * Assignment operator.
    */
-  GlobRef<T> & operator=(const self_t & other)
+  self_t & operator=(const self_t & other)
   {
     set(static_cast<T>(other));
     return *this;
@@ -147,7 +147,7 @@ public:
    * Assignment operator.
    */
   template <typename GlobRefOrElementT>
-  GlobRef<T> & operator=(GlobRefOrElementT && other)
+  self_t & operator=(GlobRefOrElementT && other)
   {
     set(std::forward<GlobRefOrElementT>(other));
     return *this;
@@ -188,7 +188,7 @@ public:
     return !(*this == value);
   }
 
-  friend void swap(GlobRef<T> a, GlobRef<T> b) {
+  friend void swap(GlobRef<T> & a, GlobRef<T> & b) {
     nonconst_value_type temp = static_cast<nonconst_value_type>(a);
     a = b;
     b = temp;
@@ -262,7 +262,7 @@ public:
     );
   }
 
-  GlobRef<T> & operator+=(const nonconst_value_type& ref) {
+  self_t & operator+=(const nonconst_value_type& ref) {
   #if 0
     // TODO: Alternative implementation, possibly more efficient:
     T add_val = ref;
@@ -283,21 +283,21 @@ public:
     return *this;
   }
 
-  GlobRef<T> & operator-=(const nonconst_value_type& ref) {
+  self_t & operator-=(const nonconst_value_type& ref) {
     nonconst_value_type val  = operator nonconst_value_type();
     val   -= ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> & operator++() {
+  self_t & operator++() {
     nonconst_value_type val = operator nonconst_value_type();
     ++val;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> operator++(int) {
+  self_t operator++(int) {
     GlobRef<T> result = *this;
     nonconst_value_type val = operator nonconst_value_type();
     ++val;
@@ -305,14 +305,14 @@ public:
     return result;
   }
 
-  GlobRef<T> & operator--() {
+  self_t & operator--() {
     nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> operator--(int) {
+  self_t operator--(int) {
     GlobRef<T> result = *this;
     nonconst_value_type val = operator nonconst_value_type();
     --val;
@@ -320,21 +320,21 @@ public:
     return result;
   }
 
-  GlobRef<T> & operator*=(const_value_type& ref) {
+  self_t & operator*=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   *= ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> & operator/=(const_value_type& ref) {
+  self_t & operator/=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   /= ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T> & operator^=(const_value_type& ref) {
+  self_t & operator^=(const_value_type& ref) {
     nonconst_value_type val = operator nonconst_value_type();
     val   ^= ref;
     operator=(val);
