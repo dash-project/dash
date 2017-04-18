@@ -52,3 +52,36 @@ TEST_F(GlobAsyncRefTest, Push) {
   }
 }
 
+
+TEST_F(GlobAsyncRefTest, GetSet) {
+  // Initialize values:
+  dash::Array<int> array(dash::size());
+  for (auto li = 0; li < array.lcapacity(); ++li) {
+    array.local[li] = dash::myid().id;
+  }
+  array.barrier();
+
+  int neighbor = (dash::myid() + 1) % dash::size();
+
+  // Reference a neighbors element in global memory:
+  dash::GlobAsyncRef<int> garef = array.async[neighbor];
+
+  int val = garef.get();
+  garef.flush();
+  ASSERT_EQ_U(neighbor, val);
+
+  val = 0;
+
+  garef.get(val);
+  garef.flush();
+  ASSERT_EQ_U(neighbor, val);
+
+  array.barrier();
+  garef.set(dash::myid());
+  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
+  garef.flush();
+  array.barrier();
+  int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  ASSERT_EQ_U(left_neighbor, array.local[0]);
+}
+
