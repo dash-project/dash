@@ -38,24 +38,22 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 void
 dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
 {
-  if (task == NULL) {
-    DART_ASSERT_MSG(task != NULL, "dart_tasking_taskqueue_push: task may not be NULL!");
-    return;
-  }
-  if (task == tq->head) {
-    DART_ASSERT_MSG(task != tq->head, "dart_tasking_taskqueue_push: task is already head of task queue");
-    return;
-  }
+  DART_ASSERT_MSG(task != NULL,
+      "dart_tasking_taskqueue_push: task may not be NULL!");
+  DART_ASSERT_MSG(task != tq->head,
+    "dart_tasking_taskqueue_push: task is already head of task queue");
   task->next = NULL;
   task->prev = NULL;
   dart_mutex_lock(&tq->mutex);
   if (tq->head == NULL) {
     // task queue previously empty
-    DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to empty task queue tq:%p tq->head:%p", task, tq, tq->head);
+    DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to empty task queue "
+        "tq:%p tq->head:%p", task, tq, tq->head);
     tq->head   = task;
     tq->tail   = tq->head;
   } else {
-    DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to task queue tq:%p tq->head:%p tq->tail:%p", task, tq, tq->head, tq->tail);
+    DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to task queue "
+        "tq:%p tq->head:%p tq->tail:%p", task, tq, tq->head, tq->tail);
     task->next     = tq->head;
     tq->head->prev = task;
     tq->head       = task;
@@ -77,12 +75,14 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
     if (tq->tail != NULL)
     {
       DART_ASSERT(tq->head != NULL && tq->tail != NULL);
-      DART_LOG_INFO("dart_tasking_taskqueue_popback: tq:%p tq->head:%p tq->tail=%p", tq, tq->head, tq->tail);
+      DART_LOG_INFO("dart_tasking_taskqueue_popback: "
+          "tq:%p tq->head:%p tq->tail=%p", tq, tq->head, tq->tail);
       task = tq->tail;
       tq->tail = task->prev;
       if (tq->tail == NULL) {
         // stealing the last element in the queue
-        DART_LOG_INFO("dart_tasking_taskqueue_popback: last element from queue tq:%p tq->head:%p tq->tail=%p", tq, tq->head, tq->tail);
+        DART_LOG_INFO("dart_tasking_taskqueue_popback: last element from "
+            "queue tq:%p tq->head:%p tq->tail=%p", tq, tq->head, tq->tail);
         tq->head = NULL;
       } else {
         tq->tail->next = NULL;

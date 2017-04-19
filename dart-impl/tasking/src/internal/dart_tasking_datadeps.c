@@ -443,10 +443,16 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       for (dart_dephash_elem_t *elem = local_deps[slot];
            elem != NULL; elem = elem->next)
       {
-        DART_ASSERT_MSG(
-            !(elem->taskdep.gptr.addr_or_offs.addr
-                == dep.gptr.addr_or_offs.addr && elem->task.local == task),
-            "Task already present in dependency hashmap with same dependency!");
+        if (elem->taskdep.gptr.addr_or_offs.addr
+              == dep.gptr.addr_or_offs.addr
+            && elem->task.local == task) {
+          // simply upgrade the dependency to an output dependency
+          if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
+            elem->taskdep.type = DART_DEP_INOUT;
+          }
+          // nothing to be done for this dependency
+          continue;
+        }
         DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
                        "of task %p",
                        task,
