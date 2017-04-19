@@ -64,7 +64,7 @@ private:
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
   /// Value of the referenced element, initially not loaded
-  mutable T    _value;
+  mutable nonconst_value_type _value;
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
   /// Whether the value of the referenced element is known
