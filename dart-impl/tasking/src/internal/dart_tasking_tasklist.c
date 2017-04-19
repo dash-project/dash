@@ -18,7 +18,8 @@ void dart_tasking_tasklist_prepend(task_list_t **tl, dart_task_t *task)
   }
 
   if (task == NULL) {
-    DART_ASSERT_MSG(task != NULL, "Huh? Better do not put a NULL task into a tasklist...");
+    DART_ASSERT_MSG(task != NULL,
+        "Huh? Better do not put a NULL task into a tasklist...");
     return;
   }
 

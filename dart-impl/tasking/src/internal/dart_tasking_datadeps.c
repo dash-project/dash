@@ -444,32 +444,31 @@ dart_ret_t dart_tasking_datadeps_handle_task(
            elem != NULL; elem = elem->next)
       {
         if (elem->taskdep.gptr.addr_or_offs.addr
-              == dep.gptr.addr_or_offs.addr
-            && elem->task.local == task) {
-          // simply upgrade the dependency to an output dependency
-          if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
-            elem->taskdep.type = DART_DEP_INOUT;
-          }
-          // nothing to be done for this dependency
-          continue;
-        }
-        DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
-                       "of task %p",
-                       task,
-                       dep.gptr.addr_or_offs.addr,
-                       dep.gptr.segid,
-                       elem->taskdep.gptr.addr_or_offs.addr,
-                       elem->taskdep.gptr.segid,
-                       elem->task.local);
-
-        if (elem->taskdep.gptr.addr_or_offs.addr
               == dep.gptr.addr_or_offs.addr) {
-          dart_mutex_lock(&(elem->task.local->mutex));
+          if (elem->task.local == task) {
+            // simply upgrade the dependency to an output dependency
+            if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
+              elem->taskdep.type = DART_DEP_INOUT;
+            }
+            // nothing to be done for this dependency
+            continue;
+          }
+          DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
+                         "of task %p",
+                         task,
+                         dep.gptr.addr_or_offs.addr,
+                         dep.gptr.segid,
+                         elem->taskdep.gptr.addr_or_offs.addr,
+                         elem->taskdep.gptr.segid,
+                         elem->task.local);
+
           DART_LOG_TRACE("Checking task %p against task %p "
                          "(deptype: %i vs %i)",
                          elem->task.local, task, elem->taskdep.type,
                          dep.type);
 
+          // lock the task here to avoid race condition
+          dart_mutex_lock(&(elem->task.local->mutex));
           if (elem->task.local->state != DART_TASK_FINISHED &&
               (IS_OUT_DEP(dep) ||
                   (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
@@ -577,6 +576,7 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   task_list_t *tl = task->successor;
   while (tl != NULL) {
     task_list_t *tmp = tl->next;
+    DART_ASSERT(tl->task != NULL);
     int32_t unresolved_deps = DART_DEC_AND_FETCH32(&tl->task->unresolved_deps);
     DART_LOG_DEBUG("release_local_task: task %p has %i dependencies left",
                    tl->task, unresolved_deps);
