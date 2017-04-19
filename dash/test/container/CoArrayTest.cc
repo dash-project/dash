@@ -332,9 +332,10 @@ TEST_F(CoArrayTest, Comutex){
       int tmp = arr(rand_unit);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       arr(rand_unit) = tmp + 1;
+      arr.flush_all();
     }
   }
-  dash::barrier();
+  arr.sync_all();
   // only for logging
   std::this_thread::sleep_for(std::chrono::microseconds(100));
   
