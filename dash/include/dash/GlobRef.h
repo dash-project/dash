@@ -5,7 +5,7 @@
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
-#include "GlobAsyncRef.h"
+#include <dash/GlobAsyncRef.h>
 
 
 namespace dash {
