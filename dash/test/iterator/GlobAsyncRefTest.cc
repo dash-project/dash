@@ -139,3 +139,20 @@ TEST_F(GlobAsyncRefTest, Operations) {
   ASSERT_EQ_U(dash::myid().id, array.local[0]);
 }
 
+TEST_F(GlobAsyncRefTest, Conversion)
+{
+  // Initialize values:
+  dash::Array<int> array(dash::size());
+  for (auto li = 0; li < array.lcapacity(); ++li) {
+    array.local[li] = dash::myid().id;
+  }
+  array.barrier();
+  
+  auto gref_async = static_cast<dash::GlobAsyncRef<int>>(
+                        array[dash::myid().id]);
+  auto gref_sync  = static_cast<dash::GlobRef<int>>(
+                        array.async[dash::myid().id]);
+  ASSERT_EQ_U(gref_async.is_local(), true);
+  ASSERT_EQ_U(gref_sync.is_local(), true);
+}
+
