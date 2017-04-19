@@ -133,7 +133,7 @@ public:
    */
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobRef<T> & gref)
+    const GlobRef<T> & gref)
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
@@ -156,6 +156,30 @@ public:
   inline bool is_local() const noexcept
   {
     return _is_local;
+  }
+  
+  /**
+   * Get a global ref to a member of a certain type at the
+   * specified offset
+   */
+  template<typename MEMTYPE>
+  GlobAsyncRef<MEMTYPE> member(size_t offs) const {
+    dart_gptr_t dartptr = _gptr;
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&dartptr, offs),
+      DART_OK);
+    GlobConstPtr<MEMTYPE> gptr(dartptr);
+    return GlobAsyncRef<MEMTYPE>(gptr);
+  }
+
+  /**
+   * Get the member via pointer to member
+   */
+  template<class MEMTYPE, class P=T>
+  GlobAsyncRef<MEMTYPE> member(
+    const MEMTYPE P::*mem) const {
+    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    return member<MEMTYPE>(offs);
   }
 
   /**
