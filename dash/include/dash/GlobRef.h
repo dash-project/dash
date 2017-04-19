@@ -114,6 +114,15 @@ public:
   explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   { }
+  
+  /**
+   * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
+   * avoid unintendet conversion
+   */
+  explicit constexpr GlobRef(
+    const GlobAsyncRef<T> & gref)
+  : _gptr(gref.dart_gptr())
+  { }
 
   /**
    * Like native references, global reference types cannot be copied.
