@@ -131,3 +131,82 @@ TEST_F(DARTTaskingTest, LocalInOutDependency)
 
   ASSERT_EQ(i, val);
 }
+
+TEST_F(DARTTaskingTest, SameLocalInOutDependency)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+  int  i;
+  int  val = 0;
+  int *valptr = &val; // dummy pointer used for synchronization, never accessed
+
+  for (i = 0; i < 100; i++) {
+    testdata_t td;
+    td.valptr   = &val;
+    td.expected = i;
+
+    dart_task_dep_t dep[2];
+    dep[0].type = DART_DEP_IN;
+    dep[0].gptr = DART_GPTR_NULL;
+    dep[0].gptr.unitid = dash::myid();
+    dep[0].gptr.teamid = dash::Team::All().dart_id();
+    dep[0].gptr.addr_or_offs.addr = valptr;
+    dep[1].type = DART_DEP_OUT;
+    dep[1].gptr = DART_GPTR_NULL;
+    dep[1].gptr.unitid = dash::myid();
+    dep[1].gptr.teamid = dash::Team::All().dart_id();
+    dep[1].gptr.addr_or_offs.addr = valptr;
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(
+        &testfn,              // action to call
+        &td,                 // argument to pass
+        sizeof(td),          // size of the tasks's data (if to be copied)
+        dep,                // dependency
+        2                    // number of dependencies
+        )
+    );
+  }
+
+  dart_task_complete();
+
+  ASSERT_EQ(i, val);
+}
+
+TEST_F(DARTTaskingTest, InOutDependency)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+  int  i;
+  int  val = 0;
+  int *valptr = &val; // dummy pointer used for synchronization, never accessed
+
+  for (i = 0; i < 100; i++) {
+    testdata_t td;
+    td.valptr   = &val;
+    td.expected = i;
+
+    dart_task_dep_t dep[2];
+    dep[0].type = DART_DEP_INOUT;
+    dep[0].gptr = DART_GPTR_NULL;
+    dep[0].gptr.unitid = dash::myid();
+    dep[0].gptr.teamid = dash::Team::All().dart_id();
+    dep[0].gptr.addr_or_offs.addr = valptr;
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(
+        &testfn,              // action to call
+        &td,                 // argument to pass
+        sizeof(td),          // size of the tasks's data (if to be copied)
+        dep,                // dependency
+        1                    // number of dependencies
+        )
+    );
+  }
+
+  dart_task_complete();
+
+  ASSERT_EQ(i, val);
+}
