@@ -202,10 +202,9 @@ void handle_task(dart_task_t *task)
     // to allow for atomic check and update
     // of remote successors in dart_tasking_datadeps_handle_remote_task
     dart_mutex_lock(&(task->mutex));
-    task->state = DART_TASK_TEARDOWN;
-    dart_tasking_datadeps_release_local_task(task);
     task->state = DART_TASK_FINISHED;
     dart_mutex_unlock(&(task->mutex));
+    dart_tasking_datadeps_release_local_task(task);
 
     // let the parent know that we are done
     int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
