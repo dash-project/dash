@@ -323,12 +323,12 @@ public:
     // add missing edges to local memory space
     for(auto edge : edges) {
       if(edge._source.unit == _myid) {
-        add_local_edge(edge._source, edge._target, edge._properties, 
+        add_local_edge(edge._source, edge._target, edge.properties, 
             _glob_mem_out_edge);
       }
       if(edge._target.unit == _myid) {
         // _glob_mem_in_edge == _glob_mem_out_edge for undirected graph types
-        add_local_edge(edge._target, edge._source, edge._properties, 
+        add_local_edge(edge._target, edge._source, edge.properties, 
             _glob_mem_in_edge);
       }
     }
