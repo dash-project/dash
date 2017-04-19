@@ -31,6 +31,15 @@ public:
     DASH_LOG_DEBUG("event posted");
   }
   
+  /**
+   * returns the number of arrived events at this unit
+   */
+  inline int test() const {
+    DASH_LOG_DEBUG("test for events on", _gptr);
+    GlobRef<event_ctr_t> gref(_gptr);
+    return gref.load();
+  }
+  
   inline Team & team() {
     return _team;
   }

@@ -444,6 +444,21 @@ TEST_F(CoArrayTest, CoEvent)
     LOG_MESSAGE("event recieved");
   }
   
+  dash::barrier();
+  if(this_image() != 0){
+    events(0).post();
+  }
+  dash::barrier();
+#if 0
+  // should work, but does not in mpich
+  int recv_events = events(0).test();
+  LOG_MESSAGE("received %d events on unit 0", recv_events);
+  ASSERT_GT_U(recv_events, 0);
+#endif
+  if(this_image() == 0){
+    ASSERT_GT_U(events.test(), 0);
+    events.wait(num_images()-1);
+  }
 }
 
 TEST_F(CoArrayTest, CoEventIter)

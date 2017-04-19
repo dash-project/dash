@@ -100,6 +100,11 @@ public:
 #endif
     };
   }
+  
+  inline int test() {
+    DASH_LOG_DEBUG("test for events on this unit");
+    return _event_counts.at(static_cast<int>(_team->myid())).load();
+  }
 
   /**
    * initializes the Coevent. If it was already initialized in the Ctor,
