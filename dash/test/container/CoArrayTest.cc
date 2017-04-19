@@ -407,8 +407,6 @@ TEST_F(CoArrayTest, StructType)
   x.sync_all();
 }
 
-#if 1
-// currently wait, post is not implemented
 TEST_F(CoArrayTest, CoEvent)
 {
   dash::Coevent events;
@@ -447,4 +445,23 @@ TEST_F(CoArrayTest, CoEvent)
   }
   
 }
-#endif
+
+TEST_F(CoArrayTest, CoEventIter)
+{
+  dash::Coevent events;
+  
+  if(num_images() < 3){
+    SKIP_TEST_MSG("This test requires at least 3 units");
+  }
+  
+  auto snd = events.begin()+1;
+  (*snd).post();
+  
+  if(num_images() == 3){
+    ASSERT_EQ_U(events.begin()+3, events.end());
+  }
+  dash::barrier();
+  if(this_image() == 1){
+    events.wait(num_images());
+  }
+}

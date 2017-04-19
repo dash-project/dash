@@ -26,7 +26,7 @@ public:
     const gptr_t & pos,
     Team & team = dash::Team::Null())
   : _team(team),
-    _gptr() {}
+    _gptr(pos) {}
   
   inline Team & team() {
     return _team;
