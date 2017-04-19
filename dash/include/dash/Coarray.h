@@ -89,6 +89,32 @@ struct __get_local_type<element_type, pattern_type, 1> {
   using type = element_type &;
 };
 
+template<typename element_type>
+struct __get_ref_type {
+  using type = GlobAsyncRef<element_type>;
+};
+
+/**
+ * atomics cannot be accessed asynchronously
+ */
+template<typename element_type>
+struct __get_ref_type<dash::Atomic<element_type>> {
+  using type = GlobRef<dash::Atomic<element_type>>;
+};
+
+template<typename element_type>
+struct __get_const_ref_type {
+  using type = GlobAsyncRef<const element_type>;
+};
+
+/**
+ * atomics cannot be accessed asynchronously
+ */
+template<typename element_type>
+struct __get_const_ref_type<dash::Atomic<element_type>> {
+  using type = GlobRef<dash::Atomic<const element_type>>;
+};
+
 } // namespace detail
 
 /**
@@ -175,8 +201,8 @@ public:
   using const_iterator         = GlobIter<const _element_type, _pattern_type>; 
   using reverse_iterator       = GlobIter<_element_type, _pattern_type>; 
   using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>; 
-  using reference              = GlobRef<_element_type>;
-  using const_reference        = GlobRef<_element_type>;
+  using reference              = typename coarray::detail::__get_ref_type<_element_type>::type;
+  using const_reference        = typename coarray::detail::__get_const_ref_type<_element_type>::type;;
   using local_pointer          = _element_type *;
   using const_local_pointer    = const _element_type *;
   template<int subrank>
@@ -427,7 +453,8 @@ public:
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 0), reference>::type
   inline operator()(const index_type & local_unit) {
-    return _storage.at(local_unit);
+    // TODO: workaround to get async access
+    return static_cast<reference>(_storage.at(local_unit));
   }
 
   /**
@@ -499,7 +526,8 @@ public:
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
   explicit operator reference() {
-    return *(_storage.begin()+static_cast<index_type>(dash::myid()));
+    return static_cast<reference>(
+            *(_storage.begin()+static_cast<index_type>(dash::myid())));
   }
   
   /**

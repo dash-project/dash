@@ -4,6 +4,10 @@
 #include <dash/Exception.h>
 #include <dash/Team.h>
 #include <dash/Types.h>
+#include <dash/GlobPtr.h>
+#include <dash/Atomic.h>
+
+#include <dash/Algorithm.h>
 
 #include <dash/coarray/CoEventIter.h>
 #include <dash/coarray/CoEventRef.h>
@@ -32,6 +36,9 @@ namespace dash {
  * \endcode
  */
 class Coevent {
+private:
+  using event_cnt_t    = dash::Atomic<int>;
+  using gptr_t         = GlobPtr<event_cnt_t>;
 public:
   // Types
   using iterator       = coarray::CoEventIter;
@@ -39,30 +46,37 @@ public:
   using reference      = coarray::CoEventRef;
   using size_type      = int;
   
+private:
+  dash::Array<event_cnt_t> _event_counts;
+  
 public:
   
   /**
    * Constructor to setup and initialize an Coevent.
    */
   explicit Coevent(Team & team = dash::Team::All())
-    : _team(&team) { }
+    : _team(&team) {
+      if(dash::is_initialized()){
+        initialize(team);
+      }
+    }
   
   iterator begin() noexcept {
-    return iterator(0);
+    return iterator(static_cast<gptr_t>(_event_counts.begin()));
   }
   
   const_iterator begin() const noexcept {
-    return const_iterator(0);
+    return const_iterator(static_cast<gptr_t>(_event_counts.begin()));
   }
   
   iterator end() {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return iterator(_team->size());
+    return iterator(static_cast<gptr_t>(_event_counts.end()));
   }
   
   const_iterator end() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return const_iterator(_team->size());
+    return const_iterator(static_cast<gptr_t>(_event_counts.end()));
   }
   
   size_type size() const {
@@ -71,10 +85,20 @@ public:
   }
   
   /**
-   * wait for any incoming event
+   * wait for a given number of incoming events.
+   * This function is thread-safe
    */
-  inline void wait() const {
-    // TODO: Implement this
+  inline void wait(int count = 1) {
+    auto gref = _event_counts.at(_team->myid().id);
+    while(!gref.compare_exchange(count, 0)){
+#ifdef DASH_DEBUG
+      // avoid spamming the logs while busy waiting
+      DASH_LOG_DEBUG("waiting for event at gptr",
+                     static_cast<gptr_t>(_event_counts.begin()
+                                         +_team->myid().id));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+#endif
+    };
   }
 
   /**
@@ -83,6 +107,8 @@ public:
    */
   inline void initialize(Team & team) noexcept {
     _team = &team;
+    _event_counts.allocate(_team->size());
+    dash::fill(_event_counts.begin(), _event_counts.end(), 0);
     _is_initialized = true;
   }
   
@@ -95,7 +121,8 @@ public:
    */
   inline reference operator()(const int & unit) noexcept {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
-    return reference(unit);
+    auto ptr = static_cast<gptr_t>(_event_counts.begin() + unit);
+    return reference(ptr);
   }
 
   /**

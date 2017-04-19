@@ -407,7 +407,7 @@ TEST_F(CoArrayTest, StructType)
   x.sync_all();
 }
 
-#if 0
+#if 1
 // currently wait, post is not implemented
 TEST_F(CoArrayTest, CoEvent)
 {
@@ -416,12 +416,35 @@ TEST_F(CoArrayTest, CoEvent)
   if(num_images() < 2){
     SKIP_TEST_MSG("This test requires at least 2 units");
   }
+
+  if(this_image() == 0){
+    events(1).post();
+    LOG_MESSAGE("event posted to unit 1");
+  }
+  // TODO this barrier should not be necessary, but without
+  // the gptr is not updated
+  dash::barrier();
   
-  events(1).post();
   if(this_image() == 1){
     LOG_MESSAGE("waiting for incoming event");
     events.wait();
     LOG_MESSAGE("event recieved");
   }
+  dash::barrier();
+  
+  if(num_images() < 3){
+    return;
+  }
+  
+  events(0).post();
+  // same here
+  dash::barrier();
+  // wait for all events, similar to barrier
+  if(this_image() == 0){
+    LOG_MESSAGE("waiting for incoming event");
+    events.wait(num_images());
+    LOG_MESSAGE("event recieved");
+  }
+  
 }
 #endif
