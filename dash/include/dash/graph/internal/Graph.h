@@ -47,10 +47,13 @@ template<typename GraphType>
 class Vertex {
 
   typedef typename GraphType::edge_cont_ref_type       edge_container_ref;
-  typedef typename GraphType::vertex_offset_type       index_type;
+  typedef typename GraphType::vertex_index_type        index_type;
   typedef typename GraphType::vertex_properties_type   properties_type;
 
   friend GraphType;
+  friend InEdgeIteratorWrapper<GraphType>;
+  friend OutEdgeIteratorWrapper<GraphType>;
+  friend EdgeIteratorWrapper<GraphType>;
 
 public:
 
@@ -63,12 +66,12 @@ public:
    * Creates a vertex with given properties.
    */
   Vertex(
-      index_type index, 
+      index_type & index, 
       edge_container_ref & in_edge_ref, 
       edge_container_ref & out_edge_ref, 
       properties_type properties = properties_type()
   ) 
-    : _local_id(index),
+    : _index(index),
       _in_edge_ref(in_edge_ref),
       _out_edge_ref(out_edge_ref),
       properties(properties)
@@ -82,7 +85,7 @@ public:
 private:
 
   /** Index of the vertex in local index space */
-  index_type            _local_id;
+  index_type            _index;
   /** index of the in-edge list belonging to this vertex */
   edge_container_ref    _in_edge_ref;
   /** index of the out-edge list belonging to this vertex */
@@ -94,7 +97,7 @@ template<typename GraphType>
 class Edge {
 
   typedef typename GraphType::vertex_index_type        vertex_index_type;
-  typedef typename GraphType::edge_offset_type         index_type;
+  typedef typename GraphType::edge_index_type          index_type;
   typedef typename GraphType::edge_properties_type     properties_type;
 
   friend GraphType;
@@ -107,15 +110,30 @@ public:
   Edge() = default;
 
   /**
-   * Creates an edge from its parent vertex to target.
+   * Creates an edge with index
    */
   Edge(
-      index_type index,
+      index_type & index,
       vertex_index_type source,
       vertex_index_type target, 
       properties_type properties = properties_type()
   ) 
-    : _local_id(index),
+    : _index(index),
+      _source(source),
+      _target(target),
+      properties(properties)
+  { }
+
+  /**
+   * Creates an edge without index. Needed for edges that belong to other 
+   * units.
+   */
+  Edge(
+      vertex_index_type source,
+      vertex_index_type target, 
+      properties_type properties = properties_type()
+  ) 
+    : _index(),
       _source(source),
       _target(target),
       properties(properties)
@@ -134,7 +152,7 @@ private:
   /** Target vertex the edge is pointing to */
   vertex_index_type     _target;
   /** Index of the edge in local index space */
-  index_type            _local_id;
+  index_type            _index;
 
 };
 

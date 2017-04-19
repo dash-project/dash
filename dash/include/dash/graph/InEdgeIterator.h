@@ -16,6 +16,8 @@ struct InEdgeIteratorWrapper {
   typedef const local_iterator                     const_local_iterator;
   typedef typename Graph::edge_index_type          edge_index_type;
   typedef typename Graph::edge_properties_type     edge_properties_type;
+  typedef typename Graph::vertex_type              vertex_type;
+  typedef typename Graph::vertex_index_type        vertex_index_type;
 
   /**
    * Constructs the wrapper.
@@ -89,6 +91,58 @@ struct InEdgeIteratorWrapper {
    */
   const_local_iterator lend() const {
     return _graph->_glob_mem_in_edge->lend();
+  }
+
+  /**
+   * Returns global iterator to the beginning of the edge list of the given 
+   * vertex
+   */
+  iterator vbegin(const vertex_type & v) {
+    return iterator(
+        _graph->_glob_mem_in_edge, 
+        v._index.unit, 
+        v._in_edge_ref, 
+        0
+    );
+  }
+
+  /**
+   * Returns global iterator to the end of the edge list of the given vertex
+   */
+  iterator vend(const vertex_type & v) {
+    return iterator(
+        _graph->_glob_mem_in_edge, 
+        v._index.unit, 
+        v._in_edge_ref, 
+        _graph->_glob_mem_in_edge->container_size(v._index.unit, 
+          v._in_edge_ref)
+    );
+  }
+
+  /**
+   * Returns global iterator to the beginning of the edge list of the given 
+   * vertex
+   */
+  const_iterator vbegin(const vertex_type & v) const {
+    return iterator(
+        _graph->_glob_mem_in_edge, 
+        v._index.unit, 
+        v._in_edge_ref, 
+        0
+    );
+  }
+
+  /**
+   * Returns global iterator to the end of the edge list of the given vertex
+   */
+  const_iterator vend(const vertex_type & v) const {
+    return iterator(
+        _graph->_glob_mem_in_edge, 
+        v._index.unit, 
+        v._in_edge_ref, 
+        _graph->_glob_mem_in_edge->container_size(v._index.unit, 
+          v._in_edge_ref)
+    );
   }
 
 private:

@@ -90,6 +90,15 @@ public:
     return (_team != nullptr) ? *_team : dash::Team::Null();
   }
 
+  size_type container_size(team_unit_t unit, size_type index) const {
+    size_type bucket_size = _bucket_cumul_sizes[unit][index + 
+      _glob_mem_list.size() - 1];
+    if(index > 0) {
+      bucket_size -= _bucket_cumul_sizes[unit][index - 1];
+    }
+    return bucket_size;
+  }
+
 private:
 
   /**

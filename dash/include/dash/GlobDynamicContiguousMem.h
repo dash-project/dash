@@ -299,6 +299,7 @@ public:
         _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
         ++bucket_num;
       }
+      _team->barrier();
     }
 
     // distribute bucket sizes between all units
@@ -354,7 +355,7 @@ public:
     return _lend;
   }
 
-  size_type push_back(container_list_index cont, value_type val) {
+  void push_back(container_list_index cont, value_type val) {
     auto cont_it = _container_list.begin();
     std::advance(cont_it, cont);
     auto c_data = *cont_it;
@@ -382,14 +383,21 @@ public:
     c_data.update_lend();
     update_lbegin();
     update_lend();
-    return static_cast<size_type>(it->size);
   }
 
-  size_type container_size(container_list_index index) const {
+  size_type container_local_size(container_list_index index) const {
     auto cont_it = _container_list.begin();
     std::advance(cont_it, index);
     auto c_data = *cont_it;
     return c_data.container->size() + c_data.unattached_container->size();
+  }
+
+  size_type container_size(team_unit_t unit, size_type index) const {
+    if(index <= 0) {
+      return _bucket_cumul_sizes[unit][index];
+    }
+    return _bucket_cumul_sizes[unit][index] - 
+      _bucket_cumul_sizes[unit][index - 1];
   }
 
   size_type size() const {

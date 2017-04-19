@@ -203,8 +203,10 @@ public:
       = VertexProperties()) {
     auto in_ref = _glob_mem_in_edge->add_container(_alloc_edges_per_vertex);
     auto out_ref = _glob_mem_out_edge->add_container(_alloc_edges_per_vertex);
-    auto max_index = _glob_mem_vertex->container_size(_vertex_container_ref);
-    vertex_type v(max_index, in_ref, out_ref, prop);
+    auto max_index = _glob_mem_vertex->container_local_size(
+        _vertex_container_ref);
+    vertex_index_type v_index(_myid, max_index);
+    vertex_type v(v_index, in_ref, out_ref, prop);
     _glob_mem_vertex->push_back(_vertex_container_ref, v);
     // TODO: return global index
     return vertex_index_type(_myid, max_index);
@@ -236,14 +238,12 @@ public:
       const vertex_index_type & target, 
       const EdgeProperties & prop = EdgeProperties()
   ) {
-    bool remote_edge_set = false;
     edge_index_type local_index;
     if(source.unit == _myid) {
       local_index = add_local_edge(source, target, prop, _glob_mem_out_edge);
     } else {
-      auto edge = edge_type(0, source, target, prop);
+      edge_type edge(source, target, prop);
       _remote_edges[source.unit].push_back(edge);
-      remote_edge_set = true;
     }
     if(target.unit == _myid) {
       // _glob_mem_in_edge == _glob_mem_out_edge for undirected graph types
@@ -253,10 +253,14 @@ public:
         local_index = local_index_tmp;
       }
     // do not double-send edges
-    } else if(!remote_edge_set) {
-      auto edge = edge_type(0, source, target, prop);
+    } else if(source.unit != target.unit) {
+      edge_type edge(source, target, prop);
       _remote_edges[target.unit].push_back(edge);
     }
+    //TODO: handle cases, were both vertices reside on a different unit
+    
+    // currently, double edges are allowed for all cases, so we always return 
+    // true
     return std::make_pair(local_index, true);
   }
 
@@ -323,6 +327,7 @@ public:
     // add missing edges to local memory space
     for(auto edge : edges) {
       if(edge._source.unit == _myid) {
+
         add_local_edge(edge._source, edge._target, edge.properties, 
             _glob_mem_out_edge);
       }
@@ -391,23 +396,20 @@ private:
       glob_mem_edge_type * glob_mem_edge
   ) {
     edge_index_type local_index(_myid, 0, -1);
-    auto edge = edge_type(0, source, target, prop);
-    // if vertex is local, place edge in edge list of the given vertex.
-    // mark the edge for the next commit otherwise
-    if(source.unit == _myid) {
-      auto vertex = _glob_mem_vertex->get(_vertex_container_ref, 
-          source.offset);
-      edge._local_id = glob_mem_edge->container_size(
-          vertex._out_edge_ref);
-      auto local_offset = glob_mem_edge->push_back(
-          vertex._out_edge_ref, edge);
-      local_index.unit = source.unit;
-      local_index.container = vertex._out_edge_ref;
-      local_index.offset = local_offset;
-    } else {
-      //TODO: check, if unit ID is valid
-      _remote_edges[source.unit].push_back(edge);
+    auto edge = edge_type(source, target, prop);
+    auto vertex = _glob_mem_vertex->get(_vertex_container_ref, 
+        source.offset);
+    auto edge_ref = vertex._out_edge_ref;
+    if(glob_mem_edge == _glob_mem_in_edge) {
+      edge_ref = vertex._in_edge_ref;
     }
+    local_index = edge_index_type(
+        _myid, 
+        edge_ref, 
+        glob_mem_edge->container_local_size(edge_ref)
+    );
+    edge._index = local_index;
+    glob_mem_edge->push_back(edge_ref, edge);
     return local_index;
   }
 
