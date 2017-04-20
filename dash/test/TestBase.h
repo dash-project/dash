@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <dash/dart/if/dart_tasking.h>
+
 #include <dash/internal/Config.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
@@ -164,8 +166,10 @@ extern void ColoredPrintf(
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
-    "[= %*d LOG =] %*s :%*d | %s \n", \
-    2, dash::myid().id, 24, filename, 4, __LINE__, \
+    "[= %3d:%-2d LOG =] %*s :%*d | %s \n", \
+    dash::myid().id, \
+    dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+    24, filename, 4, __LINE__, \
     buffer); \
 } while(0)
 
