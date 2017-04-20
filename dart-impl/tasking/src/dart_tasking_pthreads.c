@@ -121,7 +121,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   } else {
     pthread_mutex_unlock(&task_recycle_mutex);
     task = calloc(1, sizeof(dart_task_t));
-    dart_mutex_init(&task->mutex);
+    dart__base__mutex_init(&task->mutex);
   }
 
   if (data_size) {
@@ -185,9 +185,9 @@ void handle_task(dart_task_t *task)
     dart_task_action_t fn = task->fn;
     void *data = task->data;
 
-    dart_mutex_lock(&(task->mutex));
+    dart__base__mutex_lock(&(task->mutex));
     task->state = DART_TASK_RUNNING;
-    dart_mutex_unlock(&(task->mutex));
+    dart__base__mutex_unlock(&(task->mutex));
 
     DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
     //invoke the task function
@@ -201,9 +201,9 @@ void handle_task(dart_task_t *task)
     // we need to lock the task shortly here
     // to allow for atomic check and update
     // of remote successors in dart_tasking_datadeps_handle_remote_task
-    dart_mutex_lock(&(task->mutex));
+    dart__base__mutex_lock(&(task->mutex));
     task->state = DART_TASK_FINISHED;
-    dart_mutex_unlock(&(task->mutex));
+    dart__base__mutex_unlock(&(task->mutex));
     dart_tasking_datadeps_release_local_task(task);
 
     // let the parent know that we are done

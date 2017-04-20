@@ -43,6 +43,22 @@ typedef enum
   DART_ERR_OTHER    = 999
 } dart_ret_t;
 
+
+/**
+ * Return values of DART applications.
+ *
+ * \ingroup DartTypes
+ */
+enum {
+  /** Signal success */
+  DART_EXIT_SUCCESS = EXIT_SUCCESS,
+  /** Signal generic abort */
+  DART_EXIT_ABORT   = EXIT_FAILURE,
+  /** Signal abort after failed assert */
+  DART_EXIT_ASSERT  = -6
+};
+
+
 /**
  * Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
@@ -85,7 +101,7 @@ typedef enum
 typedef enum
 {
     DART_TYPE_UNDEFINED = 0,
-    /** integral data types */
+    /// integral data types 
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
     DART_TYPE_INT,
@@ -93,12 +109,14 @@ typedef enum
     DART_TYPE_LONG,
     DART_TYPE_ULONG,
     DART_TYPE_LONGLONG,
-    /** floating point data types */
+    /// floating point data types
     DART_TYPE_FLOAT,
-    DART_TYPE_DOUBLE
+    DART_TYPE_DOUBLE,
+    /// Reserved, do not use!
+    DART_TYPE_COUNT
 } dart_datatype_t;
 
-
+/** size for integral \c size_t */
 #if (UINT32_MAX == SIZE_MAX)
 #  define DART_TYPE_SIZET DART_TYPE_UINT
 #elif (UINT64_MAX == SIZE_MAX)
@@ -108,10 +126,16 @@ typedef enum
 #endif
 
 
+/** \cond DART_HIDDEN_SYMBOLS */
+/**
+ * \todo This is not part of the DART interface
+ * and should move to dash::internal eventually.
+ */
 typedef struct {
     dart_datatype_t dtype;
     int             nelem;
 } dart_storage_t;
+/** \endcond */
 
 /**
  * Data type for storing a unit ID
@@ -224,6 +248,14 @@ typedef int16_t dart_team_t;
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
 
 
+/**
+ * Levels of thread-support offered by DART.
+ * \ref DART_THREAD_MULTIPLE is supported if 
+ * DART has been build with \c DART_ENABLE_THREADSUPPORT
+ * and the underlying communication backend supports 
+ * thread-safe access.
+ * 
+ */
 typedef enum
 {
   /** No support for thread-based concurrency in DART is provided. */

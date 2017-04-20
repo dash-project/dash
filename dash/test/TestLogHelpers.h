@@ -17,7 +17,7 @@ print_matrix(
   /// Log message prefix.
   const std::string & name,
   /// Matrix instance to log.
-  MatrixT           & matrix,
+  const MatrixT     & matrix,
   int                 precision = 1)
 {
   typedef typename MatrixT::value_type value_t;
@@ -66,7 +66,7 @@ print_matrix(
   /// Log message prefix.
   const std::string & name,
   /// Matrix instance to log.
-  MatrixT           & matrix,
+  const MatrixT     & matrix,
   int                 precision = 1)
 {
   typedef typename MatrixT::value_type value_t;
@@ -115,7 +115,7 @@ print_matrix(
   /// Log message prefix.
   const std::string & name,
   /// Matrix instance to log.
-  MatrixT           & matrix,
+  const MatrixT     & matrix,
   int                 precision = 1)
 {
   typedef typename MatrixT::value_type value_t;

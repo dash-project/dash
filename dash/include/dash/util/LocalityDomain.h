@@ -157,21 +157,44 @@ private:
   typedef LocalityDomain               self_t;
   typedef dash::util::Locality::Scope Scope_t;
 
-private:
-
 public:
-
   typedef internal::LocalityDomainIterator<self_t>              iterator;
   typedef internal::LocalityDomainIterator<const self_t>  const_iterator;
 
 private:
-
   LocalityDomain(
     const self_t                 & parent,
     dart_domain_locality_t       * domain);
 
-public:
+private:
+  /// Underlying \c dart_domain_locality_t object.
+  dart_domain_locality_t                          * _domain     = nullptr;
+  /// Copy of _domain->domain_tag to avoid string copying.
+  std::string                                       _domain_tag = ".";
+  /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
+  /// Must be heap-allocated as type is incomplete due to type definition
+  /// cycle.
+  mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
+  /// Units in the domain.
+  std::vector<global_unit_t>                        _unit_ids;
+#if 0
+  /// Locality descriptors of units in the domain. Only specified in root
+  /// locality domain and resolved from parent in upward recursion otherwise.
+  std::unordered_map<team_unit_t, UnitLocality_t>   _unit_localities;
+#endif
+  /// Iterator to the first subdomain.
+  iterator                                          _begin;
+  /// Iterator past the last subdomain.
+  iterator                                          _end;
+  /// Whether this instance is owner of _domain.
+  bool                                              _is_owner   = false;
+  /// Domain tags of groups in the locality domain.
+  std::vector<iterator>                             _groups;
+  std::vector<std::string>                          _group_domain_tags;
+  /// Split domains in the team locality, one domain for every split group.
+  std::vector<self_t>                               _parts;
 
+public:
   LocalityDomain() = default;
 
   explicit LocalityDomain(
@@ -195,8 +218,7 @@ public:
     self_t && other);
 
   inline bool operator==(
-    const self_t & rhs) const
-  {
+    const self_t & rhs) const {
     return ( (_domain == rhs._domain)
              ||
              ( (_domain     != nullptr &&
@@ -209,8 +231,7 @@ public:
   }
 
   inline bool operator!=(
-    const self_t & rhs) const
-  {
+    const self_t & rhs) const {
     return !(*this == rhs);
   }
 
@@ -476,34 +497,6 @@ private:
       _groups.push_back(find(gdt));
     }
   }
-
-private:
-  /// Underlying \c dart_domain_locality_t object.
-  dart_domain_locality_t                          * _domain    = nullptr;
-  /// Copy of _domain->domain_tag to avoid string copying.
-  std::string                                       _domain_tag;
-  /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
-  /// Must be heap-allocated as type is incomplete due to type definition
-  /// cycle.
-  mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
-  /// Units in the domain.
-  std::vector<global_unit_t>                        _unit_ids;
-#if 0
-  /// Locality descriptors of units in the domain. Only specified in root
-  /// locality domain and resolved from parent in upward recursion otherwise.
-  std::unordered_map<team_unit_t, UnitLocality_t>   _unit_localities;
-#endif
-  /// Iterator to the first subdomain.
-  iterator                                          _begin;
-  /// Iterator past the last subdomain.
-  iterator                                          _end;
-  /// Whether this instance is owner of _domain.
-  bool                                              _is_owner   = false;
-  /// Domain tags of groups in the locality domain.
-  std::vector<iterator>                             _groups;
-  std::vector<std::string>                          _group_domain_tags;
-  /// Split domains in the team locality, one domain for every split group.
-  std::vector<self_t>                               _parts;
 
 }; // class LocalityDomain
 

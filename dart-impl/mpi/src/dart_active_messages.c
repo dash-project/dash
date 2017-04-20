@@ -81,8 +81,8 @@ dart_amsg_openq(
   res->dbuf = malloc(res->size);
   res->team = team;
 
-  dart_mutex_init(&res->send_mutex);
-  dart_mutex_init(&res->processing_mutex);
+  dart__base__mutex_init(&res->send_mutex);
+  dart__base__mutex_init(&res->processing_mutex);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
@@ -131,7 +131,7 @@ dart_amsg_trysend(
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint64_t remote_offset = 0;
 
-  dart_mutex_lock(&amsgq->send_mutex);
+  dart__base__mutex_lock(&amsgq->send_mutex);
 
   dart_task_action_t remote_fn_ptr =
                         (dart_task_action_t)translate_fnptr(fn, target, amsgq);
@@ -154,7 +154,7 @@ dart_amsg_trysend(
         MPI_SUM,
         amsgq->tailpos_win) != MPI_SUCCESS) {
     DART_LOG_ERROR("MPI_Fetch_and_op failed!");
-    dart_mutex_unlock(&amsgq->send_mutex);
+    dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_NOTINIT;
   }
 
@@ -167,7 +167,7 @@ dart_amsg_trysend(
     DART_LOG_ERROR("Received offset larger than message queue size from "
                    "unit %i (%lu but expected < %lu)",
                    target.id, remote_offset, amsgq->size);
-    dart_mutex_unlock(&amsgq->send_mutex);
+    dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_INVAL;
   }
 
@@ -186,7 +186,7 @@ dart_amsg_trysend(
     DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
                    "(current offset %llu of %llu)",
                    msg_size, target, remote_offset, amsgq->size);
-    dart_mutex_unlock(&amsgq->send_mutex);
+    dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_AGAIN;
   }
 
@@ -221,7 +221,7 @@ dart_amsg_trysend(
     amsgq->queue_win);
   MPI_Win_unlock(target.id, amsgq->queue_win);
 
-  dart_mutex_unlock(&amsgq->send_mutex);
+  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
                 "%i starting at offset %li",
@@ -240,12 +240,12 @@ amsg_process_internal(
   uint64_t         tailpos;
 
   if (!blocking) {
-    dart_ret_t ret = dart_mutex_trylock(&amsgq->processing_mutex);
+    dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
     if (ret != DART_OK) {
       return DART_ERR_AGAIN;
     }
   } else {
-    dart_mutex_lock(&amsgq->processing_mutex);
+    dart__base__mutex_lock(&amsgq->processing_mutex);
   }
 
   do {
@@ -313,7 +313,7 @@ amsg_process_internal(
           DART_LOG_ERROR("Message out of bounds (expected %lu but saw %lu)\n",
                          tailpos,
                          pos);
-          dart_mutex_unlock(&amsgq->processing_mutex);
+          dart__base__mutex_unlock(&amsgq->processing_mutex);
           return DART_ERR_INVAL;
         }
 
@@ -331,7 +331,7 @@ amsg_process_internal(
       MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
     }
   } while (blocking && tailpos > 0);
-  dart_mutex_unlock(&amsgq->processing_mutex);
+  dart__base__mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;
 }
 
@@ -388,8 +388,8 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   */
   free(amsgq);
 
-  dart_mutex_destroy(&amsgq->send_mutex);
-  dart_mutex_destroy(&amsgq->processing_mutex);
+  dart__base__mutex_destroy(&amsgq->send_mutex);
+  dart__base__mutex_destroy(&amsgq->processing_mutex);
 
   return DART_OK;
 }

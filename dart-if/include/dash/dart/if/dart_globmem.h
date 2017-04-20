@@ -7,9 +7,14 @@
  * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
  *
- * Routines for allocation and reclamation of global memory regions and pointer semantics in partitioned global address space.
+ * Routines for allocation and reclamation of global memory regions and
+ * local address resolution in partitioned global address space.
  *
  */
+
+#include <dash/dart/if/dart_util.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -139,35 +144,39 @@ typedef struct
 
 /**
  * Get the local memory address for the specified global pointer
- * gptr. I.e., if the global pointer has affinity to the local unit,
+ * \c gptr. I.e., if the global pointer has affinity to the local unit,
  * return the local memory address.
  *
  * \param      gptr Global pointer
- * \param[out] addr Pointer to a pointer that will hold the local address if
- *                  the \c gptr points to a local memory element.
+ * \param[out] addr Pointer to a pointer that will hold the local
+ *                  address if the \c gptr points to a local memory element.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
+dart_ret_t dart_gptr_getaddr(
+  const dart_gptr_t    gptr,
+        void        ** addr) DART_NOTHROW;
 
 
 /**
- * Get the local memory address for the specified global pointer
- * gptr. This is similar to \ref dart_gptr_getaddr except that it
- * returns an offset even if \c gptr points to data on another unit.
+ * Get the local memory offset for the specified global pointer
+ * \c gptr even if the global pointer points to a remote unit.
  *
  * \param      gptr Global pointer
- * \param[out] addr Pointer to a variable that will hold the local offset.
+ * \param[out] addr Pointer to a pointer that will hold the local
+ *                  address if the \c gptr points to a local memory element.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_getoffset(const dart_gptr_t gptr, uint64_t *offset);
+dart_ret_t dart_gptr_getoffset(
+  const dart_gptr_t   gptr,
+        uint64_t    * offset) DART_NOTHROW;
 
 /**
  * Set the local memory address for the specified global pointer such
@@ -181,7 +190,9 @@ dart_ret_t dart_gptr_getoffset(const dart_gptr_t gptr, uint64_t *offset);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
+dart_ret_t dart_gptr_setaddr(
+  dart_gptr_t * gptr,
+  void        * addr) DART_NOTHROW;
 
 /**
  * Add 'offs' to the address specified by the global pointer
@@ -194,7 +205,15 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
+DART_INLINE DART_NOTHROW
+dart_ret_t
+dart_gptr_incaddr(
+  dart_gptr_t * gptr,
+  int64_t       offs)
+{
+  gptr->addr_or_offs.offset += offs;
+  return DART_OK;
+}
 
 /**
  * Set the unit information for the specified global pointer.
@@ -207,20 +226,29 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int64_t offs);
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t unit);
+DART_INLINE DART_NOTHROW
+dart_ret_t dart_gptr_setunit(
+  dart_gptr_t      * gptr,
+  dart_team_unit_t   unit)
+{
+  gptr->unitid = unit.id;
+  return DART_OK;
+}
 
 /**
  * Get the flags field for the segment specified by the global pointer.
  *
- * \param gptr Global Pointer describing a segment.
- * \param unit The flags to get for segment in \c gptr
+ * \param gptr  Global Pointer describing a segment.
+ * \param flags The flags to get for segment in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
+dart_ret_t dart_gptr_getflags(
+  dart_gptr_t   gptr,
+  uint16_t    * flags) DART_NOTHROW;
 
 
 /**
@@ -230,15 +258,17 @@ dart_ret_t dart_gptr_getflags(dart_gptr_t gptr, uint16_t *flags);
  * fast access. The remaining flags can be queried through
  * \ref dart_gptr_getflags.
  *
- * \param gptr Global Pointer describing a segment.
- * \param unit The flags to set for segment in \c gptr
+ * \param gptr  Global Pointer describing a segment.
+ * \param flags The flags to set for segment in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
+dart_ret_t dart_gptr_setflags(
+  dart_gptr_t * gptr,
+  uint16_t      flags) DART_NOTHROW;
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
@@ -259,7 +289,7 @@ dart_ret_t dart_gptr_setflags(dart_gptr_t *gptr, uint16_t flags);
 dart_ret_t dart_memalloc(
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_gptr_t     * gptr);
+  dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Frees memory in the global address space allocated by a previous call
@@ -273,7 +303,7 @@ dart_ret_t dart_memalloc(
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_memfree(dart_gptr_t gptr);
+dart_ret_t dart_memfree(dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Collective function on the specified team to allocate \c nelem elements
@@ -309,16 +339,16 @@ dart_ret_t dart_team_memalloc_aligned(
   dart_team_t       teamid,
 	size_t            nelem,
   dart_datatype_t   dtype,
-  dart_gptr_t     * gptr);
+  dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Collective function to free global memory previously allocated
  * using \ref dart_team_memalloc_aligned.
  * After this operation, the global pointer should not be used in any
  * communication unless re-used in another allocation.
- * After this operation, the global pointer can be reset using \ref DART_GPTR_NULL.
+ * After this operation, the global pointer can be reset using
+ * \ref DART_GPTR_NULL.
  *
- * \param teamid The team to participate in the collective deallocation.
  * \param gptr Global pointer pointing to the memory to deallocate.
  *
  * \see DART_GPTR_NULL
@@ -329,7 +359,7 @@ dart_ret_t dart_team_memalloc_aligned(
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
-  dart_gptr_t gptr);
+  dart_gptr_t gptr) DART_NOTHROW;
 
 /**
  * Collective function similar to \ref dart_team_memalloc_aligned but on
@@ -354,17 +384,19 @@ dart_ret_t dart_team_memregister_aligned(
 	size_t            nelem,
   dart_datatype_t   dtype,
 	void            * addr,
-	dart_gptr_t     * gptr);
+	dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
- * Attaches external memory previously allocated by the user.
+ * Collective function, attaches external memory previously allocated by
+ * the user.
  * Does not perform any memory allocation.
  *
- * \param teamid The team to participate in the collective operation.
- * \param nelem  The number of elements already allocated in \c addr.
- * \param dtype  The data type of elements in \c addr.
- * \param addr   Pointer to pre-allocated memory to be registered.
- * \param gptr   Pointer to a global pointer object to set up.
+ * \param teamid  The team to participate in the collective operation.
+ * \param nlelem  The number of local elements allocated in \c addr to
+ *                attach.
+ * \param dtype   The data type of elements in \c addr.
+ * \param addr    Pointer to pre-allocated memory to be registered.
+ * \param gptr    Pointer to a global pointer object to set up.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -373,17 +405,16 @@ dart_ret_t dart_team_memregister_aligned(
  */
 dart_ret_t dart_team_memregister(
   dart_team_t       teamid,
-	size_t            nelem,
+	size_t            nlelem,
   dart_datatype_t   dtype,
 	void            * addr,
-	dart_gptr_t     * gptr);
+	dart_gptr_t     * gptr) DART_NOTHROW;
 
 /**
  * Collective function similar to dart_team_memfree() but on previously
  * externally allocated memory.
- * Does not perform any memory de-allocation.
+ * Does not de-allocate memory.
  *
- * \param teamid The team to participate in the collective operation.
  * \param gptr   Pointer to a global pointer object to set up.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -394,7 +425,7 @@ dart_ret_t dart_team_memregister(
  * \threadsafe_none
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_team_memderegister(dart_gptr_t gptr);
+dart_ret_t dart_team_memderegister(dart_gptr_t gptr) DART_NOTHROW;
 
 
 /** \cond DART_HIDDEN_SYMBOLS */

@@ -142,7 +142,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
   
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
-    message(FATAL_ERROR "Insufficient Clang version detected (3.8.0) or above required")
+    message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -157,8 +157,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
-    message(FATAL_ERROR "Insufficient GCC version detected (4.9.0 or above required)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.1")
+    message(FATAL_ERROR "Insufficient GCC version (< 4.8.1)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
@@ -176,7 +176,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
 
 
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
-    message(FATAL_ERROR "Insufficient Intel compiler version detected (15.0.0 or above required)")
+    message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
@@ -234,18 +234,18 @@ set(CMAKE_CXX_FLAGS_DEBUG
 
 
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-  "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:
@@ -277,9 +277,20 @@ if (ENABLE_ASSERTIONS)
       "${CMAKE_CXX_FLAGS_RELEASE} -DDART_ENABLE_ASSERTIONS")
 endif()
 
-# Enable support for clock_gettime, spinlocks and snprintf in C code (required in DART)
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_XOPEN_SOURCE=600 -D_GNU_SOURCE")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -D_XOPEN_SOURCE=600 -D_GNU_SOURCE")
+if (DASH_PLATFORM_IS_LINUX OR 
+    DASH_PLATFORM_IS_OSX   OR 
+    DASH_PLATFORM_IS_FREEBSD)
+  # -D_XOPEN_SOURCE=700 is required for pthread_mutexattr_settype
+  # and gethostname
+  set(CMAKE_C_FLAGS_DEBUG
+      "${CMAKE_C_FLAGS_DEBUG} -D_XOPEN_SOURCE=700")
+  set(CMAKE_C_FLAGS_RELEASE
+      "${CMAKE_C_FLAGS_RELEASE} -D_XOPEN_SOURCE=700")
+  set(CMAKE_CXX_FLAGS_DEBUG
+      "${CMAKE_CXX_FLAGS_DEBUG} -D_XOPEN_SOURCE=700")
+  set(CMAKE_CXX_FLAGS_RELEASE
+      "${CMAKE_CXX_FLAGS_RELEASE} -D_XOPEN_SOURCE=700")
+endif()
 
 message(STATUS "CC  flags (Debug):   ${CMAKE_C_FLAGS_DEBUG}")
 message(STATUS "CXX flags (Debug):   ${CMAKE_CXX_FLAGS_DEBUG}")

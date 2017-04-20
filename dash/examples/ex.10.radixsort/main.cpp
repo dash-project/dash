@@ -1,3 +1,8 @@
+/**
+ * \example ex.10.radixsort/main.cpp
+ * Example demonstrating radixsort on 
+ * DASH global data structures.
+ */
 #include <libdash.h>
 
 #include <vector>

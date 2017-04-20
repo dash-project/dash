@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sched.h>
+#include <string.h>
 
 /* ==================================================================== *
  * Domain Locality                                                      *

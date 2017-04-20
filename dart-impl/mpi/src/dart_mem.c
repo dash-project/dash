@@ -70,13 +70,13 @@ dart_buddy_new(size_t size)
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (lsize * 2 - 2));
 	self->level = level;
 	memset(self->tree, NODE_UNUSED, lsize * 2 - 1);
-	dart_mutex_init(&self->mutex);
+	dart__base__mutex_init(&self->mutex);
 	return self;
 }
 
 void
 dart_buddy_delete(struct dart_buddy * self) {
-  dart_mutex_destroy(&self->mutex);
+  dart__base__mutex_destroy(&self->mutex);
 	free(self);
 }
 
@@ -136,14 +136,14 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 	int index = 0;
 	int level = 0;
 
-	dart_mutex_lock(&self->mutex);
+	dart__base__mutex_lock(&self->mutex);
 
 	while (index >= 0) {
 		if (size == length) {
 			if (self->tree[index] == NODE_UNUSED) {
 				self->tree[index] = NODE_USED;
 				_mark_parent(self, index);
-			  dart_mutex_unlock(&self->mutex);
+			  dart__base__mutex_unlock(&self->mutex);
 				return _index_offset(index, level, self->level);
 			}
 		}
@@ -175,7 +175,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 			length *= 2;
 			index = (index + 1) / 2 - 1;
 			if (index < 0) {
-			  dart_mutex_unlock(&self->mutex);
+			  dart__base__mutex_unlock(&self->mutex);
 			  return -1;
 			}
 			if (index & 1) {
@@ -185,7 +185,7 @@ dart_buddy_alloc(struct dart_buddy * self, size_t s) {
 		}
 	}
 
-  dart_mutex_unlock(&self->mutex);
+  dart__base__mutex_unlock(&self->mutex);
 	return -1;
 }
 
@@ -218,21 +218,21 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 		return -1;
 	}
 
-  dart_mutex_lock(&self->mutex);
+  dart__base__mutex_lock(&self->mutex);
 	for (;;) {
 		switch (self->tree[index]) {
 		case NODE_USED:
 			if (offset != left){
 				assert (offset == left);
-			  dart_mutex_unlock(&self->mutex);
+			  dart__base__mutex_unlock(&self->mutex);
 				return -1;
 			}
 			_combine(self, index);
-		  dart_mutex_unlock(&self->mutex);
+		  dart__base__mutex_unlock(&self->mutex);
 			return 0;
 		case NODE_UNUSED:
 			assert (0);
-		  dart_mutex_unlock(&self->mutex);
+		  dart__base__mutex_unlock(&self->mutex);
 			return -1;
 		default:
 			length /= 2;
@@ -247,7 +247,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 		}
 	}
 
-  dart_mutex_unlock(&self->mutex);
+  dart__base__mutex_unlock(&self->mutex);
   // TODO: is this ever reached?
 	return -1;
 }

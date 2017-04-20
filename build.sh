@@ -2,9 +2,6 @@
 
 BUILD_DIR=./build
 
-#export CC=clang
-#export CXX=clang++
-
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
@@ -57,9 +54,11 @@ fi
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-tasking/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -74,19 +73,17 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
-                        -DGTEST_LIBRARY_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest/lib \
-                        -DGTEST_INCLUDE_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest/include \
                         \
                         -DENABLE_LIBNUMA=ON \
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=OFF \
-                        -DENABLE_BLAS=OFF \
-                        -DENABLE_LAPACK=OFF \
-                        -DENABLE_SCALAPACK=OFF \
-                        -DENABLE_PLASMA=OFF \
-                        -DENABLE_HDF5=OFF \
+                        -DENABLE_MKL=ON \
+                        -DENABLE_BLAS=ON \
+                        -DENABLE_LAPACK=ON \
+                        -DENABLE_SCALAPACK=ON \
+                        -DENABLE_PLASMA=ON \
+                        -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
@@ -95,10 +92,7 @@ rm -Rf $BUILD_DIR/*
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
-                        -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF \
-                        -DBUILD_SHARED_LIBS=OFF \
-                        -DENABLE_AYUDAME=OFF \
-                        -DAYUDAME_PREFIX=${HOME}/local/temanejo \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \

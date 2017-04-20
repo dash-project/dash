@@ -44,12 +44,12 @@ task_list_t * dart_tasking_tasklist_allocate_elem()
 {
   task_list_t *tl = NULL;
   if (free_task_list != NULL) {
-    dart_mutex_lock(&mutex);
+    dart__base__mutex_lock(&mutex);
     if (free_task_list != NULL) {
       tl = free_task_list;
       free_task_list = free_task_list->next;
     }
-    dart_mutex_unlock(&mutex);
+    dart__base__mutex_unlock(&mutex);
   }
   if (tl == NULL){
     tl = calloc(1, sizeof(task_list_t));
@@ -60,8 +60,8 @@ task_list_t * dart_tasking_tasklist_allocate_elem()
 void dart_tasking_tasklist_deallocate_elem(task_list_t *tl)
 {
   tl->task = NULL;
-  dart_mutex_lock(&mutex);
+  dart__base__mutex_lock(&mutex);
   tl->next = free_task_list;
   free_task_list = tl;
-  dart_mutex_unlock(&mutex);
+  dart__base__mutex_unlock(&mutex);
 }

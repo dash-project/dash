@@ -58,20 +58,20 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-tasking/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=OFF \
-                        -DENABLE_ASSERTIONS=ON \
-                        -DENABLE_LT_OPTIMIZATION=OFF \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=ON \
-                        -DENABLE_EXT_COMPILER_WARNINGS=OFF \
+                        -DENABLE_EXT_COMPILER_WARNINGS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
+                        -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
-                        -DENABLE_LOGGING=OFF \
-                        -DENABLE_TRACE_LOGGING=OFF \
+                        -DENABLE_LOGGING=ON \
+                        -DENABLE_TRACE_LOGGING=ON \
                         -DENABLE_DART_LOGGING=ON \
                         \
                         -DENABLE_LIBNUMA=ON \
@@ -83,7 +83,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=OFF \
+                        -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
@@ -93,9 +93,6 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        -DBUILD_SHARED_LIBS=ON \
-			-DENABLE_AYUDAME=ON \
-			-DAYUDAME_PREFIX=${HOME}/local/temanejo \
                         ../ && \
  await_confirm && \
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \

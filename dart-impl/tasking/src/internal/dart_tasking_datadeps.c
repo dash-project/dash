@@ -74,9 +74,9 @@ dart_ret_t dart_tasking_datadeps_init()
 {
   memset(local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
 
-  dart_mutex_init(&local_deps_mutex);
-  dart_mutex_init(&unhandled_remote_mutex);
-  dart_mutex_init(&deferred_remote_mutex);
+  dart__base__mutex_init(&local_deps_mutex);
+  dart__base__mutex_init(&unhandled_remote_mutex);
+  dart__base__mutex_init(&deferred_remote_mutex);
 
   return dart_tasking_remote_init();
 }
@@ -97,9 +97,9 @@ dart_ret_t dart_tasking_datadeps_reset()
 
 dart_ret_t dart_tasking_datadeps_fini()
 {
-  dart_mutex_destroy(&local_deps_mutex);
-  dart_mutex_destroy(&unhandled_remote_mutex);
-  dart_mutex_destroy(&deferred_remote_mutex);
+  dart__base__mutex_destroy(&local_deps_mutex);
+  dart__base__mutex_destroy(&unhandled_remote_mutex);
+  dart__base__mutex_destroy(&deferred_remote_mutex);
   dart_tasking_datadeps_reset();
   dart_dephash_elem_t *elem = freelist_head;
   while (elem != NULL) {
@@ -128,11 +128,11 @@ dephash_allocate_elem(const dart_task_dep_t *dep, taskref task)
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
   if (freelist_head != NULL) {
-    dart_mutex_lock(&local_deps_mutex);
+    dart__base__mutex_lock(&local_deps_mutex);
     if (freelist_head != NULL) {
       DART_STACK_POP(freelist_head, elem);
     }
-    dart_mutex_unlock(&local_deps_mutex);
+    dart__base__mutex_unlock(&local_deps_mutex);
   }
 
   if (elem == NULL){
@@ -155,9 +155,9 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
     memset(elem, 0, sizeof(*elem));
-    dart_mutex_lock(&local_deps_mutex);
+    dart__base__mutex_lock(&local_deps_mutex);
     DART_STACK_PUSH(freelist_head, elem);
-    dart_mutex_unlock(&local_deps_mutex);
+    dart__base__mutex_unlock(&local_deps_mutex);
   }
 }
 
@@ -172,9 +172,9 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
   elem->phase = task.local->phase;
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
-  dart_mutex_lock(&local_deps_mutex);
+  dart__base__mutex_lock(&local_deps_mutex);
   DART_STACK_PUSH(local_deps[slot], elem);
-  dart_mutex_unlock(&local_deps_mutex);
+  dart__base__mutex_unlock(&local_deps_mutex);
 
   return DART_OK;
 }
@@ -182,7 +182,7 @@ static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
 static void
 release_deferred_remote_releases()
 {
-  dart_mutex_lock(&deferred_remote_mutex);
+  dart__base__mutex_lock(&deferred_remote_mutex);
   dart_dephash_elem_t *elem;
   dart_dephash_elem_t *next = deferred_remote_releases;
   while ((elem = next) != NULL) {
@@ -201,7 +201,7 @@ release_deferred_remote_releases()
     dephash_recycle_elem(elem);
   }
   deferred_remote_releases = NULL;
-  dart_mutex_unlock(&deferred_remote_mutex);
+  dart__base__mutex_unlock(&deferred_remote_mutex);
 }
 
 static bool
@@ -262,7 +262,7 @@ dart_tasking_datadeps_release_unhandled_remote()
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote dependencies: %p",
                  unhandled_remote_deps);
-  dart_mutex_lock(&unhandled_remote_mutex);
+  dart__base__mutex_lock(&unhandled_remote_mutex);
   dart_dephash_elem_t *next = unhandled_remote_deps;
   while ((rdep = next) != NULL) {
     next = rdep->next;
@@ -284,7 +284,7 @@ dart_tasking_datadeps_release_unhandled_remote()
                               local = local->next) {
       dart_task_t *task = local->task.local;
       // lock the task to avoid race condiditions in updating the state
-      dart_mutex_lock(&task->mutex);
+      dart__base__mutex_lock(&task->mutex);
       if (local->taskdep.gptr.addr_or_offs.addr
               == rdep->taskdep.gptr.addr_or_offs.addr &&
           IS_OUT_DEP(local->taskdep) &&
@@ -301,7 +301,7 @@ dart_tasking_datadeps_release_unhandled_remote()
          *       between tasks and phases!
          */
         if (task->phase >= rdep->phase) {
-          dart_mutex_unlock(&task->mutex);
+          dart__base__mutex_unlock(&task->mutex);
           if (direct_dep_candidate == NULL ||
               direct_dep_candidate->phase > task->phase) {
             direct_dep_candidate = task;
@@ -316,7 +316,7 @@ dart_tasking_datadeps_release_unhandled_remote()
           if (candidate == NULL || task->phase > candidate->phase) {
             // release the lock on the previous candidate
             if (candidate != NULL) {
-              dart_mutex_unlock(&candidate->mutex);
+              dart__base__mutex_unlock(&candidate->mutex);
             }
             // keep the current task/candidate locked until we find another
             // candidate or have added the remote_successor (below).
@@ -324,11 +324,11 @@ dart_tasking_datadeps_release_unhandled_remote()
             DART_LOG_TRACE("Making local task %p a candidate for "
                            "remote task %p", candidate, rdep->task.remote);
           } else {
-            dart_mutex_unlock(&task->mutex);
+            dart__base__mutex_unlock(&task->mutex);
           }
         }
       } else {
-        dart_mutex_unlock(&task->mutex);
+        dart__base__mutex_unlock(&task->mutex);
       }
     }
 
@@ -361,7 +361,7 @@ dart_tasking_datadeps_release_unhandled_remote()
                      "task %p from origin %i",
                      candidate, rdep->task.remote, origin.id);
       DART_STACK_PUSH(candidate->remote_successor, rdep);
-      dart_mutex_unlock(&(candidate->mutex));
+      dart__base__mutex_unlock(&(candidate->mutex));
     } else {
       // the remote dependency cannot be served --> send release
       DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
@@ -374,7 +374,7 @@ dart_tasking_datadeps_release_unhandled_remote()
   }
 
   unhandled_remote_deps = NULL;
-  dart_mutex_unlock(&unhandled_remote_mutex);
+  dart__base__mutex_unlock(&unhandled_remote_mutex);
 
   /**
    * Finally release all defered remote dependency releases
@@ -417,7 +417,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_DIRECT) {
       dart_task_t *deptask = dep.task;
       if (deptask != DART_TASK_NULL) {
-        dart_mutex_lock(&(deptask->mutex));
+        dart__base__mutex_lock(&(deptask->mutex));
         if (deptask->state != DART_TASK_FINISHED) {
           dart_tasking_tasklist_prepend(&(deptask->successor), task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(
@@ -427,7 +427,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
                          task, deptask,
                          deptask->successor, unresolved_deps);
         }
-        dart_mutex_unlock(&(deptask->mutex));
+        dart__base__mutex_unlock(&(deptask->mutex));
       }
     } else if (dep.gptr.unitid != myid.id) {
       if (task->parent->state == DART_TASK_ROOT) {
@@ -468,7 +468,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
                          dep.type);
 
           // lock the task here to avoid race condition
-          dart_mutex_lock(&(elem->task.local->mutex));
+          dart__base__mutex_lock(&(elem->task.local->mutex));
           if (elem->task.local->state != DART_TASK_FINISHED &&
               (IS_OUT_DEP(dep) ||
                   (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
@@ -481,7 +481,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
                            elem->task.local->successor, unresolved_deps);
             dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
           }
-          dart_mutex_unlock(&(elem->task.local->mutex));
+          dart__base__mutex_unlock(&(elem->task.local->mutex));
           if (IS_OUT_DEP(elem->taskdep)) {
             // we can stop at the first OUT|INOUT dependency
             DART_LOG_TRACE("Stopping search for dependencies for task %p at "
@@ -521,11 +521,11 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
     remote_task.remote, origin.id);
   // cache this request and resolve it later
   dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task);
-  dart_mutex_lock(&unhandled_remote_mutex);
+  dart__base__mutex_lock(&unhandled_remote_mutex);
   rs->taskdep.gptr.unitid = origin.id;
   rs->phase = rdep->phase;
   DART_STACK_PUSH(unhandled_remote_deps, rs);
-  dart_mutex_unlock(&unhandled_remote_mutex);
+  dart__base__mutex_unlock(&unhandled_remote_mutex);
   return DART_OK;
 }
 
@@ -547,13 +547,13 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(
   DART_LOG_DEBUG("Remote direct task dependency for task %p: %p",
       local_task, remote_task.remote);
   if (local_task->state != DART_TASK_FINISHED) {
-    dart_mutex_lock(&(local_task->mutex));
+    dart__base__mutex_lock(&(local_task->mutex));
     if (local_task->state != DART_TASK_FINISHED) {
       dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
       DART_STACK_PUSH(local_task->remote_successor, rs);
       enqueued = true;
     }
-    dart_mutex_unlock(&(local_task->mutex));
+    dart__base__mutex_unlock(&(local_task->mutex));
   }
 
   if (!enqueued) {
@@ -600,7 +600,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart_task_t *local_task)
 {
   // block the release of the task if it's not to be executed yet
-  dart_mutex_lock(&deferred_remote_mutex);
+  dart__base__mutex_lock(&deferred_remote_mutex);
   if (local_task->phase > dart__tasking__phase_bound()) {
     // dummy dependency
     dart_task_dep_t dep = {
@@ -626,7 +626,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
       dart__tasking__enqueue_runnable(local_task);
     }
   }
-  dart_mutex_unlock(&deferred_remote_mutex);
+  dart__base__mutex_unlock(&deferred_remote_mutex);
   return DART_OK;
 }
 

@@ -8,13 +8,13 @@ void
 dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
 {
   tq->head = tq->tail = NULL;
-  dart_mutex_init(&tq->mutex);
+  dart__base__mutex_init(&tq->mutex);
 }
 
 dart_task_t *
 dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 {
-  dart_mutex_lock(&tq->mutex);
+  dart__base__mutex_lock(&tq->mutex);
   dart_task_t *task = tq->head;
   if (tq->head != NULL) {
     DART_ASSERT(tq->head != NULL && tq->tail != NULL);
@@ -31,7 +31,7 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
     task->prev = NULL;
     task->next = NULL;
   }
-  dart_mutex_unlock(&tq->mutex);
+  dart__base__mutex_unlock(&tq->mutex);
   return task;
 }
 
@@ -44,7 +44,7 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
     "dart_tasking_taskqueue_push: task is already head of task queue");
   task->next = NULL;
   task->prev = NULL;
-  dart_mutex_lock(&tq->mutex);
+  dart__base__mutex_lock(&tq->mutex);
   if (tq->head == NULL) {
     // task queue previously empty
     DART_LOG_INFO("dart_tasking_taskqueue_push: task %p to empty task queue "
@@ -59,7 +59,7 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
     tq->head       = task;
   }
   DART_ASSERT(tq->head != NULL && tq->tail != NULL);
-  dart_mutex_unlock(&tq->mutex);
+  dart__base__mutex_unlock(&tq->mutex);
 }
 
 
@@ -69,7 +69,7 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
   dart_task_t * task = NULL;
   if (tq->tail != NULL)
   {
-    dart_mutex_lock(&tq->mutex);
+    dart__base__mutex_lock(&tq->mutex);
 
     // re-check
     if (tq->tail != NULL)
@@ -91,7 +91,7 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
       task->next = NULL;
     }
 
-    dart_mutex_unlock(&tq->mutex);
+    dart__base__mutex_unlock(&tq->mutex);
   }
 
   return task;
@@ -104,8 +104,8 @@ dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
     return DART_ERR_INVAL;
   }
   if (src->head != NULL && src->tail != NULL) {
-    dart_mutex_lock(&dst->mutex);
-    dart_mutex_lock(&src->mutex);
+    dart__base__mutex_lock(&dst->mutex);
+    dart__base__mutex_lock(&src->mutex);
 
     if (src->head != NULL && src->tail != NULL) {
       /**
@@ -124,8 +124,8 @@ dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
       src->tail = src->head = NULL;
 
     }
-    dart_mutex_unlock(&dst->mutex);
-    dart_mutex_unlock(&src->mutex);
+    dart__base__mutex_unlock(&dst->mutex);
+    dart__base__mutex_unlock(&src->mutex);
   }
   return DART_OK;
 }
@@ -133,7 +133,7 @@ dart_tasking_taskqueue_move(dart_taskqueue_t *dst, dart_taskqueue_t *src)
 void
 dart_tasking_taskqueue_finalize(dart_taskqueue_t *tq)
 {
-  dart_mutex_destroy(&tq->mutex);
+  dart__base__mutex_destroy(&tq->mutex);
   tq->head = tq->tail = NULL;
 }
 

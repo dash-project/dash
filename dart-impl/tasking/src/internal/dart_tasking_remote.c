@@ -4,6 +4,7 @@
 #include <dash/dart/base/assert.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
+#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
@@ -57,7 +58,8 @@ request_direct_taskdep(void *data);
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
-    amsgq  = dart_amsg_openq(sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL);
+    amsgq  = dart_amsg_openq(
+        sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
   }

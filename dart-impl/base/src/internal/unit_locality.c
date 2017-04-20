@@ -2,21 +2,13 @@
  * \file dash/dart/base/internal/unit_locality.c
  */
 
-/*
- * Include config and utmpx.h first to prevent previous include of utmpx.h
- * without _GNU_SOURCE in included headers:
- */
-#include <dash/dart/base/config.h>
-#ifdef DART__PLATFORM__LINUX
-#  define _GNU_SOURCE
-#  include <utmpx.h>
-#endif
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/locality.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #include <unistd.h>
 #include <inttypes.h>

@@ -15,6 +15,7 @@
 #ifndef DASH_DART_BASE_ATOMIC_H_
 #define DASH_DART_BASE_ATOMIC_H_
 
+#include <stdint.h>
 
 #if DART_HAVE_SYNC_BUILTINS
 

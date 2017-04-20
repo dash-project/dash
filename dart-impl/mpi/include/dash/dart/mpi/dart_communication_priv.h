@@ -7,20 +7,28 @@
 
 #include <stdio.h>
 #include <mpi.h>
-#include <stdbool.h>
+
+#include <dash/dart/base/macro.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_communication.h>
 
+DART_INTERNAL
+int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
+
 /** DART handle type for non-blocking one-sided operations. */
 struct dart_handle_struct
 {
-	MPI_Request request;
-	MPI_Win	    win;
-	dart_unit_t dest;
+  MPI_Request request;
+  MPI_Win     win;
+  dart_unit_t dest;
 };
 
-static inline MPI_Op dart_mpi_op(dart_operation_t dart_op) {
+dart_ret_t
+dart__mpi__datatype_init() DART_INTERNAL;
+
+static inline MPI_Op dart__mpi__op(dart_operation_t dart_op) {
   switch (dart_op) {
     case DART_OP_MIN     : return MPI_MIN;
     case DART_OP_MAX     : return MPI_MAX;
@@ -38,7 +46,7 @@ static inline MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   }
 }
 
-static inline MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
+static inline MPI_Datatype dart__mpi__datatype(dart_datatype_t dart_datatype) {
   switch (dart_datatype) {
     case DART_TYPE_BYTE     : return MPI_BYTE;
     case DART_TYPE_SHORT    : return MPI_SHORT;
@@ -53,14 +61,15 @@ static inline MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
   }
 }
 
-static inline int dart_mpi_sizeof_datatype(dart_datatype_t dart_datatype) {
-  int native_size;
-  if (MPI_Type_size(dart_mpi_datatype(dart_datatype), &native_size)
-      == MPI_SUCCESS) {
-    return native_size;
+static inline int dart__mpi__datatype_sizeof(dart_datatype_t dart_datatype) {
+
+  if (dart_datatype > DART_TYPE_UNDEFINED && dart_datatype < DART_TYPE_COUNT)
+  {
+    return dart__mpi__datatype_sizes[dart_datatype];
   }
   return -1;
 }
+
 
 #if 0
 static inline int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {

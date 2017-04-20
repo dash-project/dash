@@ -1281,7 +1281,6 @@ private:
   }
 
 private:
-  PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size;
   /// Load balance weight by CPU capacity of every unit in the team.

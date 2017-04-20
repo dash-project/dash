@@ -1,3 +1,9 @@
+/**
+ * \example ex.04.memalloc/main.cpp
+ * Example demonstrating non-collective 
+ * global memory allocation.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>
@@ -15,25 +21,23 @@ int main(int argc, char* argv[])
 
   dash::Array< dash::GlobPtr<int> > arr(size);
 
-  arr[myid] = dash::memalloc<int>(SIZE);
+  arr[myid] = dash::memalloc<int>(arr.globmem(), SIZE);
 
-  for(int i=0; i<SIZE; i++ ) {
+  for (int i = 0; i < SIZE; i++) {
     dash::GlobPtr<int> ptr = arr[myid];
-    ptr[i]=myid;
+    ptr[i] = myid;
   }
 
   dash::barrier();
 
-  cout<<myid<<": ";
-  for(int i=0; i<SIZE; i++ ) {
-    dash::GlobPtr<int> ptr = arr[(myid+1)%size];
-    cout<<(int)ptr[i]<<" ";
+  cout << myid << ": ";
+  for (int i = 0; i < SIZE; i++) {
+    dash::GlobPtr<int> ptr = arr[(myid+1) % size];
+    cout << (int)ptr[i] << " ";
   }
-  cout<<endl;
+  cout << endl;
 
   dash::barrier();
-
-  //dash::memfree(arr[myid]);
 
   dash::finalize();
 }

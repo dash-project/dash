@@ -114,7 +114,6 @@ include_directories(
 
 add_library(
   ${DASH_DART_BASE_LIBRARY} # library name
-  STATIC
   ${DASH_DART_BASE_SOURCES} # sources
   ${DASH_DART_BASE_HEADERS} # headers
 )

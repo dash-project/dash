@@ -40,6 +40,10 @@ option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
+option(BUILD_SHARED_LIBS
+       "Specify whether libraries should be built as shared objects" off)
+option(BUILD_GENERIC
+       "Specify whether libraries should built for generic archictecture" off)
 option(ENABLE_DEV_COMPILER_WARNINGS
        "Specify whether excessive compiler warnings should be enabled" off)
 option(ENABLE_EXT_COMPILER_WARNINGS
@@ -221,20 +225,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 add_subdirectory(dart-if)
 
 # DART base:
-add_subdirectory(dart-impl/base)
-
-# DART implementation of every enabled DART variant:
-if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
-  set(DART_IMPLEMENTATION_MPI_ENABLED ON
-      CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/mpi)
-endif()
-
-if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
-  set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
-      CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/shmem)
-endif()
+add_subdirectory(dart-impl)
 
 
 add_subdirectory(dart-impl/tasking)
@@ -251,6 +242,10 @@ message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
 message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
         ${CMAKE_BUILD_TYPE})
+message(EMPH "Generic build:            (BUILD_GENERIC)                  "
+        ${BUILD_GENERIC})
+message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
+        ${BUILD_SHARED_LIBS})
 
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
