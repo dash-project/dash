@@ -248,7 +248,7 @@ struct is_arithmetic
 { };
 
 /**
- * Type trait indication whether a type has a comparision operator==
+ * Type trait indicating whether a type has a comparision operator==
  * defined.
  * \code
  * bool test = has_operator_equal<MyType>::value;
