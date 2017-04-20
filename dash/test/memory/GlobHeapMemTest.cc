@@ -125,12 +125,14 @@ TEST_F(GlobHeapMemTest, UnbalancedRealloc)
 
   dash::barrier();
   LOG_MESSAGE("before commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   gdmem.commit();
 
   LOG_MESSAGE("after commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   // Global size should be updated after commit:
   EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
@@ -282,7 +284,8 @@ TEST_F(GlobHeapMemTest, LocalVisibility)
 
   dash::barrier();
   LOG_MESSAGE("global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   // Global memory space has not been updated yet, changes are only
   // visible locally.

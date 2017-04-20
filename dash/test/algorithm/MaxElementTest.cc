@@ -30,7 +30,8 @@ TEST_F(MaxElementTest, TestFindArrayDefault)
   // Check maximum value found
   Element_t found_max = *found_git;
   LOG_MESSAGE("Expected max value: %d, found max value %d",
-              max_value, found_max);
+              static_cast<int>(max_value),
+              static_cast<int>(found_max));
   EXPECT_EQ(max_value, found_max);
 }
 
@@ -40,7 +41,9 @@ TEST_F(MaxElementTest, TestFindArrayDistributeBlockcyclic)
   int block_size   = 7;
   size_t num_units = dash::Team::All().size();
   LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              num_units, block_size, _num_elem);
+              static_cast<int>(num_units), block_size,
+              static_cast<int>(_num_elem));
+
   // Initialize global array:
   Array_t array(_num_elem, dash::BLOCKCYCLIC(block_size));
   Element_t max_value = (array.size() * 23) + 1;
@@ -63,7 +66,8 @@ TEST_F(MaxElementTest, TestFindArrayDistributeBlockcyclic)
   // Check maximum value found
   Element_t found_max = *found_git;
   LOG_MESSAGE("Expected max value: %d, found maximum value %d",
-              max_value, found_max);
+              static_cast<int>(max_value),
+              static_cast<int>(found_max));
   EXPECT_EQ(max_value, found_max);
 }
 
@@ -80,7 +84,8 @@ TEST_F(MaxElementTest, TestFindArrayUnderfilled)
     num_elem = block_size - 1;
   }
   LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              num_units, block_size, num_elem);
+              static_cast<int>(num_units), block_size,
+              static_cast<int>(num_elem));
   // Initialize global array:
   Array_t array(num_elem, dash::BLOCKCYCLIC(block_size));
   Element_t max_value = (array.size() * 23) + 1;
@@ -104,6 +109,7 @@ TEST_F(MaxElementTest, TestFindArrayUnderfilled)
   // Check maximum value found
   Element_t found_max = *found_git;
   LOG_MESSAGE("Expected max value: %d, found maximum value %d",
-              max_value, found_max);
+              static_cast<int>(max_value),
+              static_cast<int>(found_max));
   EXPECT_EQ(max_value, found_max);
 }
