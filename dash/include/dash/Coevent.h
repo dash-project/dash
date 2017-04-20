@@ -90,7 +90,8 @@ public:
    */
   inline void wait(int count = 1) {
     auto gref = _event_counts.at(_team->myid().id);
-    while(!gref.compare_exchange(count, 0)){
+    int current;
+    do {
 #ifdef DASH_DEBUG
       // avoid spamming the logs while busy waiting
       DASH_LOG_DEBUG("waiting for event at gptr",
@@ -98,7 +99,10 @@ public:
                                          +_team->myid().id));
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #endif
-    };
+      current = gref.get();
+    } while (current < count);
+    // decrement the counter
+    gref.sub(count);
   }
   
   inline int test() {
