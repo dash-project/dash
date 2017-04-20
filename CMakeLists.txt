@@ -227,8 +227,6 @@ add_subdirectory(dart-if)
 # DART base:
 add_subdirectory(dart-impl)
 
-
-add_subdirectory(dart-impl/tasking)
 add_subdirectory(dash)
 
 ## Documentation

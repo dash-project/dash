@@ -26,3 +26,7 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(shmem)
 endif()
+
+if (ENABLE_THREADSUPPORT)
+  add_subdirectory(tasking)
+endif()
