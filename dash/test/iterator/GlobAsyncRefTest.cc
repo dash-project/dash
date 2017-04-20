@@ -156,3 +156,47 @@ TEST_F(GlobAsyncRefTest, Conversion)
   ASSERT_EQ_U(gref_sync.is_local(), true);
 }
 
+TEST_F(GlobAsyncRefTest, RefOfStruct)
+{
+  if(dash::size() < 2){
+    SKIP_TEST_MSG("this test requires at least 2 units");
+  }
+
+  struct mytype {int a; double b; };
+  dash::Array<mytype> array(dash::size());
+
+  int neighbor = (dash::myid() + 1) % dash::size();
+  // Reference a neighbors element in global memory:
+  auto garef_rem = array.async[neighbor];
+  auto garef_loc = array.async[dash::myid().id];
+
+  {
+    auto garef_a_rem = garef_rem.member<int>(&mytype::a);
+    auto garef_b_rem = garef_rem.member<double>(&mytype::b);
+
+    auto garef_a_loc = garef_loc.member<int>(&mytype::a);
+    auto garef_b_loc = garef_loc.member<double>(&mytype::b);
+    
+    ASSERT_EQ_U(garef_rem.is_local(), false);
+    ASSERT_EQ_U(garef_a_rem.is_local(), false);
+    ASSERT_EQ_U(garef_b_rem.is_local(), false);
+
+    ASSERT_EQ_U(garef_loc.is_local(), true);
+    ASSERT_EQ_U(garef_a_loc.is_local(), true);
+    ASSERT_EQ_U(garef_b_loc.is_local(), true);
+  }
+  array.barrier();
+  {
+    mytype data {1, 2.0};
+    garef_rem = data;
+    auto garef_a_rem = garef_rem.member<int>(&mytype::a);
+    auto garef_b_rem = garef_rem.member<double>(&mytype::b);
+
+    // GlobRefAsync is constructed after data is set, so it stores value
+    int a = garef_a_rem;
+    int b = garef_b_rem;
+    ASSERT_EQ_U(a, 1);
+    ASSERT_EQ_U(b, 2.0);
+  }
+
+}
