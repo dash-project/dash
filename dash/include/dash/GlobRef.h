@@ -389,8 +389,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
-    GlobConstPtr<MEMTYPE> gptr(dartptr);
-    return GlobRef<MEMTYPE>(gptr);
+    return GlobRef<MEMTYPE>(dartptr);
   }
 
   /**
