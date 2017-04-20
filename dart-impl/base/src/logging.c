@@ -121,7 +121,7 @@ dart__base__log_message(
   fprintf(DART_LOG_OUTPUT_TARGET,
     "[ %*d:%-2d %.5s ] [ %*d ] %-*s:%-*d %.3s DART: %s\n",
     UNIT_WIDTH, unit_id.id,
-    dart_tasking_thread_num ? dart_tasking_thread_num() : 0,
+    dart_task_thread_num ? dart_task_thread_num() : 0,
     loglevel_names[level],
     PROC_WIDTH, pid,
     FILE_WIDTH, dart_base_logging_basename(filename),

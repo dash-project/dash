@@ -47,13 +47,13 @@ typedef struct dart_task_dep {
  * Returns the current thread's number.
  */
 int
-dart_tasking_thread_num() __attribute__((weak));
+dart_task_thread_num() __attribute__((weak));
 
 /**
  * Returns the number of worker threads.
  */
 int
-dart_tasking_num_threads();
+dart_task_num_threads();
 
 
 /**
@@ -105,7 +105,7 @@ dart_task_wait(dart_taskref_t *taskref);
 
 
 dart_taskref_t
-dart_tasking_current_task();
+dart_task_current_task();
 
 
 /**
@@ -125,7 +125,7 @@ dart_task_complete();
  * This should be used to ensure remote dependencies
  */
 dart_ret_t
-dart_tasking_phase();
+dart_task_phase();
 
 #ifdef __cplusplus
 }

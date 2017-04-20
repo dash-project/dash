@@ -89,14 +89,14 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
   ASSERT_EQ(i, val);
 }
 
-TEST_F(DARTTaskingTest, LocalInOutDependency)
+TEST_F(DARTTaskingTest, LocalInOutDependencies)
 {
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("Thread-support required");
   }
   int  i;
   int  val = 0;
-  int *valptr = &val; // dummy pointer used for synchronization, never accessed
+  int *valptr = &val;
 
   for (i = 0; i < 100; i++) {
     testdata_t td;
@@ -139,7 +139,7 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
   }
   int  i;
   int  val = 0;
-  int *valptr = &val; // dummy pointer used for synchronization, never accessed
+  int *valptr = &val;
 
   for (i = 0; i < 100; i++) {
     testdata_t td;

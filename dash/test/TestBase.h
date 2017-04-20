@@ -168,7 +168,7 @@ extern void ColoredPrintf(
     testing::internal::COLOR_YELLOW, \
     "[= %3d:%-2d LOG =] %*s :%*d | %s \n", \
     dash::myid().id, \
-    dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
+    dart_task_thread_num ? dart_task_thread_num() : 0, \
     24, filename, 4, __LINE__, \
     buffer); \
 } while(0)

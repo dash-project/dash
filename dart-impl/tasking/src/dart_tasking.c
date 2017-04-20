@@ -23,13 +23,13 @@ dart_tasking_fini()
 }
 
 int
-dart_tasking_thread_num()
+dart_task_thread_num()
 {
   return dart__tasking__thread_num();
 }
 
 int
-dart_tasking_num_threads()
+dart_task_num_threads()
 {
   return dart__tasking__num_threads();
 }
@@ -83,7 +83,7 @@ dart_task_create_handle(
 
 
 dart_taskref_t
-dart_tasking_current_task()
+dart_task_current_task()
 {
   return dart__tasking__current_task();
 }
@@ -111,7 +111,7 @@ dart_task_complete()
 
 
 dart_ret_t
-dart_tasking_phase()
+dart_task_phase()
 {
   return dart__tasking__phase();
 }
