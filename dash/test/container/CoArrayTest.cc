@@ -275,32 +275,32 @@ TEST_F(CoArrayTest, Mutex){
   dash::Coarray<int> arr;
   
   arr = 0;
-  arr.barrier();
+  arr.sync_all();
   
   mx.lock();
   int tmp = arr(0);
   arr(0) = tmp + 1;
+  arr(0).flush();
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
-  arr.flush_all();
   mx.unlock();
   
-  dash::barrier();
+  arr.sync_all();
   
   if(this_image() == 0){
     int result = arr;
     EXPECT_EQ_U(result, static_cast<int>(dash::size()));
   }
   
-  dash::barrier();
+  arr.sync_all();
   // this even works with std::lock_guard
   {
     std::lock_guard<dash::Mutex> lg(mx);
     int tmp = arr(0);
     arr(0) = tmp + 1;
-    arr.flush_all();
+    arr(0).flush();
   }
   
-  dash::barrier();
+  arr.sync_all();
   
   if(this_image() == 0){
     int result = arr;
@@ -333,7 +333,7 @@ TEST_F(CoArrayTest, Comutex){
       int tmp = arr(rand_unit);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       arr(rand_unit) = tmp + 1;
-      arr.flush_all();
+      arr(rand_unit).flush();
     }
   }
   arr.sync_all();
