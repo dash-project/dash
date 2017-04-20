@@ -203,8 +203,11 @@ public:
     // currently holds
     std::vector<size_type> container_count(_team->size());
     int my_container_count = _container_list->size();
-    dart_allgather(&my_container_count, container_count.data(), 
-      sizeof(size_type), DART_TYPE_BYTE, _team->dart_id());
+    DASH_ASSERT_RETURNS(
+        dart_allgather(&my_container_count, container_count.data(), 
+          sizeof(size_type), DART_TYPE_BYTE, _team->dart_id()),
+        DART_OK
+    );
     auto max_containers = std::max_element(container_count.begin(),
                                            container_count.end());
 
@@ -247,15 +250,26 @@ public:
           c_data = &(*cont_it);
         }
 
-        // attach new container to global memory space
+        //  detach old container location from global memory space, if it has
+        //  been attached before
+        if(c_data->container_bucket->gptr != DART_GPTR_NULL) {
+          DASH_ASSERT_RETURNS(
+            dart_team_memderegister(c_data->container_bucket->gptr),
+            DART_OK
+          );
+        }
+
+        // attach new container location to global memory space
         dart_gptr_t gptr = DART_GPTR_NULL;
         dart_storage_t ds = dart_storage<value_type>(c_data->container->size());
-        dart_team_memregister(
+        DASH_ASSERT_RETURNS(
+          dart_team_memregister(
             _team->dart_id(), 
             ds.nelem, 
             ds.dtype, 
             c_data->container->data(), 
-            &gptr
+            &gptr),
+          DART_OK
         );
         // no need to update gptr of local bucket list in c_data
         c_data->container_bucket->gptr = gptr;
@@ -277,8 +291,11 @@ public:
     for(auto c_data : *_container_list) {
       std::vector<size_type> bucket_sizes(bucket_count * _team->size());
       std::vector<size_type> local_buckets(_bucket_cumul_sizes[_myid]);
-      dart_allgather(local_buckets.data(), bucket_sizes.data(), 
-          sizeof(size_type) * local_buckets.size(), DART_TYPE_BYTE, _team->dart_id());
+      DASH_ASSERT_RETURNS(
+        dart_allgather(local_buckets.data(), bucket_sizes.data(), 
+          sizeof(size_type) * local_buckets.size(), DART_TYPE_BYTE, _team->dart_id()),
+        DART_OK
+      );
       _size = 0;
       auto begin = bucket_sizes.begin();
       for(int i = 0; i < _team->size(); ++i) {
