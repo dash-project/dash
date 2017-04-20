@@ -16,6 +16,7 @@ typedef enum {
   DART_TASK_FINISHED =  0, // comparison with 0
   DART_TASK_RUNNING,
   DART_TASK_CREATED,
+  DART_TASK_NASCENT,
   DART_TASK_DESTROYED
 } dart_task_state_t;
 

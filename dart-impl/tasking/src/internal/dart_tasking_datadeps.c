@@ -28,6 +28,9 @@
 #define IS_ACTIVE_TASK(task) \
   ((task)->state == DART_TASK_RUNNING || (task)->state == DART_TASK_CREATED)
 
+#define DEP_ADDR(dep) \
+  ((dep).gptr.addr_or_offs.addr)
+
 typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;
   union taskref             task;
@@ -285,8 +288,7 @@ dart_tasking_datadeps_release_unhandled_remote()
       dart_task_t *task = local->task.local;
       // lock the task to avoid race condiditions in updating the state
       dart__base__mutex_lock(&task->mutex);
-      if (local->taskdep.gptr.addr_or_offs.addr
-              == rdep->taskdep.gptr.addr_or_offs.addr &&
+      if (DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep) &&
           IS_OUT_DEP(local->taskdep) &&
           IS_ACTIVE_TASK(task)) {
         /*
@@ -406,26 +408,26 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     int slot;
     // translate the offset to an absolute address
     if (dep.type != DART_DEP_DIRECT) {
-      dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
+      dart_gptr_getoffset(dep.gptr, &DEP_ADDR(dep));
       slot = hash_gptr(dep.gptr);
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p",
                      task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
-                     dep.gptr.addr_or_offs.addr);
+                     DEP_ADDR(dep));
     }
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_task_t *deptask = dep.task;
       if (deptask != DART_TASK_NULL) {
         dart__base__mutex_lock(&(deptask->mutex));
-        if (deptask->state != DART_TASK_FINISHED) {
+        if (IS_ACTIVE_TASK(deptask)) {
           dart_tasking_tasklist_prepend(&(deptask->successor), task);
           int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                         &task->unresolved_deps);
           DART_LOG_TRACE("Making task %p a direct local successor of task %p "
-                         "(successor: %p, num_deps: %i)",
+                         "(successor: %p, state: %i | num_deps: %i)",
                          task, deptask,
-                         deptask->successor, unresolved_deps);
+                         deptask->successor, deptask->state, unresolved_deps);
         }
         dart__base__mutex_unlock(&(deptask->mutex));
       }
@@ -443,8 +445,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       for (dart_dephash_elem_t *elem = local_deps[slot];
            elem != NULL; elem = elem->next)
       {
-        if (elem->taskdep.gptr.addr_or_offs.addr
-              == dep.gptr.addr_or_offs.addr) {
+        if (DEP_ADDR(elem->taskdep) == DEP_ADDR(dep)) {
           if (elem->task.local == task) {
             // simply upgrade the dependency to an output dependency
             if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
@@ -456,9 +457,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
           DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
                          "of task %p",
                          task,
-                         dep.gptr.addr_or_offs.addr,
+                         DEP_ADDR(dep),
                          dep.gptr.segid,
-                         elem->taskdep.gptr.addr_or_offs.addr,
+                         DEP_ADDR(elem->taskdep),
                          elem->taskdep.gptr.segid,
                          elem->task.local);
 
@@ -469,16 +470,17 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
           // lock the task here to avoid race condition
           dart__base__mutex_lock(&(elem->task.local->mutex));
-          if (elem->task.local->state != DART_TASK_FINISHED &&
+          if (IS_ACTIVE_TASK(elem->task.local) &&
               (IS_OUT_DEP(dep) ||
                   (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
             // OUT dependencies have to wait for all previous dependencies
             int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                           &task->unresolved_deps);
             DART_LOG_TRACE("Making task %p a local successor of task %p "
-                           "(successor: %p, num_deps: %i)",
+                           "(successor: %p, state: %i | num_deps: %i)",
                            task, elem->task.local,
-                           elem->task.local->successor, unresolved_deps);
+                           elem->task.local->successor,
+                           elem->task.local->state, unresolved_deps);
             dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
           }
           dart__base__mutex_unlock(&(elem->task.local->mutex));
@@ -546,9 +548,9 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(
   dep.gptr.unitid = origin.id;
   DART_LOG_DEBUG("Remote direct task dependency for task %p: %p",
       local_task, remote_task.remote);
-  if (local_task->state != DART_TASK_FINISHED) {
+  if (IS_ACTIVE_TASK(local_task)) {
     dart__base__mutex_lock(&(local_task->mutex));
-    if (local_task->state != DART_TASK_FINISHED) {
+    if (IS_ACTIVE_TASK(local_task)) {
       dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
       DART_STACK_PUSH(local_task->remote_successor, rs);
       enqueued = true;
@@ -584,7 +586,7 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
     if (unresolved_deps < 0) {
       DART_LOG_ERROR("release_local_task: task %p has negative number "
                      "of dependencies:  %i", tl->task, unresolved_deps);
-    } else if (unresolved_deps == 0) {
+    } else if (tl->task->state == DART_TASK_CREATED && unresolved_deps == 0) {
       dart__tasking__enqueue_runnable(tl->task);
     }
 

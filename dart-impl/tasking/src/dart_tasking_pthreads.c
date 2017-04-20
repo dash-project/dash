@@ -135,7 +135,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->fn           = fn;
   task->num_children = 0;
   task->parent       = get_current_task();
-  task->state        = DART_TASK_CREATED;
+  task->state        = DART_TASK_NASCENT;
   task->phase        = task->parent->phase;
   task->has_ref      = false;
   return task;
@@ -387,6 +387,7 @@ dart__tasking__create_task(
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
+  task->state = DART_TASK_CREATED;
   if (task->unresolved_deps == 0) {
     dart__tasking__enqueue_runnable(task);
   }
@@ -411,6 +412,7 @@ dart__tasking__create_task_handle(
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
+  task->state = DART_TASK_CREATED;
   if (task->unresolved_deps == 0) {
     dart__tasking__enqueue_runnable(task);
   }
