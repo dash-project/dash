@@ -281,7 +281,7 @@ TEST_F(CoArrayTest, Mutex){
   int tmp = arr(0);
   arr(0) = tmp + 1;
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
-  arr.flush();
+  arr.flush_all();
   mx.unlock();
   
   dash::barrier();
@@ -297,6 +297,7 @@ TEST_F(CoArrayTest, Mutex){
     std::lock_guard<dash::Mutex> lg(mx);
     int tmp = arr(0);
     arr(0) = tmp + 1;
+    arr.flush_all();
   }
   
   dash::barrier();
