@@ -747,11 +747,6 @@ public:
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
-    // Global coords of the element's block within all blocks.
-    // Use initializer so elements are initialized with 0s:
-    std::array<IndexType, NumDimensions> block_index;
-    // Index of the element's block as element offset:
-    std::array<IndexType, NumDimensions> block_coord;
     // Index of the element:
     std::array<IndexType, NumDimensions> glob_index;
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -763,18 +758,15 @@ public:
       // TOOD: Use % (blocksize_d - underfill_d)
       auto elem_block_offset_d  = local_index_d % blocksize_d;
       // Global coords of the element's block within all blocks:
-      block_index[d] = dist.local_index_to_block_coord(
-                         unit_ts_coord[d], // unit ts offset in d
-                         local_index_d,
-                         num_units_d,
-                         num_blocks_d,
-                         blocksize
-                       );
-      block_coord[d] = block_index[d] * blocksize_d;
-      glob_index[d]  = block_coord[d] + elem_block_offset_d;
+      auto block_index_d        = dist.local_index_to_block_coord(
+                                    unit_ts_coord[d], // unit ts offset in d
+                                    local_index_d,
+                                    num_units_d,
+                                    num_blocks_d,
+                                    blocksize
+                                  );
+      glob_index[d]  = (block_index_d * blocksize_d) + elem_block_offset_d;
     }
-    DASH_LOG_TRACE_VAR("BlockPattern.global", block_index);
-    DASH_LOG_TRACE_VAR("BlockPattern.global", block_coord);
     DASH_LOG_DEBUG_VAR("BlockPattern.global >", glob_index);
     return glob_index;
   }
