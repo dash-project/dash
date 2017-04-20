@@ -22,7 +22,7 @@ namespace dash {
 
 // Forward-declaration
 template<class ContainerType>
-class GlobDynamicContiguousMem;
+class GlobHeapContiguousMem;
 
 /**
  * Iterator on global buckets. Represents global pointer type.
@@ -30,10 +30,10 @@ class GlobDynamicContiguousMem;
 template <typename ElementType, class ContainerType>
 class GlobPtr<
         ElementType,
-        GlobDynamicContiguousMem<ContainerType>
+        GlobHeapContiguousMem<ContainerType>
       >
 {
-  typedef GlobDynamicContiguousMem<ContainerType> GlobHeapMemType;
+  typedef GlobHeapContiguousMem<ContainerType> GlobHeapMemType;
   typedef GlobPtr<ElementType, GlobHeapMemType>   self_t;
 
   template<
@@ -43,7 +43,7 @@ class GlobPtr<
     std::ostream & os,
     const dash::GlobPtr<
             ElementType_,
-            GlobDynamicContiguousMem<ContainerType_>
+            GlobHeapContiguousMem<ContainerType_>
           > & gptr);
 
 public:
@@ -73,7 +73,7 @@ public:
   struct rebind {
     typedef GlobPtr<
               U,
-              GlobDynamicContiguousMem<
+              GlobHeapContiguousMem<
                 typename AllocatorType::template rebind<
                            typename std::remove_const<U>::type
                          >::other
@@ -716,13 +716,13 @@ template<
 auto distance(
   /// Global pointer to the first position in the global sequence
   const dash::GlobPtr<
-          ElementType, GlobDynamicContiguousMem<ContainerType>
+          ElementType, GlobHeapContiguousMem<ContainerType>
         > & first,
   /// Global pointer to the final position in the global sequence
   const dash::GlobPtr<
-          ElementType, GlobDynamicContiguousMem<ContainerType>
+          ElementType, GlobHeapContiguousMem<ContainerType>
         > & last)
--> typename GlobDynamicContiguousMem<ContainerType>::index_type
+-> typename GlobHeapContiguousMem<ContainerType>::index_type
 {
   return last - first;
 }
@@ -734,7 +734,7 @@ std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobPtr<
           ElementType,
-          GlobDynamicContiguousMem<ContainerType>
+          GlobHeapContiguousMem<ContainerType>
         > & gptr)
 {
   std::ostringstream ss;

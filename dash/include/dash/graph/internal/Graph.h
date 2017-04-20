@@ -3,46 +3,74 @@
 
 namespace dash {
 
+/**
+ * Enum declaring the different graph types.
+ */
 enum GraphDirection {
   UndirectedGraph,
   DirectedGraph
   //BidirectionalGraph
 };
 
-namespace internal {
-
+/**
+ * Index type for vertices.
+ */
 template <typename IndexType>
 struct VertexIndex {
 
+  /**
+   * Default constructor.
+   */
   VertexIndex() = default;
 
+  /**
+   * Index Constructor.
+   */
   VertexIndex(team_unit_t u, IndexType o) 
     : unit(u),
       offset(o)
   { }
 
+  /** The unit holding the referenced vertex */
   team_unit_t     unit;
+  /** The offset of the vertex in local memory space of unit */
   IndexType       offset;
 
 };
 
+/**
+ * Index type for edges.
+ */
 template <typename IndexType>
 struct EdgeIndex {
 
+  /**
+   * Default constructor.
+   */
   EdgeIndex() = default;
 
+  /**
+   * Index Constructor.
+   */
   EdgeIndex(team_unit_t u, IndexType c, IndexType o) 
     : unit(u),
       container(c),
       offset(o)
   { }
 
+  /** The unit holding the referenced edge */
   team_unit_t     unit;
+  /** The container in globale memory space of unit containing the edge */
   IndexType       container;
+  /** The offset in the referenced container */
   IndexType       offset;
 
 };
 
+/**
+ * Vertex type holding properties and references to its corresponding edge 
+ * lists.
+ */
 template<typename GraphType>
 class Vertex {
 
@@ -58,7 +86,7 @@ class Vertex {
 public:
 
   /**
-   * Default constructor needed for GlobRef / GlobSharedRef dereference op
+   * Default constructor needed for GlobRef / GlobSharedRef dereference op.
    */
   Vertex() = default;
   
@@ -66,10 +94,10 @@ public:
    * Creates a vertex with given properties.
    */
   Vertex(
-      index_type & index, 
-      edge_container_ref & in_edge_ref, 
-      edge_container_ref & out_edge_ref, 
-      properties_type properties = properties_type()
+      const index_type & index, 
+      const edge_container_ref & in_edge_ref, 
+      const edge_container_ref & out_edge_ref, 
+      const properties_type & properties
   ) 
     : _index(index),
       _in_edge_ref(in_edge_ref),
@@ -93,6 +121,9 @@ private:
 
 };
 
+/**
+ * Edge type holding properties and references to the vertices it belongs to.
+ */
 template<typename GraphType>
 class Edge {
 
@@ -105,18 +136,18 @@ class Edge {
 public:
 
   /**
-   * Default constructor needed for GlobRef / GlobSharedRef dereference op
+   * Default constructor needed for GlobRef / GlobSharedRef dereference op.
    */
   Edge() = default;
 
   /**
-   * Creates an edge with index
+   * Creates an edge with index.
    */
   Edge(
-      index_type & index,
-      vertex_index_type source,
-      vertex_index_type target, 
-      properties_type properties = properties_type()
+      const index_type & index,
+      const vertex_index_type & source,
+      const vertex_index_type & target, 
+      const properties_type & properties
   ) 
     : _index(index),
       _source(source),
@@ -129,9 +160,9 @@ public:
    * units.
    */
   Edge(
-      vertex_index_type source,
-      vertex_index_type target, 
-      properties_type properties = properties_type()
+      const vertex_index_type & source,
+      const vertex_index_type & target, 
+      const properties_type & properties
   ) 
     : _index(),
       _source(source),
@@ -156,9 +187,10 @@ private:
 
 };
 
+/**
+ * Default property type holding no data.
+ */
 struct EmptyProperties { };
-
-}
 
 }
 

@@ -1,5 +1,5 @@
-#ifndef DASH__GLOB_DYNAMIC_COMBINED_MEM_H
-#define DASH__GLOB_DYNAMIC_COMBINED_MEM_H
+#ifndef DASH__MEMORY__GLOB_HEAP_COMBINED_MEM_H
+#define DASH__MEMORY__GLOB_HEAP_COMBINED_MEM_H
 
 #include <dash/Team.h>
 #include <dash/memory/GlobHeapCombinedPtr.h>
@@ -7,11 +7,11 @@
 namespace dash {
 
 template<typename GlobMemType>
-class GlobDynamicCombinedMem {
+class GlobHeapCombinedMem {
 
 public:
 
-  typedef GlobDynamicCombinedMem<GlobMemType>          self_t;
+  typedef GlobHeapCombinedMem<GlobMemType>             self_t;
   typedef GlobMemType                                  glob_mem_type;
   typedef typename glob_mem_type::index_type           index_type;
   typedef typename glob_mem_type::size_type            size_type;
@@ -30,12 +30,43 @@ public:
 
 public:
 
-  GlobDynamicCombinedMem(Team & team = dash::Team::All())
+  /**
+   * Constructor.
+   */
+  GlobHeapCombinedMem(Team & team = dash::Team::All())
     : _bucket_cumul_sizes(team.size()),
       _team(&team),
       _buckets()
   { }
 
+  /**
+   * Default constructor. Explicitly deleted.
+   */
+  GlobHeapCombinedMem() = delete;
+
+  /**
+   * Copy constructor.
+   */
+  GlobHeapCombinedMem(const self_t & other) = default;
+
+  /**
+   * Move constructor.
+   */
+  GlobHeapCombinedMem(self_t && other) = default;
+
+  /**
+   * Copy-assignment operator.
+   */
+  self_t & operator=(const self_t & other) = default;
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other) = default;
+
+  /**
+   * Adds a GlobMem object to the unifier.
+   */
   void add_globmem(glob_mem_type & glob_mem) {
     // only GlobMem objects with the same Team can be used
     if(*_team == glob_mem.team()) {
@@ -44,6 +75,11 @@ public:
     }
   }
 
+  /**
+   * Updates memory spaces of underlying GlobMem objects.
+   * 
+   * Non-collective operation.
+   */
   void commit() {
     update_bucket_sizes();
     // TODO: The bucket list should normally update on every element insertion,
@@ -66,30 +102,51 @@ public:
     return gmem->dart_gptr_at(unit, gmem_bucket_index, bucket_phase);
   }
 
+  /**
+   * Iterator to the beginning of the memory space.
+   */
   global_iterator begin() const {
     return _begin;
   }
 
+  /**
+   * Iterator past the end of the memory space.
+   */
   global_iterator end() const {
     return _end;
   }
 
+  /**
+   * Iterator to the beginning of the mamory space's local portion.
+   */
   local_iterator lbegin() const {
     return _lbegin;
   }
 
+  /**
+   * Iterator to the end of the memory space's local portion.
+   */
   local_iterator lend() const {
     return _lend;
   }
 
+  /**
+   * Returns the amount of elements currently available in global memory space.
+   */
   size_type size() const {
     return _size;
   }
 
+  /**
+   * Returns the team containing all units associated with this memory space.
+   */
   Team & team() const {
     return (_team != nullptr) ? *_team : dash::Team::Null();
   }
 
+  /**
+   * Returns the size of a the memory space belonging to a certain bucket.
+   */
   size_type container_size(team_unit_t unit, size_type index) const {
     size_type bucket_size = _bucket_cumul_sizes[unit][index + 
       _glob_mem_list.size() - 1];
@@ -148,6 +205,9 @@ private:
     }
   }
 
+  /**
+   * Updates the bucket list.
+   */
   void update_bucket_list() {
     _buckets.clear();
     std::vector<std::pair<typename bucket_list::iterator, 
@@ -183,6 +243,9 @@ private:
 
 private:
 
+  /**
+   * Updates the global size.
+   */
   void update_size() {
     _size = 0;
     for(auto gmem : _glob_mem_list) {
@@ -190,6 +253,9 @@ private:
     }
   }
 
+  /**
+   * Updates the local size.
+   */
   void update_local_size() {
     _local_size = 0;
     for(auto gmem : _glob_mem_list) {
@@ -197,7 +263,8 @@ private:
     }
   }
 
-   /**
+  // NOTE: copied from GlobHeapMem.h
+  /**
    * Native pointer of the initial address of the local memory of
    * a unit.
    *
@@ -215,8 +282,9 @@ private:
     _lbegin = unit_lbegin;
   }
 
+  // NOTE: copied from GlobHeapMem.h
   /**
-   * Update internal native pointer of the final address of the local memory#include <dash/allocator/LocalBucketIter.h>
+   * Update internal native pointer of the final address of the local memory
    * of a unit.
    */
   void update_lend() noexcept
@@ -249,5 +317,5 @@ private:
 
 }
 
-#endif //DASH__GLOB_DYNAMIC_COMBINED_MEM_H
+#endif //DASH__MEMORY__GLOB_HEAP_COMBINED_MEM_H
 

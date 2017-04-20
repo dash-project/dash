@@ -22,7 +22,7 @@ namespace dash {
 
 // Forward-declaration
 template<class GlobMemType>
-class GlobDynamicCombinedMem;
+class GlobHeapCombinedMem;
 
 /**
  * Iterator on global buckets. Represents global pointer type.
@@ -30,10 +30,10 @@ class GlobDynamicCombinedMem;
 template <typename ElementType, class GlobMemType>
 class GlobPtr<
         ElementType,
-        GlobDynamicCombinedMem<GlobMemType>
+        GlobHeapCombinedMem<GlobMemType>
       >
 {
-  typedef GlobDynamicCombinedMem<GlobMemType>     GlobHeapMemType;
+  typedef GlobHeapCombinedMem<GlobMemType>     GlobHeapMemType;
   typedef GlobPtr<ElementType, GlobHeapMemType>   self_t;
 
   template<
@@ -43,7 +43,7 @@ class GlobPtr<
     std::ostream & os,
     const dash::GlobPtr<
             ElementType_,
-            GlobDynamicCombinedMem<ContainerType_>
+            GlobHeapCombinedMem<ContainerType_>
           > & gptr);
 
   friend GlobPtr<ElementType, GlobMemType>;
@@ -75,7 +75,7 @@ public:
   struct rebind {
     typedef GlobPtr<
               U,
-              GlobDynamicContiguousMem<
+              GlobHeapContiguousMem<
                 typename AllocatorType::template rebind<
                            typename std::remove_const<U>::type
                          >::other
@@ -718,13 +718,13 @@ template<
 auto distance(
   /// Global pointer to the first position in the global sequence
   const dash::GlobPtr<
-          ElementType, GlobDynamicCombinedMem<GlobMemType>
+          ElementType, GlobHeapCombinedMem<GlobMemType>
         > & first,
   /// Global pointer to the final position in the global sequence
   const dash::GlobPtr<
-          ElementType, GlobDynamicCombinedMem<GlobMemType>
+          ElementType, GlobHeapCombinedMem<GlobMemType>
         > & last)
--> typename GlobDynamicCombinedMem<GlobMemType>::index_type
+-> typename GlobHeapCombinedMem<GlobMemType>::index_type
 {
   return last - first;
 }
@@ -736,7 +736,7 @@ std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobPtr<
           ElementType,
-          GlobDynamicCombinedMem<GlobMemType>
+          GlobHeapCombinedMem<GlobMemType>
         > & gptr)
 {
   std::ostringstream ss;
