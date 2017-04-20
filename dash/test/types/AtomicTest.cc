@@ -492,14 +492,17 @@ TEST_F(AtomicTest, AtomicSignal){
 
   int neighbor = (dash::myid() + 1) % dash::size();
 
-  // send the signal
-  array[neighbor].add(1);
+  if (dash::myid() != 0) {
+    // send the signal
+    array[0].add(1);
+  } else {
 
-  // wait for a signal to arrive
-  int  count;
-  auto agref = array[dash::myid()];
-  do {
-    count = agref.get();
-  } while (count == 0);
-  ASSERT_EQ_U(count, 1);
+    // wait for a signal to arrive
+    int  count;
+    auto agref = array[0];
+    do {
+      count = agref.get();
+    } while (count == 0);
+    ASSERT_GT_U(count, 0);
+  }
 }
