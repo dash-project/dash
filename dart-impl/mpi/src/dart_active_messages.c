@@ -69,11 +69,20 @@ dart_amsg_init()
   return DART_OK;
 }
 
-dart_amsgq_t
+dart_ret_t
+dart_amsgq_fini()
+{
+  free(offsets);
+  offsets = NULL;
+  initialized = false;
+}
+
+dart_ret_t
 dart_amsg_openq(
-  size_t      msg_size,
-  size_t      msg_count,
-  dart_team_t team)
+  size_t         msg_size,
+  size_t         msg_count,
+  dart_team_t    team,
+  dart_amsgq_t * queue)
 {
   dart_team_unit_t unitid;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
@@ -87,7 +96,7 @@ dart_amsg_openq(
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
-    return NULL;
+    return DART_ERR_INVAL;
   }
 
   /**
@@ -115,7 +124,9 @@ dart_amsg_openq(
 
   MPI_Barrier(team_data->comm);
 
-  return res;
+  *queue = res;
+
+  return DART_OK;
 }
 
 
@@ -238,6 +249,12 @@ amsg_process_internal(
 {
   dart_team_unit_t unitid;
   uint64_t         tailpos;
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
+  // trigger process
+  int flag;
+  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG,
+    team_data->comm, &flag, MPI_STATUS_IGNORE);
 
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);

@@ -5,20 +5,20 @@
 
 
 /**
- * Test fixture for tasking operations provided by DART.
+ * Test fixture for active message operations provided by DART.
  */
-class DARTTaskingTest : public dash::test::TestBase {
+class DARTActiveMessagesTest : public dash::test::TestBase {
 protected:
   size_t _dash_id;
   size_t _dash_size;
 
-  DARTTaskingTest()
+  DARTActiveMessagesTest()
   : _dash_id(0),
     _dash_size(0) {
     LOG_MESSAGE(">>> Test suite: DARTTaskingTest");
   }
 
-  virtual ~DARTTaskingTest() {
+  virtual ~DARTActiveMessagesTest() {
     LOG_MESSAGE("<<< Closing test suite: DARTTaskingTest");
   }
 

@@ -21,6 +21,7 @@
 #include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_active_messages_priv.h>
 
 #define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
 
@@ -167,6 +168,10 @@ dart_ret_t do_init()
 
   _dart_initialized = 2;
 
+  dart_amsg_init();
+
+  _dart_initialized = 3;
+
   DART_LOG_DEBUG("dart_init > initialization finished");
   return DART_OK;
 }
@@ -258,6 +263,8 @@ dart_ret_t dart_exit()
   }
   dart_global_unit_t unitid;
   dart_myid(&unitid);
+
+  dart_amsgq_fini();
 
   dart__mpi__locality_finalize();
 

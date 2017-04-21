@@ -58,8 +58,10 @@ request_direct_taskdep(void *data);
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
-    amsgq  = dart_amsg_openq(
-        sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL);
+    DART_ASSERT_RETURNS(
+      dart_amsg_openq(
+        sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
+      DART_OK);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
   }

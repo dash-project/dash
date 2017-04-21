@@ -14,12 +14,6 @@ typedef struct dart_amsgq* dart_amsgq_t;
 typedef void (*dart_task_action_t) (void *);
 
 /**
- * Initialize the active message queue subsystem.
- */
-dart_ret_t
-dart_amsg_init();
-
-/**
  * Initialize an active message queue of size \c size on all units in team.
  *
  * This is a collective operation involving all units in team.
@@ -31,8 +25,12 @@ dart_amsg_init();
  *                   space for.
  * \param team       The team of units used for the allocation.
  */
-dart_amsgq_t
-dart_amsg_openq(size_t msg_size, size_t msg_count, dart_team_t team);
+dart_ret_t
+dart_amsg_openq(
+  size_t         msg_size,
+  size_t         msg_count,
+  dart_team_t    team,
+  dart_amsgq_t * queue);
 
 /**
  * Try to send an active message to unit \c target through message queue \c amsgq.
