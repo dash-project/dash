@@ -40,9 +40,8 @@ TEST_F(MaxElementTest, TestFindArrayDistributeBlockcyclic)
   // Using a prime as block size for 'inconvenient' strides.
   int block_size   = 7;
   size_t num_units = dash::Team::All().size();
-  LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              static_cast<int>(num_units), block_size,
-              static_cast<int>(_num_elem));
+  LOG_MESSAGE("Units: %zu, block size: %d, elements: %d",
+              num_units, block_size, static_cast<int>(_num_elem));
 
   // Initialize global array:
   Array_t array(_num_elem, dash::BLOCKCYCLIC(block_size));
@@ -83,9 +82,8 @@ TEST_F(MaxElementTest, TestFindArrayUnderfilled)
   if (num_units < 2) {
     num_elem = block_size - 1;
   }
-  LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              static_cast<int>(num_units), block_size,
-              static_cast<int>(num_elem));
+  LOG_MESSAGE("Units: %zu, block size: %d, elements: %d",
+              num_units, block_size, static_cast<int>(num_elem));
   // Initialize global array:
   Array_t array(num_elem, dash::BLOCKCYCLIC(block_size));
   Element_t max_value = (array.size() * 23) + 1;
