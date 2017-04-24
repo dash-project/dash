@@ -56,9 +56,10 @@ class GlobViewIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType
-             = GlobMem< typename std::remove_const<ElementType>::type >,
-  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    GlobMemType   = GlobStaticMem<
+                             typename std::decay<ElementType>::type
+                           >,
+  class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
 : public std::iterator<
@@ -287,7 +288,7 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   explicit operator const_pointer() const {
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter.const_pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     index_type idx    = _idx;
@@ -301,8 +302,8 @@ public:
     }
     // Global index to local index and unit:
     local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobIter.const_pointer >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.const_pointer >", local_pos.index);
     // Create global pointer from unit and local offset:
     const_pointer gptr(
       _globmem->at(team_unit_t(local_pos.unit), local_pos.index)
@@ -318,7 +319,7 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   explicit operator pointer() {
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter.pointer()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     index_type idx    = _idx;
@@ -332,8 +333,8 @@ public:
     }
     // Global index to local index and unit:
     local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobIter.pointer >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.pointer >", local_pos.index);
     // Create global pointer from unit and local offset:
     pointer gptr(
       _globmem->at(team_unit_t(local_pos.unit), local_pos.index)
@@ -562,7 +563,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   constexpr const GlobMemType & globmem() const noexcept
@@ -571,7 +572,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    */
   inline GlobMemType & globmem()
@@ -719,16 +720,17 @@ public:
 template <
   typename ElementType,
   class    Pattern,
-  class    GlobMem,
+  class    GlobStaticMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobIter<
-          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
+          ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<const ElementType, Pattern> ptr(it.dart_gptr());
+  dash::GlobPtr<const ElementType, GlobStaticMem> ptr(*it._globmem,
+                                                it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

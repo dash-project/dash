@@ -41,8 +41,8 @@ template <
 class LocalMatrixRef;
 
 /**
- * A view on a referenced \c Matrix object, such as a dimensional
- * projection returned by \c Matrix::sub.
+ * A view on a referenced \ref Matrix object, such as a dimensional
+ * projection returned by \ref Matrix::sub.
  *
  * TODO:
  * Projection order matrix.sub().local() is not fully implemented yet.
@@ -137,7 +137,7 @@ class MatrixRef
   friend class LocalMatrixRef;
 
   inline operator
-    MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT> && ();
+    MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>();
 
 public:
   typedef std::integral_constant<dim_t, NumViewDim>
@@ -147,18 +147,22 @@ public:
     return NumViewDim;
   }
 
+private:
+  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
+
 public:
 
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
-  {
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumViewDim);
-  }
+  { }
 
   template <class T_>
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
     const MatrixRef<T_, NumDimensions, NumViewDim+1, PatternT> & prev,
     index_type coord);
+
+  template <class T_>
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
+    const MatrixRef<T_, NumDimensions, NumViewDim, PatternT> & other);
 
   constexpr const Team      & team()                const noexcept;
 
@@ -219,7 +223,7 @@ public:
   constexpr operator[](index_type n) const;
     
   /**
-   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * Subscript operator, returns a \ref dash::GlobRef at given offset
    * in global element range for last dimension.
    */
   template<dim_t __NumViewDim = NumViewDim-1>
@@ -227,12 +231,16 @@ public:
   operator[](index_type n);
   
   /**
-   * Subscript operator, returns a \cdash::GlobRef at given offset
+   * Subscript operator, returns a \ref dash::GlobRef at given offset
    * in global element range for last dimension.
    */
   template<dim_t __NumViewDim = NumViewDim-1>
   typename std::enable_if<(__NumViewDim == 0), const_reference>::type
   operator[](index_type n) const;
+
+  template<dim_t NumSubDimensions>
+  MatrixRef<const ElementT, NumDimensions, NumDimensions-1, PatternT>
+  sub(size_type n) const;
 
   template<dim_t NumSubDimensions>
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
@@ -243,6 +251,12 @@ public:
 
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   row(size_type n);
+
+  template<dim_t SubDimension>
+  MatrixRef<const ElementT, NumDimensions, NumDimensions, PatternT>
+  sub(
+    size_type n,
+    size_type range) const;
 
   template<dim_t SubDimension>
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
@@ -303,12 +317,37 @@ public:
    * \returns  A global reference to the element at the given global
    *           coordinates.
    */
+  template<typename ... Args>
+  const_reference at(
+    /// Global coordinates
+    Args... args) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  const_reference at(
+    /// Global coordinates
+    const ::std::array<index_type, NumDimensions> & coords) const;
+
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
   reference at(
     /// Global coordinates
     const ::std::array<index_type, NumDimensions> & coords);
 
   /**
-   * Fortran-style subscript operator, alias for \c at().
+   * Fortran-style subscript operator, alias for \ref at().
    * As an example, the operation \c matrix(i,j) is equivalent to
    * \c matrix[i][j].
    *
@@ -333,9 +372,6 @@ public:
   template <int level>
   dash::HView<Matrix<ElementT, NumDimensions, Index_t, PatternT>, level>
   inline hview();
-
- private:
-  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
 };
 
 } // namespace dash

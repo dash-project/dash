@@ -438,7 +438,11 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
   auto block_offset  = (dash::myid() + 1) % dash::size();
   auto global_offset = block_offset * num_elem_per_unit;
 
-  dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
+  using glob_it_t    = decltype(array.begin());
+  using glob_ptr_t   = typename glob_it_t::pointer;
+
+  glob_ptr_t gptr_dest = static_cast<glob_ptr_t>(
+                           array.begin() + global_offset);
   LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call copy_async");
 
   auto copy_fut = dash::copy_async(local_range,

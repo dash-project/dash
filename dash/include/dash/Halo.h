@@ -2,7 +2,7 @@
 #define DASH__HALO_H__
 
 #include <dash/Allocator.h>
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -249,9 +249,9 @@ private:
             ReferenceType>
     self_t;
 
-  typedef GlobMem<
+  typedef GlobStaticMem<
             ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
+            dash::allocator::SymmetricAllocator<ElementType> >
     GlobMem_t;
 
 private:
@@ -699,7 +699,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -710,7 +710,7 @@ public:
   }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -1249,9 +1249,9 @@ private:
   typedef HaloBlock<ElementType, PatternType>
     self_t;
 
-  typedef GlobMem<
+  typedef GlobStaticMem<
             ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
+            dash::allocator::SymmetricAllocator<ElementType> >
     GlobMem_t;
 
 public:

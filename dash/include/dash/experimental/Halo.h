@@ -1,7 +1,7 @@
 #ifndef DASH__EXPERIMENTAL__HALO_H__
 #define DASH__EXPERIMENTAL__HALO_H__
 
-#include <dash/GlobMem.h>
+#include <dash/memory/GlobStaticMem.h>
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>
@@ -428,7 +428,7 @@ public:
   inline bool is_relative() const noexcept { return true; }
 
   /**
-   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.
    *
    * \see DashGlobalIteratorConcept
@@ -583,6 +583,7 @@ auto distance(
   return last - first;
 }
 
+<<<<<<< HEAD
 template <typename ElementT, typename PatternT, dim_t NumDimensions>
 class Region {
 

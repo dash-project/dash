@@ -1,8 +1,5 @@
 #include <stdarg.h>
 #include <stdio.h>
-#if defined(DART__PLATFORM__LINUX) && !defined(_GNU_SOURCE)
-#  define _GNU_SOURCE
-#endif
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -109,10 +106,9 @@ dart__base__log_message(
   va_list argp;
   va_start(argp, format);
   const int maxlen = MAX_MESSAGE_LENGTH;
-  int       sn_ret;
   char      msg_buf[maxlen];
   pid_t     pid = getpid();
-  sn_ret = vsnprintf(msg_buf, maxlen, format, argp);
+  vsnprintf(msg_buf, maxlen, format, argp);
 //  if (sn_ret < 0 || sn_ret >= maxlen) {
 //    break;
 //  }

@@ -78,6 +78,10 @@ public:
   : _value(&const_cast<ValueType &>(value),
            [](ValueType *) { /* no deleter */ })
   { }
+  constexpr explicit UniversalMember(const ValueType * value)
+  : _value(const_cast<ValueType *>(value),
+           [](ValueType *) { /* no deleter */ })
+  { }
 
             operator       ValueType & ()       { return *(_value.get()); }
   constexpr operator const ValueType & () const { return *(_value.get()); }
