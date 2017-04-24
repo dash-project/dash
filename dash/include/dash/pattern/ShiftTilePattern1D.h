@@ -106,7 +106,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size;
   /// Global memory layout of the pattern.
@@ -167,31 +166,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _size(_arguments.sizespec().size()),
-    _memory_layout(std::array<SizeType, 1> { _size }),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()),
-    _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
-        _size,
-        _distspec,
-        _nunits)),
-    _nblocks(initialize_num_blocks(
-        _size,
-        _blocksize,
-        _nunits)),
-    _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _nlblocks(initialize_num_local_blocks(
-        _nblocks,
-        _blocksize,
-        _distspec,
-        _nunits,
-        _local_size)),
-    _local_capacity(initialize_local_capacity()) {
+  : ShiftTilePattern(PatternArguments_t(arg, args...)) {
     DASH_LOG_TRACE("ShiftTilePattern<1>()", "Constructor with argument list");
     initialize_local_range();
     DASH_LOG_TRACE("ShiftTilePattern<1>()", "ShiftTilePattern initialized");
@@ -226,10 +201,9 @@ public:
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
-    /// Defaults to BLOCKED.
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &         teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All())
   : _size(sizespec.size()),
@@ -266,7 +240,7 @@ public:
 
   /**
    * Constructor, initializes a pattern from explicit instances of
-   * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
+   * \c SizeSpec, \c DistributionSpec and a \c Team.
    *
    * Examples:
    *
@@ -292,9 +266,8 @@ public:
   ShiftTilePattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
+    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE).
+    /// Defaults to BLOCKED in first.
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
@@ -1106,6 +1079,35 @@ public:
   constexpr static dim_t ndim() {
     return 1;
   }
+
+private:
+
+  ShiftTilePattern(const PatternArguments_t &arguments)
+  : _size(arguments.sizespec().size()),
+    _memory_layout(std::array<SizeType, 1> { _size }),
+    _distspec(arguments.distspec()),
+    _team(&arguments.team()),
+    _teamspec(arguments.teamspec()),
+    _nunits(_team->size()),
+    _blocksize(initialize_blocksize(
+        _size,
+        _distspec,
+        _nunits)),
+    _nblocks(initialize_num_blocks(
+        _size,
+        _blocksize,
+        _nunits)),
+    _local_size(
+        initialize_local_extent(_team->myid())),
+    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _nlblocks(initialize_num_local_blocks(
+        _nblocks,
+        _blocksize,
+        _distspec,
+        _nunits,
+        _local_size)),
+    _local_capacity(initialize_local_capacity())
+  {}
 
   /**
    * Initialize block size specs from memory layout, team spec and
