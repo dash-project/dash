@@ -282,7 +282,7 @@ public:
   }
 
   /**
-   * DASH specific variant which is faster than \cfetch_add
+   * DASH specific variant which is faster than \c fetch_add
    * but does not return value
    */
   void add(const T & value) const
@@ -304,7 +304,7 @@ public:
   }
 
   /**
-   * DASH specific variant which is faster than \cfetch_sub
+   * DASH specific variant which is faster than \c fetch_sub
    * but does not return value
    */
   void sub(const T & value) const

@@ -1,3 +1,9 @@
+/**
+ * \example ex.02.array-delayed/main.cpp
+ * Example illustrating delayed allocation of a \c dash::Array
+ */
+
+
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>

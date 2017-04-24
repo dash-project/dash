@@ -119,7 +119,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
@@ -197,30 +196,8 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _myid(_team->myid()),
-    _teamspec(_arguments.teamspec()),
-    _memory_layout(_arguments.sizespec().extents()),
-    _nunits(_teamspec.size()),
-    _blocksize_spec(initialize_blocksizespec(
-        _arguments.sizespec(),
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        _arguments.sizespec(),
-        _distspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_myid)),
-    _local_capacity(
-        initialize_local_capacity(_local_memory_layout)) {
+  : SeqTilePattern(PatternArguments_t(arg, args...))
+  {
     DASH_LOG_TRACE("SeqTilePattern()", "Constructor with Argument list");
     initialize_local_range();
   }
@@ -1495,6 +1472,33 @@ public:
   }
 
 private:
+
+  SeqTilePattern(const PatternArguments_t & arguments)
+  : _distspec(arguments.distspec()),
+    _team(&arguments.team()),
+    _myid(_team->myid()),
+    _teamspec(arguments.teamspec()),
+    _memory_layout(arguments.sizespec().extents()),
+    _nunits(_teamspec.size()),
+    _blocksize_spec(initialize_blocksizespec(
+        arguments.sizespec(),
+        _distspec,
+        _teamspec)),
+    _blockspec(initialize_blockspec(
+        arguments.sizespec(),
+        _distspec,
+        _blocksize_spec,
+        _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _blocksize_spec,
+        _teamspec)),
+    _local_memory_layout(
+        initialize_local_extents(_myid)),
+    _local_capacity(
+        initialize_local_capacity(_local_memory_layout))
+  {}
+
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.

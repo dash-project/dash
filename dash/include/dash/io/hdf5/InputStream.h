@@ -37,10 +37,10 @@ class InputStream : public ::dash::io::IOSBase<IOStreamMode> {
   /**
    * Creates an HDF5 input stream using a launch policy
    *
-   * Support of \cdash::launch::async is still highly experimental and requires
+   * Support of \ref dash::launch::async is still highly experimental and requires
    * thread support in MPI. If multi-threaded access is not supported,
    * blocking I/O is used as fallback. To wait for outstanding IO operations
-   * use \cflush(). Until the stream is not flushed, no write accesses to the
+   * use \c flush(). Until the stream is not flushed, no write accesses to the
    * container, as well as no barriers are allowed.
    * Otherwise the behavior is undefined.
    */
@@ -84,7 +84,7 @@ class InputStream : public ::dash::io::IOSBase<IOStreamMode> {
 
   /**
    * Synchronizes with the data source.
-   * If \cdash::launch::async is used, waits until all data is read
+   * If \ref dash::launch::async is used, waits until all data is read
    */
   InputStream flush() {
     DASH_LOG_DEBUG("flush input stream", _async_ops.size());

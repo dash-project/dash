@@ -96,7 +96,8 @@ namespace dash {
  *
  * Usage examples:
  *
- * \code
+ * <code>
+ *
  * size_t initial_local_capacity = 100;
  * size_t initial_capacity       = dash::size() * initial_local_capacity;
  * dash::List<int> list(initial_capacity);
@@ -156,7 +157,7 @@ namespace dash {
  * //      .-- 3 <-' |  .-- 8 <-' |  .-- 13 --'
  * //      `-> 4 ----'  `-> 9 ----'  `-> 14 ---> Nil
  *
- * \endcode
+ * </code>
  */
 
 /**
