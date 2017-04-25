@@ -122,6 +122,24 @@ TEST_F(CoArrayTest, ContainerInterface)
     x(0)[3][4] = x(1)[1][2];
   }
 #endif
+
+  dash::Coarray<int[10]>   swap_a;
+  dash::Coarray<int[10]>   swap_b;
+  swap_a[0] = 0;
+  swap_b[0] = 1;
+
+  swap_a.flush_local();
+  swap_b.flush_local();
+
+  dash::barrier();
+  std::swap(swap_a, swap_b);
+  dash::barrier();
+
+  int value_a = swap_a[0];
+  int value_b = swap_b[0];
+  
+  ASSERT_EQ_U(value_a, 1);
+  ASSERT_EQ_U(value_b, 0);
 }
 
 TEST_F(CoArrayTest, ElementAccess)

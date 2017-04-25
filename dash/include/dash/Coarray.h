@@ -163,6 +163,8 @@ private:
   };
   
 private:
+
+  using self_t          = Coarray<T, IndexType, PatternType>;
   
   using _underl_type    = typename dash::remove_atomic<T>::type;
   using _native_type    = typename std::remove_all_extents<_underl_type>::type;
@@ -333,6 +335,10 @@ public:
   constexpr const_iterator begin() const noexcept {
     return _storage.begin();
   }
+
+  constexpr const_iterator cbegin() const noexcept {
+    return _storage.begin();
+  }
   
   iterator end() noexcept {
     return _storage.end();
@@ -340,6 +346,10 @@ public:
   
   constexpr const_iterator end() const noexcept {
     return _storage.end();
+  }
+
+  constexpr const_iterator cend() const noexcept {
+    return _storage.cend();
   }
   
   local_pointer lbegin() noexcept {
@@ -360,6 +370,26 @@ public:
   
   constexpr size_type size() const noexcept {
     return _storage.size();
+  }
+
+  /**
+   * For fully specified array types, \c dash::Coarray<T[N...]> is a fixed-size
+   * container. Hence the value equals the value returned by \c max_size .
+   * For containers with one open dimension, the size is determined by dash.
+   * If dash is not initialized, it always returns zero.
+   * \TODO Currently _storage.size() is returned.
+   */
+  constexpr size_type max_size() const noexcept {
+    return _storage.size();
+  }
+
+  constexpr bool empty() const noexcept {
+    return _storage.size() == 0;
+  }
+
+  void swap(self_t && other){
+    std::swap(this->_storage, other._storage);
+    dash::barrier();
   }
   
   constexpr size_type local_size() const noexcept {
