@@ -247,11 +247,11 @@ std::ostream& operator<<(std::ostream& os, const HaloRegionSpec<NumDimensions>& 
 template<dim_t NumDimensions>
 class HaloSpec {
 public:
-  using self = HaloSpec<NumDimensions>;
+  using self            = HaloSpec<NumDimensions>;
   using HaloRegionSpecT = HaloRegionSpec<NumDimensions>;
-  using region_index_t = typename HaloRegionSpecT::region_index_t;
-  using extent_t = typename HaloRegionSpecT::extent_t;
-  using SpecsT  = std::array<HaloRegionSpecT, HaloRegionSpecT::MaxIndex>;
+  using region_index_t  = typename HaloRegionSpecT::region_index_t;
+  using extent_t        = typename HaloRegionSpecT::extent_t;
+  using SpecsT          = std::array<HaloRegionSpecT, HaloRegionSpecT::MaxIndex>;
 
 public:
 
@@ -310,7 +310,7 @@ class RegionIter : public std::iterator<std::random_access_iterator_tag, Element
                                         typename PatternT::index_type, PointerT, ReferenceT> {
 private:
   using SelfT     = RegionIter<ElementT, PatternT, PointerT, ReferenceT>;
-  using GlobMemT  = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMemT  = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
   using ViewSpecT = typename PatternT::viewspec_type;
 
   static const dim_t NumDimensions = PatternT::ndim();
@@ -587,7 +587,7 @@ template <typename ElementT, typename PatternT, dim_t NumDimensions>
 class Region {
 
 private:
-  using GlobMemT        = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMemT        = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
   using HaloRegionSpecT = HaloRegionSpec<NumDimensions>;
   using ViewSpecT       = typename PatternT::viewspec_type;
   using region_index_t  = typename HaloRegionSpecT::region_index_t;
@@ -632,10 +632,10 @@ private:
   static const dim_t NumDimensions = PatternT::ndim();
 
   using SelfT           = HaloBlock<ElementT, PatternT>;
-  using GlobMemT        = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using GlobMemT        = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
   using CycleSpecT      = CycleSpec<NumDimensions>;
   using index_type      = typename PatternT::index_type;
-  using ViewSpecT      = typename PatternT::viewspec_type;
+  using ViewSpecT       = typename PatternT::viewspec_type;
   using halo_reg_spec_t = HaloSpec<NumDimensions>;
   using HaloRegionSpecT = HaloRegionSpec<NumDimensions>;
   using region_t        = Region<ElementT, PatternT, NumDimensions>;
@@ -828,7 +828,7 @@ private:
   void pushBndElems(dim_t dim, std::array<index_type, NumDimensions>& offsets,
                     std::array<size_type, NumDimensions>& extents,
                     const HaloExtsMaxT& halo_exts_max, const CycleSpecT& cycle_spec) {
-    for (auto d_tmp(dim + 1); d_tmp < NumDimensions; ++d_tmp) {
+    for (dim_t d_tmp(dim + 1); d_tmp < NumDimensions; ++d_tmp) {
       if (cycle_spec[d_tmp] == Cycle::NONE) {
         if (offsets[d_tmp] < halo_exts_max[d_tmp].first) {
           offsets[d_tmp] = halo_exts_max[d_tmp].first;
