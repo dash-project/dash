@@ -1559,5 +1559,4 @@ TEST_F(MatrixTest, MoveSemantics){
     ASSERT_EQ_U(*(matrix_a.lbegin()), 2);
     ASSERT_EQ_U(*(matrix_b.lbegin()), 1);
   }
-
 }
