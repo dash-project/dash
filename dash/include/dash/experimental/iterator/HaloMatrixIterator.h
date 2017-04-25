@@ -31,7 +31,6 @@ private:
   static constexpr MemArrange  MemoryArrange    = PatternT::memory_order();
 
   using SelfT            = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
-  using GlobMem_t        = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
   using HaloBlock_t      = HaloBlock<ElementT, PatternT>;
   using HaloMemory_t     = HaloMemory<HaloBlock_t>;
   using viewspec_t       = typename PatternT::viewspec_type;
