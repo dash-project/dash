@@ -94,6 +94,8 @@ inline Matrix<T, NumDim, IndexT, PatternT>
 {
     // do not free other globmem
     other._glob_mem = nullptr;
+    other._lbegin   = nullptr;
+    other._lend     = nullptr;
     DASH_LOG_TRACE("Matrix()", "Move-Constructed");
 }
 
@@ -124,7 +126,10 @@ Matrix<T, NumDim, IndexT, PatternT>
 
   // do not free other globmem
   other._glob_mem = nullptr;
+  other._lbegin   = nullptr;
+  other._lend     = nullptr;
   DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
+  return *this;
 };
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
