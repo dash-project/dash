@@ -665,9 +665,7 @@ public:
     IndexType block_index     = dist.local_index_to_block_coord(
                                   static_cast<IndexType>(unit),
                                   local_index,
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
+                                  _nunits
                                 );
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
     DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", block_index);

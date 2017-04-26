@@ -613,9 +613,7 @@ public:
     IndexType block_index     = dist.local_index_to_block_coord(
                                   static_cast<IndexType>(unit),
                                   local_index,
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
+                                  _nunits
                                 );
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
     DASH_LOG_TRACE_VAR("TilePattern<1>.global", block_index);
@@ -800,7 +798,7 @@ public:
   {
     return g_coords[0] / _blocksize;
   }
-  
+
   /**
    * Local index of block at given global coordinates.
    *
