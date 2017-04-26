@@ -3,6 +3,7 @@
 
 #include <dash/GlobAsyncRef.h>
 #include <dash/Array.h>
+#include <dash/Mutex.h>
 
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
@@ -198,5 +199,46 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
     ASSERT_EQ_U(a, 1);
     ASSERT_EQ_U(b, 2.0);
   }
+
+}
+
+TEST_F(GlobAsyncRefTest, ContainerFlush) {
+  dash::Array<int> array(dash::size());
+  *(array.lbegin()) = 0;
+  array.barrier();
+  constexpr int num_iter = 5;
+
+  dash::Mutex mutex;
+
+  // async writes to array.async
+  for (int i = 0; i < num_iter; ++i) {
+    mutex.lock();
+    int tmp = array.async[0];
+    for (int j = 0; j < num_iter; ++j) {
+      tmp += 1;
+      array.async[0] = tmp;
+    }
+    array.flush(); // using gref.flush() works
+    mutex.unlock();
+  }
+  array.barrier();
+  ASSERT_EQ_U(num_iter*num_iter*dash::size(), (int)array[0]);
+
+  array.barrier();
+  *(array.lbegin()) = 0;
+  array.barrier();
+
+  // do the same but on a single reference
+  for (int i = 0; i < num_iter; ++i) {
+    mutex.lock();
+    auto gar = array.async[0];
+    for (int j = 0; j < num_iter; ++j) {
+      gar += 1;
+    }
+    array.flush();
+    mutex.unlock();
+  }
+  array.barrier();
+  ASSERT_EQ_U(num_iter*num_iter*dash::size(), (int)array[0]);
 
 }
