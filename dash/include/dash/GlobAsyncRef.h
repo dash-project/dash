@@ -339,49 +339,17 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    // TODO: Comparison with current value could be inconsistent
-    if (!_has_value || _value != new_value) {
-      _value       = new_value;
-      _has_value   = true;
-      if (_is_local) {
-        *_lptr = _value;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_put(
-            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
-    }
-    return *this;
-  }
-
-  /**
-   * Value assignment operator, sets new value in local memory or calls
-   * non-blocking put on remote memory. This operator is only used for
-   * types which are not comparable
-   */
-  template<typename __T = T>
-  typename std::enable_if<!dash::has_operator_equal<__T>::value, self_t & >::type
-  operator=(const_value_type & new_value)
-  {
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    // TODO: Comparison with current value could be inconsistent
-    if (!_has_value) {
-      _value       = new_value;
-      _has_value   = true;
-      if (_is_local) {
-        *_lptr = _value;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_put(
-            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
+    _value       = new_value;
+    _has_value   = true;
+    if (_is_local) {
+      *_lptr = _value;
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      DASH_ASSERT_RETURNS(
+        dart_put(
+          _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
+        DART_OK
+      );
     }
     return *this;
   }
