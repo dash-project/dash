@@ -218,7 +218,7 @@ TEST_F(GlobAsyncRefTest, ContainerFlush) {
       tmp += 1;
       array.async[0] = tmp;
     }
-    array.flush(); // using gref.flush() works
+    array.flush();
     mutex.unlock();
   }
   array.barrier();
