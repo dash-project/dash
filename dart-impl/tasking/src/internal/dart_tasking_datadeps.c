@@ -498,7 +498,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     }
     // translate the offset to an absolute address
     if (dep.type != DART_DEP_DIRECT) {
-      dart_gptr_getoffset(dep.gptr, &DEP_ADDR(dep));
+      dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p",
                      task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,

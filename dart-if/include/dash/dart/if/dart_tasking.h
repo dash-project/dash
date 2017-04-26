@@ -37,11 +37,53 @@ typedef struct dart_task_dep {
   };
   /// dependency type, see \ref dart_task_deptype_t
   dart_task_deptype_t type;
+  /// the epoch this dependency refers to
+  int32_t             epoch;
 } dart_task_dep_t;
 
 #define DART_TASK_NULL ((dart_taskref_t)NULL)
 
+DART_INLINE
+dart_task_dep_t dart_task_create_datadep(
+  dart_gptr_t         gptr,
+  dart_task_deptype_t type,
+  int32_t             epoch)
+{
+  dart_task_dep_t res;
+  res.gptr  = gptr;
+  res.type  = type;
+  res.epoch = epoch;
+  return res;
+}
 
+DART_INLINE
+dart_task_dep_t dart_task_create_local_datadep(
+  void                * ptr,
+  dart_task_deptype_t   type,
+  int32_t               epoch)
+{
+  dart_task_dep_t res;
+  res.gptr = DART_GPTR_NULL;
+  res.gptr.addr_or_offs.addr = ptr;
+  dart_global_unit_t myid;
+  dart_myid(&myid);
+  res.gptr.unitid = myid.id;
+  res.gptr.teamid = DART_TEAM_ALL;
+  res.epoch       = epoch;
+  res.type        = type;
+  return res;
+}
+
+DART_INLINE
+dart_task_dep_t dart_task_create_directdep(
+  dart_taskref_t      task)
+{
+  dart_task_dep_t res;
+  res.task  = task;
+  res.type  = DART_DEP_DIRECT;
+  res.epoch = -1;
+  return res;
+}
 
 /**
  * Returns the current thread's number.
