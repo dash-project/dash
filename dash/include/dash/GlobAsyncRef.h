@@ -334,7 +334,7 @@ public:
    * types which are comparable
    */
   template<typename __T = T>
-  typename std::enable_if<dash::has_operator_equal<__T>::value, self_t & >::type
+  self_t &
   operator=(const_value_type & new_value)
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
