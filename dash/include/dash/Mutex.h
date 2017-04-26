@@ -49,6 +49,7 @@ public:
   Mutex(Mutex && other)                    = default;
 
   self_t & operator=(const self_t & other) = delete;
+  self_t & operator=(self_t && other)      = default;
   
   /**
    * Collective destructor to destruct a DART lock.

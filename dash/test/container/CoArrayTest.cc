@@ -294,11 +294,15 @@ TEST_F(CoArrayTest, Mutex){
   
   arr = 0;
   arr.sync_all();
-  
+
   mx.lock();
   int tmp = arr(0);
-  arr(0) = tmp + 1;
-  arr(0).flush();
+  // use explicit gref object. The following is not valid,
+  // as different GlobRefs are returned
+  // arr(0) = x; arr(0).flush();
+  auto gref = arr(0);
+  gref = tmp + 1;
+  gref.flush();
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
   mx.unlock();
   
@@ -313,9 +317,14 @@ TEST_F(CoArrayTest, Mutex){
   // this even works with std::lock_guard
   {
     std::lock_guard<dash::Mutex> lg(mx);
+    LOG_MESSAGE("Lock aquired at unit %d", 
+                static_cast<int>(this_image()));
     int tmp = arr(0);
-    arr(0) = tmp + 1;
-    arr(0).flush();
+    auto gref = arr(0);
+    gref = tmp + 1;
+    gref.flush();
+    LOG_MESSAGE("Lock released at unit %d",
+                static_cast<int>(this_image()));
   }
   
   arr.sync_all();
