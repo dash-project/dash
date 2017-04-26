@@ -110,9 +110,3 @@ dart_task_complete()
 }
 
 
-dart_ret_t
-dart_task_phase()
-{
-  return dart__tasking__phase();
-}
-

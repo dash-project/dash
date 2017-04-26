@@ -43,6 +43,8 @@ typedef struct dart_task_dep {
 
 #define DART_TASK_NULL ((dart_taskref_t)NULL)
 
+#define DART_EPOCH_ANY ((int32_t)-1)
+
 DART_INLINE
 dart_task_dep_t dart_task_create_datadep(
   dart_gptr_t         gptr,
@@ -159,15 +161,6 @@ dart_task_current_task();
  */
 dart_ret_t
 dart_task_complete();
-
-
-/**
- * Signal the end of an phase (or iteration) and the beginning of a new phase.
- *
- * This should be used to ensure remote dependencies
- */
-dart_ret_t
-dart_task_phase();
 
 #ifdef __cplusplus
 }

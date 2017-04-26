@@ -88,7 +88,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
   rdep.magic       = 0xDEADBEEF;
-  rdep.phase       = task->phase;
+  rdep.phase       = task->epoch;
   dart_myid(&rdep.runit);
   dart_team_unit_t team_unit;
   // the amsgq is opened on DART_TEAM_ALL
@@ -232,15 +232,15 @@ enqueue_from_remote(void *data)
   struct remote_data_dep *rdep = (struct remote_data_dep *)data;
   DART_ASSERT(rdep->magic == 0xDEADBEEF);
   DART_ASSERT(rdep->rtask.remote != NULL);
-  dart_phase_dep_t dep;
+  dart_epoch_dep_t dep;
   dep.dep.gptr = rdep->gptr;
   dep.dep.type = DART_DEP_IN;
-  dep.phase    = rdep->phase;
+  dep.epoch    = rdep->phase;
   taskref rtask = rdep->rtask;
   DART_LOG_INFO("Received remote dependency request for task %p "
                 "(unit=%i, segid=%i, addr=%p, ph=%li)",
                 rdep->rtask.remote, rdep->runit.id, rdep->gptr.segid,
-                rdep->gptr.addr_or_offs.addr, dep.phase);
+                rdep->gptr.addr_or_offs.addr, dep.epoch);
   dart_tasking_datadeps_handle_remote_task(&dep, rtask, rdep->runit);
 }
 

@@ -35,7 +35,7 @@ typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;
   union taskref             task;
   dart_task_dep_t           taskdep;
-  uint64_t                  phase;
+  uint64_t                  epoch;
 } dart_dephash_elem_t;
 
 static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
@@ -170,9 +170,9 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
 {
   dart_dephash_elem_t *elem = dephash_allocate_elem(dep, task);
-  // we can take the task's phase only for local tasks
+  // we can take the task's epoch only for local tasks
   // so we have to do it here instead of dephash_allocate_elem
-  elem->phase = task.local->phase;
+  elem->epoch = dep->epoch;
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
   dart__base__mutex_lock(&local_deps_mutex);
@@ -207,57 +207,6 @@ release_deferred_remote_releases()
   dart__base__mutex_unlock(&deferred_remote_mutex);
 }
 
-static bool
-is_local_successor(dart_task_t *task, dart_task_t *candidate)
-{
-  for (task_list_t *elem = task->successor;
-       elem != NULL;
-       elem = elem->next) {
-    if (elem->task == candidate) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Look at direct successors of \c task and send direct task dependency
- * requests if necessary.
- */
-#if 0
-static dart_ret_t
-find_remote_direct_dependencies(dart_task_t *task, dart_dephash_elem_t *rdep)
-{
-
-  int slot = hash_gptr(rdep->taskdep.gptr);
-  for (dart_dephash_elem_t *local = local_deps[slot];
-                            local != NULL;
-                            local = local->next) {
-    if (IS_OUT_DEP(local->taskdep)                &&
-        local->taskdep.gptr.addr_or_offs.addr
-          == rdep->taskdep.gptr.addr_or_offs.addr &&
-        local->phase >= rdep->phase               &&
-        is_local_successor(task, local->task.local)) {
-      dart_global_unit_t target = DART_GLOBAL_UNIT_ID(
-                                        rdep->taskdep.gptr.unitid);
-      dart_tasking_remote_direct_taskdep(
-          target,
-          local->task.local,
-          rdep->task);
-      int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                  &local->task.local->unresolved_deps);
-      DART_LOG_DEBUG("DIRECT task dep: task %p depends on remote task %p at "
-                     "unit %i and has %i dependencies",
-                     local->task.local,
-                     rdep->task,
-                     target.id,
-                     unresolved_deps);
-    }
-  }
-
-  return DART_OK;
-}
-#endif
 
 dart_ret_t
 dart_tasking_datadeps_release_unhandled_remote()
@@ -272,7 +221,7 @@ dart_tasking_datadeps_release_unhandled_remote()
     /**
      * Iterate over all possible tasks and find the closest-matching
      * local task that satisfies the remote dependency.
-     * For tasks with a higher phase than the resolving task, send direct
+     * For tasks with a higher epoch than the resolving task, send direct
      * task dependencies.
      */
     dart_global_unit_t origin = DART_GLOBAL_UNIT_ID(rdep->taskdep.gptr.unitid);
@@ -293,19 +242,19 @@ dart_tasking_datadeps_release_unhandled_remote()
           IS_ACTIVE_TASK(task)) {
         /*
          * Remote INPUT task dependencies are considered to refer to the
-         * previous phase so every task in the same phase and following
-         * phases have to wait for the remote task to complete.
+         * previous epoch so every task in the same epoch and following
+         * epochs have to wait for the remote task to complete.
          * Note that we are only accounting for the candidate task in the
-         * lowest phase since all later tasks are handled through local
+         * lowest epoch since all later tasks are handled through local
          * dependencies.
          *
          * TODO: formulate the relation of local and remote dependencies
-         *       between tasks and phases!
+         *       between tasks and epochs!
          */
-        if (task->phase >= rdep->phase) {
+        if (task->epoch >= rdep->epoch) {
           dart__base__mutex_unlock(&task->mutex);
           if (direct_dep_candidate == NULL ||
-              direct_dep_candidate->phase > task->phase) {
+              direct_dep_candidate->epoch > task->epoch) {
             direct_dep_candidate = task;
             DART_LOG_TRACE("Making local task %p a direct dependecy candidate "
                            "for remote task %p",
@@ -314,8 +263,8 @@ dart_tasking_datadeps_release_unhandled_remote()
           }
         } else {
           // check whether a previously encountered candidate
-          // comes from an earlier phase than this candidate
-          if (candidate == NULL || task->phase > candidate->phase) {
+          // comes from an earlier epoch than this candidate
+          if (candidate == NULL || task->epoch > candidate->epoch) {
             // release the lock on the previous candidate
             if (candidate != NULL) {
               dart__base__mutex_unlock(&candidate->mutex);
@@ -349,9 +298,9 @@ dart_tasking_datadeps_release_unhandled_remote()
       DART_LOG_DEBUG("DIRECT task dep: task %p (ph:%i) directly depends on "
                      "remote task %p (ph:%i) at unit %i and has %i dependencies",
                      direct_dep_candidate,
-                     direct_dep_candidate->phase,
+                     direct_dep_candidate->epoch,
                      rdep->task,
-                     rdep->phase,
+                     rdep->epoch,
                      target.id,
                      unresolved_deps);
     }
@@ -367,9 +316,9 @@ dart_tasking_datadeps_release_unhandled_remote()
     } else {
       // the remote dependency cannot be served --> send release
       DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
-                     "which could not be handled in phase %i",
+                     "which could not be handled in epoch %i",
                      rdep->task.remote, origin.id,
-                     rdep->phase);
+                     rdep->epoch);
       dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
       dephash_recycle_elem(rdep);
     }
@@ -472,7 +421,7 @@ dart_tasking_datadeps_handle_local_datadep(
   }
 
   DART_LOG_TRACE("No matching dependency found for local dependency %p "
-      "on task %p in epoch %i", DEP_ADDR(dep), task, task->phase);
+      "on task %p in epoch %i", DEP_ADDR(dep), task, task->epoch);
   return DART_OK;
 }
 
@@ -488,14 +437,25 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 {
   dart_global_unit_t myid;
   dart_myid(&myid);
-  DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in phase %i",
-                 task, ndeps, task->phase);
+  DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in epoch %i",
+                 task, ndeps, task->epoch);
+
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t dep = deps[i];
     if (dep.type == DART_DEP_IGNORE) {
       // ignored
       continue;
     }
+
+    // look for the current epoch
+    // we assume that the first OUT dependency defines the current epoch
+    if (task->epoch == DART_EPOCH_ANY && IS_OUT_DEP(dep)) {
+      task->epoch = dep.epoch;
+      if (task->parent->epoch == DART_EPOCH_ANY) {
+        task->parent->epoch = dep.epoch;
+      }
+    }
+
     // translate the offset to an absolute address
     if (dep.type != DART_DEP_DIRECT) {
       dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
@@ -532,7 +492,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
  * Note that \c dep has to be a IN dependency.
  */
 dart_ret_t dart_tasking_datadeps_handle_remote_task(
-    const dart_phase_dep_t *rdep,
+    const dart_epoch_dep_t *rdep,
     const taskref           remote_task,
     dart_global_unit_t      origin)
 {
@@ -547,7 +507,7 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task);
   dart__base__mutex_lock(&unhandled_remote_mutex);
   rs->taskdep.gptr.unitid = origin.id;
-  rs->phase = rdep->phase;
+  rs->epoch = rdep->epoch;
   DART_STACK_PUSH(unhandled_remote_deps, rs);
   dart__base__mutex_unlock(&unhandled_remote_mutex);
   return DART_OK;
@@ -625,7 +585,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
 {
   // block the release of the task if it's not to be executed yet
   dart__base__mutex_lock(&deferred_remote_mutex);
-  if (local_task->phase > dart__tasking__phase_bound()) {
+  if (local_task->epoch > dart__tasking__epoch_bound()) {
     // dummy dependency
     dart_task_dep_t dep = {
         .gptr = DART_GPTR_NULL,
@@ -635,8 +595,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
     dart_dephash_elem_t *dr = dephash_allocate_elem(&dep, ref);
     DART_STACK_PUSH(deferred_remote_releases, dr);
     DART_LOG_DEBUG("release_remote_dep : Defering release of task %p "
-                   "with remote dep from phase %lu",
-                   local_task, local_task->phase);
+                   "with remote dep from epoch %lu",
+                   local_task, local_task->epoch);
   } else {
     // immediately release the task
     int unresolved_deps = DART_DEC_AND_FETCH32(&local_task->unresolved_deps);
@@ -653,13 +613,6 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart__base__mutex_unlock(&deferred_remote_mutex);
   return DART_OK;
 }
-
-dart_ret_t dart_tasking_datadeps_end_phase(uint64_t phase)
-{
-  // nothing to be done for now
-  return DART_OK;
-}
-
 
 /**
  * Release the remote dependencies of \c task.

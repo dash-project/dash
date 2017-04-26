@@ -33,7 +33,7 @@ struct dart_task_data {
   int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;
-  uint64_t                   phase;
+  uint32_t                   epoch;
   bool                       has_ref;
 };
 
@@ -76,7 +76,7 @@ int
 dart__tasking__num_threads();
 
 uint64_t
-dart__tasking__phase_bound();
+dart__tasking__epoch_bound();
 
 dart_ret_t
 dart__tasking__create_task(

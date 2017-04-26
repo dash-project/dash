@@ -19,8 +19,8 @@ typedef union taskref {
 
 typedef struct {
   dart_task_dep_t dep;
-  uint64_t        phase;
-} dart_phase_dep_t;
+  uint64_t        epoch;
+} dart_epoch_dep_t;
 
 
 /**
@@ -46,7 +46,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
  * Note that \c dep has to be a IN dependency.
  */
 dart_ret_t dart_tasking_datadeps_handle_remote_task(
-    const dart_phase_dep_t *dep,
+    const dart_epoch_dep_t *dep,
     const taskref           remote_task,
     dart_global_unit_t      origin);
 

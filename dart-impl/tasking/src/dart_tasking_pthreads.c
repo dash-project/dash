@@ -30,8 +30,6 @@ static bool initialized = false;
 
 static pthread_key_t tpd_key;
 
-static uint64_t phase_bound = 0;
-
 typedef struct {
   int           thread_id;
 } tpd_t;
@@ -57,7 +55,7 @@ static dart_task_t root_task = {
     .parent = NULL,
     .remote_successor = NULL,
     .num_children = 0,
-    .phase  = 0,
+    .epoch  = DART_EPOCH_ANY,
     .state  = DART_TASK_ROOT};
 
 
@@ -136,7 +134,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->num_children = 0;
   task->parent       = get_current_task();
   task->state        = DART_TASK_NASCENT;
-  task->phase        = task->parent->phase;
+  task->epoch        = task->parent->epoch;
   task->has_ref      = false;
   return task;
 }
@@ -153,7 +151,7 @@ void destroy_task(dart_task_t *task)
   task->data_size        = 0;
   task->fn               = NULL;
   task->parent           = NULL;
-  task->phase            = 0;
+  task->epoch            = DART_EPOCH_ANY;
   task->prev             = NULL;
   task->remote_successor = NULL;
   task->successor        = NULL;
@@ -355,9 +353,9 @@ dart__tasking__num_threads()
 }
 
 uint64_t
-dart__tasking__phase_bound()
+dart__tasking__epoch_bound()
 {
-  return phase_bound;
+  return root_task.epoch;
 }
 
 void
@@ -365,7 +363,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 {
   dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
   dart_taskqueue_t *q = &thread->queue;
-  if (task->phase > phase_bound) {
+  if (task->epoch > dart__tasking__epoch_bound()) {
     // if the task's phase is outside the phase bound we defer it
     q = &thread->defered_queue;
   }
@@ -440,8 +438,8 @@ dart__tasking__task_complete()
     dart_tasking_remote_progress_blocking();
     // release unhandled remote dependencies
     dart_tasking_datadeps_release_unhandled_remote();
-    // release defered tasks
-    phase_bound = thread->current_task->phase;
+    // reset the active epoch
+    root_task.epoch = DART_EPOCH_ANY;
     dart_tasking_taskqueue_move(&thread->queue, &thread->defered_queue);
   }
 
@@ -497,21 +495,6 @@ dart__tasking__task_wait(dart_taskref_t *tr)
 }
 
 
-
-dart_ret_t
-dart__tasking__phase()
-{
-  if (dart__tasking__thread_num() != 0) {
-    DART_LOG_ERROR("Switching phases can only be done by the master thread!");
-    return DART_ERR_INVAL;
-  }
-//  dart_barrier(DART_TEAM_ALL);
-  dart_tasking_remote_progress();
-  dart_tasking_datadeps_end_phase(root_task.phase);
-  root_task.phase++;
-  DART_LOG_INFO("Starting task phase %li\n", root_task.phase);
-  return DART_OK;
-}
 
 dart_taskref_t
 dart__tasking__current_task()
