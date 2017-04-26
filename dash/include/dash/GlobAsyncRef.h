@@ -18,20 +18,16 @@ namespace dash {
  *   GlobAsyncRef<int> gar1 = array.async[1];
  *   gar0 = 123;
  *   gar1 = 456;
- *   // Changes are is visible locally but not published to other
- *   // units, yet:
+ *   // Changes are visible locally in the references but not published to
+ *   // the container, yet:
  *   assert(gar0 == 123);
  *   assert(gar1 == 456);
- *   assert(array[0] == 123);
- *   assert(array[1] == 456);
- *   assert(array.local[0] == 123);
- *   assert(array.local[1] == 456);
  *   // Changes can be published (committed) directly using a GlobAsyncRef
  *   // object:
  *   gar0.flush();
  *   // New value of array[0] is published to all units, array[1] is not
  *   // committed yet
- *   // Changes on a container can be publiched in bulk:
+ *   // Changes on a container can be published in bulk:
  *   array.flush();
  *   // From here, all changes are published
  * \endcode
