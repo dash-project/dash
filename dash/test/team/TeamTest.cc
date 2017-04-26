@@ -81,7 +81,7 @@ TEST_F(TeamTest, SplitTeamSync)
   }
   LOG_MESSAGE("team_all.myid(): %d, team_core.myid(): %d, dash::myid(): %d",
                team_all.myid().id,  team_core.myid().id,  dash::myid().id);
-  LOG_MESSAGE("team_all.position(): %d, team_core.position(): %d",
+  LOG_MESSAGE("team_all.position(): %lu, team_core.position(): %lu",
                team_all.position(),     team_core.position());
   LOG_MESSAGE("team_all.dart_id():  %d, team_core.dart_id(): %d",
                team_all.dart_id(),      team_core.dart_id());
