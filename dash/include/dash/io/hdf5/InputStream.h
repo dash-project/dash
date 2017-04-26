@@ -24,6 +24,9 @@ using IOStreamMode = dash::io::IOStreamMode<dash::io::IOSBaseMode>;
 
 class InputStream : public ::dash::io::IOSBase<IOStreamMode> {
  private:
+
+  using self_t = InputStream;
+
   std::string _filename;
   std::string _dataset;
   type_converter _converter;
@@ -73,7 +76,7 @@ class InputStream : public ::dash::io::IOSBase<IOStreamMode> {
    *     >> dataset("seconddata") >> array_b;
    * \endcode
    */
-  InputStream(std::string filename)
+  explicit InputStream(std::string filename)
       : InputStream(dash::launch::sync, filename) {}
 
   ~InputStream() {
@@ -82,11 +85,18 @@ class InputStream : public ::dash::io::IOSBase<IOStreamMode> {
     }
   }
 
+  InputStream()                     = delete;
+  InputStream(const self_t & other) = delete;
+  InputStream(self_t && other)      = default;
+
+  self_t & operator= (const self_t & other) = delete;
+  self_t & operator= (self_t && other)      = default;
+
   /**
    * Synchronizes with the data source.
    * If \ref dash::launch::async is used, waits until all data is read
    */
-  InputStream flush() {
+  InputStream & flush() {
     DASH_LOG_DEBUG("flush input stream", _async_ops.size());
     if (!_async_ops.empty()) {
       _async_ops.back().wait();
