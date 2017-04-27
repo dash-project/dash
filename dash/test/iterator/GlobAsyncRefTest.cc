@@ -147,7 +147,7 @@ TEST_F(GlobAsyncRefTest, Conversion)
     array.local[li] = dash::myid().id;
   }
   array.barrier();
-  
+
   auto gref_async = static_cast<dash::GlobAsyncRef<int>>(
                         array[dash::myid().id]);
   auto gref_sync  = static_cast<dash::GlobRef<int>>(
@@ -156,13 +156,20 @@ TEST_F(GlobAsyncRefTest, Conversion)
   ASSERT_EQ_U(gref_sync.is_local(), true);
 }
 
+struct mytype {int a; double b; };
+
+std::ostream&
+operator<<(std::ostream& os, mytype const s) {
+  os << "{" << "a: " << s.a << ", b:" << s.b << "}";
+  return os;
+}
+
 TEST_F(GlobAsyncRefTest, RefOfStruct)
 {
   if(dash::size() < 2){
     SKIP_TEST_MSG("this test requires at least 2 units");
   }
 
-  struct mytype {int a; double b; };
   dash::Array<mytype> array(dash::size());
 
   int neighbor = (dash::myid() + 1) % dash::size();
@@ -176,7 +183,7 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
 
     auto garef_a_loc = garef_loc.member<int>(&mytype::a);
     auto garef_b_loc = garef_loc.member<double>(&mytype::b);
-    
+
     ASSERT_EQ_U(garef_rem.is_local(), false);
     ASSERT_EQ_U(garef_a_rem.is_local(), false);
     ASSERT_EQ_U(garef_b_rem.is_local(), false);

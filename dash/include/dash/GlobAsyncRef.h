@@ -105,8 +105,8 @@ public:
   explicit constexpr GlobAsyncRef(
     /// Pointer to referenced object in local memory
     nonconst_value_type * lptr)
-  : _value(*lptr),
-    _lptr(lptr),
+  : _lptr(lptr),
+    _value(*lptr),
     _is_local(true),
     _has_value(true)
   { }
@@ -184,7 +184,7 @@ public:
   {
     return _is_local;
   }
-  
+
   /**
    * Get a global ref to a member of a certain type at the
    * specified offset
