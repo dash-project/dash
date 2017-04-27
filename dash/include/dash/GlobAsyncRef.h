@@ -333,7 +333,6 @@ public:
    * non-blocking put on remote memory. This operator is only used for
    * types which are comparable
    */
-  template<typename __T = T>
   self_t &
   operator=(const_value_type & new_value)
   {
