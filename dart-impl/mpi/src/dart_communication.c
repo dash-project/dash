@@ -1278,40 +1278,33 @@ dart_ret_t dart_waitall_local(
      * copy MPI requests back to DART handles:
      */
     DART_LOG_TRACE("dart_waitall_local: "
-                   "copying MPI requests back to DART handles");
+                   "releasing DART handles");
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_SOURCE:"
-                       " %d",
-                       r_n, mpi_sta[r_n].MPI_SOURCE);
-        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_ERROR:"
-                       "  %d:%s",
-                       r_n,
-                       mpi_sta[r_n].MPI_ERROR,
-                       DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
-        if (mpi_req[r_n] != MPI_REQUEST_NULL) {
-          if (mpi_sta[r_n].MPI_ERROR == MPI_SUCCESS) {
-            DART_LOG_TRACE("dart_waitall_local: -- MPI_Request_free");
-            if (MPI_Request_free(&mpi_req[r_n]) != MPI_SUCCESS) {
-              DART_LOG_TRACE("dart_waitall_local ! MPI_Request_free failed");
-              ret = DART_ERR_INVAL;
-              break;
-            }
-          } else {
-            DART_LOG_TRACE("dart_waitall_local: cannot free request %zu "
-                           "mpi_sta[%zu] = %d (%s)",
-                           r_n,
+        if (handle[i]->request) {
+          DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_SOURCE:"
+                         " %d",
+                         r_n, mpi_sta[r_n].MPI_SOURCE);
+          DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_ERROR:"
+                         "  %d:%s",
+                         r_n,
+                         mpi_sta[r_n].MPI_ERROR,
+                         DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
+          if (mpi_sta[r_n].MPI_ERROR != MPI_SUCCESS) {
+            DART_LOG_ERROR("dart_waitall_local: detected unsuccesful request "
+                           "%zu mpi_sta[%zu] = %d (%s)",
+                           i,
                            r_n,
                            mpi_sta[r_n].MPI_ERROR,
                            DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
           }
+          r_n++;
         }
-        DART_LOG_DEBUG("dart_waitall_local: free handle[%zu] %p",
+        DART_LOG_TRACE("dart_waitall_local: free handle[%zu] %p",
                        i, (void*)(handle[i]));
         free(handle[i]);
         handle[i] = NULL;
-        r_n++;
       }
     }
     DART_LOG_TRACE("dart_waitall_local: free MPI_Request temporaries");
@@ -1439,15 +1432,6 @@ dart_ret_t dart_waitall(
            */
           if (MPI_Win_flush(handle[i]->dest, handle[i]->win) != MPI_SUCCESS) {
             DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
-            DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
-            free(mpi_req);
-            DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
-            free(mpi_sta);
-            return DART_ERR_INVAL;
-          }
-          DART_LOG_TRACE("dart_waitall: -- MPI_Request_free");
-          if (MPI_Request_free(&handle[i]->request) != MPI_SUCCESS) {
-            DART_LOG_ERROR("dart_waitall: MPI_Request_free failed");
             DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
             free(mpi_req);
             DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
