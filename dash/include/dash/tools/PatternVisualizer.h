@@ -262,7 +262,6 @@ public:
    */
   void draw_key(std::ostream & os,
                 const sizes & sz,
-                int dimx, int dimy,
                 int offsx = 0, int offsy = 0) {
     int startx, starty;
 
@@ -323,7 +322,6 @@ public:
    */
   void draw_blocks(std::ostream & os,
                    const sizes & sz,
-                   std::array<index_t, PatternT::ndim()> coords,
                    int dimx, int dimy) {
     std::array<index_t, PatternT::ndim()> block_coords;
     std::array<index_t, PatternT::ndim()> block_begin_coords;
@@ -397,7 +395,6 @@ public:
    */
   void draw_local_memlayout(std::ostream & os,
                             const sizes & sz,
-                            std::array<index_t, PatternT::ndim()> coords,
                             int dimx, int dimy) {
     int startx, starty;
     int endx, endy;
