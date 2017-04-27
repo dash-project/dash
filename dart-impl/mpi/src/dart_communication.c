@@ -57,7 +57,7 @@ static dart_ret_t get_shared_mem(
   int16_t      seg_id            = gptr.segid;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   DART_LOG_DEBUG("dart_get: shared windows enabled");
-  dart_team_unit_t luid = DART_TEAM_UNIT_ID(gptr.unitid);
+  dart_team_unit_t luid = team_data->sharedmem_tab[gptr.unitid];
   char * baseptr;
   /*
    * Use memcpy if the target is in the same node as the calling unit:
@@ -65,7 +65,8 @@ static dart_ret_t get_shared_mem(
   DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d",
                  seg_id);
   if (seg_id) {
-    if (dart_segment_get_baseptr(&team_data->segdata, seg_id, luid, &baseptr) != DART_OK) {
+    if (dart_segment_get_baseptr(
+          &team_data->segdata, seg_id, luid, &baseptr) != DART_OK) {
       DART_LOG_ERROR("dart_get ! "
                      "dart_adapt_transtable_get_baseptr failed");
       return DART_ERR_INVAL;
@@ -74,7 +75,8 @@ static dart_ret_t get_shared_mem(
     baseptr = dart_sharedmem_local_baseptr_set[luid.id];
   }
   baseptr += offset;
-  DART_LOG_DEBUG("dart_get: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
+  DART_LOG_DEBUG(
+    "dart_get: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
   memcpy((char*)dest, baseptr, nelem * dart__mpi__datatype_sizeof(dtype));
   return DART_OK;
 }
