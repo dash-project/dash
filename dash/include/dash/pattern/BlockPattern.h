@@ -735,7 +735,6 @@ public:
     if (_teamspec.size() < 2) {
       return local_coords;
     }
-    SizeType blocksize = max_blocksize();
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
@@ -744,7 +743,6 @@ public:
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       auto num_units_d          = _teamspec.extent(d);
-      auto num_blocks_d         = _blockspec.extent(d);
       auto blocksize_d          = _blocksize_spec.extent(d);
       auto local_index_d        = local_coords[d];
       // TOOD: Use % (blocksize_d - underfill_d)
