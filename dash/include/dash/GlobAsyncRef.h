@@ -64,11 +64,38 @@ private:
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
   /// Value of the referenced element, initially not loaded
-  mutable T    _value;
+  mutable nonconst_value_type _value;
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
   /// Whether the value of the referenced element is known
   mutable bool _has_value   = false;
+
+private:
+
+  /**
+   * Constructor used to reference members in GlobAsyncRefs referencing
+   * structs
+   */
+  template<typename ParentT>
+  GlobAsyncRef(
+    /// parent GlobAsyncRef referencing whole struct
+    const GlobAsyncRef<ParentT> & parent,
+    /// offset of member in struct
+    size_t                        offset)
+  : _gptr(parent._gptr),
+    _lptr(parent._is_local ? reinterpret_cast<T*>(
+                              reinterpret_cast<char*>(parent._lptr)+offset)
+                           : nullptr),
+    _value(parent._has_value ? *(reinterpret_cast<T*>(
+                                reinterpret_cast<char*>(&(parent._value))+offset))
+                             : T()),
+    _is_local(parent._is_local),
+    _has_value(parent._has_value)
+  {
+     DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&_gptr, offset),
+      DART_OK);
+  }
 
 public:
   /**
@@ -78,8 +105,8 @@ public:
   explicit constexpr GlobAsyncRef(
     /// Pointer to referenced object in local memory
     nonconst_value_type * lptr)
-  : _value(*lptr),
-    _lptr(lptr),
+  : _lptr(lptr),
+    _value(*lptr),
     _is_local(true),
     _has_value(true)
   { }
@@ -133,7 +160,7 @@ public:
    */
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobRef<T> & gref)
+    const GlobRef<T> & gref)
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
@@ -156,6 +183,25 @@ public:
   inline bool is_local() const noexcept
   {
     return _is_local;
+  }
+
+  /**
+   * Get a global ref to a member of a certain type at the
+   * specified offset
+   */
+  template<typename MEMTYPE>
+  GlobAsyncRef<MEMTYPE> member(size_t offs) const {
+    return GlobAsyncRef<MEMTYPE>(*this, offs);
+  }
+
+  /**
+   * Get the member via pointer to member
+   */
+  template<class MEMTYPE, class P=T>
+  GlobAsyncRef<MEMTYPE> member(
+    const MEMTYPE P::*mem) const {
+    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    return member<MEMTYPE>(offs);
   }
 
   /**
@@ -288,14 +334,46 @@ public:
 
   /**
    * Value assignment operator, sets new value in local memory or calls
-   * non-blocking put on remote memory.
+   * non-blocking put on remote memory. This operator is only used for
+   * types which are comparable
    */
-  self_t & operator=(const_value_type & new_value)
+  template<typename __T = T>
+  typename std::enable_if<dash::has_operator_equal<__T>::value, self_t & >::type
+  operator=(const_value_type & new_value)
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
     // TODO: Comparison with current value could be inconsistent
     if (!_has_value || _value != new_value) {
+      _value       = new_value;
+      _has_value   = true;
+      if (_is_local) {
+        *_lptr = _value;
+      } else {
+        dart_storage_t ds = dash::dart_storage<T>(1);
+        DASH_ASSERT_RETURNS(
+          dart_put(
+            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
+          DART_OK
+        );
+      }
+    }
+    return *this;
+  }
+
+  /**
+   * Value assignment operator, sets new value in local memory or calls
+   * non-blocking put on remote memory. This operator is only used for
+   * types which are not comparable
+   */
+  template<typename __T = T>
+  typename std::enable_if<!dash::has_operator_equal<__T>::value, self_t & >::type
+  operator=(const_value_type & new_value)
+  {
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
+    // TODO: Comparison with current value could be inconsistent
+    if (!_has_value) {
       _value       = new_value;
       _has_value   = true;
       if (_is_local) {

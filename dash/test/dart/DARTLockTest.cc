@@ -225,7 +225,7 @@ TEST_F(DARTLockTest, TeamLockUnlock) {
       DART_OK,
       dart_lock_release(lock));
   }
-  dash::barrier();
+  team.barrier();
 
   ASSERT_EQ_U(num_iterations * team.size(), static_cast<value_t>(shared.get()));
 

@@ -137,13 +137,13 @@ TEST_F(GlobStencilIterTest, Conversion)
     LOG_MESSAGE("gvit = m.block(%d,%d).begin(), "
                 "gvit.pos:%d gvit.gpos:%d gvit.rpos:%d gvit.lpos:(u:%d li:%d) "
                 "value:%f halo(n:%f e:%f s:%f w:%f)",
-                g_block_coords[0],
-                g_block_coords[1],
-                g_view_it.pos(),
-                g_view_it.gpos(),
-                g_view_it.rpos(),
-                g_view_it_lpos.unit.id,
-                g_view_it_lpos.index,
+                static_cast<int>(g_block_coords[0]),
+                static_cast<int>(g_block_coords[1]),
+                static_cast<int>(g_view_it.pos()),
+                static_cast<int>(g_view_it.gpos()),
+                static_cast<int>(g_view_it.rpos()),
+                static_cast<int>(g_view_it_lpos.unit.id),
+                static_cast<int>(g_view_it_lpos.index),
                 static_cast<value_t>(*g_stencil_it),
                 north, east, south, west);
   }

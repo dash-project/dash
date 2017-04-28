@@ -296,7 +296,7 @@ TEST_F(AtomicTest, ArrayElements)
 
   value_t expect_local = my_val + remote_prev + 1 + remote_next + 1;
   value_t actual_local = array.local[0];
-  EXPECT_EQ(expect_local, actual_local);
+  EXPECT_EQ_U(expect_local, actual_local);
 
   if (dash::myid() == 0) {
     // Create local copy for logging:
@@ -401,6 +401,7 @@ TEST_F(AtomicTest, AtomicInterface){
   }
   dash::barrier();
   ASSERT_EQ_U(array[3].load(), 1);
+  dash::barrier();
   
   value_t myid     = static_cast<value_t>(dash::myid().id);
   value_t id_right = (myid + 1) % dash::size();
