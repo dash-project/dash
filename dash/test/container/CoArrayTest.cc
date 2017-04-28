@@ -181,7 +181,7 @@ TEST_F(CoArrayTest, Collectives)
   cobroadcast(i, dash::team_unit_t{0});
   ASSERT_EQ_U(static_cast<int>(i), 10);
   
-  std::fill(x.begin(), x.end(), 2);
+  std::fill(x.lbegin(), x.lend(), 2);
   x.barrier();
   coreduce(x, dash::plus<int>());
   x.barrier();
