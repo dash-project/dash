@@ -175,6 +175,20 @@ public:
   /** Properties of this edge */
   properties_type       properties;
 
+  /**
+   * Returns the source vertex of the edge
+   */
+  vertex_index_type source() const {
+    return _source;
+  }
+
+  /**
+   * Returns the target vertex of the edge
+   */
+  vertex_index_type target() const {
+    return _target;
+  }
+
 private:
 
   //TODO: Examine, if saving source can be avoided

@@ -101,7 +101,7 @@ struct OutEdgeIteratorWrapper {
     return iterator(
         _graph->_glob_mem_out_edge, 
         v._index.unit, 
-        v._in_edge_ref, 
+        v._out_edge_ref, 
         0
     );
   }
@@ -113,9 +113,9 @@ struct OutEdgeIteratorWrapper {
     return iterator(
         _graph->_glob_mem_out_edge, 
         v._index.unit, 
-        v._in_edge_ref, 
+        v._out_edge_ref, 
         _graph->_glob_mem_out_edge->container_size(v._index.unit, 
-          v._in_edge_ref)
+          v._out_edge_ref)
     );
   }
 

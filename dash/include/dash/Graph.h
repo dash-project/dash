@@ -234,8 +234,11 @@ public:
    * \return Index of the newly created vertex.
    */
   vertex_index_type add_vertex(const VertexProperties & prop) {
-    auto in_ref = _glob_mem_in_edge->add_container(_alloc_edges_per_vertex);
     auto out_ref = _glob_mem_out_edge->add_container(_alloc_edges_per_vertex);
+    auto in_ref = out_ref;
+    if(_glob_mem_in_edge != _glob_mem_out_edge) {
+      in_ref = _glob_mem_in_edge->add_container(_alloc_edges_per_vertex);
+    }
     auto max_index = _glob_mem_vertex->container_local_size(
         _vertex_container_ref);
     vertex_index_type v_index(_myid, max_index);
@@ -353,7 +356,7 @@ public:
     std::vector<std::size_t> remote_edges_count(_team->size());
     std::vector<std::size_t> remote_edges_displs(_team->size());
     for(int i = 0; i < _remote_edges.size(); ++i) {
-      for(auto remote_edge : _remote_edges[i]) {
+      for(auto & remote_edge : _remote_edges[i]) {
         remote_edges.push_back(remote_edge);
         remote_edges_count[i] += sizeof(edge_type);
       }
@@ -364,8 +367,11 @@ public:
     _remote_edges.clear();
     // exchange amount of edges to be transferred with other units
     std::vector<std::size_t> edge_count(_team->size());
-    dart_alltoall(remote_edges_count.data(), edge_count.data(), 
-        sizeof(std::size_t), DART_TYPE_BYTE, _team->dart_id());
+    DASH_ASSERT_RETURNS(
+      dart_alltoall(remote_edges_count.data(), edge_count.data(), 
+          sizeof(std::size_t), DART_TYPE_BYTE, _team->dart_id()),
+      DART_OK
+    );
     int total_count = 0;
     std::vector<std::size_t> edge_displs(_team->size());
     for(int i = 0; i < edge_count.size(); ++i) {
@@ -376,19 +382,21 @@ public:
     }
     // exchange edges
     std::vector<edge_type> edges(total_count / sizeof(edge_type));
-    dart_alltoallv(remote_edges.data(), 
-        remote_edges_count.data(), 
-        remote_edges_displs.data(), 
-        DART_TYPE_BYTE, 
-        edges.data(), 
-        edge_count.data(), 
-        edge_displs.data(), 
-        _team->dart_id()
+    DASH_ASSERT_RETURNS(
+      dart_alltoallv(remote_edges.data(), 
+          remote_edges_count.data(), 
+          remote_edges_displs.data(), 
+          DART_TYPE_BYTE, 
+          edges.data(), 
+          edge_count.data(), 
+          edge_displs.data(), 
+          _team->dart_id()
+      ),
+      DART_OK
     );
     // add missing edges to local memory space
     for(auto edge : edges) {
       if(edge._source.unit == _myid) {
-
         add_local_edge(edge._source, edge._target, edge.properties, 
             _glob_mem_out_edge);
       }
@@ -443,7 +451,8 @@ public:
     if(_glob_mem_in_edge != nullptr) {
       delete _glob_mem_in_edge;
     }
-    if(_glob_mem_out_edge != nullptr) {
+    if(_glob_mem_out_edge != nullptr 
+        && _glob_mem_out_edge != _glob_mem_in_edge) {
       delete _glob_mem_out_edge;
     }
     if(_glob_mem_edge != nullptr) {
@@ -451,6 +460,13 @@ public:
     }
     // Remove deallocator from the respective team instance
     _team->unregister_deallocator(this, std::bind(&Graph::deallocate, this));
+  }
+
+  /**
+   * Returns the team containing all units associated with this container
+   */
+  Team & team() const {
+    return *_team;
   }
 
 private:

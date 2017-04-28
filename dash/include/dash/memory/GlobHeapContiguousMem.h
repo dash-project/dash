@@ -274,8 +274,6 @@ public:
         // no need to update gptr of local bucket list in c_data
         c_data->container_bucket->gptr = gptr;
         
-        //TODO: If possible, avoid adding unattached_container to global
-        //      iteration space with size 0
         // update cumulated bucket sizes
         bucket_cumul += c_data->container->size();
         _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
@@ -399,7 +397,7 @@ public:
    * Returns the team containing all units associated with this memory space.
    */
   Team & team() const {
-    return (_team != nullptr) ? *_team : dash::Team::Null();
+    return *_team;
   }
 
    // NOTE: method copied from GlobHeapMem.h
