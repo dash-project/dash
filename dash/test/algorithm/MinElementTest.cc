@@ -250,6 +250,7 @@ TEST_F(MinElementTest, TestFindMatrixDefault)
       return 20 + (coords[0] * 11) + (coords[1] * 97);
     }
   );
+  matrix.barrier();
   if (dash::myid() == 0) {
     LOG_MESSAGE("Setting matrix[%d][%d] = %d (min)",
                 min_pos_x, min_pos_y, static_cast<int>(min_value));

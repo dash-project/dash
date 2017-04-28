@@ -195,6 +195,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   };
   dash::generate_with_index(matrix_a.begin(), matrix_a.end(), gen);
   dash::generate_with_index(matrix_b.begin(), matrix_b.end(), gen);
+  matrix_a.barrier();
 
 
   LOG_MESSAGE("Wait for team barrier ...");
