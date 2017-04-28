@@ -189,13 +189,13 @@ public:
     if(!blocked_display) {
         draw_local_blocks(os, sz, coords, dimx, dimy);
         draw_tiles(os, sz, coords, dimx, dimy);
-        draw_local_memlayout(os, sz, coords, dimx, dimy);
+        draw_local_memlayout(os, sz, dimx, dimy);
     } else {
-        draw_blocks(os, sz, coords, dimx, dimy);
+        draw_blocks(os, sz, dimx, dimy);
     }
     os << "</g>" << std::endl;
 
-    draw_key(os, sz, dimx, dimy, sz.grid_width * sz.gridx + 2*sz.grid_base, 0);
+    draw_key(os, sz, sz.grid_width * sz.gridx + 2*sz.grid_base, 0);
     os << "</g>" << std::endl;
   }
 
