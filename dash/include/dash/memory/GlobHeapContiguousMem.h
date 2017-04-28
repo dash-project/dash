@@ -10,7 +10,6 @@
 
 #include <dash/memory/GlobHeapLocalPtr.h>
 #include <dash/memory/internal/GlobHeapMemTypes.h>
-#include <dash/graph/GlobGraphIter.h>
 #include <dash/memory/GlobHeapContiguousPtr.h>
 #include <dash/memory/GlobHeapCombinedMem.h>
 
