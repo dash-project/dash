@@ -32,7 +32,7 @@ typedef struct
   int                       num_hosts;
   int                       num_host_levels;
   size_t                    num_units;
-  char **                   host_names;
+  char                   ** host_names;
   dart_host_units_t       * host_units;
   dart_host_domain_t      * host_domains;
 }

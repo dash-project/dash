@@ -424,7 +424,7 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
   if (BUILD_COVERAGE_TESTS)
     include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   endif()

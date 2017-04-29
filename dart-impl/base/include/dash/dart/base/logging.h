@@ -15,6 +15,10 @@
 #define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum dart__base__term_color_code {
   DART_LOG_TCOL_DEFAULT = 0,
   DART_LOG_TCOL_WHITE,
@@ -27,20 +31,12 @@ enum dart__base__term_color_code {
   DART_LOG_TCOL_NUM_CODES
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
 
 const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
 
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
-
-enum dart__base__logging_loglevel{
+enum dart__base__logging_loglevel {
   DART_LOGLEVEL_ERROR = 0,
   DART_LOGLEVEL_WARN,
   DART_LOGLEVEL_INFO,
@@ -57,6 +53,10 @@ dart__base__log_message(
   const char *format,
   ...
 ) __attribute__((format(printf, 4, 5)));
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 //
 // Always log error messages and warnings:
