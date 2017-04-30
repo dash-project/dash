@@ -102,7 +102,7 @@ void breadth_first_search(graph_t &g, vertex_index_t source) {
       }
     }
     int global_count = 0;
-    dart_allreduce(&total, &global_count, sizeof(int), DART_TYPE_BYTE,
+    dart_allreduce(&total, &global_count, 1, DART_TYPE_INT,
                    DART_OP_SUM, team.dart_id());
     // frontier is empty on all nodes -> terminate algorithm
     if (global_count == 0) {

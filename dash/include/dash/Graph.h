@@ -11,7 +11,6 @@
 #include <dash/memory/GlobHeapCombinedMem.h>
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
-#include <dash/graph/GlobGraphIter.h>
 
 namespace dash {
 
