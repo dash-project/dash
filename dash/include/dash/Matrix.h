@@ -318,9 +318,24 @@ public:
   Matrix(const self_t &) = delete;
 
   /**
+   * Move-constructor, supported
+   */
+  Matrix(self_t && other);
+
+  /**
    * Destructor, frees underlying memory.
    */
   ~Matrix();
+
+  /**
+   * Copy-assignment operator, deleted.
+   */
+  self_t & operator=(const self_t & other) = delete;
+
+  /**
+   * Move-assignment operator, supported.
+   */
+  self_t & operator=(self_t && other);
 
   /**
    * View at block at given global block coordinates.
