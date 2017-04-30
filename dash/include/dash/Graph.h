@@ -446,19 +446,28 @@ public:
   void deallocate() {
     if(_glob_mem_vertex != nullptr) {
       delete _glob_mem_vertex;
+      _glob_mem_vertex = nullptr;
     }
     if(_glob_mem_in_edge != nullptr) {
       delete _glob_mem_in_edge;
+      if(_glob_mem_in_edge == _glob_mem_out_edge) {
+        _glob_mem_out_edge = nullptr;
+      }
+      _glob_mem_in_edge = nullptr;
     }
     if(_glob_mem_out_edge != nullptr 
         && _glob_mem_out_edge != _glob_mem_in_edge) {
       delete _glob_mem_out_edge;
+      _glob_mem_out_edge = nullptr;
     }
     if(_glob_mem_edge != nullptr) {
       delete _glob_mem_edge;
+      _glob_mem_edge = nullptr;
     }
-    // Remove deallocator from the respective team instance
-    _team->unregister_deallocator(this, std::bind(&Graph::deallocate, this));
+    if(_team != nullptr) {
+      // Remove deallocator from the respective team instance
+      _team->unregister_deallocator(this, std::bind(&Graph::deallocate, this));
+    }
   }
 
   /**
