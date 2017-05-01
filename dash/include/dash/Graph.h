@@ -52,8 +52,8 @@ template<
   typename EdgeProperties   = EmptyProperties,  // user-defined struct
   typename VertexIndexType  = int,
   typename EdgeIndexType    = int,
-  template<class, class> typename EdgeContainer = std::vector,
-  template<class, class> typename VertexContainer = std::vector
+  template<class, class...> typename EdgeContainer = std::vector,
+  template<class, class...> typename VertexContainer = std::vector
 >
 class Graph {
 
@@ -65,10 +65,8 @@ public:
           EdgeContainer, VertexContainer>             self_t;
   typedef Vertex<self_t>                              vertex_type;
   typedef Edge<self_t>                                edge_type;
-  typedef VertexContainer<vertex_type, 
-          std::allocator<vertex_type>>                vertex_container_type;
-  typedef EdgeContainer<edge_type, 
-          std::allocator<edge_type>>                  edge_container_type;
+  typedef VertexContainer<vertex_type>                vertex_container_type;
+  typedef EdgeContainer<edge_type>                    edge_container_type;
 
 private:
 
