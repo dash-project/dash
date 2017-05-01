@@ -2,6 +2,7 @@
 #include "TransformTest.h"
 
 #include <dash/algorithm/Transform.h>
+#include <dash/algorithm/Generate.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -156,21 +157,22 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
 TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
 {
   // Block-wise addition (a += b) of two matrices
-  typedef typename dash::Matrix<int, 2>::index_type index_t;
+  using value_t = int64_t;
+  typedef typename dash::Matrix<value_t, 2>::index_type index_t;
   dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 7;
   size_t tilesize_y  = 3;
   size_t extent_cols = tilesize_x * num_units * 2;
   size_t extent_rows = tilesize_y * num_units * 2;
-  dash::Matrix<int, 2> matrix_a(
+  dash::Matrix<value_t, 2> matrix_a(
                          dash::SizeSpec<2>(
                            extent_cols,
                            extent_rows),
                          dash::DistributionSpec<2>(
                            dash::TILE(tilesize_x),
                            dash::TILE(tilesize_y)));
-  dash::Matrix<int, 2> matrix_b(
+  dash::Matrix<value_t, 2> matrix_b(
                          dash::SizeSpec<2>(
                            extent_cols,
                            extent_rows),
@@ -185,16 +187,17 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   LOG_MESSAGE("Matrix size: %zu", matrix_size);
 
   // Fill matrix
-  if(myid == 0) {
-    LOG_MESSAGE("Assigning matrix values");
-    for(size_t i = 0; i < matrix_a.extent(0); ++i) {
-      for(size_t k = 0; k < matrix_a.extent(1); ++k) {
-        auto value = (i * 1000) + (k * 1);
-        matrix_a[i][k] = value * 100000;
-        matrix_b[i][k] = value;
-      }
-    }
-  }
+  LOG_MESSAGE("Assigning matrix values");
+  auto &pattern = matrix_a.pattern();
+  auto gen = [&pattern](index_t gidx){
+    auto coords = pattern.coords(gidx);
+    return 100000 * ((coords[0] * 1000) + coords[1]);
+  };
+  dash::generate_with_index(matrix_a.begin(), matrix_a.end(), gen);
+  dash::generate_with_index(matrix_b.begin(), matrix_b.end(), gen);
+  matrix_a.barrier();
+
+
   LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
