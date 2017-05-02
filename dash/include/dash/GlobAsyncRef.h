@@ -86,16 +86,6 @@ private:
   }
 
 public:
-  /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * local memory.
-   */
-  explicit constexpr GlobAsyncRef(
-    /// Pointer to referenced object in local memory
-    nonconst_value_type * lptr)
-  : _lptr(lptr),
-    _is_local(true)
-  { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in

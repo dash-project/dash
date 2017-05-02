@@ -15,9 +15,6 @@ TEST_F(GlobAsyncRefTest, IsLocal) {
   }
   array.barrier();
   // Test global async references on array elements:
-  dash::GlobAsyncRef<int> gar_local_l(&array.local[0]);
-  ASSERT_EQ_U(true, gar_local_l.is_local());
-  // Test global async references on array elements:
   auto global_offset      = array.pattern().global(0);
   // Reference first local element in global memory:
   dash::GlobRef<int> gref = array[global_offset];
