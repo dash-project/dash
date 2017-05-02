@@ -308,27 +308,11 @@ public:
     return *this;
   }
 
-  self_t operator++(int) {
-    GlobRef<T> result = *this;
-    nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
-    return result;
-  }
-
   self_t & operator--() {
     nonconst_value_type val = operator nonconst_value_type();
     --val;
     operator=(val);
     return *this;
-  }
-
-  self_t operator--(int) {
-    GlobRef<T> result = *this;
-    nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
-    return result;
   }
 
   self_t & operator*=(const_value_type& ref) {
