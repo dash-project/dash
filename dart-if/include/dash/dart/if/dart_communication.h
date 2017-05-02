@@ -638,6 +638,28 @@ dart_ret_t dart_put_blocking(
   size_t            nelem,
   dart_datatype_t   dtype) DART_NOTHROW;
 
+
+/**
+ * 'LOCAL BLOCKING' variant of dart_put.
+ * Guarantees local completion, i.e., the \c src pointer can be reused.
+ *
+ * \param gptr   Global pointer being the target of the data transfer.
+ * \param src    Local source memory to transfer data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_put_blocking_local(
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype) DART_NOTHROW;
+
+
 /** \} */
 
 

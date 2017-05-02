@@ -59,12 +59,8 @@ private:
   dart_gptr_t  _gptr        = DART_GPTR_NULL;
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
-  /// Value of the referenced element, initially not loaded
-  mutable nonconst_value_type _value;
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
-  /// Whether the value of the referenced element is known
-  mutable bool _has_value   = false;
 
 private:
 
@@ -82,11 +78,7 @@ private:
     _lptr(parent._is_local ? reinterpret_cast<T*>(
                               reinterpret_cast<char*>(parent._lptr)+offset)
                            : nullptr),
-    _value(parent._has_value ? *(reinterpret_cast<T*>(
-                                reinterpret_cast<char*>(&(parent._value))+offset))
-                             : T()),
-    _is_local(parent._is_local),
-    _has_value(parent._has_value)
+    _is_local(parent._is_local)
   {
      DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_gptr, offset),
@@ -102,9 +94,7 @@ public:
     /// Pointer to referenced object in local memory
     nonconst_value_type * lptr)
   : _lptr(lptr),
-    _value(*lptr),
-    _is_local(true),
-    _has_value(true)
+    _is_local(true)
   { }
 
   /**
@@ -205,21 +195,19 @@ public:
    */
   operator nonconst_value_type() const
   {
+    T value;
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    if (!_has_value) {
-      if (_is_local) {
-        _value = *_lptr;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_get_blocking(
-            static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
-      _has_value = true;
+    if (_is_local) {
+      value = *_lptr;
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      DASH_ASSERT_RETURNS(
+        dart_get_blocking(
+          static_cast<void *>(&value), _gptr, ds.nelem, ds.dtype),
+        DART_OK
+      );
     }
-    return _value;
+    return value;
   }
 
   /**
@@ -338,15 +326,13 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    _value       = new_value;
-    _has_value   = true;
     if (_is_local) {
-      *_lptr = _value;
+      *_lptr = new_value;
     } else {
       dart_storage_t ds = dash::dart_storage<T>(1);
       DASH_ASSERT_RETURNS(
-        dart_put(
-          _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
+        dart_put_blocking_local(
+          _gptr, static_cast<const void *>(&new_value), ds.nelem, ds.dtype),
         DART_OK
       );
     }
@@ -472,8 +458,6 @@ public:
         dart_flush(_gptr),
         DART_OK
       );
-      // require a re-read upon next reference
-      _has_value = false;
     }
   }
 
