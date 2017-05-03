@@ -22,34 +22,6 @@ TEST_F(GlobAsyncRefTest, IsLocal) {
   ASSERT_EQ_U(true, gar_local_g.is_local());
 }
 
-/**
- * Non-blocking writes to distributed array with push semantics.
- */
-TEST_F(GlobAsyncRefTest, Push) {
-  int num_elem_per_unit = 20;
-  // Initialize values:
-  dash::Array<int> array(dash::size() * num_elem_per_unit);
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = dash::myid().id;
-  }
-  array.barrier();
-  // Assign values asynchronously:
-  for (auto li = 0; li < array.lsize(); ++li) {
-    // Changes local value only
-    size_t gi = array.pattern().global(li);
-    array.async[gi] = array.local[li] + 1;
-  }
-  // Flush local window:
-  array.async.push();
-  // Test values in local window. Changes by all units should be visible:
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    // All local values incremented once by all units
-    ASSERT_EQ_U(dash::myid().id + 1,
-                array.local[li]);
-  }
-}
-
-
 TEST_F(GlobAsyncRefTest, GetSet) {
   // Initialize values:
   dash::Array<int> array(dash::size());

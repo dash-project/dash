@@ -366,20 +366,6 @@ Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline void
-Matrix<T, NumDim, IndexT, PatternT>
-::flush_all() {
-  _glob_mem->flush_all();
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline void
-Matrix<T, NumDim, IndexT, PatternT>
-::flush_local_all() {
-  _glob_mem->flush_local_all();
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 constexpr typename Matrix<T, NumDim, IndexT, PatternT>::const_iterator
 Matrix<T, NumDim, IndexT, PatternT>
 ::begin() const noexcept
