@@ -227,6 +227,7 @@ dart_tasking_datadeps_release_unhandled_remote()
     dart_global_unit_t origin = DART_GLOBAL_UNIT_ID(rdep->taskdep.gptr.unitid);
 
     dart_task_t *candidate            = NULL;
+    bool         found_exact_match    = false;
     dart_task_t *direct_dep_candidate = NULL;
     DART_LOG_DEBUG("Handling delayed remote dependency for task %p from unit %i",
                    rdep->task, origin.id);
@@ -251,8 +252,20 @@ dart_tasking_datadeps_release_unhandled_remote()
          * TODO: formulate the relation of local and remote dependencies
          *       between tasks and epochs!
          */
-        if (task->epoch >= rdep->epoch) {
+        if (local->taskdep.epoch == rdep->epoch) {
+          // found a direct match!
+          if (candidate != NULL) {
+            DART_LOG_WARN(
+                "Found second candidate for a dependency in epoch %i!",
+                rdep->epoch);
+          }
+          // keep the task locked
+          candidate         = task;
+          found_exact_match = true;
+        } else if (local->taskdep.epoch > rdep->epoch) {
           dart__base__mutex_unlock(&task->mutex);
+          // make this task a candidate for a direct successor to handle WAR
+          // dependencies if it is in an earlier epoch
           if (direct_dep_candidate == NULL ||
               direct_dep_candidate->epoch > task->epoch) {
             direct_dep_candidate = task;
@@ -262,9 +275,10 @@ dart_tasking_datadeps_release_unhandled_remote()
                            rdep->task.remote);
           }
         } else {
-          // check whether a previously encountered candidate
-          // comes from an earlier epoch than this candidate
-          if (candidate == NULL || task->epoch > candidate->epoch) {
+          // look for matching tasks in earlier epochs if no exact match
+          // was found
+          if (!found_exact_match &&
+              (candidate == NULL || task->epoch > candidate->epoch)) {
             // release the lock on the previous candidate
             if (candidate != NULL) {
               dart__base__mutex_unlock(&candidate->mutex);

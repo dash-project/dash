@@ -27,7 +27,7 @@ struct remote_data_dep {
   /** pointer to a task on the origin unit. Only valid at the origin! */
   taskref            rtask;
   uint64_t           magic;
-  uint64_t           phase;
+  int32_t            epoch;
 };
 
 struct remote_task_dep {
@@ -79,7 +79,8 @@ dart_ret_t dart_tasking_remote_fini()
 }
 
 /**
- * @brief Send a remote data dependency request for dependency \c dep of the local \c task
+ * Send a remote data dependency request for dependency \c dep of
+ * the local \c task
  */
 dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
 {
@@ -88,28 +89,37 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
   rdep.magic       = 0xDEADBEEF;
-  rdep.phase       = task->epoch;
+  rdep.epoch       = task->epoch;
   dart_myid(&rdep.runit);
-  dart_team_unit_t team_unit;
-  // the amsgq is opened on DART_TEAM_ALL
-  dart_team_unit_g2l(DART_TEAM_ALL, DART_GLOBAL_UNIT_ID(dep->gptr.unitid), &team_unit);
+  // the amsgq is opened on DART_TEAM_ALL and deps container global IDs
+  dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(dep->gptr.unitid);
 
   DART_ASSERT(task != NULL);
 
   while (1) {
-    ret = dart_amsg_trysend(team_unit, amsgq, &enqueue_from_remote, &rdep, sizeof(rdep));
+    ret = dart_amsg_trysend(
+            team_unit,
+            amsgq,
+            &enqueue_from_remote,
+            &rdep,
+            sizeof(rdep));
     if (ret == DART_OK) {
       // the message was successfully sent
       int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_deps);
-      DART_LOG_INFO("Sent remote dependency request for task %p (unit=%i, segid=%i, offset=%p, fn=%p, num_deps=%i)",
-          task, dep->gptr.unitid, dep->gptr.segid, dep->gptr.addr_or_offs.offset, &enqueue_from_remote, unresolved_deps);
+      DART_LOG_INFO(
+          "Sent remote dependency request for task %p "
+          "(unit=%i, segid=%i, offset=%p, fn=%p, num_deps=%i)",
+          task, dep->gptr.unitid, dep->gptr.segid,
+          dep->gptr.addr_or_offs.offset,
+          &enqueue_from_remote, unresolved_deps);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
       dart_amsg_process(amsgq);
       continue;
     } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", dep->gptr.unitid);
+      DART_LOG_ERROR(
+          "Failed to send active message to unit %i", dep->gptr.unitid);
       return DART_ERR_OTHER;
     }
   }
@@ -117,10 +127,14 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
 }
 
 /**
- * @brief Send a release for the remote task \c rtask to \c unit, potentially enqueuing rtask into the
- *        runnable list on the remote side.
+ * Send a release for the remote task \c rtask to \c unit,
+ * potentially enqueuing rtask into the
+ * runnable list on the remote side.
  */
-dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, const dart_task_dep_t *dep)
+dart_ret_t dart_tasking_remote_release(
+  dart_global_unit_t      unit,
+  taskref                 rtask,
+  const dart_task_dep_t * dep)
 {
   struct remote_data_dep response;
   response.rtask = rtask;
@@ -134,11 +148,19 @@ dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, c
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(team_unit, amsgq, &release_remote_dependency, &response, sizeof(response));
+    ret = dart_amsg_trysend(
+        team_unit,
+        amsgq,
+        &release_remote_dependency,
+        &response,
+        sizeof(response));
     if (ret == DART_OK) {
       // the message was successfully sent
-      DART_LOG_INFO("Sent remote dependency release to unit t:%i (segid=%i, offset=%p, fn=%p, rtask=%p)",
-          team_unit.id, response.gptr.segid, response.gptr.addr_or_offs.offset, &release_remote_dependency, rtask.local);
+      DART_LOG_INFO("Sent remote dependency release to unit t:%i "
+          "(segid=%i, offset=%p, fn=%p, rtask=%p)",
+          team_unit.id, response.gptr.segid,
+          response.gptr.addr_or_offs.offset,
+          &release_remote_dependency, rtask.local);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -155,10 +177,14 @@ dart_ret_t dart_tasking_remote_release(dart_global_unit_t unit, taskref rtask, c
 
 
 /**
- * @brief Send a direct task dependency request to \c unit to make sure
- *        that \c local_task is only executed after \c remote_task has finished and sent a release.
+ * Send a direct task dependency request to \c unit to make sure
+ * that \c local_task is only executed after \c remote_task has
+ * finished and sent a release.
  */
-dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task_t *local_task, taskref remote_task)
+dart_ret_t dart_tasking_remote_direct_taskdep(
+  dart_global_unit_t   unit,
+  dart_task_t        * local_task,
+  taskref              remote_task)
 {
   struct remote_task_dep taskdep;
   taskdep.task      = remote_task.local;
@@ -173,7 +199,12 @@ dart_ret_t dart_tasking_remote_direct_taskdep(dart_global_unit_t unit, dart_task
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(team_unit, amsgq, &request_direct_taskdep, &taskdep, sizeof(taskdep));
+    ret = dart_amsg_trysend(
+        team_unit,
+        amsgq,
+        &request_direct_taskdep,
+        &taskdep,
+        sizeof(taskdep));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent direct remote task dependency to unit %i "
@@ -215,9 +246,9 @@ dart_ret_t dart_tasking_remote_progress_blocking()
 }
 
 
-/**************************
- * Remote tasking actions *
- **************************/
+/***********************************************
+ * Remote tasking actions called on the target *
+ ***********************************************/
 
 
 /**
@@ -235,7 +266,7 @@ enqueue_from_remote(void *data)
   dart_epoch_dep_t dep;
   dep.dep.gptr = rdep->gptr;
   dep.dep.type = DART_DEP_IN;
-  dep.epoch    = rdep->phase;
+  dep.epoch    = rdep->epoch;
   taskref rtask = rdep->rtask;
   DART_LOG_INFO("Received remote dependency request for task %p "
                 "(unit=%i, segid=%i, addr=%p, ph=%li)",

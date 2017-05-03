@@ -134,7 +134,8 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->num_children = 0;
   task->parent       = get_current_task();
   task->state        = DART_TASK_NASCENT;
-  task->epoch        = task->parent->epoch;
+  task->epoch        = task->parent->state != DART_TASK_ROOT ?
+                          task->parent->epoch : DART_EPOCH_ANY;
   task->has_ref      = false;
   return task;
 }

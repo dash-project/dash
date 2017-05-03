@@ -33,7 +33,7 @@ struct dart_task_data {
   int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;
-  uint32_t                   epoch;
+  int32_t                    epoch;
   bool                       has_ref;
 };
 
