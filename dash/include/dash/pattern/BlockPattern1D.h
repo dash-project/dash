@@ -222,10 +222,7 @@ public:
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
-        _nblocks,
         _blocksize,
-        _distspec,
-        _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()),
     _lbegin_lend(initialize_local_range(_local_size))
@@ -282,10 +279,7 @@ public:
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
-        _nblocks,
         _blocksize,
-        _distspec,
-        _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()),
     _lbegin_lend(initialize_local_range(_local_size))
@@ -647,9 +641,7 @@ public:
                   (( _distspec[0].local_index_to_block_coord(
                        static_cast<IndexType>(unit),
                        local_coords[0],
-                       _nunits,
-                       _nblocks,
-                       _blocksize)
+                       _nunits)
                    ) * _blocksize)
                   + (local_coords[0] % _blocksize)
                 )
@@ -763,9 +755,7 @@ public:
     /// Offset in dimension
     IndexType dim_offset,
     /// DART id of the unit
-    team_unit_t unit,
-    /// Viewspec to apply
-    const ViewSpec_t & viewspec) const {
+    team_unit_t unit) const {
     // Check if unit id lies in cartesian sub-space of team spec
     return _teamspec.includes_index(
               unit,
@@ -813,7 +803,7 @@ public:
   {
     return BlockSpec_t({ _nlblocks });
   }
-  
+
   /**
    * Gobal index of block at given global coordinates.
    *
@@ -824,7 +814,7 @@ public:
     const std::array<index_type, NumDimensions> & g_coords) const {
     return g_coords[0] / _blocksize;
   }
-  
+
   /**
    * Local index of block at given global coordinates.
    *
@@ -934,8 +924,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
+  constexpr SizeType local_capacity() const
   {
     return _local_capacity;
   }
@@ -1121,10 +1110,7 @@ private:
          initialize_local_extent(_team->myid())),
      _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
      _nlblocks(initialize_num_local_blocks(
-         _nblocks,
          _blocksize,
-         _distspec,
-         _nunits,
          _local_size)),
      _local_capacity(initialize_local_capacity()),
      _lbegin_lend(initialize_local_range(_local_size))
@@ -1172,10 +1158,7 @@ private:
    * Initialize local block spec from global block spec.
    */
   SizeType initialize_num_local_blocks(
-    SizeType                    num_blocks,
     SizeType                    blocksize,
-    const DistributionSpec_t  & distspec,
-    SizeType                    nunits,
     SizeType                    local_size) const {
     auto num_l_blocks = local_size;
     if (blocksize > 0) {
