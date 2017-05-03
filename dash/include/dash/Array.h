@@ -1144,19 +1144,19 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the local
-   * unit on the array's underlying global memory to all target units.
+   * Complete all outstanding non-blocking operations issued by the local
+   * unit on the underlying global memory to all target units.
    */
   inline void flush() const {
     m_globmem->flush();
   }
 
   /**
-   * Ensure local completion of all outstanding non-blocking operations
-   * executed by the local unit on the array's underlying global memory.
+   * Complete all outstanding non-blocking operations issued by the local
+   * unit on the underlying global memory to the specified target unit.
    */
-  inline void flush_local() const {
-    m_globmem->flush_local();
+  inline void flush(dash::team_unit_t unit) const {
+    m_globmem->flush(unit);
   }
 
   /**

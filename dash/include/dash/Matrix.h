@@ -405,10 +405,12 @@ public:
   inline void                 flush();
 
   /**
-   * Ensure local completion of all outstanding non-blocking operations
-   * to all target units on the underlying global memory.
+   * Complete all outstanding non-blocking operations to the specified target
+   * units on the underlying global memory.
+   *
+   * \see  DashContainerConcept
    */
-  inline void                 flush_local();
+  inline void                 flush(dash::team_unit_t unit);
 
   /**
    * The pattern used to distribute matrix elements to units in its

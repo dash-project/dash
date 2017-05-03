@@ -361,8 +361,8 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT>
-::flush_local() {
-  _glob_mem->flush_local();
+::flush(dash::team_unit_t unit) {
+  _glob_mem->flush(unit);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
