@@ -34,11 +34,10 @@ TEST_F(GlobAsyncRefTest, Push) {
   }
   array.barrier();
   // Assign values asynchronously:
-  for (auto gi = 0; gi < array.size(); ++gi) {
-    if (array[gi].is_local()) {
-      // Changes local value only
-      ++(array.async[gi]);
-    }
+  for (auto li = 0; li < array.lsize(); ++li) {
+    // Changes local value only
+    size_t gi = array.pattern().global(li);
+    array.async[gi] = array.local[li] + 1;
   }
   // Flush local window:
   array.async.push();
@@ -85,56 +84,6 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   array.barrier();
   int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
   ASSERT_EQ_U(left_neighbor, array.local[0]);
-}
-
-TEST_F(GlobAsyncRefTest, Operations) {
-  // Initialize values:
-  dash::Array<int> array(dash::size());
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = dash::myid().id;
-  }
-  array.barrier();
-
-  int neighbor = (dash::myid() + 1) % dash::size();
-
-  // Reference a neighbors element in global memory:
-  dash::GlobAsyncRef<int> garef = array.async[neighbor];
-
-  ++garef;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id + 1, array.local[0]);
-  array.barrier();
-
-  --garef;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
-  array.barrier();
-
-  garef += 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id + 2, array.local[0]);
-  array.barrier();
-
-  garef -= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
-  array.barrier();
-
-  garef *= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id * 2, array.local[0]);
-  array.barrier();
-
-
-  garef /= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
 }
 
 TEST_F(GlobAsyncRefTest, Conversion)
@@ -221,23 +170,6 @@ TEST_F(GlobAsyncRefTest, ContainerFlush) {
     for (int j = 0; j < num_iter; ++j) {
       tmp += 1;
       array.async[0] = tmp;
-    }
-    array.flush();
-    mutex.unlock();
-  }
-  array.barrier();
-  ASSERT_EQ_U(num_iter*num_iter*dash::size(), (int)array[0]);
-
-  array.barrier();
-  *(array.lbegin()) = 0;
-  array.barrier();
-
-  // do the same but on a single reference
-  for (int i = 0; i < num_iter; ++i) {
-    mutex.lock();
-    auto gar = array.async[0];
-    for (int j = 0; j < num_iter; ++j) {
-      gar += 1;
     }
     array.flush();
     mutex.unlock();
