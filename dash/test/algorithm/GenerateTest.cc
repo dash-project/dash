@@ -6,7 +6,7 @@
 #include <dash/algorithm/LocalRange.h>
 
 
-TEST_F(GenerateTest, TestAllItemsGenerated)
+TEST_F(GenerateTest, TestGenerate)
 {
   typedef typename Array_t::value_type value_t;
 
@@ -30,5 +30,28 @@ TEST_F(GenerateTest, TestAllItemsGenerated)
   for(; lbegin != lend; ++lbegin)
   {
     ASSERT_EQ_U(17, static_cast<value_t>(*lbegin));
+  }
+}
+
+TEST_F(GenerateTest, TestGenerateWithIndex)
+{
+  typedef typename Array_t::value_type value_t;
+
+  // Initialize global array:
+  Array_t array(_num_elem);
+  // Generator function
+  auto f = [](Array_t::index_type idx){ return 2*idx; };
+  // Fill Array with given generator function
+  dash::generate_with_index(array.begin(), array.end(), f);
+  // Wait for all units
+  array.barrier();
+
+  // check global index range
+  if (dash::myid() == 0) {
+    for (size_t idx = 0;
+         idx != array.size();
+         ++idx) {
+      ASSERT_EQ_U(idx * 2.0, array[idx]);
+    }
   }
 }

@@ -393,7 +393,7 @@ public:
   /**
    * Synchronize all units associated with this global memory instance.
    */
-  void barrier() const noexcept
+  void barrier() const
   {
     DASH_ASSERT_RETURNS(
       dart_barrier(_teamid),
