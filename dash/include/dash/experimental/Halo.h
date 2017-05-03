@@ -55,14 +55,14 @@ template <dim_t NumDimensions, std::size_t NumStencilPoints>
 class StencilSpec {
 
 private:
-  using self     = StencilSpec<NumDimensions, NumStencilPoints>;
+  using SelfT    = StencilSpec<NumDimensions, NumStencilPoints>;
   using StencilT = Stencil<NumDimensions>;
   using SpecsT   = std::array<StencilT, NumStencilPoints>;
 
 public:
   constexpr StencilSpec(const SpecsT& specs) : _specs(specs) {}
 
-  StencilSpec(const self& other) { _specs = other._specs; }
+  StencilSpec(const SelfT& other) { _specs = other._specs; }
 
   constexpr const SpecsT& stencilSpecs() const { return _specs; }
 
@@ -116,20 +116,65 @@ template <dim_t NumDimensions>
 class RegionCoords : public Dimensional<uint8_t, NumDimensions> {
 
 public:
+  using SelfT   = RegionCoords<NumDimensions>;
   using coord_t = uint8_t;
+  using region_index_t = uint32_t;
+  using extent_t       = uint16_t;
 
 private:
-  using BaseT = Dimensional<coord_t, NumDimensions>;
+  using BaseT   = Dimensional<coord_t, NumDimensions>;
+  using CoordsT = std::array<coord_t, NumDimensions>;
 
 public:
   RegionCoords() {
     for (dim_t i = 0; i < NumDimensions; ++i) {
       this->_values[i] = 1;
     }
+    _index = index(this->_values);
   }
 
   template <typename... Values>
-  RegionCoords(coord_t value, Values... values) : BaseT::Dimensional(value, values...) {}
+  RegionCoords(coord_t value, Values... values) : BaseT::Dimensional(value, values...) {
+    _index = index(this->_values);
+  }
+
+  RegionCoords(region_index_t index) : _index(index) {
+    this->_values = coords(index);
+  }
+
+  constexpr region_index_t index() const { return _index; }
+
+  static region_index_t index(const CoordsT& coords) {
+    region_index_t index = coords[0];
+    for (auto i(1); i < NumDimensions; ++i)
+      index = coords[i] + index * 3;
+
+    return index;
+  }
+
+  static CoordsT coords(const region_index_t index) {
+    CoordsT coords{};
+    region_index_t  index_tmp = static_cast<long>(index);
+    for (auto i = (NumDimensions - 1); i >= 1; --i) {
+      auto res  = std::div(index_tmp, 3);
+      coords[i] = res.rem;
+      index_tmp = res.quot;
+    }
+    coords[0] = index_tmp;
+
+    return coords;
+  }
+
+  constexpr bool operator==(const SelfT& other) const {
+    return _index == other._index && this->_values == other._values;
+  }
+
+  constexpr bool operator!=(const SelfT& other) const {
+    return !(*this == other);
+  }
+
+private:
+  region_index_t _index;
 }; // RegionCoords
 
 
@@ -141,43 +186,23 @@ private:
   using self          = HaloRegionSpec<NumDimensions>;
   using udim_t        = std::make_unsigned<dim_t>::type;
   using RegionCoordsT = RegionCoords<NumDimensions>;
-
-public:
-  using region_index_t = uint32_t;
-  using extent_t       = uint16_t;
   using coord_t        = typename RegionCoordsT::coord_t;
 
 public:
+  using region_index_t = typename RegionCoordsT::region_index_t;
+  using extent_t       = typename RegionCoordsT::extent_t;
   static constexpr region_index_t MaxIndex = pow(3, static_cast<udim_t>(NumDimensions));
 
-  constexpr HaloRegionSpec(const RegionCoordsT& coords, const extent_t extent)
-      : _coords(coords), _index(index(coords)), _extent(extent) {}
+public:
 
-  constexpr HaloRegionSpec(region_index_t index, const extent_t extent)
-      : _coords(coords(index)), _index(index), _extent(extent) {}
+  HaloRegionSpec(const RegionCoordsT& coords, const extent_t extent)
+      : _coords(coords), _extent(extent), _rel_dim(init_rel_dim()) {}
+
+  HaloRegionSpec(region_index_t index, const extent_t extent)
+      : _coords(RegionCoordsT(index)), _extent(extent), _rel_dim(init_rel_dim()) {}
 
   constexpr HaloRegionSpec() = default;
 
-  static region_index_t index(const RegionCoordsT& coords) {
-    region_index_t index = coords[0];
-    for (auto i(1); i < NumDimensions; ++i)
-      index = coords[i] + index * 3;
-
-    return index;
-  }
-
-  static RegionCoordsT coords(const region_index_t index) {
-    RegionCoordsT coords{};
-    region_index_t  index_tmp = static_cast<long>(index);
-    for (auto i(NumDimensions - 1); i >= 1; --i) {
-      auto res  = std::div(index_tmp, 3);
-      coords[i] = res.rem;
-      index_tmp = res.quot;
-    }
-    coords[0] = index_tmp;
-
-    return coords;
-  }
 
   template <typename StencilT>
   static region_index_t index(const StencilT& stencil) {
@@ -198,7 +223,7 @@ public:
     return index;
   }
 
-  constexpr region_index_t index() const { return _index; }
+  constexpr region_index_t index() const { return _coords.index(); }
 
   constexpr const RegionCoordsT& coords() const { return _coords; }
 
@@ -207,7 +232,7 @@ public:
   constexpr coord_t operator[](const region_index_t index) const { return _coords[index]; }
 
   constexpr bool operator==(const self& other) const {
-    return _index == other._index && _extent == other._extent;
+    return _coords.index() == other._coords.index() && _extent == other._extent;
   }
 
   constexpr bool operator!=(const self& other) const {
@@ -215,7 +240,10 @@ public:
   }
 
   // returns the highest dimension with changed coordinates
-  dim_t relevantDim() const {
+  dim_t relevantDim() const { return _rel_dim; }
+
+private:
+  dim_t init_rel_dim() {
     dim_t dim = 1;
     for (auto d = 0; d < NumDimensions; ++d) {
       if (_coords[d] != 1)
@@ -227,7 +255,6 @@ public:
 
 private:
   RegionCoordsT _coords{};
-  region_index_t       _index{0};
   extent_t      _extent{0};
   dim_t         _rel_dim = 1;
 }; // HaloRegionSpec
