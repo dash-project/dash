@@ -12,26 +12,42 @@
 namespace dash {
 
 /**
- * Global value reference for asynchronous / non-blocking operations.
+ * Global value reference for asynchronous / non-blocking write operations.
+ * This is a write-only reference, asynchronous reads can be performed through
+ * \c dash::Future<dash::GlobRef<T>>.
  *
  * Example:
  * \code
- *   GlobAsyncRef<int> gar0 = array.async[0];
- *   GlobAsyncRef<int> gar1 = array.async[1];
- *   gar0 = 123;
- *   gar1 = 456;
- *   // Changes are visible locally in the references but not published to
- *   // the container, yet:
- *   assert(gar0 == 123);
- *   assert(gar1 == 456);
- *   // Changes can be published (committed) directly using a GlobAsyncRef
- *   // object:
- *   gar0.flush();
- *   // New value of array[0] is published to all units, array[1] is not
- *   // committed yet
+ *   array[0]       = 123;
+ *   array.async[0] = 456;
+ *   // Changes are not published immediately but the state is undefined
+ *   assert(array[0] == 456); // not guaranteed to succeed
  *   // Changes on a container can be published in bulk:
  *   array.flush();
+ *   assert(array[0] == 456); // guaranteed to succeed
  *   // From here, all changes are published
+ *
+ *   // Operations can be performed on GlobAsyncRef as well:
+ *   auto garef = array.async[0];
+ *        garef = 789;
+ *   // Changes are not published immediately but the state is undefined
+ *   assert(array[0] == 789); // not guaranteed to succeed
+ *   // Changes on a GlobAsyncRef can be flushed using the reference:
+ *   garef.flush();
+ *   assert(array[0] == 789); // guaranteed to succeed
+ *   // From here, all changes are published
+ *
+ *   // Asynchronous access is performed through dash::Future:
+ *   dash::Future<dash::GlobRef<int>> fut = garef;
+ *   // or simply:
+ *   // auto fut = dash::Future(garef);
+ *   // test for transfer to be complete
+ *   if (!fut.test()) {
+ *     // wait for the tranfer to complete
+ *     fut.wait();
+ *   }
+ *   // access the result, previous wait not necessary
+ *   assert(fut.get() == 789);
  * \endcode
  */
 template<typename T>
@@ -183,27 +199,7 @@ public:
   }
 
   /**
-   * Conversion operator to referenced element value.
-   */
-  operator nonconst_value_type() const
-  {
-    T value;
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    if (_is_local) {
-      value = *_lptr;
-    } else {
-      dart_storage_t ds = dash::dart_storage<T>(1);
-      DASH_ASSERT_RETURNS(
-        dart_get_blocking(
-          static_cast<void *>(&value), _gptr, ds.nelem, ds.dtype),
-        DART_OK
-      );
-    }
-    return value;
-  }
-
-  /**
-   * Comparison operator, true if both GlobAsyncRef objects points to same
+   * Comparison operator, true if both GlobAsyncRef objects point to same
    * element in local / global memory.
    */
   bool operator==(const self_t & other) const noexcept
@@ -213,31 +209,13 @@ public:
   }
 
   /**
-   * Inequality comparison operator, true if both GlobAsyncRef objects points
+   * Inequality comparison operator, true if both GlobAsyncRef objects point
    * to different elements in local / global memory.
    */
   template <class GlobRefT>
   constexpr bool operator!=(const GlobRefT & other) const noexcept
   {
     return !(*this == other);
-  }
-
-  /**
-   * Value-based comparison operator, true if the value refernced by the
-   * GlobAsyncRef object is equal to \c value.
-   */
-  constexpr bool operator==(const_value_type & value) const
-  {
-    return static_cast<T>(*this) == value;
-  }
-
-  /**
-   * Value-based inequality comparison operator, true if the value refernced
-   * by the GlobAsyncRef object is not equal to \c value.
-   */
-  constexpr bool operator!=(const nonconst_value_type & value) const
-  {
-    return !(*this == value);
   }
 
   friend void swap(GlobAsyncRef<T> a, GlobAsyncRef<T> b) {
@@ -254,38 +232,6 @@ public:
    */
   void set(const_value_type & val) {
     operator=(val);
-  }
-
-  /**
-   * Return the value referenced by this \c GlobAsyncRef.
-   */
-  nonconst_value_type get() const {
-    return operator nonconst_value_type();
-  }
-
-  /**
-   * Asynchronously write the value referenced by this \c GlobAsyncRef
-   * into \c tptr.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the referenced value can be used.
-   */
-  void get(nonconst_value_type *tptr) const {
-    if (_is_local) {
-      *tptr = *_lptr;
-    } else {
-      dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
-    }
-  }
-
-  /**
-   * Asynchronously write  the value referenced by this \c GlobAsyncRef
-   * into \c tref.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the referenced value can be used.
-   */
-  void get(nonconst_value_type& tref) const {
-    get(&tref);
   }
 
   /**
@@ -368,7 +314,9 @@ std::ostream & operator<<(
   return os;
 }
 
-
+/**
+ * Future for asynchronous single-element read access.
+ */
 template<typename T>
 class Future<dash::GlobRef<T>> {
 public:
@@ -383,16 +331,25 @@ protected:
 
 public:
 
-  Future(dash::GlobRef<T>& ref, size_t count = 1) {
-    dart_storage_t ds = dart_storage<T>(count);
+  /**
+   * Create a Future from a \ref GlobRef instance.
+   */
+  Future(dash::GlobRef<T>& ref) {
+    dart_storage_t ds = dart_storage<T>(1);
     dart_get_handle(&_value, ref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
   }
 
-  Future(dash::GlobAsyncRef<T>& aref, size_t count = 1) {
-    dart_storage_t ds = dart_storage<T>(count);
+  /**
+   * Create a Future from a \ref GlobAsyncRef instance.
+   */
+  Future(dash::GlobAsyncRef<T>& aref) {
+    dart_storage_t ds = dart_storage<T>(1);
     dart_get_handle(&_value, aref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
   }
 
+  /**
+   * Test whether the transfer has completed.
+   */
   bool
   test() {
     if (!_completed) {
@@ -403,6 +360,9 @@ public:
     return _completed;
   }
 
+  /**
+   * Wait for the transfer to complete.
+   */
   void
   wait() {
     if (!_completed) {
@@ -411,6 +371,9 @@ public:
     }
   }
 
+  /**
+   * Retrieve the tranfered value.
+   */
   value_t
   get() {
     if (!_completed) {
@@ -419,7 +382,6 @@ public:
     return _value;
   }
 };
-
 
 }  // namespace dash
 

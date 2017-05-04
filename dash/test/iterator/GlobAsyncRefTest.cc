@@ -36,27 +36,23 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   // Reference a neighbors element in global memory:
   dash::GlobAsyncRef<int> garef = array.async[neighbor];
 
-  int val = garef.get();
-  garef.flush();
-  ASSERT_EQ_U(neighbor, val);
-
-  val = 0;
-
-  garef.get(val);
-  garef.flush();
-  ASSERT_EQ_U(neighbor, val);
 
   array.barrier();
+  // set()
   garef.set(dash::myid());
-  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
   garef.flush();
+  ASSERT_EQ_U(array[neighbor], dash::myid().id);
   array.barrier();
-  garef.put(dash::myid());
-  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
+  // put()
+  garef.put(dash::myid() + 1);
   garef.flush();
+  ASSERT_EQ_U(array[neighbor], dash::myid().id + 1);
   array.barrier();
-  int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
-  ASSERT_EQ_U(left_neighbor, array.local[0]);
+  // container.flush()
+  array.async[neighbor] = dash::myid().id;
+  array.flush();
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  ASSERT_EQ_U(lneighbor, array.local[0]);
 }
 
 TEST_F(GlobAsyncRefTest, Conversion)
@@ -119,11 +115,14 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
     auto garef_a_rem = garef_rem.member<int>(&mytype::a);
     auto garef_b_rem = garef_rem.member<double>(&mytype::b);
 
+    garef_a_rem = 2;
+    garef_b_rem = 4.0;
+    array.flush();
+
     // GlobRefAsync is constructed after data is set, so it stores value
-    int a = garef_a_rem;
-    int b = garef_b_rem;
-    ASSERT_EQ_U(a, 1);
-    ASSERT_EQ_U(b, 2.0);
+    mytype data2 = array[neighbor];
+    ASSERT_EQ_U(data2.a, 2);
+    ASSERT_EQ_U(data2.b, 4.0);
   }
 
 }
@@ -139,7 +138,7 @@ TEST_F(GlobAsyncRefTest, ContainerFlush) {
   // async writes to array.async
   for (int i = 0; i < num_iter; ++i) {
     mutex.lock();
-    int tmp = array.async[0];
+    int tmp = array[0];
     for (int j = 0; j < num_iter; ++j) {
       tmp += 1;
       array.async[0] = tmp;
