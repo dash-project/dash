@@ -2,7 +2,9 @@
 #define DASH__GLOB_ASYNC_REF_H__
 
 #include <dash/GlobPtr.h>
+#include <dash/GlobRef.h>
 #include <dash/Allocator.h>
+#include <dash/Future.h>
 #include <dash/memory/GlobStaticMem.h>
 
 #include <iostream>
@@ -365,6 +367,59 @@ std::ostream & operator<<(
   }
   return os;
 }
+
+
+template<typename T>
+class Future<dash::GlobRef<T>> {
+public:
+  typedef dash::GlobRef<T> reference_t;
+  typedef T                value_t;
+
+protected:
+
+  value_t       _value;
+  dart_handle_t _handle;
+  bool          _completed = false;
+
+public:
+
+  Future(dash::GlobRef<T>& ref, size_t count = 1) {
+    dart_storage_t ds = dart_storage<T>(count);
+    dart_get_handle(&_value, ref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
+  }
+
+  Future(dash::GlobAsyncRef<T>& aref, size_t count = 1) {
+    dart_storage_t ds = dart_storage<T>(count);
+    dart_get_handle(&_value, aref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
+  }
+
+  bool
+  test() {
+    if (!_completed) {
+      int32_t flag;
+      DASH_ASSERT_RETURNS(dart_test_local(_handle, &flag), DART_OK);
+      _completed = (flag != 0) ? true : false;
+    }
+    return _completed;
+  }
+
+  void
+  wait() {
+    if (!_completed) {
+      DASH_ASSERT_RETURNS(dart_wait(_handle), DART_OK);
+      _completed = true;
+    }
+  }
+
+  value_t
+  get() {
+    if (!_completed) {
+      wait();
+    }
+    return _value;
+  }
+};
+
 
 }  // namespace dash
 

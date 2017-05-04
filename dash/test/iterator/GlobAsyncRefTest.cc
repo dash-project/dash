@@ -4,6 +4,7 @@
 #include <dash/GlobAsyncRef.h>
 #include <dash/Array.h>
 #include <dash/Mutex.h>
+#include <dash/Algorithm.h>
 
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
@@ -150,3 +151,30 @@ TEST_F(GlobAsyncRefTest, ContainerFlush) {
   ASSERT_EQ_U(num_iter*num_iter*dash::size(), (int)array[0]);
 
 }
+
+TEST_F(GlobAsyncRefTest, FutureTest) {
+  using value_t = int;
+
+  dash::Array<value_t> array(dash::size());
+
+  dash::fill(array.begin(), array.end(), dash::myid().id);
+  array.barrier();
+
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  auto gref = array[lneighbor];
+  dash::Future<dash::GlobRef<value_t>> gref_fut = gref;
+
+  gref_fut.test();
+  gref_fut.wait();
+  ASSERT_EQ_U(lneighbor, gref_fut.get());
+
+
+  int rneighbor = (dash::myid() + 1) % dash::size();
+  auto agref = array.async[rneighbor];
+  dash::Future<dash::GlobRef<value_t>> agref_fut = agref;
+
+  agref_fut.wait();
+  ASSERT_EQ_U(rneighbor, agref_fut.get());
+
+}
+
