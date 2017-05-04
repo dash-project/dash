@@ -146,7 +146,7 @@ public:
 
   static region_index_t index(const CoordsT& coords) {
     region_index_t index = coords[0];
-    for (auto i(1); i < NumDimensions; ++i)
+    for (auto i = 1; i < NumDimensions; ++i)
       index = coords[i] + index * 3;
 
     return index;
@@ -762,14 +762,14 @@ public:
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
-    for (auto d(0); d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       const auto view_offset = view.offset(d);
       const auto view_extent = view.extent(d);
 
       auto bnd_elem_offsets = _view.offsets();
       auto bnd_elem_extents = _view.extents();
       bnd_elem_extents[d]   = halo_extents_max[d].first;
-      for (auto d_tmp(0); d_tmp < d; ++d_tmp) {
+      for (auto d_tmp = 0; d_tmp < d; ++d_tmp) {
         bnd_elem_offsets[d_tmp] += halo_extents_max[d_tmp].first;
         bnd_elem_extents[d_tmp] -= halo_extents_max[d_tmp].first + halo_extents_max[d_tmp].second;
       }
@@ -855,11 +855,13 @@ private:
   void pushBndElems(dim_t dim, std::array<index_type, NumDimensions>& offsets,
                     std::array<size_type, NumDimensions>& extents,
                     const HaloExtsMaxT& halo_exts_max, const CycleSpecT& cycle_spec) {
-    for (dim_t d_tmp(dim + 1); d_tmp < NumDimensions; ++d_tmp) {
+    for (auto d_tmp = dim + 1; d_tmp < NumDimensions; ++d_tmp) {
       if (cycle_spec[d_tmp] == Cycle::NONE) {
         if (offsets[d_tmp] < halo_exts_max[d_tmp].first) {
           offsets[d_tmp] = halo_exts_max[d_tmp].first;
           extents[d_tmp] -= halo_exts_max[d_tmp].first;
+          if((offsets[d_tmp] + extents[d_tmp] + halo_exts_max[d_tmp].second) > _pattern.extent(d_tmp))
+            extents[d_tmp] -= halo_exts_max[d_tmp].second;
           continue;
         }
         auto check_extent_tmp = offsets[d_tmp] + extents[d_tmp] + halo_exts_max[d_tmp].second;
