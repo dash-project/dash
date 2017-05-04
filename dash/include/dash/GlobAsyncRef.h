@@ -8,6 +8,7 @@
 #include <dash/memory/GlobStaticMem.h>
 
 #include <iostream>
+#include <memory>
 
 namespace dash {
 
@@ -320,32 +321,55 @@ std::ostream & operator<<(
 template<typename T>
 class Future<dash::GlobRef<T>> {
 public:
-  typedef dash::GlobRef<T> reference_t;
-  typedef T                value_t;
+  typedef dash::GlobRef<T>         reference_t;
+  typedef T                        value_t;
+  typedef Future<dash::GlobRef<T>> self_t;
 
 protected:
 
-  value_t       _value;
-  dart_handle_t _handle;
-  bool          _completed = false;
+  std::vector<value_t> _valptr    = nullptr;
+  dart_handle_t        _handle;
+  bool                 _completed = false;
 
 public:
 
   /**
    * Create a Future from a \ref GlobRef instance.
    */
-  Future(dash::GlobRef<T>& ref) {
-    dart_storage_t ds = dart_storage<T>(1);
-    dart_get_handle(&_value, ref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
+  Future(dash::GlobRef<T>& ref, size_t count = 1)
+  : _valptr(count) {
+    dart_storage_t ds = dart_storage<T>(count);
+    dart_get_handle(
+      _valptr.data(),
+      ref.dart_gptr(),
+      ds.nelem, ds.dtype,
+      &_handle);
   }
 
   /**
    * Create a Future from a \ref GlobAsyncRef instance.
    */
-  Future(dash::GlobAsyncRef<T>& aref) {
-    dart_storage_t ds = dart_storage<T>(1);
-    dart_get_handle(&_value, aref.dart_gptr(), ds.nelem, ds.dtype, &_handle);
+  Future(dash::GlobAsyncRef<T>& aref, size_t count = 1)
+  : _valptr(count) {
+    dart_storage_t ds = dart_storage<T>(count);
+    dart_get_handle(
+      _valptr.data(),
+      aref.dart_gptr(),
+      ds.nelem, ds.dtype,
+      &_handle);
   }
+
+  // copy c'tor deleted
+  Future(const self_t&)               = delete;
+
+  // move c'tor defaulted
+  Future(self_t&&)                    = default;
+
+  // copy operator deleted
+  self_t & operator=(const self_t &)  = delete;
+
+  // move operator defaulted
+  self_t & operator=(self_t &&)       = default;
 
   /**
    * Test whether the transfer has completed.
@@ -372,15 +396,29 @@ public:
   }
 
   /**
-   * Retrieve the tranfered value.
+   * Retrieve the transfered value.
+   * An index can be specified if if multiple elments have been transfered.
    */
   value_t
-  get() {
+  get(size_t idx = 0) {
     if (!_completed) {
       wait();
     }
-    return _value;
+    DASH_ASSERT(idx < _valptr.size());
+    return _valptr[idx];
   }
+
+  /**
+   * Retrieve a reference to the vector of transfered elements.
+   */
+  std::vector<value_t>&
+  get_bulk() {
+    if (!_completed) {
+      wait();
+    }
+    return _valptr;
+  }
+
 };
 
 }  // namespace dash
