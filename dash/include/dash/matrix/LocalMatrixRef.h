@@ -356,6 +356,9 @@ public:
 
 private:
   MatrixRefView_t _refview;
+  // slight tweaking for multiple accesses to local iterators
+  local_pointer   _lbegin = nullptr;
+  local_pointer   _lend   = nullptr; 
 };
 
 } // namespace dash
