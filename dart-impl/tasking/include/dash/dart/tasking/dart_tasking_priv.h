@@ -75,7 +75,7 @@ dart__tasking__thread_num();
 int
 dart__tasking__num_threads();
 
-uint64_t
+int32_t
 dart__tasking__epoch_bound();
 
 dart_ret_t

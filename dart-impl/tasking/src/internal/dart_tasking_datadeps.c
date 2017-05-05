@@ -434,8 +434,11 @@ dart_tasking_datadeps_handle_local_datadep(
     }
   }
 
-  DART_LOG_TRACE("No matching dependency found for local dependency %p "
-      "on task %p in epoch %i", DEP_ADDR(dep), task, task->epoch);
+  if (!IS_OUT_DEP(dep)) {
+    DART_LOG_TRACE("No matching output dependency found for local input "
+        "dependency %p of task %p in epoch %i",
+        DEP_ADDR(dep), task, task->epoch);
+  }
   return DART_OK;
 }
 
@@ -451,6 +454,19 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 {
   dart_global_unit_t myid;
   dart_myid(&myid);
+
+  // look for the current epoch
+  // we assume that the first OUT dependency defines the current epoch
+  for (size_t i = 0; i < ndeps; i++) {
+    dart_task_dep_t dep = deps[i];
+    if (task->epoch == DART_EPOCH_ANY && IS_OUT_DEP(dep)) {
+      task->epoch = dep.epoch;
+      if (task->parent->epoch == DART_EPOCH_ANY) {
+        task->parent->epoch = dep.epoch;
+      }
+      break;
+    }
+  }
   DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in epoch %i",
                  task, ndeps, task->epoch);
 
@@ -459,15 +475,6 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type == DART_DEP_IGNORE) {
       // ignored
       continue;
-    }
-
-    // look for the current epoch
-    // we assume that the first OUT dependency defines the current epoch
-    if (task->epoch == DART_EPOCH_ANY && IS_OUT_DEP(dep)) {
-      task->epoch = dep.epoch;
-      if (task->parent->epoch == DART_EPOCH_ANY) {
-        task->parent->epoch = dep.epoch;
-      }
     }
 
     // translate the offset to an absolute address
@@ -599,7 +606,9 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
 {
   // block the release of the task if it's not to be executed yet
   dart__base__mutex_lock(&deferred_remote_mutex);
-  if (local_task->epoch > dart__tasking__epoch_bound()) {
+  // TODO: there has to be something better for determining the epoch!
+  int32_t bound = dart__tasking__epoch_bound();
+  if (bound != DART_EPOCH_ANY && local_task->epoch > bound) {
     // dummy dependency
     dart_task_dep_t dep = {
         .gptr = DART_GPTR_NULL,

@@ -263,6 +263,8 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->current_task = NULL;
   dart_tasking_taskqueue_init(&thread->queue);
   dart_tasking_taskqueue_init(&thread->defered_queue);
+  DART_LOG_TRACE("Thread %i has task queue %p and deferred queue %p",
+    threadnum, &thread->queue, &thread->defered_queue);
 }
 
 static
@@ -353,7 +355,7 @@ dart__tasking__num_threads()
   return (initialized ? num_threads : 1);
 }
 
-uint64_t
+int32_t
 dart__tasking__epoch_bound()
 {
   return root_task.epoch;
@@ -364,7 +366,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 {
   dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
   dart_taskqueue_t *q = &thread->queue;
-  if (task->epoch > dart__tasking__epoch_bound()) {
+  int32_t bound = dart__tasking__epoch_bound();
+  if (bound != DART_EPOCH_ANY && task->epoch > bound) {
     // if the task's phase is outside the phase bound we defer it
     q = &thread->defered_queue;
   }
@@ -427,12 +430,10 @@ dart__tasking__task_complete()
 {
   dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
 
-  if (thread->current_task == &(root_task) && thread->thread_id != 0) {
-    DART_LOG_ERROR("dart__tasking__task_complete() called on ROOT task "
-                   "only valid on MASTER thread!");
-    return DART_ERR_INVAL;
-  }
-
+  DART_ASSERT_MSG(
+    (thread->current_task != &(root_task) || thread->thread_id == 0),
+    "Calling dart__tasking__task_complete() on ROOT task "
+    "only valid on MASTER thread!");
 
   if (thread->current_task == &(root_task)) {
     // once again make sure all incoming requests are served
@@ -441,7 +442,10 @@ dart__tasking__task_complete()
     dart_tasking_datadeps_release_unhandled_remote();
     // reset the active epoch
     root_task.epoch = DART_EPOCH_ANY;
-    dart_tasking_taskqueue_move(&thread->queue, &thread->defered_queue);
+    for (int i = 0; i < num_threads; ++i) {
+      dart_thread_t *t = &thread_pool[i];
+      dart_tasking_taskqueue_move(&t->queue, &t->defered_queue);
+    }
   }
 
   // 1) wake up all threads (might later be done earlier)
