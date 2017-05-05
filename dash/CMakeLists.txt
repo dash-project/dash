@@ -254,6 +254,7 @@ endforeach()
 foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (DART_LIBRARY "dart-${dart_variant}")
   set (DASH_LIBRARY "dash-${dart_variant}")
+  set (DART_TASKING_LIBRARY "dart-tasking")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR})
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
@@ -374,6 +375,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${exampletarget}
           ${DASH_LIBRARY}
           ${DART_LIBRARY}
+          ${DART_TASKING_LIBRARY}
           ${ADDITIONAL_LINK_FLAGS}
           ${ADDITIONAL_LIBRARIES}
         )

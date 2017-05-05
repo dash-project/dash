@@ -59,6 +59,7 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
+  set(DART_TASK_LIBRARY "dart-tasking")
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS
       "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS
@@ -108,6 +109,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       target_link_libraries(
         ${exampletarget}
         ${DASH_LIBRARY}
+        ${DART_TASK_LIBRARY}
         ${DART_LIBRARY}
         ${VARIANT_ADDITIONAL_LIBRARIES}
       )
