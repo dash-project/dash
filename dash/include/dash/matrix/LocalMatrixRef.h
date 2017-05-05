@@ -277,7 +277,7 @@ public:
   template<dim_t NumSubDimensions>
   LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n) const;
-  
+
   template<dim_t SubDimension>
   LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
     sub(size_type n,
@@ -303,7 +303,7 @@ public:
     size_type offset,
     /// Number of rows in the range
     size_type range);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   rows(
     /// Offset of first row in range
@@ -326,7 +326,7 @@ public:
     size_type offset,
     /// Number of columns in the range
     size_type extent);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   cols(
     /// Offset of first column in range
@@ -419,14 +419,6 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
    * Assignment operator.
    */
   inline T operator= (const T & value);
-  inline T operator+=(const T & value);
-  inline T operator+ (const T & value);
-  inline T operator-=(const T & value);
-  inline T operator- (const T & value);
-  inline T operator*=(const T & value);
-  inline T operator* (const T & value);
-  inline T operator/=(const T & value);
-  inline T operator/ (const T & value);
 
  private:
   MatrixRefView<T, NumDimensions, PatternT> _refview;
