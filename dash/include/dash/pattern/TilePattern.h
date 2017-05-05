@@ -85,9 +85,9 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSpec_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSizeSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
