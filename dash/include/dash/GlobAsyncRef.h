@@ -327,20 +327,20 @@ public:
 
 protected:
 
-  std::vector<value_t> _valptr    = nullptr;
-  dart_handle_t        _handle;
-  bool                 _completed = false;
+  std::unique_ptr<value_t> _valptr    = nullptr;
+  dart_handle_t            _handle;
+  bool                     _completed = false;
 
 public:
 
   /**
    * Create a Future from a \ref GlobRef instance.
    */
-  Future(dash::GlobRef<T>& ref, size_t count = 1)
-  : _valptr(count) {
-    dart_storage_t ds = dart_storage<T>(count);
+  Future(dash::GlobRef<T>& ref)
+  : _valptr(new value_t) {
+    dart_storage_t ds = dart_storage<T>(1);
     dart_get_handle(
-      _valptr.data(),
+      &_valptr,
       ref.dart_gptr(),
       ds.nelem, ds.dtype,
       &_handle);
@@ -349,11 +349,11 @@ public:
   /**
    * Create a Future from a \ref GlobAsyncRef instance.
    */
-  Future(dash::GlobAsyncRef<T>& aref, size_t count = 1)
-  : _valptr(count) {
-    dart_storage_t ds = dart_storage<T>(count);
+  Future(dash::GlobAsyncRef<T>& aref)
+  : _valptr(new value_t) {
+    dart_storage_t ds = dart_storage<T>(1);
     dart_get_handle(
-      _valptr.data(),
+      &_valptr,
       aref.dart_gptr(),
       ds.nelem, ds.dtype,
       &_handle);
@@ -375,7 +375,7 @@ public:
    * Test whether the transfer has completed.
    */
   bool
-  test() {
+  test(void) {
     if (!_completed) {
       int32_t flag;
       DASH_ASSERT_RETURNS(dart_test_local(_handle, &flag), DART_OK);
@@ -388,7 +388,7 @@ public:
    * Wait for the transfer to complete.
    */
   void
-  wait() {
+  wait(void) {
     if (!_completed) {
       DASH_ASSERT_RETURNS(dart_wait(_handle), DART_OK);
       _completed = true;
@@ -400,25 +400,12 @@ public:
    * An index can be specified if if multiple elments have been transfered.
    */
   value_t
-  get(size_t idx = 0) {
+  get(void) {
     if (!_completed) {
       wait();
     }
-    DASH_ASSERT(idx < _valptr.size());
-    return _valptr[idx];
+    return *_valptr;
   }
-
-  /**
-   * Retrieve a reference to the vector of transfered elements.
-   */
-  std::vector<value_t>&
-  get_bulk() {
-    if (!_completed) {
-      wait();
-    }
-    return _valptr;
-  }
-
 };
 
 }  // namespace dash

@@ -174,30 +174,3 @@ TEST_F(GlobAsyncRefTest, FutureTest) {
   ASSERT_EQ_U(rneighbor, agref_fut.get());
 
 }
-
-
-TEST_F(GlobAsyncRefTest, FutureBulkTest) {
-  using value_t = int;
-  constexpr int num_elem_per_unit = 100;
-
-  dash::Array<value_t> array(num_elem_per_unit * dash::size());
-
-  dash::fill(array.begin(), array.end(), dash::myid().id);
-  array.barrier();
-
-
-  int neighbor = (dash::myid() + 1) % dash::size();
-  auto gref = array[neighbor * num_elem_per_unit];
-  dash::Future<dash::GlobRef<value_t>> gref_fut(gref, num_elem_per_unit);
-
-  ASSERT_EQ_U(gref_fut.get(1), neighbor);
-
-  std::vector<value_t> vals = gref_fut.get_bulk();
-
-  std::for_each(
-    vals.begin(),
-    vals.end(),
-    [=](value_t value){ ASSERT_EQ_U(value, neighbor); });
-
-}
-
