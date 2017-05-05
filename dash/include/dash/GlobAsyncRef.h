@@ -236,26 +236,6 @@ public:
   }
 
   /**
-   * Asynchronously set the value referenced by this \c GlobAsyncRef
-   * to the value pointed to by \c tptr.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the pointer \c tptr can be re-used immediately.
-   */
-  void put(const_value_type* tptr) {
-    operator=(*tptr);
-  }
-
-  /**
-   * Asynchronously set the value referenced by this \c GlobAsyncRef
-   * to the value pointed to by \c tref.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the value referenced by \c tref can be re-used immediately.
-   */
-  void put(const_value_type& tref) {
-    operator=(tref);
-  }
-
-  /**
    * Value assignment operator, sets new value in local memory or calls
    * non-blocking put on remote memory. This operator is only used for
    * types which are comparable
@@ -287,6 +267,46 @@ public:
 
 
   /**
+   * Start the transfer of a single element and return a \c dash::Future<T>
+   * that can be used to wait for the transfer to finish and to retrieve
+   * the result.
+   *
+   * \see dash::async_copy
+   */
+  dash::Future<nonconst_value_type> const
+  get() {
+    if (_is_local) {
+      return dash::Future<nonconst_value_type>(*_lptr);
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_handle_t handle;
+      // this could have been a unique_ptr if it were C++14 :(
+      std::shared_ptr<nonconst_value_type> valptr(new nonconst_value_type);
+      DASH_ASSERT_RETURNS(
+        dart_get_handle(valptr.get(), _gptr, ds.nelem, ds.dtype, &handle),
+        DART_OK);
+      dash::Future<nonconst_value_type> fut( [=](){
+        DASH_ASSERT_RETURNS(
+          dart_wait(handle),
+          DART_OK);
+        return *valptr;
+      });
+      return fut;
+    }
+  }
+
+  /**
+   * Start the transfer of a single element and return a \c dash::Future<T>
+   * that can be used to wait for the transfer to finish and to retrieve
+   * the result.
+   *
+   * \see dash::async_copy
+   */
+  operator dash::Future<nonconst_value_type>() {
+    return get();
+  }
+
+  /**
    * Flush all pending asynchronous operations on this asynchronous reference
    * and invalidate cached copies.
    */
@@ -314,99 +334,6 @@ std::ostream & operator<<(
   }
   return os;
 }
-
-/**
- * Future for asynchronous single-element read access.
- */
-template<typename T>
-class Future<dash::GlobRef<T>> {
-public:
-  typedef dash::GlobRef<T>         reference_t;
-  typedef T                        value_t;
-  typedef Future<dash::GlobRef<T>> self_t;
-
-protected:
-
-  std::unique_ptr<value_t> _valptr    = nullptr;
-  dart_handle_t            _handle;
-  bool                     _completed = false;
-
-public:
-
-  /**
-   * Create a Future from a \ref GlobRef instance.
-   */
-  Future(dash::GlobRef<T>& ref)
-  : _valptr(new value_t) {
-    dart_storage_t ds = dart_storage<T>(1);
-    dart_get_handle(
-      &_valptr,
-      ref.dart_gptr(),
-      ds.nelem, ds.dtype,
-      &_handle);
-  }
-
-  /**
-   * Create a Future from a \ref GlobAsyncRef instance.
-   */
-  Future(dash::GlobAsyncRef<T>& aref)
-  : _valptr(new value_t) {
-    dart_storage_t ds = dart_storage<T>(1);
-    dart_get_handle(
-      &_valptr,
-      aref.dart_gptr(),
-      ds.nelem, ds.dtype,
-      &_handle);
-  }
-
-  // copy c'tor deleted
-  Future(const self_t&)               = delete;
-
-  // move c'tor defaulted
-  Future(self_t&&)                    = default;
-
-  // copy operator deleted
-  self_t & operator=(const self_t &)  = delete;
-
-  // move operator defaulted
-  self_t & operator=(self_t &&)       = default;
-
-  /**
-   * Test whether the transfer has completed.
-   */
-  bool
-  test(void) {
-    if (!_completed) {
-      int32_t flag;
-      DASH_ASSERT_RETURNS(dart_test_local(_handle, &flag), DART_OK);
-      _completed = (flag != 0) ? true : false;
-    }
-    return _completed;
-  }
-
-  /**
-   * Wait for the transfer to complete.
-   */
-  void
-  wait(void) {
-    if (!_completed) {
-      DASH_ASSERT_RETURNS(dart_wait(_handle), DART_OK);
-      _completed = true;
-    }
-  }
-
-  /**
-   * Retrieve the transfered value.
-   * An index can be specified if if multiple elments have been transfered.
-   */
-  value_t
-  get(void) {
-    if (!_completed) {
-      wait();
-    }
-    return *_valptr;
-  }
-};
 
 }  // namespace dash
 

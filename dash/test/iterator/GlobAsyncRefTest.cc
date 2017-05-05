@@ -44,7 +44,7 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   ASSERT_EQ_U(array[neighbor], dash::myid().id);
   array.barrier();
   // put()
-  garef.put(dash::myid() + 1);
+  garef.set(dash::myid() + 1);
   garef.flush();
   ASSERT_EQ_U(array[neighbor], dash::myid().id + 1);
   // container.flush()
@@ -160,8 +160,8 @@ TEST_F(GlobAsyncRefTest, FutureTest) {
   array.barrier();
 
   int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
-  auto gref = array[lneighbor];
-  dash::Future<dash::GlobRef<value_t>> gref_fut = gref;
+  auto gref = array.async[lneighbor];
+  dash::Future<value_t> gref_fut = gref;
 
   gref_fut.test();
   gref_fut.wait();
@@ -169,8 +169,7 @@ TEST_F(GlobAsyncRefTest, FutureTest) {
 
 
   int rneighbor = (dash::myid() + 1) % dash::size();
-  auto agref = array.async[rneighbor];
-  auto agref_fut = dash::Future<dash::GlobRef<value_t>>(agref);
+  auto agref_fut = array.async[rneighbor].get();
   ASSERT_EQ_U(rneighbor, agref_fut.get());
 
 }

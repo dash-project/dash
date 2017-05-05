@@ -38,6 +38,12 @@ public:
     _has_func(false)
   { }
 
+  Future(const ResultT & value)
+  : _value(value),
+    _ready(true),
+    _has_func(false)
+  { }
+
   Future(const func_t & func)
   : _func(func),
     _ready(false),
