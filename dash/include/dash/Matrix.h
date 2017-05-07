@@ -102,7 +102,8 @@ template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  class ReferenceT >
 class MatrixRef;
 /// Forward-declaration
 template <
@@ -174,7 +175,8 @@ public:
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    class ReferenceT >
   friend class MatrixRef;
   template<
     typename T_,
@@ -224,17 +226,27 @@ public:
   /// column vectors.
   template <dim_t NumViewDim>
     using view_type =
-          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, reference>;
 
   /// Type of views on matrix elements such as sub-matrices, row- and
   /// column vectors.
   template <dim_t NumViewDim>
     using const_view_type =
-          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<const ElementT, NumDimensions,
+                    NumViewDim, PatternT, const_reference>;
+
+  /// Type of views on matrix elements such as sub-matrices, row- and
+  /// column vectors.
+  using async_type =
+        MatrixRef<ElementT, NumDimensions,
+                  NumDimensions, PatternT, GlobAsyncRef<ElementT>>;
 
 public:
   /// Local view proxy object.
   local_type local;
+
+  /// Async access proxy object
+  async_type async;
 
 public:
 

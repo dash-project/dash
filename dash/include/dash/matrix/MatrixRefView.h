@@ -29,7 +29,8 @@ template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  class ReferenceT >
 class MatrixRef;
 /// Forward-declaration
 template <
@@ -50,7 +51,8 @@ template <
   typename T,
   dim_t NumDimensions,
   class PatternT =
-    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t>,
+  class ReferenceT = GlobRef<T> >
 class MatrixRefView
 {
  public:
@@ -82,12 +84,14 @@ class MatrixRefView
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    class ReferenceT_ >
   friend class MatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
-    class PatternT_ >
+    class PatternT_,
+    class ReferenceT_ >
   friend class MatrixRefView;
   template<
     typename T_,
@@ -102,23 +106,23 @@ class MatrixRefView
     class PatternT_ >
   friend class Matrix;
 
-  MatrixRefView<T, NumDimensions, PatternT>();
+  MatrixRefView<T, NumDimensions, PatternT, ReferenceT>();
+
+  template <class T_, class ReferenceT_>
+  MatrixRefView<T, NumDimensions, PatternT, ReferenceT>(
+    const MatrixRefView<T_, NumDimensions, PatternT, ReferenceT_> & other);
 
   template <class T_>
-  MatrixRefView<T, NumDimensions, PatternT>(
-    const MatrixRefView<T_, NumDimensions, PatternT> & other);
-
-  template <class T_>
-  MatrixRefView<T, NumDimensions, PatternT>(
+  MatrixRefView<T, NumDimensions, PatternT, ReferenceT>(
     Matrix<T_, NumDimensions, index_type, PatternT> * matrix);
 
-  GlobRef<T>       global_reference();
-  GlobRef<const T> global_reference() const;
+           ReferenceT             global_reference();
+  typename ReferenceT::const_type global_reference() const;
 
-  GlobRef<T>       global_reference(
+           ReferenceT             global_reference(
     const ::std::array<typename PatternT::index_type, NumDimensions> & coords
   );
-  GlobRef<const T> global_reference(
+  typename ReferenceT::const_type global_reference(
     const ::std::array<typename PatternT::index_type, NumDimensions> & coords
   ) const;
 };

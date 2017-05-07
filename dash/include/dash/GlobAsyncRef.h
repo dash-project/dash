@@ -70,6 +70,11 @@ private:
   /// Whether the value of the referenced element is known
   mutable bool _has_value   = false;
 
+public:
+  typedef T                      value_type;
+
+  typedef GlobAsyncRef<const T>  const_type;
+
 private:
 
   /**

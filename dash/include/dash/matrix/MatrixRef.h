@@ -31,13 +31,6 @@ template <
   dim_t NumDimensions,
   dim_t NumViewDim,
   class PatternT >
-class MatrixRef;
-/// Forward-declaration
-template <
-  typename T,
-  dim_t NumDimensions,
-  dim_t NumViewDim,
-  class PatternT >
 class LocalMatrixRef;
 
 /**
@@ -57,11 +50,12 @@ template <
   dim_t NumDimensions,
   dim_t NumViewDim = NumDimensions,
   class PatternT =
-    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t>,
+  class ReferenceT = GlobRef<ElementT>>
 class MatrixRef
 {
  private:
-  typedef MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>
+  typedef MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, ReferenceT>
     self_t;
   typedef PatternT
     Pattern_t;
@@ -96,8 +90,8 @@ class MatrixRef
   typedef std::reverse_iterator<iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef GlobRef<      value_type>                          reference;
-  typedef GlobRef<const value_type>                    const_reference;
+  typedef ReferenceT                                         reference;
+  typedef typename ReferenceT::const_type              const_reference;
 
   typedef GlobViewIter<      value_type, PatternT>             pointer;
   typedef GlobViewIter<const value_type, PatternT>       const_pointer;
@@ -127,7 +121,8 @@ class MatrixRef
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    class ReferenceT_ >
   friend class MatrixRef;
   template<
     typename T_,
@@ -137,7 +132,7 @@ class MatrixRef
   friend class LocalMatrixRef;
 
   inline operator
-    MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>();
+    MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT, ReferenceT>();
 
 public:
   typedef std::integral_constant<dim_t, NumViewDim>
@@ -148,21 +143,23 @@ public:
   }
 
 private:
-  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
+  MatrixRefView<ElementT, NumDimensions, PatternT, ReferenceT> _refview;
 
 public:
 
-  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, ReferenceT>()
   { }
 
-  template <class T_>
-  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
-    const MatrixRef<T_, NumDimensions, NumViewDim+1, PatternT> & prev,
+  template <class T_, class ReferenceT_>
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, ReferenceT>(
+    const MatrixRef<T_, NumDimensions, NumViewDim+1,
+                    PatternT, ReferenceT_> & prev,
     index_type coord);
 
-  template <class T_>
-  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
-    const MatrixRef<T_, NumDimensions, NumViewDim, PatternT> & other);
+  template <class T_, class ReferenceT_>
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, ReferenceT>(
+    const MatrixRef<T_, NumDimensions, NumViewDim,
+                    PatternT, ReferenceT_> & other);
 
   constexpr const Team      & team()                const noexcept;
 
@@ -210,7 +207,8 @@ public:
    */
   template<dim_t __NumViewDim = NumViewDim-1>
   typename std::enable_if<(__NumViewDim != 0), 
-    MatrixRef<ElementT, NumDimensions, __NumViewDim, PatternT>>::type
+    MatrixRef<ElementT, NumDimensions,
+                __NumViewDim, PatternT, ReferenceT>>::type
     operator[](index_type n);
 
   /**
@@ -219,7 +217,8 @@ public:
    */
   template<dim_t __NumViewDim = NumViewDim-1>
   typename std::enable_if<(__NumViewDim != 0), 
-    MatrixRef<const ElementT, NumDimensions, __NumViewDim, PatternT>>::type
+    MatrixRef<const ElementT, NumDimensions,
+                __NumViewDim, PatternT, const_reference>>::type
   constexpr operator[](index_type n) const;
     
   /**
@@ -239,27 +238,28 @@ public:
   operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
-  MatrixRef<const ElementT, NumDimensions, NumDimensions-1, PatternT>
+  MatrixRef<const ElementT, NumDimensions,
+              NumDimensions-1, PatternT, const_reference>
   sub(size_type n) const;
 
   template<dim_t NumSubDimensions>
-  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT, ReferenceT>
   sub(size_type n);
 
-  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT, ReferenceT>
   col(size_type n);
 
-  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT, ReferenceT>
   row(size_type n);
 
   template<dim_t SubDimension>
-  MatrixRef<const ElementT, NumDimensions, NumDimensions, PatternT>
+  MatrixRef<const ElementT, NumDimensions, NumDimensions, PatternT, ReferenceT>
   sub(
     size_type n,
     size_type range) const;
 
   template<dim_t SubDimension>
-  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, ReferenceT>
   sub(
     size_type n,
     size_type range);
@@ -273,7 +273,7 @@ public:
    *
    * \see  sub
    */
-  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, ReferenceT>
   rows(
     /// Offset of first row in range
     size_type n,
@@ -289,7 +289,7 @@ public:
    *
    * \see  sub
    */
-  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, ReferenceT>
   cols(
     /// Offset of first column in range
     size_type offset,

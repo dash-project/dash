@@ -209,6 +209,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   // Initialize local proxy object:
   _ref._refview    = MatrixRefView_t(this);
   local            = local_type(this);
+  async._refview   = MatrixRefView_t(this);
   DASH_LOG_TRACE("Matrix.allocate() finished");
   return true;
 }
@@ -454,7 +455,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim != 0),
-  MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
+    MatrixRef<const T, NumDim, __NumViewDim, PatternT, GlobRef<const T>>>::type
 constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 {
   return _ref.operator[](pos);
@@ -463,7 +464,7 @@ constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<const T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT>::const_reference>::type
 constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 {
   return _ref.at(pos);
@@ -472,7 +473,7 @@ constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim != 0),
-  MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
+    MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 Matrix<T, NumDim, IndexT, PatternT>
 ::operator[](size_type pos)
 {
@@ -482,7 +483,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT>::reference>::type
 Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos)
 {
   return _ref.at(pos);

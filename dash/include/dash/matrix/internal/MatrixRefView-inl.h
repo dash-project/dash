@@ -6,19 +6,19 @@
 
 namespace dash {
 
-template <typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::MatrixRefView()
 : _dim(0), _mat(NULL)
 {
   DASH_LOG_TRACE("MatrixRefView()");
 }
 
-template <typename T, dim_t NumDim, class PatternT>
-template <class T_>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+template <class T_, class ReferenceT_>
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::MatrixRefView(
-  const MatrixRefView<T_, NumDim, PatternT> & other)
+  const MatrixRefView<T_, NumDim, PatternT, ReferenceT_> & other)
 : _dim(other._dim)
   // cast from Matrix<T, ...> * to Matrix<const T, ...> *
 , _mat(reinterpret_cast< Matrix<T, NumDim, index_type, PatternT> * >(
@@ -30,9 +30,9 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE("MatrixRefView(other)");
 }
 
-template <typename T, dim_t NumDim, class PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
 template <class T_>
-MatrixRefView<T, NumDim, PatternT>
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::MatrixRefView(
   Matrix<T_, NumDim, index_type, PatternT> * matrix)
 : _dim(0)
@@ -45,9 +45,9 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRefView(matrix)", matrix);
 }
 
-template <typename T, dim_t NumDim, class PatternT>
-GlobRef<const T>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+typename ReferenceT::const_type
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::global_reference() const
 {
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference()", _coord);
@@ -64,9 +64,9 @@ MatrixRefView<T, NumDim, PatternT>
   return ref;
 }
 
-template <typename T, dim_t NumDim, class PatternT>
-GlobRef<T>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+ReferenceT
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::global_reference()
 {
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference()", _coord);
@@ -78,14 +78,14 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference", global_index);
   auto         global_begin  = _mat->begin();
   // Global reference at global linear index:
-  GlobRef<T> ref(global_begin[global_index]);
+  ReferenceT ref(global_begin[global_index]);
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference >", ref);
   return ref;
 }
 
-template <typename T, dim_t NumDim, class PatternT>
-GlobRef<const T>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+typename ReferenceT::const_type
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::global_reference(
   const ::std::array<typename PatternT::index_type, NumDim> & c) const
 {
@@ -101,14 +101,14 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference", global_index);
   const auto & global_begin  = _mat->begin();
   // Global reference at global linear index:
-  GlobRef<const T> ref(global_begin[global_index]);
+  typename ReferenceT::const_type ref(global_begin[global_index]);
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference >", ref);
   return ref;
 }
 
-template <typename T, dim_t NumDim, class PatternT>
-GlobRef<T>
-MatrixRefView<T, NumDim, PatternT>
+template <typename T, dim_t NumDim, class PatternT, class ReferenceT>
+ReferenceT
+MatrixRefView<T, NumDim, PatternT, ReferenceT>
 ::global_reference(
   const ::std::array<typename PatternT::index_type, NumDim> & c)
 {
@@ -124,7 +124,7 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference", global_index);
   auto         global_begin  = _mat->begin();
   // Global reference at global linear index:
-  GlobRef<T> ref(global_begin[global_index]);
+  ReferenceT ref(global_begin[global_index]);
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference >", ref);
   return ref;
 }

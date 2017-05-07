@@ -1560,3 +1560,23 @@ TEST_F(MatrixTest, MoveSemantics){
     ASSERT_EQ_U(*(matrix_b.lbegin()), 1);
   }
 }
+
+
+TEST_F(MatrixTest, AsyncWrite){
+  constexpr int num_elem_per_unit = 5;
+  using matrix_t = dash::NArray<int, 2>;
+
+  matrix_t matrix(dash::size(), num_elem_per_unit);
+
+  int rneighbor = (dash::myid() + 1) % dash::size();
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    matrix.async[lneighbor][i] = dash::myid();
+  }
+  matrix.flush_all();
+  matrix.barrier();
+
+  ASSERT_EQ_U(static_cast<int>(matrix[dash::myid()][0]), rneighbor);
+  matrix.barrier();
+}

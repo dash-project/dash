@@ -28,7 +28,8 @@ template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  class ReferenceT >
 class MatrixRef;
 /// Forward-declaration
 template <
