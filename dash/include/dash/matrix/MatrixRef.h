@@ -90,7 +90,7 @@ class MatrixRef
   typedef std::reverse_iterator<iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef ReferenceT                                         reference;
+  typedef          ReferenceT                                reference;
   typedef typename ReferenceT::const_type              const_reference;
 
   typedef GlobViewIter<      value_type, PatternT>             pointer;
