@@ -1127,7 +1127,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  constexpr const Team & team() const noexcept
+  constexpr Team & team() const noexcept
   {
     return *m_team;
   }
