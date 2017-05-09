@@ -52,6 +52,7 @@ void dash::init(int * argc, char ** *argv)
   dash::_initialized = true;
 
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
+    DASH_LOG_DEBUG("Process ID", getpid());
     if (dash::myid() == 0) {
       int blockvar = 1;
       dash::prevent_opt_elimination(blockvar);
