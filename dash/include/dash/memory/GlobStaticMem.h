@@ -277,13 +277,14 @@ public:
   /**
    * Copy-assignment operator.
    *
-   * \TODO make move constructor defaultable by using RAII 
    */
   self_t & operator=(const self_t & rhs)
     = delete;
 
   /**
    * Move-assignment operator.
+   *
+   * \TODO make move constructor defaultable by using RAII 
    */
   self_t & operator=(self_t && other) {
     // deallocate old memory
@@ -292,14 +293,14 @@ public:
     }
 
     _allocator = std::move(other._allocator);
-    _begptr = other._begptr;
-    _team = other._team;
-    _teamid = other._teamid;
-    _nunits = other._nunits;
-    _myid = other._myid;
-    _nlelem = other._nlelem;
-    _lbegin = other._lbegin;
-    _lend = other._lend;
+    _begptr    = other._begptr;
+    _team      = other._team;
+    _teamid    = other._teamid;
+    _nunits    = other._nunits;
+    _myid      = other._myid;
+    _nlelem    = other._nlelem;
+    _lbegin    = other._lbegin;
+    _lend      = other._lend;
 
     // avoid deallocation of underlying memory
     // in the dead hull
