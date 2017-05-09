@@ -168,10 +168,10 @@ public:
     _viewspec(viewspec)
   { }
 
-  LocalArrayRef(const self_t &) = delete;
+  LocalArrayRef(const self_t &) = default;
   LocalArrayRef(self_t &&)      = default;
 
-  self_t & operator=(const self_t &) = delete;
+  self_t & operator=(const self_t &) = default;
   self_t & operator=(self_t &&)      = default;
 
   /**
@@ -309,10 +309,10 @@ public:
   : _array(array) {
   }
 
-  AsyncArrayRef(const self_t &) = delete;
+  AsyncArrayRef(const self_t &) = default;
   AsyncArrayRef(self_t &&)      = default;
 
-  self_t & operator=(const self_t &) = delete;
+  self_t & operator=(const self_t &) = default;
   self_t & operator=(self_t &&)      = default;
 
 
