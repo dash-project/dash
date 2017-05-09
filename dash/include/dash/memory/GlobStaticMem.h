@@ -307,6 +307,8 @@ public:
     other._begptr = DART_GPTR_NULL;
     other._lbegin = nullptr;
     other._lend   = nullptr;
+
+    return *this;
   }
 
   /**
