@@ -44,14 +44,6 @@ find_path(
 # NO_DEFAULT_PATH
 )
 
-CHECK_SYMBOL_EXISTS(H5_HAVE_PARALLEL "hdf5.h" HAVE_H5_PARALLEL)
-
-if(NOT HAVE_H5_PARALLEL)
-	message(STATUS "HDF5 cmake module provides only serial version")
-	set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
-	unset(HDF5_LIBRARIES)
-	unset(HDF5_INCLUDE_DIRS)
-endif()
 
 include(FindPackageHandleStandardArgs)
 
@@ -61,10 +53,23 @@ find_package_handle_standard_args(
   HDF5_INCLUDE_DIRS
 )
 
+
 # set flags
 if(HDF5_FOUND)
-#  set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
-   set (HDF5_LINKER_FLAGS $ENV{HDF5_LIB} ${SZIP_LIB} -lz)
+  CHECK_SYMBOL_EXISTS(
+    H5_HAVE_PARALLEL
+    "${HDF5_INCLUDE_DIRS}/H5pubconf.h"
+    HAVE_H5_PARALLEL)
+
+  if(NOT HAVE_H5_PARALLEL)
+    message(STATUS "HDF5 provides only serial version")
+    set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
+    unset(HDF5_LIBRARIES)
+    unset(HDF5_INCLUDE_DIRS)
+  else()
+#   set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
+    set (HDF5_LINKER_FLAGS $ENV{HDF5_LIB} ${SZIP_LIB} -lz)
+  endif()
 endif()
 
 mark_as_advanced(
