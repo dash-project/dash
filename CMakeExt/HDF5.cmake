@@ -26,15 +26,6 @@ find_package (
 # NAMES hdf5 COMPONENTS C
 )
 
-CHECK_SYMBOL_EXISTS(H5_HAVE_PARALLEL "hdf5.h" HAVE_H5_PARALLEL)
-
-if(NOT HDF5_IS_PARALLEL OR NOT HAVE_H5_PARALLEL)
-	message(STATUS "HDF5 cmake module provides only serial version")
-	set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
-	unset(HDF5_LIBRARIES)
-	unset(HDF5_INCLUDE_DIRS)
-endif()
-
 if(NOT HDF5_FOUND)
 	message(STATUS "HDF5 package not found, try to find libs")
 endif()
@@ -52,6 +43,15 @@ find_path(
 	HINTS ${HDF5_PREFIX}/include
 # NO_DEFAULT_PATH
 )
+
+CHECK_SYMBOL_EXISTS(H5_HAVE_PARALLEL "hdf5.h" HAVE_H5_PARALLEL)
+
+if(NOT HAVE_H5_PARALLEL)
+	message(STATUS "HDF5 cmake module provides only serial version")
+	set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
+	unset(HDF5_LIBRARIES)
+	unset(HDF5_INCLUDE_DIRS)
+endif()
 
 include(FindPackageHandleStandardArgs)
 
