@@ -346,7 +346,7 @@ dart_team_memalloc_aligned(
   }
   segment->size    = nbytes;
   segment->flags   = 0;
-  segment->win     = sharedmem_win;
+  segment->shmwin     = sharedmem_win;
   segment->selfbaseptr = sub_mem;
 
 

@@ -123,6 +123,7 @@ dart_ret_t do_init()
     MPI_INFO_NULL,
     &dart_mempool_localalloc);
 #endif
+
   /* Create a single global win object for dart local
    * allocation based on the above allocated shared memory.
    *
@@ -135,18 +136,32 @@ dart_ret_t do_init()
     DART_COMM_WORLD,
     &dart_win_local_alloc);
 
+  /* Start an access epoch on dart_win_local_alloc, and later
+   * on all the units can access the memory region allocated
+   * by the local allocation function through
+   * dart_win_local_alloc. */
+  MPI_Win_lock_all(0, dart_win_local_alloc);
+
+
+  /* put the localalloc in the segment table */
+  dart_segment_info_t *segment = dart_segment_alloc(
+                                &team_data->segdata, DART_SEGMENT_REGISTER);
+  segment->dirty       = false;
+  segment->flags       = 0;
+  segment->segid       = 0;
+  segment->size        = 0;
+  segment->baseptr     = NULL;
+  segment->win         = dart_win_local_alloc;
+  segment->selfbaseptr = dart_mempool_localalloc;
+  segment->disp        = calloc(team_data->size, sizeof(MPI_Aint));
+  segment->disp[team_data->unitid] = dart_mempool_localalloc;
+
   /* Create a dynamic win object for all the dart collective
    * allocation based on MPI_COMM_WORLD. Return in win. */
   MPI_Win win;
   MPI_Win_create_dynamic(
     MPI_INFO_NULL, DART_COMM_WORLD, &win);
   team_data->window = win;
-
-  /* Start an access epoch on dart_win_local_alloc, and later
-   * on all the units can access the memory region allocated
-   * by the local allocation function through
-   * dart_win_local_alloc. */
-  MPI_Win_lock_all(0, dart_win_local_alloc);
 
   /* Start an access epoch on win, and later on all the units
    * can access the attached memory region allocated by the
