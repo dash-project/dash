@@ -21,6 +21,12 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
   add_subdirectory(mpi)
 endif()
 
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpiprog;")
+  set(DART_IMPLEMENTATION_MPIPROG_ENABLED ON
+      CACHE BOOL INTERNAL FORCE)
+  add_subdirectory(mpiprog)
+endif()
+
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
       CACHE BOOL INTERNAL FORCE)

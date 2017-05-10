@@ -59,7 +59,7 @@ rm -Rf $BUILD_DIR/*
                         -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
-                        -DDART_IMPLEMENTATIONS=mpi \
+                        -DDART_IMPLEMENTATIONS=mpiprog \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
@@ -74,16 +74,16 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
                         \
-                        -DENABLE_LIBNUMA=ON \
+                        -DENABLE_LIBNUMA=OFF \
                         -DENABLE_LIKWID=OFF \
-                        -DENABLE_HWLOC=ON \
-                        -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=ON \
-                        -DENABLE_LAPACK=ON \
-                        -DENABLE_SCALAPACK=ON \
-                        -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=ON \
+                        -DENABLE_HWLOC=OFF \
+                        -DENABLE_PAPI=OFF \
+                        -DENABLE_MKL=OFF \
+                        -DENABLE_BLAS=OFF \
+                        -DENABLE_LAPACK=OFF \
+                        -DENABLE_SCALAPACK=OFF \
+                        -DENABLE_PLASMA=OFF \
+                        -DENABLE_HDF5=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
@@ -93,6 +93,8 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+												-DGTEST_INCLUDE_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest_cray_gnu/include \
+												-DGTEST_LIBRARY_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest_cray_gnu/lib \
                         ../ && \
  await_confirm && \
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \

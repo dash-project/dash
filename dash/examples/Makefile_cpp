@@ -11,6 +11,9 @@ include $(DASH_ROOT)/make.defs
 ifeq ($(DART_IMPL), mpi)
      CFLAGS+=-DDART_MPI
 endif
+ifeq ($(DART_IMPL), mpiprog)
+     CFLAGS+=-DDART_MPIPROG
+endif
 ifeq ($(DART_IMPL), shmem)
      CFLAGS+=-DDART_SHMEM
 endif

@@ -257,7 +257,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR})
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
-  if (${dart_variant} STREQUAL "mpi")
+  if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL
+													"mpi"))
     if (IPM_FOUND)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
            "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_IPM")
@@ -287,7 +288,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
-  if (${dart_variant} STREQUAL "mpi")
+  if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL
+													"mpi"))
     include_directories(
       ${MPI_INCLUDE_PATH})
     target_link_libraries(
@@ -377,7 +379,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${ADDITIONAL_LINK_FLAGS}
           ${ADDITIONAL_LIBRARIES}
         )
-        if (${dart_variant} STREQUAL "mpi")
+        if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL
+																"mpi"))
           include_directories(
             ${MPI_INCLUDE_PATH})
           target_link_libraries(
@@ -449,7 +452,8 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       ${DART_LIBRARY}
       ${ADDITIONAL_LIBRARIES}
     )
-    if (${dart_variant} STREQUAL "mpi")
+    if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL
+														"mpi"))
       if (IPM_FOUND)
         include_directories(
           ${IPM_INCLUDE_DIRS})
@@ -485,7 +489,8 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
 
     # Code Coverage
     if (BUILD_COVERAGE_TESTS)
-      if (${dart_variant} STREQUAL "mpi")
+      if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL
+															"mpi"))
         setup_target_for_coverage(
           coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
       else()

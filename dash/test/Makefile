@@ -31,6 +31,9 @@ endif
 ifeq ($(DART_IMPL), mpi)
      CFLAGS+=-DDART_MPI
 endif
+ifeq ($(DART_IMPL), mpiprog)
+     CFLAGS+=-DDART_MPIPROG
+endif
 ifeq ($(DART_IMPL), shmem)
      CFLAGS+=-DDART_SHMEM
 endif
@@ -38,7 +41,7 @@ endif
 LDFLAGS  += -lgtest -L$(GTEST_LIBRARY_PATH) -L$(LIBDART_DIR) -ldart
 INCLUDES += -I$(GTEST_INCLUDE_PATH)
 
-DASHTEST = dash-test-mpi
+DASHTEST = dash-test-mpiprog
 
 FILES = ArrayTest \
 				MatrixTest \

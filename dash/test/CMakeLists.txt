@@ -65,7 +65,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS
       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
-  if (${dart_variant} STREQUAL "mpi")
+  if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL "mpi"))
     set(VARIANT_ADDITIONAL_COMPILE_FLAGS
         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
   endif()

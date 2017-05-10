@@ -64,7 +64,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS
       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
   # Some benchmarks use MPI directly
-  if (${dart_variant} STREQUAL "mpi")
+  if ((${dart_variant} STREQUAL "mpiprog") OR (${dart_variant} STREQUAL "mpi"))
     if (NOT ENABLE_SHARED_WINDOWS)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
           "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
