@@ -4,6 +4,7 @@
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/algorithm/Accumulate.h>
@@ -295,52 +296,55 @@ GlobOutputIt transform(
   BinaryOperation binary_op)
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
+  auto &pattern = out_first.pattern();
   // Outut range different from rhs input range is not supported yet
   ValueType* in_first = &(*in_a_first);
   ValueType* in_last  = &(*in_a_last);
-  std::vector<ValueType> in_range;
+  // Number of elements in local range:
+  size_t num_local_elements     = std::distance(in_first, in_last);
+  auto out_last                 = out_first + num_local_elements;
+  if (out_last.gpos() > pattern.size()) {
+    DASH_THROW(dash::exception::OutOfRange,
+      "Too many input elements in dash::transform");
+  }
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A
     // Input is (in_a_first, in_a_last).
   } else {
     // Output range different from rhs input range: C = A+B
     // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
-    auto lpos = in_b_first.lpos();
-    std::transform(
-      in_a_first, in_a_last,
-      in_b_first.globmem().lbegin()
-        + (lpos.unit == dash::myid()) ? lpos.index : 0,
-      std::back_inserter(in_range),
-      binary_op);
-    in_first = in_range.data();
-    in_last  = in_first + in_range.size();
+    dash::copy(
+      in_b_first,
+      in_b_first + std::distance(in_a_first, in_a_last),
+      out_first);
   }
 
   dash::util::Trace trace("transform");
 
-  // Number of elements in local range:
-  size_t num_local_elements     = std::distance(in_first, in_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
-  auto &pattern = out_first.pattern();
   auto &team    = pattern.team();
   size_t towrite = num_local_elements;
+  auto out_it    = out_first;
+  auto in_it     = in_first;
   while (towrite > 0) {
-    auto   lpos  = out_first.lpos();
+    auto   lpos  = out_it.lpos();
     size_t lsize = pattern.local_size(lpos.unit);
     size_t num_values = std::min(lsize - lpos.index, towrite);
-    std::cout << dash::myid() << ": lpos={" << lpos.index << ", " << lpos.unit << "}; num_values=" << num_values << " lsize=" << lsize << std::endl;
-    dart_gptr_t dest_gptr = out_first.dart_gptr();
+    dart_gptr_t dest_gptr = out_it.dart_gptr();
+    // use non-blocking transform and wait for all at the end
     dash::internal::transform_impl(
       dest_gptr,
-      in_first,
+      in_it,
       num_values,
       binary_op.dart_operation());
-    out_first += num_values;
-    towrite   -= num_values;
+    out_it  += num_values;
+    in_it   += num_values;
+    towrite -= num_values;
   }
 
+//  out_first.team().barrier();
   dart_flush_all(out_first.dart_gptr());
 
 
@@ -366,7 +370,7 @@ GlobOutputIt transform(
   // For ranges over block borders, we would have to resolve the global
   // position past the last element transformed from the iterator's pattern
   // (see dash::PatternIterator).
-  return out_first;
+  return out_it;
 }
 
 /**
