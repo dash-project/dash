@@ -5,6 +5,9 @@
 #include <dash/Matrix.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
+#include <dash/algorithm/ForEach.h>
 #include <dash/pattern/ShiftTilePattern1D.h>
 #include <dash/pattern/TilePattern1D.h>
 #include <dash/pattern/BlockPattern1D.h>
@@ -801,6 +804,41 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
     EXPECT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);
   }
+}
+
+
+TEST_F(CopyTest, GlobalToGlobal)
+{
+  using value_t = int;
+  constexpr int elem_per_unit = 100;
+  dash::Array<value_t> source(dash::size() * elem_per_unit);
+  dash::Array<value_t> target(dash::size() * elem_per_unit);
+
+  dash::fill(target.begin(), target.end(), 0);
+  dash::generate_with_index(source.begin(), source.end(),
+    [](size_t idx) {
+      return dash::myid() * 1000 + idx;
+    }
+  );
+
+  source.barrier();
+
+
+  // copy the first local range with an offset
+  dash::copy(source.begin(), source.end() + 1, target.begin());
+
+  dash::for_each_with_index(source.begin(), source.end(),
+    [](value_t val, size_t idx) {
+      ASSERT_EQ_U(val, dash::myid() * 1000 + idx);
+    }
+  );
+
+  dash::for_each_with_index(target.begin() + 1, target.end(),
+    [](value_t val, size_t idx) {
+      ASSERT_EQ_U(val, dash::myid() * 1000 + idx);
+    }
+  );
+
 }
 
 #if 0

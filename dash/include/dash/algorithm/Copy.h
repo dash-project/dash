@@ -1186,7 +1186,6 @@ copy_async(
  * \ingroup  DashAlgorithms
  */
 template <
-  typename ValueType,
   class GlobInputIt,
   class GlobOutputIt >
 GlobOutputIt copy(
@@ -1196,11 +1195,24 @@ GlobOutputIt copy(
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 
-  // TODO:
-  // - Implement adapter for local-to-global dash::copy here
-  // - Return if global input range has no local sub-range
+  auto num_elements       = dash::distance(in_first, in_last);
 
-  return GlobOutputIt();
+  auto li_range_in        = local_index_range(in_first, in_last);
+  auto num_local_elem     = li_range_in.end - li_range_in.begin;
+  auto pattern            = in_first.pattern();
+
+  auto local_in_first     = in_first + pattern.global(li_range_in.begin);
+  auto local_in_last      = in_first + pattern.global(li_range_in.end - 1);
+
+  // copy our local portion into the global output range
+  if (num_elements > 0) {
+    dash::copy(
+      local_in_first.local(),
+      local_in_last.local() + 1,
+      out_first + pattern.global(li_range_in.begin));
+  }
+
+  return (out_first + num_elements);
 }
 
 #endif // DOXYGEN
