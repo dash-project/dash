@@ -46,6 +46,12 @@ dart__mpi__datatype_init()
   return DART_OK;
 }
 
+static void
+check_dirty_segment()
+{
+
+}
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 static dart_ret_t get_shared_mem(
   dart_team_data_t * team_data,
@@ -245,6 +251,9 @@ dart_ret_t dart_put(
       return DART_OK;
     }
 
+
+    dart_segment_set_dirty(&team_data->segdata, seg_id, true);
+
     win     = team_data->window;
     offset += disp_s;
 
@@ -261,7 +270,6 @@ dart_ret_t dart_put(
 
     win = dart_win_local_alloc;
   }
-
 
   MPI_Put(
     src,

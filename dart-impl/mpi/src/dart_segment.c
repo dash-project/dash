@@ -151,7 +151,7 @@ dart_ret_t dart_segment_get_win(
     return DART_ERR_INVAL;
   }
 
-  *win = segment->win;
+  *win = segment->shmwin;
   return DART_OK;
 }
 #endif
@@ -161,7 +161,6 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
                                  dart_team_unit_t     rel_unitid,
                                  MPI_Aint           * disp_s)
 {
-  MPI_Aint trans_disp = 0;
   *disp_s  = 0;
 
   DART_LOG_TRACE("dart_segment_get_disp() "
@@ -175,10 +174,39 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
     return DART_ERR_INVAL;
   }
 
-  trans_disp = segment->disp[rel_unitid.id];
-  *disp_s    = trans_disp;
+  *disp_s = segment->disp[rel_unitid.id];
   DART_LOG_TRACE("dart_segment_get_disp > disp:%"PRIu64"",
-                 (unsigned long)trans_disp);
+                 (unsigned long)*disp_s);
+  return DART_OK;
+}
+
+dart_ret_t dart_segment_get_dirty(
+  dart_segmentdata_t  * segdata,
+  int16_t               segid,
+  bool                * dirty)
+{
+  dart_segment_info_t *segment = get_segment(segdata, segid);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_dirty ! Invalid segment ID %i on team %i",
+                   segid, segdata->team_id);
+    return DART_ERR_INVAL;
+  }
+  *dirty = segment->dirty;
+  return DART_OK;
+}
+
+dart_ret_t dart_segment_set_dirty(
+  dart_segmentdata_t  * segdata,
+  int16_t               segid,
+  bool                  dirty)
+{
+  dart_segment_info_t *segment = get_segment(segdata, segid);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_segment_get_dirty ! Invalid segment ID %i on team %i",
+                   segid, segdata->team_id);
+    return DART_ERR_INVAL;
+  }
+  segment->dirty = dirty;
   return DART_OK;
 }
 

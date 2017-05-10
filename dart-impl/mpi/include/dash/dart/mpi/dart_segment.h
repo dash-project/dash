@@ -8,6 +8,7 @@
 #ifndef DART_SEGMENT_H_
 #define DART_SEGMENT_H_
 #include <mpi.h>
+#include <stdbool.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/base/macro.h>
@@ -18,13 +19,14 @@ typedef int16_t dart_segid_t;
 
 typedef struct
 {
-  dart_segid_t segid; /* seg_id determines a global pointer uniquely */
   size_t       size;
-  MPI_Aint   * disp;   /* address set of memory location of all units in certain team. */
-  char      ** baseptr;
-  char       * selfbaseptr;
-  MPI_Win      win;
-  uint16_t     flags;
+  MPI_Aint   * disp;        /* offsets at all units in the team */
+  char      ** baseptr;     /* baseptr of all units in the sharedmem group */
+  char       * selfbaseptr; /* baseptr of the current unit */
+  MPI_Win      shmwin;         /* sharedmem window */
+  uint16_t     flags;       /* 16 bit flags */
+  dart_segid_t segid;       /* ID of the segment, globally unique in a team */
+  bool         dirty;       /* whether the segment has pending writes */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
@@ -103,6 +105,16 @@ dart_ret_t dart_segment_get_baseptr(
   dart_team_unit_t       rel_unitid,
   char               **  baseptr_s) DART_INTERNAL;
 #endif
+
+dart_ret_t dart_segment_get_dirty(
+  dart_segmentdata_t  * segdata,
+  int16_t               segid,
+  bool                * dirty) DART_INTERNAL;
+
+dart_ret_t dart_segment_set_dirty(
+  dart_segmentdata_t  * segdata,
+  int16_t               segid,
+  bool                  dirty) DART_INTERNAL;
 
 dart_ret_t dart_segment_get_selfbaseptr(
   dart_segmentdata_t * segdata,
