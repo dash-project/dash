@@ -823,19 +823,32 @@ TEST_F(CopyTest, GlobalToGlobal)
 
   source.barrier();
 
+  // copy the full range
+  dash::copy(source.begin(), source.end(), target.begin());
+  source.barrier();
 
-  // copy the first local range with an offset
-  dash::copy(source.begin(), source.end() + 1, target.begin());
-
-  dash::for_each_with_index(source.begin(), source.end(),
+  dash::for_each_with_index(target.begin(), target.end(),
     [](value_t val, size_t idx) {
       ASSERT_EQ_U(val, dash::myid() * 1000 + idx);
     }
   );
 
-  dash::for_each_with_index(target.begin() + 1, target.end(),
+  // copy the range with an offset (effectively moving the input
+  // range to the left by 1)
+  dash::copy(source.begin() + 1, source.end(), target.begin());
+  source.barrier();
+
+  dash::for_each_with_index(target.begin(), target.end() - 1,
     [](value_t val, size_t idx) {
-      ASSERT_EQ_U(val, dash::myid() * 1000 + idx);
+      std::cout << idx << ": " << val << std::endl;
+      // the array has shifted so the last element is different
+      if ((idx % elem_per_unit) == (elem_per_unit - 1)) {
+        // the last element comes from the next unit
+        // this element has not been copied on the last unit
+        ASSERT_EQ_U(val, (dash::myid() + 1) * 1000 + idx + 1);
+      } else {
+        ASSERT_EQ_U(val, dash::myid() * 1000 + idx + 1);
+      }
     }
   );
 
