@@ -116,3 +116,45 @@ TEST_F(GlobStaticMemTest, LocalBegin)
   }
   EXPECT_NE_U(target.lbegin(), nullptr);
 }
+
+TEST_F(GlobStaticMemTest, MoveSemantics){
+  using memory_t = dash::GlobStaticMem<int>;
+  // move construction
+  {
+    memory_t memory_a(10);
+
+    *(memory_a.lbegin()) = 5;
+    dash::barrier();
+
+    memory_t memory_b(std::move(memory_a));
+    int value = *(memory_b.lbegin());
+    ASSERT_EQ_U(value, 5);
+  }
+  dash::barrier();
+  //move assignment
+  {
+    memory_t memory_a(10);
+    {
+      memory_t memory_b(8);
+
+      *(memory_a.lbegin()) = 1;
+      *(memory_b.lbegin()) = 2;
+      memory_a = std::move(memory_b);
+      // leave scope of memory_b
+    }
+    ASSERT_EQ_U(*(memory_a.lbegin()), 2);
+  }
+  dash::barrier();
+  // swap
+  {
+    memory_t memory_a(10);
+    memory_t memory_b(8);
+
+    *(memory_a.lbegin()) = 1;
+    *(memory_b.lbegin()) = 2;
+
+    std::swap(memory_a, memory_b);
+    ASSERT_EQ_U(*(memory_a.lbegin()), 2);
+    ASSERT_EQ_U(*(memory_b.lbegin()), 1);
+  }
+}
