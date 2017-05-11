@@ -8,8 +8,8 @@
 #  HDF5_FOUND
 #  HDF5_LIBRARIES
 #  HDF5_INCLUDE_DIRS
-INCLUDE (CheckSymbolExists)
-INCLUDE (CMakePushCheckState)
+include (CheckSymbolExists)
+include (CMakePushCheckState)
 
 if(NOT HDF5_PREFIX AND NOT $ENV{HDF5_BASE} STREQUAL "")
 	set(HDF5_PREFIX $ENV{HDF5_BASE})
@@ -58,10 +58,10 @@ find_package_handle_standard_args(
 # set flags
 if(HDF5_FOUND)
   # save current state
-  cmake_push_check_state(RESET)
+  cmake_push_check_state()
   set(CMAKE_REQUIRED_INCLUDES ${HDF5_INCLUDE_DIRS})
-
-  CHECK_SYMBOL_EXISTS(H5_HAVE_PARALLEL "H5pubconf.h" HAVE_H5_PARALLEL)
+  check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HAVE_H5_PARALLEL)
+  cmake_pop_check_state()
 
   if(NOT HAVE_H5_PARALLEL)
     message(STATUS "HDF5 provides only serial version")
@@ -72,7 +72,6 @@ if(HDF5_FOUND)
 #   set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
     set (HDF5_LINKER_FLAGS $ENV{HDF5_LIB} ${SZIP_LIB} -lz)
   endif()
-  cmake_pop_check_state()
 endif()
 
 mark_as_advanced(
