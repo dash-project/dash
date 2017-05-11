@@ -255,12 +255,46 @@ dart_ret_t dart_adapt_teamlist_destroy()
   return DART_OK;
 }
 
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
+  int size, progress_size;
+
+	MPI_Comm sharedmem_comm;
+	MPI_Group sharedmem_group, group_all;
+	MPI_Comm_split_type(
+		team_data->progress_comm,
+		MPI_COMM_TYPE_SHARED,
+		1,
+		MPI_INFO_NULL,
+		&sharedmem_comm);
+
+	team_data->sharedmem_comm = sharedmem_comm;
+	if (sharedmem_comm != MPI_COMM_NULL){
+	  MPI_Comm_size(
+			sharedmem_comm,
+			&(team_data->sharedmem_nodesize);)
+	}
+	/* This is build for the team that is visible to the user application */
+	if (team_data->comm != MPI_COMM_NULL){
+	  MPI_Comm_size (team_data->comm, &size);
+		team_data->sharedmem_tab = malloc (
+			size * sizeof(dart_team_unit_t));
+		dart_unit_mapping = malloc (sizeof(int) * (
+			team_data->sharedmem_nodesize - PROGRESS_NUM));
+		sharedmem_ranks = malloc (
+			sizeof(int) * (team_data->sharedmem_nodesize = PROGRESS_NUM));}
+
+
+
+
+
+
+
+///////////
+
   int size;
 
-  MPI_Comm_size(DART_COMM_WORLD, &size);
+  MPI_Comm_size(team_data->comm, &size);
 
   MPI_Comm sharedmem_comm;
   MPI_Group sharedmem_group, group_all;
@@ -281,7 +315,7 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
   // dart_sharedmem_size[index] * sizeof (int));
 
     MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-    MPI_Comm_group(DART_COMM_WORLD, &group_all);
+    MPI_Comm_group(team_data->comm, &group_all);
 
     int * dart_unit_mapping  = malloc(
         team_data->sharedmem_nodesize * sizeof(int));
@@ -310,8 +344,10 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
     }
     free(sharedmem_ranks);
     free(dart_unit_mapping);
+
+		int * dart_unit_mapping_progress = malloc
   }
 
   return DART_OK;
 }
-#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+

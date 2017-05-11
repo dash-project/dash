@@ -156,9 +156,14 @@ typedef struct dart_team_data {
   struct dart_team_data *next;
 
   /**
-   * @brief The communicator corresponding to this team.
+   * @brief The communicator wrt. this team that is visible to the user application.
    */
   MPI_Comm comm;
+
+	/**
+	 * @brief The communicator includes the progress units.
+	 */
+	MPI_Comm progress_comm;
 
   /**
    * @brief MPI dynamic window object corresponding this team.
