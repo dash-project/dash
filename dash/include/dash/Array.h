@@ -212,14 +212,14 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_reference operator[](const size_t n) const {
+  constexpr const_reference operator[](const size_type n) const {
     return (_array->m_lbegin)[n];
   }
 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline reference operator[](const size_t n) {
+  inline reference operator[](const size_type n) {
     return (_array->m_lbegin)[n];
   }
 
@@ -362,7 +362,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_async_reference operator[](const size_t n) const  {
+  constexpr const_async_reference operator[](const size_type n) const  {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
@@ -370,7 +370,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  async_reference operator[](const size_t n) {
+  async_reference operator[](const size_type n) {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
