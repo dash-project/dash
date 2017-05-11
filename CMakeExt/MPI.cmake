@@ -42,16 +42,16 @@ endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)
 # check for MPI-3
 
 # save current state
-cmake_push_check_state(RESET)
+cmake_push_check_state()
 set(CMAKE_REQUIRED_INCLUDES ${MPI_INCLUDE_PATH})
-CHECK_SYMBOL_EXISTS(
+check_symbol_exists(
   MPI_NO_OP
   mpi.h
   HAVE_MPI_NO_OP
 )
+cmake_pop_check_state()
 
 if (NOT HAVE_MPI_NO_OP)
   message(FATAL_ERROR "Detected MPI library does not support MPI-3.")
 endif()
-cmake_pop_check_state()
 
