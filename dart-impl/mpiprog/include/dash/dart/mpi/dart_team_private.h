@@ -147,7 +147,9 @@
 extern dart_team_t dart_next_availteamid DART_INTERNAL;
 
 extern MPI_Comm dart_comm_world DART_INTERNAL;
+extern MPI_Comm dart_comm_user DART_INTERNAL;
 #define DART_COMM_WORLD dart_comm_world
+#define DART_COMM_USER dart_comm_user
 
 #define DART_MAX_TEAM_NUMBER (256)
 
@@ -163,7 +165,7 @@ typedef struct dart_team_data {
 	/**
 	 * @brief The communicator includes the progress units.
 	 */
-	MPI_Comm progress_comm;
+	MPI_Comm prog_comm;
 
   /**
    * @brief MPI dynamic window object corresponding this team.
@@ -171,8 +173,6 @@ typedef struct dart_team_data {
   MPI_Win window;
 
   dart_segmentdata_t segdata;
-
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /**
    * @brief Store the sub-communicator with regard to certain node, where the units can
    * communicate via shared memory.
@@ -189,21 +189,23 @@ typedef struct dart_team_data {
    */
   int sharedmem_nodesize;
 
-#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
   dart_unit_t unitid;
 
+  dart_unit_t prog_unitid;
+
   int         size;
+
+  int         prog_size;
 
   dart_team_t teamid;
 
 } dart_team_data_t;
 
 
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 extern char* *dart_sharedmem_local_baseptr_set DART_INTERNAL;
-#endif
+
 /* @brief Initiate the free-team-list and allocated-team-list.
  *
  * This call will be invoked within dart_init(), and the free teamlist consist of

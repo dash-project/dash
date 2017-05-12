@@ -129,8 +129,7 @@ dart_ret_t do_init()
 		int subgroup_size;
 		MPI_Group_size (progress_group, &subgroup_size);
 		MPI_Group_difference (group_all, progress_group, &user_group);
-		user_comm_world = MPI_COMM_NULL;
-		MPI_Comm_create (MPI_COMM_WORLD, user_group, &user_comm_world);
+
     realteam_data->user_comm = MPI_COMM_NULL;
 		MPI_Comm_create (realteam_data->comm, user_group, &realteam_data->user_comm);
 		free (progresshead_node);

@@ -257,11 +257,10 @@ dart_ret_t dart_adapt_teamlist_destroy()
 
 dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
-  int size, progress_size;
+  MPI_Comm sharedmem_comm;
+  MPI_Group group_all, sharedmem_group, user_group;
 
-	MPI_Comm sharedmem_comm;
-	MPI_Group sharedmem_group, group_all;
-	MPI_Comm_split_type(
+  MPI_Comm_split_type(
 		team_data->progress_comm,
 		MPI_COMM_TYPE_SHARED,
 		1,
@@ -274,23 +273,140 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 			sharedmem_comm,
 			&(team_data->sharedmem_nodesize);)
 	}
-	/* This is build for the team that is visible to the user application */
+
+	MPI_Comm_group (team_data->prog_comm, &group_all);
+	MPI_Comm_group (sharedmem_comm, &sharedmem_group);
+
+	if (sharedmem_comm != MPI_COMM_NULL){
+		int progress, iter, progress_count;
+		MPI_Group new_group[PROGRESS_NUM], progress_group;
+
+		int * progresshead_node = (int*) malloc (sizeof(int) * team_data->size);
+		int * progress_node = (int*)malloc (sizeof(int) * team_data->size);
+    int *progress_recv = (int*)malloc (sizeof(int) * team_data->size);
+
+		for (int iter=0; iter<PROGRESS_NUM; iter++){
+		  int progress_rel = PROGRESS_UNIT+iter;
+			MPI_Group_translate_ranks (
+        sharedmem_group,
+        1,
+        &progress_rel,
+        grop_all,
+        &progress);
+      MPI_Allgather (
+        &progress,
+			  1,
+				MPI_INT,
+				progress_recv,
+			  1,
+				MPI_INT,
+				team_data->prog_comm);
+			for (i=0; i<realteam_data->size; i++) progresshead_node[i]=0;
+			for (i=0; i<realteam_data->size; i++){
+			  int pp;
+				int j;
+				pp = progress_recv[i];
+        for (j = 0; j <= i; j++){
+				  if (pp == progress_recv[j]) break;
+				}
+				progresshead_node[pp] = i;
+			}
+		}
+		MPI_Group_incl (
+      group_all,
+			progress_count,
+		  progress_node,
+			&new_group[iter]);
+		if (PROGRESS_NUM == 1){
+		  progress_group = new_group[0];}
+		else{
+		  for (iter=0; iter<PROGRESS_NUM;){
+			  if (iter == 0){
+				  MPI_Group_union (
+            new_group[PROGRESS_UNIT+iter],
+						new_group[PROGRESS_UNIT+iter+1],
+						&progress_group);
+					iter += 2;}else{
+					MPI_Group_union (
+            progress_group,
+						new_group[PROGRESS_UNIT+iter],
+						&progress_group);
+					iter++;
+        }
+			}
+		}
+		int subgroup_size;
+		MPI_Group_size (progress_group, &subgroup_size);
+		MPI_Group_difference (group_all, progress_group, &user_group);
+
+    team_data->comm = MPI_COMM_NULL;
+		MPI_Comm_create (team_data->prog_comm, user_group, &team_data->comm);
+
+    if (MPI_Comm_dup(team_data->comm, &dart_comm_user) != MPI_SUCCESS) {
+    DART_LOG_ERROR("Failed to duplicate MPI_COMM_WORLD");
+    return DART_ERR_OTHER;}
+
+		free (progresshead_node);
+		free (progress_node);
+		free (progress_recv);
+  }
+
+  int size, prog_size;
+	MPI_Group sharedmem_group, group_all;
+
+  /* This is built for the team that is visible to the user application */
 	if (team_data->comm != MPI_COMM_NULL){
 	  MPI_Comm_size (team_data->comm, &size);
 		team_data->sharedmem_tab = malloc (
 			size * sizeof(dart_team_unit_t));
-		dart_unit_mapping = malloc (sizeof(int) * (
+		int * dart_unit_mapping = malloc (sizeof(int) * (
 			team_data->sharedmem_nodesize - PROGRESS_NUM));
-		sharedmem_ranks = malloc (
-			sizeof(int) * (team_data->sharedmem_nodesize = PROGRESS_NUM));}
+		int * sharedmem_ranks = malloc (
+			sizeof(int) * (team_data->sharedmem_nodesize-PROGRESS_NUM));
+
+    for (i = 0; i < team_data->sharedmem_nodesize-PROGRESS_NUM; i++)
+      sharedmem_ranks[i] = i + PROGRESS_NUM;
+    for (i = 0; i < size; i++)
+      team_data->sharedmem_tab[i] = DART_UNDEFINED_TEAM_UNIT_ID;
+
+    MPI_Group_translate_ranks (
+      sharedmem_group,
+      team_data->sharedmem_nodesize-PROGRESS_NUM,
+      sharedmem_ranks,
+      user_group,
+      dart_unit_mapping);
+    for (i = 0; i < team_data->sharedmem_nodesize-PROGRESS_NUM; i++)
+      team_data->sharedmem_tab[dart_unit_mapping[i]] = i + PROGRESS_NUM;
+    free (sharedmem_ranks);
+    free (dart_unit_mapping);
+  }
+  MPI_Comm_size (team_data->prog_comm, &prog_size);
+  team_data->prog_sharedmem_tab = malloc (
+      prog_size * sizeof(dart_team_unit_t));
+  int * dart_unit_mapping_prog = malloc (
+      sizeof(int) * (team_data->sharedmem_nodesize));
+  int * sharedmem_ranks_prog = malloc (
+      sizeof(int) * (team_data->sharedmem_nodesize));
+  for (i = 0; i < team_data->sharedmem_nodesize; i++)
+    sharedmem_ranks_prog[i] = i;
+  for (i = 0; i < prog_size; i++)
+    team_data->prog_sharedmem_tab[i] = DART_UNDEFINED_TEAM_UNIT_ID;
+
+  MPI_Group_translate_ranks (
+    sharedmem_group,
+    team_data->sharedmem_nodesize,
+    sharedmem_ranks_prog,
+    group_all,
+    dart_unit_mapping_prog);
+  for (i = 0; i < team_data->sharedmem_nodesize; i++)
+    team_data->prog_sharedmem_tab[dart_unit_mapping_prog] = i;
+  free (sharedmem_ranks_prog);
+  free (dart_unit_mapping_prog);
 
 
 
 
-
-
-
-///////////
+////////////////////////////////////
 
   int size;
 
@@ -344,8 +460,6 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
     }
     free(sharedmem_ranks);
     free(dart_unit_mapping);
-
-		int * dart_unit_mapping_progress = malloc
   }
 
   return DART_OK;
