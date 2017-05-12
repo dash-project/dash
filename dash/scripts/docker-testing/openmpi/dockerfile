@@ -29,8 +29,8 @@ RUN           cd papi*/src/                  \
            && make install
 ENV           PAPI_BASE=/opt/papi
 
-# Openmpi 1.10.5
-ADD           https://www.open-mpi.org/software/ompi/v1.10/downloads/openmpi-1.10.5.tar.gz ompi.tgz
+# Openmpi 1.10.6
+ADD           https://www.open-mpi.org/software/ompi/v1.10/downloads/openmpi-1.10.6.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                         \
            && ./configure --prefix=/opt/openmpi  \
