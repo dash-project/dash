@@ -192,6 +192,11 @@ target_link_libraries(
   ${ADDITIONAL_LIBRARIES}
 )
 
+set_target_properties(
+  ${DASH_DART_IMPL_MPI_LIBRARY}
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+)
+
 if(MPI_LINK_FLAGS)
   set_target_properties(
     ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES

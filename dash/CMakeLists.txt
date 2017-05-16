@@ -287,6 +287,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
+
+  set_target_properties(
+    ${DASH_LIBRARY}
+    PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+  )
+
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
       ${MPI_INCLUDE_PATH})
