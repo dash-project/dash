@@ -30,9 +30,18 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   elseif ("${MPI_INCLUDE_PATH}" MATCHES "openmpi")
     set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
     set(MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
-    # temporarily disable shared memory windows due to alignment problems
-    set(ENABLE_SHARED_WINDOWS OFF)
-    message(WARNING "MPI shared windows disabled due to defective allocation in OpenMPI")
+    MESSAGE(STATUS "Checking OpenMPI version")
+    TRY_COMPILE(MPI_VERSION_OK ${CMAKE_BINARY_DIR}
+                ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_openmpi_version.c
+                CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${MPI_INCLUDE_PATH}
+                OUTPUT_VARIABLE OUTPUT)
+    if (NOT MPI_VERSION_OK)
+      # disable shared memory windows due to alignment problems
+      set(ENABLE_SHARED_WINDOWS OFF)
+      message(WARNING 
+        "Disabling shared memory window support due to defective allocation "
+        "in OpenMPI <2.1.1")
+    endif()
   endif()
 else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")
