@@ -6,8 +6,10 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 #include <dash/Array.h>
-#include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+#include <dash/Meta.h>
+
+#include <dash/memory/GlobHeapMem.h>
 
 #include <dash/atomic/GlobAtomicRef.h>
 
@@ -22,6 +24,7 @@
 #include <functional>
 #include <algorithm>
 #include <cstddef>
+
 
 namespace dash {
 
@@ -74,22 +77,14 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::DynamicAllocator<
+  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {
-  /**
-   * The Cray compiler (as of CCE8.5.6) does not support
-   * std::is_trivially_copyable.
-   *
-   * TODO: Remove the guard once this has been fixed by Cray.
-   */
-#ifndef _CRAYC
-  static_assert(std::is_trivially_copyable<Key>::value,
-    "Element type must be trivially copyable");
-  static_assert(std::is_trivially_copyable<Mapped>::value,
-    "Element type must be trivially copyable");
-#endif
+  static_assert(
+    dash::is_container_compatible<Key>::value &&
+    dash::is_container_compatible<Mapped>::value,
+    "Type not supported for DASH containers");
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class UnorderedMapLocalRef;
@@ -118,7 +113,7 @@ public:
 
   typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
+  typedef dash::GlobHeapMem<value_type, allocator_type>        glob_mem_type;
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;
@@ -128,26 +123,18 @@ public:
   typedef typename const_reference::template rebind<mapped_type>::other
     const_mapped_type_reference;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::pointer
     node_iterator;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_pointer
     const_node_iterator;
-  typedef typename glob_mem_type::local_iterator
+  typedef typename glob_mem_type::local_pointer
     local_node_iterator;
-  typedef typename glob_mem_type::const_local_iterator
+  typedef typename glob_mem_type::const_local_pointer
     const_local_node_iterator;
-  typedef typename glob_mem_type::reverse_global_iterator
-    reverse_node_iterator;
-  typedef typename glob_mem_type::const_reverse_global_iterator
-    const_reverse_node_iterator;
-  typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_node_iterator;
-  typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_node_iterator;
 
-  typedef typename glob_mem_type::global_iterator
+  typedef typename glob_mem_type::pointer
     local_node_pointer;
-  typedef typename glob_mem_type::const_global_iterator
+  typedef typename glob_mem_type::const_pointer
     const_local_node_pointer;
 
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
@@ -266,7 +253,7 @@ public:
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
 
-  inline const Team & team() const noexcept
+  inline Team & team() const noexcept
   {
     if (_team != nullptr) {
       return *_team;

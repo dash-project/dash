@@ -1,3 +1,9 @@
+/**
+ * \example ex.05.min_element/main.cpp
+ * Example demonstrating different use-cases
+ * of \c dash::min_element.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <sstream>

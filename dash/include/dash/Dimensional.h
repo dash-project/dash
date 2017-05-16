@@ -370,6 +370,25 @@ struct ViewRegion {
   std::array<IndexType, NumDimensions> end;
 };
 
+template<
+  typename IndexType = dash::default_index_t>
+struct ViewRange {
+  // Range begin offset.
+  IndexType begin;
+  // Range end offset.
+  IndexType end;
+};
+
+template<typename IndexType>
+std::ostream & operator<<(
+  std::ostream & os,
+  const ViewRange<IndexType> & viewrange) {
+  os << "dash::ViewRange<" << typeid(IndexType).name() << ">("
+     << "begin:" << viewrange.begin << " "
+     << "end:"   << viewrange.end << ")";
+  return os;
+}
+
 /**
  * Equality comparison operator for ViewPair.
  */
@@ -399,9 +418,9 @@ template<typename IndexType>
 std::ostream & operator<<(
   std::ostream & os,
   const ViewPair<IndexType> & viewpair) {
-  os << "dash::ViewPair<" << typeid(IndexType).name() << ">(offset:"
-     << viewpair.offset << " extent:"
-     << viewpair.extent << ")";
+  os << "dash::ViewPair<" << typeid(IndexType).name() << ">("
+     << "offset:" << viewpair.offset << " "
+     << "extent:" << viewpair.extent << ")";
   return os;
 }
 
@@ -425,12 +444,19 @@ private:
 
 public:
   typedef ViewRegion<NumDimensions, IndexType> region_type;
+  typedef ViewRange<IndexType>                 range_type;
 
 public:
   template<dim_t NDim_, typename IndexType_>
   friend std::ostream& operator<<(
     std::ostream & os,
     const ViewSpec<NDim_, IndexType_> & viewspec);
+
+private:
+  SizeType                             _size    = 0;
+  SizeType                             _rank    = NumDimensions;
+  std::array<SizeType, NumDimensions>  _extents = {{ }};
+  std::array<IndexType, NumDimensions> _offsets = {{ }};
 
 public:
   /**
@@ -482,12 +508,22 @@ public:
   /**
    * Copy constructor.
    */
-  constexpr ViewSpec(const self_t & other)
-  : _size(other._size),
-    _rank(other._rank),
-    _extents(other._extents),
-    _offsets(other._offsets)
-  { }
+  constexpr ViewSpec(const self_t & other) = default;
+
+  /**
+   * Move constructor.
+   */
+  constexpr ViewSpec(self_t && other)      = default;
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & other) = default;
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other)      = default;
 
   /**
    * Equality comparison operator.
@@ -505,18 +541,6 @@ public:
   constexpr bool operator!=(const self_t & other) const
   {
     return !(*this == other);
-  }
-
-  /**
-   * Assignment operator.
-   */
-  self_t & operator=(const self_t & other)
-  {
-    _offsets = other._offsets;
-    _extents = other._extents;
-    _rank    = other._rank;
-    _size    = other._size;
-    return *this;
   }
 
   /**
@@ -635,7 +659,7 @@ public:
     return _extents[dimension];
   }
 
-  constexpr std::array<SizeType, NumDimensions> extents() const
+  constexpr const std::array<SizeType, NumDimensions> & extents() const
   {
     return _extents;
   }
@@ -644,9 +668,16 @@ public:
     return _extents[dim];
   }
 
-  constexpr std::array<IndexType, NumDimensions> offsets() const
+  constexpr const std::array<IndexType, NumDimensions> & offsets() const
   {
     return _offsets;
+  }
+
+  constexpr range_type range(dim_t dim) const
+  {
+    return range_type {
+             static_cast<IndexType>(_offsets[dim]),
+             static_cast<IndexType>(_offsets[dim] + _extents[dim]) };
   }
 
   constexpr IndexType offset(dim_t dim) const
@@ -666,11 +697,6 @@ public:
   }
 
 private:
-  SizeType                             _size;
-  SizeType                             _rank;
-  std::array<SizeType, NumDimensions>  _extents;
-  std::array<IndexType, NumDimensions> _offsets;
-
   void update_size()
   {
     _size = 1;

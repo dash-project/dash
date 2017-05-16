@@ -1,4 +1,4 @@
-#ifndef DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
+ #ifndef DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
 #define DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
 
 #include <dash/matrix/LocalMatrixRef.h>
@@ -83,7 +83,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   // Local view of local block:
   auto l_block_l_view = pattern.local_block_local(block_lindex);
   // Return a view specified by the block's viewspec:
-  view_type<NumDim> view;
+  ViewT<NumDim> view;
   view._refview             = MatrixRefView_t(_refview._mat);
   view._refview._viewspec   = l_block_g_view;
   view._refview._l_viewspec = l_block_l_view;
@@ -115,7 +115,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   // Local view of local block:
   auto l_block_l_view = pattern.local_block_local(block_lindex);
   // Return a view specified by the block's viewspec:
-  view_type<NumDim> view;
+  ViewT<NumDim> view;
   view._refview             = MatrixRefView_t(_refview._mat);
   view._refview._viewspec   = l_block_g_view;
   view._refview._l_viewspec = l_block_l_view;
@@ -131,12 +131,9 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline LocalMatrixRef<T, NumDim, CUR, PatternT>
-::operator LocalMatrixRef<T, NumDim, CUR-1, PatternT> && ()
+::operator LocalMatrixRef<T, NumDim, CUR-1, PatternT> && () &&
 {
-  LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref;
-  ref._refview = _refview;
-  DASH_LOG_TRACE("LocalMatrixRef.&& move");
-  return ::std::move(ref);
+  return LocalMatrixRef<T, NumDim, CUR-1, PatternT>(std::move(_refview));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -147,8 +144,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   // Different operation semantics.
   MatrixRef<T, NumDim, CUR, PatternT>  ref;
   ref._refview = _refview;
-  DASH_LOG_TRACE("LocalMatrixRef.MatrixRef move");
-  return ::std::move(ref);
+  return ref;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>

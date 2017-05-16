@@ -10,7 +10,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
 #include <dash/Allocator.h>
 
 #include <dash/iterator/GlobIter.h>
@@ -64,7 +64,7 @@ private:
     ListNode_t;
   typedef typename allocator_type::template rebind<ListNode_t>::other
     node_allocator_type;
-  typedef dash::GlobDynamicMem<ElementType, node_allocator_type>
+  typedef dash::GlobHeapMem<ElementType, node_allocator_type>
     glob_mem_type;
 
 /// Public types as required by STL list concept:
@@ -155,7 +155,7 @@ public:
                "dash::ListRef.front is not implemented");
   }
 
-  inline Team              & team();
+  inline Team              & team()             const noexcept;
 
   inline size_type           size()             const noexcept;
   inline size_type           local_size()       const noexcept;

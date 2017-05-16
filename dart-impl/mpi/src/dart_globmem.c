@@ -130,10 +130,11 @@ dart_ret_t dart_memalloc(
   dart_datatype_t   dtype,
   dart_gptr_t     * gptr)
 {
-  size_t      nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
+  size_t      nbytes = nelem * dart__mpi__datatype_sizeof(dtype);
   dart_global_unit_t unitid;
   dart_myid(&unitid);
   gptr->unitid  = unitid.id;
+  gptr->flags   = 0;
   gptr->segid   = DART_SEGMENT_LOCAL; /* For local allocation, the segid is marked as '0'. */
   gptr->teamid  = DART_TEAM_ALL;      /* Locally allocated gptr belong to the global team. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
@@ -151,8 +152,9 @@ dart_ret_t dart_memalloc(
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
-  if (gptr.segid != DART_SEGMENT_LOCAL) {
-    DART_LOG_ERROR("dart_memfree: invalid segment id: %d", gptr.segid);
+  if (gptr.segid != DART_SEGMENT_LOCAL || gptr.teamid != DART_TEAM_ALL) {
+    DART_LOG_ERROR("dart_memfree: invalid segment id:%d or team id:%d",
+                   gptr.segid, gptr.teamid);
     return DART_ERR_INVAL;
   }
 
@@ -176,9 +178,8 @@ dart_team_memalloc_aligned(
 {
   char * sub_mem;
   dart_unit_t gptr_unitid = 0; // the team-local ID 0 has the beginning
-  int         dtype_size  = dart_mpi_sizeof_datatype(dtype);
+  int         dtype_size  = dart__mpi__datatype_sizeof(dtype);
   MPI_Aint    nbytes      = nelem * dtype_size;
-  char     ** baseptr_set = NULL;
   size_t      team_size;
   MPI_Win     sharedmem_win = MPI_WIN_NULL;
   dart_team_size(teamid, &team_size);
@@ -202,6 +203,7 @@ dart_team_memalloc_aligned(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
+  char     ** baseptr_set = NULL;
 	/* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
   /* NOTE:
@@ -281,7 +283,7 @@ dart_team_memalloc_aligned(
   MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
   // re-use previously allocated memory
   if (segment->baseptr == NULL) {
-    segment->baseptr = malloc(sizeof(char *) * team_data->sharedmem_nodesize);
+    segment->baseptr = calloc(team_data->sharedmem_nodesize, sizeof(char *));
   }
   baseptr_set = segment->baseptr;
 
@@ -359,9 +361,9 @@ dart_team_memalloc_aligned(
 
 
   DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
-    "baseptr:%p across team %d",
-    nbytes, 0, gptr_unitid, sub_mem, teamid);
+    "dart_team_memalloc_aligned: bytes:%lu gptr_unitid:%d "
+    "baseptr:%p segid:%i across team %d",
+    nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
 	return DART_OK;
 }
@@ -438,7 +440,7 @@ dart_team_memregister_aligned(
    dart_gptr_t     * gptr)
 {
   size_t   size;
-  int      dtype_size = dart_mpi_sizeof_datatype(dtype);
+  int      dtype_size = dart__mpi__datatype_sizeof(dtype);
   size_t   nbytes     = nelem * dtype_size;
   MPI_Aint disp;
   dart_unit_t gptr_unitid = 0;
@@ -504,7 +506,7 @@ dart_team_memregister(
 {
   int    nil;
   size_t size;
-  int    dtype_size = dart_mpi_sizeof_datatype(dtype);
+  int    dtype_size = dart__mpi__datatype_sizeof(dtype);
   size_t nbytes     = nelem * dtype_size;
   dart_unit_t gptr_unitid = 0;
   dart_team_size(teamid, &size);

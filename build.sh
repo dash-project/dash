@@ -57,7 +57,7 @@ rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DBUILD_SHARED_LIBS=OFF \
                         -DBUILD_GENERIC=OFF \
-                        -DENVIRONMENT_TYPE=hazelhen \
+                        -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=OFF \
@@ -74,7 +74,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
                         \
-                        -DENABLE_LIBNUMA=OFF \
+                        -DENABLE_LIBNUMA=ON \
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
@@ -84,10 +84,12 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SCALAPACK=OFF \
                         -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=OFF \
+			-DGTEST_INCLUDE_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest_cray_gnu/include \
+			-DGTEST_LIBRARY_PATH=/zhome/academic/HLRS/hlrs/hpcjschu/opt/gtest_cray_gnu/lib \
                         \
-                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=OFF \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \

@@ -24,7 +24,7 @@ if (ENABLE_THREADSUPPORT)
       MESSAGE(FATAL_ERROR "Support for builtin __sync atomics required if "
                           "building with thread support enabled!")
     endif()
-    
+
     # Find support for pthreads
     find_package(Threads REQUIRED)
     set(CMAKE_C_FLAGS

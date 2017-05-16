@@ -5,14 +5,14 @@
 #include <dash/Types.h>
 
 /**
- * \defgroup  DashLib  High-level management functionality of the DASH library
+ * \defgroup  DashLib  DASH Library Runtime Interface
  *
- * Functions controlling the initialization and finalization of the DASH library.
+ * Functions controlling the initialization and finalization of the DASH
+ * library.
  * The library has to be initialized using \ref dash::init before any other
- * DASH functionality can be used and should be finalized using \ref dash::finalize
- * before program exit.
+ * DASH functionality can be used and should be finalized using
+ * \ref dash::finalize before program exit.
  */
-
 namespace dash
 {
   /**
