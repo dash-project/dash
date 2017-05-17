@@ -17,9 +17,11 @@ add_subdirectory(base)
 
 # DART implementation of every enabled DART variant:
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
+  if(NOT MPI_IS_DART_COMPATIBLE)
+    message(FATAL_ERROR "Detected MPI library does not support MPI-3.")
+  endif()
   set(DART_IMPLEMENTATION_MPI_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
   add_subdirectory(mpi)
 endif()
 

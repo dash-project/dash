@@ -5,6 +5,10 @@
 
 #ifdef DASH_ENABLE_HDF5
 
+#ifndef MPI_IMPL_ID
+#pragma error "HDF5 module requires dart-mpi"
+#endif
+
 #include <dash/Exception.h>
 #include <dash/Init.h>
 #include <dash/Array.h>
@@ -27,10 +31,6 @@
 #include <type_traits>
 #include <functional>
 #include <utility>
-
-#ifndef MPI_IMPL_ID
-#pragma error "HDF5 module requires dart-mpi"
-#endif
 
 #include <dash/dart/if/dart_io.h>
 

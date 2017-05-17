@@ -287,14 +287,14 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
-  if (${dart_variant} STREQUAL "mpi")
+#  if (${dart_variant} STREQUAL "mpi")
     include_directories(
       ${MPI_INCLUDE_PATH})
     target_link_libraries(
       ${DASH_LIBRARY}
       ${MPI_C_LIBRARIES}
       ${MPI_CXX_LIBRARIES})
-  endif()
+#  endif()
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     COMPILE_FLAGS "${VARIANT_ADDITIONAL_COMPILE_FLAGS}"

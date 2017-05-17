@@ -80,6 +80,10 @@ check_symbol_exists(
 cmake_pop_check_state()
 
 if (NOT HAVE_MPI_NO_OP)
-  message(FATAL_ERROR "Detected MPI library does not support MPI-3.")
+  set(MPI_IS_DART_COMPATIBLE FALSE CACHE BOOL
+     "MPI LIB has support for MPI-3")
+else()
+  set(MPI_IS_DART_COMPATIBLE TRUE CACHE BOOL
+    "MPI LIB has support for MPI-3")
 endif()
 
