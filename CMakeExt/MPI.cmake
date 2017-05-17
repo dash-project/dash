@@ -50,7 +50,7 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
     set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
     set(MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
     # Open MPI before 1.10.7 and 2.1.1 failed to properly align memory
-    if (${MPI_IMPL_VERSION} VERSION_LESS 1.10.7 OR 
+    if (${MPI_IMPL_VERSION} VERSION_LESS 1.10.8 OR 
         ${MPI_IMPL_VERSION} VERSION_EQUAL 2.0.0 OR 
         (${MPI_IMPL_VERSION} VERSION_GREATER 2.0.0 AND ${MPI_IMPL_VERSION} VERSION_LESS 2.1.1))
       # disable shared memory windows due to alignment problems
