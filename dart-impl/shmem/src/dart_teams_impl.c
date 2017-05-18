@@ -28,9 +28,9 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
 			    dart_team_t *newteam)
 {
   size_t oldsize, newsize, globalsize;
-  dart_unit_t oldmyid;
-  dart_unit_t oldmyid_global;
-  dart_unit_t newmaster = 0;
+  dart_team_unit_t oldmyid;
+  dart_team_unit_t oldmyid_global;
+  dart_team_unit_t newmaster = 0;
   int i_am_member = 0; 
   int i_am_master = 0; 
   int i;
@@ -120,7 +120,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
       dart_group_ismember(group, i, &ismember);
       if (ismember && i != oldmyid_global) {
         // get the local id of our comm partner
-        dart_unit_t sendto;
+        dart_team_unit_t sendto;
         dart_team_unit_g2l(
           oldteamid, 
           i,
@@ -141,7 +141,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   {
     if (i_am_member) {
       // get the local id of our comm partner
-      dart_unit_t recvfrom;
+      dart_team_unit_t recvfrom;
       dart_team_unit_g2l(
         oldteamid, 
         newmaster,
@@ -179,7 +179,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
 dart_ret_t dart_team_destroy(dart_team_t teamid)
 {
   size_t size;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   
   if( teamid==DART_TEAM_ALL ) {
     // can't delete the default team
@@ -205,7 +205,7 @@ dart_ret_t dart_team_destroy(dart_team_t teamid)
   return ret;
 }
 
-dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid)
 {
   dart_ret_t ret;
 
@@ -255,7 +255,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
   return ret;
 }
 
-dart_ret_t dart_myid(dart_unit_t *myid)
+dart_ret_t dart_myid(dart_team_unit_t *myid)
 {
   DART_INIT_CHECK();
   *myid = _glob_myid;
@@ -285,7 +285,7 @@ int dart_shmem_team_new(
 
 dart_ret_t dart_shmem_team_init(
   dart_team_t team,
-  dart_unit_t myid, 
+  dart_team_unit_t myid, 
 	size_t tsize, 
 	const dart_group_t *group)
 {
@@ -349,7 +349,7 @@ dart_ret_t dart_shmem_team_init(
 
 
 dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
-				  dart_unit_t myid, size_t tsize )
+				  dart_team_unit_t myid, size_t tsize )
 {
   int slot;
   dart_ret_t ret;
@@ -439,8 +439,8 @@ dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team)
 #endif
 
 dart_ret_t dart_team_unit_l2g(dart_team_t teamid, 
-			      dart_unit_t localid,
-			      dart_unit_t *globalid)
+			      dart_team_unit_t localid,
+			      dart_team_unit_t *globalid)
 {
   dart_ret_t ret;
   int slot;
@@ -468,8 +468,8 @@ dart_ret_t dart_team_unit_l2g(dart_team_t teamid,
 
 dart_ret_t dart_team_unit_g2l(
   dart_team_t teamid, 
-  dart_unit_t globalid,
-  dart_unit_t *localid)
+  dart_team_unit_t globalid,
+  dart_team_unit_t *localid)
 {
   dart_ret_t ret;
   int slot;

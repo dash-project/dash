@@ -105,7 +105,7 @@ int dart_init_shmem(int *argc, char ***argv)
 dart_ret_t dart_exit_shmem()
 {
   size_t tsize;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
 
   DEBUG("in dart_exit_shmem%s", "");
   dart_size(&tsize);

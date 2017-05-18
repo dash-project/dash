@@ -56,7 +56,7 @@ dart_ret_t dart_accumulate(
 {
   int             * addr;
   int               poolid;
-  dart_unit_t       myid;
+  dart_team_unit_t       myid;
   dart_mempoolptr   pool;
 
   if (dtype != DART_TYPE_INT) {
@@ -197,7 +197,7 @@ dart_ret_t dart_get_blocking(
 {
   char *addr;
   int poolid;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   dart_mempoolptr pool;
 
   poolid = ptr.segid;
@@ -223,7 +223,7 @@ dart_ret_t dart_put_blocking(
 {
   char *addr;
   int poolid;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   dart_mempoolptr pool;
 
   poolid = ptr.segid;

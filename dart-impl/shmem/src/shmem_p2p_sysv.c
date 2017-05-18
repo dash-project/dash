@@ -26,7 +26,7 @@ int dart_shmem_mkfifo(char *pname) {
 }
 
 int dart_shmem_p2p_init(dart_team_t teamid, size_t tsize,
-			dart_unit_t myid, int ikey ) 
+			dart_team_unit_t myid, int ikey ) 
 {
   int i, slot;
   char buf[128];
@@ -67,7 +67,7 @@ int dart_shmem_p2p_init(dart_team_t teamid, size_t tsize,
 
 
 int dart_shmem_p2p_destroy(dart_team_t teamid, size_t tsize,
-			   dart_unit_t myid, int ikey )
+			   dart_team_unit_t myid, int ikey )
 {
   int i, slot;
   char *pname;
@@ -91,7 +91,7 @@ int dart_shmem_p2p_destroy(dart_team_t teamid, size_t tsize,
 }
 
 int dart_shmem_send(void *buf, size_t nbytes, 
-		    dart_team_t teamid, dart_unit_t dest)
+		    dart_team_t teamid, dart_team_unit_t dest)
 {
   int ret, slot;
 
@@ -114,7 +114,7 @@ int dart_shmem_send(void *buf, size_t nbytes,
 }
 
 int dart_shmem_sendevt(void *buf, size_t nbytes, 
-		       dart_team_t teamid, dart_unit_t dest)
+		       dart_team_t teamid, dart_team_unit_t dest)
 {
   int evtfd;
   long long value=42;
@@ -126,7 +126,7 @@ int dart_shmem_sendevt(void *buf, size_t nbytes,
 }
 
 int dart_shmem_recvevt(void *buf, size_t nbytes,
-		       dart_team_t teamid, dart_unit_t source)
+		       dart_team_t teamid, dart_team_unit_t source)
 {
   int evtfd;
   long long value;
@@ -139,7 +139,7 @@ int dart_shmem_recvevt(void *buf, size_t nbytes,
 }
 
 int dart_shmem_recv(void *buf, size_t nbytes,
-		    dart_team_t teamid, dart_unit_t source)
+		    dart_team_t teamid, dart_team_unit_t source)
 {
   int offs;
   int ret  = 0;
@@ -172,7 +172,7 @@ int dart_shmem_recv(void *buf, size_t nbytes,
 
 
 int dart_shmem_isend(void *buf, size_t nbytes, 
-		     dart_team_t teamid, dart_unit_t dest, 
+		     dart_team_t teamid, dart_team_unit_t dest, 
 		     dart_handle_t *handle)
 {
   int ret;
@@ -196,7 +196,7 @@ int dart_shmem_isend(void *buf, size_t nbytes,
 }
 
 int dart_shmem_irecv(void *buf, size_t nbytes,
-		     dart_team_t teamid, dart_unit_t source,
+		     dart_team_t teamid, dart_team_unit_t source,
 		     dart_handle_t *handle)
 {
   int ret;

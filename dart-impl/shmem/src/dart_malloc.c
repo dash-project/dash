@@ -11,7 +11,7 @@
 /*
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void *addr);
 dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t);
+dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_team_unit_t);
 
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
@@ -59,7 +59,7 @@ dart_ret_t dart_gptr_setaddr(
 
 dart_ret_t dart_gptr_setunit(
   dart_gptr_t *gptr,
-  dart_unit_t u) {
+  dart_team_unit_t u) {
   if (!gptr) {
     return DART_ERR_INVAL;
   }
@@ -91,7 +91,7 @@ dart_ret_t dart_gptr_incaddr(
 dart_ret_t dart_memalloc(
   size_t nbytes,
   dart_gptr_t *gptr) {
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   dart_mempoolptr pool;
   dart_membucket bucket;
   int poolid;
@@ -132,8 +132,8 @@ dart_ret_t dart_team_memalloc_aligned(
   dart_gptr_t *gptr) {
   dart_ret_t ret;
   size_t teamsize;
-  dart_unit_t myid;
-  dart_unit_t unit;
+  dart_team_unit_t myid;
+  dart_team_unit_t unit;
   dart_mempoolptr pool;
   int poolid;
   if (!gptr) {

@@ -111,7 +111,7 @@ void dart_helper_thread_send( work_item_t *item )
   void *buf;
   size_t nbytes;
   dart_team_t teamid;
-  dart_unit_t dest;
+  dart_team_unit_t dest;
     
   buf    = item->buf;
   nbytes = item->nbytes;
@@ -126,7 +126,7 @@ void dart_helper_thread_recv( work_item_t *item )
   void *buf;
   size_t nbytes;
   dart_team_t teamid;
-  dart_unit_t source;
+  dart_team_unit_t source;
     
   buf    = item->buf;
   nbytes = item->nbytes;

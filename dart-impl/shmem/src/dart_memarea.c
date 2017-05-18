@@ -27,7 +27,7 @@ dart_memarea_get_mempool_by_id(int id)
 int dart_memarea_create_mempool(
   dart_team_t teamid,
   size_t teamsize,
-  dart_unit_t myid,
+  dart_team_unit_t myid,
   size_t localsize,
   int is_aligned)
 {

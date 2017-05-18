@@ -32,7 +32,7 @@ void dart_mempool_init(dart_mempoolptr pool);
 dart_ret_t dart_mempool_create(dart_mempoolptr pool,
 			       dart_team_t teamid,
 			       size_t teamsize,
-			       dart_unit_t myid,
+			       dart_team_unit_t myid,
 			       size_t localsz);
 
 
