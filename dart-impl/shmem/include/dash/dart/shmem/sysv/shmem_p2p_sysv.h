@@ -12,8 +12,8 @@ typedef struct fifo_pair_struct
   char *pname_write;
   
   // the file-descriptors used for reading/writing
-  dart_unit_t readfrom;
-  dart_unit_t writeto;
+  dart_team_unit_t readfrom;
+  dart_team_unit_t writeto;
 } fifo_pair_t;
 
 fifo_pair_t team2fifos[MAXNUM_TEAMS][MAXSIZE_GROUP];
@@ -22,38 +22,38 @@ int dart_shmem_send(
     void *buf,
     size_t nbytes, 
 	  dart_team_t teamid,
-    dart_unit_t dest);
+    dart_team_unit_t dest);
 
 int dart_shmem_isend(
     void *buf,
     size_t nbytes, 
 		dart_team_t teamid,
-    dart_unit_t dest, 
+    dart_team_unit_t dest, 
 		dart_handle_t *handle);
 
 int dart_shmem_sendevt(
     void *buf,
     size_t nbytes, 
 	  dart_team_t teamid,
-    dart_unit_t dest);
+    dart_team_unit_t dest);
 
 int dart_shmem_recv(
     void *buf,
     size_t nbytes,
 		dart_team_t teamid,
-    dart_unit_t source);
+    dart_team_unit_t source);
 
 int dart_shmem_irecv(
     void *buf,
     size_t nbytes,
 		dart_team_t teamid,
-    dart_unit_t source,
+    dart_team_unit_t source,
 		dart_handle_t *handle);
 
 int dart_shmem_recvevt(
     void *buf,
     size_t nbytes,
 		dart_team_t teamid,
-    dart_unit_t source);
+    dart_team_unit_t source);
 
 #endif /* DASH__DART__SHMEM__MPI__SYSV__SHMEM_P2P_SYSV_H_INCLUDED */
