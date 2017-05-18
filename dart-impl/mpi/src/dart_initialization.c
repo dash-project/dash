@@ -27,37 +27,8 @@ static int _init_by_dart = 0;
 static int _dart_initialized = 0;
 
 static
-dart_ret_t do_init()
+dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 {
-  /* Initialize the teamlist. */
-  dart_adapt_teamlist_init();
-
-  dart_next_availteamid = DART_TEAM_ALL;
-
-  if (MPI_Comm_dup(MPI_COMM_WORLD, &dart_comm_world) != MPI_SUCCESS) {
-    DART_LOG_ERROR("Failed to duplicate MPI_COMM_WORLD");
-    return DART_ERR_OTHER;
-  }
-
-  dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
-  if (ret != DART_OK) {
-    DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
-    return DART_ERR_OTHER;
-  }
-
-  if (dart__mpi__datatype_init() != DART_OK) {
-    return DART_ERR_OTHER;
-  }
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
-
-  dart_next_availteamid++;
-
-  team_data->comm = DART_COMM_WORLD;
-
-  MPI_Comm_rank(team_data->comm, &team_data->unitid);
-  MPI_Comm_size(team_data->comm, &team_data->size);
-
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -145,16 +116,61 @@ dart_ret_t do_init()
 
   /* put the localalloc in the segment table */
   dart_segment_info_t *segment = dart_segment_alloc(
-                                &team_data->segdata, DART_SEGMENT_REGISTER);
+                                &team_data->segdata, DART_SEGMENT_LOCAL_ALLOC);
   segment->dirty       = false;
-  segment->flags       = 0;
+  segment->flags       = 1;
   segment->segid       = 0;
-  segment->size        = 0;
-  segment->baseptr     = NULL;
+  segment->size        = DART_LOCAL_ALLOC_SIZE;
+  segment->baseptr     = dart_sharedmem_local_baseptr_set;
   segment->win         = dart_win_local_alloc;
+  segment->shmwin      = dart_sharedmem_win_local_alloc;
   segment->selfbaseptr = dart_mempool_localalloc;
+  // addressing in this window is relative, no need to store displacements
   segment->disp        = calloc(team_data->size, sizeof(MPI_Aint));
-  segment->disp[team_data->unitid] = dart_mempool_localalloc;
+
+  return DART_OK;
+}
+
+static
+dart_ret_t do_init()
+{
+  /* Initialize the teamlist. */
+  dart_adapt_teamlist_init();
+
+  dart_next_availteamid = DART_TEAM_ALL;
+
+  if (MPI_Comm_dup(MPI_COMM_WORLD, &dart_comm_world) != MPI_SUCCESS) {
+    DART_LOG_ERROR("Failed to duplicate MPI_COMM_WORLD");
+    return DART_ERR_OTHER;
+  }
+
+  dart_ret_t ret = dart_adapt_teamlist_alloc(DART_TEAM_ALL);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
+    return DART_ERR_OTHER;
+  }
+
+  if (dart__mpi__datatype_init() != DART_OK) {
+    return DART_ERR_OTHER;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+
+  /* Create a global translation table for all
+   * the collective global memory segments */
+  dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
+
+  dart_next_availteamid++;
+
+  team_data->comm = DART_COMM_WORLD;
+
+  MPI_Comm_rank(team_data->comm, &team_data->unitid);
+  MPI_Comm_size(team_data->comm, &team_data->size);
+
+  ret = create_local_alloc(team_data);
+  if (ret != DART_OK) {
+    return ret;
+  }
 
   /* Create a dynamic win object for all the dart collective
    * allocation based on MPI_COMM_WORLD. Return in win. */
@@ -299,8 +315,8 @@ dart_ret_t dart_exit()
 
   dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  free(team_data->sharedmem_tab);
-  free(dart_sharedmem_local_baseptr_set);
+//  free(team_data->sharedmem_tab);
+//  free(dart_sharedmem_local_baseptr_set);
 #endif
 
   dart_adapt_teamlist_destroy();

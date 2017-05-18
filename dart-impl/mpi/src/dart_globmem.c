@@ -346,7 +346,8 @@ dart_team_memalloc_aligned(
   }
   segment->size    = nbytes;
   segment->flags   = 0;
-  segment->shmwin     = sharedmem_win;
+  segment->shmwin  = sharedmem_win;
+  segment->win     = team_data->window;
   segment->selfbaseptr = sub_mem;
 
 
@@ -388,7 +389,10 @@ dart_ret_t dart_team_memfree(
 
   MPI_Win win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, &sub_mem) != DART_OK) {
+  if (dart_segment_get_selfbaseptr(
+        &team_data->segdata,
+        segid,
+        &sub_mem) != DART_OK) {
     DART_LOG_ERROR("dart_team_memfree ! Unknown segment %i", segid);
     return DART_ERR_INVAL;
   }
@@ -401,7 +405,10 @@ dart_ret_t dart_team_memfree(
 	/* Free the window's associated sub-memory */
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   MPI_Win sharedmem_win;
-  if (dart_segment_get_win(&team_data->segdata, segid, &sharedmem_win) != DART_OK) {
+  if (dart_segment_get_shmwin(
+        &team_data->segdata,
+        segid,
+        &sharedmem_win) != DART_OK) {
     return DART_ERR_OTHER;
   }
   if (MPI_Win_free(&sharedmem_win) != MPI_SUCCESS) {
@@ -450,7 +457,8 @@ dart_team_memregister_aligned(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
-    DART_LOG_ERROR("dart_team_memregister_aligned ! failed: Unknown team %i!", teamid);
+    DART_LOG_ERROR("dart_team_memregister_aligned ! failed: Unknown team %i!",
+                   teamid);
     return DART_ERR_INVAL;
   }
 
@@ -475,7 +483,8 @@ dart_team_memregister_aligned(
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
   segment->size    = nbytes;
-  segment->win     = MPI_WIN_NULL;
+  segment->shmwin  = MPI_WIN_NULL;
+  segment->win     = team_data->window;
   segment->selfbaseptr = (char *)addr;
   segment->flags   = 0;
 
@@ -538,14 +547,15 @@ dart_team_memregister(
     segment->disp = malloc(size * sizeof(MPI_Aint));
   }
   MPI_Aint * disp_set = segment->disp;
-  MPI_Comm   comm = team_data->comm;
-  MPI_Win    win = team_data->window;
+  MPI_Comm   comm     = team_data->comm;
+  MPI_Win    win      = team_data->window;
   MPI_Win_attach(win, addr, nbytes);
   MPI_Get_address(addr, &disp);
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
-  segment->size = nbytes;
-  segment->win = MPI_WIN_NULL;
+  segment->size   = nbytes;
+  segment->shmwin = MPI_WIN_NULL;
+  segment->win    = team_data->window;
   segment->selfbaseptr = (char *)addr;
   segment->flags = 0;
 
@@ -589,7 +599,8 @@ dart_team_memderegister(
 
   win = team_data->window;
 
-  if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, &sub_mem) != DART_OK) {
+  if (dart_segment_get_selfbaseptr(
+        &team_data->segdata, segid, &sub_mem) != DART_OK) {
     DART_LOG_ERROR("dart_team_memderegister ! Unknown segment %i", segid);
     return DART_ERR_INVAL;
   }
