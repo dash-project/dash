@@ -272,14 +272,14 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
-  MPI_Win      win;
   MPI_Datatype mpi_dtype;
   MPI_Op       mpi_op;
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
-  uint64_t offset   = gptr.addr_or_offs.offset;
-  int16_t  seg_id   = gptr.segid;
-  mpi_dtype         = dart__mpi__datatype(dtype);
-  mpi_op            = dart__mpi__op(op);
+  uint64_t    offset = gptr.addr_or_offs.offset;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
+  mpi_dtype          = dart__mpi__datatype(dtype);
+  mpi_op             = dart__mpi__op(op);
 
   if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
@@ -292,51 +292,41 @@ dart_ret_t dart_accumulate(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
+  if (dart__unlikely(nelem > INT_MAX)) {
     DART_LOG_ERROR("dart_accumulate ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    MPI_Aint disp_s;
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
-    win = team_data->window;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR("dart_accumulate ! "
-                     "dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
-    DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from collective allocation) "
-                   "target unit: %d offset: %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-  } else {
-    win = dart_win_local_alloc;
-    DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from local allocation) "
-                   "target unit: %d offset: %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
   }
 
-  MPI_Accumulate(
-    values,            // Origin address
-    nelem,             // Number of entries in buffer
-    mpi_dtype,         // Data type of each buffer entry
-    team_unit_id.id,   // Rank of target
-    offset,            // Displacement from start of window to beginning
-                       // of target buffer
-    nelem,             // Number of entries in target buffer
-    mpi_dtype,         // Data type of each entry in target buffer
-    mpi_op,            // Reduce operation
-    win);
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Win win  = seginfo->win;
+  offset      += seginfo->disp[team_unit_id.id];
+
+  CHECK_MPI_RET(
+    MPI_Accumulate(
+      values,            // Origin address
+      nelem,             // Number of entries in buffer
+      mpi_dtype,         // Data type of each buffer entry
+      team_unit_id.id,   // Rank of target
+      offset,            // Displacement from start of window to beginning
+                         // of target buffer
+      nelem,             // Number of entries in target buffer
+      mpi_dtype,         // Data type of each entry in target buffer
+      mpi_op,            // Reduce operation
+      win),
+    "MPI_Accumulate");
 
   DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
@@ -349,14 +339,14 @@ dart_ret_t dart_fetch_and_op(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
-  MPI_Win      win;
   MPI_Datatype mpi_dtype;
   MPI_Op       mpi_op;
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
-  uint64_t offset   = gptr.addr_or_offs.offset;
-  int16_t  seg_id   = gptr.segid;
-  mpi_dtype         = dart__mpi__datatype(dtype);
-  mpi_op            = dart__mpi__op(op);
+  uint64_t    offset = gptr.addr_or_offs.offset;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
+  mpi_dtype          = dart__mpi__datatype(dtype);
+  mpi_op             = dart__mpi__op(op);
 
   if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
@@ -366,46 +356,36 @@ dart_ret_t dart_fetch_and_op(
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
                  "offset:%"PRIu64" segid:%d",
                  dtype, op, team_unit_id.id,
-                 gptr.addr_or_offs.offset, gptr.segid);
-  if (seg_id) {
+                 gptr.addr_or_offs.offset, seg_id);
 
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!",
-                     gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
-    MPI_Aint disp_s;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR("dart_fetch_and_op ! "
-                     "dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
-    win = team_data->window;
-    DART_LOG_TRACE("dart_fetch_and_op:  (from coll. allocation) "
-                   "target unit: %d offset: %"PRIu64,
-                   team_unit_id.id, offset);
-  } else {
-    win = dart_win_local_alloc;
-    DART_LOG_TRACE("dart_fetch_and_op:  (from local allocation) "
-                   "target unit: %d offset: %"PRIu64,
-                   team_unit_id.id, offset);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
   }
-  MPI_Fetch_and_op(
-    value,             // Origin address
-    result,            // Result address
-    mpi_dtype,         // Data type of each buffer entry
-    team_unit_id.id,   // Rank of target
-    offset,            // Displacement from start of window to beginning
-                       // of target buffer
-    mpi_op,            // Reduce operation
-    win);
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Win win  = seginfo->win;
+  offset      += seginfo->disp[team_unit_id.id];
+
+  CHECK_MPI_RET(
+    MPI_Fetch_and_op(
+      value,             // Origin address
+      result,            // Result address
+      mpi_dtype,         // Data type of each buffer entry
+      team_unit_id.id,   // Rank of target
+      offset,            // Displacement from start of window to beginning
+                         // of target buffer
+      mpi_op,            // Reduce operation
+      win),
+    "MPI_Fetch_and_op");
   DART_LOG_DEBUG("dart_fetch_and_op > finished");
   return DART_OK;
 }
@@ -417,10 +397,10 @@ dart_ret_t dart_compare_and_swap(
   void           * result,
   dart_datatype_t  dtype)
 {
-  MPI_Win win;
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
-  uint64_t offset   = gptr.addr_or_offs.offset;
-  int16_t  seg_id   = gptr.segid;
+  uint64_t    offset = gptr.addr_or_offs.offset;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
   MPI_Datatype mpi_dtype         = dart__mpi__datatype(dtype);
 
   if (dart__unlikely(team_unit_id.id < 0)) {
@@ -437,41 +417,34 @@ dart_ret_t dart_compare_and_swap(
   DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%"PRIu64,
                  dtype, team_unit_id.id, gptr.addr_or_offs.offset);
 
-  if (seg_id) {
-    MPI_Aint disp_s;
-
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
-    win = team_data->window;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR("dart_accumulate ! "
-                     "dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
-    DART_LOG_TRACE("dart_compare_and_swap: target unit: %d offset: %"PRIu64"",
-              team_unit_id.id, offset);
-  } else {
-    win = dart_win_local_alloc;
-    DART_LOG_TRACE("dart_compare_and_swap: target unit: %d offset: %"PRIu64"",
-              team_unit_id.id, offset);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
   }
-  MPI_Compare_and_swap(
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Win win  = seginfo->win;
+  offset      += seginfo->disp[team_unit_id.id];
+
+
+  CHECK_MPI_RET(
+    MPI_Compare_and_swap(
         value,
         compare,
         result,
         mpi_dtype,
         team_unit_id.id,
         offset,
-        win);
+        win),
+    "MPI_Compare_and_swap");
   DART_LOG_DEBUG("dart_compare_and_swap > finished");
   return DART_OK;
 }
@@ -529,6 +502,8 @@ dart_ret_t dart_get_handle(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
 
+  win = seginfo->win;
+
   if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_ret_t ret = get_shared_mem(team_data, seginfo, dest, offset,
                                     team_unit_id, nelem, dtype);
@@ -538,13 +513,8 @@ dart_ret_t dart_get_handle(
      */
     *handle            = malloc(sizeof(struct dart_handle_struct));
     (*handle)->request = MPI_REQUEST_NULL;
-    if (seg_id != 0) {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win = team_data->window;
-    } else {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win  = dart_win_local_alloc;
-    }
+    (*handle)->dest    = team_unit_id.id;
+    (*handle)->win     = win;
     return ret;
   }
 #else
@@ -554,28 +524,9 @@ dart_ret_t dart_get_handle(
    * MPI shared windows disabled or target and calling unit are on different
    * nodes, use MPI_RGet:
    */
-  if (seg_id) {
 
-    /*
-     * The memory accessed is allocated with collective allocation.
-     */
-    win = team_data->window;
+  offset += seginfo->disp[team_unit_id.id];
 
-    MPI_Aint disp_s = seginfo->disp[team_unit_id.id];
-    offset += disp_s;
-
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (collective allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-  } else {
-    /*
-     * The memory accessed is allocated with local allocation.
-     */
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (local allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-    win     = dart_win_local_alloc;
-  }
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
   MPI_Request mpi_req;
   CHECK_MPI_RET(
@@ -613,7 +564,7 @@ dart_ret_t dart_put_handle(
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t     offset   = gptr.addr_or_offs.offset;
   int16_t      seg_id   = gptr.segid;
-  MPI_Win      win;
+  dart_team_t  teamid   = gptr.teamid;
 
   *handle = NULL;
 
@@ -630,58 +581,41 @@ dart_ret_t dart_put_handle(
     return DART_ERR_INVAL;
   }
 
-
-  if (seg_id != 0) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
-    win = team_data->window;
-
-    MPI_Aint disp_s;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
-
-    DART_LOG_DEBUG("dart_put_handle: nelem:%zu dtype:%d"
-                   "(from collective allocation) "
-                   "target_unit:%d offset:%"PRIu64"",
-                   nelem, dtype, team_unit_id.id, offset);
-  } else {
-    win = dart_win_local_alloc;
-    DART_LOG_DEBUG("dart_put_handle: nlem:%zu dtype:%d"
-                   "(from local allocation) "
-                   "target_unit:%d offset:%"PRIu64"",
-                   nelem, dtype, team_unit_id.id, offset);
-  }
-
-  DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
-  int ret = MPI_Rput(
-              src,
-              nelem,
-              mpi_type,
-              team_unit_id.id,
-              offset,
-              nelem,
-              mpi_type,
-              win,
-              &mpi_req);
-
-  if (ret != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_put_handle ! MPI_Rput failed");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Win win  = seginfo->win;
+  offset      += seginfo->disp[team_unit_id.id];
+
+  DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
+  CHECK_MPI_RET(
+    MPI_Rput(
+      src,
+      nelem,
+      mpi_type,
+      team_unit_id.id,
+      offset,
+      nelem,
+      mpi_type,
+      win,
+      &mpi_req),
+    "MPI_Rput");
+
   *handle = malloc(sizeof(struct dart_handle_struct));
-  (*handle) -> dest    = team_unit_id.id;
-  (*handle) -> request = mpi_req;
-  (*handle) -> win     = win;
+  (*handle)->dest    = team_unit_id.id;
+  (*handle)->request = mpi_req;
+  (*handle)->win     = win;
   return DART_OK;
 }
 
@@ -854,59 +788,6 @@ dart_ret_t dart_get_blocking(
 
   win     = seginfo->win;
   offset += seginfo->disp[team_unit_id.id];
-
-
-#if 0
-  if (seg_id) {
-    MPI_Aint disp_s;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR("dart_get_blocking ! "
-                     "dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-
-    if (team_data->unitid == team_unit_id.id) {
-      // use direct memcpy if we are on the same unit
-      memcpy(dest, ((void*)disp_s) + offset,
-          nelem * dart__mpi__datatype_sizeof(dtype));
-      DART_LOG_DEBUG("dart_get_blocking: memcpy nelem:%zu "
-                     "source (coll.): offset:%lu -> dest: %p",
-                     nelem, offset, dest);
-      return DART_OK;
-    }
-
-    win     = team_data->window;
-    offset += disp_s;
-    DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
-                   "source (coll.): win:%p unit:%d offset:%lu "
-                   "-> dest: %p",
-                   nelem, win, team_unit_id.id,
-                   offset, dest);
-
-  } else {
-
-    if (team_data->unitid == team_unit_id.id) {
-      /* use direct memcpy if we are on the same unit */
-      memcpy(dest, dart_mempool_localalloc + offset,
-          nelem * dart__mpi__datatype_sizeof(dtype));
-      DART_LOG_DEBUG("dart_get_blocking: memcpy nelem:%zu "
-                     "source (coll.): offset:%lu -> dest: %p",
-                     nelem, offset, dest);
-      return DART_OK;
-    }
-
-    win = dart_win_local_alloc;
-    DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
-                   "source (local): win:%p unit:%d offset:%lu "
-                   "-> dest: %p",
-                   nelem, win, team_unit_id.id,
-                   offset, dest);
-  }
-#endif
 
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
