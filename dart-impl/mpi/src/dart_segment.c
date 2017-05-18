@@ -5,10 +5,10 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_globmem.h>
 
 #include <dash/dart/mpi/dart_segment.h>
-
-#define DART_SEGMENT_INVALID   (INT32_MAX)
+#include <dash/dart/mpi/dart_team_private.h>
 
 struct dart_seghash_elem {
   dart_seghash_elem_t *next;
@@ -35,28 +35,6 @@ register_segment(dart_segmentdata_t *segdata, dart_seghash_elem_t *elem)
   segdata->hashtab[slot] = elem;
 }
 
-/**
- * Initialize the segment data hash table.
- */
-dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
-{
-  memset(segdata->hashtab, 0,
-    sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
-
-  segdata->team_id = teamid;
-  segdata->mem_freelist = NULL;
-  segdata->reg_freelist = NULL;
-  segdata->memid = 1;
-  segdata->registermemid = -1;
-
-  // register the segment for non-global allocations on DART_TEAM_ALL
-  if (teamid == DART_TEAM_ALL) {
-    dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
-    register_segment(segdata, elem);
-  }
-  return DART_OK;
-}
-
 static dart_segment_info_t * get_segment(
     dart_segmentdata_t *segdata,
     dart_segid_t        segid)
@@ -81,6 +59,46 @@ static dart_segment_info_t * get_segment(
   return &(elem->data);
 }
 
+dart_segment_info_t * dart_segment_get_info(
+  dart_segmentdata_t *segdata,
+  dart_segid_t        segid)
+{
+  return get_segment(segdata, segid);
+}
+
+/**
+ * Initialize the segment data hash table.
+ */
+dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
+{
+  memset(segdata->hashtab, 0,
+    sizeof(dart_seghash_elem_t*) * DART_SEGMENT_HASH_SIZE);
+
+  segdata->team_id = teamid;
+  segdata->mem_freelist = NULL;
+  segdata->reg_freelist = NULL;
+  segdata->memid = 1;
+  segdata->registermemid = -1;
+
+  // register the segment for non-global allocations on DART_TEAM_ALL
+  if (teamid == DART_TEAM_ALL) {
+    dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
+    register_segment(segdata, elem);
+  } else {
+    // copy from DART_TEAM_ALL into all other teams
+    dart_team_data_t *all_team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+    DART_ASSERT_MSG(all_team_data != NULL, "Failed to query DART_TEAM_ALL!");
+    dart_segment_info_t *segment = dart_segment_alloc(
+                                     segdata, DART_SEGMENT_LOCAL_ALLOC);
+    DART_ASSERT(segment != NULL);
+    dart_segment_info_t *local_alloc_segment = get_segment(
+                                                &all_team_data->segdata,
+                                                DART_SEGMENT_LOCAL);
+    memcpy(segment, local_alloc_segment, sizeof(dart_segment_info_t));
+  }
+  return DART_OK;
+}
+
 /**
  * Allocates a new segment data struct. May be served from a freelist.
  *
@@ -94,7 +112,12 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
 
   int16_t segid;
   dart_seghash_elem_t *elem = NULL;
-  if (type == DART_SEGMENT_ALLOC) {
+  if (type == DART_SEGMENT_LOCAL_ALLOC) {
+    // no need to check for overflow
+    segid = DART_SEGMENT_LOCAL;
+    elem = calloc(1, sizeof(dart_seghash_elem_t));
+    elem->data.segid = segid;
+  } else if (type == DART_SEGMENT_ALLOC) {
     if (segdata->mem_freelist != NULL) {
       elem  = segdata->mem_freelist;
       segid = elem->data.segid;
@@ -140,7 +163,7 @@ dart_segment_alloc(dart_segmentdata_t *segdata, dart_segment_type type)
 }
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-dart_ret_t dart_segment_get_win(
+dart_ret_t dart_segment_get_shmwin(
     dart_segmentdata_t * segdata,
     int16_t              segid,
     MPI_Win            * win)
@@ -306,7 +329,7 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
     seg_info->baseptr = NULL;
   }
 #endif
-  memset(seg_info, 0, sizeof(dart_segment_info_t));
+//  memset(seg_info, 0, sizeof(dart_segment_info_t));
 }
 
 /**
@@ -366,7 +389,10 @@ static void clear_segdata_list(dart_seghash_elem_t *listhead)
     dart_seghash_elem_t *tmp = elem;
     elem = tmp->next;
     tmp->next = NULL;
-    free_segment_info(&tmp->data);
+    // segment info should have been cleared in dart_segment_fini
+    if (tmp->data.segid != DART_SEGMENT_LOCAL) {
+      free_segment_info(&tmp->data);
+    }
     free(tmp);
   }
 }
@@ -377,7 +403,15 @@ static void clear_segdata_list(dart_seghash_elem_t *listhead)
 dart_ret_t dart_segment_fini(
   dart_segmentdata_t  * segdata)
 {
-  // clear the hash table
+  // only clear up the local allocation segment in DART_TEAM_ALL
+  if (segdata->team_id == DART_TEAM_ALL) {
+    dart_segment_info_t *seg = get_segment(
+                        &(dart_adapt_teamlist_get(DART_TEAM_ALL)->segdata),
+                        DART_SEGMENT_LOCAL);
+    free_segment_info(seg);
+  }
+
+  // clear the remaining hash table
   for (int i = 0; i < DART_SEGMENT_HASH_SIZE; i++) {
     clear_segdata_list(segdata->hashtab[i]);
     segdata->hashtab[i] = NULL;
@@ -387,5 +421,6 @@ dart_ret_t dart_segment_fini(
 
   clear_segdata_list(segdata->reg_freelist);
   segdata->reg_freelist = NULL;
+
   return DART_OK;
 }

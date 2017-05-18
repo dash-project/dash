@@ -23,7 +23,8 @@ typedef struct
   MPI_Aint   * disp;        /* offsets at all units in the team */
   char      ** baseptr;     /* baseptr of all units in the sharedmem group */
   char       * selfbaseptr; /* baseptr of the current unit */
-  MPI_Win      shmwin;         /* sharedmem window */
+  MPI_Win      shmwin;      /* sharedmem window */
+  MPI_Win      win;         /* window used to access this segment */
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
   bool         dirty;       /* whether the segment has pending writes */
@@ -52,6 +53,7 @@ typedef struct {
 } dart_segmentdata_t;
 
 typedef enum {
+  DART_SEGMENT_LOCAL_ALLOC,
   DART_SEGMENT_ALLOC,
   DART_SEGMENT_REGISTER
 } dart_segment_type;
@@ -82,6 +84,13 @@ dart_segment_register(
   dart_segmentdata_t  *segdata,
   dart_segment_info_t *seg) DART_INTERNAL;
 
+/**
+ * Returns the segment info for the segment with ID \c segid.
+ */
+dart_segment_info_t * dart_segment_get_info(
+  dart_segmentdata_t *segdata,
+  dart_segid_t        segid) DART_INTERNAL;
+
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -94,7 +103,7 @@ dart_segment_register(
  * \retval non-negative integer Search successfully.
  * \retval negative integer Failure.
  */
-dart_ret_t dart_segment_get_win(
+dart_ret_t dart_segment_get_shmwin(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
   MPI_Win            * win) DART_INTERNAL;
