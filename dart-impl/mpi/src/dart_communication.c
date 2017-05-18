@@ -281,7 +281,7 @@ dart_ret_t dart_accumulate(
   mpi_dtype         = dart__mpi__datatype(dtype);
   mpi_op            = dart__mpi__op(op);
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -358,7 +358,7 @@ dart_ret_t dart_fetch_and_op(
   mpi_dtype         = dart__mpi__datatype(dtype);
   mpi_op            = dart__mpi__op(op);
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -423,7 +423,7 @@ dart_ret_t dart_compare_and_swap(
   int16_t  seg_id   = gptr.segid;
   MPI_Datatype mpi_dtype         = dart__mpi__datatype(dtype);
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -617,7 +617,7 @@ dart_ret_t dart_put_handle(
 
   *handle = NULL;
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_put_handle ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -1036,7 +1036,7 @@ dart_ret_t dart_flush(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (gptr.unitid < 0) {
+  if (team_unit_id.id < 0) {
     DART_LOG_ERROR("dart_flush ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -1054,19 +1054,17 @@ dart_ret_t dart_flush(
   }
 
   DART_LOG_TRACE("dart_flush: MPI_Win_flush");
-  if (MPI_Win_flush(team_unit_id.id, win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush ! MPI_Win_flush failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_flush(team_unit_id.id, win), "MPI_Win_flush");
   DART_LOG_TRACE("dart_flush: MPI_Win_sync");
-  if (MPI_Win_sync(win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush ! MPI_Win_sync failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_sync(win), "MPI_Win_sync");
 
   // trigger progress
   int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE);
+  CHECK_MPI_RET(
+    MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
+    "MPI_Iprobe");
 
   DART_LOG_DEBUG("dart_flush > finished");
   return DART_OK;
@@ -1082,7 +1080,7 @@ dart_ret_t dart_flush_all(
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(gptr.unitid < 0)) {
     DART_LOG_ERROR("dart_flush_all ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -1100,19 +1098,17 @@ dart_ret_t dart_flush_all(
     win = dart_win_local_alloc;
   }
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
-  if (MPI_Win_flush_all(win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush_all ! MPI_Win_flush_all failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_flush_all(win), "MPI_Win_flush");
   DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
-  if (MPI_Win_sync(win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush_all ! MPI_Win_sync failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_sync(win), "MPI_Win_sync");
 
   // trigger progress
   int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE);
+  CHECK_MPI_RET(
+    MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
+    "MPI_Iprobe");
 
   DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
@@ -1131,7 +1127,7 @@ dart_ret_t dart_flush_local(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_flush_local ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
@@ -1153,14 +1149,15 @@ dart_ret_t dart_flush_local(
                    (unsigned long)win, seg_id, team_unit_id.id);
   }
   DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
-  if (MPI_Win_flush_local(team_unit_id.id, win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush_all ! MPI_Win_flush_local failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_flush_local(team_unit_id.id, win),
+    "MPI_Win_flush_local");
 
   // trigger progress
   int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE);
+  CHECK_MPI_RET(
+    MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
+    "MPI_Iprobe");
 
   DART_LOG_DEBUG("dart_flush_local > finished");
   return DART_OK;
@@ -1177,11 +1174,10 @@ dart_ret_t dart_flush_local_all(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (gptr.unitid < 0) {
+  if (dart__unlikely(gptr.unitid < 0)) {
     DART_LOG_ERROR("dart_flush_local_all ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
-
 
   if (seg_id) {
     dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
@@ -1195,14 +1191,15 @@ dart_ret_t dart_flush_local_all(
   } else {
     win = dart_win_local_alloc;
   }
-  if (MPI_Win_flush_local_all(win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_flush_all ! MPI_Win_flush_local_all failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Win_flush_local_all(win),
+    "MPI_Win_flush_local_all");
 
   // trigger progress
   int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE);
+  CHECK_MPI_RET(
+    MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
+    "MPI_Iprobe");
 
   DART_LOG_DEBUG("dart_flush_local_all > finished");
   return DART_OK;
@@ -1270,11 +1267,8 @@ dart_ret_t dart_wait(
         return DART_ERR_INVAL;
       }
       DART_LOG_DEBUG("dart_wait:     -- MPI_Win_flush");
-      mpi_ret = MPI_Win_flush(handle->dest, handle->win);
-      if (mpi_ret != MPI_SUCCESS) {
-        DART_LOG_DEBUG("dart_wait ! MPI_Win_flush failed");
-        return DART_ERR_INVAL;
-      }
+      CHECK_MPI_RET(
+        MPI_Win_flush(handle->dest, handle->win), "MPI_Win_flush");
     } else {
       DART_LOG_TRACE("dart_wait:     handle->request: MPI_REQUEST_NULL");
     }
@@ -1589,11 +1583,9 @@ static int _dart_barrier_count = 0;
 dart_ret_t dart_barrier(
   dart_team_t teamid)
 {
-  MPI_Comm comm;
-
   DART_LOG_DEBUG("dart_barrier() barrier count: %d", _dart_barrier_count);
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
+  if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
     DART_LOG_ERROR("dart_barrier ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
@@ -1601,17 +1593,17 @@ dart_ret_t dart_barrier(
   _dart_barrier_count++;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_barrier ! failed: Unknown team: %d", teamid);
     return DART_ERR_INVAL;
   }
+
   /* Fetch proper communicator from teams. */
-  comm = team_data->comm;
-  if (MPI_Barrier(comm) == MPI_SUCCESS) {
-    DART_LOG_DEBUG("dart_barrier > finished");
-    return DART_OK;
-  }
-  DART_LOG_DEBUG("dart_barrier ! MPI_Barrier failed");
-  return DART_ERR_INVAL;
+  CHECK_MPI_RET(
+    MPI_Barrier(team_data->comm), "MPI_Barrier");
+
+  DART_LOG_DEBUG("dart_barrier > MPI_Barrier finished");
+  return DART_OK;
 }
 
 dart_ret_t dart_bcast(
@@ -1627,12 +1619,12 @@ dart_ret_t dart_bcast(
   DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
                  root.id, teamid, nelem);
 
-  if (root.id < 0) {
+  if (dart__unlikely(root.id < 0)) {
     DART_LOG_ERROR("dart_bcast ! failed: root < 0");
     return DART_ERR_INVAL;
   }
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
+  if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
     DART_LOG_ERROR("dart_bcast ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
@@ -1640,23 +1632,21 @@ dart_ret_t dart_bcast(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
+  if (dart__unlikely(nelem > INT_MAX)) {
     DART_LOG_ERROR("dart_bcast ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
                    "dart_adapt_teamlist_convert failed", root.id, teamid);
     return DART_ERR_INVAL;
   }
   comm = team_data->comm;
-  if (MPI_Bcast(buf, nelem, mpi_dtype, root.id, comm) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
-                   "MPI_Bcast failed", root.id, teamid);
-    return DART_ERR_INVAL;
-  }
+  CHECK_MPI_RET(
+    MPI_Bcast(buf, nelem, mpi_dtype, root.id, comm), "MPI_Bcast");
+
   DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%zu finished",
                  root.id, teamid, nelem);
   return DART_OK;
@@ -1673,12 +1663,12 @@ dart_ret_t dart_scatter(
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   MPI_Comm     comm;
 
-  if (root.id < 0) {
+  if (dart__unlikely(root.id < 0)) {
     DART_LOG_ERROR("dart_scatter ! failed: root < 0");
     return DART_ERR_INVAL;
   }
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
+  if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
     DART_LOG_ERROR("dart_scatter ! failed: team may not be DART_UNDEFINED_TEAM_ID");
     return DART_ERR_INVAL;
   }
@@ -1686,27 +1676,28 @@ dart_ret_t dart_scatter(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
+  if (dart__unlikely(nelem > INT_MAX)) {
     DART_LOG_ERROR("dart_scatter ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_scatter ! failed: unknown team %d", teamid);
     return DART_ERR_INVAL;
   }
   comm = team_data->comm;
-  if (MPI_Scatter(
-           sendbuf,
-           nelem,
-           mpi_dtype,
-           recvbuf,
-           nelem,
-           mpi_dtype,
-           root.id,
-           comm) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+  CHECK_MPI_RET(
+    MPI_Scatter(
+       sendbuf,
+       nelem,
+       mpi_dtype,
+       recvbuf,
+       nelem,
+       mpi_dtype,
+       root.id,
+       comm),
+    "MPI_Scatter");
   return DART_OK;
 }
 
