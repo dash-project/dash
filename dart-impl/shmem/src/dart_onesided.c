@@ -31,7 +31,7 @@ dart_ret_t dart_put(
  * DART_SHMEM_DEFINE_ACCUMULATE(type)
  */
 
-inline int dart_shmem_reduce_int(int a, int b, dart_operation_t op) {
+int dart_shmem_reduce_int(int a, int b, dart_operation_t op) {
   switch (op) {
     case DART_OP_MIN  : return (a < b) ? a : b;
     case DART_OP_MAX  : return (a > b) ? a : b;
@@ -85,7 +85,7 @@ dart_ret_t dart_accumulate(
                   ptr_dest.addr_or_offs.offset);
   DART_LOG_DEBUG("ACC  - %d elements, addr: %p", nvalues, addr);
   for (size_t i = 0; i < nvalues; i++) {
-    int * ptr_src  = &values[i];
+    const int * ptr_src  = values+i;
     int * ptr_dest = &addr[i];
     int exp_value  = *(ptr_dest);
     int new_value;
@@ -202,7 +202,7 @@ dart_ret_t dart_get_blocking(
 {
   char *addr;
   int poolid;
-  dart_team_unit_t myid;
+  dart_global_unit_t myid;
   dart_mempoolptr pool;
   size_t nbytes = nelem * dart__shmem__datatype_sizeof(dtype);
 
@@ -230,7 +230,7 @@ dart_ret_t dart_put_blocking(
 {
   char *addr;
   int poolid;
-  dart_team_unit_t myid;
+  dart_global_unit_t myid;
   dart_mempoolptr pool;
   size_t nbytes = nelem * dart__shmem__datatype_sizeof(dtype);
 

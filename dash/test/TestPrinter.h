@@ -1,14 +1,15 @@
-#ifdef MPI_IMPL_ID
-
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
+
+#ifdef MPI_IMPL_ID
 #include <gtest/gtest.h>
 
 #include <list>
 #include <iostream>
 
 #include <mpi.h>
+#endif // MPI_IMPL_ID
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
@@ -18,6 +19,8 @@
 #define TEST_ERROR   "\033[0;31m[  ERROR   ] \033[m"
 #define TEST_OK      "\033[0;32m[      OK  ] \033[m"
 #define TEST_RUN     "\033[0;32m[  RUN     ] \033[m"
+
+#ifdef MPI_IMPL_ID
 
 using ::testing::EmptyTestEventListener;
 using ::testing::InitGoogleTest;
@@ -150,6 +153,6 @@ class TestPrinter : public EmptyTestEventListener {
   }
 };
 
+#endif // MPI_IMPL_ID
 #endif // DASH__UTIL__TEST_PRINTER_H_
 
-#endif // MPI_IMPL_ID
