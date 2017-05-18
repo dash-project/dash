@@ -32,10 +32,6 @@
  * TODO: add this window to the team_data for DART_TEAM_ALL as segment 0.
  */
 MPI_Win dart_win_local_alloc;
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-MPI_Win dart_sharedmem_win_local_alloc;
-char** dart_sharedmem_local_baseptr_set;
-#endif
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {

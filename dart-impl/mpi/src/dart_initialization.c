@@ -30,6 +30,8 @@ static
 dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 {
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
+  MPI_Win dart_sharedmem_win_local_alloc;
+  char* *dart_sharedmem_local_baseptr_set = NULL;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -287,23 +289,23 @@ dart_ret_t dart_exit()
     return DART_ERR_OTHER;
   }
 
-  dart_segment_fini(&team_data->segdata);
+  dart_segment_info_t *seginfo = dart_segment_get_info(&team_data->segdata, 0);
 
   if (MPI_Win_unlock_all(team_data->window) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
   /* End the shared access epoch in dart_win_local_alloc. */
-  if (MPI_Win_unlock_all(dart_win_local_alloc) != MPI_SUCCESS) {
+  if (MPI_Win_unlock_all(seginfo->win) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
 
   /* -- Free up all the resources for dart programme -- */
-  MPI_Win_free(&dart_win_local_alloc);
+  MPI_Win_free(&seginfo->win);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   /* Has MPI shared windows: */
-  MPI_Win_free(&dart_sharedmem_win_local_alloc);
+  MPI_Win_free(&seginfo->shmwin);
   MPI_Comm_free(&(team_data->sharedmem_comm));
 #else
   /* No MPI shared windows: */
@@ -313,6 +315,7 @@ dart_ret_t dart_exit()
 #endif
   MPI_Win_free(&team_data->window);
 
+  dart_segment_fini(&team_data->segdata);
   dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 //  free(team_data->sharedmem_tab);
