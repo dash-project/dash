@@ -81,7 +81,7 @@ int dart_start(int argc, char* argv[])
   int shm_id = shmem_mm_create(syncarea_size);
   void* shm_addr = shmem_mm_attach(shm_id);
   int i;
-  dart_team_unit_t j;
+  dart_global_unit_t j;
 
   shmem_syncarea_init(nprocs, shm_addr, shm_id);
   

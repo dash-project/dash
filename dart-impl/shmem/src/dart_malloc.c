@@ -7,7 +7,6 @@
 #include <dash/dart/shmem/dart_teams_impl.h>
 #include <dash/dart/shmem/shmem_logger.h>
 
-DART_INLINE
 int dart__shmem__datatype_sizeof(const dart_datatype_t dtype){
   switch(dtype){
     case DART_TYPE_BYTE:  1; break;
@@ -22,6 +21,9 @@ int dart__shmem__datatype_sizeof(const dart_datatype_t dtype){
     default: -1;
   }
 }
+
+
+
 /* TO IMPLEMENT */
 /*
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void *addr);
