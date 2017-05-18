@@ -340,10 +340,10 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           DESTINATION lib
           EXPORT "${DASH_LIBRARY}-targets")
 
-  # exports
+  # Exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION cmake)
+    DESTINATION share/cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
   	configure_package_config_file(
