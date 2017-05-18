@@ -151,7 +151,11 @@ dart_ret_t dart_allgather(
 { 
   dart_team_unit_t root;
   root.id = 0;
+#ifdef DART_DEBUG
+  size_t size;
+  dart_team_size(team, &size);
   DEBUG("dart_allgather on team %d, tsize=%d", team, root, size);
+#endif
   dart_gather(sendbuf,recvbuf,nbytes,dtype,root,team);
   dart_bcast(recvbuf,nbytes,dtype,root,team);
   return DART_OK;
