@@ -37,7 +37,7 @@ int dart_init_shmem(int *argc, char ***argv)
   int team_size = -1;
   int shm_id = -1;
 
-  DEBUG("dart_init parsing args... %s", "");
+  DEBUG("dart_init parsing args... %d", *argc);
   for (i = 0; i < (*argc); i++)   {
     if (sscanf((*argv)[i], "--dart-id=%d", &itmp) > 0) {
       myid.id = itmp;
