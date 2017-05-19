@@ -227,6 +227,8 @@ dart_team_memalloc_aligned(
    * !!!   (because the shared array has not been allocated correctly)."
    * !!!
    * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   * Related support ticket of MPICH:
+   * http://trac.mpich.org/projects/mpich/ticket/2178
    *
    * !!! BUG IN OPENMPI 1.10.5 and 2.0.2
    * !!!
@@ -236,8 +238,6 @@ dart_team_memalloc_aligned(
    * !!! The issue has been reported.
    * !!!
    *
-   * Related support ticket of MPICH:
-   * http://trac.mpich.org/projects/mpich/ticket/2178
    */
   MPI_Comm sharedmem_comm = team_data->sharedmem_comm;
 

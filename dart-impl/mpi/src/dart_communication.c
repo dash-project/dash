@@ -28,6 +28,7 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <assert.h>
 
 #define CHECK_MPI_RET(__call, __name)                      \
   do {                                                     \
@@ -515,6 +516,7 @@ dart_ret_t dart_get_handle(
 
   CLEAN_SEGMENT(seginfo);
 
+  win = seginfo->win;
 
   DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
                  team_unit_id.id, offset, seg_id, teamid, nelem);
@@ -522,8 +524,6 @@ dart_ret_t dart_get_handle(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
-
-  win = seginfo->win;
 
   if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_ret_t ret = get_shared_mem(team_data, seginfo, dest, offset,
@@ -547,6 +547,9 @@ dart_ret_t dart_get_handle(
    */
 
   offset += seginfo->disp[team_unit_id.id];
+
+  assert(win != 0);
+  printf("win: %x\n", win);
 
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
   MPI_Request mpi_req;
