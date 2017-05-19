@@ -822,27 +822,33 @@ dart_ret_t dart_flush(
   MPI_Comm         comm         = DART_COMM_WORLD;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   int16_t          seg_id       = gptr.segid;
+  dart_team_t      teamid       = gptr.teamid;
   DART_LOG_DEBUG("dart_flush() gptr: "
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (team_unit_id.id < 0) {
+  if (dart__unlikely(team_unit_id.id < 0)) {
     DART_LOG_ERROR("dart_flush ! failed: gptr.unitid < 0");
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-    win = team_data->window;
-    comm = team_data->comm;
-  } else {
-    win = dart_win_local_alloc;
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
   }
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  comm = team_data->comm;
+  win  = seginfo->win;
 
   DART_LOG_TRACE("dart_flush: MPI_Win_flush");
   CHECK_MPI_RET(
@@ -864,30 +870,33 @@ dart_ret_t dart_flush(
 dart_ret_t dart_flush_all(
   dart_gptr_t gptr)
 {
-  MPI_Win  win;
-  MPI_Comm comm   = DART_COMM_WORLD;
-  int16_t  seg_id = gptr.segid;
+  MPI_Win     win;
+  MPI_Comm    comm   = DART_COMM_WORLD;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
+
   DART_LOG_DEBUG("dart_flush_all() gptr: "
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
-  if (dart__unlikely(gptr.unitid < 0)) {
-    DART_LOG_ERROR("dart_flush_all ! failed: gptr.unitid < 0");
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush_all ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
-    win  = team_data->window;
-    comm = team_data->comm;
-  } else {
-    win = dart_win_local_alloc;
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
   }
+
+  comm = team_data->comm;
+  win  = seginfo->win;
+
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
   CHECK_MPI_RET(
     MPI_Win_flush_all(win), "MPI_Win_flush");
@@ -908,9 +917,10 @@ dart_ret_t dart_flush_all(
 dart_ret_t dart_flush_local(
   dart_gptr_t gptr)
 {
-  MPI_Win  win;
-  MPI_Comm comm   = DART_COMM_WORLD;
-  int16_t  seg_id = gptr.segid;
+  MPI_Win     win;
+  MPI_Comm    comm   = DART_COMM_WORLD;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
 
   DART_LOG_DEBUG("dart_flush_local() gptr: "
@@ -923,22 +933,23 @@ dart_ret_t dart_flush_local(
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush_local ! failed: Unknown team %i!", gptr.segid);
-      return DART_ERR_INVAL;
-    }
-
-    win = team_data->window;
-    comm = team_data->comm;
-    DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
-                   (unsigned long)win, seg_id, team_unit_id.id);
-  } else {
-    win = dart_win_local_alloc;
-    DART_LOG_DEBUG("dart_flush_local() lwin:%"PRIu64" seg:%d unit:%d",
-                   (unsigned long)win, seg_id, team_unit_id.id);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
   }
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  comm = team_data->comm;
+  win  = seginfo->win;
+
   DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
   CHECK_MPI_RET(
     MPI_Win_flush_local(team_unit_id.id, win),
@@ -957,31 +968,33 @@ dart_ret_t dart_flush_local(
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr)
 {
-  MPI_Win  win;
-  MPI_Comm comm   = DART_COMM_WORLD;
-  int16_t  seg_id = gptr.segid;
+  MPI_Win     win;
+  MPI_Comm    comm   = DART_COMM_WORLD;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
   DART_LOG_DEBUG("dart_flush_local_all() gptr: "
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (dart__unlikely(gptr.unitid < 0)) {
-    DART_LOG_ERROR("dart_flush_local_all ! failed: gptr.unitid < 0");
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown team %i!",
-                          gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-    win  = team_data->window;
-    comm = team_data->comm;
-  } else {
-    win = dart_win_local_alloc;
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_blocking ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
   }
+
+  comm = team_data->comm;
+  win  = seginfo->win;
+
   CHECK_MPI_RET(
     MPI_Win_flush_local_all(win),
     "MPI_Win_flush_local_all");
