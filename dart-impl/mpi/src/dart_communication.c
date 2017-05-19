@@ -99,6 +99,15 @@ static dart_ret_t put_shared_mem(
 }
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
+#define CLEAN_SEGMENT(__seginfo)             \
+  do {                                       \
+    if (seginfo->dirty) {                    \
+      CHECK_MPI_RET(                         \
+          MPI_Win_flush_all(__seginfo->win), \
+          "MPI_Win_flush_all");              \
+      seginfo->dirty = false;                \
+    }                                        \
+  } while (0)
 
 dart_ret_t dart_get(
   void            * dest,
@@ -142,6 +151,8 @@ dart_ret_t dart_get(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  CLEAN_SEGMENT(seginfo);
 
   if (team_data->unitid == team_unit_id.id) {
     // use direct memcpy if we are on the same unit
@@ -262,6 +273,8 @@ dart_ret_t dart_put(
       win),
     "MPI_Put");
 
+  seginfo->dirty = true;
+
   return DART_OK;
 }
 
@@ -310,6 +323,8 @@ dart_ret_t dart_accumulate(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  CLEAN_SEGMENT(seginfo);
 
   MPI_Win win  = seginfo->win;
   offset      += seginfo->disp[team_unit_id.id];
@@ -372,6 +387,8 @@ dart_ret_t dart_fetch_and_op(
     return DART_ERR_INVAL;
   }
 
+  CLEAN_SEGMENT(seginfo);
+
   MPI_Win win  = seginfo->win;
   offset      += seginfo->disp[team_unit_id.id];
 
@@ -430,6 +447,8 @@ dart_ret_t dart_compare_and_swap(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  CLEAN_SEGMENT(seginfo);
 
   MPI_Win win  = seginfo->win;
   offset      += seginfo->disp[team_unit_id.id];
@@ -493,6 +512,8 @@ dart_ret_t dart_get_handle(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  CLEAN_SEGMENT(seginfo);
 
 
   DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
@@ -611,6 +632,8 @@ dart_ret_t dart_put_handle(
       win,
       &mpi_req),
     "MPI_Rput");
+
+  seginfo->dirty = true;
 
   *handle = malloc(sizeof(struct dart_handle_struct));
   (*handle)->dest    = team_unit_id.id;
@@ -761,6 +784,8 @@ dart_ret_t dart_get_blocking(
     return DART_ERR_INVAL;
   }
 
+  CLEAN_SEGMENT(seginfo);
+
   if (team_data->unitid == team_unit_id.id) {
     // use direct memcpy if we are on the same unit
     memcpy(dest, seginfo->selfbaseptr + offset,
@@ -863,6 +888,8 @@ dart_ret_t dart_flush(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
 
+  seginfo->dirty = false;
+
   DART_LOG_DEBUG("dart_flush > finished");
   return DART_OK;
 }
@@ -909,6 +936,8 @@ dart_ret_t dart_flush_all(
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+
+  seginfo->dirty = false;
 
   DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
@@ -961,6 +990,9 @@ dart_ret_t dart_flush_local(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
 
+  seginfo->dirty = false;
+
+
   DART_LOG_DEBUG("dart_flush_local > finished");
   return DART_OK;
 }
@@ -1004,6 +1036,8 @@ dart_ret_t dart_flush_local_all(
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+
+  seginfo->dirty = false;
 
   DART_LOG_DEBUG("dart_flush_local_all > finished");
   return DART_OK;
