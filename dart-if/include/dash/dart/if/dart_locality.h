@@ -10,6 +10,8 @@
 #ifndef DART__LOCALITY_H_
 #define DART__LOCALITY_H_
 
+#if 0
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_util.h>
 
@@ -236,6 +238,8 @@ dart_ret_t dart_unit_locality(
 
 #ifdef __cplusplus
 } /* extern "C" */
+#endif
+
 #endif
 
 #endif /* DART__LOCALITY_H_ */

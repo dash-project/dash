@@ -7,6 +7,8 @@
 #ifndef DART__MPI__DART_LOCALITY_PRIV_H__
 #define DART__MPI__DART_LOCALITY_PRIV_H__
 
+#if 0
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/base/macro.h>
 
@@ -14,5 +16,7 @@
 dart_ret_t dart__mpi__locality_init() DART_INTERNAL;
 
 dart_ret_t dart__mpi__locality_finalize() DART_INTERNAL;
+
+#endif
 
 #endif /* DART__MPI__DART_LOCALITY_PRIV_H__ */
