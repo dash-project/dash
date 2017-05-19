@@ -10,78 +10,114 @@ if (NOT $ENV{MPI_CXX_COMPILER} STREQUAL "")
       CACHE STRING "MPI C++ compiler")
 endif()
 
+if (CMAKE_CROSSCOMPILE)
+  message(STATUS "Cross compiling: ${CMAKE_CROSSCOMPILE}")
+endif()
+
 find_package(MPI)
 
-if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
-  try_run(RESULT_VAR COMPILE_RESULT_VAR 
-          ${CMAKE_BINARY_DIR} 
-          ${CMAKE_SOURCE_DIR}/CMakeExt/Code/print_mpi_impl.c 
-          CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${MPI_INCLUDE_PATH}
-          COMPILE_OUTPUT_VARIABLE COMPILE_OUTPUT
-          RUN_OUTPUT_VARIABLE MPI_STRING)
-  if (NOT COMPILE_RESULT_VAR)
-    message(FATAL_ERROR "Failed to determine MPI library: ${COMPILE_OUTPUT}")
-  endif()
-  if (NOT RESULT_VAR EQUAL 0)
-    message(FATAL_ERROR "Failed to determine MPI library: ${MPI_STRING}")
-  endif()
-
-  string(REPLACE " " ";" MPI_LIST ${MPI_STRING})
-  list(GET MPI_LIST 0 MPI_IMPL_NAME)
-  list(GET MPI_LIST 1 MPI_IMPL_VERSION)
-
-  message(STATUS "Found MPI implementation: ${MPI_IMPL_NAME} ${MPI_IMPL_VERSION}")
-
-  set(MPI_FOUND TRUE CACHE BOOL "Found the MPI library")
-  # Cray MPI identifies as MPICH
-  if ("${MPI_INCLUDE_PATH}" MATCHES "cray")
-    set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
-    set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
-  elseif (MPI_IMPL_NAME MATCHES "mpich")
-    set(MPI_IMPL_IS_MPICH TRUE CACHE BOOL "MPICH detected")
-    set(MPI_IMPL_ID "mpich" CACHE STRING "MPI implementation identifier")
-  elseif (MPI_IMPL_NAME MATCHES "mvapich")
-    set(MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
-    set(MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
-  elseif (MPI_IMPL_NAME MATCHES "impi")
-    set(MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
-    set(MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
-  elseif (MPI_IMPL_NAME MATCHES "openmpi")
-    set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
-    set(MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
-    # Open MPI before 1.10.7 and 2.1.1 failed to properly align memory
-    if (${MPI_IMPL_VERSION} VERSION_LESS 1.10.8 OR 
-        ${MPI_IMPL_VERSION} VERSION_EQUAL 2.0.0 OR 
-        (${MPI_IMPL_VERSION} VERSION_GREATER 2.0.0 AND ${MPI_IMPL_VERSION} VERSION_LESS 2.1.1))
-      # disable shared memory windows due to alignment problems
-      set(ENABLE_SHARED_WINDOWS OFF)
-      message(WARNING 
-        "Disabling shared memory window support due to defective allocation "
-        "in OpenMPI <2.1.1")
-    endif()
-  else ()
-    message(FATAL_ERROR "Unknown MPI implementation detected: ${MPI_STRING}")
-  endif()
-else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
-  set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")
-endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)
-
-
-# check for MPI-3
 
 # save current state
 cmake_push_check_state()
-set(CMAKE_REQUIRED_INCLUDES ${MPI_INCLUDE_PATH})
+set (CMAKE_REQUIRED_INCLUDES ${MPI_INCLUDE_PATH})
+
+# check for Open MPI
 check_symbol_exists(
-  MPI_NO_OP
+  OMPI_MAJOR_VERSION
   mpi.h
-  HAVE_MPI_NO_OP
+  HAVE_OPEN_MPI
 )
+if (HAVE_OPEN_MPI)
+  set (MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
+  set (MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
+  try_compile(OMPI_OK ${CMAKE_BINARY_DIR} 
+    ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_compatible_ompi.c 
+    CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${MPI_INCLUDE_PATH}
+    OUTPUT_VARIABLE OUTPUT)
+  if (NOT OMPI_OK)
+    message(WARNING 
+      "Disabling shared memory window support due to defective allocation "
+      "in OpenMPI <2.1.1")
+    set (ENABLE_SHARED_WINDOWS OFF)
+  endif()
+endif()
+
+# order matters: all of the following
+# implementations also define MPICH
+if (NOT DEFINED MPI_IMPL_ID)
+  # check for Intel MPI
+  check_symbol_exists(
+    I_MPI_VERSION
+    mpi.h
+    HAVE_I_MPI
+  )
+  if (HAVE_I_MPI)
+    set (MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
+    set (MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
+  endif ()
+endif ()
+
+if (NOT DEFINED MPI_IMPL_ID)
+  # check for MVAPICH
+  check_symbol_exists(
+    MVAPICH2_VERSION
+    mpi.h
+    HAVE_MVAPICH
+  )
+  if (HAVE_MVAPICH)
+    set (MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
+    set (MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
+  endif ()
+endif ()
+
+if (NOT DEFINED MPI_IMPL_ID)
+  # check for Cray MPI
+  # MPIX_PortName_Backlog is a Cray extension
+  # TODO: any better way to detect Cray MPI?
+  check_symbol_exists(
+    MPIX_PortName_Backlog
+    mpi.h
+    HAVE_CRAY_MPI
+  )
+  if (HAVE_CRAY_MPI)
+    set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
+    set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
+  endif ()
+endif ()
+
+if (NOT DEFINED MPI_IMPL_ID)
+  # check for MVAPICH
+  check_symbol_exists(
+    MPICH
+    mpi.h
+    HAVE_MPICH
+  )
+  if (HAVE_MPICH)
+    set (MPI_IMPL_IS_MPICH TRUE CACHE BOOL "MPICH detected")
+    set (MPI_IMPL_ID "mpich" CACHE STRING "MPI implementation identifier")
+  endif ()
+endif ()
+
+# restore state
 cmake_pop_check_state()
 
-if (NOT HAVE_MPI_NO_OP)
+if (NOT DEFINED MPI_IMPL_ID)
+  set (MPI_IMPL_ID "UNKNOWN" CACHE STRING "MPI implementation identifier")
+endif()
+
+message(STATUS "Detected MPI implementation: ${MPI_IMPL_ID}")
+
+# check for MPI-3
+try_compile(HAVE_MPI3 ${CMAKE_BINARY_DIR} 
+  ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_support.c 
+  OUTPUT_VARIABLE OUTPUT)
+
+if (NOT HAVE_MPI3)
   set(MPI_IS_DART_COMPATIBLE FALSE CACHE BOOL
      "MPI LIB has support for MPI-3")
+  unset (MPI_IMPL_ID CACHE)
+  message (WARNING 
+    "Detected MPI implementation (${MPI_IMPL_ID}) does not support MPI-3")
 else()
   set(MPI_IS_DART_COMPATIBLE TRUE CACHE BOOL
     "MPI LIB has support for MPI-3")
