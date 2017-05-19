@@ -128,7 +128,7 @@ endif()
 # has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/dyloc.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/dyloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
@@ -225,6 +225,7 @@ add_subdirectory(dart-if)
 # DART base:
 add_subdirectory(dart-impl)
 
+# DASH:
 add_subdirectory(dash)
 
 ## Documentation
@@ -329,11 +330,7 @@ else()
   message(NOTE "BLAS                      disabled")
 endif()
 if (ENABLE_DYLOC)
-  if (DYLOC_FOUND)
-    message(INFO "dyloc                     enabled")
-  else()
-    message(NOTE "dyloc                     not found")
-  endif()
+  message(INFO "dyloc                     enabled")
 else()
   message(NOTE "dyloc                     disabled")
 endif()

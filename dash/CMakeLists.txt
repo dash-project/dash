@@ -41,6 +41,8 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
     PARENT_SCOPE)
+set(ENABLE_DYLOC ${ENABLE_DYLOC}
+    PARENT_SCOPE)
 
 
 # Source- and header files to be compiled (OBJ):
@@ -69,6 +71,14 @@ include_directories(
 
 set (ADDITIONAL_COMPILE_FLAGS ${CXX_OMP_FLAG} ${ADDITIONAL_COMPILE_FLAGS})
 set (ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS} -DDASH)
+
+if (ENABLE_DYLOC)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/dyloc.cmake)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_DYLOC)
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       dylocxx)
+endif()
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -430,12 +440,12 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
   if (BUILD_COVERAGE_TESTS)
     include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   endif()
 
- foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+  foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     set(DASH_LIBRARY "dash-${dart_variant}")
     set(DART_LIBRARY "dart-${dart_variant}")
     set(DASH_TEST "dash-test-${dart_variant}")
