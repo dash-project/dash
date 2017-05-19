@@ -1,3 +1,5 @@
+INCLUDE (CheckSymbolExists)
+INCLUDE (CMakePushCheckState)
 
 if (NOT $ENV{MPI_C_COMPILER} STREQUAL "")
   set(MPI_C_COMPILER   $ENV{MPI_C_COMPILER}
@@ -35,3 +37,21 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
 else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")
 endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)
+
+
+# check for MPI-3
+
+# save current state
+cmake_push_check_state()
+set(CMAKE_REQUIRED_INCLUDES ${MPI_INCLUDE_PATH})
+check_symbol_exists(
+  MPI_NO_OP
+  mpi.h
+  HAVE_MPI_NO_OP
+)
+cmake_pop_check_state()
+
+if (NOT HAVE_MPI_NO_OP)
+  message(FATAL_ERROR "Detected MPI library does not support MPI-3.")
+endif()
+

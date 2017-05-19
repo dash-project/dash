@@ -108,7 +108,7 @@ public:
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
 
-  inline const dash::Team & team() const noexcept
+  inline dash::Team & team() const noexcept
   {
     return _map->team();
   }

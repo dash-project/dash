@@ -249,7 +249,7 @@ class TestBase : public ::testing::Test {
       ::testing::UnitTest::GetInstance()->current_test_info();
     LOG_MESSAGE("===> Running test case %s.%s ...",
                 test_info->test_case_name(), test_info->name());
-    dash::init(&TESTENV.argc, &TESTENV.argv);
+    dash::init(&TESTENV::argc, &TESTENV::argv);
     
     LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
     dash::barrier();

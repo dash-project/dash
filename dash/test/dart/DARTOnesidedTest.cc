@@ -37,6 +37,47 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   }
 }
 
+TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
+{
+  typedef int value_t;
+
+  if (dash::size() < 4) {
+    SKIP_TEST_MSG("requires at least 4 units");
+  }
+
+  auto& split_team = dash::Team::All().split(2);
+  const size_t block_size = 10;
+  size_t num_elem_total   = split_team.size() * block_size;
+
+
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED, split_team);
+  // Array to store local copy:
+  int local_array[block_size];
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t l = 0; l < block_size; ++l) {
+    array.local[l] = (split_team.myid() + 1) * 1000 +
+                       (split_team.dart_id() * 100) + l;
+  }
+  array.barrier();
+  // Unit to copy values from:
+  dart_unit_t unit_src  = (split_team.myid() + 1) % split_team.size();
+  // Global start index of block to copy:
+  int g_src_index       = unit_src * block_size;
+  // Copy values:
+  dart_storage_t ds = dash::dart_storage<value_t>(block_size);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
+  dart_get_blocking(
+    local_array,                                // lptr dest
+    (array.begin() + g_src_index).dart_gptr(),  // gptr start
+    ds.nelem,
+    ds.dtype
+  );
+  for (size_t l = 0; l < block_size; ++l) {
+    value_t expected = array[g_src_index + l];
+    ASSERT_EQ_U(expected, local_array[l]);
+  }
+}
+
 TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
 {
   typedef int value_t;
