@@ -80,22 +80,6 @@ dart_ret_t dart_segment_init(dart_segmentdata_t *segdata, dart_team_t teamid)
   segdata->memid = 1;
   segdata->registermemid = -1;
 
-  // register the segment for non-global allocations on DART_TEAM_ALL
-  if (teamid == DART_TEAM_ALL) {
-    dart_seghash_elem_t *elem = calloc(1, sizeof(dart_seghash_elem_t));
-    register_segment(segdata, elem);
-  } else {
-    // copy from DART_TEAM_ALL into all other teams
-    dart_team_data_t *all_team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
-    DART_ASSERT_MSG(all_team_data != NULL, "Failed to query DART_TEAM_ALL!");
-    dart_segment_info_t *segment = dart_segment_alloc(
-                                     segdata, DART_SEGMENT_LOCAL_ALLOC);
-    DART_ASSERT(segment != NULL);
-    dart_segment_info_t *local_alloc_segment = get_segment(
-                                                &all_team_data->segdata,
-                                                DART_SEGMENT_LOCAL);
-    memcpy(segment, local_alloc_segment, sizeof(dart_segment_info_t));
-  }
   return DART_OK;
 }
 
