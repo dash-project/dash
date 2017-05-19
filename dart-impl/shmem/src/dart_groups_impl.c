@@ -19,13 +19,16 @@ dart_ret_t dart_group_sizeof(size_t *size)
 dart_ret_t dart_group_create(dart_group_t *group)
 {
   int i;
+  struct dart_group_struct* res = allocate_group();
   
-  (*group)->nmem = 0;
+
+  res->nmem = 0;
   for (i = 0; i < MAXSIZE_GROUP; i++)
     {
-      ((*group)->g2l)[i] = -1;
-      ((*group)->l2g)[i] = -1;
+      (res->g2l)[i] = -1;
+      (res->l2g)[i] = -1;
     }
+  *group = res;
   return DART_OK; 
 }
 
