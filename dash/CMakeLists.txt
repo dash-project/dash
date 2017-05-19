@@ -80,7 +80,6 @@ if (ENABLE_DYLOC)
        dyloc-common dylocxx)
 # set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
 #      ${DYLOC_INCLUDES})
-  message(STATUS "dash: dyloc includes: " ${DYLOC_INCLUDES})
 endif()
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)

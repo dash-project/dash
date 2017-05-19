@@ -1,6 +1,10 @@
 
 include(ExternalProject)
 
+# Discussion of integration alternatives:
+# https://stackoverflow.com/questions/9689183/cmake-googletest
+
+
 # message(STATUS "Looking for dyloc config in ${DYLOC_BASE}")
 # find_package(dyloc CONFIG REQUIRED HINTS ${DYLOC_BASE})
 
@@ -28,24 +32,35 @@ if(ENABLE_DYLOC)
     -DDART_PREFIX=${CMAKE_BINARY_DIR}
     -DDART_INCLUDE_DIRS=${CMAKE_SOURCE_DIR}/dart-if/include
   )
-  ExternalProject_Add(
-    dylocExternal
-    GIT_REPOSITORY https://github.com/dash-project/dyloc.git
-    GIT_TAG master
-    TIMEOUT 10
-    PREFIX "${DYLOC_PREFIX}"
-    CMAKE_ARGS ${DYLOC_CMAKE_ARGS}
-  # INSTALL_COMMAND ""
-    INSTALL_DIR ${DYLOC_INSTALL_PREFIX}
-    LOG_INSTALL ON
-  )
-  set(DYLOC_LOCATION       "${DYLOC_PREFIX}/src/dylocExternal-build/dyloc")
-  set(DYLOC_INCLUDES       "${DYLOC_PREFIX}/src/dylocExternal/dyloc/include")
-  set(DYLOC_LIBRARY        "${DYLOC_LOCATION}/${LIBPREFIX}dyloc${LIBSUFFIX}")
-  set(DYLOC_COMMON_LIBRARY "${DYLOC_LOCATION}/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
-  set(DYLOCXX_LIBRARY      "${DYLOC_LOCATION}/${LIBPREFIX}dylocxx${LIBSUFFIX}")
+  if (DYLOC_SOURCE_PATH)
+    ExternalProject_Add(
+      dylocExternal
+      URL ${DYLOC_SOURCE_PATH}
+      PREFIX "${DYLOC_PREFIX}"
+      CMAKE_ARGS ${DYLOC_CMAKE_ARGS}
+      INSTALL_DIR ${DYLOC_INSTALL_PREFIX}
+      LOG_INSTALL ON
+    )
+  else()
+    ExternalProject_Add(
+      dylocExternal
+      GIT_REPOSITORY https://github.com/dash-project/dyloc.git
+      GIT_TAG master
+      TIMEOUT 10
+      PREFIX "${DYLOC_PREFIX}"
+      CMAKE_ARGS ${DYLOC_CMAKE_ARGS}
+      INSTALL_DIR ${DYLOC_INSTALL_PREFIX}
+      LOG_INSTALL ON
+    )
+  endif()
 
-  message(STATUS "dyloc      location:     " ${DYLOC_LOCATION})
+  set(DYLOC_BUILD_DIR      "${DYLOC_PREFIX}/src/dylocExternal-build/dyloc")
+  set(DYLOC_INCLUDES       "${DYLOC_PREFIX}/src/dylocExternal/dyloc/include")
+  set(DYLOC_LIBRARY        "${DYLOC_BUILD_DIR}/${LIBPREFIX}dyloc${LIBSUFFIX}")
+  set(DYLOC_COMMON_LIBRARY "${DYLOC_BUILD_DIR}/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
+  set(DYLOCXX_LIBRARY      "${DYLOC_BUILD_DIR}/${LIBPREFIX}dylocxx${LIBSUFFIX}")
+
+  message(STATUS "dyloc      source path:  " ${DYLOC_SOURCE_PATH})
   message(STATUS "dyloc      include path: " ${DYLOC_INCLUDES})
 
   add_dependencies(dylocExternal dart-mpi)
