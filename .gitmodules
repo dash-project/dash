@@ -1,3 +1,5 @@
-[submodule "dyloc"]
-	path = dyloc
+[submodule "external/dyloc"]
+	path = external/dyloc
 	url = https://github.com/dash-project/dyloc
+  autoinit = true 
+  autoupdate = true 
