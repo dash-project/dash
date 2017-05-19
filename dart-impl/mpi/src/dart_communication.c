@@ -28,7 +28,6 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
-#include <assert.h>
 
 #define CHECK_MPI_RET(__call, __name)                      \
   do {                                                     \
@@ -547,9 +546,6 @@ dart_ret_t dart_get_handle(
    */
 
   offset += seginfo->disp[team_unit_id.id];
-
-  assert(win != 0);
-  printf("win: %x\n", win);
 
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
   MPI_Request mpi_req;
