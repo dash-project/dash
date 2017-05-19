@@ -77,7 +77,10 @@ if (ENABLE_DYLOC)
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_DYLOC)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       dylocxx)
+       dyloc-common dylocxx)
+# set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+#      ${DYLOC_INCLUDES})
+  message(STATUS "dash: dyloc includes: " ${DYLOC_INCLUDES})
 endif()
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
@@ -330,6 +333,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   include_directories(
     ${ADDITIONAL_INCLUDES}
+    ${DYLOC_INCLUDES}
   )
 
   DeployLibrary(${DASH_LIBRARY})
@@ -451,6 +455,7 @@ if (BUILD_TESTS)
     set(DASH_TEST "dash-test-${dart_variant}")
     include_directories(
       ${GTEST_INCLUDES}
+      ${DYLOC_INCLUDES}
       ${CMAKE_SOURCE_DIR}/dash/include
       ${ADDITIONAL_INCLUDES}
     )

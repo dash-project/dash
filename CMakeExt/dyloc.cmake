@@ -7,13 +7,16 @@ include(ExternalProject)
 if(ENABLE_DYLOC)
   set(DART_IMPLEMENTATIONS ${DART_IMPLEMENTATIONS} PARENT_SCOPE)
 
-  set(DYLOC_PREFIX "${CMAKE_BINARY_DIR}/dyloc")
+  set(DYLOC_PREFIX         "${CMAKE_BINARY_DIR}/dyloc")
+# set(DYLOC_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
+  set(DYLOC_INSTALL_PREFIX "${DYLOC_PREFIX}/src/dylocExternal/dyloc")
+
   message(STATUS "Building dyloc in ${DYLOC_PREFIX}")
 
   list(
     APPEND DYLOC_CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/external/dyloc
+    -DCMAKE_INSTALL_PREFIX=${DYLOC_INSTALL_PREFIX}
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     -DBOOST_INCLUDEDIR=${BOOST_INCLUDE_DIRS}
@@ -32,10 +35,8 @@ if(ENABLE_DYLOC)
     TIMEOUT 10
     PREFIX "${DYLOC_PREFIX}"
     CMAKE_ARGS ${DYLOC_CMAKE_ARGS}
-    INSTALL_DIR ${CMAKE_BINARY_DIR}/dyloc
-#   LOG_DOWNLOAD ON
-#   LOG_CONFIGURE ON
-#   LOG_BUILD ON
+  # INSTALL_COMMAND ""
+    INSTALL_DIR ${DYLOC_INSTALL_PREFIX}
     LOG_INSTALL ON
   )
   set(DYLOC_LOCATION       "${DYLOC_PREFIX}/src/dylocExternal-build/dyloc")
@@ -43,6 +44,9 @@ if(ENABLE_DYLOC)
   set(DYLOC_LIBRARY        "${DYLOC_LOCATION}/${LIBPREFIX}dyloc${LIBSUFFIX}")
   set(DYLOC_COMMON_LIBRARY "${DYLOC_LOCATION}/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
   set(DYLOCXX_LIBRARY      "${DYLOC_LOCATION}/${LIBPREFIX}dylocxx${LIBSUFFIX}")
+
+  message(STATUS "dyloc      location:     " ${DYLOC_LOCATION})
+  message(STATUS "dyloc      include path: " ${DYLOC_INCLUDES})
 
   add_dependencies(dylocExternal dart-mpi)
   add_dependencies(dylocExternal dart-base)
