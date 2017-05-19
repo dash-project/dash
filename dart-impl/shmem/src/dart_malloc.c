@@ -9,20 +9,18 @@
 
 int dart__shmem__datatype_sizeof(const dart_datatype_t dtype){
   switch(dtype){
-    case DART_TYPE_BYTE:  1; break;
-    case DART_TYPE_SHORT: sizeof(short); break;
-    case DART_TYPE_INT: sizeof(int); break;
-    case DART_TYPE_UINT: sizeof(unsigned int); break;
-    case DART_TYPE_LONG: sizeof(long); break;
-    case DART_TYPE_ULONG: sizeof(unsigned long); break;
-    case DART_TYPE_LONGLONG: sizeof(long long); break;
-    case DART_TYPE_FLOAT: sizeof(float); break;
-    case DART_TYPE_DOUBLE: sizeof(double); break;
-    default: -1;
+    case DART_TYPE_BYTE:     return 1; 
+    case DART_TYPE_SHORT:    return sizeof(short);
+    case DART_TYPE_INT:      return sizeof(int);
+    case DART_TYPE_UINT:     return sizeof(unsigned int);
+    case DART_TYPE_LONG:     return sizeof(long);
+    case DART_TYPE_ULONG:    return sizeof(unsigned long);
+    case DART_TYPE_LONGLONG: return sizeof(long long);
+    case DART_TYPE_FLOAT:    return sizeof(float);
+    case DART_TYPE_DOUBLE:   return sizeof(double);
+    default: return -1;
   }
 }
-
-
 
 /* TO IMPLEMENT */
 /*
