@@ -15,19 +15,14 @@ if(ENABLE_DYLOC)
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}/external
     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    -DEXTRA_C_FLAGS=${EXTRA_C_FLAGS}
     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    -DEXTRA_CXX_FLAGS=${EXTRA_CXX_FLAGS}
-    -DPARENT_INCLUDE_DIR=${PROJECT_BINARY_DIR}/external/include
-    -DPARENT_DEFINITIONS=${PARENT_DEFINITIONS}
-    -DPARENT_BINARY_DIR=${PROJECT_BINARY_DIR}
     -DBOOST_INCLUDEDIR=${BOOST_INCLUDE_DIRS}
     -DBOOST_LIBRARYDIR=${BOOST_LIBRARIES}
-    -DBUILD_TESTS=${DYLOC_TESTS}
+    -DBUILD_TESTS=OFF
     -DDART_IMPLEMENTATIONS=${DART_IMPLEMENTATIONS}
     -DDART_PREFIX=${CMAKE_BINARY_DIR}
     -DDART_LIBRARY_DIRS=${PROJECT_BINARY_DIR}/lib
-    -DDART_INCLUDE_DIRS=${CMAKE_BINARY_DIR}/dart-if/include
+    -DDART_INCLUDE_DIRS=${CMAKE_SOURCE_DIR}/dart-if/include
   )
   ExternalProject_Add(
     dylocExternal
@@ -36,18 +31,27 @@ if(ENABLE_DYLOC)
     TIMEOUT 10
     PREFIX "${DYLOC_PREFIX}"
     CMAKE_ARGS ${DYLOC_CMAKE_ARGS}
-    INSTALL_COMMAND ""
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON
+    INSTALL_DIR ${PROJECT_BINARY_DIR}/dyloc
+#   LOG_DOWNLOAD ON
+#   LOG_CONFIGURE ON
+#   LOG_BUILD ON
   )
-  set(DYLOC_LOCATION "${DYLOC_PREFIX}/src/GTestExternal-build/googlemock/gtest")
-  set(DYLOC_INCLUDES "${DYLOC_PREFIX}/src/GTestExternal/googletest/include")
-  set(DYLOC_LIBRARY  "${DYLOC_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
-  set(DYLOC_MAINLIB  "${DYLOC_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
+  set(DYLOC_LOCATION       "${DYLOC_PREFIX}/src/dylocExternal-build/dyloc")
+  set(DYLOC_INCLUDES       "${DYLOC_PREFIX}/src/dylocExternal/dyloc/include")
+  set(DYLOC_LIBRARY        "${DYLOC_LOCATION}/${LIBPREFIX}dyloc${LIBSUFFIX}")
+  set(DYLOC_COMMON_LIBRARY "${DYLOC_LOCATION}/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
+  set(DYLOCXX_LIBRARY      "${DYLOC_LOCATION}/${LIBPREFIX}dylocxx${LIBSUFFIX}")
 
   add_dependencies(dylocExternal dart-mpi)
   add_dependencies(dylocExternal dart-base)
+
+  add_library(dyloc-common IMPORTED STATIC GLOBAL)
+  set_target_properties(
+    dyloc-common
+    PROPERTIES
+    IMPORTED_LOCATION                 "${DYLOC_LIBRARY}"
+    IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}")
+  add_dependencies(dyloc-common dylocExternal)
 
   add_library(dylocxx IMPORTED STATIC GLOBAL)
   set_target_properties(
