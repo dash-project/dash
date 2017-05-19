@@ -15,7 +15,7 @@ if(ENABLE_DYLOC)
 
   set(DYLOC_PREFIX         "${CMAKE_BINARY_DIR}/dyloc")
 # set(DYLOC_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
-  set(DYLOC_INSTALL_PREFIX "${DYLOC_PREFIX}/src/dylocExternal/dyloc")
+  set(DYLOC_INSTALL_PREFIX "${DYLOC_PREFIX}/install")
 
   message(STATUS "Building dyloc in ${DYLOC_PREFIX}")
 
@@ -59,10 +59,11 @@ if(ENABLE_DYLOC)
   endif()
 
   set(DYLOC_BUILD_DIR      "${DYLOC_PREFIX}/src/dylocExternal-build/dyloc")
-  set(DYLOC_INCLUDES       "${DYLOC_PREFIX}/src/dylocExternal/dyloc/include")
-  set(DYLOC_LIBRARY        "${DYLOC_BUILD_DIR}/${LIBPREFIX}dyloc${LIBSUFFIX}")
-  set(DYLOC_COMMON_LIBRARY "${DYLOC_BUILD_DIR}/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
-  set(DYLOCXX_LIBRARY      "${DYLOC_BUILD_DIR}/${LIBPREFIX}dylocxx${LIBSUFFIX}")
+  set(DYLOC_BASE           "${DYLOC_INSTALL_PREFIX}")
+  set(DYLOC_INCLUDES       "${DYLOC_BASE}/include")
+  set(DYLOC_LIBRARY        "${DYLOC_BASE}/lib/${LIBPREFIX}dyloc${LIBSUFFIX}")
+  set(DYLOC_COMMON_LIBRARY "${DYLOC_BASE}/lib/${LIBPREFIX}dyloc-common${LIBSUFFIX}")
+  set(DYLOCXX_LIBRARY      "${DYLOC_BASE}/lib/${LIBPREFIX}dylocxx${LIBSUFFIX}")
 
   message(STATUS "dyloc      source path:  " ${DYLOC_SOURCE_PATH})
   message(STATUS "dyloc      include path: " ${DYLOC_INCLUDES})
