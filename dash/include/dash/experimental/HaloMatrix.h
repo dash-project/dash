@@ -123,8 +123,15 @@ public:
   }
 
   void waitHalosAsync() {
-    for (auto& region : _region_data)
+    for (auto& region : _region_data){
       dart_waitall(region.second.handle, region.second.num_handles);
+    /*if(dash::myid() == 0){
+    std::cout << dash::myid() << "," << region.second.region.index() << "," << region.second.region.borderDim(1)<< "->";
+    for( auto i = 0; i < region.second.region.size(); ++i)
+      std::cout << *(_halomemory.haloPos(region.second.region.index()) + i) << ",";
+    std::cout << std::endl;
+    }*/
+    }
   }
 
   void updateHalos() {
@@ -140,10 +147,13 @@ public:
 
   const ViewSpecT& getLocalView() { return _view_local; }
 
+  const StencilSpecT& stencilSpec() { return _stencil_spec; }
+
   template <typename FunctionT>
   void setFixedHalos(FunctionT f) {
     for (const auto& region : _haloblock.boundary_regions()) {
-      if (region.border() && _cycle_spec[region.regionSpec().relevantDim() - 1] == Cycle::FIXED) {
+      auto rel_dim = region.regionSpec().relevantDim() - 1;
+      if (region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED) {
         auto pos_ptr = _halomemory.haloPos(region.index());
         auto spec    = region.regionSpec();
         auto rel_ext = region.region().offsets();
@@ -177,14 +187,14 @@ private:
   };
 
   void updateHaloIntern(const Data& data, bool async) {
-    if (data.region.border() &&
-        _cycle_spec[data.region.regionSpec().relevantDim() - 1] == Cycle::FIXED)
+    auto rel_dim = data.region.regionSpec().relevantDim() - 1;
+    if (data.region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED)
       return;
 
     auto off = _halomemory.haloPos(data.region.index());
     auto it  = data.region.begin();
 
-    for (auto i(0); i < data.num_handles; ++i, it += data.cont_elems) {
+    for (auto i = 0; i < data.num_handles; ++i, it += data.cont_elems) {
       dart_storage_t ds = dash::dart_storage<ElementT>(data.cont_elems);
       dart_get_handle(off + ds.nelem * i, it.dart_gptr(), ds.nelem, ds.dtype, &(data.handle[i]));
     }
