@@ -43,10 +43,10 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   const size_t block_size    = 10;
   const size_t num_elem_copy = 2 * block_size;
   size_t num_elem_total      = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST_MSG("requires at least 2 units");
   }
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
   int local_array[num_elem_copy];
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
@@ -76,10 +76,10 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   const size_t block_size = 5000;
   size_t num_elem_copy    = (dash::size() - 1) * block_size;
   size_t num_elem_total   = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST_MSG("requires at least 2 units");
   }
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
   int * local_array = new int[num_elem_copy];
   // Array of handles, one for each dart_get_handle:
@@ -134,4 +134,36 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   }
   delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
+}
+
+TEST_F(DARTOnesidedTest, ConsistentAsyncGet)
+{
+  typedef int value_t;
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("requires at least 2 units");
+  }
+
+  dash::Array<value_t> array(dash::size(), dash::BLOCKED);
+  array.local[0] = dash::myid();
+  dash::barrier();
+
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  int rneighbor = (dash::myid() + 1) % dash::size();
+
+  dart_gptr_t gptr = array[lneighbor].dart_gptr();
+
+  dart_storage_t ds = dash::dart_storage<value_t>(1);
+  int val = dash::myid() * 100;
+  // async update
+  dart_put(gptr, &val, ds.nelem, ds.dtype);
+  val = -1;
+  // retrieve the value again
+  dart_get_blocking(&val, gptr, ds.nelem, ds.dtype);
+
+  ASSERT_EQ_U(val, dash::myid() * 100);
+
+  array.barrier();
+
+  ASSERT_EQ_U(array.local[0], rneighbor * 100);
+
 }
