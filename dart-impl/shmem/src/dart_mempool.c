@@ -29,7 +29,7 @@ dart_ret_t dart_mempool_create(dart_mempoolptr pool,
   size_t totalsz = teamsize * localsz;
   int   attach_key;
   void *attach_addr;
-  dart_team_unit_t root = {0};
+  dart_team_unit_t root = DART_TEAM_UNIT_ID(0);
 
   // TODO: maybe a barrier here...
 
