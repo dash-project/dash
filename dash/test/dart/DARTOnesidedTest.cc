@@ -194,14 +194,14 @@ TEST_F(DARTOnesidedTest, ConsistentAsyncGet)
   dart_gptr_t gptr = array[lneighbor].dart_gptr();
 
   dart_storage_t ds = dash::dart_storage<value_t>(1);
-  int val = dash::myid() * 100;
+  value_t pval = dash::myid() * 100;
   // async update
-  dart_put(gptr, &val, ds.nelem, ds.dtype);
-  val = -1;
+  dart_put(gptr, &pval, ds.nelem, ds.dtype);
+  value_t gval;
   // retrieve the value again
-  dart_get_blocking(&val, gptr, ds.nelem, ds.dtype);
+  dart_get_blocking(&gval, gptr, ds.nelem, ds.dtype);
 
-  ASSERT_EQ_U(val, dash::myid() * 100);
+  ASSERT_EQ_U(gval, dash::myid() * 100);
 
   array.barrier();
 
