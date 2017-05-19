@@ -181,7 +181,7 @@ public:
 
   inline    T                   & local_at(size_type pos);
 
-  constexpr const Team          & team()                const noexcept;
+  constexpr Team                & team()                const noexcept;
 
   constexpr size_type             size()                const noexcept;
   constexpr size_type             local_size()          const noexcept;
