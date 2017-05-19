@@ -10,12 +10,34 @@ if (NOT $ENV{MPI_CXX_COMPILER} STREQUAL "")
       CACHE STRING "MPI C++ compiler")
 endif()
 
-if (CMAKE_CROSSCOMPILE)
-  message(STATUS "Cross compiling: ${CMAKE_CROSSCOMPILE}")
-endif()
-
+# find MPI environment
 find_package(MPI)
 
+# helper function that executes the MPI compiler
+# on the given source file and sets
+# resvar to true if the compile step succeeded
+function (check_mpi_compile sourcefile resvar)
+
+  # check for MPI-3
+  get_filename_component(filename ${sourcefile} NAME)
+  execute_process(
+    COMMAND "${MPI_C_COMPILER}" -c "${sourcefile}" -o "${CMAKE_BINARY_DIR}/${filename}.o"
+    RESULT_VARIABLE RETURN_VAL
+    OUTPUT_VARIABLE OUTPUT
+    ERROR_VARIABLE  OUTPUT
+  )
+
+  if (RETURN_VAL EQUAL 0)
+    set (${resvar} TRUE PARENT_SCOPE)
+  else ()
+    set (${resvar} FALSE PARENT_SCOPE)
+    message (STATUS "Failed to execute MPI compiler: \n${OUTPUT}")
+  endif ()
+
+endfunction ()
+
+
+# Determine MPI implementation
 
 # save current state
 cmake_push_check_state()
@@ -30,10 +52,7 @@ check_symbol_exists(
 if (HAVE_OPEN_MPI)
   set (MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
   set (MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
-  try_compile(OMPI_OK ${CMAKE_BINARY_DIR} 
-    ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_compatible_ompi.c 
-    CMAKE_FLAGS -DINCLUDE_DIRECTORIES=${MPI_INCLUDE_PATH}
-    OUTPUT_VARIABLE OUTPUT)
+  check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_compatible_ompi.c OMPI_OK)
   if (NOT OMPI_OK)
     message(WARNING 
       "Disabling shared memory window support due to defective allocation "
@@ -106,20 +125,21 @@ if (NOT DEFINED MPI_IMPL_ID)
 endif()
 
 message(STATUS "Detected MPI implementation: ${MPI_IMPL_ID}")
+message(STATUS "Detected MPI C compiler: ${MPI_C_COMPILER}")
 
-# check for MPI-3
-try_compile(HAVE_MPI3 ${CMAKE_BINARY_DIR} 
-  ${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_support.c 
-  OUTPUT_VARIABLE OUTPUT)
+check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_support.c HAVE_MPI3)
 
 if (NOT HAVE_MPI3)
+  message(${OUTPUT})
   set(MPI_IS_DART_COMPATIBLE FALSE CACHE BOOL
      "MPI LIB has support for MPI-3")
-  unset (MPI_IMPL_ID CACHE)
   message (WARNING 
     "Detected MPI implementation (${MPI_IMPL_ID}) does not support MPI-3")
+  message (STATUS "${OUTPUT}")
+  unset (MPI_IMPL_ID CACHE)
 else()
   set(MPI_IS_DART_COMPATIBLE TRUE CACHE BOOL
     "MPI LIB has support for MPI-3")
 endif()
 
+set (CMAKE_C_COMPILER ${CMAKE_C_COMPILER_SAFE})
