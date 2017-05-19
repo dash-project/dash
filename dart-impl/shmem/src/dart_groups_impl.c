@@ -4,6 +4,12 @@
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/shmem/dart_groups_impl.h>
 
+static struct dart_group_struct* allocate_group()
+{
+  struct dart_group_struct* group = malloc(sizeof(struct dart_group_struct));
+  return group;
+};
+
 dart_ret_t dart_group_sizeof(size_t *size)
 {
   *size=sizeof(dart_group_t);
@@ -32,13 +38,15 @@ dart_ret_t dart_group_destroy(dart_group_t *group)
 dart_ret_t dart_group_clone(const dart_group_t g, dart_group_t *gout)
 {
   int i;
+  struct dart_group_struct* res = allocate_group();
   
-  (*gout)->nmem = g->nmem;
+  res->nmem = g->nmem;
   for (i = 0; i < MAXSIZE_GROUP; i++)
     {
-      ((*gout)->g2l)[i] = (g->g2l)[i];
-      ((*gout)->l2g)[i] = (g->l2g)[i];
+      (res->g2l)[i] = (g->g2l)[i];
+      (res->l2g)[i] = (g->l2g)[i];
     }
+  *gout = res;
   return DART_OK;
 }
 
@@ -70,19 +78,21 @@ dart_ret_t dart_group_union(const dart_group_t g1,
                             dart_group_t *gout)
 {
   int i;
+  struct dart_group_struct* res = allocate_group();
   
   for (i = 0; i < MAXSIZE_GROUP; i++)
     {
-      ((*gout)->g2l)[i] = -1;
+      (res->g2l)[i] = -1;
       if ((g1->g2l)[i] >= 0 || (g2->g2l)[i] >= 0)
 	{
 	  // just set g2l[i] to 1 to indicate that i is a member
 	  // group_rebuild then updates the group data structure
-	  ((*gout)->g2l)[i] = 1;
+	  (res->g2l)[i] = 1;
 	}
     }
   
-  group_rebuild((*gout));
+  group_rebuild(res);
+  *gout = res;
   return DART_OK;
 }
 
@@ -92,20 +102,22 @@ dart_ret_t dart_group_intersect(const dart_group_t g1,
                                 dart_group_t *gout)
 {
   int i;
+  struct dart_group_struct* res = allocate_group();
   
   for (i = 0; i < MAXSIZE_GROUP; i++)
     {
-      ((*gout)->g2l)[i] = -1;
+      (res->g2l)[i] = -1;
       if ((g1->g2l)[i] >= 0 && (g2->g2l)[i] >= 0)
 	{
 	  // set to 1 to indicate that i is a member
 	  // group_rebuild then updates the group data structure
-	  ((*gout)->g2l)[i] = 1;
+	  (res->g2l)[i] = 1;
 	}
     }
   
-  group_rebuild((*gout));
-  
+  group_rebuild(res);
+  *gout = res;
+
   return DART_OK;
 }
 
