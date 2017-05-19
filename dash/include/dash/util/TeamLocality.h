@@ -6,7 +6,6 @@
 #include <dash/util/UnitLocality.h>
 
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
 
 #include <dash/algorithm/internal/String.h>
 

@@ -8,7 +8,8 @@
 #include <dash/algorithm/internal/String.h>
 
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
+
+#include <dylocxx.h>
 
 #include <dash/Exception.h>
 #include <dash/Team.h>
@@ -27,8 +28,7 @@ namespace util {
 /**
  * Wrapper of a single \c dart_unit_locality_t object.
  */
-class UnitLocality
-{
+class UnitLocality {
 private:
   typedef UnitLocality  self_t;
 

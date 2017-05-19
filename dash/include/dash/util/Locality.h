@@ -2,11 +2,9 @@
 #define DASH__UTIL__LOCALITY_H__
 
 #include <dash/Init.h>
-
 #include <dash/util/Config.h>
 
-#include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
+#include <dylocxx.h>
 
 #include <iostream>
 #include <string>
@@ -36,19 +34,19 @@ public:
 
   typedef enum
   {
-    Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
-    Global    = DART_LOCALITY_SCOPE_GLOBAL,
-    Group     = DART_LOCALITY_SCOPE_GROUP,
-    Network   = DART_LOCALITY_SCOPE_NETWORK,
-    Node      = DART_LOCALITY_SCOPE_NODE,
-    Module    = DART_LOCALITY_SCOPE_MODULE,
-    NUMA      = DART_LOCALITY_SCOPE_NUMA,
-    Unit      = DART_LOCALITY_SCOPE_UNIT,
-    Package   = DART_LOCALITY_SCOPE_PACKAGE,
-    Uncore    = DART_LOCALITY_SCOPE_UNCORE,
-    Cache     = DART_LOCALITY_SCOPE_CACHE,
-    Core      = DART_LOCALITY_SCOPE_CORE,
-    CPU       = DART_LOCALITY_SCOPE_CPU
+    Undefined = DYLOC_LOCALITY_SCOPE_UNDEFINED,
+    Global    = DYLOC_LOCALITY_SCOPE_GLOBAL,
+    Group     = DYLOC_LOCALITY_SCOPE_GROUP,
+    Network   = DYLOC_LOCALITY_SCOPE_NETWORK,
+    Node      = DYLOC_LOCALITY_SCOPE_NODE,
+    Module    = DYLOC_LOCALITY_SCOPE_MODULE,
+    NUMA      = DYLOC_LOCALITY_SCOPE_NUMA,
+    Unit      = DYLOC_LOCALITY_SCOPE_UNIT,
+    Package   = DYLOC_LOCALITY_SCOPE_PACKAGE,
+    Uncore    = DYLOC_LOCALITY_SCOPE_UNCORE,
+    Cache     = DYLOC_LOCALITY_SCOPE_CACHE,
+    Core      = DYLOC_LOCALITY_SCOPE_CORE,
+    CPU       = DYLOC_LOCALITY_SCOPE_CPU
   }
   Scope;
 

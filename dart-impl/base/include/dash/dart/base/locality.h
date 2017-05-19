@@ -7,6 +7,8 @@
 #ifndef DART__BASE__LOCALITY_H__
 #define DART__BASE__LOCALITY_H__
 
+#if 0
+
 #include <dash/dart/if/dart_types.h>
 
 #include <dash/dart/base/logging.h>
@@ -196,5 +198,7 @@ dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
   dart_team_unit_t                   unit,
   dart_unit_locality_t            ** locality);
+
+#endif
 
 #endif /* DART__BASE__LOCALITY_H__ */
