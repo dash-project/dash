@@ -103,6 +103,10 @@ public:
   constexpr explicit operator DomainIterator() const {
     return (_domain_it + _index_set[this->pos()]);
   }
+
+  explicit operator DomainIterator() {
+    return (_domain_it + _index_set[this->pos()]);
+  }
 };
 
 template <
@@ -169,6 +173,14 @@ public:
   }
 
   inline value_type * local() {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  constexpr explicit operator const value_type *() const {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  explicit operator value_type *() {
     return (_domain_it + (_index_set[this->pos()])).local();
   }
 };

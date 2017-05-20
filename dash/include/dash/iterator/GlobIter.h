@@ -105,7 +105,7 @@ private:
     self_const_t;
 
 public:
-  typedef std::integral_constant<bool, false>       has_view;
+  typedef std::integral_constant<bool, false>            has_view;
 
 public:
   // For ostream output

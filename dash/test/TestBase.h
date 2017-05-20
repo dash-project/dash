@@ -240,6 +240,30 @@ static bool expect_range_values_equal(
   return (end_a == it_a) && (end_b == it_b);
 }
 
+template <class ValueT, class IteratorA, class SentinelA, class IteratorB>
+static bool expect_range_values_equal(
+  const IteratorA & rng_a_begin,
+  const SentinelA & rng_a_end,
+  const IteratorB & rng_b_begin) {
+  auto       it_a  = rng_a_begin;
+  auto       it_b  = rng_b_begin;
+  const auto end_a = rng_a_end;
+  const auto end_b = rng_b_begin + dash::distance(it_a, end_a);
+
+  const auto rng_a = dash::make_range(it_a, end_a);
+  const auto rng_b = dash::make_range(it_b, end_b);
+
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_a);
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_b);
+  for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
+    if (static_cast<ValueT>(*it_a) !=
+        static_cast<ValueT>(*it_b)) {
+      return false;
+    }
+  }
+  return (end_a == it_a) && (end_b == it_b);
+}
+
 class TestBase : public ::testing::Test {
 
  protected:

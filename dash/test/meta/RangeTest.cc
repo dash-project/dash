@@ -92,5 +92,8 @@ TEST_F(RangeTest, RangeTraits)
   static_assert(
       dash::is_range<decltype(l_range)>::value == true,
       "dash::is_range<dash::make_range(...)>::value not matched");
+  static_assert(
+      dash::is_view<decltype(l_range)>::value == true,
+      "dash::is_view<dash::make_range(...)>::value not matched");
 }
 

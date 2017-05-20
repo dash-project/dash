@@ -71,6 +71,12 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
  */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
 
+/**
+ * Definition of type trait \c dash::detail::has_type_pattern_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c pattern_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(pattern_type);
 
 } // namespace dash
 
