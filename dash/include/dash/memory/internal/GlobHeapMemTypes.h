@@ -1,5 +1,5 @@
-#ifndef DASH__INTERNAL__ALLOCATOR__GLOB_DYNAMIC_MEM_TYPES_H__INCLUDED
-#define DASH__INTERNAL__ALLOCATOR__GLOB_DYNAMIC_MEM_TYPES_H__INCLUDED
+#ifndef DASH__MEMORY__INTERNAL__GLOB_HEAP_TYPES_H__INCLUDED
+#define DASH__MEMORY__INTERNAL__GLOB_HEAP_TYPES_H__INCLUDED
 
 namespace dash {
 namespace internal {
@@ -18,4 +18,4 @@ struct glob_dynamic_mem_bucket_type
 } // namespace internal
 } // namespace dash
 
-#endif // DASH__INTERNAL__ALLOCATOR__GLOB_DYNAMIC_MEM_TYPES_H__INCLUDED
+#endif // DASH__MEMORY__INTERNAL__GLOB_HEAP_TYPES_H__INCLUDED

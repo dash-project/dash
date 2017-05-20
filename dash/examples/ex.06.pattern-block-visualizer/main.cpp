@@ -1,3 +1,9 @@
+/**
+ * \example ex.06.pattern-block-visualizer/main.cpp
+ * Example demonstrating the instantiation of 
+ * different patterns and their visualization.
+ */ 
+
 #include <unistd.h>
 #include <iostream>
 #include <iomanip>
@@ -8,7 +14,7 @@
 
 #include <libdash.h>
 
-#include <dash/tools/PatternBlockVisualizer.h>
+#include <dash/tools/PatternVisualizer.h>
 
 #include <dash/util/PatternMetrics.h>
 
@@ -28,7 +34,7 @@ typedef dash::default_index_t  index_t;
 typedef dash::default_extent_t extent_t;
 
 typedef struct cli_params_t {
-  cli_params_t() 
+  cli_params_t()
   { }
   std::string type    = "summa";
   extent_t    size_x  = 110;
@@ -37,6 +43,8 @@ typedef struct cli_params_t {
   extent_t    units_y = 10;
   int         tile_x  = -1;
   int         tile_y  = -1;
+  bool        blocked_display = false;
+  bool        balance_extents = false;
   bool        cout    = false;
 } cli_params;
 
@@ -77,10 +85,8 @@ void print_example(
   auto pattern_desc = pattern_to_string(pattern);
   print_pattern_metrics(pattern);
 
-  dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
+  dash::tools::PatternVisualizer<PatternT> pv(pattern);
   pv.set_title(pattern_desc);
-
-  std::array<index_t, PatternT::ndim()> coords = {{0}};
 
   cerr << "Generating visualization of "
        << endl
@@ -88,14 +94,14 @@ void print_example(
        << endl;
 
   if (params.cout) {
-    pv.draw_pattern(std::cout, coords, 1, 0);
+    pv.draw_pattern(std::cout, params.blocked_display);
   } else {
     cerr << "Image file:"
          << endl
          << "    " << pattern_file
          << endl;
     std::ofstream out(pattern_file);
-    pv.draw_pattern(out, coords, 1, 0);
+    pv.draw_pattern(out, params.blocked_display);
     out.close();
   }
 }
@@ -215,6 +221,9 @@ int main(int argc, char* argv[])
       dash::SizeSpec<2, extent_t> sizespec(params.size_y,  params.size_x);
       dash::TeamSpec<2, index_t>  teamspec(params.units_y, params.units_x);
 
+      if(params.balance_extents) {
+        teamspec.balance_extents();
+      }
       if (params.tile_x < 0 && params.tile_y < 0) {
         auto max_team_extent = std::max(teamspec.extent(0),
                                         teamspec.extent(1));
@@ -303,6 +312,12 @@ cli_params parse_args(int argc, char * argv[])
     } else if (flag == "-p") {
       params.cout    = true;
       i -= 2;
+    } else if (flag == "-e") {
+      params.balance_extents = true;
+      i -= 2;
+    } else if (flag == "-b") {
+      params.blocked_display = true;
+      i -= 2;
     } else {
       print_usage(argv);
       exit(EXIT_FAILURE);
@@ -332,9 +347,15 @@ void print_params(const cli_params & params)
        << std::fixed << std::setw(w) << params.units_y << ", "
        << std::fixed << std::setw(w) << params.units_x << " )"
        << endl
+       << "    balance extents (-e): "
+       << (params.balance_extents ? "yes" : "no")
+       << endl
        << "    tile (-t <rows> <cols>): ( "
        << std::fixed << std::setw(w) << params.tile_y << ", "
        << std::fixed << std::setw(w) << params.tile_x << " )"
+       << endl
+       << "    blocked display (-b): "
+       << (params.blocked_display ? "yes" : "no")
        << endl
        << endl;
 }

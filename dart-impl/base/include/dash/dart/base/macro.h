@@ -15,6 +15,19 @@
  */
 #define dart__unused(x) (void)(x)
 
+
+/**
+ * Flag a boolean expression as highly likely to be true.
+ * __builtin_expect is supported by all compilers supported by DART/DASH
+ */
+#define dart__likely(x)      __builtin_expect(!!(x), 1)
+
+/**
+ * Flag a boolean expression as highly likely to be false.
+ * __builtin_expect is supported by all compilers supported by DART/DASH
+ */
+#define dart__unlikely(x)    __builtin_expect(!!(x), 0)
+
 #if !defined(_CRAYC)
 /**
  * Mark a variable or function internal, i.e., it is not accessed from outside

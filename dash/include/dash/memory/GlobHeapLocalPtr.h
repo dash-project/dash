@@ -1,12 +1,12 @@
-#ifndef DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
-#define DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#ifndef DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED
+#define DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 #include <dash/Types.h>
 
 #include <dash/internal/Logging.h>
 
-#include <dash/allocator/internal/GlobDynamicMemTypes.h>
+#include <dash/memory/internal/GlobHeapMemTypes.h>
 
 #include <type_traits>
 #include <list>
@@ -27,7 +27,7 @@ template<
   typename IndexType,
   typename PointerType   = ElementType *,
   typename ReferenceType = ElementType & >
-class LocalBucketIter
+class GlobHeapLocalPtr
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
@@ -36,15 +36,15 @@ class LocalBucketIter
            ReferenceType >
 {
   template<typename E_, typename I_, typename P_, typename R_>
-  friend class LocalBucketIter;
+  friend class GlobHeapLocalPtr;
 
   template<typename E_, typename I_, typename P_, typename R_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::LocalBucketIter<E_, I_, P_, R_> & it);
+    const dash::GlobHeapLocalPtr<E_, I_, P_, R_> & it);
 
 private:
-  typedef LocalBucketIter<ElementType, IndexType, PointerType, ReferenceType>
+  typedef GlobHeapLocalPtr<ElementType, IndexType, PointerType, ReferenceType>
     self_t;
 
 public:
@@ -74,7 +74,7 @@ private:
 
 public:
   template<typename BucketIter>
-  LocalBucketIter(
+  GlobHeapLocalPtr(
     const BucketIter & bucket_first,
     const BucketIter & bucket_last,
     index_type         position,
@@ -89,7 +89,7 @@ public:
   { }
 
   template<typename BucketIter>
-  LocalBucketIter(
+  GlobHeapLocalPtr(
     const BucketIter & bucket_first,
     const BucketIter & bucket_last,
     index_type         position)
@@ -100,7 +100,7 @@ public:
     _bucket_phase(0),
     _is_nullptr(false)
   {
-    DASH_LOG_TRACE_VAR("LocalBucketIter(idx)", position);
+    DASH_LOG_TRACE_VAR("GlobHeapLocalPtr(idx)", position);
 #ifdef DASH_ENABLE_TRACE_LOGGING
     index_type bucket_idx = 0;
 #endif
@@ -116,14 +116,14 @@ public:
       ++bucket_idx;
 #endif
     }
-    DASH_LOG_TRACE("LocalBucketIter(idx) >",
+    DASH_LOG_TRACE("GlobHeapLocalPtr(idx) >",
                    "bucket:", bucket_idx,
                    "phase:",  _bucket_phase);
   }
 
-  LocalBucketIter() = default;
+  GlobHeapLocalPtr() = default;
 
-  LocalBucketIter(const self_t & other)
+  GlobHeapLocalPtr(const self_t & other)
   : _bucket_first(other._bucket_first),
     _bucket_last(other._bucket_last),
     _idx(other._idx),
@@ -149,12 +149,12 @@ public:
    * Conversion to const iterator.
    */
   template<typename I_, typename P_, typename R_>
-  operator LocalBucketIter<const value_type, I_, P_, R_>() const
+  operator GlobHeapLocalPtr<const value_type, I_, P_, R_>() const
   {
     if (_is_nullptr) {
-      return LocalBucketIter<const value_type, I_, P_, R_>(nullptr);
+      return GlobHeapLocalPtr<const value_type, I_, P_, R_>(nullptr);
     }
-    return LocalBucketIter<const value_type, I_, P_, R_>(
+    return GlobHeapLocalPtr<const value_type, I_, P_, R_>(
              _bucket_first,
              _bucket_last,
              _idx,
@@ -162,7 +162,7 @@ public:
              _bucket_phase);
   }
 
-  LocalBucketIter(std::nullptr_t)
+  GlobHeapLocalPtr(std::nullptr_t)
   : _is_nullptr(true)
   { }
 
@@ -231,10 +231,10 @@ public:
    */
   explicit operator pointer() const
   {
-    DASH_LOG_TRACE("LocalBucketIter.pointer()");
+    DASH_LOG_TRACE("GlobHeapLocalPtr.pointer()");
     pointer lptr = nullptr;
     if (_is_nullptr) {
-      DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
+      DASH_LOG_TRACE("GlobHeapLocalPtr.pointer", "is nullptr");
     } else {
       auto bucket_size = _bucket_it->size;
       // This iterator type represents a local pointer so no bounds checks
@@ -249,17 +249,17 @@ public:
       // as it creates a temporary pointer to an address beyond _lend (+2)
       // which is then moved back into valid memory range (-3).
       if (_bucket_it == _bucket_last) {
-        DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
+        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer", "position at lend");
       } else if (_bucket_phase >= bucket_size) {
-        DASH_LOG_TRACE("LocalBucketIter.pointer",
+        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer",
                        "bucket size:",  bucket_size, ",",
                        "bucket phase:", _bucket_phase);
-        DASH_LOG_TRACE("LocalBucketIter.pointer",
+        DASH_LOG_TRACE("GlobHeapLocalPtr.pointer",
                        "note: iterator position out of bounds (lend?)");
       }
       lptr = _bucket_it->lptr + _bucket_phase;
     }
-    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
+    DASH_LOG_TRACE_VAR("GlobHeapLocalPtr.pointer >", lptr);
     return lptr;
   }
 
@@ -328,37 +328,37 @@ public:
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator<(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator<(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx < other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator<=(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator<=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx <= other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator>(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator>(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx > other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator>=(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator>=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (_idx >= other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator==(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator==(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
-  inline bool operator!=(const LocalBucketIter<E_,I_,P_,R_> & other) const
+  inline bool operator!=(const GlobHeapLocalPtr<E_,I_,P_,R_> & other) const
   {
     return !(*this == other);
   }
@@ -452,7 +452,7 @@ private:
   index_type       _bucket_phase  = 0;
   bool             _is_nullptr    = false;
 
-}; // class LocalBucketIter
+}; // class GlobHeapLocalPtr
 
 /**
  * Resolve the number of elements between two local bucket iterators.
@@ -468,10 +468,10 @@ template<
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
-  const dash::LocalBucketIter<
+  const dash::GlobHeapLocalPtr<
           ElementType, IndexType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const dash::LocalBucketIter<
+  const dash::GlobHeapLocalPtr<
           ElementType, IndexType, Pointer, Reference> & last)
 -> IndexType
 {
@@ -485,12 +485,12 @@ template<
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::LocalBucketIter<
+  const dash::GlobHeapLocalPtr<
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   ElementType * lptr = static_cast<ElementType *>(it);
-  ss << "dash::LocalBucketIter<"
+  ss << "dash::GlobHeapLocalPtr<"
      << typeid(ElementType).name() << ">"
      << "("
      << "idx:"  << it._idx          << ", "
@@ -502,4 +502,4 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-#endif // DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#endif // DASH__MEMORY__GLOB_HEAP_LOCAL_PTR_H__INCLUDED

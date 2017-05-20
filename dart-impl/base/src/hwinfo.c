@@ -1,12 +1,7 @@
-
-/*
- * Include config and utmpx.h first to prevent previous include of utmpx.h
- * without _GNU_SOURCE in included headers:
- */
 #include <dash/dart/base/config.h>
 #ifdef DART__PLATFORM__LINUX
+/* _GNU_SOURCE required for sched_getcpu() */
 #  define _GNU_SOURCE
-#  include <utmpx.h>
 #  include <sched.h>
 #endif
 #include <dash/dart/base/macro.h>
@@ -362,7 +357,7 @@ dart_ret_t dart_hwinfo(
   }
 #else
   DART_LOG_ERROR("dart_hwinfo: "
-                 "Linux platform required");
+                 "HWLOC or PAPI required if not running on a Linux platform");
   return DART_ERR_OTHER;
 #endif
 

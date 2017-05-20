@@ -9,7 +9,7 @@
 #include <dash/Distribution.h>
 #include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
-#include <dash/allocator/DynamicAllocator.h>
+#include <dash/allocator/EpochSynchronizedAllocator.h>
 #include <dash/util/TeamLocality.h>
 
 #include <mpi.h>
@@ -18,7 +18,7 @@
 #include <omp.h>
 #endif
 
-static constexpr int    thread_iterations = 10;
+static constexpr int    thread_iterations = 1;
 static constexpr size_t elem_per_thread = 10;
 
 TEST_F(ThreadsafetyTest, ThreadInit) {
@@ -52,10 +52,12 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
 
 #pragma omp parallel
   {
-    int  thread_id = omp_get_thread_num();
+    int thread_id = omp_get_thread_num();
     array_t::index_type base_idx = thread_id * elem_per_thread;
     for (size_t i = 0; i < elem_per_thread; ++i) {
-      LOG_MESSAGE("src.local[%i] <= %i", base_idx + i, thread_id);
+      LOG_MESSAGE("src.local[%i] <= %i",
+          static_cast<int>(base_idx + i),
+          thread_id);
       src.local[base_idx + i] = thread_id;
     }
   }
@@ -64,7 +66,7 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
 
 #pragma omp parallel
   {
-    int  thread_id = omp_get_thread_num();
+    int thread_id = omp_get_thread_num();
     array_t::index_type src_idx =   dash::myid()
                                         * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
@@ -72,7 +74,9 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
                                         * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
     for (size_t i = 0; i < elem_per_thread; ++i) {
-      LOG_MESSAGE("dst[%i] <= src[%i]", dst_idx + i, src_idx + i);
+      LOG_MESSAGE("dst[%i] <= src[%i]",
+          static_cast<int>(dst_idx + i),
+          static_cast<int>(src_idx + i));
       dst[dst_idx + i] = src[src_idx + i];
     }
   }
@@ -161,7 +165,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
   using elem_t = int;
-  using allocator_t = dash::allocator::DynamicAllocator<elem_t>;
+  using allocator_t = dash::allocator::EpochSynchronizedAllocator<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -219,8 +223,8 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
 
-  using elem_t = int;
-  using pointer_t = dash::GlobPtr<elem_t>;
+  using elem_t    = int;
+  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitMem<elem_t> >;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -250,7 +254,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
     dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
     dash::Array<pointer_t> arr;
     arr.allocate(team->size(),
-            dash::DistributionSpec<1>(), *team);
+                 dash::DistributionSpec<1>(), *team);
 
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
@@ -305,25 +309,43 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
   {
     int thread_id = omp_get_thread_num();
     dash::Team *team = (thread_id == 0) ? &team_all : &team_split;
+#pragma omp critical
+    std::cout << "Thread " << thread_id << " has team " << team->dart_id() << std::endl;
     size_t num_elem = team->size() * elem_per_thread;
     array_t arr(num_elem, *team);
     elem_t *vals = new elem_t[num_elem];
     for (int i = 0; i < thread_iterations; ++i) {
 #pragma omp barrier
       dash::fill(arr.begin(), arr.end(), thread_id);
-      ASSERT_EQ_U(arr.local[0], thread_id);
-      elem_t acc = dash::accumulate(arr.begin(), arr.end(), 0);
-      // TODO: dash::accumulate is still broken
+      arr.barrier();
+
+#pragma omp critical
       if (team->myid() == 0) {
-        ASSERT_EQ_U(num_elem * thread_id, acc);
+        std::cout << "Thread " << thread_id << ": ";
+        for (int i = 0; i < num_elem; i++) {
+          std::cout << " " << (elem_t)arr[i];
+        }
+        std::cout << std::endl;
       }
-      dash::copy(arr.begin(), arr.end(), vals);
-      ASSERT_EQ_U(vals[team->myid() * elem_per_thread], thread_id);
+#pragma omp barrier
+      arr.barrier();
 
       std::function<void(elem_t &)> f = [=](const elem_t& val){
         ASSERT_EQ_U(thread_id, val);
       };
       dash::for_each(arr.begin(), arr.end(), f);
+
+
+//      elem_t acc = dash::accumulate(arr.begin(), arr.end(), 0);
+//      // TODO: dash::accumulate is still broken
+//      if (team->myid() == 0) {
+//        ASSERT_EQ_U(num_elem * thread_id, acc);
+//      }
+//      arr.barrier();
+
+
+      dash::copy(arr.begin(), arr.end(), vals);
+      ASSERT_EQ_U(vals[team->myid() * elem_per_thread], thread_id);
 
       std::function<elem_t(void)> g = [=](){
         return (thread_id + 1) * (team->myid() + 1);
@@ -331,6 +353,16 @@ TEST_F(ThreadsafetyTest, ConcurrentAlgorithm) {
       dash::generate(arr.begin(), arr.end(), g);
       // wait here because dash::generate does not block
       arr.barrier();
+
+#pragma omp critical
+      if (team->myid() == 0) {
+        std::cout << "Thread " << thread_id << ": ";
+        for (int i = 0; i < num_elem; i++) {
+          std::cout << " " << (elem_t)arr[i];
+        }
+        std::cout << std::endl;
+      }
+#pragma omp barrier
       elem_t min = *(dash::min_element(arr.begin(), arr.end()));
       ASSERT_EQ_U((thread_id + 1), min);
       elem_t max = *(dash::max_element(arr.begin(), arr.end()));

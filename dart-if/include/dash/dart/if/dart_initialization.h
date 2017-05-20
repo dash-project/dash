@@ -44,7 +44,7 @@ dart_ret_t dart_init(int *argc, char ***argv) DART_NOTHROW;
  * \param argc  Pointer to the number of command line arguments.
  * \param argv  Pointer to the array of command line arguments.
  * \param[out] thread_safety The provided thread safety,
- *                           one of \ref dart_thread_level_t.
+ *                           one of \ref dart_thread_support_level_t.
  *
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
  *
@@ -76,6 +76,18 @@ dart_ret_t dart_exit() DART_NOTHROW;
  * \ingroup DartInitialization
  */
 bool       dart_initialized() DART_NOTHROW;
+
+
+/**
+ * Abort the application run without performing any cleanup.
+ *
+ * \c dart_abort tries to call the underlying runtime's abort function
+ * (such as \c MPI_Abort) and is guaranteed to not return.
+ *
+ * \threadsafe_none
+ * \ingroup DartInitialization
+ */
+void       dart_abort(int errorcode) __attribute__((noreturn));
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

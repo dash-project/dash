@@ -11,7 +11,7 @@
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
  * 
- * \TODO fix \cdash::copy problem
+ * \todo fix \c dash::copy problem
  */
 
 #include <dash/Init.h>
