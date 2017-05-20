@@ -539,6 +539,41 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalSub)
   a.barrier();
 }
 
+TEST_F(ViewTest, ArrayCyclicPatternLocalSub)
+{
+  int elem_per_unit    = 7;
+  int elem_additional  = 2;
+  int array_size       = dash::size() * elem_per_unit + elem_additional;
+  int num_local_elem   = elem_per_unit +
+                         ( dash::size() < elem_additional
+                         ? elem_additional
+                         : 0 );
+
+  dash::Array<float> a(array_size, dash::CYCLIC);
+  dash::test::initialize_array(a);
+
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                 "array:", range_str(a));
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                 "local(array):", range_str(dash::local(a)));
+
+  // sub(local(array))
+  //
+  {
+    auto s_l_view = dash::sub(
+                      2, a.lsize() - 2,
+                      dash::local(
+                        a));
+    DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                   range_str(s_l_view));
+    DASH_ASSERT(
+      std::equal(a.lbegin() + 2,
+                 a.lbegin() + a.lsize() - 2,
+                 s_l_view.begin()));
+  }
+
+}
+
 TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
 {
   int block_size       = 5;
