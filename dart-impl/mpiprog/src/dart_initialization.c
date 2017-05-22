@@ -182,6 +182,32 @@ dart_ret_t do_init()
    * collective allocation function through win. */
   MPI_Win_lock_all(0, win);
 
+  struct datastruct data_info;
+	MPI_Datatype type[7] = {MPI_INT32_T, MPI_UINT16_T, MPI_AINT, MPI_AINT, MPI_INT, MPI_INT16_T, MPI_SHORT};
+        int blocklen[7] = {1, 1, 1, 1, 1, 1, 1};
+	MPI_Aint member_disp[7];
+	MPI_Aint data_info_addr, dest_addr, index_addr, origin_offset_addr, target_offset_addr, data_size_addr, segid_addr, is_sharedmem_addr;
+
+  MPI_Get_address (&data_info, &data_info_addr);
+	MPI_Get_address (&data_info.dest, &dest_addr);
+	MPI_Get_address (&data_info.index, &index_addr);
+	MPI_Get_address (&data_info.origin_offset, &origin_offset_addr);
+	MPI_Get_address (&data_info.target_offset, &target_offset_addr);
+	MPI_Get_address (&data_info.data_size, &data_size_addr);
+	MPI_Get_address (&data_info.segid, &segid_addr);
+	MPI_Get_address (&data_info.is_sharedmem, &is_sharedmem_addr);
+
+  member_disp[0] = dest_addr - data_info_addr;
+	member_disp[1] = index_addr - data_info_addr;
+	member_disp[2] = origin_offset_addr - data_info_addr;
+	member_disp[3] = target_offset_addr - data_info_addr;
+	member_disp[4] = data_size_addr - data_info_addr;
+	member_disp[5] = segid_addr - data_info_addr;
+	member_disp[6] = is_sharedmem_addr - data_info_addr;
+
+	MPI_Type_create_struct (7, blocklen, member_disp, type, &data_info_type);
+	MPI_Type_commit (&data_info_type);
+
   DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 
   _dart_initialized = 1;
@@ -270,6 +296,79 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
+  if (dart_comm_user == MPI_COMM_NULL){
+    struct  rmareq_node
+    {
+      int source;
+      dart_unit_t dest;
+      MPI_Win win;
+      int direction;
+      MPI_Request mpi_req;
+      struct rmareq_node* next;
+    };
+    int16_t segid;
+    MPI_Win sharemem_win, win;
+    char *baseptr, *destptr;
+    int result, src;
+    dart_unit_t dest;
+    int nbytes;
+    int is_sharedmem;
+    struct datastruct recv_data;
+    MPI_Aint maximum_size;
+    int disp_unit;
+
+    MPI_Aint origin_offset, target_offset;
+    MPI_Request mpi_req;
+    MPI_Status comm_sta, mpi_status;
+
+    dart_team_t teamid;
+    struct rmareq_node* header = NULL;
+    struct rmareq_node* tail = NULL;
+    int rmareq_num = 0;
+
+    dart_team_data_t *team_data = dart_adapt_teamlist_get (DART_TEAM_ALL);
+    if (team_data == NULL){
+      DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
+          unitid.id);
+      return DART_ERR_OTHER;
+    }
+
+    MPI_Comm sharedmem_comm = team_data->sharedmem_comm;
+
+    while (1){
+      int flag;
+      MPI_Iprobe (MPI_ANY_SOURCE, MPI_ANY_TAG, sharedmem_comm, &flag, &mpi_status);
+      if (flag){
+        if (mpi_status.MPI_TAG == MEMALLOC){
+          MPI_Recv (&index, 1, MPI_UINT16_T, mpi_status.MPI_SOURCE,
+              MEMALLOC, sharedmem_comm, MPI_STATUS_IGNORE);
+          char* sub_mem;
+          dart_team_data_t *allocteam_data = dart_adapt_teamlist_get (index);
+          MPI_Win_allocate_shared (0, sizeof(char), MPI_INFO_NULL, allocteam_data->sharedmem_comm,
+              &sub_mem, &sharedmem_win);
+          MPI_Aint winseg_size;
+          char** baseptr_set;
+          char* baseptr;
+          int disp_unit, i;
+          baseptr_set = (char**)malloc (sizeof(char*)*allocteam_data->sharedmem_nodesize);
+          for (i = PROGRESS_NUM; i < allocteam_data->sharedmem_nodesize; i++){
+            MPI_Win_shared_query (sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
+            baseptr_set[i] = baseptr;
+          }
+          MPI_Comm real_comm = allocteam_data->real_comm;
+          int16_t max_memid
+
+
+
+
+
+
+
+
+
+
+
+  /////////////////////////////////////
   dart_global_unit_t unitid;
   dart_myid(&unitid);
 
