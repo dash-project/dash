@@ -38,15 +38,17 @@ public:
 
   template <typename... Values>
   Stencil(int16_t value, Values... values) : BaseT::Dimensional(value, values...) {
-    for (dim_t i(0); i < NumDimensions; ++i)
-      _max = std::max((int) _max, (int) std::abs(this->_values[i]));
   }
 
   // TODO as constexpr
-  constexpr int max() const { return _max; }
+  int max() const {
+    int16_t max = 0;
+    for (dim_t i(0); i < NumDimensions; ++i)
+      max = std::max((int) max, (int) std::abs(this->_values[i]));
+    return max;
+  }
 
 private:
-  int16_t _max{0};
 }; // Stencil
 
 
@@ -265,7 +267,7 @@ private:
 template <dim_t NumDimensions>
 std::ostream& operator<<(std::ostream& os, const HaloRegionSpec<NumDimensions>& hrs) {
   os << "dash::HaloRegionSpec<" << NumDimensions << ">(" << (uint32_t)hrs[0];
-  for (auto i(1); i < NumDimensions; ++i)
+  for (auto i = 1; i < NumDimensions; ++i)
     os << "," << (uint32_t)hrs[i];
   os << "), Extent:" << hrs.extent();
 
@@ -282,6 +284,7 @@ public:
   using region_index_t  = typename HaloRegionSpecT::region_index_t;
   using extent_t        = typename HaloRegionSpecT::extent_t;
   using SpecsT          = std::array<HaloRegionSpecT, HaloRegionSpecT::MaxIndex>;
+  using StencilT        = Stencil<NumDimensions>;
 
 public:
 
@@ -290,12 +293,12 @@ public:
   template<typename StencilSpecT>
   HaloSpec(const StencilSpecT& stencil_specs) {
     for(const auto& stencil : stencil_specs.stencilSpecs()) {
-      auto index = HaloRegionSpecT::index(stencil);
-      auto max = stencil.max();
-      if(_specs[index].extent() == 0)
-        ++_num_regions;
-      if(max >_specs[index].extent())
-        _specs[index] = HaloRegionSpecT(index,max);
+      auto stencil_combination = stencil;
+
+      setRegionSpec(stencil_combination);
+      while (nextRegion(stencil, stencil_combination)){
+        setRegionSpec(stencil_combination);
+      }
     }
   }
 
@@ -327,6 +330,29 @@ public:
 
   const SpecsT& haloSpecs() const{
     return _specs;
+  }
+
+private:
+  void setRegionSpec(const StencilT& stencil) {
+        auto index = HaloRegionSpecT::index(stencil);
+        auto max = stencil.max();
+        if(_specs[index].extent() == 0)
+          ++_num_regions;
+        if(max >_specs[index].extent())
+          _specs[index] = HaloRegionSpecT(index,max);
+  }
+
+  bool nextRegion(const StencilT& stencil, StencilT& stencil_combination) {
+    for(auto d = 0; d <NumDimensions; ++d) {
+      if(stencil[d] == 0)
+        continue;
+      stencil_combination[d] = (stencil_combination[d] == 0) ? stencil[d] : 0;
+      if(stencil_combination[d] == 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 private:
@@ -622,6 +648,7 @@ private:
   using ViewSpecT       = typename PatternT::viewspec_type;
   using region_index_t  = typename HaloRegionSpecT::region_index_t;
   using size_type       = typename PatternT::size_type;
+  using BorderT         = std::array<bool,NumDimensions>;
 
 public:
   using iterator        = RegionIter<ElementT, PatternT>;
@@ -629,7 +656,7 @@ public:
 
 public:
   Region(const HaloRegionSpecT& region_spec, const ViewSpecT& region, GlobMemT& globmem,
-         const PatternT& pattern, bool border)
+         const PatternT& pattern, const BorderT& border)
       : _region_spec(region_spec), _region(region), _border(border),
         _beg(globmem, pattern, _region, 0, _region.size()),
         _end(globmem, pattern, _region, _region.size(), _region.size()) {}
@@ -642,7 +669,9 @@ public:
 
   constexpr size_type size() const { return _region.size(); }
 
-  constexpr bool border() const { return _border; }
+  constexpr BorderT border() const { return _border; }
+
+  constexpr bool borderDim(dim_t dim) const { return _border[dim]; }
 
   iterator begin() const { return _beg; }
 
@@ -651,7 +680,7 @@ public:
 private:
   const HaloRegionSpecT _region_spec;
   const ViewSpecT       _region;
-  bool                  _border;
+  BorderT               _border;
   iterator              _beg;
   iterator              _end;
 }; // Region
@@ -695,7 +724,7 @@ public:
       if (!halo_extent)
         continue;
 
-      auto border = false;
+      std::array<bool,NumDimensions> border{};
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -712,7 +741,7 @@ public:
         if (spec[d] < 1) {
           halo_extents_max[d].first = std::max(halo_extents_max[d].first, halo_extent);
           if (view_offset < halo_extents_max[d].first) {
-            border = true;
+            border[d] = true;
 
             if (cycle_spec[d] == Cycle::NONE) {
               halo_region_offsets[d] = 0;
@@ -735,7 +764,7 @@ public:
           halo_extents_max[d].second = std::max(halo_extents_max[d].second, halo_extent);
           auto check_extent          = view_offset + view_extent + halo_extents_max[d].second;
           if (check_extent > _pattern.extent(d)) {
-            border = true;
+            border[d] = true;
 
             if (cycle_spec[d] == Cycle::NONE) {
               halo_region_offsets[d] = 0;
