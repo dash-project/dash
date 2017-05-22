@@ -1,5 +1,5 @@
-#ifndef DASH__HALOMATRIX_H_INCLUDED
-#define DASH__HALOMATRIX_H_INCLUDED
+#ifndef DASH__HALOMATRIXWRAPPER_H_INCLUDED
+#define DASH__HALOMATRIXWRAPPER_H_INCLUDED
 
 #include <dash/dart/if/dart.h>
 
@@ -226,4 +226,4 @@ private:
 } // namespace dash
 } // namespace experimental
 
-#endif // DASH__HALOMATRIX_H_INCLUDED
+#endif // DASH__HALOMATRIXWRAPPER_H_INCLUDED
