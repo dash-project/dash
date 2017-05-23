@@ -97,6 +97,8 @@ int main(int argc, char * argv[])
   tests.push_back({16 * 4096  ,    100});
   tests.push_back({64 * 4096  ,     50});
   tests.push_back({128 * 4096 ,     20});
+  tests.push_back({256 * 4096 ,     10});
+  tests.push_back({512 * 4096 ,     10});
 
   for (auto test : tests) {
     perform_test(test.first, test.second);
@@ -138,22 +140,25 @@ void perform_test(
   }
 
   PatternType pat(local_sizes);
-  ArrayType arr(
-    pat
-  );
+  ArrayType arr0(pat);
+  ArrayType arr1(pat);
+  ArrayType arr2(pat);
+  ArrayType arr3(pat);
+  ArrayType arr4(pat);
+  ArrayType arr5(pat);
 
   CoarrType coarr(ELEM_PER_UNIT);
 
-  double t0 = test_dash_pattern(arr, ELEM_PER_UNIT, REPEAT);
-  double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t2 = test_dash_local_global_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t3 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t4 = test_dash_local_subscript(arr, ELEM_PER_UNIT, REPEAT);
-  double t5 = test_dash_local_pointer(arr, ELEM_PER_UNIT, REPEAT);
+  double t0 = test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
+  double t1 = test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
+  double t2 = test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
+  double t3 = test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
+  double t4 = test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
+  double t5 = test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
   double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
+  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
   double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
   double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
-  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
 
@@ -165,9 +170,9 @@ void perform_test(
     double gups4 = gups(num_units, t4, ELEM_PER_UNIT, REPEAT);
     double gups5 = gups(num_units, t5, ELEM_PER_UNIT, REPEAT);
     double gups6 = gups(num_units, t6, ELEM_PER_UNIT, REPEAT);
+    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(num_units, t7, ELEM_PER_UNIT, REPEAT);
     double gups8 = gups(num_units, t8, ELEM_PER_UNIT, REPEAT);
-    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10) << ELEM_PER_UNIT;
     cout << "," << std::setw(10) << REPEAT;
@@ -389,8 +394,8 @@ double test_dash_local_pointer(
   auto lend   = a.lend();
 
   for (unsigned i = 0; i < REPEAT; ++i) {
-    for (auto j = lbegin; j != lend; ++j) {
-      ++(*j);
+    for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
+      ++lbegin[j];
     }
   }
   auto time_elapsed = timer.Elapsed();
@@ -430,7 +435,7 @@ double test_stl_vector(
   Timer timer;
   for (unsigned i = 0; i < REPEAT; ++i) {
     for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
-      arr[j]++;
+      ++arr[j];
     }
   }
   auto time_elapsed = timer.Elapsed();
