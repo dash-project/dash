@@ -139,6 +139,8 @@ void perform_test(
     local_sizes.push_back(ELEM_PER_UNIT);
   }
 
+  CoarrType coarr(ELEM_PER_UNIT);
+
   PatternType pat(local_sizes);
   ArrayType arr0(pat);
   ArrayType arr1(pat);
@@ -147,8 +149,7 @@ void perform_test(
   ArrayType arr4(pat);
   ArrayType arr5(pat);
 
-  CoarrType coarr(ELEM_PER_UNIT);
-
+  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
   double t0 = test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
   double t1 = test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
   double t2 = test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
@@ -156,7 +157,6 @@ void perform_test(
   double t4 = test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
   double t5 = test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
   double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
-  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
   double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
   double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
 
@@ -170,9 +170,9 @@ void perform_test(
     double gups4 = gups(num_units, t4, ELEM_PER_UNIT, REPEAT);
     double gups5 = gups(num_units, t5, ELEM_PER_UNIT, REPEAT);
     double gups6 = gups(num_units, t6, ELEM_PER_UNIT, REPEAT);
-    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(num_units, t7, ELEM_PER_UNIT, REPEAT);
     double gups8 = gups(num_units, t8, ELEM_PER_UNIT, REPEAT);
+    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10) << ELEM_PER_UNIT;
     cout << "," << std::setw(10) << REPEAT;
@@ -319,7 +319,7 @@ double test_dash_local_global_iter(
   // Global offset of first local element:
   auto l_begin_gidx = a.pattern().lbegin();
 
-  dash::GlobIter<value_t, pattern_t> l_git  = a.begin() + l_begin_gidx;
+  dash::GlobIter<value_t, pattern_t>       l_git  = a.begin() + l_begin_gidx;
   const dash::GlobIter<value_t, pattern_t> l_gend = l_git + ELEM_PER_UNIT;
 
   // Iterate over local elements but use global iterator to dereference
@@ -348,7 +348,7 @@ double test_dash_local_iter(
   init_values(a, ELEM_PER_UNIT);
 
   Timer timer;
-  auto lend = a.lend();
+  const auto & lend = a.lend();
   for (unsigned i = 0; i < REPEAT; ++i) {
     for (auto it = a.lbegin(); it != lend; ++it) {
       ++(*it);
