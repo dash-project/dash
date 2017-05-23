@@ -4,7 +4,7 @@
 #include <dash/Matrix.h>
 #include <dash/Algorithm.h>
 #include <dash/experimental/Halo.h>
-#include <dash/experimental/HaloMatrix.h>
+#include <dash/experimental/HaloMatrixWrapper.h>
 
 #include <iostream>
 
