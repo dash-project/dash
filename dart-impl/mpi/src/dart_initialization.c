@@ -227,6 +227,9 @@ dart_ret_t dart_init_thread(
     int thread_required = MPI_THREAD_MULTIPLE;
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i", thread_provided);
+    if (thread_provided != MPI_THREAD_MULTIPLE) {
+      DART_LOG_WARN("DART compiled with thread-support but MPI does not provide MPI_THREAD_MULTIPLE!");
+    }
   } else {
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i", thread_provided);
