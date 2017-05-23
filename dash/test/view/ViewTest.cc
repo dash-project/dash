@@ -671,27 +671,43 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternCopyLocalToGlobal)
   auto copy_dest_begin_idx = a.size() / 4;
   auto copy_dest_end_idx   = copy_dest_begin_idx + copy_num_elem;
 
-  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
                  "array:", range_str(a));
-  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
                  "copy", copy_num_elem,
                  "[", copy_dest_begin_idx, "...", copy_dest_end_idx, "]");
 
   std::vector<float> buf(copy_num_elem);
   std::iota(buf.begin(), buf.end(), 0.9999);
 
+  a.barrier();
+
   if (dash::myid() == 0) {
-    auto copy_begin_it = a.begin() + copy_dest_begin_idx;
+    auto copy_begin_it   = a.begin() + copy_dest_begin_idx;
+    auto copy_end_it_exp = copy_begin_it + copy_num_elem;
+    auto dest_range      = dash::make_range(copy_begin_it,
+                                            copy_end_it_exp);
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                       copy_begin_it);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                       copy_end_it_exp);
+    auto dest_blocks     = dash::blocks(dest_range);
+    for (const auto & block : dest_blocks) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                     "copy dest block:", range_str(block));
+    }
+
     // copy local buffer to global array
-    auto copy_end_it   = dash::copy(
-                           buf.data(),
-                           buf.data() + copy_num_elem,
-                           copy_begin_it);
-    EXPECT_EQ_U(copy_end_it, copy_begin_it + copy_num_elem);
+    auto copy_end_it     = dash::copy(
+                             buf.data(),
+                             buf.data() + copy_num_elem,
+                             copy_begin_it);
+    EXPECT_EQ_U(copy_end_it_exp, copy_end_it);
   }
   a.barrier();
 
-  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
                  "array:", range_str(a));
 
   auto eq_pred =
