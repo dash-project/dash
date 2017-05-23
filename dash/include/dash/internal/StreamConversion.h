@@ -17,6 +17,7 @@
 #include <sstream>
 #include <iterator>
 #include <cstring>
+#include <memory>
 #include <type_traits>
 
 
@@ -30,6 +31,30 @@ std::ostream & operator<<(
   std::ostream & o,
   dart_team_unit_t uid);
 
+
+/**
+ * Write \c std::shared_ptr to output stream.
+ */
+template <class T>
+std::ostream & operator<<(
+  std::ostream              & os,
+  const std::shared_ptr<T> & p) {
+  os << dash::typestr(p)
+     << "(" << p.get() << ")";
+  return os;
+}
+
+/**
+ * Write \c std::unique_ptr to output stream.
+ */
+template <class T>
+std::ostream & operator<<(
+  std::ostream              & os,
+  const std::unique_ptr<T> & p) {
+  os << dash::typestr(p)
+     << "(" << p.get() << ")";
+  return os;
+}
 
 /**
  * Write \c std::pair to output stream.
