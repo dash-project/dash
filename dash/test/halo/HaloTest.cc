@@ -75,40 +75,102 @@ TEST_F(HaloTest, HaloSpecStencils)
   using StencilT = Stencil<3>;
   using StencilSpecT = StencilSpec<3, 6>;
 
-  StencilSpecT stencil_spec_1({
-      StencilT(-1,  0,  0), StencilT(1, 0, 0),
-      StencilT( 0, -1,  0), StencilT(0, 2, 0),
-      StencilT( 0,  0, -1), StencilT(0, 0, 3)});
-  HaloSpecT halo_spec_1(stencil_spec_1);
+  {
+    StencilSpecT stencil_spec({
+        StencilT(-1,  0,  0), StencilT(1, 0, 0),
+       StencilT( 0, -1,  0), StencilT(0, 2, 0),
+       StencilT( 0,  0, -1), StencilT(0, 0, 3)});
+    HaloSpecT halo_spec(stencil_spec);
 
-  EXPECT_EQ(halo_spec_1.spec(4).coords(), RCoordsT({0,1,1}));
-  EXPECT_EQ(halo_spec_1.spec(22).coords(), RCoordsT({2,1,1}));
-  EXPECT_EQ(halo_spec_1.spec(10).coords(), RCoordsT({1,0,1}));
-  EXPECT_EQ(halo_spec_1.spec(16).coords(), RCoordsT({1,2,1}));
-  EXPECT_EQ(halo_spec_1.spec(12).coords(), RCoordsT({1,1,0}));
-  EXPECT_EQ(halo_spec_1.spec(14).coords(), RCoordsT({1,1,2}));
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(4), 1);
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(10), 1);
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(10), 1);
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(16), 2);
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(12), 1);
-  EXPECT_EQ((uint32_t)halo_spec_1.extent(14), 3);
+    EXPECT_EQ(halo_spec.spec(4).coords(), RCoordsT({0,1,1}));
+    EXPECT_EQ(halo_spec.spec(22).coords(), RCoordsT({2,1,1}));
+    EXPECT_EQ(halo_spec.spec(10).coords(), RCoordsT({1,0,1}));
+    EXPECT_EQ(halo_spec.spec(16).coords(), RCoordsT({1,2,1}));
+    EXPECT_EQ(halo_spec.spec(12).coords(), RCoordsT({1,1,0}));
+    EXPECT_EQ(halo_spec.spec(14).coords(), RCoordsT({1,1,2}));
+    EXPECT_EQ((uint32_t)halo_spec.extent(4), 1);
+    EXPECT_EQ((uint32_t)halo_spec.extent(10), 1);
+    EXPECT_EQ((uint32_t)halo_spec.extent(10), 1);
+    EXPECT_EQ((uint32_t)halo_spec.extent(16), 2);
+    EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
+    EXPECT_EQ((uint32_t)halo_spec.extent(14), 3);
+  }
+  {
+    StencilSpecT stencil_spec({
+        StencilT(0, 2, 0)});
+    HaloSpecT halo_spec(stencil_spec);
 
+    EXPECT_EQ(halo_spec.spec(16).coords(), RCoordsT({1,2,1}));
+    EXPECT_EQ((uint32_t)halo_spec.extent(16), 2);
+    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+      if(i != 16)
+        EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+    }
+  }
+  {
+    StencilSpecT stencil_spec({
+        StencilT(-2, 0, -1)});
+    HaloSpecT halo_spec(stencil_spec);
 
-  StencilSpecT stencil_spec_2({
-      StencilT(-1, -1, -1), StencilT(-3, -3, -3),
-      StencilT( 0,  1,  0), StencilT(0, 4, 0),
-      StencilT( 0,  -1, -2), StencilT(2, 2, 2)});
-  HaloSpecT halo_spec_2(stencil_spec_2);
+    EXPECT_EQ(halo_spec.spec(3).coords(), RCoordsT({0,1,0}));
+    EXPECT_EQ(halo_spec.spec(4).coords(), RCoordsT({0,1,1}));
+    EXPECT_EQ(halo_spec.spec(12).coords(), RCoordsT({1,1,0}));
+    EXPECT_EQ((uint32_t)halo_spec.extent(3), 2);
+    EXPECT_EQ((uint32_t)halo_spec.extent(4), 2);
+    EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
+    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+      if(i != 3 && i != 4 && i != 12)
+        EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+    }
+  }
+  {
+    StencilSpecT stencil_spec({
+        StencilT(-3, -2, -1)});
+    HaloSpecT halo_spec(stencil_spec);
 
-  EXPECT_EQ(halo_spec_2.spec(0).coords(), RCoordsT({0,0,0}));
-  EXPECT_EQ(halo_spec_2.spec(16).coords(), RCoordsT({1,2,1}));
-  EXPECT_EQ(halo_spec_2.spec(9).coords(), RCoordsT({1,0,0}));
-  EXPECT_EQ(halo_spec_2.spec(26).coords(), RCoordsT({2,2,2}));
-  EXPECT_EQ((uint32_t)halo_spec_2.extent(0), 3);
-  EXPECT_EQ((uint32_t)halo_spec_2.extent(16), 4);
-  EXPECT_EQ((uint32_t)halo_spec_2.extent(9), 2);
-  EXPECT_EQ((uint32_t)halo_spec_2.extent(26), 2);
+    EXPECT_EQ(halo_spec.spec(0).coords(), RCoordsT({0,0,0}));
+    EXPECT_EQ(halo_spec.spec(1).coords(), RCoordsT({0,0,1}));
+    EXPECT_EQ(halo_spec.spec(3).coords(), RCoordsT({0,1,0}));
+    EXPECT_EQ(halo_spec.spec(4).coords(), RCoordsT({0,1,1}));
+    EXPECT_EQ(halo_spec.spec(9).coords(), RCoordsT({1,0,0}));
+    EXPECT_EQ(halo_spec.spec(10).coords(), RCoordsT({1,0,1}));
+    EXPECT_EQ(halo_spec.spec(12).coords(), RCoordsT({1,1,0}));
+    EXPECT_EQ((uint32_t)halo_spec.extent(0), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(1), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(3), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(4), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(9), 2);
+    EXPECT_EQ((uint32_t)halo_spec.extent(10), 2);
+    EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
+    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+      if(i != 0 && i != 1 && i != 3 && i != 4 && i != 9 && i != 10 && i!= 12)
+        EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+    }
+  }
+  {
+    StencilSpecT stencil_spec({
+        StencilT(3, 3, 3)});
+    HaloSpecT halo_spec(stencil_spec);
+
+    EXPECT_EQ(halo_spec.spec(14).coords(), RCoordsT({1,1,2}));
+    EXPECT_EQ(halo_spec.spec(16).coords(), RCoordsT({1,2,1}));
+    EXPECT_EQ(halo_spec.spec(17).coords(), RCoordsT({1,2,2}));
+    EXPECT_EQ(halo_spec.spec(22).coords(), RCoordsT({2,1,1}));
+    EXPECT_EQ(halo_spec.spec(23).coords(), RCoordsT({2,1,2}));
+    EXPECT_EQ(halo_spec.spec(25).coords(), RCoordsT({2,2,1}));
+    EXPECT_EQ(halo_spec.spec(26).coords(), RCoordsT({2,2,2}));
+    EXPECT_EQ((uint32_t)halo_spec.extent(14), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(16), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(17), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(22), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(23), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(25), 3);
+    EXPECT_EQ((uint32_t)halo_spec.extent(26), 3);
+    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+      if(i != 14 && i != 16 && i != 17 && i != 22 && i != 23 && i != 25 && i!= 26)
+        EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
+    }
+  }
 }
 
 TEST_F(HaloTest, HaloBlockHaloRegions2D)
