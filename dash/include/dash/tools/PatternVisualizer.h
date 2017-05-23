@@ -189,13 +189,13 @@ public:
     if(!blocked_display) {
         draw_local_blocks(os, sz, coords, dimx, dimy);
         draw_tiles(os, sz, coords, dimx, dimy);
-        draw_local_memlayout(os, sz, coords, dimx, dimy);
+        draw_local_memlayout(os, sz, dimx, dimy);
     } else {
-        draw_blocks(os, sz, coords, dimx, dimy);
+        draw_blocks(os, sz, dimx, dimy);
     }
     os << "</g>" << std::endl;
 
-    draw_key(os, sz, dimx, dimy, sz.grid_width * sz.gridx + 2*sz.grid_base, 0);
+    draw_key(os, sz, sz.grid_width * sz.gridx + 2*sz.grid_base, 0);
     os << "</g>" << std::endl;
   }
 
@@ -262,7 +262,6 @@ public:
    */
   void draw_key(std::ostream & os,
                 const sizes & sz,
-                int dimx, int dimy,
                 int offsx = 0, int offsy = 0) {
     int startx, starty;
 
@@ -323,7 +322,6 @@ public:
    */
   void draw_blocks(std::ostream & os,
                    const sizes & sz,
-                   std::array<index_t, PatternT::ndim()> coords,
                    int dimx, int dimy) {
     std::array<index_t, PatternT::ndim()> block_coords;
     std::array<index_t, PatternT::ndim()> block_begin_coords;
@@ -397,7 +395,6 @@ public:
    */
   void draw_local_memlayout(std::ostream & os,
                             const sizes & sz,
-                            std::array<index_t, PatternT::ndim()> coords,
                             int dimx, int dimy) {
     int startx, starty;
     int endx, endy;
