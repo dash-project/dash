@@ -22,11 +22,6 @@
 #include <future>
 
 
-// #ifndef DASH__ALGORITHM__COPY__USE_WAIT
-#define DASH__ALGORITHM__COPY__USE_FLUSH
-// #define DASH__ALGORITHM__COPY__USE_WAIT
-// #endif
-
 namespace dash {
 
 #ifdef DOXYGEN
@@ -36,7 +31,8 @@ namespace dash {
  * another range beginning at \c out_first.
  *
  * In terms of data distribution, source and destination ranges passed to
- * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
+ * \c dash::copy can be local (\c *ValueType) or global
+ * (\c GlobIter<ValueType>).
  *
  * For a non-blocking variant of \c dash::copy, see \c dash::copy_async.
  *
@@ -71,7 +67,8 @@ OutputIt copy(
  * another range beginning at \c out_first.
  *
  * In terms of data distribution, source and destination ranges passed to
- * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
+ * \c dash::copy can be local (\c *ValueType) or global
+ * (\c GlobIter<ValueType>).
  *
  * For a blocking variant of \c dash::copy_async, see \c dash::copy.
  *
@@ -118,12 +115,12 @@ namespace internal {
 template <
   typename ValueType,
   class GlobInputIt >
-ValueType * copy_impl(
+ValueType * copy_block(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  DASH_LOG_TRACE("dash::copy_impl()",
+  DASH_LOG_TRACE("dash::copy_block()",
                  "in_first:",  in_first.pos(),
                  "in_last:",   in_last.pos(),
                  "out_first:", out_first);
@@ -132,10 +129,10 @@ ValueType * copy_impl(
   typedef typename decltype(pattern)::size_type  size_type;
   size_type num_elem_total = dash::distance(in_first, in_last);
   if (num_elem_total <= 0) {
-    DASH_LOG_TRACE("dash::copy_impl", "input range empty");
+    DASH_LOG_TRACE("dash::copy_block", "input range empty");
     return out_first;
   }
-  DASH_LOG_TRACE("dash::copy_impl",
+  DASH_LOG_TRACE("dash::copy_block",
                  "total elements:",    num_elem_total,
                  "expected out_last:", out_first + num_elem_total);
   // Input iterators could be relative to a view. Map first input iterator
@@ -144,27 +141,27 @@ ValueType * copy_impl(
   // range.
   auto g_in_first      = in_first.global();
   auto g_in_last       = g_in_first + num_elem_total;
-  DASH_LOG_TRACE("dash::copy_impl",
+  DASH_LOG_TRACE("dash::copy_block",
                  "g_in_first:", g_in_first.pos(),
                  "g_in_last:",  g_in_last.pos());
   auto unit_first      = pattern.unit_at(g_in_first.pos());
-  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_first);
+  DASH_LOG_TRACE_VAR("dash::copy_block", unit_first);
   auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
-  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
+  DASH_LOG_TRACE_VAR("dash::copy_block", unit_last);
 
   // MPI uses offset type int, do not copy more than INT_MAX bytes:
   size_type max_copy_elem   = (std::numeric_limits<int>::max() /
                                sizeof(ValueType));
   size_type num_elem_copied = 0;
-  DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
+  DASH_LOG_TRACE_VAR("dash::copy_block", max_copy_elem);
   if (num_elem_total > max_copy_elem) {
-    DASH_LOG_DEBUG("dash::copy_impl",
+    DASH_LOG_DEBUG("dash::copy_block",
                    "cannot copy", num_elem_total, "elements",
                    "in a single dart_get operation");
   }
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
-    DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
+    DASH_LOG_TRACE("dash::copy_block", "input range at single unit");
     while (num_elem_copied < num_elem_total) {
       // Number of elements left to copy:
       auto total_elem_left = num_elem_total - num_elem_copied;
@@ -174,7 +171,7 @@ ValueType * copy_impl(
       if (num_copy_elem > total_elem_left) {
         num_copy_elem = total_elem_left;
       }
-      DASH_LOG_TRACE("dash::copy_impl",
+      DASH_LOG_TRACE("dash::copy_block",
                      "copy max:",       max_copy_elem,
                      "get elements:",   num_copy_elem,
                      "total:",          num_elem_total,
@@ -194,7 +191,7 @@ ValueType * copy_impl(
     }
   } else {
     // Input range is spread over several remote units:
-    DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
+    DASH_LOG_TRACE("dash::copy_block", "input range spans multiple units");
     //
     // Copy elements from every unit:
     //
@@ -221,7 +218,7 @@ ValueType * copy_impl(
       }
       DASH_ASSERT_GT(num_copy_elem, 0,
                      "Number of element to copy is 0");
-      DASH_LOG_TRACE("dash::copy_impl",
+      DASH_LOG_TRACE("dash::copy_block",
                      "start g_idx:",    cur_in_first.pos(),
                      "->",
                      "unit:",           local_pos.unit,
@@ -243,7 +240,7 @@ ValueType * copy_impl(
             ds.nelem,
             ds.dtype)
           != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
+        DASH_LOG_ERROR("dash::copy_block", "dart_get failed");
         DASH_THROW(
           dash::exception::RuntimeError, "dart_get failed");
       }
@@ -252,7 +249,7 @@ ValueType * copy_impl(
   }
 
   ValueType * out_last = out_first + num_elem_copied;
-  DASH_LOG_TRACE_VAR("dash::copy_impl >", out_last);
+  DASH_LOG_TRACE_VAR("dash::copy_block >", out_last);
   return out_last;
 }
 
@@ -263,12 +260,12 @@ ValueType * copy_impl(
 template <
   typename ValueType,
   class GlobInputIt >
-dash::Future<ValueType *> copy_async_impl(
+dash::Future<ValueType *> copy_block_async(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  DASH_LOG_TRACE("dash::copy_async_impl()",
+  DASH_LOG_TRACE("dash::copy_block_async()",
                  "in_first:",  in_first.pos(),
                  "in_last:",   in_last.pos(),
                  "out_first:", out_first);
@@ -277,10 +274,10 @@ dash::Future<ValueType *> copy_async_impl(
   typedef typename decltype(pattern)::size_type  size_type;
   size_type num_elem_total = dash::distance(in_first, in_last);
   if (num_elem_total <= 0) {
-    DASH_LOG_TRACE("dash::copy_async_impl", "input range empty");
+    DASH_LOG_TRACE("dash::copy_block_async", "input range empty");
     return dash::Future<ValueType *>([=]() { return out_first; });
   }
-  DASH_LOG_TRACE("dash::copy_async_impl",
+  DASH_LOG_TRACE("dash::copy_block_async",
                  "total elements:",    num_elem_total,
                  "expected out_last:", out_first + num_elem_total);
   // Input iterators could be relative to a view. Map first input iterator
@@ -289,34 +286,30 @@ dash::Future<ValueType *> copy_async_impl(
   // range.
   auto g_in_first      = in_first.global();
   auto g_in_last       = g_in_first + num_elem_total;
-  DASH_LOG_TRACE("dash::copy_async_impl",
+  DASH_LOG_TRACE("dash::copy_block_async",
                  "g_in_first:", g_in_first.pos(),
                  "g_in_last:",  g_in_last.pos());
   auto unit_first      = pattern.unit_at(g_in_first.pos());
-  DASH_LOG_TRACE_VAR("dash::copy_async_impl", unit_first);
+  DASH_LOG_TRACE_VAR("dash::copy_block_async", unit_first);
   auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
-  DASH_LOG_TRACE_VAR("dash::copy_async_impl", unit_last);
+  DASH_LOG_TRACE_VAR("dash::copy_block_async", unit_last);
 
   // Accessed global pointers to be flushed:
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-  std::vector<dart_gptr_t>   req_handles;
-#else
   std::vector<dart_handle_t> req_handles;
-#endif
 
   // MPI uses offset type int, do not copy more than INT_MAX bytes:
   size_type max_copy_elem   = (std::numeric_limits<int>::max() /
                                sizeof(ValueType));
   size_type num_elem_copied = 0;
-  DASH_LOG_TRACE_VAR("dash::copy_async_impl", max_copy_elem);
+  DASH_LOG_TRACE_VAR("dash::copy_block_async", max_copy_elem);
   if (num_elem_total > max_copy_elem) {
-    DASH_LOG_DEBUG("dash::copy_async_impl",
+    DASH_LOG_DEBUG("dash::copy_block_async",
                    "cannot copy", num_elem_total, "elements",
                    "in a single dart_get operation");
   }
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
-    DASH_LOG_TRACE("dash::copy_async_impl", "input range at single unit");
+    DASH_LOG_TRACE("dash::copy_block_async", "input range at single unit");
     while (num_elem_copied < num_elem_total) {
       // Number of elements left to copy:
       auto total_elem_left = num_elem_total - num_elem_copied;
@@ -326,7 +319,7 @@ dash::Future<ValueType *> copy_async_impl(
       if (num_copy_elem > total_elem_left) {
         num_copy_elem = total_elem_left;
       }
-      DASH_LOG_TRACE("dash::copy_async_impl",
+      DASH_LOG_TRACE("dash::copy_block_async",
                      "copy max:",       max_copy_elem,
                      "get elements:",   num_copy_elem,
                      "total:",          num_elem_total,
@@ -334,17 +327,6 @@ dash::Future<ValueType *> copy_async_impl(
                      "left:",           total_elem_left);
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
-      DASH_ASSERT_RETURNS(
-        dart_get(
-          cur_out_first,
-          cur_in_first.dart_gptr(),
-          ds.nelem,
-          ds.dtype),
-        DART_OK);
-      req_handles.push_back(in_first.dart_gptr());
-#else
       dart_handle_t  get_handle;
       dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
@@ -358,12 +340,12 @@ dash::Future<ValueType *> copy_async_impl(
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);
       }
-#endif
       num_elem_copied += num_copy_elem;
     }
   } else {
     // Input range is spread over several remote units:
-    DASH_LOG_TRACE("dash::copy_async_impl", "input range spans multiple units");
+    DASH_LOG_TRACE("dash::copy_block_async",
+                   "input range spans multiple units");
     //
     // Copy elements from every unit:
     //
@@ -390,7 +372,7 @@ dash::Future<ValueType *> copy_async_impl(
       }
       DASH_ASSERT_GT(num_copy_elem, 0,
                      "Number of element to copy is 0");
-      DASH_LOG_TRACE("dash::copy_async_impl",
+      DASH_LOG_TRACE("dash::copy_block_async",
                      "start g_idx:",    cur_in_first.pos(),
                      "->",
                      "unit:",           local_pos.unit,
@@ -405,20 +387,6 @@ dash::Future<ValueType *> copy_async_impl(
                      "left:",           total_elem_left);
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
-      if (dart_get(
-            dest_ptr,
-            src_gptr,
-            ds.nelem,
-            ds.dtype)
-          != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_async_impl", "dart_get failed");
-        DASH_THROW(
-          dash::exception::RuntimeError, "dart_get failed");
-      }
-      req_handles.push_back(src_gptr);
-#else
       dart_handle_t  get_handle;
       dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
@@ -432,50 +400,45 @@ dash::Future<ValueType *> copy_async_impl(
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);
       }
-#endif
       num_elem_copied += num_copy_elem;
     }
   }
 #ifdef DASH_ENABLE_TRACE_LOGGING
   for (auto gptr : req_handles) {
-    DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
+    DASH_LOG_TRACE("dash::copy_block_async", "  req_handle:", gptr);
   }
 #endif
   dash::Future<ValueType *> result([=]() mutable {
     // Wait for all get requests to complete:
     ValueType * _out = out_first + num_elem_copied;
-    DASH_LOG_TRACE("dash::copy_async_impl [Future]()",
+    DASH_LOG_TRACE("dash::copy_block_async [Future]()",
                    "  wait for", req_handles.size(), "async get request");
-    DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
+    DASH_LOG_TRACE("dash::copy_block_async [Future]", "  flush:",
+                   req_handles);
 #ifdef DASH_ENABLE_TRACE_LOGGING
     for (auto gptr : req_handles) {
-      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  req_handle:",
+      DASH_LOG_TRACE("dash::copy_block_async [Future]", "  req_handle:",
                      gptr);
     }
 #endif
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-    for (auto gptr : req_handles) {
-      dart_flush_local_all(gptr);
-    }
-#else
     if (req_handles.size() > 0) {
       if (dart_waitall_local(&req_handles[0], req_handles.size())
           != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_async_impl [Future]",
+        DASH_LOG_ERROR("dash::copy_block_async [Future]",
                        "  dart_waitall_local failed");
         DASH_THROW(
           dash::exception::RuntimeError,
-          "dash::copy_async_impl [Future]: dart_waitall_local failed");
+          "dash::copy_block_async [Future]: dart_waitall_local failed");
       }
     } else {
-      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  No pending handles");
+      DASH_LOG_TRACE("dash::copy_block_async [Future]",
+                     "  No pending handles");
     }
-#endif
-    DASH_LOG_TRACE("dash::copy_async_impl [Future] >",
+    DASH_LOG_TRACE("dash::copy_block_async [Future] >",
                    "  async requests completed, _out:", _out);
     return _out;
   });
-  DASH_LOG_TRACE("dash::copy_async_impl >", "  returning future");
+  DASH_LOG_TRACE("dash::copy_block_async >", "  returning future");
   return result;
 }
 
@@ -490,15 +453,17 @@ dash::Future<ValueType *> copy_async_impl(
 template <
   typename ValueType,
   class GlobOutputIt >
-GlobOutputIt copy_impl(
+GlobOutputIt copy_block(
   ValueType    * in_first,
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
-  DASH_LOG_TRACE("dash::copy_impl()",
-                 "l_in_first:",  in_first,
-                 "l_in_last:",   in_last,
-                 "g_out_first:", out_first.pos());
+  DASH_LOG_TRACE("dash::copy_block()",
+                 "l_in_first:",      in_first,
+                 "l_in_last:",       in_last,
+                 "g_out_first.pos:", out_first.pos());
+  DASH_LOG_TRACE("dash::copy_block",
+                 "g_out_first:", out_first.dart_gptr());
 
   auto num_elements = std::distance(in_first, in_last);
   dart_storage_t ds = dash::dart_storage<ValueType>(num_elements);
@@ -511,7 +476,7 @@ GlobOutputIt copy_impl(
     DART_OK);
 
   auto out_last = out_first + num_elements;
-  DASH_LOG_TRACE("dash::copy_impl >",
+  DASH_LOG_TRACE("dash::copy_block >",
                  "g_out_last:", out_last.dart_gptr());
 
   return out_last;
@@ -524,40 +489,22 @@ GlobOutputIt copy_impl(
 template <
   typename ValueType,
   class    GlobOutputIt >
-dash::Future<GlobOutputIt> copy_async_impl(
+dash::Future<GlobOutputIt> copy_block_async(
   ValueType    * in_first,
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
-  DASH_LOG_TRACE("dash::copy_async_impl()",
+  DASH_LOG_TRACE("dash::copy_block_async()",
                  "l_in_first:",  in_first,
                  "l_in_last:",   in_last,
                  "g_out_first:", out_first.dart_gptr());
 
   // Accessed global pointers to be flushed:
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-  std::vector<dart_gptr_t>   req_handles;
-#else
   std::vector<dart_handle_t> req_handles;
-#endif
 
   auto num_copy_elem = std::distance(in_first, in_last);
   auto src_ptr       = in_first;
   auto dest_gptr     = out_first.dart_gptr();
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
-  if (dart_put(
-        dest_gptr,
-        src_ptr,
-        ds.nelem,
-        ds.dtype)
-      != DART_OK) {
-    DASH_LOG_ERROR("dash::copy_async_impl", "dart_put failed");
-    DASH_THROW(
-      dash::exception::RuntimeError, "dart_put failed");
-  }
-  req_handles.push_back(dest_gptr);
-#else
   dart_handle_t  put_handle;
   dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
   DASH_ASSERT_RETURNS(
@@ -571,49 +518,44 @@ dash::Future<GlobOutputIt> copy_async_impl(
   if (put_handle != NULL) {
     req_handles.push_back(put_handle);
   }
-#endif
 
 #ifdef DASH_ENABLE_TRACE_LOGGING
   for (auto gptr : req_handles) {
-    DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
+    DASH_LOG_TRACE("dash::copy_block_async", "  req_handle:", gptr);
   }
 #endif
   dash::Future<GlobOutputIt> result([=]() mutable {
     // Wait for all get requests to complete:
     GlobOutputIt _out = out_first + num_copy_elem;
-    DASH_LOG_TRACE("dash::copy_async_impl [Future]()",
+    DASH_LOG_TRACE("dash::copy_block_async [Future]()",
                    "  wait for", req_handles.size(), "async put request");
-    DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
-    DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
+    DASH_LOG_TRACE("dash::copy_block_async [Future]", "  flush:",
+                   req_handles);
+    DASH_LOG_TRACE("dash::copy_block_async [Future]", "  _out:", _out);
 #ifdef DASH_ENABLE_TRACE_LOGGING
     for (auto gptr : req_handles) {
-      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  req_handle:",
+      DASH_LOG_TRACE("dash::copy_block_async [Future]", "  req_handle:",
                      gptr);
     }
 #endif
-#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-    for (auto gptr : req_handles) {
-      dart_flush_all(gptr);
-    }
-#else
     if (req_handles.size() > 0) {
       if (dart_waitall(&req_handles[0], req_handles.size())
           != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_async_impl [Future]",
+        DASH_LOG_ERROR("dash::copy_block_async [Future]",
                        "  dart_waitall failed");
         DASH_THROW(
           dash::exception::RuntimeError,
-          "dash::copy_async_impl [Future]: dart_waitall failed");
+          "dash::copy_block_async [Future]: dart_waitall failed");
       }
     } else {
-      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  No pending handles");
+      DASH_LOG_TRACE("dash::copy_block_async [Future]",
+                     "  No pending handles");
     }
-#endif
-    DASH_LOG_TRACE("dash::copy_async_impl [Future] >",
+    DASH_LOG_TRACE("dash::copy_block_async [Future] >",
                    "  async requests completed, _out:", _out);
     return _out;
   });
-  DASH_LOG_TRACE("dash::copy_async_impl >", "  returning future");
+  DASH_LOG_TRACE("dash::copy_block_async >", "  returning future");
   return result;
 }
 
@@ -652,8 +594,8 @@ dash::Future<ValueType *> copy_async(
     return dash::Future<ValueType *>([=]() { return out_first; });
   }
   ValueType * dest_first = out_first;
-  // Return value, initialize with begin of output range, indicating no values
-  // have been copied:
+  // Return value, initialize with begin of output range, indicating noi
+  // values have been copied:
   ValueType * out_last   = out_first;
   // Check if part of the input range is local:
   DASH_LOG_TRACE_VAR("dash::copy_async", in_first.dart_gptr());
@@ -665,9 +607,9 @@ dash::Future<ValueType *> copy_async(
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
 
-  // Instead of testing in_first.local() and in_last.local(), this test for a
-  // local-only range only requires one call to in_first.local() which increases
-  // throughput by ~10% for local ranges.
+  // Instead of testing in_first.local() and in_last.local(), this test for
+  // a local-only range only requires one call to in_first.local() which
+  // increases throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
@@ -740,7 +682,7 @@ dash::Future<ValueType *> copy_async(
       // ... [ --- copy --- | ... l ... | ........ ]
       //     ^              ^           ^          ^
       //     in_first       l_in_first  l_in_last  in_last
-      auto fut_prelocal = dash::internal::copy_async_impl(g_in_first,
+      auto fut_prelocal = dash::internal::copy_block_async(g_in_first,
                                                           g_l_in_first,
                                                           dest_first);
       futures.push_back(fut_prelocal);
@@ -763,7 +705,7 @@ dash::Future<ValueType *> copy_async(
       // ... [ ........ | ... l ... | --- copy --- ]
       //     ^          ^           ^              ^
       //     in_first   l_in_first  l_in_last      in_last
-      auto fut_postlocal = dash::internal::copy_async_impl(g_l_in_last,
+      auto fut_postlocal = dash::internal::copy_block_async(g_l_in_last,
                                                            g_in_last,
                                                            dest_first);
       futures.push_back(fut_postlocal);
@@ -812,7 +754,7 @@ dash::Future<ValueType *> copy_async(
   } else {
     DASH_LOG_TRACE("dash::copy_async", "no local subrange");
     // All elements in input range are remote
-    auto fut_all = dash::internal::copy_async_impl(in_first,
+    auto fut_all = dash::internal::copy_block_async(in_first,
                                                    in_last,
                                                    dest_first);
     futures.push_back(fut_all);
@@ -838,7 +780,8 @@ dash::Future<ValueType *> copy_async(
 }
 
 /*
- * Specialization of \c dash::copy as global-to-local blocking copy operation.
+ * Specialization of \c dash::copy as global-to-local blocking copy
+ * operation.
  *
  * \ingroup  DashAlgorithms
  */
@@ -948,7 +891,7 @@ ValueType * copy(
       // ... [ --- copy --- | ... l ... | ........ ]
       //     ^              ^           ^          ^
       //     in_first       l_in_first  l_in_last  in_last
-      out_last = dash::internal::copy_impl(g_in_first,
+      out_last = dash::internal::copy_block(g_in_first,
                                            g_l_in_first,
                                            dest_first);
       // Advance output pointers:
@@ -1006,14 +949,14 @@ ValueType * copy(
       // ... [ ........ | ... l ... | --- copy --- ]
       //     ^          ^           ^              ^
       //     in_first   l_in_first  l_in_last      in_last
-      out_last = dash::internal::copy_impl(g_l_in_last,
+      out_last = dash::internal::copy_block(g_l_in_last,
                                            g_in_last,
                                            dest_first);
     }
   } else {
     DASH_LOG_TRACE("dash::copy", "no local subrange");
     // All elements in input range are remote
-    out_last = dash::internal::copy_impl(in_first,
+    out_last = dash::internal::copy_block(in_first,
                                          in_last,
                                          dest_first);
   }
@@ -1067,7 +1010,7 @@ auto copy_async(
   for (auto block : out_blocks) {
     DASH_LOG_TRACE("dash::copy_async", "block size:", block.size());
     futures.push_back(static_cast<dash::Future<GlobOutputIt>>(
-                        dash::internal::copy_async_impl(
+                        dash::internal::copy_block_async(
                           in_copy_it,
                           in_copy_it + block.size(),
                           block.begin())) );
@@ -1114,7 +1057,7 @@ auto copy_async(
 {
   DASH_LOG_TRACE("dash::copy_async()",
                  "blocking, local to global, restricted to single block");
-  return dash::internal::copy_async_impl(
+  return dash::internal::copy_block_async(
            in_first,
            in_last,
            out_first);
@@ -1154,7 +1097,7 @@ GlobOutputIt copy(
   for (auto block : out_blocks) {
     DASH_LOG_TRACE("dash::copy", "block size:", block.size());
     out_last   = static_cast<GlobOutputIt>(
-                   dash::internal::copy_impl(
+                   dash::internal::copy_block(
                      in_copy_it,
                      in_copy_it + block.size(),
                      block.begin()));
