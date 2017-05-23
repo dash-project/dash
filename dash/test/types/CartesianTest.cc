@@ -13,7 +13,8 @@ TEST_F(CartesianTest, DefaultConstructor) {
   // 1-dimensional:
   dash::CartesianIndexSpace<1> cartesian1d;
   EXPECT_EQ(cartesian1d.size(), 0);
-  EXPECT_EQ(cartesian1d.rank(), 1);
+  EXPECT_EQ(cartesian1d.rank(), 0);
+  EXPECT_EQ(decltype(cartesian1d)::ndim::value, 1);
   EXPECT_EQ(cartesian1d.extent(0), 0);
 #if defined(DASH_ENABLE_ASSERTIONS)
   dash::internal::logging::disable_log();
@@ -28,7 +29,8 @@ TEST_F(CartesianTest, DefaultConstructor) {
   // 4-dimensional:
   dash::CartesianIndexSpace<4> cartesian4d;
   EXPECT_EQ(cartesian4d.size(), 0);
-  EXPECT_EQ(cartesian4d.rank(), 4);
+  EXPECT_EQ(decltype(cartesian4d)::ndim::value, 4);
+  EXPECT_EQ(cartesian4d.rank(), 0);
   EXPECT_EQ(cartesian4d.extent(0), 0);
   EXPECT_EQ(cartesian4d.extent(1), 0);
   EXPECT_EQ(cartesian4d.extent(2), 0);
@@ -137,8 +139,8 @@ TEST_F(CartesianTest, Conversion10Dim) {
     cartesianR(extents);
   dash::CartesianIndexSpace<Dimensions, dash::COL_MAJOR, size_t>
     cartesianC(extents);
-  EXPECT_EQ(cartesianR.rank(), Dimensions);
-  EXPECT_EQ(cartesianC.rank(), Dimensions);
+  EXPECT_EQ(cartesianR.rank(), 8);
+  EXPECT_EQ(cartesianC.rank(), 8);
   EXPECT_EQ(cartesianR.size(), size);
   EXPECT_EQ(cartesianC.size(), size);
   for (int d = 0; d < Dimensions; ++d) {
