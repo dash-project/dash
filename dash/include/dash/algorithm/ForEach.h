@@ -95,12 +95,12 @@ void for_each_with_index(
   if (lbegin_index != lend_index) {
     // Pattern from global begin iterator:
     auto & pattern    = first.pattern();
+    auto first_offset = first.pos();
     // Iterate local index range:
     for (auto lindex = lbegin_index;
          lindex != lend_index;
          ++lindex) {
       auto gindex       = pattern.global(lindex);
-      auto first_offset = first.pos();
       auto element_it   = first + (gindex - first_offset);
       func(*(element_it.local()), gindex);
     }

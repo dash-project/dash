@@ -260,7 +260,7 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
   int size;
 
-  MPI_Comm_size(DART_COMM_WORLD, &size);
+  MPI_Comm_size(team_data->comm, &size);
 
   MPI_Comm sharedmem_comm;
   MPI_Group sharedmem_group, group_all;
@@ -281,7 +281,7 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
   // dart_sharedmem_size[index] * sizeof (int));
 
     MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-    MPI_Comm_group(DART_COMM_WORLD, &group_all);
+    MPI_Comm_group(team_data->comm, &group_all);
 
     int * dart_unit_mapping  = malloc(
         team_data->sharedmem_nodesize * sizeof(int));
