@@ -253,7 +253,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   index_t begin_idx_y = (local_beg_gidx[1] == 0) ? 1 : 0;
   index_t end_idx_y   = (local_end_gidx[1] == gext_y-1) ? lext_y-2 : lext_y-1;
   bool is_top    =(local_beg_gidx[0] == 0) ? true : false;
-  bool is_bottom =(local_end_gidx[0] == (gext_y-1)) ? true : false;
+  bool is_bottom =(local_end_gidx[0] == (gext_x-1)) ? true : false;
 
   if(!is_top){
     // top row
@@ -295,21 +295,22 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     );
 
     // heart-beat task
-    dash::create_task(
+/*    dash::create_task(
       [=](){
         std::cout << "[" << dash::myid() << "] iteration heartbeat "
                   << iter << std::endl;
       },
       dash::direct(handle)
     );
+*/
   }
 }
 
 int main(int argc, char* argv[])
 {
   int sizex = 1000;
-  int sizey = 1000;
-  int niter = 5;
+  int sizey = 10000;
+  int niter = 50;
 
   dash::init(&argc, &argv);
 
@@ -377,6 +378,6 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   // Assume niter is even
-  write_pgm("testimg_output.pgm", data_new);
+//  write_pgm("testimg_output.pgm", data_new);
   dash::finalize();
 }
