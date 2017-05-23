@@ -4,6 +4,7 @@
  */
 #include "../bench.h"
 #include <libdash.h>
+#include <dash/Coarray.h>
 
 #include <array>
 #include <vector>
@@ -33,6 +34,8 @@ typedef dash::Array<
   PatternType
 > ArrayType;
 
+typedef dash::Coarray<TYPE[]> CoarrType;
+
 template<typename Iter>
 void init_values(Iter begin, Iter end, unsigned);
 void init_values(ArrayType & a, unsigned);
@@ -46,6 +49,9 @@ double test_dash_local_global_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_subscript(ArrayType & a, unsigned, unsigned);
 double test_dash_local_pointer(ArrayType & a, unsigned, unsigned);
+
+double test_dash_coarr_l_subscript(CoarrType & a, unsigned, unsigned);
+
 double test_stl_vector(unsigned, unsigned);
 double test_stl_deque(unsigned, unsigned);
 double test_raw_array(unsigned, unsigned);
@@ -120,6 +126,7 @@ void perform_test(
       cout << "," << std::setw(11) << "stl vector";
       cout << "," << std::setw(11) << "stl deque";
       cout << "," << std::setw(11) << "raw array";
+      cout << "," << std::setw(11) << "coarr l[]";
       cout << endl;
     }
     return;
@@ -135,6 +142,8 @@ void perform_test(
     pat
   );
 
+  CoarrType coarr(ELEM_PER_UNIT);
+
   double t0 = test_dash_pattern(arr, ELEM_PER_UNIT, REPEAT);
   double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
   double t2 = test_dash_local_global_iter(arr, ELEM_PER_UNIT, REPEAT);
@@ -144,6 +153,7 @@ void perform_test(
   double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
   double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
   double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
+  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
 
@@ -157,6 +167,7 @@ void perform_test(
     double gups6 = gups(num_units, t6, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(num_units, t7, ELEM_PER_UNIT, REPEAT);
     double gups8 = gups(num_units, t8, ELEM_PER_UNIT, REPEAT);
+    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10) << ELEM_PER_UNIT;
     cout << "," << std::setw(10) << REPEAT;
@@ -169,6 +180,7 @@ void perform_test(
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups6;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups7;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups8;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups9;
     cout << endl;
   }
 }
@@ -385,6 +397,26 @@ double test_dash_local_pointer(
 
   validate(
     a, ELEM_PER_UNIT, REPEAT);
+  return time_elapsed;
+}
+
+double test_dash_coarr_l_subscript(
+  CoarrType & a,
+  unsigned ELEM_PER_UNIT,
+  unsigned REPEAT)
+{
+  init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
+
+  Timer timer;
+  for (unsigned i = 0; i < REPEAT; ++i) {
+    for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
+      ++a[j]; // local coarr access
+    }
+  }
+  auto time_elapsed = timer.Elapsed();
+
+  validate(
+    a.lbegin(), a.lend(), ELEM_PER_UNIT, REPEAT);
   return time_elapsed;
 }
 
