@@ -1,28 +1,28 @@
 
-#include "CollectiveAllocatorTest.h"
+#include "SymmetricAllocatorTest.h"
 
-#include <dash/allocator/CollectiveAllocator.h>
+#include <dash/allocator/SymmetricAllocator.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
 #include <dash/Pattern.h>
 
-TEST_F(CollectiveAllocatorTest, Constructor)
+TEST_F(SymmetricAllocatorTest, Constructor)
 {
-  auto target           = dash::allocator::CollectiveAllocator<int>();
+  auto target           = dash::allocator::SymmetricAllocator<int>();
   dart_gptr_t requested = target.allocate(sizeof(int) * 10);
 
   ASSERT_EQ(0, requested.unitid);
   ASSERT_EQ(DART_TEAM_ALL, requested.teamid);
 }
 
-TEST_F(CollectiveAllocatorTest, TeamAlloc)
+TEST_F(SymmetricAllocatorTest, TeamAlloc)
 {
   if (_dash_size < 2) {
     SKIP_TEST_MSG("Test case requires at least two units");
   }
   dash::Team& subteam   = dash::Team::All().split(2);
 
-  auto target           = dash::allocator::CollectiveAllocator<int>(subteam);
+  auto target           = dash::allocator::SymmetricAllocator<int>(subteam);
   dart_gptr_t requested = target.allocate(sizeof(int) * 10);
 
   // make sure the unitid in the gptr is
@@ -31,10 +31,10 @@ TEST_F(CollectiveAllocatorTest, TeamAlloc)
   ASSERT_EQ(subteam.dart_id(), requested.teamid);
 }
 
-TEST_F(CollectiveAllocatorTest, MoveAssignment)
+TEST_F(SymmetricAllocatorTest, MoveAssignment)
 {
-  using GlobPtr_t = dash::GlobPtr<int, dash::Pattern<1>>;
-  using Alloc_t   = dash::allocator::CollectiveAllocator<int>;
+  using GlobPtr_t = dash::GlobConstPtr<int>;
+  using Alloc_t   = dash::allocator::SymmetricAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t target_new;
 
@@ -63,10 +63,10 @@ TEST_F(CollectiveAllocatorTest, MoveAssignment)
   target_new.deallocate(gptr.dart_gptr());
 }
 
-TEST_F(CollectiveAllocatorTest, MoveCtor)
+TEST_F(SymmetricAllocatorTest, MoveCtor)
 {
-  using GlobPtr_t = dash::GlobPtr<int, dash::Pattern<1>>;
-  using Alloc_t   = dash::allocator::CollectiveAllocator<int>;
+  using GlobPtr_t = dash::GlobConstPtr<int>;
+  using Alloc_t   = dash::allocator::SymmetricAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t target_new;
 

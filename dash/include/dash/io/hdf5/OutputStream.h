@@ -45,10 +45,10 @@ class OutputStream : public ::dash::io::IOSBase<StreamMode> {
   /**
    * Creates an HDF5 output stream using a launch policy
    *
-   * Support of \cdash::launch::async is still highly experimental and requires
+   * Support of \ref dash::launch::async is still highly experimental and requires
    * thread support in MPI. If multi-threaded access is not supported,
    * blocking I/O is used as fallback. To wait for outstanding IO operations use
-   * \cflush(). Until the stream is not flushed, no write accesses to the
+   * \c flush(). Until the stream is not flushed, no write accesses to the
    * container, as well as no barriers are allowed.
    * Otherwise the behavior is undefined.
    */
@@ -88,8 +88,10 @@ class OutputStream : public ::dash::io::IOSBase<StreamMode> {
    *     << dataset("seconddata") << array_b;
    * \endcode
    */
-  OutputStream(std::string filename, mode_t open_mode = DeviceMode::no_flags)
-      : OutputStream(dash::launch::sync, filename, open_mode) {}
+  explicit OutputStream(
+      std::string filename,
+      mode_t open_mode = DeviceMode::no_flags)
+  : OutputStream(dash::launch::sync, filename, open_mode) {}
 
   ~OutputStream() {
     if (!_async_ops.empty()) {
@@ -97,11 +99,18 @@ class OutputStream : public ::dash::io::IOSBase<StreamMode> {
     }
   }
 
+  OutputStream()                      = delete;
+  OutputStream(const self_t & other)  = delete;
+  OutputStream(self_t && other)       = default;
+
+  self_t & operator= (const self_t & other)  = delete;
+  self_t & operator= (self_t && other)       = default;
+
   /**
    * Synchronizes with the data sink.
-   * If \cdash::launch::async is used, waits until all data is written
+   * If \ref dash::launch::async is used, waits until all data is written
    */
-  OutputStream flush() {
+  self_t & flush() {
     DASH_LOG_DEBUG("flush output stream", _async_ops.size());
     if (!_async_ops.empty()) {
       _async_ops.back().wait();

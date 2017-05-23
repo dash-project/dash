@@ -19,6 +19,8 @@
 #include <dash/view/Chunked.h>
 #include <dash/view/Sub.h>
 
+#include <type_traits>
+
 
 namespace dash {
 
@@ -51,6 +53,7 @@ struct view_traits<ViewBlockMod<DomainType, NDim> > {
   typedef ViewBlockMod<DomainType, NDim>                       global_type;
 
   typedef typename DomainType::index_type                       index_type;
+  typedef typename view_traits<domain_type>::size_type           size_type;
   typedef typename std::conditional<
                      NDim == 1,
                      dash::IndexSetSub<DomainType, 0>,
@@ -420,6 +423,7 @@ struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef ViewBlocksMod<DomainType, NDim>                      global_type;
 
   typedef typename DomainType::index_type                       index_type;
+  typedef typename view_traits<domain_type>::size_type           size_type;
   typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType, NDim>>
                                                             index_set_type;
 

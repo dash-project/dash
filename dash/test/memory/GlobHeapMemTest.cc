@@ -1,10 +1,11 @@
 
-#include "GlobDynamicMemTest.h"
+#include "GlobHeapMemTest.h"
 
-#include <dash/GlobDynamicMem.h>
+#include <dash/memory/GlobHeapMem.h>
+#include <dash/Onesided.h>
 
 
-TEST_F(GlobDynamicMemTest, BalancedAlloc)
+TEST_F(GlobHeapMemTest, BalancedAlloc)
 {
   typedef int value_t;
 
@@ -12,11 +13,11 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
     SKIP_TEST_MSG("Test case requires at least two units");
   }
 
-  LOG_MESSAGE("initializing GlobDynamicMem<T>");
+  LOG_MESSAGE("initializing GlobHeapMem<T>");
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+  dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
@@ -26,9 +27,9 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
                                        gdmem.lbegin());
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial local:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "initial local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial global:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "initial global:",
                  gdmem.size());
   // Wait for validation of initial capacity at all units:
   dash::barrier();
@@ -50,18 +51,18 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
                                          gdmem.lbegin());
   EXPECT_EQ_U(precommit_global_capacity, gdmem.size());
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit local:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "pre-commit local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit global:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "pre-commit global:",
                  gdmem.size());
   // Wait for validation of changes of local capacity at all units:
   dash::barrier();
 
   gdmem.commit();
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit local:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "post-commit local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit global:",
+  DASH_LOG_TRACE("GlobHeapMemTest.BalancedAlloc", "post-commit global:",
                  gdmem.size());
   size_t postcommit_local_capacity  = precommit_local_capacity;
   size_t postcommit_global_capacity = dash::size() *
@@ -72,7 +73,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   EXPECT_EQ_U(postcommit_global_capacity, gdmem.size());
 }
 
-TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
+TEST_F(GlobHeapMemTest, UnbalancedRealloc)
 {
   typedef int value_t;
 
@@ -80,11 +81,11 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
     SKIP_TEST_MSG("Test case requires at least two units");
   }
 
-  LOG_MESSAGE("initializing GlobDynamicMem<T>");
+  LOG_MESSAGE("initializing GlobHeapMem<T>");
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+  dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
@@ -104,7 +105,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                           unit_1_lsize_diff +
                           (dash::size() - 2) * unit_x_lsize_diff;
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "begin local reallocation");
   // Extend local size, changes should be locally visible immediately:
   if (dash::myid() == 0) {
@@ -124,12 +125,14 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
 
   dash::barrier();
   LOG_MESSAGE("before commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   gdmem.commit();
 
   LOG_MESSAGE("after commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   // Global size should be updated after commit:
   EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
@@ -147,7 +150,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                 gdmem.local_size());
   }
   dash::barrier();
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "size checks after commit completed");
 
   // Initialize values in reallocated memory:
@@ -155,28 +158,28 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   auto lcap = gdmem.local_size();
   for (size_t li = 0; li < lcap; ++li) {
     auto value = 1000 * (dash::myid() + 1) + li;
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                    "setting local offset", li, "at unit", dash::myid(),
                    "value:", value);
     lmem[li] = value;
   }
   dash::barrier();
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "initialization of local values completed");
 
   if (dash::myid() == 0) {
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                    "testing basic iterator arithmetic");
 
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_first");
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc", "git_first");
     auto git_first  = gdmem.begin();
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_second");
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc", "git_second");
     auto git_second = git_first + 1;
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_remote");
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc", "git_remote");
     auto git_remote = git_first + gdmem.local_size() + 1;
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_last");
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc", "git_last");
     auto git_last   = git_first + gdmem.size() - 1;
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_end");
+    DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc", "git_end");
     auto git_end    = git_first + gdmem.size();
 
     dash__unused(git_second);
@@ -185,7 +188,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
     dash__unused(git_end);
   }
   dash::barrier();
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "testing basic iterator arithmetic completed");
 
   // Test memory space of units separately:
@@ -202,7 +205,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
       } else {
         exp_l_capacity += unit_x_lsize_diff;
       }
-      DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+      DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                      "remote unit:",          unit,
                      "expected local size:",  exp_l_capacity,
                      "gdm.local_size(unit):", gdmem.local_size(unit),
@@ -211,23 +214,23 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
       EXPECT_EQ_U(exp_l_capacity, unit_git_end - unit_git_begin);
       int l_idx = 0;
       for(auto it = unit_git_begin; it != unit_git_end; ++it, ++l_idx) {
-        DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+        DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                        "requesting element at",
                        "local offset", l_idx,
                        "from unit",    unit);
         auto gptr = it.dart_gptr();
-        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc", gptr);
+        DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc", gptr);
 
         // request value via DART global pointer:
         value_t dart_gptr_value;
         dart_storage_t ds = dash::dart_storage<value_t>(1);
         dart_get_blocking(&dart_gptr_value, gptr, ds.nelem, ds.dtype);
-        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc",
+        DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc",
                            dart_gptr_value);
 
         // request value via DASH global iterator:
         value_t git_value = *it;
-        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc",
+        DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc",
                            git_value);
 
         value_t expected = 1000 * (unit + 1) + l_idx;
@@ -238,40 +241,11 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   }
   dash::barrier();
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
-                 "testing reverse iteration");
-
-  // Test memory space of all units by iterating global index space:
-  dash::team_unit_t unit(dash::Team::All().size() - 1);
-  auto local_offset = gdmem.local_size(unit) - 1;
-  // Invert order to test reverse iterators:
-  auto rgend        = gdmem.rend();
-  EXPECT_EQ_U(gdmem.size(), gdmem.rend() - gdmem.rbegin());
-  for (auto rgit = gdmem.rbegin(); rgit != rgend; ++rgit) {
-    DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
-                   "requesting element at",
-                   "local offset", local_offset,
-                   "from unit",    unit);
-    value_t expected   = 1000 * (unit + 1) + local_offset;
-    value_t rgit_value = *rgit;
-    DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc", rgit_value);
-    value_t git_value  = *gdmem.at(unit, local_offset);
-    DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc", git_value);
-
-    EXPECT_EQ_U(expected, rgit_value);
-    EXPECT_EQ_U(expected, git_value);
-    if (local_offset == 0 && unit > 0) {
-      --unit;
-      local_offset = gdmem.local_size(unit);
-    }
-    --local_offset;
-  }
-
-  DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
+  DASH_LOG_TRACE("GlobHeapMemTest.UnbalancedRealloc",
                  "testing reverse iteration completed");
 }
 
-TEST_F(GlobDynamicMemTest, LocalVisibility)
+TEST_F(GlobHeapMemTest, LocalVisibility)
 {
   typedef int value_t;
 
@@ -279,11 +253,11 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
     SKIP_TEST_MSG("Test case requires at least two units");
   }
 
-  LOG_MESSAGE("initializing GlobDynamicMem<T>");
+  LOG_MESSAGE("initializing GlobHeapMem<T>");
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+  dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
@@ -310,7 +284,8 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   dash::barrier();
   LOG_MESSAGE("global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+               static_cast<int>(gdmem.size()),
+               static_cast<int>(gdmem.local_size()));
 
   // Global memory space has not been updated yet, changes are only
   // visible locally.
@@ -356,10 +331,10 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   }
 
   dash::barrier();
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "tests of visible memory size before commit passed");
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "testing local capacities after grow/shrink");
   auto local_size = gdmem.lend() - gdmem.lbegin();
   EXPECT_EQ_U(local_size, gdmem.local_size());
@@ -376,33 +351,33 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   auto lbegin = gdmem.lbegin();
   for (size_t li = 0; li < gdmem.local_size(); ++li) {
     value_t value = 100 * (dash::myid() + 1) + li;
-    DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+    DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                    "local[", li, "] =", value);
     *(lbegin + li) = value;
   }
 
   dash::barrier();
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "tests of local capacities after grow/shrink passed");
 
   // Memory marked for deallocation is still accessible by other units:
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "committing global memory");
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "local capacity before commit:",  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "global capacity before commit:", gdmem.size());
   // Collectively commit changes of local memory allocation to global
   // memory space:
   // register newly allocated local memory and remove local memory marked
   // for deallocation.
   gdmem.commit();
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility", "commit completed");
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility", "commit completed");
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "local capacity after commit:",  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "global capacity after commit:", gdmem.size());
 
   // Changes are globally visible now:
@@ -411,15 +386,15 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   EXPECT_EQ_U(expected_global_capacity, gdmem.size());
 
   if (dash::myid() == 0) {
-    DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility", "grow(30)");
+    DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility", "grow(30)");
     LOG_MESSAGE("grow(30)");
     gdmem.grow(30);
   }
   if (dash::myid() == 1) {
-    DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility", "grow(30)");
+    DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility", "grow(30)");
     gdmem.grow(30);
   }
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "commit, balanced attach");
   gdmem.commit();
   // Capacity changes have been published globally:
@@ -428,15 +403,15 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   if (dash::myid() == 0) {
     // resizes attached bucket:
-    DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility", "shrink(29)");
+    DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility", "shrink(29)");
     gdmem.shrink(29);
   }
   if (dash::myid() == 1) {
     // marks bucket for detach:
-    DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility", "shrink(30)");
+    DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility", "shrink(30)");
     gdmem.shrink(30);
   }
-  DASH_LOG_TRACE("GlobDynamicMemTest.LocalVisibility",
+  DASH_LOG_TRACE("GlobHeapMemTest.LocalVisibility",
                  "commit, unbalanced detach");
   gdmem.commit();
   // Capacity changes have been published globally:
@@ -444,7 +419,7 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   EXPECT_EQ(expected_global_capacity, gdmem.size());
 }
 
-TEST_F(GlobDynamicMemTest, RemoteAccess)
+TEST_F(GlobHeapMemTest, RemoteAccess)
 {
   typedef int value_t;
 
@@ -492,7 +467,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
    */
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+  dash::GlobHeapMem<value_t> gdmem(initial_local_capacity);
 
   int unit_0_num_grow   = 5;
   int unit_1_num_shrink = 2;
@@ -506,11 +481,11 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 
   // Initialize values in local memory:
   auto lbegin = gdmem.lbegin();
-  DASH_LOG_TRACE("GlobDynamicMemTest.RemoteAccess",
+  DASH_LOG_TRACE("GlobHeapMemTest.RemoteAccess",
                  "globmem.lbegin():", lbegin);
   for (size_t li = 0; li < gdmem.local_size(); ++li) {
     value_t value  = (100 * (dash::myid() + 1)) + li;
-    DASH_LOG_TRACE("GlobDynamicMemTest.RemoteAccess",
+    DASH_LOG_TRACE("GlobHeapMemTest.RemoteAccess",
                    "local[", li, "] =", value);
     *(lbegin + li) = value;
   }
@@ -529,7 +504,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
       size_t  nlocal_elem   = gdmem.local_size(u);
 
       EXPECT_EQ_U(nlocal_expect, nlocal_elem);
-      DASH_LOG_DEBUG("GlobDynamicMemTest.RemoteAccess",
+      DASH_LOG_DEBUG("GlobHeapMemTest.RemoteAccess",
                      "requesting element from unit", u,
                      "before commit,", "local capacity:", nlocal_elem);
       for (size_t lidx = 0; lidx < nlocal_elem; ++lidx) {
@@ -562,7 +537,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
       if (u == 1) { nlocal_expect -= unit_1_num_shrink; }
 
       EXPECT_EQ_U(nlocal_expect, nlocal_elem);
-      DASH_LOG_DEBUG("GlobDynamicMemTest.RemoteAccess",
+      DASH_LOG_DEBUG("GlobHeapMemTest.RemoteAccess",
                      "requesting element from unit", u,
                      "after commit,", "local capacity:", nlocal_elem);
       for (size_t lidx = 0; lidx < nlocal_elem; ++lidx) {

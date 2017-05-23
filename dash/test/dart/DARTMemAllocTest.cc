@@ -4,6 +4,38 @@
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/Array.h>
 
+TEST_F(DARTMemAllocTest, SmallLocalAlloc)
+{
+
+  typedef int value_t;
+  dart_gptr_t gptr1;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr1));
+  ASSERT_NE_U(
+    DART_GPTR_NULL,
+    gptr1);
+  value_t *baseptr;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_gptr_getaddr(gptr1, (void**)&baseptr));
+
+
+  // check that different allocation receives a different pointer
+  dart_gptr_t gptr2;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr2));
+
+  ASSERT_NE(gptr1, gptr2);
+
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memfree(gptr2));
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memfree(gptr1));
+}
 
 TEST_F(DARTMemAllocTest, LocalAlloc)
 {
@@ -21,6 +53,18 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   ASSERT_EQ_U(
     DART_OK,
     dart_gptr_getaddr(gptr, (void**)&baseptr));
+
+
+  // check that different allocation receives a different pointer
+  dart_gptr_t gptr2;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memalloc(block_size * sizeof(value_t), DART_TYPE_LONG, &gptr2));
+  ASSERT_NE(gptr, gptr2);
+
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_memfree(gptr2));
 
   for (size_t i = 0; i < block_size; ++i) {
     baseptr[i] = dash::myid().id;

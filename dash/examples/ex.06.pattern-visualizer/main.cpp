@@ -1,9 +1,18 @@
+/**
+ * \example ex.06.pattern-block-visualizer/main.cpp
+ * Example demonstrating the instantiation of 
+ * different patterns and their visualization
+ * using \c dash::tools::PatternVisualizer.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <cstddef>
 
 #include <libdash.h>
+
+#include <dash/tools/PatternVisualizer.h>
 
 using std::cout;
 using std::cerr;
@@ -78,9 +87,13 @@ void print_example(
   pv.set_title(title);
 
   std::ofstream out(fname);
+  std::string fname_b = fname;
+  fname_b.insert(std::find(fname_b.rbegin(),fname_b.rend(),'.').base()-1, {'_','b','l','o','c','k','e','d'});
+  std::ofstream out_b(fname_b);
 
-  std::array<index_t, pat.ndim()> coords = {{0}};
-  pv.draw_pattern(out, coords, 1, 0);
+  pv.draw_pattern(out,  false);
+  pv.draw_pattern(out_b, true);
   out.close();
+  out_b.close();
 }
 

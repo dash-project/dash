@@ -21,7 +21,7 @@ dash/include/dash/util/StaticConfig.h
 *.log
 *.out
 ipm/*/GEN.*
-my.*.sh
+my.*
 .syntastic*
 .clang*
 tags

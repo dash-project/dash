@@ -119,6 +119,23 @@ public:
     return CUR;
   }
 
+protected:
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+    MatrixRefView_t && refview)
+  : _refview(std::move(refview))
+  {
+    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", NumDimensions);
+    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
+  }
+
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+    const MatrixRefView_t & refview)
+  : _refview(refview)
+  {
+    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", NumDimensions);
+    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
+  }
+
 public:
   /**
    * Default constructor.
@@ -156,7 +173,7 @@ public:
     index_type block_lindex
   );
 
-  inline operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && ();
+  inline operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && () &&;
 
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
   // Different operation semantics.
@@ -164,7 +181,7 @@ public:
 
   inline    T                   & local_at(size_type pos);
 
-  constexpr const Team          & team()                const noexcept;
+  constexpr Team                & team()                const noexcept;
 
   constexpr size_type             size()                const noexcept;
   constexpr size_type             local_size()          const noexcept;

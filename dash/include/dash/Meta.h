@@ -1,6 +1,7 @@
 #ifndef DASH__META_H__INCLUDED
 #define DASH__META_H__INCLUDED
 
+#include <dash/Types.h>
 #include <dash/meta/TypeInfo.h>
 
 #include <type_traits>
@@ -70,25 +71,12 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
  */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
 
-
 /**
- * Type trait indicating whether the specified type is eligible for
- * elements of DASH containers.
+ * Definition of type trait \c dash::detail::has_type_pattern_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c pattern_type.
  */
-template <class T>
-struct is_container_compatible :
-  public std::integral_constant<bool,
-              std::is_standard_layout<T>::value
-#if ( !defined(__CRAYC) && !defined(__GNUC__) ) || \
-    ( defined(__GNUG__) && __GNUC__ >= 5 )
-              // The Cray compiler (as of CCE8.5.6) does not support
-              // std::is_trivially_copyable.
-           && std::is_trivially_copyable<T>::value
-#elif defined(__GNUG__) && __GNUC__ < 5
-           && std::has_trivial_copy_constructor<T>::value
-#endif
-         >
-{ };
+DASH__META__DEFINE_TRAIT__HAS_TYPE(pattern_type);
 
 } // namespace dash
 

@@ -3,16 +3,6 @@
  *
  */
 
-/*
- * Include config and first to prevent previous include without _GNU_SOURCE
- * in included headers:
- */
-#include <dash/dart/base/config.h>
-#ifdef DART__PLATFORM__LINUX
-#  define _GNU_SOURCE
-#  include <unistd.h>
-#endif
-
 #include <string.h>
 #include <limits.h>
 

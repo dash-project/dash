@@ -108,7 +108,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
@@ -187,30 +186,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()),
-    _nunits(_teamspec.size()),
-    _memory_layout(_arguments.sizespec().extents()),
-    _blocksize_spec(initialize_blocksizespec(
-        _arguments.sizespec(),
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        _arguments.sizespec(),
-        _distspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _distspec,
-        _teamspec,
-        _local_memory_layout)),
-    _local_capacity(initialize_local_capacity())
+  : BlockPattern(PatternArguments_t(arg, args...))
   {
     DASH_LOG_TRACE("BlockPattern()", "Constructor with argument list");
     initialize_local_range();
@@ -249,11 +225,10 @@ public:
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    /// all dimensions.
+    const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         & teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
@@ -271,19 +246,83 @@ public:
     _blockspec(initialize_blockspec(
         sizespec,
         _distspec,
-        _blocksize_spec,
-        _teamspec)),
+        _blocksize_spec)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
     _local_blockspec(initialize_local_blockspec(
-        _blockspec,
         _blocksize_spec,
-        _distspec,
-        _teamspec,
         _local_memory_layout)),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, teamspec, team)");
+    initialize_local_range();
+    DASH_LOG_TRACE("BlockPattern()", "BlockPattern initialized");
+  }
+
+  /**
+   * Constructor, initializes a pattern from explicit instances of
+   * \c SizeSpec, \c DistributionSpec and a \c Team.
+   *
+   * Examples:
+   *
+   * \code
+   *   // A 5x3 rectangle with blocked distribution in the first dimension
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              // The team containing the units to which the pattern
+   *              // maps the global indices. Defaults to all all units:
+   *              dash::Team::All());
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              // How teams are arranged in all dimensions, default is
+   *              // an extent of all units in first, and 1 in all higher
+   *              // dimensions:
+   *              TeamSpec<2>(dash::Team::All(), 1),
+   *              // The team containing the units to which the pattern
+   *              // maps the global indices. Defaults to all all units:
+   *              dash::Team::All());
+   *   // Same as
+   *   Pattern p1(5,3, BLOCKED);
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE));
+   *   // Same as
+   *   Pattern p1(SizeSpec<2>(5,3),
+   *              DistributionSpec<2>(BLOCKED, NONE),
+   *              TeamSpec<2>(dash::Team::All(), 1));
+   * \endcode
+   */
+  BlockPattern(
+    /// Pattern size (extent, number of elements) in every dimension
+    const SizeSpec_t         & sizespec,
+    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+    /// dimensions
+    const DistributionSpec_t & dist = DistributionSpec_t(),
+    /// Team containing units to which this pattern maps its elements
+    Team                     & team = dash::Team::All())
+  : _distspec(dist),
+    _team(&team),
+    _teamspec(_distspec, *_team),
+    _nunits(_teamspec.size()),
+    _memory_layout(sizespec.extents()),
+    _blocksize_spec(initialize_blocksizespec(
+        sizespec,
+        _distspec,
+        _teamspec)),
+    _blockspec(initialize_blockspec(
+        sizespec,
+        _distspec,
+        _blocksize_spec)),
+    _local_memory_layout(
+        initialize_local_extents(_team->myid())),
+    _local_blockspec(initialize_local_blockspec(
+        _blocksize_spec,
+        _local_memory_layout)),
+    _local_capacity(initialize_local_capacity())
+  {
+    DASH_LOG_TRACE("BlockPattern()", "(sizespec, dist, team)");
     initialize_local_range();
     DASH_LOG_TRACE("BlockPattern()", "BlockPattern initialized");
   }
@@ -696,38 +735,26 @@ public:
     if (_teamspec.size() < 2) {
       return local_coords;
     }
-    SizeType blocksize = max_blocksize();
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
-    // Global coords of the element's block within all blocks.
-    // Use initializer so elements are initialized with 0s:
-    std::array<IndexType, NumDimensions> block_index;
-    // Index of the element's block as element offset:
-    std::array<IndexType, NumDimensions> block_coord;
     // Index of the element:
     std::array<IndexType, NumDimensions> glob_index;
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       auto num_units_d          = _teamspec.extent(d);
-      auto num_blocks_d         = _blockspec.extent(d);
       auto blocksize_d          = _blocksize_spec.extent(d);
       auto local_index_d        = local_coords[d];
       // TOOD: Use % (blocksize_d - underfill_d)
       auto elem_block_offset_d  = local_index_d % blocksize_d;
       // Global coords of the element's block within all blocks:
-      block_index[d] = dist.local_index_to_block_coord(
-                         unit_ts_coord[d], // unit ts offset in d
-                         local_index_d,
-                         num_units_d,
-                         num_blocks_d,
-                         blocksize
-                       );
-      block_coord[d] = block_index[d] * blocksize_d;
-      glob_index[d]  = block_coord[d] + elem_block_offset_d;
+      auto block_index_d        = dist.local_index_to_block_coord(
+                                    unit_ts_coord[d], // unit ts offset in d
+                                    local_index_d,
+                                    num_units_d
+                                  );
+      glob_index[d]  = (block_index_d * blocksize_d) + elem_block_offset_d;
     }
-    DASH_LOG_TRACE_VAR("BlockPattern.global", block_index);
-    DASH_LOG_TRACE_VAR("BlockPattern.global", block_coord);
     DASH_LOG_DEBUG_VAR("BlockPattern.global >", glob_index);
     return glob_index;
   }
@@ -986,7 +1013,7 @@ public:
   {
     return _blockspec;
   }
-  
+
   /**
    * Cartesian arrangement of local pattern blocks.
    */
@@ -1058,7 +1085,7 @@ public:
     auto block_coords = _blockspec.coords(global_block_index);
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
-    
+
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_blocks_d = _blockspec.extent(d);
       extents[d]        = _blocksize_spec.extent(d);
@@ -1182,8 +1209,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const noexcept
+  constexpr SizeType local_capacity() const noexcept
   {
     return _local_capacity;
   }
@@ -1354,6 +1380,29 @@ public:
   }
 
 private:
+
+  BlockPattern(const PatternArguments_t & arguments)
+  :  _distspec(arguments.distspec()),
+     _team(&arguments.team()),
+     _teamspec(arguments.teamspec()),
+     _nunits(_teamspec.size()),
+     _memory_layout(arguments.sizespec().extents()),
+     _blocksize_spec(initialize_blocksizespec(
+         arguments.sizespec(),
+         _distspec,
+         _teamspec)),
+     _blockspec(initialize_blockspec(
+         arguments.sizespec(),
+         _distspec,
+         _blocksize_spec)),
+     _local_memory_layout(
+         initialize_local_extents(_team->myid())),
+     _local_blockspec(initialize_local_blockspec(
+         _blocksize_spec,
+         _local_memory_layout)),
+     _local_capacity(initialize_local_capacity())
+  {}
+
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
@@ -1386,8 +1435,7 @@ private:
   BlockSpec_t initialize_blockspec(
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distspec,
-    const BlockSizeSpec_t    & blocksizespec,
-    const TeamSpec_t         & teamspec) const
+    const BlockSizeSpec_t    & blocksizespec) const
   {
     if (blocksizespec.size() == 0) {
       return BlockSpec_t();
@@ -1410,10 +1458,7 @@ private:
    * Initialize local block spec from global block spec.
    */
   BlockSpec_t initialize_local_blockspec(
-    const BlockSpec_t         & blockspec,
     const BlockSizeSpec_t     & blocksizespec,
-    const DistributionSpec_t  & distspec,
-    const TeamSpec_t          & teamspec,
     const LocalMemoryLayout_t & local_mem_layout) const
   {
     auto num_l_blocks = local_mem_layout.extents();

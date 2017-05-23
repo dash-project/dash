@@ -4,9 +4,9 @@
 #include "../TestBase.h"
 
 /**
- * Test fixture for class dash::CollectiveAllocator
+ * Test fixture for class dash::SymmetricAllocator
  */
-class CollectiveAllocatorTest : public dash::test::TestBase {
+class SymmetricAllocatorTest : public dash::test::TestBase {
 protected:
   size_t _dash_id    = 0;
   size_t _dash_size  = 0;

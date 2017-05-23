@@ -5,6 +5,7 @@
  */
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <mpi.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -50,13 +51,12 @@ dart_ret_t do_init()
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
 
-  /* Create a global translation table for all
-   * the collective global memory segments */
-  dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
-
   dart_next_availteamid++;
 
   team_data->comm = DART_COMM_WORLD;
+
+  MPI_Comm_rank(team_data->comm, &team_data->unitid);
+  MPI_Comm_size(team_data->comm, &team_data->size);
 
   dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
 
@@ -305,4 +305,13 @@ dart_ret_t dart_exit()
 bool dart_initialized()
 {
   return (_dart_initialized > 0);
+}
+
+
+void dart_abort(int errorcode)
+{
+  DART_LOG_INFO("dart_abort: aborting DART run with error code %i", errorcode);
+  MPI_Abort(MPI_COMM_WORLD, errorcode);
+  /* just in case MPI_Abort does not abort */
+  abort();
 }

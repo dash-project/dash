@@ -3,14 +3,13 @@
 
 namespace dash {
 
-Mutex::Mutex(Team & team)
-: _team(team) {
-  dart_ret_t ret = dart_team_lock_init(_team.dart_id(), &_mutex);
+Mutex::Mutex(Team & team){
+  dart_ret_t ret = dart_team_lock_init(team.dart_id(), &_mutex);
   DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_init failed");
 }
 
 Mutex::~Mutex(){
-  dart_ret_t ret = dart_team_lock_free(_team.dart_id(), &_mutex);
+  dart_ret_t ret = dart_team_lock_destroy(&_mutex);
   DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_free failed");
 }
 
