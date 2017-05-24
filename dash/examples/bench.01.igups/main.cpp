@@ -77,12 +77,12 @@ int main(int argc, char * argv[])
 {
   dash::init(&argc, &argv);
 
-  Timer::Calibrate(0);
+  dash::util::BenchmarkParams bench_params("bench.01.igups");
+  bench_params.set_output_width(72);
+  bench_params.print_header();
+  bench_params.print_pinning();
 
-  if (dash::myid() == 0) {
-    std::cout << "pattern type: " << PatternType::PatternName
-              << std::endl;
-  }
+  Timer::Calibrate(0);
 
   std::deque<std::pair<int, int>> tests;
 
@@ -139,27 +139,54 @@ void perform_test(
     local_sizes.push_back(ELEM_PER_UNIT);
   }
 
-  CoarrType coarr(ELEM_PER_UNIT);
+  double t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
 
   PatternType pat(local_sizes);
-  ArrayType arr0(pat);
-  ArrayType arr1(pat);
-  ArrayType arr2(pat);
-  ArrayType arr3(pat);
-  ArrayType arr4(pat);
-  ArrayType arr5(pat);
 
-  double t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
-  double t0 = test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
-  double t1 = test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
-  double t2 = test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
-  double t3 = test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
-  double t4 = test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
-  double t5 = test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
-  double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
-  double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
-  double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
-
+  {
+    ArrayType arr0(pat);
+    test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
+    t0 = test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr1(pat);
+    test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
+    t1 = test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr2(pat);
+    test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
+    t2 = test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr3(pat);
+    test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
+    t3 = test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr4(pat);
+    test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
+    t4 = test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr5(pat);
+    test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
+    t5 = test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    CoarrType coarr(ELEM_PER_UNIT);
+    test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
+    t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
+  }
   dash::barrier();
 
   if (dash::myid() == 0) {
