@@ -21,6 +21,63 @@
 
 #include <memory>
 
+/**
+ * \defgroup  DashIndexSetConcept  Index Set Concept
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * An \c IndexSet specifies a injective, non-surjective map from a
+ * random-accessible sequence \f$ I = { i : (0...n) } \f$ to elements in
+ * another index set \$ F \$ (\em family or \em image set).
+ * More general, an index set is an enumeration of elements in a domain set.
+ *
+ * In the context of views and ranges, the function \c dash::index returns
+ * the index set of a view expression.
+ * Index sets establish a uniform, canonical interface to domains that do
+ * not exhibit range semantics such as non-contiguous, multi-dimensional
+ * and unordered element spaces.
+ *
+ * \see DashDimensionalConcept
+ * \see DashRangeConcept
+ * \see DashIteratorConcept
+ * \see DashViewConcept
+ * \see \c dash::view_traits
+ *
+ *
+ * \par Terminology
+ *
+ *
+ * \par Expressions
+ *
+ * For a index domain \f$ Id \f$, \f$ ia, ib \in Id \f$ mapped by an index
+ * set \f$ I \f$, the following operations and expressions are defined:
+ *
+ * Expression              | Returns     | Synopsis
+ * ----------------------- | ----------- | -----------------------------
+ * <tt>sub(ia,ib, Id)</tt> | <tt>I</tt>  | \f$ I :=  \f$
+ *
+ *
+ * \par Examples
+ *
+ * \code
+ * // containers are view expressions:
+ * dash::Array<int> array;
+ *
+ * a_idx_global  = dash::index(array);
+ * // (0, 1, ..., n)  -> (0, 1, ..., n]
+ *
+ * a_idx_sub     = dash::sub({4, 14}, array);
+ * // (0, 1, ..., 9)  -> (4, 5, ..., 14]
+ *
+ * a_idx_sub_loc = dash::local(a_idx_sub);
+ * // assuming array elements in global index range (7, 13] are not local:
+ * // (0, 1, 2, 3, 4) -> (4, 5, 6, 13, 14)
+ * \endcode
+ *
+ * \}
+ */
 
 #ifndef DOXYGEN
 namespace dash {
