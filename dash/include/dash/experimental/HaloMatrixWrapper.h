@@ -125,12 +125,6 @@ public:
   void waitHalosAsync() {
     for (auto& region : _region_data){
       dart_waitall(region.second.handle, region.second.num_handles);
-    /*if(dash::myid() == 0){
-    std::cout << dash::myid() << "," << region.second.region.index() << "," << region.second.region.borderDim(1)<< "->";
-    for( auto i = 0; i < region.second.region.size(); ++i)
-      std::cout << *(_halomemory.haloPos(region.second.region.index()) + i) << ",";
-    std::cout << std::endl;
-    }*/
     }
   }
 
