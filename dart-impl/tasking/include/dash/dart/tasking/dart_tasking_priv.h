@@ -62,6 +62,7 @@ typedef struct {
   dart_task_t           * current_task;
   struct dart_taskqueue   queue;
   struct dart_taskqueue   defered_queue;
+  uint64_t                taskcntr;
   pthread_t               pthread;
   int                     thread_id;
 } dart_thread_t;

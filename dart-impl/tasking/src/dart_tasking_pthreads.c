@@ -171,11 +171,11 @@ void destroy_task(dart_task_t *task)
  * Execute the given task.
  */
 static
-void handle_task(dart_task_t *task)
+void handle_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
-    DART_LOG_INFO("Thread %i executing task %p", dart__tasking__thread_num(), task);
+    DART_LOG_INFO("Thread %i executing task %p", thread->thread_id, task);
 
     // save current task and set to new task
     dart_task_t *current_task = get_current_task();
@@ -218,6 +218,8 @@ void handle_task(dart_task_t *task)
 
     // return to previous task
     set_current_task(current_task);
+
+    thread->taskcntr++;
   }
 }
 
@@ -237,18 +239,19 @@ void* thread_main(void *data)
     // look for incoming remote tasks and responses
     dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
-    handle_task(task);
+    handle_task(task, thread);
     // only go to sleep if no tasks are in flight
-    if (DART_FETCH32(&(root_task.num_children)) == 0) {
-      if (dart__tasking__thread_num() == dart__tasking__num_threads() - 1)
+//    if (DART_FETCH32(&(root_task.num_children)) == 0) {
+      if (thread->thread_id == dart__tasking__num_threads() - 1)
       {
         // the last thread is responsible for ensuring progress on the
         // message queue even if all others are sleeping
         dart_tasking_remote_progress();
-      } else {
-        wait_for_work();
       }
-    }
+//      else {
+//        wait_for_work();
+//      }
+//    }
   }
 
   DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
@@ -261,6 +264,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
   thread->thread_id = threadnum;
   thread->current_task = NULL;
+  thread->taskcntr  = 0;
   dart_tasking_taskqueue_init(&thread->queue);
   dart_tasking_taskqueue_init(&thread->defered_queue);
   DART_LOG_TRACE("Thread %i has task queue %p and deferred queue %p",
@@ -301,8 +305,6 @@ dart__tasking__init()
   }
 
   DART_LOG_INFO("Using %i threads", num_threads);
-
-  dart_amsg_init();
 
   // keep threads running
   parallel = true;
@@ -459,7 +461,7 @@ dart__tasking__task_complete()
     dart_tasking_remote_progress();
     // b) process our tasks
     dart_task_t *task = next_task(thread);
-    handle_task(task);
+    handle_task(task, thread);
   }
 
   // 3) clean up if this was the root task and thus no other tasks are running
@@ -490,7 +492,7 @@ dart__tasking__task_wait(dart_taskref_t *tr)
   while ((*tr)->state != DART_TASK_FINISHED) {
     dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
-    handle_task(task);
+    handle_task(task, thread);
   }
 
   destroy_task(*tr);
@@ -543,6 +545,13 @@ dart__tasking__fini()
     free(tmp);
   }
   task_recycle_list = NULL;
+
+  printf("######################\n");
+  for (int i = 0; i < num_threads; ++i) {
+    printf("Thread %i executed %lu tasks\n", i, thread_pool[i].taskcntr);
+  }
+  printf("######################\n");
+  free(thread_pool);
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
