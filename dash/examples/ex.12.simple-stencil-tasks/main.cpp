@@ -19,6 +19,7 @@
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/util/Timer.h>
 
 #include <fstream>
 #include <string>
@@ -308,11 +309,16 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
 int main(int argc, char* argv[])
 {
-  int sizex = 1000;
+  int sizex = 10000;
   int sizey = 10000;
   int niter = 50;
+  typedef dash::util::Timer<
+    dash::util::TimeMeasure::Clock
+  > Timer;
 
   dash::init(&argc, &argv);
+
+  Timer::Calibrate(0);
 
   // Prepare grid
   dash::TeamSpec<2> ts;
@@ -362,7 +368,9 @@ int main(int argc, char* argv[])
     draw_circle(data_old, sizex / 4 * 3, sizey / 4 * 3, sizex /  20);
   }
   dash::barrier();
-  write_pgm("testimg_input.pgm", data_old);
+//  write_pgm("testimg_input.pgm", data_old);
+
+  Timer timer;
 
   for(int i=0; i<niter; ++i){
     // switch references
@@ -372,11 +380,13 @@ int main(int argc, char* argv[])
     std::cout << "Creating tasks for iteration " << i << std::endl;
     smooth(data_prev, data_next, i);
   }
-  dash::barrier();
-  std::cout << "Done creating tasks" << std::endl;
+//  dash::barrier();
+  std::cout << "Done creating tasks, starting computation" << std::endl;
   dart_task_complete();
   dash::barrier();
-
+  if (dash::myid() == 0) {
+    std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
+  }
   // Assume niter is even
 //  write_pgm("testimg_output.pgm", data_new);
   dash::finalize();
