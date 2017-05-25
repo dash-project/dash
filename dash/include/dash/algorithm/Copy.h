@@ -4,9 +4,8 @@
 #include <dash/Future.h>
 #include <dash/Iterator.h>
 
+#include <dash/View.h>
 #include <dash/view/IndexSet.h>
-#include <dash/view/ViewMod.h>
-#include <dash/view/ViewBlocksMod.h>
 #include <dash/view/Sub.h>
 
 #include <dash/Range.h>
@@ -1064,7 +1063,8 @@ auto copy_async(
 }
 
 /**
- * Specialization of \c dash::copy as local-to-global blocking copy operation.
+ * Specialization of \c dash::copy as local-to-global blocking copy
+ * operation.
  *
  * \ingroup  DashAlgorithms
  */
@@ -1114,16 +1114,18 @@ GlobOutputIt copy(
 
 #ifdef DASH_EXPERIMENTAL
 /*
- * Specialization of \c dash::copy as global-to-local blocking copy operation
- * returning an allocated range.
+ * Specialization of \c dash::copy as global-to-local blocking copy
+ * operation returning an allocated range.
  * Allows for zero-copy operations if the copied range is local.
  *
  * Returns a future of a local range { begin, end }.
  * If the requested data range is in shared memory, the range returned
  * references the native pointers of the target range.
  * If the requested data range needed to be copied from remote memory, the
- * range returned is the copied destination range such that begin = out_first
- * and end = out_first + num_elem_copied.
+ * range returned is the copied destination range such that
+ * \c (begin = out_first).
+ * and
+ * \c (end = out_first + num_elem_copied.)
  */
 template <
   typename ValueType,

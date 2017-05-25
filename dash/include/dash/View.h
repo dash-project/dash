@@ -172,10 +172,22 @@ public:
 
 template <class Iterator, class Sentinel>
 constexpr dash::IteratorViewOrigin<Iterator, Sentinel>
-make_view(Iterator begin, Sentinel end) {
+make_view(const Iterator & begin, const Sentinel & end) {
   return dash::IteratorViewOrigin<Iterator, Sentinel>(
-           std::move(begin),
-           std::move(end));
+           (begin),
+           (end));
+}
+
+template <class Iterator, class Sentinel>
+constexpr dash::IteratorViewOrigin<
+            typename std::decay<Iterator>::type,
+            typename std::decay<Sentinel>::type >
+make_view(Iterator && begin, Sentinel && end) {
+  return dash::IteratorViewOrigin<
+            typename std::decay<Iterator>::type,
+            typename std::decay<Sentinel>::type
+         >(std::forward(begin),
+           std::forward(end));
 }
 
 } // namespace dash
