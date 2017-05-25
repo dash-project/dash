@@ -352,8 +352,8 @@ class IteratorRange
               dash::has_type_pattern_type<Iterator>::value >
             base_t;
 
-  Iterator & _begin;
-  Sentinel & _end;
+  Iterator _begin;
+  Sentinel _end;
 
 public:
   typedef Iterator                                              iterator;
@@ -396,7 +396,7 @@ public:
   , _end(c.end())
   { }
 
-  constexpr IteratorRange(iterator & begin, sentinel & end)
+  constexpr IteratorRange(const iterator & begin, const sentinel & end)
   : _begin(begin)
   , _end(end)
   { }
@@ -481,6 +481,7 @@ public:
   typedef dash::default_size_t                                   size_type;
 //typedef typename internal::LocalPattern<dash::ROW_MAJOR>    pattern_type;
   typedef dash::IndexSetIdentity<self_t>                    index_set_type;
+
   typedef LocalIterator                                         value_type;
 
   typedef iterator local_iterator;
@@ -517,48 +518,6 @@ public:
 //   return index_set_type(*this);
 // }
 };
-
-/**
- * Adapter utility function.
- * Wraps `begin` and `end` const iterators in range type.
- */
-template <class Iterator, class Sentinel>
-constexpr dash::IteratorRange<const Iterator, const Sentinel>
-make_range(
-  const Iterator & begin,
-  const Sentinel & end) {
-  return dash::IteratorRange<const Iterator, const Sentinel>(
-           begin,
-           end);
-}
-
-/**
- * Adapter utility function.
- * Wraps `begin` and `end` pointers in range type.
- */
-template <class Iterator, class Sentinel>
-constexpr dash::IteratorRange<Iterator *, Sentinel *>
-make_range(
-  Iterator * begin,
-  Sentinel * end) {
-  return dash::IteratorRange<Iterator *, Sentinel *>(
-           begin,
-           end);
-}
-
-/**
- * Adapter utility function.
- * Wraps `begin` and `end` iterators in range type.
- */
-template <class Iterator, class Sentinel>
-dash::IteratorRange<Iterator, Sentinel>
-make_range(
-  Iterator & begin,
-  Sentinel & end) {
-  return dash::IteratorRange<Iterator, Sentinel>(
-           begin,
-           end);
-}
 
 } // namespace dash
 

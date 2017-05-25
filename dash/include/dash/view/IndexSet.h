@@ -282,7 +282,7 @@ struct index_set_domain_bind_t {
 } // namespace detail
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <
   class       IndexSetType,
@@ -584,7 +584,7 @@ global(const IndexSetIdentity<DomainType> & index_set)
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetIdentity
@@ -667,7 +667,7 @@ global(const IndexSetSub<DomainType, SubDim> & index_set)
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <
   class       DomainType,
@@ -860,7 +860,7 @@ global(IndexSetLocal<DomainType> && index_set) ->
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetLocal
@@ -1147,7 +1147,7 @@ global(const IndexSetGlobal<DomainType> & index_set) {
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetGlobal

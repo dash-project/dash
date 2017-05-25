@@ -79,14 +79,6 @@ public:
     std::ostream                & os,
     const GlobPtr<T, MemSpaceT> & gptr);
 
-  template <typename T1,
-            typename T2,
-            class    MemSpaceT1,
-            class    MemSpaceT2 >
-  friend dash::gptrdiff_t dash::distance(
-    const GlobPtr<T1, MemSpaceT1> & gptr_begin,
-    const GlobPtr<T2, MemSpaceT2> & gptr_end);
-
 public:
   /// Convert GlobPtr<T> to GlobPtr<U>.
   template<typename U, class MSp = MemorySpace>

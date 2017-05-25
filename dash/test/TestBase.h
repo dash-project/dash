@@ -11,7 +11,10 @@
 
 #include <dash/Types.h>
 #include <dash/Init.h>
+
 #include <dash/view/IndexSet.h>
+#include <dash/view/MakeRange.h>
+
 #include <dash/Team.h>
 
 #include "TestGlobals.h"

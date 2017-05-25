@@ -43,8 +43,8 @@ public:
   typedef typename base_t::value_type                  value_type;
   typedef typename IndexSetType::index_type            index_type;
 private:
-  DomainIterator  _domain_it;
-  IndexSetType    _index_set;
+  typename std::decay<DomainIterator>::type  _domain_it;
+  IndexSetType                               _index_set;
 public:
   constexpr ViewIterator() = delete;
 
@@ -92,7 +92,11 @@ public:
     return (_domain_it + (_index_set[this->pos()])).local();
   }
 
-  constexpr dart_gptr_t dart_gptr() const {
+  dart_gptr_t dart_gptr() const {
+    DASH_LOG_DEBUG("ViewIterator",
+                   "it.pos:",  _domain_it.pos(),
+                   "it.gpos:", _domain_it.gpos(),
+                   "pos:",     this->pos());
     return (_domain_it + _index_set[this->pos()]).dart_gptr();
   }
 
