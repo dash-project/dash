@@ -46,7 +46,10 @@ private:
   typename std::decay<DomainIterator>::type  _domain_it;
   IndexSetType                               _index_set;
 public:
-  constexpr ViewIterator() = delete;
+  constexpr ViewIterator()            = delete;
+
+  ViewIterator(self_t && other)       = default;
+  self_t & operator=(self_t && other) = default;
 
   template <class DomainItType>
   ViewIterator(
@@ -144,7 +147,31 @@ private:
   DomainIterator * _domain_it;
   IndexSetType     _index_set;
 public:
-  constexpr ViewIterator() = delete;
+  constexpr ViewIterator()            = delete;
+
+  ViewIterator(const self_t & other)
+  : base_t(other.pos())
+  , _domain_it(other._domain_it)
+  , _index_set(other._index_set)
+  { }
+
+  ViewIterator(self_t && other)
+  : base_t(other.pos())
+  , _domain_it(other._domain_it)
+  , _index_set(other._index_set)
+  { }
+
+  self_t & operator=(const self_t & other) {
+    base_t::operator=(other);
+    _domain_it = other._domain_it;
+    _index_set = other._index_set;
+  }
+
+  self_t & operator=(self_t && other) {
+    base_t::operator=(other);
+    _domain_it = other._domain_it;
+    _index_set = other._index_set;
+  }
 
   template <class DomainItType>
   ViewIterator(

@@ -49,6 +49,8 @@
 #include <dash/Types.h>
 #include <dash/Meta.h>
 
+// #include <dash/view/IndexSet.h>
+
 #include <dash/pattern/internal/LocalPattern.h>
 
 #include <type_traits>
@@ -58,7 +60,6 @@ namespace dash {
 
 
 #ifndef DOXYGEN
-
 
 // Related: boost::range
 //
@@ -71,6 +72,9 @@ struct view_traits;
 // Forward-declaration
 template <typename ViewType>
 class IndexSetIdentity;
+
+template <class DomainType, std::size_t SubDim>
+class IndexSetSub;
 
 // Forward-declaration
 template <typename Iterator, typename Sentinel = Iterator>
@@ -303,15 +307,17 @@ private:
 public:
   typedef RangeT                                               domain_type;
   typedef RangeT                                               origin_type;
-  typedef typename RangeT::pattern_type                       pattern_type;
-//typedef typename IteratorT::pattern_type                    pattern_type;
+//typedef typename RangeT::pattern_type                       pattern_type;
+  typedef typename IteratorT::pattern_type                    pattern_type;
   typedef RangeT                                                image_type;
   typedef RangeT                                               global_type;
   typedef typename RangeT::local_type                           local_type;
   typedef typename RangeT::index_type                           index_type;
   typedef typename RangeT::size_type                             size_type;
+
+  typedef dash::IndexSetSub<RangeT, 0>                      index_set_type;
 //typedef typename RangeT::index_set_type                   index_set_type;
-  typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
+//typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
 
   /// Whether the view type is a projection (has less dimensions than the
   /// view's domain type).
@@ -361,6 +367,7 @@ public:
   typedef dash::default_index_t                               index_type;
   typedef dash::default_size_t                                 size_type;
 //typedef dash::IndexSetIdentity<self_t>                  index_set_type;
+  typedef dash::IndexSetSub<self_t, 0>                    index_set_type;
   typedef std::integral_constant<dim_t, 1>                          rank;
 
   typedef typename iterator::value_type                       value_type;
@@ -401,10 +408,18 @@ public:
   , _end(end)
   { }
 
-  constexpr iterator begin() const { return _begin; }
+  constexpr IteratorRange(iterator && begin, sentinel && end)
+  : _begin(std::forward<iterator>(begin))
+  , _end(std::forward<sentinel>(end))
+  { }
+
+  constexpr iterator begin() const { return _begin - _begin.pos(); }
   constexpr iterator end()   const { return _end;   }
 
-  constexpr size_type size() const { return std::distance(_begin, _end); }
+  constexpr size_type size() const {
+    return _end.pos() - _begin().pos();
+    // return std::distance(_begin, _end);
+  }
 
   constexpr const local_type local() const {
     return local_type(
@@ -417,9 +432,9 @@ public:
     return _begin.pattern();
   }
 
-// constexpr index_set_type index_set() const {
-//   return index_set_type(*this);
-// }
+  constexpr index_set_type index_set() const {
+    return index_set_type(*this, _begin.pos(), _end.pos());
+  }
 };
 
 
