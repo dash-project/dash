@@ -315,9 +315,9 @@ public:
   typedef typename RangeT::index_type                           index_type;
   typedef typename RangeT::size_type                             size_type;
 
-  typedef dash::IndexSetSub<RangeT, 0>                      index_set_type;
+//typedef dash::IndexSetSub<RangeT, 0>                      index_set_type;
 //typedef typename RangeT::index_set_type                   index_set_type;
-//typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
+  typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
 
   /// Whether the view type is a projection (has less dimensions than the
   /// view's domain type).
@@ -366,8 +366,7 @@ public:
   typedef Sentinel                                              sentinel;
   typedef dash::default_index_t                               index_type;
   typedef dash::default_size_t                                 size_type;
-//typedef dash::IndexSetIdentity<self_t>                  index_set_type;
-  typedef dash::IndexSetSub<self_t, 0>                    index_set_type;
+//typedef dash::IndexSetSub<self_t, 0>                    index_set_type;
   typedef std::integral_constant<dim_t, 1>                          rank;
 
   typedef typename iterator::value_type                       value_type;
@@ -432,9 +431,9 @@ public:
     return _begin.pattern();
   }
 
-  constexpr index_set_type index_set() const {
-    return index_set_type(*this, _begin.pos(), _end.pos());
-  }
+// constexpr index_set_type index_set() const {
+//   return index_set_type(*this, _begin.pos(), _end.pos());
+// }
 };
 
 

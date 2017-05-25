@@ -31,7 +31,7 @@
  * An \c IndexSet specifies a injective, non-surjective map from a
  * random-accessible sequence \f$ I = { i : (0...n) } \f$ to elements in
  * another index set \$ F \$ (\em family or \em image set).
- * More general, an index set is an enumeration of elements in a domain set.
+ * More general, an index set is an enumeration of elements in a domain.
  *
  * In the context of views and ranges, the function \c dash::index returns
  * the index set of a view expression.

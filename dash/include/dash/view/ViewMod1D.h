@@ -47,7 +47,7 @@ class ViewSubMod<DomainType, SubDim, 1>
   typedef typename view_traits<domain_type>::size_type             size_type;
  public:
   typedef dash::IndexSetSub<domain_type, SubDim>              index_set_type;
-  typedef ViewLocalMod<self_t, 1>                                 local_type;
+  typedef dash::ViewLocalMod<self_t, 1>                           local_type;
   typedef self_t                                                 global_type;
 
   typedef std::integral_constant<bool, false>                       is_local;

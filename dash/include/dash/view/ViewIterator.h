@@ -25,7 +25,7 @@ class ViewIterator
       typename DomainIterator::difference_type, // difference type
       typename DomainIterator::pointer,         // pointer
       typename DomainIterator::reference        // reference
-> {
+    > {
   typedef ViewIterator<DomainIterator, IndexSetType>       self_t;
   typedef dash::internal::IndexIteratorBase<
             ViewIterator<DomainIterator, IndexSetType>,
@@ -46,10 +46,13 @@ private:
   typename std::decay<DomainIterator>::type  _domain_it;
   IndexSetType                               _index_set;
 public:
-  constexpr ViewIterator()            = delete;
+  constexpr ViewIterator()                 = delete;
 
-  ViewIterator(self_t && other)       = default;
-  self_t & operator=(self_t && other) = default;
+  ViewIterator(self_t && other)            = default;
+  self_t & operator=(self_t && other)      = default;
+
+  ViewIterator(const self_t & other)       = default;
+  self_t & operator=(const self_t & other) = default;
 
   template <class DomainItType>
   ViewIterator(

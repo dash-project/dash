@@ -2,7 +2,7 @@
 #define DASH__VIEW__MAKE_RANGE_H__INCLUDED
 
 #include <dash/Range.h>
-// #include <dash/view/Sub.h>
+#include <dash/view/Sub.h>
 
 
 namespace dash {
@@ -47,6 +47,27 @@ make_range(
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
  */
+template <
+  class    Iterator,
+  class    Sentinel,
+  typename std::enable_if< !std::is_pointer<Iterator>::value > * = nullptr >
+auto
+make_range(
+  const Iterator & begin,
+  const Sentinel & end)
+  -> decltype(dash::sub(
+                begin.pos(), end.pos(),
+                dash::IteratorRange<Iterator, Sentinel>(
+                  begin - begin.pos(), end))) {
+  return dash::sub(begin.pos(), end.pos(),
+                   dash::IteratorRange<Iterator, Sentinel>(
+                     begin - begin.pos(), end));
+}
+#else
+/**
+ * Adapter utility function.
+ * Wraps `begin` and `end` iterators in range type.
+ */
 template <class Iterator, class Sentinel>
 dash::IteratorRange<Iterator, Sentinel>
 make_range(
@@ -54,9 +75,7 @@ make_range(
   const Sentinel & end) {
   return dash::IteratorRange<Iterator, Sentinel>(begin, end);
 }
-#endif
 
-#if 1
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -73,29 +92,6 @@ make_range(
            typename std::decay<Sentinel>::type
          >(std::forward<Iterator>(begin),
            std::forward<Sentinel>(end));
-}
-#endif
-
-#if 0
-/**
- * Adapter utility function.
- * Wraps `begin` and `end` iterators in range type.
- */
-template <
-  class    Iterator,
-  class    Sentinel,
-  typename std::enable_if< !std::is_pointer<Iterator>::value > * = nullptr >
-auto
-make_range(
-  Iterator begin,
-  Sentinel end)
-  -> decltype(dash::sub(
-                begin.pos(), end.pos(),
-                dash::IteratorRange<Iterator, Sentinel>(
-                  begin -= begin.pos(), end))) {
-  return dash::sub(begin.pos(), end.pos(),
-                   dash::IteratorRange<Iterator, Sentinel>(
-                     begin -= begin.pos(), end));
 }
 #endif
 
