@@ -732,7 +732,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   dash::GlobPtr<const ElementType, GlobStaticMem> ptr(*it._globmem,
-                                                it.dart_gptr());
+                                                      it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

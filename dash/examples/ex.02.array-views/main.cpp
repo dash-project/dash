@@ -42,7 +42,7 @@ static std::string range_str(
   std::ostringstream ss;
   auto idx = dash::index(vrange);
   int        i   = 0;
-  for (const auto & v : vrange) {
+  for (auto v : vrange) {
     ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(4)
        << static_cast<const value_t>(v) << " ";
@@ -111,15 +111,19 @@ int main(int argc, char *argv[])
     auto dest_range      = dash::make_range(copy_begin_it,
                                             copy_end_it_exp);
 
-    print("copy begin: " << copy_begin_it);
-    print("copy end:   " << copy_end_it_exp);
+
+    print("copy index range: " << dash::index(dest_range));
+    print("copy num blocks:  " << dash::blocks(dest_range).size());
+    print("copy dom. begin:  " << copy_begin_it - copy_begin_it.pos());
+    print("copy begin:       " << copy_begin_it);
+    print("copy end:         " << copy_end_it_exp);
 
   // print("copy range: " << dash::make_range(copy_begin_it,
   //                                          copy_end_it_exp));
 
     auto dest_blocks     = dash::blocks(dest_range);
-    for (const auto & block : dest_blocks) {
-      print("copy to block:" << range_str(block));
+    for (auto block : dest_blocks) {
+  //    print("copy to block:" << range_str(block));
     }
 
     // copy local buffer to global array
