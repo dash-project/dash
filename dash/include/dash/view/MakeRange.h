@@ -2,7 +2,7 @@
 #define DASH__VIEW__MAKE_RANGE_H__INCLUDED
 
 #include <dash/Range.h>
-#include <dash/view/Sub.h>
+// #include <dash/view/Sub.h>
 
 
 namespace dash {
@@ -16,11 +16,11 @@ template <
   class    Iterator,
   class    Sentinel,
   typename std::enable_if< std::is_pointer<Iterator>::value > * = nullptr >
-constexpr dash::IteratorRange<Iterator * const, Sentinel * const>
+constexpr dash::IteratorRange<Iterator *, Sentinel *>
 make_range(
   Iterator * const begin,
   Sentinel * const end) {
-  return dash::IteratorRange<Iterator * const, Sentinel * const>(
+  return dash::IteratorRange<Iterator *, Sentinel *>(
            begin,
            end);
 }
@@ -42,7 +42,7 @@ make_range(
 }
 #endif
 
-#if 0
+#if 1
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -54,7 +54,9 @@ make_range(
   const Sentinel & end) {
   return dash::IteratorRange<Iterator, Sentinel>(begin, end);
 }
+#endif
 
+#if 1
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -85,21 +87,19 @@ template <
   typename std::enable_if< !std::is_pointer<Iterator>::value > * = nullptr >
 auto
 make_range(
-  const Iterator & begin,
-  const Sentinel & end)
+  Iterator begin,
+  Sentinel end)
   -> decltype(dash::sub(
                 begin.pos(), end.pos(),
-                dash::IteratorRange<const Iterator, const Sentinel>(
-                  begin - begin.pos(),
-                  end   - begin.pos()))) {
+                dash::IteratorRange<Iterator, Sentinel>(
+                  begin -= begin.pos(), end))) {
   return dash::sub(begin.pos(), end.pos(),
-                   dash::IteratorRange<const Iterator, const Sentinel>(
-                     begin - begin.pos(),
-                     end   - begin.pos()));
+                   dash::IteratorRange<Iterator, Sentinel>(
+                     begin -= begin.pos(), end));
 }
 #endif
 
-#if 1
+#if 0
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -116,14 +116,14 @@ make_range(
                         dash::IteratorRange<
                           typename std::decay<Iterator>::type,
                           typename std::decay<Sentinel>::type
-                        >((begin) - begin.pos(),
-                          (end)   - begin.pos()))) {
+                        >((begin) -= begin.pos(),
+                          (end)   -= begin.pos()))) {
   return dash::sub(begin.pos(), end.pos(),
                    dash::IteratorRange<
                      typename std::decay<Iterator>::type,
                      typename std::decay<Sentinel>::type
-                   >((begin) - begin.pos(),
-                     (end)   - begin.pos()));
+                   >((begin) -= begin.pos(),
+                     (end)   -= begin.pos()));
 }
 #endif
 

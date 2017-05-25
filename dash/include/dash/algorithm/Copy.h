@@ -4,8 +4,11 @@
 #include <dash/Future.h>
 #include <dash/Iterator.h>
 
+#include <dash/Range.h>
+
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewMod.h>
+#include <dash/view/ViewTraits.h>
 #include <dash/view/ViewBlocksMod.h>
 #include <dash/view/Sub.h>
 #include <dash/view/MakeRange.h>
@@ -1088,15 +1091,9 @@ GlobOutputIt copy(
   DASH_LOG_TRACE_VAR("dash::copy", out_first.pos());
   DASH_LOG_TRACE_VAR("dash::copy", out_h_last.pos());
 
-  // auto out_range  = dash::sub(
-  //                     out_first.pos(),
-  //                     out_h_last.pos(),
-  //                     dash::make_range(
-  //                       out_first  - out_first.pos(),
-  //                       out_h_last - out_first.pos()));
   auto out_range  = dash::make_range(out_first, out_h_last);
 
-  DASH_LOG_TRACE("dash::copy", "out value range:", out_range);
+// DASH_LOG_TRACE("dash::copy", "out value range:", out_range);
   DASH_LOG_TRACE("dash::copy", "out index range:", dash::index(out_range));
 
   auto out_blocks = dash::blocks(out_range);
