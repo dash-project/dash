@@ -197,12 +197,13 @@ public:
    * Copy constructor.
    */
   template <
+    class    T_,
     class    P_,
     class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    const GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> & other)
+    const GlobIter<T_, P_, GM_, Ptr_, Ref_> & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
@@ -215,12 +216,13 @@ public:
    * Move constructor.
    */
   template <
+    class    T_,
     class    P_,
     class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    GlobIter<nonconst_value_type, P_, GM_, Ptr_, Ref_> && other)
+    GlobIter<T_, P_, GM_, Ptr_, Ref_> && other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)

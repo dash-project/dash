@@ -6,6 +6,7 @@
 
 #include <array>
 
+#ifndef DOXYGEN
 
 namespace dash {
 
@@ -51,5 +52,7 @@ public:
 };
 
 } // namespace dash
+
+#endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_RANGE_H__INCLUDED
