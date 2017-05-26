@@ -54,6 +54,7 @@ public:
   ViewIterator(const self_t & other)       = default;
   self_t & operator=(const self_t & other) = default;
 
+#if 0
   template <class DomainItType>
   ViewIterator(
     const DomainItType   & domain_it, 
@@ -73,7 +74,16 @@ public:
   , _domain_it(std::forward<DomainItType>(domain_it))
   , _index_set(index_set)
   { }
-
+#else
+  ViewIterator(
+    const DomainIterator & domain_it, 
+    const IndexSetType   & index_set,
+    index_type             position)
+  : base_t(position)
+  , _domain_it(domain_it)
+  , _index_set(index_set)
+  { }
+#endif
   ViewIterator(
     const self_t         & other, 
     index_type             position)

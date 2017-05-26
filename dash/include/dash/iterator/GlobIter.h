@@ -62,12 +62,12 @@ template<
   class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
-: public std::iterator<
-           std::random_access_iterator_tag,
-           ElementType,
-           typename PatternType::index_type,
-           PointerType,
-           ReferenceType >
+// : public std::iterator<
+//            std::random_access_iterator_tag,
+//            ElementType,
+//            typename PatternType::index_type,
+//            PointerType,
+//            ReferenceType >
 {
 private:
   typedef GlobIter<
@@ -81,6 +81,9 @@ private:
   typedef typename std::remove_const<ElementType>::type
     nonconst_value_type;
 public:
+  typedef typename std::random_access_iterator_tag iterator_category;
+  typedef typename PatternType::index_type         difference_type;
+
   typedef          ElementType                         value_type;
 
   typedef          ReferenceType                        reference;
@@ -196,6 +199,11 @@ public:
   /**
    * Copy constructor.
    */
+  constexpr GlobIter(const self_t & other) = default;
+
+  /**
+   * Templated copy constructor.
+   */
   template <
     class    T_,
     class    P_,
@@ -215,6 +223,11 @@ public:
   /**
    * Move constructor.
    */
+  constexpr GlobIter(self_t && other) = default;
+
+  /**
+   * Templated move constructor.
+   */
   template <
     class    T_,
     class    P_,
@@ -233,6 +246,11 @@ public:
 
   /**
    * Assignment operator.
+   */
+  self_t & operator=(const self_t & other) = default;
+
+  /**
+   * Templated assignment operator.
    */
   template <
     typename T_,
@@ -254,6 +272,11 @@ public:
 
   /**
    * Move-assignment operator.
+   */
+  self_t & operator=(self_t && other) = default;
+
+  /**
+   * Templated move-assignment operator.
    */
   template <
     typename T_,

@@ -50,8 +50,7 @@
 #include <dash/Meta.h>
 
 // #include <dash/view/IndexSet.h>
-
-#include <dash/pattern/internal/LocalPattern.h>
+// #include <dash/pattern/internal/LocalPattern.h>
 
 #include <type_traits>
 
@@ -358,15 +357,13 @@ class IteratorRange
               dash::has_type_pattern_type<Iterator>::value >
             base_t;
 
-  Iterator _begin;
-  Sentinel _end;
-
 public:
   typedef Iterator                                              iterator;
   typedef Sentinel                                              sentinel;
   typedef dash::default_index_t                               index_type;
   typedef dash::default_size_t                                 size_type;
 //typedef dash::IndexSetSub<self_t, 0>                    index_set_type;
+//typedef dash::IndexSetIdentity<self_t>                  index_set_type;
   typedef std::integral_constant<dim_t, 1>                          rank;
 
   typedef typename iterator::value_type                       value_type;
@@ -395,6 +392,10 @@ public:
   typedef self_t                                             global_type;
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
 
+private:
+  typename std::decay<Iterator>::type _begin;
+  typename std::decay<Sentinel>::type _end;
+
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
@@ -412,12 +413,11 @@ public:
   , _end(std::forward<sentinel>(end))
   { }
 
-  constexpr iterator begin() const { return _begin - _begin.pos(); }
-  constexpr iterator end()   const { return _end;   }
+  constexpr iterator begin() const { return _begin; }
+  constexpr sentinel end()   const { return _end;   }
 
   constexpr size_type size() const {
-    return _end.pos() - _begin().pos();
-    // return std::distance(_begin, _end);
+    return std::distance(_begin, _end);
   }
 
   constexpr const local_type local() const {
@@ -432,7 +432,7 @@ public:
   }
 
 // constexpr index_set_type index_set() const {
-//   return index_set_type(*this, _begin.pos(), _end.pos());
+//   return dash::index(dash::sub(*this, _begin_pos, _end.pos()));
 // }
 };
 

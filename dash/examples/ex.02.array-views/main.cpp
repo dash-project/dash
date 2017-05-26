@@ -42,7 +42,7 @@ static std::string range_str(
   std::ostringstream ss;
   auto idx = dash::index(vrange);
   int        i   = 0;
-  for (auto v : vrange) {
+  for (const auto & v : vrange) {
     ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(4)
        << static_cast<const value_t>(v) << " ";
@@ -111,15 +111,39 @@ int main(int argc, char *argv[])
     auto dest_range      = dash::make_range(copy_begin_it,
                                             copy_end_it_exp);
 
+    const auto & dest_range_idx  = dash::index(dest_range);
+    const auto & dest_range_org  = dash::origin(dest_range);
+    const auto & dest_range_pat  = dest_range_idx.pattern();
+    const auto & dest_range_idom = dash::domain(
+                                     dash::index(dash::blocks(dest_range)));
 
-    print("copy index range: " << dash::index(dest_range));
-    print("copy num blocks:  " << dash::blocks(dest_range).size());
-    print("copy dom. begin:  " << copy_begin_it - copy_begin_it.pos());
-    print("copy begin:       " << copy_begin_it);
-    print("copy end:         " << copy_end_it_exp);
+    print("dest first block:   " << dest_range_pat.block_at(
+                                      dest_range_pat.coords(
+                                        dest_range_idom.first())
+                                    )); 
+    print("dest last  block:   " << dest_range_pat.block_at(
+                                      dest_range_pat.coords(
+                                        dest_range_idom.last())
+                                    ));
 
-  // print("copy range: " << dash::make_range(copy_begin_it,
-  //                                          copy_end_it_exp));
+    print("copy range type:    " << dash::typestr(dest_range));
+    print("copy range origin:  " << dash::typestr(dest_range_org));
+    print("copy range pattern: " << dash::typestr(dest_range_pat));
+    print("copy range local:   " << dash::view_traits<
+                                     decltype(dest_range)
+                                    >::is_local::value);
+    print("copy index domain:  " << dash::index(dest_range));
+    print("copy block dom.idx: " << dash::domain(
+                                      dash::index(dash::blocks(dest_range))
+                                    ));
+    print("copy block indices: " << dash::index(dash::blocks(dest_range)));
+    print("copy num blocks:    " << dash::blocks(dest_range).size());
+    print("copy dom. begin:    " << copy_begin_it - copy_begin_it.pos());
+    print("copy begin:         " << copy_begin_it);
+    print("copy end:           " << copy_end_it_exp);
+
+    print("copy range begin:   " << dash::begin(dest_range));
+    print("copy range:         " << range_str(dest_range));
 
     auto dest_blocks     = dash::blocks(dest_range);
     for (auto block : dest_blocks) {

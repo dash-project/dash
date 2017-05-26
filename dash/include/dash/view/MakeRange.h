@@ -42,7 +42,7 @@ make_range(
 }
 #endif
 
-#if 1
+#if 0
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -58,10 +58,10 @@ make_range(
   -> decltype(dash::sub(
                 begin.pos(), end.pos(),
                 dash::IteratorRange<Iterator, Sentinel>(
-                  begin - begin.pos(), end))) {
+                  Iterator(begin - begin.pos()), end))) {
   return dash::sub(begin.pos(), end.pos(),
                    dash::IteratorRange<Iterator, Sentinel>(
-                     begin - begin.pos(), end));
+                     Iterator(begin - begin.pos()), end));
 }
 #else
 /**
@@ -76,6 +76,7 @@ make_range(
   return dash::IteratorRange<Iterator, Sentinel>(begin, end);
 }
 
+#if 0
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -95,6 +96,8 @@ make_range(
 }
 #endif
 
+#endif
+
 #if 0
 /**
  * Adapter utility function.
@@ -112,14 +115,15 @@ make_range(
                         dash::IteratorRange<
                           typename std::decay<Iterator>::type,
                           typename std::decay<Sentinel>::type
-                        >((begin) -= begin.pos(),
-                          (end)   -= begin.pos()))) {
+                        >(Iterator(
+                            std::forward<Iterator>(begin) - begin.pos()),
+                          end))) {
   return dash::sub(begin.pos(), end.pos(),
                    dash::IteratorRange<
                      typename std::decay<Iterator>::type,
                      typename std::decay<Sentinel>::type
-                   >((begin) -= begin.pos(),
-                     (end)   -= begin.pos()));
+                   >(Iterator(std::forward<Iterator>(begin) - begin.pos()),
+                     end));
 }
 #endif
 
