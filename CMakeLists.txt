@@ -128,7 +128,6 @@ endif()
 # has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/dyloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)

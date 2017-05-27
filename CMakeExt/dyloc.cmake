@@ -5,8 +5,9 @@ include(ExternalProject)
 # https://stackoverflow.com/questions/9689183/cmake-googletest
 
 
-# message(STATUS "Looking for dyloc config in ${DYLOC_BASE}")
-# find_package(dyloc CONFIG REQUIRED HINTS ${DYLOC_BASE})
+set(DYLOC_SOURCE_PATH
+    "$ENV{DYLOC_SOURCE_PATH}" CACHE PATH
+    "Base path to the dyloc source distribution")
 
 if(ENABLE_DYLOC)
   set(DART_IMPLEMENTATIONS ${DART_IMPLEMENTATIONS} PARENT_SCOPE)
@@ -14,7 +15,6 @@ if(ENABLE_DYLOC)
   set(ENABLE_LOGGING       ${ENABLE_LOGGING}       PARENT_SCOPE)
 
   set(DYLOC_PREFIX         "${CMAKE_BINARY_DIR}/dyloc")
-# set(DYLOC_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
   set(DYLOC_INSTALL_PREFIX "${DYLOC_PREFIX}/install")
 
   message(STATUS "Building dyloc in ${DYLOC_PREFIX}")

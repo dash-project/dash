@@ -323,6 +323,7 @@ public:
     std::vector<self_t>       scope_domains;
     int                       num_scope_domains;
 
+#if 0
     dyloc::locality_domain ** dart_scope_domains;
     dart_ret_t ret = dart_domain_scope_domains(
                        _domain,
@@ -330,6 +331,12 @@ public:
                        &num_scope_domains,
                        &dart_scope_domains);
     DASH_ASSERT(DART_OK == ret || DART_ERR_NOTFOUND == ret);
+#else
+    auto scope_dtags = topo.scope_domain_tags(
+                         static_cast<dyloc_locality_scope_t>(scope));
+    for (const auto & scope_dtag : scope_dtags) {
+    }
+#endif
 
     DASH_LOG_TRACE_VAR("LocalityDomain.scope_domains", num_scope_domains);
     if (num_scope_domains > 0) {
