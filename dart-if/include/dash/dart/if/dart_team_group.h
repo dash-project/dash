@@ -358,7 +358,8 @@ dart_ret_t dart_team_get_group(
  *
  * (2,3 are unique with respect to the parent team (1)).
  *
- * \param teamid The parent team to use whose units participate in the collective operation.
+ * \param teamid The parent team to use whose units participate in the
+ *               collective operation.
  * \param group  The group object to build the new team from.
  * \param[out] newteam Will contain the new team ID upon successful return.
  *

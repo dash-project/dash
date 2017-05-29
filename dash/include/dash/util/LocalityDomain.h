@@ -331,12 +331,6 @@ public:
                        &num_scope_domains,
                        &dart_scope_domains);
     DASH_ASSERT(DART_OK == ret || DART_ERR_NOTFOUND == ret);
-#else
-    auto scope_dtags = topo.scope_domain_tags(
-                         static_cast<dyloc_locality_scope_t>(scope));
-    for (const auto & scope_dtag : scope_dtags) {
-    }
-#endif
 
     DASH_LOG_TRACE_VAR("LocalityDomain.scope_domains", num_scope_domains);
     if (num_scope_domains > 0) {
@@ -349,6 +343,17 @@ public:
       }
       free(dart_scope_domains);
     }
+#else
+    auto & topo      = dyloc::team_topology();
+    auto scope_dtags = topo.scope_domain_tags(
+                         static_cast<dyloc_locality_scope_t>(scope));
+    for (const auto & scope_dtag : scope_dtags) {
+      DASH_LOG_TRACE("LocalityDomain.scope_domains",
+                     "scope domain tag:", scope_dtag);
+      const auto & scope_domain = topo[scope_dtag];
+      scope_domains.emplace_back(scope_domain);
+    }
+#endif
     return scope_domains;
   }
 
@@ -397,11 +402,13 @@ public:
     return _domain->host;
   }
 
+#if 0
   inline int shared_mem_bytes() const
   {
     DASH_ASSERT(_domain != nullptr);
-    return _domain->shared_mem_bytes;
+    return _domain->hwinfo.shared_mem_bytes;
   }
+#endif
 
   inline iterator begin()
   {
