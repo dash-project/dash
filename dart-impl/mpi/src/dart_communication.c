@@ -113,7 +113,8 @@ dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype)
+  dart_datatype_t   dtype,
+  int               flags)
 {
   MPI_Win          win;
   MPI_Datatype     mpi_dtype    = dart__mpi__datatype(dtype);
@@ -152,7 +153,9 @@ dart_ret_t dart_get(
     return DART_ERR_INVAL;
   }
 
-  CLEAN_SEGMENT(seginfo);
+  if (flags & DART_FLAG_ORDERED) {
+    CLEAN_SEGMENT(seginfo);
+  }
 
   if (team_data->unitid == team_unit_id.id) {
     // use direct memcpy if we are on the same unit
@@ -475,7 +478,8 @@ dart_ret_t dart_get_handle(
   dart_gptr_t     gptr,
   size_t          nelem,
   dart_datatype_t dtype,
-  dart_handle_t * handle)
+  dart_handle_t * handle,
+  int             flags)
 {
   MPI_Datatype     mpi_type = dart__mpi__datatype(dtype);
   MPI_Win          win;
@@ -513,7 +517,9 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
 
-  CLEAN_SEGMENT(seginfo);
+  if (flags & DART_FLAG_ORDERED) {
+    CLEAN_SEGMENT(seginfo);
+  }
 
   win = seginfo->win;
 
@@ -742,7 +748,8 @@ dart_ret_t dart_get_blocking(
   void          * dest,
   dart_gptr_t     gptr,
   size_t          nelem,
-  dart_datatype_t dtype)
+  dart_datatype_t dtype,
+  int             flags)
 {
   MPI_Win           win;
   MPI_Datatype      mpi_dtype    = dart__mpi__datatype(dtype);
@@ -783,7 +790,9 @@ dart_ret_t dart_get_blocking(
     return DART_ERR_INVAL;
   }
 
-  CLEAN_SEGMENT(seginfo);
+  if (flags & DART_FLAG_ORDERED) {
+    CLEAN_SEGMENT(seginfo);
+  }
 
   if (team_data->unitid == team_unit_id.id) {
     // use direct memcpy if we are on the same unit

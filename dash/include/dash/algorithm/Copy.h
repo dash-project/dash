@@ -180,7 +180,8 @@ ValueType * copy_impl(
           cur_out_first,
           cur_in_first.dart_gptr(),
           ds.nelem,
-          ds.dtype),
+          ds.dtype,
+          DART_FLAG_NONE),
         DART_OK);
       num_elem_copied += num_copy_elem;
     }
@@ -233,7 +234,8 @@ ValueType * copy_impl(
             dest_ptr,
             src_gptr,
             ds.nelem,
-            ds.dtype)
+            ds.dtype,
+            DART_FLAG_NONE)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
         DASH_THROW(
@@ -333,7 +335,8 @@ dash::Future<ValueType *> copy_async_impl(
           cur_out_first,
           cur_in_first.dart_gptr(),
           ds.nelem,
-          ds.dtype),
+          ds.dtype,
+          DART_FLAG_NONE),
         DART_OK);
       req_handles.push_back(in_first.dart_gptr());
 #else
@@ -345,7 +348,8 @@ dash::Future<ValueType *> copy_async_impl(
           cur_in_first.dart_gptr(),
           ds.nelem,
           ds.dtype,
-          &get_handle),
+          &get_handle,
+          DART_FLAG_NONE),
         DART_OK);
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);
@@ -403,7 +407,8 @@ dash::Future<ValueType *> copy_async_impl(
             dest_ptr,
             src_gptr,
             ds.nelem,
-            ds.dtype)
+            ds.dtype,
+            DART_FLAG_NONE)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_async_impl", "dart_get failed");
         DASH_THROW(
@@ -419,7 +424,8 @@ dash::Future<ValueType *> copy_async_impl(
           src_gptr,
           ds.nelem,
           ds.dtype,
-          &get_handle),
+          &get_handle,
+          DART_FLAG_NONE),
         DART_OK);
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);

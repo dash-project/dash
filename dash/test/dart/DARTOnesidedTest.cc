@@ -29,7 +29,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
-    ds.dtype
+    ds.dtype,
+    DART_FLAG_NONE
   );
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_src_index + l];
@@ -70,7 +71,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
-    ds.dtype
+    ds.dtype,
+    DART_FLAG_NONE
   );
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_src_index + l];
@@ -102,7 +104,8 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
     ds.nelem,                         // number of elements
-    ds.dtype                          // data type
+    ds.dtype,                         // data type
+    DART_FLAG_NONE                    // no need to synchronize previous put
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
   for (size_t l = 0; l < block_size; ++l) {
@@ -148,7 +151,8 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             (array.begin() + (u * block_size)).dart_gptr(),
             ds.nelem,
             ds.dtype,
-            &handle)
+            &handle,
+            DART_FLAG_NONE)
       );
       LOG_MESSAGE("dart_get_handle returned handle %p",
                   static_cast<void*>(handle));
@@ -199,7 +203,7 @@ TEST_F(DARTOnesidedTest, ConsistentAsyncGet)
   dart_put(gptr, &pval, ds.nelem, ds.dtype);
   value_t gval;
   // retrieve the value again
-  dart_get_blocking(&gval, gptr, ds.nelem, ds.dtype);
+  dart_get_blocking(&gval, gptr, ds.nelem, ds.dtype, DART_FLAG_NONE);
 
   ASSERT_EQ_U(gval, dash::myid() * 100);
 

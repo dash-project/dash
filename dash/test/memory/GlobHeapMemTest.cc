@@ -224,7 +224,8 @@ TEST_F(GlobHeapMemTest, UnbalancedRealloc)
         // request value via DART global pointer:
         value_t dart_gptr_value;
         dart_storage_t ds = dash::dart_storage<value_t>(1);
-        dart_get_blocking(&dart_gptr_value, gptr, ds.nelem, ds.dtype);
+        dart_get_blocking(
+          &dart_gptr_value, gptr, ds.nelem, ds.dtype, DART_FLAG_NONE);
         DASH_LOG_TRACE_VAR("GlobHeapMemTest.UnbalancedRealloc",
                            dart_gptr_value);
 
