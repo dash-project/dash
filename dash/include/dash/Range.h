@@ -397,24 +397,28 @@ public:
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
 
 private:
-  Iterator       _begin;
-  Sentinel       _end;
+  Iterator             _begin;
+  Sentinel             _end;
+  const pattern_type * _pattern; 
 
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
   : _begin(std::forward<Container>(c).begin())
   , _end(std::forward<Container>(c).end())
+  , _pattern(&c.pattern())
   { }
 
   constexpr IteratorRange(const iterator & begin, const sentinel & end)
   : _begin(begin)
   , _end(end)
+  , _pattern(&begin.pattern())
   { }
 
   constexpr IteratorRange(iterator && begin, sentinel && end)
   : _begin(std::forward<iterator>(begin))
   , _end(std::forward<sentinel>(end))
+  , _pattern(&begin.pattern())
   { }
 
   constexpr IteratorRange()                     = delete;
@@ -441,7 +445,7 @@ public:
   }
 
   constexpr const pattern_type & pattern() const {
-    return _begin.pattern();
+    return *_pattern; // _begin.pattern();
   }
 };
 
@@ -499,6 +503,9 @@ class IteratorRange<LocalIterator *, LocalSentinel *>
 public:
   typedef LocalIterator *                                         iterator;
   typedef LocalSentinel *                                         sentinel;
+  typedef const LocalIterator *                             const_iterator;
+  typedef const LocalSentinel *                             const_sentinel;
+
   typedef dash::default_index_t                                 index_type;
   typedef dash::default_size_t                                   size_type;
 //typedef typename internal::LocalPattern<dash::ROW_MAJOR>    pattern_type;
@@ -510,24 +517,27 @@ public:
             
   typedef IteratorRange<local_iterator, local_sentinel>         local_type;
   typedef self_t                                               global_type;
-  typedef self_t                                               domain_type;
+//typedef self_t                                               domain_type;
 
   typedef std::integral_constant<bool, true>                      is_local;
 
 public:
-  template <class Container>
-  constexpr explicit IteratorRange(Container && c)
-  : _begin(c.begin())
-  , _end(c.end())
-  { }
+// template <class Container>
+// constexpr explicit IteratorRange(Container && c)
+// : _begin(c.begin())
+// , _end(c.end())
+// { }
 
   constexpr IteratorRange(iterator & begin, sentinel & end)
   : _begin(begin)
   , _end(end)
   { }
 
-  constexpr iterator begin() const { return _begin; }
-  constexpr iterator end()   const { return _end;   }
+  constexpr const_iterator begin() const { return _begin; }
+  constexpr const_sentinel end()   const { return _end;   }
+
+  iterator begin() { return _begin; }
+  sentinel end()   { return _end;   }
 
   constexpr size_type size() const { return std::distance(_begin, _end); }
 

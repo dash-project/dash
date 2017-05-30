@@ -87,13 +87,13 @@ TEST_F(RangeTest, RangeTraits)
       dash::is_range<decltype(array)>::value == true,
       "dash::is_range<dash::Array<...>>::value not matched");
 
-// auto l_range = dash::make_range(array.local.begin(),
-//                                 array.local.end());
-// static_assert(
-//     dash::is_range<decltype(l_range)>::value == true,
-//     "dash::is_range<dash::make_range(...)>::value not matched");
-// static_assert(
-//     dash::is_view<decltype(l_range)>::value == true,
-//     "dash::is_view<dash::make_range(...)>::value not matched");
+  auto l_range = dash::make_range(array.local.begin(),
+                                  array.local.end());
+  static_assert(
+      dash::is_range<decltype(l_range)>::value == true,
+      "dash::is_range<dash::make_range(...)>::value not matched");
+  static_assert(
+      dash::is_view<decltype(l_range)>::value == false,
+      "dash::is_view<dash::make_range(...)>::value not matched");
 }
 

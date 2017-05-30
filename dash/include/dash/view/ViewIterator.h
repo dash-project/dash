@@ -130,7 +130,7 @@ class ViewIterator<DomainIterator *, IndexSetType>
       DomainIterator *,
       DomainIterator & >
 {
-  typedef ViewIterator<DomainIterator, IndexSetType>       self_t;
+  typedef ViewIterator<DomainIterator *, IndexSetType>     self_t;
   typedef dash::internal::IndexIteratorBase<
             ViewIterator<DomainIterator *, IndexSetType>,
             DomainIterator,

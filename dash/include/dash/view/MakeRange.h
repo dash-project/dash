@@ -18,8 +18,8 @@ template <
   typename std::enable_if< std::is_pointer<Iterator>::value > * = nullptr >
 constexpr dash::IteratorRange<Iterator *, Sentinel *>
 make_range(
-  Iterator * const begin,
-  Sentinel * const end) {
+  Iterator * begin,
+  Sentinel * end) {
   return dash::IteratorRange<Iterator *, Sentinel *>(
            begin,
            end);
