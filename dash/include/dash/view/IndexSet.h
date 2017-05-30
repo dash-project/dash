@@ -1378,7 +1378,7 @@ class IndexSetBlocks
   }
 
   constexpr index_type size() const {
-    return _size; // calc_size();
+    return calc_size();
   }
 
  private:

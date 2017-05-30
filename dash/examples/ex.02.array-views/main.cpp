@@ -121,11 +121,14 @@ int main(int argc, char *argv[])
     const auto & dest_range_pat   = dest_range_idx.pattern();
     const auto & dest_range_idom  = dash::domain(
                                       dash::index(dest_range));
+    // Works:
     const auto & dest_brange_idx  = dash::index(dest_brange);
-    const auto & dest_brange_org  = dash::origin(dest_brange);
+    // Fails:
+//  const auto & dest_brange_idx  = dash::index(dash::blocks(dest_range));
+    const auto & dest_brange_org  = dash::origin(dash::blocks(dest_range));
     const auto & dest_brange_pat  = dest_brange_idx.pattern();
     const auto & dest_brange_idom = dash::domain(
-                                     dash::index(dest_brange));
+                                      dash::index(dash::blocks(dest_range)));
 
     auto dom_first_gidx           = dest_range_idom.first();
     auto dom_last_gidx            = dest_range_idom.last();
@@ -136,6 +139,26 @@ int main(int argc, char *argv[])
     auto first_bidx               = dest_brange_idx.first();
     auto last_bidx                = dest_brange_idx.last();
 
+    print("make_range is range:    " << dash::is_range<
+                                          decltype(dest_range)
+                                        >::value);
+    print("blocks(range) is range: " << dash::is_range<
+                                          decltype(dest_brange)
+                                        >::value);
+    print("d(blocks(rg)) is range: " << dash::is_range<
+                                          decltype(dash::domain(dest_brange))
+                                        >::value);
+
+    print("make_range is view:     " << dash::is_view<
+                                          decltype(dest_range)
+                                        >::value);
+    print("blocks(range) is view:  " << dash::is_view<
+                                          decltype(dest_brange)
+                                        >::value);
+    print("d(make_range) is view:  " << dash::is_view<
+                                          decltype(dash::domain(dest_range))
+                                        >::value);
+
     print("copy   idom range   " << "(" << dom_first_gidx
                                  << "," << last_gidx  << ")");
     print("copy   ridx range   " << "(" << first_gidx
@@ -145,6 +168,14 @@ int main(int argc, char *argv[])
 
     print("copy   rg type:     " << dash::typestr(dest_range));
     print("copy b.rg type:     " << dash::typestr(dest_brange));
+
+    print("copy   rg domain:   " << dash::typestr(dest_range_idom));
+    print("copy b.rg domain:   " << dash::typestr(dest_brange_idom));
+    print("copy   rg &domain:  " << &(dest_range_idom));
+    print("copy b.rg &domain:  " << &(dest_brange_idom));
+    print("copy   rg domain.sz " << dest_range_idom.size());
+    print("copy b.rg domain.sz " << dest_brange_idom.size());
+
     print("copy   rg origin:   " << dash::typestr(dest_range_org));
     print("copy b.rg origin:   " << dash::typestr(dest_brange_org));
     print("copy   rg &origin:  " << &(dest_range_org));
@@ -154,6 +185,8 @@ int main(int argc, char *argv[])
     print("copy b.rg index:    " << dash::typestr(dest_brange_idx));
     print("copy   rg &index:   " << &(dest_range_idx));
     print("copy b.rg &index:   " << &(dest_brange_idx));
+    print("copy   rg index.siz " << (dest_range_idx.size()));
+    print("copy b.rg index.siz " << (dest_brange_idx.size()));
     
     print("copy   rg pattern:  " << dash::typestr(dest_range_pat));
     print("copy b.rg pattern:  " << dash::typestr(dest_brange_pat));

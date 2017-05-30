@@ -122,10 +122,7 @@ private:
   typedef char yes;
   typedef long no;
 
-  typedef typename std::remove_reference<
-            typename std::remove_const<T>::type
-          >::type
-    ValueT;
+  typedef typename std::decay<T>::type ValueT;
 
 #ifdef __TODO__
 private:
@@ -133,7 +130,7 @@ private:
   template <typename C> static yes has_dash_begin(
                                      decltype(
                                        dash::begin(
-                                         std::move(std::declval<T>())
+                                         std::move(std::declval<ValueT>())
                                        )
                                      ) * );
   template <typename C> static no  has_dash_begin(...);    
@@ -142,7 +139,7 @@ private:
   template <typename C> static yes has_dash_end(
                                      decltype(
                                        dash::end(
-                                         std::move(std::declval<T>())
+                                         std::move(std::declval<ValueT>())
                                        )
                                      ) * );
   template <typename C> static no  has_dash_end(...);    
@@ -242,7 +239,10 @@ public:
  * \endcode
  */
 template <class RangeType>
-struct is_range : dash::detail::_is_range_type<RangeType> { };
+struct is_range : dash::detail::_is_range_type<
+                    typename std::decay<RangeType>::type
+                  >
+{ };
 
 template <
   typename RangeType,
@@ -261,7 +261,7 @@ public:
   typedef Iterator                                iterator;
   typedef Sentinel                                sentinel;
   typedef dash::default_index_t                   index_type;
-  typedef typename Iterator::pattern_type         pattern_type;
+//typedef typename Iterator::pattern_type         pattern_type;
 
 protected:
   constexpr RangeBase()                     = default;
@@ -397,8 +397,8 @@ public:
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
 
 private:
-  Iterator _begin;
-  Sentinel _end;
+  Iterator       _begin;
+  Sentinel       _end;
 
 public:
   template <class Container>
@@ -425,6 +425,9 @@ public:
 
   constexpr iterator begin() const { return _begin; }
   constexpr sentinel end()   const { return _end;   }
+
+  iterator begin() { return _begin; }
+  sentinel end()   { return _end;   }
 
   constexpr size_type size() const {
     return std::distance(_begin, _end);

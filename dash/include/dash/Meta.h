@@ -13,12 +13,13 @@
   template<typename T> \
   struct has_type_##DepType { \
   private: \
+    typedef typename std::decay<T>::type DT; \
     typedef char                      yes; \
     typedef struct { char array[2]; } no; \
     template<typename C> static yes test(typename C:: DepType *); \
     template<typename C> static no  test(...); \
   public: \
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes); \
+    static constexpr bool value = sizeof(test<DT>(0)) == sizeof(yes); \
   };
 
 #endif // DOXYGEN

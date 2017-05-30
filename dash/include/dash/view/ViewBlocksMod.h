@@ -525,8 +525,11 @@ class ViewBlocksMod
   };
 
  public:
-  typedef block_iterator<self_t>                  iterator;
-  typedef block_iterator<const_self_t>      const_iterator;
+  typedef block_iterator<self_t>                    iterator;
+  typedef block_iterator<const_self_t>        const_iterator;
+
+  using reference       = typename       iterator::reference;
+  using const_reference = typename const_iterator::reference;
 
  public:
   constexpr ViewBlocksMod()               = delete;
@@ -551,7 +554,7 @@ class ViewBlocksMod
   constexpr explicit ViewBlocksMod(
     domain_type && domain)
   : base_t(std::forward<domain_type>(domain))
-  , _index_set(this->domain())
+  , _index_set(std::forward<domain_type>(domain))
   { }
 
   // ---- extents ---------------------------------------------------------
