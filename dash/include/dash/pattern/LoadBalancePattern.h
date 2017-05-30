@@ -314,7 +314,6 @@ public:
       std::array<SizeType, 1> {{ _size }}),
     _blockspec(
       initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(dash::BLOCKED),
     _team(&team_loc.team()),
@@ -355,7 +354,7 @@ public:
   LoadBalancePattern(self_t && other)      = default;
   self_t & operator=(const self_t & other) = default;
   self_t & operator=(self_t && other)      = default;
-  
+
 
   /**
    * Copy constructor using non-const lvalue reference parameter.
@@ -1183,7 +1182,6 @@ private:
   }
 
   BlockSpec_t initialize_blockspec(
-    size_type                      size,
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_blockspec", local_sizes);

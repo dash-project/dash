@@ -164,7 +164,7 @@ public:
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
     const MatrixRef<T_, NumDimensions, NumViewDim, PatternT> & other);
 
-  constexpr const Team      & team()                const noexcept;
+  constexpr Team            & team()                const noexcept;
 
   constexpr size_type         size()                const noexcept;
   constexpr size_type         local_size()          const noexcept;

@@ -155,7 +155,7 @@ public:
                "dash::ListRef.front is not implemented");
   }
 
-  inline Team              & team();
+  inline Team              & team()             const noexcept;
 
   inline size_type           size()             const noexcept;
   inline size_type           local_size()       const noexcept;

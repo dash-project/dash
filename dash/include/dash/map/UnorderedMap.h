@@ -253,7 +253,7 @@ public:
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
 
-  inline const Team & team() const noexcept
+  inline Team & team() const noexcept
   {
     if (_team != nullptr) {
       return *_team;

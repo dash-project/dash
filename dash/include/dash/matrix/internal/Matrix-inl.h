@@ -264,8 +264,9 @@ void Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
-::team() {
+constexpr inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
+::team() const noexcept
+{
   return *_team;
 }
 

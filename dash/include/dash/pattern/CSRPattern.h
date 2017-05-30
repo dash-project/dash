@@ -202,7 +202,6 @@ public:
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
@@ -248,7 +247,6 @@ public:
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
@@ -318,7 +316,6 @@ public:
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
@@ -363,7 +360,6 @@ public:
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(
       initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
@@ -573,7 +569,7 @@ public:
       "Expected dimension = 0, got " << dim);
     return _local_size;
   }
-  
+
   /**
    * The actual number of elements in this pattern that are local to the
    * calling unit, by dimension.
@@ -902,7 +898,7 @@ public:
   }
 
   /**
-   * View spec (offset and extents) of block at global linear block index 
+   * View spec (offset and extents) of block at global linear block index
    * in cartesian element space.
    */
   ViewSpec_t block(
@@ -987,8 +983,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const noexcept
+  constexpr SizeType local_capacity() const noexcept
   {
     return _local_capacity;
   }
@@ -1130,7 +1125,7 @@ public:
   }
 
   /**
-   * Number of dimensions of the cartesian space partitioned by the 
+   * Number of dimensions of the cartesian space partitioned by the
    * pattern.
    */
   constexpr static dim_t ndim()
@@ -1159,7 +1154,6 @@ private:
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
-        _size,
         _local_sizes)),
     _distspec(arguments.distspec()),
     _team(&arguments.team()),
@@ -1242,7 +1236,6 @@ private:
   }
 
   BlockSpec_t initialize_blockspec(
-    size_type                      size,
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
@@ -1276,28 +1269,6 @@ private:
     }
     DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets >", block_offsets);
     return block_offsets;
-  }
-
-  /**
-   * Initialize local block spec from global block spec.
-   */
-  SizeType initialize_num_local_blocks(
-    SizeType                   num_blocks,
-    SizeType                   blocksize,
-    const DistributionSpec_t & distspec,
-    SizeType                   nunits,
-    SizeType                   local_size) const
-  {
-    auto num_l_blocks = local_size;
-    if (blocksize > 0) {
-      num_l_blocks = dash::math::div_ceil(
-                       num_l_blocks,
-                       blocksize);
-    } else {
-      num_l_blocks = 0;
-    }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_num_local_blocks", num_l_blocks);
-    return num_l_blocks;
   }
 
   /**

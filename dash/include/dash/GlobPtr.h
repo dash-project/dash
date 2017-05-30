@@ -106,7 +106,7 @@ private:
   // Size of the local section at the current position of this pointer
   index_type          _lsize       = 0;
   // Unit id of last unit in referenced global memory space
-  dart_team_unit_t    _unit_end    = 0;
+  dart_team_unit_t    _unit_end{0};
 protected:
   /**
    * Constructor, specifies underlying global address.
