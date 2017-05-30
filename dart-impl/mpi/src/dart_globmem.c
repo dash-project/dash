@@ -283,7 +283,7 @@ dart_team_memalloc_aligned(
   MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
   // re-use previously allocated memory
   if (segment->baseptr == NULL) {
-    segment->baseptr = malloc(sizeof(char *) * team_data->sharedmem_nodesize);
+    segment->baseptr = calloc(team_data->sharedmem_nodesize, sizeof(char *));
   }
   baseptr_set = segment->baseptr;
 

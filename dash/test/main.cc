@@ -15,14 +15,16 @@
 using ::testing::UnitTest;
 using ::testing::TestEventListeners;
 
+int     TESTENV::argc;
+char ** TESTENV::argv;
 
 int main(int argc, char * argv[])
 {
   char hostname[100];
   int team_myid = -1;
   int team_size = -1;
-  TESTENV.argc = argc;
-  TESTENV.argv = argv;
+  TESTENV::argc = argc;
+  TESTENV::argv = argv;
 
   gethostname(hostname, 100);
   std::string host(hostname);

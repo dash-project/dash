@@ -16,7 +16,6 @@
 #include <iomanip>
 
 
-
 TEST_F(MatrixTest, OddSize)
 {
   typedef dash::Pattern<2>                 pattern_t;
@@ -1520,3 +1519,44 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   }
 }
 
+TEST_F(MatrixTest, MoveSemantics){
+  using matrix_t = dash::NArray<double, 2>;
+  // move construction
+  {
+    matrix_t matrix_a(10, 5);
+
+    *(matrix_a.lbegin()) = 5;
+    dash::barrier();
+
+    matrix_t matrix_b(std::move(matrix_a));
+    int value = *(matrix_b.lbegin());
+    ASSERT_EQ_U(value, 5);
+  }
+  dash::barrier();
+  //move assignment
+  {
+    matrix_t matrix_a(10, 5);
+    {
+      matrix_t matrix_b(8, 5);
+
+      *(matrix_a.lbegin()) = 1;
+      *(matrix_b.lbegin()) = 2;
+      matrix_a = std::move(matrix_b);
+      // leave scope of matrix_b
+    }
+    ASSERT_EQ_U(*(matrix_a.lbegin()), 2);
+  }
+  dash::barrier();
+  // swap
+  {
+    matrix_t matrix_a(10, 5);
+    matrix_t matrix_b(8, 5);
+
+    *(matrix_a.lbegin()) = 1;
+    *(matrix_b.lbegin()) = 2;
+
+    std::swap(matrix_a, matrix_b);
+    ASSERT_EQ_U(*(matrix_a.lbegin()), 2);
+    ASSERT_EQ_U(*(matrix_b.lbegin()), 1);
+  }
+}

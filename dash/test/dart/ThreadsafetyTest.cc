@@ -52,10 +52,12 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
 
 #pragma omp parallel
   {
-    int  thread_id = omp_get_thread_num();
+    int thread_id = omp_get_thread_num();
     array_t::index_type base_idx = thread_id * elem_per_thread;
     for (size_t i = 0; i < elem_per_thread; ++i) {
-      LOG_MESSAGE("src.local[%i] <= %i", base_idx + i, thread_id);
+      LOG_MESSAGE("src.local[%i] <= %i",
+          static_cast<int>(base_idx + i),
+          thread_id);
       src.local[base_idx + i] = thread_id;
     }
   }
@@ -64,7 +66,7 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
 
 #pragma omp parallel
   {
-    int  thread_id = omp_get_thread_num();
+    int thread_id = omp_get_thread_num();
     array_t::index_type src_idx =   dash::myid()
                                         * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
@@ -72,7 +74,9 @@ TEST_F(ThreadsafetyTest, ConcurrentPutGet) {
                                         * (elem_per_thread * _num_threads)
                                         + (elem_per_thread * thread_id);
     for (size_t i = 0; i < elem_per_thread; ++i) {
-      LOG_MESSAGE("dst[%i] <= src[%i]", dst_idx + i, src_idx + i);
+      LOG_MESSAGE("dst[%i] <= src[%i]",
+          static_cast<int>(dst_idx + i),
+          static_cast<int>(src_idx + i));
       dst[dst_idx + i] = src[src_idx + i];
     }
   }

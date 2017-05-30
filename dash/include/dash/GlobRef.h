@@ -5,6 +5,8 @@
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
+#include <dash/GlobAsyncRef.h>
+
 
 namespace dash {
 
@@ -111,6 +113,15 @@ public:
    */
   explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
+  { }
+  
+  /**
+   * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
+   * avoid unintendet conversion
+   */
+  explicit constexpr GlobRef(
+    const GlobAsyncRef<T> & gref)
+  : _gptr(gref.dart_gptr())
   { }
 
   /**
@@ -378,8 +389,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
-    GlobConstPtr<MEMTYPE> gptr(dartptr);
-    return GlobRef<MEMTYPE>(gptr);
+    return GlobRef<MEMTYPE>(dartptr);
   }
 
   /**

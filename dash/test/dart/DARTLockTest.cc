@@ -207,7 +207,7 @@ TEST_F(DARTLockTest, TeamLockUnlock) {
   dash::Shared<value_t> shared(dash::team_unit_t(0), team);
   dart_lock_t lock;
 
-  if (dash::myid() == 0) {
+  if (team.myid() == 0) {
     shared.set(0);
   }
 
@@ -225,7 +225,7 @@ TEST_F(DARTLockTest, TeamLockUnlock) {
       DART_OK,
       dart_lock_release(lock));
   }
-  dash::barrier();
+  team.barrier();
 
   ASSERT_EQ_U(num_iterations * team.size(), static_cast<value_t>(shared.get()));
 
