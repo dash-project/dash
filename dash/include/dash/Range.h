@@ -445,7 +445,7 @@ public:
   }
 
   constexpr const pattern_type & pattern() const {
-    return *_pattern; // _begin.pattern();
+    return _begin.pattern();
   }
 };
 

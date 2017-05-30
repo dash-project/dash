@@ -180,6 +180,8 @@ int main(int argc, char *argv[])
     print("copy b.rg origin:   " << dash::typestr(dest_brange_org));
     print("copy   rg &origin:  " << &(dest_range_org));
     print("copy b.rg &origin:  " << &(dest_brange_org));
+    print("copy   rg orig.p.sz " << dest_range_org.pattern().size());
+    print("copy b.rg orig.p.sz " << dest_brange_org.pattern().size());
 
     print("copy   rg index:    " << dash::typestr(dest_range_idx));
     print("copy b.rg index:    " << dash::typestr(dest_brange_idx));
