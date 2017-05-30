@@ -155,15 +155,15 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem;
+  GlobMemType          * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType    * _pattern;
+  const PatternType    * _pattern         = nullptr;
   /// Current position of the iterator in global canonical index space.
   index_type             _idx             = 0;
   /// Maximum position allowed for this iterator.
   index_type             _max_idx         = 0;
   /// Unit id of the active unit
-  team_unit_t            _myid;
+  team_unit_t            _myid            = DART_UNDEFINED_TEAM_UNIT_ID;
   /// Pointer to first element in local memory
   local_pointer          _lbegin          = nullptr;
 

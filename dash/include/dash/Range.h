@@ -49,9 +49,6 @@
 #include <dash/Types.h>
 #include <dash/Meta.h>
 
-// #include <dash/view/IndexSet.h>
-// #include <dash/pattern/internal/LocalPattern.h>
-
 #include <type_traits>
 
 
@@ -259,12 +256,20 @@ template <
   typename Iterator,
   typename Sentinel >
 class RangeBase<RangeType, Iterator, Sentinel, true> {
+  typedef RangeBase<RangeType, Iterator, Sentinel, true> self_t;
 public:
   typedef Iterator                                iterator;
   typedef Sentinel                                sentinel;
   typedef dash::default_index_t                   index_type;
   typedef typename Iterator::pattern_type         pattern_type;
+
 protected:
+  constexpr RangeBase()                     = default;
+  constexpr RangeBase(const self_t & other) = default;
+  constexpr RangeBase(self_t && other)      = default;
+  self_t & operator=(const self_t & other)  = default;
+  self_t & operator=(self_t && other)       = default;
+
   RangeType & derived() {
     return static_cast<RangeType &>(*this);
   }
@@ -278,12 +283,20 @@ template <
   typename Iterator,
   typename Sentinel >
 class RangeBase<RangeType, Iterator, Sentinel, false> {
+  typedef RangeBase<RangeType, Iterator, Sentinel, false> self_t;
 public:
   typedef Iterator                                iterator;
   typedef Sentinel                                sentinel;
   typedef dash::default_index_t                   index_type;
 //typedef internal::LocalPattern<dash::ROW_MAJOR> pattern_type;
+
 protected:
+  constexpr RangeBase()                     = default;
+  constexpr RangeBase(const self_t & other) = default;
+  constexpr RangeBase(self_t && other)      = default;
+  self_t & operator=(const self_t & other)  = default;
+  self_t & operator=(self_t && other)       = default;
+
   RangeType & derived() {
     return static_cast<RangeType &>(*this);
   }
@@ -306,8 +319,7 @@ private:
 public:
   typedef RangeT                                               domain_type;
   typedef RangeT                                               origin_type;
-//typedef typename RangeT::pattern_type                       pattern_type;
-  typedef typename IteratorT::pattern_type                    pattern_type;
+  typedef typename RangeT::pattern_type                       pattern_type;
   typedef RangeT                                                image_type;
   typedef RangeT                                               global_type;
   typedef typename RangeT::local_type                           local_type;
@@ -324,13 +336,9 @@ public:
   typedef std::integral_constant<bool, false>                is_view;
   /// Whether the view is the origin domain.
   typedef std::integral_constant<bool, true>                 is_origin;
-  /// Whether the view / container type is a local view.
-  /// \note A container type is local if it is identical to its
-  ///       \c local_type
-  typedef std::integral_constant<bool, std::is_same<
-                                 RangeT,
-                                 typename RangeT::local_type
-                                >::value >                   is_local;
+  /// Whether the range is local view.
+  typedef std::integral_constant<
+            bool, std::is_pointer<IteratorT>::value>         is_local;
 
   typedef std::integral_constant<dim_t, 1>                   rank;
 };
@@ -367,10 +375,7 @@ public:
   typedef std::integral_constant<dim_t, 1>                          rank;
 
   typedef typename iterator::value_type                       value_type;
-  typedef typename base_t::pattern_type                     pattern_type;
-
-  typedef std::integral_constant<
-            bool, std::is_pointer<iterator>::value>             is_local;
+  typedef typename iterator::pattern_type                   pattern_type;
 
   typedef typename
             std::conditional<
@@ -383,24 +388,23 @@ public:
   typedef typename
             std::conditional<
               std::is_pointer<sentinel>::value,
-              iterator,
+              sentinel,
               typename sentinel::local_type
             >::type
     local_sentinel;
 
-  typedef self_t                                             domain_type;
   typedef self_t                                             global_type;
   typedef IteratorRange<local_iterator, local_sentinel>       local_type;
 
 private:
-  typename std::decay<Iterator>::type _begin;
-  typename std::decay<Sentinel>::type _end;
+  Iterator _begin;
+  Sentinel _end;
 
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
-  : _begin(c.begin())
-  , _end(c.end())
+  : _begin(std::forward<Container>(c).begin())
+  , _end(std::forward<Container>(c).end())
   { }
 
   constexpr IteratorRange(const iterator & begin, const sentinel & end)
@@ -412,6 +416,12 @@ public:
   : _begin(std::forward<iterator>(begin))
   , _end(std::forward<sentinel>(end))
   { }
+
+  constexpr IteratorRange()                     = delete;
+  constexpr IteratorRange(const self_t & other) = default;
+  constexpr IteratorRange(self_t && other)      = default;
+  self_t & operator=(const self_t & other)      = default;
+  self_t & operator=(self_t && other)           = default;
 
   constexpr iterator begin() const { return _begin; }
   constexpr sentinel end()   const { return _end;   }
@@ -430,12 +440,7 @@ public:
   constexpr const pattern_type & pattern() const {
     return _begin.pattern();
   }
-
-// constexpr index_set_type index_set() const {
-//   return dash::index(dash::sub(*this, _begin_pos, _end.pos()));
-// }
 };
-
 
 template <
   typename IteratorT,
@@ -449,7 +454,7 @@ public:
 //typedef typename RangeT::pattern_type                       pattern_type;
   typedef RangeT                                                image_type;
   typedef RangeT                                               global_type;
-  typedef typename RangeT::local_type                           local_type;
+  typedef RangeT                                                local_type;
   typedef typename RangeT::index_type                           index_type;
   typedef typename RangeT::size_type                             size_type;
   typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
@@ -483,7 +488,7 @@ class IteratorRange<LocalIterator *, LocalSentinel *>
            false // iterator does not specify pattern 
          >
 {
-  typedef IteratorRange<LocalIterator, LocalSentinel> self_t;
+  typedef IteratorRange<LocalIterator *, LocalSentinel *> self_t;
 
   LocalIterator * _begin;
   LocalSentinel * _end;
@@ -494,7 +499,6 @@ public:
   typedef dash::default_index_t                                 index_type;
   typedef dash::default_size_t                                   size_type;
 //typedef typename internal::LocalPattern<dash::ROW_MAJOR>    pattern_type;
-  typedef dash::IndexSetIdentity<self_t>                    index_set_type;
 
   typedef LocalIterator                                         value_type;
 
@@ -527,10 +531,6 @@ public:
   constexpr const local_type & local() const {
     return *this;
   }
-
-// constexpr index_set_type index_set() const {
-//   return index_set_type(*this);
-// }
 };
 
 } // namespace dash

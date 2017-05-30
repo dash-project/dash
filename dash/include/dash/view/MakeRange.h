@@ -42,7 +42,7 @@ make_range(
 }
 #endif
 
-#if 0
+#if 1
 /**
  * Adapter utility function.
  * Wraps `begin` and `end` iterators in range type.
@@ -50,17 +50,19 @@ make_range(
 template <
   class    Iterator,
   class    Sentinel,
-  typename std::enable_if< !std::is_pointer<Iterator>::value > * = nullptr >
+  typename IteratorDT = typename std::decay<Iterator>::type,
+  typename SentinelDT = typename std::decay<Sentinel>::type,
+  typename std::enable_if< !std::is_pointer<IteratorDT>::value > * = nullptr >
 auto
 make_range(
   const Iterator & begin,
   const Sentinel & end)
   -> decltype(dash::sub(
                 begin.pos(), end.pos(),
-                dash::IteratorRange<Iterator, Sentinel>(
+                dash::IteratorRange<IteratorDT, SentinelDT>(
                   Iterator(begin - begin.pos()), end))) {
   return dash::sub(begin.pos(), end.pos(),
-                   dash::IteratorRange<Iterator, Sentinel>(
+                   dash::IteratorRange<IteratorDT, SentinelDT>(
                      Iterator(begin - begin.pos()), end));
 }
 #else

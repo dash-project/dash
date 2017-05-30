@@ -179,8 +179,8 @@ class IndexSetIterator
         BaseStride >,
       index_type, int, std::nullptr_t, index_type >    base_t;
  private:
-  const IndexSetType * const _index_set;
-  index_type                 _stride                 = BaseStride;
+  const IndexSetType * _index_set;
+  index_type           _stride                 = BaseStride;
  public:
   constexpr IndexSetIterator()                       = delete;
   constexpr IndexSetIterator(self_t &&)              = default;
@@ -333,8 +333,8 @@ class IndexSetBase
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  domain_member_type      _domain;
-  const pattern_type   * _pattern;
+  domain_member_type     _domain;
+  const pattern_type   * _pattern = nullptr;
 
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
@@ -342,12 +342,12 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const DomainType & domain)
   : _domain(domain)
-  , _pattern(&dash::origin(domain).pattern())
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   constexpr explicit IndexSetBase(DomainType && domain)
   : _domain(std::forward<DomainType>(domain))
-  , _pattern(&dash::origin(view_domain()).pattern())
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   typedef struct {
@@ -405,10 +405,10 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-//  -> decltype(dash::index(
-//                std::declval<const view_domain_type &>()
-//              )) {
-    -> typename view_traits<view_domain_type>::index_set_type {
+    -> decltype(dash::index(
+                  std::declval<const view_domain_type &>()
+                )) {
+//  -> typename view_traits<view_domain_type>::index_set_type {
     return dash::index(this->view_domain());
   }
 
@@ -1262,12 +1262,17 @@ class IndexSetBlocks
   typedef typename base_t::index_type                       index_type;
   typedef typename base_t::size_type                         size_type;
 
+  typedef typename base_t::view_origin_type           view_origin_type;
+  typedef typename base_t::view_domain_type           view_domain_type;
+
+  typedef typename base_t::pattern_type                   pattern_type;
+
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<DomainType>                       global_type;
-  typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
-  typedef typename base_t::pattern_type                   pattern_type;
+
+  typedef global_type                                    preimage_type;
 
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
@@ -1279,6 +1284,7 @@ class IndexSetBlocks
   // the domain's pattern type.
   static constexpr std::size_t NBlocksDim = base_t::rank::value;
 
+ public:
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:

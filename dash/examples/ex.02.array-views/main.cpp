@@ -106,29 +106,78 @@ int main(int argc, char *argv[])
   a.barrier();
 
   if (dash::myid() == 0) {
-    auto copy_begin_it   = a.begin() + copy_dest_begin_idx;
-    auto copy_end_it_exp = copy_begin_it + copy_num_elem;
-    auto dest_range      = dash::make_range(copy_begin_it,
-                                            copy_end_it_exp);
+    auto         copy_begin_it    = a.begin() + copy_dest_begin_idx;
+    auto         copy_end_it_exp  = copy_begin_it + copy_num_elem;
 
-    const auto & dest_range_idx  = dash::index(dest_range);
-    const auto & dest_range_org  = dash::origin(dest_range);
-    const auto & dest_range_pat  = dest_range_idx.pattern();
-    const auto & dest_range_idom = dash::domain(
-                                     dash::index(dash::blocks(dest_range)));
+ // auto         dest_range       = dash::make_range(copy_begin_it,
+ //                                                  copy_end_it_exp);
+    auto         dest_range       = dash::sub(copy_begin_it.pos(),
+                                              copy_end_it_exp.pos(),
+                                              a);
+    const auto & dest_brange      = dash::blocks(dest_range);
+
+    const auto & dest_range_idx   = dash::index(dest_range);
+    const auto & dest_range_org   = dash::origin(dest_range);
+    const auto & dest_range_pat   = dest_range_idx.pattern();
+    const auto & dest_range_idom  = dash::domain(
+                                      dash::index(dest_range));
+    const auto & dest_brange_idx  = dash::index(dash::blocks(dest_range));
+    const auto & dest_brange_org  = dash::origin(dest_brange);
+    const auto & dest_brange_pat  = dest_brange_idx.pattern();
+    const auto & dest_brange_idom = dash::domain(
+                                     dash::index(dest_brange));
+
+    auto dom_first_gidx           = dest_range_idom.first();
+    auto dom_last_gidx            = dest_range_idom.last();
+
+    auto first_gidx               = dest_range_idx.first();
+    auto last_gidx                = dest_range_idx.last();
+
+    print("copy   idom range   " << "(" << dom_first_gidx
+                                 << "," << last_gidx  << ")");
+    print("copy   ridx range   " << "(" << first_gidx
+                                 << "," << last_gidx  << ")");
+
+    print("copy   rg type:     " << dash::typestr(dest_range));
+    print("copy b.rg type:     " << dash::typestr(dest_brange));
+    print("copy   rg origin:   " << dash::typestr(dest_range_org));
+    print("copy b.rg origin:   " << dash::typestr(dest_brange_org));
+    print("copy   rg &origin:  " << &(dest_range_org));
+    print("copy b.rg &origin:  " << &(dest_brange_org));
+
+    print("copy   rg index:    " << dash::typestr(dest_range_idx));
+    print("copy b.rg index:    " << dash::typestr(dest_brange_idx));
+    print("copy   rg &index:   " << &(dest_range_idx));
+    print("copy b.rg &index:   " << &(dest_brange_idx));
+    
+    print("copy   rg pattern:  " << dash::typestr(dest_range_pat));
+    print("copy b.rg pattern:  " << dash::typestr(dest_brange_pat));
+    print("copy   rg &pattern: " << &dest_range_pat);
+    print("copy b.rg &pattern: " << &dest_brange_pat);
+    print("copy   rg pat.size: " << dest_range_pat.size());
+    print("copy b.rg pat.size: " << dest_brange_pat.size());
 
     print("dest first block:   " << dest_range_pat.block_at(
                                       dest_range_pat.coords(
-                                        dest_range_idom.first())
+                                        first_gidx)
                                     )); 
     print("dest last  block:   " << dest_range_pat.block_at(
                                       dest_range_pat.coords(
-                                        dest_range_idom.last())
+                                        last_gidx)
                                     ));
 
-    print("copy range type:    " << dash::typestr(dest_range));
-    print("copy range origin:  " << dash::typestr(dest_range_org));
-    print("copy range pattern: " << dash::typestr(dest_range_pat));
+    print("dest b.rg block0:   " << dest_brange_pat.block_at(
+                                      dest_brange_pat.coords(
+                                        first_gidx)
+                                    )); 
+    print("dest b.rg blockN:   " << dest_brange_pat.block_at(
+                                      dest_brange_pat.coords(
+                                        last_gidx)
+                                    ));
+
+    print("copy range local:   " << std::decay<decltype(
+                                      dash::index(dash::blocks(dest_range))
+                                    )>::type::view_domain_is_local);
     print("copy range local:   " << dash::view_traits<
                                      decltype(dest_range)
                                     >::is_local::value);
@@ -144,10 +193,10 @@ int main(int argc, char *argv[])
 
     print("copy range begin:   " << dash::begin(dest_range));
     print("copy range:         " << range_str(dest_range));
-
+#if 1
     auto dest_blocks     = dash::blocks(dest_range);
     for (auto block : dest_blocks) {
-  //    print("copy to block:" << range_str(block));
+      print("copy to block:" << range_str(block));
     }
 
     // copy local buffer to global array
@@ -155,6 +204,7 @@ int main(int argc, char *argv[])
                              buf.data(),
                              buf.data() + copy_num_elem,
                              copy_begin_it);
+#endif
   }
   a.barrier();
 
