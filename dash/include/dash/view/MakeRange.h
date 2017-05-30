@@ -57,13 +57,17 @@ auto
 make_range(
   const Iterator & begin,
   const Sentinel & end)
-  -> decltype(dash::sub(
-                begin.pos(), end.pos(),
-                dash::IteratorRange<IteratorDT, SentinelDT>(
-                  Iterator(begin - begin.pos()), end))) {
-  return dash::sub(begin.pos(), end.pos(),
-                   dash::IteratorRange<IteratorDT, SentinelDT>(
-                     Iterator(begin - begin.pos()), end));
+  -> decltype(
+      dash::sub(begin.pos(),
+                end.pos(),
+                dash::IteratorRange<Iterator, Sentinel>(
+                  begin - begin.pos(),
+                  begin + (begin.pattern().size() - begin.pos())))) {
+  return dash::sub(begin.pos(),
+                   end.pos(),
+                   dash::IteratorRange<Iterator, Sentinel>(
+                     begin - begin.pos(),
+                     begin + (begin.pattern().size() - begin.pos())));
 }
 #else
 /**

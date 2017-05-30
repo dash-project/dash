@@ -342,12 +342,12 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const DomainType & domain)
   : _domain(domain)
-  , _pattern(&dash::origin(_domain).pattern())
+  , _pattern(&dash::origin(domain).pattern())
   { }
 
   constexpr explicit IndexSetBase(DomainType && domain)
   : _domain(std::forward<DomainType>(domain))
-  , _pattern(&dash::origin(_domain).pattern())
+  , _pattern(&dash::origin(domain).pattern())
   { }
 
   typedef struct {

@@ -109,11 +109,11 @@ int main(int argc, char *argv[])
     auto         copy_begin_it    = a.begin() + copy_dest_begin_idx;
     auto         copy_end_it_exp  = copy_begin_it + copy_num_elem;
 
- // auto         dest_range       = dash::make_range(copy_begin_it,
- //                                                  copy_end_it_exp);
-    auto         dest_range       = dash::sub(copy_begin_it.pos(),
-                                              copy_end_it_exp.pos(),
-                                              a);
+    auto         dest_range       = dash::make_range(copy_begin_it,
+                                                     copy_end_it_exp);
+ // auto         dest_range       = dash::sub(copy_begin_it.pos(),
+ //                                           copy_end_it_exp.pos(),
+ //                                           a);
     const auto & dest_brange      = dash::blocks(dest_range);
 
     const auto & dest_range_idx   = dash::index(dest_range);
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     const auto & dest_range_pat   = dest_range_idx.pattern();
     const auto & dest_range_idom  = dash::domain(
                                       dash::index(dest_range));
-    const auto & dest_brange_idx  = dash::index(dash::blocks(dest_range));
+    const auto & dest_brange_idx  = dash::index(dest_brange);
     const auto & dest_brange_org  = dash::origin(dest_brange);
     const auto & dest_brange_pat  = dest_brange_idx.pattern();
     const auto & dest_brange_idom = dash::domain(
@@ -133,10 +133,15 @@ int main(int argc, char *argv[])
     auto first_gidx               = dest_range_idx.first();
     auto last_gidx                = dest_range_idx.last();
 
+    auto first_bidx               = dest_brange_idx.first();
+    auto last_bidx                = dest_brange_idx.last();
+
     print("copy   idom range   " << "(" << dom_first_gidx
                                  << "," << last_gidx  << ")");
     print("copy   ridx range   " << "(" << first_gidx
                                  << "," << last_gidx  << ")");
+    print("copy   bidx range   " << "(" << first_bidx
+                                 << "," << last_bidx  << ")");
 
     print("copy   rg type:     " << dash::typestr(dest_range));
     print("copy b.rg type:     " << dash::typestr(dest_brange));

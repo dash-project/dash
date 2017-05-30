@@ -43,8 +43,8 @@ public:
   typedef typename base_t::value_type                  value_type;
   typedef typename IndexSetType::index_type            index_type;
 private:
-  typename std::decay<DomainIterator>::type  _domain_it;
-  IndexSetType                               _index_set;
+  DomainIterator  _domain_it;
+  IndexSetType    _index_set;
 public:
   constexpr ViewIterator()                 = delete;
 
@@ -54,7 +54,6 @@ public:
   ViewIterator(const self_t & other)       = default;
   self_t & operator=(const self_t & other) = default;
 
-#if 0
   template <class DomainItType>
   ViewIterator(
     const DomainItType   & domain_it, 
@@ -74,16 +73,7 @@ public:
   , _domain_it(std::forward<DomainItType>(domain_it))
   , _index_set(index_set)
   { }
-#else
-  ViewIterator(
-    const DomainIterator & domain_it, 
-    const IndexSetType   & index_set,
-    index_type             position)
-  : base_t(position)
-  , _domain_it(domain_it)
-  , _index_set(index_set)
-  { }
-#endif
+
   ViewIterator(
     const self_t         & other, 
     index_type             position)
@@ -108,11 +98,11 @@ public:
     return (_domain_it + (_index_set[this->pos()])).local();
   }
 
-  dart_gptr_t dart_gptr() const {
-    DASH_LOG_DEBUG("ViewIterator",
-                   "it.pos:",  _domain_it.pos(),
-                   "it.gpos:", _domain_it.gpos(),
-                   "pos:",     this->pos());
+  constexpr dart_gptr_t dart_gptr() const {
+//   DASH_LOG_DEBUG("ViewIterator",
+//                  "it.pos:",  _domain_it.pos(),
+//                  "it.gpos:", _domain_it.gpos(),
+//                  "pos:",     this->pos());
     return (_domain_it + _index_set[this->pos()]).dart_gptr();
   }
 
@@ -124,9 +114,9 @@ public:
     return (_domain_it + _index_set[this->pos()]);
   }
 
-  explicit operator DomainIterator() {
-    return (_domain_it + _index_set[this->pos()]);
-  }
+// explicit operator DomainIterator() {
+//   return (_domain_it + _index_set[this->pos()]);
+// }
 };
 
 template <
