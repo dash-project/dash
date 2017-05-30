@@ -261,7 +261,7 @@ public:
   typedef Iterator                                iterator;
   typedef Sentinel                                sentinel;
   typedef dash::default_index_t                   index_type;
-//typedef typename Iterator::pattern_type         pattern_type;
+  typedef typename Iterator::pattern_type         pattern_type;
 
 protected:
   constexpr RangeBase()                     = default;
@@ -335,7 +335,7 @@ public:
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, false>                is_view;
   /// Whether the view is the origin domain.
-  typedef std::integral_constant<bool, true>                 is_origin;
+  typedef std::integral_constant<bool, false>                is_origin;
   /// Whether the range is local view.
   typedef std::integral_constant<
             bool, std::is_pointer<IteratorT>::value>         is_local;
@@ -399,26 +399,22 @@ public:
 private:
   Iterator             _begin;
   Sentinel             _end;
-  const pattern_type * _pattern;
 
 public:
   template <class Container>
   constexpr explicit IteratorRange(Container && c)
   : _begin(std::forward<Container>(c).begin())
   , _end(std::forward<Container>(c).end())
-  , _pattern(&c.pattern())
   { }
 
   constexpr IteratorRange(const iterator & begin, const sentinel & end)
   : _begin(begin)
   , _end(end)
-  , _pattern(&begin.pattern())
   { }
 
   constexpr IteratorRange(iterator && begin, sentinel && end)
-  : _begin(std::forward<iterator>(begin))
-  , _end(std::forward<sentinel>(end))
-  , _pattern(&begin.pattern())
+  : _begin(std::move(begin))
+  , _end(std::move(end))
   { }
 
   constexpr IteratorRange()                     = delete;
@@ -445,7 +441,7 @@ public:
   }
 
   constexpr const pattern_type & pattern() const {
-    return *_pattern; // _begin.pattern();
+    return _begin.pattern(); // *_pattern;
   }
 };
 
@@ -471,7 +467,7 @@ public:
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, false>                is_view;
   /// Whether the view is the origin domain.
-  typedef std::integral_constant<bool, true>                 is_origin;
+  typedef std::integral_constant<bool, false>                is_origin;
   /// Whether the view / container type is a local view.
   /// \note A container type is local if it is identical to its
   ///       \c local_type
@@ -528,7 +524,7 @@ public:
 // , _end(c.end())
 // { }
 
-  constexpr IteratorRange(iterator & begin, sentinel & end)
+  constexpr IteratorRange(iterator begin, sentinel end)
   : _begin(begin)
   , _end(end)
   { }

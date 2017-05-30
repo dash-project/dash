@@ -111,17 +111,22 @@ template <
   class Iterator,
   class Sentinel >
 struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
-  typedef IteratorViewOrigin<Iterator, Sentinel>               domain_type;
-  typedef IteratorViewOrigin<Iterator, Sentinel>               origin_type;
+  typedef IteratorRange<Iterator, Sentinel>                    domain_type;
+  typedef IteratorRange<Iterator, Sentinel>                    origin_type;
   typedef IteratorViewOrigin<Iterator, Sentinel>                image_type;
 
   // Uses container::local_type directly, e.g. dash::LocalArrayRef:
-  // typedef typename dash::view_traits<domain_type>::local_type local_type;
+  typedef typename dash::view_traits<domain_type>::local_type   local_type;
+  typedef typename dash::view_traits<domain_type>::global_type global_type;
   // Uses ViewLocalMod wrapper on domain, e.g. ViewLocalMod<dash::Array>:
-  typedef ViewLocalMod<domain_type>                             local_type;
-  typedef ViewGlobalMod<domain_type>                           global_type;
+//typedef ViewLocalMod<domain_type>                             local_type;
+//typedef ViewGlobalMod<domain_type>                           global_type;
 
   typedef typename Iterator::index_type                         index_type;
+  typedef typename std::make_unsigned<index_type>::type          size_type;
+
+  typedef typename Iterator::pattern_type                     pattern_type;
+
   typedef dash::IndexSetIdentity< 
             IteratorViewOrigin<Iterator, Sentinel> >        index_set_type;
 
@@ -129,6 +134,8 @@ struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, true>                 is_origin;
   typedef std::integral_constant<bool, false>                is_local;
+
+  typedef std::integral_constant<dim_t, 1>                   rank;
 };
 
 template <
@@ -140,6 +147,7 @@ class IteratorViewOrigin
 {
 public:
   typedef typename Iterator::index_type                         index_type;
+  typedef typename std::make_unsigned<index_type>::type          size_type;
 private:
   typedef IteratorViewOrigin<Iterator, Sentinel>  self_t;
   typedef IteratorRange<Iterator, Sentinel>       base_t;
@@ -152,10 +160,21 @@ public:
   typedef typename view_traits<domain_type>::global_type       global_type;
 
   typedef typename Iterator::pattern_type                     pattern_type;
+
+  typedef dash::IndexSetIdentity< 
+            IteratorRange<Iterator, Sentinel> >             index_set_type;
+
+  typedef std::integral_constant<dim_t, 1>                            rank;
+
+private:
+  index_set_type _index_set;
+
 public:
   constexpr IteratorViewOrigin(Iterator begin, Iterator end)
-  : base_t(std::move(begin), std::move(end)) {
-  }
+//: base_t(std::move(begin), std::move(end)) {
+  : base_t(begin, end)
+  , _index_set(*this)
+  { }
 
   constexpr const pattern_type & pattern() const {
     return this->begin().pattern();
@@ -167,6 +186,9 @@ public:
     return local_type(*this);
   }
 
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
 };
 
 
@@ -186,8 +208,8 @@ make_view(Iterator && begin, Sentinel && end) {
   return dash::IteratorViewOrigin<
             typename std::decay<Iterator>::type,
             typename std::decay<Sentinel>::type
-         >(std::forward(begin),
-           std::forward(end));
+         >(std::forward<Iterator>(begin),
+           std::forward<Sentinel>(end));
 }
 
 } // namespace dash

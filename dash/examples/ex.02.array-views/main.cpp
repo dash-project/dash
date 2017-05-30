@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
  // auto         dest_range       = dash::sub(copy_begin_it.pos(),
  //                                           copy_end_it_exp.pos(),
  //                                           a);
-    const auto & dest_brange      = dash::blocks(dest_range);
+    auto         dest_brange      = dash::blocks(dest_range);
 
     const auto & dest_range_idx   = dash::index(dest_range);
     const auto & dest_range_org   = dash::origin(dest_range);
@@ -122,9 +122,9 @@ int main(int argc, char *argv[])
     const auto & dest_range_idom  = dash::domain(
                                       dash::index(dest_range));
     // Works:
-//  const auto & dest_brange_idx  = dash::index(dest_brange);
+//  auto dest_brange_idx  = dash::index(dest_brange);
     // Fails:
-    const auto & dest_brange_idx  = dash::index(dash::blocks(dest_range));
+    auto dest_brange_idx  = dash::index(dash::blocks(dest_range));
     const auto & dest_brange_org  = dash::origin(dash::blocks(dest_range));
     const auto & dest_brange_pat  = dest_brange_idx.pattern();
     const auto & dest_brange_idom = dash::domain(
@@ -184,10 +184,12 @@ int main(int argc, char *argv[])
     print("copy b.rg origin:   " << dash::typestr(dest_brange_org));
     print("copy   rg &origin:  " << &(dest_range_org));
     print("copy b.rg &origin:  " << &(dest_brange_org));
-    print("copy   rg &orig.pat " << &dest_range_org.pattern());
-    print("copy b.rg &orig.pat " << &dest_brange_org.pattern());
+    print("copy   rg &orig.pat " << &(dest_range_org.pattern()));
+    print("copy b.rg &orig.pat " << &(dest_brange_org.pattern()));
     print("copy   rg orig.p.sz " << dest_range_org.pattern().size());
     print("copy b.rg orig.p.sz " << dest_brange_org.pattern().size());
+    print("copy   rg &orig.idx " << &(dash::index(dest_range_org).pattern()));
+    print("copy b.rg &orig.idx " << &(dash::index(dest_brange_org).pattern()));
 
     print("copy   rg index:    " << dash::typestr(dest_range_idx));
     print("copy b.rg index:    " << dash::typestr(dest_brange_idx));
@@ -231,17 +233,16 @@ int main(int argc, char *argv[])
     print("copy block dom.idx: " << dash::domain(
                                       dash::index(dash::blocks(dest_range))
                                     ));
-    print("copy block indices: " << dash::index(dash::blocks(dest_range)));
-    print("copy num blocks:    " << dash::blocks(dest_range).size());
-    print("copy dom. begin:    " << copy_begin_it - copy_begin_it.pos());
-    print("copy begin:         " << copy_begin_it);
-    print("copy end:           " << copy_end_it_exp);
+    print("copy block indices: " << dash::index(dest_brange));
+    print("copy num blocks:    " << dest_brange.size());
+    print("copy begin:         " << dash::begin(dest_range));
+    print("copy end:           " << dash::end(dest_range));
 
-    print("copy range begin:   " << dash::begin(dest_range));
-    print("copy range:         " << range_str(dest_range));
+//   print("copy range begin:   " << dash::begin(dest_range));
+//   print("copy range:         " << range_str(dest_range));
 #if 1
     auto dest_blocks     = dash::blocks(dest_range);
-    for (auto block : dest_blocks) {
+    for (const auto & block : dest_blocks) {
       print("copy to block:" << range_str(block));
     }
 

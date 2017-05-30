@@ -139,9 +139,9 @@ constexpr auto
 index(DomainType && v)
   -> typename std::enable_if<
        dash::view_traits<DomainDecayType>::is_view::value,
-       decltype(std::forward<DomainType>(v).index_set())
+       typename std::decay<decltype(v.index_set())>::type
      >::type {
-  return std::forward<DomainType>(v).index_set();
+  return v.index_set();
 }
 
 template <
@@ -283,12 +283,16 @@ global(
 
 namespace detail {
 
+// !!! HERE !!!
 template <class DomainT>
 struct index_set_domain_bind_t {
   typedef typename
-            std::conditional< dash::is_view<DomainT>::value,
-                              DomainT,
-                              const DomainT & >::type
+            std::conditional<
+              !dash::view_traits<
+                typename std::decay<DomainT>::type
+              >::is_origin::value,
+              DomainT,
+              const DomainT & >::type
     type;
 };
 
@@ -355,12 +359,12 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const DomainType & domain)
   : _domain(domain)
-  , _pattern(&dash::origin(domain).pattern())
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   constexpr explicit IndexSetBase(DomainType && domain)
-  : _domain(std::forward<DomainType>(domain))
-  , _pattern(&dash::origin(domain).pattern())
+  : _domain(std::move(domain))
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   typedef struct {
@@ -418,10 +422,10 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-    -> decltype(dash::index(
-                  std::declval<const view_domain_type &>()
-                )) {
-//  -> typename view_traits<view_domain_type>::index_set_type {
+//  -> decltype(dash::index(
+//                std::declval<const view_domain_type &>()
+//              )) {
+    -> typename view_traits<view_domain_type>::index_set_type {
     return dash::index(_domain);
   }
 
@@ -618,12 +622,14 @@ class IndexSetIdentity
   self_t & operator=(const self_t &)         = default;
  public:
   typedef typename DomainType::index_type     index_type;
+
  public:
   constexpr explicit IndexSetIdentity(const DomainType & view)
   : base_t(view)
   { }
+
   constexpr explicit IndexSetIdentity(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   { }
 
   constexpr index_type rel(index_type image_index) const {
@@ -735,7 +741,7 @@ class IndexSetSub
     DomainType      && view,
     index_type         begin_idx,
     index_type         end_idx)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _domain_begin_idx(begin_idx)
   , _domain_end_idx(end_idx)
   { }
@@ -923,7 +929,7 @@ class IndexSetLocal
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetLocal(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _size(calc_size())
   { }
 
@@ -1150,7 +1156,7 @@ constexpr auto
 local(IndexSetGlobal<DomainType> && index_set)
     -> decltype(index_set.local()) {
   // Note: Not a universal reference, index_set has partially defined type
-  return index_set.local();
+  return std::move(index_set).local();
 }
 
 template <class DomainType>
@@ -1209,7 +1215,7 @@ class IndexSetGlobal
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetGlobal(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   { }
 
   constexpr auto local() const noexcept
@@ -1321,7 +1327,7 @@ class IndexSetBlocks
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetBlocks(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _size(calc_size())
   { }
 
@@ -1391,7 +1397,7 @@ class IndexSetBlocks
   }
 
   constexpr index_type size() const {
-    return calc_size();
+    return _size; // calc_size();
   }
 
  private:
@@ -1474,6 +1480,14 @@ class IndexSetBlock
     const DomainType & view,
     index_type         block_idx)
   : base_t(view)
+  , _block_idx(block_idx)
+  , _size(calc_size())
+  { }
+
+  constexpr explicit IndexSetBlock(
+    DomainType      && view,
+    index_type         block_idx)
+  : base_t(std::move(view))
   , _block_idx(block_idx)
   , _size(calc_size())
   { }

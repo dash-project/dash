@@ -26,10 +26,10 @@ origin(ViewT & view);
 
 template <class ContainerT>
 typename std::enable_if<
-  dash::view_traits<ContainerT>::is_origin::value,
-  ContainerT &
+  !dash::view_traits<typename std::decay<ContainerT>::type>::is_view::value,
+  ContainerT
 >::type
-origin(ContainerT & container) {
+origin(ContainerT && container) {
   return container;
 }
 

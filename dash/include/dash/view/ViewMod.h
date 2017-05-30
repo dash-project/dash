@@ -620,8 +620,8 @@ class ViewSubMod
     domain_type && domain,
     index_type     begin,
     index_type     end)
-  : base_t(std::forward<domain_type>(domain))
-  , _index_set(std::forward<domain_type>(domain), begin, end)
+  : base_t(std::move(domain))
+  , _index_set(this->domain(), begin, end)
   { }
 
   constexpr ViewSubMod(

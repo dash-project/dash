@@ -13,6 +13,7 @@ namespace dash {
 // View Modifiers (not coupled with origin memory / index space):
 // -------------------------------------------------------------------------
 
+#if 0
 /**
  * Sub-section, view dimensions maintain domain dimensions.
  *
@@ -43,6 +44,7 @@ sub(const IndexRangeT & range) {
   return sub<SubDim>(dash::begin(range),
                      dash::end(range));
 }
+#endif
 
 #if 0
 /**
@@ -63,30 +65,6 @@ sub(
 // -------------------------------------------------------------------------
 // View Proxies (coupled with origin memory / index space):
 // -------------------------------------------------------------------------
-
-template <
-  dim_t    SubDim  = 0,
-  class    DomainT,
-  class    OffsetFirstT,
-  class    OffsetFinalT,
-  typename DomainValueT = typename std::decay<DomainT>::type >
-constexpr
-ViewSubMod<
-  DomainValueT,
-  SubDim,
-  dash::view_traits<DomainValueT>::rank::value >
-sub(
-    OffsetFirstT    begin,
-    OffsetFinalT    end,
-    const DomainT & domain) {
-  return ViewSubMod<
-           DomainValueT,
-           SubDim,
-           dash::view_traits<DomainValueT>::rank::value
-         >(domain,
-           begin,
-           end);
-}
 
 template <
   dim_t    SubDim  = 0,

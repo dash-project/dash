@@ -172,9 +172,9 @@ namespace detail {
 template <class ViewableType>
 struct view_traits
 : detail::_view_traits<
-    ViewableType,
-    dash::is_view<ViewableType>::value,
-    dash::is_range<ViewableType>::value > {
+    typename std::decay<ViewableType>::type,
+    dash::is_view< typename std::decay<ViewableType>::type>::value,
+    dash::is_range<typename std::decay<ViewableType>::type>::value > {
 };
 
 #endif // DOXYGEN

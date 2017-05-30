@@ -156,7 +156,7 @@ class ViewBlockMod
   constexpr ViewBlockMod(
     domain_type     && domain,
     index_type         block_idx)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain(),
                block_idx)
   { }
@@ -290,7 +290,7 @@ class ViewBlockMod<DomainType, 1>
   constexpr ViewBlockMod(
     domain_type     && domain,
     index_type         block_idx)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain(),
                block_first_gidx(this->domain(), block_idx),
                block_final_gidx(this->domain(), block_idx))
@@ -395,12 +395,6 @@ class ViewBlockMod<DomainType, 1>
 // ------------------------------------------------------------------------
 // ViewBlocksMod
 // ------------------------------------------------------------------------
-
-template <class ViewType>
-constexpr ViewBlocksMod<ViewType>
-blocks(const ViewType & domain) {
-  return ViewBlocksMod<ViewType>(domain);
-}
 
 template <
   class ViewType,
@@ -514,7 +508,7 @@ class ViewBlocksMod
       index_type           position)
     : iterator_base_t(position)
     , _blocks_view_domain(
-        dash::domain(std::forward<ViewBlocksModType>(blocks_view)))
+        dash::domain(std::move(blocks_view)))
     { }
 
     constexpr block_type dereference(index_type idx) const {
@@ -555,8 +549,8 @@ class ViewBlocksMod
    */
   constexpr explicit ViewBlocksMod(
     domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
-  , _index_set(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
+  , _index_set(std::move(domain))
   { }
 
   // ---- extents ---------------------------------------------------------

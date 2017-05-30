@@ -73,19 +73,18 @@ class ViewSubMod<DomainType, SubDim, 1>
   self_t & operator=(self_t &&)        = default;
   self_t & operator=(const self_t &)   = default;
 
-  template <class DomainT_>
   constexpr ViewSubMod(
-    DomainT_    && domain,
+    DomainType  && domain,
     index_type     begin,
     index_type     end)
-  : base_t(std::forward<DomainT_>(domain))
-  , _index_set(std::forward<DomainT_>(domain), begin, end)
+  : base_t(std::move(domain))
+  , _index_set(this->domain(), begin, end)
   { }
 
   constexpr ViewSubMod(
-    const domain_type  & domain,
-    index_type     begin,
-    index_type     end)
+    const domain_type & domain,
+    index_type          begin,
+    index_type          end)
   : base_t(domain)
   , _index_set(domain, begin, end)
   { }
@@ -214,7 +213,7 @@ class ViewLocalMod<DomainType, 1>
    */
   constexpr explicit ViewLocalMod(
     domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain())
   { }
 
@@ -336,7 +335,7 @@ class ViewGlobalMod<DomainType, 1>
    */
   constexpr explicit ViewGlobalMod(
     domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain())
   { }
 
