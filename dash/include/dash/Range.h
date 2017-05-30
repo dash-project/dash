@@ -319,7 +319,7 @@ private:
 public:
   typedef RangeT                                               domain_type;
   typedef RangeT                                               origin_type;
-  typedef typename RangeT::pattern_type                       pattern_type;
+  typedef typename IteratorT::pattern_type                    pattern_type;
   typedef RangeT                                                image_type;
   typedef RangeT                                               global_type;
   typedef typename RangeT::local_type                           local_type;
@@ -399,7 +399,7 @@ public:
 private:
   Iterator             _begin;
   Sentinel             _end;
-  const pattern_type * _pattern; 
+  const pattern_type * _pattern;
 
 public:
   template <class Container>
@@ -445,7 +445,7 @@ public:
   }
 
   constexpr const pattern_type & pattern() const {
-    return _begin.pattern();
+    return *_pattern; // _begin.pattern();
   }
 };
 

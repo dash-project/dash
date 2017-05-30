@@ -221,10 +221,23 @@ template <
   class ContainerType,
   class ContainerDecayType = typename std::decay<ContainerType>::type >
 constexpr auto
+index(ContainerType && c)
+-> typename std::enable_if <
+     !dash::view_traits<ContainerDecayType>::is_view::value,
+     IndexSetIdentity<ContainerDecayType>
+   >::type {
+  return IndexSetIdentity<ContainerDecayType>(
+           std::forward<ContainerType>(c));
+}
+
+template <
+  class ContainerType,
+  class ContainerDecayType = typename std::decay<ContainerType>::type >
+constexpr auto
 index(const ContainerType & c)
 -> typename std::enable_if <
      !dash::view_traits<ContainerDecayType>::is_view::value,
-     const IndexSetIdentity<ContainerDecayType>
+     IndexSetIdentity<ContainerDecayType>
    >::type {
   return IndexSetIdentity<ContainerDecayType>(c);
 }
@@ -409,7 +422,7 @@ class IndexSetBase
                   std::declval<const view_domain_type &>()
                 )) {
 //  -> typename view_traits<view_domain_type>::index_set_type {
-    return dash::index(this->view_domain());
+    return dash::index(_domain);
   }
 
   constexpr const pattern_type & pattern() const {

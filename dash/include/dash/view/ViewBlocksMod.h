@@ -422,9 +422,10 @@ struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef typename domain_type::local_type                      local_type;
   typedef ViewBlocksMod<DomainType, NDim>                      global_type;
 
-  typedef typename DomainType::index_type                       index_type;
+  typedef typename view_traits<domain_type>::index_type         index_type;
   typedef typename view_traits<domain_type>::size_type           size_type;
-  typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType, NDim>>
+//typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType, NDim>>
+  typedef dash::IndexSetBlocks<DomainType>
                                                             index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
@@ -443,9 +444,9 @@ class ViewBlocksMod
 : public ViewModBase< ViewBlocksMod<DomainType, NDim>, DomainType, NDim > {
  private:
   typedef ViewBlocksMod<DomainType, NDim>                           self_t;
+  typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
   typedef ViewModBase<ViewBlocksMod<DomainType, NDim>, DomainType, NDim>
                                                                     base_t;
-  typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
  public:
   typedef DomainType                                           domain_type;
   typedef typename base_t::origin_type                         origin_type;
@@ -512,7 +513,8 @@ class ViewBlocksMod
       ViewBlocksModType && blocks_view,
       index_type           position)
     : iterator_base_t(position)
-    , _blocks_view_domain(std::forward<ViewBlocksModType>(blocks_view))
+    , _blocks_view_domain(
+        dash::domain(std::forward<ViewBlocksModType>(blocks_view)))
     { }
 
     constexpr block_type dereference(index_type idx) const {
@@ -532,10 +534,10 @@ class ViewBlocksMod
   using const_reference = typename const_iterator::reference;
 
  public:
+  ~ViewBlocksMod()                        = default;
   constexpr ViewBlocksMod()               = delete;
   constexpr ViewBlocksMod(const self_t &) = default;
   constexpr ViewBlocksMod(self_t &&)      = default;
-  ~ViewBlocksMod()                        = default;
   self_t & operator=(self_t &&)           = default;
   self_t & operator=(const self_t &)      = default;
 
@@ -611,10 +613,10 @@ class ViewBlocksMod
     return iterator(*this, _index_set.last() + 1);
   }
 
-  constexpr block_type operator[](int offset) const {
-    return *iterator(*this, _index_set[offset]);
+  constexpr const_reference operator[](int offset) const {
+    return *const_iterator(*this, _index_set[offset]);
   }
-  block_type operator[](int offset) {
+  reference operator[](int offset) {
     return *iterator(*this, _index_set[offset]);
   }
 
