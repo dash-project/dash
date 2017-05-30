@@ -29,6 +29,14 @@
     throw(excep_type(os.str())); \
   } while(0)
 
+#define DASH_ASSERT_ALWAYS(expr) do { \
+  if (!(expr)) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion failed: " \
+               << " " << __FILE__ << ":" << __LINE__); \
+  }\
+} while(0)
+
 #if defined(DASH_ENABLE_ASSERTIONS)
 
 #define DASH_ASSERT(expr) do { \
