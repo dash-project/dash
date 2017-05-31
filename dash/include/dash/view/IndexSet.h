@@ -283,7 +283,6 @@ global(
 
 namespace detail {
 
-// !!! HERE !!!
 template <class DomainT>
 struct index_set_domain_bind_t {
   typedef typename
