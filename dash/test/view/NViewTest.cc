@@ -962,6 +962,9 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   }
   mat.barrier();
 
+  // TODO: multi-dimensional strided local views not supported yet,
+  //       for example when using dash::SeqTilePattern in this test.
+
   auto mat_local = dash::local(
                      dash::sub<0>(
                        0, mat.extents()[0],
@@ -974,8 +977,8 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
 
   EXPECT_EQ_U(pat_traits_shifted, index(mat_local).is_shifted());
 
-  EXPECT_TRUE_U(index(mat_local).is_strided());
-  EXPECT_TRUE_U(index(mat_local).is_sub());
+  EXPECT_TRUE_U(index(mat_local).is_strided() || dash::size() < 2);
+  EXPECT_TRUE_U(index(mat_local).is_sub() || dash::size() < 2);
   EXPECT_FALSE_U(index(dash::domain(mat_local)).is_sub());
 
   EXPECT_EQ_U(mat.pattern().local_size(),    mat_local.size());

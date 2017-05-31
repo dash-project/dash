@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 {
   dash::init(&argc, &argv);
 
-  int elem_per_unit    = 7;
+  int elem_per_unit    = 5;
   int elem_additional  = 2;
   int array_size       = dash::size() * elem_per_unit +
                            std::min<int>(elem_additional, dash::size());
