@@ -98,7 +98,7 @@ public:
     return *_unit_domain;
   }
 
-  inline const dash::Team & team()
+  inline const dash::Team & team() const
   {
     if (nullptr == _team) {
       return dash::Team::Null();

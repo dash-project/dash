@@ -378,7 +378,7 @@ public:
    */
   void deallocate();
 
-  Team                      & team();
+  constexpr Team            & team()                const noexcept;
 
   constexpr size_type         size()                const noexcept;
   constexpr size_type         local_size()          const noexcept;

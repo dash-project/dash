@@ -190,12 +190,7 @@ public:
     return _domain.num_cores();
   }
 
-  inline dash::Team & team()
-  {
-    return (nullptr == _team) ? dash::Team::Null() : *_team;
-  }
-
-  inline const dash::Team & team() const
+  inline dash::Team & team() const
   {
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }
