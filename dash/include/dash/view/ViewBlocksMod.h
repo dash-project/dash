@@ -90,6 +90,7 @@ class ViewBlockMod
  public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
+  typedef typename view_traits<DomainType>::size_type            size_type;
   typedef typename base_t::origin_type                         origin_type;
  public:
   typedef dash::IndexSetBlock<DomainType>                   index_set_type;
@@ -160,6 +161,42 @@ class ViewBlockMod
   , _index_set(this->domain(),
                block_idx)
   { }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NDim> extents() const {
+    return _index_set.extents();
+  }
+
+  template <dim_t ExtDim>
+  constexpr size_type extent() const {
+    return _index_set.template extent<ExtDim>();
+  }
+
+  constexpr size_type extent(dim_t shape_dim) const {
+    return _index_set.extent(shape_dim);
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  template <dim_t ExtDim>
+  constexpr index_type offset() const {
+    return _index_set.template offset<ExtDim>();
+  }
+
+  constexpr std::array<index_type, NDim> offsets() const {
+    return _index_set.offsets();
+  }
+
+  constexpr index_type offset(dim_t shape_dim) const {
+    return _index_set.offset(shape_dim);
+  }
+
+  // ---- size ------------------------------------------------------------
+
+  constexpr size_type size() const {
+    return index_set().size();
+  }
 
   constexpr const_iterator begin() const {
     return const_iterator(dash::origin(*this).begin(),
@@ -550,7 +587,7 @@ class ViewBlocksMod
   constexpr explicit ViewBlocksMod(
     domain_type && domain)
   : base_t(std::move(domain))
-  , _index_set(std::move(domain))
+  , _index_set(this->domain())
   { }
 
   // ---- extents ---------------------------------------------------------
@@ -607,10 +644,10 @@ class ViewBlocksMod
     return iterator(*this, _index_set.last() + 1);
   }
 
-  constexpr const_reference operator[](int offset) const {
-    return *const_iterator(*this, _index_set[offset]);
+  constexpr block_type operator[](int offset) const {
+    return *iterator(*this, _index_set[offset]);
   }
-  reference operator[](int offset) {
+  block_type operator[](int offset) {
     return *iterator(*this, _index_set[offset]);
   }
 

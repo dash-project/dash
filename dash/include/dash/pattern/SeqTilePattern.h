@@ -937,8 +937,8 @@ public:
   }
 
   /**
-   * Global coordinates to global position in the pattern's block-wise iteration
-   * order.
+   * Global coordinates to global position in the pattern's block-wise
+   * iteration order.
    *
    * NOTE:
    * Expects extent[d] to be a multiple of blocksize[d] * nunits[d]

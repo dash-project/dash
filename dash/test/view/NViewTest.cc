@@ -47,7 +47,9 @@ namespace test {
       std::ostringstream row_ss;
       for (int c = 0; c < view_ncols; ++c) {
         int offset = r * view_ncols + c;
-        row_ss << std::fixed << std::setw(2)
+        row_ss << std::fixed << std::setw(3)
+               << offset << ":"
+               << std::fixed << std::setw(2)
                << nindex[offset]
                << ":"
                << std::fixed << std::setprecision(3)
@@ -258,14 +260,15 @@ TEST_F(NViewTest, MatrixBlocked1DimSingle)
     dash::test::print_nview("nview_rows_g", nview_rows_g);
 
     auto exp_nview_rows_g = dash::test::region_values(
-                              mat, {{ 1,0 }, { 2,mat.extent(1) }} );
+                              mat, {{ 1,0 }, { 2,mat.extent(1) }}
+                            );
 
-    EXPECT_TRUE_U(
+    EXPECT_TRUE(
       dash::test::expect_range_values_equal<double>(
         exp_nview_rows_g, nview_rows_g));
 
-    EXPECT_EQ_U(2,             nview_rows_g.extent<0>());
-    EXPECT_EQ_U(mat.extent(1), nview_rows_g.extent<1>());
+    EXPECT_EQ(2,             nview_rows_g.extent<0>());
+    EXPECT_EQ(mat.extent(1), nview_rows_g.extent<1>());
 
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimSingle",
                    "sub<1>(2,7, mat) ->",
@@ -835,7 +838,7 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                      1);
   team_spec.balance_extents();
 
-  auto pattern = dash::SeqTilePattern<2>(
+  auto pattern = dash::TilePattern<2>(
                    dash::SizeSpec<2>(
                      nrows,
                      ncols),
@@ -929,18 +932,31 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
                        nview_blocks.extents());
 
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
-                       nview_blocks[0].size());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
-                       nview_blocks[0].offsets());
-    DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlockCyclic2DSub",
-                       nview_blocks[0].extents());
-
     int bi = 0;
     for (const auto & block : nview_blocks) {
-      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSingle",
-                     "block", bi, ":", "extents:", block.extents(), 
-                     range_str(block));
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                     "block", bi, ":",
+                     "offsets:", block.offsets(),
+                     "extents:", block.extents());
+
+      dash::test::print_nview("   block row", block);
+
+      const auto & block_idx = dash::index(block);
+      const auto & pat_block = mat.pattern().block(bi);
+
+      for (int bphase = 0; bphase < pat_block.size(); ++bphase) {
+        int  bphase_row   = bphase / pat_block.extents()[1];
+        int  bphase_col   = bphase % pat_block.extents()[1];
+        auto pat_g_index  = mat.pattern().global_at({
+                              bphase_row + pat_block.offsets()[0],
+                              bphase_col + pat_block.offsets()[1]
+                            });
+        EXPECT_EQ(pat_g_index, block_idx[bphase]);
+      }
+
+      EXPECT_EQ(pat_block.size(),    block.size());
+      EXPECT_EQ(pat_block.offsets(), block.offsets());
+      EXPECT_EQ(pat_block.extents(), block.extents());
       bi++;
     }
   }
@@ -951,8 +967,14 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                        0, mat.extents()[0],
                        mat));
 
+  typedef typename dash::pattern_traits<decltype(mat.pattern())>::mapping
+                   pat_mapping_traits;
+  bool pat_traits_shifted = pat_mapping_traits::shifted ||
+                            pat_mapping_traits::diagonal;
+
+  EXPECT_EQ_U(pat_traits_shifted, index(mat_local).is_shifted());
+
   EXPECT_TRUE_U(index(mat_local).is_strided());
-  EXPECT_TRUE_U(index(mat_local).is_shifted());
   EXPECT_TRUE_U(index(mat_local).is_sub());
   EXPECT_FALSE_U(index(dash::domain(mat_local)).is_sub());
 
@@ -965,3 +987,4 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
 
   dash::test::print_nview("mat_local",  mat_local);
 }
+

@@ -288,7 +288,6 @@ public:
   typedef Iterator                                iterator;
   typedef Sentinel                                sentinel;
   typedef dash::default_index_t                   index_type;
-//typedef internal::LocalPattern<dash::ROW_MAJOR> pattern_type;
 
 protected:
   constexpr RangeBase()                     = default;
@@ -326,8 +325,6 @@ public:
   typedef typename RangeT::index_type                           index_type;
   typedef typename RangeT::size_type                             size_type;
 
-//typedef dash::IndexSetSub<RangeT, 0>                      index_set_type;
-//typedef typename RangeT::index_set_type                   index_set_type;
   typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
 
   /// Whether the view type is a projection (has less dimensions than the
@@ -370,8 +367,6 @@ public:
   typedef Sentinel                                              sentinel;
   typedef dash::default_index_t                               index_type;
   typedef dash::default_size_t                                 size_type;
-//typedef dash::IndexSetSub<self_t, 0>                    index_set_type;
-//typedef dash::IndexSetIdentity<self_t>                  index_set_type;
   typedef std::integral_constant<dim_t, 1>                          rank;
 
   typedef typename iterator::value_type                       value_type;
@@ -454,7 +449,6 @@ private:
 public:
   typedef RangeT                                               domain_type;
   typedef RangeT                                               origin_type;
-//typedef typename RangeT::pattern_type                       pattern_type;
   typedef RangeT                                                image_type;
   typedef RangeT                                               global_type;
   typedef RangeT                                                local_type;
@@ -504,7 +498,6 @@ public:
 
   typedef dash::default_index_t                                 index_type;
   typedef dash::default_size_t                                   size_type;
-//typedef typename internal::LocalPattern<dash::ROW_MAJOR>    pattern_type;
 
   typedef LocalIterator                                         value_type;
 
@@ -513,7 +506,6 @@ public:
             
   typedef IteratorRange<local_iterator, local_sentinel>         local_type;
   typedef self_t                                               global_type;
-//typedef self_t                                               domain_type;
 
   typedef std::integral_constant<bool, true>                      is_local;
 

@@ -1274,8 +1274,16 @@ class IndexSetBlocks
            >::blockspec_type::ndim::value
          >
 {
+  typedef
+    typename dash::pattern_traits<
+               typename dash::view_traits<
+                 typename std::decay<DomainType>::type
+               >::pattern_type
+             >::blockspec_type::ndim
+             blocks_ndim;
+
   typedef IndexSetBlocks<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef IndexSetBase<self_t, DomainType, blocks_ndim::value>  base_t;
  public:
   typedef typename base_t::index_type                       index_type;
   typedef typename base_t::size_type                         size_type;
@@ -1300,7 +1308,7 @@ class IndexSetBlocks
 
   // Rank of blocks index set should depend on blockspec dimensions of
   // the domain's pattern type.
-  static constexpr std::size_t NBlocksDim = base_t::rank::value;
+  static constexpr std::size_t NBlocksDim = blocks_ndim::value;
 
  public:
   constexpr static bool  view_domain_is_local
@@ -1442,12 +1450,28 @@ template <class DomainType>
 class IndexSetBlock
 : public IndexSetBase<
            IndexSetBlock<DomainType>,
-           DomainType >
+           DomainType,
+           // Number of dimensions in the domain pattern's block spec:
+           dash::pattern_traits<
+             typename dash::view_traits<
+               typename std::decay<DomainType>::type
+             >::pattern_type
+           >::ndim::value
+         >
 {
+  typedef
+    typename dash::pattern_traits<
+               typename dash::view_traits<
+                 typename std::decay<DomainType>::type
+               >::pattern_type
+             >::ndim
+             pattern_ndim;
+
   typedef IndexSetBlock<DomainType>                               self_t;
-  typedef IndexSetBase<self_t, DomainType>                        base_t;
+  typedef IndexSetBase<self_t, DomainType, pattern_ndim::value>   base_t;
  public:
   typedef typename DomainType::index_type                     index_type;
+  typedef typename DomainType::size_type                       size_type;
    
   typedef self_t                                              local_type;
   typedef IndexSetGlobal<DomainType>                         global_type;
@@ -1463,7 +1487,7 @@ class IndexSetBlock
   index_type _block_idx;
   index_type _size;
 
-  constexpr static dim_t NDim = 1;
+  constexpr static dim_t NBlockDim = pattern_ndim::value;
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
@@ -1480,7 +1504,7 @@ class IndexSetBlock
     index_type         block_idx)
   : base_t(view)
   , _block_idx(block_idx)
-  , _size(calc_size())
+  , _size(calc_size(block_idx))
   { }
 
   constexpr explicit IndexSetBlock(
@@ -1488,8 +1512,30 @@ class IndexSetBlock
     index_type         block_idx)
   : base_t(std::move(view))
   , _block_idx(block_idx)
-  , _size(calc_size())
+  , _size(calc_size(block_idx))
   { }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NBlockDim>
+  extents() const {
+    return ( this->is_local()
+             ? this->pattern().local_block(_block_idx).extents()
+             : this->pattern().block(_block_idx).extents()
+           );
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  constexpr std::array<index_type, NBlockDim>
+  offsets() const {
+    return ( this->is_local()
+             ? this->pattern().local_block(_block_idx).offsets()
+             : this->pattern().block(_block_idx).offsets()
+           );
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr iterator begin() const {
     return iterator(*this, 0);
@@ -1500,20 +1546,22 @@ class IndexSetBlock
   }
 
   constexpr index_type rel(index_type block_phase) const {
-    return block_phase +
-           ( view_domain_is_local
-             ? ( // index of block at last index in domain
-                 this->pattern().local_block_at(
-                   this->pattern().coords(
-                     // local offset to global offset:
-                     this->pattern().global(
-                       *(this->domain().begin())
-                     )
-                   )
-                 ).index )
-             : ( // index of block at first index in domain
-                 this->pattern().block_at(
-                   {{ *(this->domain().begin()) }}
+    return ( view_domain_is_local
+             ? ( // translate block phase to local index:
+                 this->pattern().local_at(
+                   // global coords
+                   this->pattern().coords(block_phase),
+                   // viewspec
+                   this->pattern().local_block(_block_idx)
+                 ) )
+             : ( // translate block phase to global index:
+                 this->pattern().global_at(
+                   // global coords
+                   dash::CartesianIndexSpace<NBlockDim>(
+                     this->pattern().block(_block_idx).extents()
+                   ).coords(block_phase),
+                   // viewspec
+                   this->pattern().block(_block_idx)
                  ) )
            );
   }
@@ -1533,31 +1581,20 @@ class IndexSetBlock
   }
 
  private:
-  constexpr index_type calc_size() const {
+  constexpr index_type calc_size(index_type block_idx) const {
     return ( view_domain_is_local
-             ? ( // index of block at last index in domain
-                 this->pattern().local_block_at(
-                   {{ *( this->domain().begin()
-                         + (this->domain().size() - 1) ) }}
-                 ).index -
-                 // index of block at first index in domain
-                 this->pattern().local_block_at(
-                   {{ *( this->domain().begin() ) }}
-                 ).index + 1 )
-             : ( // index of block at last index in domain
-                 this->pattern().block_at(
-                   {{ *( this->domain().begin()
-                         + (this->domain().size() - 1) ) }}
-                 ) -
-                 // index of block at first index in domain
-                 this->pattern().block_at(
-                   {{ *(this->domain().begin()) }}
-                 ) + 1 )
+             ? ( // viewspec of local block referenced by this view:
+                 this->pattern().local_block(block_idx).size()
+               )
+             : ( // viewspec of block referenced by this view:
+                 this->pattern().block(block_idx).size()
+               )
            );
   }
 }; // class IndexSetBlock
 
 } // namespace dash
+
 #endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_SET_H__INCLUDED

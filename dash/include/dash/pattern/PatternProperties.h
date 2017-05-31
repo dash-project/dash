@@ -776,26 +776,30 @@ struct pattern_layout_traits
 template<typename PatternType>
 struct pattern_traits
 {
-  typedef typename PatternType::index_type
+  typedef typename std::decay<PatternType>::type pattern_type;
+
+  typedef typename pattern_type::index_type
           index_type;
-  typedef typename PatternType::size_type
+  typedef typename pattern_type::size_type
           size_type;
 
-  typedef typename dash::pattern_partitioning_traits<PatternType>::type
+  typedef typename dash::pattern_partitioning_traits<pattern_type>::type
           partitioning;
-  typedef typename dash::pattern_mapping_traits<PatternType>::type
+  typedef typename dash::pattern_mapping_traits<pattern_type>::type
           mapping;
-  typedef typename dash::pattern_layout_traits<PatternType>::type
+  typedef typename dash::pattern_layout_traits<pattern_type>::type
           layout;
 
   typedef typename std::decay<
-                     decltype(std::declval<PatternType>().blockspec())
+                     decltype(std::declval<pattern_type>().blockspec())
                    >::type
           blockspec_type;
   typedef typename std::decay<
-                     decltype(std::declval<PatternType>().local_blockspec())
+                     decltype(std::declval<pattern_type>().local_blockspec())
                    >::type
           local_blockspec_type;
+
+  typedef std::integral_constant<dim_t, pattern_type::ndim()> ndim;
 };
 
 //////////////////////////////////////////////////////////////////////////////

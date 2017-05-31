@@ -171,7 +171,6 @@ private:
 
 public:
   constexpr IteratorViewOrigin(Iterator begin, Iterator end)
-//: base_t(std::move(begin), std::move(end)) {
   : base_t(begin, end)
   , _index_set(*this)
   { }

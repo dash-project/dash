@@ -1097,9 +1097,6 @@ GlobOutputIt copy(
 
   auto out_range  = dash::make_range(out_first, out_h_last);
 
-// DASH_LOG_TRACE("dash::copy", "out value range:", out_range);
-// DASH_LOG_TRACE("dash::copy", "out index range:", dash::index(out_range));
-
   auto out_blocks = dash::blocks(out_range);
   auto in_copy_it = in_first;
 
