@@ -5,6 +5,9 @@
 #include <dash/Matrix.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
+#include <dash/algorithm/ForEach.h>
 #include <dash/pattern/ShiftTilePattern1D.h>
 #include <dash/pattern/TilePattern1D.h>
 #include <dash/pattern/BlockPattern1D.h>
@@ -801,6 +804,54 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
     EXPECT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);
   }
+}
+
+
+TEST_F(CopyTest, GlobalToGlobal)
+{
+  using value_t = int;
+  constexpr int elem_per_unit = 100;
+  dash::Array<value_t> source(dash::size() * elem_per_unit);
+  dash::Array<value_t> target(dash::size() * elem_per_unit);
+
+  dash::fill(target.begin(), target.end(), 0);
+  dash::generate_with_index(source.begin(), source.end(),
+    [](size_t idx) {
+      return dash::myid() * 1000 + idx;
+    }
+  );
+
+  source.barrier();
+
+  // copy the full range
+  dash::copy(source.begin(), source.end(), target.begin());
+  source.barrier();
+
+  dash::for_each_with_index(target.begin(), target.end(),
+    [](value_t val, size_t idx) {
+      ASSERT_EQ_U(val, dash::myid() * 1000 + idx);
+    }
+  );
+
+  // copy the range with an offset (effectively moving the input
+  // range to the left by 1)
+  dash::copy(source.begin() + 1, source.end(), target.begin());
+  source.barrier();
+
+  dash::for_each_with_index(target.begin(), target.end() - 1,
+    [](value_t val, size_t idx) {
+      std::cout << idx << ": " << val << std::endl;
+      // the array has shifted so the last element is different
+      if ((idx % elem_per_unit) == (elem_per_unit - 1)) {
+        // the last element comes from the next unit
+        // this element has not been copied on the last unit
+        ASSERT_EQ_U(val, (dash::myid() + 1) * 1000 + idx + 1);
+      } else {
+        ASSERT_EQ_U(val, dash::myid() * 1000 + idx + 1);
+      }
+    }
+  );
+
 }
 
 #if 0
