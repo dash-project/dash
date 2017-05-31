@@ -19,6 +19,8 @@
 #include <dash/view/Chunked.h>
 #include <dash/view/Sub.h>
 
+#include <dash/view/MakeRange.h>
+
 #include <type_traits>
 
 

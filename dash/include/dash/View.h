@@ -81,6 +81,7 @@
 #include <dash/view/Remote.h>
 #include <dash/view/Apply.h>
 #include <dash/view/Sub.h>
+#include <dash/view/MakeRange.h>
 
 #include <dash/view/SetUnion.h>
 #include <dash/view/SetIntersect.h>
@@ -96,38 +97,5 @@
 
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewBlocksMod.h>
-
-//#include <dash/Range.h>
-
-
-namespace dash {
-
-
-#if 0
-
-template <class Iterator, class Sentinel>
-constexpr dash::IteratorViewOrigin<Iterator, Sentinel>
-make_view(const Iterator & begin, const Sentinel & end) {
-  return dash::IteratorViewOrigin<Iterator, Sentinel>(
-           (begin),
-           (end));
-}
-
-template <class Iterator, class Sentinel>
-constexpr dash::IteratorViewOrigin<
-            typename std::decay<Iterator>::type,
-            typename std::decay<Sentinel>::type >
-make_view(Iterator && begin, Sentinel && end) {
-  return dash::IteratorViewOrigin<
-            typename std::decay<Iterator>::type,
-            typename std::decay<Sentinel>::type
-         >(std::move(begin),
-           std::move(end));
-}
-
-#endif
-
-} // namespace dash
-
 
 #endif // DASH__VIEW_H__INCLUDED
