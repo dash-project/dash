@@ -212,7 +212,7 @@ GlobOutputIt transform(
  * </pre>
  */
 template<
-  typename ValueType,
+  class ValueType,
   class InputAIt,
   class InputBIt,
   class OutputIt,
@@ -283,7 +283,7 @@ OutputIt transform_local(
  *
  */
 template<
-  typename ValueType,
+  class ValueType,
   class InputIt,
   class GlobInputIt,
   class GlobOutputIt,
