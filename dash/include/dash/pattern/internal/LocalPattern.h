@@ -52,7 +52,7 @@ public:
           > layout_properties;
 };
 
-} // namespace dash
 } // namespace internal
+} // namespace dash
 
 #endif // DASH__PATTERN__INTERNAL__LOCAL_PATTERN_H__INCLUDED
