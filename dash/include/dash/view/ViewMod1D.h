@@ -614,6 +614,7 @@ public:
 
   typedef typename Iterator::pattern_type                      pattern_type;
   typedef std::integral_constant<dim_t, pattern_type::ndim()>          rank;
+//typedef std::integral_constant<dim_t, 1>                             rank;
 
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>           local_type;
   typedef RangeT                                                global_type;
@@ -702,21 +703,60 @@ public:
 };
 
 
+
+template <
+  class LocalIterator,
+  class LocalSentinel,
+  class IndexSet >
+struct view_traits<
+         IteratorRangeOrigin<
+           ViewIterator<LocalIterator *, IndexSet>,
+           ViewIterator<LocalSentinel *, IndexSet>
+         > > {
+private:
+  typedef ViewIterator<LocalIterator *, IndexSet>                  iterator;
+  typedef ViewIterator<LocalSentinel *, IndexSet>                  sentinel;
+
+  typedef IteratorRangeOrigin<iterator, sentinel>                    RangeT;
+public:
+  typedef RangeT                                                domain_type;
+  typedef RangeT                                                origin_type;
+  typedef RangeT                                                 image_type;
+
+  typedef std::integral_constant<dim_t, 1>                             rank;
+
+  typedef RangeT                                                 local_type;
+//typedef IteratorRangeLocalOrigin<iterator, sentinel>          global_type;
+
+  typedef typename iterator::index_type                          index_type;
+  typedef typename std::make_unsigned<index_type>::type           size_type;
+
+  typedef dash::IndexSetIdentity< 
+            IteratorRangeOrigin<iterator, sentinel> >        index_set_type;
+
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, true>                 is_view;
+  typedef std::integral_constant<bool, true>                 is_origin;
+  typedef std::integral_constant<bool, true>                 is_local;
+};
+
 template <
   typename LocalIterator,
-  typename LocalSentinel >
-class IteratorRangeOrigin<LocalIterator *, LocalSentinel *>
+  typename LocalSentinel,
+  typename IndexSet >
+class IteratorRangeOrigin<
+        ViewIterator<LocalIterator *, IndexSet>,
+        ViewIterator<LocalSentinel *, IndexSet> >
 {
-  typedef IteratorRangeOrigin<LocalIterator *, LocalSentinel *> self_t;
-
-  LocalIterator * _begin;
-  LocalSentinel * _end;
+  typedef IteratorRangeOrigin<
+            ViewIterator<LocalIterator *, IndexSet>,
+            ViewIterator<LocalSentinel *, IndexSet> > self_t;
 
 public:
-  typedef LocalIterator *                                         iterator;
-  typedef LocalSentinel *                                         sentinel;
-  typedef const LocalIterator *                             const_iterator;
-  typedef const LocalSentinel *                             const_sentinel;
+  typedef ViewIterator<LocalIterator *, IndexSet>                 iterator;
+  typedef ViewIterator<LocalSentinel *, IndexSet>                 sentinel;
+  typedef ViewIterator<const LocalIterator *, IndexSet>     const_iterator;
+  typedef ViewIterator<const LocalSentinel *, IndexSet>     const_sentinel;
 
   typedef dash::default_index_t                                 index_type;
   typedef dash::default_size_t                                   size_type;
@@ -726,6 +766,10 @@ public:
   typedef self_t                                               global_type;
 
   typedef std::integral_constant<bool, true>                      is_local;
+
+private:
+  iterator _begin;
+  sentinel _end;
 
 public:
   constexpr IteratorRangeOrigin(iterator begin, sentinel end)

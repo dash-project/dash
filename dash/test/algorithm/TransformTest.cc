@@ -261,3 +261,4 @@ TEST_F(TransformTest, LocalIteratorInput)
 
   global_v.barrier();
 }
+

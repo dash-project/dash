@@ -806,7 +806,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
   }
 }
 
-
+#if 0
 TEST_F(CopyTest, GlobalToGlobal)
 {
   using value_t = int;
@@ -851,8 +851,8 @@ TEST_F(CopyTest, GlobalToGlobal)
       }
     }
   );
-
 }
+#endif
 
 #if 0
 // TODO
