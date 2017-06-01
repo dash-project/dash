@@ -2,12 +2,25 @@
 #define DASH__VIEW__DOMAIN_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Range.h>
-
-#include <dash/view/ViewTraits.h>
-
+#include <dash/Meta.h>
 
 namespace dash {
+
+namespace detail {
+  /**
+   * Definition of type trait \c dash::detail::has_type_domain_type<T>
+   * with static member \c value indicating whether type \c T provides
+   * dependent type \c domain_type.
+   */
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
+}
+
+
+// -----------------------------------------------------------------------
+// Forward-declarations
+
+template <typename ViewT>
+struct view_traits;
 
 // ------------------------------------------------------------------------
 // dash::domain(View)

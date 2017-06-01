@@ -795,7 +795,7 @@ template <
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
-  ValueType         * out_first)
+  ValueType   * out_first)
 {
   const auto & team = in_first.team();
   dash::util::UnitLocality uloc(team, team.myid());

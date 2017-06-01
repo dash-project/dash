@@ -99,10 +99,6 @@ public:
   }
 
   constexpr dart_gptr_t dart_gptr() const {
-//   DASH_LOG_DEBUG("ViewIterator",
-//                  "it.pos:",  _domain_it.pos(),
-//                  "it.gpos:", _domain_it.gpos(),
-//                  "pos:",     this->pos());
     return (_domain_it + _index_set[this->pos()]).dart_gptr();
   }
 

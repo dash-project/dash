@@ -2,7 +2,6 @@
 #define DASH__VIEW__VIEW_MOD_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Range.h>
 #include <dash/Iterator.h>
 
 #include <dash/util/UniversalMember.h>
@@ -146,6 +145,125 @@ class ViewGlobalMod;
 
 #endif // DOXYGEN
 
+/**
+ * \concept{DashRangeConcept}
+ */
+template <typename RangeType>
+constexpr auto begin(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).begin()) {
+  return std::forward<RangeType>(range).begin();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
+constexpr auto end(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).end()) {
+  return std::forward<RangeType>(range).end();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
+constexpr auto
+size(RangeType && r)
+  -> decltype(std::forward<RangeType>(r).size()) {
+  return std::forward<RangeType>(r).size();
+}
+
+/**
+ * Write range of random access iterators to output stream.
+ */
+template <
+  class Range,
+  class RangeDType = typename std::decay<Range>::type
+>
+auto operator<<(
+  std::ostream  & o,
+  Range        && range)
+  -> typename std::enable_if<
+       (
+      // type is range:
+         dash::is_range<RangeDType>::value &&
+      // type is not std::string or derivative:
+         !std::is_same<RangeDType, std::string>::value &&
+         !std::is_base_of<std::string, RangeDType>::value &&
+      // range iterator type is random access:
+         std::is_same<
+           std::random_access_iterator_tag,
+           typename std::iterator_traits<
+             typename std::decay<
+               decltype(dash::begin(std::forward<Range>(range)))
+             >::type
+           >::iterator_category
+         >::value
+       ),
+       std::ostream &
+    >::type
+{
+  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+    value_t;
+
+  auto && rng = std::forward<Range>(range);
+
+  std::ostringstream ss;
+  int pos = 0;
+  ss << dash::typestr(*dash::begin(rng))
+     << " { ";
+  for (auto it = dash::begin(rng); it != dash::end(rng); ++it, ++pos) {
+    ss << static_cast<const value_t>(*it) << " ";
+  }
+  ss << "}";
+  return operator<<(o, ss.str());
+}
+
+/**
+ * Write range of non-random access iterators to output stream.
+ */
+template <
+  class Range,
+  class RangeDType = typename std::decay<Range>::type
+>
+auto operator<<(
+  std::ostream  & o,
+  Range        && range)
+  -> typename std::enable_if<
+       (
+      // type is range:
+         dash::is_range<RangeDType>::value &&
+      // type is not std::string or derivative:
+         !std::is_same<RangeDType, std::string>::value &&
+         !std::is_base_of<std::string, RangeDType>::value &&
+      // range iterator type is not random access:
+         !std::is_same<
+           std::random_access_iterator_tag,
+           typename std::iterator_traits<
+             typename std::decay<
+               decltype(dash::begin(std::forward<Range>(range)))
+             >::type
+           >::iterator_category
+         >::value
+       ),
+       std::ostream &
+    >::type
+{
+  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+    value_t;
+
+  auto && rng = std::forward<Range>(range);
+
+  std::ostringstream ss;
+  ss << dash::typestr(*dash::begin(rng))
+     << " { ";
+  for (auto it = dash::begin(rng); it != dash::end(rng); ++it) {
+    ss << static_cast<const value_t>(*it) << " ";
+  }
+  ss << "}";
+  return operator<<(o, ss.str());
+}
+
 
 
 // ------------------------------------------------------------------------
@@ -165,7 +283,7 @@ public:
   typedef typename std::conditional<
                      // try is_copyable, is_moveable
                      (     view_traits<domain_type>::is_origin::value
-                  //   && !view_traits<domain_type>::is_view::value
+                       && !view_traits<domain_type>::is_view::value
                      ),
                      const domain_type &,
                      domain_type
@@ -231,7 +349,7 @@ protected:
    * Constructor, creates a view on a given domain.
    */
   constexpr explicit ViewModBase(domain_type && domain)
-  : _domain(std::forward<domain_type>(domain))
+  : _domain(std::move(domain))
   { }
 
   /**
@@ -319,7 +437,7 @@ struct view_traits<ViewLocalMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef typename domain_type::local_type                      image_type;
+  typedef typename view_traits<domain_type>::local_type         image_type;
   typedef ViewLocalMod<DomainType, NDim>                        local_type;
   typedef domain_type                                          global_type;
 
@@ -350,9 +468,9 @@ public:
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
 private:
-  typedef ViewLocalMod<DomainType, NDim>                           self_t;
+  typedef ViewLocalMod<DomainType, NDim>                            self_t;
   typedef ViewModBase<
-            ViewLocalMod<DomainType, NDim>, DomainType, NDim >     base_t;
+            ViewLocalMod<DomainType, NDim>, DomainType, NDim >      base_t;
 public:
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
   typedef self_t                                                local_type;
@@ -418,7 +536,7 @@ public:
    */
   constexpr explicit ViewLocalMod(
     domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain())
   { }
 

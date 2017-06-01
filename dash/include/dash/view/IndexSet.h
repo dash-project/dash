@@ -1,6 +1,8 @@
 #ifndef DASH__VIEW__INDEX_SET_H__INCLUDED
 #define DASH__VIEW__INDEX_SET_H__INCLUDED
 
+#include <dash/Iterator.h>
+
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
@@ -10,8 +12,6 @@
 #include <dash/view/Global.h>
 
 #include <dash/pattern/PatternProperties.h>
-
-#include <dash/Iterator.h>
 
 #include <dash/util/FunctionalExpr.h>
 #include <dash/util/ArrayExpr.h>
@@ -126,6 +126,11 @@ class IndexSetGlobal;
 template <class DomainType, std::size_t SubDim>
 class IndexSetSub;
 
+template <class DomainType>
+class IndexSetBlocks;
+
+template <class DomainType>
+class IndexSetBlock;
 
 
 // -----------------------------------------------------------------------
@@ -315,7 +320,7 @@ class IndexSetBase
     view_origin_type;
   typedef DomainValueT
     view_domain_type;
-  typedef typename DomainValueT::local_type
+  typedef typename dash::view_traits<DomainValueT>::local_type
     view_local_type;
   typedef typename dash::view_traits<DomainValueT>::global_type
     view_global_type;

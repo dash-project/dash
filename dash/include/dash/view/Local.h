@@ -2,7 +2,6 @@
 #define DASH__VIEW__LOCAL_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Range.h>
 
 #include <dash/view/ViewTraits.h>
 

@@ -452,12 +452,11 @@ struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef typename view_traits<domain_type>::origin_type       origin_type;
   typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewBlocksMod<DomainType, NDim>                       image_type;
-  typedef typename domain_type::local_type                      local_type;
+  typedef typename view_traits<domain_type>::local_type         local_type;
   typedef ViewBlocksMod<DomainType, NDim>                      global_type;
 
   typedef typename view_traits<domain_type>::index_type         index_type;
   typedef typename view_traits<domain_type>::size_type           size_type;
-//typedef dash::IndexSetBlocks<ViewBlocksMod<DomainType, NDim>>
   typedef dash::IndexSetBlocks<DomainType>
                                                             index_set_type;
 
@@ -487,7 +486,7 @@ class ViewBlocksMod
   typedef typename view_traits<DomainType>::size_type            size_type;
  private:
   typedef ViewBlockMod<DomainType, NDim>                        block_type;
-  typedef typename domain_type::local_type               domain_local_type;
+  typedef typename view_traits<domain_type>::local_type  domain_local_type;
  public:
   typedef dash::IndexSetBlocks<DomainType>                  index_set_type;
   typedef self_t                                               global_type;

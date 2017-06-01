@@ -46,70 +46,76 @@
  */
 
 
-#include <dash/Types.h>
-#include <dash/Meta.h>
-
-#include <type_traits>
-
-
-namespace dash {
-
-
-#ifndef DOXYGEN
-
 // Related: boost::range
 //
 // https://github.com/boostorg/range/tree/develop/include/boost/range
 //
 
+
+#include <dash/Types.h>
+#include <dash/Meta.h>
+
+#include <dash/view/Domain.h>
+
+#include <type_traits>
+#include <sstream>
+
+
+namespace dash {
+
+// -----------------------------------------------------------------------
+// Forward-declarations
+
 template <typename ViewT>
 struct view_traits;
 
-// Forward-declaration
-template <typename ViewType>
+template <class IndexSetType, class DomainType, std::size_t NDim>
+class IndexSetBase;
+
+template <class DomainType>
 class IndexSetIdentity;
+
+template <class DomainType>
+class IndexSetLocal;
+
+template <class DomainType>
+class IndexSetGlobal;
 
 template <class DomainType, std::size_t SubDim>
 class IndexSetSub;
 
-// Forward-declaration
-template <typename Iterator, typename Sentinel = Iterator>
+template <class RangeOrigin>
 class IteratorRange;
 
-// Forward-declaration
+template <class Iterator, class Sentinel>
+class IteratorRangeOrigin;
+
 template <typename Iterator, typename Sentinel>
-class IteratorRange<Iterator *, Sentinel *>;
+class IteratorRangeOrigin<Iterator *, Sentinel *>;
 
-#endif
+template <
+  class ViewModType,
+  class DomainType,
+  dim_t NDim >
+class ViewModBase;
 
+template <
+  class DomainType,
+  dim_t NDim >
+class ViewLocalMod;
 
-/**
- * \concept{DashRangeConcept}
- */
-template <typename RangeType>
-constexpr auto begin(RangeType && range)
-  -> decltype(std::forward<RangeType>(range).begin()) {
-  return std::forward<RangeType>(range).begin();
-}
+template <
+  class DomainType,
+  dim_t SubDim,
+  dim_t NDim >
+class ViewSubMod;
 
-/**
- * \concept{DashRangeConcept}
- */
-template <class RangeType>
-constexpr auto end(RangeType && range)
-  -> decltype(std::forward<RangeType>(range).end()) {
-  return std::forward<RangeType>(range).end();
-}
+template <
+  class DomainType,
+  dim_t NDim >
+class ViewGlobalMod;
 
-/**
- * \concept{DashRangeConcept}
- */
-template <class RangeType>
-constexpr auto
-size(RangeType && r)
-  -> decltype(std::forward<RangeType>(r).size()) {
-  return std::forward<RangeType>(r).size();
-}
+// -----------------------------------------------------------------------
 
 
 namespace detail {
@@ -209,6 +215,95 @@ struct is_range : dash::detail::_is_range_type<
                     typename std::decay<RangeType>::type
                   >
 { };
+
+#if 0
+
+template <
+  class RangeOrigin,
+  typename std::enable_if<
+             view_traits<RangeOrigin>::is_local::value
+           > * = 0>
+struct view_traits<IteratorRange<RangeOrigin> >
+{
+private:
+  typedef IteratorRange<RangeOrigin> RangeT;
+public:
+  typedef RangeT                                               domain_type;
+  typedef RangeT                                               origin_type;
+  typedef RangeT                                                image_type;
+  typedef RangeT                                               global_type;
+  typedef RangeT                                                local_type;
+  typedef typename RangeT::index_type                           index_type;
+  typedef typename RangeT::size_type                             size_type;
+  typedef dash::IndexSetIdentity<RangeT>                    index_set_type;
+
+  /// Whether the view type is a projection (has less dimensions than the
+  /// view's domain type).
+  typedef std::integral_constant<bool, false>                is_projection;
+  typedef std::integral_constant<bool, false>                is_view;
+  /// Whether the view is the origin domain.
+  typedef std::integral_constant<bool, false>                is_origin;
+  /// Whether the view / container type is a local view.
+  /// \note A container type is local if it is identical to its
+  ///       \c local_type
+  typedef std::integral_constant<bool, true>                 is_local;
+
+  typedef std::integral_constant<dim_t, 1>                   rank;
+};
+
+/**
+ * Specialization of adapter template for range concept, wraps `begin`
+ * and `end` pointers in range type.
+ */
+template <
+  typename LocalIterator,
+  typename LocalSentinel >
+class IteratorRange<LocalIterator *, LocalSentinel *>
+{
+  typedef IteratorRange<LocalIterator *, LocalSentinel *> self_t;
+
+  LocalIterator * _begin;
+  LocalSentinel * _end;
+
+public:
+  typedef LocalIterator *                                         iterator;
+  typedef LocalSentinel *                                         sentinel;
+  typedef const LocalIterator *                             const_iterator;
+  typedef const LocalSentinel *                             const_sentinel;
+
+  typedef dash::default_index_t                                 index_type;
+  typedef dash::default_size_t                                   size_type;
+
+  typedef LocalIterator                                         value_type;
+
+  typedef iterator local_iterator;
+  typedef sentinel local_sentinel;
+            
+  typedef IteratorRange<local_iterator, local_sentinel>         local_type;
+  typedef self_t                                               global_type;
+
+  typedef std::integral_constant<bool, true>                      is_local;
+
+public:
+  constexpr IteratorRange(iterator begin, sentinel end)
+  : _begin(begin)
+  , _end(end)
+  { }
+
+  constexpr const_iterator begin() const { return _begin; }
+  constexpr const_sentinel end()   const { return _end;   }
+
+  iterator begin() { return _begin; }
+  sentinel end()   { return _end;   }
+
+  constexpr size_type size() const { return std::distance(_begin, _end); }
+
+  constexpr const local_type & local() const {
+    return *this;
+  }
+};
+
+#endif
 
 } // namespace dash
 

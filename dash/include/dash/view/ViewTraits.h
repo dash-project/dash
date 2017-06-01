@@ -53,12 +53,6 @@ template <class ViewType>
 class IndexSetIdentity;
 
 namespace detail {
-  /**
-   * Definition of type trait \c dash::detail::has_type_domain_type<T>
-   * with static member \c value indicating whether type \c T provides
-   * dependent type \c domain_type.
-   */
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
   DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type);
 }
 
@@ -111,7 +105,8 @@ namespace detail {
                    dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
 
-    typedef typename ViewT::local_type                            local_type;
+//  typedef typename ViewT::local_type                            local_type;
+    typedef typename view_traits<ViewT>::local_type               local_type;
     typedef typename ViewT::global_type                          global_type;
     typedef typename std::conditional<is_local::value,
                                       local_type,
@@ -138,7 +133,8 @@ namespace detail {
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
     typedef ContainerT                                           global_type;
-    typedef typename ContainerT::local_type                       local_type;
+  //typedef typename ContainerT::local_type                       local_type;
+    typedef typename view_traits<ContainerT>::local_type          local_type;
     typedef typename ContainerT::index_type                       index_type;
     typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
@@ -156,7 +152,8 @@ namespace detail {
     ///       \c local_type
     typedef std::integral_constant<bool, std::is_same<
                                            ContainerT,
-                                           typename ContainerT::local_type
+                                           local_type
+                                           // typename ContainerT::local_type
                                          >::value >            is_local;
 
     typedef std::integral_constant<dim_t,

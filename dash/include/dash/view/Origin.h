@@ -30,7 +30,7 @@ typename std::enable_if<
   ContainerT
 >::type
 origin(ContainerT && container) {
-  return container;
+  return std::forward<ContainerT>(container);
 }
 
 template <class ViewT>

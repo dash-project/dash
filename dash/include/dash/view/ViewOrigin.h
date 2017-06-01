@@ -1,13 +1,12 @@
 #ifndef DASH__VIEW__VIEW_ORIGIN_H__INCLUDED
 #define DASH__VIEW__VIEW_ORIGIN_H__INCLUDED
 
+#include <dash/Types.h>
+#include <dash/Iterator.h>
+
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewTraits.h>
 #include <dash/view/ViewIterator.h>
-
-#include <dash/Types.h>
-#include <dash/Range.h>
-#include <dash/Iterator.h>
 
 
 namespace dash {
