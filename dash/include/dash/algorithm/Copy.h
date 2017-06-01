@@ -1141,9 +1141,9 @@ GlobOutputIt copy(
   auto out_l_range  = dash::local(out_g_range);
   auto in_l_range   = dash::local(in_g_range);
   // copy local to global range:
-  auto out_l_end    = dash::copy(dash::begin(in_l_range),
-                                 dash::end(in_l_range),
-                                 dash::begin(out_l_range));
+  auto out_l_end    = std::copy(dash::begin(in_l_range),
+                                dash::end(in_l_range),
+                                dash::begin(out_l_range));
 
   return out_first + num_elements;
 }

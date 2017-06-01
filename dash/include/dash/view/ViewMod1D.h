@@ -516,8 +516,7 @@ public:
 
   typedef std::integral_constant<dim_t, pattern_type::ndim()>          rank;
 
-  typedef std::integral_constant<bool, std::is_pointer<iterator>::value>
-                                                                   is_local;
+  typedef std::integral_constant<bool, true>                       is_local;
   typedef ViewIterator<
             typename std::conditional<
               std::is_pointer<iterator>::value,
@@ -627,8 +626,7 @@ public:
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, false>                is_view;
   typedef std::integral_constant<bool, true>                 is_origin;
-  typedef std::integral_constant<
-            bool, std::is_pointer<Iterator>::value >         is_local;
+  typedef std::integral_constant<bool, false>                is_local;
 };
 
 
@@ -655,8 +653,7 @@ public:
 
   typedef typename iterator::pattern_type                      pattern_type;
 
-  typedef std::integral_constant<bool, std::is_pointer<iterator>::value>
-                                                                   is_local;
+  typedef std::integral_constant<bool, false>                      is_local;
 
   typedef self_t                                                global_type;
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>           local_type;
@@ -874,8 +871,9 @@ public:
   typedef ViewLocalMod<self_t, 1>                                local_type;
 
   typedef std::integral_constant<
-            // !!! HERE !!! should test for ViewIterator<T*,ISet>
-            bool, std::is_pointer<iterator>::value>                is_local;
+       // !!! HERE !!! should test for ViewIterator<T*,ISet>
+       //bool, std::is_pointer<iterator>::value>                   is_local;
+         bool, view_traits<RangeOrigin>::is_local::value> is_local;
 
   typedef dash::default_index_t                                  index_type;
   typedef dash::default_size_t                                    size_type;
