@@ -147,6 +147,7 @@ public:
   typedef DomainIterator &                              reference;
   typedef DomainIterator                               value_type;
   typedef std::ptrdiff_t                               index_type;
+  typedef self_t                                       local_type;
 private:
   DomainIterator * _domain_it;
   IndexSetType     _index_set;
