@@ -1135,16 +1135,15 @@ GlobOutputIt copy(
   auto out_h_last   = out_first + num_elements;
 
   // in/out ranges in global domain:
-  auto out_g_range  = dash::make_range(out_first, out_h_last);
-  auto in_g_range   = dash::make_range(in_first,  in_last);
+  auto         out_g_range  = dash::make_range(out_first, out_h_last);
+  const auto & in_g_range   = dash::make_range(in_first,  in_last);
   // local view on in/out ranges:
-  auto out_l_range  = dash::local(out_g_range);
-  auto in_l_range   = dash::local(in_g_range);
+  auto         out_l_range  = dash::local(out_g_range);
+  const auto & in_l_range   = dash::local(in_g_range);
   // copy local to global range:
-  auto out_l_end    = std::copy(dash::begin(in_l_range),
-                                dash::end(in_l_range),
-                                dash::begin(out_l_range));
-
+  auto         out_l_end    = std::copy(dash::begin(in_l_range),
+                                        dash::end(in_l_range),
+                                        dash::begin(out_l_range));
   return out_first + num_elements;
 }
 

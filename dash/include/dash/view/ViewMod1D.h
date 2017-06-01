@@ -518,20 +518,12 @@ public:
 
   typedef std::integral_constant<bool, true>                       is_local;
   typedef ViewIterator<
-            typename std::conditional<
-              std::is_pointer<iterator>::value,
-              iterator,
-              typename iterator::local_type
-            >::type,
+            typename iterator::local_type,
             IndexSetLocal<self_t> >
     local_iterator;
 
   typedef ViewIterator<
-            typename std::conditional<
-              std::is_pointer<sentinel>::value,
-              sentinel,
-              typename sentinel::local_type
-            >::type,
+            typename sentinel::local_type,
             IndexSetLocal<self_t> >
     local_sentinel;
 
@@ -551,28 +543,34 @@ public:
   constexpr local_iterator begin() const {
     return local_iterator(
              dash::begin(
-               this->domain()),
+               dash::local(
+                 this->domain())),
              _index_set, 0);
   }
 
   local_iterator begin() {
     return local_iterator(
              dash::begin(
-               this->domain()),
+               dash::local(
+                 const_cast<domain_type &>(
+                   dash::domain(*this)))),
              _index_set, 0);
   }
 
   constexpr local_sentinel end() const {
     return local_iterator(
              dash::begin(
-               this->domain()),
+               dash::local(
+                 this->domain())),
              _index_set, _index_set.size());
   }
 
   local_sentinel end() {
     return local_iterator(
              dash::begin(
-               this->domain()),
+               dash::local(
+                 const_cast<domain_type &>(
+                   dash::domain(*this)))),
              _index_set, _index_set.size());
   }
 
@@ -624,7 +622,7 @@ public:
             IteratorRangeOrigin<Iterator, Sentinel> >        index_set_type;
 
   typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, false>                is_view;
+  typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, true>                 is_origin;
   typedef std::integral_constant<bool, false>                is_local;
 };
