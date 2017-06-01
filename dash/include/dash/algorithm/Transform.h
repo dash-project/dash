@@ -296,65 +296,40 @@ GlobOutputIt transform(
   BinaryOperation binary_op)
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
-  auto &pattern = out_first.pattern();
   // Outut range different from rhs input range is not supported yet
-  ValueType* in_first = &(*in_a_first);
-  ValueType* in_last  = &(*in_a_last);
-  // Number of elements in local range:
-  size_t num_local_elements     = std::distance(in_first, in_last);
-  auto out_last                 = out_first + num_local_elements;
-  if (out_last.gpos() > pattern.size()) {
-    DASH_THROW(dash::exception::OutOfRange,
-      "Too many input elements in dash::transform");
-  }
+  ValueType * in_first = &(*in_a_first);
+  ValueType * in_last  = &(*in_a_last);
+  std::vector<ValueType> in_range;
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A
     // Input is (in_a_first, in_a_last).
   } else {
     // Output range different from rhs input range: C = A+B
     // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
-    dash::copy(
+    std::transform(
+      in_a_first, in_a_last,
       in_b_first,
-      in_b_first + std::distance(in_a_first, in_a_last),
-      out_first);
+      std::back_inserter(in_range),
+      binary_op);
+    in_first = in_range.data();
+    in_last  = in_first + in_range.size();
   }
 
   dash::util::Trace trace("transform");
 
+  // Resolve local range from global range:
+  // Number of elements in local range:
+  size_t num_local_elements     = std::distance(in_first, in_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
-  auto &team    = pattern.team();
-  size_t towrite = num_local_elements;
-  auto out_it    = out_first;
-  auto in_it     = in_first;
-  while (towrite > 0) {
-    auto   lpos  = out_it.lpos();
-    size_t lsize = pattern.local_size(lpos.unit);
-    size_t num_values = std::min(lsize - lpos.index, towrite);
-    dart_gptr_t dest_gptr = out_it.dart_gptr();
-    // use non-blocking transform and wait for all at the end
-    dash::internal::transform_impl(
+  trace.enter_state("transform_blocking");
+  dash::internal::transform_blocking_impl(
       dest_gptr,
-      in_it,
-      num_values,
+      in_first,
+      num_local_elements,
       binary_op.dart_operation());
-    out_it  += num_values;
-    in_it   += num_values;
-    towrite -= num_values;
-  }
-
-//  out_first.team().barrier();
-  dart_flush_all(out_first.dart_gptr());
-
-
-//  trace.enter_state("transform_blocking");
-//  dash::internal::transform_blocking_impl(
-//      dest_gptr,
-//      in_first,
-//      num_local_elements,
-//      binary_op.dart_operation());
-//  trace.exit_state("transform_blocking");
+  trace.exit_state("transform_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
   // spans over more than one block. Otherwise, the difference of two global
@@ -370,7 +345,7 @@ GlobOutputIt transform(
   // For ranges over block borders, we would have to resolve the global
   // position past the last element transformed from the iterator's pattern
   // (see dash::PatternIterator).
-  return out_it;
+  return out_first + num_local_elements;
 }
 
 /**

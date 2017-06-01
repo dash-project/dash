@@ -84,81 +84,76 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
-#ifdef DOXYGEN
+
+namespace internal {
+
+template<typename Type>
+struct dart_datatype_ {
+  static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
+};
+
+template<>
+struct dart_datatype_<char> {
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
+};
+
+template<>
+struct dart_datatype_<unsigned char> {
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
+};
+
+template<>
+struct dart_datatype_<short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
+};
+
+template<>
+struct dart_datatype_<unsigned short> {
+  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
+};
+
+template<>
+struct dart_datatype_<int> {
+  static constexpr const dart_datatype_t value = DART_TYPE_INT;
+};
+
+template<>
+struct dart_datatype_<unsigned int> {
+  static constexpr const dart_datatype_t value = DART_TYPE_UINT;
+};
+
+template<>
+struct dart_datatype_<float> {
+  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
+};
+
+template<>
+struct dart_datatype_<long> {
+  static constexpr const dart_datatype_t value = DART_TYPE_LONG;
+};
+
+template<>
+struct dart_datatype_<unsigned long> {
+  static constexpr const dart_datatype_t value = DART_TYPE_ULONG;
+};
+
+template<>
+struct dart_datatype_<double> {
+  static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
+};
+
+} // namespace internal
 
 /**
  * Type trait for mapping to DART data types.
  */
 template<typename Type>
-struct dart_datatype {
-  static constexpr const dart_datatype_t value;
+struct dart_datatype
+: public dash::internal::dart_datatype_<
+           typename std::remove_const<
+             typename std::remove_reference<Type>::type
+           >::type > {
 };
-
-/**
- * Type trait for mapping to punned DART data type for reduce operations.
- */
-template <typename T>
-struct dart_punned_datatype {
-  static constexpr const dart_datatype_t value;
-};
-
-#else
-
-template<typename Type>
-struct dart_datatype {
-  static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
-};
-
-template<>
-struct dart_datatype<char> {
-  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
-};
-
-template<>
-struct dart_datatype<unsigned char> {
-  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
-};
-
-template<>
-struct dart_datatype<short> {
-  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
-};
-
-template<>
-struct dart_datatype<unsigned short> {
-  static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
-};
-
-template<>
-struct dart_datatype<int> {
-  static constexpr const dart_datatype_t value = DART_TYPE_INT;
-};
-
-template<>
-struct dart_datatype<unsigned int> {
-  static constexpr const dart_datatype_t value = DART_TYPE_UINT;
-};
-
-template<>
-struct dart_datatype<float> {
-  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
-};
-
-template<>
-struct dart_datatype<long> {
-  static constexpr const dart_datatype_t value = DART_TYPE_LONG;
-};
-
-template<>
-struct dart_datatype<unsigned long> {
-  static constexpr const dart_datatype_t value = DART_TYPE_ULONG;
-};
-
-template<>
-struct dart_datatype<double> {
-  static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
-};
-
 
 namespace internal {
 
@@ -189,16 +184,34 @@ struct dart_pun_datatype_size<8>
 
 } // namespace internal
 
+#ifdef DOXYGEN
+
+/**
+ * Type trait for mapping to punned DART data type for reduce operations.
+ */
 template <typename T>
 struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+#else
+
+template <typename T>
+struct dart_punned_datatype {
+private:
+  typedef typename std::remove_const<
+                     typename std::remove_reference<T>::type
+                   >::type
+    TDec;
+public:
   static constexpr const dart_datatype_t value
                            = std::conditional<
                                // only use type punning if T is not a DART
                                // data type:
-                               dash::dart_datatype<T>::value
+                               dash::dart_datatype<TDec>::value
                                  == DART_TYPE_UNDEFINED,
-                               internal::dart_pun_datatype_size<sizeof(T)>,
-                               dash::dart_datatype<T>
+                               internal::dart_pun_datatype_size<sizeof(TDec)>,
+                               dash::dart_datatype<TDec>
                              >::type::value;
 };
 
