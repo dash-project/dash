@@ -271,6 +271,9 @@ public:
    *   dash::Coarray<int[10][]> y;
    * \endcode
    */
+  template<
+  int __rank = _rank::value,
+  typename = typename std::enable_if<(__rank != 0)>::type>
   explicit Coarray(const size_type & first_dim, Team & team = Team::All()) {
     if(dash::is_initialized()){
       _storage.allocate(_pattern_type(_make_size_spec(first_dim),
