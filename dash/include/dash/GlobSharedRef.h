@@ -2,8 +2,10 @@
 #define DASH__GLOB_SHARED_EF_H_
 
 #include <dash/Init.h>
+/*
 #include <dash/memory/GlobStaticMem.h>
 #include <dash/memory/GlobHeapMem.h>
+*/
 #include <dash/algorithm/Operation.h>
 
 

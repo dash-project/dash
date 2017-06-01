@@ -194,7 +194,7 @@ public:
    * \return Offset of the vertex with the highest index in local address 
    *         space.
    */
-  vertex_index_type max_vertex_index() const {
+  vertex_offset_type max_vertex_index() const {
     return _local_vertex_max_index;
   }
 
