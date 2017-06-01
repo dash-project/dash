@@ -1,6 +1,8 @@
 /* 
  * \example ex.02.array-copy\main.cpp
- * Example illustrating the use of \c dash::copy with a local array as destination.
+ *
+ * Example illustrating the use of \c dash::copy with a local array
+ * as destination.
  */
 
 #include <unistd.h>
@@ -54,35 +56,44 @@ int main(int argc, char* argv[])
     cout << "Array size:        " << array.size() << endl;
   }
 
+  // ----------------------------------------------------------------------
+  // global-to-local copy:
+  // ----------------------------------------------------------------------
+
   // destination array
   int * local_array = new int[num_elems_copy];
 
-#ifdef DASH_ENABLE_IPM
-  MPI_Pcontrol(0, "on");    // turn monitoring on
-  MPI_Pcontrol(0, "clear"); // clear all performance data
-#endif
-
-  // each unit copies from the global array into it's own local array
-  // note: each unit has the same data in it's local array at the end
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
-
-#ifdef DASH_ENABLE_IPM
-  MPI_Pcontrol(0, "off");   // turn monitoring off
-#endif
 
   std::ostringstream ss;
   ss << "Local copy at unit " << myid << ": ";
   for(size_t i = 0; i < num_elems_copy; ++i) {
     ss << local_array[i] << " ";
   }
-  ss << endl;
+  ss   << endl;
   cout << ss.str();
+
+  delete[] local_array;
 
   array.barrier();
 
-  delete[] local_array;
+  // ----------------------------------------------------------------------
+  // global-to-global copy:
+  // ----------------------------------------------------------------------
+
+  dash::Array<int> src_array(num_elems_total / 2);
+
+  std::fill(array.lbegin(), array.lend(), (myid + 1) * 10);
+  array.barrier();
+
+  dash::copy(src_array.begin(),
+             src_array.end(),
+             array.begin() + (array.size() / 4));
+
+  array.barrier();
+
 
   dash::finalize();
 

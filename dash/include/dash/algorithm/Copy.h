@@ -1121,9 +1121,9 @@ template <
   class GlobInputIt,
   class GlobOutputIt >
 GlobOutputIt copy(
-  GlobInputIt in_first,
-  GlobInputIt in_last,
-  GlobOutputIt      out_first)
+  GlobInputIt  in_first,
+  GlobInputIt  in_last,
+  GlobOutputIt out_first)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 
