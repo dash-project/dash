@@ -42,6 +42,7 @@ public:
   typedef typename base_t::reference                    reference;
   typedef typename base_t::value_type                  value_type;
   typedef typename IndexSetType::index_type            index_type;
+  typedef typename DomainIterator::pattern_type      pattern_type;
 private:
   DomainIterator  _domain_it;
   IndexSetType    _index_set;
@@ -113,6 +114,10 @@ public:
 // explicit operator DomainIterator() {
 //   return (_domain_it + _index_set[this->pos()]);
 // }
+
+  constexpr const pattern_type & pattern() const {
+    return _domain_it.pattern();
+  }
 };
 
 template <

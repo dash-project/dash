@@ -2,6 +2,7 @@
 #define DASH__VIEW__INDEX_SET_H__INCLUDED
 
 #include <dash/Iterator.h>
+#include <dash/Range.h>
 
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
@@ -228,6 +229,7 @@ template <
 constexpr auto
 index(ContainerType && c)
 -> typename std::enable_if <
+      dash::view_traits<ContainerDecayType>::is_origin::value ||
      !dash::view_traits<ContainerDecayType>::is_view::value,
      IndexSetIdentity<ContainerDecayType>
    >::type {
@@ -241,6 +243,7 @@ template <
 constexpr auto
 index(const ContainerType & c)
 -> typename std::enable_if <
+      dash::view_traits<ContainerDecayType>::is_origin::value ||
      !dash::view_traits<ContainerDecayType>::is_view::value,
      IndexSetIdentity<ContainerDecayType>
    >::type {
@@ -292,12 +295,14 @@ template <class DomainT>
 struct index_set_domain_bind_t {
   typedef typename
             std::conditional<
-              !dash::view_traits<
+              dash::view_traits<
                 typename std::decay<DomainT>::type
-              >::is_origin::value,
-              DomainT,
-              const DomainT & >::type
-    type;
+              >::is_origin::value &&
+              !std::is_copy_constructible<DomainT>::value,
+              const DomainT &,
+              DomainT
+            >::type
+          type;
 };
 
 } // namespace detail
@@ -345,7 +350,7 @@ class IndexSetBase
   typedef index_type
     value_type;
 
-  typedef typename detail::index_set_domain_bind_t<DomainType>::type
+  typedef typename detail::index_set_domain_bind_t<view_domain_type>::type
     domain_member_type;
 
   typedef std::integral_constant<std::size_t, NDim>

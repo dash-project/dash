@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/Iterator.h>
+#include <dash/Range.h>
 
 #include <dash/util/UniversalMember.h>
 #include <dash/util/ArrayExpr.h>
@@ -146,34 +147,6 @@ class ViewGlobalMod;
 #endif // DOXYGEN
 
 /**
- * \concept{DashRangeConcept}
- */
-template <typename RangeType>
-constexpr auto begin(RangeType && range)
-  -> decltype(std::forward<RangeType>(range).begin()) {
-  return std::forward<RangeType>(range).begin();
-}
-
-/**
- * \concept{DashRangeConcept}
- */
-template <class RangeType>
-constexpr auto end(RangeType && range)
-  -> decltype(std::forward<RangeType>(range).end()) {
-  return std::forward<RangeType>(range).end();
-}
-
-/**
- * \concept{DashRangeConcept}
- */
-template <class RangeType>
-constexpr auto
-size(RangeType && r)
-  -> decltype(std::forward<RangeType>(r).size()) {
-  return std::forward<RangeType>(r).size();
-}
-
-/**
  * Write range of random access iterators to output stream.
  */
 template <
@@ -280,10 +253,10 @@ class ViewModBase
 public:
   typedef DomainType                                           domain_type;
 
-  typedef typename std::conditional<
-                     // try is_copyable, is_moveable
-                     (     view_traits<domain_type>::is_origin::value
-                       && !view_traits<domain_type>::is_view::value
+  typedef typename std::conditional<(
+                        view_traits<domain_type>::is_origin::value &&
+                       !view_traits<domain_type>::is_view::value   &&
+                       !std::is_copy_constructible<domain_type>::value
                      ),
                      const domain_type &,
                      domain_type

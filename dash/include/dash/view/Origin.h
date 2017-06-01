@@ -26,7 +26,8 @@ origin(ViewT & view);
 
 template <class ContainerT>
 typename std::enable_if<
-  !dash::view_traits<typename std::decay<ContainerT>::type>::is_view::value,
+   view_traits<typename std::decay<ContainerT>::type>::is_origin::value ||
+  !view_traits<typename std::decay<ContainerT>::type>::is_view::value,
   ContainerT
 >::type
 origin(ContainerT && container) {
@@ -38,6 +39,7 @@ constexpr auto
 origin(const ViewT & view)
   -> typename std::enable_if<
        ( dash::view_traits<ViewT>::is_view::value &&
+        !dash::view_traits<ViewT>::is_origin::value &&
         !dash::view_traits<ViewT>::is_local::value ),
        const typename dash::view_traits<ViewT>::origin_type &
      >::type {

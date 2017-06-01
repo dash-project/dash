@@ -133,8 +133,8 @@ namespace detail {
     typedef ContainerT                                           domain_type;
     typedef ContainerT                                            image_type;
     typedef ContainerT                                           global_type;
-  //typedef typename ContainerT::local_type                       local_type;
-    typedef typename view_traits<ContainerT>::local_type          local_type;
+    typedef typename ContainerT::local_type                       local_type;
+  //typedef typename view_traits<ContainerT>::local_type          local_type;
     typedef typename ContainerT::index_type                       index_type;
     typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
