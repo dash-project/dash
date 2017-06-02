@@ -396,7 +396,17 @@ dart_ret_t dart_team_memalloc_aligned_full(
   dart_segment_info_t *segment = dart_segment_alloc(
                                 &team_data->segdata, DART_SEGMENT_ALLOC);
 
-  MPI_Win_allocate(nbytes, 1, MPI_INFO_NULL, team_data->comm, &baseptr, &win);
+  if (MPI_Win_allocate(
+      nbytes, 1, MPI_INFO_NULL,
+      team_data->comm, &baseptr, &win) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_team_memfree: MPI_Win_allocate failed");
+    return DART_ERR_OTHER;
+  }
+
+  if (MPI_Win_lock_all(0, win) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_team_memfree: MPI_Win_lock_all failed");
+    return DART_ERR_OTHER;
+  }
 
   if (segment->baseptr != NULL) {
     free(segment->baseptr);
@@ -476,6 +486,10 @@ dart_ret_t dart_team_memfree(
 #endif
   } else {
     // full allocation
+    if (MPI_Win_unlock_all(seginfo->win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_team_memfree: MPI_Win_unlock_all failed");
+      return DART_ERR_OTHER;
+    }
     if (MPI_Win_free(&seginfo->win) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_team_memfree: MPI_Win_free failed");
       return DART_ERR_OTHER;
