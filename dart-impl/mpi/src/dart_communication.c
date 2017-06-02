@@ -162,7 +162,7 @@ dart_ret_t dart_get(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (seginfo->isshm && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     return get_shared_mem(team_data, seginfo, dest, offset,
                           team_unit_id, nelem, dtype);
   }
@@ -176,7 +176,7 @@ dart_ret_t dart_get(
    */
 
   win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_TRACE("dart_get:  MPI_Get");
   CHECK_MPI_RET(
@@ -236,7 +236,7 @@ dart_ret_t dart_put(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (seginfo->isshm && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     return put_shared_mem(team_data, seginfo, src, offset,
                           team_unit_id, nelem, dtype);
   }
@@ -246,7 +246,7 @@ dart_ret_t dart_put(
 
   // source on another node or shared memory windows disabled
   MPI_Win win = seginfo->win;
-  offset     += seginfo->disp[team_unit_id.id];
+  offset     += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Put(
@@ -314,7 +314,7 @@ dart_ret_t dart_accumulate(
   CLEAN_SEGMENT(seginfo);
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Accumulate(
@@ -377,7 +377,7 @@ dart_ret_t dart_fetch_and_op(
   CLEAN_SEGMENT(seginfo);
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Fetch_and_op(
@@ -438,7 +438,7 @@ dart_ret_t dart_compare_and_swap(
   CLEAN_SEGMENT(seginfo);
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
 
   CHECK_MPI_RET(
@@ -506,7 +506,7 @@ dart_ret_t dart_get_handle(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
 
-  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (seginfo->isshm && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_ret_t ret = get_shared_mem(team_data, seginfo, dest, offset,
                                     team_unit_id, nelem, dtype);
 
@@ -527,7 +527,7 @@ dart_ret_t dart_get_handle(
    * nodes, use MPI_RGet:
    */
 
-  offset += seginfo->disp[team_unit_id.id];
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
   MPI_Request mpi_req;
@@ -590,7 +590,7 @@ dart_ret_t dart_put_handle(
     "dart_get_blocking ! Unknown segment %i on team %i");
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
   CHECK_MPI_RET(
@@ -664,7 +664,7 @@ dart_ret_t dart_put_blocking(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put_blocking: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (seginfo->isshm && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     return put_shared_mem(team_data, seginfo, src, offset,
                           team_unit_id, nelem, dtype);
   }
@@ -673,7 +673,7 @@ dart_ret_t dart_put_blocking(
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
   win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
 
   DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
@@ -758,7 +758,7 @@ dart_ret_t dart_get_blocking(
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
+  if (seginfo->isshm && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     return get_shared_mem(team_data, seginfo, dest, offset,
                           team_unit_id, nelem, dtype);
   }
@@ -772,7 +772,7 @@ dart_ret_t dart_get_blocking(
    */
 
   win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.

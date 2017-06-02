@@ -322,6 +322,13 @@ dart_ret_t dart_team_memalloc_aligned(
   dart_datatype_t   dtype,
   dart_gptr_t     * gptr) DART_NOTHROW;
 
+
+dart_ret_t dart_team_memalloc_aligned_full(
+  dart_team_t       teamid,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr) DART_NOTHROW;
+
 /**
  * Collective function to free global memory previously allocated
  * using \ref dart_team_memalloc_aligned.

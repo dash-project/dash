@@ -29,6 +29,7 @@ typedef struct
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
   bool         dirty;       /* whether the segment has pending writes */
+  bool         isshm;       /* whether this is a shared memory segment */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
@@ -59,7 +60,6 @@ typedef enum {
   DART_SEGMENT_REGISTER
 } dart_segment_type;
 
-
 struct dart_seghash_elem {
   dart_seghash_elem_t *next;
   dart_segment_info_t  data;
@@ -76,6 +76,12 @@ static inline int hash_segid(dart_segid_t segid)
   return (abs(segid) % DART_SEGMENT_HASH_SIZE);
 }
 
+static inline
+MPI_Aint
+dart_segment_disp(dart_segment_info_t *seginfo, dart_team_unit_t team_unit_id)
+{
+  return (seginfo->disp != NULL) ? seginfo->disp[team_unit_id.id] : 0;
+}
 
 /**
  * Returns the segment info for the segment with ID \c segid.
