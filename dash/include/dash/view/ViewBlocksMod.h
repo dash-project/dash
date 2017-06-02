@@ -19,8 +19,6 @@
 #include <dash/view/Chunked.h>
 #include <dash/view/Sub.h>
 
-#include <dash/view/MakeRange.h>
-
 #include <type_traits>
 
 
@@ -34,8 +32,8 @@ namespace dash {
 //
 template <
   class DomainType,
-  dim_t NDim       = dash::view_traits<
-                       typename std::decay<DomainType>::type>::rank::value >
+  dim_t NDim = dash::view_traits<
+                 typename std::decay<DomainType>::type>::rank::value >
 class ViewBlocksMod;
 
 
@@ -104,14 +102,16 @@ class ViewBlockMod
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<origin_type>::type
+                typename std::add_lvalue_reference<
+                  origin_type>::type
               >() ))
     origin_iterator;
 
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<const origin_type>::type
+                typename std::add_lvalue_reference<
+                  const origin_type>::type
               >() ))
     const_origin_iterator;
 
@@ -123,14 +123,16 @@ class ViewBlockMod
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<origin_type>::type
+                 typename std::add_lvalue_reference<
+                   origin_type>::type
                >() ))
     reference;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<const origin_type>::type
+                 typename std::add_lvalue_reference<
+                   const origin_type>::type
                >() ))
     const_reference;
 
@@ -246,8 +248,8 @@ class ViewBlockMod
 template <
   class DomainType >
 class ViewBlockMod<DomainType, 1>
-// Actually just an adapter for block_idx -> sub(begin_idx, end_idx),
-// should sublass
+// One-dimensional blocks are actually just an adapter for
+// block_idx -> sub(begin_idx, end_idx), could be defined by sublassing
 //
 //   public ViewSubMod<DomainType, 0>
 //
@@ -273,14 +275,16 @@ class ViewBlockMod<DomainType, 1>
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<origin_type>::type
+                typename std::add_lvalue_reference<
+                  origin_type>::type
               >() ))
     origin_iterator;
 
   typedef decltype(
             dash::begin(
               std::declval<
-                typename std::add_lvalue_reference<const origin_type>::type
+                typename std::add_lvalue_reference<
+                  const origin_type>::type
               >() ))
     const_origin_iterator;
 
@@ -292,14 +296,16 @@ class ViewBlockMod<DomainType, 1>
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<origin_type>::type
+                 typename std::add_lvalue_reference<
+                   origin_type>::type
                >() ))
     reference;
 
   typedef
     decltype(*dash::begin(
                std::declval<
-                 typename std::add_lvalue_reference<const origin_type>::type
+                 typename std::add_lvalue_reference<
+                   const origin_type>::type
                >() ))
     const_reference;
 
@@ -381,8 +387,8 @@ class ViewBlockMod<DomainType, 1>
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
     //
-    // TODO: Currently values passed as `block_idx` are global block indices
-    //       even if domain is local
+    // TODO: Currently values passed as `block_idx` are global block
+    //       indices, even if domain is local
     return std::max(
              ( // block viewspec (extents, offsets)
                ( false &&
@@ -406,8 +412,8 @@ class ViewBlockMod<DomainType, 1>
     // If domain is local, block_idx refers to local block range
     // so use pattern().local_block(block_idx)
     //
-    // TODO: Currently values passed as `block_idx` are global block indices
-    //       even if domain is local
+    // TODO: Currently values passed as `block_idx` are global block 
+    //       indices, even if domain is local
     return std::min<index_type>(
              dash::index(vdomain).last() + 1,
              ( // block viewspec (extents, offsets)

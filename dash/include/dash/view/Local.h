@@ -56,13 +56,28 @@ template <
              = typename std::decay<ContainerType>::type >
 constexpr
 typename std::enable_if<
-  ( !dash::view_traits<ContainerDecayType>::is_view::value &&
-    !dash::view_traits<ContainerDecayType>::is_local::value &&
-     dash::view_traits<ContainerDecayType>::is_origin::value ),
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
   const typename ContainerType::local_type &
 >::type
 local(const ContainerType & c) {
   return c.local;
+}
+
+template <
+  class    ContainerType,
+  typename ContainerDecayType
+             = typename std::decay<ContainerType>::type >
+constexpr
+typename std::enable_if<
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+     std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
+  decltype(std::declval<const ContainerType &>.local())
+>::type
+local(const ContainerType & c) {
+  return c.local();
 }
 
 #if 0

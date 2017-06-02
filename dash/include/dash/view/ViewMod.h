@@ -197,8 +197,7 @@ auto operator<<(
  */
 template <
   class Range,
-  class RangeDType = typename std::decay<Range>::type
->
+  class RangeDType = typename std::decay<Range>::type >
 auto operator<<(
   std::ostream  & o,
   Range        && range)
@@ -222,7 +221,9 @@ auto operator<<(
        std::ostream &
     >::type
 {
-  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+  typedef typename std::iterator_traits<
+                     decltype(range.begin())
+                   >::value_type
     value_t;
 
   auto && rng = std::forward<Range>(range);
@@ -250,8 +251,8 @@ template <
 class ViewModBase
 {
   typedef ViewModBase<ViewModType, DomainType, NDim> self_t;
-public:
-  typedef DomainType                                           domain_type;
+ public:
+  typedef DomainType                                          domain_type;
 
   typedef typename std::conditional<(
                         view_traits<domain_type>::is_origin::value &&
@@ -308,7 +309,7 @@ public:
 
   static constexpr dim_t ndim() { return NDim; }
 
-protected:
+ protected:
   domain_member_type _domain;
 
   ViewModType & derived() {
@@ -335,7 +336,7 @@ protected:
   constexpr ViewModBase()               = delete;
   ~ViewModBase()                        = default;
 
-public:
+ public:
   constexpr ViewModBase(const self_t &) = default;
   constexpr ViewModBase(self_t &&)      = default;
   self_t & operator=(const self_t &)    = default;
@@ -418,10 +419,10 @@ struct view_traits<ViewLocalMod<DomainType, NDim> > {
   typedef typename view_traits<domain_type>::size_type           size_type;
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
 
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, true>                 is_local;
+  typedef std::integral_constant<bool, false> is_projection;
+  typedef std::integral_constant<bool, true > is_view;
+  typedef std::integral_constant<bool, false> is_origin;
+  typedef std::integral_constant<bool, true > is_local;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
@@ -434,17 +435,17 @@ class ViewLocalMod
            ViewLocalMod<DomainType, NDim>,
            DomainType,
            NDim > {
-public:
+ public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename domain_type::local_type                      image_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
-private:
+ private:
   typedef ViewLocalMod<DomainType, NDim>                            self_t;
   typedef ViewModBase<
             ViewLocalMod<DomainType, NDim>, DomainType, NDim >      base_t;
-public:
+ public:
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
   typedef self_t                                                local_type;
   typedef typename domain_type::global_type                    global_type;
@@ -456,7 +457,8 @@ public:
       dash::begin(
         dash::local(dash::origin(
           std::declval<
-            typename std::add_lvalue_reference<domain_type>::type >()
+            typename std::add_lvalue_reference<
+              domain_type>::type >()
       ))))
     origin_iterator;
 
@@ -465,7 +467,8 @@ public:
       dash::begin(
         dash::local(dash::origin(
           std::declval<
-            typename std::add_lvalue_reference<const domain_type>::type >()
+            typename std::add_lvalue_reference<
+              const domain_type>::type >()
       ))))
     const_origin_iterator;
 
@@ -481,7 +484,8 @@ public:
       *(dash::begin(
           dash::local(dash::origin(
             std::declval<
-              typename std::add_lvalue_reference<domain_type>::type >()
+              typename std::add_lvalue_reference<
+                domain_type>::type >()
           )))))
     reference;
 
@@ -490,13 +494,14 @@ public:
       *(dash::begin(
           dash::local(dash::origin(
             std::declval<
-              typename std::add_lvalue_reference<const domain_type>::type >()
+              typename std::add_lvalue_reference<
+                const domain_type>::type >()
           )))))
     const_reference;
 
-private:
+ private:
   index_set_type  _index_set;
-public:
+ public:
   constexpr ViewLocalMod()               = delete;
   constexpr ViewLocalMod(self_t &&)      = default;
   constexpr ViewLocalMod(const self_t &) = default;

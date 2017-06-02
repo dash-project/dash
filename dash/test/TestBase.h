@@ -13,7 +13,6 @@
 #include <dash/Init.h>
 
 #include <dash/view/IndexSet.h>
-#include <dash/view/MakeRange.h>
 #include <dash/view/ViewMod.h>
 
 #include <dash/Team.h>

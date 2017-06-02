@@ -147,7 +147,7 @@ index(DomainType && v)
        dash::view_traits<DomainDecayType>::is_view::value,
        typename std::decay<decltype(v.index_set())>::type
      >::type {
-  return v.index_set();
+  return std::move(v).index_set();
 }
 
 template <
