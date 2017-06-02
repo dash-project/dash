@@ -330,6 +330,8 @@ dart_ret_t dart_accumulate(
       win),
     "MPI_Accumulate");
 
+  seginfo->dirty = true;
+
   DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
 }
@@ -390,6 +392,9 @@ dart_ret_t dart_fetch_and_op(
       mpi_op,            // Reduce operation
       win),
     "MPI_Fetch_and_op");
+
+  seginfo->dirty = true;
+
   DART_LOG_DEBUG("dart_fetch_and_op > finished");
   return DART_OK;
 }
@@ -451,6 +456,9 @@ dart_ret_t dart_compare_and_swap(
         offset,
         win),
     "MPI_Compare_and_swap");
+
+  seginfo->dirty = true;
+
   DART_LOG_DEBUG("dart_compare_and_swap > finished");
   return DART_OK;
 }
