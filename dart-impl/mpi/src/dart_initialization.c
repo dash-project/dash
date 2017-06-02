@@ -119,7 +119,6 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   /* put the localalloc in the segment table */
   dart_segment_info_t *segment = dart_segment_alloc(
                                 &team_data->segdata, DART_SEGMENT_LOCAL_ALLOC);
-  segment->dirty       = false;
   segment->flags       = 1;
   segment->segid       = 0;
   segment->size        = DART_LOCAL_ALLOC_SIZE;
@@ -129,6 +128,7 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   segment->selfbaseptr = dart_mempool_localalloc;
   // addressing in this window is relative, no need to store displacements
   segment->disp        = calloc(team_data->size, sizeof(MPI_Aint));
+  segment->isshm       = false;
 
   return DART_OK;
 }

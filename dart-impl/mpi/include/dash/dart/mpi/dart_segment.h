@@ -27,7 +27,7 @@ typedef struct
   MPI_Win      win;         /* window used to access this segment */
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
-  bool         dirty;       /* whether the segment has pending writes */
+  bool         isshm;       /* whether this is a shared memory segment */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
@@ -114,16 +114,6 @@ dart_ret_t dart_segment_get_baseptr(
   dart_team_unit_t       rel_unitid,
   char               **  baseptr_s) DART_INTERNAL;
 #endif
-
-dart_ret_t dart_segment_get_dirty(
-  dart_segmentdata_t  * segdata,
-  int16_t               segid,
-  bool                * dirty) DART_INTERNAL;
-
-dart_ret_t dart_segment_set_dirty(
-  dart_segmentdata_t  * segdata,
-  int16_t               segid,
-  bool                  dirty) DART_INTERNAL;
 
 dart_ret_t dart_segment_get_selfbaseptr(
   dart_segmentdata_t * segdata,

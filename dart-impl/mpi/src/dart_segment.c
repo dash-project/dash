@@ -187,36 +187,6 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
   return DART_OK;
 }
 
-dart_ret_t dart_segment_get_dirty(
-  dart_segmentdata_t  * segdata,
-  int16_t               segid,
-  bool                * dirty)
-{
-  dart_segment_info_t *segment = get_segment(segdata, segid);
-  if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_dirty ! Invalid segment ID %i on team %i",
-                   segid, segdata->team_id);
-    return DART_ERR_INVAL;
-  }
-  *dirty = segment->dirty;
-  return DART_OK;
-}
-
-dart_ret_t dart_segment_set_dirty(
-  dart_segmentdata_t  * segdata,
-  int16_t               segid,
-  bool                  dirty)
-{
-  dart_segment_info_t *segment = get_segment(segdata, segid);
-  if (segment == NULL) {
-    DART_LOG_ERROR("dart_segment_get_dirty ! Invalid segment ID %i on team %i",
-                   segid, segdata->team_id);
-    return DART_ERR_INVAL;
-  }
-  segment->dirty = dirty;
-  return DART_OK;
-}
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_baseptr(
   dart_segmentdata_t  * segdata,
