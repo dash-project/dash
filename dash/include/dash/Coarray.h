@@ -11,6 +11,7 @@
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/util/ArrayExpr.h>
+#include <dash/Range.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -93,6 +94,56 @@ template<typename element_type>
 struct __get_ref_type {
   using type = GlobAsyncRef<element_type>;
 };
+
+template<
+  typename storage_type,
+  int subrank,
+  int rank>
+struct __get_view_type {
+  using type = typename storage_type::template view_type<subrank>;
+};
+
+template<
+  typename storage_type,
+  int subrank>
+struct __get_view_type<storage_type, subrank, 1> {
+  using type = IteratorRange<
+                 typename storage_type::iterator,
+                 typename storage_type::iterator>;
+};
+
+template<
+  typename storage_type,
+  int subrank>
+struct __get_view_type<storage_type, subrank, 0> {
+  using type = typename storage_type::view_type; 
+};
+
+template<
+  typename element_type,
+  typename index_type,
+  typename pattern_type,
+  int rank>
+struct __get_storage_type {
+  using type = Matrix<element_type, rank + 1, index_type, pattern_type>;
+};
+
+template<
+  typename element_type,
+  typename index_type,
+  typename pattern_type>
+struct __get_storage_type<element_type, index_type, pattern_type, 1> {
+  using type = Array<element_type, index_type, pattern_type>;
+};
+
+template<
+  typename element_type,
+  typename index_type,
+  typename pattern_type>
+struct __get_storage_type<element_type, index_type, pattern_type, 0> {
+  using type = Array<element_type, index_type, pattern_type>;
+};
+
 
 /**
  * atomics cannot be accessed asynchronously
@@ -182,10 +233,17 @@ private:
    */
   using _element_type   = typename __insert_atomic_if_necessary<T, _native_type>::type;
   
-  using _storage_type   = Matrix<_element_type, _rank::value+1, IndexType, _pattern_type>;
+  using _storage_type   = typename coarray::detail::__get_storage_type<
+                                     _element_type,
+                                     IndexType,
+                                     PatternType,
+                                     _rank::value>::type;
   
   template<int _subrank = _rank::value>
-  using _view_type      = typename _storage_type::template view_type<_subrank>;
+  using _view_type      = typename coarray::detail::__get_view_type<
+                                      _storage_type,
+                                      _subrank,
+                                      _rank::value>::type;
   using _local_type     = typename coarray::detail::__get_local_type<
                                       _element_type,
                                       _pattern_type,
@@ -475,11 +533,22 @@ public:
    * Operator to select remote unit for array types
    */
   template<int __rank = _rank::value>
-  typename std::enable_if<(__rank != 0), view_type<__rank>>::type
+  typename std::enable_if<(__rank > 1), view_type<__rank>>::type
   inline operator()(const index_type & local_unit) {
     return _storage[local_unit];
   }
-  
+
+  /**
+   * Optimized operator to select remote unit for 1D-array types
+   */
+  template<int __rank = _rank::value>
+  typename std::enable_if<(__rank == 1), view_type<__rank>>::type
+  inline operator()(const index_type & local_unit) {
+    auto & begpos = local_unit * _storage.lsize();
+    auto & endpos = (local_unit + 1) * _storage.lsize();
+    return dash::make_range(_storage[begpos], _storage[endpos]);
+  }
+   
   /**
    * Operator to select remote unit for scalar types
    */
@@ -731,7 +800,7 @@ private:
 
 /* ======================================================================== */
 /* Ugly global overloads necessary to mimic fortran co_array interface      */
-/* All types are supported to which dash::Coarray can be converted         */
+/* All types are supported to which dash::Coarray can be converted          */
 /* ======================================================================== */
 template<
   typename Lhs,
