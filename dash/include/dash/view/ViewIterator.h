@@ -178,18 +178,29 @@ public:
     _index_set = other._index_set;
   }
 
-  template <class DomainItType>
+  template <class DomainItType, class IndexSetO>
   ViewIterator(
     DomainItType         * domain_it, 
-    const IndexSetType   & index_set,
+    const IndexSetO      & index_set,
     index_type             position)
   : base_t(position)
   , _domain_it(domain_it)
   , _index_set(index_set)
   { }
 
+  template <class IndexSetO>
   ViewIterator(
     const self_t         & other, 
+    const IndexSetO      & index_set,
+    index_type             position)
+  : base_t(position)
+  , _domain_it(other._domain_it)
+  , _index_set(index_set)
+  { }
+
+  template <class ViewIteratorO>
+  ViewIterator(
+    const ViewIteratorO  & other, 
     index_type             position)
   : base_t(position)
   , _domain_it(other._domain_it)
@@ -218,6 +229,10 @@ public:
 
   explicit operator value_type *() {
     return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  constexpr explicit operator DomainIterator() const {
+    return (_domain_it + _index_set[this->pos()]);
   }
 };
 

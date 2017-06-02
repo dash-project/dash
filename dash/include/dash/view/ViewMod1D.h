@@ -155,8 +155,20 @@ class ViewSubMod<DomainType, SubDim, 1>
     return _index_set;
   }
 
-  constexpr local_type local() const {
+  constexpr const local_type local() const {
     return local_type(*this);
+  }
+
+  local_type local() {
+    return local_type(*this);
+  }
+
+  constexpr const self_t & global() const {
+    return *this;
+  }
+
+  self_t & global() {
+    return *this;
   }
 }; // class ViewSubMod
 
@@ -518,14 +530,15 @@ class IteratorRangeLocalOrigin
   typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
 
   typedef std::integral_constant<bool, true>                     is_local;
+
   typedef ViewIterator<
             typename iterator::local_type,
-            IndexSetLocal<self_t> >
+            index_set_type >
     local_iterator;
 
   typedef ViewIterator<
             typename sentinel::local_type,
-            IndexSetLocal<self_t> >
+            index_set_type >
     local_sentinel;
 
   typedef IteratorRangeOrigin<iterator, sentinel>             global_type;
@@ -544,34 +557,30 @@ class IteratorRangeLocalOrigin
   constexpr local_iterator begin() const {
     return local_iterator(
              dash::begin(
-               dash::local(
-                 this->domain())),
+               this->domain()),
              _index_set, 0);
   }
 
   local_iterator begin() {
     return local_iterator(
              dash::begin(
-               dash::local(
-                 const_cast<domain_type &>(
-                   dash::domain(*this)))),
+               const_cast<domain_type &>(
+                 this->domain())),
              _index_set, 0);
   }
 
   constexpr local_sentinel end() const {
     return local_iterator(
              dash::begin(
-               dash::local(
-                 this->domain())),
+               this->domain()),
              _index_set, _index_set.size());
   }
 
   local_sentinel end() {
     return local_iterator(
              dash::begin(
-               dash::local(
-                 const_cast<domain_type &>(
-                   dash::domain(*this)))),
+               const_cast<domain_type &>(
+                 this->domain())),
              _index_set, _index_set.size());
   }
 
@@ -708,7 +717,7 @@ class IteratorRangeOrigin
     return this->begin().pattern();
   }
 
-  constexpr local_type local() const noexcept {
+  constexpr const local_type local() const noexcept {
     return local_type(*this);
   }
 
@@ -851,10 +860,13 @@ struct view_traits<IteratorRange<RangeOrigin> > {
 
   typedef dash::IndexSetSub<domain_type, 0>                index_set_type;
 
-  typedef std::integral_constant<bool, false>         is_projection;
-  typedef std::integral_constant<bool, true >         is_view;
-  typedef std::integral_constant<bool, false>         is_origin;
-  typedef typename view_traits<RangeOrigin>::is_local is_local;
+  typedef std::integral_constant<bool, false> is_projection;
+  typedef std::integral_constant<bool, true > is_view;
+  typedef std::integral_constant<bool, false> is_origin;
+//typedef typename view_traits<
+//                   typename std::decay<RangeOrigin>::type
+//                 >::is_local is_local;
+  typedef std::integral_constant<bool, false> is_local;
 };
 
 /**
@@ -891,8 +903,9 @@ class IteratorRange
   typedef self_t                                              global_type;
   typedef ViewLocalMod<self_t, 1>                              local_type;
 
-  typedef std::integral_constant<
-            bool, view_traits<RangeOrigin>::is_local::value>     is_local;
+  typedef typename view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::is_local is_local;
 
   typedef dash::default_index_t                                index_type;
   typedef dash::default_size_t                                  size_type;
@@ -1015,7 +1028,11 @@ class IteratorRange
     return _index_set;
   }
 
-  constexpr local_type local() const {
+  constexpr const local_type local() const {
+    return local_type(*this);
+  }
+
+  local_type local() {
     return local_type(*this);
   }
 

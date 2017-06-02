@@ -456,7 +456,8 @@ class IndexSetBase
 
   constexpr bool is_strided() const noexcept {
     return (
-      ( this->pattern().blockspec().size() > this->pattern().team().size() )
+      ( this->pattern().blockspec().size() >
+          this->pattern().team().size() )
       ||
       ( this->pattern().ndim() > 1 &&
         this->domain().extent(1) < ( this->domain().is_local()
