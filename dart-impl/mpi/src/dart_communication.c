@@ -832,12 +832,14 @@ dart_ret_t dart_flush(
     return DART_ERR_INVAL;
   }
 
+#ifdef DART_ENABLE_PROGRESS
   // trigger progress
   int flag;
   MPI_Comm comm = team_data->comm;
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+#endif
 
   if (!seginfo->dirty) return DART_OK;
 
@@ -881,12 +883,14 @@ dart_ret_t dart_flush_all(
     return DART_ERR_INVAL;
   }
 
+#ifdef DART_ENABLE_PROGRESS
   // trigger progress
   int flag;
   MPI_Comm comm = team_data->comm;
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+#endif
 
   if (!seginfo->dirty) return DART_OK;
 
@@ -938,12 +942,14 @@ dart_ret_t dart_flush_local(
   }
 
 
+#ifdef DART_ENABLE_PROGRESS
   // trigger progress
   int flag;
   MPI_Comm comm = team_data->comm;
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+#endif
 
   if (!seginfo->dirty) return DART_OK;
 
@@ -985,12 +991,14 @@ dart_ret_t dart_flush_local_all(
     return DART_ERR_INVAL;
   }
 
+#ifdef DART_ENABLE_PROGRESS
   // trigger progress
   int flag;
   MPI_Comm comm = team_data->comm;
   CHECK_MPI_RET(
     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, MPI_STATUS_IGNORE),
     "MPI_Iprobe");
+#endif
 
   if (!seginfo->dirty) return DART_OK;
 
