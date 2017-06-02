@@ -1111,6 +1111,17 @@ public:
   }
 
   /**
+   * The size of the array.
+   *
+   * \return  The local number of elements in the array.
+   */
+  constexpr size_type local_size() const noexcept
+  {
+    return m_lsize;
+  }
+
+
+  /**
    * The number of elements that can be held in currently allocated storage
    * of the array.
    *
