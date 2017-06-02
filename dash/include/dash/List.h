@@ -545,7 +545,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  constexpr const Team & team() const noexcept
+  constexpr Team & team() const noexcept
   {
     return *_team;
   }

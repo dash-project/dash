@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MPIENVS=(mpich openmpi)
+MPIENVS=(mpich openmpi2)
 BUILD_CONFIG=$1
 COMPILER=$2
 MAKE_PROCS=4

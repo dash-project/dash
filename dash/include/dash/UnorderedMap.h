@@ -232,7 +232,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  const Team & team() const noexcept;
+  constexpr Team & team() const noexcept;
 
   /**
    * Reference to instance of \c DashGlobalMemoryConcept used for underlying
