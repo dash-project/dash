@@ -11,7 +11,7 @@
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/util/ArrayExpr.h>
-#include <dash/Range.h>
+#include <dash/coarray/Range.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -107,7 +107,7 @@ template<
   typename storage_type,
   int subrank>
 struct __get_view_type<storage_type, subrank, 1> {
-  using type = IteratorRange<
+  using type = dash::coarray::IteratorRange<
                  typename storage_type::iterator,
                  typename storage_type::iterator>;
 };
@@ -576,11 +576,15 @@ public:
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 1), view_type<__rank>>::type
   inline operator()(const index_type & local_unit) {
-    auto begpos = local_unit * _storage.lsize();
-    auto endpos = (local_unit + 1) * _storage.lsize();
+    auto begpos = local_unit * _storage.local_size();
+    auto endpos = (local_unit+1) * _storage.local_size();
     iterator begit(_storage.begin()+begpos);
     iterator endit(_storage.begin()+endpos);
-    return dash::make_range(begit, endit);
+    DASH_LOG_DEBUG("Begpos", begpos);
+    DASH_LOG_DEBUG("Endpos", endpos);
+    DASH_LOG_DEBUG("Begit", begit);
+    DASH_LOG_DEBUG("Endit", endit);
+    return dash::coarray::make_range(begit, endit);
   }
    
   /**
