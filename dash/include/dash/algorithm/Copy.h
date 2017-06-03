@@ -1158,22 +1158,26 @@ GlobOutputIt copy(
 
   // in/out ranges in global domain:
   auto out_g_range  = dash::make_range(out_first, out_h_last);
+  DASH_LOG_TRACE("dash::copy()", "range(out_gi, out_ge):",
+                 dash::typestr(out_g_range));
   DASH_LOG_TRACE_VAR("dash::copy()", out_g_range);
 
   auto in_g_range   = dash::make_range(in_first,  in_last);
+  DASH_LOG_TRACE("dash::copy()", "range(in_gi, in_ge):",
+                 dash::typestr(in_g_range));
   DASH_LOG_TRACE_VAR("dash::copy()", in_g_range);
 
   // local view on in/out ranges:
   auto out_l_range  = dash::local(out_g_range);
-  DASH_LOG_TRACE("dash::copy()", "local(range(out_i, out_e)):",
+  DASH_LOG_TRACE("dash::copy()", "local(range(out_gi, out_ge)):",
                  dash::typestr(out_l_range));
-  DASH_LOG_TRACE("dash::copy()", "local(range(out_i, out_e)):",
+  DASH_LOG_TRACE("dash::copy()", "local(range(out_gi, out_ge)):",
                  out_l_range);
 
   auto in_l_range   = dash::local(in_g_range);
-  DASH_LOG_TRACE("dash::copy()", "local(range(in_i, in_e)):",
+  DASH_LOG_TRACE("dash::copy()", "local(range(in_gi, in_ge)):",
                  dash::typestr(in_l_range));
-  DASH_LOG_TRACE("dash::copy()", "local(range(in_i, in_e)):",
+  DASH_LOG_TRACE("dash::copy()", "local(range(in_gi, in_ge)):",
                  in_l_range);
 
   // copy local to global range:

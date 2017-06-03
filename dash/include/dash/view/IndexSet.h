@@ -50,6 +50,26 @@
  * \par Terminology
  *
  *
+ * \par Types
+ *
+ * \code
+ *    template <
+ *      class IndexSetT,
+ *      class DomainT,
+ *      dim_t NDim = view_traits<DomainT>::rank::value >
+ *    class IndexSetBase;
+ * \endcode
+ *
+ * Generic adapter base class with default implementation for models of the
+ * \c IndexSet concept.
+ *
+ * Type                | Synopsis
+ * ------------------- | --------------------------------------------------
+ * <tt>IndexSetT</tt>  | Specific index set, CRTP type
+ * <tt>DomainT</tt>    | Indexed data domain, model of the \c View concept
+ * <tt>NDim</tt>       | Number of dimensions in the index set
+ *
+ *
  * \par Expressions
  *
  * For a index domain \f$ Id \f$, \f$ ia, ib \in Id \f$ mapped by an index
