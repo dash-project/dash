@@ -755,8 +755,6 @@ class IteratorRangeOrigin
   }
 };
 
-
-
 // -----------------------------------------------------------------------
 // Iterator Range Origin (local pointers)
 //

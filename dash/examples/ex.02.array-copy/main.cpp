@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
 
   dash::Array<int> src_array(num_elems_total / 2);
 
-  std::fill(array.lbegin(), array.lend(), (myid + 1) * 10);
+  std::fill(src_array.lbegin(), src_array.lend(), (myid + 1) * 10);
   array.barrier();
 
   dash::copy(src_array.begin(),

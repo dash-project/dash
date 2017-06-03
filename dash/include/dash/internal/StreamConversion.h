@@ -4,6 +4,7 @@
 #include <dash/internal/Macro.h>
 
 #include <dash/meta/TypeInfo.h>
+#include <dash/Range.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -108,6 +109,99 @@ std::ostream & operator<<(
   operator<<(o, ss.str());
   return o;
 }
+
+/**
+ * Write range of random access iterators to output stream.
+ */
+template <
+  class Range,
+  class RangeDType = typename std::decay<Range>::type
+>
+auto operator<<(
+  std::ostream  & o,
+  Range        && range)
+  -> typename std::enable_if<
+       (
+      // type is range:
+         dash::is_range<RangeDType>::value &&
+      // type is not std::string or derivative:
+         !std::is_same<RangeDType, std::string>::value &&
+         !std::is_base_of<std::string, RangeDType>::value &&
+      // range iterator type is random access:
+         std::is_same<
+           std::random_access_iterator_tag,
+           typename std::iterator_traits<
+             typename std::decay<
+               decltype(dash::begin(std::forward<Range>(range)))
+             >::type
+           >::iterator_category
+         >::value
+       ),
+       std::ostream &
+    >::type
+{
+  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+    value_t;
+
+  auto && rng = std::forward<Range>(range);
+
+  std::ostringstream ss;
+  int pos = 0;
+  ss << dash::typestr(*dash::begin(rng))
+     << " { ";
+  for (auto it = dash::begin(rng); it != dash::end(rng); ++it, ++pos) {
+    ss << static_cast<const value_t>(*it) << " ";
+  }
+  ss << "}";
+  return operator<<(o, ss.str());
+}
+
+/**
+ * Write range of non-random access iterators to output stream.
+ */
+template <
+  class Range,
+  class RangeDType = typename std::decay<Range>::type >
+auto operator<<(
+  std::ostream  & o,
+  Range        && range)
+  -> typename std::enable_if<
+       (
+      // type is range:
+         dash::is_range<RangeDType>::value &&
+      // type is not std::string or derivative:
+         !std::is_same<RangeDType, std::string>::value &&
+         !std::is_base_of<std::string, RangeDType>::value &&
+      // range iterator type is not random access:
+         !std::is_same<
+           std::random_access_iterator_tag,
+           typename std::iterator_traits<
+             typename std::decay<
+               decltype(dash::begin(std::forward<Range>(range)))
+             >::type
+           >::iterator_category
+         >::value
+       ),
+       std::ostream &
+    >::type
+{
+  typedef typename std::iterator_traits<
+                     decltype(range.begin())
+                   >::value_type
+    value_t;
+
+  auto && rng = std::forward<Range>(range);
+
+  std::ostringstream ss;
+  ss << dash::typestr(*dash::begin(rng))
+     << " { ";
+  for (auto it = dash::begin(rng); it != dash::end(rng); ++it) {
+    ss << static_cast<const value_t>(*it) << " ";
+  }
+  ss << "}";
+  return operator<<(o, ss.str());
+}
+
 
 } // namespace dash
 
