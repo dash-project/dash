@@ -58,6 +58,25 @@ namespace detail {
   DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer);
 }
 
+
+template <class Iterator>
+struct iterator_traits
+: public std::iterator_traits<Iterator> {
+ private:
+  using iterator = typename std::decay<Iterator>::type;
+  using is_local = typename std::integral_constant<bool,
+                               !dash::has_type_pattern_type<iterator>::value
+                            >;
+
+};
+
+template <class Iterator>
+struct iterator_traits<Iterator *>
+: public std::iterator_traits<Iterator *> {
+  using is_local  = typename std::integral_constant<bool, true>;
+};
+
+
 /**
  *
  * \concept{DashIteratorConcept}

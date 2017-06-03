@@ -770,6 +770,7 @@ class IteratorRangeOrigin
 //
 // -----------------------------------------------------------------------
 
+#if 0
 template <
   class LocalIterator,
   class LocalSentinel,
@@ -864,7 +865,98 @@ class IteratorRangeOrigin<
     return std::distance(_begin, _end);
   }
 };
+#else
+template <
+  class LocalIterator,
+  class LocalSentinel >
+struct view_traits<
+         IteratorRangeOrigin<
+           LocalIterator *,
+           LocalSentinel *>
+       > {
+ private:
+  typedef typename std::decay<LocalIterator *>::type             iterator;
+  typedef typename std::decay<LocalSentinel *>::type             sentinel;
 
+  typedef IteratorRangeOrigin<iterator, sentinel>                  RangeT;
+ public:
+  typedef RangeT                                              domain_type;
+  typedef RangeT                                              origin_type;
+  typedef RangeT                                               image_type;
+
+  typedef std::integral_constant<dim_t, 1>                           rank;
+
+  typedef RangeT                                              global_type;
+  typedef RangeT                                               local_type;
+
+  typedef typename std::ptrdiff_t                              index_type;
+  typedef typename std::make_unsigned<index_type>::type         size_type;
+
+  typedef dash::IndexSetIdentity< 
+            IteratorRangeOrigin<iterator, sentinel> >      index_set_type;
+
+  typedef std::integral_constant<bool, false> is_projection;
+  typedef std::integral_constant<bool, false> is_view;
+  typedef std::integral_constant<bool, true > is_origin;
+  typedef std::integral_constant<bool, true > is_local;
+};
+
+template <
+  typename LocalIterator,
+  typename LocalSentinel >
+class IteratorRangeOrigin<
+        LocalIterator *,
+        LocalSentinel * >
+{
+  typedef IteratorRangeOrigin<
+            LocalIterator *,
+            LocalSentinel * >
+    self_t;
+
+ public:
+  typedef typename std::decay<      LocalIterator *>::type       iterator;
+  typedef typename std::decay<const LocalIterator *>::type const_iterator;
+  typedef typename std::decay<      LocalSentinel *>::type       sentinel;
+  typedef typename std::decay<const LocalSentinel *>::type const_sentinel;
+
+  typedef dash::default_index_t                                index_type;
+  typedef dash::default_size_t                                  size_type;
+
+  typedef typename std::decay<LocalIterator>::type             value_type;
+
+  typedef self_t                                              global_type;
+
+  typedef std::integral_constant<bool, true>                     is_local;
+
+  typedef std::integral_constant<dim_t, 1>                           rank;
+
+ private:
+  iterator _begin;
+  sentinel _end;
+
+ public:
+  constexpr IteratorRangeOrigin(iterator begin, sentinel end)
+  : _begin(begin)
+  , _end(end)
+  { }
+
+  constexpr IteratorRangeOrigin()                     = delete;
+  constexpr IteratorRangeOrigin(const self_t & other) = default;
+  constexpr IteratorRangeOrigin(self_t && other)      = default;
+  self_t & operator=(const self_t & other)            = default;
+  self_t & operator=(self_t && other)                 = default;
+
+  constexpr const_iterator begin() const { return _begin; }
+  constexpr const_sentinel end()   const { return _end;   }
+
+  iterator begin() { return _begin; }
+  sentinel end()   { return _end;   }
+
+  constexpr size_type size() const {
+    return std::distance(_begin, _end);
+  }
+};
+#endif
 
 // ----------------------------------------------------------------------
 // Iterator Range
@@ -946,24 +1038,18 @@ class IteratorRange
 
   typedef dash::IndexSetSub<domain_type, 0>                index_set_type;
 
-  typedef typename
-            std::conditional<
-              std::is_pointer<iterator>::value,
-              iterator,
-              typename iterator::local_type
-            >::type
-    local_iterator;
+// typedef typename
+//           std::conditional<
+//             dash::iterator_traits<iterator>::is_local::value,
+//             iterator,
+//             typename iterator::local_type
+//           >::type
+//   local_iterator;
 
-  typedef typename
-            std::conditional<
-              std::is_pointer<sentinel>::value,
-              sentinel,
-              typename sentinel::local_type
-            >::type
-    local_sentinel;
-
-  using       reference = typename       iterator::reference;
-  using const_reference = typename iterator::const_reference;
+  using       reference =
+                typename std::iterator_traits<      iterator>::reference;
+  using const_reference =
+                typename std::iterator_traits<const_iterator>::reference;
 
  private:
   static const dim_t   NDim         = rank::value;

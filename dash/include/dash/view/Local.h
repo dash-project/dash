@@ -34,22 +34,6 @@ local(ViewType & v)
   return v;
 }
 
-#if 0
-template <
-  class    ContainerLocalType,
-  typename ContainerLocalDecayType
-             = typename std::decay<ContainerLocalType>::type >
-constexpr
-typename std::enable_if<
-  ( dash::view_traits<ContainerLocalDecayType>::is_origin::value &&
-    dash::view_traits<ContainerLocalDecayType>::is_local::value ),
-  ContainerLocalType &
->::type
-local(ContainerLocalType & cl) {
-  return cl;
-}
-#endif
-
 template <
   class    ContainerType,
   typename ContainerDecayType
