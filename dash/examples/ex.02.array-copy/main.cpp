@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <cstddef>
+#include <vector>
 
 #ifdef DASH_ENABLE_IPM
 #include <mpi.h>
@@ -61,11 +62,11 @@ int main(int argc, char* argv[])
   // ----------------------------------------------------------------------
 
   // destination array
-  int * local_array = new int[num_elems_copy];
+  std::vector<int> local_array(num_elems_copy);
 
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
-             local_array);
+             local_array.data());
 
   std::ostringstream ss;
   ss << "Local copy at unit " << myid << ": ";
@@ -74,8 +75,6 @@ int main(int argc, char* argv[])
   }
   ss   << endl;
   cout << ss.str();
-
-  delete[] local_array;
 
   array.barrier();
 

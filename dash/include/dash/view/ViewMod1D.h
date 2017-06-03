@@ -177,23 +177,6 @@ class ViewSubMod<DomainType, SubDim, 1>
 // ViewLocalMod
 // -----------------------------------------------------------------------
 
-#if 0 // HERE !!!
-template <class RangeOrigin>
-constexpr ViewLocalMod<IteratorRange<RangeOrigin>, 1>
-local(const IteratorRange<RangeOrigin> & ir) {
-  return ViewLocalMod<IteratorRange<RangeOrigin>, 1>(ir);
-}
-
-template <
-  class    Iterator,
-  class    Sentinel >
-constexpr ViewLocalMod<IteratorRangeOrigin<Iterator, Sentinel>, 1>
-local(const IteratorRangeOrigin<Iterator, Sentinel> & ir) {
-  return ViewLocalMod<IteratorRangeOrigin<Iterator, Sentinel>, 1>(ir);
-}
-#endif
-
-
 template <
   class DomainType >
 class ViewLocalMod<DomainType, 1>
@@ -351,6 +334,7 @@ class ViewLocalMod<DomainType, 1>
   }
 }; // class ViewLocalMod
 
+
 // -------------------------------------------------------------------------
 // ViewGlobalMod
 // -------------------------------------------------------------------------
@@ -454,14 +438,47 @@ class ViewGlobalMod<DomainType, 1>
 
 
 
-// -----------------------------------------------------------------------
-// Iterator Range Local Origin
-// -----------------------------------------------------------------------
+// =======================================================================
+//
+// Iterator Range Interface
+//
+// =======================================================================
 
 template <
   class Iterator,
   class Sentinel >
 class IteratorRangeLocalOrigin;
+
+template <
+  class Iterator,
+  class Sentinel >
+class IteratorRangeOrigin;
+
+template <class RangeOrigin>
+class IteratorRange;
+
+// -----------------------------------------------------------------------
+// Iterator Range Local Origin
+//
+// Concept adapter for iterator range
+//
+//    local(range(Container.iter,
+//                Container.iter)
+//    =
+//    range(Container.local.iter,
+//          Container.local.iter)
+//
+// to semantics of Container.local type.
+//
+// -----------------------------------------------------------------------
+
+template <
+  class Iterator,
+  class Sentinel >
+constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
+local(const IteratorRangeOrigin<Iterator, Sentinel> & ir) {
+  return IteratorRangeLocalOrigin<Iterator, Sentinel>(ir);
+}
 
 template <
   class Iterator,
@@ -517,7 +534,6 @@ class IteratorRangeLocalOrigin
             domain_type,
             domain_type::rank::value > base_t;
  public:
-
   typedef typename g_origin_iterator::value_type               value_type;
 
   typedef typename g_origin_iterator::index_type               index_type;
@@ -620,12 +636,14 @@ class IteratorRangeLocalOrigin
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin
+//
+// Concept adapter for iterator range
+//
+//    range(Container.iter, Container.iter)
+//
+// to semantics of type Container.
+//
 // -----------------------------------------------------------------------
-
-template <
-  class Iterator,
-  class Sentinel >
-class IteratorRangeOrigin;
 
 template <
   class Iterator,
@@ -741,6 +759,17 @@ class IteratorRangeOrigin
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin (local pointers)
+//
+// Concept adapter for iterator range
+//
+//    local(range(Container.iter,
+//                Container.iter)
+//    =
+//    range(Container.local.iter,
+//          Container.local.iter)
+//
+// to semantics of Container.local type.
+//
 // -----------------------------------------------------------------------
 
 template <
