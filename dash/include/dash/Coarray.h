@@ -506,7 +506,8 @@ public:
              const local_type>::type
   operator[](const index_type & idx) const 
   {
-    return *(_storage.lbegin()+idx);
+    return const_cast<const local_type>(
+        *(_storage.lbegin()+idx));
   }
 
   /**
