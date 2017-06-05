@@ -409,7 +409,14 @@ public:
   inline void allocate(){
     _storage.allocate(_pattern_type(_make_size_spec()));
   }
-  
+
+  /**
+   * allocate an array which was initialized before dash has been initialized
+   */
+  inline void allocate(const size_type & n){
+    _storage.allocate(_pattern_type(_make_size_spec(n)));
+  }
+ 
   /**
    * free the memory allocated by this coarray. After deallocation, the coarray
    * cannot be used anymore.
