@@ -472,13 +472,13 @@ class IteratorRange;
 //
 // -----------------------------------------------------------------------
 
-template <
-  class Iterator,
-  class Sentinel >
-constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
-local(const IteratorRangeOrigin<Iterator, Sentinel> & ir) {
-  return IteratorRangeLocalOrigin<Iterator, Sentinel>(ir);
-}
+// template <
+//   class Iterator,
+//   class Sentinel >
+// constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
+// local(const IteratorRangeOrigin<Iterator, Sentinel> & ir) {
+//   return IteratorRangeLocalOrigin<Iterator, Sentinel>(ir);
+// }
 
 template <
   class Iterator,
@@ -488,8 +488,10 @@ struct view_traits<IteratorRangeLocalOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>             RangeT;
  public:
   typedef IteratorRangeOrigin<Iterator, Sentinel>             domain_type;
-  typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
-  typedef RangeT                                               image_type;
+//typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
+//typedef RangeT                                               image_type;
+  typedef typename view_traits<domain_type>::origin_type      origin_type;
+  typedef typename view_traits<domain_type>::local_type        image_type;
 
 //typedef typename Iterator::pattern_type                    pattern_type;
 //typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
@@ -576,34 +578,34 @@ class IteratorRangeLocalOrigin
   constexpr const_iterator begin() const {
     return const_iterator(
              dash::begin(
-               dash::local(
-                 dash::origin(*this) )),
+                 dash::origin(this->domain())
+               ).local(),
                _index_set, 0);
   }
 
   iterator begin() {
     return iterator(
              dash::begin(
-               dash::local(
-                 const_cast<origin_type &>(
-                   dash::origin(*this)) )),
+               const_cast<origin_type &>(
+                 dash::origin(this->domain()) )
+             ).local(),
              _index_set, 0);
   }
 
   constexpr const_iterator end() const {
     return const_iterator(
              dash::begin(
-               dash::local(
-                 dash::origin(*this) )),
-               _index_set, _index_set.size());
+               dash::origin(this->domain())
+             ).local(),
+             _index_set, _index_set.size());
   }
 
   iterator end() {
     return iterator(
              dash::begin(
-               dash::local(
-                 const_cast<origin_type &>(
-                   dash::origin(*this)) )),
+               const_cast<origin_type &>(
+                 dash::origin(this->domain()) )
+             ).local(),
              _index_set, _index_set.size());
   }
 
@@ -633,6 +635,14 @@ class IteratorRangeLocalOrigin
     return this->domain();
   }
 };
+
+template <
+  class Iterator,
+  class Sentinel >
+constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
+local(const IteratorRangeLocalOrigin<Iterator, Sentinel> & ir) {
+  return ir;
+}
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin

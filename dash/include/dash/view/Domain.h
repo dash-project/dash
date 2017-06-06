@@ -36,9 +36,9 @@ constexpr auto
 domain(ViewT && view)
   -> typename std::enable_if<
        dash::detail::has_type_domain_type<ViewValueT>::value,
-       decltype(view.domain())
+       decltype(std::forward<ViewT>(view).domain())
      >::type {
-  return view.domain();
+  return std::forward<ViewT>(view).domain();
 }
 
 template <class ViewT>
