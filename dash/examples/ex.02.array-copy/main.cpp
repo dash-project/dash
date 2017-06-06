@@ -125,11 +125,30 @@ int main(int argc, char* argv[])
 
   if (myid == 0) {
     cout << "=== Global to Global ================================" << endl;
+
+    auto g_out_range =
+      dash::make_range(
+        array.begin() + (array.size() / 4),
+        array.begin() + (array.size() / 4) + (num_elems_total / 2));
+    cout << range_str(g_out_range) << endl;
   }
 
   dash::Array<float> src_array(num_elems_total / 2);
 
   std::fill(src_array.lbegin(), src_array.lend(), (myid + 1) * 10);
+
+  if (myid == 0) {
+    cout << "copy target: ";
+    cout << range_str(array) << endl;
+    cout << "copy target index range: "
+         << "[" <<  (array.size() / 4)
+         << "," << ((array.size() / 4) + src_array.size())
+         << ")"
+         << endl;
+    cout << "copy source: ";
+    cout << range_str(src_array) << endl;
+  }
+
   array.barrier();
 
   dash::copy(src_array.begin(),
@@ -139,6 +158,7 @@ int main(int argc, char* argv[])
   array.barrier();
 
   if (myid == 0) {
+    cout << "after copy:" << endl;
     cout << range_str(array)
          << endl;
   }

@@ -1130,11 +1130,13 @@ class IteratorRange
   }
 
   constexpr const_iterator end() const {
-    return dash::domain(*this).end();
+    return dash::domain(*this).begin() +
+             (_index_set[_index_set.size() - 1] + 1);
   }
 
   iterator end() {
-    return dash::domain(*this).end();
+    return dash::domain(*this).begin() +
+             (_index_set[_index_set.size() - 1] + 1);
   }
 
   constexpr const_reference operator[](int offset) const {
