@@ -491,8 +491,9 @@ struct view_traits<IteratorRangeLocalOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
   typedef RangeT                                               image_type;
 
-  typedef typename Iterator::pattern_type                    pattern_type;
-  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+//typedef typename Iterator::pattern_type                    pattern_type;
+//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+  typedef std::integral_constant<dim_t, 1>                           rank;
 
   typedef RangeT                                               local_type;
   typedef IteratorRangeOrigin<Iterator, Sentinel>             global_type;
@@ -533,17 +534,16 @@ class IteratorRangeLocalOrigin
             self_t,
             domain_type,
             domain_type::rank::value > base_t;
+  typedef typename g_origin_iterator::pattern_type           pattern_type;
  public:
   typedef typename g_origin_iterator::value_type               value_type;
 
   typedef typename g_origin_iterator::index_type               index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
 
-  typedef typename g_origin_iterator::pattern_type           pattern_type;
+  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
 
   typedef IndexSetLocal<domain_type>                       index_set_type;
-
-  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
 
   typedef std::integral_constant<bool, true>                     is_local;
 
@@ -656,8 +656,9 @@ struct view_traits<IteratorRangeOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
   typedef IteratorRangeOrigin<Iterator, Sentinel>              image_type;
 
-  typedef typename Iterator::pattern_type                    pattern_type;
-  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+//typedef typename Iterator::pattern_type                    pattern_type;
+//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+  typedef std::integral_constant<dim_t, 1>                           rank;
 
   typedef RangeT                                              global_type;
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>         local_type;
@@ -681,6 +682,7 @@ template <
 class IteratorRangeOrigin
 {
   typedef IteratorRangeOrigin<Iterator, Sentinel>                  self_t;
+
  public:
   typedef Iterator                                               iterator;
   typedef Iterator                                         const_iterator;
@@ -696,19 +698,17 @@ class IteratorRangeOrigin
   typedef typename Iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
 
-  typedef typename iterator::pattern_type                    pattern_type;
+  typedef typename Iterator::pattern_type                    pattern_type;
+  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
 
   typedef std::integral_constant<bool, false>                    is_local;
 
   typedef self_t                                              global_type;
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>         local_type;
 
-  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
-
  private:
   iterator             _begin;
   sentinel             _end;
-
  public:
   constexpr IteratorRangeOrigin(
     const iterator & begin,
@@ -974,9 +974,9 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef RangeOrigin                                         origin_type;
   typedef RangeT                                               image_type;
 
-  typedef typename RangeOrigin::pattern_type                 pattern_type;
-
-  typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+//typedef typename RangeOrigin::pattern_type                 pattern_type;
+//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
+  typedef std::integral_constant<dim_t, RangeOrigin::rank::value>    rank;
 
   typedef RangeT                                              global_type;
   typedef ViewLocalMod<RangeT, 1>                              local_type;
@@ -1027,7 +1027,7 @@ class IteratorRange
   typedef self_t                                              global_type;
   typedef ViewLocalMod<self_t, 1>                              local_type;
 
-  typedef typename RangeOrigin::pattern_type                 pattern_type;
+//typedef typename RangeOrigin::pattern_type                 pattern_type;
 
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
