@@ -352,8 +352,6 @@ class IndexSetBase
 
   typedef typename view_traits<DomainValueT>::index_set_type
     domain_type;
-  typedef typename view_traits<view_origin_type>::pattern_type
-    pattern_type;
   typedef typename dash::view_traits<view_local_type>::index_set_type
     local_type;
   typedef typename dash::view_traits<view_global_type>::index_set_type
@@ -376,11 +374,14 @@ class IndexSetBase
   typedef std::integral_constant<std::size_t, NDim>
     rank;
 
+  typedef typename view_origin_type::pattern_type
+    pattern_type;
+
   static constexpr std::size_t ndim() { return NDim; }
 
  protected:
-  domain_member_type     _domain;
-  const pattern_type   * _pattern = nullptr;
+  domain_member_type   _domain;
+  const pattern_type * _pattern = nullptr;
 
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
@@ -409,6 +410,7 @@ class IndexSetBase
              std::min<index_type>(a.end,   b.end)
            };
   }
+
   static constexpr index_type index_range_size(
     const index_range_t & irng) noexcept {
     return irng.end - irng.begin;
@@ -441,6 +443,10 @@ class IndexSetBase
   constexpr IndexSetBase(const self_t &) = default;
   self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = default;
+
+  constexpr const pattern_type & pattern() const {
+    return *_pattern;
+  }
   
   constexpr const DomainType & view_domain() const & {
     return _domain;
@@ -458,10 +464,6 @@ class IndexSetBase
     return dash::index(_domain);
   }
 
-  constexpr const pattern_type & pattern() const {
-    return *_pattern;
-  }
-
   constexpr const local_type local() const {
     return dash::index(dash::local(_domain));
   }
@@ -472,6 +474,12 @@ class IndexSetBase
 
   constexpr bool is_local() const noexcept {
     return dash::view_traits<DomainValueT>::is_local::value;
+  }
+
+  constexpr bool is_sub() const noexcept {
+    return (
+      derived().size() < this->extents().size()
+    );
   }
 
   constexpr bool is_strided() const noexcept {
@@ -486,12 +494,6 @@ class IndexSetBase
     );
   }
 
-  constexpr bool is_sub() const noexcept {
-    return (
-      derived().size() < this->pattern().size()
-    );
-  }
-
   constexpr bool is_shifted() const noexcept {
     typedef typename dash::pattern_mapping_traits<pattern_type>::type
             pat_mapping_traits;
@@ -503,7 +505,7 @@ class IndexSetBase
 
   constexpr std::array<size_type, NDim>
   extents() const {
-    return pattern().extents();
+    return derived().extents();
   }
 
   template <std::size_t ShapeDim>
@@ -579,6 +581,7 @@ class IndexSetBase
     );
   }
 };
+
 
 // -----------------------------------------------------------------------
 // IndexSetIdentity
@@ -733,7 +736,6 @@ class IndexSetSub
   typedef typename base_t::size_type                         size_type;
   typedef typename base_t::view_origin_type           view_origin_type;
   typedef typename base_t::view_domain_type           view_domain_type;
-  typedef typename base_t::pattern_type                   pattern_type;
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
@@ -915,10 +917,16 @@ template <class DomainType>
 class IndexSetLocal
 : public IndexSetBase<
            IndexSetLocal<DomainType>,
-           DomainType >
+           DomainType
+         >
 {
-  typedef IndexSetLocal<DomainType>                             self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef IndexSetLocal<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType
+          >
+    base_t;
 
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
@@ -1202,10 +1210,16 @@ template <class DomainType>
 class IndexSetGlobal
 : public IndexSetBase<
            IndexSetGlobal<DomainType>,
-           DomainType >
+           DomainType
+         >
 {
-  typedef IndexSetGlobal<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef IndexSetGlobal<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType
+          >
+    base_t;
 
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
@@ -1297,24 +1311,25 @@ class IndexSetBlocks
 : public IndexSetBase<
            IndexSetBlocks<DomainType>,
            DomainType,
-           // Number of dimensions in the domain pattern's block spec:
            dash::pattern_traits<
-             typename dash::view_traits<
-               typename std::decay<DomainType>::type
-             >::pattern_type
+             typename view_traits<DomainType>::origin_type::pattern_type
            >::blockspec_type::ndim::value
          >
 {
   typedef
     typename dash::pattern_traits<
-               typename dash::view_traits<
-                 typename std::decay<DomainType>::type
-               >::pattern_type
+               typename view_traits<DomainType>::origin_type::pattern_type
              >::blockspec_type::ndim
              blocks_ndim;
 
-  typedef IndexSetBlocks<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType, blocks_ndim::value>  base_t;
+  typedef IndexSetBlocks<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType,
+            blocks_ndim::value
+          >
+    base_t;
  public:
   typedef typename base_t::index_type                       index_type;
   typedef typename base_t::size_type                         size_type;
@@ -1322,7 +1337,8 @@ class IndexSetBlocks
   typedef typename base_t::view_origin_type           view_origin_type;
   typedef typename base_t::view_domain_type           view_domain_type;
 
-  typedef typename base_t::pattern_type                   pattern_type;
+  typedef typename view_traits<DomainType>::origin_type::pattern_type
+                                                          pattern_type;
 
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<DomainType>                       global_type;
@@ -1482,24 +1498,27 @@ class IndexSetBlock
 : public IndexSetBase<
            IndexSetBlock<DomainType>,
            DomainType,
-           // Number of dimensions in the domain pattern's block spec:
            dash::pattern_traits<
-             typename dash::view_traits<
-               typename std::decay<DomainType>::type
-             >::pattern_type
+             typename view_traits<DomainType>::origin_type::pattern_type
            >::ndim::value
          >
 {
   typedef
     typename dash::pattern_traits<
-               typename dash::view_traits<
-                 typename std::decay<DomainType>::type
-               >::pattern_type
+               typename view_traits<DomainType>::origin_type::pattern_type
              >::ndim
              pattern_ndim;
 
-  typedef IndexSetBlock<DomainType>                               self_t;
-  typedef IndexSetBase<self_t, DomainType, pattern_ndim::value>   base_t;
+  typedef IndexSetBlock<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType,
+            dash::pattern_traits<
+              typename view_traits<DomainType>::origin_type::pattern_type
+            >::ndim::value
+          >
+    base_t;
  public:
   typedef typename DomainType::index_type                     index_type;
   typedef typename DomainType::size_type                       size_type;

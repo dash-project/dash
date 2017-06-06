@@ -989,10 +989,10 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef std::integral_constant<bool, false> is_projection;
   typedef std::integral_constant<bool, true > is_view;
   typedef std::integral_constant<bool, false> is_origin;
-//typedef typename view_traits<
-//                   typename std::decay<RangeOrigin>::type
-//                 >::is_local is_local;
-  typedef std::integral_constant<bool, false> is_local;
+  typedef typename view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::is_local is_local;
+// typedef std::integral_constant<bool, false> is_local;
 };
 
 /**
@@ -1022,12 +1022,12 @@ class IteratorRange
 
   typedef typename domain_type::value_type                     value_type;
 
-//typedef typename domain_type::pattern_type                 pattern_type;
-//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
   typedef std::integral_constant<dim_t, 1>                           rank;
 
   typedef self_t                                              global_type;
   typedef ViewLocalMod<self_t, 1>                              local_type;
+
+  typedef typename RangeOrigin::pattern_type                 pattern_type;
 
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
@@ -1037,14 +1037,6 @@ class IteratorRange
   typedef dash::default_size_t                                  size_type;
 
   typedef dash::IndexSetSub<domain_type, 0>                index_set_type;
-
-// typedef typename
-//           std::conditional<
-//             dash::iterator_traits<iterator>::is_local::value,
-//             iterator,
-//             typename iterator::local_type
-//           >::type
-//   local_iterator;
 
   using       reference =
                 typename std::iterator_traits<      iterator>::reference;

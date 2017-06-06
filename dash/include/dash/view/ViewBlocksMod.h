@@ -47,7 +47,7 @@ template <
 struct view_traits<ViewBlockMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
+//typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewBlockMod<DomainType, NDim>                        image_type;
   typedef ViewBlockMod<DomainType, NDim>                        local_type;
   typedef ViewBlockMod<DomainType, NDim>                       global_type;
@@ -456,7 +456,7 @@ template <
 struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
+//typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewBlocksMod<DomainType, NDim>                       image_type;
   typedef typename view_traits<domain_type>::local_type         local_type;
   typedef ViewBlocksMod<DomainType, NDim>                      global_type;

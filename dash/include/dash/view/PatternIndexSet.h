@@ -54,7 +54,6 @@ template <class DomainT>
 class IndexSetBlock;
 
 
-#if 0
 template <
   class       IndexSetType,
   class       DomainType,
@@ -148,6 +147,10 @@ class IndexSetBase
 
   constexpr DomainType view_domain() const && {
     return _domain;
+  }
+
+  constexpr const typename view_origin_type::pattern_type & pattern() const {
+    return derived().pattern();
   }
 
   constexpr auto domain() const
@@ -264,7 +267,6 @@ class IndexSetBase
     );
   }
 };
-#endif
 
 /**
  * \concept{DashIndexSetConcept}
@@ -276,30 +278,50 @@ template <
   std::size_t NDim = PatternType::ndim() >
 class PatternIndexSetBase
 : public IndexSetBase<
+//         IndexSetType,
            PatternIndexSetBase<
-             IndexSetType, DomainType, PatternType, NDim >,
-           DomainType, NDim >
+             IndexSetType, DomainType, PatternType, NDim
+           >,
+           DomainType,
+           NDim >
 {
   typedef PatternIndexSetBase<
-            IndexSetType, DomainType, PatternType, NDim>
+            IndexSetType,
+            DomainType,
+            PatternType,
+            NDim
+          >
     self_t;
   typedef IndexSetBase<
-            IndexSetType, DomainType, NDim>
+//          IndexSetType,
+            PatternIndexSetBase<
+              IndexSetType,
+              DomainType,
+              PatternType,
+              NDim
+            >,
+            DomainType, NDim
+          >
     base_t;
 
   typedef typename std::decay<DomainType>::type DomainValueT;
 
   using typename base_t::index_range_t;
+
+ public:
   using typename base_t::size_type;
   using typename base_t::index_type;
 
- public:
   typedef PatternType pattern_type;
 
  private:
-  const pattern_type * _pattern;
+  const pattern_type * _pattern = nullptr;
 
  protected:
+  constexpr const IndexSetType & derived() const {
+    return static_cast<const IndexSetType &>(*this);
+  }
+
   template <class PatternT_>
   static constexpr index_range_t index_range_g2l(
     const PatternT_     & pat,
@@ -321,6 +343,12 @@ class PatternIndexSetBase
   }
 
  public:
+  constexpr PatternIndexSetBase()               = delete;
+  constexpr PatternIndexSetBase(self_t &&)      = default;
+  constexpr PatternIndexSetBase(const self_t &) = default;
+  self_t & operator=(self_t &&)                 = default;
+  self_t & operator=(const self_t &)            = default;
+
   constexpr explicit PatternIndexSetBase(const DomainType & domain)
   : base_t(domain)
   , _pattern(&dash::origin(this->domain()).pattern())
@@ -352,6 +380,10 @@ class PatternIndexSetBase
             pat_mapping_traits;
     return pat_mapping_traits::shifted ||
            pat_mapping_traits::diagonal;
+  }
+
+  size_type size() const {
+    return derived().size();
   }
 
   // ---- extents ---------------------------------------------------------

@@ -30,11 +30,13 @@ domain(const Viewable & v);
 template <class ViewT>
 struct view_traits
 {
-  typedef typename ViewT::domain_type         domain_type;
-  typedef typename ViewT::image_type           image_type;
-  typedef typename ViewT::origin_type         origin_type;
-  typedef typename ViewT::local_type           local_type;
-  typedef typename ViewT::global_type         global_type;
+  typedef typename ViewT::domain_type             domain_type;
+  typedef typename ViewT::image_type               image_type;
+  typedef typename ViewT::origin_type             origin_type;
+  typedef typename ViewT::local_type               local_type;
+  typedef typename ViewT::global_type             global_type;
+
+  typedef typename ViewT::index_set_type       index_set_type;
 
   typedef std::integral_constant<dim_t, value>  rank;
 
@@ -105,8 +107,8 @@ namespace detail {
                    dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
 
-//  typedef typename ViewT::local_type                            local_type;
-    typedef typename view_traits<ViewT>::local_type               local_type;
+    typedef typename ViewT::local_type                            local_type;
+//  typedef typename view_traits<ViewT>::local_type               local_type;
     typedef typename ViewT::global_type                          global_type;
     typedef typename std::conditional<is_local::value,
                                       local_type,
@@ -115,8 +117,8 @@ namespace detail {
 
     typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
 
-    typedef typename dash::view_traits<domain_type>::pattern_type
-                                                                pattern_type;
+//  typedef typename dash::view_traits<domain_type>::pattern_type
+//                                                              pattern_type;
   };
 
   /**
@@ -139,7 +141,7 @@ namespace detail {
     typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 
-    typedef typename ContainerT::pattern_type                   pattern_type;
+//  typedef typename ContainerT::pattern_type                   pattern_type;
 
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
