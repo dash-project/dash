@@ -1169,6 +1169,12 @@ GlobOutputIt copy(
   DASH_LOG_TRACE_VAR("dash::copy()", in_g_range);
   DASH_LOG_TRACE_VAR("dash::copy()", dash::index(in_g_range));
 
+  auto in_blocks    = dash::blocks(in_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", in_blocks);
+
+  auto out_blocks   = dash::blocks(out_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", out_blocks);
+
   // local view on in/out ranges:
   auto out_l_range  = dash::local(out_g_range);
   DASH_LOG_TRACE("dash::copy()", "local(range(out_gi, out_ge)):",

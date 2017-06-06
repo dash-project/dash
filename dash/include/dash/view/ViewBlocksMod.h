@@ -480,7 +480,8 @@ class ViewBlocksMod
 : public ViewModBase< ViewBlocksMod<DomainType, NDim>, DomainType, NDim > {
  private:
   typedef ViewBlocksMod<DomainType, NDim>                           self_t;
-  typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
+//typedef ViewBlocksMod<const DomainType, NDim>               const_self_t;
+  typedef ViewBlocksMod<DomainType, NDim>                     const_self_t;
   typedef ViewModBase<ViewBlocksMod<DomainType, NDim>, DomainType, NDim>
                                                                     base_t;
  public:
@@ -634,19 +635,21 @@ class ViewBlocksMod
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
-    return const_iterator(*const_cast<self_t *>(this),
+    return const_iterator(*this,
                           _index_set.first());
   }
   iterator begin() {
-    return iterator(*this, _index_set.first());
+    return iterator(const_cast<self_t &>(*this),
+                    _index_set.first());
   }
 
   constexpr const_iterator end() const {
-    return const_iterator(*const_cast<self_t *>(this),
+    return const_iterator(*this,
                           _index_set.last() + 1);
   }
   iterator end() {
-    return iterator(*this, _index_set.last() + 1);
+    return iterator(const_cast<self_t &>(*this),
+                    _index_set.last() + 1);
   }
 
   constexpr block_type operator[](int offset) const {

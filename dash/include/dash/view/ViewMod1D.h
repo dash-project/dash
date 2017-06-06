@@ -704,6 +704,9 @@ class IteratorRangeOrigin
 
   typedef typename iterator::value_type                        value_type;
 
+  typedef typename iterator::reference                          reference;
+  typedef typename iterator::const_reference              const_reference;
+
   typedef typename Iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
 
@@ -742,6 +745,14 @@ class IteratorRangeOrigin
 
   iterator begin() { return _begin; }
   sentinel end()   { return _end;   }
+
+  constexpr const_reference operator[](int offset) const {
+    return *(this->begin() + offset);
+  }
+
+  reference operator[](int offset) {
+    return *(this->begin() + offset);
+  }
 
   constexpr size_type size() const noexcept {
     return std::distance(_begin, _end);

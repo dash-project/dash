@@ -170,6 +170,15 @@ constexpr auto begin(RangeType && range)
 /**
  * \concept{DashRangeConcept}
  */
+template <typename RangeType>
+constexpr auto begin(const RangeType & range)
+  -> decltype(range.begin()) {
+  return range.begin();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
 template <class RangeType>
 constexpr auto end(RangeType && range)
   -> decltype(std::forward<RangeType>(range).end()) {
@@ -180,10 +189,29 @@ constexpr auto end(RangeType && range)
  * \concept{DashRangeConcept}
  */
 template <class RangeType>
+constexpr auto end(const RangeType & range)
+  -> decltype(range.end()) {
+  return range.end();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
 constexpr auto
 size(RangeType && r)
   -> decltype(std::forward<RangeType>(r).size()) {
   return std::forward<RangeType>(r).size();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
+constexpr auto
+size(const RangeType & r)
+  -> decltype(r.size()) {
+  return r.size();
 }
 
 } // namespace dash
