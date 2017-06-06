@@ -505,16 +505,16 @@ class IndexSetBase
 
   constexpr std::array<size_type, NDim>
   extents() const {
-    return derived().extents();
+    return pattern().extents();
   }
 
   template <std::size_t ShapeDim>
   constexpr size_type extent() const {
-    return derived().extents()[ShapeDim];
+    return pattern().extents()[ShapeDim];
   }
 
   constexpr size_type extent(std::size_t shape_dim) const {
-    return derived().extents()[shape_dim];
+    return pattern().extents()[shape_dim];
   }
 
   // ---- offsets ---------------------------------------------------------
