@@ -472,14 +472,6 @@ class IteratorRange;
 //
 // -----------------------------------------------------------------------
 
-// template <
-//   class Iterator,
-//   class Sentinel >
-// constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
-// local(const IteratorRangeOrigin<Iterator, Sentinel> & ir) {
-//   return IteratorRangeLocalOrigin<Iterator, Sentinel>(ir);
-// }
-
 template <
   class Iterator,
   class Sentinel >
@@ -488,10 +480,8 @@ struct view_traits<IteratorRangeLocalOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>             RangeT;
  public:
   typedef IteratorRangeOrigin<Iterator, Sentinel>             domain_type;
-//typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
-//typedef RangeT                                               image_type;
-  typedef typename view_traits<domain_type>::origin_type      origin_type;
-  typedef typename view_traits<domain_type>::local_type        image_type;
+  typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
+  typedef RangeT                                               image_type;
 
 //typedef typename Iterator::pattern_type                    pattern_type;
 //typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
@@ -550,19 +540,16 @@ class IteratorRangeLocalOrigin
   typedef std::integral_constant<bool, true>                     is_local;
 
   typedef typename g_origin_iterator::local_type
-    origin_iterator;
-
-  typedef typename g_origin_iterator::local_type
-    const_origin_iterator;
-
-  typedef ViewIterator<
-            origin_iterator, index_set_type >
     iterator;
-  typedef ViewIterator<
-            const_origin_iterator, index_set_type >
+  typedef typename g_origin_iterator::local_type
     const_iterator;
 
-  typedef IteratorRangeOrigin<OriginIter, Sentinel>           global_type;
+  typedef value_type &
+    reference;
+  typedef const value_type &
+    const_reference;
+
+  typedef typename domain_type::global_type                   global_type;
   typedef self_t                                               local_type;
 
  private:
@@ -576,37 +563,57 @@ class IteratorRangeLocalOrigin
   { }
 
   constexpr const_iterator begin() const {
-    return const_iterator(
+    return dash::local(
              dash::begin(
-                 dash::origin(this->domain())
-               ).local(),
-               _index_set, 0);
+               const_cast<const domain_type &>(
+                 dash::domain(*this))
+               ) + _index_set.pattern().global(0)
+             ) + _index_set[0];
   }
 
   iterator begin() {
-    return iterator(
+    return dash::local(
              dash::begin(
-               const_cast<origin_type &>(
-                 dash::origin(this->domain()) )
-             ).local(),
-             _index_set, 0);
+               const_cast<domain_type &>(
+                 dash::domain(*this))
+               ) + _index_set.pattern().global(0)
+             ) + _index_set[0];
   }
 
   constexpr const_iterator end() const {
-    return const_iterator(
+    return dash::local(
              dash::begin(
-               dash::origin(this->domain())
-             ).local(),
-             _index_set, _index_set.size());
+               const_cast<const domain_type &>(
+                 dash::domain(*this))
+               ) + _index_set.pattern().global(0)
+             ) + _index_set[_index_set.size() - 1] + 1;
   }
 
   iterator end() {
-    return iterator(
+    return dash::local(
              dash::begin(
-               const_cast<origin_type &>(
-                 dash::origin(this->domain()) )
-             ).local(),
-             _index_set, _index_set.size());
+               const_cast<domain_type &>(
+                 dash::domain(*this))
+               ) + _index_set.pattern().global(0)
+             ) + _index_set[_index_set.size() - 1] + 1;
+  }
+
+  constexpr const_reference operator[](int offset) const {
+    return *(dash::local(
+               dash::begin(
+                 const_cast<const domain_type &>(
+                   dash::domain(*this))
+                 ) + _index_set.pattern().global(0)
+               ) + _index_set[offset]);
+  }
+
+  reference operator[](int offset) {
+    return *(dash::local(
+               dash::begin(
+                 const_cast<domain_type &>(
+                   dash::domain(*this))
+                 ) + _index_set.pattern().global(0)
+               ) + _index_set[offset]);
   }
 
   constexpr size_type size() const { return _index_set.size(); }
@@ -628,21 +635,13 @@ class IteratorRangeLocalOrigin
   }
 
   constexpr const global_type & global() const {
-    return this->domain();
+    return dash::global(dash::domain(*this));
   }
 
   global_type & global() {
-    return this->domain();
+    return dash::global(dash::domain(*this));
   }
 };
-
-template <
-  class Iterator,
-  class Sentinel >
-constexpr IteratorRangeLocalOrigin<Iterator, Sentinel>
-local(const IteratorRangeLocalOrigin<Iterator, Sentinel> & ir) {
-  return ir;
-}
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin

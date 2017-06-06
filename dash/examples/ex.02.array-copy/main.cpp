@@ -138,6 +138,10 @@ int main(int argc, char* argv[])
 
   array.barrier();
 
+  if (myid == 0) {
+    cout << range_str(array)
+         << endl;
+  }
 
   dash::finalize();
 
