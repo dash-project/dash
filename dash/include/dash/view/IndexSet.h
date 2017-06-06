@@ -478,7 +478,7 @@ class IndexSetBase
 
   constexpr bool is_sub() const noexcept {
     return (
-      derived().size() < this->extents().size()
+      derived().size() < this->pattern().size()
     );
   }
 
@@ -510,11 +510,11 @@ class IndexSetBase
 
   template <std::size_t ShapeDim>
   constexpr size_type extent() const {
-    return pattern().extents()[ShapeDim];
+    return derived().extents()[ShapeDim];
   }
 
   constexpr size_type extent(std::size_t shape_dim) const {
-    return pattern().extents()[shape_dim];
+    return derived().extents()[shape_dim];
   }
 
   // ---- offsets ---------------------------------------------------------
