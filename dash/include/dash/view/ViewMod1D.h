@@ -129,14 +129,14 @@ class ViewSubMod<DomainType, SubDim, 1>
 
   constexpr const_iterator end() const {
     return const_iterator(dash::origin(*this).begin(),
-                          _index_set, _index_set.size());
+                          _index_set, _index_set.size() - 1) + 1;
   }
 
   iterator end() {
     return iterator(const_cast<origin_type &>(
                       dash::origin(*this)
                     ).begin(),
-                    _index_set, _index_set.size());
+                    _index_set, _index_set.size() - 1) + 1;
   }
 
   constexpr const_reference operator[](int offset) const {
@@ -483,8 +483,6 @@ struct view_traits<IteratorRangeLocalOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
   typedef RangeT                                               image_type;
 
-//typedef typename Iterator::pattern_type                    pattern_type;
-//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
   typedef std::integral_constant<dim_t, 1>                           rank;
 
   typedef RangeT                                               local_type;
@@ -641,7 +639,7 @@ class IteratorRangeLocalOrigin
   global_type & global() {
     return dash::global(dash::domain(*this));
   }
-};
+}; // IteratorRangeLocalOrigin
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin
@@ -665,8 +663,6 @@ struct view_traits<IteratorRangeOrigin<Iterator, Sentinel> > {
   typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
   typedef IteratorRangeOrigin<Iterator, Sentinel>              image_type;
 
-//typedef typename Iterator::pattern_type                    pattern_type;
-//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
   typedef std::integral_constant<dim_t, 1>                           rank;
 
   typedef RangeT                                              global_type;
@@ -773,7 +769,7 @@ class IteratorRangeOrigin
   self_t & global() {
     return *this;
   }
-};
+}; // IteratorRangeOrigin
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin (local pointers)
@@ -975,7 +971,7 @@ class IteratorRangeOrigin<
   constexpr size_type size() const {
     return std::distance(_begin, _end);
   }
-};
+}; // IteratorRangeOrigin<Iter *, Sent *>
 #endif
 
 // ----------------------------------------------------------------------
@@ -994,8 +990,6 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef RangeOrigin                                         origin_type;
   typedef RangeT                                               image_type;
 
-//typedef typename RangeOrigin::pattern_type                 pattern_type;
-//typedef std::integral_constant<dim_t, pattern_type::ndim()>        rank;
   typedef std::integral_constant<dim_t, RangeOrigin::rank::value>    rank;
 
   typedef RangeT                                              global_type;
@@ -1047,8 +1041,6 @@ class IteratorRange
   typedef self_t                                              global_type;
   typedef ViewLocalMod<self_t, 1>                              local_type;
 
-//typedef typename RangeOrigin::pattern_type                 pattern_type;
-
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
                    >::is_local is_local;
@@ -1073,7 +1065,9 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              begin - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             begin + (begin.pattern().size() - begin.pos()) ))
+             begin + (begin.pattern().size() - begin.pos())
+          // end
+           ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
   { }
@@ -1083,7 +1077,9 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              std::move(begin) - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             std::move(begin) + (begin.pattern().size() - begin.pos()) ))
+             std::move(begin) + (begin.pattern().size() - begin.pos())
+          // std::move(end)
+           ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
   { }
@@ -1177,7 +1173,9 @@ class IteratorRange
   self_t & global() {
     return *this;
   }
-};
+}; // IteratorRange
+
+#endif // DOXYGEN
 
 // -----------------------------------------------------------------------
 // dash::make_range
@@ -1196,8 +1194,6 @@ make_range(Iterator && begin, Sentinel && end) {
          >(std::forward<Iterator>(begin),
            std::forward<Sentinel>(end));
 }
-
-#endif // DOXYGEN
 
 } // namespace dash
 

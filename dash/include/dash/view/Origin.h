@@ -70,16 +70,25 @@ global_origin(const ViewT & view)
 
 template <class ViewT>
 constexpr auto
-origin(const ViewT & view)
+origin(ViewT && view)
   -> typename std::enable_if<
-       ( dash::view_traits<ViewT>::is_view::value &&
+       ( dash::view_traits<
+           typename std::decay<ViewT>::type
+         >::is_view::value &&
          dash::view_traits<
-           typename dash::view_traits<ViewT>::domain_type
+           typename dash::view_traits<
+             typename std::decay<ViewT>::type
+           >::domain_type
          >::is_local::value ),
        const typename dash::view_traits<ViewT>::origin_type::local_type &
+    // typename dash::view_traits<
+    //            typename std::decay<ViewT>::type
+    //          >::origin_type::local_type
      >::type {
   // Recurse to origin of local view:
-  return dash::local(dash::global_origin(view.domain()));
+  return dash::local(
+           dash::global_origin(
+             std::forward<ViewT>(view).domain()));
 }
 
 template <class ViewT>

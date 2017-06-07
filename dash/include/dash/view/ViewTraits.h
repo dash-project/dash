@@ -108,7 +108,6 @@ namespace detail {
                   >::is_local::value >                         is_local;
 
     typedef typename ViewT::local_type                            local_type;
-//  typedef typename view_traits<ViewT>::local_type               local_type;
     typedef typename ViewT::global_type                          global_type;
     typedef typename std::conditional<is_local::value,
                                       local_type,
@@ -116,9 +115,6 @@ namespace detail {
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
 
     typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
-
-//  typedef typename dash::view_traits<domain_type>::pattern_type
-//                                                              pattern_type;
   };
 
   /**
@@ -136,12 +132,9 @@ namespace detail {
     typedef ContainerT                                            image_type;
     typedef ContainerT                                           global_type;
     typedef typename ContainerT::local_type                       local_type;
-  //typedef typename view_traits<ContainerT>::local_type          local_type;
     typedef typename ContainerT::index_type                       index_type;
     typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
-
-//  typedef typename ContainerT::pattern_type                   pattern_type;
 
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
@@ -155,7 +148,6 @@ namespace detail {
     typedef std::integral_constant<bool, std::is_same<
                                            ContainerT,
                                            local_type
-                                           // typename ContainerT::local_type
                                          >::value >            is_local;
 
     typedef std::integral_constant<dim_t,

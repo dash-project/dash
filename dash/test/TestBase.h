@@ -21,6 +21,11 @@
 #include "TestPrinter.h"
 #include "TestLogHelpers.h"
 
+#include <sstream>
+#include <iomanip>
+#include <string>
+
+
 
 namespace testing {
 namespace internal {
@@ -220,6 +225,52 @@ static std::string range_str(
        << std::fixed << std::setprecision(4)
        << static_cast<const value_t>(v) << " ";
     ++i;
+  }
+  return ss.str();
+}
+
+template <class NViewType>
+std::string nview_str(
+  const NViewType   & nview) {
+  using value_t   = typename NViewType::value_type;
+  auto view_nrows = nview.extents()[0];
+  auto view_ncols = nview.extents()[1];
+  auto nindex     = dash::index(nview);
+  std::ostringstream ss;
+  for (int r = 0; r < view_nrows; ++r) {
+    for (int c = 0; c < view_ncols; ++c) {
+      int offset = r * view_ncols + c;
+      ss << std::fixed << std::setw(3)
+         << offset << ":"
+         << std::fixed << std::setw(2)
+         << nindex[offset]
+         << ":"
+         << std::fixed << std::setprecision(3)
+         << static_cast<const value_t>(nview[r][c])
+         << " ";
+    }
+    ss << '\n';
+  }
+  return ss.str();
+}
+
+template <class NViewType>
+std::string nrange_str(
+  const NViewType   & nview) {
+  using value_t   = typename NViewType::value_type;
+  auto view_nrows = nview.extents()[0];
+  auto view_ncols = nview.extents()[1];
+  std::ostringstream ss;
+  for (int r = 0; r < view_nrows; ++r) {
+    for (int c = 0; c < view_ncols; ++c) {
+      int offset = r * view_ncols + c;
+      ss << std::fixed << std::setw(3)
+         << offset << ":"
+         << std::fixed << std::setprecision(3)
+         << static_cast<const value_t &>(nview[r][c])
+         << " ";
+    }
+    ss << '\n';
   }
   return ss.str();
 }

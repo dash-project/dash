@@ -451,10 +451,12 @@ class ViewLocalMod
   template <dim_t ShapeDim>
   constexpr size_type extent() const {
     return _index_set.template extent<ShapeDim>();
+//  return _index_set.extents()[ShapeDim];
   }
 
   constexpr size_type extent(dim_t shape_dim) const {
     return _index_set.extent(shape_dim);
+//  return _index_set.extents()[shape_dim];
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -483,7 +485,8 @@ class ViewLocalMod
     return iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(dash::origin(*this)) )),
+                 const_cast<origin_type &>(
+                   dash::origin(*this)) )),
              _index_set, 0);
   }
 
@@ -499,7 +502,8 @@ class ViewLocalMod
     return iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(dash::origin(*this)) )),
+                 const_cast<origin_type &>(
+                   dash::origin(*this)) )),
              _index_set, _index_set.size());
   }
 
@@ -515,7 +519,8 @@ class ViewLocalMod
     return *iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(dash::origin(*this)) )),
+                 const_cast<origin_type &>(
+                   dash::origin(*this)) )),
              _index_set, offset);
   }
 

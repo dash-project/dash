@@ -1,4 +1,6 @@
 
+#include "CopyTest.h"
+
 #include <gtest/gtest.h>
 
 #include <dash/Array.h>
@@ -8,15 +10,16 @@
 #include <dash/algorithm/Fill.h>
 #include <dash/algorithm/Generate.h>
 #include <dash/algorithm/ForEach.h>
+
 #include <dash/pattern/ShiftTilePattern1D.h>
 #include <dash/pattern/TilePattern1D.h>
 #include <dash/pattern/BlockPattern1D.h>
 
-#include "../TestBase.h"
-#include "../TestLogHelpers.h"
-#include "CopyTest.h"
+#include <dash/View.h>
 
 #include <vector>
+#include <algorithm>
+
 
 
 TEST_F(CopyTest, BlockingGlobalToLocalBlock)
@@ -464,6 +467,66 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
                 static_cast<int>(array[global_offset + l]));
   }
   array.barrier();
+}
+
+TEST_F(CopyTest, BlockingLocalToGlobalBlockNDim)
+{
+  // Copy all elements contained in a single, continuous block.
+  const int num_rows_per_unit = 3;
+  const int num_cols_per_unit = 7;
+
+  // Distribute row-wise, 3 rows per units:
+  dash::SizeSpec<2> sizespec(num_rows_per_unit * dash::size(),
+                             num_cols_per_unit);
+  dash::DistributionSpec<2> distspec(dash::BLOCKED, dash::NONE);
+  dash::TeamSpec<2> teamspec(dash::size(), 1);
+
+  using pattern_t = dash::BlockPattern<2>;
+
+  dash::NArray<int, 2, dash::default_index_t, pattern_t> matrix(
+    sizespec, distspec, dash::Team::All(), teamspec);
+
+  std::iota(matrix.local.begin(),
+            matrix.local.end(),
+            (dash::myid() + 1) * 100);
+  matrix.barrier();
+
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG("CopyTest.BlockingLocalToGlobalBlockNDim",
+                   "initial matrix:");
+    DASH_LOG_DEBUG("CopyTest.BlockingLocalToGlobalBlockNDim",
+                   dash::test::nrange_str(matrix));
+  }
+
+  auto dest_row = ((dash::myid() + 1) * num_rows_per_unit)
+                  % matrix.extents()[0];
+
+  DASH_LOG_DEBUG_VAR("CopyTest.BlockingLocalToGlobalBlockNDim",
+                     matrix.local.row(1));
+  DASH_LOG_DEBUG_VAR("CopyTest.BlockingLocalToGlobalBlockNDim",
+                     matrix.local.row(1).begin());
+  DASH_LOG_DEBUG_VAR("CopyTest.BlockingLocalToGlobalBlockNDim",
+                     matrix.local.row(1).end());
+
+// auto in_range = dash::make_range(matrix.local.row(1).begin(),
+//                                  matrix.local.row(1).end());
+
+  // Copy second local row into matrix row at next unit:
+  dash::copy(matrix.local.row(1).begin(),
+             matrix.local.row(1).end(),
+             static_cast<decltype(matrix.begin())>(
+               dash::sub<0>(
+                 dest_row,
+                 dest_row + 1,
+                 matrix).begin()
+             ));
+
+  if (dash::myid() == 0) {
+    DASH_LOG_DEBUG("CopyTest.BlockingLocalToGlobalBlockNDim",
+                   "result matrix:");
+    DASH_LOG_DEBUG("CopyTest.BlockingLocalToGlobalBlockNDim",
+                   dash::test::nrange_str(matrix));
+  }
 }
 
 TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)

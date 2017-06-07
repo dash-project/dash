@@ -1010,6 +1010,24 @@ class IndexSetLocal
     return this->pattern().local_extents()[shape_dim];
   }
 
+  // ---- offsets ---------------------------------------------------------
+
+#if TODO
+  constexpr std::array<index_type, NDim>
+  offsets() const {
+    return std::array<index_type, NDim> { };
+  }
+
+  template <std::size_t ShapeDim>
+  constexpr index_type offset() const {
+    return derived().offsets()[ShapeDim];
+  }
+
+  constexpr index_type offset(std::size_t shape_dim) const {
+    return derived().offsets()[shape_dim];
+  }
+#endif
+
   // ---- size ------------------------------------------------------------
 
   constexpr size_type size(std::size_t sub_dim) const noexcept {

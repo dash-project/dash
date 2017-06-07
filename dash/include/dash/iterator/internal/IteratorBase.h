@@ -85,12 +85,12 @@ class IndexIteratorBase
   }
 
   derived_t & operator++() {
-    _pos++;
+    ++_pos;
     return derived();
   }
 
   derived_t & operator--() {
-    _pos--;
+    ++_pos;
     return derived();
   }
 

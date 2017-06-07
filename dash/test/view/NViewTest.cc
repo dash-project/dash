@@ -552,21 +552,23 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained", "== nview_rows_l");
   auto nview_rows_l = dash::local(nview_rows_g);
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
+                 "local(sub<0>(1,3, mat)):",
                  "extents:", nview_rows_l.extents(),
                  "offsets:", nview_rows_l.offsets());
 
-// EXPECT_EQ_U(2,          nview_rows_l.extent<0>());
-// EXPECT_EQ_U(block_cols, nview_rows_l.extent<1>());
-//
-// dash::test::print_nview("nview_rows_l", nview_rows_l);
+  EXPECT_EQ_U(2,          nview_rows_l.extent<0>());
+  EXPECT_EQ_U(block_cols, nview_rows_l.extent<1>());
+ 
+  dash::test::print_nview("nview_rows_l", nview_rows_l);
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained", "== nview_cols_l");
   auto nview_cols_l = dash::local(nview_cols_g);
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
+                 "local(sub<1>(2,7, mat)):",
                  "extents:", nview_cols_l.extents(),
                  "offsets:", nview_cols_l.offsets());
 
-// dash::test::print_nview("nview_cols_l", nview_cols_l);
+  dash::test::print_nview("nview_cols_l", nview_cols_l);
 }
 
 TEST_F(NViewTest, MatrixBlocked1DimSub)
@@ -604,6 +606,19 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
                      mat.pattern().local_extents());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      mat.pattern().local_size());
+
+  // Initial plausibility check: equality of iterator on n-dim view and
+  // matrix view proxy iterator:
+  auto view_expr_it    = dash::sub<0>(1,2, mat)
+                           .begin() + 2;
+  auto mat_ref_glob_it = (mat.row(1).begin() + 2);
+
+  using globiter_t     = decltype(mat.begin());
+
+  EXPECT_EQ_U(static_cast<globiter_t>(view_expr_it),
+              (mat_ref_glob_it));
+  EXPECT_EQ_U(view_expr_it.dart_gptr(),
+              mat_ref_glob_it.dart_gptr());
 
   if (dash::myid() == 0) {
     auto all_sub = dash::sub<0>(
