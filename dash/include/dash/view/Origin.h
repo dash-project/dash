@@ -80,10 +80,8 @@ origin(ViewT && view)
              typename std::decay<ViewT>::type
            >::domain_type
          >::is_local::value ),
-       const typename dash::view_traits<ViewT>::origin_type::local_type &
-    // typename dash::view_traits<
-    //            typename std::decay<ViewT>::type
-    //          >::origin_type::local_type
+       decltype(dash::local(
+                  dash::global_origin(std::forward<ViewT>(view).domain())))
      >::type {
   // Recurse to origin of local view:
   return dash::local(

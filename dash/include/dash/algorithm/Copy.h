@@ -1178,11 +1178,15 @@ GlobOutputIt copy(
   auto out_blocks   = dash::blocks(out_g_range);
   DASH_LOG_TRACE_VAR("dash::copy()", out_blocks);
 
+  auto l_out_blocks = dash::local(out_blocks);
+  DASH_LOG_TRACE_VAR("dash::copy()", out_blocks);
+
   // Iterator to active output block:
   auto out_block_it = out_blocks.begin();
   // Iterator local blocks in input range:
-  for (auto l_in_block : l_in_blocks) {
-    DASH_LOG_TRACE_VAR("dash::copy()", l_in_block);
+  for (auto l_out_block : l_out_blocks) {
+    DASH_LOG_TRACE_VAR("dash::copy()", l_out_block);
+    DASH_LOG_TRACE_VAR("dash::copy()", dash::global(dash::index(l_out_block)));
   }
 
   // local view on in/out ranges:
@@ -1193,6 +1197,8 @@ GlobOutputIt copy(
                  out_l_range);
   DASH_LOG_TRACE("dash::copy()", "index(local(range(out_gi, out_ge))):",
                  dash::index(out_l_range));
+  DASH_LOG_TRACE("dash::copy()", "global(index(local(range(o_gi,o_ge)))):",
+                 dash::global(dash::index(out_l_range)));
 
   auto in_l_range   = dash::local(in_g_range);
   DASH_LOG_TRACE("dash::copy()", "local(range(in_gi, in_ge)):",

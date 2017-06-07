@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
   size_t num_units       = dash::Team::All().size();
   size_t num_elems_unit  = (argc > 1)
                            ? static_cast<size_t>(atoi(argv[1]))
-                           : 6;
+                           : 8;
   size_t num_elems_total = num_elems_unit * num_units;
   size_t start_index     = (argc > 2)
                            ? static_cast<size_t>(atoi(argv[2]))
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
                            ? static_cast<size_t>(atoi(argv[3]))
                            : num_elems_total / 2;
 
-  dash::Array<float> array(num_elems_total);
+  dash::Array<float> array(num_elems_total, dash::BLOCKCYCLIC(3));
 
   if (myid == 0) {
     cout << endl
@@ -133,7 +133,7 @@ int main(int argc, char* argv[])
     cout << range_str(g_out_range) << endl;
   }
 
-  dash::Array<float> src_array(num_elems_total / 2);
+  dash::Array<float> src_array(num_elems_total / 2, dash::BLOCKCYCLIC(2));
 
   std::fill(src_array.lbegin(), src_array.lend(), (myid + 1) * 10);
 
