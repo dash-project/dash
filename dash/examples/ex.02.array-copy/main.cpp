@@ -114,8 +114,7 @@ int main(int argc, char* argv[])
   for(size_t i = 0; i < num_elems_copy; ++i) {
     ss << local_array[i] << " ";
   }
-  ss   << endl;
-  cout << ss.str();
+  cout << ss.str() << endl;
 
   array.barrier();
 

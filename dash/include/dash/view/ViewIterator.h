@@ -92,12 +92,16 @@ public:
     return (_index_set)[this->pos()];
   }
 
-  constexpr const local_type local() const {
+  constexpr bool is_local() const {
+    return (_domain_it + (_index_set[this->pos()])).is_local();
+  }
+
+  constexpr local_type local() const {
     return (_domain_it + (_index_set[this->pos()])).local();
   }
 
-  inline local_type local() {
-    return (_domain_it + (_index_set[this->pos()])).local();
+  constexpr const self_t & global() const {
+    return *this;
   }
 
   constexpr dart_gptr_t dart_gptr() const {
