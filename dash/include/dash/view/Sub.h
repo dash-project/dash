@@ -77,8 +77,7 @@ ViewSubMod<
   DomainValueT,
   SubDim,
   dash::view_traits<DomainValueT>::rank::value >
-sub(
-    OffsetFirstT    begin,
+sub(OffsetFirstT    begin,
     OffsetFinalT    end,
     DomainT      && domain) {
   return ViewSubMod<
@@ -88,6 +87,17 @@ sub(
          >(std::forward<DomainT>(domain),
            begin,
            end);
+}
+
+template <
+  dim_t    SubDim  = 0,
+  class    DomainT,
+  class    OffsetT >
+constexpr auto
+sub(OffsetT    offset,
+    DomainT && domain)
+    -> decltype(dash::sub<SubDim>(offset, offset+1, domain)) {
+  return dash::sub<SubDim>(offset, offset+1, domain);
 }
 
 } // namespace dash
