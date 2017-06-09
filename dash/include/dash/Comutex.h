@@ -93,7 +93,7 @@ public:
     if(!_is_initialized){
       _team = &team;
       _mutexes.reserve(team.size());
-      for(int i = 0; i<team.size(); ++i){
+      for(decltype(team.size()) i = 0; i<team.size(); ++i){
         _mutexes.emplace_back(team);
       }
     } else {
