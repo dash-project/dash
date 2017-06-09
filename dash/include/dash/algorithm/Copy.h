@@ -798,36 +798,83 @@ dash::Future<ValueType *> copy_async(
  *
  * \ingroup  DashAlgorithms
  */
+
 template <
   class ValueType,
-  class GlobInputIt >
-ValueType * copy(
-  GlobInputIt   in_first,
-  GlobInputIt   in_last,
-  ValueType   * out_first)
+  class GlobInputRange >
+auto copy(
+  GlobInputRange   in_range,
+  ValueType      * out_first)
+  -> typename std::enable_if<
+                GlobInputRange::rank::value == 1,
+                ValueType *
+              >::type
 {
-  const auto & team = in_first.team();
+  DASH_LOG_TRACE("dash::copy:range()", "ND = 1, blocking, global to local");
+  if (in_range.size() == 0) {
+    DASH_LOG_TRACE("dash::copy:range", "input range empty");
+    return out_first;
+  }
+  auto out_last  = out_first;
+  auto in_blocks = dash::blocks(in_range);
+  DASH_LOG_TRACE("dash::copy:range", "number of blocks:", in_blocks.size());
+
+  for (auto block : in_blocks) {
+    DASH_LOG_TRACE("dash::copy:range", "block size:", block.size());
+    auto in_copy_it = block.begin();
+    auto in_copy_lp = in_copy_it.local();
+    out_last        = static_cast<ValueType *>(
+                        false && in_copy_lp != nullptr
+                          ? std::copy(
+                              in_copy_lp,
+                              in_copy_lp + block.size(),
+                              out_last)
+                          : dash::internal::copy_block(
+                              in_copy_it,
+                              in_copy_it + block.size(),
+                              out_last) );
+  }
+  DASH_LOG_TRACE("dash::copy:range >", "finished,", "out_last:", out_last);
+  return out_last;
+}
+
+template <
+  class ValueType,
+  class GlobInputRange >
+auto copy(
+  GlobInputRange   in_range,
+  ValueType      * out_first)
+  -> typename std::enable_if<
+                (GlobInputRange::rank::value > 1),
+                ValueType *
+              >::type
+{
+  DASH_LOG_TRACE("dash::copy:range()", "ND > 1, blocking, global to local");
+
+  auto dest_first      = out_first;
+  auto out_last        = out_first;
+  auto in_first        = in_range.begin();
+  auto in_last         = in_range.end();
+  auto li_range_in     = dash::index(
+                           dash::local(
+                             in_range));
+  DASH_LOG_TRACE("dash::copy", "source local index range:",
+                 li_range_in);
+  DASH_LOG_TRACE("dash::copy", "source g(local) index range:",
+                 dash::global(li_range_in));
+
+  // Number of elements in the local subrange:
+//auto num_local_elem  = li_range_in.end - li_range_in.begin;
+  auto num_local_elem  = li_range_in.size();
+  // Total number of elements to be copied:
+  auto total_copy_elem = in_range.size();
+
+  const auto & team    = in_first.team();
   dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
-  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
-  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
-                      <= l2_line_size;
-
-  DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
-
-  ValueType * dest_first = out_first;
-  // Return value, initialize with begin of output range, indicating no
-  // values have been copied:
-  ValueType * out_last   = out_first;
-  // Check if part of the input range is local:
-  DASH_LOG_TRACE_VAR("dash::copy", in_first.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy", in_last.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy", out_first);
-  auto li_range_in     = local_index_range(in_first, in_last);
-  // Number of elements in the local subrange:
-  auto num_local_elem  = li_range_in.end - li_range_in.begin;
-  // Total number of elements to be copied:
-  auto total_copy_elem = in_last - in_first;
+  int  l2_line_size    = uloc.hwinfo().cache_line_sizes[1];
+  bool use_memcpy      = ((in_last - in_first) * sizeof(ValueType))
+                         <= l2_line_size;
 
   // Instead of testing in_first.local() and in_last.local(), this test
   // for a local-only range only requires one call to in_first.local()
@@ -835,7 +882,6 @@ ValueType * copy(
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy", "entire input range is local");
-    ValueType * out_last = out_first + total_copy_elem;
     // Use memcpy for data ranges below 64 KB
     if (use_memcpy) {
       std::memcpy(out_first,        // destination
@@ -853,11 +899,6 @@ ValueType * copy(
                    (out_last - out_first), "elements");
     return out_last;
   }
-
-  DASH_LOG_TRACE("dash::copy", "local range:",
-                 li_range_in.begin,
-                 li_range_in.end,
-                 "in_first.is_local:", in_first.is_local());
   // Check if global input range is partially local:
   if (num_local_elem > 0) {
     // Part of the input range is local, copy local input subrange to
@@ -870,12 +911,12 @@ ValueType * copy(
     DASH_LOG_TRACE_VAR("dash::copy", num_local_elem);
     // Local index range to global input index range:
     // Global index of local range begin index:
-    auto g_l_offset_begin = pattern.global(li_range_in.begin);
+    auto g_l_offset_begin = pattern.global(li_range_in.first());
     // Global index of local range end index:
     //
     // NOTE: definition as pat.global(l_end-1)+1 as
     //       pat.global(l_end) would be out of range
-    auto g_l_offset_end   = pattern.global(li_range_in.end-1) + 1;
+    auto g_l_offset_end   = pattern.global(li_range_in.last()) + 1;
     DASH_LOG_TRACE("dash::copy",
                    "global index range of local subrange:",
                    "begin:", g_l_offset_begin, "end:", g_l_offset_end);
@@ -982,6 +1023,30 @@ ValueType * copy(
   DASH_LOG_TRACE("dash::copy >", "finished,",
                  "out_last:", out_last);
   return out_last;
+}
+
+template <
+  class ValueType,
+  class GlobInputIt >
+ValueType * copy(
+  GlobInputIt   in_first,
+  GlobInputIt   in_last,
+  ValueType   * out_first)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
+  // Check if part of the input range is local:
+  DASH_LOG_TRACE_VAR("dash::copy", in_first.dart_gptr());
+  DASH_LOG_TRACE_VAR("dash::copy", in_last.dart_gptr());
+  DASH_LOG_TRACE_VAR("dash::copy", out_first);
+
+//auto li_range_in_old = local_index_range(in_first, in_last);
+//DASH_LOG_TRACE("dash::copy", "source index range (old):",
+//               "(", li_range_in_old.begin, ",", li_range_in_old.end, ")");
+  auto in_range        = dash::make_range(in_first, in_last);
+  DASH_LOG_TRACE("dash::copy", "source value range:", in_range);
+  DASH_LOG_TRACE("dash::copy", "source index range:", dash::index(in_range));
+
+  return dash::copy(in_range, out_first);
 }
 
 

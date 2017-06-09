@@ -658,12 +658,14 @@ template <
 struct view_traits<IteratorRangeOrigin<Iterator, Sentinel> > {
  private:
   typedef IteratorRangeOrigin<Iterator, Sentinel>                  RangeT;
+  typedef typename Iterator::pattern_type                        PatternT;
  public:
   typedef IteratorRangeOrigin<Iterator, Sentinel>             domain_type;
   typedef IteratorRangeOrigin<Iterator, Sentinel>             origin_type;
   typedef IteratorRangeOrigin<Iterator, Sentinel>              image_type;
 
-  typedef std::integral_constant<dim_t, 1>                           rank;
+  typedef std::integral_constant<
+            dim_t, static_cast<dim_t>(PatternT::ndim())>             rank;
 
   typedef RangeT                                              global_type;
   typedef IteratorRangeLocalOrigin<Iterator, Sentinel>         local_type;
@@ -671,8 +673,7 @@ struct view_traits<IteratorRangeOrigin<Iterator, Sentinel> > {
   typedef typename Iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
 
-  typedef dash::IndexSetIdentity< 
-            IteratorRangeOrigin<Iterator, Sentinel> >      index_set_type;
+  typedef dash::IndexSetIdentity<RangeT>                   index_set_type;
 
   typedef std::integral_constant<bool, false> is_projection;
   typedef std::integral_constant<bool, false> is_view;
@@ -993,7 +994,7 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef std::integral_constant<dim_t, RangeOrigin::rank::value>    rank;
 
   typedef RangeT                                              global_type;
-  typedef ViewLocalMod<RangeT, 1>                              local_type;
+  typedef ViewLocalMod<RangeT, rank::value>                    local_type;
 
   typedef typename RangeT::index_type                          index_type;
   typedef typename RangeT::size_type                            size_type;
@@ -1017,12 +1018,11 @@ template <class RangeOrigin>
 class IteratorRange
 : public ViewModBase<
            IteratorRange<RangeOrigin>,
-           RangeOrigin,
-           1 >
+           RangeOrigin >
 {
   typedef IteratorRange<RangeOrigin>
     self_t;
-  typedef ViewModBase<IteratorRange<RangeOrigin>, RangeOrigin, 1 >
+  typedef ViewModBase<IteratorRange<RangeOrigin>, RangeOrigin>
     base_t;
  public:
   typedef typename RangeOrigin::iterator                         iterator;
@@ -1036,10 +1036,12 @@ class IteratorRange
 
   typedef typename domain_type::value_type                     value_type;
 
-  typedef std::integral_constant<dim_t, 1>                           rank;
+  typedef typename dash::view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::rank                                           rank;
 
   typedef self_t                                              global_type;
-  typedef ViewLocalMod<self_t, 1>                              local_type;
+  typedef ViewLocalMod<self_t>                                 local_type;
 
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
@@ -1065,8 +1067,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              begin - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             begin + (begin.pattern().size() - begin.pos())
-          // end
+          // begin + (begin.pattern().size() - begin.pos())
+             end
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
@@ -1077,8 +1079,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              std::move(begin) - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             std::move(begin) + (begin.pattern().size() - begin.pos())
-          // std::move(end)
+          // std::move(begin) + (begin.pattern().size() - begin.pos())
+             std::move(end)
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())

@@ -14,6 +14,7 @@
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/ViewMod.h>
+#include <dash/view/Sub.h>
 
 #include <dash/Team.h>
 
@@ -241,12 +242,10 @@ std::string nview_str(
     for (int c = 0; c < view_ncols; ++c) {
       int offset = r * view_ncols + c;
       ss << std::fixed << std::setw(3)
-         << offset << ":"
-         << std::fixed << std::setw(2)
          << nindex[offset]
          << ":"
-         << std::fixed << std::setprecision(3)
-         << static_cast<const value_t>(nview[r][c])
+         << std::fixed << std::setprecision(5)
+         << static_cast<const value_t>(nview[offset])
          << " ";
     }
     ss << '\n';
@@ -262,12 +261,13 @@ std::string nrange_str(
   auto view_ncols = nview.extents()[1];
   std::ostringstream ss;
   for (int r = 0; r < view_nrows; ++r) {
-    for (int c = 0; c < view_ncols; ++c) {
+    auto row_view = dash::sub<0>(r, r+1, nview);
+    for (int c = 0; c < row_view.size(); ++c) {
       int offset = r * view_ncols + c;
       ss << std::fixed << std::setw(3)
          << offset << ":"
-         << std::fixed << std::setprecision(3)
-         << static_cast<const value_t &>(nview[r][c])
+         << std::fixed << std::setprecision(5)
+         << static_cast<const value_t &>(row_view[c])
          << " ";
     }
     ss << '\n';

@@ -44,6 +44,8 @@ public:
   typedef typename IndexSetType::index_type            index_type;
   typedef typename DomainIterator::pattern_type      pattern_type;
   typedef typename DomainIterator::local_type          local_type;
+
+  typedef std::integral_constant<bool, false>            has_view;
 private:
   DomainIterator  _domain_it;
   IndexSetType    _index_set;
@@ -110,6 +112,10 @@ public:
 
   constexpr explicit operator dart_gptr_t() const {
     return dart_gptr();
+  }
+
+  constexpr const dash::Team & team() const {
+    return _domain_it.team();
   }
 
   constexpr explicit operator DomainIterator() const {

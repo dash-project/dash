@@ -421,8 +421,8 @@ class IndexSetBase
     const PatternT_     & pat,
     const index_range_t & grng) noexcept {
     return index_range_t {
-             pat.local_coords({{ grng.begin }})[0],
-             pat.local_coords({{ grng.end }})[0]
+             pat.local_coords({{ static_cast<int>(grng.begin) }})[0],
+             pat.local_coords({{ static_cast<int>(grng.end)   }})[0]
            };
   }
 
@@ -1555,7 +1555,8 @@ class IndexSetBlock
   index_type _block_idx;
   index_type _size;
 
-  constexpr static dim_t NBlockDim = pattern_ndim::value;
+  constexpr static dim_t NDomainDim = pattern_ndim::value;
+  constexpr static dim_t NBlockDim  = pattern_ndim::value;
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
@@ -1623,14 +1624,16 @@ class IndexSetBlock
                    this->pattern().local_block(_block_idx)
                  ) )
              : ( // translate block phase to global index:
-                 this->pattern().global_at(
-                   // global coords
+                 dash::CartesianIndexSpace<NDomainDim>(
+                   this->pattern().extents()
+                 ).at(
+                   // in-block coords
                    dash::CartesianIndexSpace<NBlockDim>(
                      this->pattern().block(_block_idx).extents()
                    ).coords(block_phase),
-                   // viewspec
-                   this->pattern().block(_block_idx)
-                 ) )
+                   // block viewspec
+                   this->pattern().block(_block_idx))
+                 )
            );
   }
 
