@@ -504,7 +504,7 @@ public:
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 1),
              const local_type>::type
-  operator[](const index_type & idx) const 
+  inline operator[](const index_type & idx) const 
   {
     return const_cast<const local_type>(
         *(_storage.lbegin()+idx));
@@ -516,7 +516,7 @@ public:
    */
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank == 1), local_type>::type
-  operator[](const index_type & idx) {
+  inline operator[](const index_type & idx) {
     return *(_storage.lbegin()+idx);
   }
   /**
@@ -528,7 +528,7 @@ public:
    */
   template<int __rank = _rank::value>
   typename std::enable_if<(__rank > 1), local_type>::type
-  operator[](const index_type & idx) {
+  inline operator[](const index_type & idx) {
     return _storage.local[0][idx];
   }
   
@@ -556,7 +556,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  operator value_type() const {
+  inline operator value_type() const {
     return *(_storage.lbegin());
   }
   
@@ -566,7 +566,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  explicit operator reference() {
+  explicit inline operator reference() {
     return static_cast<reference>(
             *(_storage.begin()+static_cast<index_type>(dash::myid())));
   }
@@ -579,7 +579,7 @@ public:
     typename MEMTYPE,
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  MEMTYPE & member(size_t offs) {
+  inline MEMTYPE & member(size_t offs) {
     char * s_begin = reinterpret_cast<char *>(_storage.lbegin());
     s_begin += offs;
     return *(reinterpret_cast<MEMTYPE*>(s_begin));
@@ -598,7 +598,7 @@ public:
     class P=T,
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  MEMTYPE & member(const MEMTYPE P::*mem) {
+  inline MEMTYPE & member(const MEMTYPE P::*mem) {
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
@@ -614,7 +614,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type & operator +=(const value_type & value) {
+  inline value_type & operator +=(const value_type & value) {
     return *(_storage.lbegin()) += value;
   }
   
@@ -624,7 +624,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type & operator -=(const value_type & value) {
+  inline value_type & operator -=(const value_type & value) {
     return *(_storage.lbegin()) -= value;
   }
   
@@ -634,7 +634,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type & operator *=(const value_type & value) {
+  inline value_type & operator *=(const value_type & value) {
     return *(_storage.lbegin()) *= value;
   }
   
@@ -644,7 +644,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type & operator /=(const value_type & value) {
+  inline value_type & operator /=(const value_type & value) {
     return *(_storage.lbegin()) /= value;
   }
   
@@ -659,7 +659,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator +(const value_type & value) const {
+  inline value_type operator +(const value_type & value) const {
     return *(_storage.lbegin()) + value;
   }
   
@@ -669,7 +669,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator -(const value_type & value) const {
+  inline value_type operator -(const value_type & value) const {
     return *(_storage.lbegin()) - value;
   }
   
@@ -679,7 +679,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator *(const value_type & value) const {
+  inline value_type operator *(const value_type & value) const {
     return *(_storage.lbegin()) * value;
   }
   
@@ -689,7 +689,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator /(const value_type & value) const {
+  inline value_type operator /(const value_type & value) const {
     return *(_storage.lbegin()) / value;
   }
   
@@ -699,7 +699,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator ++() {
+  inline value_type operator ++() {
     return ++(*(_storage.lbegin()));
   }
   /**
@@ -708,7 +708,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator ++(int) {
+  inline value_type operator ++(int) {
     return (*(_storage.lbegin()))++;
   }
   
@@ -718,7 +718,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator --() {
+  inline value_type operator --() {
     return --(*(_storage.lbegin()));
   }
   /**
@@ -727,7 +727,7 @@ public:
   template<
     int __rank = _rank::value,
     typename = typename std::enable_if<(__rank == 0)>::type>
-  value_type operator --(int) {
+  inline value_type operator --(int) {
     return (*(_storage.lbegin()))--;
   }
   
@@ -744,28 +744,28 @@ private:
 template<
   typename Lhs,
   typename T>
-Lhs operator+(const Lhs & lhs, const dash::Coarray<T> & rhs) {
+inline Lhs operator+(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs + static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator-(const Lhs & lhs, const dash::Coarray<T> & rhs) {
+inline Lhs operator-(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs - static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator*(const Lhs & lhs, const dash::Coarray<T> & rhs) {
+inline Lhs operator*(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs * static_cast<Lhs>(rhs);
 }
 
 template<
   typename Lhs,
   typename T>
-Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
+inline Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
   return lhs / static_cast<Lhs>(rhs);
 }
 
