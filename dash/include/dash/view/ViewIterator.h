@@ -46,6 +46,8 @@ public:
   typedef typename DomainIterator::local_type          local_type;
 
   typedef std::integral_constant<bool, false>            has_view;
+
+  typedef IndexSetType                             index_set_type;
 private:
   DomainIterator  _domain_it;
   IndexSetType    _index_set;

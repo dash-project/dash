@@ -185,12 +185,17 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                      "source block view domain:",
                      dash::typestr(dash::domain(remote_block_view)));
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
+                     "source block view domain extents:",
+                     dash::domain(remote_block_view).extents());
+      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block view iterator:",
                      dash::typestr(remote_block_view.begin()),
-                     "begin.pos:", remote_block_view.begin().pos(),
-                     "end.pos:",   remote_block_view.end().pos());
-      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
-                     dash::test::nview_str(remote_block_view));
+                     "begin.pos:",  remote_block_view.begin().pos(),
+                     "end.pos:",    remote_block_view.end().pos(),
+                     "begin.gpos:", remote_block_view.begin().gpos(),
+                     "end.gpos:",   remote_block_view.end().gpos());
+      DASH_LOG_DEBUG_VAR("CopyTest.Blocking2DimGlobalToLocalBlock",
+                         dash::test::nview_str(remote_block_view));
 
       EXPECT_EQ_U(remote_block_matrix.viewspec().offsets(),
                   dash::index(remote_block_view).offsets());
@@ -203,13 +208,18 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block range domain:",
                      dash::typestr(dash::domain(remote_block_range)));
+   //  DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
+   //                 "source block range domain extents:",
+   //                 dash::domain(remote_block_range).extents());
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block range iterator:",
                      dash::typestr(remote_block_range.begin()),
-                     "begin.pos:", remote_block_range.begin().pos(),
-                     "end.pos:",   remote_block_range.end().pos());
-      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
-                     dash::test::nview_str(remote_block_range));
+                     "begin.pos:",  remote_block_range.begin().pos(),
+                     "end.pos:",    remote_block_range.end().pos(),
+                     "begin.gpos:", remote_block_range.begin().gpos(),
+                     "end.gpos:",   remote_block_range.end().gpos());
+      DASH_LOG_DEBUG_VAR("CopyTest.Blocking2DimGlobalToLocalBlock",
+                         dash::test::nview_str(remote_block_range));
 
       EXPECT_EQ_U(remote_block_matrix.viewspec().offsets(),
                   dash::index(remote_block_range).offsets());
