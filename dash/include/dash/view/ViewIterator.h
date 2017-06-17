@@ -131,6 +131,10 @@ public:
   constexpr const pattern_type & pattern() const {
     return _domain_it.pattern();
   }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
+  }
 };
 
 template <

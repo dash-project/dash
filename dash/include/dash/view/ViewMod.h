@@ -160,6 +160,8 @@ class ViewModBase
  public:
   typedef DomainType                                          domain_type;
 
+  // TODO: Clarify if origins should always be considered const
+  //
   typedef typename std::conditional<(
                         view_traits<domain_type>::is_origin::value &&
                        !view_traits<domain_type>::is_view::value   &&
@@ -248,11 +250,11 @@ class ViewModBase
   self_t & operator=(const self_t &)    = default;
   self_t & operator=(self_t &&)         = default;
 
-  constexpr const domain_type & domain() const & {
+  constexpr domain_type domain() const && {
     return _domain;
   }
 
-  constexpr domain_type domain() const && {
+  constexpr const domain_type & domain() const & {
     return _domain;
   }
 
@@ -429,7 +431,7 @@ class ViewLocalMod
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
-  , _index_set(domain)
+  , _index_set(this->domain())
   { }
 
   constexpr bool operator==(const self_t & rhs) const {

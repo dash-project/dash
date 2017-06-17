@@ -32,7 +32,9 @@
  * An \c IndexSet specifies a injective, non-surjective map from a
  * random-accessible sequence \f$ I = { i : (0...n) } \f$ to elements in
  * another index set \$ F \$ (\em family or \em image set).
- * More general, an index set is an enumeration of elements in a domain.
+ * More general, an index set can be considered an enumeration of elements
+ * in a domain.
+ * Index sets do not provide the inverse mapping, from integer to element.
  *
  * In the context of views and ranges, the function \c dash::index returns
  * the index set of a view expression.
@@ -66,7 +68,7 @@
  * Type                | Synopsis
  * ------------------- | --------------------------------------------------
  * <tt>IndexSetT</tt>  | Specific index set, CRTP type
- * <tt>DomainT</tt>    | Indexed data domain, model of the \c View concept
+ * <tt>DomainT</tt>    | Indexed domain set, model of \c View concept
  * <tt>NDim</tt>       | Number of dimensions in the index set
  *
  *
@@ -206,7 +208,7 @@ class IndexSetIterator
       index_type, int, std::nullptr_t, index_type >    base_t;
  private:
   const IndexSetType * _index_set;
-  index_type           _stride                 = BaseStride;
+  index_type           _stride                       = BaseStride;
  public:
   constexpr IndexSetIterator()                       = delete;
   constexpr IndexSetIterator(self_t &&)              = default;

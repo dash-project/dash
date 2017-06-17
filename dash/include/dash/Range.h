@@ -4,6 +4,12 @@
 /**
  * \defgroup  DashRangeConcept  Multidimensional Range Concept
  *
+ * TODO: The Range concept as specified in the following diverges from
+ *       the conventional definition of ranges as in Boost and rangesV3
+ *       (begin, end, next operations).
+ *       It should be renamed to *Span*.
+ *
+ *
  * \ingroup DashNDimConcepts
  * \{
  * \par Description

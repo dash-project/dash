@@ -646,13 +646,12 @@ class IteratorRangeLocalOrigin
 
 // -----------------------------------------------------------------------
 // Iterator Range Origin
-//
+// -----------------------------------------------------------------------
 // Concept adapter for iterator range
 //
 //    range(Container.iter, Container.iter)
 //
-// to semantics of type Container.
-//
+// to model of Container concept.
 // -----------------------------------------------------------------------
 
 namespace detail {
@@ -688,9 +687,12 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
   typedef typename RangeOrigin::pattern_type                     PatternT;
   typedef typename RangeOrigin::iterator                         iterator;
  public:
-  typedef typename std::decay<RangeOrigin>::type              origin_type;
-  typedef typename std::decay<RangeOrigin>::type              domain_type;
-  typedef typename std::decay<RangeOrigin>::type               image_type;
+//typedef typename std::decay<RangeOrigin>::type              origin_type;
+//typedef typename std::decay<RangeOrigin>::type              domain_type;
+//typedef typename std::decay<RangeOrigin>::type               image_type;
+  typedef RangeOrigin                                         origin_type;
+  typedef RangeOrigin                                         domain_type;
+  typedef RangeT                                               image_type;
 
   typedef IndexSet                                         index_set_type;
 
@@ -698,7 +700,8 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
             dim_t, static_cast<dim_t>(PatternT::ndim())>             rank;
 
   typedef RangeT                                              global_type;
-  typedef ViewLocalMod<domain_type>                            local_type;
+//typedef ViewLocalMod<domain_type>                            local_type;
+  typedef ViewLocalMod<RangeT, rank::value>                    local_type;
 
   typedef typename iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
@@ -724,9 +727,11 @@ class IteratorRangeViewDomain
             RangeOrigin >                                          base_t;
 
  public:
-  typedef typename std::decay<RangeOrigin>::type              origin_type;
-  typedef typename std::decay<RangeOrigin>::type              domain_type;
-  typedef typename std::decay<RangeOrigin>::type               image_type;
+//typedef typename std::decay<RangeOrigin>::type              origin_type;
+//typedef typename std::decay<RangeOrigin>::type              domain_type;
+  typedef RangeOrigin                                         origin_type;
+  typedef RangeOrigin                                         domain_type;
+  typedef self_t                                               image_type;
 
   typedef IndexSet                                         index_set_type;
 
@@ -749,7 +754,8 @@ class IteratorRangeViewDomain
   typedef std::integral_constant<bool, false>                    is_local;
 
   typedef self_t                                              global_type;
-  typedef ViewLocalMod<domain_type>                            local_type;
+//typedef ViewLocalMod<domain_type>                            local_type;
+  typedef ViewLocalMod<self_t>                                 local_type;
 
  private:
   static const dim_t NDim = rank::value;
@@ -760,6 +766,20 @@ class IteratorRangeViewDomain
   constexpr IteratorRangeViewDomain(const domain_type & dom)
   : base_t(dom)
   , _index_set(dom.begin().index_set())
+  { }
+
+  constexpr IteratorRangeViewDomain(
+      const iterator & begin,
+      const sentinel & end)
+  : base_t(domain_type(begin, end))
+  , _index_set(begin.index_set())
+  { }
+
+  constexpr IteratorRangeViewDomain(
+      iterator && begin,
+      sentinel && end)
+  : base_t(domain_type(std::move(begin), std::move(end)))
+  , _index_set(begin.index_set()) // TODO: dangling
   { }
 
   constexpr IteratorRangeViewDomain()                     = delete;
@@ -851,7 +871,7 @@ class IteratorRangeViewDomain
     return this->begin().pattern();
   }
 
-  constexpr const local_type local() const noexcept {
+  constexpr local_type local() const noexcept {
     return local_type(*this);
   }
 
@@ -861,6 +881,10 @@ class IteratorRangeViewDomain
 
   self_t & global() {
     return *this;
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
   }
 }; // IteratorRangeViewDomain
 
@@ -973,7 +997,7 @@ class IteratorRangeOrigin
     return this->begin().pattern();
   }
 
-  constexpr const local_type local() const noexcept {
+  constexpr local_type local() const noexcept {
     return local_type(*this);
   }
 
@@ -1267,9 +1291,9 @@ class IteratorRange
   typedef dash::IndexSetSub<domain_type, 0>                index_set_type;
 
   using       reference =
-                typename std::iterator_traits<      iterator>::reference;
+                 typename std::iterator_traits<      iterator>::reference;
   using const_reference =
-                typename std::iterator_traits<const_iterator>::reference;
+                 typename std::iterator_traits<const_iterator>::reference;
 
  private:
   static const dim_t   NDim         = rank::value;
@@ -1424,15 +1448,16 @@ constexpr
                  dash::IteratorRangeOrigin<
                    typename std::decay<Iterator>::type,
                    typename std::decay<Sentinel>::type >,
-                 typename Iterator::index_set_type > >
+                 typename std::decay<Iterator>::type::index_set_type > >
            >::type
 make_range(Iterator && begin, Sentinel && end) {
+  // begin, end are view iterators:
   return dash::IteratorRange<
            dash::IteratorRangeViewDomain<
              dash::IteratorRangeOrigin<
                typename std::decay<Iterator>::type,
                typename std::decay<Sentinel>::type >,
-             typename Iterator::index_set_type >
+             typename std::decay<Iterator>::type::index_set_type >
            >(std::forward<Iterator>(begin),
              std::forward<Sentinel>(end));
 }

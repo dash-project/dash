@@ -71,6 +71,7 @@ template <
 constexpr
 typename std::enable_if<
   ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !dash::view_traits<ContainerDecayType>::is_view::value &&
      std::is_member_function_pointer<
        decltype(&ContainerDecayType::local)>::value ),
   decltype(std::declval<const ContainerType &>().local())
@@ -86,6 +87,7 @@ template <
 constexpr
 typename std::enable_if<
   ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !dash::view_traits<ContainerDecayType>::is_view::value &&
      std::is_member_function_pointer<
        decltype(&ContainerDecayType::local)>::value ),
   decltype(std::declval<ContainerType &>().local())
@@ -110,20 +112,24 @@ local(const ViewType & v)
   return IndexSetIdentity<const typename ViewType::local_type>(
            v.local());
 }
-#endif
 
 /**
  * \concept{DashViewConcept}
  */
-template <class ViewType>
+template <
+  class    ViewType,
+  typename ViewValueT = typename std::decay<ViewType>::type >
 constexpr auto
 local(const ViewType & v)
 -> typename std::enable_if<
-     dash::view_traits<ViewType>::is_view::value,
+     ( dash::view_traits<ViewValueT>::is_view::value &&
+      !dash::view_traits<ViewValueT>::is_origin::value &&
+      !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(v.local())
    >::type {
   return v.local();
 }
+#endif
 
 template <
   class    ViewType,
@@ -132,6 +138,7 @@ constexpr auto
 local(ViewType && v)
 -> typename std::enable_if<
     ( dash::view_traits<ViewValueT>::is_view::value &&
+     !dash::view_traits<ViewValueT>::is_origin::value &&
      !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(std::forward<ViewType>(v).local())
    >::type {
