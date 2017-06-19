@@ -749,7 +749,6 @@ class IteratorRangeViewDomain
   typedef std::integral_constant<bool, false>                    is_local;
 
   typedef self_t                                              global_type;
-//typedef ViewLocalMod<domain_type>                            local_type;
   typedef ViewLocalMod<self_t>                                 local_type;
 
  private:
@@ -758,7 +757,7 @@ class IteratorRangeViewDomain
   const index_set_type & _index_set;
 
  public:
-  constexpr IteratorRangeViewDomain(const domain_type & dom)
+  constexpr explicit IteratorRangeViewDomain(const domain_type & dom)
   : base_t(dom)
   , _index_set(dom.begin().index_set())
   { }
@@ -959,7 +958,9 @@ class IteratorRangeOrigin
   , _end(end)
   { }
 
-  constexpr IteratorRangeOrigin(iterator && begin, sentinel && end)
+  constexpr IteratorRangeOrigin(
+    iterator && begin,
+    sentinel && end)
   : _begin(std::move(begin))
   , _end(std::move(end))
   { }
@@ -1221,7 +1222,10 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef IteratorRange<RangeOrigin>                               RangeT;
  public:
   typedef RangeOrigin                                         domain_type;
-  typedef RangeOrigin                                         origin_type;
+//typedef RangeOrigin                                         origin_type;
+  typedef typename dash::view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::origin_type                             origin_type;
   typedef RangeT                                               image_type;
 
   typedef std::integral_constant<dim_t, RangeOrigin::rank::value>    rank;
@@ -1264,7 +1268,10 @@ class IteratorRange
   typedef typename RangeOrigin::const_sentinel             const_sentinel;
 
   typedef RangeOrigin                                         domain_type;
-  typedef RangeOrigin                                         origin_type;
+//typedef RangeOrigin                                         origin_type;
+  typedef typename dash::view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::origin_type                             origin_type;
   typedef self_t                                               image_type;
 
   typedef typename domain_type::value_type                     value_type;

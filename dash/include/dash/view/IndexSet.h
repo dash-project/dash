@@ -459,10 +459,10 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-//  -> decltype(dash::index(
-//                std::declval<const view_domain_type &>()
-//              )) {
-    -> typename view_traits<view_domain_type>::index_set_type {
+    -> decltype(dash::index(
+                  std::declval<const view_domain_type &>()
+                )) {
+//  -> typename view_traits<view_domain_type>::index_set_type {
     return dash::index(_domain);
   }
 
