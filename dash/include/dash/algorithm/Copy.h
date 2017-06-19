@@ -855,9 +855,13 @@ auto copy(
   auto out_last        = out_first;
   auto in_first        = in_range.begin();
   auto in_last         = in_range.end();
+  auto l_range_in      = dash::local(
+                           in_range);
   auto li_range_in     = dash::index(
                            dash::local(
                              in_range));
+  DASH_LOG_TRACE("dash::copy", "source local range:",
+                 l_range_in);
   DASH_LOG_TRACE("dash::copy", "source local index range:",
                  li_range_in);
   DASH_LOG_TRACE("dash::copy", "source g(local) index range:",

@@ -487,8 +487,8 @@ class ViewLocalMod
     return iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(
-                   dash::origin(*this)) )),
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
              _index_set, 0);
   }
 
@@ -504,8 +504,8 @@ class ViewLocalMod
     return iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(
-                   dash::origin(*this)) )),
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
              _index_set, _index_set.size());
   }
 
@@ -521,8 +521,8 @@ class ViewLocalMod
     return *iterator(
              dash::begin(
                dash::local(
-                 const_cast<origin_type &>(
-                   dash::origin(*this)) )),
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
              _index_set, offset);
   }
 
@@ -687,8 +687,8 @@ class ViewSubMod
 
   iterator begin() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, 0);
   }
@@ -701,8 +701,8 @@ class ViewSubMod
 
   iterator end() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, _index_set.size());
   }
@@ -713,8 +713,8 @@ class ViewSubMod
   }
 
   reference operator[](int offset) {
-    return *(iterator(const_cast<origin_type &>(
-                        dash::origin(*this)
+    return *(iterator(dash::origin(
+                        const_cast<self_t &>(*this)
                       ).begin(),
                       _index_set, offset));
   }
