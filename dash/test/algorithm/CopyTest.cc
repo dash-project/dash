@@ -557,14 +557,14 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlockNDim)
 
   matrix.barrier();
 
-  // Copy second local row into matrix row at next unit:
-  dash::copy(in_range.begin(),
-             in_range.end(),
-             dash::sub<0>(
-               dest_row,
-               dest_row + 1,
-               matrix).begin()
-             );
+// // Copy second local row into matrix row at next unit:
+// dash::copy(in_range.begin(),
+//            in_range.end(),
+//            dash::sub<0>(
+//              dest_row,
+//              dest_row + 1,
+//              matrix).begin()
+//            );
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG("CopyTest.BlockingLocalToGlobalBlockNDim",

@@ -207,8 +207,8 @@ class ViewBlockMod
   }
 
   iterator begin() {
-    return iterator(const_cast<origin_type &>(
-                      dash::origin(*this)
+    return iterator(dash::origin(
+                      const_cast<self_t &>(*this)
                     ).begin(),
                     _index_set, 0);
   }
@@ -219,8 +219,8 @@ class ViewBlockMod
   }
 
   iterator end() {
-    return iterator(const_cast<origin_type &>(
-                      dash::origin(*this)
+    return iterator(dash::origin(
+                      const_cast<self_t &>(*this)
                     ).begin(),
                     _index_set, _index_set.size());
   }
