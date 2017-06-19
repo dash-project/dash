@@ -47,9 +47,7 @@ namespace test {
       std::ostringstream row_ss;
       for (int c = 0; c < view_ncols; ++c) {
         int offset = r * view_ncols + c;
-        row_ss << std::fixed << std::setw(3)
-               << offset << ":"
-               << std::fixed << std::setw(2)
+        row_ss << std::fixed << std::setw(2)
                << nindex[offset]
                << ":"
                << std::fixed << std::setprecision(3)
@@ -553,6 +551,7 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
   auto nview_rows_l = dash::local(nview_rows_g);
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
                  "local(sub<0>(1,3, mat)):",
+                 dash::typestr(nview_rows_l),
                  "extents:", nview_rows_l.extents(),
                  "offsets:", nview_rows_l.offsets());
 
@@ -615,8 +614,6 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
   using globiter_t     = decltype(mat.begin());
 
-  EXPECT_EQ_U(static_cast<globiter_t>(view_expr_it),
-              (mat_ref_glob_it));
   EXPECT_EQ_U(view_expr_it.dart_gptr(),
               mat_ref_glob_it.dart_gptr());
 
@@ -954,7 +951,10 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                      "offsets:", block.offsets(),
                      "extents:", block.extents());
 
-      dash::test::print_nview("   block row", block);
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                     "blocks(mat)[b]:");
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                     dash::test::nview_str(block));
 
       const auto & block_idx = dash::index(block);
       const auto & pat_block = mat.pattern().block(bi);
@@ -966,6 +966,10 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                               bphase_row + pat_block.offsets()[0],
                               bphase_col + pat_block.offsets()[1]
                             });
+        DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                       "block phase:", bphase,
+                       "pattern gidx:", pat_g_index,
+                       "block gidx:", block_idx[bphase]);
         EXPECT_EQ(pat_g_index, block_idx[bphase]);
       }
 

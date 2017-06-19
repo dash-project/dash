@@ -754,7 +754,7 @@ class IteratorRangeViewDomain
  private:
   static const dim_t NDim = rank::value;
 
-  const index_set_type & _index_set;
+  index_set_type _index_set;
 
  public:
   constexpr explicit IteratorRangeViewDomain(const domain_type & dom)
