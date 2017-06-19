@@ -951,31 +951,37 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                      "offsets:", block.offsets(),
                      "extents:", block.extents());
 
+      const auto & block_idx = dash::index(block);
+      const auto & pat_block = mat.pattern().block(bi);
+
       DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
                      "blocks(mat)[b]:");
       DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
                      dash::test::nview_str(block));
-
-      const auto & block_idx = dash::index(block);
-      const auto & pat_block = mat.pattern().block(bi);
-
-      for (int bphase = 0; bphase < pat_block.size(); ++bphase) {
-        int  bphase_row   = bphase / pat_block.extents()[1];
-        int  bphase_col   = bphase % pat_block.extents()[1];
-        auto pat_g_index  = mat.pattern().global_at({
-                              bphase_row + pat_block.offsets()[0],
-                              bphase_col + pat_block.offsets()[1]
-                            });
-        DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
-                       "block phase:", bphase,
-                       "pattern gidx:", pat_g_index,
-                       "block gidx:", block_idx[bphase]);
-        EXPECT_EQ(pat_g_index, block_idx[bphase]);
-      }
+      DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                     "pattern.block(b):",
+                     pat_block);
 
       EXPECT_EQ(pat_block.size(),    block.size());
       EXPECT_EQ(pat_block.offsets(), block.offsets());
       EXPECT_EQ(pat_block.extents(), block.extents());
+
+      for (int bphase = 0; bphase < pat_block.size(); ++bphase) {
+        auto pat_g_index  = dash::CartesianIndexSpace<2>(
+                              mat.pattern().extents()
+                            ).at(
+                              // in-block coords
+                              dash::CartesianIndexSpace<2>(
+                                pat_block.extents()
+                              ).coords(bphase),
+                              // block viewspec
+                              pat_block);
+        DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
+                       "block phase:",  bphase,
+                       "pattern gidx:", pat_g_index,
+                       "block gidx:",   block_idx[bphase]);
+        EXPECT_EQ(pat_g_index, block_idx[bphase]);
+      }
       bi++;
     }
   }
