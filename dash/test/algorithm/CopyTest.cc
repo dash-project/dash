@@ -165,7 +165,9 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     auto g_block_unit = pattern.unit_at(
                           std::array<index_t, 2> {0,0},
                           g_block_view);
-    LOG_MESSAGE("Block %zu: assigned to unit %d", gb, g_block_unit.id);
+    DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock", " ---- ",
+                   "block gidx:", gb,
+                   "assigned to unit", g_block_unit.id);
     if (g_block_unit == remote_unit_id) {
       // Block is assigned to selecte remote unit, create local copy:
       auto remote_block_matrix = matrix.block(gb);
@@ -173,14 +175,15 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       auto remote_block_range  = dash::make_range(
                                    remote_block_view.begin(),
                                    remote_block_view.end());
-      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
-                     "source block extents:", remote_block_view.extents(),
-                     "offsets:", remote_block_view.offsets(),
-                     "size:", remote_block_view.size());
 
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block view:",
                      dash::typestr(remote_block_view));
+      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
+                     "source block view",
+                     "extents:", remote_block_view.extents(),
+                     "offsets:", remote_block_view.offsets(),
+                     "size:",    remote_block_view.size());
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block view domain:",
                      dash::typestr(dash::domain(remote_block_view)));
@@ -206,6 +209,11 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block range:",
                      dash::typestr(remote_block_range));
+      DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
+                     "source block range",
+                     "extents:", remote_block_range.extents(),
+                     "offsets:", remote_block_range.offsets(),
+                     "size:",    remote_block_range.size());
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block range domain:",
                      dash::typestr(dash::domain(remote_block_range)));

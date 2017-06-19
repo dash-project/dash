@@ -687,8 +687,11 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
   typedef typename RangeOrigin::pattern_type                     PatternT;
   typedef typename RangeOrigin::iterator                         iterator;
  public:
-  typedef RangeOrigin                                         origin_type;
   typedef RangeOrigin                                         domain_type;
+//typedef RangeOrigin                                         origin_type;
+  typedef typename dash::view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::origin_type                             origin_type;
   typedef RangeT                                               image_type;
 
   typedef IndexSet                                         index_set_type;
@@ -724,8 +727,11 @@ class IteratorRangeViewDomain
             RangeOrigin >                                          base_t;
 
  public:
-  typedef RangeOrigin                                         origin_type;
   typedef RangeOrigin                                         domain_type;
+//typedef RangeOrigin                                         origin_type;
+  typedef typename dash::view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::origin_type                             origin_type;
   typedef self_t                                               image_type;
 
   typedef IndexSet                                         index_set_type;
@@ -754,26 +760,40 @@ class IteratorRangeViewDomain
  private:
   static const dim_t NDim = rank::value;
 
+  // TODO: index_set_type should be IndexSetSub<index_set_type>
   index_set_type _index_set;
+  index_type     _begin_idx;
+  index_type     _end_idx;
 
  public:
   constexpr explicit IteratorRangeViewDomain(const domain_type & dom)
   : base_t(dom)
   , _index_set(dom.begin().index_set())
+  , _begin_idx(0)
+  , _end_idx(dom.begin().index_set().size())
   { }
 
   constexpr IteratorRangeViewDomain(
       const iterator & begin,
       const sentinel & end)
-  : base_t(domain_type(begin, end))
+  : base_t(domain_type(
+             begin, //  - begin.pos(),
+             end)) // begin + (begin.pattern().size() - begin.pos())))
   , _index_set(begin.index_set())
+  , _begin_idx(begin.pos())
+  , _end_idx(end.pos())
   { }
 
   constexpr IteratorRangeViewDomain(
       iterator && begin,
       sentinel && end)
-  : base_t(domain_type(std::move(begin), std::move(end)))
+  : base_t(domain_type(
+             std::move(begin), // - begin.pos(),
+             std::move(end)))
+             // std::move(begin) + (begin.pattern().size() - begin.pos())))
   , _index_set(begin.index_set())
+  , _begin_idx(begin.pos())
+  , _end_idx(end.pos())
   { }
 
   constexpr IteratorRangeViewDomain()                     = delete;
@@ -820,10 +840,11 @@ class IteratorRangeViewDomain
 
   // ---- access ----------------------------------------------------------
 
+#if 0
   constexpr const_iterator begin() const {
     return const_iterator(
              dash::origin(*this).begin(),
-             _index_set, 0);
+             _index_set, _begin_idx);
   }
 
   iterator begin() {
@@ -831,13 +852,13 @@ class IteratorRangeViewDomain
              dash::origin(
                const_cast<self_t &>(*this)
              ).begin(),
-             _index_set, 0);
+             _index_set, _begin_idx);
   }
 
   constexpr const_iterator end() const {
     return const_iterator(
              dash::origin(*this).begin(),
-             _index_set, _index_set.size());
+             _index_set, _end_idx);
   }
 
   iterator end() {
@@ -845,7 +866,7 @@ class IteratorRangeViewDomain
              dash::origin(
                const_cast<self_t &>(*this)
              ).begin(),
-             _index_set, _index_set.size());
+             _index_set, _end_idx);
   }
 
   constexpr const_reference operator[](int offset) const {
@@ -857,9 +878,33 @@ class IteratorRangeViewDomain
     return *(iterator(dash::origin(
                         const_cast<self_t &>(*this)
                       ).begin(),
-                      _index_set, offset));
+                      _index_set, _begin_idx + offset));
+  }
+#else
+  constexpr const_iterator begin() const {
+    return dash::domain(*this).begin();
   }
 
+  iterator begin() {
+    return dash::domain(*this).begin();
+  }
+
+  constexpr const_iterator end() const {
+    return dash::domain(*this).end();
+  }
+
+  iterator end() {
+    return dash::domain(*this).end();
+  }
+
+  constexpr const_reference operator[](int offset) const {
+    return *(this->begin() + offset);
+  }
+
+  reference operator[](int offset) {
+    return *(this->begin() + offset);
+  }
+#endif
 
   constexpr const pattern_type & pattern() const noexcept {
     return this->begin().pattern();
@@ -985,7 +1030,7 @@ class IteratorRangeOrigin
     return *(this->begin() + offset);
   }
 
-  // TODO: Not well-defined, should be identical to pattern().size()
+  // TODO: Not well-defined, should be identical to extents size
   //
   constexpr size_type size() const noexcept {
     return dash::distance(_begin, _end);
