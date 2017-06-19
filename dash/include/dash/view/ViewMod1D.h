@@ -773,7 +773,7 @@ class IteratorRangeViewDomain
       iterator && begin,
       sentinel && end)
   : base_t(domain_type(std::move(begin), std::move(end)))
-  , _index_set(begin.index_set()) // TODO: dangling
+  , _index_set(begin.index_set())
   { }
 
   constexpr IteratorRangeViewDomain()                     = delete;
@@ -815,7 +815,7 @@ class IteratorRangeViewDomain
   // ---- size ------------------------------------------------------------
 
   constexpr size_type size(dim_t sub_dim = 0) const {
-    return _index_set.size(sub_dim);
+    return _index_set.size();
   }
 
   // ---- access ----------------------------------------------------------
@@ -828,8 +828,8 @@ class IteratorRangeViewDomain
 
   iterator begin() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, 0);
   }
@@ -842,8 +842,8 @@ class IteratorRangeViewDomain
 
   iterator end() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, _index_set.size());
   }
@@ -854,8 +854,8 @@ class IteratorRangeViewDomain
   }
 
   reference operator[](int offset) {
-    return *(iterator(const_cast<origin_type &>(
-                        dash::origin(*this)
+    return *(iterator(dash::origin(
+                        const_cast<self_t &>(*this)
                       ).begin(),
                       _index_set, offset));
   }
@@ -985,8 +985,14 @@ class IteratorRangeOrigin
     return *(this->begin() + offset);
   }
 
+  // TODO: Not well-defined, should be identical to pattern().size()
+  //
   constexpr size_type size() const noexcept {
     return dash::distance(_begin, _end);
+  }
+
+  constexpr const std::array<size_type, rank::value> extents() const {
+    return this->pattern().extents();
   }
 
   constexpr const pattern_type & pattern() const noexcept {
@@ -1307,8 +1313,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              begin - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-          // begin + (begin.pattern().size() - begin.pos())
-             end
+             begin + (begin.pattern().size() - begin.pos())
+          // end
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
@@ -1319,8 +1325,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              std::move(begin) - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-          // std::move(begin) + (begin.pattern().size() - begin.pos())
-             std::move(end)
+             std::move(begin) + (begin.pattern().size() - begin.pos())
+          // std::move(end)
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
@@ -1445,23 +1451,25 @@ template <class Iterator, class Sentinel>
 constexpr
   typename std::enable_if<
              dash::detail::has_type_index_set_type<Iterator>::value,
-             dash::IteratorRange<
+          // dash::IteratorRange<
                dash::IteratorRangeViewDomain<
                  dash::IteratorRangeOrigin<
                    typename std::decay<Iterator>::type,
                    typename std::decay<Sentinel>::type >,
-                 typename std::decay<Iterator>::type::index_set_type > >
+                 typename std::decay<Iterator>::type::index_set_type >
+          // >
            >::type
 make_range(Iterator && begin, Sentinel && end) {
   // begin, end are view iterators:
-  return dash::IteratorRange<
+  return // dash::IteratorRange<
            dash::IteratorRangeViewDomain<
              dash::IteratorRangeOrigin<
                typename std::decay<Iterator>::type,
                typename std::decay<Sentinel>::type >,
              typename std::decay<Iterator>::type::index_set_type >
-           >(std::forward<Iterator>(begin),
-             std::forward<Sentinel>(end));
+         // >
+           (std::forward<Iterator>(begin),
+            std::forward<Sentinel>(end));
 }
 
 } // namespace dash

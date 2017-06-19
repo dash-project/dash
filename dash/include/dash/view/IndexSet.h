@@ -1632,10 +1632,17 @@ class IndexSetBlock
                    // in-block coords
                    dash::CartesianIndexSpace<NBlockDim>(
                      this->pattern().block(_block_idx).extents()
-                   ).coords(block_phase),
+                   ).coords(
+                     block_phase >= this->pattern().block(_block_idx).size()
+                     ? block_phase - 1
+                     : block_phase ),
                    // block viewspec
                    this->pattern().block(_block_idx))
-                 )
+                 ) + (
+                   block_phase >= this->pattern().block(_block_idx).size()
+                   ? 1
+                   : 0)
+
            );
   }
 

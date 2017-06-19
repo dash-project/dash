@@ -976,10 +976,6 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
                               ).coords(bphase),
                               // block viewspec
                               pat_block);
-        DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic2DSub",
-                       "block phase:",  bphase,
-                       "pattern gidx:", pat_g_index,
-                       "block gidx:",   block_idx[bphase]);
         EXPECT_EQ(pat_g_index, block_idx[bphase]);
       }
       bi++;

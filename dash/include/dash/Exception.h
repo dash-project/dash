@@ -26,6 +26,7 @@
     os << "[ Unit " << dash::myid() << " ] "; \
     os << msg_stream; \
     DASH_LOG_ERROR(dash__toxstr(excep_type), os.str()); \
+    DASH_STACK_TRACE(); \
     throw(excep_type(os.str())); \
   } while(0)
 
