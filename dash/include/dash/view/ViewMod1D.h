@@ -687,9 +687,6 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
   typedef typename RangeOrigin::pattern_type                     PatternT;
   typedef typename RangeOrigin::iterator                         iterator;
  public:
-//typedef typename std::decay<RangeOrigin>::type              origin_type;
-//typedef typename std::decay<RangeOrigin>::type              domain_type;
-//typedef typename std::decay<RangeOrigin>::type               image_type;
   typedef RangeOrigin                                         origin_type;
   typedef RangeOrigin                                         domain_type;
   typedef RangeT                                               image_type;
@@ -701,7 +698,7 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
 
   typedef RangeT                                              global_type;
 //typedef ViewLocalMod<domain_type>                            local_type;
-  typedef ViewLocalMod<RangeT, rank::value>                    local_type;
+  typedef ViewLocalMod<RangeT>                                 local_type;
 
   typedef typename iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
@@ -727,8 +724,6 @@ class IteratorRangeViewDomain
             RangeOrigin >                                          base_t;
 
  public:
-//typedef typename std::decay<RangeOrigin>::type              origin_type;
-//typedef typename std::decay<RangeOrigin>::type              domain_type;
   typedef RangeOrigin                                         origin_type;
   typedef RangeOrigin                                         domain_type;
   typedef self_t                                               image_type;
