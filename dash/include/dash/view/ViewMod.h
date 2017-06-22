@@ -541,7 +541,7 @@ class ViewLocalMod
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
-};
+}; // ViewLocalMod
 
 
 // ------------------------------------------------------------------------

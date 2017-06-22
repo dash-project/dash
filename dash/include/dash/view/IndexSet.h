@@ -260,17 +260,16 @@ index(ContainerType && c)
 }
 
 template <
-  class ContainerType,
-  class ContainerDecayType = typename std::decay<ContainerType>::type >
+  class ContainerType >
 constexpr auto
 index(const ContainerType & c)
 -> typename std::enable_if <
-      dash::view_traits<ContainerDecayType>::is_origin::value ||
-     !dash::view_traits<ContainerDecayType>::is_view::value,
-     IndexSetIdentity<ContainerDecayType>
+      dash::view_traits<ContainerType>::is_origin::value ||
+     !dash::view_traits<ContainerType>::is_view::value,
+     IndexSetIdentity<ContainerType>
    >::type {
-  return IndexSetIdentity<ContainerDecayType>(c);
-}
+  return IndexSetIdentity<ContainerType>(c);
+  }
 
 // -----------------------------------------------------------------------
 // IndexSetBase

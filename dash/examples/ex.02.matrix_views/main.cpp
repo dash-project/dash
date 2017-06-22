@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
   if (nunits < 2) {
     cerr << "requires > 1 units" << endl;
-    return 1;
+//  return 1;
   }
 
   typedef dash::ShiftTilePattern<2>      pattern_t;
@@ -113,8 +113,45 @@ int main(int argc, char *argv[])
   if (myid == 0) {
     DASH_LOG_DEBUG("MatrixViewsExample",
                    nview_str(dash::sub(0, matrix.extents()[0], matrix)));
+
+    auto matrix_region = dash::size() > 1
+                         ? dash::sub<0>(
+                             2, matrix.extents()[0] - 2,
+                             dash::sub<1>(
+                               2, matrix.extents()[1] - 3,
+                               matrix))
+                         : dash::sub<0>(
+                             0, matrix.extents()[0],
+                             dash::sub<1>(
+                               0, matrix.extents()[1],
+                               matrix));
+
+    DASH_LOG_DEBUG("MatrixViewsExample",
+                   nview_str(matrix_region));
+
+    auto matrix_reg_blocks = dash::blocks(matrix_region);
+    for (const auto & reg_block : matrix_reg_blocks) {
+      DASH_LOG_DEBUG("MatrixViewsExample", "==============================",
+                     nview_str(reg_block));
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     nview_str(dash::sub<0>(1,2, reg_block)));
+
+      auto block_rg  = dash::make_range(reg_block.begin(),
+                                        reg_block.end());
+      auto block_srg = dash::sub<0>(1,2, block_rg);
+
+      DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
+                     nview_str(block_rg));
+      DASH_LOG_DEBUG_VAR("MatrixViewsExample",
+                         block_srg.begin().pos());
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     nview_str(block_srg));
+    }
   }
   dash::barrier();
+
+  dash::finalize();
+  return EXIT_SUCCESS;
 
   // Array to store local copy:
   std::vector<value_t> local_copy(num_elem_per_unit);
@@ -142,30 +179,34 @@ int main(int argc, char *argv[])
 
       auto remote_block_view   = // dash::sub(1,2,
                                            dash::blocks(matrix)[gb];
-      auto remote_block_range  = dash::make_range(
+      auto remote_block_range  = dash::sub(1,2,
+                                  dash::make_range(
                                    remote_block_view.begin(),
-                                   remote_block_view.end());
+                                   remote_block_view.end()));
+
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "source block view:", "-- type:",
+                     dash::typestr(remote_block_view));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block view iterator:",
+                     dash::typestr(remote_block_view.begin()));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block view domain:",
+                     dash::typestr(dash::domain(remote_block_view)));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block view origin:",
+                     dash::typestr(dash::origin(remote_block_view)));
 
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block view:",
-                     dash::typestr(remote_block_view));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block view",
                      "extents:", remote_block_view.extents(),
                      "offsets:", remote_block_view.offsets(),
                      "size:",    remote_block_view.size());
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block view domain:",
-                     dash::typestr(dash::domain(remote_block_view)));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block view origin:",
-                     dash::typestr(dash::origin(remote_block_view)));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block view domain extents:",
-                     dash::domain(remote_block_view).extents());
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block view iterator:",
-                     dash::typestr(remote_block_view.begin()));
+                     "extents:", dash::domain(remote_block_view).extents(),
+                     "offsets:", dash::domain(remote_block_view).offsets(),
+                     "size:",    dash::domain(remote_block_view).size());
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "begin.pos:",  remote_block_view.begin().pos(),
                      "end.pos:",    remote_block_view.end().pos(),
@@ -173,39 +214,48 @@ int main(int argc, char *argv[])
                      "end.gpos:",   remote_block_view.end().gpos());
       DASH_LOG_DEBUG("MatrixViewsExample", "block view:",
                      nview_str(remote_block_view));
-      DASH_LOG_DEBUG("MatrixViewsExample", "local(block view):",
-                     nview_str(dash::local(remote_block_view)));
+      DASH_LOG_DEBUG("MatrixViewsExample", "block view is strided:",
+                     dash::index(remote_block_view).is_strided());
+   // DASH_LOG_DEBUG("MatrixViewsExample", "local(block view):",
+   //                nview_str(dash::local(remote_block_view)));
 
-      DASH_ASSERT(remote_block_matrix.viewspec().offsets() ==
-                  dash::index(remote_block_view).offsets());
-      DASH_ASSERT(remote_block_matrix.viewspec().extents() ==
-                  dash::index(remote_block_view).extents());
+   // DASH_ASSERT(remote_block_matrix.viewspec().offsets() ==
+   //             dash::index(remote_block_view).offsets());
+   // DASH_ASSERT(remote_block_matrix.viewspec().extents() ==
+   //             dash::index(remote_block_view).extents());
+
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "source block range:", "-- type:",
+                     dash::typestr(remote_block_range));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block range iterator:",
+                     dash::typestr(remote_block_range.begin()));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block range domain:",
+                     dash::typestr(dash::domain(remote_block_range)));
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
+                     "source block range origin:",
+                     dash::typestr(dash::origin(remote_block_range)));
 
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block range:",
-                     dash::typestr(remote_block_range));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block range",
                      "extents:", remote_block_range.extents(),
                      "offsets:", remote_block_range.offsets(),
                      "size:",    remote_block_range.size());
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block range domain:",
-                     dash::typestr(dash::domain(remote_block_range)));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block range origin:",
-                     dash::typestr(dash::origin(remote_block_range)));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block range domain extents:",
-                     dash::domain(remote_block_range).extents());
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block range iterator:",
-                     dash::typestr(remote_block_range.begin()));
+                     "extents:", dash::domain(remote_block_range).extents(),
+                     "offsets:", dash::domain(remote_block_range).offsets(),
+                     "size:",    dash::domain(remote_block_range).size());
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "begin.pos:",  remote_block_range.begin().pos(),
                      "end.pos:",    remote_block_range.end().pos(),
                      "begin.gpos:", remote_block_range.begin().gpos(),
                      "end.gpos:",   remote_block_range.end().gpos());
+      DASH_LOG_DEBUG("MatrixViewsExample", "block range index:",
+                     nview_str(dash::index(remote_block_range)));
+      DASH_LOG_DEBUG("MatrixViewsExample", "block range index is strided:",
+                     dash::index(remote_block_range).is_strided());
       DASH_LOG_DEBUG("MatrixViewsExample", "block range:",
                      nview_str(remote_block_range));
       DASH_LOG_DEBUG("MatrixViewsExample", "local(block range):",
@@ -227,4 +277,5 @@ int main(int argc, char *argv[])
   }
 
   dash::finalize();
+  return EXIT_SUCCESS;
 }

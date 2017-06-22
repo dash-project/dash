@@ -1358,8 +1358,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              begin - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             begin + (begin.pattern().size() - begin.pos())
-          // end
+          // begin + (begin.pattern().size() - begin.pos())
+             end
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
@@ -1370,8 +1370,8 @@ class IteratorRange
              // Move begin iterator first position of its iteration scope:
              std::move(begin) - begin.pos(),
              // Move end iterator to end position of its iteration scope:
-             std::move(begin) + (begin.pattern().size() - begin.pos())
-          // std::move(end)
+          // std::move(begin) + (begin.pattern().size() - begin.pos())
+             std::move(end)
            ))
     // Convert iterator positions to sub-range index set:
   , _index_set(this->domain(), begin.pos(), end.pos())
