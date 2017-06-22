@@ -1186,7 +1186,6 @@ copy_async(
  * \ingroup  DashAlgorithms
  */
 template <
-  typename ValueType,
   class GlobInputIt,
   class GlobOutputIt >
 GlobOutputIt copy(
@@ -1196,11 +1195,46 @@ GlobOutputIt copy(
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 
+  DASH_LOG_TRACE_VAR("dash::copy()", in_first);
+  DASH_LOG_TRACE_VAR("dash::copy()", in_last);
+  DASH_LOG_TRACE_VAR("dash::copy()", out_first);
+
+  auto num_elements       = dash::distance(in_first, in_last);
+  auto li_range_in        = local_index_range(in_first, in_last);
+  auto num_local_elem     = li_range_in.end - li_range_in.begin;
+  DASH_LOG_TRACE_VAR("dash::copy()", num_elements);
+  DASH_LOG_TRACE_VAR("dash::copy()", num_local_elem);
+
+
+  // copy our local portion into the global output range
+  if (num_local_elem > 0) {
+    auto pattern   = in_first.pattern();
+    // the distance from the first local element to the in_first iterator
+    auto in_offset = pattern.global(li_range_in.begin)
+                             - in_first.global().gpos();
+
+    // the first local element
+    auto local_in_first     = in_first + in_offset;
+    // the last local element
+    auto local_in_last      = in_first + (num_local_elem + in_offset - 1);
+    auto local_out_first    = out_first + in_offset;
+
+    DASH_LOG_TRACE("Copying from range \n [",
+      pattern.global(li_range_in.begin), ", ",
+      pattern.global(li_range_in.end - 1), "] \n [", local_in_first,
+      "] to \n ", local_out_first, " (global offset ", in_offset, ") ");
+
+    dash::copy(
+      local_in_first.local(),
+      // pointer one past the last element
+      local_in_last.local() + 1,
+      local_out_first);
+  }
   // TODO:
   // - Implement adapter for local-to-global dash::copy here
   // - Return if global input range has no local sub-range
 
-  return GlobOutputIt();
+  return (out_first + num_elements);
 }
 
 #endif // DOXYGEN

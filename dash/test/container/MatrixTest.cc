@@ -721,28 +721,39 @@ TEST_F(MatrixTest, BlockCopy)
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
+  auto block_a = matrix_a.block(1);
+  auto block_b = matrix_b.block(0);
   if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(size_t col = 0; col < matrix_a.extent(0); ++col) {
-      for(size_t row = 0; row < matrix_a.extent(1); ++row) {
-        auto value = (row * matrix_a.extent(0)) + col;
-        matrix_a[col][row] = value;
-        matrix_b[col][row] = value;
+    for(size_t row = 0; row < matrix_a.extent(0); ++row) {
+      for(size_t col = 0; col < matrix_a.extent(1); ++col) {
+        auto value = (row * 1000) + col;
+        matrix_a[row][col] = value;
+        matrix_b[row][col] = value;
       }
     }
   }
-  LOG_MESSAGE("Wait for team barrier ...");
-  dash::barrier();
-  LOG_MESSAGE("Team barrier passed");
+
+  matrix_b.barrier();
+
+  LOG_MESSAGE("Copying block");
 
   // Copy block 1 of matrix_a to block 0 of matrix_b:
-  dash::copy<element_t>(matrix_a.block(1).begin(),
-                        matrix_a.block(1).end(),
-                        matrix_b.block(0).begin());
+  dash::copy(block_a.begin(),
+             block_a.end(),
+             block_b.begin());
+  matrix_b.barrier();
 
-  LOG_MESSAGE("Wait for team barrier ...");
-  dash::barrier();
-  LOG_MESSAGE("Team barrier passed");
+  LOG_MESSAGE("Checking copy result");
+  if (myid == 0) {
+    LOG_MESSAGE("Checking copied matrix block values");
+    for(size_t col = 0; col < block_a.extent(0); ++col) {
+      for(size_t row = 0; row < block_a.extent(1); ++row) {
+        ASSERT_EQ_U(static_cast<element_t>(block_b[col][row]),
+            static_cast<element_t>(block_a[col][row]));
+      }
+    }
+  }
 }
 
 TEST_F(MatrixTest, StorageOrder)

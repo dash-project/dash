@@ -4,6 +4,7 @@
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/algorithm/Accumulate.h>
@@ -49,7 +50,32 @@ inline dart_ret_t transform_blocking_impl(
 }
 
 /**
+ * Wrapper of the non-blocking DART accumulate operation with local completion.
+ * Allows re-use of \c values pointer after the call returns.
+ */
+template< typename ValueType >
+dart_ret_t transform_local_blocking_impl(
+  dart_gptr_t        dest,
+  ValueType        * values,
+  size_t             nvalues,
+  dart_operation_t   op)
+{
+  static_assert(dash::dart_datatype<ValueType>::value != DART_TYPE_UNDEFINED,
+      "Cannot accumulate unknown type!");
+
+  dart_ret_t result = dart_accumulate(
+                        dest,
+                        reinterpret_cast<void *>(values),
+                        nvalues,
+                        dash::dart_datatype<ValueType>::value,
+                        op);
+  dart_flush_local(dest);
+  return result;
+}
+
+/**
  * Wrapper of the non-blocking DART accumulate operation.
+ * The pointer \c values should not be re-used before the operation completed.
  */
 template< typename ValueType >
 dart_ret_t transform_impl(
@@ -67,7 +93,6 @@ dart_ret_t transform_impl(
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op);
-  dart_flush_local(dest);
   return result;
 }
 
@@ -271,40 +296,65 @@ GlobOutputIt transform(
   BinaryOperation binary_op)
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
+  auto &pattern = out_first.pattern();
   // Outut range different from rhs input range is not supported yet
-  auto in_first = in_a_first;
-  auto in_last  = in_a_last;
-  std::vector<ValueType> in_range;
+  ValueType* in_first = &(*in_a_first);
+  ValueType* in_last  = &(*in_a_last);
+  // Number of elements in local range:
+  size_t num_local_elements     = std::distance(in_first, in_last);
+  auto out_last                 = out_first + num_local_elements;
+  if (out_last.gpos() > pattern.size()) {
+    DASH_THROW(dash::exception::OutOfRange,
+      "Too many input elements in dash::transform");
+  }
   if (in_b_first == out_first) {
     // Output range is rhs input range: C += A
     // Input is (in_a_first, in_a_last).
   } else {
     // Output range different from rhs input range: C = A+B
     // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
-    std::transform(
-      in_a_first, in_a_last,
+    dash::copy(
       in_b_first,
-      std::back_inserter(in_range),
-      binary_op);
-    in_first = in_range.data();
-    in_last  = in_first + in_range.size();
+      in_b_first + std::distance(in_a_first, in_a_last),
+      out_first);
   }
 
   dash::util::Trace trace("transform");
 
-  // Resolve local range from global range:
-  // Number of elements in local range:
-  size_t num_local_elements     = std::distance(in_first, in_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
-  trace.enter_state("transform_blocking");
-  dash::internal::transform_blocking_impl(
+  auto &team    = pattern.team();
+  size_t towrite = num_local_elements;
+  auto out_it    = out_first;
+  auto in_it     = in_first;
+  while (towrite > 0) {
+    auto   lpos  = out_it.lpos();
+    size_t lsize = pattern.local_size(lpos.unit);
+    size_t num_values = std::min(lsize - lpos.index, towrite);
+    dart_gptr_t dest_gptr = out_it.dart_gptr();
+    // use non-blocking transform and wait for all at the end
+    dash::internal::transform_impl(
       dest_gptr,
-      in_first,
-      num_local_elements,
+      in_it,
+      num_values,
       binary_op.dart_operation());
-  trace.exit_state("transform_blocking");
+    out_it  += num_values;
+    in_it   += num_values;
+    towrite -= num_values;
+  }
+
+//  out_first.team().barrier();
+  dart_flush_all(out_first.dart_gptr());
+
+
+//  trace.enter_state("transform_blocking");
+//  dash::internal::transform_blocking_impl(
+//      dest_gptr,
+//      in_first,
+//      num_local_elements,
+//      binary_op.dart_operation());
+//  trace.exit_state("transform_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
   // spans over more than one block. Otherwise, the difference of two global
@@ -320,7 +370,7 @@ GlobOutputIt transform(
   // For ranges over block borders, we would have to resolve the global
   // position past the last element transformed from the iterator's pattern
   // (see dash::PatternIterator).
-  return out_first + num_local_elements;
+  return out_it;
 }
 
 /**
