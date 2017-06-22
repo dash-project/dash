@@ -397,30 +397,20 @@ public:
   inline void                 barrier() const;
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the array's underlying global memory.
+   * Complete all outstanding non-blocking operations to all target units
+   * on the underlying global memory.
    *
    * \see  DashContainerConcept
    */
   inline void                 flush();
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the narray's underlying global memory.
+   * Complete all outstanding non-blocking operations to the specified target
+   * units on the underlying global memory.
+   *
+   * \see  DashContainerConcept
    */
-  inline void                 flush_local();
-
-  /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the narray's underlying global memory.
-   */
-  inline void                 flush_all();
-
-  /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the narray's underlying global memory.
-   */
-  inline void                 flush_local_all();
+  inline void                 flush(dash::team_unit_t unit);
 
   /**
    * The pattern used to distribute matrix elements to units in its

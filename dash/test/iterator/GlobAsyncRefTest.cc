@@ -3,6 +3,8 @@
 
 #include <dash/GlobAsyncRef.h>
 #include <dash/Array.h>
+#include <dash/Mutex.h>
+#include <dash/Algorithm.h>
 
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
@@ -14,44 +16,12 @@ TEST_F(GlobAsyncRefTest, IsLocal) {
   }
   array.barrier();
   // Test global async references on array elements:
-  dash::GlobAsyncRef<int> gar_local_l(&array.local[0]);
-  ASSERT_EQ_U(true, gar_local_l.is_local());
-  // Test global async references on array elements:
   auto global_offset      = array.pattern().global(0);
   // Reference first local element in global memory:
   dash::GlobRef<int> gref = array[global_offset];
   dash::GlobAsyncRef<int> gar_local_g(gref);
   ASSERT_EQ_U(true, gar_local_g.is_local());
 }
-
-/**
- * Non-blocking writes to distributed array with push semantics.
- */
-TEST_F(GlobAsyncRefTest, Push) {
-  int num_elem_per_unit = 20;
-  // Initialize values:
-  dash::Array<int> array(dash::size() * num_elem_per_unit);
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = dash::myid().id;
-  }
-  array.barrier();
-  // Assign values asynchronously:
-  for (auto gi = 0; gi < array.size(); ++gi) {
-    if (array[gi].is_local()) {
-      // Changes local value only
-      ++(array.async[gi]);
-    }
-  }
-  // Flush local window:
-  array.async.push();
-  // Test values in local window. Changes by all units should be visible:
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    // All local values incremented once by all units
-    ASSERT_EQ_U(dash::myid().id + 1,
-                array.local[li]);
-  }
-}
-
 
 TEST_F(GlobAsyncRefTest, GetSet) {
   // Initialize values:
@@ -66,77 +36,23 @@ TEST_F(GlobAsyncRefTest, GetSet) {
   // Reference a neighbors element in global memory:
   dash::GlobAsyncRef<int> garef = array.async[neighbor];
 
-  int val = garef.get();
-  garef.flush();
-  ASSERT_EQ_U(neighbor, val);
-
-  val = 0;
-
-  garef.get(val);
-  garef.flush();
-  ASSERT_EQ_U(neighbor, val);
 
   array.barrier();
+  // set()
   garef.set(dash::myid());
-  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
   garef.flush();
+  ASSERT_EQ_U(array[neighbor], dash::myid().id);
   array.barrier();
-  garef.put(dash::myid());
-  ASSERT_EQ_U(static_cast<int>(garef), dash::myid().id);
+  // put()
+  garef.set(dash::myid() + 1);
   garef.flush();
+  ASSERT_EQ_U(array[neighbor], dash::myid().id + 1);
+  // container.flush()
+  array.async[neighbor] = dash::myid().id;
+  array.flush();
   array.barrier();
-  int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
-  ASSERT_EQ_U(left_neighbor, array.local[0]);
-}
-
-TEST_F(GlobAsyncRefTest, Operations) {
-  // Initialize values:
-  dash::Array<int> array(dash::size());
-  for (auto li = 0; li < array.lcapacity(); ++li) {
-    array.local[li] = dash::myid().id;
-  }
-  array.barrier();
-
-  int neighbor = (dash::myid() + 1) % dash::size();
-
-  // Reference a neighbors element in global memory:
-  dash::GlobAsyncRef<int> garef = array.async[neighbor];
-
-  ++garef;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id + 1, array.local[0]);
-  array.barrier();
-
-  --garef;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
-  array.barrier();
-
-  garef += 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id + 2, array.local[0]);
-  array.barrier();
-
-  garef -= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
-  array.barrier();
-
-  garef *= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id * 2, array.local[0]);
-  array.barrier();
-
-
-  garef /= 2;
-  garef.flush();
-  array.barrier();
-  ASSERT_EQ_U(dash::myid().id, array.local[0]);
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  ASSERT_EQ_U(lneighbor, array.local[0]);
 }
 
 TEST_F(GlobAsyncRefTest, Conversion)
@@ -199,11 +115,61 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
     auto garef_a_rem = garef_rem.member<int>(&mytype::a);
     auto garef_b_rem = garef_rem.member<double>(&mytype::b);
 
+    garef_a_rem = 2;
+    garef_b_rem = 4.0;
+    array.flush();
+
     // GlobRefAsync is constructed after data is set, so it stores value
-    int a = garef_a_rem;
-    int b = garef_b_rem;
-    ASSERT_EQ_U(a, 1);
-    ASSERT_EQ_U(b, 2.0);
+    mytype data2 = array[neighbor];
+    ASSERT_EQ_U(data2.a, 2);
+    ASSERT_EQ_U(data2.b, 4.0);
   }
+
+}
+
+TEST_F(GlobAsyncRefTest, ContainerFlush) {
+  dash::Array<int> array(dash::size());
+  *(array.lbegin()) = 0;
+  array.barrier();
+  constexpr int num_iter = 5;
+
+  dash::Mutex mutex;
+
+  // async writes to array.async
+  for (int i = 0; i < num_iter; ++i) {
+    mutex.lock();
+    int tmp = array[0];
+    for (int j = 0; j < num_iter; ++j) {
+      tmp += 1;
+      array.async[0] = tmp;
+    }
+    array.flush();
+    mutex.unlock();
+  }
+  array.barrier();
+  ASSERT_EQ_U(num_iter*num_iter*dash::size(), (int)array[0]);
+
+}
+
+TEST_F(GlobAsyncRefTest, FutureTest) {
+  using value_t = int;
+
+  dash::Array<value_t> array(dash::size());
+
+  dash::fill(array.begin(), array.end(), dash::myid().id);
+  array.barrier();
+
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  auto gref = array.async[lneighbor];
+  dash::Future<value_t> gref_fut = gref;
+
+  gref_fut.test();
+  gref_fut.wait();
+  ASSERT_EQ_U(lneighbor, gref_fut.get());
+
+
+  int rneighbor = (dash::myid() + 1) % dash::size();
+  auto agref_fut = array.async[rneighbor].get();
+  ASSERT_EQ_U(rneighbor, agref_fut.get());
 
 }

@@ -809,7 +809,7 @@ dart_ret_t dart_put_blocking(
     if (team_unit_id.id == team_data->unitid) {
       memcpy(dart_mempool_localalloc + offset, src,
           nelem * dart__mpi__datatype_sizeof(dtype));
-      DART_LOG_DEBUG("dart_put: memcpy nelem:%zu offset: %"PRIu64"",
+      DART_LOG_DEBUG("dart_put_blocking: memcpy nelem:%zu offset: %"PRIu64"",
                      nelem, offset);
       return DART_OK;
     }
@@ -846,6 +846,164 @@ dart_ret_t dart_put_blocking(
   }
 
   DART_LOG_DEBUG("dart_put_blocking > finished");
+  return DART_OK;
+}
+
+/**
+ * \todo Check if MPI_Get_accumulate (MPI_NO_OP) yields better performance
+ */
+dart_ret_t dart_put_blocking_local(
+  dart_gptr_t     gptr,
+  const void    * src,
+  size_t          nelem,
+  dart_datatype_t dtype)
+{
+  MPI_Win           win;
+  MPI_Datatype      mpi_dtype    = dart__mpi__datatype(dtype);
+  dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
+  uint64_t          offset       = gptr.addr_or_offs.offset;
+  int16_t           seg_id       = gptr.segid;
+
+  if (gptr.unitid < 0) {
+    DART_LOG_ERROR("dart_put_blocking_local ! failed: gptr.unitid < 0");
+    return DART_ERR_INVAL;
+  }
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_put_blocking_local ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_put_blocking_local ! failed: Unknown team %i!",
+        gptr.teamid);
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_put_blocking_local() uid:%d o:%"PRIu64" "
+                 "s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  DART_LOG_DEBUG("dart_put_blocking_local: shared windows enabled");
+  if (seg_id >= 0) {
+    /*
+     * Use memcpy if the target is in the same node as the calling unit:
+     * The value of i will be the target's relative ID in teamid.
+     */
+    dart_team_unit_t luid = team_data->sharedmem_tab[gptr.unitid];
+    if (luid.id >= 0) {
+      char * baseptr;
+      DART_LOG_DEBUG("dart_put_blocking_local: shared memory segment, seg_id:%d",
+                     seg_id);
+      if (seg_id) {
+        if (dart_segment_get_baseptr(
+                &team_data->segdata,
+                seg_id,
+                luid,
+                &baseptr) != DART_OK) {
+          DART_LOG_ERROR("dart_put_blocking_local ! "
+                         "dart_adapt_transtable_get_baseptr failed");
+          return DART_ERR_INVAL;
+        }
+      } else {
+        baseptr = dart_sharedmem_local_baseptr_set[luid.id];
+      }
+      baseptr += offset;
+      DART_LOG_DEBUG("dart_put_blocking_local: memcpy %zu bytes",
+                        nelem * dart__mpi__datatype_sizeof(dtype));
+      memcpy(baseptr, src, nelem * dart__mpi__datatype_sizeof(dtype));
+      return DART_OK;
+    }
+  }
+#else
+  DART_LOG_DEBUG("dart_put_blocking_local: shared windows disabled");
+#endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
+  /*
+   * MPI shared windows disabled or target and calling unit are on different
+   * nodes, use MPI_Rput:
+   */
+  if (seg_id) {
+    MPI_Aint disp_s;
+    if (dart_segment_get_disp(
+          &team_data->segdata,
+          seg_id,
+          team_unit_id,
+          &disp_s) != DART_OK) {
+      DART_LOG_ERROR("dart_put_blocking_local ! "
+                     "dart_adapt_transtable_get_disp failed");
+      return DART_ERR_INVAL;
+    }
+
+    /* copy data directly if we are on the same unit */
+    if (team_unit_id.id == team_data->unitid) {
+      memcpy(((void*)disp_s) + offset, src,
+          nelem*dart__mpi__datatype_sizeof(dtype));
+      DART_LOG_DEBUG("dart_put_blocking_local: memcpy nelem:%zu "
+                     "target unit: %d offset: %"PRIu64"",
+                     nelem, team_unit_id.id, offset);
+      return DART_OK;
+    }
+
+    win = team_data->window;
+    offset += disp_s;
+    DART_LOG_DEBUG("dart_put_blocking_local:  nelem:%zu "
+                   "target (coll.): win:%p unit:%d offset:%lu "
+                   "<- source: %p",
+                   nelem, win, team_unit_id.id,
+                   offset, src);
+
+  } else {
+
+    /* copy data directly if we are on the same unit */
+    if (team_unit_id.id == team_data->unitid) {
+      memcpy(dart_mempool_localalloc + offset, src,
+          nelem * dart__mpi__datatype_sizeof(dtype));
+      DART_LOG_DEBUG("dart_put_blocking_local: memcpy "
+                     "nelem:%zu offset: %"PRIu64"",
+                     nelem, offset);
+      return DART_OK;
+    }
+
+    win      = dart_win_local_alloc;
+    DART_LOG_DEBUG("dart_put_blocking_local:  nelem:%zu "
+                   "target (local): win:%p unit:%d offset:%lu "
+                   "<- source: %p",
+                   nelem, win, team_unit_id.id,
+                   offset, src);
+  }
+
+  /*
+   * Using MPI_Put as MPI_Win_flush is required to ensure remote completion.
+   */
+  DART_LOG_DEBUG("dart_put_blocking_local: MPI_Put");
+  MPI_Request req;
+  if (MPI_Rput(src,
+               nelem,
+               mpi_dtype,
+               team_unit_id.id,
+               offset,
+               nelem,
+               mpi_dtype,
+               win,
+               &req)
+      != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_put_blocking ! MPI_Rput failed");
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_put_blocking_local: MPI_Win_flush");
+
+  if (MPI_Wait(&req, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_put_blocking_local ! MPI_Wait failed");
+    return DART_ERR_OTHER;
+  }
+
+  DART_LOG_DEBUG("dart_put_blocking_local > finished");
   return DART_OK;
 }
 

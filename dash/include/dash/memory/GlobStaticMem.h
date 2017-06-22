@@ -458,37 +458,43 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units.
+   * Complete all outstanding non-blocking operations from this unit to
+   * all target units.
    */
   void flush() noexcept
-  {
-    dart_flush(_begptr);
-  }
-
-  /**
-   * Complete all outstanding non-blocking operations executed by all units.
-   */
-  void flush_all() noexcept
   {
     dart_flush_all(_begptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Complete all outstanding non-blocking operations from this unit to
+   * the specified target unit.
    */
-  void flush_local() noexcept
+  void flush(dash::team_unit_t unit) noexcept
   {
-    dart_flush_local(_begptr);
+    dart_gptr_t gptr = _begptr;
+    dart_gptr_setunit(&gptr, unit.id);
+    dart_flush(gptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Ensure local completion of all outstanding non-blocking operations
+   * to all target units.
    */
-  void flush_local_all() noexcept
+  void flush_local() noexcept
   {
     dart_flush_local_all(_begptr);
+  }
+
+  /**
+   * Ensure local completion of all outstanding non-blocking operations
+   * to the specified target unit.
+   */
+  void flush_local(dash::team_unit_t unit) noexcept
+  {
+    dart_gptr_t gptr = _begptr;
+    dart_gptr_setunit(&gptr, unit.id);
+    dart_flush_local(gptr);
   }
 
   /**

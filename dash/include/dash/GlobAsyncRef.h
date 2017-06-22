@@ -2,38 +2,53 @@
 #define DASH__GLOB_ASYNC_REF_H__
 
 #include <dash/GlobPtr.h>
+#include <dash/GlobRef.h>
 #include <dash/Allocator.h>
+#include <dash/Future.h>
 #include <dash/memory/GlobStaticMem.h>
 
 #include <iostream>
+#include <memory>
 
 namespace dash {
 
 /**
- * Global value reference for asynchronous / non-blocking operations.
+ * Global value reference for asynchronous / non-blocking write operations.
+ * This is a write-only reference, asynchronous reads can be performed through
+ * \c dash::Future<dash::GlobRef<T>>.
  *
  * Example:
  * \code
- *   GlobAsyncRef<int> gar0 = array.async[0];
- *   GlobAsyncRef<int> gar1 = array.async[1];
- *   gar0 = 123;
- *   gar1 = 456;
- *   // Changes are is visible locally but not published to other
- *   // units, yet:
- *   assert(gar0 == 123);
- *   assert(gar1 == 456);
- *   assert(array[0] == 123);
- *   assert(array[1] == 456);
- *   assert(array.local[0] == 123);
- *   assert(array.local[1] == 456);
- *   // Changes can be published (committed) directly using a GlobAsyncRef
- *   // object:
- *   gar0.flush();
- *   // New value of array[0] is published to all units, array[1] is not
- *   // committed yet
- *   // Changes on a container can be publiched in bulk:
+ *   array[0]       = 123;
+ *   array.async[0] = 456;
+ *   // Changes are not published immediately but the state is undefined
+ *   assert(array[0] == 456); // not guaranteed to succeed
+ *   // Changes on a container can be published in bulk:
  *   array.flush();
+ *   assert(array[0] == 456); // guaranteed to succeed
  *   // From here, all changes are published
+ *
+ *   // Operations can be performed on GlobAsyncRef as well:
+ *   auto garef = array.async[0];
+ *        garef = 789;
+ *   // Changes are not published immediately but the state is undefined
+ *   assert(array[0] == 789); // not guaranteed to succeed
+ *   // Changes on a GlobAsyncRef can be flushed using the reference:
+ *   garef.flush();
+ *   assert(array[0] == 789); // guaranteed to succeed
+ *   // From here, all changes are published
+ *
+ *   // Asynchronous access is performed through dash::Future:
+ *   dash::Future<dash::GlobRef<int>> fut = garef;
+ *   // or simply:
+ *   // auto fut = dash::Future(garef);
+ *   // test for transfer to be complete
+ *   if (!fut.test()) {
+ *     // wait for the tranfer to complete
+ *     fut.wait();
+ *   }
+ *   // access the result, previous wait not necessary
+ *   assert(fut.get() == 789);
  * \endcode
  */
 template<typename T>
@@ -63,12 +78,8 @@ private:
   dart_gptr_t  _gptr        = DART_GPTR_NULL;
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
-  /// Value of the referenced element, initially not loaded
-  mutable nonconst_value_type _value;
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
-  /// Whether the value of the referenced element is known
-  mutable bool _has_value   = false;
 
 private:
 
@@ -86,11 +97,7 @@ private:
     _lptr(parent._is_local ? reinterpret_cast<T*>(
                               reinterpret_cast<char*>(parent._lptr)+offset)
                            : nullptr),
-    _value(parent._has_value ? *(reinterpret_cast<T*>(
-                                reinterpret_cast<char*>(&(parent._value))+offset))
-                             : T()),
-    _is_local(parent._is_local),
-    _has_value(parent._has_value)
+    _is_local(parent._is_local)
   {
      DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_gptr, offset),
@@ -98,18 +105,6 @@ private:
   }
 
 public:
-  /**
-   * Conctructor, creates an GlobRefAsync object referencing an element in
-   * local memory.
-   */
-  explicit constexpr GlobAsyncRef(
-    /// Pointer to referenced object in local memory
-    nonconst_value_type * lptr)
-  : _lptr(lptr),
-    _value(*lptr),
-    _is_local(true),
-    _has_value(true)
-  { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -205,29 +200,7 @@ public:
   }
 
   /**
-   * Conversion operator to referenced element value.
-   */
-  operator nonconst_value_type() const
-  {
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    if (!_has_value) {
-      if (_is_local) {
-        _value = *_lptr;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_get_blocking(
-            static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
-      _has_value = true;
-    }
-    return _value;
-  }
-
-  /**
-   * Comparison operator, true if both GlobAsyncRef objects points to same
+   * Comparison operator, true if both GlobAsyncRef objects point to same
    * element in local / global memory.
    */
   bool operator==(const self_t & other) const noexcept
@@ -237,31 +210,13 @@ public:
   }
 
   /**
-   * Inequality comparison operator, true if both GlobAsyncRef objects points
+   * Inequality comparison operator, true if both GlobAsyncRef objects point
    * to different elements in local / global memory.
    */
   template <class GlobRefT>
   constexpr bool operator!=(const GlobRefT & other) const noexcept
   {
     return !(*this == other);
-  }
-
-  /**
-   * Value-based comparison operator, true if the value refernced by the
-   * GlobAsyncRef object is equal to \c value.
-   */
-  constexpr bool operator==(const_value_type & value) const
-  {
-    return static_cast<T>(*this) == value;
-  }
-
-  /**
-   * Value-based inequality comparison operator, true if the value refernced
-   * by the GlobAsyncRef object is not equal to \c value.
-   */
-  constexpr bool operator!=(const nonconst_value_type & value) const
-  {
-    return !(*this == value);
   }
 
   friend void swap(GlobAsyncRef<T> a, GlobAsyncRef<T> b) {
@@ -281,211 +236,25 @@ public:
   }
 
   /**
-   * Return the value referenced by this \c GlobAsyncRef.
-   */
-  nonconst_value_type get() const {
-    return operator nonconst_value_type();
-  }
-
-  /**
-   * Asynchronously write the value referenced by this \c GlobAsyncRef
-   * into \c tptr.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the referenced value can be used.
-   */
-  void get(nonconst_value_type *tptr) const {
-    if (_is_local) {
-      *tptr = *_lptr;
-    } else {
-      dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
-    }
-  }
-
-  /**
-   * Asynchronously write  the value referenced by this \c GlobAsyncRef
-   * into \c tref.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * at which point the referenced value can be used.
-   */
-  void get(nonconst_value_type& tref) const {
-    get(&tref);
-  }
-
-  /**
-   * Asynchronously set the value referenced by this \c GlobAsyncRef
-   * to the value pointed to by \c tptr.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the pointer \c tptr can be re-used immediately.
-   */
-  void put(const_value_type* tptr) {
-    operator=(*tptr);
-  }
-
-  /**
-   * Asynchronously set the value referenced by this \c GlobAsyncRef
-   * to the value pointed to by \c tref.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the value referenced by \c tref can be re-used immediately.
-   */
-  void put(const_value_type& tref) {
-    operator=(tref);
-  }
-
-  /**
    * Value assignment operator, sets new value in local memory or calls
    * non-blocking put on remote memory. This operator is only used for
    * types which are comparable
    */
-  template<typename __T = T>
-  typename std::enable_if<dash::has_operator_equal<__T>::value, self_t & >::type
+  self_t &
   operator=(const_value_type & new_value)
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    // TODO: Comparison with current value could be inconsistent
-    if (!_has_value || _value != new_value) {
-      _value       = new_value;
-      _has_value   = true;
-      if (_is_local) {
-        *_lptr = _value;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_put(
-            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
+    if (_is_local) {
+      *_lptr = new_value;
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      DASH_ASSERT_RETURNS(
+        dart_put_blocking_local(
+          _gptr, static_cast<const void *>(&new_value), ds.nelem, ds.dtype),
+        DART_OK
+      );
     }
-    return *this;
-  }
-
-  /**
-   * Value assignment operator, sets new value in local memory or calls
-   * non-blocking put on remote memory. This operator is only used for
-   * types which are not comparable
-   */
-  template<typename __T = T>
-  typename std::enable_if<!dash::has_operator_equal<__T>::value, self_t & >::type
-  operator=(const_value_type & new_value)
-  {
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    // TODO: Comparison with current value could be inconsistent
-    if (!_has_value) {
-      _value       = new_value;
-      _has_value   = true;
-      if (_is_local) {
-        *_lptr = _value;
-      } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
-        DASH_ASSERT_RETURNS(
-          dart_put(
-            _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
-          DART_OK
-        );
-      }
-    }
-    return *this;
-  }
-
-  /**
-   * Value increment operator.
-   */
-  self_t & operator+=(const_value_type & ref)
-  {
-    T val = operator nonconst_value_type();
-    val += ref;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Prefix increment operator.
-   */
-  self_t & operator++()
-  {
-    nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Postfix increment operator.
-   */
-  self_t operator++(int)
-  {
-    self_t              result = *this;
-    nonconst_value_type val    = operator nonconst_value_type();
-    ++val;
-    operator=(val);
-    return result;
-  }
-
-  /**
-   * Value decrement operator.
-   */
-  self_t & operator-=(const_value_type & ref)
-  {
-    nonconst_value_type val = operator nonconst_value_type();
-    val  -= ref;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Prefix decrement operator.
-   */
-  self_t & operator--()
-  {
-    nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Postfix decrement operator.
-   */
-  self_t operator--(int)
-  {
-    self_t              result = *this;
-    nonconst_value_type val    = operator nonconst_value_type();
-    --val;
-    operator=(val);
-    return result;
-  }
-
-
-  /**
-   * Multiplication operator.
-   */
-  self_t & operator*=(const_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
-    val   *= ref;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Division operator.
-   */
-  self_t & operator/=(const_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
-    val   /= ref;
-    operator=(val);
-    return *this;
-  }
-
-  /**
-   * Binary XOR operator.
-   */
-  self_t & operator^=(const_value_type& ref) {
-    nonconst_value_type val = operator nonconst_value_type();
-    val   ^= ref;
-    operator=(val);
     return *this;
   }
 
@@ -496,6 +265,46 @@ public:
     return _gptr;
   }
 
+
+  /**
+   * Start the transfer of a single element and return a \c dash::Future<T>
+   * that can be used to wait for the transfer to finish and to retrieve
+   * the result.
+   *
+   * \see dash::async_copy
+   */
+  dash::Future<nonconst_value_type> const
+  get() {
+    if (_is_local) {
+      return dash::Future<nonconst_value_type>(*_lptr);
+    } else {
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_handle_t handle;
+      // this could have been a unique_ptr if it were C++14 :(
+      std::shared_ptr<nonconst_value_type> valptr(new nonconst_value_type);
+      DASH_ASSERT_RETURNS(
+        dart_get_handle(valptr.get(), _gptr, ds.nelem, ds.dtype, &handle),
+        DART_OK);
+      dash::Future<nonconst_value_type> fut( [=](){
+        DASH_ASSERT_RETURNS(
+          dart_wait(handle),
+          DART_OK);
+        return *valptr;
+      });
+      return fut;
+    }
+  }
+
+  /**
+   * Start the transfer of a single element and return a \c dash::Future<T>
+   * that can be used to wait for the transfer to finish and to retrieve
+   * the result.
+   *
+   * \see dash::async_copy
+   */
+  operator dash::Future<nonconst_value_type>() {
+    return get();
+  }
 
   /**
    * Flush all pending asynchronous operations on this asynchronous reference
@@ -509,8 +318,6 @@ public:
         dart_flush(_gptr),
         DART_OK
       );
-      // require a re-read upon next reference
-      _has_value = false;
     }
   }
 
