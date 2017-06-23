@@ -10,22 +10,17 @@
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/mpi/dart_team_private.h>
 
-struct dart_seghash_elem {
-  dart_seghash_elem_t *next;
-  dart_segment_info_t  data;
-};
 
-
-static inline int hash_segid(dart_segid_t segid)
-{
-  /* Simply use the lower bits of the segment ID.
-   * Since segment IDs are allocated continuously, this is likely to cause
-   * collisions starting at (segment number == DART_SEGMENT_HASH_SIZE)
-   * TODO: come up with a random distribution to account for random free'd
-   * segments?
-   * */
-  return (abs(segid) % DART_SEGMENT_HASH_SIZE);
-}
+//static inline int hash_segid(dart_segid_t segid)
+//{
+//  /* Simply use the lower bits of the segment ID.
+//   * Since segment IDs are allocated continuously, this is likely to cause
+//   * collisions starting at (segment number == DART_SEGMENT_HASH_SIZE)
+//   * TODO: come up with a random distribution to account for random free'd
+//   * segments?
+//   * */
+//  return (abs(segid) % DART_SEGMENT_HASH_SIZE);
+//}
 
 static inline void
 register_segment(dart_segmentdata_t *segdata, dart_seghash_elem_t *elem)
@@ -59,12 +54,12 @@ static dart_segment_info_t * get_segment(
   return &(elem->data);
 }
 
-dart_segment_info_t * dart_segment_get_info(
-  dart_segmentdata_t *segdata,
-  dart_segid_t        segid)
-{
-  return get_segment(segdata, segid);
-}
+//dart_segment_info_t * dart_segment_get_info(
+//  dart_segmentdata_t *segdata,
+//  dart_segid_t        segid)
+//{
+//  return get_segment(segdata, segid);
+//}
 
 /**
  * Initialize the segment data hash table.

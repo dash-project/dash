@@ -99,6 +99,8 @@ option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
+option(ENABLE_DART_PROGRESS
+       "Specify whether DART explicitely triggers progress" off)
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -264,6 +266,8 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
+message(INFO "Explicit DART progress:   (ENABLE_DART_PROGRESS)           "
+        ${ENABLE_DART_PROGRESS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})
 message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "

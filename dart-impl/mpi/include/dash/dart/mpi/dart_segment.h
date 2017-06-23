@@ -9,6 +9,7 @@
 #define DART_SEGMENT_H_
 #include <mpi.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/base/macro.h>
@@ -28,6 +29,7 @@ typedef struct
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
   bool         dirty;       /* whether the segment has pending writes */
+  bool         isshm;       /* whether this is a shared memory segment */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
@@ -58,6 +60,55 @@ typedef enum {
   DART_SEGMENT_REGISTER
 } dart_segment_type;
 
+struct dart_seghash_elem {
+  dart_seghash_elem_t *next;
+  dart_segment_info_t  data;
+};
+
+static inline int hash_segid(dart_segid_t segid)
+{
+  /* Simply use the lower bits of the segment ID.
+   * Since segment IDs are allocated continuously, this is likely to cause
+   * collisions starting at (segment number == DART_SEGMENT_HASH_SIZE)
+   * TODO: come up with a random distribution to account for random free'd
+   * segments?
+   * */
+  return (abs(segid) % DART_SEGMENT_HASH_SIZE);
+}
+
+static inline
+MPI_Aint
+dart_segment_disp(dart_segment_info_t *seginfo, dart_team_unit_t team_unit_id)
+{
+  return (seginfo->disp != NULL) ? seginfo->disp[team_unit_id.id] : 0;
+}
+
+/**
+ * Returns the segment info for the segment with ID \c segid.
+ */
+static inline dart_segment_info_t * dart_segment_get_info(
+    dart_segmentdata_t *segdata,
+    dart_segid_t        segid)
+{
+  int slot = hash_segid(segid);
+  dart_seghash_elem_t *elem = segdata->hashtab[slot];
+
+  while (elem != NULL) {
+    if (elem->data.segid == segid) {
+      break;
+    }
+    elem = elem->next;
+  }
+
+//  if (elem == NULL) {
+//    DART_LOG_ERROR("dart_segment__get_segment : "
+//                   "Invalid segment ID %i on team %i",
+//                   segid, segdata->team_id);
+//    return NULL;
+//  }
+
+  return &(elem->data);
+}
 
 /**
  * Initialize the segment data hash table.
@@ -87,9 +138,9 @@ dart_segment_register(
 /**
  * Returns the segment info for the segment with ID \c segid.
  */
-dart_segment_info_t * dart_segment_get_info(
-  dart_segmentdata_t *segdata,
-  dart_segid_t        segid) DART_INTERNAL;
+//dart_segment_info_t * dart_segment_get_info(
+//  dart_segmentdata_t *segdata,
+//  dart_segid_t        segid) DART_INTERNAL;
 
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)

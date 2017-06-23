@@ -190,7 +190,11 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+#ifdef DART_FULL_ALLOC
+    if (dart_team_memalloc_aligned_full(_team_id, ds.nelem, ds.dtype, &gptr)
+#else
     if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+#endif
         == DART_OK) {
       _allocated.push_back(gptr);
     } else {

@@ -127,8 +127,9 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   segment->win         = dart_win_local_alloc;
   segment->shmwin      = dart_sharedmem_win_local_alloc;
   segment->selfbaseptr = dart_mempool_localalloc;
+  segment->isshm       = true;
   // addressing in this window is relative, no need to store displacements
-  segment->disp        = calloc(team_data->size, sizeof(MPI_Aint));
+  segment->disp        = NULL;
 
   return DART_OK;
 }
