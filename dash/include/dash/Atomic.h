@@ -129,6 +129,7 @@ std::ostream & operator<<(
 } // namespace dash
 
 #include <dash/atomic/GlobAtomicRef.h>
+#include <dash/atomic/GlobAsyncAtomicRef.h>
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED
