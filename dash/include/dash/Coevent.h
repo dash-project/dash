@@ -114,7 +114,7 @@ public:
    * initializes the Coevent. If it was already initialized in the Ctor,
    * the second initialization is skipped.
    */
-  inline void initialize(Team & team) noexcept {
+  inline void initialize(Team & team = dash::Team::All()) noexcept {
     _team = &team;
     _event_counts.allocate(_team->size());
     dash::fill(_event_counts.begin(), _event_counts.end(), 0);

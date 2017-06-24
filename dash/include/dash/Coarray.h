@@ -775,5 +775,6 @@ inline Lhs operator/(const Lhs & lhs, const dash::Coarray<T> & rhs) {
 }
 
 #include <dash/coarray/Utils.h>
+#include <dash/Coevent.h>
 
 #endif /* COARRAY_H_INCLUDED */
