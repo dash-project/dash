@@ -220,7 +220,7 @@ private:
                 size_type, _rank::value>()));
   }
 
-  constexpr _sspec_type _make_size_spec(const size_type first_dim) const noexcept {
+  constexpr _sspec_type _make_size_spec(const size_type & first_dim) const noexcept {
     static_assert(
         std::get<0>(coarray::detail::__get_type_extents_as_array<_underl_type,
           size_type, _rank::value>()) == 0,
@@ -256,7 +256,10 @@ public:
    * \endcode
    */
   explicit Coarray(Team & team = Team::All()) {
-    if(dash::is_initialized()){
+    if(dash::is_initialized() &&
+        (std::is_array<_underl_type>::value == false 
+         || std::extent<_underl_type, 0>::value != 0))
+    {
       _storage.allocate(_pattern_type(_make_size_spec(),
                                       DistributionSpec<_rank::value+1>(),
                                       TeamSpec<_rank::value+1,
@@ -414,7 +417,9 @@ public:
    * allocate an array which was initialized before dash has been initialized
    */
   inline void allocate(const size_type & n){
-    _storage.allocate(_pattern_type(_make_size_spec(n)));
+    if(n > 0){
+      _storage.allocate(_pattern_type(_make_size_spec(n)));
+    }
   }
  
   /**
