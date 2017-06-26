@@ -3,7 +3,6 @@
 
 #include <dash/allocator/SymmetricAllocator.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobRef.h>
 #include <dash/Pattern.h>
 
 TEST_F(SymmetricAllocatorTest, Constructor)
