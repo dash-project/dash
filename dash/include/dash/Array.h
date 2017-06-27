@@ -673,7 +673,9 @@ public:
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
-  typedef dash::GlobStaticMem<value_type>                            glob_mem_type;
+  typedef dash::GlobStaticMem<value_type>                      glob_mem_type;
+
+  typedef DistributionSpec<1>                              distribution_spec;
 
 public:
   template<
@@ -709,8 +711,6 @@ public:
   }
 
 private:
-  typedef DistributionSpec<1>
-    DistributionSpec_t;
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
   typedef std::unique_ptr<glob_mem_type>
@@ -773,7 +773,7 @@ public:
     m_team(&team),
     m_pattern(
       SizeSpec_t(0),
-      DistributionSpec_t(dash::BLOCKED),
+      distribution_spec(dash::BLOCKED),
       team),
     m_globmem(nullptr),
     m_size(0),
@@ -790,7 +790,7 @@ public:
    */
   Array(
     size_type                  nelem,
-    const DistributionSpec_t & distribution,
+    const distribution_spec  & distribution,
     Team                     & team = dash::Team::All())
   : local(this),
     async(this),
@@ -828,7 +828,7 @@ public:
   Array(
     size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
-    const DistributionSpec_t          & distribution,
+    const distribution_spec           & distribution,
     Team                              & team = dash::Team::All())
   : local(this),
     async(this),
