@@ -765,6 +765,7 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global array instances
    * that are declared before \c dash::Init().
    */
+  explicit
   Array(
     Team & team = dash::Team::Null())
   : local(this),
@@ -810,6 +811,7 @@ public:
   /**
    * Delegating constructor, specifies the array's global capacity.
    */
+  explicit
   Array(
     size_type   nelem,
     Team      & team = dash::Team::All())
@@ -864,6 +866,7 @@ public:
   /**
    * Constructor, specifies distribution pattern explicitly.
    */
+  explicit
   Array(
     const PatternType & pattern)
   : local(this),
@@ -1270,6 +1273,18 @@ public:
     bool ret = allocate(m_pattern);
     DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
     return ret;
+  }
+
+
+  /**
+   * Delayed allocation of global memory using the default blocked
+   * distribution spec.
+   */
+  bool allocate(
+    size_type   nelem,
+    Team      & team = dash::Team::All())
+  {
+    return allocate(nelem, dash::BLOCKED, team);
   }
 
   /**

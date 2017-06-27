@@ -274,12 +274,14 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global matrix instances
    * that are declared before \ref dash::Init().
    */
+  explicit
   Matrix(
     Team & team = dash::Team::Null());
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
+  explicit
   Matrix(
     const SizeSpec_t         & ss,
     const DistributionSpec_t & ds  = DistributionSpec_t(),
@@ -289,12 +291,14 @@ public:
   /**
    * Constructor, creates a new instance of Matrix from a pattern instance.
    */
+  explicit
   Matrix(
     const PatternT & pat);
 
   /**
    * Constructor, creates a new instance of Matrix.
    */
+  explicit
   Matrix(
     /// Number of elements
     size_t nelem,
@@ -369,6 +373,18 @@ public:
   bool allocate(
     const PatternT & pattern
   );
+
+
+  /**
+   * Allocation and distribution of matrix elements as specified by given
+   * extents. See variadic constructor.
+   */
+  template<typename... Args>
+  bool
+  allocate(SizeType arg, Args... args)
+  {
+    return allocate(PatternT(arg, args... ));
+  }
 
   /**
    * Explicit deallocation of matrix elements, called implicitly in
