@@ -181,7 +181,10 @@ public:
                        reinterpret_cast<void * const>(&result),
                        dash::dart_punned_datatype<T>::value,
                        DART_OP_NO_OP);
-    dart_flush_local(_gptr);
+    // a flush_local is not sufficient as some versions of
+    // openmpi and MPICH / IntelMPI fetch the old value
+    // due to progress problems
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.get >", result);
     return result;
