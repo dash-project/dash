@@ -49,7 +49,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const Team &
+constexpr Team &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::team() const noexcept
 {

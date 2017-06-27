@@ -261,7 +261,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -330,7 +329,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -588,8 +586,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<SizeType, NumDimensions> local_extents(
-      team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+  std::array<SizeType, NumDimensions> local_extents() const {
     // Same local memory layout for all units:
     return _local_memory_layout.extents();
   }
@@ -1458,7 +1455,6 @@ private:
         _teamspec)),
     _blockspec(initialize_blockspec(
         arguments.sizespec(),
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -1500,7 +1496,6 @@ private:
    */
   BlockSpec_t initialize_blockspec(
     const SizeSpec_t         & sizespec,
-    const DistributionSpec_t & distspec,
     const BlockSizeSpec_t    & blocksizespec,
     const TeamSpec_t         & teamspec) const
   {
@@ -1551,8 +1546,7 @@ private:
    * Currently calculated as (num_local_blocks * block_size), thus
    * ignoring underfilled blocks.
    */
-  SizeType initialize_local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
+  SizeType initialize_local_capacity() const
   {
     // Assumes balanced distribution property, i.e.
     // range = k * blocksz * nunits

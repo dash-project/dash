@@ -157,7 +157,8 @@ To configure build parameters using ccmake:
 
 DASH provides the following variants:
 
-  - MPI: the Message Passing Interface
+  - MPI: The Message Passing Interface, requiring a MPI 3.0 compliant
+    implementation
   - CUDA: nNvidia's Compute Unified Device Architecture (contributor
     distribution only)
   - SHMEM: Symmetric Hierarchical Memory access (contributor distribution

@@ -11,7 +11,8 @@ RUN           apt-get update -y    \
                   cmake            \
                   uuid-runtime     \
                   libhwloc-plugins \
-                  libhwloc-dev
+                  libhwloc-dev     \
+                  clang-3.8
 
 # Install PAPI from source
 WORKDIR       /tmp
@@ -25,8 +26,8 @@ RUN           cd papi*/src/                     \
               && make                           \
               && make install
 
-# Openmpi 2.0
-ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.2.tar.gz ompi.tgz
+# Openmpi 2.1
+ADD           https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.1.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                         \
            && ./configure --prefix=/opt/openmpi   \
