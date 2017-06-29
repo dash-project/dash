@@ -1295,7 +1295,6 @@ struct view_traits<IteratorRange<RangeOrigin> > {
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
                    >::is_local is_local;
-// typedef std::integral_constant<bool, false> is_local;
 };
 
 /**
@@ -1319,7 +1318,6 @@ class IteratorRange
   typedef typename RangeOrigin::const_sentinel             const_sentinel;
 
   typedef RangeOrigin                                         domain_type;
-//typedef RangeOrigin                                         origin_type;
   typedef typename dash::view_traits<
                      typename std::decay<RangeOrigin>::type
                    >::origin_type                             origin_type;

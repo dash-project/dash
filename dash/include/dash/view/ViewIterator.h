@@ -48,6 +48,8 @@ public:
   typedef std::integral_constant<bool, false>            has_view;
 
   typedef IndexSetType                             index_set_type;
+
+  typedef DomainIterator                          domain_iterator;
 private:
   DomainIterator  _domain_it;
   IndexSetType    _index_set;
@@ -120,11 +122,15 @@ public:
     return _domain_it.team();
   }
 
-  constexpr explicit operator DomainIterator() const {
+  constexpr explicit operator domain_iterator() const {
     return (_domain_it + _index_set[this->pos()]);
   }
 
-  explicit operator DomainIterator() {
+  explicit operator domain_iterator() {
+    return (_domain_it + _index_set[this->pos()]);
+  }
+
+  constexpr domain_iterator domain() const {
     return (_domain_it + _index_set[this->pos()]);
   }
 

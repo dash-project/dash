@@ -24,7 +24,7 @@ std::string nview_str(
          << nindex[offset]
          << ":"
          << std::fixed << std::setprecision(5)
-         << static_cast<const value_t>(nview[offset])
+         << static_cast<value_t>(nview[offset])
          << " ";
     }
   }
@@ -131,10 +131,14 @@ int main(int argc, char *argv[])
 
     auto matrix_reg_blocks = dash::blocks(matrix_region);
     for (const auto & reg_block : matrix_reg_blocks) {
+      auto sreg_block = dash::sub<0>(1,2, reg_block);
+
       DASH_LOG_DEBUG("MatrixViewsExample", "==============================",
                      nview_str(reg_block));
       DASH_LOG_DEBUG("MatrixViewsExample",
-                     nview_str(dash::sub<0>(1,2, reg_block)));
+                     dash::typestr(sreg_block.begin()));
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     nview_str(sreg_block));
 
       auto block_rg  = dash::make_range(reg_block.begin(),
                                         reg_block.end());
@@ -142,8 +146,10 @@ int main(int argc, char *argv[])
 
       DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
                      nview_str(block_rg));
-      DASH_LOG_DEBUG_VAR("MatrixViewsExample",
-                         block_srg.begin().pos());
+      DASH_LOG_DEBUG("MatrixViewsExample", "block range origin iterator:",
+                     dash::typestr(dash::origin(block_srg).begin()));
+      DASH_LOG_DEBUG("MatrixViewsExample", "block range origin:",
+                     nview_str(dash::origin(block_srg)));
       DASH_LOG_DEBUG("MatrixViewsExample",
                      nview_str(block_srg));
     }

@@ -80,6 +80,7 @@
 #include <dash/view/Remote.h>
 #include <dash/view/Apply.h>
 #include <dash/view/Sub.h>
+#include <dash/view/Sup.h>
 
 #include <dash/view/SetUnion.h>
 #include <dash/view/SetIntersect.h>
