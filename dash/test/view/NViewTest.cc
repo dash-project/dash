@@ -525,7 +525,7 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
                    "extents:", nview_cr_s_g.extents(),
                    "size:",    nview_cr_s_g.size());
     dash::test::print_nview("nview_cr_s_g", nview_cr_s_g);
- 
+
     DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained",
                    "sub<0>(1,3, sub<1>(2,7, mat) ->",
                    "offsets:", nview_rc_s_g.offsets(),
@@ -557,7 +557,7 @@ TEST_F(NViewTest, MatrixBlocked1DimChained)
 
 // EXPECT_EQ_U(2,          nview_rows_l.extent<0>());
 // EXPECT_EQ_U(block_cols, nview_rows_l.extent<1>());
- 
+
 // dash::test::print_nview("nview_rows_l", nview_rows_l);
 
   DASH_LOG_DEBUG("NViewTest.MatrixBlocked1DimChained", "== nview_cols_l");
@@ -640,7 +640,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
   // -- Sub-Section ----------------------------------
   //
-  
+
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", mat.extents());
 
@@ -679,7 +679,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
   // -- Local View -----------------------------------
   //
-  
+
   auto lsub_view = dash::local(
                     dash::sub<0>(
                       0, mat.extents()[0],
@@ -687,7 +687,7 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
 
   EXPECT_EQ_U(2, decltype(lsub_view)::rank::value);
   EXPECT_EQ_U(2, lsub_view.ndim());
-  
+
   int  lrows    = lsub_view.extent<0>();
   int  lcols    = lsub_view.extent<1>();
 
@@ -701,14 +701,14 @@ TEST_F(NViewTest, MatrixBlocked1DimSub)
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub", lsub_view.size());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      index(lsub_view).size());
- 
+
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      lsub_view.begin().pos());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      lsub_view.end().pos());
   DASH_LOG_DEBUG_VAR("NViewTest.MatrixBlocked1DimSub",
                      (lsub_view.end() - lsub_view.begin()));
- 
+
   EXPECT_EQ_U(mat.local_size(), lrows * lcols);
 
   dash::test::print_nview("lsub_view",  lsub_view);
@@ -792,7 +792,7 @@ TEST_F(NViewTest, MatrixBlockCyclic1DimSub)
     int bi = 0;
     for (const auto & block : nview_blocks) {
       DASH_LOG_DEBUG("NViewTest.MatrixBlockCyclic1DSingle",
-                     "block", bi, ":", "extents:", block.extents(), 
+                     "block", bi, ":", "extents:", block.extents(),
                      range_str(block));
       bi++;
     }
@@ -1012,3 +1012,117 @@ TEST_F(NViewTest, MatrixBlockCyclic2DimSub)
   dash::test::print_nview("mat_local",  mat_local);
 }
 
+
+TEST_F(NViewTest, Matrix2DTiledLocalBlocks)
+{
+    dart_unit_t myid = dash::myid();
+    size_t num_units = dash::Team::All().size();
+
+    dash::TeamSpec<2> teamspec_2d(num_units, 1);
+    teamspec_2d.balance_extents();
+
+    //Number of blocks per dimension
+    size_t size_factor = 3;
+    size_t tile_size  = 3;
+    size_t rows = tile_size * teamspec_2d.num_units(0) * size_factor;
+    size_t cols = tile_size * teamspec_2d.num_units(1) * size_factor;
+    size_t matrix_size = rows * cols;
+
+    if (matrix_size <= 1024 && 0 == myid) {
+        std::cout << "Matrix size: " << rows
+                  << " x " << cols
+                  << " == " << matrix_size
+                  << std::endl;
+    }
+
+    dash::Matrix<double, 2> matrix(
+                         dash::SizeSpec<2>(
+                           rows,
+                           cols),
+                         dash::DistributionSpec<2>(
+                           dash::TILE(tile_size),
+                           dash::TILE(tile_size)),
+                         dash::Team::All(),
+                         teamspec_2d);
+    DASH_ASSERT(matrix_size == matrix.size());
+    DASH_ASSERT(rows == matrix.extent(0));
+    DASH_ASSERT(cols == matrix.extent(1));
+
+    std::fill(matrix.lbegin(), matrix.lend(), (double)myid);
+
+    dash::barrier();
+
+    auto pattern = matrix.pattern();
+    using pattern_t = decltype(pattern);
+    using index_t = pattern_t::index_type;
+    using viewspec_t = pattern_t::viewspec_type;
+
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.unit_at", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+          return _pattern.unit_at(
+                   std::array<index_t, 2> {{ _x, _y }});
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.global_index", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _x * _pattern.extent(1) + _y;
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.local_index", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(
+                   std::array<index_t, 2> {{ _x, _y }}).index;
+      });
+
+
+  }
+
+  auto nlblocks = pattern.local_blockspec().size();
+
+  std::vector<viewspec_t> local_blocks;
+
+  for (auto b = 0; b < nlblocks; ++b) {
+    auto block = pattern.local_block(b);
+    local_blocks.push_back(block);
+    DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+                   "matrix local_blockspec",
+                   "extents:", block.extents(),
+                   "offsets:", block.offsets(),
+                   "size:",    block.size());
+  }
+
+  auto const last_block = local_blocks[local_blocks.size() - 1];
+  auto const gend_row = (last_block.offset(0) + last_block.extent(0) - 1);
+  auto const gend_col =  (last_block.offset(1) + last_block.extent(1));
+
+  auto const gbegin_row = local_blocks[0].offset(0);
+  auto const gbegin_col =  local_blocks[0].offset(1);
+
+  auto loc = dash::local(matrix);
+
+  DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+      "first_block gbegin", gbegin_row * cols + gbegin_col);
+  DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+      "last_block gend", gend_row * cols + gend_col);
+
+  DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+                 "local block view",
+                 "extents:", loc.extents(),
+                 "offsets:", loc.offsets(),
+                 "size:",    loc.size());
+  DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+                 "local block view domain extents:",
+                 dash::domain(loc).extents());
+  DASH_LOG_DEBUG("NViewTest.Matrix2DTiledLocalBlocks",
+                 "begin.pos:",  loc.begin().pos(),
+                 "end.pos:",    loc.end().pos(),
+                 "begin.gpos:", loc.begin().gpos(),
+                 "end.gpos:",   loc.end().gpos());
+
+
+  DASH_ASSERT(loc.begin().gpos() == gbegin_row * cols + gbegin_col);
+  DASH_ASSERT(loc.end().gpos() == gend_row * cols + gend_col);
+}
