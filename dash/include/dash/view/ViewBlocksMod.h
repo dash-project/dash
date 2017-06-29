@@ -16,7 +16,7 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Apply.h>
-#include <dash/view/Chunked.h>
+#include <dash/view/Chunk.h>
 #include <dash/view/Sub.h>
 
 #include <type_traits>
@@ -29,7 +29,12 @@ namespace dash {
 // ------------------------------------------------------------------------
 // Forward-declarations
 // ------------------------------------------------------------------------
-//
+
+template <
+  class DomainType,
+  dim_t NDim >
+class ViewBlockMod;
+
 template <
   class DomainType,
   dim_t NDim = dash::view_traits<
@@ -62,8 +67,9 @@ struct view_traits<ViewBlockMod<DomainType, NDim> > {
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
+  typedef typename view_traits<domain_type>::is_local        is_local;
+
+  typedef std::integral_constant<bool, NDim == 1>            is_contiguous;
 
   typedef std::integral_constant<dim_t, NDim>                rank;
 };
@@ -467,8 +473,8 @@ struct view_traits<ViewBlocksMod<DomainType, NDim> > {
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
+  typedef typename view_traits<domain_type>::is_local        is_local;
+  typedef typename view_traits<domain_type>::is_contiguous   is_contiguous;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };

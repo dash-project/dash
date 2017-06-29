@@ -43,7 +43,10 @@ struct view_traits
   typedef std::integral_constant<bool, value>   is_origin;
   typedef std::integral_constant<bool, value>   is_view;
   typedef std::integral_constant<bool, value>   is_projection;
+
   typedef std::integral_constant<bool, value>   is_local;
+
+  typedef std::integral_constant<bool, value>   is_contiguous;
 };
 
 #else // DOXYGEN
@@ -91,7 +94,6 @@ namespace detail {
   {
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
-    /// Whether the view is the origin domain.
     typedef std::integral_constant<bool, false>                is_origin;
 
     typedef typename ViewT::index_type                            index_type;
@@ -106,6 +108,8 @@ namespace detail {
                    dash::is_view<domain_type>::value,
                    dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
+
+    typedef std::integral_constant<bool, false>                is_contiguous;
 
     typedef typename ViewT::local_type                            local_type;
     typedef typename ViewT::global_type                          global_type;
@@ -149,6 +153,8 @@ namespace detail {
                                            ContainerT,
                                            local_type
                                          >::value >            is_local;
+
+    typedef std::integral_constant<bool, true>                 is_contiguous;
 
     typedef std::integral_constant<dim_t,
                                    ContainerT::rank::value>    rank;

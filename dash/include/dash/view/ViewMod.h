@@ -220,6 +220,12 @@ class ViewModBase
  protected:
   domain_member_type _domain;
 
+  // TODO: Index set should be member of ViewModBase as all models of the
+  //       view concept depend on an index set type.
+  //       As constructors of index set classes depend on the concrete view
+  //       type, index sets should be instantiated in derived view subclass
+  //       and passed to ViewModBase base constructor.
+
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
   }
@@ -330,6 +336,8 @@ struct view_traits<ViewLocalMod<DomainType, NDim> > {
   typedef std::integral_constant<bool, true > is_view;
   typedef std::integral_constant<bool, false> is_origin;
   typedef std::integral_constant<bool, true > is_local;
+
+  typedef typename view_traits<DomainType>::is_contiguous is_contiguous;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
@@ -567,8 +575,9 @@ struct view_traits<ViewSubMod<DomainType, SubDim, NDim> > {
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
+  typedef typename view_traits<domain_type>::is_local        is_local;
+
+  typedef std::integral_constant<bool, NDim == 1>            is_contiguous;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };

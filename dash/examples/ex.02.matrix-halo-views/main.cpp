@@ -138,9 +138,22 @@ int main(int argc, char *argv[])
       DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
                      nview_str(b_halo));
 
-      auto b_halo_sup = dash::sup<0>(-1, 1, m_block);
+      auto b_halo_isect = dash::difference(
+                            m_block,
+                            dash::sub<0>(
+                              1, m_block.extents()[0] - 1,
+                              dash::sub<1>(
+                                1, m_block.extents()[1] - 1,
+                                m_block)));
+#if 0
+      auto b_halo_exp = dash::expand<0>(
+                          -1, 1,
+                          dash::expand<1>(
+                            -1, 1,
+                            m_block));
       DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
-                     nview_str(b_halo_sup));
+                     nview_str(b_halo_exp));
+#endif
     }
   }
   dash::barrier();

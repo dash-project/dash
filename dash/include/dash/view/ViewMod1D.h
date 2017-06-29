@@ -500,6 +500,8 @@ struct view_traits<IteratorRangeLocalOrigin<Iterator, Sentinel> > {
   typedef std::integral_constant<bool, true > is_view;
   typedef std::integral_constant<bool, false> is_origin;
   typedef std::integral_constant<bool, true > is_local;
+
+  typedef std::integral_constant<bool, true > is_contiguous;
 };
 
 template <
@@ -706,10 +708,12 @@ struct view_traits<IteratorRangeViewDomain<RangeOrigin, IndexSet>> {
   typedef typename iterator::index_type                        index_type;
   typedef typename std::make_unsigned<index_type>::type         size_type;
 
-  typedef std::integral_constant<bool, false> is_projection;
-  typedef std::integral_constant<bool, true > is_view;
-  typedef std::integral_constant<bool, false> is_origin;
-  typedef std::integral_constant<bool, false> is_local;
+  typedef std::integral_constant<bool, false>               is_projection;
+  typedef std::integral_constant<bool, true >               is_view;
+  typedef std::integral_constant<bool, false>               is_origin;
+  typedef std::integral_constant<bool, false>               is_local;
+
+  typedef typename view_traits<RangeOrigin>::is_contiguous  is_contiguous;
 };
 
 
@@ -956,6 +960,8 @@ struct view_traits<IteratorRangeOrigin<Iterator, Sentinel> > {
   typedef std::integral_constant<bool, false> is_view;
   typedef std::integral_constant<bool, true > is_origin;
   typedef std::integral_constant<bool, false> is_local;
+
+  typedef std::integral_constant<bool, false> is_contiguous;
 };
 
 
@@ -1201,6 +1207,8 @@ struct view_traits<
   typedef std::integral_constant<bool, false> is_view;
   typedef std::integral_constant<bool, true > is_origin;
   typedef std::integral_constant<bool, true > is_local;
+
+  typedef std::integral_constant<bool, true > is_contiguous;
 };
 
 template <
@@ -1289,12 +1297,16 @@ struct view_traits<IteratorRange<RangeOrigin> > {
 
   typedef dash::IndexSetSub<domain_type, 0>                index_set_type;
 
-  typedef std::integral_constant<bool, false> is_projection;
-  typedef std::integral_constant<bool, true > is_view;
-  typedef std::integral_constant<bool, false> is_origin;
+  typedef std::integral_constant<bool, false>               is_projection;
+  typedef std::integral_constant<bool, true >               is_view;
+  typedef std::integral_constant<bool, false>               is_origin;
   typedef typename view_traits<
                      typename std::decay<RangeOrigin>::type
-                   >::is_local is_local;
+                   >::is_local                              is_local;
+
+  typedef typename view_traits<
+                     typename std::decay<RangeOrigin>::type
+                   >::is_contiguous                         is_contiguous;
 };
 
 /**

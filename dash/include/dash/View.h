@@ -72,7 +72,7 @@
  */
 
 #include <dash/view/Block.h>
-#include <dash/view/Chunked.h>
+#include <dash/view/Chunk.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Global.h>
@@ -80,10 +80,11 @@
 #include <dash/view/Remote.h>
 #include <dash/view/Apply.h>
 #include <dash/view/Sub.h>
-#include <dash/view/Sup.h>
+#include <dash/view/Expand.h>
 
 #include <dash/view/SetUnion.h>
 #include <dash/view/SetIntersect.h>
+#include <dash/view/SetDifference.h>
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/IndexRange.h>
