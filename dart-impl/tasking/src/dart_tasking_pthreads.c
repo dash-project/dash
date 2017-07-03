@@ -5,6 +5,7 @@
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_ayudame.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
@@ -58,6 +59,11 @@ static dart_task_t root_task = {
     .epoch  = DART_EPOCH_ANY,
     .state  = DART_TASK_ROOT};
 
+static void
+destroy_threadpool(bool print_stats);
+
+static void
+init_threadpool();
 
 static void wait_for_work()
 {
@@ -66,6 +72,30 @@ static void wait_for_work()
     pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
   }
   pthread_mutex_unlock(&thread_pool_mutex);
+}
+
+static int determine_num_threads()
+{
+  int num_threads = dart__base__env__num_threads();
+
+  if (num_threads == -1) {
+    // query hwinfo
+    dart_hwinfo_t hw;
+    dart_hwinfo(&hw);
+    if (hw.num_cores > 0) {
+      num_threads = hw.num_cores * (hw.max_threads > 0) ? hw.max_threads : 1;
+      if (num_threads <= 0) {
+        num_threads = -1;
+      }
+    }
+  }
+
+  if (num_threads == -1) {
+    DART_LOG_WARN("Failed to get number of cores! Playing it safe with 2 threads...");
+    num_threads = 2;
+  }
+
+  return num_threads;
 }
 
 static void destroy_tsd(void *tsd)
@@ -281,6 +311,27 @@ void dart_thread_finalize(dart_thread_t *thread)
 }
 
 
+static void
+init_threadpool(int num_threads)
+{
+  // initialize all task threads before creating them
+  thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
+  for (int i = 0; i < num_threads; i++)
+  {
+    dart_thread_init(&thread_pool[i], i);
+  }
+
+  for (int i = 1; i < num_threads; i++)
+  {
+    tpd_t *tpd = malloc(sizeof(tpd_t));
+    tpd->thread_id = i; // 0 is reserved for master thread
+    int ret = pthread_create(&thread_pool[i].pthread, NULL, &thread_main, tpd);
+    if (ret != 0) {
+      DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
+    }
+  }
+}
+
 dart_thread_t *
 dart__tasking_current_thread()
 {
@@ -295,14 +346,8 @@ dart__tasking__init()
     DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
     return DART_ERR_INVAL;
   }
-  dart_hwinfo_t hw;
-  dart_hwinfo(&hw);
-  if (hw.num_cores > 0) {
-    num_threads = hw.num_cores * hw.max_threads;
-  } else {
-    DART_LOG_INFO("Failed to get number of cores! Playing it safe with 2 threads...");
-    num_threads = 2;
-  }
+
+  num_threads = determine_num_threads();
 
   DART_LOG_INFO("Using %i threads", num_threads);
 
@@ -326,15 +371,6 @@ dart__tasking__init()
   pthread_setspecific(tpd_key, tpd);
 
   set_current_task(&root_task);
-  for (int i = 1; i < num_threads; i++)
-  {
-    tpd = malloc(sizeof(tpd_t));
-    tpd->thread_id = i; // 0 is reserved for master thread
-    int ret = pthread_create(&thread_pool[i].pthread, NULL, &thread_main, tpd);
-    if (ret != 0) {
-      DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
-    }
-  }
 
 #ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_init();
@@ -509,17 +545,9 @@ dart__tasking__current_task()
   return thread_pool[dart__tasking__thread_num()].current_task;
 }
 
-dart_ret_t
-dart__tasking__fini()
+static void
+destroy_threadpool(bool print_stats)
 {
-  if (!initialized) {
-    DART_LOG_ERROR("DART tasking subsystem has not been initialized!");
-    return DART_ERR_INVAL;
-  }
-  int i;
-
-  DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
-
   pthread_mutex_lock(&thread_pool_mutex);
   parallel = false;
   pthread_mutex_unlock(&thread_pool_mutex);
@@ -528,10 +556,33 @@ dart__tasking__fini()
   pthread_cond_broadcast(&task_avail_cond);
 
   // wait for all threads to finish
-  for (i = 1; i < num_threads; i++) {
+  for (int i = 1; i < num_threads; i++) {
     pthread_join(thread_pool[i].pthread, NULL);
     dart_thread_finalize(&thread_pool[i]);
   }
+
+  if (print_stats) {
+    printf("######################\n");
+    for (int i = 0; i < num_threads; ++i) {
+      printf("Thread %i executed %lu tasks\n", i, thread_pool[i].taskcntr);
+    }
+    printf("######################\n");
+  }
+
+  free(thread_pool);
+
+  thread_pool = NULL;
+}
+
+dart_ret_t
+dart__tasking__fini()
+{
+  if (!initialized) {
+    DART_LOG_ERROR("DART tasking subsystem has not been initialized!");
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart__tasking__fini(): Tearing down task subsystem");
 
 #ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_fini();
@@ -546,12 +597,7 @@ dart__tasking__fini()
   }
   task_recycle_list = NULL;
 
-  printf("######################\n");
-  for (int i = 0; i < num_threads; ++i) {
-    printf("Thread %i executed %lu tasks\n", i, thread_pool[i].taskcntr);
-  }
-  printf("######################\n");
-  free(thread_pool);
+  destroy_threadpool(true);
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
