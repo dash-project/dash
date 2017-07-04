@@ -31,6 +31,21 @@ void
 dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task);
 
 /**
+ * Add a task to the back of the queue.
+ */
+void
+dart_tasking_taskqueue_pushback(dart_taskqueue_t *tq, dart_task_t *task);
+
+/**
+ * Insert a task at an arbitrary position, starting at 0 as the head.
+ */
+void
+dart_tasking_taskqueue_insert(
+  dart_taskqueue_t *tq,
+  dart_task_t *task,
+  unsigned int pos);
+
+/**
  * Pop a task from the back of the task queue.
  * Used to steal tasks from other threads.
  */

@@ -99,6 +99,21 @@ dart_task_thread_num() __attribute__((weak));
 int
 dart_task_num_threads();
 
+/**
+ * Yield the execution thread to execute another task.
+ *
+ * The current task will be re-inserted into the current thread's
+ * task queue. The parameter \c delay determines the position at which the
+ * task is enqueued, with non-negative integers denoting the reinsertion
+ * position, starting from 0 as being the new head of the queue after dequeing
+ * a replacement.
+ * A value of -1 enforces this task to be placed at the end of the queue.
+ * Note that yielded tasks are subject to work-stealing as well, allowing
+ * other threads to pick up the current task later.
+ */
+dart_ret_t
+dart_task_yield(int delay);
+
 
 /**
  * Add a task to the local task graph with dependencies.

@@ -109,4 +109,13 @@ dart_task_complete()
   return dart__tasking__task_complete();
 }
 
+/**
+ * Yield the execution thread to execute another task.
+ */
+dart_ret_t
+dart_task_yield(int delay)
+{
+  return dart__tasking__yield(delay);
+}
+
 

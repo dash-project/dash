@@ -2,10 +2,16 @@
 #define DART__BASE__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
+#include <ucontext.h>
 
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
+
+#define USE_UCONTEXT 1
+// Use 16K stack size per task
+#define TASK_STACK_SIZE (1<<14)
+typedef void (context_func_t) (void);
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -14,11 +20,14 @@ struct task_list;
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0
-  DART_TASK_RUNNING,
   DART_TASK_CREATED,
+  DART_TASK_RUNNING,
+  DART_TASK_SUSPENDED,
   DART_TASK_NASCENT,
   DART_TASK_DESTROYED
 } dart_task_state_t;
+
+typedef ucontext_t context_t;
 
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
@@ -34,6 +43,11 @@ struct dart_task_data {
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   int32_t                    epoch;
+#ifdef USE_UCONTEXT
+  context_t                  taskctx;         // context to start/resume task
+  context_t                 *retctx;          // context to return to after task finishes
+  int                        delay;           // delay in case this task yields
+#endif
   bool                       has_ref;
 };
 
@@ -65,6 +79,9 @@ typedef struct {
   uint64_t                taskcntr;
   pthread_t               pthread;
   int                     thread_id;
+#ifdef USE_UCONTEXT
+  context_t               retctx;            // the thread-specific context to return to eventually
+#endif
 } dart_thread_t;
 
 dart_ret_t
@@ -124,5 +141,7 @@ dart__tasking__fini();
 dart_thread_t *
 dart__tasking_current_thread();
 
+dart_ret_t
+dart__tasking__yield(int delay);
 
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */
