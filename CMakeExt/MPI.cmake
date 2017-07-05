@@ -91,13 +91,20 @@ endif ()
 
 if (NOT DEFINED MPI_IMPL_ID)
   # check for Cray MPI
-  # MPIX_PortName_Backlog is a Cray extension
-  # TODO: any better way to detect Cray MPI?
   check_symbol_exists(
-    MPIX_PortName_Backlog
+    CRAY_MPICH_VERSION
     mpi.h
     HAVE_CRAY_MPI
   )
+  if (NOT HAVE_CRAY_MPI)
+    # fall-back for versions prior to MPT 7.6.0
+    # MPIX_PortName_Backlog is a Cray extension
+    check_symbol_exists(
+      MPIX_PortName_Backlog
+      mpi.h
+      HAVE_CRAY_MPI
+    )
+  endif()
   if (HAVE_CRAY_MPI)
     set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
     set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
