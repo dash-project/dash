@@ -2,16 +2,22 @@
 #define DART__BASE__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
-#include <ucontext.h>
+
 
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
 
+// TODO: Make this a CMake variable?
 #define USE_UCONTEXT 1
+
+#ifdef USE_UCONTEXT
+#include <ucontext.h>
+typedef ucontext_t context_t;
+#endif
+
 // Use 16K stack size per task
 #define DEFAULT_TASK_STACK_SIZE (1<<14)
-typedef void (context_func_t) (void);
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -26,8 +32,6 @@ typedef enum {
   DART_TASK_NASCENT,
   DART_TASK_DESTROYED
 } dart_task_state_t;
-
-typedef ucontext_t context_t;
 
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue

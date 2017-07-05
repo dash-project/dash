@@ -334,6 +334,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   *(uint64_t*)(stack) = 0xDEADBEEF;
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
   // create the new context
+  typedef void (context_func_t) (void);
   makecontext(&task->taskctx, (context_func_t*)&wrap_task, 1, task);
 #endif
 
