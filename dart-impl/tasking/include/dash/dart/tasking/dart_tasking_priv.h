@@ -10,7 +10,7 @@
 
 #define USE_UCONTEXT 1
 // Use 16K stack size per task
-#define TASK_STACK_SIZE (1<<14)
+#define DEFAULT_TASK_STACK_SIZE (1<<14)
 typedef void (context_func_t) (void);
 
 // forward declaration, defined in dart_tasking_datadeps.c
@@ -45,7 +45,6 @@ struct dart_task_data {
   int32_t                    epoch;
 #ifdef USE_UCONTEXT
   context_t                  taskctx;         // context to start/resume task
-  context_t                 *retctx;          // context to return to after task finishes
   int                        delay;           // delay in case this task yields
 #endif
   bool                       has_ref;

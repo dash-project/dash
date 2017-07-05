@@ -27,6 +27,8 @@ static volatile bool parallel = false;
 
 static int num_threads;
 
+static size_t task_stack_size = DEFAULT_TASK_STACK_SIZE;
+
 static bool initialized = false;
 
 static pthread_key_t tpd_key;
@@ -278,7 +280,25 @@ dart_task_t * next_task(dart_thread_t *thread)
   return task;
 }
 
-static inline
+static
+dart_task_t * allocate_task()
+{
+  dart_task_t *task = malloc(sizeof(dart_task_t) + task_stack_size);
+  dart__base__mutex_init(&task->mutex);
+
+#ifdef USE_UCONTEXT
+  // initialize context and set stack
+  getcontext(&task->taskctx);
+  task->taskctx.uc_link           = NULL;
+  task->taskctx.uc_stack.ss_sp    = (char*)(task + 1);
+  task->taskctx.uc_stack.ss_size  = task_stack_size;
+  task->taskctx.uc_stack.ss_flags = 0;
+#endif
+
+  return task;
+}
+
+static
 dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
 {
   dart_task_t *task = NULL;
@@ -286,13 +306,10 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
     pthread_mutex_lock(&task_recycle_mutex);
     if (task_free_list != NULL) {
       DART_STACK_POP(task_free_list, task);
-//      task = task_free_list;
-//      task_free_list = task->next;
     }
     pthread_mutex_unlock(&task_recycle_mutex);
   } else {
-    task = calloc(1, sizeof(dart_task_t));
-    dart__base__mutex_init(&task->mutex);
+    task = allocate_task();
   }
 
   if (data_size) {
@@ -312,15 +329,11 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->has_ref      = false;
 
 #ifdef USE_UCONTEXT
-
-  getcontext(&task->taskctx);
-
-  void *task_stack = malloc(TASK_STACK_SIZE);
-
-  task->taskctx.uc_link           = NULL;
-  task->taskctx.uc_stack.ss_sp    = task_stack;
-  task->taskctx.uc_stack.ss_size  = TASK_STACK_SIZE;
-  task->taskctx.uc_stack.ss_flags = 0;
+  // set the stack guards
+  char *stack = task->taskctx.uc_stack.ss_sp;
+  *(uint64_t*)(stack) = 0xDEADBEEF;
+  *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
+  // create the new context
   makecontext(&task->taskctx, (context_func_t*)&wrap_task, 1, task);
 #endif
 
@@ -346,6 +359,21 @@ void destroy_task(dart_task_t *task)
   task->successor        = NULL;
   task->state            = DART_TASK_DESTROYED;
   task->has_ref          = false;
+
+
+#ifdef USE_UCONTEXT
+  // check the stack guards
+  char *stack = task->taskctx.uc_stack.ss_sp;
+  if (*(uint64_t*)(stack) != 0xDEADBEEF &&
+      *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) != 0xDEADBEEF)
+  {
+    DART_LOG_WARN(
+        "Possible TASK STACK OVERFLOW detected! "
+        "Consider changing the stack size via DART_TASK_STACKSIZE! "
+        "(current stack size: %zu)", task_stack_size);
+  }
+#endif
+
   pthread_mutex_lock(&task_recycle_mutex);
   DART_STACK_PUSH(task_recycle_list, task);
   pthread_mutex_unlock(&task_recycle_mutex);
@@ -398,7 +426,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // return to previous task
     set_current_task(current_task);
     ++(thread->taskcntr);
-    DART_LOG_WARN("Incremented thread %p taskcntr to %lu", thread, thread->taskcntr)
   }
 }
 
@@ -499,8 +526,15 @@ dart__tasking__init()
   }
 
   num_threads = determine_num_threads();
-
   DART_LOG_INFO("Using %i threads", num_threads);
+
+#ifdef USE_UCONTEXT
+  task_stack_size = dart__base__env__task_stacksize();
+  if (task_stack_size == -1) task_stack_size = DEFAULT_TASK_STACK_SIZE;
+  DART_LOG_INFO("Using per-task stack of size %zu", task_stack_size);
+#else
+  task_stack_size = 0;
+#endif
 
   // keep threads running
   parallel = true;

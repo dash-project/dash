@@ -23,5 +23,12 @@ dart__base__env__log_level();
 int 
 dart__base__env__num_threads();
 
+/**
+ * Returns the size of the per-task stack in Byte set in
+ * DART_TASK_STACKSIZE or -1 if the environment variable is not set.
+ */
+size_t
+dart__base__env__task_stacksize();
+
 
 #endif /* DASH_DART_BASE_ENV_H_ */
