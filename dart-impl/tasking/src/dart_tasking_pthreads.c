@@ -327,6 +327,10 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->epoch        = task->parent->state != DART_TASK_ROOT ?
                           task->parent->epoch : DART_EPOCH_ANY;
   task->has_ref      = false;
+  task->remote_successor = NULL;
+  task->prev         = NULL;
+  task->successor    = NULL;
+  task->unresolved_deps = 0;
 
 #ifdef USE_UCONTEXT
   // set the stack guards
