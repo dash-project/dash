@@ -5,16 +5,100 @@
 
 typedef struct testdata {
   int  expected;
+  int  assign;
   int *valptr;
 } testdata_t;
 
-static void testfn(void *data) {
+static void testfn_assign(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
   ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("testfn: incrementing valptr %p from %i", valptr, *valptr);
-  *valptr += 1;
+  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+    dart_task_current_task(), valptr, *valptr);
+  *valptr = td->assign;
 }
+
+static void testfn_inc(void *data) {
+  testdata_t *td = (testdata_t*)data;
+  int *valptr = td->valptr;
+//  ASSERT_EQ(td->expected, *valptr);
+  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+    dart_task_current_task(), valptr, *valptr);
+  __sync_add_and_fetch(valptr, 1);
+}
+
+static void testfn_inc_yield(void *data) {
+  testdata_t *td = (testdata_t*)data;
+  volatile int *valptr = td->valptr;
+//  ASSERT_EQ(td->expected, *valptr);
+  LOG_MESSAGE("[Task %p] testfn: pre-yield increment of valptr %p from %i",
+    dart_task_current_task(), valptr, *valptr);
+  __sync_add_and_fetch(valptr, 1);
+  // the last 20 tasks will be re-enqueued at the end
+  dart_task_yield(20);
+  LOG_MESSAGE("[Task %p] testfn: post-yield increment of valptr %p from %i",
+    dart_task_current_task(), valptr, *valptr);
+  __sync_add_and_fetch(valptr, 1);
+}
+
+TEST_F(DARTTaskingTest, BulkAtomicIncrement)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  int i;
+  int val = 0;
+
+  for (i = 0; i < 100; i++) {
+    testdata_t td;
+    td.valptr   = &val;
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(
+        &testfn_inc,             // action to call
+        &td,                 // argument to pass
+        sizeof(td),          // size of the tasks's data (if to be copied)
+        NULL,                // dependency
+        0                    // number of dependencies
+        )
+    );
+  }
+
+  dart_task_complete();
+
+  ASSERT_EQ(i, val);
+}
+
+TEST_F(DARTTaskingTest, Yield)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  int i;
+  int val = 0;
+
+  for (i = 0; i < 100; i++) {
+    testdata_t td;
+    td.valptr   = &val;
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(
+        &testfn_inc_yield,   // action to call
+        &td,                 // argument to pass
+        sizeof(td),          // size of the tasks's data (if to be copied)
+        NULL,                // dependency
+        0                    // number of dependencies
+        )
+    );
+  }
+
+  dart_task_complete();
+
+  ASSERT_EQ(2*i, val);
+}
+
 
 TEST_F(DARTTaskingTest, LocalDirectDependency)
 {
@@ -30,13 +114,14 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
     testdata_t td;
     td.valptr   = &val;
     td.expected = i;
+    td.assign   = i + 1;
     dart_task_dep_t dep;
     dep.type = DART_DEP_DIRECT;
     dep.task = prev_task;
     ASSERT_EQ(
       DART_OK,
       dart_task_create_handle(
-        &testfn,             // action to call
+        &testfn_assign,             // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
@@ -64,6 +149,7 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
     testdata_t td;
     td.valptr   = &val;
     td.expected = i;
+    td.assign   = i + 1;
 
     // force serialization through an output chain
     dart_task_dep_t dep;
@@ -75,7 +161,7 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
-        &testfn,              // action to call
+        &testfn_assign,              // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
@@ -102,6 +188,7 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
     testdata_t td;
     td.valptr   = &val;
     td.expected = i;
+    td.assign   = i + 1;
 
     dart_task_dep_t dep[2];
     dep[0].type = DART_DEP_IN;
@@ -118,7 +205,7 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
-        &testfn,              // action to call
+        &testfn_assign,              // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
@@ -145,6 +232,7 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
     testdata_t td;
     td.valptr   = &val;
     td.expected = i;
+    td.assign   = i + 1;
 
     dart_task_dep_t dep[2];
     dep[0].type = DART_DEP_IN;
@@ -160,7 +248,7 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
-        &testfn,              // action to call
+        &testfn_assign,              // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
@@ -187,6 +275,7 @@ TEST_F(DARTTaskingTest, InOutDependency)
     testdata_t td;
     td.valptr   = &val;
     td.expected = i;
+    td.assign   = i + 1;
 
     dart_task_dep_t dep[2];
     dep[0].type = DART_DEP_INOUT;
@@ -197,7 +286,7 @@ TEST_F(DARTTaskingTest, InOutDependency)
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
-        &testfn,              // action to call
+        &testfn_assign,              // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency

@@ -23,7 +23,7 @@
 
 
 // true if threads should process tasks. Set to false to quit parallel processing
-static bool parallel = false;
+static volatile bool parallel = false;
 
 static int num_threads;
 
@@ -71,6 +71,9 @@ void set_current_task(dart_task_t *t);
 static inline
 dart_task_t * get_current_task();
 
+static inline
+dart_thread_t * get_current_thread();
+
 static
 dart_task_t * next_task(dart_thread_t *thread);
 
@@ -80,73 +83,92 @@ void handle_task(dart_task_t *task, dart_thread_t *thread);
 #ifdef USE_UCONTEXT
 
 static
+void requeue_task(dart_task_t *task)
+{
+  dart_thread_t *thread = get_current_thread();
+  dart_taskqueue_t *q = &thread->queue;
+  int delay = task->delay;
+  if (delay == 0) {
+    dart_tasking_taskqueue_push(q, task);
+  } else if (delay > 0) {
+    dart_tasking_taskqueue_insert(q, task, delay);
+  } else {
+    dart_tasking_taskqueue_pushback(q, task);
+  }
+}
+
+static
 void wrap_task(dart_task_t *task)
 {
+  DART_ASSERT(task != &root_task);
   // save current task and set to new task
   dart_task_t *prev_task = get_current_task();
-  prev_task->state = DART_TASK_SUSPENDED;
+  if (prev_task->state == DART_TASK_SUSPENDED) {
+    requeue_task(prev_task);
+  }
   // update current task
   set_current_task(task);
-  // requeue suspended previous task
-  if (prev_task->state == DART_TASK_SUSPENDED) {
-    // requeue the task
-    dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
-    dart_taskqueue_t *q = &thread->queue;
-    int delay = prev_task->delay;
-    if (delay == 0) {
-      dart_tasking_taskqueue_push(q, prev_task);
-    } else if (delay > 0) {
-      dart_tasking_taskqueue_insert(q, prev_task, delay);
-    } else {
-      dart_tasking_taskqueue_pushback(q, prev_task);
-    }
-  }
   // invoke the new task
   task->fn(task->data);
   // return into the current thread's context
   // this is not necessarily the thread that originally invoked the task
-  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
+  dart_thread_t *thread = get_current_thread();
   setcontext(&thread->retctx);
 }
 
 static
 void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
-  volatile int invoked = 0;
-  (void)thread; // ignored
   dart_task_t *current_task = get_current_task();
-  // set thread's return context if this is not inside a yield
-  if (current_task->state != DART_TASK_SUSPENDED) {
+  if (current_task->state == DART_TASK_SUSPENDED) {
+    // store current task's state and jump into new task
+    swapcontext(&current_task->taskctx, &task->taskctx);
+  } else {
+    volatile int invoked = 0;
+    // set thread's return context if this is not inside a yield
     getcontext(&thread->retctx);
-  }
-
-  // do not invoke the task twice if returning to this context
-  if (!invoked) {
-    invoked = 1;
-    // invoke the task
-    setcontext(&task->taskctx);
+    // do not invoke the task twice if returning to this context
+    if (!invoked) {
+      invoked = 1;
+      // invoke the task
+      setcontext(&task->taskctx);
+    }
   }
 }
 
 dart_ret_t
 dart__tasking__yield(int delay)
 {
-  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
+  dart_thread_t *thread = get_current_thread();
 
   // first get a replacement task
   dart_task_t *next = next_task(thread);
 
   if (next) {
-
+    volatile int guard = 0;
     // save the current task
     dart_task_t *current_task = dart_task_current_task();
     current_task->delay = delay;
-    // mark task as suspended to avoid invoke_task to update the retctx
-    // the next task should return to where the current task would have
-    // returned
-    current_task->state = DART_TASK_SUSPENDED;
-    handle_task(next, thread);
+    getcontext(&current_task->taskctx);
+    if (!guard) {
+      guard = 1;
+      // mark task as suspended to avoid invoke_task to update the retctx
+      // the next task should return to where the current task would have
+      // returned
+      current_task->state = DART_TASK_SUSPENDED;
+      // here we leave this task
+      invoke_task(next, thread);
+    }
 
+    // requeue the previous task if necessary
+    dart_task_t *prev_task = dart_task_current_task();
+    if (prev_task->state == DART_TASK_SUSPENDED) {
+      requeue_task(prev_task);
+    }
+    // resume this task
+    current_task->state = DART_TASK_RUNNING;
+    // reset to the resumed task and continue processing it
+    set_current_task(current_task);
   }
 
   return DART_OK;
@@ -219,15 +241,22 @@ static void destroy_tsd(void *tsd)
 }
 
 static inline
+dart_thread_t * get_current_thread()
+{
+  tpd_t *tpd = (tpd_t*)pthread_getspecific(tpd_key);
+  return &thread_pool[tpd->thread_id];
+}
+
+static inline
 void set_current_task(dart_task_t *t)
 {
-  thread_pool[((tpd_t*)pthread_getspecific(tpd_key))->thread_id].current_task = t;
+  get_current_thread()->current_task = t;
 }
 
 static inline
 dart_task_t * get_current_task()
 {
-  return thread_pool[dart__tasking__thread_num()].current_task;
+  return get_current_thread()->current_task;
 }
 
 static
@@ -262,7 +291,6 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
     }
     pthread_mutex_unlock(&task_recycle_mutex);
   } else {
-    pthread_mutex_unlock(&task_recycle_mutex);
     task = calloc(1, sizeof(dart_task_t));
     dart__base__mutex_init(&task->mutex);
   }
@@ -369,8 +397,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
     // return to previous task
     set_current_task(current_task);
-
-    thread->taskcntr++;
+    ++(thread->taskcntr);
+    DART_LOG_WARN("Incremented thread %p taskcntr to %lu", thread, thread->taskcntr)
   }
 }
 
@@ -378,10 +406,11 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 static
 void* thread_main(void *data)
 {
+  DART_ASSERT(data != NULL);
   tpd_t *tpd = (tpd_t*)data;
   pthread_setspecific(tpd_key, tpd);
 
-  dart_thread_t *thread = &thread_pool[tpd->thread_id];
+  dart_thread_t *thread = get_current_thread();
 
   set_current_task(&root_task);
 
@@ -397,6 +426,7 @@ void* thread_main(void *data)
       {
         // the last thread is responsible for ensuring progress on the
         // message queue even if all others are sleeping
+//        DART_LOG_WARN("triggering remote progress");
         dart_tasking_remote_progress();
       }
 //      else {
@@ -478,14 +508,11 @@ dart__tasking__init()
   // set up the active message queue
   dart_tasking_datadeps_init();
 
-  // initialize all task threads before creating them
-  thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
-  for (int i = 0; i < num_threads; i++)
-  {
-    dart_thread_init(&thread_pool[i], i);
-  }
-
   pthread_key_create(&tpd_key, &destroy_tsd);
+
+  // initialize all task threads before creating them
+  init_threadpool(num_threads);
+
   // set master thread id
   tpd_t *tpd = malloc(sizeof(tpd_t));
   tpd->thread_id = 0;
@@ -523,7 +550,7 @@ dart__tasking__epoch_bound()
 void
 dart__tasking__enqueue_runnable(dart_task_t *task)
 {
-  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
+  dart_thread_t *thread = get_current_thread();
   dart_taskqueue_t *q = &thread->queue;
   int32_t bound = dart__tasking__epoch_bound();
   if (bound != DART_EPOCH_ANY && task->epoch > bound) {
@@ -587,7 +614,7 @@ dart__tasking__create_task_handle(
 dart_ret_t
 dart__tasking__task_complete()
 {
-  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
+  dart_thread_t *thread = get_current_thread();
 
   DART_ASSERT_MSG(
     (thread->current_task != &(root_task) || thread->thread_id == 0),

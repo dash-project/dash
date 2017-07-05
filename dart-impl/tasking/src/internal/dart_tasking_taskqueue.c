@@ -41,7 +41,7 @@ dart_tasking_taskqueue_push(dart_taskqueue_t *tq, dart_task_t *task)
   DART_ASSERT_MSG(task != NULL,
       "dart_tasking_taskqueue_push: task may not be NULL!");
   DART_ASSERT_MSG(task != tq->head,
-    "dart_tasking_taskqueue_push: task is already head of task queue");
+    "dart_tasking_taskqueue_push: task %p is already head of task queue", task);
   task->next = NULL;
   task->prev = NULL;
   dart__base__mutex_lock(&tq->mutex);
@@ -109,7 +109,7 @@ dart_tasking_taskqueue_insert(
   }
 
   // insert at back?
-  if (tmp == NULL) {
+  if (tmp == NULL || tmp->next == NULL) {
     dart__base__mutex_unlock(&tq->mutex);
     dart_tasking_taskqueue_pushback(tq, task);
     return;
