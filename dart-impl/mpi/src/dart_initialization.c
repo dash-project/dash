@@ -54,10 +54,6 @@ dart_ret_t do_init()
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
 
-  /* Create a global translation table for all
-   * the collective global memory segments */
-  dart_segment_init(&team_data->segdata, DART_TEAM_ALL);
-
   dart_next_availteamid++;
 
   team_data->comm = DART_COMM_WORLD;

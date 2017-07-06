@@ -1,6 +1,8 @@
 #ifndef DASH__INTERNAL__PATTERN_ARGUMENTS_H_
 #define DASH__INTERNAL__PATTERN_ARGUMENTS_H_
 
+#include <utility>
+
 #include <dash/Types.h>
 #include <dash/Team.h>
 #include <dash/Dimensional.h>
@@ -38,7 +40,6 @@ private:
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
 
-private:
   /// The extents of the pattern space in every dimension
   SizeSpec_t           _sizespec;
   /// The distribution type for every pattern dimension
@@ -51,12 +52,6 @@ private:
   ViewSpec_t           _viewspec;
   /// Team containing all units to which pattern elements are mapped
   Team               * _team      = nullptr;
-  /// Number of distribution specifying arguments in varargs
-  int                  _argc_dist = 0;
-  /// Number of size/extent specifying arguments in varargs
-  int                  _argc_size = 0;
-  /// Number of team specifying arguments in varargs
-  int                  _argc_team = 0;
 
 public:
   /**
@@ -71,26 +66,13 @@ public:
    */
   template<typename ... Args>
   PatternArguments(Args && ... args) {
-    static_assert(
-      sizeof...(Args) >= NumDimensions,
-      "Invalid number of arguments for PatternArguments");
     // Parse argument list:
-    check_recurse<0>(std::forward<Args>(args)...);
-    // Validate number of arguments after parsing:
-    if (_argc_size > 0 && _argc_size != NumDimensions) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Invalid number of size arguments for BlockPattern(...), " <<
-        "expected " << NumDimensions << ", got " << _argc_size);
-    }
-    if (_argc_dist > 0 && _argc_dist != NumDimensions) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Invalid number of dist arguments for BlockPattern(...), " <<
-        "expected " << NumDimensions << ", got " << _argc_dist);
-    }
-    check_tile_constraints();
+    parse<0, 0, 0, 0>(std::forward<Args>(args)...);
   }
+
+
+public:
+
 
   bool is_tiled() const {
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -121,72 +103,164 @@ public:
   }
 
 private:
-  /// BlockPattern matching for extent value of type IndexType.
-  template<int count>
-  void check(SizeType extent) {
+  /*
+   * Match for up to \c NumDimensions extent value of type SizeType.
+   *
+   * \tparam ArgcSize     The number of arguments describing the extents of the
+   *                      pattern parsed so far.
+   *                      Set to -1 if a \c SizeSpec is encountered.
+   * \tparam ArgcDist     The number of arguments describing the distribution
+   *                      of the pattern parsed so far.
+   *                      Set to -1 if a \c DistributionSpec is encountered.
+   * \tparam ArgcTeam     The number of arguments describing the team passed to
+   *                      the pattern parsed so far. Can be 0 or 1.
+   * \tparam ArgcTeamSpec The number of arguments describing the team/unit
+   *                      distribution (TeamSpec) of the pattern parsed so far.
+   *                      Can be 0 or 1.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(SizeType extent, Args && ... args) {
+    static_assert(ArgcSize >= 0, "Cannot mix size and SizeSpec definition"
+        "in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
-    _argc_size++;
-    _sizespec.resize(count, extent);
+    static_assert(ArgcSize < NumDimensions, "Number of size specifier exceeds"
+        "the number of dimensions in variadic pattern constructor!");
+    DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
+    _sizespec.resize(ArgcSize, extent);
+    parse<ArgcSize+1, ArgcDist, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for up to \c NumDimensions optional 
-  /// parameters specifying the distribution pattern.
-  template<int count>
-  void check(const TeamSpec_t & teamSpec) {
-    DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
-    _argc_team++;
-    _teamspec   = teamSpec;
-  }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// team.
-  template<int count>
-  void check(dash::Team & team) {
-    DASH_LOG_TRACE("PatternArguments.check(team)");
-    if (_argc_team == 0) {
-      _team     = &team;
-      _teamspec = TeamSpec_t(_distspec, team);
-    }
-  }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// size (extents).
-  template<int count>
-  void check(const SizeSpec_t & sizeSpec) {
+
+  /*
+   * Match for one optional parameter specifying the size (extents).
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const SizeSpec_t & sizeSpec, Args && ... args) {
+    static_assert(ArgcSize == 0, "Cannot mix size and SizeSpec definition"
+        "in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(sizeSpec)");
-    _argc_size += NumDimensions;
-    _sizespec   = sizeSpec;
+    _sizespec = sizeSpec;
+    parse<-1, ArgcDist, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for one optional parameter specifying the 
-  /// distribution.
-  template<int count>
-  void check(const DistributionSpec_t & ds) {
+
+  /*
+   * Match for \c TeamSpec describing the distribution among the units
+   * in the team.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const TeamSpec_t & teamSpec, Args && ... args) {
+    static_assert(ArgcTeamSpec == 0,
+        "Cannot specify TeamSpec twice in variadic pattern constructor!");
+    DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
+    // TODO: there is no way to check whether this TeamSpec
+    //       was created from the team provided in the variadic arguments.
+    _teamspec   = teamSpec;
+    parse<ArgcSize, ArgcDist, ArgcTeam, 1>(std::forward<Args>(args)...);
+  }
+
+  /*
+   * Match for one optional parameter specifying the team.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(dash::Team & team, Args && ... args) {
+    static_assert(ArgcTeam == 0,
+        "Cannot specify Team twice in variadic pattern constructor!");
+    DASH_LOG_TRACE("PatternArguments.check(team)");
+    // assign team, TeamSpec will be created when parsing is finished
+    // and no TeamSpec has been found.
+    _team     = &team;
+    parse<ArgcSize, ArgcDist, 1,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
+  }
+
+  /*
+   * Match for one optional parameter specifying the  distribution.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const DistributionSpec_t & ds, Args && ... args) {
+    static_assert(ArgcDist == 0, "Cannot mix DistributionSpec and inidividual"
+        "distributions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(distSpec)");
-    _argc_dist += NumDimensions;
-    _distspec   = ds;
+    _distspec = ds;
+    parse<ArgcSize, -1, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// BlockPattern matching for up to NumDimensions optional parameters
-  /// specifying the distribution.
-  template<int count>
-  void check(const Distribution & ds) {
+
+  /*
+   * Match for up to \c NumDimensions optional parameters
+   * specifying the distribution.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec,
+    typename ... Args>
+  void parse(const Distribution & ds, Args && ... args) {
+    static_assert(!(ArgcDist < 0), "Cannot mix DistributionSpec and "
+        "inidividual distributions in variadic pattern constructor!");
+    static_assert(ArgcDist < NumDimensions, "Number of distribution specifier"
+        " exceeds the number of dimensions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(dist)");
-    _argc_dist++;
-    dim_t dim = count - NumDimensions;
-    _distspec[dim] = ds;
+    _distspec[ArgcDist] = ds;
+    parse<ArgcSize, ArgcDist+1, ArgcTeam,
+      ArgcTeamSpec>(std::forward<Args>(args)...);
   }
-  /// Isolates first argument and calls the appropriate check() function
-  /// on each argument via recursion on the argument list.
-  template<int count, typename T, typename ... Args>
-  void check_recurse(T && t, Args && ... args) {
-    DASH_LOG_TRACE("PatternArguments.check(args) ",
-                   "count", count,
-                   "argc", sizeof...(Args));
-    check<count>(std::forward<T>(t));
-    if (sizeof...(Args) > 0) {
-      check_recurse<count + 1>(std::forward<Args>(args)...);
+
+  /**
+   * Stop recursion when all arguments are processed.
+   */
+  template<
+    int ArgcSize,
+    int ArgcDist,
+    int ArgcTeam,
+    int ArgcTeamSpec>
+  void parse() {
+    static_assert(!(ArgcDist > 0 && ArgcDist != NumDimensions),
+        "Incomplete distribution specification in "
+        "variadic pattern constructor!");
+
+    static_assert(!(ArgcSize > 0 && ArgcSize != NumDimensions),
+        "Incomplete size specification in "
+        "variadic pattern constructor!");
+
+    /*
+     * TODO: we have no way to statically check whether a TeamSpec was created
+     *       using the team specified by the user.
+     */
+    if (ArgcTeam && !ArgcTeamSpec) {
+      _teamspec = TeamSpec_t(_distspec, *_team);
     }
+
+    check_tile_constraints();
   }
-  /// Terminator function for recursive argument parsing
-  template<int count>
-  void check_recurse() {
-  }
+
   /// Check pattern constraints for tile
   void check_tile_constraints() const {
     bool has_tile = false;
@@ -197,19 +271,21 @@ private:
       if (_distspec.dim(i).type != _distspec.dim(i+1).type)
         invalid  = true;
     }
-    if (has_tile && invalid) {
-      DASH_THROW(dash::exception::InvalidArgument,
-                 "Pattern arguments invalid: Mixed distribution types");
-    }
     if (has_tile) {
+      if (invalid) {
+        DASH_THROW(dash::exception::InvalidArgument,
+                   "Pattern arguments invalid: Mixed distribution types");
+      }
+
       for (auto i = 0; i < NumDimensions; i++) {
-        assert(
+        DASH_ASSERT_ALWAYS(
           _sizespec.extent(i) % (_distspec.dim(i).blocksz)
           == 0);
       }
     }
   }
 };
+
 
 } // namespace internal
 } // namespace dash

@@ -131,12 +131,9 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline LocalMatrixRef<T, NumDim, CUR, PatternT>
-::operator LocalMatrixRef<T, NumDim, CUR-1, PatternT> && ()
+::operator LocalMatrixRef<T, NumDim, CUR-1, PatternT> && () &&
 {
-  LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref;
-  ref._refview = std::move(_refview);
-  DASH_LOG_TRACE("LocalMatrixRef.&& move");
-  return ::std::move(ref);
+  return LocalMatrixRef<T, NumDim, CUR-1, PatternT>(std::move(_refview));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -147,8 +144,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   // Different operation semantics.
   MatrixRef<T, NumDim, CUR, PatternT>  ref;
   ref._refview = _refview;
-  DASH_LOG_TRACE("LocalMatrixRef.MatrixRef move");
-  return ::std::move(ref);
+  return ref;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>

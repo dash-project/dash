@@ -29,8 +29,8 @@ inline Matrix<T, NumDim, IndexT, PatternT>
   _lsize(0),
   _lcapacity(0),
   _pattern(
-    SizeSpec_t(),
-    DistributionSpec_t(),
+    size_spec(),
+    distribution_spec(),
     *_team),
   _glob_mem(nullptr),
   _lbegin(nullptr),
@@ -42,10 +42,10 @@ inline Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
 ::Matrix(
-  const SizeSpec_t & ss,
-  const DistributionSpec_t & ds,
+  const size_spec & ss,
+  const distribution_spec & ds,
   Team & t,
-  const TeamSpec_t & ts)
+  const team_spec & ts)
 : _team(&t),
   _size(0),
   _lsize(0),
@@ -80,11 +80,57 @@ inline Matrix<T, NumDim, IndexT, PatternT>
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
+::Matrix(
+  self_t && other)
+: _team(other._team),
+  _size(other._size),
+  _lcapacity(other._lcapacity),
+  _begin(other._begin),
+  _pattern(other._pattern),
+  _glob_mem(other._glob_mem),
+  _lbegin(other._lbegin),
+  _lend(other._lend),
+  _ref(other._ref)
+{
+    // do not free other globmem
+    other._glob_mem = nullptr;
+    other._lbegin   = nullptr;
+    other._lend     = nullptr;
+    DASH_LOG_TRACE("Matrix()", "Move-Constructed");
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline Matrix<T, NumDim, IndexT, PatternT>
 ::~Matrix()
 {
   DASH_LOG_TRACE_VAR("Matrix.~Matrix()", this);
   deallocate();
 }
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline Matrix<T, NumDim, IndexT, PatternT> &
+Matrix<T, NumDim, IndexT, PatternT>
+::operator= (
+  Matrix<T, NumDim, IndexT, PatternT> && other)
+{
+  deallocate();
+  _team      = other._team;
+  _size      = other._size;
+  _lcapacity = other._lcapacity;
+  _begin     = other._begin;
+  _pattern   = other._pattern;
+  _glob_mem  = other._glob_mem;
+  _lbegin    = other._lbegin;
+  _lend      = other._lend;
+  _ref       = other._ref;
+
+  // do not free other globmem
+  other._glob_mem = nullptr;
+  other._lbegin   = nullptr;
+  other._lend     = nullptr;
+  DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
+  return *this;
+};
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 MatrixRef<T, NumDim, NumDim, PatternT>
@@ -218,8 +264,9 @@ void Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
-::team() {
+constexpr inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
+::team() const noexcept
+{
   return *_team;
 }
 

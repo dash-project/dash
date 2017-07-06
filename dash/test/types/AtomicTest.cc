@@ -296,7 +296,7 @@ TEST_F(AtomicTest, ArrayElements)
 
   value_t expect_local = my_val + remote_prev + 1 + remote_next + 1;
   value_t actual_local = array.local[0];
-  EXPECT_EQ(expect_local, actual_local);
+  EXPECT_EQ_U(expect_local, actual_local);
 
   if (dash::myid() == 0) {
     // Create local copy for logging:
@@ -401,6 +401,7 @@ TEST_F(AtomicTest, AtomicInterface){
   }
   dash::barrier();
   ASSERT_EQ_U(array[3].load(), 1);
+  dash::barrier();
   
   value_t myid     = static_cast<value_t>(dash::myid().id);
   value_t id_right = (myid + 1) % dash::size();
@@ -474,5 +475,35 @@ TEST_F(AtomicTest, MutexInterface){
   if(dash::myid() == 0){
     int result = shared.get();
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*3);
+  }
+}
+
+
+TEST_F(AtomicTest, AtomicSignal){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("At least 2 units required");
+  }
+
+  array_t array(dash::size());
+  dash::fill(array.begin(), array.end(), 0);
+
+  int neighbor = (dash::myid() + 1) % dash::size();
+
+  if (dash::myid() != 0) {
+    // send the signal
+    array[0].add(1);
+  } else {
+
+    // wait for a signal to arrive
+    int  count;
+    auto agref = array[0];
+    do {
+      count = agref.get();
+    } while (count == 0);
+    ASSERT_GT_U(count, 0);
   }
 }

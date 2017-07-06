@@ -6,7 +6,7 @@
 MPICXX_VERSION := $(shell mpicxx --version 2>/dev/null)
 
 # where the DART interface is located
-DART_IF = ../../dart-if/v3.2
+DART_IF = ../../dart-if
 
 ifeq ($(CRAYOS_VERSION),)
 CC      = mpicc  $(OPT_FLAGS) -std=c99

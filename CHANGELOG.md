@@ -150,6 +150,7 @@
 - Support for HDF5.
 - Generate cmake package for DASH and DART
 - Added build configuration for code coverage tests
+- Check MPI implementation for compilance with MPI3
 - Enforce minimum C++ compiler versions:
     - GCC: 5.1.0
     - Clang: 3.8.0

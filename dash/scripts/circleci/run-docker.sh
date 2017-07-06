@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MPIENVS=(mpich openmpi)
+MPIENVS=(mpich openmpi2)
 BUILD_CONFIG=$1
 COMPILER=$2
 MAKE_PROCS=4
@@ -25,9 +25,14 @@ for MPIENV in ${MPIENVS[@]}; do
   if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
 
     echo "Starting docker container: $MPIENV"
+    # prevent ci timeout by printing message every 1 minute
+    while sleep 120; do echo "[ CI ] Timeout prevention $(date)"; done &
 
     docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV \
                   /bin/sh -c "$DASH_ENV_EXPORTS sh dash/scripts/dash-ci.sh $BUILD_CONFIG | tee dash-ci.log 2> dash-ci.err;"
+
+    # stop timeout prevention
+    kill $!
 
     # upload xml test-results
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$COMPILER/$BUILD_CONFIG

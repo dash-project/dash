@@ -226,10 +226,7 @@ public:
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
-        _nblocks,
         _blocksize,
-        _distspec,
-        _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("TilePattern<1>()", "(sizespec, dist, teamspec, team)");
@@ -288,10 +285,7 @@ public:
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
-        _nblocks,
         _blocksize,
-        _distspec,
-        _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("TilePattern<1>()", "(sizespec, dist, team)");
@@ -613,9 +607,7 @@ public:
     IndexType block_index     = dist.local_index_to_block_coord(
                                   static_cast<IndexType>(unit),
                                   local_index,
-                                  _nunits,
-                                  _nblocks,
-                                  _blocksize
+                                  _nunits
                                 );
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
     DASH_LOG_TRACE_VAR("TilePattern<1>.global", block_index);
@@ -800,7 +792,7 @@ public:
   {
     return g_coords[0] / _blocksize;
   }
-  
+
   /**
    * Local index of block at given global coordinates.
    *
@@ -1049,10 +1041,7 @@ private:
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
-        _nblocks,
         _blocksize,
-        _distspec,
-        _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity())
   {}
@@ -1099,10 +1088,7 @@ private:
    * Initialize local block spec from global block spec.
    */
   SizeType initialize_num_local_blocks(
-    SizeType                    num_blocks,
     SizeType                    blocksize,
-    const DistributionSpec_t  & distspec,
-    SizeType                    nunits,
     SizeType                    local_size) const {
     auto num_l_blocks = local_size;
     if (blocksize > 0) {

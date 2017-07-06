@@ -168,6 +168,12 @@ public:
     _viewspec(viewspec)
   { }
 
+  LocalArrayRef(const self_t &) = default;
+  LocalArrayRef(self_t &&)      = default;
+
+  self_t & operator=(const self_t &) = default;
+  self_t & operator=(self_t &&)      = default;
+
   /**
    * Pointer to initial local element in the array.
    */
@@ -206,14 +212,14 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_reference operator[](const size_t n) const {
+  constexpr const_reference operator[](const size_type n) const {
     return (_array->m_lbegin)[n];
   }
 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline reference operator[](const size_t n) {
+  inline reference operator[](const size_type n) {
     return (_array->m_lbegin)[n];
   }
 
@@ -245,9 +251,9 @@ public:
 
 private:
   /// Pointer to array instance referenced by this view.
-  const Array_t * const _array;
+  const Array_t * _array;
   /// The view's offset and extent within the referenced array.
-  ViewSpec_t            _viewspec;
+  ViewSpec_t      _viewspec;
 };
 
 #ifndef DOXYGEN
@@ -292,7 +298,7 @@ public:
   }
 
 private:
-  Array<T, IndexType, PatternType> * const _array;
+  Array<T, IndexType, PatternType> * _array;
 
 public:
   /**
@@ -302,6 +308,13 @@ public:
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
+
+  AsyncArrayRef(const self_t &) = default;
+  AsyncArrayRef(self_t &&)      = default;
+
+  self_t & operator=(const self_t &) = default;
+  self_t & operator=(self_t &&)      = default;
+
 
   /**
    * Pointer to initial local element in the array.
@@ -349,7 +362,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_async_reference operator[](const size_t n) const  {
+  constexpr const_async_reference operator[](const size_type n) const  {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
@@ -357,7 +370,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  async_reference operator[](const size_t n) {
+  async_reference operator[](const size_type n) {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
@@ -660,7 +673,9 @@ public:
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
-  typedef dash::GlobStaticMem<value_type>                            glob_mem_type;
+  typedef dash::GlobStaticMem<value_type>                      glob_mem_type;
+
+  typedef DistributionSpec<1>                              distribution_spec;
 
 public:
   template<
@@ -696,10 +711,10 @@ public:
   }
 
 private:
-  typedef DistributionSpec<1>
-    DistributionSpec_t;
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
+  typedef std::unique_ptr<glob_mem_type>
+    PtrGlobMemType_t;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -715,7 +730,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  glob_mem_type      * m_globmem   = nullptr;
+  PtrGlobMemType_t     m_globmem;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array
@@ -750,6 +765,7 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global array instances
    * that are declared before \c dash::Init().
    */
+  explicit
   Array(
     Team & team = dash::Team::Null())
   : local(this),
@@ -757,7 +773,7 @@ public:
     m_team(&team),
     m_pattern(
       SizeSpec_t(0),
-      DistributionSpec_t(dash::BLOCKED),
+      distribution_spec(dash::BLOCKED),
       team),
     m_globmem(nullptr),
     m_size(0),
@@ -774,7 +790,7 @@ public:
    */
   Array(
     size_type                  nelem,
-    const DistributionSpec_t & distribution,
+    const distribution_spec  & distribution,
     Team                     & team = dash::Team::All())
   : local(this),
     async(this),
@@ -795,6 +811,7 @@ public:
   /**
    * Delegating constructor, specifies the array's global capacity.
    */
+  explicit
   Array(
     size_type   nelem,
     Team      & team = dash::Team::All())
@@ -811,7 +828,7 @@ public:
   Array(
     size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
-    const DistributionSpec_t          & distribution,
+    const distribution_spec           & distribution,
     Team                              & team = dash::Team::All())
   : local(this),
     async(this),
@@ -849,6 +866,7 @@ public:
   /**
    * Constructor, specifies distribution pattern explicitly.
    */
+  explicit
   Array(
     const PatternType & pattern)
   : local(this),
@@ -884,7 +902,14 @@ public:
    */
   Array(const self_t & other) = delete;
 
-  Array(self_t && other)      = delete;
+  /**
+   * Move construction is supported for the container with the following
+   * limitations:
+   *
+   * The pattern has to be movable or copyable
+   * The underlying memory does not have to be movable (it might).
+   */
+  Array(self_t && other)      = default;
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of
@@ -906,7 +931,14 @@ public:
    */
   self_t & operator=(const self_t & rhs) = delete;
 
-  self_t & operator=(self_t && other)    = delete;
+  /**
+   * Move assignment is supported for the container with the following
+   * limitations:
+   *
+   * The pattern has to be movable or copyable
+   * The underlying memory does not have to be movable (it might).
+   */
+  self_t & operator=(self_t && other)    = default;
 
   /**
    * Destructor, deallocates array elements.
@@ -1098,7 +1130,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  constexpr const Team & team() const noexcept
+  constexpr Team & team() const noexcept
   {
     return *m_team;
   }
@@ -1243,6 +1275,18 @@ public:
     return ret;
   }
 
+
+  /**
+   * Delayed allocation of global memory using the default blocked
+   * distribution spec.
+   */
+  bool allocate(
+    size_type   nelem,
+    Team      & team = dash::Team::All())
+  {
+    return allocate(nelem, dash::BLOCKED, team);
+  }
+
   /**
    * Delayed allocation of global memory using a
    * one-dimensional distribution spec and
@@ -1295,10 +1339,9 @@ public:
     m_team->unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
-    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
     if (m_globmem != nullptr) {
-      delete m_globmem;
-      m_globmem = nullptr;
+      m_globmem.reset();
     }
     m_size = 0;
     DASH_LOG_TRACE_VAR("Array.deallocate >", this);
@@ -1328,9 +1371,9 @@ public:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(m_lcapacity, *m_team);
+    m_globmem   = PtrGlobMemType_t(new glob_mem_type(m_lcapacity, *m_team));
     // Global iterators:
-    m_begin     = iterator(m_globmem, m_pattern);
+    m_begin     = iterator(m_globmem.get(), m_pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin();
@@ -1378,9 +1421,9 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(local_elements, *m_team);
+    m_globmem   = PtrGlobMemType_t(new glob_mem_type(local_elements, *m_team));
     // Global iterators:
-    m_begin     = iterator(m_globmem, pattern);
+    m_begin     = iterator(m_globmem.get(), pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin();
