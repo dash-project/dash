@@ -261,13 +261,10 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
+        _blockspec)),
     _local_memory_layout(
         initialize_local_extents(_myid)),
     _local_capacity(
@@ -330,13 +327,10 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
+        _blockspec)),
     _local_memory_layout(
         initialize_local_extents(_myid)),
     _local_capacity(
@@ -1294,11 +1288,7 @@ public:
     if (unit == _myid) {
       return local_blockspec();
     }
-    return initialize_local_blockspec(
-             _blockspec,
-             _blocksize_spec,
-             _teamspec,
-             unit);
+    return initialize_local_blockspec( _blockspec, unit);
   }
 
   /**
@@ -1333,7 +1323,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+  SizeType local_capacity() const {
     return local_size();
   }
 
@@ -1486,13 +1476,10 @@ private:
         _teamspec)),
     _blockspec(initialize_blockspec(
         arguments.sizespec(),
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
+        _blockspec)),
     _local_memory_layout(
         initialize_local_extents(_myid)),
     _local_capacity(
@@ -1530,7 +1517,6 @@ private:
    */
   BlockSpec_t initialize_blockspec(
     const SizeSpec_t         & sizespec,
-    const DistributionSpec_t & distspec,
     const BlockSizeSpec_t    & blocksizespec,
     const TeamSpec_t         & teamspec) const
   {
@@ -1561,8 +1547,6 @@ private:
    */
   BlockSpec_t initialize_local_blockspec(
     const BlockSpec_t     & blockspec,
-    const BlockSizeSpec_t & blocksizespec,
-    const TeamSpec_t      & teamspec,
     team_unit_t             unit_id = UNDEFINED_TEAM_UNIT_ID) const
   {
     DASH_LOG_TRACE_VAR("SeqTilePattern.init_local_blockspec()",
@@ -1631,7 +1615,7 @@ private:
   {
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", unit);
     auto l_blockspec = initialize_local_blockspec(
-                        _blockspec, _blocksize_spec, _teamspec, unit);
+                        _blockspec, unit);
 
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()",
                        l_blockspec.extents());

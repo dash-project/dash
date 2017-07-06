@@ -2,6 +2,7 @@
 #include "MinElementTest.h"
 
 #include <dash/algorithm/MinMax.h>
+#include <dash/algorithm/Generate.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 
@@ -39,7 +40,8 @@ TEST_F(MinElementTest, TestFindArrayDefault)
   // Check minimum value found
   Element_t found_min = *found_gptr;
   LOG_MESSAGE("Expected min value: %d, found minimum value %d",
-              min_value, found_min);
+              static_cast<int>(min_value),
+              static_cast<int>(found_min));
   EXPECT_EQ(min_value, found_min);
 }
 
@@ -62,21 +64,23 @@ TEST_F(MinElementTest, TestArrayDelayedAlloc)
     if (value < l_min_exp) {
       l_min_exp = value;
     }
-    LOG_MESSAGE("array.local[%d] = %d", li, value);
+    LOG_MESSAGE("array.local[%d] = %d", static_cast<int>(li),
+                static_cast<int>(value));
   }
   // Wait for all units to initialize values:
   array.barrier();
   // Find local minimum:
   auto lptr_min = dash::min_element(array.local.begin(),
                                     array.local.end());
-  LOG_MESSAGE("l_min:%d expected:%d", *lptr_min, l_min_exp);
+  LOG_MESSAGE("l_min:%d expected:%d", static_cast<int>(*lptr_min),
+              static_cast<int>(l_min_exp));
   ASSERT_EQ_U(l_min_exp, *lptr_min);
   // Find global minimum:
   auto gptr_min = dash::min_element(array.begin(),
                                     array.end());
   value_t g_min = *gptr_min;
   ASSERT_LE_U(g_min, *lptr_min);
-  LOG_MESSAGE("g_min: %d", g_min);
+  LOG_MESSAGE("g_min: %d", static_cast<int>(g_min));
 }
 
 TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)
@@ -85,7 +89,8 @@ TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)
   int  block_size = 7;
   auto num_units  = dash::Team::All().size();
   LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              num_units, block_size, _num_elem);
+              static_cast<int>(num_units), block_size,
+              static_cast<int>(_num_elem));
   Element_t min_value = 19;
   // Initialize global array:
   Array_t array(_num_elem, dash::BLOCKCYCLIC(block_size));
@@ -107,7 +112,8 @@ TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)
   // Check minimum value found
   Element_t found_min = *found_gptr;
   LOG_MESSAGE("Expected min value: %d, found minimum value %d",
-              min_value, found_min);
+              static_cast<int>(min_value),
+              static_cast<int>(found_min));
   EXPECT_EQ(min_value, found_min);
 }
 
@@ -124,7 +130,8 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
     num_elem = block_size - 1;
   }
   LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
-              num_units, block_size, num_elem);
+              static_cast<int>(num_units), block_size,
+              static_cast<int>(num_elem));
   Element_t min_value = 21;
   // Initialize global array:
   Array_t array(num_elem, dash::BLOCKCYCLIC(block_size));
@@ -147,7 +154,8 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
   // Check minimum value found
   Element_t found_min = *found_gptr;
   LOG_MESSAGE("Expected min value: %d, found minimum value %d",
-              min_value, found_min);
+              static_cast<int>(min_value),
+              static_cast<int>(found_min));
   EXPECT_EQ(min_value, found_min);
 }
 
@@ -211,6 +219,7 @@ TEST_F(MinElementTest, TestShrinkRange)
 
 TEST_F(MinElementTest, TestFindMatrixDefault)
 {
+  typedef typename dash::Matrix<Element_t, 2>::index_type index_t;
   Element_t min_value = 11;
   size_t num_units    = dash::Team::All().size();
   size_t tilesize_x   = 13;
@@ -230,17 +239,21 @@ TEST_F(MinElementTest, TestFindMatrixDefault)
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
   ASSERT_EQ(extent_rows, matrix.extent(1));
-  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  LOG_MESSAGE("Matrix size: %d", static_cast<int>(matrix_size));
   // Fill matrix
-  if (dash::myid() == 0) {
-    LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        matrix[i][k] = 20 + (i * 11) + (k * 97);
-      }
+  LOG_MESSAGE("Assigning matrix values");
+  auto &pattern = matrix.pattern();
+  dash::generate_with_index(
+    matrix.begin(), matrix.end(),
+    [&pattern](index_t gidx){
+      auto coords = pattern.coords(gidx);
+      return 20 + (coords[0] * 11) + (coords[1] * 97);
     }
+  );
+  matrix.barrier();
+  if (dash::myid() == 0) {
     LOG_MESSAGE("Setting matrix[%d][%d] = %d (min)",
-                min_pos_x, min_pos_y, min_value);
+                min_pos_x, min_pos_y, static_cast<int>(min_value));
     matrix[min_pos_x][min_pos_y] = min_value;
   }
   // Units waiting for value initialization
@@ -253,7 +266,8 @@ TEST_F(MinElementTest, TestFindMatrixDefault)
   // Check minimum value found
   Element_t found_min = *found_gptr;
   LOG_MESSAGE("Expected min value: %d, found minimum value %d",
-              min_value, found_min);
+              static_cast<int>(min_value),
+              static_cast<int>(found_min));
   EXPECT_EQ(min_value, found_min);
 }
 

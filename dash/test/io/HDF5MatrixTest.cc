@@ -246,8 +246,8 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern) {
 
   auto block_size_x = 12;
   auto block_size_y = 4;
-  auto ext_x = (block_size_x * teamspec_2d.num_units(0)) - 3;
-  auto ext_y = (block_size_y * teamspec_2d.num_units(1)) - 1;
+  int  ext_x = (block_size_x * teamspec_2d.num_units(0)) - 3;
+  int  ext_y = (block_size_y * teamspec_2d.num_units(1)) - 1;
 
   LOG_MESSAGE("Matrix extent (%i,%i)", ext_x, ext_y);
 

@@ -509,8 +509,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline size_type local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const;
+  inline size_type local_capacity() const;
 
   /**
    * The actual number of elements in this pattern that are local to the

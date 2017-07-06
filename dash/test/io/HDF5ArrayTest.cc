@@ -535,7 +535,7 @@ TEST_F(HDF5ArrayTest, TeamSplit) {
   }
 
   auto &myteam = team_all.split(num_split);
-  LOG_MESSAGE("Splitted team in %d parts, I am %d", num_split,
+  LOG_MESSAGE("Splitted team in %d parts, I am %lu", num_split,
               myteam.position());
 
   int ext_x = team_all.size() * 5;
@@ -549,10 +549,11 @@ TEST_F(HDF5ArrayTest, TeamSplit) {
 
       fill_array(array_a, secret);
       myteam.barrier();
-      LOG_MESSAGE("Team %d: write array", myteam.position());
+      LOG_MESSAGE("Team %lu: write array", myteam.position());
       OutputStream os(_filename);
       os << dio::dataset("array_a") << array_a;
-      LOG_MESSAGE("Team %d: array written", myteam.position());
+      LOG_MESSAGE("Team %lu: array written",
+                  myteam.position());
       myteam.barrier();
     }
   }
@@ -568,10 +569,10 @@ TEST_F(HDF5ArrayTest, TeamSplit) {
     EXPECT_NE_U(array_a.lbegin(), nullptr);
 
     if (array_a.lbegin() != nullptr) {
-      LOG_MESSAGE("Team %d: read array", myteam.position());
+      LOG_MESSAGE("Team %lu: read array", myteam.position());
       InputStream is(_filename);
       is >> dio::dataset("array_a") >> array_a;
-      LOG_MESSAGE("Team %d: array read", myteam.position());
+      LOG_MESSAGE("Team %lu: array read", myteam.position());
       myteam.barrier();
       verify_array(array_a, secret);
     }

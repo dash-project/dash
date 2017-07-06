@@ -26,6 +26,8 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
   EXPECT_EQ(size, pat_default.capacity());
 
+  dash::SizeSpec<3> sspec(
+      extent_x, extent_y, extent_z);
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
   dash::BlockPattern<3, dash::COL_MAJOR> pat_ds(
@@ -44,6 +46,23 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
   EXPECT_EQ(size, pat_ds_t.capacity());
   EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
+
+  // As above but mix size and distribution specification.
+  // Has to start with a size specifier.
+  dash::BlockPattern<3> pat_mixed(
+      extent_x, dash::NONE, extent_y, dash::NONE, extent_z,
+      dash::BLOCKED,
+      dash::Team::All());
+  EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
+  EXPECT_EQ(size, pat_ds_t.capacity());
+  EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
+
+  dash::BlockPattern<3> pat_spec(
+      sspec, ds_blocked_z,
+      dash::Team::All());
+  EXPECT_EQ(ds_blocked_z, pat_spec.distspec());
+  EXPECT_EQ(size, pat_spec.capacity());
+  EXPECT_EQ(dash::Team::All().size(), pat_spec.num_units());
 }
 
 TEST_F(BlockPatternTest, EqualityComparison)
@@ -136,7 +155,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       // Empty block
       local_extent_x = 0;
     }
-    LOG_MESSAGE("local extents: u:%lu, le:%lu",
+    LOG_MESSAGE("local extents: u:%d, le:%lu",
       u.id, local_extent_x);
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
@@ -361,9 +380,11 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
                           ? 0
                           : block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
-      extent_y, extent_x,
-      block_size_y, block_size_x,
-      max_per_unit);
+      static_cast<int>(extent_y),
+      static_cast<int>(extent_x),
+      static_cast<int>(block_size_y),
+      static_cast<int>(block_size_x),
+      static_cast<int>(max_per_unit));
   pattern_rowmajor_t pat_blocked_row(
       dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
@@ -409,7 +430,8 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
   EXPECT_EQ(pat_blocked_col.underfilled_blocksize(1), underfill_bs_x);
   EXPECT_EQ(pat_blocked_col.underfilled_blocksize(0), underfill_bs_y);
   LOG_MESSAGE("block size: x: %d, y: %d",
-    block_size_x, block_size_y);
+    static_cast<int>(block_size_x),
+    static_cast<int>(block_size_y));
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
       // Units might have empty local range, e.g. when distributing 41
