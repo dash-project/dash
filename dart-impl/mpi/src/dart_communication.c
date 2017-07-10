@@ -28,6 +28,24 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <alloca.h>
+
+/**
+ * Temporary space allocation:
+ *   - on the stack for allocations <=64B
+ *   - on the heap otherwise
+ * Mainly meant to be used in dart_waitall_* and dart_testall_local
+ */
+#define ALLOC_TMP(__size) ((__size)<=64) ? alloca((__size)) : malloc((__size))
+/**
+ * Temporary space release: calls free() for allocations >64B
+ */
+#define FREE_TMP(__size, __ptr)        \
+  do {                                 \
+    if ((__size) > 64)                 \
+      free(__ptr);                     \
+  } while (0)
+
 
 int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
 
@@ -1249,7 +1267,7 @@ dart_ret_t dart_waitall_local(
   }
   if (handle != NULL) {
     size_t r_n = 0;
-    MPI_Request *mpi_req = malloc(num_handles * sizeof(MPI_Request));
+    MPI_Request *mpi_req = ALLOC_TMP(num_handles * sizeof(MPI_Request));
     for (size_t i = 0; i < num_handles; i++)  {
       if (handle[i] != NULL && handle[i]->request != MPI_REQUEST_NULL) {
         DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
@@ -1272,12 +1290,12 @@ dart_ret_t dart_waitall_local(
         DART_LOG_DEBUG("dart_waitall_local: MPI_Waitall completed");
       } else {
         DART_LOG_ERROR("dart_waitall_local: MPI_Waitall failed");
-        free(mpi_req);
+        FREE_TMP(num_handles * sizeof(MPI_Request), mpi_req);
         return DART_ERR_INVAL;
       }
     } else {
       DART_LOG_DEBUG("dart_waitall_local > number of requests = 0");
-      free(mpi_req);
+      FREE_TMP(num_handles * sizeof(MPI_Request), mpi_req);
       return DART_OK;
     }
 
@@ -1295,7 +1313,7 @@ dart_ret_t dart_waitall_local(
         handle[i] = NULL;
       }
     }
-    free(mpi_req);
+    FREE_TMP(num_handles * sizeof(MPI_Request), mpi_req);
   }
   DART_LOG_DEBUG("dart_waitall_local > %d", ret);
   return ret;
@@ -1318,7 +1336,7 @@ dart_ret_t dart_waitall(
   DART_LOG_DEBUG("dart_waitall: number of handles: %zu", n);
 
   if (handle) {
-    MPI_Request *mpi_req = malloc(n * sizeof(MPI_Request));
+    MPI_Request *mpi_req = ALLOC_TMP(n * sizeof(MPI_Request));
     /*
      * copy requests from DART handles to MPI request array:
      */
@@ -1357,12 +1375,12 @@ dart_ret_t dart_waitall(
         DART_LOG_DEBUG("dart_waitall: MPI_Waitall completed");
       } else {
         DART_LOG_ERROR("dart_waitall: MPI_Waitall failed");
-        free(mpi_req);
+        FREE_TMP(n * sizeof(MPI_Request), mpi_req);
         return DART_ERR_INVAL;
       }
     } else {
       DART_LOG_DEBUG("dart_waitall > number of requests = 0");
-      free(mpi_req);
+      FREE_TMP(n * sizeof(MPI_Request), mpi_req);
       return DART_OK;
     }
 
@@ -1382,7 +1400,7 @@ dart_ret_t dart_waitall(
         if (handle[i]->needs_flush) {
           if (MPI_Win_flush(handle[i]->dest, handle[i]->win) != MPI_SUCCESS) {
             DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
-            free(mpi_req);
+            FREE_TMP(n * sizeof(MPI_Request), mpi_req);
             return DART_ERR_INVAL;
           }
         }
@@ -1405,7 +1423,7 @@ dart_ret_t dart_waitall(
       }
     }
     DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
-    free(mpi_req);
+    FREE_TMP(n * sizeof(MPI_Request), mpi_req);
   }
   DART_LOG_DEBUG("dart_waitall > finished");
   return DART_OK;
@@ -1420,7 +1438,8 @@ dart_ret_t dart_test_local(
     *is_finished = 1;
     return DART_OK;
   }
-  if (MPI_Test(&(handle->request), is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+  if (MPI_Test(&(handle->request),
+               is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
     return DART_ERR_OTHER;
   }
@@ -1437,11 +1456,15 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * is_finished)
 {
-  size_t i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
-  MPI_Request *mpi_req = malloc(n * sizeof (MPI_Request));
-  r_n = 0;
-  for (i = 0; i < n; ++i) {
+  if (handle == NULL || n == 0) {
+    DART_LOG_DEBUG("dart_testall_local: empty handles");
+    return DART_OK;
+  }
+
+  MPI_Request *mpi_req = ALLOC_TMP(n * sizeof (MPI_Request));
+  size_t r_n = 0;
+  for (size_t i = 0; i < n; ++i) {
     if (handle[i] && handle[i]->request != MPI_REQUEST_NULL){
       mpi_req[r_n] = handle[i]->request;
       ++r_n;
@@ -1451,13 +1474,13 @@ dart_ret_t dart_testall_local(
   if (r_n) {
     if (MPI_Testall(r_n, mpi_req, is_finished,
                     MPI_STATUSES_IGNORE) != MPI_SUCCESS){
-      free(mpi_req);
+      FREE_TMP(n * sizeof(MPI_Request), mpi_req);
       DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
       return DART_ERR_OTHER;
     }
 
     if (*is_finished) {
-      for (i = 0; i < n; i++) {
+      for (size_t i = 0; i < n; i++) {
         if (handle[i]) {
           // nullify request and free the handle
           handle[i]->request = MPI_REQUEST_NULL;
@@ -1467,7 +1490,7 @@ dart_ret_t dart_testall_local(
       }
     }
   }
-  free(mpi_req);
+  FREE_TMP(n * sizeof(MPI_Request), mpi_req);
   DART_LOG_DEBUG("dart_testall_local > finished");
   return DART_OK;
 }
