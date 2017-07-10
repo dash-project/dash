@@ -453,6 +453,8 @@ dart_ret_t dart_flush_local_all(
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
+#define DART_HANDLE_NULL (dart_handle_t)NULL
+
 /**
  * 'HANDLE' variant of dart_get.
  * Neither local nor remote completion is guaranteed. A later
