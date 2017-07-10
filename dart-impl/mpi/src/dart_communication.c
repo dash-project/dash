@@ -1500,8 +1500,14 @@ dart_ret_t dart_test_local(
     *is_finished = 1;
     return DART_OK;
   }
-  MPI_Status mpi_sta;
-  MPI_Test (&(handle->request), is_finished, &mpi_sta);
+  if (MPI_Test(&(handle->request), is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
+    return DART_ERR_OTHER;
+  }
+  if (is_finished) {
+    // deallocate handle
+    free(handle);
+  }
   DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
 }
@@ -1513,27 +1519,34 @@ dart_ret_t dart_testall_local(
 {
   size_t i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
-  MPI_Status *mpi_sta;
-  MPI_Request *mpi_req;
-  mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
-  mpi_sta = (MPI_Status *)malloc(n * sizeof (MPI_Status));
+  MPI_Request *mpi_req = malloc(n * sizeof (MPI_Request));
   r_n = 0;
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < n; ++i) {
     if (handle[i]){
-      mpi_req[r_n] = handle[i] -> request;
-      r_n++;
+      mpi_req[r_n] = handle[i]->request;
+      ++r_n;
     }
   }
-  MPI_Testall(r_n, mpi_req, is_finished, mpi_sta);
-  r_n = 0;
-  for (i = 0; i < n; i++) {
-    if (handle[i]) {
-      handle[i] -> request = mpi_req[r_n];
-      r_n++;
+
+  if (r_n) {
+    if (MPI_Testall(r_n, mpi_req, is_finished,
+                    MPI_STATUSES_IGNORE) != MPI_SUCCESS){
+      free(mpi_req);
+      DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
+      return DART_ERR_OTHER;
+    }
+
+    if (*is_finished) {
+      for (i = 0; i < n; i++) {
+        if (handle[i]) {
+          // nullify request and free the handle
+          handle[i]->request = MPI_REQUEST_NULL;
+          free(handle[i]);
+        }
+      }
     }
   }
   free(mpi_req);
-  free(mpi_sta);
   DART_LOG_DEBUG("dart_testall_local > finished");
   return DART_OK;
 }
