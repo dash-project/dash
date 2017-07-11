@@ -51,10 +51,10 @@ dart__base__env__num_threads()
     const char *envstr = getenv(DART_NUMTHREADS_ENVSTR);
     if (envstr && *envstr != '\0') {
       num_threads = strtol(envstr, &endptr, 10);
-    }
-    if (*endptr != '\0') {
-      // parsing failed
-      num_threads = -1;
+      if (*endptr != '\0') {
+        // parsing failed
+        num_threads = -1;
+      }
     }
   }
   return num_threads;
