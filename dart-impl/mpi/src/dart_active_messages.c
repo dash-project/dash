@@ -27,6 +27,7 @@ struct dart_amsgq {
   /// the size (in byte) of the message queue
   uint64_t     size;
   dart_team_t  team;
+  MPI_Comm     comm;
   dart_mutex_t send_mutex;
   dart_mutex_t processing_mutex;
 };
@@ -99,6 +100,8 @@ dart_amsg_openq(
     return DART_ERR_INVAL;
   }
 
+  MPI_Comm_dup(team_data->comm, &res->comm);
+
   /**
    * Allocate the queue
    * We cannot use dart_team_memalloc_aligned because it uses
@@ -108,7 +111,7 @@ dart_amsg_openq(
     sizeof(uint64_t),
     1,
     MPI_INFO_NULL,
-    team_data->comm,
+    res->comm,
     (void*)&(res->tailpos_ptr),
     &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;
@@ -117,12 +120,12 @@ dart_amsg_openq(
     res->size,
     1,
     MPI_INFO_NULL,
-    team_data->comm,
+    res->comm,
     (void*)&(res->queue_ptr),
     &(res->queue_win));
   memset(res->queue_ptr, 0, res->size);
 
-  MPI_Barrier(team_data->comm);
+  MPI_Barrier(res->comm);
 
   *queue = res;
 
@@ -251,10 +254,6 @@ amsg_process_internal(
   uint64_t         tailpos;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
-  // trigger process
-  int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG,
-    team_data->comm, &flag, MPI_STATUS_IGNORE);
 
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
@@ -282,7 +281,8 @@ amsg_process_internal(
         MPI_UINT64_T,
         amsgq->tailpos_win);
 
-    MPI_Win_flush_local(unitid.id, amsgq->tailpos_win);
+    // MPI_Win_flush_local should be sufficient but hangs in OMPI 2.1.1
+    MPI_Win_flush(unitid.id, amsgq->tailpos_win);
 
     if (tailpos > 0) {
       uint64_t   zero = 0;
@@ -363,13 +363,8 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq)
 {
   int         flag = 0;
   MPI_Request req;
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", amsgq->team);
-    return DART_ERR_INVAL;
-  }
 
-  MPI_Ibarrier(team_data->comm, &req);
+  MPI_Ibarrier(amsgq->comm, &req);
   do {
     amsg_process_internal(amsgq, true);
     MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
@@ -377,16 +372,10 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq)
   return DART_OK;
 }
 
-dart_team_t
-dart_amsg_team(const dart_amsgq_t amsgq)
-{
-  return amsgq->team;
-}
-
 dart_ret_t
 dart_amsg_sync(dart_amsgq_t amsgq)
 {
-  dart_barrier(amsgq->team);
+  MPI_Barrier(amsgq->comm);
   return dart_amsg_process(amsgq);
 }
 
