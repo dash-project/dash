@@ -52,8 +52,8 @@ const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1] = {
 
 static const char *loglevel_names[DART_LOGLEVEL_NUM_LEVEL] = {
     "ERROR",
-    "WARN",
-    "INFO",
+    " WARN",
+    " INFO",
     "DEBUG",
     "TRACE"
 };
@@ -63,6 +63,15 @@ static inline
 const char * dart_base_logging_basename(const char *path) {
     char *base = strrchr(path, '/');
     return base ? base+1 : path;
+}
+
+static inline 
+double dart_base_logging_timestamp_ms()
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ((ts.tv_sec * 1E3)
+            + (ts.tv_nsec / 1E6));
 }
 
 void
@@ -92,11 +101,11 @@ dart__base__log_message(
   // avoid inter-thread log interference
   dart__base__mutex_lock(&logmutex);
   fprintf(DART_LOG_OUTPUT_TARGET,
-    "[ %*d:%-2d %.5s ] [ %*d ] %-*s:%-*d %.3s DART: %s\n",
+    "[ %*d:%-2d %.5s ] [ %.3f ] %-*s:%-*d %.3s DART: %s\n",
     UNIT_WIDTH, unit_id.id,
     dart_task_thread_num ? dart_task_thread_num() : 0,
     loglevel_names[level],
-    PROC_WIDTH, pid,
+    dart_base_logging_timestamp_ms(),
     FILE_WIDTH, dart_base_logging_basename(filename),
     LINE_WIDTH, line,
     (level < DART_LOGLEVEL_INFO) ? "!!!" : "",
