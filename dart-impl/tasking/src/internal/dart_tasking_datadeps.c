@@ -239,8 +239,7 @@ dart_tasking_datadeps_release_unhandled_remote()
       // lock the task to avoid race condiditions in updating the state
       dart__base__mutex_lock(&task->mutex);
       if (DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep) &&
-          IS_OUT_DEP(local->taskdep) &&
-          IS_ACTIVE_TASK(task)) {
+          IS_OUT_DEP(local->taskdep)) {
         /*
          * Remote INPUT task dependencies are considered to refer to the
          * previous epoch so every task in the same epoch and following
@@ -252,6 +251,12 @@ dart_tasking_datadeps_release_unhandled_remote()
          * TODO: formulate the relation of local and remote dependencies
          *       between tasks and epochs!
          */
+        if (!IS_ACTIVE_TASK(task)) {
+          dart__base__mutex_unlock(&task->mutex);
+          DART_LOG_INFO("Task %p matching remote task %p already finished", task, rdep->task);
+          continue;
+        }
+
         if (local->taskdep.epoch == rdep->epoch) {
           // found a direct match!
           if (candidate != NULL) {
@@ -457,16 +462,30 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
   // look for the current epoch
   // we assume that the first OUT dependency defines the current epoch
+  int out_epoch = DART_EPOCH_ANY, in_epoch = DART_EPOCH_ANY;
   for (size_t i = 0; i < ndeps; i++) {
     dart_task_dep_t dep = deps[i];
-    if (task->epoch == DART_EPOCH_ANY && IS_OUT_DEP(dep)) {
-      task->epoch = dep.epoch;
-      if (task->parent->epoch == DART_EPOCH_ANY) {
-        task->parent->epoch = dep.epoch;
-      }
+    if (out_epoch == DART_EPOCH_ANY && IS_OUT_DEP(dep)) {
+      out_epoch = dep.epoch;
       break;
+    } else if (dep.epoch > in_epoch) {
+      in_epoch = dep.epoch;
     }
   }
+
+  if (out_epoch != DART_EPOCH_ANY) {
+    task->epoch = out_epoch;
+  } else if (in_epoch != DART_EPOCH_ANY) {
+    // fall back to input dep epoch if necessary
+    // Note: a task cannot reference dependency
+    //       in the current or later epoch.
+    task->epoch = in_epoch + 1;
+  }
+  // also set the parent's epoch if necessary (required for root_task)
+  if (task->parent->epoch == DART_EPOCH_ANY) {
+    task->parent->epoch = task->epoch;
+  }
+
   DART_LOG_DEBUG("Datadeps: task %p has %zu data dependencies in epoch %i",
                  task, ndeps, task->epoch);
 
@@ -481,9 +500,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     if (dep.type != DART_DEP_DIRECT) {
       dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
-                     "seg:%i addr:%p",
+                     "seg:%i addr:%p epoch:%i",
                      task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
-                     DEP_ADDR(dep));
+                     DEP_ADDR(dep), dep.epoch);
     }
 
     if (dep.type == DART_DEP_DIRECT) {
@@ -618,8 +637,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
     dart_dephash_elem_t *dr = dephash_allocate_elem(&dep, ref);
     DART_STACK_PUSH(deferred_remote_releases, dr);
     DART_LOG_DEBUG("release_remote_dep : Defering release of task %p "
-                   "with remote dep from epoch %lu",
-                   local_task, local_task->epoch);
+                   "with remote dep from epoch %lu (bound %d)",
+                   local_task, local_task->epoch, bound);
   } else {
     // immediately release the task
     int unresolved_deps = DART_DEC_AND_FETCH32(&local_task->unresolved_deps);

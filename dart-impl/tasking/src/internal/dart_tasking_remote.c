@@ -89,7 +89,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
   rdep.magic       = 0xDEADBEEF;
-  rdep.epoch       = task->epoch;
+  rdep.epoch       = dep->epoch;
   dart_myid(&rdep.runit);
   // the amsgq is opened on DART_TEAM_ALL and deps container global IDs
   dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(dep->gptr.unitid);

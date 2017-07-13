@@ -449,7 +449,7 @@ void* thread_main(void *data)
   // enter work loop
   while (parallel) {
     // look for incoming remote tasks and responses
-    dart_tasking_remote_progress();
+//    dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
     // only go to sleep if no tasks are in flight
@@ -661,12 +661,14 @@ dart__tasking__task_complete()
     "only valid on MASTER thread!");
 
   if (thread->current_task == &(root_task)) {
+    // reset the active epoch
+    root_task.epoch = DART_EPOCH_ANY;
     // once again make sure all incoming requests are served
     dart_tasking_remote_progress_blocking();
     // release unhandled remote dependencies
     dart_tasking_datadeps_release_unhandled_remote();
-    // reset the active epoch
-    root_task.epoch = DART_EPOCH_ANY;
+    DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
+    // release the deferred queue
     for (int i = 0; i < num_threads; ++i) {
       dart_thread_t *t = &thread_pool[i];
       dart_tasking_taskqueue_move(&t->queue, &t->defered_queue);
@@ -680,13 +682,17 @@ dart__tasking__task_complete()
   // 2) start processing ourselves
   dart_task_t *task = get_current_task();
 
+  DART_LOG_DEBUG("dart__tasking__task_complete: waiting for children of task %p", task);
+
 #ifdef USE_UCONTEXT
   // save context
   context_t tmpctx  = thread->retctx;
 #endif
   while (DART_FETCH32(&(task->num_children)) > 0) {
+//    DART_LOG_DEBUG("dart__tasking__task_complete: task %p has %lu tasks left", task, task->num_children);
     // a) look for incoming remote tasks and responses
-    dart_tasking_remote_progress();
+// TODO: DEBUG
+//    dart_tasking_remote_progress();
     // b) process our tasks
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
