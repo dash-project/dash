@@ -70,7 +70,8 @@ private:
 public:
   typedef ElementType                                  value_type;
   typedef GlobPtr<const ElementType, MemorySpace>      const_type;
-  typedef typename dash::default_index_t               index_type;
+  typedef typename MemorySpace::index_type             index_type;
+  typedef typename MemorySpace::size_type               size_type;
 
   typedef index_type                                   gptrdiff_t;
 
@@ -104,7 +105,7 @@ private:
   // Memory space refernced by this global pointer
   const MemorySpace * _mem_space   = nullptr;
   // Size of the local section at the current position of this pointer
-  index_type          _lsize       = 0;
+  size_type           _lsize       = 0;
   // Unit id of last unit in referenced global memory space
   dart_team_unit_t    _unit_end{0};
 protected:
@@ -309,7 +310,11 @@ public:
    */
   self_t & operator+=(index_type n)
   {
-    increment(n);
+    if (n >= 0) {
+      increment(n);
+    } else {
+      decrement(-n);
+    }
     return *this;
   }
 
@@ -347,7 +352,11 @@ public:
    */
   self_t & operator-=(index_type n)
   {
-    decrement(n);
+    if (n >= 0) {
+      decrement(n);
+    } else {
+      increment(-n);
+    }
     return *this;
   }
 
@@ -490,7 +499,7 @@ public:
   }
 
 private:
-  void increment(index_type offs) {
+  void increment(size_type offs) {
     auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
     // Pointer position still in same unit space:
     if (_mem_space == nullptr ||
@@ -513,7 +522,7 @@ private:
     _rbegin_gptr.addr_or_offs.offset = (offs * sizeof(value_type));
   }
 
-  void decrement(index_type offs) {
+  void decrement(size_type offs) {
     auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
     if (_mem_space == nullptr || ptr_offset >= offs) {
       _rbegin_gptr.addr_or_offs.offset -= (offs * sizeof(value_type));
