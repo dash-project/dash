@@ -28,6 +28,7 @@
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
 static int _dart_initialized = 0;
+static int _dart_task_initialized = 0;
 
 static
 dart_ret_t do_init()
@@ -246,7 +247,8 @@ dart_ret_t dart_init_thread(
     return ret;
   }
 
-  if (dart_tasking_init) {
+  if ((*provided == DART_THREAD_MULTIPLE) && dart_tasking_init) {
+    _dart_task_initialized = 1;
     return dart_tasking_init();
   }
 
@@ -267,7 +269,7 @@ dart_ret_t dart_exit()
 
   dart__mpi__locality_finalize();
 
-  if (dart_tasking_fini)
+  if (_dart_task_initialized && dart_tasking_fini)
     dart_tasking_fini();
 
   _dart_initialized = 0;
