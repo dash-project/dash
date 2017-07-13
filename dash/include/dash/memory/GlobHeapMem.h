@@ -1184,7 +1184,9 @@ private:
             // global source:
             u_attach_buckets_sizes_gptr,
             // request bytes (~= number of sizes) from unit u:
-            ds.nelem, ds.dtype),
+            ds.nelem, ds.dtype,
+            // no previous local put to that location
+            DART_FLAG_NONE),
           DART_OK);
         // Update local snapshot of cumulative bucket sizes at unit u:
         for (int bi = 0; bi < u_num_attach_buckets; ++bi) {

@@ -29,7 +29,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
-    ds.dtype
+    ds.dtype,
+    DART_FLAG_NONE
   );
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_src_index + l];
@@ -70,7 +71,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
-    ds.dtype
+    ds.dtype,
+    DART_FLAG_NONE
   );
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_src_index + l];
@@ -84,10 +86,10 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   const size_t block_size    = 10;
   const size_t num_elem_copy = 2 * block_size;
   size_t num_elem_total      = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST_MSG("requires at least 2 units");
   }
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
   int local_array[num_elem_copy];
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
@@ -102,7 +104,8 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
     ds.nelem,                         // number of elements
-    ds.dtype                          // data type
+    ds.dtype,                         // data type
+    DART_FLAG_NONE                    // no need to synchronize previous put
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
   for (size_t l = 0; l < block_size; ++l) {
@@ -117,10 +120,10 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   const size_t block_size = 5000;
   size_t num_elem_copy    = (dash::size() - 1) * block_size;
   size_t num_elem_total   = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST_MSG("requires at least 2 units");
   }
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
   // Array to store local copy:
   int * local_array = new int[num_elem_copy];
   // Array of handles, one for each dart_get_handle:
@@ -148,7 +151,8 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             (array.begin() + (u * block_size)).dart_gptr(),
             ds.nelem,
             ds.dtype,
-            &handle)
+            &handle,
+            DART_FLAG_NONE)
       );
       LOG_MESSAGE("dart_get_handle returned handle %p",
                   static_cast<void*>(handle));
@@ -175,4 +179,36 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   }
   delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
+}
+
+TEST_F(DARTOnesidedTest, ConsistentAsyncGet)
+{
+  typedef int value_t;
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("requires at least 2 units");
+  }
+
+  dash::Array<value_t> array(dash::size(), dash::BLOCKED);
+  array.local[0] = dash::myid();
+  dash::barrier();
+
+  int lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  int rneighbor = (dash::myid() + 1) % dash::size();
+
+  dart_gptr_t gptr = array[lneighbor].dart_gptr();
+
+  dart_storage_t ds = dash::dart_storage<value_t>(1);
+  value_t pval = dash::myid() * 100;
+  // async update
+  dart_put(gptr, &pval, ds.nelem, ds.dtype);
+  value_t gval;
+  // retrieve the value again
+  dart_get_blocking(&gval, gptr, ds.nelem, ds.dtype, DART_FLAG_NONE);
+
+  ASSERT_EQ_U(gval, dash::myid() * 100);
+
+  array.barrier();
+
+  ASSERT_EQ_U(array.local[0], rneighbor * 100);
+
 }

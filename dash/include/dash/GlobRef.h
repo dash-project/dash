@@ -170,7 +170,8 @@ public:
     nonconst_value_type t;
     dart_storage_t ds = dash::dart_storage<T>(1);
     DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
+      dart_get_blocking(
+        static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype, DART_FLAG_ORDERED),
       DART_OK
     );
     DASH_LOG_TRACE_VAR("GlobRef.T >", _gptr);
@@ -225,7 +226,8 @@ public:
     nonconst_value_type t;
     dart_storage_t ds = dash::dart_storage<T>(1);
     DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
+      dart_get_blocking(
+        static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype, DART_FLAG_ORDERED),
       DART_OK
     );
     return t;
@@ -236,7 +238,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dart_storage_t ds = dash::dart_storage<T>(1);
     DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype),
+      dart_get_blocking(
+        static_cast<void *>(tptr), _gptr,
+        ds.nelem, ds.dtype, DART_FLAG_ORDERED),
       DART_OK
     );
   }
@@ -246,7 +250,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dart_storage_t ds = dash::dart_storage<T>(1);
     DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype),
+      dart_get_blocking(
+        static_cast<void *>(&tref), _gptr,
+        ds.nelem, ds.dtype, DART_FLAG_ORDERED),
       DART_OK
     );
   }

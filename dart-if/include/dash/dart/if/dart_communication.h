@@ -26,6 +26,18 @@ extern "C" {
 #define DART_INTERFACE_ON
 /** \endcond */
 
+/*
+ * Set of flags to be passed to \ref dart_get, \ref dart_get_blocking, and
+ * \ref dart_get_handle to control their behavior.
+ */
+typedef enum {
+  /// Empty flag
+  DART_FLAG_NONE    = 0,
+  /// Enforce odering of communication operations
+  DART_FLAG_ORDERED = 1
+} dart_communication_flags_t;
+
+
 /**
  * \name Collective operations
  * Collective operations involving all units of a given team.
@@ -170,8 +182,10 @@ dart_ret_t dart_allgatherv(
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
- * \param nelem   Number of elements sent by each process and received from each unit.
- * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
+ * \param nelem   Number of elements sent by each process and received from
+ *                each unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use
+ *                in \c op.
  * \param op      The reduction operation to perform.
  * \param team The team to participate in the allreduce.
  *
@@ -192,8 +206,10 @@ dart_ret_t dart_allreduce(
  * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
- * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
- * \param nelem   The number of elements of type \c dtype in \c sendbuf and \c recvbuf.
+ * \param recvbuf Buffer of size \c nelem to store the result of the
+ *                element-wise operation \c op in.
+ * \param nelem   The number of elements of type \c dtype in \c sendbuf
+ *                and \c recvbuf.
  * \param dtype   The data type of values stored in \c sendbuf and \c recvbuf.
  * \param op      The reduce operation to perform.
  * \param root    The unit receiving the reduced values.
@@ -333,6 +349,8 @@ dart_ret_t dart_compare_and_swap(
  * \param gptr   A global pointer determining the source of the get operation.
  * \param nelem  The number of elements of type \c dtype to transfer.
  * \param dtype  The data type of the values in buffer \c dest.
+ * \param flags  Flags controling the behavior of \c dart_get,
+ *               see \ref dart_communication_flags_t.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -343,7 +361,8 @@ dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   dtype,
+  int               flags) DART_NOTHROW;
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -351,6 +370,9 @@ dart_ret_t dart_get(
  * When this functions returns, neither local nor remote completion
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
+ *
+ * However, a \ref dart_get or \ref dart_get_blocking following this put will
+ * be guaranteed to read the updated value.
  *
  * \param gptr   A global pointer determining the target of the put operation.
  * \param src    The local source buffer to load the data from.
@@ -370,14 +392,16 @@ dart_ret_t dart_put(
 
 
 /**
- * Guarantee completion of all outstanding operations involving a segment on a certain unit
+ * Guarantee completion of all outstanding operations involving a segment on
+ * a certain unit.
  *
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr.
  * Similar to \c MPI_Win_flush().
  *
- * \param gptr Global pointer identifying the segment and unit to complete outstanding operations for.
+ * \param gptr Global pointer identifying the segment and unit to complete
+ *             outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
@@ -463,7 +487,10 @@ typedef struct dart_handle_struct * dart_handle_t;
  * \param gptr   Global pointer being the source of the data transfer.
  * \param nelem  The number of elements of \c dtype in buffer \c dest.
  * \param dtype  The data type of the values in buffer \c dest.
- * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ * \param flags  Flags controling the behavior of \c dart_get_handle,
+ *               see \ref dart_communication_flags_t.
+ * \param[out] handle Pointer to DART handle to instantiate for later use
+ *             with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -475,7 +502,8 @@ dart_ret_t dart_get_handle(
   dart_gptr_t       gptr,
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_handle_t   * handle) DART_NOTHROW;
+  dart_handle_t   * handle,
+  int               flags) DART_NOTHROW;
 
 /**
  * 'HANDLE' variant of dart_put.
@@ -483,11 +511,15 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
+ * The update will not be visible in a following call to \ref dart_get variant
+ * unless the operation has been completed.
+ *
  * \param gptr   Global pointer being the target of the data transfer.
  * \param src    Local source memory to transfer data from.
  * \param nelem  The number of elements of type \c dtype to transfer.
  * \param dtype  The data type of the values in buffer \c dest.
- * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ * \param[out] handle Pointer to DART handle to instantiate for later use with
+ *                    \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -606,6 +638,8 @@ dart_ret_t dart_testall_local(
  * \param gptr   Global pointer being the source of the data transfer.
  * \param nelem  The number of elements of type \c dtype to transfer.
  * \param dtype  The data type of the values in buffer \c dest.
+ * \param flags  Flags controling the behavior of \c dart_get_blocking,
+ *               see \ref dart_communication_flags_t.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -616,7 +650,8 @@ dart_ret_t dart_get_blocking(
   void         *  dest,
   dart_gptr_t     gptr,
   size_t          nelem,
-  dart_datatype_t dtype) DART_NOTHROW;
+  dart_datatype_t dtype,
+  int             flags) DART_NOTHROW;
 
 /**
  * 'BLOCKING' variant of dart_put.

@@ -507,3 +507,53 @@ TEST_F(AtomicTest, AtomicSignal){
     ASSERT_GT_U(count, 0);
   }
 }
+
+
+TEST_F(AtomicTest, AsyncAtomic){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+  const value_t zero  = 0;
+  const value_t one   = 1;
+  const value_t three = 3;
+  value_t res;
+
+  array_t array(dash::size());
+  // async set
+  array.async[dash::myid()].set(&zero);
+  array.flush();
+
+  ASSERT_EQ_U(zero, array[dash::myid()]);
+
+  dash::barrier();
+
+  int neighbor = (dash::myid() + 1) % dash::size();
+  auto neighbor_ref = array.async[neighbor];
+
+  // async get
+  neighbor_ref.get(&res);
+  neighbor_ref.flush();
+  ASSERT_EQ_U(zero, res);
+
+  // async op and fetch_op
+  neighbor_ref.add(&one);
+  neighbor_ref.add(&one);
+  neighbor_ref.fetch_add(&one, &res);
+  neighbor_ref.flush();
+  ASSERT_EQ_U(2, res);
+
+  // compare_exchange
+  neighbor_ref.compare_exchange(&three, &one, &res);
+  neighbor_ref.flush();
+  ASSERT_EQ_U(three, res);
+
+  neighbor_ref.exchange(&zero, &res);
+  neighbor_ref.flush();
+  ASSERT_EQ_U(one, res);
+
+
+  dash::barrier();
+
+  ASSERT_EQ_U(zero, array[dash::myid()]);
+
+}

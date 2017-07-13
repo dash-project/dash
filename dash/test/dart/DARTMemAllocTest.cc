@@ -74,22 +74,48 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   arr.local[0] = gptr;
   arr.barrier();
 
+  // read from the neighbor
   value_t neighbor_val;
-  size_t  neighbor_id = (dash::myid().id + 1) % dash::size();
+  size_t  rneighbor_id = (dash::myid().id + 1) % dash::size();
+  size_t  lneighbor_id = (dash::myid().id + dash::size() - 1) % dash::size();
   dart_storage_t ds = dash::dart_storage<value_t>(1);
   ASSERT_EQ_U(
     DART_OK,
     dart_get_blocking(
         &neighbor_val,
-        arr[neighbor_id],
+        arr[rneighbor_id],
         ds.nelem,
-        ds.dtype));
+        ds.dtype,
+        DART_FLAG_NONE));
 
   ASSERT_EQ_U(
-    neighbor_id,
+    rneighbor_id,
     neighbor_val);
 
   arr.barrier();
+
+  // write to the neighbor val
+
+
+  int val = dash::myid().id;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_put_blocking(
+        arr[rneighbor_id],
+        &val,
+        ds.nelem,
+        ds.dtype));
+
+  arr.barrier();
+
+  // read local value
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_get_blocking(&val, gptr, ds.nelem, ds.dtype, DART_FLAG_NONE));
+
+  ASSERT_EQ_U(
+    lneighbor_id,
+    val);
 
   ASSERT_EQ_U(
     DART_OK,

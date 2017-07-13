@@ -217,7 +217,8 @@ public:
         dart_storage_t ds = dash::dart_storage<T>(1);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
-            static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype),
+            static_cast<void *>(&_value), _gptr,
+            ds.nelem, ds.dtype, DART_FLAG_ORDERED),
           DART_OK
         );
       }
@@ -298,7 +299,9 @@ public:
       *tptr = *_lptr;
     } else {
       dart_storage_t ds = dash::dart_storage<T>(1);
-      dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
+      dart_get(
+        static_cast<void *>(tptr), _gptr,
+        ds.nelem, ds.dtype, DART_FLAG_ORDERED);
     }
   }
 

@@ -74,7 +74,8 @@ void get_value_async(
     dart_get(ptr,
              gptr.dart_gptr(),
              ds.nelem,
-             ds.dtype),
+             ds.dtype,
+             DART_FLAG_ORDERED),
     DART_OK);
 }
 
@@ -117,7 +118,8 @@ void get_value(
     dart_get_blocking(ptr,
                       gptr.dart_gptr(),
                       ds.nelem,
-                      ds.dtype),
+                      ds.dtype,
+                      DART_FLAG_ORDERED),
     DART_OK);
 }
 

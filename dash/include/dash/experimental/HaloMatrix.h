@@ -231,7 +231,7 @@ private:
       auto it = data.blockview.begin();
       for(auto i = 0; i < data.num_handles; ++i, it += data.cont_elems){
         dart_storage_t ds = dash::dart_storage<value_t>(data.cont_elems);
-        dart_get_handle (off + ds.nelem * i, it.dart_gptr(), ds.nelem, ds.dtype, &(data.handle[i]));
+        dart_get_handle (off + ds.nelem * i, it.dart_gptr(), ds.nelem, ds.dtype, &(data.handle[i]), DART_FLAG_NONE);
       }
       if(!async)
         dart_waitall(data.handle, data.num_handles);
