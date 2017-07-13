@@ -26,7 +26,7 @@ int dart_shmem_mkfifo(char *pname) {
 }
 
 int dart_shmem_p2p_init(dart_team_t teamid, size_t tsize,
-			dart_unit_t myid, int ikey ) 
+			dart_team_unit_t myid, int ikey ) 
 {
   int i, slot;
   char buf[128];
@@ -34,10 +34,10 @@ int dart_shmem_p2p_init(dart_team_t teamid, size_t tsize,
   
   slot = shmem_syncarea_findteam(teamid);
   sprintf(key, "%s-%d", "sysv", ikey);
-  
+
   for (i = 0; i < tsize; i++) {
-    team2fifos[slot][i].readfrom    = -1;
-    team2fifos[slot][i].writeto     = -1;
+    team2fifos[slot][i].readfrom.id = DART_UNDEFINED_UNIT_ID; 
+    team2fifos[slot][i].writeto.id  = DART_UNDEFINED_UNIT_ID;
     team2fifos[slot][i].pname_read  = 0;
     team2fifos[slot][i].pname_write = 0;
   }
@@ -67,7 +67,7 @@ int dart_shmem_p2p_init(dart_team_t teamid, size_t tsize,
 
 
 int dart_shmem_p2p_destroy(dart_team_t teamid, size_t tsize,
-			   dart_unit_t myid, int ikey )
+			   dart_team_unit_t myid, int ikey )
 {
   int i, slot;
   char *pname;
@@ -91,30 +91,30 @@ int dart_shmem_p2p_destroy(dart_team_t teamid, size_t tsize,
 }
 
 int dart_shmem_send(void *buf, size_t nbytes, 
-		    dart_team_t teamid, dart_unit_t dest)
+		    dart_team_t teamid, dart_team_unit_t dest)
 {
   int ret, slot;
 
   slot = shmem_syncarea_findteam(teamid);
 
-  if (team2fifos[slot][dest].writeto < 0)
+  if (team2fifos[slot][dest.id].writeto.id < 0)
     {
-      ret = team2fifos[slot][dest].writeto = 
-	open( team2fifos[slot][dest].pname_write, O_WRONLY);
+      ret = team2fifos[slot][dest.id].writeto.id = 
+	open( team2fifos[slot][dest.id].pname_write, O_WRONLY);
       if (ret < 0)
 	{
 	  fprintf(stderr, "Error sending to %d (pipename: '%s') ret=%d\n",
-		  dest, team2fifos[slot][dest].pname_write, ret);
+		  dest, team2fifos[slot][dest.id].pname_write, ret);
 	  return -1;
 	}
     }
-  ret = write(team2fifos[slot][dest].writeto, buf, nbytes);
+  ret = write(team2fifos[slot][dest.id].writeto.id, buf, nbytes);
   
   return ret;
 }
 
 int dart_shmem_sendevt(void *buf, size_t nbytes, 
-		       dart_team_t teamid, dart_unit_t dest)
+		       dart_team_t teamid, dart_team_unit_t dest)
 {
   int evtfd;
   long long value=42;
@@ -126,7 +126,7 @@ int dart_shmem_sendevt(void *buf, size_t nbytes,
 }
 
 int dart_shmem_recvevt(void *buf, size_t nbytes,
-		       dart_team_t teamid, dart_unit_t source)
+		       dart_team_t teamid, dart_team_unit_t source)
 {
   int evtfd;
   long long value;
@@ -139,25 +139,25 @@ int dart_shmem_recvevt(void *buf, size_t nbytes,
 }
 
 int dart_shmem_recv(void *buf, size_t nbytes,
-		    dart_team_t teamid, dart_unit_t source)
+		    dart_team_t teamid, dart_team_unit_t source)
 {
   int offs;
   int ret  = 0;
   int slot = shmem_syncarea_findteam(teamid);
   
-  if (team2fifos[slot][source].readfrom<0 ) {
-    team2fifos[slot][source].readfrom = 
-      open(team2fifos[slot][source].pname_read, O_RDONLY);
-    if (team2fifos[slot][source].readfrom<0 ) {
+  if (team2fifos[slot][source.id].readfrom.id < 0 ) {
+    team2fifos[slot][source.id].readfrom.id = 
+      open(team2fifos[slot][source.id].pname_read, O_RDONLY);
+    if (team2fifos[slot][source.id].readfrom.id < 0 ) {
       fprintf(stderr,
               "Error opening fifo for reading: '%s'\n",
-              team2fifos[slot][source].pname_read);
+              team2fifos[slot][source.id].pname_read);
       return -999;
     }
   }
   offs = 0; 
   while (offs<nbytes) {
-    ret = read(team2fifos[slot][source].readfrom, 
+    ret = read(team2fifos[slot][source.id].readfrom.id, 
 	       buf+offs, nbytes-offs);
     if (ret < 0) 
       break;
@@ -172,7 +172,7 @@ int dart_shmem_recv(void *buf, size_t nbytes,
 
 
 int dart_shmem_isend(void *buf, size_t nbytes, 
-		     dart_team_t teamid, dart_unit_t dest, 
+		     dart_team_t teamid, dart_team_unit_t dest, 
 		     dart_handle_t *handle)
 {
   int ret;
@@ -196,7 +196,7 @@ int dart_shmem_isend(void *buf, size_t nbytes,
 }
 
 int dart_shmem_irecv(void *buf, size_t nbytes,
-		     dart_team_t teamid, dart_unit_t source,
+		     dart_team_t teamid, dart_team_unit_t source,
 		     dart_handle_t *handle)
 {
   int ret;

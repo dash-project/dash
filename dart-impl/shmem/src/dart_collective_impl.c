@@ -28,14 +28,18 @@ dart_ret_t dart_barrier(dart_team_t teamid)
   return ret;
 }
 
-dart_ret_t dart_bcast(void *buf, size_t nbytes, 
-		      dart_unit_t root, dart_team_t team)
+dart_ret_t dart_bcast(
+  void *buf,
+  size_t nbytes,
+  dart_datatype_t dtype, 
+  dart_team_unit_t root,
+  dart_team_t team)
 {
   //SANITY_CHECK_TEAM(team);
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   size_t size;
 
-  int i;
+  dart_team_unit_t i;
   dart_team_myid(team, &myid);
   dart_team_size(team, &size);
 
@@ -44,10 +48,10 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes,
   dart_barrier(team);
 
   DEBUG("dart_bcast on team %d, root=%d, tsize=%d", team, root, size);
-  if( myid==root ) 
+  if( myid.id == root.id ) 
     {
-      for(i=0; i<size; i++) {
-	if( i!=root ) {
+      for(i.id=0; i.id<size; i.id++) {
+	if( i.id != root.id ) {
 	  DEBUG("dart_bcast sending to %d %d bytes", i, nbytes);
 	  dart_shmem_send(buf, nbytes, team, i);
 	}
@@ -66,13 +70,18 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes,
   return DART_OK;
 }
 
-dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, 
-			dart_unit_t root, dart_team_t team)
+dart_ret_t dart_scatter(
+  const void *sendbuf,
+  void *recvbuf,
+  size_t nbytes,
+  dart_datatype_t dtype,
+  dart_team_unit_t root,
+  dart_team_t team) DART_NOTHROW
 {
   //SANITY_CHECK_TEAM(team);
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   size_t size;
-  int i;
+  dart_team_unit_t i;
   //explicit casts to avoid warnings!! carefully double check please!
   char* sbuf = (char*)sendbuf;
   char* rbuf = (char*)recvbuf;
@@ -81,13 +90,13 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes,
   dart_team_size( team, &size);
   
   DEBUG("dart_gather on team %d, root=%d, tsize=%d", team,root,size);
-  if( myid == root){
-    for( i = 0; i < size; i++){
-      if( i != root){
+  if( myid.id == root.id){
+    for( i.id = 0; i.id < size; i.id++){
+      if( i.id != root.id){
         DEBUG("dart_scatter sending to %d %d bytes",i,nbytes);
-        dart_shmem_send(&sbuf[nbytes*i],nbytes,team,i);
+        dart_shmem_send(&sbuf[nbytes*i.id],nbytes,team,i);
       }else{
-        memcpy(&sbuf[nbytes*i],rbuf,nbytes);
+        memcpy(&sbuf[nbytes*i.id],rbuf,nbytes);
       }
     }
   }else{
@@ -97,13 +106,18 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes,
   return DART_OK;
 }
 
-dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, 
-		       dart_unit_t root, dart_team_t team)
+dart_ret_t dart_gather(
+  const void *sendbuf,
+  void *recvbuf,
+  size_t nbytes,
+  dart_datatype_t dtype,
+  dart_team_unit_t root,
+  dart_team_t team)
 {
   //SANITY_CHECK_TEAM(team);
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   size_t size;
-  int i;
+  dart_team_unit_t i;
   //explicit casts to avoid warnings!! carefully double check please!
   char* sbuf=(char*)sendbuf;
   char* rbuf=(char*)recvbuf;
@@ -111,13 +125,13 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes,
   dart_team_myid(team, &myid);
   dart_team_size(team, &size);
   DEBUG("dart_gather on team %d, root=%d, tsize=%d", team,root,size);
-  if( myid == root){
-    for( i = 0; i< size; i++){
-      if(i != root){
+  if( myid.id == root.id ){
+    for( i.id = 0; i.id < size; i.id++){
+      if(i.id != root.id){
         DEBUG("dart_gather receiving from %d %d bytes", i, nbytes);
-        dart_shmem_recv(&rbuf[nbytes*i], nbytes, team, i); 
+        dart_shmem_recv(&rbuf[nbytes*i.id], nbytes, team, i); 
       }else{
-        memcpy(&rbuf[nbytes*i],sbuf,nbytes);
+        memcpy(&rbuf[nbytes*i.id],sbuf,nbytes);
       }
     }
   }else{
@@ -128,12 +142,21 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes,
   return DART_OK;
 }
   
-dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, 
-			  dart_team_t team)
+dart_ret_t dart_allgather(
+  const void *sendbuf,
+  void *recvbuf,
+  size_t nbytes,
+  dart_datatype_t dtype,
+  dart_team_t team)
 { 
-  dart_unit_t root = 0;
+  dart_team_unit_t root;
+  root.id = 0;
+#ifdef DART_DEBUG
+  size_t size;
+  dart_team_size(team, &size);
   DEBUG("dart_allgather on team %d, tsize=%d", team, root, size);
-  dart_gather(sendbuf,recvbuf,nbytes,root,team);
-  dart_bcast(recvbuf,nbytes,root,team);
+#endif
+  dart_gather(sendbuf,recvbuf,nbytes,dtype,root,team);
+  dart_bcast(recvbuf,nbytes,dtype,root,team);
   return DART_OK;
 }

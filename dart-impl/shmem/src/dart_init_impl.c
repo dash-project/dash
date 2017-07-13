@@ -4,7 +4,7 @@
 #include <dash/dart/shmem/dart_shmem.h>
 #include <dash/dart/shmem/dart_init_shmem.h>
 
-char dart_initialized();
+bool dart_initialized();
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
@@ -50,7 +50,7 @@ dart_ret_t dart_exit()
   return ret;
 }
 
-char dart_initialized()
+bool dart_initialized()
 {
   return _glob_state == DART_STATE_INITIALIZED;
 }

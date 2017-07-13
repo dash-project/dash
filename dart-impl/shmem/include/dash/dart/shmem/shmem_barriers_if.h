@@ -87,8 +87,8 @@ int shmem_syncarea_delteam(dart_team_t teamid, int numprocs);
 int shmem_syncarea_findteam(dart_team_t teamid);
 int shmem_syncarea_barrier_wait(int slot);
 
-int shmem_syncarea_getunitstate(dart_unit_t unit);
-int shmem_syncarea_setunitstate(dart_unit_t unit, int state);
+int shmem_syncarea_getunitstate(dart_global_unit_t unit);
+int shmem_syncarea_setunitstate(dart_global_unit_t unit, int state);
 
 syncarea_t shmem_getsyncarea();
 

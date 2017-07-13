@@ -23,17 +23,18 @@ struct newteam_msg
   dart_team_t teamid;
 };
 
-dart_ret_t dart_team_create(dart_team_t oldteamid, 
-			    const dart_group_t *group, 
-			    dart_team_t *newteam)
+dart_ret_t dart_team_create(
+  dart_team_t          oldteamid, 
+  const dart_group_t   group, 
+  dart_team_t        * newteam)
 {
   size_t oldsize, newsize, globalsize;
-  dart_unit_t oldmyid;
-  dart_unit_t oldmyid_global;
-  dart_unit_t newmaster = 0;
+  dart_team_unit_t oldmyid;
+  dart_global_unit_t oldmyid_global;
+  dart_global_unit_t newmaster = {0};
   int i_am_member = 0; 
   int i_am_master = 0; 
-  int i;
+  dart_global_unit_t i;
 
   *newteam=DART_TEAM_NULL;
 
@@ -89,15 +90,15 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
 
   // STEP 4: find new master 
   int ismember;
-  for (i = 0; i<globalsize; i++ ) {
+  for (i.id = 0; i.id<globalsize; i.id++ ) {
     dart_group_ismember(group, i, &ismember);
     if (ismember) {
-      newmaster = i;
+      newmaster.id = i.id;
       break;
     }
   }
 
-  if (ismember && oldmyid_global == newmaster) {
+  if (ismember && oldmyid_global.id == newmaster.id) {
     i_am_master = 1;
   }
 
@@ -116,11 +117,11 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
     }
     // STEP 6: send out info to all other members
     nmsg.newid=1;
-    for (i = 0; i < globalsize; i++) {
+    for (i.id = 0; i.id < globalsize; i.id++) {
       dart_group_ismember(group, i, &ismember);
-      if (ismember && i != oldmyid_global) {
+      if (ismember && i.id != oldmyid_global.id) {
         // get the local id of our comm partner
-        dart_unit_t sendto;
+        dart_team_unit_t sendto;
         dart_team_unit_g2l(
           oldteamid, 
           i,
@@ -141,7 +142,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   {
     if (i_am_member) {
       // get the local id of our comm partner
-      dart_unit_t recvfrom;
+      dart_team_unit_t recvfrom;
       dart_team_unit_g2l(
         oldteamid, 
         newmaster,
@@ -161,12 +162,12 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
     int slot;
     dart_shmem_team_init(
       nmsg.teamid,
-      nmsg.newid, 
+      *((dart_team_unit_t*)(&nmsg.newid)), 
       nmsg.size,
-      group);
+      &group);
     slot = shmem_syncarea_findteam(nmsg.teamid);	
     if (SLOT_IS_VALID(slot)) {
-      teams[slot].myid = nmsg.newid; 
+      teams[slot].myid.id = nmsg.newid; 
       (*newteam)=nmsg.teamid;
     } else {
       ERROR("dart_shmem_team_init failed (slot: %d)", slot);
@@ -176,10 +177,10 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   return DART_OK;
 }
 
-dart_ret_t dart_team_destroy(dart_team_t teamid)
+dart_ret_t dart_team_destroy(dart_team_t * teamid)
 {
   size_t size;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   
   if( teamid==DART_TEAM_ALL ) {
     // can't delete the default team
@@ -187,25 +188,25 @@ dart_ret_t dart_team_destroy(dart_team_t teamid)
   }
   
   dart_ret_t ret;
-  ret = dart_shmem_team_valid(teamid);
+  ret = dart_shmem_team_valid(*teamid);
   if( ret!=DART_OK ) {
     fprintf(stderr, "got %d\n", ret);
     return ret;
   }
 
-  dart_barrier(teamid);
+  dart_barrier(*teamid);
 
-  dart_team_size(teamid, &size);
-  dart_team_myid(teamid, &myid);
+  dart_team_size(*teamid, &size);
+  dart_team_myid(*teamid, &myid);
   
   DEBUG("dart_team_destroy team=%d, size=%d, myid=%d", 
 	teamid, size, myid);
   
-  ret = dart_shmem_team_delete( teamid, myid, size);
+  ret = dart_shmem_team_delete( *teamid, myid, size);
   return ret;
 }
 
-dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid)
 {
   dart_ret_t ret;
 
@@ -215,7 +216,7 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
   if (teamid == DART_TEAM_ALL) 
   {
     ret = DART_OK;
-    *myid = _glob_myid;
+    myid->id = _glob_myid;
   } 
   else 
   {
@@ -246,7 +247,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
   } else {
     slot = shmem_syncarea_findteam(teamid);
     if (SLOT_IS_VALID(slot)) {
-      dart_group_size(&(teams[slot].group), size);
+      dart_group_size(teams[slot].group, size);
       ret = DART_OK;
     } else {
       ret = DART_ERR_INVAL;
@@ -255,10 +256,10 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
   return ret;
 }
 
-dart_ret_t dart_myid(dart_unit_t *myid)
+dart_ret_t dart_myid(dart_global_unit_t *myid)
 {
   DART_INIT_CHECK();
-  *myid = _glob_myid;
+  myid->id = _glob_myid;
   return DART_OK;
 }
 
@@ -285,16 +286,17 @@ int dart_shmem_team_new(
 
 dart_ret_t dart_shmem_team_init(
   dart_team_t team,
-  dart_unit_t myid, 
+  dart_team_unit_t myid, 
 	size_t tsize, 
 	const dart_group_t *group)
 {
-  int i, slot;
+  int slot;
+  dart_global_unit_t i;
   if (team == DART_TEAM_ALL)  {
     // init all data structures for all teams
-    for (i = 0; i < MAXNUM_TEAMS; i++) {
-      teams[i].syncslot=-1;
-      teams[i].state=NOT_INITIALIZED;
+    for (i.id = 0; i.id < MAXNUM_TEAMS; i.id++) {
+      teams[i.id].syncslot=-1;
+      teams[i.id].state=NOT_INITIALIZED;
     }
     dart_memarea_init();
     slot = 0;
@@ -312,11 +314,11 @@ dart_ret_t dart_shmem_team_init(
   // build the group for this team
   dart_group_create(&(teams[slot].group));
   if( slot==0 && !group ) {
-    for( i=0; i<tsize; i++ ) {
-      dart_group_addmember(&(teams[slot].group), i);
+    for( i.id=0; i.id<tsize; i.id++ ) {
+      dart_group_addmember(teams[slot].group, i);
     }
   } else  {
-    dart_group_clone(group,
+    dart_group_clone(*group,
 		    &(teams[slot].group));
   }
     
@@ -349,7 +351,7 @@ dart_ret_t dart_shmem_team_init(
 
 
 dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
-				  dart_unit_t myid, size_t tsize )
+				  dart_team_unit_t myid, size_t tsize )
 {
   int slot;
   dart_ret_t ret;
@@ -378,7 +380,7 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
     myid,
     shmid);
   dart_barrier(teamid);
-  if (myid == 0) {
+  if (myid.id == 0) {
     shmem_syncarea_delteam(teamid, tsize);
   }
   return DART_OK;
@@ -397,8 +399,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group)
   }
       
   if( SLOT_IS_VALID(slot) ) {
-    ret = dart_group_clone( &(teams[slot].group),
-			   group);
+    ret = dart_group_clone( (teams[slot].group), group);
   } else {
     ret = DART_ERR_INVAL;
   }
@@ -439,8 +440,8 @@ dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team)
 #endif
 
 dart_ret_t dart_team_unit_l2g(dart_team_t teamid, 
-			      dart_unit_t localid,
-			      dart_unit_t *globalid)
+			      dart_team_unit_t localid,
+			      dart_global_unit_t *globalid)
 {
   dart_ret_t ret;
   int slot;
@@ -456,9 +457,9 @@ dart_ret_t dart_team_unit_l2g(dart_team_t teamid,
   if( SLOT_IS_VALID(slot) ) {
     dart_group_t *group;
     group = &(teams[slot].group);
-    if (group && (0<=localid) && (localid<=(group->nmem)))
+    if (group && (0<=localid.id) && (localid.id<=((*group)->nmem)))
     {
-      (*globalid) = group->l2g[localid];
+      (*globalid).id = (*group)->l2g[localid.id];
       ret = DART_OK;
     }
   }
@@ -468,8 +469,8 @@ dart_ret_t dart_team_unit_l2g(dart_team_t teamid,
 
 dart_ret_t dart_team_unit_g2l(
   dart_team_t teamid, 
-  dart_unit_t globalid,
-  dart_unit_t *localid)
+  dart_global_unit_t globalid,
+  dart_team_unit_t *localid)
 {
   dart_ret_t ret;
   int slot;
@@ -485,9 +486,9 @@ dart_ret_t dart_team_unit_g2l(
     dart_group_t *group;
     group = &(teams[slot].group);
 
-    if( group && (0<=globalid) ) 
+    if( group && (0<=globalid.id) ) 
       {
-	(*localid) = group->g2l[globalid];
+	(*localid).id = (*group)->g2l[globalid.id];
 	ret = DART_OK;
       }
   }

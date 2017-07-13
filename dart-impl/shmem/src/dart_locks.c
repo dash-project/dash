@@ -15,10 +15,12 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid,
 {
   int lockid;
   syncarea_t area;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   dart_team_myid(teamid, &myid);
+  dart_team_unit_t root;
+  root.id = 0;
 
-  if( myid==0 ) {
+  if( myid.id == 0 ) {
     area = shmem_getsyncarea();
     PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
 
@@ -32,7 +34,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid,
     
     PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
   }
-  dart_bcast(&lockid, sizeof(int), 0, teamid);
+  dart_bcast(&lockid, sizeof(int), DART_TYPE_INT, root, teamid);
 
   if( lockid==MAXNUM_LOCKS ) 
     return DART_ERR_OTHER;
@@ -49,10 +51,10 @@ dart_ret_t dart_team_lock_free(dart_team_t teamid,
 {
   int lockid;
   syncarea_t area;
-  dart_unit_t myid;
+  dart_team_unit_t myid;
   dart_team_myid(teamid, &myid);
   
-  if( myid==0 ) {
+  if( myid.id == 0 ) {
     area = shmem_getsyncarea();
     PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
 

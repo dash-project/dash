@@ -20,7 +20,7 @@ typedef struct work_item
   
   void           *buf;
   size_t         nbytes;
-  dart_unit_t    unit;
+  dart_team_unit_t    unit;
   dart_team_t    team;
   dart_gptr_t    gptr;
   dart_handle_t  *handle;

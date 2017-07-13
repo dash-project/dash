@@ -9,15 +9,15 @@ EXTERN_C_BEGIN
 // P2P send and receive functionality
 
 int dart_shmem_p2p_init(dart_team_t t, size_t tsize, 
-			dart_unit_t myid, int key);
+			dart_team_unit_t myid, int key);
 int dart_shmem_p2p_destroy(dart_team_t t, size_t tsize, 
-			   dart_unit_t myid, int key);
+			   dart_team_unit_t myid, int key);
 
 int dart_shmem_send(void *buf, size_t nbytes, 
-		    dart_team_t teamid, dart_unit_t dest);
+		    dart_team_t teamid, dart_team_unit_t dest);
 
 int dart_shmem_recv(void *buf, size_t nbytes,
-		    dart_team_t teamid, dart_unit_t source);
+		    dart_team_t teamid, dart_team_unit_t source);
 
 EXTERN_C_END
 

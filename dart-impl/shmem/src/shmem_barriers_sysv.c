@@ -74,15 +74,15 @@ int shmem_syncarea_geteventfd()
 }
 #endif
 
-int shmem_syncarea_getunitstate(dart_unit_t unit)
+int shmem_syncarea_getunitstate(dart_global_unit_t unit)
 { 
-  return area->unitstate[unit];
+  return area->unitstate[unit.id];
 }
 
-int shmem_syncarea_setunitstate(dart_unit_t unit, int state)
+int shmem_syncarea_setunitstate(dart_global_unit_t unit, int state)
 {
-  int old = area->unitstate[unit];
-  area->unitstate[unit] = state;
+  int old = area->unitstate[unit.id];
+  area->unitstate[unit.id] = state;
   return old;
 }
 

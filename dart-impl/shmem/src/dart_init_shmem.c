@@ -33,16 +33,16 @@ int dart_init_shmem(int *argc, char ***argv)
   int i;
   int itmp; size_t stmp;
   size_t syncarea_size;
-  int myid = -1;
+  dart_team_unit_t myid = {DART_UNDEFINED_UNIT_ID};
   int team_size = -1;
   int shm_id = -1;
 
-  DEBUG("dart_init parsing args... %s", "");
+  DEBUG("dart_init parsing args... %d", *argc);
   for (i = 0; i < (*argc); i++)   {
     if (sscanf((*argv)[i], "--dart-id=%d", &itmp) > 0) {
-      myid = itmp;
+      myid.id = itmp;
       DEBUG("dart_init got %d for --dart-id", myid);
-      _glob_myid=myid;
+      _glob_myid=myid.id;
     }
     
     if (sscanf((*argv)[i], "--dart-size=%d", &itmp) > 0) {
@@ -63,7 +63,7 @@ int dart_init_shmem(int *argc, char ***argv)
     }
   }
 
-  if (myid < 0 || team_size < 1)  {
+  if (myid.id < 0 || team_size < 1)  {
     fprintf(stderr, "ABORT: This program must be started with dartrun!\n");
     fprintf(stderr, "\n");
     exit(1);
@@ -105,7 +105,7 @@ int dart_init_shmem(int *argc, char ***argv)
 dart_ret_t dart_exit_shmem()
 {
   size_t tsize;
-  dart_unit_t myid;
+  dart_global_unit_t myid;
 
   DEBUG("in dart_exit_shmem%s", "");
   dart_size(&tsize);
@@ -116,7 +116,7 @@ dart_ret_t dart_exit_shmem()
 
   DART_SAFE(
 	    dart_shmem_team_delete(DART_TEAM_ALL,
-				   myid, tsize)
+				   *((dart_team_unit_t*)(&myid)), tsize)
 	    );
 
   shmem_syncarea_setunitstate(myid, 

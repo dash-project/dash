@@ -2,6 +2,7 @@
 #define DART_SHMEM_H_INCLUDED
 
 #include <dash/dart/shmem/extern_c.h>
+
 EXTERN_C_BEGIN
 
 /*  number of DART arguments passed 

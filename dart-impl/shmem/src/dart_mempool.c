@@ -21,7 +21,7 @@ void dart_mempool_init(dart_mempoolptr pool)
 dart_ret_t dart_mempool_create(dart_mempoolptr pool,
 			       dart_team_t teamid,
 			       size_t teamsize,
-			       dart_unit_t myid,
+			       dart_team_unit_t myid,
 			       size_t localsz)
 {
   if( !pool ) return DART_ERR_INVAL;
@@ -29,19 +29,20 @@ dart_ret_t dart_mempool_create(dart_mempoolptr pool,
   size_t totalsz = teamsize * localsz;
   int   attach_key;
   void *attach_addr;
+  dart_team_unit_t root = DART_TEAM_UNIT_ID(0);
 
   // TODO: maybe a barrier here...
 
-  if( myid==0 ) {
+  if( myid.id == 0 ) {
     attach_key = shmem_mm_create(totalsz);
   }
   
-  dart_bcast(&attach_key, sizeof(int), 0, teamid );
+  dart_bcast(&attach_key, 1, DART_TYPE_INT, root, teamid );
 
   attach_addr = shmem_mm_attach(attach_key);
 
   dart_membucket membucket;
-  int myoffset = myid * localsz;
+  int myoffset = myid.id * localsz;
 
   membucket = 
     dart_membucket_create( ((char*)attach_addr)+myoffset, 

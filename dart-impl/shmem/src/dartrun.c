@@ -80,7 +80,8 @@ int dart_start(int argc, char* argv[])
   
   int shm_id = shmem_mm_create(syncarea_size);
   void* shm_addr = shmem_mm_attach(shm_id);
-  int i, j;
+  int i;
+  dart_global_unit_t j;
 
   shmem_syncarea_init(nprocs, shm_addr, shm_id);
   
@@ -104,8 +105,8 @@ int dart_start(int argc, char* argv[])
     DEBUG("child process %d terminated\n", pid);
     
     int found = 0;
-    for (j = 0; j < MAXNUM_UNITS; j++) {
-      if (spawntable[j].pid == pid) {
+    for (j.id = 0; j.id < MAXNUM_UNITS; j.id++) {
+      if (spawntable[j.id].pid == pid) {
         found = 1;
         break;
       }
@@ -114,7 +115,7 @@ int dart_start(int argc, char* argv[])
         shmem_syncarea_getunitstate(j) != 
           UNIT_STATE_CLEAN_EXIT ) {
       ERROR("Unit %d terminated, aborting!", j);
-      spawntable[j].aborted=1;
+      spawntable[j.id].aborted=1;
       abort=1;
       break;
     }
