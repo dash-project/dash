@@ -341,6 +341,8 @@ dart_team_memalloc_aligned(
   /* Attach the allocated shared memory to win */
   /* Calling MPI_Win_attach with nbytes == 0 leads to errors, see #239 */
   if (nbytes > 0) {
+    DART_LOG_TRACE("Attaching %zu at %p (%llu)", 
+                   nbytes, sub_mem, (long long unsigned)sub_mem);
     if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
       DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
@@ -357,6 +359,8 @@ dart_team_memalloc_aligned(
   } else {
     disp = 0;
   }
+
+  DART_LOG_TRACE("Communicating displacement: %llu", (long long unsigned)disp);
 
   // re-use previously allocated memory
   if (segment->disp == NULL) {
