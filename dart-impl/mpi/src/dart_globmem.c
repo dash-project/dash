@@ -9,6 +9,7 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
+#include <dash/dart/base/assert.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -165,8 +166,8 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
   return DART_OK;
 }
 
-dart_ret_t
-dart_team_memalloc_aligned(
+static dart_ret_t
+dart_team_memalloc_aligned_dynamic(
   dart_team_t       teamid,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -188,7 +189,8 @@ dart_team_memalloc_aligned(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", teamid);
+    DART_LOG_ERROR(
+        "dart_team_memalloc_aligned_dynamic ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
 
@@ -258,14 +260,14 @@ dart_team_memalloc_aligned(
                 &sharedmem_win);
     MPI_Info_free(&win_info);
     if (ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("dart_team_memalloc_aligned: "
+      DART_LOG_ERROR("dart_team_memalloc_aligned_dynamic: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
       dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
   } else {
-    DART_LOG_ERROR("dart_team_memalloc_aligned: "
+    DART_LOG_ERROR("dart_team_memalloc_aligned_dynamic: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
     dart_segment_free(&team_data->segdata, segment->segid);
@@ -295,7 +297,8 @@ dart_team_memalloc_aligned(
 #else
 	if (MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem) != MPI_SUCCESS) {
     DART_LOG_ERROR(
-      "dart_team_memalloc_aligned: bytes:%lu MPI_Alloc_mem failed", nbytes);
+      "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Alloc_mem failed",
+      nbytes);
     return DART_ERR_OTHER;
   }
 #endif
@@ -307,14 +310,16 @@ dart_team_memalloc_aligned(
   if (nbytes > 0) {
     if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
       DART_LOG_ERROR(
-        "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+        "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Win_attach failed",
+        nbytes);
       dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
 
     if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
       DART_LOG_ERROR(
-        "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
+        "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Get_address failed",
+        nbytes);
       dart_segment_free(&team_data->segdata, segment->segid);
       return DART_ERR_OTHER;
     }
@@ -335,7 +340,7 @@ dart_team_memalloc_aligned(
    * (offset, win) infos */
   if (segment == NULL) {
     DART_LOG_ERROR(
-        "dart_team_memalloc_aligned: "
+        "dart_team_memalloc_aligned_dynamic: "
         "bytes:%lu Allocation of segment data failed", nbytes);
     dart_segment_free(&team_data->segdata, segment->segid);
     return DART_ERR_OTHER;
@@ -345,6 +350,7 @@ dart_team_memalloc_aligned(
   segment->shmwin  = sharedmem_win;
   segment->win     = team_data->window;
   segment->selfbaseptr = sub_mem;
+  segment->is_dynamic  = true;
 
 
   /* -- Updating infos on gptr -- */
@@ -358,14 +364,15 @@ dart_team_memalloc_aligned(
 
 
   DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: bytes:%lu gptr_unitid:%d "
+    "dart_team_memalloc_aligned_dynamic: bytes:%lu gptr_unitid:%d "
     "baseptr:%p segid:%i across team %d",
     nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
 	return DART_OK;
 }
 
-dart_ret_t dart_team_memalloc_aligned_full(
+static dart_ret_t
+dart_team_memalloc_aligned_full(
   dart_team_t       teamid,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -379,12 +386,13 @@ dart_ret_t dart_team_memalloc_aligned_full(
   size_t      team_size;
   *gptr = DART_GPTR_NULL;
 
-  DART_LOG_TRACE("dart_team_memalloc_aligned : dts:%i nelem:%zu nbytes:%zu",
+  DART_LOG_TRACE(
+    "dart_team_memalloc_aligned_full : dts:%i nelem:%zu nbytes:%zu",
     dtype_size, nelem, nbytes);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
-    DART_LOG_ERROR("dart_team_memalloc_aligned ! Unknown team %i", teamid);
+    DART_LOG_ERROR("dart_team_memalloc_aligned_full ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
 
@@ -396,12 +404,12 @@ dart_ret_t dart_team_memalloc_aligned_full(
   if (MPI_Win_allocate(
       nbytes, 1, MPI_INFO_NULL,
       team_data->comm, &baseptr, &win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_team_memfree: MPI_Win_allocate failed");
+    DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_allocate failed");
     return DART_ERR_OTHER;
   }
 
   if (MPI_Win_lock_all(0, win) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_team_memfree: MPI_Win_lock_all failed");
+    DART_LOG_ERROR("dart_team_memalloc_aligned_full: MPI_Win_lock_all failed");
     return DART_ERR_OTHER;
   }
 
@@ -415,12 +423,12 @@ dart_ret_t dart_team_memalloc_aligned_full(
     segment->disp = NULL;
   }
 
-  segment->flags = 0;
+  segment->flags       = 0;
   segment->selfbaseptr = baseptr;
-  segment->size = nbytes;
-  segment->shmwin = MPI_WIN_NULL;
-  segment->win = win;
-  segment->isshm = false;
+  segment->size        = nbytes;
+  segment->shmwin      = MPI_WIN_NULL;
+  segment->win         = win;
+  segment->is_dynamic  = false;
 
 
   gptr->segid  = segment->segid;
@@ -430,6 +438,20 @@ dart_ret_t dart_team_memalloc_aligned_full(
   gptr->addr_or_offs.offset = 0;
 
   return DART_OK;
+}
+
+dart_ret_t
+dart_team_memalloc_aligned(
+  dart_team_t       teamid,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr)
+{
+#ifdef DART_MPI_ENABLE_DYNAMIC_WINDOWS
+  return dart_team_memalloc_aligned_dynamic(teamid, nelem, dtype, gptr);
+#else
+  return dart_team_memalloc_aligned_full(teamid, nelem, dtype, gptr);
+#endif
 }
 
 dart_ret_t dart_team_memfree(
@@ -459,7 +481,7 @@ dart_ret_t dart_team_memfree(
     return DART_ERR_INVAL;
   }
 
-  if (seginfo->isshm) {
+  if (seginfo->is_dynamic) {
     /* Detach the window associated with sub-memory to be freed */
     if (sub_mem != NULL) {
       MPI_Win_detach(win, sub_mem);

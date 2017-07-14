@@ -27,7 +27,7 @@ typedef struct
   MPI_Win      win;         /* window used to access this segment */
   uint16_t     flags;       /* 16 bit flags */
   dart_segid_t segid;       /* ID of the segment, globally unique in a team */
-  bool         isshm;       /* whether this is a shared memory segment */
+  bool         is_dynamic;  /* whether this is a shared memory segment */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
