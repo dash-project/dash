@@ -181,7 +181,7 @@ dart_ret_t dart_segment_get_disp(dart_segmentdata_t * segdata,
     return DART_ERR_INVAL;
   }
 
-  *disp_s = segment->disp[rel_unitid.id];
+  *disp_s = (segment->disp) ? segment->disp[rel_unitid.id] : 0;
   DART_LOG_TRACE("dart_segment_get_disp > disp:%"PRIu64"",
                  (unsigned long)*disp_s);
   return DART_OK;

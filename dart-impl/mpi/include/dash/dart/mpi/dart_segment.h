@@ -91,6 +91,16 @@ dart_segment_info_t * dart_segment_get_info(
   dart_segmentdata_t *segdata,
   dart_segid_t        segid) DART_INTERNAL;
 
+/**
+ * Returns the segment's displacement at unit \c team_unit_id.
+ */
+static inline
+MPI_Aint
+dart_segment_disp(dart_segment_info_t *seginfo, dart_team_unit_t team_unit_id)
+{
+  return (seginfo->disp != NULL) ? seginfo->disp[team_unit_id.id] : 0;
+}
+
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 

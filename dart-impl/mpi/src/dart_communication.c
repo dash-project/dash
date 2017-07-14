@@ -106,7 +106,6 @@ dart_ret_t dart_get(
   size_t            nelem,
   dart_datatype_t   dtype)
 {
-  MPI_Win          win;
   MPI_Datatype     mpi_dtype    = dart__mpi__datatype(dtype);
   uint64_t         offset       = gptr.addr_or_offs.offset;
   int16_t          seg_id       = gptr.segid;
@@ -168,8 +167,8 @@ dart_ret_t dart_get(
    * nodes, use MPI_Get:
    */
 
-  win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  MPI_Win win  = seginfo->win;
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_TRACE("dart_get:  MPI_Get");
   CHECK_MPI_RET(
@@ -248,7 +247,7 @@ dart_ret_t dart_put(
 
   // source on another node or shared memory windows disabled
   MPI_Win win = seginfo->win;
-  offset     += seginfo->disp[team_unit_id.id];
+  offset     += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Put(
@@ -311,8 +310,8 @@ dart_ret_t dart_accumulate(
     return DART_ERR_INVAL;
   }
 
-  MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  MPI_Win win = seginfo->win;
+  offset     += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Accumulate(
@@ -372,8 +371,8 @@ dart_ret_t dart_fetch_and_op(
     return DART_ERR_INVAL;
   }
 
-  MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  MPI_Win win = seginfo->win;
+  offset     += dart_segment_disp(seginfo, team_unit_id);
 
   CHECK_MPI_RET(
     MPI_Fetch_and_op(
@@ -432,7 +431,7 @@ dart_ret_t dart_compare_and_swap(
   }
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
 
   CHECK_MPI_RET(
@@ -523,7 +522,7 @@ dart_ret_t dart_get_handle(
    * nodes, use MPI_RGet:
    */
 
-  offset += seginfo->disp[team_unit_id.id];
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
   MPI_Request mpi_req;
@@ -594,7 +593,7 @@ dart_ret_t dart_put_handle(
   }
 
   MPI_Win win  = seginfo->win;
-  offset      += seginfo->disp[team_unit_id.id];
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
   CHECK_MPI_RET(
@@ -628,7 +627,6 @@ dart_ret_t dart_put_blocking(
   size_t          nelem,
   dart_datatype_t dtype)
 {
-  MPI_Win           win;
   MPI_Datatype      mpi_dtype    = dart__mpi__datatype(dtype);
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t          offset       = gptr.addr_or_offs.offset;
@@ -682,8 +680,8 @@ dart_ret_t dart_put_blocking(
   DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
-  win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  MPI_Win win  = seginfo->win;
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
 
   DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
@@ -720,7 +718,6 @@ dart_ret_t dart_get_blocking(
   size_t          nelem,
   dart_datatype_t dtype)
 {
-  MPI_Win           win;
   MPI_Datatype      mpi_dtype    = dart__mpi__datatype(dtype);
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t          offset       = gptr.addr_or_offs.offset;
@@ -784,8 +781,8 @@ dart_ret_t dart_get_blocking(
    * nodes, use MPI_Rget:
    */
 
-  win     = seginfo->win;
-  offset += seginfo->disp[team_unit_id.id];
+  MPI_Win win  = seginfo->win;
+  offset      += dart_segment_disp(seginfo, team_unit_id);
 
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
@@ -816,8 +813,6 @@ dart_ret_t dart_get_blocking(
 dart_ret_t dart_flush(
   dart_gptr_t gptr)
 {
-  MPI_Win          win;
-  MPI_Comm         comm         = DART_COMM_WORLD;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   int16_t          seg_id       = gptr.segid;
   dart_team_t      teamid       = gptr.teamid;
@@ -845,8 +840,8 @@ dart_ret_t dart_flush(
     return DART_ERR_INVAL;
   }
 
-  comm = team_data->comm;
-  win  = seginfo->win;
+  MPI_Comm comm = team_data->comm;
+  MPI_Win  win  = seginfo->win;
 
   DART_LOG_TRACE("dart_flush: MPI_Win_flush");
   CHECK_MPI_RET(
@@ -868,8 +863,6 @@ dart_ret_t dart_flush(
 dart_ret_t dart_flush_all(
   dart_gptr_t gptr)
 {
-  MPI_Win     win;
-  MPI_Comm    comm   = DART_COMM_WORLD;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
@@ -892,8 +885,8 @@ dart_ret_t dart_flush_all(
     return DART_ERR_INVAL;
   }
 
-  comm = team_data->comm;
-  win  = seginfo->win;
+  MPI_Comm comm = team_data->comm;
+  MPI_Win  win  = seginfo->win;
 
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
   CHECK_MPI_RET(
@@ -915,8 +908,6 @@ dart_ret_t dart_flush_all(
 dart_ret_t dart_flush_local(
   dart_gptr_t gptr)
 {
-  MPI_Win     win;
-  MPI_Comm    comm   = DART_COMM_WORLD;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
@@ -945,8 +936,8 @@ dart_ret_t dart_flush_local(
     return DART_ERR_INVAL;
   }
 
-  comm = team_data->comm;
-  win  = seginfo->win;
+  MPI_Comm comm = team_data->comm;
+  MPI_Win  win  = seginfo->win;
 
   DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
   CHECK_MPI_RET(
@@ -966,8 +957,6 @@ dart_ret_t dart_flush_local(
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr)
 {
-  MPI_Win     win;
-  MPI_Comm    comm   = DART_COMM_WORLD;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
   DART_LOG_DEBUG("dart_flush_local_all() gptr: "
@@ -990,8 +979,8 @@ dart_ret_t dart_flush_local_all(
     return DART_ERR_INVAL;
   }
 
-  comm = team_data->comm;
-  win  = seginfo->win;
+  MPI_Comm comm = team_data->comm;
+  MPI_Win  win  = seginfo->win;
 
   CHECK_MPI_RET(
     MPI_Win_flush_local_all(win),
