@@ -472,7 +472,6 @@ dart_ret_t dart_team_memfree(
     return DART_ERR_INVAL;
   }
 
-  MPI_Win win = team_data->window;
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), segid);
   if (seginfo == NULL) {
@@ -482,6 +481,11 @@ dart_ret_t dart_team_memfree(
   }
 
   if (seginfo->is_dynamic) {
+    MPI_Win win = team_data->window;
+    if (dart_segment_get_selfbaseptr(
+          &team_data->segdata, segid, &sub_mem) != DART_OK) {
+      return DART_ERR_INVAL;
+    }
     /* Detach the window associated with sub-memory to be freed */
     if (sub_mem != NULL) {
       MPI_Win_detach(win, sub_mem);
