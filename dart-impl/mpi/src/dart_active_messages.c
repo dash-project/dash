@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/logging.h>
@@ -30,6 +31,7 @@ struct dart_amsgq {
   MPI_Comm     comm;
   dart_mutex_t send_mutex;
   dart_mutex_t processing_mutex;
+  int          my_rank;
 };
 
 struct dart_amsg_header {
@@ -38,9 +40,9 @@ struct dart_amsg_header {
   size_t             data_size;
 };
 
-static bool initialized = false;
+static bool initialized       = false;
 static bool needs_translation = false;
-static intptr_t *offsets = NULL;
+static ptrdiff_t *offsets     = NULL;
 
 static inline
 uint64_t translate_fnptr(
@@ -91,6 +93,8 @@ dart_amsg_openq(
   res->dbuf = malloc(res->size);
   res->team = team;
 
+  *queue = NULL;
+
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
 
@@ -101,7 +105,7 @@ dart_amsg_openq(
   }
 
   MPI_Comm_dup(team_data->comm, &res->comm);
-
+  MPI_Comm_rank(res->comm, &res->my_rank);
   /**
    * Allocate the queue
    * We cannot use dart_team_memalloc_aligned because it uses
@@ -250,7 +254,6 @@ amsg_process_internal(
   dart_amsgq_t amsgq,
   bool         blocking)
 {
-  dart_team_unit_t unitid;
   uint64_t         tailpos;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
@@ -267,51 +270,51 @@ amsg_process_internal(
   do {
     char *dbuf = amsgq->dbuf;
 
-    dart_team_myid(amsgq->team, &unitid);
+    // local lock
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, amsgq->my_rank, 0, amsgq->tailpos_win);
 
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->tailpos_win);
-
+    // query local tail position
     MPI_Get(
         &tailpos,
         1,
         MPI_UINT64_T,
-        unitid.id,
+        amsgq->my_rank,
         0,
         1,
         MPI_UINT64_T,
         amsgq->tailpos_win);
 
     // MPI_Win_flush_local should be sufficient but hangs in OMPI 2.1.1
-    MPI_Win_flush(unitid.id, amsgq->tailpos_win);
+    MPI_Win_flush(amsgq->my_rank, amsgq->tailpos_win);
 
     if (tailpos > 0) {
       uint64_t   zero = 0;
       DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
       // lock the tailpos window
-      MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid.id, 0, amsgq->queue_win);
+      MPI_Win_lock(MPI_LOCK_EXCLUSIVE, amsgq->my_rank, 0, amsgq->queue_win);
       // copy the content of the queue for processing
       MPI_Get(
           dbuf,
           tailpos,
           MPI_BYTE,
-          unitid.id,
+          amsgq->my_rank,
           0,
           tailpos,
           MPI_BYTE,
           amsgq->queue_win);
-      MPI_Win_unlock(unitid.id, amsgq->queue_win);
+      MPI_Win_unlock(amsgq->my_rank, amsgq->queue_win);
 
       // reset the tailpos and release the lock on the message queue
       MPI_Put(
           &zero,
           1,
           MPI_INT64_T,
-          unitid.id,
+          amsgq->my_rank,
           0,
           1,
           MPI_INT64_T,
           amsgq->tailpos_win);
-      MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
+      MPI_Win_unlock(amsgq->my_rank, amsgq->tailpos_win);
 
       // process the messages by invoking the functions on the data supplied
       uint64_t pos = 0;
@@ -345,7 +348,7 @@ amsg_process_internal(
         header->fn(data);
       }
     } else {
-      MPI_Win_unlock(unitid.id, amsgq->tailpos_win);
+      MPI_Win_unlock(amsgq->my_rank, amsgq->tailpos_win);
     }
   } while (blocking && tailpos > 0);
   dart__base__mutex_unlock(&amsgq->processing_mutex);
@@ -388,10 +391,8 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   MPI_Win_free(&(amsgq->tailpos_win));
   MPI_Win_free(&(amsgq->queue_win));
 
-  /*
-  dart_team_memfree(amsgq->team, amsgq->queue_win);
-  dart_team_memfree(amsgq->team, amsgq->tailpos_win);
-  */
+  MPI_Comm_free(&amsgq->comm);
+
   free(amsgq);
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
@@ -416,9 +417,9 @@ uint64_t translate_fnptr(
   dart_task_action_t fnptr,
   dart_team_unit_t target,
   dart_amsgq_t amsgq) {
-  uintptr_t remote_fnptr = (uintptr_t)fnptr;
+  intptr_t remote_fnptr = (intptr_t)fnptr;
   if (needs_translation) {
-    intptr_t  remote_fn_offset;
+    ptrdiff_t  remote_fn_offset;
     dart_global_unit_t global_target_id;
     dart_team_unit_l2g(amsgq->team, target, &global_target_id);
     remote_fn_offset = offsets[global_target_id.id];
@@ -464,13 +465,13 @@ static inline dart_ret_t exchange_fnoffsets() {
   }
 
   if (needs_translation) {
-    offsets = malloc(numunits * sizeof(intptr_t));
+    offsets = malloc(numunits * sizeof(ptrdiff_t));
     if (!offsets) {
       return DART_ERR_INVAL;
     }
     DART_LOG_TRACE("Active message function offsets:");
     for (size_t i = 0; i < numunits; i++) {
-      offsets[i] = bases[i] - ((uint64_t)&dart_amsg_openq);
+      offsets[i] = bases[i] - ((uintptr_t)&dart_amsg_openq);
       DART_LOG_TRACE("   %i: %lli", i, offsets[i]);
     }
   }
