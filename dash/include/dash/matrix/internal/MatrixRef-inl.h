@@ -311,7 +311,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](size_type pos)
 {
   auto coords = _refview._coord;
-  coords[NumDim - 1] = pos;
+  coords[0] = pos;
   return _refview.global_reference(coords);
 }
 
@@ -325,7 +325,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   coords[NumDim - 1] = pos;
   return _refview.global_reference(coords);
 }
- 
+
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
 MatrixRef<const T, NumDim, NumDim-1, PatternT>
