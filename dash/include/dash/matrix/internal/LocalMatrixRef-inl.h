@@ -12,7 +12,7 @@ template <class T_>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
   const LocalMatrixRef<T_, NumDim, CUR+1, PatternT> & previous,
-  index_type coord)
+  size_type coord)
   : _refview(previous._refview)
 {
   DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", CUR);
@@ -349,7 +349,7 @@ template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type pos)
+  size_type pos)
 {
   DASH_LOG_TRACE("LocalMatrixRef.[]=()",
                  "curdim:",   CUR,
@@ -362,7 +362,7 @@ template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 constexpr LocalMatrixRef<const T, NumDim, CUR-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type pos) const
+  size_type pos) const
 {
   return LocalMatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
 }
@@ -600,9 +600,9 @@ template <typename T, dim_t NumDim, class PatternT>
 inline T *
 LocalMatrixRef<T, NumDim, 0, PatternT>
 ::local_at(
-  index_type pos) const
+  size_type pos) const
 {
-  if (!(static_cast<size_type>(pos) < _refview._mat->size())) {
+  if (!(pos < _refview._mat->size())) {
     DASH_THROW(
       dash::exception::OutOfRange,
       "Position for LocalMatrixRef<0>.local_at out of range");

@@ -149,7 +149,7 @@ public:
   template <class T_>
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
     const LocalMatrixRef<T_, NumDimensions, CUR+1, PatternT> & previous,
-    index_type coord);
+    size_type coord);
 
   /**
    * Constructor, creates a local view reference to a Matrix view.
@@ -251,14 +251,14 @@ public:
    * in global element range.
    */
   LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
-    operator[](index_type n);
+    operator[](size_type n);
 
   /**
    * Subscript operator, access element at given offset in
    * global element range.
    */
   constexpr LocalMatrixRef<const T, NumDimensions, CUR-1, PatternT>
-    operator[](index_type n) const;
+    operator[](size_type n) const;
 
   LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     col(size_type n);
@@ -277,7 +277,7 @@ public:
   template<dim_t NumSubDimensions>
   LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n) const;
-  
+
   template<dim_t SubDimension>
   LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
     sub(size_type n,
@@ -303,7 +303,7 @@ public:
     size_type offset,
     /// Number of rows in the range
     size_type range);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   rows(
     /// Offset of first row in range
@@ -326,7 +326,7 @@ public:
     size_type offset,
     /// Number of columns in the range
     size_type extent);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   cols(
     /// Offset of first column in range
@@ -407,7 +407,7 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
     const LocalMatrixRef<T_, NumDimensions, 1, PatternT> & previous,
     index_type coord);
 
-  inline T * local_at(index_type pos) const;
+  inline T * local_at(size_type pos) const;
 
   inline bool is_local() const {
     return true;
