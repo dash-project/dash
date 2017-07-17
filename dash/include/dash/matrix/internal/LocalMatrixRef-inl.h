@@ -412,7 +412,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
 typename std::enable_if<(__NumViewDim == 0), const T&>::type
-constexpr
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   size_type pos) const

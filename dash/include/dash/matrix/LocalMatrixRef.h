@@ -268,7 +268,7 @@ public:
 
   template<dim_t __NumViewDim = CUR-1>
   typename std::enable_if<(__NumViewDim == 0), const T&>::type
-  constexpr operator[](size_type n) const;
+  operator[](size_type n) const;
 
   LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     col(size_type n);
