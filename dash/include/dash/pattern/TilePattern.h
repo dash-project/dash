@@ -686,7 +686,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr local_index_t local(
+  local_index_t local(
     IndexType g_index) const
   {
     // TODO: Implement dedicated method for this, conversion to/from
@@ -1354,7 +1354,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity() const {
+  SizeType local_capacity() const {
     return local_size();
   }
 
