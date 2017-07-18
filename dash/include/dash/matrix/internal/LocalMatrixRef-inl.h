@@ -75,8 +75,8 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   //                        block_view.extent(d));
   //
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lcoords);
-  auto pattern      = _refview._mat->_pattern;
-  auto block_lindex = pattern.blockspec().at(block_lcoords);
+  const auto& pattern = _refview._mat->_pattern;
+  auto block_lindex   = pattern.blockspec().at(block_lcoords);
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
   // Global view of local block:
   auto l_block_g_view = pattern.local_block(block_lindex);
@@ -109,7 +109,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   //                        block_view.extent(d));
   //
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-  auto pattern        = _refview._mat->_pattern;
+  const auto& pattern = _refview._mat->_pattern;
   // Global view of local block:
   auto l_block_g_view = pattern.local_block(block_lindex);
   // Local view of local block:
@@ -417,8 +417,8 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   size_type pos) const
 {
   auto  l_coords   = _refview._coord;
-  auto& l_viewspec = _refview._l_viewspec;
-  auto& pattern    = _refview._mat->_pattern;
+  const auto& l_viewspec = _refview._l_viewspec;
+  const auto& pattern    = _refview._mat->_pattern;
   DASH_LOG_TRACE("LocalMatrixRef<0>.local()",
                  "coords:",         l_coords,
                  "local viewspec:", l_viewspec.extents());
