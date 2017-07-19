@@ -103,8 +103,8 @@ dart_amsg_openq(
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
     return DART_ERR_INVAL;
   }
-
-  MPI_Comm_dup(team_data->comm, &res->comm);
+  res->comm = team_data->comm;
+//  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
   /**
    * Allocate the queue
@@ -348,6 +348,8 @@ amsg_process_internal(
         header->fn(data);
       }
     } else {
+      int flag;
+      MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
       MPI_Win_unlock(amsgq->my_rank, amsgq->tailpos_win);
     }
   } while (blocking && tailpos > 0);
@@ -391,7 +393,7 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   MPI_Win_free(&(amsgq->tailpos_win));
   MPI_Win_free(&(amsgq->queue_win));
 
-  MPI_Comm_free(&amsgq->comm);
+//  MPI_Comm_free(&amsgq->comm);
 
   free(amsgq);
 
