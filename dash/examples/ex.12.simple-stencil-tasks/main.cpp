@@ -16,6 +16,7 @@
 
 #include <dash/Init.h>
 #include <dash/Matrix.h>
+#include <dash/Types.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
@@ -230,14 +231,19 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   // Inner rows
   for( index_t x=1; x<lext_x-1; x++ ) {
     dash::create_task(
-      [=] {
+      [=, &data_old, &data_new] {
+//        std::cout << "Computing row " << x << " in iteration " << iter << std::endl;
+        const element_t* curr_row = data_old.local[x  ].lbegin();
+        const element_t*   up_row = data_old.local[x-1].lbegin();
+        const element_t* down_row = data_old.local[x+1].lbegin();
+              element_t*  out_row = data_new.local[x  ].lbegin();
         for( index_t y=1; y<lext_y-1; y++ ) {
-          nlptr[x*lext_y+y] =
-            ( 0.40 * olptr[x*lext_y+y] +
-            0.15 * olptr[(x-1)*lext_y+y] +
-            0.15 * olptr[(x+1)*lext_y+y] +
-            0.15 * olptr[x*lext_y+y-1] +
-            0.15 * olptr[x*lext_y+y+1]);
+          out_row[y] =
+            ( 0.40 * curr_row[y] +
+              0.15 * curr_row[y-1] +
+              0.15 * curr_row[y+1] +
+              0.15 * down_row[y] +
+              0.15 *   up_row[y]);
         }
       },
       // use the first element in the row as sentinel
@@ -259,15 +265,27 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   if(!is_top){
     // top row
     dash::create_task(
-      [=, &data_old] {
+     [=, &data_old, &data_new] {
+        const element_t* down_row = data_old.local[1].lbegin();
+              element_t*   up_row = static_cast<element_t*>(
+                                      std::malloc(sizeof(element_t) * gext_y));
+        const element_t* curr_row = olptr;
+              element_t*  out_row = data_new.lbegin();
+        // copy line
+        // TODO: make this non-blocking and yield
+        dart_get_blocking(
+          up_row,
+          data_old[local_beg_gidx[0] - 1][0].dart_gptr(),
+          gext_y, dash::dart_datatype<element_t>::value);
         for( auto y=1; y<gext_y-1; ++y){
-          nlptr[y] =
-            ( 0.40 * olptr[y] +
-            0.15 * data_old.at(local_beg_gidx[0] - 1,   y) +
-            0.15 * data_old.at(local_beg_gidx[0] + 1,   y) +
-            0.15 * olptr[y-1] +
-            0.15 * olptr[y+1]);
+          out_row[y] =
+            ( 0.40 * curr_row[y] +
+              0.15 *   up_row[y] +
+              0.15 * down_row[y] +
+              0.15 * curr_row[y-1] +
+              0.15 * curr_row[y+1]);
         }
+        std::free(up_row);
       },
       dash::in(data_old.at(local_beg_gidx[0] - 1,   0), iter-1),
       dash::in(data_old.at(local_beg_gidx[0] + 1,   0), iter-1),
@@ -279,15 +297,29 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   if(!is_bottom){
     // bottom row
     auto handle = dash::create_task_handle(
-      [=, &data_old] {
+      [=, &data_old, &data_new] {
+      if (dash::myid() == 0)
+        std::cout << "[0] Computing bottom row in iteration " << iter << std::endl;
+        const element_t*   up_row = data_old[local_end_gidx[0] - 1].begin().local();
+        const element_t* curr_row = data_old[local_end_gidx[0]].begin().local();
+              element_t* down_row = static_cast<element_t*>(
+                                      std::malloc(sizeof(element_t) * gext_y));
+              element_t*  out_row = data_new[local_end_gidx[0]].begin().local();
+        // copy line
+        // TODO: make this non-blocking and yield
+        dart_get_blocking(
+          down_row,
+          data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
+          gext_y, dash::dart_datatype<element_t>::value);
         for( auto y=1; y<gext_y-1; ++y){
-          nlptr[lext_y*(lext_x - 1) + y] =
-            ( 0.40 * olptr[lext_y*(lext_x - 1) + y] +
-            0.15 * data_old.at(local_end_gidx[0] - 1, y) +
-            0.15 * data_old.at(local_end_gidx[0] + 1, y) +
-            0.15 * olptr[gext_y*(lext_x - 1) + y-1] +
-            0.15 * olptr[gext_y*(lext_x - 1) + y+1]);
+          out_row[y] =
+            ( 0.40 * curr_row[y] +
+              0.15 *   up_row[y] +
+              0.15 * down_row[y] +
+              0.15 * curr_row[y-1] +
+              0.15 * curr_row[y+1]);
         }
+        std::free(down_row);
       },
       dash::in(data_old.at(local_end_gidx[0] - 1,   0), iter-1),
       dash::in(data_old.at(local_end_gidx[0] + 1,   0), iter-1),
@@ -309,8 +341,8 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
 int main(int argc, char* argv[])
 {
-  int sizex = 10000;
-  int sizey = 10000;
+  int sizex = 1000;
+  int sizey = 100000;
   int niter = 50;
   typedef dash::util::Timer<
     dash::util::TimeMeasure::Clock
@@ -339,14 +371,15 @@ int main(int argc, char* argv[])
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
 
-  draw_circle(data_old, 0, 0, 40);
-  draw_circle(data_old, 0, 0, 30);
-  draw_circle(data_old, 200, 100, 10);
-  draw_circle(data_old, 200, 100, 20);
-  draw_circle(data_old, 200, 100, 30);
-  draw_circle(data_old, 200, 100, 40);
-  draw_circle(data_old, 200, 100, 50);
-
+  if (sizex > 400) {
+    draw_circle(data_old, 0, 0, 40);
+    draw_circle(data_old, 0, 0, 30);
+    draw_circle(data_old, 200, 100, 10);
+    draw_circle(data_old, 200, 100, 20);
+    draw_circle(data_old, 200, 100, 30);
+    draw_circle(data_old, 200, 100, 40);
+    draw_circle(data_old, 200, 100, 50);
+  }
 
   if (sizex >= 1000) {
     draw_circle(data_old, sizex / 4, sizey / 4, sizex / 100);
@@ -372,7 +405,7 @@ int main(int argc, char* argv[])
 
   Timer timer;
 
-  for(int i=0; i<niter; ++i){
+  for(int i=1; i<=niter; ++i){
     // switch references
     auto & data_prev = i%2 ? data_new : data_old;
     auto & data_next = i%2 ? data_old : data_new;
