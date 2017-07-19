@@ -135,13 +135,17 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
   // Inner rows
   for( index_t x=1; x<lext_x-1; x++ ) {
+    const element_t* curr_row = data_old.local[x  ].lbegin();
+    const element_t*   up_row = data_old.local[x-1].lbegin();
+    const element_t* down_row = data_old.local[x+1].lbegin();
+          element_t*  out_row = data_new.local[x  ].lbegin();
     for( index_t y=1; y<lext_y-1; y++ ) {
-      nlptr[x*lext_y+y] =
-        ( 0.40 * olptr[x*lext_y+y] +
-        0.15 * olptr[(x-1)*lext_y+y] +
-        0.15 * olptr[(x+1)*lext_y+y] +
-        0.15 * olptr[x*lext_y+y-1] +
-        0.15 * olptr[x*lext_y+y+1]);
+      out_row[y] =
+        ( 0.40 * curr_row[y] +
+          0.15 * curr_row[y-1] +
+          0.15 * curr_row[y+1] +
+          0.15 * down_row[y] +
+          0.15 *   up_row[y]);
     }
   }
 
@@ -155,26 +159,48 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
   if(!is_top){
     // top row
+    const element_t* down_row = data_old.local[1].lbegin();
+          element_t*   up_row = static_cast<element_t*>(
+                                  std::malloc(sizeof(element_t) * gext_y));
+    const element_t* curr_row = olptr;
+          element_t*  out_row = data_new.lbegin();
+    // copy line
+    dart_get_blocking(
+      up_row,
+      data_old[local_beg_gidx[0] - 1][0].dart_gptr(),
+      gext_y, dash::dart_datatype<element_t>::value);
     for( auto y=1; y<gext_y-1; ++y){
-      nlptr[y] =
-        ( 0.40 * olptr[y] +
-        0.15 * data_old.at(local_beg_gidx[0] - 1,   y) +
-        0.15 * data_old.at(local_beg_gidx[0] + 1,   y) +
-        0.15 * olptr[y-1] +
-        0.15 * olptr[y+1]);
+      out_row[y] =
+        ( 0.40 * curr_row[y] +
+          0.15 *   up_row[y] +
+          0.15 * down_row[y] +
+          0.15 * curr_row[y-1] +
+          0.15 * curr_row[y+1]);
     }
+    std::free(up_row);
   }
 
   if(!is_bottom){
     // bottom row
+    const element_t*   up_row = data_old[local_end_gidx[0] - 1].begin().local();
+    const element_t* curr_row = data_old[local_end_gidx[0]].begin().local();
+          element_t* down_row = static_cast<element_t*>(
+                                  std::malloc(sizeof(element_t) * gext_y));
+          element_t*  out_row = data_new[local_end_gidx[0]].begin().local();
+    // copy line
+    dart_get_blocking(
+      down_row,
+      data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
+      gext_y, dash::dart_datatype<element_t>::value);
     for( auto y=1; y<gext_y-1; ++y){
-      nlptr[lext_y*(lext_x - 1) + y] =
-        ( 0.40 * olptr[lext_y*(lext_x - 1) + y] +
-        0.15 * data_old.at(local_end_gidx[0] - 1, y) +
-        0.15 * data_old.at(local_end_gidx[0] + 1, y) +
-        0.15 * olptr[gext_y*(lext_x - 1) + y-1] +
-        0.15 * olptr[gext_y*(lext_x - 1) + y+1]);
+      out_row[y] =
+        ( 0.40 * curr_row[y] +
+          0.15 *   up_row[y] +
+          0.15 * down_row[y] +
+          0.15 * curr_row[y-1] +
+          0.15 * curr_row[y+1]);
     }
+    std::free(down_row);
     // heart-beat task
 /*    dash::create_task(
       [=](){

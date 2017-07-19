@@ -298,8 +298,8 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     // bottom row
     auto handle = dash::create_task_handle(
       [=, &data_old, &data_new] {
-      if (dash::myid() == 0)
-        std::cout << "[0] Computing bottom row in iteration " << iter << std::endl;
+        if (dash::myid() == 0)
+          std::cout << "[0] Computing bottom row in iteration " << iter << std::endl;
         const element_t*   up_row = data_old[local_end_gidx[0] - 1].begin().local();
         const element_t* curr_row = data_old[local_end_gidx[0]].begin().local();
               element_t* down_row = static_cast<element_t*>(
