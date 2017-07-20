@@ -215,7 +215,7 @@ void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
 
 void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   // Todo: use stencil iterator
-  auto pattern = data_old.pattern();
+  const auto& pattern = data_old.pattern();
 
   auto gext_x = data_old.extent(0);
   auto gext_y = data_old.extent(1);
@@ -225,18 +225,19 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   auto local_beg_gidx = pattern.coords(pattern.global(0));
   auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
 
-  auto olptr = data_old.lbegin();
-  auto nlptr = data_new.lbegin();
-
   // Inner rows
   for( index_t x=1; x<lext_x-1; x++ ) {
     dash::create_task(
       [=, &data_old, &data_new] {
 //        std::cout << "Computing row " << x << " in iteration " << iter << std::endl;
-        const element_t* curr_row = data_old.local[x  ].lbegin();
-        const element_t*   up_row = data_old.local[x-1].lbegin();
-        const element_t* down_row = data_old.local[x+1].lbegin();
-              element_t*  out_row = data_new.local[x  ].lbegin();
+      const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
+      const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
+      const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
+            element_t *__restrict  out_row = data_new.local.row(x).lbegin();
+//        const element_t* curr_row = data_old.local[x  ].lbegin();
+//        const element_t*   up_row = data_old.local[x-1].lbegin();
+//        const element_t* down_row = data_old.local[x+1].lbegin();
+//              element_t*  out_row = data_new.local[x  ].lbegin();
         for( index_t y=1; y<lext_y-1; y++ ) {
           out_row[y] =
             ( 0.40 * curr_row[y] +
@@ -252,6 +253,13 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dash::in(data_old.at(local_beg_gidx[0] + x-1, 0), iter-1),
       dash::out(data_new.at(local_beg_gidx[0] + x, 0), iter)
     );
+#if DEBUG
+    printf("[%d] MIDDLE in %d: (%d [%p]), (%d [%p]), (%d [%p]); out %d: (%d [%p])\n", 
+           dash::myid().id, iter-1,  local_beg_gidx[0] + x, data_old[local_beg_gidx[0] + x].begin().local(),
+           local_beg_gidx[0] + x - 1, data_old[local_beg_gidx[0] + x-1].begin().local(),
+           local_beg_gidx[0] + x + 1, data_old[local_beg_gidx[0] + x+1].begin().local(),
+           iter, local_beg_gidx[0] + x, data_new[local_beg_gidx[0] + x].begin().local());
+#endif
   }
 
   // Boundary
@@ -266,11 +274,11 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     // top row
     dash::create_task(
      [=, &data_old, &data_new] {
-        const element_t* down_row = data_old.local[1].lbegin();
-              element_t*   up_row = static_cast<element_t*>(
-                                      std::malloc(sizeof(element_t) * gext_y));
-        const element_t* curr_row = olptr;
-              element_t*  out_row = data_new.lbegin();
+      const element_t *__restrict down_row = data_old.local.row(1).lbegin();
+      const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
+            element_t *__restrict  out_row = data_new.lbegin();
+            element_t *__restrict   up_row = static_cast<element_t*>(
+                                    std::malloc(sizeof(element_t) * gext_y));
         // copy line
         // TODO: make this non-blocking and yield
         dart_get_blocking(
@@ -292,6 +300,11 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dash::in(data_old.at(local_beg_gidx[0],       0), iter-1),
       dash::out(data_new.at(local_beg_gidx[0],      0), iter)
     );
+#if DEBUG
+    printf("[%d] TOP    in %d: (%d), (%d), (%d); out %d: (%d)\n", 
+           dash::myid().id, iter-1, local_beg_gidx[0] - 1, 
+           local_beg_gidx[0] + 1, local_beg_gidx[0], iter, local_beg_gidx[0]);
+#endif
   }
 
   if(!is_bottom){
@@ -300,11 +313,11 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       [=, &data_old, &data_new] {
         if (dash::myid() == 0)
           std::cout << "[0] Computing bottom row in iteration " << iter << std::endl;
-        const element_t*   up_row = data_old[local_end_gidx[0] - 1].begin().local();
-        const element_t* curr_row = data_old[local_end_gidx[0]].begin().local();
-              element_t* down_row = static_cast<element_t*>(
+        const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
+        const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
+              element_t *__restrict down_row = static_cast<element_t*>(
                                       std::malloc(sizeof(element_t) * gext_y));
-              element_t*  out_row = data_new[local_end_gidx[0]].begin().local();
+              element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
         // copy line
         // TODO: make this non-blocking and yield
         dart_get_blocking(
@@ -326,24 +339,21 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dash::in(data_old.at(local_end_gidx[0],       0), iter-1),
       dash::out(data_new.at(local_end_gidx[0],      0), iter)
     );
-
-    // heart-beat task
-/*    dash::create_task(
-      [=](){
-        std::cout << "[" << dash::myid() << "] iteration heartbeat "
-                  << iter << std::endl;
-      },
-      dash::direct(handle)
-    );
-*/
+#if DEBUG
+    printf("[%d] BOTTOM in %d: (%d [%p]), (%d [-]), (%d [%p]); out %d: (%d [%p]) \n", 
+           dash::myid().id, iter-1, local_end_gidx[0] - 1, data_old[local_end_gidx[0] - 1].begin().local(),
+           local_end_gidx[0] + 1,
+           local_end_gidx[0], data_old[local_end_gidx[0]].begin().local(), 
+           iter, local_end_gidx[0], data_new[local_end_gidx[0]].begin().local());
+#endif
   }
 }
 
 int main(int argc, char* argv[])
 {
   int sizex = 1000;
-  int sizey = 100000;
-  int niter = 50;
+  int sizey = 1000;
+  int niter = 100;
   typedef dash::util::Timer<
     dash::util::TimeMeasure::Clock
   > Timer;
@@ -401,17 +411,19 @@ int main(int argc, char* argv[])
     draw_circle(data_old, sizex / 4 * 3, sizey / 4 * 3, sizex /  20);
   }
   dash::barrier();
-//  write_pgm("testimg_input.pgm", data_old);
+
+  if (sizex <= 1000)
+    write_pgm("testimg_input.pgm", data_old);
 
   Timer timer;
 
-  for(int i=1; i<=niter; ++i){
+  for(int i=0; i<niter; ++i){
     // switch references
     auto & data_prev = i%2 ? data_new : data_old;
     auto & data_next = i%2 ? data_old : data_new;
 
     std::cout << "Creating tasks for iteration " << i << std::endl;
-    smooth(data_prev, data_next, i);
+    smooth(data_prev, data_next, i+1);
   }
 //  dash::barrier();
   std::cout << "Done creating tasks, starting computation" << std::endl;
@@ -420,7 +432,8 @@ int main(int argc, char* argv[])
   if (dash::myid() == 0) {
     std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
   }
-  // Assume niter is even
-//  write_pgm("testimg_output.pgm", data_new);
+
+  if (sizex <= 1000)
+    write_pgm("testimg_output.pgm", data_new);
   dash::finalize();
 }
