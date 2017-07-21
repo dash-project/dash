@@ -78,14 +78,13 @@ void set_pixel(Array_t & data, index_t x, index_t y){
   x = (x+ext_x)%ext_x;
   y = (y+ext_y)%ext_y;
 
-  data.at(x, y) = color;
+  // check whether we own the pixel, owner draws
+  auto ref = data(x, y);
+  if (ref.is_local())
+    ref = color;
 }
 
 void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
-  // Check who owns center, owner draws
-  if(!data.at(x0, y0).is_local()){
-    return;
-  }
 
   int       f     = 1-r;
   int       ddF_x = 1;
