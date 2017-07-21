@@ -201,10 +201,14 @@ public:
 public:
 
   HaloRegionSpec(const RegionCoordsT& coords, const extent_t extent)
-      : _coords(coords), _extent(extent), _rel_dim(init_rel_dim()) {}
+      : _coords(coords), _extent(extent), _rel_dim(init_rel_dim()) {
+    init_level();
+  }
 
   HaloRegionSpec(region_index_t index, const extent_t extent)
-      : _coords(RegionCoordsT(index)), _extent(extent), _rel_dim(init_rel_dim()) {}
+      : _coords(RegionCoordsT(index)), _extent(extent), _rel_dim(init_rel_dim()) {
+    init_level();
+  }
 
   constexpr HaloRegionSpec() = default;
 
@@ -247,7 +251,10 @@ public:
   // returns the highest dimension with changed coordinates
   dim_t relevantDim() const { return _rel_dim; }
 
+  dim_t level() const { return _level; }
+
 private:
+  //TODO put init_rel_dim and level together
   dim_t init_rel_dim() {
     dim_t dim = 1;
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -258,10 +265,18 @@ private:
     return dim;
   }
 
+  void init_level() {
+    for (auto d = 0; d < NumDimensions; ++d) {
+      if (_coords[d] != 1)
+        ++_level;
+    }
+  }
+
 private:
   RegionCoordsT _coords{};
   extent_t      _extent{0};
   dim_t         _rel_dim = 1;
+  dim_t         _level = 0;
 }; // HaloRegionSpec
 
 template <dim_t NumDimensions>
@@ -959,7 +974,7 @@ public:
 
   ElementT* startPos() { return _halobuffer.data(); }
 
-  const std::vector<ElementT>& haloBuffer() { return _halobuffer; }
+  const std::vector<ElementT>& haloBuffer() const { return _halobuffer; }
 
 private:
   std::vector<ElementT>           _halobuffer;
