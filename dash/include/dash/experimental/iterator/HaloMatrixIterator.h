@@ -382,7 +382,7 @@ private:
       for (auto d = NumDimensions - 2; d >= 0; --d)
         halo_pos += stencil[d] * _local_layout.extent(d);
     } else {
-      halo_pos += stencil[NumDimensions - 1];
+      halo_pos += stencil[0];
       for (auto d = 1; d < NumDimensions; ++d)
         halo_pos += stencil[d] * _local_layout.extent(d);
     }
@@ -395,13 +395,13 @@ private:
     for (auto i = 0; i < NumStencilPoints; ++i) {
       signed_size_type offset = 0;
       if (MemoryArrange == ROW_MAJOR) {
-        offset += stencil_spec[i][0];
+        offset = stencil_spec[i][0];
         for (auto d = 1; d < NumDimensions; ++d)
           offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
       } else {
-        offset += stencil_spec[i][NumDimensions - 1];
-        for (auto d = 1; d < NumDimensions; ++d)
-          offset += stencil_spec[i][d] * _local_layout.extent(d);
+        offset = stencil_spec[i][NumDimensions - 1];
+        for (auto d = NumDimensions - 2; d >= 0; --d)
+          offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
       }
       _stencil_offsets[i] = offset;
     }
