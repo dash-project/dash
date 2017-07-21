@@ -418,7 +418,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
   auto sum_halo = calc_sum_halo(halo_wrapper);
   if(myid == 0) {
     // global outer boundary not included in both sums
-
     EXPECT_EQ(sum_check, sum_halo);
   }
   dash::Team::All().barrier();
@@ -429,9 +428,11 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
 {
   using PatternT = dash::Pattern<3>;
+  using PatternColT = dash::Pattern<3, dash::COL_MAJOR>;
   using index_type = typename PatternT::index_type;
   using DistSpecT = dash::DistributionSpec<3>;
   using MatrixT = dash::Matrix<long, 3, index_type, PatternT>;
+  using MatrixColT = dash::Matrix<long, 3, index_type, PatternColT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
   using CycleSpecT = CycleSpec<3>;
@@ -446,12 +447,15 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   TeamSpecT team_spec{};
   team_spec.balance_extents();
   PatternT pattern(SizeSpecT(ext_per_dim,ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
+  PatternColT pattern_col(SizeSpecT(ext_per_dim,ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
 
   MatrixT matrix_halo(pattern);
+  MatrixColT matrix_halo_col(pattern_col);
 
   dash::fill(matrix_halo.begin(), matrix_halo.end(), 1);
+  dash::fill(matrix_halo_col.begin(), matrix_halo_col.end(), 1);
 
-  matrix_halo.barrier();
+  dash::Team::All().barrier();
 
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
@@ -471,12 +475,14 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
           if(i == 1 || i == ext_per_dim_check - 2 || j == 1 || j == ext_per_dim_check - 2 ||
              k == 1 || k == ext_per_dim_check -2) {
             matrix_halo[i-1][j-1][k-1] = 10;
+            matrix_halo_col[i-1][j-1][k-1] = 10;
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i > boundary_width  && i <= ext_diff && j > boundary_width && j <= ext_diff &&
              k > boundary_width && k <= ext_diff) {
             matrix_halo[i-1][j-1][k-1] = 5;
+            matrix_halo_col[i-1][j-1][k-1] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -496,8 +502,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
     delete matrix_check;
   }
 
-
-  matrix_halo.barrier();
+  dash::Team::All().barrier();
 
   StencilSpecT stencil_spec({
       StencilT(-1,-1,-1), StencilT(-1,-1, 0), StencilT(-1,-1, 1),
@@ -512,11 +517,22 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   });
   CycleSpecT cycle_spec(Cycle::CYCLIC, Cycle::CYCLIC, Cycle::CYCLIC);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
+  HaloMatrixWrapper<MatrixColT,StencilSpecT> halo_wrapper_col(matrix_halo_col, stencil_spec, cycle_spec);
+
+
   auto sum_halo = calc_sum_halo(halo_wrapper);
+  auto sum_halo_col = calc_sum_halo(halo_wrapper_col);
+  if(myid == 0) {
+    for(auto i = 0; i < ext_per_dim; ++i)
+      for(auto j = 0; j < ext_per_dim; ++j)
+        for(auto k = 0; k < ext_per_dim; ++k)
+          EXPECT_EQ((long)matrix_halo[i][j][k], (long)matrix_halo_col[i][j][k]);
+  }
 
-  if(myid == 0)
+  if(myid == 0) {
     EXPECT_EQ(sum_check, sum_halo);
-
+    EXPECT_EQ(sum_check, sum_halo_col);
+  }
   dash::Team::All().barrier();
 }
 
@@ -735,9 +751,11 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
 TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 {
   using PatternT = dash::Pattern<3>;
+  using PatternColT = dash::Pattern<3, dash::COL_MAJOR>;
   using index_type = typename PatternT::index_type;
   using DistSpecT = dash::DistributionSpec<3>;
   using MatrixT = dash::Matrix<long, 3, index_type, PatternT>;
+  using MatrixColT = dash::Matrix<long, 3, index_type, PatternColT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
   using CycleSpecT = CycleSpec<3>;
@@ -752,12 +770,15 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   TeamSpecT team_spec{};
   team_spec.balance_extents();
   PatternT pattern(SizeSpecT(ext_per_dim,ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
+  PatternColT pattern_col(SizeSpecT(ext_per_dim,ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
 
   MatrixT matrix_halo(pattern);
+  MatrixColT matrix_halo_col(pattern_col);
 
   dash::fill(matrix_halo.begin(), matrix_halo.end(), 1);
+  dash::fill(matrix_halo_col.begin(), matrix_halo_col.end(), 1);
 
-  matrix_halo.barrier();
+  dash::Team::All().barrier();
 
   auto ext_per_dim_check = ext_per_dim + 6;
   unsigned long sum_check = 0;
@@ -786,14 +807,17 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
           }
           if(i == 0 || i == ext_per_dim - 1 || j == 3 || j == ext_per_dim_check - 4 ||
              k == 3 || k == ext_per_dim_check - 4) {
-            if(j >= 3 && k >= 3 && j < ext_per_dim_check - 3 && k < ext_per_dim_check - 3)
+            if(j >= 3 && k >= 3 && j < ext_per_dim_check - 3 && k < ext_per_dim_check - 3) {
               matrix_halo[i][j-3][k-3] = 10;
+              matrix_halo_col[i][j-3][k-3] = 10;
+            }
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i >= boundary_width  && i < ext_diff && j >= boundary_width + 3 && j < ext_diff + 3 &&
              k >= boundary_width + 3 && k < ext_diff + 3) {
             matrix_halo[i][j-3][k-3] = 5;
+            matrix_halo_col[i][j-3][k-3] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -819,6 +843,8 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
         }
       }
     }
+
+
     for(auto i = 0; i < ext_per_dim; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
         delete matrix_check[i][j];
@@ -828,7 +854,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   }
 
-  matrix_halo.barrier();
+  dash::Team::All().barrier();
 
   StencilSpecT stencil_spec({
       StencilT(-3,-3,-3), StencilT(-2,-2,-2), StencilT(-1,-1,-1),
@@ -843,14 +869,22 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   });
   CycleSpecT cycle_spec(Cycle::NONE, Cycle::CYCLIC, Cycle::FIXED);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
+  HaloMatrixWrapper<MatrixColT,StencilSpecT> halo_wrapper_col(matrix_halo_col, stencil_spec, cycle_spec);
 
   halo_wrapper.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
+
   auto sum_halo = calc_sum_halo(halo_wrapper);
 
-  if(myid == 0)
-    EXPECT_EQ(sum_check, sum_halo);
+  halo_wrapper_col.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
+      return 20;
+  });
+  auto sum_halo_col = calc_sum_halo(halo_wrapper_col);
 
+  if(myid == 0) {
+    EXPECT_EQ(sum_check, sum_halo);
+    EXPECT_EQ(sum_check, sum_halo_col);
+  }
   dash::Team::All().barrier();
 }
