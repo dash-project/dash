@@ -16,6 +16,8 @@
 typedef ucontext_t context_t;
 #endif
 
+#define DART_AMSGQ_SENDRECV
+
 // Use 16K stack size per task
 #define DEFAULT_TASK_STACK_SIZE (1<<14)
 
