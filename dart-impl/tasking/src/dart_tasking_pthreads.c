@@ -64,9 +64,6 @@ static dart_task_t root_task = {
 static void
 destroy_threadpool(bool print_stats);
 
-static void
-init_threadpool();
-
 static inline
 void set_current_task(dart_task_t *t);
 

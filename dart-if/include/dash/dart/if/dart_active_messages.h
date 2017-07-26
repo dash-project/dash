@@ -18,7 +18,8 @@ typedef void (*dart_task_action_t) (void *);
  *
  * This is a collective operation involving all units in team.
  *
- * \param msg_size   The expected size of messages. Messages may vary in size.
+ * \param msg_size   The maximum expected size of messages.
+ *                   Messages may be smaller than this.
  *                   Used in combination with \c msg_count to determine
  *                   buffer sizes.
  * \param msg_count  The number of messages of size \c msg_size to reserve

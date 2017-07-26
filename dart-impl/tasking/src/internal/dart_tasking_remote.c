@@ -54,13 +54,22 @@ release_remote_dependency(void *data);
 static void
 request_direct_taskdep(void *data);
 
+static inline
+size_t
+max_size(size_t lhs, size_t rhs)
+{
+  return (lhs > rhs) ? lhs : rhs;
+}
+
 
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
     DART_ASSERT_RETURNS(
       dart_amsg_openq(
-        sizeof(struct remote_data_dep), DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
+        max_size(sizeof(struct remote_data_dep),
+                 sizeof(struct remote_task_dep)),
+        DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
       DART_OK);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
