@@ -663,7 +663,7 @@ dart__tasking__task_complete()
   if (thread->current_task == &(root_task)) {
     // reset the active epoch
     root_task.epoch = DART_EPOCH_ANY;
-    // once again make sure all incoming requests are served
+    // make sure all incoming requests are served
     dart_tasking_remote_progress_blocking();
     // release unhandled remote dependencies
     dart_tasking_datadeps_release_unhandled_remote();
@@ -696,6 +696,7 @@ dart__tasking__task_complete()
     // b) process our tasks
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
+    dart_tasking_remote_progress();
   }
 #ifdef USE_UCONTEXT
   // restore context (in case we're called from within another task)
@@ -731,6 +732,7 @@ dart__tasking__task_wait(dart_taskref_t *tr)
     dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
+    dart_tasking_remote_progress();
   }
 
   destroy_task(*tr);
