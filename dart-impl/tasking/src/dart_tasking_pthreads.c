@@ -449,7 +449,7 @@ void* thread_main(void *data)
   // enter work loop
   while (parallel) {
     // look for incoming remote tasks and responses
-//    dart_tasking_remote_progress();
+    dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
     // only go to sleep if no tasks are in flight
@@ -459,7 +459,7 @@ void* thread_main(void *data)
         // the last thread is responsible for ensuring progress on the
         // message queue even if all others are sleeping
 //        DART_LOG_WARN("triggering remote progress");
-        dart_tasking_remote_progress();
+//        dart_tasking_remote_progress();
       }
 //      else {
 //        wait_for_work();
@@ -763,13 +763,15 @@ destroy_threadpool(bool print_stats)
     dart_thread_finalize(&thread_pool[i]);
   }
 
+#ifdef DART_ENABLE_LOGGING
   if (print_stats) {
-    printf("######################\n");
+    DART_LOG_INFO("######################");
     for (int i = 0; i < num_threads; ++i) {
-      printf("Thread %i executed %lu tasks\n", i, thread_pool[i].taskcntr);
+      DART_LOG_INFO("Thread %i executed %lu tasks", i, thread_pool[i].taskcntr);
     }
-    printf("######################\n");
+    DART_LOG_INFO("######################");
   }
+#endif // DART_ENABLE_LOGGING
 
   free(thread_pool);
 
