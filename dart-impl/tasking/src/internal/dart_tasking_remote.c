@@ -14,7 +14,7 @@
 
 
 static dart_amsgq_t amsgq;
-#define DART_RTASK_QLEN 256
+#define DART_RTASK_QLEN 1024
 
 static bool initialized = false;
 
@@ -164,7 +164,7 @@ dart_ret_t dart_tasking_remote_release(
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
-      // TODO: anything more sensible to do here?
+      dart_amsg_process(amsgq);
       continue;
     } else {
       DART_LOG_ERROR("Failed to send active message to unit %i", unit);
@@ -213,7 +213,7 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
-      // TODO: anything more sensible to do here?
+      dart_amsg_process(amsgq);
       continue;
     } else {
       DART_LOG_ERROR("Failed to send active message to unit %i", unit);
