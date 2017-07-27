@@ -13,6 +13,9 @@
 typedef ucontext_t context_t;
 // opaque type
 typedef struct context_list_s context_list_t;
+#else
+// dummy type
+typedef char context_t;
 #endif
 
 /**

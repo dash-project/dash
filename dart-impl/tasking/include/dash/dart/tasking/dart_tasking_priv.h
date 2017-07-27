@@ -40,10 +40,8 @@ struct dart_task_data {
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   int32_t                    epoch;
-#ifdef USE_UCONTEXT
   context_t                 *taskctx;         // context to start/resume task
   int                        delay;           // delay in case this task yields
-#endif
   bool                       has_ref;
 };
 

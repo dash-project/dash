@@ -47,10 +47,12 @@ context_t* dart__tasking__context_create()
     res = &ctxlist->ctx;
   }
 
+#ifdef DART_DEBUG
   // set the stack guards
   char *stack = (char*)res->uc_stack.ss_sp;
   *(uint64_t*)(stack) = 0xDEADBEEF;
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
+#endif
 
   return res;
 #endif
@@ -61,6 +63,7 @@ void dart__tasking__context_release(context_t* ctx)
 {
 #ifdef USE_UCONTEXT
 
+#ifdef DART_DEBUG
   // check the stack guards
   char *stack = (char*)ctx->uc_stack.ss_sp;
   if (*(uint64_t*)(stack) != 0xDEADBEEF &&
@@ -71,7 +74,7 @@ void dart__tasking__context_release(context_t* ctx)
         "Consider changing the stack size via DART_TASK_STACKSIZE! "
         "(current stack size: %zu)", task_stack_size);
   }
-
+#endif
 
   // thread-local list, no locking required
   context_list_t *ctxlist = (context_list_t*)
@@ -85,6 +88,7 @@ void dart__tasking__context_release(context_t* ctx)
 
 void dart__tasking__context_cleanup()
 {
+#ifdef USE_UCONTEXT
   dart_thread_t* thread = dart__tasking_current_thread();
 
   context_list_t *ctxlist = thread->ctxlist;
@@ -95,4 +99,5 @@ void dart__tasking__context_cleanup()
     ctxlist = next;
   }
   thread->ctxlist = NULL;
+#endif
 }
