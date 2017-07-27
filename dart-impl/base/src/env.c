@@ -89,7 +89,7 @@ size_t parse_size(const char *envstr)
   return res;
 }
 
-size_t
+ssize_t
 dart__base__env__task_stacksize()
 {
   static size_t stack_size = -1;

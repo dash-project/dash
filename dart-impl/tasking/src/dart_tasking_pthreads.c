@@ -13,6 +13,7 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
+#include <dash/dart/tasking/dart_tasking_context.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -26,8 +27,6 @@
 static volatile bool parallel = false;
 
 static int num_threads;
-
-static size_t task_stack_size = DEFAULT_TASK_STACK_SIZE;
 
 static bool initialized = false;
 
@@ -119,19 +118,20 @@ static
 void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
   dart_task_t *current_task = get_current_task();
+
+  if (task->taskctx == NULL) {
+    // create a context for a task invoked for the first time
+    task->taskctx = dart__tasking__context_create();
+    typedef void (context_func_t) (void);
+    makecontext(task->taskctx, (context_func_t*)&wrap_task, 1, task);
+  }
+
   if (current_task->state == DART_TASK_SUSPENDED) {
     // store current task's state and jump into new task
-    swapcontext(&current_task->taskctx, &task->taskctx);
+    swapcontext(current_task->taskctx, task->taskctx);
   } else {
-    volatile int invoked = 0;
-    // set thread's return context if this is not inside a yield
-    getcontext(&thread->retctx);
-    // do not invoke the task twice if returning to this context
-    if (!invoked) {
-      invoked = 1;
-      // invoke the task
-      setcontext(&task->taskctx);
-    }
+    // store current thread's context and jump into new task
+    swapcontext(&thread->retctx, task->taskctx);
   }
 }
 
@@ -144,20 +144,20 @@ dart__tasking__yield(int delay)
   dart_task_t *next = next_task(thread);
 
   if (next) {
-    volatile int guard = 0;
     // save the current task
     dart_task_t *current_task = dart_task_current_task();
     current_task->delay = delay;
-    getcontext(&current_task->taskctx);
-    if (!guard) {
-      guard = 1;
-      // mark task as suspended to avoid invoke_task to update the retctx
-      // the next task should return to where the current task would have
-      // returned
-      current_task->state = DART_TASK_SUSPENDED;
-      // here we leave this task
-      invoke_task(next, thread);
-    }
+    // mark task as suspended to avoid invoke_task to update the retctx
+    // the next task should return to where the current task would have
+    // returned
+    current_task->state = DART_TASK_SUSPENDED;
+    // set new task to running state, protected to prevent race conditions
+    // with dependency handling code
+    dart__base__mutex_lock(&(next->mutex));
+    next->state = DART_TASK_RUNNING;
+    dart__base__mutex_unlock(&(next->mutex));
+    // here we leave this task
+    invoke_task(next, thread);
 
     // requeue the previous task if necessary
     dart_task_t *prev_task = dart_task_current_task();
@@ -185,6 +185,7 @@ dart__tasking__yield(int delay)
 static
 void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
+
   // save current task and set to new task
   dart_task_t *current_task = get_current_task();
   set_current_task(task);
@@ -280,17 +281,8 @@ dart_task_t * next_task(dart_thread_t *thread)
 static
 dart_task_t * allocate_task()
 {
-  dart_task_t *task = malloc(sizeof(dart_task_t) + task_stack_size);
+  dart_task_t *task = malloc(sizeof(dart_task_t));
   dart__base__mutex_init(&task->mutex);
-
-#ifdef USE_UCONTEXT
-  // initialize context and set stack
-  getcontext(&task->taskctx);
-  task->taskctx.uc_link           = NULL;
-  task->taskctx.uc_stack.ss_sp    = (char*)(task + 1);
-  task->taskctx.uc_stack.ss_size  = task_stack_size;
-  task->taskctx.uc_stack.ss_flags = 0;
-#endif
 
   return task;
 }
@@ -327,18 +319,8 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->remote_successor = NULL;
   task->prev         = NULL;
   task->successor    = NULL;
+  task->taskctx      = NULL;
   task->unresolved_deps = 0;
-
-#ifdef USE_UCONTEXT
-  // set the stack guards
-  char *stack = task->taskctx.uc_stack.ss_sp;
-  *(uint64_t*)(stack) = 0xDEADBEEF;
-  *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
-  // create the new context
-  typedef void (context_func_t) (void);
-  makecontext(&task->taskctx, (context_func_t*)&wrap_task, 1, task);
-#endif
-
 
   return task;
 }
@@ -350,7 +332,6 @@ void destroy_task(dart_task_t *task)
     free(task->data);
   }
   // reset some of the fields
-  // IMPORTANT: the state may not be rewritten!
   task->data             = NULL;
   task->data_size        = 0;
   task->fn               = NULL;
@@ -362,19 +343,8 @@ void destroy_task(dart_task_t *task)
   task->state            = DART_TASK_DESTROYED;
   task->has_ref          = false;
 
-
-#ifdef USE_UCONTEXT
-  // check the stack guards
-  char *stack = task->taskctx.uc_stack.ss_sp;
-  if (*(uint64_t*)(stack) != 0xDEADBEEF &&
-      *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) != 0xDEADBEEF)
-  {
-    DART_LOG_WARN(
-        "Possible TASK STACK OVERFLOW detected! "
-        "Consider changing the stack size via DART_TASK_STACKSIZE! "
-        "(current stack size: %zu)", task_stack_size);
-  }
-#endif
+  dart__tasking__context_release(task->taskctx);
+  task->taskctx          = NULL;
 
   pthread_mutex_lock(&task_recycle_mutex);
   DART_STACK_PUSH(task_recycle_list, task);
@@ -393,6 +363,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
     dart_task_t *current_task = get_current_task();
 
+    // set task to running state, protected to prevent race conditions with
+    // dependency handling code
     dart__base__mutex_lock(&(task->mutex));
     task->state = DART_TASK_RUNNING;
     dart__base__mutex_unlock(&(task->mutex));
@@ -464,6 +436,8 @@ void* thread_main(void *data)
 //    }
   }
 
+  dart__tasking__context_cleanup();
+
   DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
 
   return NULL;
@@ -530,13 +504,7 @@ dart__tasking__init()
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
 
-#ifdef USE_UCONTEXT
-  task_stack_size = dart__base__env__task_stacksize();
-  if (task_stack_size == -1) task_stack_size = DEFAULT_TASK_STACK_SIZE;
-  DART_LOG_INFO("Using per-task stack of size %zu", task_stack_size);
-#else
-  task_stack_size = 0;
-#endif
+  dart__tasking__context_init();
 
   // keep threads running
   parallel = true;
