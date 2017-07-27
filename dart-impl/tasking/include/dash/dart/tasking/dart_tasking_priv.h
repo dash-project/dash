@@ -7,19 +7,10 @@
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
-
-// TODO: Make this a CMake variable?
-#define USE_UCONTEXT 1
-
-#ifdef USE_UCONTEXT
-#include <ucontext.h>
-typedef ucontext_t context_t;
-#endif
+#include <dash/dart/tasking/dart_tasking_context.h>
 
 #define DART_AMSGQ_SENDRECV
-
-// Use 16K stack size per task
-#define DEFAULT_TASK_STACK_SIZE (1<<14)
+//#define DART_AMSGQ_LOCKFREE
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -49,10 +40,8 @@ struct dart_task_data {
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   int32_t                    epoch;
-#ifdef USE_UCONTEXT
-  context_t                  taskctx;         // context to start/resume task
+  context_t                 *taskctx;         // context to start/resume task
   int                        delay;           // delay in case this task yields
-#endif
   bool                       has_ref;
 };
 
@@ -86,6 +75,7 @@ typedef struct {
   int                     thread_id;
 #ifdef USE_UCONTEXT
   context_t               retctx;            // the thread-specific context to return to eventually
+  context_list_t        * ctxlist;
 #endif
 } dart_thread_t;
 
