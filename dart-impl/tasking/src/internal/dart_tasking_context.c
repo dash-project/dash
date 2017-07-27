@@ -1,4 +1,6 @@
 
+#include <ucontext.h>
+#include <errno.h>
 
 #include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
@@ -22,7 +24,7 @@ void dart__tasking__context_init()
 }
 
 
-context_t* dart__tasking__context_create()
+context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 {
 #ifdef USE_UCONTEXT
 
@@ -54,6 +56,10 @@ context_t* dart__tasking__context_create()
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
 #endif
 
+  // yep, makecontext takes a function taking no arguments and passes it args
+  typedef void (happy_compiler_context_func_t) (void);
+  makecontext(res, (happy_compiler_context_func_t*)fn, 1, arg);
+
   return res;
 #endif
   return NULL;
@@ -84,6 +90,23 @@ void dart__tasking__context_release(context_t* ctx)
   ctxlist->next = thread->ctxlist;
   thread->ctxlist = ctxlist;
 #endif
+}
+
+void dart__tasking__context_invoke(context_t* ctx)
+{
+  setcontext(ctx);
+}
+
+dart_ret_t
+dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
+{
+  int ret = swapcontext(old_ctx, new_ctx);
+  if (ret == -1) {
+    DART_LOG_ERROR("Call to swapcontext failed! (errno=%i)", errno);
+    return DART_ERR_OTHER;
+  } else {
+    return DART_OK;
+  }
 }
 
 void dart__tasking__context_cleanup()

@@ -111,7 +111,7 @@ void wrap_task(dart_task_t *task)
   // return into the current thread's context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
-  setcontext(&thread->retctx);
+  dart__tasking__context_invoke(&thread->retctx);
 }
 
 static
@@ -121,17 +121,16 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 
   if (task->taskctx == NULL) {
     // create a context for a task invoked for the first time
-    task->taskctx = dart__tasking__context_create();
-    typedef void (context_func_t) (void);
-    makecontext(task->taskctx, (context_func_t*)&wrap_task, 1, task);
+    task->taskctx = dart__tasking__context_create(
+                      (context_func_t*)&wrap_task, task);
   }
 
   if (current_task->state == DART_TASK_SUSPENDED) {
     // store current task's state and jump into new task
-    swapcontext(current_task->taskctx, task->taskctx);
+    dart__tasking__context_swap(current_task->taskctx, task->taskctx);
   } else {
     // store current thread's context and jump into new task
-    swapcontext(&thread->retctx, task->taskctx);
+    dart__tasking__context_swap(&thread->retctx, task->taskctx);
   }
 }
 
