@@ -395,7 +395,7 @@ public:
     return member<MEMTYPE>(offs);
   }
 
-  void swap(self_t &b){
+  void swap(self_t & b){
     T tmp = static_cast<T>(*this);
     *this = b;
     b = tmp;
@@ -424,7 +424,7 @@ std::ostream & operator<<(
 namespace std {
 
 template<typename T>
-void swap(dash::GlobRef<T> &a, dash::GlobRef<T> &b){
+void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
   a.swap(b);
 }
 }

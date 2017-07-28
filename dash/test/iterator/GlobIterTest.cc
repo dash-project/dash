@@ -9,12 +9,8 @@ TEST_F(GlobIterTest, Swap) {
   arr.local[0] = static_cast<int>(dash::myid());
   arr.barrier();
 
-  auto beg = arr.begin();
-  auto end = arr.end();
   if(dash::myid() == 0){
-    auto begref = *beg;
-    auto endref = *end;
-    std::swap(begref, endref);
+    std::swap(*(arr.begin()), *(arr.end()-1));
   }
   arr.barrier();
   int newbegval = arr[0];
@@ -22,7 +18,7 @@ TEST_F(GlobIterTest, Swap) {
   ASSERT_EQ_U(newbegval, dash::size()-1);
   ASSERT_EQ_U(newendval, 0);
 }
-
+#if 1
 TEST_F(GlobIterTest, Sort) {
   // do not use that in production as this is inefficient as hell!
   dash::Array<int> arr(dash::size());
@@ -37,4 +33,4 @@ TEST_F(GlobIterTest, Sort) {
   locval = arr.local[0];
   ASSERT_EQ_U(locval, static_cast<int>(dash::myid()));
 }
-
+#endif
