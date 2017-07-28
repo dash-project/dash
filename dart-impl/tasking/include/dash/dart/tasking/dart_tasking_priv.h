@@ -9,7 +9,7 @@
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 
-#define DART_AMSGQ_SENDRECV
+//#define DART_AMSGQ_SENDRECV
 //#define DART_AMSGQ_LOCKFREE
 
 // forward declaration, defined in dart_tasking_datadeps.c

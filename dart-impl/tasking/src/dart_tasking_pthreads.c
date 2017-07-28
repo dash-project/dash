@@ -449,6 +449,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->thread_id = threadnum;
   thread->current_task = NULL;
   thread->taskcntr  = 0;
+  thread->ctxlist   = NULL;
   dart_tasking_taskqueue_init(&thread->queue);
   dart_tasking_taskqueue_init(&thread->defered_queue);
   DART_LOG_TRACE("Thread %i has task queue %p and deferred queue %p",
@@ -659,8 +660,8 @@ dart__tasking__task_complete()
 // TODO: DEBUG
 //    dart_tasking_remote_progress();
     // b) process our tasks
-    dart_task_t *task = next_task(thread);
-    handle_task(task, thread);
+    dart_task_t *next = next_task(thread);
+    handle_task(next, thread);
     dart_tasking_remote_progress();
   }
 #ifdef USE_UCONTEXT

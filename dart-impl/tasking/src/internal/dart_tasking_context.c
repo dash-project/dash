@@ -37,7 +37,8 @@ context_t* dart__tasking__context_create()
 
   if (res == NULL) {
     // allocate a new context
-    context_list_t *ctxlist = malloc(sizeof(context_list_t) + task_stack_size);
+    context_list_t *ctxlist = calloc(1, sizeof(context_list_t) + task_stack_size);
+    ctxlist->next = NULL;
     // initialize context and set stack
     getcontext(&ctxlist->ctx);
     ctxlist->ctx.uc_link           = NULL;
@@ -78,7 +79,7 @@ void dart__tasking__context_release(context_t* ctx)
 
   // thread-local list, no locking required
   context_list_t *ctxlist = (context_list_t*)
-                                (((char*)ctx) - sizeof(context_list_t *));
+                                (((char*)ctx) - sizeof(struct context_list_s *));
 
   dart_thread_t* thread = dart__tasking_current_thread();
   ctxlist->next = thread->ctxlist;
