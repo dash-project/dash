@@ -401,6 +401,11 @@ public:
     return member<MEMTYPE>(offs);
   }
 
+  void swap(self_t &b){
+    T tmp = static_cast<T>(*this);
+    *this = b;
+    b = tmp;
+  }
 };
 
 template<typename T>
@@ -421,5 +426,13 @@ std::ostream & operator<<(
 }
 
 } // namespace dash
+
+namespace std {
+
+template<typename T>
+void swap(dash::GlobRef<T> &a, dash::GlobRef<T> &b){
+  a.swap(b);
+}
+}
 
 #endif // DASH__GLOBREF_H_
