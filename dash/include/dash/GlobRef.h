@@ -199,12 +199,6 @@ public:
     return !(*this == value);
   }
 
-  friend void swap(GlobRef<T> & a, GlobRef<T> & b) {
-    nonconst_value_type temp = static_cast<nonconst_value_type>(a);
-    a = b;
-    b = temp;
-  }
-
   void set(const_value_type & val) {
     DASH_LOG_TRACE_VAR("GlobRef.set()", val);
     DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
