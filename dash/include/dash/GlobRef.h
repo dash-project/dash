@@ -395,10 +395,28 @@ public:
     return member<MEMTYPE>(offs);
   }
 
-  void swap(self_t & b){
+  /**
+   * necessary for 
+   * \code
+   * auto refbeg = *(arr.begin())
+   * auto refend = *(arr.end()-1)
+   * swap(refbeg, refend)
+   * \endcode
+   */
+  inline void swap(dash::GlobRef<T> & b){
     T tmp = static_cast<T>(*this);
     *this = b;
     b = tmp;
+  }
+
+  /**
+   * necessary for r-values, but ADL does not find that fucntion
+   * \code
+   * swap(*(arr.begin(), *(arr.end()-1));
+   * \endcode
+   */
+  inline void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
+    a.swap(b);
   }
 };
 
@@ -422,7 +440,13 @@ std::ostream & operator<<(
 } // namespace dash
 
 namespace std {
-
+  /**
+   * necessary for r-values 
+   * \code
+   * using std::swap;
+   * swap(*(arr.begin(), *(arr.end()-1));
+   * \endcode
+   */
 template<typename T>
 void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
   a.swap(b);

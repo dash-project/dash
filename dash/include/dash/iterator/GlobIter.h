@@ -713,7 +713,6 @@ public:
   {
     return _pattern->team();
   }
-
 }; // class GlobIter
 
 
@@ -738,6 +737,23 @@ std::ostream & operator<<(
 }
 
 } // namespace dash
+
+namespace std {
+template <
+  typename ElementType,
+  class    Pattern,
+  class    GlobStaticMem,
+  class    Pointer,
+  class    Reference >
+void iter_swap(
+    dash::GlobIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> a,
+    dash::GlobIter<ElementType, Pattern, GlobStaticMem, Pointer, Reference> b)
+{
+  // use this patten to support ADL
+  using std::swap;
+  swap(*a, *b);
+}
+}
 
 #include <dash/iterator/GlobViewIter.h>
 
