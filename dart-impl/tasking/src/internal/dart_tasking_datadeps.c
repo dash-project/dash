@@ -236,10 +236,12 @@ dart_tasking_datadeps_release_unhandled_remote()
                               local != NULL;
                               local = local->next) {
       dart_task_t *task = local->task.local;
-      // lock the task to avoid race condiditions in updating the state
-      dart__base__mutex_lock(&task->mutex);
-      if (DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep) &&
-          IS_OUT_DEP(local->taskdep)) {
+
+      // avoid repeatedly inspecting the same task and only consider
+      // matching output dependencies
+      if (task != candidate &&
+          IS_OUT_DEP(local->taskdep) &&
+          DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep)) {
         /*
          * Remote INPUT task dependencies are considered to refer to the
          * previous epoch so every task in the same epoch and following
@@ -251,6 +253,10 @@ dart_tasking_datadeps_release_unhandled_remote()
          * TODO: formulate the relation of local and remote dependencies
          *       between tasks and epochs!
          */
+
+        // lock the task to avoid race condiditions in updating the state
+        dart__base__mutex_lock(&task->mutex);
+
         if (!IS_ACTIVE_TASK(task)) {
           dart__base__mutex_unlock(&task->mutex);
           DART_LOG_INFO("Task %p matching remote task %p already finished", task, rdep->task);
@@ -297,8 +303,6 @@ dart_tasking_datadeps_release_unhandled_remote()
             dart__base__mutex_unlock(&task->mutex);
           }
         }
-      } else {
-        dart__base__mutex_unlock(&task->mutex);
       }
     }
 
