@@ -1,12 +1,12 @@
 
-#include "GlobIterTest.h"
+#include "StlAlgoTest.h"
 
 #include <dash/Array.h>
 #include <algorithm>
 
-TEST_F(GlobIterTest, CompilerADLTest){
+TEST_F(StlAlgoTest, CompilerADLTest){
   dash::Array<int> arr(dash::size());
-  arr.local[0] = static_cast<int>(dash::myid());
+  arr.local[0] = dash::myid();
   arr.barrier();
 
   if(dash::myid() == 0){
@@ -39,10 +39,10 @@ TEST_F(GlobIterTest, CompilerADLTest){
   }
 }
 
-TEST_F(GlobIterTest, Swap) {
+TEST_F(StlAlgoTest, Swap) {
   using std::swap;
   dash::Array<int> arr(dash::size());
-  arr.local[0] = static_cast<int>(dash::myid());
+  arr.local[0] = dash::myid();
   arr.barrier();
 
   if(dash::myid() == 0){
@@ -53,14 +53,14 @@ TEST_F(GlobIterTest, Swap) {
   }
   arr.barrier();
   int newbegval = arr[0];
-  int newendval = arr[static_cast<int>(dash::size()-1)];
+  int newendval = arr[dash::size()-1];
   ASSERT_EQ_U(newbegval, dash::size()-1);
   ASSERT_EQ_U(newendval, 0);
 }
 
-TEST_F(GlobIterTest, IterSwap) {
+TEST_F(StlAlgoTest, IterSwap) {
   dash::Array<int> arr(dash::size());
-  arr.local[0] = static_cast<int>(dash::myid());
+  arr.local[0] = dash::myid();
   arr.barrier();
 
   if(dash::myid() == 0){
@@ -68,12 +68,12 @@ TEST_F(GlobIterTest, IterSwap) {
   }
   arr.barrier();
   int newbegval = arr[0];
-  int newendval = arr[static_cast<int>(dash::size()-1)];
+  int newendval = arr[dash::size()-1];
   ASSERT_EQ_U(newbegval, dash::size()-1);
   ASSERT_EQ_U(newendval, 0);
 }
 
-TEST_F(GlobIterTest, Sort) {
+TEST_F(StlAlgoTest, Sort) {
   // do not use that in production as this is inefficient as hell!
   dash::Array<int> arr(dash::size());
   // init array in reverse order [n-1,n-2,...,0]
