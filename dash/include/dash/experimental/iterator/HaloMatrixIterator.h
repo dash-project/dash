@@ -108,27 +108,67 @@ public:
 
   index_type lpos() const { return _local_layout.at(_coords); }
 
-  ElementT valueAt(const region_index_t index_stencil) {
-    // TODO: is the given offset in halospec range?
+  const CoordsT&  coords() const { return _coords; };
 
-    if (Scope == StencilViewScope::INNER) {
-      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
-    } else {
+  bool isHaloValue(const region_index_t index_stencil) {
+
+    if (Scope == StencilViewScope::INNER)
+      return false;
+
+    auto        halo_coords{_coords};
+    const auto& stencil = _stencil_spec[index_stencil];
+    for (auto d = 0; d < NumDimensions; ++d) {
+      halo_coords[d] += stencil[d];
+      if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
+        return true;
+    }
+
+    return false;
+  }
+
+  std::vector<ElementT> haloValues() {
+    // TODO: is the given offset in halospec range?
+    std::vector<ElementT> halos;
+    if (Scope == StencilViewScope::INNER)
+      return halos;
+
+    for(auto i = 0; i < NumStencilPoints; ++i) {
       auto        halo_coords{_coords};
-      const auto& stencil = _stencil_spec[index_stencil];
+      const auto& stencil = _stencil_spec[i];
       bool        halo    = false;
       for (auto d = 0; d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
           halo = true;
       }
-      // TODO check wether region is nullptr or not
-      // TODO implement as method in HaloRegionSpec
+    // TODO check wether region is nullptr or not
+    // TODO implement as method in HaloRegionSpec
       if (halo)
-        return valueHaloAt(halo_coords);
-
-      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
+        halos.push_back(valueHaloAt(halo_coords));
     }
+    return halos;
+  }
+
+  ElementT valueAt(const region_index_t index_stencil) {
+    // TODO: is the given offset in halospec range?
+
+    if (Scope == StencilViewScope::INNER)
+      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
+
+    auto        halo_coords{_coords};
+    const auto& stencil = _stencil_spec[index_stencil];
+    bool        halo    = false;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      halo_coords[d] += stencil[d];
+      if (halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
+        halo = true;
+    }
+    // TODO check wether region is nullptr or not
+    // TODO implement as method in HaloRegionSpec
+    if (halo)
+      return valueHaloAt(halo_coords);
+
+    return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
   }
 
   ElementT valueAt(const StencilT& stencil) {
