@@ -670,6 +670,7 @@ public:
   Region(const HaloRegionSpecT& region_spec, const ViewSpecT& region, GlobMemT& globmem,
          const PatternT& pattern, const BorderT& border)
       : _region_spec(region_spec), _region(region), _border(border),
+        _border_region(std::any_of(border.begin(), border.end(), [](bool border_dim){ return border_dim == true;})),
         _beg(globmem, pattern, _region, 0, _region.size()),
         _end(globmem, pattern, _region, _region.size(), _region.size()) {}
 
@@ -683,6 +684,8 @@ public:
 
   constexpr BorderT border() const { return _border; }
 
+  bool borderRegion() const { return _border_region; };
+
   constexpr bool borderDim(dim_t dim) const { return _border[dim]; }
 
   iterator begin() const { return _beg; }
@@ -693,6 +696,7 @@ private:
   const HaloRegionSpecT _region_spec;
   const ViewSpecT       _region;
   BorderT               _border;
+  bool                  _border_region;
   iterator              _beg;
   iterator              _end;
 }; // Region
@@ -771,7 +775,6 @@ public:
             halo_region_extents[d] = halo_extent;
             bnd_region_extents[d]  = halo_extent;
           }
-          continue;
         } else {
           halo_extents_max[d].second = std::max(halo_extents_max[d].second, halo_extent);
           auto check_extent          = view_offset + view_extent + halo_extents_max[d].second;
