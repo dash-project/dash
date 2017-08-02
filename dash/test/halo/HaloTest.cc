@@ -173,7 +173,7 @@ TEST_F(HaloTest, HaloSpecStencils)
   }
 }
 
-TEST_F(HaloTest, HaloBlockHaloRegions2D)
+TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 {
   using PatternT = dash::Pattern<2>;
   using index_type = typename PatternT::index_type;
@@ -187,120 +187,95 @@ TEST_F(HaloTest, HaloBlockHaloRegions2D)
 
   auto myid(dash::myid());
 
-  auto ext_per_unit = 10;
   auto boundary_width = 5;
-  auto ext_total = ext_per_unit * dash::size();
 
   DistSpecT dist_spec(dash::BLOCKED, dash::BLOCKED);
   TeamSpecT team_spec{};
   team_spec.balance_extents();
-  PatternT pattern(SizeSpecT(ext_total,ext_total), dist_spec, team_spec, dash::Team::All());
+  PatternT pattern(SizeSpecT(ext_per_dim,ext_per_dim), dist_spec, team_spec, dash::Team::All());
 
-  MatrixT matrix_orig(pattern);
   MatrixT matrix_halo(pattern);
-  MatrixT matrix_check(pattern);
-
-  dash::fill(matrix_orig.begin(), matrix_orig.end(), 1);
   dash::fill(matrix_halo.begin(), matrix_halo.end(), 1);
-  dash::fill(matrix_check.begin(), matrix_check.end(), 1);
 
   dash::Team::All().barrier();
 
   long sum_check = 0;
   if(myid == 0) {
-    index_type ext_diff = ext_total - boundary_width;
-    for(index_type i = boundary_width; i < ext_diff; ++i)
-      for(index_type j = boundary_width; j < ext_diff; ++j)
-        matrix_orig[i][j] = 5;
+    index_type ext_diff = ext_per_dim - boundary_width;
 
-    for(index_type i = 1; i < ext_total - 1; ++i)
-      for(index_type j = 1; j < ext_total - 1; ++j)
-        matrix_check[i][j] = matrix_orig[i-1][j-1] + matrix_orig[i-1][j]   + matrix_orig[i-1][j+1] +
-                             matrix_orig[i][j-1]   + matrix_orig[i][j]     + matrix_orig[i][j+1] +
-                             matrix_orig[i+1][j-1] + matrix_orig[i+1][j] + matrix_orig[i+1][j+1];
+    long** matrix_check = new long*[ext_per_dim];
+    for(auto i = 0; i < ext_per_dim; ++i) {
+      matrix_check[i] = new long[ext_per_dim];
+      for(auto j = 0; j < ext_per_dim; ++j) {
+        if(i >= boundary_width  && i < ext_diff && j >= boundary_width && j < ext_diff) {
+          matrix_halo[i][j] = 5;
+          matrix_check[i][j] = 5;
+          continue;
+        }
 
-    for(const auto& elem : matrix_check)
-      sum_check += elem;
+        matrix_check[i][j] = 1;
+      }
+    }
+
+    for(index_type i = 1; i < ext_per_dim - 1; ++i) {
+      for(index_type j = 1; j < ext_per_dim - 1; ++j) {
+        sum_check += matrix_check[i-1][j-1] + matrix_check[i-1][j]   + matrix_check[i-1][j+1] +
+                    matrix_check[i][j-1]   + matrix_check[i][j]     + matrix_check[i][j+1] +
+                    matrix_check[i+1][j-1] + matrix_check[i+1][j] + matrix_check[i+1][j+1];
+      }
+    }
+
+    for(auto i = 0; i < ext_per_dim; ++i)
+      delete matrix_check[i];
+    delete matrix_check;
   }
 
-  matrix_check.barrier();
+  matrix_halo.barrier();
 
-  CycleSpecT cycle_spec;//{Cycle::NONE, Cycle::NONE};
+  CycleSpecT cycle_spec;
   StencilSpecT stencil_spec({
       StencilT(-1,-1), StencilT(-1, 0), StencilT(-1, 1),
       StencilT( 0,-1),                  StencilT( 0, 1),
       StencilT( 1,-1), StencilT( 1, 0), StencilT( 1, 1)});
 
-  HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_orig, stencil_spec, cycle_spec);
+  HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
+
+  dash::Array<long> sum_halo(dash::size());
+  dash::fill(sum_halo.begin(), sum_halo.end(),0);
+  auto* sum_local = sum_halo.lbegin();
 
   halo_wrapper.updateHalosAsync();
 
-  auto mat_halo_lbegin = matrix_halo.local.lbegin();
   auto it_iend = halo_wrapper.iend();
   for(auto it = halo_wrapper.ibegin(); it != it_iend; ++it) {
-    auto sum_tmp = 0;
     for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      sum_tmp += it.valueAt(i);
+      *sum_local += it.valueAt(i);
 
-    *(mat_halo_lbegin + it.lpos()) = sum_tmp + *it;
+    *sum_local += *it;
   }
 
   halo_wrapper.waitHalosAsync();
 
   auto it_bend = halo_wrapper.bend();
   for(auto it = halo_wrapper.bbegin(); it != it_bend; ++it) {
-    auto sum_tmp = 0;
     for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      sum_tmp += it.valueAt(i);
+      *sum_local += it.valueAt(i);
 
-    *(mat_halo_lbegin + it.lpos()) = sum_tmp + *it;
+    *sum_local += *it;
   }
 
-  matrix_halo.barrier();
+  sum_halo.barrier();
 
+  unsigned long sum_halo_total = 0;
+  if(dash::myid() == 0) {
+    for(const auto& elem : sum_halo)
+      sum_halo_total += elem;
 
-
-  if(myid == 0) {
-    long sum_halo = 0;
-    for(const auto& elem : matrix_halo)
-      sum_halo += elem;
-
-    EXPECT_EQ(sum_check, sum_halo);
+    EXPECT_EQ(sum_check, sum_halo_total);
   }
 
   dash::Team::All().barrier();
 }
-
-/*  void print_matrix_check(long*** matrix, long ext) {
-    std::string shift{};
-    for(auto r = 0; r < ext; ++r) {
-      for (auto c = 0; c < ext; ++c) {
-        std::cout << std::endl << shift;
-        for (auto d = 0; d < ext; ++d)
-          std::cout << " " << std::setw(2) << (long)matrix[r][c][d];
-      }
-      shift += " ";
-    }
-  }
-
-  template<typename MatrixT>
-  void print_matrix(const MatrixT& matrix) {
-    auto rows = matrix.extent(0);
-    auto cols = matrix.extent(1);
-    auto deep = matrix.extent(2);
-
-    std::string shift{};
-    for (auto d = 0; d < deep; ++d) {
-      for(auto r = 0; r < rows; ++r) {
-        std::cout << std::endl << shift;
-        for (auto c = 0; c < cols; ++c) {
-          std::cout << " " << std::setw(3) << (long)matrix[r][c][d] << "(" << matrix.pattern().unit_at({{ r,c,d }}) << ")";
-        }
-      }
-      shift += " ";
-    }
-  }
-*/
 
 template<typename T>
 long calc_sum_check(long*** matrix,T begin, T end) {
@@ -809,7 +784,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   unsigned long sum_check = 0;
   index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
-    std::cout << "start" << std::endl;
     long*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long*[ext_per_dim_check];
@@ -877,7 +851,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
       delete matrix_check[i];
     }
     delete matrix_check;
-    std::cout << "start" << std::endl;
 
   }
 

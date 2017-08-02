@@ -106,9 +106,6 @@ public:
     for (dim_t i = 0; i < NumDimensions; ++i) {
       this->_values[i] = Cycle::NONE;
     }
-    coords[0] = index_tmp;
-
-    return coords;
   }
 
   template <typename... Values>
