@@ -61,11 +61,11 @@ fi
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=ON \
+                        -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
@@ -91,6 +91,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=ON \
                         \
                         -DENABLE_NASTYMPI=ON \
+                        -DNASTYMPI_LIBRARY_PATH=/home/joseph/src/nasty-MPI/ \
                         \
                         -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=ON \

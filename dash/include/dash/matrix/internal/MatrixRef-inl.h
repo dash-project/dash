@@ -251,7 +251,7 @@ typename MatrixRef<T, NumDim, CUR, PatternT>::local_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::sub_local() noexcept
 {
-  return local_type(this);
+  return local_type(this->_refview._mat, _refview._coord);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -266,7 +266,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   //   _mat->local.view(_refview)
   //
   // ... as order of projections (slice + local vs. local + slice) matters.
-  return sub_local().begin();
+  return sub_local().lbegin();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -281,7 +281,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   //   _mat->local.view(_refview)
   //
   // ... as order of projections (slice + local vs. local + slice) matters.
-  return sub_local().end();
+  return sub_local().lend();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
