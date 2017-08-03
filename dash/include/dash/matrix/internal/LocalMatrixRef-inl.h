@@ -289,7 +289,7 @@ inline T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() noexcept
 {
-  return end().local();
+  return begin().local() + size();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -297,7 +297,7 @@ constexpr const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() const noexcept
 {
-  return end().local();
+  return begin().local() + size();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
