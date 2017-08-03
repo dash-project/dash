@@ -1616,3 +1616,29 @@ TEST_F(MatrixTest, MoveSemantics){
     ASSERT_EQ_U(*(matrix_b.lbegin()), 1);
   }
 }
+
+
+TEST_F(MatrixTest, MatrixRefLbegin){
+  using matrix_t = dash::Matrix<int, 2>;
+  size_t nelem = dash::size() * 10;
+  size_t tilesize = 5;
+  matrix_t matrix(nelem, nelem, dash::TILE(tilesize), dash::TILE(tilesize));
+  auto& pattern = matrix.pattern();
+  dash::fill(matrix.begin(), matrix.end(), -1);
+
+  auto lbs = pattern.local_blockspec();
+
+  // fill our blocks with our ID
+  for (size_t i = 0; i < lbs.size(); ++i) {
+    auto coords = lbs.coords(i);
+    auto block  = matrix.block(coords);
+    for (auto bliter = block.lbegin(); bliter != block.lend(); ++bliter) {
+      *bliter = dash::myid();
+    }
+  }
+
+  // check that all our elements are correctly set
+  for (auto iter = matrix.lbegin(); iter != matrix.lend(); ++iter) {
+    ASSERT_EQ_U(*iter, dash::myid());
+  }
+}
