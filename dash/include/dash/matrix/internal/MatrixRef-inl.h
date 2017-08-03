@@ -251,7 +251,7 @@ typename MatrixRef<T, NumDim, CUR, PatternT>::local_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::sub_local() noexcept
 {
-  return local_type(this->_refview._mat, _refview._coord);
+  return local_type(this->_refview._mat, _refview._viewspec.offsets());
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
