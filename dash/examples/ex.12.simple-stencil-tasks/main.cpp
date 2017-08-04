@@ -107,27 +107,39 @@ namespace internal {
 
   template<class TaskFunc, typename ... Args>
   void
-  create_task(TaskFunc f, const Args&... args){
+  create_task(TaskFunc f, dart_task_prio_t prio, const Args&... args){
     std::array<dart_task_dep_t, sizeof...(args)> deps({{
       static_cast<dart_task_dep_t>(args)...
     }});
     dart_task_create(
         &dash::internal::invoke_task_action,
         new dash::internal::FuncT(f), 0,
-        deps.data(), deps.size(), DART_PRIO_LOW);
+        deps.data(), deps.size(), prio);
+  }
+
+  template<class TaskFunc, typename ... Args>
+  void
+  create_task(TaskFunc f, const Args&... args){
+    create_task(f, DART_PRIO_LOW, args...);
   }
 
 
   template<class TaskFunc, typename ... Args>
   dart_taskref_t
-  create_task_handle(TaskFunc f, const Args&... args){
+  create_task_handle(TaskFunc f, dart_task_prio_t prio, const Args&... args){
     std::array<dart_task_dep_t, sizeof...(args)> deps({{
       static_cast<dart_task_dep_t>(args)...
     }});
     dart_task_create(
         &dash::internal::invoke_task_action,
         new dash::internal::FuncT(f), 0,
-        deps.data(), deps.size(), DART_PRIO_LOW);
+        deps.data(), deps.size(), prio);
+  }
+
+  template<class TaskFunc, typename ... Args>
+  dart_taskref_t
+  create_task_handle(TaskFunc f, const Args&... args){
+    return create_task_handle(f, DART_PRIO_LOW, args...);
   }
 
 } // namespace dash
@@ -294,6 +306,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         }
         std::free(up_row);
       },
+      DART_PRIO_HIGH,
       dash::in(data_old.at(local_beg_gidx[0] - 1,   0), iter-1),
       dash::in(data_old.at(local_beg_gidx[0] + 1,   0), iter-1),
       dash::in(data_old.at(local_beg_gidx[0],       0), iter-1),
@@ -333,6 +346,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         }
         std::free(down_row);
       },
+      DART_PRIO_HIGH,
       dash::in(data_old.at(local_end_gidx[0] - 1,   0), iter-1),
       dash::in(data_old.at(local_end_gidx[0] + 1,   0), iter-1),
       dash::in(data_old.at(local_end_gidx[0],       0), iter-1),
