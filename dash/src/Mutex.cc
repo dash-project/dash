@@ -10,7 +10,10 @@ Mutex::Mutex(Team & team){
 
 Mutex::~Mutex(){
   dart_ret_t ret = dart_team_lock_destroy(&_mutex);
-  DASH_ASSERT_EQ(DART_OK, ret, "dart_team_lock_free failed");
+  if (ret != DART_OK) {
+    DASH_LOG_ERROR("Failed to destroy DART lock! "
+                   "(dart_team_lock_free failed)");
+  }
 }
 
 void Mutex::lock(){

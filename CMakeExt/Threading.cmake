@@ -14,9 +14,9 @@ if (ENABLE_THREADSUPPORT)
     if (DART_SYNC_BUILTINS)
       MESSAGE(STATUS "Found builtin __sync_add_and_fetch")
       set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS_RELEASE} -DDART_HAVE_SYNC_BUILTINS")
+        "${CMAKE_C_FLAGS} -DDART_HAVE_SYNC_BUILTINS")
       set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS_RELEASE} -DDART_HAVE_SYNC_BUILTINS")
+        "${CMAKE_CXX_FLAGS} -DDART_HAVE_SYNC_BUILTINS")
     else()
       # error out for now
       MESSAGE(STATUS "Compiling builtin __sync_add_and_fetch failed with error " 
