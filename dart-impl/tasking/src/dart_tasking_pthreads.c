@@ -287,7 +287,11 @@ dart_task_t * allocate_task()
 }
 
 static
-dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
+dart_task_t * create_task(
+  void (*fn) (void *),
+  void             *data,
+  size_t            data_size,
+  dart_task_prio_t  prio)
 {
   dart_task_t *task = NULL;
   if (task_free_list != NULL) {
@@ -318,6 +322,7 @@ dart_task_t * create_task(void (*fn) (void *), void *data, size_t data_size)
   task->remote_successor = NULL;
   task->prev         = NULL;
   task->successor    = NULL;
+  task->prio         = prio;
   task->taskctx      = NULL;
   task->unresolved_deps = 0;
 
@@ -570,9 +575,10 @@ dart__tasking__create_task(
     void            *data,
     size_t           data_size,
     dart_task_dep_t *deps,
-    size_t           ndeps)
+    size_t           ndeps,
+    dart_task_prio_t prio)
 {
-  dart_task_t *task = create_task(fn, data, data_size);
+  dart_task_t *task = create_task(fn, data, data_size, prio);
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
@@ -594,9 +600,10 @@ dart__tasking__create_task_handle(
     size_t           data_size,
     dart_task_dep_t *deps,
     size_t           ndeps,
+    dart_task_prio_t prio,
     dart_taskref_t  *ref)
 {
-  dart_task_t *task = create_task(fn, data, data_size);
+  dart_task_t *task = create_task(fn, data, data_size, prio);
   task->has_ref = true;
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);

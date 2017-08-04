@@ -60,8 +60,8 @@ TEST_F(DARTTaskingTest, BulkAtomicIncrement)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         NULL,                // dependency
-        0                    // number of dependencies
-        )
+        0,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 
@@ -89,8 +89,8 @@ TEST_F(DARTTaskingTest, Yield)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         NULL,                // dependency
-        0                    // number of dependencies
-        )
+        0,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 
@@ -126,6 +126,7 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
         1,                   // number of dependencies
+        DART_PRIO_LOW,
         &prev_task           // handle to be returned
         )
     );
@@ -165,8 +166,8 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
-        1                    // number of dependencies
-        )
+        1,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 
@@ -209,8 +210,8 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
-        2                    // number of dependencies
-        )
+        2,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 
@@ -252,8 +253,8 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
-        2                    // number of dependencies
-        )
+        2,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 
@@ -290,8 +291,8 @@ TEST_F(DARTTaskingTest, InOutDependency)
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
-        1                    // number of dependencies
-        )
+        1,                    // number of dependencies
+        DART_PRIO_LOW)
     );
   }
 

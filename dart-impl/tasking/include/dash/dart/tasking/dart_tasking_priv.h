@@ -37,6 +37,7 @@ struct dart_task_data {
   int32_t                    epoch;
   context_t                 *taskctx;         // context to start/resume task
   int                        delay;           // delay in case this task yields
+  dart_task_prio_t           prio;
   bool                       has_ref;
 };
 
@@ -55,10 +56,15 @@ typedef struct task_list {
   dart_task_t           *task;
 } task_list_t;
 
+struct task_deque{
+  dart_task_t * head;
+  dart_task_t * tail;
+};
+
 typedef struct dart_taskqueue {
-  dart_task_t          * head;
-  dart_task_t          * tail;
-  dart_mutex_t           mutex;
+  struct task_deque   lowprio;
+  struct task_deque   highprio;
+  dart_mutex_t        mutex;
 } dart_taskqueue_t;
 
 typedef struct {
@@ -92,7 +98,8 @@ dart__tasking__create_task(
   void            *data,
   size_t           data_size,
   dart_task_dep_t *deps,
-  size_t           ndeps);
+  size_t           ndeps,
+  dart_task_prio_t prio);
 
 
 dart_ret_t
@@ -102,6 +109,7 @@ dart__tasking__create_task_handle(
   size_t           data_size,
   dart_task_dep_t *deps,
   size_t           ndeps,
+  dart_task_prio_t prio,
   dart_taskref_t  *ref);
 
 

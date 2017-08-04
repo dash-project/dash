@@ -114,7 +114,7 @@ namespace internal {
     dart_task_create(
         &dash::internal::invoke_task_action,
         new dash::internal::FuncT(f), 0,
-        deps.data(), deps.size());
+        deps.data(), deps.size(), DART_PRIO_LOW);
   }
 
 
@@ -127,7 +127,7 @@ namespace internal {
     dart_task_create(
         &dash::internal::invoke_task_action,
         new dash::internal::FuncT(f), 0,
-        deps.data(), deps.size());
+        deps.data(), deps.size(), DART_PRIO_LOW);
   }
 
 } // namespace dash

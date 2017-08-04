@@ -45,7 +45,7 @@ benchmark_task_creation(size_t num_tasks)
 {
   Timer t;
   for (size_t i = 0; i < num_tasks; ++i) {
-    dart_task_create(&empty_task, NULL, 0, NULL, 0);
+    dart_task_create(&empty_task, NULL, 0, NULL, 0, DART_PRIO_LOW);
   }
   dart_task_complete();
   dash::barrier();
@@ -66,12 +66,12 @@ benchmark_task_remotedep_creation(size_t num_tasks)
   dep.type = DART_DEP_OUT;
   dep.epoch = 0;
   // create one output task
-  dart_task_create(&empty_task, NULL, 0, &dep, 1);
+  dart_task_create(&empty_task, NULL, 0, &dep, 1, DART_PRIO_LOW);
   dep.gptr = array[target].dart_gptr();
   dep.type = DART_DEP_IN;
   for (size_t i = 1; i <= num_tasks; ++i) {
     dep.epoch = 0;
-    dart_task_create(&empty_task, NULL, 0, &dep, 1);
+    dart_task_create(&empty_task, NULL, 0, &dep, 1, DART_PRIO_LOW);
   }
   dart_task_complete();
   dash::barrier();
@@ -85,8 +85,8 @@ benchmark_task_remotedep_creation(size_t num_tasks)
 void
 benchmark_task_yield(size_t num_yields)
 {
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0);
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW);
   Timer t;
   dart_task_complete();
   dash::barrier();

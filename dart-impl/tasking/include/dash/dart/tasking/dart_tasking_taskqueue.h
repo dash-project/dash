@@ -61,7 +61,7 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq);
 static inline int
 dart_tasking_taskqueue_isempty(const dart_taskqueue_t *tq)
 {
-  return (tq->head == NULL);
+  return (tq->lowprio.head == NULL && tq->highprio.head);
 }
 
 /**

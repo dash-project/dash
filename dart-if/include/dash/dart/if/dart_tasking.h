@@ -20,6 +20,15 @@ extern "C" {
 typedef struct dart_task_data dart_task_t;
 typedef dart_task_t* dart_taskref_t;
 
+#define DART_TASK_NULL ((dart_taskref_t)NULL)
+
+#define DART_EPOCH_ANY ((int32_t)-1)
+
+typedef enum {
+  DART_PRIO_HIGH = 0,
+  DART_PRIO_LOW
+} dart_task_prio_t;
+
 typedef enum dart_task_deptype {
   DART_DEP_IN,
   DART_DEP_OUT,
@@ -40,10 +49,6 @@ typedef struct dart_task_dep {
   /// the epoch this dependency refers to
   int32_t             epoch;
 } dart_task_dep_t;
-
-#define DART_TASK_NULL ((dart_taskref_t)NULL)
-
-#define DART_EPOCH_ANY ((int32_t)-1)
 
 DART_INLINE
 dart_task_dep_t dart_task_create_datadep(
@@ -128,11 +133,12 @@ dart_task_yield(int delay);
  */
 dart_ret_t
 dart_task_create(
-  void (*fn) (void *),
-  void *data,
-  size_t data_size,
+  void           (*fn) (void *),
+  void            *data,
+  size_t           data_size,
   dart_task_dep_t *deps,
-  size_t ndeps);
+  size_t           ndeps,
+  dart_task_prio_t prio);
 
 
 /**
@@ -151,6 +157,7 @@ dart_task_create_handle(
   size_t           data_size,
   dart_task_dep_t *deps,
   size_t           ndeps,
+  dart_task_prio_t prio,
   dart_taskref_t  *taskref);
 
 /**

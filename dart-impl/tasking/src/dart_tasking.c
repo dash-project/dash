@@ -49,12 +49,14 @@ dart_task_create(
   void            *data,
   size_t           data_size,
   dart_task_dep_t *deps,
-  size_t           ndeps)
+  size_t           ndeps,
+  dart_task_prio_t prio)
 {
   return dart__tasking__create_task(
                   fn, data,
                   data_size,
-                  deps, ndeps);
+                  deps, ndeps,
+                  prio);
 }
 
 /**
@@ -71,12 +73,14 @@ dart_task_create_handle(
   size_t           data_size,
   dart_task_dep_t *deps,
   size_t           ndeps,
+  dart_task_prio_t prio,
   dart_taskref_t  *taskref)
 {
   return dart__tasking__create_task_handle(
                  fn, data,
                  data_size,
                  deps, ndeps,
+                 prio,
                  taskref);
 }
 
