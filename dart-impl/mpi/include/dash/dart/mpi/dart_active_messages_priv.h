@@ -8,6 +8,10 @@
 #ifndef DART_ACTIVE_MESSAGES_PRIV_H_
 #define DART_ACTIVE_MESSAGES_PRIV_H_
 
+
+//#define DART_AMSGQ_SENDRECV
+//#define DART_AMSGQ_LOCKFREE
+
 /**
  * Initialize the active messaging subsystem, mainly to determine the
  * offsets of function pointers between different units.

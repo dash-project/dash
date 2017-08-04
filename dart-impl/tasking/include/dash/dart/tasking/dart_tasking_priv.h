@@ -2,15 +2,10 @@
 #define DART__BASE__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
-
-
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
-
-//#define DART_AMSGQ_SENDRECV
-//#define DART_AMSGQ_LOCKFREE
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;

@@ -13,7 +13,7 @@
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
-#include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/mpi/dart_active_messages_priv.h>
 
 #if !defined(DART_AMSGQ_LOCKFREE) && !defined(DART_AMSGQ_SENDRECV)
 
