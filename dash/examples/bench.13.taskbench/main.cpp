@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <stdlib.h>
+#include <assert.h>
 #include <libdash.h>
 #include <dash/dart/if/dart.h>
 
@@ -29,10 +30,13 @@ empty_task(void *data) {
 
 static void
 yielding_task(void *data) {
+  size_t n = 0;
   size_t num_yields = *static_cast<size_t*>(data);
   for (size_t i = 0; i < num_yields; ++i) {
     dart_task_yield(-1);
+    ++n;
   }
+  assert(n == num_yields);
 }
 
 template<bool PrintOutput>
