@@ -53,8 +53,8 @@ const ElementType * min_element(
   Compare             compare
     = std::less<const ElementType &>())
 {
-  typedef typename std::decay<ElementType>::type      value_t;
 #ifdef DASH_ENABLE_OPENMP
+  typedef typename std::decay<ElementType>::type      value_t;
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);

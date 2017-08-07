@@ -279,7 +279,7 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global list instances
    * that are declared before \c dash::Init().
    */
-  List(
+  explicit List(
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
@@ -293,7 +293,7 @@ public:
    * Constructor, creates a new constainer instance with the specified
    * initial global container capacity and associated units.
    */
-  List(
+  explicit List(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
   : local(this),

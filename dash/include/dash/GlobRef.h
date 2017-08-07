@@ -199,12 +199,6 @@ public:
     return !(*this == value);
   }
 
-  friend void swap(GlobRef<T> & a, GlobRef<T> & b) {
-    nonconst_value_type temp = static_cast<nonconst_value_type>(a);
-    a = b;
-    b = temp;
-  }
-
   void set(const_value_type & val) {
     DASH_LOG_TRACE_VAR("GlobRef.set()", val);
     DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
@@ -308,10 +302,9 @@ public:
     return *this;
   }
 
-  self_t operator++(int) {
-    GlobRef<T> result = *this;
+  nonconst_value_type operator++(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
+    nonconst_value_type result = val++;
     operator=(val);
     return result;
   }
@@ -323,10 +316,9 @@ public:
     return *this;
   }
 
-  self_t operator--(int) {
-    GlobRef<T> result = *this;
+  nonconst_value_type operator--(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
+    nonconst_value_type result = val--;
     operator=(val);
     return result;
   }
@@ -403,6 +395,14 @@ public:
     return member<MEMTYPE>(offs);
   }
 
+  /**
+   * specialization which swappes the values of two global references 
+   */
+  inline void swap(dash::GlobRef<T> & b){
+    T tmp = static_cast<T>(*this);
+    *this = b;
+    b = tmp;
+  }
 };
 
 template<typename T>
@@ -420,6 +420,14 @@ std::ostream & operator<<(
           gref._gptr.addr_or_offs.offset);
   os << dash::typestr(gref) << buf;
   return os;
+}
+
+/**
+ * specialization for unqualified calls to swap
+ */
+template<typename T>
+void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
+  a.swap(b);
 }
 
 } // namespace dash
