@@ -26,6 +26,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 // required for tasking abstraction
 #include <functional>
@@ -365,8 +366,8 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
 int main(int argc, char* argv[])
 {
-  int sizex = 1000;
-  int sizey = 1000;
+  size_t sizex = 1000;
+  size_t sizey = 1000;
   int niter = 100;
   typedef dash::util::Timer<
     dash::util::TimeMeasure::Clock
@@ -375,6 +376,14 @@ int main(int argc, char* argv[])
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
+
+  if (argc > 1) {
+    sizex = atoll(argv[1]);
+  }
+
+  if (argc > 2) {
+    sizey = atoll(argv[2]);
+  }
 
   // Prepare grid
   dash::TeamSpec<2> ts;
@@ -436,11 +445,8 @@ int main(int argc, char* argv[])
     auto & data_prev = i%2 ? data_new : data_old;
     auto & data_next = i%2 ? data_old : data_new;
 
-    std::cout << "Creating tasks for iteration " << i << std::endl;
     smooth(data_prev, data_next, i+1);
   }
-//  dash::barrier();
-  std::cout << "Done creating tasks, starting computation" << std::endl;
   dart_task_complete();
   dash::barrier();
   if (dash::myid() == 0) {
