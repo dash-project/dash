@@ -26,7 +26,8 @@
 #include <iostream>
 #include <vector>
 
-#include <omp.h>
+#include <mpi.h>
+#include <cassert>
 
 // required for tasking abstraction
 #include <functional>
@@ -38,6 +39,8 @@ using namespace std;
 using element_t = unsigned char;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
+
+#define MPI_TYPE MPI_CHAR
 
 
 void write_pgm(const std::string & filename, const Array_t & data){
@@ -125,7 +128,6 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
   auto gext_x = data_old.extent(0);
   auto gext_y = data_old.extent(1);
-
   auto lext_x = pattern.local_extent(0);
   auto lext_y = pattern.local_extent(1);
 
@@ -138,12 +140,51 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     auto olptr = data_old.lbegin();
     auto nlptr = data_new.lbegin();
 
-#pragma omp parallel
-    {
-#pragma omp master
-    {
+    // Boundary
+    bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
+    bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
+
+
+    // initiate send and receive
+    std::vector<MPI_Request> reqs;
+    reqs.reserve(4);
+    element_t *__restrict up_row_ptr = NULL;
+    element_t *__restrict low_row_ptr = NULL;
+
+    int up_neighbor   = (dash::myid() + dash::size() - 1) % dash::size();
+    int down_neighbor = (dash::myid() + 1) % dash::size();
+
+    // send and receive top row
+    if (!is_top) {
+      MPI_Request req;
+      auto top_row = data_old.local.row(0);
+      assert(top_row.lbegin() != NULL);
+      // send upwards
+      MPI_Isend(top_row.lbegin(), gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
+      reqs.push_back(req);
+      // recv from above
+      up_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
+      MPI_Irecv(up_row_ptr, gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
+      reqs.push_back(req);
+    }
+
+    // send and receive bottom row
+    if (!is_bottom) {
+      MPI_Request req;
+      auto bot_row = data_old.local.row(lext_x - 1);
+      assert(bot_row.lbegin() != NULL);
+      // send downwards
+      MPI_Isend(
+        bot_row.lbegin(), gext_y, MPI_TYPE,
+        down_neighbor, 0, MPI_COMM_WORLD, &req);
+      reqs.push_back(req);
+      // recv upwards
+      low_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
+      MPI_Irecv(low_row_ptr, gext_y, MPI_TYPE, down_neighbor, 0, MPI_COMM_WORLD, &req);
+      reqs.push_back(req);
+    }
+
     // Inner rows
-  #pragma omp taskloop grainsize(1)
     for( index_t x=1; x<lext_x-1; x++ ) {
       const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
       const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
@@ -160,62 +201,42 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     }
 
     // Boundary
-    bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
-    bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
+
+    // wait for data exchange to complete
+    MPI_Waitall(reqs.size(), reqs.data(), MPI_STATUSES_IGNORE);
 
     if(!is_top){
-#pragma omp task
-      {
       // top row
       const element_t *__restrict down_row = data_old.local.row(1).lbegin();
       const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
             element_t *__restrict  out_row = data_new.lbegin();
-            element_t *__restrict   up_row = static_cast<element_t*>(
-                                    std::malloc(sizeof(element_t) * gext_y));
-      // copy line
-      dart_get_blocking(
-        up_row,
-        data_old(local_beg_gidx[0] - 1, 0).dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
-            0.15 *   up_row[y] +
+            0.15 * up_row_ptr[y] +
             0.15 * down_row[y] +
             0.15 * curr_row[y-1] +
             0.15 * curr_row[y+1]);
       }
-      std::free(up_row);
-      }
+      std::free(up_row_ptr);
     }
 
     if(!is_bottom){
-#pragma omp task
-      {
       // bottom row
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
-            element_t *__restrict down_row = static_cast<element_t*>(
-                                     std::malloc(sizeof(element_t) * gext_y));
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
       // copy line
-      dart_get_blocking(
-        down_row,
-        data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
             0.15 *   up_row[y] +
-            0.15 * down_row[y] +
+            0.15 * low_row_ptr[y] +
             0.15 * curr_row[y-1] +
             0.15 * curr_row[y+1]);
       }
-      std::free(down_row);
-      }
+      std::free(low_row_ptr);
     }
-    } // omp master
-    } // omp parallel
   }
 }
 
@@ -231,8 +252,6 @@ int main(int argc, char* argv[])
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
-
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
 
   // Prepare grid
   dash::TeamSpec<2> ts;
@@ -284,7 +303,7 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_omptask.pgm", data_old);
+    write_pgm("testimg_input_notask.pgm", data_old);
 
   Timer timer;
 
@@ -294,14 +313,14 @@ int main(int argc, char* argv[])
     auto & data_next = i%2 ? data_old : data_new;
 
     smooth(data_prev, data_next, i);
-    dash::barrier();
   }
+  dash::barrier();
   if (dash::myid() == 0) {
     std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
   }
 
   if (sizex <= 1000)
-    write_pgm("testimg_output_omptask.pgm", data_new);
+    write_pgm("testimg_output_notask.pgm", data_new);
 
   dash::finalize();
 }

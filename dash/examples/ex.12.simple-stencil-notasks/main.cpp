@@ -25,6 +25,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 
 // required for tasking abstraction
 #include <functional>
@@ -125,87 +126,102 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   auto gext_y = data_old.extent(1);
 
   auto lext_x = pattern.local_extent(0);
-  auto lext_y = pattern.local_extent(1);
-  auto local_beg_gidx = pattern.coords(pattern.global(0));
-  auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
 
-  auto olptr = data_old.lbegin();
-  auto nlptr = data_new.lbegin();
+  // this unit might be empty
+  if (lext_x > 0) {
 
-  // Inner rows
-  for( index_t x=1; x<lext_x-1; x++ ) {
-    const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
-    const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
-    const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
-          element_t *__restrict  out_row = data_new.local.row(x).lbegin();
-//    const element_t* curr_row = data_old.local[x  ].lbegin();
-//    const element_t*   up_row = data_old.local[x-1].lbegin();
-//    const element_t* down_row = data_old.local[x+1].lbegin();
-//          element_t*  out_row = data_new.local[x  ].lbegin();
+    auto lext_y = pattern.local_extent(1);
+    auto local_beg_gidx = pattern.coords(pattern.global(0));
+    auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
 
-//    assert(data_old.local[x  ].lbegin() != data_old.local[x+1].lbegin());
-//    printf("[%d] Local input row %d starts at %p\n", dash::myid().id, x, curr_row);
-//    printf("[%d] Local input row %d starts at %p\n", dash::myid().id, x-1, up_row);
-//    printf("[%d] Local input row %d starts at %p\n", dash::myid().id, x+1, down_row);
-    for( index_t y=1; y<lext_y-1; y++ ) {
-      out_row[y] =
-        ( 0.40 * curr_row[y] +
-          0.15 * curr_row[y-1] +
-          0.15 * curr_row[y+1] +
-          0.15 * down_row[y] +
-          0.15 *   up_row[y]);
+    auto olptr = data_old.lbegin();
+    auto nlptr = data_new.lbegin();
+
+    bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
+    bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
+
+    // pre-fetch boundary rows
+    element_t *__restrict up_row = nullptr;
+    dart_handle_t up_handle;
+    if(!is_top){
+      // top row
+      up_row = static_cast<element_t*>(
+                                    std::malloc(sizeof(element_t) * gext_y));
+      // copy line
+      dart_get_handle(
+        up_row,
+        data_old(local_beg_gidx[0] - 1, 0).dart_gptr(),
+        gext_y, dash::dart_datatype<element_t>::value,
+        &up_handle);
     }
-  }
 
-  // Boundary
-  bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
-  bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
-
-  if(!is_top){
-    // top row
-    const element_t *__restrict down_row = data_old.local.row(1).lbegin();
-    const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
-//    assert(data_old.local[1].lbegin() != data_old.local.row(0).lbegin());
-          element_t *__restrict  out_row = data_new.lbegin();
-          element_t *__restrict   up_row = static_cast<element_t*>(
-                                  std::malloc(sizeof(element_t) * gext_y));
-    // copy line
-    dart_get_blocking(
-      up_row,
-      data_old(local_beg_gidx[0] - 1, 0).dart_gptr(),
-      gext_y, dash::dart_datatype<element_t>::value);
-    for( auto y=1; y<gext_y-1; ++y){
-      out_row[y] =
-        ( 0.40 * curr_row[y] +
-          0.15 *   up_row[y] +
-          0.15 * down_row[y] +
-          0.15 * curr_row[y-1] +
-          0.15 * curr_row[y+1]);
+    element_t *__restrict down_row = nullptr;
+    dart_handle_t down_handle;
+    if(!is_bottom){
+      // bottom row
+      down_row = static_cast<element_t*>(
+                               std::malloc(sizeof(element_t) * gext_y));
+      dart_get_handle(
+        down_row,
+        data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
+        gext_y, dash::dart_datatype<element_t>::value,
+        &down_handle);
     }
-    std::free(up_row);
-  }
 
-  if(!is_bottom){
-    // bottom row
-    const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
-    const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
-          element_t *__restrict down_row = static_cast<element_t*>(
-                                   std::malloc(sizeof(element_t) * gext_y));
-          element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-    // copy line
-    dart_get_blocking(
-      down_row,
-      data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-      gext_y, dash::dart_datatype<element_t>::value);
-    for( auto y=1; y<gext_y-1; ++y){
-      out_row[y] =
-        ( 0.40 * curr_row[y] +
-          0.15 *   up_row[y] +
-          0.15 * down_row[y] +
-          0.15 * curr_row[y-1] +
-          0.15 * curr_row[y+1]);
+
+    // Inner rows
+    for( index_t x=1; x<lext_x-1; x++ ) {
+      const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
+      const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
+      const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
+            element_t *__restrict  out_row = data_new.local.row(x).lbegin();
+      for( index_t y=1; y<lext_y-1; y++ ) {
+        out_row[y] =
+          ( 0.40 * curr_row[y] +
+            0.15 * curr_row[y-1] +
+            0.15 * curr_row[y+1] +
+            0.15 * down_row[y] +
+            0.15 *   up_row[y]);
+      }
     }
-    std::free(down_row);
+
+    // Boundary
+
+    if(!is_top){
+      // top row
+      const element_t *__restrict down_row = data_old.local.row(1).lbegin();
+      const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
+            element_t *__restrict  out_row = data_new.lbegin();
+      dart_wait(up_handle);
+      for( auto y=1; y<gext_y-1; ++y){
+        out_row[y] =
+          ( 0.40 * curr_row[y] +
+            0.15 *   up_row[y] +
+            0.15 * down_row[y] +
+            0.15 * curr_row[y-1] +
+            0.15 * curr_row[y+1]);
+      }
+      std::free(up_row);
+    }
+
+
+    if(!is_bottom){
+      // bottom row
+      const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
+      const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
+            element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
+      dart_wait(down_handle);
+      for( auto y=1; y<gext_y-1; ++y){
+        out_row[y] =
+          ( 0.40 * curr_row[y] +
+            0.15 *   up_row[y] +
+            0.15 * down_row[y] +
+            0.15 * curr_row[y-1] +
+            0.15 * curr_row[y+1]);
+      }
+      std::free(down_row);
+    }
+
   }
 }
 
@@ -281,13 +297,9 @@ int main(int argc, char* argv[])
     auto & data_prev = i%2 ? data_new : data_old;
     auto & data_next = i%2 ? data_old : data_new;
 
-    std::cout << "Creating tasks for iteration " << i << std::endl;
     smooth(data_prev, data_next, i);
     dash::barrier();
   }
-//  dash::barrier();
-  std::cout << "Done creating tasks, starting computation" << std::endl;
-//  dart_task_complete();
   dash::barrier();
   if (dash::myid() == 0) {
     std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
