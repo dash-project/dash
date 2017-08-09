@@ -224,6 +224,8 @@ add_subdirectory(dart-impl)
 
 add_subdirectory(dash)
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateDASHCXX.cmake)
+
 ## Documentation
 if (BUILD_DOCS)
   CreateDoxygenTarget()

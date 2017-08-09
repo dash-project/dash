@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+
+DASH_VERBOSE=false
+
+function INVOKE_COMPILER() 
+{
+  if $DASH_VERBOSE ; then
+    echo $@
+  fi 
+
+  exec $@
+}
+
+function CHECK_CMAKE_BOOL()
+{
+  if [ x"$1" == "xTRUE" -o x"$1" == x"ON" ] ; then 
+    return 0;
+  else 
+    return 1;
+  fi
+}
+
+
+# parse parameters, look for --dash:***
+
+CXX="@DASHCC@"
+INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
+CXXFLAGS="@CMAKE_CXX_FLAGS@"
+
+COMPILE_ONLY=false
+COMPILER_ARGS=""
+for arg in $@ ; do
+  if [ "$arg" == "-c" ] ; then 
+    COMPILE_ONLY=true
+    break
+  fi
+  if [ "$arg" == "--dash:verbose" -o "$arg" == "-dash:verbose" ] ; then
+    DASH_VERBOSE=true
+  else
+    COMPILER_ARGS="$COMPILER_ARGS $arg"
+  fi
+done
+
+
+if [ x"@CMAKE_BUILD_TYPE@" == "xRelease" ]  ; then 
+  CXXFLAGS="$CXXFLAGS @CMAKE_CXX_FLAGS_RELEASE@"
+elif [ x"@CMAKE_BUILD_TYPE@" == "xDebug" ] ; then 
+  CXXFLAGS="$CXXFLAGS @CMAKE_CXX_FLAGS_DEBUG@"
+fi
+
+CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
+
+# assemble LDFLAGS only if linking is done
+
+if ! ${COMPILE_ONLY} ; then
+
+  LDFLAGS="@CMAKE_EXE_LINKER_FLAGS@ -L${INSTALL_PREFIX}/lib"
+
+  if [ x"@DART_IMPLEMENTATION@" == "xmpi" ] ; then
+    DART_IMPL="mpi"
+  elif [ x"@DART_IMPLEMENTATION@" == "xshmem" ] ; then 
+    DART_IMPL="shmem"
+  else
+    echo "Unknown DART implementation!"
+    exit 1
+  fi
+
+  LDFLAGS="${LDFLAGS} -ldash-${DART_IMPL} -ldart-${DART_IMPL} -ldart-base"
+  
+  ENABLE_PAPI="@ENABLE_PAPI@"
+  PAPI_FOUND="@PAPI_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_PAPI && CHECK_CMAKE_BOOL $PAPI_FOUND ; then
+    LDFLAGS="${LDFLAGS} @PAPI_LIBRARIES@"
+  fi
+
+  ENABLE_NUMA="@ENABLE_NUMA@"
+  NUMA_FOUND="@NUMA_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_NUMA &&  CHECK_CMAKE_BOOL $NUMA_FOUND ; then
+    LDFLAGS="${LDFLAGS} @NUMA_LIBRARIES@"
+  fi
+
+  ENABLE_MKL="@ENABLE_MKL@"
+  MKL_FOUND="@MKL_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_MKL && CHECK_CMAKE_BOOL $MKL_FOUND ; then
+    LDFLAGS="${LDFLAGS} @MKL_LIBRARY_DIRS@ @MKL_LIBRARIES@"
+  fi
+
+  ENABLE_HWLOC="@ENABLE_HWLOC@"
+  HWLOC_FOUND="@HWLOC_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_HWLOC && CHECK_CMAKE_BOOL $HWLOC_FOUND  ; then
+    LDFLAGS="${LDFLAGS} @HWLOC_LIBRARIES@"
+  fi
+
+  ENABLE_HDF5="@ENABLE_HDF5@"
+  HDF5_FOUND="@HDF5_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_HDF5 && CHECK_CMAKE_BOOL $HDF5_FOUND ; then
+    LDFLAGS="${LDFLAGS} @HDF5_LIBRARIES@"
+  fi
+
+  ENABLE_PLASMA="@ENABLE_PLASMA@"
+  PLASMA_FOUND="@PLASMA_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_PLASMA && CHECK_CMAKE_BOOL $PLASMA_FOUND ; then
+    LDFLAGS="${LDFLAGS} @PLASMA_LIBRARIES@"
+  fi
+
+  ENABLE_SCALAPACK="@ENABLE_SCALAPACK@"
+  SCALAPACK_FOUND="@SCALAPACK_FOUND@"
+  if CHECK_CMAKE_BOOL $ENABLE_SCALAPACK && CHECK_CMAKE_BOOL $SCALAPACK_FOUND ; then
+    LDFLAGS="${LDFLAGS} @SCALAPACK_LIBRARIES@"
+  fi
+fi
+
+INVOKE_COMPILER $CXX $CXXFLAGS $COMPILER_ARGS $LDFLAGS
