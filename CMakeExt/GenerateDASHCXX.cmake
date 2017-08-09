@@ -15,17 +15,15 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
     PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ 
                 OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE)
 
-  install(CODE "execute_process( \
-    COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    dash-mpicxx \
-    ${CMAKE_INSTALL_PREFIX}/bin/dash-mpiCC   \
+  install(CODE "execute_process( 
+    COMMAND ${CMAKE_COMMAND} -E create_symlink dash-mpicxx dash-mpiCC
+    WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/
     )"
   )
 
   install(CODE "execute_process( \
-    COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    dash-mpicxx \
-    ${CMAKE_INSTALL_PREFIX}/bin/dash-mpic++   \
+    COMMAND ${CMAKE_COMMAND} -E create_symlink dash-mpicxx dash-mpic++
+    WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/
     )"
   )
 endif()
@@ -46,16 +44,14 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
                 OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE)
 
   install(CODE "execute_process( \
-    COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    dash-shmemcxx \
-    ${CMAKE_INSTALL_PREFIX}/bin/dash-shmemCC   \
+    COMMAND ${CMAKE_COMMAND} -E create_symlink dash-shmemcxx dash-shmemCC
+    WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/
     )"
   )
 
   install(CODE "execute_process( \
-    COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    dash-shmemcxx \
-    ${CMAKE_INSTALL_PREFIX}/bin/dash-shmemc++   \
+    COMMAND ${CMAKE_COMMAND} -E create_symlink dash-shmemcxx dash-shmemc++
+    WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin/
     )"
   )
 endif()
