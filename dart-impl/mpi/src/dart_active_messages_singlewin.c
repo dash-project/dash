@@ -15,17 +15,12 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#if !defined(DART_AMSGQ_LOCKFREE) \
- && !defined(DART_AMSGQ_SENDRECV) \
- && !defined(DART_AMSGQ_SINGLEWIN)
+#if defined(DART_AMSGQ_SINGLEWIN)
 
 struct dart_amsgq {
   /// window holding the tail ptr
-  MPI_Win      tailpos_win;
+  MPI_Win      win;
   uint64_t    *tailpos_ptr;
-  /// window to which active messages are written
-  MPI_Win      queue_win;
-  char        *queue_ptr;
   /// a double buffer used during message processing
   char        *dbuf;
   /// the size (in byte) of the message queue
@@ -94,6 +89,7 @@ dart_amsg_openq(
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
   res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->dbuf = malloc(res->size);
+  res->size += sizeof(*(res->tailpos_ptr));
   res->team = team;
 
   *queue = NULL;
@@ -115,22 +111,13 @@ dart_amsg_openq(
    * MPI_Win_allocate_shared that cannot be used for window locking.
    */
   MPI_Win_allocate(
-    sizeof(uint64_t),
-    1,
-    MPI_INFO_NULL,
-    res->comm,
-    (void*)&(res->tailpos_ptr),
-    &(res->tailpos_win));
-  *(res->tailpos_ptr) = 0;
-
-  MPI_Win_allocate(
     res->size,
     1,
     MPI_INFO_NULL,
     res->comm,
-    (void*)&(res->queue_ptr),
-    &(res->queue_win));
-  memset(res->queue_ptr, 0, res->size);
+    (void*)&(res->tailpos_ptr),
+    &(res->win));
+  *(res->tailpos_ptr) = 0;
 
   MPI_Barrier(res->comm);
 
@@ -163,7 +150,7 @@ dart_amsg_trysend(
   dart_myid(&unitid);
 
   //lock the tailpos window
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->tailpos_win);
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->win);
 
   // Add the size of the message to the tailpos at the target
   if (MPI_Fetch_and_op(
@@ -173,13 +160,13 @@ dart_amsg_trysend(
         target.id,
         0,
         MPI_SUM,
-        amsgq->tailpos_win) != MPI_SUCCESS) {
+        amsgq->win) != MPI_SUCCESS) {
     DART_LOG_ERROR("MPI_Fetch_and_op failed!");
     dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_NOTINIT;
   }
 
-  MPI_Win_flush(target.id, amsgq->tailpos_win);
+  MPI_Win_flush(target.id, amsgq->win);
 
   DART_LOG_TRACE("MPI_Fetch_and_op returned offset %llu at unit %i",
                  remote_offset, target);
@@ -202,8 +189,8 @@ dart_amsg_trysend(
       target.id,
       0,
       MPI_REPLACE,
-      amsgq->tailpos_win);
-    MPI_Win_unlock(target.id, amsgq->tailpos_win);
+      amsgq->win);
+    MPI_Win_unlock(target.id, amsgq->win);
     DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
                    "(current offset %llu of %llu)",
                    msg_size, target, remote_offset, amsgq->size);
@@ -211,16 +198,13 @@ dart_amsg_trysend(
     return DART_ERR_AGAIN;
   }
 
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->queue_win);
-  MPI_Win_unlock(target.id, amsgq->tailpos_win);
-
   struct dart_amsg_header header;
   header.remote = unitid;
   header.fn = remote_fn_ptr;
   header.data_size = data_size;
 
   // we now have a slot in the message queue
-  MPI_Aint queue_disp = remote_offset;
+  MPI_Aint queue_disp = remote_offset + sizeof(*(amsgq->tailpos_ptr));
   MPI_Put(
       &header,
       sizeof(header),
@@ -229,7 +213,7 @@ dart_amsg_trysend(
       queue_disp, sizeof
       (header),
       MPI_BYTE,
-      amsgq->queue_win);
+      amsgq->win);
   queue_disp += sizeof(header);
   MPI_Put(
     data,
@@ -239,8 +223,8 @@ dart_amsg_trysend(
     queue_disp,
     data_size,
     MPI_BYTE,
-    amsgq->queue_win);
-  MPI_Win_unlock(target.id, amsgq->queue_win);
+    amsgq->win);
+  MPI_Win_unlock(target.id, amsgq->win);
 
   dart__base__mutex_unlock(&amsgq->send_mutex);
 
@@ -280,7 +264,7 @@ amsg_process_internal(
     char *dbuf = amsgq->dbuf;
 
     // local lock
-    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, amsgq->my_rank, 0, amsgq->tailpos_win);
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, amsgq->my_rank, 0, amsgq->win);
 
     // query local tail position
     MPI_Get(
@@ -291,27 +275,24 @@ amsg_process_internal(
         0,
         1,
         MPI_UINT64_T,
-        amsgq->tailpos_win);
+        amsgq->win);
 
     // MPI_Win_flush_local should be sufficient but hangs in OMPI 2.1.1
-    MPI_Win_flush(amsgq->my_rank, amsgq->tailpos_win);
+    MPI_Win_flush(amsgq->my_rank, amsgq->win);
 
     if (tailpos > 0) {
       uint64_t   zero = 0;
       DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
-      // lock the tailpos window
-      MPI_Win_lock(MPI_LOCK_EXCLUSIVE, amsgq->my_rank, 0, amsgq->queue_win);
       // copy the content of the queue for processing
       MPI_Get(
           dbuf,
           tailpos,
           MPI_BYTE,
           amsgq->my_rank,
-          0,
+          sizeof(*(amsgq->tailpos_ptr)),
           tailpos,
           MPI_BYTE,
-          amsgq->queue_win);
-      MPI_Win_unlock(amsgq->my_rank, amsgq->queue_win);
+          amsgq->win);
 
       // reset the tailpos and release the lock on the message queue
       MPI_Put(
@@ -322,8 +303,8 @@ amsg_process_internal(
           0,
           1,
           MPI_INT64_T,
-          amsgq->tailpos_win);
-      MPI_Win_unlock(amsgq->my_rank, amsgq->tailpos_win);
+          amsgq->win);
+      MPI_Win_unlock(amsgq->my_rank, amsgq->win);
 
       // process the messages by invoking the functions on the data supplied
       uint64_t pos = 0;
@@ -357,7 +338,7 @@ amsg_process_internal(
         header->fn(data);
       }
     } else {
-      MPI_Win_unlock(amsgq->my_rank, amsgq->tailpos_win);
+      MPI_Win_unlock(amsgq->my_rank, amsgq->win);
     }
   } while (blocking && tailpos > 0);
   dart__base__mutex_unlock(&amsgq->processing_mutex);
@@ -396,16 +377,14 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 {
   free(amsgq->dbuf);
   amsgq->dbuf = NULL;
-  amsgq->queue_ptr = NULL;
-  MPI_Win_free(&(amsgq->tailpos_win));
-  MPI_Win_free(&(amsgq->queue_win));
-
-//  MPI_Comm_free(&amsgq->comm);
+  amsgq->tailpos_ptr = NULL;
+  MPI_Win_free(&(amsgq->win));
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
 
   free(amsgq);
+
   return DART_OK;
 }
 
