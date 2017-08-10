@@ -1,10 +1,30 @@
 #!/usr/bin/env bash
 
+###################################################
+# Compiler wrapper for the DASH C++ PGAS          #
+# framework.                                      #
+# The wrapper is used similar to mpicxx and the   #
+# like to ensure that the correct include         #
+# paths and libraries are passed to the compiler. #
+#                                                 #
+# Options:                                        #
+#   --dash:verbose: print compiler invocation     #
+#   --dash:nocppflags: do not pass DASH-related   #
+#                      pre-processor macros       #
+###################################################
+
 DASH_VERBOSE=false
+CXXFLAGS=""
+CXX="@DASHCC@"
+INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
+COMPILE_ONLY=false
+LINK_ONLY=true
+DASH_NOCPPFLAGS=false
+COMPILER_ARGS=""
 
 function INVOKE_COMPILER() 
 {
-  if $DASH_VERBOSE ; then
+  if ${DASH_VERBOSE} ; then
     echo $@
   fi 
 
@@ -25,46 +45,68 @@ function SPLIT_CMAKE_LIST()
   echo $@ | tr ';' ' '
 }
 
+function PARSE_CPPFLAGS()
+{
+  for flag in $@ ; do
+    if ! ${DASH_NOCPPFLAGS} && [[ $flag == -DDASH* ]] ; then
+      CXXFLAGS="$CXXFLAGS $flag"
+    fi 
+  done
+}
 
-# parse parameters, look for --dash:***
 
-CXX="@DASHCC@"
-INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
-CXXFLAGS="@CMAKE_CXX_FLAGS@"
-
-COMPILE_ONLY=false
-COMPILER_ARGS=""
+##
+# parse wrapper arguments
+##
 for arg in $@ ; do
-  if [ "$arg" == "-c" ] ; then 
+  # check whether to linking is done
+  if [ "$arg" == "-c" ] ; then
     COMPILE_ONLY=true
+    LINK_ONLY=false
+  fi
+  # check for source files
+  if [[ $arg == *\.cc || $arg == *\.cpp ]] ; then
+    LINK_ONLY=false
   fi
   if [ "$arg" == "--dash:verbose" -o "$arg" == "-dash:verbose" ] ; then
     DASH_VERBOSE=true
+  elif [ "$arg" == "--dash:nocppflags" -o "$arg" == "-dash:nocppflags" ] ; then
+    DASH_NOCPPFLAGS=true
   else
     COMPILER_ARGS="$COMPILER_ARGS $arg"
   fi
 done
 
+##
+# parse CMAKE_CXXFLAGS for macro definitions
+# and set the language version flag
+##
 
-if [ x"@CMAKE_BUILD_TYPE@" == "xRelease" ]  ; then 
-  CXXFLAGS="$CXXFLAGS @CMAKE_CXX_FLAGS_RELEASE@"
-elif [ x"@CMAKE_BUILD_TYPE@" == "xDebug" ] ; then 
-  CXXFLAGS="$CXXFLAGS @CMAKE_CXX_FLAGS_DEBUG@"
-fi
+if ! ${LINK_ONLY} ; then
+  CMAKE_BUILD_TYPE="@CMAKE_BUILD_TYPE@"
+  CMAKE_CXXFLAGS="@CMAKE_CXX_FLAGS@"
+  CMAKE_CXXFLAGS_RELEASE="@CMAKE_CXX_FLAGS_RELEASE@"
+  CMAKE_CXXFLAGS_DEBUG="@CMAKE_CXX_FLAGS_DEBUG@"
+  PARSE_CPPFLAGS ${CMAKE_CXXFLAGS}
+  if [ x"${CMAKE_BUILD_TYPE}" == "xRelease" ]  ; then
+    PARSE_CPPFLAGS ${CMAKE_CXXFLAGS_RELEASE}
+  elif [ x"${CMAKE_BUILD_TYPE}" == "xDebug" ] ; then
+    PARSE_CPPFLAGS ${CMAKE_CXXFLAGS_DEBUG}
+  fi
 
-CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
+  # add include path
+  CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
+
+  CXXFLAGS="${CXXFLAGS} @CXX_STD_FLAG@"
+fi 
 
 # assemble LDFLAGS only if linking is done
 
 if ! ${COMPILE_ONLY} ; then
 
   LDFLAGS="@CMAKE_EXE_LINKER_FLAGS@ -L${INSTALL_PREFIX}/lib"
-
-  if [ x"@DART_IMPLEMENTATION@" == "xmpi" ] ; then
-    DART_IMPL="mpi"
-  elif [ x"@DART_IMPLEMENTATION@" == "xshmem" ] ; then 
-    DART_IMPL="shmem"
-  else
+  DART_IMPL="@DART_IMPLEMENTATION@"
+  if [ x"$DART_IMPL" != "xmpi" -a x"$DART_IMPL" != "xshmem" ] ; then
     echo "Unknown DART implementation!"
     exit 1
   fi
@@ -77,7 +119,7 @@ if ! ${COMPILE_ONLY} ; then
     LDFLAGS="${LDFLAGS} $(SPLIT_CMAKE_LIST @PAPI_LIBRARIES@)"
   fi
 
-  ENABLE_NUMA="@ENABLE_NUMA@"
+  ENABLE_NUMA="@ENABLE_LIBNUMA@"
   NUMA_FOUND="@NUMA_FOUND@"
   if CHECK_CMAKE_BOOL $ENABLE_NUMA &&  CHECK_CMAKE_BOOL $NUMA_FOUND ; then
     LDFLAGS="${LDFLAGS} $(SPLIT_CMAKE_LIST @NUMA_LIBRARIES@)"
