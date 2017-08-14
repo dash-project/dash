@@ -106,16 +106,24 @@ namespace internal {
     return res;
   }
 
+
+  template<class TaskFunc, typename DepContainer>
+  void
+  create_task(TaskFunc f, dart_task_prio_t prio, const DepContainer& deps){
+    dart_task_create(
+      &dash::internal::invoke_task_action,
+      new dash::internal::FuncT(f), 0,
+      deps.data(), deps.size(), prio);
+  }
+
+
   template<class TaskFunc, typename ... Args>
   void
   create_task(TaskFunc f, dart_task_prio_t prio, const Args&... args){
     std::array<dart_task_dep_t, sizeof...(args)> deps({{
       static_cast<dart_task_dep_t>(args)...
     }});
-    dart_task_create(
-        &dash::internal::invoke_task_action,
-        new dash::internal::FuncT(f), 0,
-        deps.data(), deps.size(), prio);
+    dash::create_task(f, prio, deps);
   }
 
   template<class TaskFunc, typename ... Args>
@@ -141,6 +149,78 @@ namespace internal {
   dart_taskref_t
   create_task_handle(TaskFunc f, const Args&... args){
     return create_task_handle(f, DART_PRIO_LOW, args...);
+  }
+
+  /**
+   * Create a bunch of tasks operating on the input range but do not wait
+   * for their completion.
+   * TODO: Add launch policies here!
+   */
+  template<class InputIter, typename RangeFunc>
+  void
+  parallel_for(
+    InputIter begin,
+    InputIter end,
+    size_t chunk_size,
+    RangeFunc f)
+  {
+    if (chunk_size == 0) chunk_size = 1;
+    InputIter from = begin;
+    while (from < end) {
+      InputIter to = from + chunk_size;
+      if (to > end) to = end;
+      dash::create_task(
+        [=](){
+          f(from, to);
+        }
+      );
+      from = to;
+    }
+  }
+
+  using DependencyVector = std::vector<dart_task_dep_t>;
+  using DependencyVectorInserter = std::insert_iterator<DependencyVector>;
+
+  template<class InputIter, typename RangeFunc, typename DepGeneratorFunc>
+  void
+  parallel_for(
+    InputIter begin,
+    InputIter end,
+    size_t chunk_size,
+    RangeFunc f,
+    DepGeneratorFunc df)
+  {
+    if (chunk_size == 0) chunk_size = 1;
+    InputIter from = begin;
+    while (from < end) {
+      InputIter to = from + chunk_size;
+      if (to > end) to = end;
+      DependencyVector deps;
+      deps.reserve(10);
+      df(from, to, std::inserter(deps, deps.begin()));
+      dash::create_task(
+        [=](){
+          f(from, to);
+        },
+        deps
+      );
+      from = to;
+    }
+  }
+
+  template<class InputIter, typename RangeFunc>
+  void
+  parallel_for(
+    InputIter begin,
+    InputIter end,
+    RangeFunc f)
+  {
+    parallel_for(begin, end, 1, f);
+  }
+
+  void
+  yield(int delay) {
+    dart_task_yield(delay);
   }
 
 } // namespace dash
@@ -240,8 +320,52 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
     auto local_beg_gidx = pattern.coords(pattern.global(0));
     auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
-
+    int rows_per_task = std::min(lext_x, lext_x / (dart_task_num_threads()*10));
+    std::cout << "rows_per_task: " << rows_per_task << std::endl;
     // Inner rows
+    dash::parallel_for(1L, lext_x-1, rows_per_task,
+        [=, &data_old, &data_new](index_t from, index_t to) {
+          //std::cout << "Iterating from " << from << " to " << to << std::endl;
+          for (index_t x = from; x < to; ++x) {
+            const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
+            const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
+            const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
+            element_t *__restrict  out_row = data_new.local.row(x).lbegin();
+            for( index_t y=1; y<lext_y-1; y++ ) {
+              out_row[y] =
+              ( 0.40 * curr_row[y] +
+                0.15 * curr_row[y-1] +
+                0.15 * curr_row[y+1] +
+                0.15 * down_row[y] +
+                0.15 *   up_row[y]);
+            }
+          }
+        },
+        // dependency generator: use the first element of the first
+        // row in the chunks as sentinel
+        [=, &data_old, &data_new](
+          index_t from,
+          index_t to,
+          dash::DependencyVectorInserter inserter)
+        {
+          size_t chunk_size = to - from;
+          //std::cout << "chunk_size: " << chunk_size << std::endl;
+          *inserter = dash::in(
+            data_old.at(local_beg_gidx[0] + from, 0), iter-1);
+          *inserter = dash::out(
+            data_new.at(local_beg_gidx[0] + from, 0), iter);
+          // upper row offset: take care of first chunk
+          index_t uoff = (from < chunk_size) ? from - 1 : from - chunk_size;
+          // lower row offset: take care of last chunk
+          index_t loff = ((from + chunk_size) > lext_x) ? from + 1 : from + chunk_size;
+          *inserter = dash::in(
+                        data_old.at(local_beg_gidx[0] + uoff, 0), iter-1);
+          *inserter = dash::in(
+                        data_old.at(local_beg_gidx[0] + loff, 0), iter-1);
+          //std::cout << "from: " << from << "; uoff: " << uoff << "; loff: " << loff << std::endl;
+        }
+    );
+#if 0
     for( index_t x=1; x<lext_x-1; x++ ) {
       dash::create_task(
         [=, &data_old, &data_new] {
@@ -272,6 +396,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
              iter, local_beg_gidx[0] + x, data_new[local_beg_gidx[0] + x].begin().local());
   #endif
     }
+#endif
 
     // Boundary
     index_t begin_idx_x = (local_beg_gidx[0] == 0) ? 1 : 0;
