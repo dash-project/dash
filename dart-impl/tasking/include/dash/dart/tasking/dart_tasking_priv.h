@@ -43,13 +43,17 @@ struct dart_task_data {
 };
 
 #define DART_STACK_PUSH(_head, _elem) \
+  do {                                \
     _elem->next = _head;              \
-    _head = _elem;
+    _head = _elem;                    \
+  } while (0)
 
 #define DART_STACK_POP(_head, _elem) \
+  do {                               \
     _elem = _head;                   \
-    _head = _head->next;              \
-    _elem->next = NULL;
+    _head = _elem->next;             \
+    _elem->next = NULL;              \
+  } while (0)
 
 
 typedef struct task_list {
@@ -113,6 +117,8 @@ dart__tasking__create_task_handle(
   dart_task_prio_t prio,
   dart_taskref_t  *ref);
 
+dart_ret_t
+dart__tasking__taskref_free(dart_taskref_t *tr);
 
 dart_ret_t
 dart__tasking__task_wait(dart_taskref_t *tr);

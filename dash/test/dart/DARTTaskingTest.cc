@@ -152,6 +152,7 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
     dart_task_dep_t dep;
     dep.type = DART_DEP_DIRECT;
     dep.task = prev_task;
+    dart_taskref_t task;
     ASSERT_EQ(
       DART_OK,
       dart_task_create_handle(
@@ -161,9 +162,11 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
         &dep,                // dependency
         1,                   // number of dependencies
         DART_PRIO_LOW,
-        &prev_task           // handle to be returned
+        &task           // handle to be returned
         )
     );
+    dart_task_freeref(&prev_task);
+    prev_task = task;
   }
 
   dart_task_complete();

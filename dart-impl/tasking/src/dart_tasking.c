@@ -93,6 +93,17 @@ dart_task_current_task()
 }
 
 /**
+ * Free a task reference obtained from \c dart_task_create_handle without
+ * waiting for the task's completion. The reference is invalidated and cannot
+ * be used afterwards.
+ */
+dart_ret_t
+dart_task_freeref(dart_taskref_t *taskref)
+{
+  return dart__tasking__taskref_free(taskref);
+}
+
+/**
  * Wait for the completion of a task created through
  * \c dart_task_create_handle.
  * A task can only be waited on once, passing the same

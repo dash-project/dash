@@ -691,7 +691,11 @@ dart__tasking__task_complete()
   if (thread->current_task == &(root_task)) {
     // recycled tasks can now be used again
     pthread_mutex_lock(&task_recycle_mutex);
-    task_free_list = task_recycle_list;
+    if (task_free_list == NULL) {
+      task_free_list = task_recycle_list;
+    } else {
+      task_free_list->next = task_recycle_list;
+    }
     task_recycle_list = NULL;
     pthread_mutex_unlock(&task_recycle_mutex);
   }
@@ -700,11 +704,35 @@ dart__tasking__task_complete()
   return DART_OK;
 }
 
+dart_ret_t
+dart__tasking__taskref_free(dart_taskref_t *tr)
+{
+  if (tr == NULL || *tr == NULL) {
+    return DART_ERR_INVAL;
+  }
+
+  // free the task if already destroyed
+  dart__base__mutex_lock(&(*tr)->mutex);
+  if ((*tr)->state == DART_TASK_DESTROYED && (*tr)->has_ref) {
+    dart__base__mutex_unlock(&(*tr)->mutex);
+    destroy_task(*tr);
+    *tr = NULL;
+    return DART_OK;
+  }
+
+  // the task is unfinished, just mark it as free'able
+  (*tr)->has_ref = false;
+
+  dart__base__mutex_unlock(&(*tr)->mutex);
+
+  return DART_OK;
+
+}
 
 dart_ret_t
 dart__tasking__task_wait(dart_taskref_t *tr)
 {
-  dart_thread_t *thread = &thread_pool[dart__tasking__thread_num()];
+  dart_thread_t *thread = get_current_thread();
 
   if (tr == NULL || *tr == NULL || (*tr)->state == DART_TASK_DESTROYED) {
     return DART_ERR_INVAL;
@@ -771,6 +799,18 @@ destroy_threadpool(bool print_stats)
   thread_pool = NULL;
 }
 
+static void
+free_tasklist(dart_task_t *tasklist)
+{
+  dart_task_t *task = tasklist;
+  while (task != NULL) {
+    dart_task_t *tmp = task;
+    task = task->next;
+    tmp->next = NULL;
+    free(tmp);
+  }
+}
+
 dart_ret_t
 dart__tasking__fini()
 {
@@ -785,14 +825,10 @@ dart__tasking__fini()
   dart__tasking__ayudame_fini();
 #endif // DART_ENABLE_AYUDAME
 
-  dart_task_t *task = task_recycle_list;
-  while (task != NULL) {
-    dart_task_t *tmp = task;
-    task = task->next;
-    tmp->next = NULL;
-    free(tmp);
-  }
+  free_tasklist(task_recycle_list);
   task_recycle_list = NULL;
+  free_tasklist(task_free_list);
+  task_free_list = NULL;
   stop_threads();
   dart_tasking_datadeps_fini();
   destroy_threadpool(true);

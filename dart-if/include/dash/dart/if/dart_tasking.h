@@ -140,6 +140,14 @@ dart_task_create(
   size_t           ndeps,
   dart_task_prio_t prio);
 
+/**
+ * Free a task reference obtained from \c dart_task_create_handle without
+ * waiting for the task's completion. The reference is invalidated and cannot
+ * be used afterwards.
+ */
+dart_ret_t
+dart_task_freeref(dart_taskref_t *taskref);
+
 
 /**
  * Add a task to the local task graph with dependencies.
@@ -159,6 +167,7 @@ dart_task_create_handle(
   size_t           ndeps,
   dart_task_prio_t prio,
   dart_taskref_t  *taskref);
+
 
 /**
  * Wait for the completion of a task created through
