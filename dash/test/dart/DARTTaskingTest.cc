@@ -168,6 +168,7 @@ TEST_F(DARTTaskingTest, LocalDirectDependency)
     dart_task_freeref(&prev_task);
     prev_task = task;
   }
+  dart_task_freeref(&prev_task);
 
   dart_task_complete();
 

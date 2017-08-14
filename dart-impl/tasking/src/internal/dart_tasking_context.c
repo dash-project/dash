@@ -6,6 +6,15 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 
+/**
+ * Management of task contexts needed for proper yielding of tasks.
+ *
+ * NOTE: valgrind may report invalid read/write operations if tasks
+ *       reference memory allocated in other contexts, i.e., stack variables
+ *       passed as pointers to other tasks. This seems harmless, though.
+ */
+
+
 struct context_list_s {
   struct context_list_s *next;
   context_t              ctx;

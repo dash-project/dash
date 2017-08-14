@@ -79,10 +79,8 @@ typedef struct {
   uint64_t                taskcntr;
   pthread_t               pthread;
   int                     thread_id;
-#ifdef USE_UCONTEXT
   context_t               retctx;            // the thread-specific context to return to eventually
   context_list_t        * ctxlist;
-#endif
 } dart_thread_t;
 
 dart_ret_t

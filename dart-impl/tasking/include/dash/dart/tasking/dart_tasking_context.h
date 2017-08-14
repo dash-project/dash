@@ -11,13 +11,13 @@
 #ifdef USE_UCONTEXT
 #include <ucontext.h>
 typedef ucontext_t context_t;
-// opaque type
-typedef struct context_list_s context_list_t;
 #else
 // dummy type
 typedef char context_t;
 #endif
 
+// opaque type
+typedef struct context_list_s context_list_t;
 
 typedef void (context_func_t) (void*);
 

@@ -199,7 +199,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
   fn(data);
   DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
 }
-#endif
+#endif // USE_UCONTEXT
 
 
 static void wait_for_work()
@@ -349,9 +349,6 @@ void destroy_task(dart_task_t *task)
   task->state            = DART_TASK_DESTROYED;
   task->has_ref          = false;
 
-  dart__tasking__context_release(task->taskctx);
-  task->taskctx          = NULL;
-
   dart_tasking_datadeps_reset(task);
 
   pthread_mutex_lock(&task_recycle_mutex);
@@ -398,10 +395,14 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
     DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
 
+    // release the context
+    dart__tasking__context_release(task->taskctx);
+    task->taskctx = NULL;
+
     // clean up
     if (!task->has_ref){
       // only destroy the task if there are no references outside
-      // referenced tasks will be destroyed in task_wait
+      // referenced tasks will be destroyed in task_wait/task_freeref
       destroy_task(task);
     }
 
@@ -668,10 +669,9 @@ dart__tasking__task_complete()
 
   DART_LOG_DEBUG("dart__tasking__task_complete: waiting for children of task %p", task);
 
-#ifdef USE_UCONTEXT
   // save context
   context_t tmpctx  = thread->retctx;
-#endif
+
   while (DART_FETCH32(&(task->num_children)) > 0) {
 //    DART_LOG_DEBUG("dart__tasking__task_complete: task %p has %lu tasks left", task, task->num_children);
     // a) look for incoming remote tasks and responses
@@ -682,10 +682,9 @@ dart__tasking__task_complete()
     handle_task(next, thread);
     dart_tasking_remote_progress();
   }
-#ifdef USE_UCONTEXT
+
   // restore context (in case we're called from within another task)
   thread->retctx = tmpctx;
-#endif
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (thread->current_task == &(root_task)) {
@@ -831,6 +830,7 @@ dart__tasking__fini()
   task_free_list = NULL;
   stop_threads();
   dart_tasking_datadeps_fini();
+  dart__tasking__context_cleanup();
   destroy_threadpool(true);
 
   initialized = false;
