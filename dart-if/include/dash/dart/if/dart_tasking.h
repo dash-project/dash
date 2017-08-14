@@ -133,12 +133,12 @@ dart_task_yield(int delay);
  */
 dart_ret_t
 dart_task_create(
-  void           (*fn) (void *),
-  void            *data,
-  size_t           data_size,
-  dart_task_dep_t *deps,
-  size_t           ndeps,
-  dart_task_prio_t prio);
+        void           (*fn) (void *),
+        void            *data,
+        size_t           data_size,
+  const dart_task_dep_t *deps,
+        size_t           ndeps,
+        dart_task_prio_t prio);
 
 /**
  * Free a task reference obtained from \c dart_task_create_handle without
@@ -160,13 +160,13 @@ dart_task_freeref(dart_taskref_t *taskref);
  */
 dart_ret_t
 dart_task_create_handle(
-  void           (*fn) (void *),
-  void            *data,
-  size_t           data_size,
-  dart_task_dep_t *deps,
-  size_t           ndeps,
-  dart_task_prio_t prio,
-  dart_taskref_t  *taskref);
+        void           (*fn) (void *),
+        void            *data,
+        size_t           data_size,
+  const dart_task_dep_t *deps,
+        size_t           ndeps,
+        dart_task_prio_t prio,
+        dart_taskref_t  *taskref);
 
 
 /**

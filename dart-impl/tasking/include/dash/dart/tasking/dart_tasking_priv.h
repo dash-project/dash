@@ -97,23 +97,23 @@ dart__tasking__epoch_bound();
 
 dart_ret_t
 dart__tasking__create_task(
-  void           (*fn) (void *),
-  void            *data,
-  size_t           data_size,
-  dart_task_dep_t *deps,
-  size_t           ndeps,
-  dart_task_prio_t prio);
+        void           (*fn) (void *),
+        void            *data,
+        size_t           data_size,
+  const dart_task_dep_t *deps,
+        size_t           ndeps,
+        dart_task_prio_t prio);
 
 
 dart_ret_t
 dart__tasking__create_task_handle(
-  void           (*fn) (void *),
-  void            *data,
-  size_t           data_size,
-  dart_task_dep_t *deps,
-  size_t           ndeps,
-  dart_task_prio_t prio,
-  dart_taskref_t  *ref);
+        void           (*fn) (void *),
+        void            *data,
+        size_t           data_size,
+  const dart_task_dep_t *deps,
+        size_t           ndeps,
+        dart_task_prio_t prio,
+        dart_taskref_t  *ref);
 
 dart_ret_t
 dart__tasking__taskref_free(dart_taskref_t *tr);
