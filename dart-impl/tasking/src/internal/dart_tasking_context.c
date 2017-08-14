@@ -95,12 +95,15 @@ void dart__tasking__context_release(context_t* ctx)
 
 void dart__tasking__context_invoke(context_t* ctx)
 {
+#ifdef USE_UCONTEXT
   setcontext(ctx);
+#endif
 }
 
 dart_ret_t
 dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
 {
+#ifdef USE_UCONTEXT
   int ret = swapcontext(old_ctx, new_ctx);
   if (ret == -1) {
     DART_LOG_ERROR("Call to swapcontext failed! (errno=%i)", errno);
@@ -108,6 +111,7 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
   } else {
     return DART_OK;
   }
+#endif
 }
 
 void dart__tasking__context_cleanup()
