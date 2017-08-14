@@ -31,6 +31,7 @@ struct dart_task_data {
   struct task_list          *successor;       // the list of tasks that have a dependency to this task
   struct dart_task_data     *parent;          // the task that created this task
   struct dart_dephash_elem  *remote_successor;
+  struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
   int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;

@@ -56,6 +56,7 @@ static dart_task_t root_task = {
     .successor = NULL,
     .parent = NULL,
     .remote_successor = NULL,
+    .local_deps = NULL,
     .num_children = 0,
     .epoch  = DART_EPOCH_ANY,
     .state  = DART_TASK_ROOT};
@@ -320,6 +321,7 @@ dart_task_t * create_task(
                           task->parent->epoch : DART_EPOCH_ANY;
   task->has_ref      = false;
   task->remote_successor = NULL;
+  task->local_deps   = NULL;
   task->prev         = NULL;
   task->successor    = NULL;
   task->prio         = prio;
@@ -349,6 +351,8 @@ void destroy_task(dart_task_t *task)
 
   dart__tasking__context_release(task->taskctx);
   task->taskctx          = NULL;
+
+  dart_tasking_datadeps_reset(task);
 
   pthread_mutex_lock(&task_recycle_mutex);
   DART_STACK_PUSH(task_recycle_list, task);
@@ -440,6 +444,13 @@ void* thread_main(void *data)
 //    }
   }
 
+  // TODO: do we need to jump back to the original context?
+
+
+  DART_ASSERT_MSG(
+    thread == get_current_thread(), "Detected invalid thread return!");
+
+  // clean up the current thread's contexts before leaving
   dart__tasking__context_cleanup();
 
   DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
@@ -465,6 +476,7 @@ void dart_thread_finalize(dart_thread_t *thread)
 {
   thread->thread_id = -1;
   thread->current_task = NULL;
+  thread->ctxlist = NULL;
   dart_tasking_taskqueue_finalize(&thread->queue);
   dart_tasking_taskqueue_finalize(&thread->defered_queue);
 }
@@ -677,13 +689,13 @@ dart__tasking__task_complete()
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (thread->current_task == &(root_task)) {
-    dart_tasking_datadeps_reset();
     // recycled tasks can now be used again
     pthread_mutex_lock(&task_recycle_mutex);
     task_free_list = task_recycle_list;
     task_recycle_list = NULL;
     pthread_mutex_unlock(&task_recycle_mutex);
   }
+  dart_tasking_datadeps_reset(thread->current_task);
 
   return DART_OK;
 }
@@ -774,6 +786,8 @@ dart__tasking__fini()
     free(tmp);
   }
   task_recycle_list = NULL;
+
+  dart_tasking_datadeps_fini();
 
   destroy_threadpool(true);
 

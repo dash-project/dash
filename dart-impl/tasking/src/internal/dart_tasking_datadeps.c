@@ -38,15 +38,15 @@ typedef struct dart_dephash_elem {
   uint64_t                  epoch;
 } dart_dephash_elem_t;
 
-static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
-static dart_dephash_elem_t *freelist_head = NULL;
-static dart_mutex_t         local_deps_mutex;
+//static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
+static dart_dephash_elem_t *freelist_head            = NULL;
+static dart_mutex_t         local_deps_mutex         = DART_MUTEX_INITIALIZER;
 
-static dart_dephash_elem_t *unhandled_remote_deps = NULL;
-static dart_mutex_t         unhandled_remote_mutex;
+static dart_dephash_elem_t *unhandled_remote_deps    = NULL;
+static dart_mutex_t         unhandled_remote_mutex   = DART_MUTEX_INITIALIZER;
 
-static dart_mutex_t         deferred_remote_mutex;
 static dart_dephash_elem_t *deferred_remote_releases = NULL;
+static dart_mutex_t         deferred_remote_mutex    = DART_MUTEX_INITIALIZER;
 
 
 static dart_ret_t
@@ -75,35 +75,31 @@ static inline int hash_gptr(dart_gptr_t gptr)
  */
 dart_ret_t dart_tasking_datadeps_init()
 {
-  memset(local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
-
-  dart__base__mutex_init(&local_deps_mutex);
-  dart__base__mutex_init(&unhandled_remote_mutex);
-  dart__base__mutex_init(&deferred_remote_mutex);
-
   return dart_tasking_remote_init();
 }
 
-dart_ret_t dart_tasking_datadeps_reset()
+dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 {
+  if (task == NULL || task->local_deps == NULL) return DART_OK;
+
   for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
-    dart_dephash_elem_t *elem = local_deps[i];
+    dart_dephash_elem_t *elem = task->local_deps[i];
     while (elem != NULL) {
       dart_dephash_elem_t *tmp = elem->next;
       dephash_recycle_elem(elem);
       elem = tmp;
     }
   }
-  memset(local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
+  memset(task->local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
+  free(task->local_deps);
+  task->local_deps = NULL;
+  //memset(task->local_deps, 0, sizeof(dart_dephash_elem_t*) * DART_DEPHASH_SIZE);
   return DART_OK;
 }
 
 dart_ret_t dart_tasking_datadeps_fini()
 {
-  dart__base__mutex_destroy(&local_deps_mutex);
-  dart__base__mutex_destroy(&unhandled_remote_mutex);
-  dart__base__mutex_destroy(&deferred_remote_mutex);
-  dart_tasking_datadeps_reset();
+  dart_tasking_datadeps_reset(dart__tasking__current_task());
   dart_dephash_elem_t *elem = freelist_head;
   while (elem != NULL) {
     dart_dephash_elem_t *tmp = elem->next;
@@ -164,20 +160,33 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
   }
 }
 
+static void dephash_require_alloc(dart_task_t *task)
+{
+  if (task != NULL && task->local_deps == NULL) {
+    // allocate new dependency hash table
+    task->local_deps = calloc(DART_DEPHASH_SIZE, sizeof(dart_dephash_elem_t*));
+  }
+}
+
 /**
  * Add a task with dependency to the local dependency hash table.
  */
-static dart_ret_t dephash_add_local(const dart_task_dep_t *dep, taskref task)
+static dart_ret_t dephash_add_local(
+  const dart_task_dep_t * dep,
+        dart_task_t     * task)
 {
-  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, task);
+  taskref tr;
+  tr.local = task;
+  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr);
   // we can take the task's epoch only for local tasks
   // so we have to do it here instead of dephash_allocate_elem
   elem->epoch = dep->epoch;
+  dephash_require_alloc(task->parent);
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
-  dart__base__mutex_lock(&local_deps_mutex);
-  DART_STACK_PUSH(local_deps[slot], elem);
-  dart__base__mutex_unlock(&local_deps_mutex);
+//  dart__base__mutex_lock(&local_deps_mutex);
+  DART_STACK_PUSH(task->parent->local_deps[slot], elem);
+//  dart__base__mutex_unlock(&local_deps_mutex);
 
   return DART_OK;
 }
@@ -214,6 +223,7 @@ dart_tasking_datadeps_release_unhandled_remote()
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote dependencies: %p",
                  unhandled_remote_deps);
+  dart_dephash_elem_t **local_deps = dart__tasking__current_task()->local_deps;
   dart__base__mutex_lock(&unhandled_remote_mutex);
   dart_dephash_elem_t *next = unhandled_remote_deps;
   while ((rdep = next) != NULL) {
@@ -231,76 +241,78 @@ dart_tasking_datadeps_release_unhandled_remote()
     dart_task_t *direct_dep_candidate = NULL;
     DART_LOG_DEBUG("Handling delayed remote dependency for task %p from unit %i",
                    rdep->task, origin.id);
-    int slot = hash_gptr(rdep->taskdep.gptr);
-    for (dart_dephash_elem_t *local = local_deps[slot];
-                              local != NULL;
-                              local = local->next) {
-      dart_task_t *task = local->task.local;
+    if (local_deps != NULL) {
+      int slot = hash_gptr(rdep->taskdep.gptr);
+      for (dart_dephash_elem_t *local = local_deps[slot];
+                                local != NULL;
+                                local = local->next) {
+        dart_task_t *task = local->task.local;
 
-      // avoid repeatedly inspecting the same task and only consider
-      // matching output dependencies
-      if (task != candidate &&
-          IS_OUT_DEP(local->taskdep) &&
-          DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep)) {
-        /*
-         * Remote INPUT task dependencies are considered to refer to the
-         * previous epoch so every task in the same epoch and following
-         * epochs have to wait for the remote task to complete.
-         * Note that we are only accounting for the candidate task in the
-         * lowest epoch since all later tasks are handled through local
-         * dependencies.
-         *
-         * TODO: formulate the relation of local and remote dependencies
-         *       between tasks and epochs!
-         */
+        // avoid repeatedly inspecting the same task and only consider
+        // matching output dependencies
+        if (task != candidate &&
+            IS_OUT_DEP(local->taskdep) &&
+            DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep)) {
+          /*
+          * Remote INPUT task dependencies are considered to refer to the
+          * previous epoch so every task in the same epoch and following
+          * epochs have to wait for the remote task to complete.
+          * Note that we are only accounting for the candidate task in the
+          * lowest epoch since all later tasks are handled through local
+          * dependencies.
+          *
+          * TODO: formulate the relation of local and remote dependencies
+          *       between tasks and epochs!
+          */
 
-        // lock the task to avoid race condiditions in updating the state
-        dart__base__mutex_lock(&task->mutex);
+          // lock the task to avoid race condiditions in updating the state
+          dart__base__mutex_lock(&task->mutex);
 
-        if (!IS_ACTIVE_TASK(task)) {
-          dart__base__mutex_unlock(&task->mutex);
-          DART_LOG_INFO("Task %p matching remote task %p already finished", task, rdep->task);
-          continue;
-        }
-
-        if (local->taskdep.epoch == rdep->epoch) {
-          // found a direct match!
-          if (candidate != NULL) {
-            DART_LOG_WARN(
-                "Found second candidate for a dependency in epoch %i!",
-                rdep->epoch);
-          }
-          // keep the task locked
-          candidate         = task;
-          found_exact_match = true;
-        } else if (local->taskdep.epoch > rdep->epoch) {
-          dart__base__mutex_unlock(&task->mutex);
-          // make this task a candidate for a direct successor to handle WAR
-          // dependencies if it is in an earlier epoch
-          if (direct_dep_candidate == NULL ||
-              direct_dep_candidate->epoch > task->epoch) {
-            direct_dep_candidate = task;
-            DART_LOG_TRACE("Making local task %p a direct dependecy candidate "
-                           "for remote task %p",
-                           direct_dep_candidate,
-                           rdep->task.remote);
-          }
-        } else {
-          // look for matching tasks in earlier epochs if no exact match
-          // was found
-          if (!found_exact_match &&
-              (candidate == NULL || task->epoch > candidate->epoch)) {
-            // release the lock on the previous candidate
-            if (candidate != NULL) {
-              dart__base__mutex_unlock(&candidate->mutex);
-            }
-            // keep the current task/candidate locked until we find another
-            // candidate or have added the remote_successor (below).
-            candidate = task;
-            DART_LOG_TRACE("Making local task %p a candidate for "
-                           "remote task %p", candidate, rdep->task.remote);
-          } else {
+          if (!IS_ACTIVE_TASK(task)) {
             dart__base__mutex_unlock(&task->mutex);
+            DART_LOG_INFO("Task %p matching remote task %p already finished", task, rdep->task);
+            continue;
+          }
+
+          if (local->taskdep.epoch == rdep->epoch) {
+            // found a direct match!
+            if (candidate != NULL) {
+              DART_LOG_WARN(
+                  "Found second candidate for a dependency in epoch %lu!",
+                  rdep->epoch);
+            }
+            // keep the task locked
+            candidate         = task;
+            found_exact_match = true;
+          } else if (local->taskdep.epoch > rdep->epoch) {
+            dart__base__mutex_unlock(&task->mutex);
+            // make this task a candidate for a direct successor to handle WAR
+            // dependencies if it is in an earlier epoch
+            if (direct_dep_candidate == NULL ||
+                direct_dep_candidate->epoch > task->epoch) {
+              direct_dep_candidate = task;
+              DART_LOG_TRACE("Making local task %p a direct dependecy candidate "
+                            "for remote task %p",
+                            direct_dep_candidate,
+                            rdep->task.remote);
+            }
+          } else {
+            // look for matching tasks in earlier epochs if no exact match
+            // was found
+            if (!found_exact_match &&
+                (candidate == NULL || task->epoch > candidate->epoch)) {
+              // release the lock on the previous candidate
+              if (candidate != NULL) {
+                dart__base__mutex_unlock(&candidate->mutex);
+              }
+              // keep the current task/candidate locked until we find another
+              // candidate or have added the remote_successor (below).
+              candidate = task;
+              DART_LOG_TRACE("Making local task %p a candidate for "
+                            "remote task %p", candidate, rdep->task.remote);
+            } else {
+              dart__base__mutex_unlock(&task->mutex);
+            }
           }
         }
       }
@@ -381,17 +393,21 @@ dart_tasking_datadeps_handle_local_direct(
 }
 
 static dart_ret_t
-dart_tasking_datadeps_handle_local_datadep(
+dart_tasking_datadeps_match_local_datadep(
   dart_task_dep_t   dep,
   dart_task_t     * task)
 {
   int slot;
   slot = hash_gptr(dep.gptr);
+
+  // shortcut if no dependencies to match, yet
+  if (task->parent->local_deps == NULL) return DART_OK;
+
   /*
    * iterate over all dependent tasks until we find the first task with
    * OUT|INOUT dependency on the same pointer
    */
-  for (dart_dephash_elem_t *elem = local_deps[slot];
+  for (dart_dephash_elem_t *elem = task->parent->local_deps[slot];
        elem != NULL; elem = elem->next)
   {
     if (DEP_ADDR(elem->taskdep) == DEP_ADDR(dep)) {
@@ -518,12 +534,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(
         DART_LOG_WARN("Ignoring remote dependency in nested task!");
       }
     } else {
-      dart_tasking_datadeps_handle_local_datadep(dep, task);
+      dart_tasking_datadeps_match_local_datadep(dep, task);
 
-      taskref tr;
-      tr.local = task;
       // add this task to the hash table
-      dephash_add_local(&dep, tr);
+      dephash_add_local(&dep, task);
     }
   }
 

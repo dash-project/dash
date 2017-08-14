@@ -28,7 +28,7 @@ typedef struct {
  */
 dart_ret_t dart_tasking_datadeps_init();
 
-dart_ret_t dart_tasking_datadeps_reset();
+dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task);
 
 dart_ret_t dart_tasking_datadeps_fini();
 
