@@ -41,6 +41,40 @@ static void testfn_inc_yield(void *data) {
   __sync_add_and_fetch(valptr, 1);
 }
 
+static void testfn_nested_deps(void *data) {
+  int  i;
+  int  val = 0;
+  int *valptr = &val; // dummy pointer used for synchronization, never accessed
+
+  for (i = 0; i < 100; i++) {
+    testdata_t td;
+    td.valptr   = &val;
+    td.expected = i;
+    td.assign   = i + 1;
+
+    dart_task_dep_t dep[2];
+    dep[0].type = DART_DEP_INOUT;
+    dep[0].gptr = DART_GPTR_NULL;
+    dep[0].gptr.unitid = dash::myid();
+    dep[0].gptr.teamid = dash::Team::All().dart_id();
+    dep[0].gptr.addr_or_offs.addr = valptr;
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(
+        &testfn_assign,      // action to call
+        &td,                 // argument to pass
+        sizeof(td),          // size of the tasks's data (if to be copied)
+      dep,                   // dependency
+      1,                     // number of dependencies
+      DART_PRIO_LOW)
+    );
+  }
+
+  dart_task_complete();
+
+  ASSERT_EQ(i, val);
+}
+
 TEST_F(DARTTaskingTest, BulkAtomicIncrement)
 {
   if (!dash::is_multithreaded()) {
@@ -299,4 +333,22 @@ TEST_F(DARTTaskingTest, InOutDependency)
   dart_task_complete();
 
   ASSERT_EQ(i, val);
+}
+
+
+TEST_F(DARTTaskingTest, NestedTaskDeps)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  // create tasks that will nest
+  for (int i = 0; i < dart_task_num_threads(); ++i) {
+    ASSERT_EQ(
+      DART_OK,
+      dart_task_create(&testfn_nested_deps, NULL, 0, NULL, 0, DART_PRIO_HIGH)
+    );
+  }
+
+  dart_task_complete();
 }

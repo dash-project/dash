@@ -734,8 +734,9 @@ dart__tasking__current_task()
 }
 
 static void
-destroy_threadpool(bool print_stats)
+stop_threads()
 {
+  // wait for all threads to finish
   pthread_mutex_lock(&thread_pool_mutex);
   parallel = false;
   pthread_mutex_unlock(&thread_pool_mutex);
@@ -746,6 +747,13 @@ destroy_threadpool(bool print_stats)
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
     pthread_join(thread_pool[i].pthread, NULL);
+  }
+}
+
+static void
+destroy_threadpool(bool print_stats)
+{
+  for (int i = 1; i < num_threads; i++) {
     dart_thread_finalize(&thread_pool[i]);
   }
 
@@ -760,7 +768,6 @@ destroy_threadpool(bool print_stats)
 #endif // DART_ENABLE_LOGGING
 
   free(thread_pool);
-
   thread_pool = NULL;
 }
 
@@ -786,9 +793,8 @@ dart__tasking__fini()
     free(tmp);
   }
   task_recycle_list = NULL;
-
+  stop_threads();
   dart_tasking_datadeps_fini();
-
   destroy_threadpool(true);
 
   initialized = false;
