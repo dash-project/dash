@@ -176,7 +176,7 @@ public:
     } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
       T t;
-      dart_storage_t ds = dash::dart_storage<T>(1);
+      dash::dart_storage<T> ds(1);
       dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
       return t;
     }
@@ -201,7 +201,7 @@ public:
       t = *_lptr;
     } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
-      dart_storage_t ds = dash::dart_storage<T>(1);
+      dash::dart_storage<T> ds(1);
       dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     }
     return t;
@@ -214,7 +214,7 @@ public:
       *_lptr = val;
     } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
-      dart_storage_t ds = dash::dart_storage<T>(1);
+      dash::dart_storage<T> ds(1);
       dart_put_blocking(_gptr, static_cast<void *>(&val), ds.nelem, ds.dtype);
     }
     DASH_LOG_TRACE("GlobSharedRef.put >");
@@ -233,7 +233,7 @@ public:
       *_lptr = val;
     } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _gptr);
-      dart_storage_t ds = dash::dart_storage<T>(1);
+      dash::dart_storage<T> ds(1);
       dart_put_blocking(
           _gptr,
           static_cast<const void *>(&val),

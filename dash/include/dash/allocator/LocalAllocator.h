@@ -176,7 +176,7 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+      dash::dart_storage<ElementType> ds(num_local_elem);
       if (dart_memalloc(ds.nelem, ds.dtype, &gptr) == DART_OK) {
         _allocated.push_back(gptr);
       } else {
