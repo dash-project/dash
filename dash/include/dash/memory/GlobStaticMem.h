@@ -582,7 +582,7 @@ template<
 GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
 {
   dart_gptr_t gptr;
-  dart_storage_t ds = dart_storage<T>(nelem);
+  dash::dart_storage<T> ds(nelem);
   if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
     return GlobPtr<T, MemSpaceT>(nullptr);
   }
