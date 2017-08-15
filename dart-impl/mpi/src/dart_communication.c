@@ -28,8 +28,14 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <alloca.h>
 
 int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
+
+static inline size_t minsize(size_t a, size_t b)
+{
+  return (a < b) ? a : b;
+}
 
 dart_ret_t
 dart__mpi__datatype_init()
@@ -96,14 +102,6 @@ dart_ret_t dart_get(
 
   if (gptr.unitid < 0) {
     DART_LOG_ERROR("dart_get ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_get ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
@@ -175,20 +173,33 @@ dart_ret_t dart_get(
                    nelem, (unsigned long)win, team_unit_id.id, offset, dest);
   }
 
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  // chunk up the get
+  const size_t chunk_size = INT_MAX;
+        char * dest_ptr   = (char*) dest;
+        size_t copied     = 0;
 
-  DART_LOG_TRACE("dart_get:  MPI_Get");
-  if (MPI_Get(dest,
-              nelem,
-              mpi_dtype,
-              team_unit_id.id,
-              offset,
-              nelem,
-              mpi_dtype,
-              win)
-      != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get ! MPI_Rget failed");
-    return DART_ERR_INVAL;
+  while (copied < nelem) {
+    int to_copy = minsize(chunk_size, nelem - copied);
+    DART_LOG_TRACE("dart_get:  MPI_Get (chunk %d, size %d)", chunk, to_copy);
+    if (MPI_Get(dest_ptr,
+                to_copy,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                to_copy,
+                mpi_dtype,
+                win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get ! MPI_Get failed");
+      return DART_ERR_INVAL;
+    }
+    dest_ptr += chunk_size;
+    offset   += chunk_size;
+    copied   += chunk_size;
   }
+
 
   DART_LOG_DEBUG("dart_get > finished");
   return DART_OK;
@@ -208,14 +219,6 @@ dart_ret_t dart_put(
 
   if (gptr.unitid < 0) {
     DART_LOG_ERROR("dart_put ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_put ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
@@ -263,15 +266,29 @@ dart_ret_t dart_put(
   }
 
 
-  MPI_Put(
-    src,
-    nelem,
-    mpi_dtype,
-    team_unit_id.id,
-    offset,
-    nelem,
-    mpi_dtype,
-    win);
+  // chunk up the put
+  const size_t chunk_size = INT_MAX;
+        char * src_ptr    = (char*) src;
+        size_t copied     = 0;
+
+  while (copied < nelem) {
+    int to_copy = minsize(chunk_size, nelem - copied);
+    DART_LOG_TRACE("dart_get:  MPI_Put (chunk %d, size %d)", chunk, to_copy);
+    if (MPI_Put(src_ptr,
+                to_copy,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                to_copy,
+                mpi_dtype,
+                win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get ! MPI_Put failed");
+      return DART_ERR_INVAL;
+    }
+    src_ptr += chunk_size;
+    offset  += chunk_size;
+    copied  += chunk_size;
+  }
 
   return DART_OK;
 }
@@ -717,14 +734,6 @@ dart_ret_t dart_put_blocking(
     return DART_ERR_INVAL;
   }
 
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_put_blocking ! failed: Unknown team %i!", gptr.teamid);
@@ -825,19 +834,30 @@ dart_ret_t dart_put_blocking(
   /*
    * Using MPI_Put as MPI_Win_flush is required to ensure remote completion.
    */
-  DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
-  if (MPI_Put(src,
-               nelem,
-               mpi_dtype,
-               team_unit_id.id,
-               offset,
-               nelem,
-               mpi_dtype,
-               win)
-      != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_put_blocking ! MPI_Put failed");
-    return DART_ERR_INVAL;
+  // chunk up the put
+  const size_t   chunk_size = INT_MAX;
+        char   * src_ptr    = (char*) src;
+        size_t   copied     = 0;
+
+  while (copied < nelem) {
+    int to_copy = minsize(chunk_size, nelem - copied);
+    DART_LOG_TRACE("dart_get:  MPI_Put (chunk %d, size %d)", chunk, to_copy);
+    if (MPI_Put(src_ptr,
+                to_copy,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                to_copy,
+                mpi_dtype,
+                win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get ! MPI_Put failed");
+      return DART_ERR_INVAL;
+    }
+    src_ptr += chunk_size;
+    offset  += chunk_size;
+    copied  += chunk_size;
   }
+
 
   DART_LOG_DEBUG("dart_put_blocking: MPI_Win_flush");
   if (MPI_Win_flush(team_unit_id.id, win) != MPI_SUCCESS) {
@@ -866,14 +886,6 @@ dart_ret_t dart_get_blocking(
 
   if (gptr.unitid < 0) {
     DART_LOG_ERROR("dart_get_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
 
@@ -953,26 +965,56 @@ dart_ret_t dart_get_blocking(
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
    */
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
-  MPI_Request req;
-  if (MPI_Rget(dest,
-              nelem,
-              mpi_dtype,
-              team_unit_id.id,
-              offset,
-              nelem,
-              mpi_dtype,
-              win,
-              &req)
-      != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
-    return DART_ERR_INVAL;
+
+  if (nelem < INT_MAX) {
+    DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
+    MPI_Request req;
+    if (MPI_Rget(dest,
+                nelem,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                nelem,
+                mpi_dtype,
+                win,
+                &req)
+        != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      return DART_ERR_INVAL;
+    }
+    DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
+    if (MPI_Wait(&req, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get_blocking ! MPI_Wait failed");
+      return DART_ERR_INVAL;
+    }
+  } else {
+    // chunk up the get
+    const size_t chunk_size = INT_MAX;
+          char *dest_ptr = (char*) dest;
+    const int num_chunks = (int)ceil(((double)nelem) / ((double)INT_MAX));
+    MPI_Request *reqs    = alloca(num_chunks * sizeof(MPI_Request));
+    for (int chunk = 0; chunk < num_chunks; ++chunk) {
+      DART_LOG_TRACE("dart_get:  MPI_Rget (chunk %d)", chunk);
+      int to_copy = minsize(chunk_size, nelem - (chunk*chunk_size));
+      if (MPI_Rget(dest_ptr,
+                  to_copy,
+                  mpi_dtype,
+                  team_unit_id.id,
+                  offset,
+                  to_copy,
+                  mpi_dtype,
+                  win,
+                  &reqs[chunk]) != MPI_SUCCESS) {
+        DART_LOG_ERROR("dart_get ! MPI_Rget failed");
+        return DART_ERR_INVAL;
+      }
+      dest_ptr += chunk_size;
+      offset   += chunk_size;
+    }
+    // wait for all requests to finish
+    MPI_Waitall(num_chunks, reqs, MPI_STATUSES_IGNORE);
   }
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
-  if (MPI_Wait(&req, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Wait failed");
-    return DART_ERR_INVAL;
-  }
+
 
   DART_LOG_DEBUG("dart_get_blocking > finished");
   return DART_OK;
