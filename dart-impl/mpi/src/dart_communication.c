@@ -1538,6 +1538,16 @@ dart_ret_t dart_testall_local(
   return DART_OK;
 }
 
+dart_ret_t dart_handle_free(
+  dart_handle_t * handleptr)
+{
+  if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
+    free(*handleptr);
+    *handleptr = DART_HANDLE_NULL;
+  }
+  return DART_OK;
+}
+
 /* -- Dart collective operations -- */
 
 static int _dart_barrier_count = 0;

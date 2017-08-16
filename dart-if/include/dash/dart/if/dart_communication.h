@@ -589,6 +589,18 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * result) DART_NOTHROW;
 
+
+/**
+ * Free the handle without testing or waiting for completion of the operation.
+ *
+ * \param handle Pointer to the handle to free.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ */
+dart_ret_t dart_handle_free(
+  dart_handle_t * handle) DART_NOTHROW;
+
 /** \} */
 
 /**
