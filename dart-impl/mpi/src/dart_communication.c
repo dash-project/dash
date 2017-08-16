@@ -183,7 +183,7 @@ dart_ret_t dart_get(
 
   while (copied < nelem) {
     int to_copy = minsize(chunk_size, nelem - copied);
-    DART_LOG_TRACE("dart_get:  MPI_Get (chunk %d, size %d)", chunk, to_copy);
+    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %d)", dest_ptr, to_copy);
     if (MPI_Get(dest_ptr,
                 to_copy,
                 mpi_dtype,
@@ -273,7 +273,7 @@ dart_ret_t dart_put(
 
   while (copied < nelem) {
     int to_copy = minsize(chunk_size, nelem - copied);
-    DART_LOG_TRACE("dart_get:  MPI_Put (chunk %d, size %d)", chunk, to_copy);
+    DART_LOG_TRACE("dart_get:  MPI_Put (src %p, size %d)", src_ptr, to_copy);
     if (MPI_Put(src_ptr,
                 to_copy,
                 mpi_dtype,
@@ -841,7 +841,7 @@ dart_ret_t dart_put_blocking(
 
   while (copied < nelem) {
     int to_copy = minsize(chunk_size, nelem - copied);
-    DART_LOG_TRACE("dart_get:  MPI_Put (chunk %d, size %d)", chunk, to_copy);
+    DART_LOG_TRACE("dart_get:  MPI_Put (src %p, size %d)", src_ptr, to_copy);
     if (MPI_Put(src_ptr,
                 to_copy,
                 mpi_dtype,
