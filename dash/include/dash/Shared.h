@@ -75,7 +75,7 @@ public:
       _dart_gptr = _globmem->begin().dart_gptr();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
-    dart_storage_t ds = dash::dart_storage<dart_gptr_t>(1);
+    dash::dart_storage<dart_gptr_t> ds(1);
     dart_bcast(
       &_dart_gptr,
       ds.nelem,

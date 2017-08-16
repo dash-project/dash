@@ -1176,7 +1176,7 @@ private:
                                  u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
-        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
+        dash::dart_storage<size_type> ds(u_num_attach_buckets);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
