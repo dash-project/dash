@@ -15,7 +15,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 DART_INTERNAL
-int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
+extern int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
 
 /** DART handle type for non-blocking one-sided operations. */
 struct dart_handle_struct
@@ -27,6 +27,9 @@ struct dart_handle_struct
 
 dart_ret_t
 dart__mpi__datatype_init() DART_INTERNAL;
+
+dart_ret_t
+dart__mpi__datatype_fini() DART_INTERNAL;
 
 static inline MPI_Op dart__mpi__op(dart_operation_t dart_op) {
   switch (dart_op) {

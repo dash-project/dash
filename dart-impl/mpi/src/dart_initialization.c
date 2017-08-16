@@ -292,6 +292,8 @@ dart_ret_t dart_exit()
 
   MPI_Comm_free(&dart_comm_world);
 
+  dart__mpi__datatype_fini();
+
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid.id);
     MPI_Finalize();
