@@ -21,9 +21,10 @@ extern int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
 /** DART handle type for non-blocking one-sided operations. */
 struct dart_handle_struct
 {
-  MPI_Request request;
+  MPI_Request reqs[2];   // a large transfer might consist of two operations
   MPI_Win     win;
   dart_unit_t dest;
+  uint8_t     num_reqs;
   bool        needs_flush;
 };
 
