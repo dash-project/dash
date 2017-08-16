@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <mpi.h>
+#include <stdbool.h>
 
 #include <dash/dart/base/macro.h>
 
@@ -23,6 +24,7 @@ struct dart_handle_struct
   MPI_Request request;
   MPI_Win     win;
   dart_unit_t dest;
+  bool        needs_flush;
 };
 
 dart_ret_t
