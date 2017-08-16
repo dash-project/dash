@@ -49,11 +49,6 @@
 int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
 static MPI_Datatype dart__mpi__max_chunk_datatype[DART_TYPE_COUNT];
 
-static inline size_t minsize(size_t a, size_t b)
-{
-  return (a < b) ? a : b;
-}
-
 dart_ret_t
 dart__mpi__datatype_init()
 {
