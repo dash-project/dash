@@ -268,7 +268,7 @@ dart_ret_t dart_put(
 
   // chunk up the put
   const size_t chunk_size = INT_MAX;
-        char * src_ptr    = (char*) src;
+  const char * src_ptr    = (const char*) src;
         size_t copied     = 0;
 
   while (copied < nelem) {
@@ -809,7 +809,7 @@ dart_ret_t dart_put_blocking(
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
                    "target (coll.): win:%p unit:%d offset:%lu "
                    "<- source: %p",
-                   nelem, win, team_unit_id.id,
+                   nelem, (void*)win, team_unit_id.id,
                    offset, src);
 
   } else {
@@ -827,7 +827,7 @@ dart_ret_t dart_put_blocking(
     DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
                    "target (local): win:%p unit:%d offset:%lu "
                    "<- source: %p",
-                   nelem, win, team_unit_id.id,
+                   nelem, (void*)win, team_unit_id.id,
                    offset, src);
   }
 
@@ -836,7 +836,7 @@ dart_ret_t dart_put_blocking(
    */
   // chunk up the put
   const size_t   chunk_size = INT_MAX;
-        char   * src_ptr    = (char*) src;
+  const char   * src_ptr    = (const char*) src;
         size_t   copied     = 0;
 
   while (copied < nelem) {
@@ -939,7 +939,7 @@ dart_ret_t dart_get_blocking(
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (coll.): win:%p unit:%d offset:%lu "
                    "-> dest: %p",
-                   nelem, win, team_unit_id.id,
+                   nelem, (void*)win, team_unit_id.id,
                    offset, dest);
 
   } else {
@@ -958,7 +958,7 @@ dart_ret_t dart_get_blocking(
     DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (local): win:%p unit:%d offset:%lu "
                    "-> dest: %p",
-                   nelem, win, team_unit_id.id,
+                   nelem, (void*)win, team_unit_id.id,
                    offset, dest);
   }
 
