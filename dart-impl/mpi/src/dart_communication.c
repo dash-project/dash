@@ -36,6 +36,16 @@
  */
 #define MAX_CONTIG_ELEMENTS INT_MAX
 
+#define CHECK_UNITID_RANGE(_unitid, _team_data)                             \
+  do {                                                                      \
+    if (dart__unlikely(_unitid.id < 0 || _unitid.id > _team_data->size)) {  \
+      DART_LOG_ERROR("%s ! failed: unitid out of range 0 <= %d < %d",       \
+                     __FUNCTION__, _unitid.id, _team_data->size);           \
+      return DART_ERR_INVAL;                                                \
+    }                                                                       \
+  } while (0)
+
+
 /**
  * Temporary space allocation:
  *   - on the stack for allocations <=64B
@@ -148,16 +158,13 @@ dart_ret_t dart_get(
   int16_t          seg_id       = gptr.segid;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_get ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_get ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_get() uid:%d o:%"PRIu64" s:%d t:%d nelem:%zu",
                  team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
@@ -278,16 +285,13 @@ dart_ret_t dart_put(
   int16_t          seg_id       = gptr.segid;
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_put ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   if (seg_id) {
 
@@ -384,22 +388,19 @@ dart_ret_t dart_accumulate(
   mpi_dtype         = dart__mpi__datatype(dtype);
   mpi_op            = dart__mpi__op(op);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, team_unit_id.id);
 
   if (seg_id) {
     MPI_Aint disp_s;
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
-
     win = team_data->window;
     if (dart_segment_get_disp(
           &team_data->segdata,
@@ -483,24 +484,21 @@ dart_ret_t dart_fetch_and_op(
   int16_t  seg_id   = gptr.segid;
   mpi_dtype         = dart__mpi__datatype(dtype);
   mpi_op            = dart__mpi__op(op);
-
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
+  
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!",
+                    gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
                  "offset:%"PRIu64" segid:%d",
                  dtype, op, team_unit_id.id,
                  gptr.addr_or_offs.offset, gptr.segid);
   if (seg_id) {
-
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!",
-                     gptr.teamid);
-      return DART_ERR_INVAL;
-    }
 
     MPI_Aint disp_s;
     if (dart_segment_get_disp(
@@ -549,10 +547,14 @@ dart_ret_t dart_compare_and_swap(
   int16_t  seg_id   = gptr.segid;
   MPI_Datatype mpi_dtype         = dart__mpi__datatype(dtype);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_compare_and_swap ! failed: Unknown team %i!",
+                    gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   if (dtype > DART_TYPE_LONGLONG) {
     DART_LOG_ERROR("dart_compare_and_swap ! failed: "
@@ -565,13 +567,6 @@ dart_ret_t dart_compare_and_swap(
 
   if (seg_id) {
     MPI_Aint disp_s;
-
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_compare_and_swap ! failed: Unknown team %i!",
-                     gptr.teamid);
-      return DART_ERR_INVAL;
-    }
 
     win = team_data->window;
     if (dart_segment_get_disp(
@@ -619,16 +614,13 @@ dart_ret_t dart_get_handle(
 
   *handleptr = DART_HANDLE_NULL;
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_get_handle ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
                  team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
@@ -751,19 +743,16 @@ dart_ret_t dart_put_handle(
   MPI_Win      win;
 
   *handleptr = DART_HANDLE_NULL;
-
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_put_handle ! failed: gptr.unitid < 0");
+  
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
-  if (seg_id != 0) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
+  if (seg_id != 0) {
     win = team_data->window;
 
     MPI_Aint disp_s;
@@ -859,16 +848,13 @@ dart_ret_t dart_put_blocking(
   uint64_t          offset       = gptr.addr_or_offs.offset;
   int16_t           seg_id       = gptr.segid;
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_put_blocking ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
                  team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
@@ -1029,16 +1015,13 @@ dart_ret_t dart_get_blocking(
   uint64_t          offset       = gptr.addr_or_offs.offset;
   int16_t           seg_id       = gptr.segid;
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_get_blocking ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_get_blocking() uid:%d "
                  "o:%"PRIu64" s:%d t:%u, nelem:%zu",
@@ -1174,17 +1157,15 @@ dart_ret_t dart_flush(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_flush ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
 
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
   if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", gptr.teamid);
-      return DART_ERR_INVAL;
-    }
     win = team_data->window;
     comm = team_data->comm;
   } else {
@@ -1220,10 +1201,6 @@ dart_ret_t dart_flush_all(
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_flush_all ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
 
   if (seg_id) {
     dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
@@ -1269,18 +1246,15 @@ dart_ret_t dart_flush_local(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_flush_local ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_flush_local ! failed: Unknown team %i!", gptr.segid);
     return DART_ERR_INVAL;
   }
 
-  if (seg_id) {
-    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-    if (team_data == NULL) {
-      DART_LOG_ERROR("dart_flush_local ! failed: Unknown team %i!", gptr.segid);
-      return DART_ERR_INVAL;
-    }
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
+  if (seg_id) {
     win = team_data->window;
     comm = team_data->comm;
     DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
@@ -1314,12 +1288,6 @@ dart_ret_t dart_flush_local_all(
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
-
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_flush_local_all ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
 
   if (seg_id) {
     dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
@@ -1709,24 +1677,14 @@ dart_ret_t dart_bcast(
   DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
                  root.id, teamid, nelem);
 
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_bcast ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_bcast ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
-    DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
-                   "dart_adapt_teamlist_convert failed", root.id, teamid);
+    DART_LOG_ERROR("dart_bcast ! failed: unknown team %d", teamid);
     return DART_ERR_INVAL;
   }
   comm = team_data->comm;
 
+  CHECK_UNITID_RANGE(root, team_data);
 
   // chunk up the bcast if necessary
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
@@ -1765,23 +1723,13 @@ dart_ret_t dart_scatter(
   dart_team_unit_t    root,
   dart_team_t         teamid)
 {
-  MPI_Comm     comm;
-
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_scatter ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_scatter ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_scatter ! failed: unknown team %d", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(root, team_data);
 
   // chunk up the scatter if necessary
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
@@ -1789,7 +1737,7 @@ dart_ret_t dart_scatter(
   const char * send_ptr  = (const char*) sendbuf;
         char * recv_ptr  = (char*) recvbuf;
 
-  comm = team_data->comm;
+  MPI_Comm comm = team_data->comm;
 
   if (nchunks > 0) {
     MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
@@ -1838,20 +1786,16 @@ dart_ret_t dart_gather(
   dart_team_unit_t     root,
   dart_team_t          teamid)
 {
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_gather ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_gather ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
+  DART_LOG_TRACE("dart_gather() team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gather ! failed: unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(root, team_data);
 
   // chunk up the scatter if necessary
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
@@ -1910,21 +1854,15 @@ dart_ret_t dart_allgather(
   DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_accumulate ! failed: team may not be DART_UNDEFINED_TEAM_ID");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_allgather ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_allgather ! team:%d "
-                   "dart_adapt_teamlist_convert failed", teamid);
-    return DART_ERR_INVAL;
-  }
   if (sendbuf == recvbuf || NULL == sendbuf) {
     sendbuf = MPI_IN_PLACE;
   }
-
 
   // chunk up the scatter if necessary
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
@@ -1986,11 +1924,6 @@ dart_ret_t dart_allgatherv(
   DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_allgatherv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2001,8 +1934,7 @@ dart_ret_t dart_allgatherv(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
-    DART_LOG_ERROR("dart_allgatherv ! team:%d "
-                   "dart_adapt_teamlist_convert failed", teamid);
+    DART_LOG_ERROR("dart_allgatherv ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
   if (sendbuf == recvbuf || NULL == sendbuf) {
@@ -2063,11 +1995,6 @@ dart_ret_t dart_allreduce(
   MPI_Op       mpi_op    = dart__mpi__op(op);
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
 
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_allreduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2078,6 +2005,7 @@ dart_ret_t dart_allreduce(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_allreduce ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
   comm = team_data->comm;
@@ -2106,16 +2034,6 @@ dart_ret_t dart_reduce(
   MPI_Op       mpi_op    = dart__mpi__op(op);
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
 
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_reduce ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_reduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2126,8 +2044,12 @@ dart_ret_t dart_reduce(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_reduce ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+  
+  CHECK_UNITID_RANGE(root, team_data);
+
   comm = team_data->comm;
   if (MPI_Reduce(
            sendbuf,
@@ -2153,11 +2075,6 @@ dart_ret_t dart_send(
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (unit.id < 0) {
-    DART_LOG_ERROR("dart_send ! failed: unit < 0");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2168,8 +2085,12 @@ dart_ret_t dart_send(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_send ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
   comm = team_data->comm;
   // dart_unit = MPI rank in comm_world
   if(MPI_Send(
@@ -2195,11 +2116,6 @@ dart_ret_t dart_recv(
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (unit.id < 0) {
-    DART_LOG_ERROR("dart_recv ! failed: unit < 0");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2210,8 +2126,12 @@ dart_ret_t dart_recv(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_recv ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
   comm = team_data->comm;
   // dart_unit = MPI rank in comm_world
   if(MPI_Recv(
@@ -2244,12 +2164,6 @@ dart_ret_t dart_sendrecv(
   MPI_Datatype mpi_recv_dtype = dart__mpi__datatype(recv_dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (src.id < 0 || dest.id < 0) {
-    DART_LOG_ERROR("dart_send ! failed: src (%i) or dest (%i) unit invalid",
-                   src.id, dest.id);
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2261,8 +2175,13 @@ dart_ret_t dart_sendrecv(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
+    DART_LOG_ERROR("dart_sendrecv ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(dest, team_data);
+  CHECK_UNITID_RANGE(src, team_data);
+
   comm = team_data->comm;
   if(MPI_Sendrecv(
         sendbuf,
