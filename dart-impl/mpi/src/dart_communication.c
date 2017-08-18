@@ -30,11 +30,6 @@
 #include <math.h>
 #include <alloca.h>
 
-/**
- * The maximum number of elements of a certain type to be
- * transfered in one chunk.
- */
-#define MAX_CONTIG_ELEMENTS INT_MAX
 
 #define CHECK_UNITID_RANGE(_unitid, _team_data)                             \
   do {                                                                      \
@@ -44,7 +39,6 @@
       return DART_ERR_INVAL;                                                \
     }                                                                       \
   } while (0)
-
 
 /**
  * Temporary space allocation:
@@ -62,53 +56,15 @@
       free(__ptr);                     \
   } while (0)
 
-int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
-static MPI_Datatype dart__mpi__max_chunk_datatype[DART_TYPE_COUNT];
-
-dart_ret_t
-dart__mpi__datatype_init()
+/** DART handle type for non-blocking one-sided operations. */
+struct dart_handle_struct
 {
-  for (int i = DART_TYPE_UNDEFINED+1; i < DART_TYPE_COUNT; i++) {
-
-    // query the size of the data type
-    int ret = MPI_Type_size(
-                dart__mpi__datatype(i),
-                &dart__mpi__datatype_sizes[i]);
-    if (ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("Failed to query size of DART data type %i", i);
-      return DART_ERR_INVAL;
-    }
-
-    // create the chunk data type
-    ret = MPI_Type_contiguous(MAX_CONTIG_ELEMENTS,
-                              dart__mpi__datatype(i),
-                              &dart__mpi__max_chunk_datatype[i]);
-    if (ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("Failed to create chunk type of DART data type %i", i);
-      return DART_ERR_INVAL;
-    }
-    ret = MPI_Type_commit(&dart__mpi__max_chunk_datatype[i]);
-    if (ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("Failed to commit chunk type of DART data type %i", i);
-      return DART_ERR_INVAL;
-    }
-
-  }
-  return DART_OK;
-}
-
-dart_ret_t
-dart__mpi__datatype_fini()
-{
-  for (int i = DART_TYPE_UNDEFINED+1; i < DART_TYPE_COUNT; i++) {
-    int ret = MPI_Type_free(&dart__mpi__max_chunk_datatype[i]);
-    if (ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("Failed to commit chunk type of DART data type %i", i);
-      return DART_ERR_INVAL;
-    }
-  }
-  return DART_OK;
-}
+  MPI_Request reqs[2];   // a large transfer might consist of two operations
+  MPI_Win     win;
+  dart_unit_t dest;
+  uint8_t     num_reqs;
+  bool        needs_flush;
+};
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 static dart_ret_t get_shared_mem(
@@ -241,11 +197,11 @@ dart_ret_t dart_get(
                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Get(dest_ptr,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 team_unit_id.id,
                 offset,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 win) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get ! MPI_Get failed");
       return DART_ERR_INVAL;
@@ -341,11 +297,11 @@ dart_ret_t dart_put(
                    src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Put(src_ptr,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 team_unit_id.id,
                 offset,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 win) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_put ! MPI_Put failed");
       return DART_ERR_INVAL;
@@ -433,11 +389,11 @@ dart_ret_t dart_accumulate(
     if (MPI_Accumulate(
           src_ptr,
           nchunks,
-          dart__mpi__max_chunk_datatype[dtype],
+          dart__mpi__datatype_contigtype(dtype),
           team_unit_id.id,
           offset,
           nchunks,
-          dart__mpi__max_chunk_datatype[dtype],
+          dart__mpi__datatype_contigtype(dtype),
           mpi_op,
           win) != MPI_SUCCESS) {
       DART_LOG_ERROR("MPI_Accumulate ! MPI_Put failed");
@@ -484,7 +440,7 @@ dart_ret_t dart_fetch_and_op(
   int16_t  seg_id   = gptr.segid;
   mpi_dtype         = dart__mpi__datatype(dtype);
   mpi_op            = dart__mpi__op(op);
-  
+
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!",
@@ -688,11 +644,11 @@ dart_ret_t dart_get_handle(
                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Rget(dest_ptr,
                   nchunks,
-                  dart__mpi__max_chunk_datatype[dtype],
+                  dart__mpi__datatype_contigtype(dtype),
                   team_unit_id.id,
                   offset,
                   nchunks,
-                  dart__mpi__max_chunk_datatype[dtype],
+                  dart__mpi__datatype_contigtype(dtype),
                   win,
                  &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
@@ -743,7 +699,7 @@ dart_ret_t dart_put_handle(
   MPI_Win      win;
 
   *handleptr = DART_HANDLE_NULL;
-  
+
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", gptr.teamid);
@@ -793,11 +749,11 @@ dart_ret_t dart_put_handle(
                    src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Rput(src_ptr,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 team_unit_id.id,
                 offset,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 win,
                 &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
@@ -960,11 +916,11 @@ dart_ret_t dart_put_blocking(
                    src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Put(src_ptr,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 team_unit_id.id,
                 offset,
                 nchunks,
-                dart__mpi__max_chunk_datatype[dtype],
+                dart__mpi__datatype_contigtype(dtype),
                 win) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_put_blocking ! MPI_Put failed");
       return DART_ERR_INVAL;
@@ -1105,11 +1061,11 @@ dart_ret_t dart_get_blocking(
                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Rget(dest_ptr,
                  nchunks,
-                 dart__mpi__max_chunk_datatype[dtype],
+                 dart__mpi__datatype_contigtype(dtype),
                  team_unit_id.id,
                  offset,
                  nchunks,
-                 dart__mpi__max_chunk_datatype[dtype],
+                 dart__mpi__datatype_contigtype(dtype),
                  win,
                  &reqs[nreqs++]) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get ! MPI_Get failed");
@@ -1693,7 +1649,7 @@ dart_ret_t dart_bcast(
 
   if (nchunks > 0) {
     if (MPI_Bcast(src_ptr, nchunks,
-                  dart__mpi__max_chunk_datatype[dtype],
+                  dart__mpi__datatype_contigtype(dtype),
                   root.id, comm) != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
                      "MPI_Bcast failed", root.id, teamid);
@@ -1740,7 +1696,7 @@ dart_ret_t dart_scatter(
   MPI_Comm comm = team_data->comm;
 
   if (nchunks > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_contigtype(dtype);
     if (MPI_Scatter(
           send_ptr,
           nchunks,
@@ -1806,7 +1762,7 @@ dart_ret_t dart_gather(
   MPI_Comm comm = team_data->comm;
 
   if (nchunks > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_contigtype(dtype);
     if (MPI_Gather(
           send_ptr,
           nchunks,
@@ -1873,7 +1829,7 @@ dart_ret_t dart_allgather(
   MPI_Comm comm = team_data->comm;
 
   if (nchunks > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_contigtype(dtype);
     if (MPI_Allgather(
           send_ptr,
           nchunks,
@@ -1947,8 +1903,8 @@ dart_ret_t dart_allgatherv(
   int *inrecvcounts = malloc(sizeof(int) * comm_size);
   int *irecvdispls  = malloc(sizeof(int) * comm_size);
   for (int i = 0; i < comm_size; i++) {
-    if (nrecvcounts[i] > MAX_CONTIG_ELEMENTS || 
-        recvdispls[i] > MAX_CONTIG_ELEMENTS) 
+    if (nrecvcounts[i] > MAX_CONTIG_ELEMENTS ||
+        recvdispls[i] > MAX_CONTIG_ELEMENTS)
     {
       DART_LOG_ERROR(
         "dart_allgatherv ! failed: nrecvcounts[%i] (%zu) > INT_MAX || "
@@ -2047,7 +2003,7 @@ dart_ret_t dart_reduce(
     DART_LOG_ERROR("dart_reduce ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
-  
+
   CHECK_UNITID_RANGE(root, team_data);
 
   comm = team_data->comm;

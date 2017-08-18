@@ -14,19 +14,48 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_util.h>
+
+
+/**
+ * The maximum number of elements of a certain type to be
+ * transfered in one chunk.
+ */
+#define MAX_CONTIG_ELEMENTS INT_MAX
+
+typedef enum {
+  DART_KIND_BASIC = 0,
+  DART_KIND_STRIDED,
+  DART_KIND_INDEXED
+} dart_type_kind_t;
+
+typedef struct dart_datatype_struct {
+  MPI_Datatype         mpi_type;
+  dart_datatype_t      base_type;
+  dart_type_kind_t     kind;
+  union {
+    // used for basic types
+    struct {
+      size_t           size;
+      MPI_Datatype     max_contig_type;
+    } basic;
+    // used for DART_KIND_STRIDED
+    struct {
+      size_t           stride;
+      size_t           blocklen;
+    } strided;
+    // used for DART_KIND_INDEXED
+    struct {
+      int            * blocklens;
+      int            * offsets;
+      int              count;
+    } indexed;
+  };
+} dart_datatype_struct_t;
 
 DART_INTERNAL
-extern int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
+extern dart_datatype_struct_t __dart_base_types[DART_TYPE_LAST];
 
-/** DART handle type for non-blocking one-sided operations. */
-struct dart_handle_struct
-{
-  MPI_Request reqs[2];   // a large transfer might consist of two operations
-  MPI_Win     win;
-  dart_unit_t dest;
-  uint8_t     num_reqs;
-  bool        needs_flush;
-};
 
 dart_ret_t
 dart__mpi__datatype_init() DART_INTERNAL;
@@ -34,7 +63,7 @@ dart__mpi__datatype_init() DART_INTERNAL;
 dart_ret_t
 dart__mpi__datatype_fini() DART_INTERNAL;
 
-static inline MPI_Op dart__mpi__op(dart_operation_t dart_op) {
+DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op) {
   switch (dart_op) {
     case DART_OP_MIN     : return MPI_MIN;
     case DART_OP_MAX     : return MPI_MAX;
@@ -52,46 +81,37 @@ static inline MPI_Op dart__mpi__op(dart_operation_t dart_op) {
   }
 }
 
-static inline MPI_Datatype dart__mpi__datatype(dart_datatype_t dart_datatype) {
-  switch (dart_datatype) {
-    case DART_TYPE_BYTE     : return MPI_BYTE;
-    case DART_TYPE_SHORT    : return MPI_SHORT;
-    case DART_TYPE_INT      : return MPI_INT;
-    case DART_TYPE_UINT     : return MPI_UNSIGNED;
-    case DART_TYPE_LONG     : return MPI_LONG;
-    case DART_TYPE_ULONG    : return MPI_UNSIGNED_LONG;
-    case DART_TYPE_LONGLONG : return MPI_LONG_LONG_INT;
-    case DART_TYPE_FLOAT    : return MPI_FLOAT;
-    case DART_TYPE_DOUBLE   : return MPI_DOUBLE;
-    default                 : return (MPI_Datatype)(-1);
-  }
+DART_INLINE
+dart_datatype_struct_t * dart__mpi__datatype_struct(
+  dart_datatype_t dart_datatype)
+{
+  return (dart_datatype < DART_TYPE_LAST)
+            ? &__dart_base_types[dart_datatype]
+            : (dart_datatype_struct_t *)dart_datatype;
 }
 
-static inline int dart__mpi__datatype_sizeof(dart_datatype_t dart_datatype) {
-
-  if (dart_datatype > DART_TYPE_UNDEFINED && dart_datatype < DART_TYPE_COUNT)
-  {
-    return dart__mpi__datatype_sizes[dart_datatype];
-  }
-  return -1;
+DART_INLINE
+MPI_Datatype dart__mpi__datatype(dart_datatype_t dart_datatype) {
+  return dart__mpi__datatype_struct(dart_datatype)->mpi_type;
 }
 
-
-#if 0
-static inline int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
-  switch (dart_datatype) {
-    case DART_TYPE_BYTE     : return 1;
-    case DART_TYPE_SHORT    : return 1;
-    case DART_TYPE_INT      : return 4;
-    case DART_TYPE_UINT     : return 4;
-    case DART_TYPE_LONG     : return 4;
-    case DART_TYPE_ULONG    : return 4;
-    case DART_TYPE_LONGLONG : return 8;
-    case DART_TYPE_FLOAT    : return 4;
-    case DART_TYPE_DOUBLE   : return 8;
-    default                 : return 1;
-  }
+DART_INLINE
+int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+  return (dts->kind == DART_KIND_BASIC) ? dts->basic.size : -1;
 }
-#endif
+
+DART_INLINE
+bool dart__mpi__datatype_isbasic(dart_datatype_t dart_type) {
+  return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_BASIC);
+}
+
+DART_INLINE
+MPI_Datatype dart__mpi__datatype_contigtype(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+  return (dts->kind == DART_KIND_BASIC)
+            ? dts->basic.max_contig_type : MPI_DATATYPE_NULL;
+}
+
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */
