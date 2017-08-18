@@ -212,7 +212,7 @@ public:
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.allocate(nlocal)",
                    "number of local values:", num_local_elem);
     pointer gptr      = DART_GPTR_NULL;
-    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+    dash::dart_storage<ElementType> ds(num_local_elem);
     if (dart_team_memregister(
         _team->dart_id(), ds.nelem, ds.dtype, lptr, &gptr) == DART_OK) {
       _allocated.push_back(std::make_pair(lptr, gptr));
