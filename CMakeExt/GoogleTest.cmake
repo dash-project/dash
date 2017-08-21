@@ -3,11 +3,11 @@ include(ExternalProject)
 
 
 set(GTEST_LIBRARY_PATH
-    "" CACHE STRING
+    "$ENV{GTEST_LIBRARY_PATH}" CACHE PATH
     "Library path in existing installation of gtest")
 
 set(GTEST_INCLUDE_PATH
-    "" CACHE STRING
+    "$ENV{GTEST_INCLUDE_PATH}" CACHE PATH
     "Include path in existing installation of gtest")
 
 set(LIBPREFIX "${CMAKE_STATIC_LIBRARY_PREFIX}")

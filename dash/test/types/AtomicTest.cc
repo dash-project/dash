@@ -477,3 +477,33 @@ TEST_F(AtomicTest, MutexInterface){
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*3);
   }
 }
+
+
+TEST_F(AtomicTest, AtomicSignal){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("At least 2 units required");
+  }
+
+  array_t array(dash::size());
+  dash::fill(array.begin(), array.end(), 0);
+
+  int neighbor = (dash::myid() + 1) % dash::size();
+
+  if (dash::myid() != 0) {
+    // send the signal
+    array[0].add(1);
+  } else {
+
+    // wait for a signal to arrive
+    int  count;
+    auto agref = array[0];
+    do {
+      count = agref.get();
+    } while (count == 0);
+    ASSERT_GT_U(count, 0);
+  }
+}

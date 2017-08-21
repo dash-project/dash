@@ -49,7 +49,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const Team &
+constexpr Team &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::team() const noexcept
 {
@@ -290,7 +290,7 @@ typename std::enable_if<(__NumViewDim != 0),
   MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type pos)
+  size_type pos)
 {
   return MatrixRef<T, NumDim, __NumViewDim, PatternT>(*this, pos);
 }
@@ -300,7 +300,7 @@ template<dim_t __NumViewDim>
 typename std::enable_if<(__NumViewDim != 0), 
   MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
 constexpr MatrixRef<T, NumDim, CUR, PatternT>
-::operator[](index_type pos) const {
+::operator[](size_type pos) const {
   return MatrixRef<const T, NumDim, __NumViewDim, PatternT>(*this, pos);
 }
 
@@ -308,7 +308,7 @@ template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
 typename std::enable_if<(__NumViewDim == 0), GlobRef<T> >::type
 MatrixRef<T, NumDim, CUR, PatternT>
-::operator[](index_type pos)
+::operator[](size_type pos)
 {
   auto coords = _refview._coord;
   coords[0] = pos;
@@ -319,13 +319,13 @@ template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
 typename std::enable_if<(__NumViewDim == 0), GlobRef<const T> >::type
 MatrixRef<T, NumDim, CUR, PatternT>
-::operator[](index_type pos) const
+::operator[](size_type pos) const
 {
   auto coords = _refview._coord;
-  coords[0] = pos;
+  coords[NumDim - 1] = pos;
   return _refview.global_reference(coords);
 }
- 
+
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
 MatrixRef<const T, NumDim, NumDim-1, PatternT>

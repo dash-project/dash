@@ -78,7 +78,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 
     /* Local store is safe and effective followed by the sync call. */
     *tail_ptr = -1;
-    MPI_Win_sync (dart_win_local_alloc);
+    MPI_Win_sync(dart_win_local_alloc);
   }
 
   /* Create a global memory region across the team.
@@ -91,7 +91,9 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   }
 
   int32_t *list_ptr;
-  MPI_Win win = team_data->window; // window object used for atomic operations
+  dart_segment_info_t *list_seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), gptr_list.segid);
+  MPI_Win win = list_seginfo->win; // window object used for atomic operations
 
   dart_gptr_setunit(&gptr_list, unitid);
   dart_gptr_getaddr(gptr_list, (void*)&list_ptr);
@@ -183,19 +185,14 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
    */
   if (predecessor != -1) {
     int32_t    result;
-    MPI_Win    win;
     MPI_Status status;
     int16_t    seg_id = gptr_list.segid;
-    MPI_Aint   disp_list;
 
-    DART_ASSERT_RETURNS(
-      dart_segment_get_disp(
-        &team_data->segdata,
-        seg_id,
-        DART_TEAM_UNIT_ID(predecessor),
-        &disp_list),
-      DART_OK);
-    win = team_data->window;
+    dart_segment_info_t *list_seginfo = dart_segment_get_info(
+                                      &(team_data->segdata), gptr_list.segid);
+    MPI_Win  win = list_seginfo->win;
+    MPI_Aint disp_list = dart_segment_disp(
+                            list_seginfo, DART_TEAM_UNIT_ID(predecessor));
 
     /* Atomicity: Update its predecessor's next pointer */
     DART_ASSERT_RETURNS(
@@ -311,7 +308,6 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
 
   int32_t result;
   int32_t reset = -1;
-  MPI_Win win = team_data->window;
 
   /* Check if we are at the tail of this lock queue and reset the tail pointer
    * if we are. If that is the case we are done.
@@ -333,19 +329,22 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
   if (result != unitid.id) {
     /* We are not at the tail of this lock queue. */
     int32_t  next;
-    MPI_Aint disp_list;
     DART_LOG_DEBUG("dart_lock_release: waiting for next pointer "
                    "(tail = %d) in team %d",
                    result, (lock -> teamid));
 
-    DART_ASSERT_RETURNS(dart_segment_get_disp(
-          &team_data->segdata,
-          gptr_list.segid,
-          unitid,
-          &disp_list), DART_OK);
+    dart_segment_info_t *list_seginfo = dart_segment_get_info(
+                                      &(team_data->segdata), gptr_list.segid);
+    MPI_Win win = list_seginfo->win;
+    MPI_Aint disp_list = dart_segment_disp(list_seginfo, unitid);
 
     /* Wait for the update of our next pointer. */
     do {
+      // trigger progress
+      int flag;
+      MPI_Iprobe(
+        MPI_ANY_SOURCE, MPI_ANY_TAG,
+        team_data->comm, &flag, MPI_STATUS_IGNORE);
       DART_ASSERT_RETURNS(
         MPI_Fetch_and_op(
           NULL,

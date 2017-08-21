@@ -149,7 +149,7 @@ public:
   template <class T_>
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
     const LocalMatrixRef<T_, NumDimensions, CUR+1, PatternT> & previous,
-    index_type coord);
+    size_type coord);
 
   /**
    * Constructor, creates a local view reference to a Matrix view.
@@ -179,9 +179,14 @@ public:
   // Different operation semantics.
   inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
 
+  /**
+   * Returns a reference to the element at local index \c pos.
+   * The index is relative to the start of the local range.
+   */
   inline    T                   & local_at(size_type pos);
+  inline    const T             & local_at(size_type pos) const;
 
-  constexpr const Team          & team()                const noexcept;
+  constexpr Team                & team()                const noexcept;
 
   constexpr size_type             size()                const noexcept;
   constexpr size_type             local_size()          const noexcept;
@@ -191,13 +196,6 @@ public:
   inline    index_type            offset(dim_t dim)     const noexcept;
   constexpr Offsets_t             offsets()             const noexcept;
   constexpr bool                  empty()               const noexcept;
-
-  /**
-   * Synchronize units associated with the matrix.
-   *
-   * \see  DashContainerConcept
-   */
-  inline    void                  barrier()             const;
 
   /**
    * The pattern used to distribute matrix elements to units in its
@@ -250,15 +248,27 @@ public:
    * Subscript assignment operator, access element at given offset
    * in global element range.
    */
-  LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
-    operator[](index_type n);
+  template<dim_t __NumViewDim = CUR-1>
+  typename std::enable_if<(__NumViewDim > 0),
+    LocalMatrixRef<T, NumDimensions, __NumViewDim, PatternT>>::type
+    operator[](size_type n);
+
+  template<dim_t __NumViewDim = CUR-1>
+  typename std::enable_if<(__NumViewDim == 0), T&>::type
+    operator[](size_type n);
 
   /**
    * Subscript operator, access element at given offset in
    * global element range.
    */
-  constexpr LocalMatrixRef<const T, NumDimensions, CUR-1, PatternT>
-    operator[](index_type n) const;
+  template<dim_t __NumViewDim = CUR-1>
+  typename std::enable_if<(__NumViewDim > 0),
+    LocalMatrixRef<const T, NumDimensions, __NumViewDim, PatternT>>::type
+  constexpr operator[](size_type n) const;
+
+  template<dim_t __NumViewDim = CUR-1>
+  typename std::enable_if<(__NumViewDim == 0), const T&>::type
+  operator[](size_type n) const;
 
   LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     col(size_type n);
@@ -277,7 +287,7 @@ public:
   template<dim_t NumSubDimensions>
   LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n) const;
-  
+
   template<dim_t SubDimension>
   LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
     sub(size_type n,
@@ -303,7 +313,7 @@ public:
     size_type offset,
     /// Number of rows in the range
     size_type range);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   rows(
     /// Offset of first row in range
@@ -326,7 +336,7 @@ public:
     size_type offset,
     /// Number of columns in the range
     size_type extent);
-  
+
   constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
   cols(
     /// Offset of first column in range
@@ -335,101 +345,8 @@ public:
     size_type extent) const;
 
 private:
+
   MatrixRefView_t _refview;
-};
-
-/**
- * Local Matrix representation, provides local operations.
- * Partial Specialization for value deferencing.
- *
- * \ingroup Matrix
- */
-template <
-  typename T,
-  dim_t NumDimensions,
-  class PatternT >
-class LocalMatrixRef<T, NumDimensions, 0, PatternT>
-{
- private:
-   typedef LocalMatrixRef<T, NumDimensions, 0, PatternT> self_t;
-
- public:
-  template<
-    typename T_,
-    dim_t NumDimensions_,
-    typename IndexT_,
-    class PatternT_ >
-  friend class Matrix;
-  template<
-    typename T_,
-    dim_t NumDimensions1,
-    dim_t NumDimensions2,
-    class PatternT_ >
-  friend class LocalMatrixRef;
-
- public:
-  typedef self_t                                             local_type;
-  typedef PatternT                                         pattern_type;
-
-  typedef typename PatternT::index_type                      index_type;
-  typedef typename PatternT::size_type                        size_type;
-
- public:
-  typedef std::integral_constant<dim_t, 1>
-    rank;
-
-  static constexpr dim_t ndim() {
-    return 1;
-  }
-
- public:
-  /**
-   * Default constructor.
-   */
-  LocalMatrixRef<T, NumDimensions, 0, PatternT>()
-  {
-    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,0>()", NumDimensions);
-  }
-
-  /**
-   * Copy constructor.
-   */
-  template <class T_>
-  LocalMatrixRef<T, NumDimensions, 0, PatternT>(
-    const LocalMatrixRef<T_, NumDimensions, 0, PatternT> & other)
-  : _refview(other._refview)
-  {
-    DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,0>(other)", NumDimensions);
-  }
-
-  template <class T_>
-  LocalMatrixRef<T, NumDimensions, 0, PatternT>(
-    const LocalMatrixRef<T_, NumDimensions, 1, PatternT> & previous,
-    index_type coord);
-
-  inline T * local_at(index_type pos) const;
-
-  inline bool is_local() const {
-    return true;
-  }
-
-  inline operator T() const;
-
-  /**
-   * Assignment operator.
-   */
-  inline T operator= (const T & value);
-  inline T operator+=(const T & value);
-  inline T operator+ (const T & value);
-  inline T operator-=(const T & value);
-  inline T operator- (const T & value);
-  inline T operator*=(const T & value);
-  inline T operator* (const T & value);
-  inline T operator/=(const T & value);
-  inline T operator/ (const T & value);
-
- private:
-  MatrixRefView<T, NumDimensions, PatternT> _refview;
 };
 
 } // namespace dash

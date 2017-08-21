@@ -29,8 +29,8 @@ inline Matrix<T, NumDim, IndexT, PatternT>
   _lsize(0),
   _lcapacity(0),
   _pattern(
-    SizeSpec_t(),
-    DistributionSpec_t(),
+    size_spec(),
+    distribution_spec(),
     *_team),
   _glob_mem(nullptr),
   _lbegin(nullptr),
@@ -42,10 +42,10 @@ inline Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
 ::Matrix(
-  const SizeSpec_t & ss,
-  const DistributionSpec_t & ds,
+  const size_spec & ss,
+  const distribution_spec & ds,
   Team & t,
-  const TeamSpec_t & ts)
+  const team_spec & ts)
 : _team(&t),
   _size(0),
   _lsize(0),
@@ -264,8 +264,9 @@ void Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
-::team() {
+constexpr inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
+::team() const noexcept
+{
   return *_team;
 }
 

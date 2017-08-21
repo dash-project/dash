@@ -2,6 +2,7 @@
 #include "MinElementTest.h"
 
 #include <dash/algorithm/MinMax.h>
+#include <dash/algorithm/Generate.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 
@@ -218,6 +219,7 @@ TEST_F(MinElementTest, TestShrinkRange)
 
 TEST_F(MinElementTest, TestFindMatrixDefault)
 {
+  typedef typename dash::Matrix<Element_t, 2>::index_type index_t;
   Element_t min_value = 11;
   size_t num_units    = dash::Team::All().size();
   size_t tilesize_x   = 13;
@@ -239,13 +241,17 @@ TEST_F(MinElementTest, TestFindMatrixDefault)
   ASSERT_EQ(extent_rows, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", static_cast<int>(matrix_size));
   // Fill matrix
-  if (dash::myid() == 0) {
-    LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        matrix[i][k] = 20 + (i * 11) + (k * 97);
-      }
+  LOG_MESSAGE("Assigning matrix values");
+  auto &pattern = matrix.pattern();
+  dash::generate_with_index(
+    matrix.begin(), matrix.end(),
+    [&pattern](index_t gidx){
+      auto coords = pattern.coords(gidx);
+      return 20 + (coords[0] * 11) + (coords[1] * 97);
     }
+  );
+  matrix.barrier();
+  if (dash::myid() == 0) {
     LOG_MESSAGE("Setting matrix[%d][%d] = %d (min)",
                 min_pos_x, min_pos_y, static_cast<int>(min_value));
     matrix[min_pos_x][min_pos_y] = min_value;

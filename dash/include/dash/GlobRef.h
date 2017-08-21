@@ -168,7 +168,7 @@ public:
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
       DART_OK
@@ -199,18 +199,12 @@ public:
     return !(*this == value);
   }
 
-  friend void swap(GlobRef<T> & a, GlobRef<T> & b) {
-    nonconst_value_type temp = static_cast<nonconst_value_type>(a);
-    a = b;
-    b = temp;
-  }
-
   void set(const_value_type & val) {
     DASH_LOG_TRACE_VAR("GlobRef.set()", val);
     DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_put_blocking(
         _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype),
@@ -223,7 +217,7 @@ public:
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
       DART_OK
@@ -234,7 +228,7 @@ public:
   void get(nonconst_value_type *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype),
       DART_OK
@@ -244,7 +238,7 @@ public:
   void get(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype),
       DART_OK
@@ -254,7 +248,7 @@ public:
   void put(const_value_type& tref) {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_put_blocking(
           _gptr, static_cast<const void *>(&tref), ds.nelem, ds.dtype),
@@ -265,7 +259,7 @@ public:
   void put(const_value_type* tptr) {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dart_storage_t ds = dash::dart_storage<T>(1);
+    dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
       dart_put_blocking(
           _gptr, static_cast<const void *>(tptr), ds.nelem, ds.dtype),
@@ -308,10 +302,9 @@ public:
     return *this;
   }
 
-  self_t operator++(int) {
-    GlobRef<T> result = *this;
+  nonconst_value_type operator++(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
+    nonconst_value_type result = val++;
     operator=(val);
     return result;
   }
@@ -323,10 +316,9 @@ public:
     return *this;
   }
 
-  self_t operator--(int) {
-    GlobRef<T> result = *this;
+  nonconst_value_type operator--(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
+    nonconst_value_type result = val--;
     operator=(val);
     return result;
   }
@@ -403,6 +395,14 @@ public:
     return member<MEMTYPE>(offs);
   }
 
+  /**
+   * specialization which swappes the values of two global references 
+   */
+  inline void swap(dash::GlobRef<T> & b){
+    T tmp = static_cast<T>(*this);
+    *this = b;
+    b = tmp;
+  }
 };
 
 template<typename T>
@@ -420,6 +420,14 @@ std::ostream & operator<<(
           gref._gptr.addr_or_offs.offset);
   os << dash::typestr(gref) << buf;
   return os;
+}
+
+/**
+ * specialization for unqualified calls to swap
+ */
+template<typename T>
+void swap(dash::GlobRef<T> && a, dash::GlobRef<T> && b){
+  a.swap(b);
 }
 
 } // namespace dash

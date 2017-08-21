@@ -209,6 +209,7 @@ public:
   local_type local;
 
 public:
+  explicit
   UnorderedMap(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
@@ -253,7 +254,7 @@ public:
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
 
-  inline const Team & team() const noexcept
+  inline Team & team() const noexcept
   {
     if (_team != nullptr) {
       return *_team;
