@@ -76,7 +76,7 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
 
   value_t neighbor_val;
   size_t  neighbor_id = (dash::myid().id + 1) % dash::size();
-  dart_storage_t ds = dash::dart_storage<value_t>(1);
+  dash::dart_storage<value_t> ds(1);
   ASSERT_EQ_U(
     DART_OK,
     dart_get_blocking(
