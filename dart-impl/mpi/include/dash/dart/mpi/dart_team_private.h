@@ -194,11 +194,6 @@ typedef struct dart_team_data {
 
 } dart_team_data_t;
 
-
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-
-extern char* *dart_sharedmem_local_baseptr_set DART_INTERNAL;
-#endif
 /* @brief Initiate the free-team-list and allocated-team-list.
  *
  * This call will be invoked within dart_init(), and the free teamlist consist of
