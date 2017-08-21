@@ -28,6 +28,39 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <alloca.h>
+
+/**
+ * The maximum number of elements of a certain type to be
+ * transfered in one chunk.
+ */
+#define MAX_CONTIG_ELEMENTS INT_MAX
+
+#define CHECK_UNITID_RANGE(_unitid, _team_data)                             \
+  do {                                                                      \
+    if (dart__unlikely(_unitid.id < 0 || _unitid.id > _team_data->size)) {  \
+      DART_LOG_ERROR("%s ! failed: unitid out of range 0 <= %d < %d",       \
+                     __FUNCTION__, _unitid.id, _team_data->size);           \
+      return DART_ERR_INVAL;                                                \
+    }                                                                       \
+  } while (0)
+
+
+/**
+ * Temporary space allocation:
+ *   - on the stack for allocations <=64B
+ *   - on the heap otherwise
+ * Mainly meant to be used in dart_waitall_* and dart_testall_local
+ */
+#define ALLOC_TMP(__size) ((__size)<=64) ? alloca((__size)) : malloc((__size))
+/**
+ * Temporary space release: calls free() for allocations >64B
+ */
+#define FREE_TMP(__size, __ptr)        \
+  do {                                 \
+    if ((__size) > 64)                 \
+      free(__ptr);                     \
+  } while (0)
 
 #define CHECK_MPI_RET(__call, __name)                      \
   do {                                                     \
@@ -38,16 +71,47 @@
   } while (0)
 
 int dart__mpi__datatype_sizes[DART_TYPE_COUNT];
+static MPI_Datatype dart__mpi__max_chunk_datatype[DART_TYPE_COUNT];
 
 dart_ret_t
 dart__mpi__datatype_init()
 {
   for (int i = DART_TYPE_UNDEFINED+1; i < DART_TYPE_COUNT; i++) {
+
+    // query the size of the data type
     int ret = MPI_Type_size(
                 dart__mpi__datatype(i),
                 &dart__mpi__datatype_sizes[i]);
     if (ret != MPI_SUCCESS) {
       DART_LOG_ERROR("Failed to query size of DART data type %i", i);
+      return DART_ERR_INVAL;
+    }
+
+    // create the chunk data type
+    ret = MPI_Type_contiguous(MAX_CONTIG_ELEMENTS,
+                              dart__mpi__datatype(i),
+                              &dart__mpi__max_chunk_datatype[i]);
+    if (ret != MPI_SUCCESS) {
+      DART_LOG_ERROR("Failed to create chunk type of DART data type %i", i);
+      return DART_ERR_INVAL;
+    }
+    ret = MPI_Type_commit(&dart__mpi__max_chunk_datatype[i]);
+    if (ret != MPI_SUCCESS) {
+      DART_LOG_ERROR("Failed to commit chunk type of DART data type %i", i);
+      return DART_ERR_INVAL;
+    }
+
+  }
+  return DART_OK;
+}
+
+dart_ret_t
+dart__mpi__datatype_fini()
+{
+  for (int i = DART_TYPE_UNDEFINED+1; i < DART_TYPE_COUNT; i++) {
+    int ret = MPI_Type_free(&dart__mpi__max_chunk_datatype[i]);
+    if (ret != MPI_SUCCESS) {
+      DART_LOG_ERROR("Failed to commit chunk type of DART data type %i", i);
       return DART_ERR_INVAL;
     }
   }
@@ -112,24 +176,13 @@ dart_ret_t dart_get(
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   dart_team_t      teamid       = gptr.teamid;
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_get ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_get ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_get() uid:%d o:%"PRIu64" s:%d t:%d nelem:%zu",
                  team_unit_id.id, offset, seg_id, teamid, nelem);
@@ -163,24 +216,48 @@ dart_ret_t dart_get(
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
   /*
-   * MPI shared windows disabled or target and calling unit are on different
-   * nodes, use MPI_Get:
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
+  // chunk up the get
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+        char * dest_ptr  = (char*) dest;
 
-  MPI_Win win  = seginfo->win;
-  offset      += dart_segment_disp(seginfo, team_unit_id);
+  // source on another node or shared memory windows disabled
+  MPI_Win win = seginfo->win;
+  offset     += dart_segment_disp(seginfo, team_unit_id);
 
-  DART_LOG_TRACE("dart_get:  MPI_Get");
-  CHECK_MPI_RET(
-    MPI_Get(dest,
-            nelem,
-            mpi_dtype,
-            team_unit_id.id,
-            offset,
-            nelem,
-            mpi_dtype,
-            win),
-    "MPI_GET");
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
+                   dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      MPI_Get(dest_ptr,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              team_unit_id.id,
+              offset,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              win),
+      "MPI_Get");
+    offset   += nchunks * MAX_CONTIG_ELEMENTS;
+    dest_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)", dest_ptr, remainder);
+    if (MPI_Get(dest_ptr,
+                remainder,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                remainder,
+                mpi_dtype,
+                win) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_get ! MPI_Get failed");
+      return DART_ERR_INVAL;
+    }
+  }
 
   DART_LOG_DEBUG("dart_get > finished");
   return DART_OK;
@@ -198,24 +275,13 @@ dart_ret_t dart_put(
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   dart_team_t      teamid       = gptr.teamid;
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_put ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_put ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -224,7 +290,6 @@ dart_ret_t dart_put(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
-
 
   /* copy data directly if we are on the same unit */
   if (team_unit_id.id == team_data->unitid) {
@@ -249,17 +314,42 @@ dart_ret_t dart_put(
   MPI_Win win = seginfo->win;
   offset     += dart_segment_disp(seginfo, team_unit_id);
 
-  CHECK_MPI_RET(
-    MPI_Put(
-      src,
-      nelem,
-      mpi_dtype,
-      team_unit_id.id,
-      offset,
-      nelem,
-      mpi_dtype,
-      win),
-    "MPI_Put");
+  // chunk up the put
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * src_ptr   = (const char*) src;
+
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)",
+                   src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      MPI_Put(src_ptr,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              team_unit_id.id,
+              offset,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              win),
+      "MPI_Put");
+    offset  += nchunks * MAX_CONTIG_ELEMENTS;
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", src_ptr, remainder);
+
+    CHECK_MPI_RET(
+      MPI_Put(src_ptr,
+              remainder,
+              mpi_dtype,
+              team_unit_id.id,
+              offset,
+              remainder,
+              mpi_dtype,
+              win),
+      "MPI_Put");
+  }
 
   return DART_OK;
 }
@@ -280,27 +370,16 @@ dart_ret_t dart_accumulate(
   mpi_dtype          = dart__mpi__datatype(dtype);
   mpi_op             = dart__mpi__op(op);
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_accumulate ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, team_unit_id.id);
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_accumulate ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
-    return DART_ERR_INVAL;
-  }
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -313,19 +392,47 @@ dart_ret_t dart_accumulate(
   MPI_Win win = seginfo->win;
   offset     += dart_segment_disp(seginfo, team_unit_id);
 
+  // chunk up the put
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * src_ptr   = (const char*) values;
+
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
+                   src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      MPI_Accumulate(
+          src_ptr,
+          nchunks,
+          dart__mpi__max_chunk_datatype[dtype],
+          team_unit_id.id,
+          offset,
+          nchunks,
+          dart__mpi__max_chunk_datatype[dtype],
+          mpi_op,
+          win),
+      "MPI_Accumulate");
+    offset  += nchunks * MAX_CONTIG_ELEMENTS;
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
+                   src_ptr, remainder);
+
   CHECK_MPI_RET(
     MPI_Accumulate(
-      values,            // Origin address
-      nelem,             // Number of entries in buffer
-      mpi_dtype,         // Data type of each buffer entry
-      team_unit_id.id,   // Rank of target
-      offset,            // Displacement from start of window to beginning
-                         // of target buffer
-      nelem,             // Number of entries in target buffer
-      mpi_dtype,         // Data type of each entry in target buffer
-      mpi_op,            // Reduce operation
-      win),
+          src_ptr,
+          remainder,
+          mpi_dtype,
+          team_unit_id.id,
+          offset,
+          remainder,
+          mpi_dtype,
+          mpi_op,
+          win),
     "MPI_Accumulate");
+  }
 
   DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
@@ -347,29 +454,26 @@ dart_ret_t dart_fetch_and_op(
   mpi_dtype          = dart__mpi__datatype(dtype);
   mpi_op             = dart__mpi__op(op);
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_fetch_and_op ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
-                 "offset:%"PRIu64" segid:%d",
-                 dtype, op, team_unit_id.id,
-                 gptr.addr_or_offs.offset, seg_id);
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+    DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_fetch_and_op ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
+  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
+                 "offset:%"PRIu64" segid:%d",
+                 dtype, op, team_unit_id.id,
+                 gptr.addr_or_offs.offset, seg_id);
 
   MPI_Win win = seginfo->win;
   offset     += dart_segment_disp(seginfo, team_unit_id);
@@ -385,6 +489,7 @@ dart_ret_t dart_fetch_and_op(
       mpi_op,            // Reduce operation
       win),
     "MPI_Fetch_and_op");
+
   DART_LOG_DEBUG("dart_fetch_and_op > finished");
   return DART_OK;
 }
@@ -402,25 +507,23 @@ dart_ret_t dart_compare_and_swap(
   dart_team_t teamid = gptr.teamid;
   MPI_Datatype mpi_dtype         = dart__mpi__datatype(dtype);
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_compare_and_swap ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   if (dtype > DART_TYPE_LONGLONG) {
     DART_LOG_ERROR("dart_compare_and_swap ! failed: "
                    "only valid on integral types");
     return DART_ERR_INVAL;
   }
 
-  DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%"PRIu64,
-                 dtype, team_unit_id.id, gptr.addr_or_offs.offset);
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_compare_and_swap ! failed: Unknown team %i!",
+                    gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
+  DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%"PRIu64,
+                 dtype, team_unit_id.id, gptr.addr_or_offs.offset);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -432,7 +535,6 @@ dart_ret_t dart_compare_and_swap(
 
   MPI_Win win  = seginfo->win;
   offset      += dart_segment_disp(seginfo, team_unit_id);
-
 
   CHECK_MPI_RET(
     MPI_Compare_and_swap(
@@ -455,7 +557,7 @@ dart_ret_t dart_get_handle(
   dart_gptr_t     gptr,
   size_t          nelem,
   dart_datatype_t dtype,
-  dart_handle_t * handle)
+  dart_handle_t * handleptr)
 {
   MPI_Datatype     mpi_type = dart__mpi__datatype(dtype);
   dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
@@ -463,26 +565,15 @@ dart_ret_t dart_get_handle(
   int16_t          seg_id = gptr.segid;
   dart_team_t      teamid = gptr.teamid;
 
-  *handle = NULL;
-
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_get_handle ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_get_handle ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
+  *handleptr = DART_HANDLE_NULL;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -492,11 +583,9 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
 
-  MPI_Win win = seginfo->win;
-
   DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 team_unit_id.id, offset, seg_id, teamid, nelem);
-  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
+  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handleptr));
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
@@ -504,48 +593,75 @@ dart_ret_t dart_get_handle(
   if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_ret_t ret = get_shared_mem(team_data, seginfo, dest, offset,
                                     team_unit_id, nelem, dtype);
-
-    /*
-     * Mark request as completed:
-     */
-    *handle            = malloc(sizeof(struct dart_handle_struct));
-    (*handle)->request = MPI_REQUEST_NULL;
-    (*handle)->dest    = team_unit_id.id;
-    (*handle)->win     = win;
+    // return NULL request
     return ret;
   }
 #else
   DART_LOG_DEBUG("dart_get_handle: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
+
   /*
    * MPI shared windows disabled or target and calling unit are on different
    * nodes, use MPI_RGet:
    */
 
+  MPI_Win win = seginfo->win;
   offset += dart_segment_disp(seginfo, team_unit_id);
 
-  DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
-  MPI_Request mpi_req;
-  CHECK_MPI_RET(
-    MPI_Rget(
-      dest,              // origin address
-      nelem,             // origin count
-      mpi_type,          // origin data type
-      team_unit_id.id, // target rank
-      offset,            // target disp in window
-      nelem,             // target count
-      mpi_type,          // target data type
-      win,               // window
-      &mpi_req),
-    "MPI_Rget");
+  // chunk up the get
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  char * dest_ptr  = (char*) dest;
 
-  *handle            = malloc(sizeof(struct dart_handle_struct));
-  (*handle)->dest    = team_unit_id.id;
-  (*handle)->request = mpi_req;
-  (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%ld",
-                 (void*)(*handle), (*handle)->dest,
-                 (unsigned long)win, (long)mpi_req);
+  dart_handle_t handle = calloc(1, sizeof(struct dart_handle_struct));
+  handle->dest         = team_unit_id.id;
+  handle->win          = win;
+  handle->needs_flush  = false;
+
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_get_blocking:  MPI_Rget (dest %p, size %zu)",
+                   dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    if (MPI_Rget(dest_ptr,
+                  nchunks,
+                  dart__mpi__max_chunk_datatype[dtype],
+                  team_unit_id.id,
+                  offset,
+                  nchunks,
+                  dart__mpi__max_chunk_datatype[dtype],
+                  win,
+                 &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
+      free(handle);
+      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      return DART_ERR_INVAL;
+    }
+    offset   += nchunks * MAX_CONTIG_ELEMENTS;
+    dest_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    DART_LOG_TRACE(
+      "dart_get_blocking:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
+    if (MPI_Rget(dest_ptr,
+                 remainder,
+                 mpi_dtype,
+                 team_unit_id.id,
+                 offset,
+                 remainder,
+                 mpi_dtype,
+                 win,
+                 &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
+      free(handle);
+      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      return DART_ERR_INVAL;
+    }
+  }
+
+  *handleptr = handle;
+
+  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64,
+                 (void*)(handle), handle->dest,
+                 (unsigned long)win);
   return DART_OK;
 }
 
@@ -554,35 +670,22 @@ dart_ret_t dart_put_handle(
   const void      * src,
   size_t            nelem,
   dart_datatype_t   dtype,
-  dart_handle_t   * handle)
+  dart_handle_t   * handleptr)
 {
-  MPI_Request  mpi_req;
-  MPI_Datatype mpi_type = dart__mpi__datatype(dtype);
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t     offset   = gptr.addr_or_offs.offset;
   int16_t      seg_id   = gptr.segid;
   dart_team_t  teamid   = gptr.teamid;
 
-  *handle = NULL;
-
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_put_handle ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_put_handle ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
+  *handleptr = DART_HANDLE_NULL;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -595,24 +698,56 @@ dart_ret_t dart_put_handle(
   MPI_Win win  = seginfo->win;
   offset      += dart_segment_disp(seginfo, team_unit_id);
 
-  DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
-  CHECK_MPI_RET(
-    MPI_Rput(
-      src,
-      nelem,
-      mpi_type,
-      team_unit_id.id,
-      offset,
-      nelem,
-      mpi_type,
-      win,
-      &mpi_req),
-    "MPI_Rput");
+  // chunk up the put
+  dart_handle_t handle   = calloc(1, sizeof(struct dart_handle_struct));
+  handle->dest           = team_unit_id.id;
+  handle->win            = win;
+  handle->needs_flush    = true;
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char   * src_ptr = (const char*) src;
 
-  *handle = malloc(sizeof(struct dart_handle_struct));
-  (*handle)->dest    = team_unit_id.id;
-  (*handle)->request = mpi_req;
-  (*handle)->win     = win;
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_put_handle:  MPI_Rput (src %p, size %zu)",
+                   src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    if (MPI_Rput(src_ptr,
+                nchunks,
+                dart__mpi__max_chunk_datatype[dtype],
+                team_unit_id.id,
+                offset,
+                nchunks,
+                dart__mpi__max_chunk_datatype[dtype],
+                win,
+                &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
+      free(handle);
+      DART_LOG_ERROR("dart_put_handle ! MPI_Rput failed");
+      return DART_ERR_INVAL;
+    }
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+    offset  += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    DART_LOG_TRACE(
+      "dart_put_handle:  MPI_Rput (src %p, size %zu)", src_ptr, remainder);
+    if (MPI_Rput(src_ptr,
+                remainder,
+                mpi_dtype,
+                team_unit_id.id,
+                offset,
+                remainder,
+                mpi_dtype,
+                win,
+                &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
+      free(handle);
+      DART_LOG_ERROR("dart_get ! MPI_Put failed");
+      return DART_ERR_INVAL;
+    }
+  }
+
+  *handleptr = handle;
+
   return DART_OK;
 }
 
@@ -633,24 +768,13 @@ dart_ret_t dart_put_blocking(
   int16_t           seg_id       = gptr.segid;
   dart_team_t       teamid       = gptr.teamid;
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_put_blocking ! failed: Unknown team %i!", gptr.teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
@@ -659,6 +783,9 @@ dart_ret_t dart_put_blocking(
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
+
+  DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
 
 
   /* copy data directly if we are on the same unit */
@@ -683,24 +810,47 @@ dart_ret_t dart_put_blocking(
   MPI_Win win  = seginfo->win;
   offset      += dart_segment_disp(seginfo, team_unit_id);
 
-
-  DART_LOG_DEBUG("dart_put_blocking() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 team_unit_id.id, offset, seg_id, teamid, nelem);
-
   /*
    * Using MPI_Put as MPI_Win_flush is required to ensure remote completion.
    */
-  DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
-  CHECK_MPI_RET(
-    MPI_Put(src,
-            nelem,
-            mpi_dtype,
-            team_unit_id.id,
-            offset,
-            nelem,
-            mpi_dtype,
-            win),
-    "MPI_Put");
+
+  // chunk up the put
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char   * src_ptr = (const char*) src;
+
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_put_blocking:  MPI_Put (src %p, size %zu)",
+                   src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      MPI_Put(src_ptr,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              team_unit_id.id,
+              offset,
+              nchunks,
+              dart__mpi__max_chunk_datatype[dtype],
+              win),
+      "MPI_Put");
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+    offset  += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype  mpi_dtype = dart__mpi__datatype(dtype);
+    DART_LOG_TRACE(
+      "dart_put_blocking:  MPI_Put (src %p, size %zu)", src_ptr, remainder);
+    CHECK_MPI_RET(
+      MPI_Put(src_ptr,
+              remainder,
+              mpi_dtype,
+              team_unit_id.id,
+              offset,
+              remainder,
+              mpi_dtype,
+              win),
+      "MPI_Put");
+  }
 
   DART_LOG_DEBUG("dart_put_blocking: MPI_Win_flush");
   CHECK_MPI_RET(MPI_Win_flush(team_unit_id.id, win), "MPI_Win_flush");
@@ -718,30 +868,18 @@ dart_ret_t dart_get_blocking(
   size_t          nelem,
   dart_datatype_t dtype)
 {
-  MPI_Datatype      mpi_dtype    = dart__mpi__datatype(dtype);
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t          offset       = gptr.addr_or_offs.offset;
   int16_t           seg_id       = gptr.segid;
   dart_team_t       teamid       = gptr.teamid;
-
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_get_blocking ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   DART_LOG_DEBUG("dart_get_blocking() uid:%d "
                  "o:%"PRIu64" s:%d t:%u, nelem:%zu",
@@ -787,22 +925,52 @@ dart_ret_t dart_get_blocking(
   /*
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
    */
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
-  MPI_Request req;
-  CHECK_MPI_RET(
-    MPI_Rget(dest,
-             nelem,
-             mpi_dtype,
-             team_unit_id.id,
-             offset,
-             nelem,
-             mpi_dtype,
-             win,
-             &req), "MPI_Rget");
+  // chunk up the get
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  char * dest_ptr  = (char*) dest;
+  MPI_Request reqs[2];
+  int nreqs = 0;
 
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_get_blocking:  MPI_Rget (dest %p, size %zu)",
+                   dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+
+    CHECK_MPI_RET(
+      MPI_Rget(dest_ptr,
+                nchunks,
+                dart__mpi__max_chunk_datatype[dtype],
+                team_unit_id.id,
+                offset,
+                nchunks,
+                dart__mpi__max_chunk_datatype[dtype],
+                win,
+                &reqs[nreqs++]),
+      "MPI_Rget");
+    offset   += nchunks * MAX_CONTIG_ELEMENTS;
+    dest_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    DART_LOG_TRACE(
+      "dart_get_blocking:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
+
+    CHECK_MPI_RET(
+      MPI_Rget(dest_ptr,
+              remainder,
+              mpi_dtype,
+              team_unit_id.id,
+              offset,
+              remainder,
+              mpi_dtype,
+              win,
+              &reqs[nreqs++]),
+      "MPI_Rget");
+  }
+
   CHECK_MPI_RET(
-    MPI_Wait(&req, MPI_STATUS_IGNORE), "MPI_Wait");
+    MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE), "MPI_Waitall");
 
   DART_LOG_DEBUG("dart_get_blocking > finished");
   return DART_OK;
@@ -821,21 +989,18 @@ dart_ret_t dart_flush(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_flush ! failed: gptr.unitid < 0");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_flush ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -917,25 +1082,21 @@ dart_ret_t dart_flush_local(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
 
-  if (dart__unlikely(team_unit_id.id < 0)) {
-    DART_LOG_ERROR("dart_flush_local ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_flush_local ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_flush ! failed: Unknown team %i!", teamid);
-    return DART_ERR_INVAL;
-  }
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_flush_local ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
-
   MPI_Comm comm = team_data->comm;
   MPI_Win  win  = seginfo->win;
 
@@ -963,7 +1124,6 @@ dart_ret_t dart_flush_local_all(
                  "unitid:%d offset:%"PRIu64" segid:%d teamid:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.teamid);
-
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -997,84 +1157,66 @@ dart_ret_t dart_flush_local_all(
 }
 
 dart_ret_t dart_wait_local(
-  dart_handle_t handle)
+  dart_handle_t * handleptr)
 {
-  int mpi_ret;
-  DART_LOG_DEBUG("dart_wait_local() handle:%p", (void*)(handle));
-  if (handle != NULL) {
+  DART_LOG_DEBUG("dart_wait_local() handle:%p", (void*)(handleptr));
+  if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
+    dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
                    (void*)(unsigned long)(handle->win));
-    DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
-                   (long)handle->request);
-    if (handle->request != MPI_REQUEST_NULL) {
-      MPI_Status mpi_sta;
-      mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
-      DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_SOURCE = %d",
-                     mpi_sta.MPI_SOURCE);
-      DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_ERROR  = %d (%s)",
-                     mpi_sta.MPI_ERROR,
-                     DART__MPI__ERROR_STR(mpi_sta.MPI_ERROR));
-      if (mpi_ret != MPI_SUCCESS) {
+    if (handle->num_reqs > 0) {
+      int ret = MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE);
+      if (ret != MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_wait_local ! MPI_Wait failed");
         return DART_ERR_INVAL;
       }
     } else {
-      DART_LOG_TRACE("dart_wait_local:     handle->req == MPI_REQUEST_NULL");
+      DART_LOG_TRACE("dart_wait_local:     handle->num_reqs == 0");
     }
-    /*
-     * Do not free handle resource, it could be needed for a following
-     * dart_wait() or dart_wait_all() to ensure remote completion.
-     */
+    free(handle);
+    *handleptr = DART_HANDLE_NULL;
   }
   DART_LOG_DEBUG("dart_wait_local > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_wait(
-  dart_handle_t handle)
+  dart_handle_t * handleptr)
 {
-  int mpi_ret;
-  DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handle));
-  if (handle != NULL) {
+  DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handleptr));
+  if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
+    dart_handle_t handle = *handleptr;
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
                    (unsigned long)handle->win);
-    DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
-                   (unsigned long)handle->request);
-    if (handle->request != MPI_REQUEST_NULL) {
-      MPI_Status mpi_sta;
+    if (handle->num_reqs > 0) {
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
-      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_SOURCE: %d",
-                     mpi_sta.MPI_SOURCE);
-      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_ERROR:  %d:%s",
-                     mpi_sta.MPI_ERROR,
-                     DART__MPI__ERROR_STR(mpi_sta.MPI_ERROR));
-      if (mpi_ret != MPI_SUCCESS) {
-        DART_LOG_DEBUG("dart_wait ! MPI_Wait failed");
-        return DART_ERR_INVAL;
+      DART_LOG_DEBUG(
+        MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE),
+        "MPI_Waitall");
+
+      if (handle->needs_flush) {
+        DART_LOG_DEBUG("dart_wait:   -- MPI_Win_flush");
+        CHECK_MPI_RET(MPI_Win_flush(handle->dest, handle->win),
+                      "MPI_Win_flush");
       }
-      DART_LOG_DEBUG("dart_wait:     -- MPI_Win_flush");
-      CHECK_MPI_RET(
-        MPI_Win_flush(handle->dest, handle->win), "MPI_Win_flush");
     } else {
-      DART_LOG_TRACE("dart_wait:     handle->request: MPI_REQUEST_NULL");
+      DART_LOG_TRACE("dart_wait:     handle->num_reqs == 0");
     }
     /* Free handle resource */
-    DART_LOG_DEBUG("dart_wait:   free handle %p", (void*)(handle));
     free(handle);
-    handle = NULL;
+    *handleptr = DART_HANDLE_NULL;
   }
   DART_LOG_DEBUG("dart_wait > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_waitall_local(
-  dart_handle_t * handle,
-  size_t          num_handles)
+  dart_handle_t handles[],
+  size_t        num_handles)
 {
   dart_ret_t ret = DART_OK;
 
@@ -1083,31 +1225,28 @@ dart_ret_t dart_waitall_local(
     DART_LOG_DEBUG("dart_waitall_local > number of handles = 0");
     return DART_OK;
   }
-  if (num_handles > INT_MAX) {
+  if (dart__unlikely(num_handles > INT_MAX)) {
     DART_LOG_ERROR("dart_waitall_local ! number of handles > INT_MAX");
     return DART_ERR_INVAL;
   }
-  if (handle != NULL) {
-    size_t      i,
-                r_n = 0;
-    MPI_Status  *mpi_sta;
-    MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *) malloc(num_handles * sizeof(MPI_Request));
-    mpi_sta = (MPI_Status  *) malloc(num_handles * sizeof(MPI_Status));
-    for (i = 0; i < num_handles; i++)  {
-      if (handle[i] != NULL && handle[i]->request != MPI_REQUEST_NULL) {
-        DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
-                       i, (void*)handle[i]);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
-                       i, handle[i]->dest);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->win:  %p",
-                       i, (void*)((unsigned long)(handle[i]->win)));
-        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->req:  %p",
-                       i, (void*)((unsigned long)(handle[i]->request)));
-        mpi_req[r_n] = handle[i]->request;
-        r_n++;
+  if (handles != NULL) {
+    size_t r_n = 0;
+    MPI_Request *mpi_req = ALLOC_TMP(2 * num_handles * sizeof(MPI_Request));
+    for (size_t i = 0; i < num_handles; ++i) {
+      if (handles[i] != DART_HANDLE_NULL) {
+        for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+          if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
+            DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
+                          i, (void*)handles[i]->reqs[j]);
+            DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
+                          i, handles[i]->dest);
+            mpi_req[r_n] = handles[i]->reqs[j];
+            r_n++;
+          }
+        }
       }
     }
+
     /*
      * Wait for local completion of MPI requests:
      */
@@ -1115,101 +1254,76 @@ dart_ret_t dart_waitall_local(
                    "MPI_Waitall, %"PRIu64" requests from %"PRIu64" handles",
                    r_n, num_handles);
     if (r_n > 0) {
-      if (MPI_Waitall(r_n, mpi_req, mpi_sta) == MPI_SUCCESS) {
-        DART_LOG_DEBUG("dart_waitall_local: MPI_Waitall completed");
-      } else {
+      if (MPI_Waitall(r_n, mpi_req, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
         DART_LOG_ERROR("dart_waitall_local: MPI_Waitall failed");
-        DART_LOG_TRACE("dart_waitall_local: free MPI_Request temporaries");
-        free(mpi_req);
-        DART_LOG_TRACE("dart_waitall_local: free MPI_Status temporaries");
-        free(mpi_sta);
+        FREE_TMP(2 * num_handles * sizeof(MPI_Request), mpi_req);
         return DART_ERR_INVAL;
       }
     } else {
       DART_LOG_DEBUG("dart_waitall_local > number of requests = 0");
-      free(mpi_req);
-      free(mpi_sta);
+      FREE_TMP(2 * num_handles * sizeof(MPI_Request), mpi_req);
       return DART_OK;
     }
+
     /*
-     * copy MPI requests back to DART handles:
+     * free DART handles
      */
-    DART_LOG_TRACE("dart_waitall_local: "
-                   "releasing DART handles");
-    r_n = 0;
-    for (i = 0; i < num_handles; i++) {
-      if (handle[i]) {
-        if (handle[i]->request) {
-          DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_SOURCE:"
-                         " %d",
-                         r_n, mpi_sta[r_n].MPI_SOURCE);
-          DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_ERROR:"
-                         "  %d:%s",
-                         r_n,
-                         mpi_sta[r_n].MPI_ERROR,
-                         DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
-          if (mpi_sta[r_n].MPI_ERROR != MPI_SUCCESS) {
-            DART_LOG_ERROR("dart_waitall_local: detected unsuccesful request "
-                           "%zu mpi_sta[%zu] = %d (%s)",
-                           i,
-                           r_n,
-                           mpi_sta[r_n].MPI_ERROR,
-                           DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
-          }
-          r_n++;
-        }
+    DART_LOG_TRACE("dart_waitall_local: releasing DART handles");
+    for (size_t i = 0; i < num_handles; i++) {
+      if (handles[i] != DART_HANDLE_NULL) {
         DART_LOG_TRACE("dart_waitall_local: free handle[%zu] %p",
-                       i, (void*)(handle[i]));
-        free(handle[i]);
-        handle[i] = NULL;
+                       i, (void*)(handles[i]));
+        // free the handle
+        free(handles[i]);
+        handles[i] = DART_HANDLE_NULL;
       }
     }
-    DART_LOG_TRACE("dart_waitall_local: free MPI_Request temporaries");
-    free(mpi_req);
-    DART_LOG_TRACE("dart_waitall_local: free MPI_Status temporaries");
-    free(mpi_sta);
+    FREE_TMP(2 * num_handles * sizeof(MPI_Request), mpi_req);
   }
   DART_LOG_DEBUG("dart_waitall_local > %d", ret);
   return ret;
 }
 
 dart_ret_t dart_waitall(
-  dart_handle_t * handle,
-  size_t          n)
+  dart_handle_t handles[],
+  size_t        n)
 {
-  size_t i, r_n;
   DART_LOG_DEBUG("dart_waitall()");
   if (n == 0) {
-    DART_LOG_ERROR("dart_waitall > number of handles = 0");
+    DART_LOG_DEBUG("dart_waitall > number of handles = 0");
     return DART_OK;
   }
-  if (n > INT_MAX) {
+
+  if (dart__unlikely(n > INT_MAX)) {
     DART_LOG_ERROR("dart_waitall ! number of handles > INT_MAX");
     return DART_ERR_INVAL;
   }
+
   DART_LOG_DEBUG("dart_waitall: number of handles: %zu", n);
-  if (handle) {
-    MPI_Status  *mpi_sta;
-    MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *) malloc(n * sizeof(MPI_Request));
-    mpi_sta = (MPI_Status *)  malloc(n * sizeof(MPI_Status));
+
+  if (handles != NULL) {
+    MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof(MPI_Request));
     /*
      * copy requests from DART handles to MPI request array:
      */
     DART_LOG_TRACE("dart_waitall: copying DART handles to MPI request array");
-    r_n = 0;
-    for (i = 0; i < n; i++) {
-      if (handle[i] != NULL) {
-        DART_LOG_DEBUG("dart_waitall: -- handle[%zu](%p): "
-                       "dest:%d win:%"PRIu64" req:%"PRIu64"",
-                       i, (void*)handle[i],
-                       handle[i]->dest,
-                       (unsigned long)handle[i]->win,
-                       (unsigned long)handle[i]->request);
-        mpi_req[r_n] = handle[i]->request;
-        r_n++;
+    size_t r_n = 0;
+    for (size_t i = 0; i < n; i++) {
+      if (handles[i] != DART_HANDLE_NULL) {
+        for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+          if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
+            DART_LOG_DEBUG("dart_waitall: -- handle[%zu](%p): "
+                          "dest:%d win:%"PRIu64,
+                          i, (void*)handles[i]->reqs[0],
+                          handles[i]->dest,
+                          (unsigned long)handles[i]->win);
+            mpi_req[r_n] = handles[i]->reqs[j];
+            r_n++;
+          }
+        }
       }
     }
+
     /*
      * wait for communication of MPI requests:
      */
@@ -1227,142 +1341,128 @@ dart_ret_t dart_waitall(
      * The call sets to empty the status of each such entry.
      */
     if (r_n > 0) {
-      if (MPI_Waitall(r_n, mpi_req, mpi_sta) == MPI_SUCCESS) {
-        DART_LOG_DEBUG("dart_waitall: MPI_Waitall completed");
-      } else {
+      if (MPI_Waitall(r_n, mpi_req, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
         DART_LOG_ERROR("dart_waitall: MPI_Waitall failed");
-        DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
-        free(mpi_req);
-        DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
-        free(mpi_sta);
+        FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
         return DART_ERR_INVAL;
       }
     } else {
       DART_LOG_DEBUG("dart_waitall > number of requests = 0");
-      free(mpi_req);
-      free(mpi_sta);
+      FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
       return DART_OK;
     }
-    /*
-     * copy MPI requests back to DART handles:
-     */
-    DART_LOG_TRACE("dart_waitall: copying MPI requests back to DART handles");
-    r_n = 0;
-    for (i = 0; i < n; i++) {
-      if (handle[i]) {
-        if (mpi_req[r_n] == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: -- mpi_req[%zu] = MPI_REQUEST_NULL",
-                         r_n);
-        } else {
-          DART_LOG_TRACE("dart_waitall: -- mpi_req[%zu]", r_n);
-        }
-        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%zu].MPI_SOURCE: %d",
-                       r_n, mpi_sta[r_n].MPI_SOURCE);
-        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%zu].MPI_ERROR:  %d:%s",
-                       r_n,
-                       mpi_sta[r_n].MPI_ERROR,
-                       DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
-        handle[i]->request = mpi_req[r_n];
-        r_n++;
-      }
-    }
+
     /*
      * wait for completion of MPI requests at origins and targets:
      */
     DART_LOG_DEBUG("dart_waitall: waiting for remote completion");
-    for (i = 0; i < n; i++) {
-      if (handle[i]) {
-        if (handle[i]->request == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: -- handle[%zu] done (MPI_REQUEST_NULL)",
-                         i);
-        } else {
-          DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%zu]: %p))",
-                         i, (void*)handle[i]);
-          DART_LOG_TRACE("dart_waitall:      handle[%zu]->dest: %d",
-                         i, handle[i]->dest);
-          DART_LOG_TRACE("dart_waitall:      handle[%zu]->win:  %"PRIu64"",
-                         i, (unsigned long)handle[i]->win);
-          DART_LOG_TRACE("dart_waitall:      handle[%zu]->req:  %"PRIu64"",
-                         i, (unsigned long)handle[i]->request);
-          /*
-           * MPI_Win_flush to wait for remote completion:
-           */
-          if (MPI_Win_flush(handle[i]->dest, handle[i]->win) != MPI_SUCCESS) {
-            DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
-            DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
-            free(mpi_req);
-            DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
-            free(mpi_sta);
-            return DART_ERR_INVAL;
-          }
+    for (size_t i = 0; i < n; i++) {
+      if (handles[i] != DART_HANDLE_NULL && handles[i]->needs_flush) {
+        DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%zu]: %p, dest: %d))",
+                       i, (void*)handles[i], handles[i]->dest);
+        /*
+         * MPI_Win_flush to wait for remote completion if required:
+         */
+        if (MPI_Win_flush(handles[i]->dest, handles[i]->win) != MPI_SUCCESS) {
+          DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
+          FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+          return DART_ERR_INVAL;
         }
       }
     }
+
     /*
      * free memory:
      */
     DART_LOG_DEBUG("dart_waitall: free handles");
-    for (i = 0; i < n; i++) {
-      if (handle[i]) {
+    for (size_t i = 0; i < n; i++) {
+      if (handles[i] != DART_HANDLE_NULL) {
         /* Free handle resource */
         DART_LOG_TRACE("dart_waitall: -- free handle[%zu]: %p",
-                       i, (void*)(handle[i]));
-        free(handle[i]);
-        handle[i] = NULL;
+                       i, (void*)(handles[i]));
+        // free the handle
+        free(handles[i]);
+        handles[i] = DART_HANDLE_NULL;
       }
     }
     DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
-    free(mpi_req);
-    DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
-    free(mpi_sta);
+    FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
   }
   DART_LOG_DEBUG("dart_waitall > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_test_local(
-  dart_handle_t handle,
-  int32_t* is_finished)
+  dart_handle_t * handleptr,
+  int32_t       * is_finished)
 {
   DART_LOG_DEBUG("dart_test_local()");
-  if (!handle) {
+  if (handleptr == NULL ||
+      *handleptr == DART_HANDLE_NULL ||
+      (*handleptr)->num_reqs == 0) {
     *is_finished = 1;
     return DART_OK;
   }
-  MPI_Status mpi_sta;
-  MPI_Test (&(handle->request), is_finished, &mpi_sta);
+
+  dart_handle_t handle = *handleptr;
+  if (MPI_Testall(handle->num_reqs, handle->reqs,
+               is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
+    return DART_ERR_OTHER;
+  }
+
+  if (is_finished) {
+    // deallocate handle
+    free(handle);
+    *handleptr = DART_HANDLE_NULL;
+  }
   DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_testall_local(
-  dart_handle_t * handle,
+  dart_handle_t   handles[],
   size_t          n,
   int32_t       * is_finished)
 {
-  size_t i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
-  MPI_Status *mpi_sta;
-  MPI_Request *mpi_req;
-  mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
-  mpi_sta = (MPI_Status *)malloc(n * sizeof (MPI_Status));
-  r_n = 0;
-  for (i = 0; i < n; i++) {
-    if (handle[i]){
-      mpi_req[r_n] = handle[i] -> request;
-      r_n++;
+  if (handles == NULL || n == 0) {
+    DART_LOG_DEBUG("dart_testall_local: empty handles");
+    return DART_OK;
+  }
+
+  MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof (MPI_Request));
+  size_t r_n = 0;
+  for (size_t i = 0; i < n; ++i) {
+    if (handles[i] != DART_HANDLE_NULL) {
+      for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+        if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
+          mpi_req[r_n] = handles[i]->reqs[j];
+          ++r_n;
+        }
+      }
     }
   }
-  MPI_Testall(r_n, mpi_req, is_finished, mpi_sta);
-  r_n = 0;
-  for (i = 0; i < n; i++) {
-    if (handle[i]) {
-      handle[i] -> request = mpi_req[r_n];
-      r_n++;
+
+  if (r_n) {
+    if (MPI_Testall(r_n, mpi_req, is_finished,
+                    MPI_STATUSES_IGNORE) != MPI_SUCCESS){
+      FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+      DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
+      return DART_ERR_OTHER;
+    }
+
+    if (*is_finished) {
+      for (size_t i = 0; i < n; i++) {
+        if (handles[i] != DART_HANDLE_NULL) {
+          // free the handle
+          free(handles[i]);
+          handles[i] = DART_HANDLE_NULL;
+        }
+      }
     }
   }
-  free(mpi_req);
-  free(mpi_sta);
+  FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
   DART_LOG_DEBUG("dart_testall_local > finished");
   return DART_OK;
 }
@@ -1404,39 +1504,39 @@ dart_ret_t dart_bcast(
   dart_team_unit_t    root,
   dart_team_t         teamid)
 {
-  MPI_Comm comm;
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-
   DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
                  root.id, teamid, nelem);
 
-  if (dart__unlikely(root.id < 0)) {
-    DART_LOG_ERROR("dart_bcast ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
-    DART_LOG_ERROR("dart_bcast ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_bcast ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
-                   "dart_adapt_teamlist_convert failed", root.id, teamid);
+    DART_LOG_ERROR("dart_bcast ! failed: unknown team %d", teamid);
     return DART_ERR_INVAL;
   }
-  comm = team_data->comm;
-  CHECK_MPI_RET(
-    MPI_Bcast(buf, nelem, mpi_dtype, root.id, comm), "MPI_Bcast");
+
+  CHECK_UNITID_RANGE(root, team_data);
+
+  MPI_Comm comm = team_data->comm;
+
+  // chunk up the bcast if necessary
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+        char * src_ptr   = (char*) buf;
+
+  if (nchunks > 0) {
+    CHECK_MPI_RET(
+      MPI_Bcast(src_ptr, nchunks,
+                dart__mpi__max_chunk_datatype[dtype],
+                root.id, comm),
+      "MPI_Bcast");
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    CHECK_MPI_RET(
+      MPI_Bcast(src_ptr, remainder, mpi_dtype, root.id, comm),
+      "MPI_Bcast");
+  }
 
   DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%zu finished",
                  root.id, teamid, nelem);
@@ -1451,44 +1551,54 @@ dart_ret_t dart_scatter(
   dart_team_unit_t    root,
   dart_team_t         teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-  MPI_Comm     comm;
-
-  if (dart__unlikely(root.id < 0)) {
-    DART_LOG_ERROR("dart_scatter ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (dart__unlikely(teamid == DART_UNDEFINED_TEAM_ID)) {
-    DART_LOG_ERROR("dart_scatter ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (dart__unlikely(nelem > INT_MAX)) {
-    DART_LOG_ERROR("dart_scatter ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
     DART_LOG_ERROR("dart_scatter ! failed: unknown team %d", teamid);
     return DART_ERR_INVAL;
   }
-  comm = team_data->comm;
-  CHECK_MPI_RET(
-    MPI_Scatter(
-       sendbuf,
-       nelem,
-       mpi_dtype,
-       recvbuf,
-       nelem,
-       mpi_dtype,
-       root.id,
-       comm),
-    "MPI_Scatter");
+
+  CHECK_UNITID_RANGE(root, team_data);
+
+  // chunk up the scatter if necessary
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * send_ptr  = (const char*) sendbuf;
+        char * recv_ptr  = (char*) recvbuf;
+
+  MPI_Comm comm = team_data->comm;
+
+  if (nchunks > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    CHECK_MPI_RET(
+      MPI_Scatter(
+          send_ptr,
+          nchunks,
+          mpi_dtype,
+          recv_ptr,
+          nchunks,
+          mpi_dtype,
+          root.id,
+          comm),
+      "MPI_Scatter");
+    send_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+    recv_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    CHECK_MPI_RET(
+      MPI_Scatter(
+          send_ptr,
+          remainder,
+          mpi_dtype,
+          recv_ptr,
+          remainder,
+          mpi_dtype,
+          root.id,
+          comm),
+      "MPI_Scatter");
+  }
+
   return DART_OK;
 }
 
@@ -1500,43 +1610,57 @@ dart_ret_t dart_gather(
   dart_team_unit_t     root,
   dart_team_t          teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-  MPI_Comm     comm;
-
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_gather ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_gather ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_gather ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
+  DART_LOG_TRACE("dart_gather() team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_gather ! failed: unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
-  comm = team_data->comm;
-  if (MPI_Gather(
-           sendbuf,
-           nelem,
-           mpi_dtype,
-           recvbuf,
-           nelem,
-           mpi_dtype,
-           root.id,
-           comm) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
+
+  CHECK_UNITID_RANGE(root, team_data);
+
+  // chunk up the scatter if necessary
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * send_ptr  = (const char*) sendbuf;
+        char * recv_ptr  = (char*) recvbuf;
+
+  MPI_Comm comm = team_data->comm;
+
+  if (nchunks > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    CHECK_MPI_RET(
+      MPI_Gather(
+          send_ptr,
+          nchunks,
+          mpi_dtype,
+          recv_ptr,
+          nchunks,
+          mpi_dtype,
+          root.id,
+          comm),
+      "MPI_Gather");
+    send_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+    recv_ptr += nchunks * MAX_CONTIG_ELEMENTS;
   }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    CHECK_MPI_RET(
+      MPI_Gather(
+          send_ptr,
+          remainder,
+          mpi_dtype,
+          recv_ptr,
+          remainder,
+          mpi_dtype,
+          root.id,
+          comm),
+      "MPI_Gather");
+  }
+
   return DART_OK;
 }
 
@@ -1547,46 +1671,57 @@ dart_ret_t dart_allgather(
   dart_datatype_t   dtype,
   dart_team_t       teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-  MPI_Comm     comm;
   DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
 
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_accumulate ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_allgather ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_allgather ! team:%d "
-                   "dart_adapt_teamlist_convert failed", teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allgather ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
+
   if (sendbuf == recvbuf || NULL == sendbuf) {
     sendbuf = MPI_IN_PLACE;
   }
-  comm = team_data->comm;
-  if (MPI_Allgather(
-           sendbuf,
-           nelem,
-           mpi_dtype,
-           recvbuf,
-           nelem,
-           mpi_dtype,
-           comm) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_allgather ! team:%d nelem:%"PRIu64" failed",
-                   teamid, nelem);
-    return DART_ERR_INVAL;
+
+  // chunk up the scatter if necessary
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * send_ptr  = (const char*) sendbuf;
+        char * recv_ptr  = (char*) recvbuf;
+
+  MPI_Comm comm = team_data->comm;
+
+  if (nchunks > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__max_chunk_datatype[dtype];
+    CHECK_MPI_RET(
+      MPI_Allgather(
+          send_ptr,
+          nchunks,
+          mpi_dtype,
+          recv_ptr,
+          nchunks,
+          mpi_dtype,
+          comm),
+      "MPI_Allgather");
+    send_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+    recv_ptr += nchunks * MAX_CONTIG_ELEMENTS;
   }
+
+  if (remainder > 0) {
+    MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+    CHECK_MPI_RET(
+      MPI_Allgather(
+          send_ptr,
+          remainder,
+          mpi_dtype,
+          recv_ptr,
+          remainder,
+          mpi_dtype,
+          comm),
+      "MPI_Allgather");
+  }
+
   DART_LOG_TRACE("dart_allgather > team:%d nelem:%"PRIu64"",
                  teamid, nelem);
   return DART_OK;
@@ -1601,43 +1736,40 @@ dart_ret_t dart_allgatherv(
   const size_t    * recvdispls,
   dart_team_t       teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-  MPI_Comm     comm;
-  int          comm_size;
   DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
-
-  if (teamid == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_allgatherv ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nsendelem > INT_MAX) {
-    DART_LOG_ERROR("dart_allgather ! failed: nelem > INT_MAX");
+  if (dart__unlikely(nsendelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_allgather ! failed: nsendelem (%zu) > INT_MAX",
+                   nsendelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_allgatherv ! team:%d "
-                   "dart_adapt_teamlist_convert failed", teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allgatherv ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
   if (sendbuf == recvbuf || NULL == sendbuf) {
     sendbuf = MPI_IN_PLACE;
   }
-  comm = team_data->comm;
+  MPI_Comm comm      = team_data->comm;
+  int      comm_size = team_data->size;
 
   // convert nrecvcounts and recvdispls
   MPI_Comm_size(comm, &comm_size);
   int *inrecvcounts = malloc(sizeof(int) * comm_size);
   int *irecvdispls  = malloc(sizeof(int) * comm_size);
   for (int i = 0; i < comm_size; i++) {
-    if (nrecvcounts[i] > INT_MAX || recvdispls[i] > INT_MAX) {
-      DART_LOG_ERROR("dart_allgatherv ! failed: nrecvcounts[%i] > INT_MAX || recvdispls[%i] > INT_MAX", i, i);
+    if (nrecvcounts[i] > MAX_CONTIG_ELEMENTS ||
+        recvdispls[i] > MAX_CONTIG_ELEMENTS)
+    {
+      DART_LOG_ERROR(
+        "dart_allgatherv ! failed: nrecvcounts[%i] (%zu) > INT_MAX || "
+        "recvdispls[%i] (%zu) > INT_MAX", i, nrecvcounts[i], i, recvdispls[i]);
       free(inrecvcounts);
       free(irecvdispls);
       return DART_ERR_INVAL;
@@ -1646,6 +1778,7 @@ dart_ret_t dart_allgatherv(
     irecvdispls[i]  = recvdispls[i];
   }
 
+  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   if (MPI_Allgatherv(
            sendbuf,
            nsendelem,
@@ -1676,37 +1809,32 @@ dart_ret_t dart_allreduce(
   dart_operation_t   op,
   dart_team_t        team)
 {
-  MPI_Comm     comm;
   MPI_Op       mpi_op    = dart__mpi__op(op);
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
-
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_allreduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_allreduce ! failed: nelem > INT_MAX");
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_allreduce ! failed: nelem (%zu) > INT_MAX", nelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allreduce ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
-  comm = team_data->comm;
-  if (MPI_Allreduce(
+  MPI_Comm comm = team_data->comm;
+  CHECK_MPI_RET(
+    MPI_Allreduce(
            sendbuf,   // send buffer
            recvbuf,   // receive buffer
            nelem,     // buffer size
            mpi_dtype, // datatype
            mpi_op,    // reduce operation
-           comm) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+           comm),
+    "MPI_Allreduce");
   return DART_OK;
 }
 
@@ -1723,39 +1851,33 @@ dart_ret_t dart_reduce(
   MPI_Op       mpi_op    = dart__mpi__op(op);
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
 
-  if (root.id < 0) {
-    DART_LOG_ERROR("dart_reduce ! failed: root < 0");
-    return DART_ERR_INVAL;
-  }
-
-  if (team == DART_UNDEFINED_TEAM_ID) {
-    DART_LOG_ERROR("dart_reduce ! failed: team may not be DART_UNDEFINED_TEAM_ID");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_allreduce ! failed: nelem > INT_MAX");
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_allreduce ! failed: nelem (%zu) > INT_MAX", nelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_reduce ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(root, team_data);
+
   comm = team_data->comm;
-  if (MPI_Reduce(
+  CHECK_MPI_RET(
+    MPI_Reduce(
            sendbuf,
            recvbuf,
            nelem,
            mpi_dtype,
            mpi_op,
            root.id,
-           comm) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+           comm),
+    "MPI_Reduce");
   return DART_OK;
 }
 
@@ -1770,34 +1892,33 @@ dart_ret_t dart_send(
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (unit.id < 0) {
-    DART_LOG_ERROR("dart_send ! failed: unit < 0");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_send ! failed: nelem > INT_MAX");
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_send ! failed: nelem (%zu) > INT_MAX", nelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_send ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
   comm = team_data->comm;
   // dart_unit = MPI rank in comm_world
-  if(MPI_Send(
+  CHECK_MPI_RET(
+    MPI_Send(
         sendbuf,
         nelem,
         mpi_dtype,
         unit.id,
         tag,
-        comm) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+        comm),
+    "MPI_Send");
   return DART_OK;
 }
 
@@ -1812,35 +1933,34 @@ dart_ret_t dart_recv(
   MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (unit.id < 0) {
-    DART_LOG_ERROR("dart_recv ! failed: unit < 0");
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_recv ! failed: nelem > INT_MAX");
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_recv ! failed: nelem (%zu) > INT_MAX", nelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_recv ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
   comm = team_data->comm;
   // dart_unit = MPI rank in comm_world
-  if(MPI_Recv(
+  CHECK_MPI_RET(
+    MPI_Recv(
         recvbuf,
         nelem,
         mpi_dtype,
         unit.id,
         tag,
         comm,
-        MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+        MPI_STATUS_IGNORE),
+    "MPI_Recv");
   return DART_OK;
 }
 
@@ -1861,25 +1981,28 @@ dart_ret_t dart_sendrecv(
   MPI_Datatype mpi_recv_dtype = dart__mpi__datatype(recv_dtype);
   dart_team_t team = DART_TEAM_ALL;
 
-  if (src.id < 0 || dest.id < 0) {
-    DART_LOG_ERROR("dart_send ! failed: src (%i) or dest (%i) unit invalid", src.id, dest.id);
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (send_nelem > INT_MAX || recv_nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_sendrecv ! failed: nelem > INT_MAX");
+  if (dart__unlikely(
+        send_nelem > MAX_CONTIG_ELEMENTS || recv_nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_sendrecv ! failed: nelem (%zu, %zu) > INT_MAX",
+                   recv_nelem, send_nelem);
     return DART_ERR_INVAL;
   }
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
-  if (team_data == NULL) {
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_sendrecv ! unknown teamid %d", team);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(dest, team_data);
+  CHECK_UNITID_RANGE(src, team_data);
+
   comm = team_data->comm;
-  if(MPI_Sendrecv(
+  CHECK_MPI_RET(
+    MPI_Sendrecv(
         sendbuf,
         send_nelem,
         mpi_send_dtype,
@@ -1891,9 +2014,8 @@ dart_ret_t dart_sendrecv(
         src.id,
         recv_tag,
         comm,
-        MPI_STATUS_IGNORE) != MPI_SUCCESS) {
-    return DART_ERR_INVAL;
-  }
+        MPI_STATUS_IGNORE),
+    "MPI_Sendrecv");
   return DART_OK;
 }
 
