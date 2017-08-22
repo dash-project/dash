@@ -12,7 +12,7 @@ template <class T_>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
   const LocalMatrixRef<T_, NumDim, CUR+1, PatternT> & previous,
-  index_type coord)
+  size_type coord)
   : _refview(previous._refview)
 {
   DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", CUR);
@@ -75,8 +75,8 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   //                        block_view.extent(d));
   //
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lcoords);
-  auto pattern      = _refview._mat->_pattern;
-  auto block_lindex = pattern.blockspec().at(block_lcoords);
+  const auto& pattern = _refview._mat->_pattern;
+  auto block_lindex   = pattern.blockspec().at(block_lcoords);
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
   // Global view of local block:
   auto l_block_g_view = pattern.local_block(block_lindex);
@@ -109,7 +109,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   //                        block_view.extent(d));
   //
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-  auto pattern        = _refview._mat->_pattern;
+  const auto& pattern = _refview._mat->_pattern;
   // Global view of local block:
   auto l_block_g_view = pattern.local_block(block_lindex);
   // Local view of local block:
@@ -298,7 +298,20 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::local_at(
   size_type pos)
 {
-  if (!(pos < _refview._viewspec.size())) {
+  if (!(pos < _refview._mat->local_size())) {
+    throw std::out_of_range("Out of range");
+  }
+  DASH_LOG_TRACE("LocalMatrixRef.local_at()",
+                 "pos:", pos);
+  return _refview._mat->lbegin()[pos];
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+const T & LocalMatrixRef<T, NumDim, CUR, PatternT>
+::local_at(
+  size_type pos) const
+{
+  if (!(pos < _refview._mat->local_size())) {
     throw std::out_of_range("Out of range");
   }
   DASH_LOG_TRACE("LocalMatrixRef.local_at()",
@@ -312,18 +325,18 @@ inline T & LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::at(
   Args... args)
 {
-  if(sizeof...(Args) != (NumDim - _refview._dim)) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LocalMatrixRef.at(): Invalid number of arguments " <<
-      "expected " << (NumDim - _refview._dim) << " " <<
-      "got " << sizeof...(Args));
-  }
-  std::array<index_type, NumDim> coord = {
-    static_cast<index_type>(args)...
+  static_assert(sizeof...(Args) == CUR,
+      "Invalid number of arguments in variadic access method!");
+
+        auto  l_coords   = _refview._coord;
+  const auto& l_viewspec = _refview._l_viewspec;
+  const auto& pattern    = _refview._mat->_pattern;
+  std::array<size_type, CUR> coord = {
+    static_cast<size_type>(args)...
   };
-  for(auto i = _refview._dim; i < NumDim; ++i) {
-    _refview._coord[i] = coord[i-_refview._dim];
+
+  for(auto i = 0; i < CUR; ++i) {
+    l_coords[NumDim - CUR + i] = coord[i];
   }
   DASH_LOG_TRACE("LocalMatrixRef.at()",
                  "ndim:",     NumDim,
@@ -331,9 +344,9 @@ inline T & LocalMatrixRef<T, NumDim, CUR, PatternT>
                  "l_coords:",   _refview._coord,
                  "l_viewspec:", _refview._l_viewspec);
   return local_at(
-           _refview._mat->_pattern.local_at(
-             _refview._coord,
-             _refview._l_viewspec));
+           pattern.local_at(
+             l_coords,
+             l_viewspec));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -345,11 +358,14 @@ inline T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   return at(args...);
 }
 
+
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-LocalMatrixRef<T, NumDim, CUR-1, PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim > 0),
+  LocalMatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type pos)
+  size_type pos)
 {
   DASH_LOG_TRACE("LocalMatrixRef.[]=()",
                  "curdim:",   CUR,
@@ -359,12 +375,62 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr LocalMatrixRef<const T, NumDim, CUR-1, PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim == 0), T&>::type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type pos) const
+  size_type pos)
+{
+        auto  l_coords   = _refview._coord;
+  const auto& l_viewspec = _refview._l_viewspec;
+  const auto& pattern    = _refview._mat->_pattern;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.local()",
+                 "coords:",         l_coords,
+                 "local viewspec:", l_viewspec.extents());
+
+  l_coords[NumDim-1] = pos;
+
+  // Local coordinates and local viewspec to local index:
+  auto local_index = pattern.local_at(
+                       l_coords,
+                       l_viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.local()", local_index);
+  return local_at(local_index);
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim > 0),
+  LocalMatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
+constexpr
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::operator[](size_type pos) const
 {
   return LocalMatrixRef<const T, NumDim, CUR-1, PatternT>(*this, pos);
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template<dim_t __NumViewDim>
+typename std::enable_if<(__NumViewDim == 0), const T&>::type
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::operator[](
+  size_type pos) const
+{
+  auto  l_coords   = _refview._coord;
+  const auto& l_viewspec = _refview._l_viewspec;
+  const auto& pattern    = _refview._mat->_pattern;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.local()",
+                 "coords:",         l_coords,
+                 "local viewspec:", l_viewspec.extents());
+
+  l_coords[NumDim-1] = pos;
+
+  // Local coordinates and local viewspec to local index:
+  auto local_index = pattern.local_at(
+                       l_coords,
+                       l_viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.local()", local_index);
+  return local_at(local_index);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -574,125 +640,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
   size_type extent) const
 {
   return sub<1>(offset, extent);
-}
-
-// LocalMatrixRef<T, NumDim, 0>
-// Partial Specialization for value deferencing.
-
-template <typename T, dim_t NumDim, class PatternT>
-template <class T_>
-LocalMatrixRef<T, NumDim, 0, PatternT>
-::LocalMatrixRef(
-  const LocalMatrixRef<T_, NumDim, 1, PatternT> & previous,
-  typename PatternT::index_type                  coord)
-  : _refview(previous._refview)
-{
-  DASH_LOG_TRACE("LocalMatrixRef<0>.(prev)");
-  _refview._coord[_refview._dim] = coord;
-  _refview._dim++;
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview._coord);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview._dim);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview._viewspec);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview._l_viewspec);
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T *
-LocalMatrixRef<T, NumDim, 0, PatternT>
-::local_at(
-  index_type pos) const
-{
-  if (!(static_cast<size_type>(pos) < _refview._mat->size())) {
-    DASH_THROW(
-      dash::exception::OutOfRange,
-      "Position for LocalMatrixRef<0>.local_at out of range");
-  }
-  return &(_refview._mat->lbegin()[pos]);
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline LocalMatrixRef<T, NumDim, 0, PatternT>
-::operator T() const
-{
-  auto l_coords   = _refview._coord;
-  auto l_viewspec = _refview._l_viewspec;
-  auto pattern    = _refview._mat->_pattern;
-  DASH_LOG_TRACE("LocalMatrixRef<0>.T()",
-                 "coords:",         l_coords,
-                 "local viewspec:", l_viewspec.extents());
-  // Local coordinates and local viewspec to local index:
-  auto local_index = pattern.local_at(
-                       l_coords,
-                       l_viewspec);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.T()", local_index);
-  T ret = *local_at(local_index);
-  return ret;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-LocalMatrixRef<T, NumDim, 0, PatternT>
-::operator=(
-  const T & value)
-{
-  auto l_coords   = _refview._coord;
-  auto l_viewspec = _refview._l_viewspec;
-  auto pattern    = _refview._mat->_pattern;
-  DASH_LOG_TRACE("LocalMatrixRef<0>.=()",
-                 "coords:",         l_coords,
-                 "local viewspec:", l_viewspec,
-                 "value:",          value);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=()", l_viewspec);
-  // Local coordinates and local viewspec to local index:
-  auto local_index = pattern.local_at(
-                       l_coords,
-                       l_viewspec);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=", local_index);
-  T* ref = local_at(local_index);
-  *ref   = value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-LocalMatrixRef<T, NumDim, 0, PatternT>
-::operator+=(
-  const T & value)
-{
-  auto l_coords   = _refview._coord;
-  auto l_viewspec = _refview._l_viewspec;
-  auto pattern    = _refview._mat->_pattern;
-  DASH_LOG_TRACE("LocalMatrixRef<0>.+=()",
-                 "coords:",         l_coords,
-                 "local viewspec:", l_viewspec,
-                 "value:",          value);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.+=()", l_viewspec);
-  // Local coordinates and local viewspec to local index:
-  auto local_index = pattern.local_at(
-                       l_coords,
-                       l_viewspec);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=", local_index);
-  T* ref  = local_at(local_index);
-  *ref   += value;
-  return value;
-}
-
-template <typename T, dim_t NumDim, class PatternT>
-inline T
-LocalMatrixRef<T, NumDim, 0, PatternT>
-::operator+(
-  const T & value)
-{
-	auto res  = self_t(*this);
-	res      += value;
-	return res;
-}
-
-template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr const PatternT &
-LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
-{
-	return _refview._mat->_pattern;
 }
 
 } // namespace dash
