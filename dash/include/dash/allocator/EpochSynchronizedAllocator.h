@@ -482,7 +482,7 @@ class EpochSynchronizedAllocator {
   pointer do_attach(local_pointer ptr, size_type num_local_elem)
   {
     // Attach the block
-    dart_storage_t ds = dart_storage<value_type>(num_local_elem);
+    dash::dart_storage<value_type> ds(num_local_elem);
     dart_gptr_t dgptr;
     if (dart_team_memregister(_team->dart_id(), ds.nelem, ds.dtype, ptr,
                               &dgptr) != DART_OK) {

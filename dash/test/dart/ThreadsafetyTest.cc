@@ -196,12 +196,12 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
         vals[j] = thread_id;
       }
       dart_gptr_t gptr = allocator.attach(vals, elem_per_thread);
-      ASSERT_NE_U(DART_GPTR_NULL, gptr);
+      ASSERT_FALSE_U(DART_GPTR_ISNULL(gptr));
       auto gptr_r = gptr;
       ASSERT_LT_U(gptr_r.segid, 0); // attached memory has segment ID < 0
       elem_t check[elem_per_thread];
       gptr_r.unitid = (team->myid() + 1) % team->size();
-      dart_storage_t ds = dash::dart_storage<elem_t>(elem_per_thread);
+      dash::dart_storage<elem_t> ds(elem_per_thread);
       ASSERT_EQ_U(
         dart_get_blocking(check, gptr_r, ds.nelem, ds.dtype),
         DART_OK);

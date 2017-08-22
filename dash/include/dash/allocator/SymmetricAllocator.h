@@ -193,7 +193,7 @@ public:
     DASH_LOG_DEBUG("SymmetricAllocator.allocate(nlocal)",
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
-    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+    dash::dart_storage<ElementType> ds(num_local_elem);
     if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
         == DART_OK) {
       _allocated.push_back(gptr);

@@ -1167,8 +1167,7 @@ private:
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                          attach_buckets_sizes);
 
-      dart_storage_t ds =
-          dart_storage<size_type>(attach_buckets_sizes.size());
+      dash::dart_storage<size_type> ds(attach_buckets_sizes.size());
 
       // Accumulate number of unattached buckets of each unit
       auto const n_team_unattached_buckets =
