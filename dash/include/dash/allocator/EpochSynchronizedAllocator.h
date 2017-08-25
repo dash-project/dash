@@ -70,7 +70,7 @@ class EpochSynchronizedAllocator {
   using block_t             = dash::allocator::memory_block;
   using internal_value_type = std::pair<block_t, pointer>;
   using memory_space =
-      dash::MemorySpace<memory_space_global_domain_tag, MSpaceCategory>;
+      dash::MemorySpace<MSpaceCategory>;
 
  public:
   /// Convert EpochSynchronizedAllocator<T> to EpochSynchronizedAllocator<U>.
@@ -159,17 +159,16 @@ class EpochSynchronizedAllocator {
    */
   ~EpochSynchronizedAllocator() noexcept { clear(); }
   /**
-   * Assignment operator.
+   * Assignment operator deleted.
    *
-   * \todo[TF] This smells like bad a surprise at some point...
-   *
-   * \see DashAllocatorConcept
    */
-  self_t &operator=(const self_t &other) noexcept
+  self_t &operator=(const self_t &other) = delete;
+#if 0
   {
     // noop
     return *this;
   }
+#endif
 
   /**
    * Move-assignment operator.
@@ -221,7 +220,10 @@ class EpochSynchronizedAllocator {
    *
    * \see DashAllocatorConcept
    */
-  bool operator!=(const self_t &rhs) const noexcept { return !(*this == rhs); }
+  bool operator!=(const self_t &rhs) const noexcept
+  {
+    return !(*this == rhs);
+  }
   /**
    * Team containing units associated with the allocator's memory space.
    */

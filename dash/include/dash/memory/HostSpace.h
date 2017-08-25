@@ -12,13 +12,11 @@ namespace dash {
 
 class HostSpace
   : public dash::MemorySpace<
-             dash::memory_space_local_domain_tag,
              dash::memory_space_host_tag >
 {
  private:
   using void_pointer = HostSpace::void_pointer;
   using base_t       = dash::MemorySpace<
-                         dash::memory_space_local_domain_tag,
                          dash::memory_space_host_tag >;
 
  public:

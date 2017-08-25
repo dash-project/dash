@@ -8,7 +8,7 @@ namespace allocator {
 
 template <typename T, typename MSpaceCategory = dash::memory_space_host_tag>
 class LocalSpaceAllocator {
-  using memory_space = dash::MemorySpace<memory_space_local_domain_tag, MSpaceCategory>;
+  using memory_space = dash::MemorySpace<MSpaceCategory>;
   using memory_traits = dash::memory_space_traits<memory_space>;
 
  public:
@@ -63,7 +63,7 @@ class LocalSpaceAllocator {
 
 template <typename T, typename MSpaceCategory>
 inline LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator()
-  : _space(get_default_memory_space<memory_space_local_domain_tag, MSpaceCategory>())
+  : _space(get_default_memory_space<MSpaceCategory>())
 {
   DASH_ASSERT(_space);
 }

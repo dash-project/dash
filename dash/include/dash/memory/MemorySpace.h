@@ -81,11 +81,13 @@ struct memory_space_pmem_tag {
 
 template <class MemSpace>
 struct memory_space_traits {
-  using memory_space_domain_category =
-      typename MemSpace::memory_space_domain_category;
   using memory_space_type_category =
       typename MemSpace::memory_space_type_category;
 
+  using is_global = std::integral_constant<bool, 0>;
+#if 0
+  using memory_space_domain_category =
+      typename MemSpace::memory_space_domain_category;
   /**
    * Whether the memory space type is specified for global address space.
    */
@@ -100,9 +102,11 @@ struct memory_space_traits {
   using is_local = std::integral_constant<
       bool, std::is_same<memory_space_domain_category,
                          memory_space_local_domain_tag>::value>;
+#endif
+
   using void_pointer =
-      typename std::conditional<is_global::value, dash::GlobPtr<void, MemSpace>,
-                                void*>::type;
+      typename std::conditional<is_global::value,
+                                dash::GlobPtr<void, MemSpace>, void*>::type;
 };
 
 /**
@@ -144,7 +148,7 @@ struct memory_space_traits {
  * interface, only DART_TYPE_BYTE instead of the actual value type
  * is available. This would therefore harm stability and performance.
  */
-template <class MemSpaceDomainCategory, class MemSpaceTypeCategory>
+template <class MemSpaceTypeCategory>
 class MemorySpace {
   using self_t = MemorySpace;
 
@@ -154,15 +158,15 @@ class MemorySpace {
   using index_type = std::size_t;
   using size_type  = std::size_t;
 
-  using memory_space_domain_category = MemSpaceDomainCategory;
-  using memory_space_type_category   = MemSpaceTypeCategory;
+  using memory_space_type_category = MemSpaceTypeCategory;
 
   // Resolve void pointer type for this MemorySpace, typically
   // `GlobPtr<void>` for global and `void *` for local memory.
   // Allocators use rebind to obtain a fully specified type like
   // `GlobPtr<double>` and can then cast the `void_pointer`
   // returned from a memory space to their value type.
-  using void_pointer = typename dash::memory_space_traits<self_t>::void_pointer;
+  using void_pointer =
+      typename dash::memory_space_traits<self_t>::void_pointer;
 
  protected:
   virtual ~MemorySpace();
@@ -208,36 +212,33 @@ class MemorySpace {
    *
    * Clarify: This method makes only sense in case of a global adresse space.
    */
-  size_type local_size(dash::team_unit_t unit) const;
+  // size_type local_size(dash::team_unit_t unit) const;
 };
 
-template <class MemSpaceDomainCategory, class MemSpaceTypeCategory>
-inline MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory>::~MemorySpace()
+template <class MemSpaceTypeCategory>
+inline MemorySpace<MemSpaceTypeCategory>::~MemorySpace()
 {
 }
 
-template <class MemSpaceDomainCategory, class MemSpaceTypeCategory>
-inline typename MemorySpace<MemSpaceDomainCategory,
-                            MemSpaceTypeCategory>::void_pointer
-MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory>::allocate(
-    std::size_t bytes, std::size_t alignment)
+template <class MemSpaceTypeCategory>
+inline typename MemorySpace<MemSpaceTypeCategory>::void_pointer
+MemorySpace<MemSpaceTypeCategory>::allocate(std::size_t bytes,
+                                            std::size_t alignment)
 {
   return do_allocate(bytes, alignment);
 }
 
-template <class MemSpaceDomainCategory, class MemSpaceTypeCategory>
-inline void
-MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory>::deallocate(
-    typename MemorySpace<MemSpaceDomainCategory,
-                         MemSpaceTypeCategory>::void_pointer p,
+template <class MemSpaceTypeCategory>
+inline void MemorySpace<MemSpaceTypeCategory>::deallocate(
+    typename MemorySpace<MemSpaceTypeCategory>::void_pointer p,
     std::size_t bytes, std::size_t alignment)
 {
   return do_deallocate(p, bytes, alignment);
 }
-template <class MemSpaceDomainCategory, class MemSpaceTypeCategory>
-inline bool
-operator==(MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory> const& lhs,
-           MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory> const& rhs)
+
+template <class MemSpaceTypeCategory>
+inline bool operator==(MemorySpace<MemSpaceTypeCategory> const& lhs,
+                       MemorySpace<MemSpaceTypeCategory> const& rhs)
 {
   return &lhs == &rhs || lhs.is_equal(rhs);
 }
@@ -245,20 +246,19 @@ operator==(MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory> const& lhs,
 // Default Memory Space is HostSpace
 // TODO rko: maybe there is a better solution to solve this??
 
-MemorySpace<memory_space_local_domain_tag, memory_space_host_tag>*
+MemorySpace<memory_space_host_tag>*
 get_default_host_space();
 
-template <typename MemSpaceDomainCategory, typename MemSpaceTypeCategory>
-inline MemorySpace<MemSpaceDomainCategory, MemSpaceTypeCategory>*
-get_default_memory_space()
+template <typename MemSpaceTypeCategory>
+inline MemorySpace<MemSpaceTypeCategory>* get_default_memory_space()
 {
   // Current we have only a default host space
   return nullptr;
 }
 
 template <>
-inline MemorySpace<memory_space_local_domain_tag, memory_space_host_tag>*
-get_default_memory_space<memory_space_local_domain_tag, memory_space_host_tag>()
+inline MemorySpace<memory_space_host_tag>*
+get_default_memory_space<memory_space_host_tag>()
 {
   return get_default_host_space();
 }
