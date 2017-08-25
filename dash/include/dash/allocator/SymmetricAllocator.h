@@ -5,17 +5,20 @@
 
 #include <dash/Types.h>
 #include <dash/Team.h>
-#include <dash/GlobPtr.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
 
+#include <dash/allocator/internal/Types.h>
 #include <dash/allocator/AllocatorTraits.h>
+#include <dash/allocator/LocalSpaceAllocator.h>
+
 
 #include <vector>
 #include <algorithm>
 #include <utility>
 #include <cassert>
+#include <tuple>
 
 
 namespace dash {
@@ -35,62 +38,87 @@ namespace allocator {
  *
  * \concept{DashAllocatorConcept}
  */
-template<typename ElementType>
+template<typename ElementType, typename MSpaceCategory = dash::memory_space_host_tag,
+  typename LocalAlloc = dash::allocator::LocalSpaceAllocator<ElementType, MSpaceCategory>>
 class SymmetricAllocator
 {
   template <class T, class U>
-  friend bool operator==(
-    const SymmetricAllocator<T> & lhs,
-    const SymmetricAllocator<U> & rhs);
-
+  friend bool operator==(const SymmetricAllocator<T>& lhs,
+                         const SymmetricAllocator<U>& rhs);
   template <class T, class U>
-  friend bool operator!=(
-    const SymmetricAllocator<T> & lhs,
-    const SymmetricAllocator<U> & rhs);
+  friend bool operator!=(const SymmetricAllocator<T>& lhs,
+                         const SymmetricAllocator<U>& rhs);
 
 private:
-  typedef SymmetricAllocator<ElementType> self_t;
+  using self_t = SymmetricAllocator<ElementType>;
 
-/// Type definitions required for std::allocator concept:
+  using AllocatorTraits = std::allocator_traits<LocalAlloc>;
+  using allocator_type  = typename AllocatorTraits::allocator_type;
+  //  using propagate_on_container_move_assignment  = std::true_type;
+
 public:
-  using value_type                             = ElementType;
-  using size_type                              = dash::default_size_t;
+  using value_type = typename AllocatorTraits::value_type;
+  using size_type  = dash::default_size_t;
   using propagate_on_container_move_assignment = std::true_type;
 
   using allocator_category = dash::collective_allocator_tag;
 
-/// Type definitions required for dash::allocator concept:
+  /// Type definitions required for dash::allocator concept:
 public:
-  typedef dash::gptrdiff_t        difference_type;
-  typedef dart_gptr_t                     pointer;
-  typedef dart_gptr_t                void_pointer;
-  typedef dart_gptr_t               const_pointer;
-  typedef dart_gptr_t          const_void_pointer;
+  typedef dash::gptrdiff_t difference_type;
+  typedef dart_gptr_t      pointer;
+  typedef dart_gptr_t      void_pointer;
+  typedef dart_gptr_t      const_pointer;
+  typedef dart_gptr_t      const_void_pointer;
+
+  typedef typename AllocatorTraits::pointer       local_pointer;
+  typedef typename AllocatorTraits::const_pointer const_local_pointer;
 
 private:
-  dart_team_t          _team_id;
-  std::vector<pointer> _allocated;
+  using internal_value_type = std::tuple<local_pointer, size_t, pointer>;
+
+private:
+  dart_team_t    _team_id = DART_TEAM_NULL;
+  allocator_type _alloc;
+  std::vector<internal_value_type> _segments;
 
 public:
   /**
    * Constructor.
    * Creates a new instance of \c dash::SymmetricAllocator for a given team.
    */
-  explicit SymmetricAllocator(
-    Team & team = dash::Team::All()) noexcept
-  : _team_id(team.dart_id())
-  { }
+  explicit SymmetricAllocator(Team& team = dash::Team::All()) noexcept
+    : _team_id(team.dart_id())
+  {
+  }
+
+  SymmetricAllocator(
+      const allocator_type& local_alloc,
+      dash::Team&           team = dash::Team::All()) noexcept
+    : _team_id(team.dart_id())
+    , _alloc(local_alloc)
+  {
+  }
+
+  SymmetricAllocator(
+      const allocator_type&& local_alloc,
+      dash::Team&            team = dash::Team::All()) noexcept
+    : _team_id(team.dart_id())
+    , _alloc(local_alloc)
+  {
+  }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
-  SymmetricAllocator(self_t && other) noexcept
-  : _team_id(other._team_id),
-    _allocated(std::move(other._allocated))
+  SymmetricAllocator(self_t&& other) noexcept
+    : _team_id(other._team_id)
+    , _alloc(other._alloc)
+    , _segments(std::move(other._segments))
   {
     // clear origin without deallocating gptrs
-    other._allocated.clear();
+    other._segments.clear();
   }
 
   /**
@@ -98,18 +126,22 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  SymmetricAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id)
-  { }
+  SymmetricAllocator(const self_t& other) noexcept
+    : _team_id(other._team_id)
+    , _alloc(other._alloc)
+  {
+  }
 
   /**
    * Copy-constructor.
    * Does not take ownership of the copied instance's allocation.
    */
-  template<class U>
-  SymmetricAllocator(const SymmetricAllocator<U> & other) noexcept
-  : _team_id(other._team_id)
-  { }
+  template <class U>
+  SymmetricAllocator(const SymmetricAllocator<U>& other) noexcept
+    : _team_id(other._team_id)
+    , _alloc(other._alloc)
+  {
+  }
 
   /**
    * Destructor.
@@ -121,7 +153,7 @@ public:
   }
 
   /**
-   * Assignment operator.
+   * Copy Assignment operator.
    *
    * \see DashAllocatorConcept
    */
@@ -135,10 +167,11 @@ public:
     // Take ownership of other instance's allocation vector:
     if (this != &other) {
       clear();
-      _allocated = std::move(other._allocated);
+      _alloc = std::move(other._alloc);
+      _segments = std::move(other._segments);
       _team_id = other._team_id;
       // clear origin without deallocating gptrs
-      other._allocated.clear();
+      other._segments.clear();
     }
     return *this;
   }
@@ -156,7 +189,7 @@ public:
    */
   bool operator==(const self_t & rhs) const noexcept
   {
-    return (_team_id == rhs._team_id);
+    return (_team_id == rhs._team_id && _alloc == rhs._alloc);
   }
 
   /**
@@ -192,13 +225,36 @@ public:
   {
     DASH_LOG_DEBUG("SymmetricAllocator.allocate(nlocal)",
                    "number of local values:", num_local_elem);
-    pointer gptr = DART_GPTR_NULL;
+
+    DASH_ASSERT_EQ(_segments.size(), 0, "Number of allocated _segments must be 0");
+
+    local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
+
+    if (!lp) {
+      if (num_local_elem > 0) {
+        std::stringstream ss;
+        ss << "Allocating local segment (nelem: " << num_local_elem
+           << ") failed!";
+        DASH_LOG_ERROR("SymmetricAllocator.allocate", ss.str());
+        DASH_THROW(dash::exception::RuntimeError, ss.str());
+      }
+      return DART_GPTR_NULL;
+    }
+
+    pointer gptr;
     dash::dart_storage<ElementType> ds(num_local_elem);
-    if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
-        == DART_OK) {
-      _allocated.push_back(gptr);
-    } else {
+
+    if (dart_team_memregister(_team_id, ds.nelem, ds.dtype, lp, &gptr) !=
+        DART_OK) {
+
       gptr = DART_GPTR_NULL;
+      AllocatorTraits::deallocate(_alloc, lp, num_local_elem);
+
+      DASH_LOG_ERROR(
+          "SymmetricAllocator.attach", "cannot attach local memory", gptr);
+    }
+    else {
+      _segments.push_back(std::make_tuple(lp, num_local_elem, gptr));
     }
     DASH_LOG_DEBUG_VAR("SymmetricAllocator.allocate >", gptr);
     return gptr;
@@ -223,10 +279,10 @@ private:
    */
   void clear() noexcept
   {
-    for (auto gptr : _allocated) {
-      _deallocate(gptr, true);
+    for (auto &tuple : _segments) {
+      _deallocate(std::get<2>(tuple), true);
     }
-    _allocated.clear();
+    _segments.clear();
   }
   /**
    * Deallocates memory in global memory space previously allocated in the
@@ -238,6 +294,8 @@ private:
     /// if true, only free memory but keep gptr in vector
     bool    keep_reference = false)
   {
+    DASH_ASSERT_RANGE(0, _segments.size(), 1, "SymmatricAllocator supports only 1 or 0 memory _segments");
+
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
@@ -247,23 +305,38 @@ private:
       return;
     }
 
+    if (_segments.size() == 0) {
+      DASH_LOG_WARN("SymmetricAllocator.deallocate >",
+                     "cannot free gptr", gptr);
+      return;
+    }
+
+    auto & tuple = *_segments.begin();
+
+    auto & seg_lptr = std::get<0>(tuple);
+    auto & seg_nelem = std::get<1>(tuple);
+    auto & seg_gptr = std::get<2>(tuple);
+
+    DASH_ASSERT(DART_GPTR_EQUAL(gptr, seg_gptr));
+
+    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memfree");
+    DASH_ASSERT_RETURNS(
+      dart_team_memderegister(gptr),
+      DART_OK);
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "barrier");
     DASH_ASSERT_RETURNS(
       dart_barrier(_team_id),
       DART_OK);
-    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memfree");
-    DASH_ASSERT_RETURNS(
-      dart_team_memfree(gptr),
-      DART_OK);
-    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "_allocated.erase");
-    if(!keep_reference){
-      _allocated.erase(std::remove_if(_allocated.begin(), _allocated.end(),
-                                      [gptr](const pointer allocated_gptr) {
-                                        return DART_GPTR_EQUAL(gptr,
-                                                               allocated_gptr);
-                                      }),
-                       _allocated.end());
+
+    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "_segments.erase");
+
+    AllocatorTraits::deallocate(_alloc, seg_lptr, seg_nelem);
+    seg_lptr = nullptr;
+
+    if (!keep_reference) {
+      _segments.erase(_segments.begin());
     }
+
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate >");
   }
 
