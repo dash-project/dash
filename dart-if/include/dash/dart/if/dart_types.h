@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <signal.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,11 +52,13 @@ typedef enum
  */
 enum {
   /** Signal success */
-  DART_EXIT_SUCCESS = EXIT_SUCCESS,
+  DART_EXIT_SUCCESS     = EXIT_SUCCESS,
   /** Signal generic abort */
-  DART_EXIT_ABORT   = EXIT_FAILURE,
+  DART_EXIT_ABORT       = EXIT_FAILURE,
   /** Signal abort after failed assert */
-  DART_EXIT_ASSERT  = -6
+  DART_EXIT_ASSERT      = -SIGABRT,
+  /** Signal abort from unsupported operation */
+  DART_EXIT_UNSUPPORTED = -SIGILL
 };
 
 
@@ -101,7 +104,7 @@ typedef enum
 typedef enum
 {
     DART_TYPE_UNDEFINED = 0,
-    /// integral data types 
+    /// integral data types
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
     DART_TYPE_INT,
@@ -250,11 +253,11 @@ typedef int16_t dart_team_t;
 
 /**
  * Levels of thread-support offered by DART.
- * \ref DART_THREAD_MULTIPLE is supported if 
+ * \ref DART_THREAD_MULTIPLE is supported if
  * DART has been build with \c DART_ENABLE_THREADSUPPORT
- * and the underlying communication backend supports 
+ * and the underlying communication backend supports
  * thread-safe access.
- * 
+ *
  */
 typedef enum
 {

@@ -18,7 +18,8 @@ typedef enum {
   DART_TASK_RUNNING,
   DART_TASK_SUSPENDED,
   DART_TASK_NASCENT,
-  DART_TASK_DESTROYED
+  DART_TASK_DESTROYED,
+  DART_TASK_CANCELLED
 } dart_task_state_t;
 
 struct dart_task_data {
@@ -27,8 +28,9 @@ struct dart_task_data {
   dart_task_action_t         fn;              // the action to be invoked
   void                      *data;            // the data to be passed to passed to the action
   size_t                     data_size;       // the size of the data; data will be freed if data_size > 0
-  int                        unresolved_deps; // the number of unresolved task dependencies
-  struct task_list          *successor;       // the list of tasks that have a dependency to this task
+  int32_t                    unresolved_deps; // the number of unresolved task dependencies
+  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+  struct task_list          *successor;       // the list of tasks that depend on this task
   struct dart_task_data     *parent;          // the task that created this task
   struct dart_dephash_elem  *remote_successor;
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
@@ -78,9 +80,10 @@ typedef struct {
   struct dart_taskqueue   defered_queue;
   uint64_t                taskcntr;
   pthread_t               pthread;
-  int                     thread_id;
   context_t               retctx;            // the thread-specific context to return to eventually
   context_list_t        * ctxlist;
+  int                     thread_id;
+  int                     last_steal_thread;
 } dart_thread_t;
 
 dart_ret_t
@@ -132,6 +135,9 @@ dart__tasking__current_task();
 
 void
 dart__tasking__enqueue_runnable(dart_task_t *task);
+
+void
+dart__tasking__cancel_task(dart_task_t *task);
 //void
 //dart__base__tasking_print_taskgraph();
 //

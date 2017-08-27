@@ -42,6 +42,13 @@ dart_ret_t dart_tasking_remote_release(
   const dart_task_dep_t *dep);
 
 /**
+ * Cancel a remote dependency request, potentially cancelling the remote task.
+ */
+dart_ret_t dart_tasking_remote_cancel_taskdep(
+  dart_global_unit_t   unit,
+  taskref              remote_task);
+
+/**
  * Check for new remote task dependency requests coming in.
  * The call immediately returns if another thread is currently
  * processing the queue and will only process one chunk of data.

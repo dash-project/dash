@@ -44,6 +44,12 @@ struct remote_task_dep {
 };
 
 
+struct remote_task_dep_cancelation {
+  // local task at the target
+  taskref task;
+};
+
+
 /**
  * Forward declarations of remote tasking actions
  */
@@ -53,6 +59,8 @@ static void
 release_remote_dependency(void *data);
 static void
 request_direct_taskdep(void *data);
+static void
+cancel_taskdep(void *data);
 
 static inline
 size_t
@@ -114,13 +122,6 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
             sizeof(rdep));
     if (ret == DART_OK) {
       // the message was successfully sent
-      int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_deps);
-      DART_LOG_INFO(
-          "Sent remote dependency request for task %p "
-          "(unit=%i, segid=%i, offset=%p, fn=%p, num_deps=%i)",
-          task, dep->gptr.unitid, dep->gptr.segid,
-          dep->gptr.addr_or_offs.offset,
-          &enqueue_from_remote, unresolved_deps);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -234,6 +235,43 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 }
 
 
+dart_ret_t dart_tasking_remote_cancel_taskdep(
+  dart_global_unit_t   unit,
+  taskref              remote_task)
+{
+  dart_team_unit_t team_unit;
+  dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
+
+  DART_ASSERT(remote_task.local != NULL);
+  struct remote_task_dep_cancelation cancel;
+  cancel.task.remote = remote_task;
+
+  while (1) {
+    dart_ret_t ret;
+    ret = dart_amsg_trysend(
+        team_unit,
+        amsgq,
+        &cancel_taskdep,
+        &cancel,
+        sizeof(cancel));
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      DART_LOG_INFO("Sent direct remote task dependency to unit %i "
+                    "(local task %p depdends on remote task %p)",
+                    unit, local_task, remote_task);
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be sent at the moment, just try again
+      dart_amsg_process(amsgq);
+      continue;
+    } else {
+      DART_LOG_ERROR("Failed to send active message to unit %i", unit);
+      return DART_ERR_OTHER;
+    }
+  }
+
+}
+
 /**
  * Check for new remote task dependency requests coming in.
  */
@@ -314,5 +352,18 @@ request_direct_taskdep(void *data)
   DART_ASSERT(taskdep->task != NULL);
   DART_ASSERT(taskdep->successor != NULL);
   taskref successor = {taskdep->successor};
-  dart_tasking_datadeps_handle_remote_direct(taskdep->task, successor, taskdep->runit);
+  dart_tasking_datadeps_handle_remote_direct(taskdep->task,
+                                             successor,
+                                             taskdep->runit);
+}
+
+/**
+ * An action called from the remote unit to signal the cancellation of a
+ * matched remote task dependency.
+ */
+static void
+cancel_taskdep(void *data)
+{
+  struct remote_task_dep_cancelation *taskdep = (struct remote_task_dep_cancelation*) data;
+  dart_tasking_datadeps_cancel_remote_dep(taskdep->task.local);
 }

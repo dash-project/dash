@@ -81,6 +81,13 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
     dart_task_t *local_task);
 
 /**
+ * Cancel a remote dependency for the local task. Subsequently, the
+ * task will not be scheduled for execution anymore and will be canceled in turn.
+ */
+dart_ret_t dart_tasking_datadeps_cancel_remote_dep(
+    dart_task_t *local_task);
+
+/**
  * Release all unhandled remote dependency requests.
  * This should be done before starting to execute local tasks
  * to avoid deadlocks.
