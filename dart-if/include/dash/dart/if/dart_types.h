@@ -128,18 +128,6 @@ typedef enum
 #  error "Cannot determine DART type for size_t!"
 #endif
 
-
-/** \cond DART_HIDDEN_SYMBOLS */
-/**
- * \todo This is not part of the DART interface
- * and should move to dash::internal eventually.
- */
-typedef struct {
-    dart_datatype_t dtype;
-    int             nelem;
-} dart_storage_t;
-/** \endcond */
-
 /**
  * Data type for storing a unit ID
  * \ingroup DartTypes

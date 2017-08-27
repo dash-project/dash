@@ -23,8 +23,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   // Global start index of block to copy:
   int g_src_index       = unit_src * block_size;
   // Copy values:
-  dart_storage_t ds = dash::dart_storage<value_t>(block_size);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
+  dash::dart_storage<value_t> ds(block_size);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
@@ -64,8 +64,8 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   // Global start index of block to copy:
   int g_src_index       = unit_src * block_size;
   // Copy values:
-  dart_storage_t ds = dash::dart_storage<value_t>(block_size);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
+  dash::dart_storage<value_t> ds(block_size);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
@@ -96,8 +96,8 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   }
   array.barrier();
   // Copy values from first two blocks:
-  dart_storage_t ds = dash::dart_storage<value_t>(num_elem_copy);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
+  dash::dart_storage<value_t> ds(num_elem_copy);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
@@ -139,8 +139,8 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
       LOG_MESSAGE("Requesting block %zu from unit %zu", block, u);
       dart_handle_t handle;
 
-      dart_storage_t ds = dash::dart_storage<value_t>(block_size);
-      LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
+      dash::dart_storage<value_t> ds(block_size);
+      LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
       EXPECT_EQ_U(
         DART_OK,
         dart_get_handle(

@@ -30,6 +30,11 @@
 #define DEP_ADDR(dep) \
   ((dep).gptr.addr_or_offs.addr)
 
+#define DEP_ADDR_EQ(dep1, dep2) \
+  (((dep1).gptr.teamid) == ((dep2).gptr.teamid)  && \
+   ((dep1).gptr.segid == ((dep2).gptr.segid)) && \
+   ((dep1).gptr.addr_or_offs.addr == ((dep1).gptr.addr_or_offs.addr))) \
+
 typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;
   union taskref             task;
@@ -62,8 +67,13 @@ static inline int hash_gptr(dart_gptr_t gptr)
    * Use the upper 61 bit of the pointer since we assume that pointers
    * are 8-byte aligned.
    */
-  uint64_t offset = gptr.addr_or_offs.offset;
+  dart_team_t team   = gptr.teamid;
+  int16_t     segid  = gptr.segid;
+  uint64_t    offset = gptr.addr_or_offs.offset;
   offset >>= 3;
+  // mix in team and segment ID
+  offset |= segid;
+  offset |= (team << 16);
   // use triplet (7, 11, 10), consider adding (21,17,48)
   // proposed by Marsaglia
   return ((offset ^ (offset >> 7) ^ (offset >> 11) ^ (offset >> 17))
@@ -277,7 +287,7 @@ dart_tasking_datadeps_release_unhandled_remote()
         // matching output dependencies
         if (task != candidate &&
             IS_OUT_DEP(local->taskdep) &&
-            DEP_ADDR(local->taskdep) == DEP_ADDR(rdep->taskdep)) {
+            DEP_ADDR_EQ(local->taskdep, rdep->taskdep)) {
           /*
           * Remote INPUT task dependencies are considered to refer to the
           * previous epoch so every task in the same epoch and following
@@ -435,7 +445,7 @@ dart_tasking_datadeps_match_local_datadep(
   for (dart_dephash_elem_t *elem = task->parent->local_deps[slot];
        elem != NULL; elem = elem->next)
   {
-    if (DEP_ADDR(elem->taskdep) == DEP_ADDR(dep)) {
+    if (DEP_ADDR_EQ(elem->taskdep, dep)) {
       if (elem->task.local == task) {
         // simply upgrade the dependency to an output dependency
         if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
@@ -541,9 +551,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
-    // translate the offset to an absolute address
     if (dep.type != DART_DEP_DIRECT) {
-      dart_gptr_getoffset(dep.gptr, &dep.gptr.addr_or_offs.offset);
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p epoch:%i",
                      task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
