@@ -276,18 +276,25 @@ struct has_operator_equal_impl
 template<class T, class EqualTo = T>
 struct has_operator_equal : has_operator_equal_impl<T, EqualTo>::type {};
 
+/**
+ * Convencience wrapper to determine the DART type and number of elements
+ * required for the given template parameter type \c T and the desired number of
+ * values \c nvalues.
+ */
+template<typename T>
+struct dart_storage {
+                   const size_t          nelem;
+  static constexpr const dart_datatype_t dtype =
+                                (dart_datatype<T>::value == DART_TYPE_UNDEFINED)
+                                  ? DART_TYPE_BYTE : dart_datatype<T>::value;
 
-template <typename T>
-inline dart_storage_t dart_storage(int nvalues) {
-  dart_storage_t ds;
-  ds.dtype = dart_datatype<T>::value;
-  ds.nelem = nvalues;
-  if (DART_TYPE_UNDEFINED == ds.dtype) {
-    ds.dtype = DART_TYPE_BYTE;
-    ds.nelem = nvalues * sizeof(T);
-  }
-  return ds;
-}
+  constexpr
+  dart_storage(size_t nvalues) noexcept
+  : nelem(
+      (dart_datatype<T>::value == DART_TYPE_UNDEFINED)
+      ? nvalues * sizeof(T) : nvalues)
+  { }
+};
 
 /**
  * Unit ID to use for team-local IDs.

@@ -192,7 +192,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict down_row = data_old.local.row(1).lbegin();
       const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
             element_t *__restrict  out_row = data_new.lbegin();
-      dart_wait(up_handle);
+      dart_wait(&up_handle);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -210,7 +210,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-      dart_wait(down_handle);
+      dart_wait(&down_handle);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
