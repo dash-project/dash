@@ -99,6 +99,8 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_MEMKIND
+       "Specify whether Memkind features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
@@ -134,6 +136,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Memkind.cmake)
 
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
@@ -292,6 +295,8 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
+message(INFO "Memkind support:          (ENABLE_MEMKIND)                    "
+        ${ENABLE_MEMKIND})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")

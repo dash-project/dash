@@ -77,6 +77,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SCALAPACK=OFF \
                         -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=OFF \
+                        -DENABLE_MEMKIND=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=OFF \

@@ -41,6 +41,8 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
     PARENT_SCOPE)
+set(ENABLE_MEMKIND ${ENABLE_MEMKIND}
+    PARENT_SCOPE)
 
 
 # Source- and header files to be compiled (OBJ):
@@ -155,6 +157,19 @@ if (ENABLE_HDF5 AND HDF5_FOUND)
 	set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
        ${HDF5_LINKER_FLAGS})
 endif()
+
+if (ENABLE_MEMKIND AND MEMKIND_FOUND)
+  set (CONF_AVAIL_MEMKIND "true")
+  set (ADDITIONAL_COMPILE_FLAGS
+    ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MEMKIND)
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+    ${MEMKIND_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+    ${MEMKIND_LIBRARIES})
+        set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
+    ${MEMKIND_LINKER_FLAGS})
+endif()
+
 
 if (ENABLE_MKL AND MKL_FOUND)
   message (STATUS "    Intel MKL enabled")
@@ -321,7 +336,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # cmake packaging
   if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
-	
+
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
