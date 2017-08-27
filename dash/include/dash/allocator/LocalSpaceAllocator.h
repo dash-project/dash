@@ -12,8 +12,9 @@ class LocalSpaceAllocator {
   using memory_traits = dash::memory_space_traits<memory_space>;
 
  public:
-  typedef T value_type;
-  typedef T* pointer;
+  typedef                       T value_type;
+  typedef                       T* pointer;
+  typedef dash::default_size_t  size_type;
 
   /*
   template <typename U>
@@ -47,6 +48,7 @@ class LocalSpaceAllocator {
   pointer allocate(size_t n);
   void deallocate(pointer p, size_t n);
 
+  size_type max_size() const noexcept;
   /*
   template <typename... Args>
   void construct(pointer, Args&&...);
@@ -98,7 +100,16 @@ template <typename T, typename MSpaceCategory>
 inline typename LocalSpaceAllocator<T, MSpaceCategory>::pointer
 LocalSpaceAllocator<T, MSpaceCategory>::allocate(size_t n)
 {
-  return static_cast<pointer>(_space->allocate(n * sizeof(T), alignof(T)));
+  DASH_LOG_DEBUG("LocalSpaceAllocator.allocate(n)",
+                   "number values:", n);
+
+  if (n > this->max_size()) throw std::bad_alloc();
+
+  auto p =  static_cast<pointer>(_space->allocate(n * sizeof(T), alignof(T)));
+
+  DASH_LOG_DEBUG("LocalSpaceAllocator.allocate(n) >");
+
+  return p;
 }
 
 template <typename T, typename MSpaceCategory>
@@ -108,6 +119,12 @@ inline void LocalSpaceAllocator<T, MSpaceCategory>::deallocate(
   _space->deallocate(p, n);
 }
 
+template <typename T, typename MSpaceCategory>
+inline typename LocalSpaceAllocator<T, MSpaceCategory>::size_type
+LocalSpaceAllocator<T, MSpaceCategory>::max_size() const noexcept
+{
+  return std::numeric_limits<size_type>::max() / sizeof(T);
+}
 /*
 template <typename T, typename MSpaceCategory, typename... Args>
 void construct(typename LocalSpaceAllocator<T, MSpaceCategory>::pointer p,

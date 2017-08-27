@@ -4,9 +4,9 @@
 #include <dash/Exception.h>
 #include <dash/Types.h>
 #include <dash/memory/MemorySpace.h>
+#include <dash/memory/internal/Util.h>
 
-#include <stdlib.h>
-
+#include <cstdlib>
 
 namespace dash {
 
@@ -33,19 +33,35 @@ class HostSpace
     std::size_t const n,
     std::size_t alignment = alignof(dash::max_align_t))
   {
+    DASH_LOG_DEBUG("HostSpace.do_allocate(n, alignment)", n, alignment);
     if (n == 0) {
       return nullptr;
     }
-    auto p = aligned_alloc(alignment, n);
-    if (!p) throw std::bad_alloc();
-    return p;
+
+    void_pointer ptr;
+    if (alignment < alignof(void *)) {
+      alignment = alignof(void *);
+    } else {
+      alignment = dash::memory::internal::next_power_of_2(alignment);
+    }
+
+    auto ret = posix_memalign(&ptr, alignment, n);
+    if (ret) {
+      DASH_LOG_ERROR("HostSpace.do_allocate(n, alignment) --> Cannot allocate memory", n, alignment);
+      throw std::bad_alloc();
+    }
+    DASH_LOG_TRACE("HostSpace.do_allocate(n, alignment)", "Allocated memory segment(pointer, nbytes, alignment)", ptr, n, alignment);
+    DASH_LOG_DEBUG("HostSpace.do_allocate(n, alignment) >");
+    return ptr;
   }
 
   void do_deallocate(void_pointer p, std::size_t, std::size_t alignment)
   {
+    DASH_LOG_DEBUG("HostSpace.do_deallocate(p, size_t, alignment)", p, alignment);
     if (p) {
       std::free(p);
     }
+    DASH_LOG_DEBUG("HostSpace.do_deallocate(p, size_t, alignment) >", p, alignment);
   }
 
   /**

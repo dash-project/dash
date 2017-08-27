@@ -230,6 +230,7 @@ public:
 
     local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
 
+
     if (!lp) {
       if (num_local_elem > 0) {
         std::stringstream ss;
@@ -254,6 +255,7 @@ public:
           "SymmetricAllocator.attach", "cannot attach local memory", gptr);
     }
     else {
+      DASH_LOG_TRACE("SymmetricAllocator.allocate(nlocal)", "allocated memory segment (lp, nelem, gptr)", lp, num_local_elem, gptr);
       _segments.push_back(std::make_tuple(lp, num_local_elem, gptr));
     }
     DASH_LOG_DEBUG_VAR("SymmetricAllocator.allocate >", gptr);
@@ -319,7 +321,9 @@ private:
 
     DASH_ASSERT(DART_GPTR_EQUAL(gptr, seg_gptr));
 
-    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memfree");
+    DASH_LOG_TRACE("SymmetricAllocator.deallocate", "allocating memory segment (lptr, nelem, gptr)", seg_lptr, seg_nelem, seg_gptr);
+
+    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memderegister");
     DASH_ASSERT_RETURNS(
       dart_team_memderegister(gptr),
       DART_OK);
@@ -329,7 +333,6 @@ private:
       DART_OK);
 
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "_segments.erase");
-
     AllocatorTraits::deallocate(_alloc, seg_lptr, seg_nelem);
     seg_lptr = nullptr;
 

@@ -156,3 +156,13 @@ TEST_F(GlobStaticMemTest, MoveSemantics){
     ASSERT_EQ_U(*(memory_b.lbegin()), 1);
   }
 }
+
+TEST_F(GlobStaticMemTest, HBWSpaceTest){
+  using allocator_t = dash::allocator::SymmetricAllocator<int, dash::memory_space_hbw_tag>;
+  using memory_t = dash::GlobStaticMem<int, allocator_t>;
+
+  memory_t memory{10};
+  std::fill(memory.lbegin(), memory.lend(), dash::myid());
+
+  ASSERT_EQ_U(*(memory.lbegin()), dash::myid());
+}

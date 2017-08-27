@@ -249,6 +249,9 @@ inline bool operator==(MemorySpace<MemSpaceTypeCategory> const& lhs,
 MemorySpace<memory_space_host_tag>*
 get_default_host_space();
 
+MemorySpace<memory_space_hbw_tag>*
+get_default_hbw_space();
+
 template <typename MemSpaceTypeCategory>
 inline MemorySpace<MemSpaceTypeCategory>* get_default_memory_space()
 {
@@ -261,6 +264,12 @@ inline MemorySpace<memory_space_host_tag>*
 get_default_memory_space<memory_space_host_tag>()
 {
   return get_default_host_space();
+}
+template <>
+inline MemorySpace<memory_space_hbw_tag>*
+get_default_memory_space<memory_space_hbw_tag>()
+{
+  return get_default_hbw_space();
 }
 
 }  // namespace dash
