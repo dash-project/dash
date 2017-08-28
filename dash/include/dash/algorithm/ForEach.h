@@ -16,7 +16,7 @@ namespace dash {
  * function on its local elements only.
  * To support compiler optimization, this const version is provided
  *
- * \tparam      ElementType   Type of the elements in the sequence
+ * \tparam      GlobIter      Global Iterator to iterate the sequence
  * \tparam      UnaryFunction Function to invoke for each element
  *                            in the specified range with signature
  *                            \c (void (const ElementType &)).
@@ -29,14 +29,13 @@ namespace dash {
  * \ingroup     DashAlgorithms
  */
 template <
-  typename ElementType,
-  class    PatternType,
+  typename GlobIter,
   class    UnaryFunction >
 void for_each(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
+  const GlobIter & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
+  const GlobIter & last,
   /// Function to invoke on every index in the range
   UnaryFunction                              func)
 {
@@ -62,7 +61,7 @@ void for_each(
  * function on its local elements only. The index passed to the function is
  * a global index.
  *
- * \tparam      ElementType            Type of the elements in the sequence
+ * \tparam      GlobIter               Global Iterator to iterate the sequence
  * \tparam      UnaryFunctionWithIndex Function to invoke for each element
  *                                     in the specified range with signature
  *                                     \c void (const ElementType &, index_t)
@@ -76,14 +75,13 @@ void for_each(
  * \ingroup     DashAlgorithms
  */
 template <
-  typename ElementType,
-  class    PatternType,
+  typename GlobIter,
   class    UnaryFunctionWithIndex >
 void for_each_with_index(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
+  const GlobIter & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
+  const GlobIter & last,
   /// Function to invoke on every index in the range
   UnaryFunctionWithIndex                     func)
 {

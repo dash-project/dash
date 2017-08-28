@@ -271,3 +271,40 @@ TEST_F(ArrayTest, MoveSemantics){
     ASSERT_EQ_U(*(array_b.lbegin()), 1);
   }
 }
+TEST_F(ArrayTest, HBWSpace){
+  using index_t = dash::default_index_t;
+  using pattern_t = dash::BlockPattern<1, dash::ROW_MAJOR, index_t>;
+  using array_t = dash::Array<int, index_t, pattern_t, dash::memory_space_hbw_tag>;
+
+  array_t array{static_cast<pattern_t::size_type>(dash::size()) * 100};
+
+
+  // Fill
+  std::function< void(const int &, index_t)>
+  fill = [&array](int el, index_t i) {
+    auto coords = array.pattern().coords(i);
+    array[i] = coords[0];
+  };
+
+  // Verify
+  std::function< void(const int &, index_t)>
+  verify = [&array](int el, index_t i) {
+    auto coords  = array.pattern().coords(i);
+    auto desired = coords[0];
+    ASSERT_EQ_U(
+      desired,
+      el);
+  };
+
+  // Fill
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    fill);
+
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    verify);
+}
+
