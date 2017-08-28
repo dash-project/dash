@@ -53,6 +53,13 @@ dart_task_t *
 dart_tasking_taskqueue_popback(dart_taskqueue_t *tq);
 
 /**
+ * Remove the task \c task from the taskqueue \c tq.
+ * The world will die in flames if \c task is not in \c tq, so handle with care!
+ */
+dart_ret_t
+dart_tasking_taskqueue_remove(dart_taskqueue_t *tq, dart_task_t *task);
+
+/**
  * Check whether the task queue is empty.
  *
  * \return   0 if the task queue is not empty.

@@ -4,17 +4,8 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 
 /********************
- * Public methods   *
+ * Private method   *
  ********************/
-
-
-void
-dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
-{
-  tq->lowprio.head  = tq->lowprio.tail  = NULL;
-  tq->highprio.head = tq->highprio.tail = NULL;
-  dart__base__mutex_init(&tq->mutex);
-}
 
 static
 dart_task_t *task_deque_pop(struct task_deque *deque);
@@ -44,6 +35,15 @@ dart_ret_t task_deque_move(struct task_deque *dst, struct task_deque *src);
 /********************
  * Public methods   *
  ********************/
+
+void
+dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
+{
+  tq->lowprio.head  = tq->lowprio.tail  = NULL;
+  tq->highprio.head = tq->highprio.tail = NULL;
+  dart__base__mutex_init(&tq->mutex);
+}
+
 
 void
 dart_tasking_taskqueue_push(
@@ -120,6 +120,36 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
   dart__base__mutex_unlock(&tq->mutex);
 
   return task;
+}
+
+dart_ret_t
+dart_tasking_taskqueue_remove(dart_taskqueue_t *tq, dart_task_t *task)
+{
+  if (task != NULL) {
+    dart__base__mutex_lock(&tq->mutex);
+    dart_task_t *prev = task->prev;
+    dart_task_t *next = task->next;
+    if (prev != NULL) {
+      prev->next = next;
+    }
+    if (next != NULL) {
+      next->prev = prev;
+    }
+    task->next = task->prev = NULL;
+
+    if (task == tq->highprio.head) {
+      tq->highprio.head = next;
+    } else if (task == tq->lowprio.head) {
+      tq->lowprio.head = next;
+    }
+
+    if (task == tq->highprio.tail) {
+      tq->highprio.tail = prev;
+    } else if (task == tq->lowprio.tail) {
+      tq->lowprio.tail = prev;
+    }
+    dart__base__mutex_unlock(&tq->mutex);
+  }
 }
 
 dart_ret_t
