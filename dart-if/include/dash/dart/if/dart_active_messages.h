@@ -5,8 +5,6 @@
 #include <dash/dart/if/dart_types.h>
 #include <stdbool.h>
 
-//#define DART_AMSGQ_LOCKFREE 1
-
 struct dart_amsgq;
 
 typedef struct dart_amsgq* dart_amsgq_t;
@@ -59,6 +57,18 @@ dart_amsg_trysend(
     size_t              data_size);
 
 /**
+ * Send an active message to all units in \c team queue.
+ * The call blocks until all messages have been delivered.
+ */
+dart_ret_t
+dart_amsg_bcast(
+    dart_team_t         team,
+    dart_amsgq_t        amsgq,
+    dart_task_action_t  fn,
+    const void         *data,
+    size_t              data_size);
+
+/**
  * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).
  *
  * Implementation: The local queue will be locked (again using compare_and_swap) to grab a copy of the current content
@@ -78,7 +88,7 @@ dart_amsg_process(dart_amsgq_t amsgq);
  * processing messages.
  */
 dart_ret_t
-dart_amsg_process_blocking(dart_amsgq_t amsgq);
+dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team);
 
 /**
  * Collective operation on all members of the team involved in the active message queue.

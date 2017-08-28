@@ -202,6 +202,41 @@ dart_amsg_trysend(
 }
 
 
+dart_ret_t
+dart_amsg_bcast(
+  dart_team_t         team,
+  dart_amsgq_t        amsgq,
+  dart_task_action_t  fn,
+  const void         *data,
+  size_t              data_size)
+{
+  size_t size;
+  dart_team_unit_t myid;
+  dart_team_size(team, &size);
+  dart_team_myid(team, &myid);
+
+  // This is a quick and dirty approach.
+  // TODO: try to overlap multiple transfers!
+  for (size_t i = 0; i < size; i++) {
+    if (i == myid.id) continue;
+    do {
+      dart_ret_t ret = dart_amsg_trysend(
+                        DART_TEAM_UNIT_ID(i), amsgq, fn, data, data_size);
+      if (ret == DART_OK) {
+        break;
+      } else if (ret == DART_ERR_AGAIN) {
+        // just try again
+        continue;
+      } else {
+        return ret;
+      }
+    } while (1);
+  }
+
+  return DART_OK;
+}
+
+
 static dart_ret_t
 amsg_process_internal(
   dart_amsgq_t amsgq,
@@ -274,20 +309,27 @@ dart_amsg_process(dart_amsgq_t amsgq)
 }
 
 dart_ret_t
-dart_amsg_process_blocking(dart_amsgq_t amsgq)
+dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 {
   int         flag = 0;
   MPI_Request req;
 
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (team_data == NULL) {
+    DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
+    return DART_ERR_INVAL;
+  }
+
   if (amsgq->send_req != MPI_REQUEST_NULL)
     MPI_Wait(&amsgq->send_req, MPI_STATUS_IGNORE);
 
-  MPI_Ibarrier(amsgq->comm, &req);
+  MPI_Ibarrier(team_data->comm, &req);
   do {
     amsg_process_internal(amsgq, true);
     MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
   } while (!flag);
   amsg_process_internal(amsgq, true);
+  MPI_Barrier(team_data->comm);
   return DART_OK;
 }
 
