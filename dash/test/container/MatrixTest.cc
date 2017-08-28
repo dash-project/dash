@@ -49,7 +49,7 @@ TEST_F(MatrixTest, LocalAccess)
                  "matrix local view:", mat.local.extents());
 
   int lcount = (myid + 1) * 1000;
-  dash::generate(mat.begin(), mat.end(), 
+  dash::generate(mat.begin(), mat.end(),
                  [&]() {
                    return (lcount++);
                  });
@@ -1119,7 +1119,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
       distspec, dash::Team::All(), teamspec );
 
   narray.barrier();
-  
+
   if ( 0 == myid ) {
     LOG_MESSAGE("global extent is %lu x %lu",
                 narray.extent(0), narray.extent(1));
@@ -1131,21 +1131,21 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
 
   // test lbegin, lend
   std::fill(narray.lbegin(), narray.lend(), 1);
-  std::for_each(narray.lbegin(), narray.lend(), 
+  std::for_each(narray.lbegin(), narray.lend(),
       [](uint32_t & el){
         ASSERT_EQ_U(el, 1);
       });
   dash::barrier();
   // test local view
   std::fill(narray.local.begin(), narray.local.end(), 2);
-  std::for_each(narray.local.begin(), narray.local.end(), 
+  std::for_each(narray.local.begin(), narray.local.end(),
       [](uint32_t el){
         ASSERT_EQ_U(el, 2);
       });
 
-  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
+  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
-  
+
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());
 
@@ -1321,17 +1321,17 @@ TEST_F(MatrixTest, ConstMatrix)
     DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().teamspec());
   }
-  
+
   auto const & matrix_by_ref = matrix;
   auto       & matrix_local  = matrix.local;
-  
+
   dash::fill(matrix.begin(), matrix.end(), 0);
   dash::barrier();
-  
+
   int el = matrix(0,0);
   el = matrix[0][0];
   ASSERT_EQ_U(el, 0);
-  
+
   el = matrix.local[0][0];
   ASSERT_EQ_U(el, 0);
 
@@ -1356,7 +1356,7 @@ TEST_F(MatrixTest, ConstMatrix)
   // el = ++(*(matrix_by_ref.local.lbegin()));
   // el = ++(*(matrix_by_ref.local.row(0).lbegin()));
   // matrix_by_ref.local.row(0)[0] = 5;
-  
+
   // test access using non-const & matrix.local
   matrix.barrier();
   *(matrix_local.lbegin()) = 5;
@@ -1523,7 +1523,7 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   EXPECT_EQ_U(dim_2_ext, matrix.extent(2));
 
   dash::fill(matrix.begin(), matrix.end(), 0.0);
-  
+
   if (dash::myid() == 0) {
     for (int i = 0; i < matrix.extent(0); ++i) {
       for (int j = 0; j < matrix.extent(1); ++j) {
@@ -1564,7 +1564,7 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   EXPECT_EQ_U(sub_0_size, matrix[0].size());
   EXPECT_EQ_U(sub_0_size, std::distance(matrix[0].begin(),
                                         matrix[0].end()));
-  
+
   if (dash::myid().id == 0) {
   int visited = 0;
     for (auto it = matrix[0].begin(); it != matrix[0].end();

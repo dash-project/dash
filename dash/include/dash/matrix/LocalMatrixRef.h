@@ -21,21 +21,24 @@ template <
   typename T,
   dim_t NumDimensions,
   typename IndexT,
-  class PatternT >
+  class PatternT,
+  typename MSpaceC>
 class Matrix;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename MSpaceC>
 class MatrixRef;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename MSpaceC>
 class LocalMatrixRef;
 
 /**
@@ -50,13 +53,14 @@ template <
   dim_t    NumDimensions,
   dim_t    CUR      = NumDimensions,
   class    PatternT =
-             TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+             TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t>,
+  typename MSpaceC = dash::memory_space_host_tag>
 class LocalMatrixRef
 {
 private:
-  typedef LocalMatrixRef<T, NumDimensions, CUR, PatternT> self_t;
+  typedef LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC> self_t;
 
-  typedef MatrixRefView<T, NumDimensions, PatternT>
+  typedef MatrixRefView<T, NumDimensions, PatternT, MSpaceC>
     MatrixRefView_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
     Extents_t;
@@ -66,20 +70,22 @@ private:
     ViewSpec_t;
   template <dim_t NumViewDim>
     using LocalMatrixRef_t =
-          LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
+          LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT, MSpaceC>;
 
 public:
   template<
     typename T_,
     dim_t    NumDimensions_,
     typename IndexT_,
-    class    PatternT_ >
+    class    PatternT_,
+    typename MSpaceC_>
   friend class Matrix;
   template<
     typename T_,
     dim_t    NumDimensions1,
     dim_t    NumDimensions2,
-    class    PatternT_ >
+    class    PatternT_,
+    typename MSpaceC_>
   friend class LocalMatrixRef;
 
 public:
@@ -109,7 +115,7 @@ public:
 
   template <dim_t NumViewDim>
     using ViewT =
-          LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
+          LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT, MSpaceC>;
 
 public:
   typedef std::integral_constant<dim_t, CUR>
@@ -120,7 +126,7 @@ public:
   }
 
 protected:
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC>(
     MatrixRefView_t && refview)
   : _refview(std::move(refview))
   {
@@ -128,7 +134,7 @@ protected:
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
   }
 
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC>(
     const MatrixRefView_t & refview)
   : _refview(refview)
   {
@@ -140,44 +146,44 @@ public:
   /**
    * Default constructor.
    */
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>()
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC>()
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", NumDimensions);
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
   }
 
   template <class T_>
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
-    const LocalMatrixRef<T_, NumDimensions, CUR+1, PatternT> & previous,
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC>(
+    const LocalMatrixRef<T_, NumDimensions, CUR+1, PatternT, MSpaceC> & previous,
     size_type coord);
 
   /**
    * Constructor, creates a local view reference to a Matrix view.
    */
   template <class T_>
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
-    Matrix<T_, NumDimensions, index_type, PatternT> * mat
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC>(
+    Matrix<T_, NumDimensions, index_type, PatternT, MSpaceC> * mat
   );
 
   /**
    * View at local block at given local block coordinates.
    */
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT> block(
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC> block(
     const std::array<index_type, NumDimensions> & block_lcoords
   );
 
   /**
    * View at local block at given local block offset.
    */
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT> block(
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC> block(
     index_type block_lindex
   );
 
-  inline operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && () &&;
+  inline operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT, MSpaceC> && () &&;
 
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
   // Different operation semantics.
-  inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
+  inline operator MatrixRef<T, NumDimensions, CUR, PatternT, MSpaceC> ();
 
   /**
    * Returns a reference to the element at local index \c pos.
@@ -250,7 +256,7 @@ public:
    */
   template<dim_t __NumViewDim = CUR-1>
   typename std::enable_if<(__NumViewDim > 0),
-    LocalMatrixRef<T, NumDimensions, __NumViewDim, PatternT>>::type
+    LocalMatrixRef<T, NumDimensions, __NumViewDim, PatternT, MSpaceC>>::type
     operator[](size_type n);
 
   template<dim_t __NumViewDim = CUR-1>
@@ -263,38 +269,38 @@ public:
    */
   template<dim_t __NumViewDim = CUR-1>
   typename std::enable_if<(__NumViewDim > 0),
-    LocalMatrixRef<const T, NumDimensions, __NumViewDim, PatternT>>::type
+    LocalMatrixRef<const T, NumDimensions, __NumViewDim, PatternT, MSpaceC>>::type
   constexpr operator[](size_type n) const;
 
   template<dim_t __NumViewDim = CUR-1>
   typename std::enable_if<(__NumViewDim == 0), const T&>::type
   operator[](size_type n) const;
 
-  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     col(size_type n);
-  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     col(size_type n) const;
 
-  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     row(size_type n);
-  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     row(size_type n) const;
 
   template<dim_t NumSubDimensions>
-  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     sub(size_type n);
 
   template<dim_t NumSubDimensions>
-  LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT>
+  LocalMatrixRef<const T, NumDimensions, NumDimensions-1, PatternT, MSpaceC>
     sub(size_type n) const;
 
   template<dim_t SubDimension>
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT, MSpaceC>
     sub(size_type n,
         size_type range);
 
   template<dim_t SubDimension>
-  LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT, MSpaceC>
   sub(size_type n,
       size_type range) const;
 
@@ -307,14 +313,14 @@ public:
    *
    * \see  sub
    */
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT, MSpaceC>
   rows(
     /// Offset of first row in range
     size_type offset,
     /// Number of rows in the range
     size_type range);
 
-  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT, MSpaceC>
   rows(
     /// Offset of first row in range
     size_type offset,
@@ -330,14 +336,14 @@ public:
    *
    * \see  sub
    */
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT>
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT, MSpaceC>
   cols(
     /// Offset of first column in range
     size_type offset,
     /// Number of columns in the range
     size_type extent);
 
-  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT>
+  constexpr LocalMatrixRef<const T, NumDimensions, NumDimensions, PatternT, MSpaceC>
   cols(
     /// Offset of first column in range
     size_type offset,

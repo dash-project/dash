@@ -95,21 +95,24 @@ template <
   typename T,
   dim_t NumDimensions,
   typename IndexT,
-  class PatternT >
+  class PatternT,
+  typename MSpaceCategory>
 class Matrix;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class PatternT,
+  typename MSpaceCategory>
 class MatrixRef;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR,
-  class PatternT >
+  class Pattern,
+  typename MSpaceCategory>
 class LocalMatrixRef;
 
 /**
@@ -132,7 +135,8 @@ template<
   typename ElementT,
   dim_t    NumDimensions,
   typename IndexT         = dash::default_index_t,
-  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
+  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT>,
+  typename MSpaceCategory = dash::memory_space_host_tag>
 class Matrix
 {
   static_assert(
@@ -143,20 +147,20 @@ class Matrix
     "Index type IndexT must be the same for Matrix and specified pattern");
 
 private:
-  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT>
+  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT, MSpaceCategory>
     self_t;
   typedef typename std::make_unsigned<IndexT>::type
     SizeType;
-  typedef MatrixRefView<ElementT, NumDimensions, PatternT>
+  typedef MatrixRefView<ElementT, NumDimensions, PatternT, MSpaceCategory>
     MatrixRefView_t;
-  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
+  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
     LocalRef_t;
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT>
+            const ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>
+  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT, MSpaceCategory>>
     GlobMem_t;
 
 public:
@@ -164,13 +168,15 @@ public:
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename MSpaceC>
   friend class MatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ >
+    class PatternT_,
+    typename MSpaceC>
   friend class LocalMatrixRef;
 
 public:
@@ -179,8 +185,8 @@ public:
   typedef typename PatternT::index_type                    difference_type;
   typedef typename PatternT::index_type                         index_type;
 
-  typedef GlobIter<      value_type, Pattern_t>                   iterator;
-  typedef GlobIter<const value_type, Pattern_t>             const_iterator;
+  typedef GlobIter<      value_type, Pattern_t, GlobMem_t>        iterator;
+  typedef GlobIter<const value_type, Pattern_t, GlobMem_t>  const_iterator;
 
   typedef std::reverse_iterator<iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>     const_reverse_iterator;
@@ -188,8 +194,8 @@ public:
   typedef GlobRef<      value_type>                              reference;
   typedef GlobRef<const value_type>                        const_reference;
 
-  typedef GlobIter<      value_type, Pattern_t>                    pointer;
-  typedef GlobIter<const value_type, Pattern_t>              const_pointer;
+  typedef GlobIter<      value_type, Pattern_t, GlobMem_t>         pointer;
+  typedef GlobIter<const value_type, Pattern_t, GlobMem_t>   const_pointer;
 
   typedef       ElementT *                                   local_pointer;
   typedef const ElementT *                             const_local_pointer;
@@ -209,12 +215,12 @@ public:
 public:
   /// Type specifying the view on local matrix elements.
   typedef LocalMatrixRef<
-            ElementT, NumDimensions, NumDimensions, PatternT>
+            ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
     local_type;
 
   /// Type specifying the view on const local matrix elements.
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT>
+            const ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
     const_local_type;
 
   /// The type of the pattern specifying linear iteration order and how
@@ -225,13 +231,13 @@ public:
   /// column vectors.
   template <dim_t NumViewDim>
     using view_type =
-          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, MSpaceCategory>;
 
   /// Type of views on matrix elements such as sub-matrices, row- and
   /// column vectors.
   template <dim_t NumViewDim>
     using const_view_type =
-          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT>;
+          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT, MSpaceCategory>;
 
 // public types exposed in Matrix interface
 public:
@@ -520,7 +526,7 @@ public:
   constexpr operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
-  
+
   /**
    * Subscript operator, returns a \ref GlobRef if matrix has only one dimension
    */
@@ -752,7 +758,7 @@ public:
    * Conversion operator to type \ref MatrixRef.
    */
   operator
-    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
+    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory> ();
 
 };
 
