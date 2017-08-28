@@ -6,6 +6,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
+#include <dash/memory/MemorySpace.h>
 #include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
@@ -85,7 +86,8 @@ namespace dash {
 template<
   typename ElementType,
   typename IndexType,
-  class    PatternType >
+  class    PatternType,
+  typename MSpaceCategory >
 class Array;
 
 /**
@@ -100,15 +102,16 @@ class Array;
 template<
   typename T,
   typename IndexType,
-  class    PatternType >
+  class    PatternType,
+  typename MSpaceCategory>
 class LocalArrayRef
 {
 private:
   static const dim_t NumDimensions = 1;
 
-  typedef LocalArrayRef<T, IndexType, PatternType>
+  typedef LocalArrayRef<T, IndexType, PatternType, MSpaceCategory>
     self_t;
-  typedef Array<T, IndexType, PatternType>
+  typedef Array<T, IndexType, PatternType, MSpaceCategory>
     Array_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
@@ -116,7 +119,7 @@ private:
     Extents_t;
 
 public:
-  template <typename T_, typename I_, typename P_>
+  template <typename T_, typename I_, typename P_,typename M_>
     friend class LocalArrayRef;
 
 public:
@@ -138,9 +141,9 @@ public:
 
 public:
   /// Type alias for LocalArrayRef<T,I,P>::view_type
-  typedef LocalArrayRef<T, IndexType, PatternType>                 View;
-  typedef self_t                                             local_type;
-  typedef PatternType                                      pattern_type;
+  typedef LocalArrayRef<T, IndexType, PatternType, MSpaceCategory>  View;
+  typedef self_t                                              local_type;
+  typedef PatternType                                       pattern_type;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -155,13 +158,13 @@ public:
    * Constructor, creates a local access proxy for the given array.
    */
   LocalArrayRef(
-    const Array<T, IndexType, PatternType> * array)
+    const Array_t * array)
   : _array(array)
   { }
 
   LocalArrayRef(
     /// Pointer to array instance referenced by this view.
-    const Array<T, IndexType, PatternType> * array,
+    const Array_t * array,
     /// The view's offset and extent within the referenced array.
     const ViewSpec_t & viewspec)
   : _array(array),
@@ -261,15 +264,16 @@ private:
 template<
   typename T,
   typename IndexType,
-  class    PatternType >
+  class    PatternType,
+  typename MSpaceCategory>
 class AsyncArrayRef
 {
 private:
-  typedef AsyncArrayRef<T, IndexType, PatternType>
+  typedef AsyncArrayRef<T, IndexType, PatternType, MSpaceCategory>
     self_t;
 
 public:
-  template <typename T_, typename I_, typename P_>
+  template <typename T_, typename I_, typename P_, typename M_>
     friend class AsyncArrayRef;
 
 public:
@@ -298,14 +302,14 @@ public:
   }
 
 private:
-  Array<T, IndexType, PatternType> * _array;
+  Array<T, IndexType, PatternType, MSpaceCategory> * _array;
 
 public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   AsyncArrayRef(
-    Array<T, IndexType, PatternType> * const array)
+    Array<T, IndexType, PatternType, MSpaceCategory> * const array)
   : _array(array) {
   }
 
@@ -430,14 +434,15 @@ public:
  */
 template<
   typename T,
-  class    PatternT >
+  class    PatternT,
+  typename MSpaceC>
 class ArrayRefView
 {
  public:
   typedef typename PatternT::index_type             index_type;
 
  private:
-  Array<T, index_type, PatternT>                  * _arr;
+  Array<T, index_type, PatternT, MSpaceC>                  * _arr;
   ViewSpec<1, index_type>                           _viewspec;
 };
 
@@ -450,15 +455,16 @@ class ArrayRefView
 template<
   typename ElementType,
   typename IndexType,
-  class    PatternType>
+  class    PatternType,
+  typename MSpaceCategory>
 class ArrayRef
 {
 private:
   static const dim_t NumDimensions = 1;
 
-  typedef ArrayRef<ElementType, IndexType, PatternType>
+  typedef ArrayRef<ElementType, IndexType, PatternType, MSpaceCategory>
     self_t;
-  typedef Array<ElementType, IndexType, PatternType>
+  typedef Array<ElementType, IndexType, PatternType, MSpaceCategory>
     Array_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
@@ -489,11 +495,11 @@ public:
   /// The type of the pattern used to distribute array elements to units
   typedef PatternType
     pattern_type;
-  typedef ArrayRef<ElementType, IndexType, PatternType>
+  typedef self_t
     view_type;
-  typedef LocalArrayRef<value_type, IndexType, PatternType>
+  typedef LocalArrayRef<value_type, IndexType, PatternType, MSpaceCategory>
     local_type;
-  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+  typedef AsyncArrayRef<value_type, IndexType, PatternType, MSpaceCategory>
     async_type;
 
 public:
@@ -643,7 +649,8 @@ template<
   /// Pattern type used to distribute array elements among units.
   /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
   /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
-  class    PatternType  = BlockPattern<1, ROW_MAJOR, IndexType>
+  class    PatternType  = BlockPattern<1, ROW_MAJOR, IndexType>,
+  typename MemorySpaceC = dash::memory_space_host_tag
 >
 class Array
 {
@@ -652,41 +659,47 @@ class Array
     "Type not supported for DASH containers");
 
 private:
-  typedef Array<ElementType, IndexType, PatternType> self_t;
+  typedef Array<ElementType, IndexType, PatternType, MemorySpaceC> self_t;
 
-/// Public types as required by iterator concept
+  typedef dash::allocator::SymmetricAllocator<ElementType, MemorySpaceC>
+      allocator_t;
+
+  /// Public types as required by iterator concept
 public:
-  typedef ElementType                                             value_type;
-  typedef IndexType                                               index_type;
-  typedef typename std::make_unsigned<IndexType>::type             size_type;
-  typedef typename std::make_unsigned<IndexType>::type       difference_type;
+  typedef ElementType                                                 value_type;
+  typedef IndexType                                                   index_type;
+  typedef typename std::make_unsigned<IndexType>::type                 size_type;
+  typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef GlobIter<      value_type, PatternType>                   iterator;
-  typedef GlobIter<const value_type, PatternType>             const_iterator;
+  typedef dash::GlobStaticMem<value_type, allocator_t>             glob_mem_type;
 
-  typedef std::reverse_iterator<      iterator>             reverse_iterator;
-  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
+  typedef GlobIter<      value_type, PatternType, glob_mem_type>        iterator;
+  typedef GlobIter<const value_type, PatternType, glob_mem_type>  const_iterator;
 
-  typedef GlobRef<      value_type>                                reference;
-  typedef GlobRef<const value_type>                          const_reference;
+  typedef std::reverse_iterator<      iterator>                 reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>           const_reverse_iterator;
 
-  typedef GlobIter<      value_type, PatternType>                    pointer;
-  typedef GlobIter<const value_type, PatternType>              const_pointer;
+  typedef GlobRef<      value_type>                                    reference;
+  typedef GlobRef<const value_type>                              const_reference;
 
-  typedef dash::GlobStaticMem<value_type>                      glob_mem_type;
+  typedef GlobIter<      value_type, PatternType>                        pointer;
+  typedef GlobIter<const value_type, PatternType>                  const_pointer;
 
-  typedef DistributionSpec<1>                              distribution_spec;
+
+  typedef DistributionSpec<1>                                  distribution_spec;
 
 public:
   template<
     typename T_,
     typename I_,
-    class P_>
+    class P_,
+    typename M_>
   friend class LocalArrayRef;
   template<
     typename T_,
     typename I_,
-    class P_>
+    class P_,
+    typename M_>
   friend class AsyncArrayRef;
 
 /// Public types as required by dash container concept
@@ -695,11 +708,11 @@ public:
   typedef PatternType
     pattern_type;
 
-  typedef LocalArrayRef<value_type, IndexType, PatternType>
+  typedef LocalArrayRef<value_type, IndexType, PatternType, MemorySpaceC>
     local_type;
-  typedef ArrayRef<ElementType, IndexType, PatternType>
+  typedef ArrayRef<ElementType, IndexType, PatternType, MemorySpaceC>
     view_type;
-  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+  typedef AsyncArrayRef<value_type, IndexType, PatternType, MemorySpaceC>
     async_type;
 
 public:
