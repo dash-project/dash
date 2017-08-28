@@ -1,118 +1,12 @@
-#ifndef DASH__PARALLEL__PARALLELFOR_H__
-#define DASH__PARALLEL__PARALLELFOR_H__
+#ifndef DASH__TASKS__PARALLELFOR_H__
+#define DASH__TASKS__PARALLELFOR_H__
 
+#include <dash/tasks/Tasks.h>
+#include <dash/dart/if/dart_tasking.h>
 
 
 namespace dash{
-
-  namespace internal {
-
-    using FuncT = std::function<void()>;
-
-    //template<typename FuncT>
-    static void invoke_task_action(void *data)
-    {
-      FuncT *func = static_cast<FuncT*>(data);
-      func->operator()();
-      delete func;
-    }
-
-  } // namespace internal
-
-  template<typename ElementT>
-  dart_task_dep_t
-  in(dash::GlobRef<ElementT> globref, int32_t epoch = DART_EPOCH_ANY) {
-    dart_task_dep_t res;
-    res.gptr  = globref.dart_gptr();
-    res.type  = DART_DEP_IN;
-    res.epoch = epoch;
-    return res;
-  }
-
-  template<typename ContainerT, typename ElementT>
-  dart_task_dep_t
-  in(ContainerT& container, ElementT* lptr, int32_t epoch = DART_EPOCH_ANY) {
-    dart_task_dep_t res;
-    res.gptr  = container.begin().dart_gptr();
-    dart_gptr_incaddr(&res.gptr, lptr - container.lbegin());
-    res.type  = DART_DEP_IN;
-    res.epoch = epoch;
-    return res;
-  }
-
-  template<typename ElementT>
-  dart_task_dep_t
-  out(dash::GlobRef<ElementT> globref, int32_t epoch = DART_EPOCH_ANY) {
-    dart_task_dep_t res;
-    res.gptr  = globref.dart_gptr();
-    res.type  = DART_DEP_OUT;
-    res.epoch = epoch;
-    return res;
-  }
-
-  template<typename ContainerT, typename ElementT>
-  dart_task_dep_t
-  out(ContainerT& container, ElementT* lptr, int32_t epoch = DART_EPOCH_ANY) {
-    dart_task_dep_t res;
-    res.gptr  = container.begin().dart_gptr();
-    dart_gptr_incaddr(&res.gptr, lptr - container.lbegin());
-    res.type  = DART_DEP_OUT;
-    res.epoch = epoch;
-    return res;
-  }
-
-  dart_task_dep_t
-  direct(dart_taskref_t taskref) {
-    dart_task_dep_t res;
-    res.task  = taskref;
-    res.type  = DART_DEP_DIRECT;
-    return res;
-  }
-
-
-  template<class TaskFunc, typename DepContainer>
-  void
-  create_task(TaskFunc f, dart_task_prio_t prio, const DepContainer& deps){
-    dart_task_create(
-      &dash::internal::invoke_task_action,
-      new dash::internal::FuncT(f), 0,
-                     deps.data(), deps.size(), prio);
-  }
-
-
-  template<class TaskFunc, typename ... Args>
-  void
-  create_task(TaskFunc f, dart_task_prio_t prio, const Args&... args){
-    std::array<dart_task_dep_t, sizeof...(args)> deps({{
-      static_cast<dart_task_dep_t>(args)...
-    }});
-    dash::create_task(f, prio, deps);
-  }
-
-  template<class TaskFunc, typename ... Args>
-  void
-  create_task(TaskFunc f, const Args&... args){
-    create_task(f, DART_PRIO_LOW, args...);
-  }
-
-
-  template<class TaskFunc, typename ... Args>
-  dart_taskref_t
-  create_task_handle(TaskFunc f, dart_task_prio_t prio, const Args&... args){
-    std::array<dart_task_dep_t, sizeof...(args)> deps({{
-      static_cast<dart_task_dep_t>(args)...
-    }});
-    dart_task_create(
-      &dash::internal::invoke_task_action,
-      new dash::internal::FuncT(f), 0,
-                     deps.data(), deps.size(), prio);
-  }
-
-  template<class TaskFunc, typename ... Args>
-  dart_taskref_t
-  create_task_handle(TaskFunc f, const Args&... args){
-    return create_task_handle(f, DART_PRIO_LOW, args...);
-  }
+namespace tasks{
 
   /**
    * Create a bunch of tasks operating on the input range but do not wait
@@ -132,7 +26,7 @@ namespace dash{
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
-      dash::create_task(
+      dash::tasks::create(
         [=](){
           f(from, to);
         }
@@ -151,7 +45,7 @@ namespace dash{
     InputIter end,
     size_t chunk_size,
     RangeFunc f,
-    DepGeneratorFunc df)
+    DepGeneratorFunc depdency_generator)
   {
     if (chunk_size == 0) chunk_size = 1;
     InputIter from = begin;
@@ -160,8 +54,9 @@ namespace dash{
       if (to > end) to = end;
       DependencyVector deps;
       deps.reserve(10);
-      df(from, to, std::inserter(deps, deps.begin()));
-      dash::create_task(
+      auto dep_inserter = std::inserter(deps, deps.begin());
+      depdency_generator(from, to, dep_inserter);
+      dash::tasks::create(
         [=](){
           f(from, to);
         },
@@ -178,14 +73,10 @@ namespace dash{
     InputIter end,
     RangeFunc f)
   {
-    parallel_for(begin, end, 1, f);
+    parallel_for(begin, end, dart_task_num_threads(), f);
   }
 
-  void
-  yield(int delay) {
-    dart_task_yield(delay);
-  }
-
+} // namespace tasks
 } // namespace dash
 
-#endif // DASH__PARALLEL__PARALLELFOR_H__
+#endif // DASH__TASKS__PARALLELFOR_H__

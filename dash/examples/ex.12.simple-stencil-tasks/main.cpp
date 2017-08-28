@@ -21,6 +21,8 @@
 #include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
 #include <dash/util/Timer.h>
+#include <dash/tasks/ParallelFor.h>
+#include <dash/tasks/Tasks.h>
 
 #include <fstream>
 #include <string>
@@ -137,7 +139,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     int rows_per_task = std::min(lext_x, lext_x / (dart_task_num_threads()*10));
     std::cout << "rows_per_task: " << rows_per_task << std::endl;
     // Inner rows
-    dash::parallel_for(1L, lext_x-1, rows_per_task,
+    dash::tasks::parallel_for(1L, lext_x-1, rows_per_task,
         [=, &data_old, &data_new](index_t from, index_t to) {
           //std::cout << "Iterating from " << from << " to " << to << std::endl;
           for (index_t x = from; x < to; ++x) {
@@ -160,21 +162,21 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         [=, &data_old, &data_new](
           index_t from,
           index_t to,
-          dash::DependencyVectorInserter inserter)
+          dash::tasks::DependencyVectorInserter inserter)
         {
           size_t chunk_size = to - from;
           //std::cout << "chunk_size: " << chunk_size << std::endl;
-          *inserter = dash::in(
+          *inserter = dash::tasks::in(
             data_old.at(local_beg_gidx[0] + from, 0), iter-1);
-          *inserter = dash::out(
+          *inserter = dash::tasks::out(
             data_new.at(local_beg_gidx[0] + from, 0), iter);
           // upper row offset: take care of first chunk
           index_t uoff = (from < chunk_size) ? from - 1 : from - chunk_size;
           // lower row offset: take care of last chunk
           index_t loff = ((from + chunk_size) > lext_x) ? from + 1 : from + chunk_size;
-          *inserter = dash::in(
+          *inserter = dash::tasks::in(
                         data_old.at(local_beg_gidx[0] + uoff, 0), iter-1);
-          *inserter = dash::in(
+          *inserter = dash::tasks::in(
                         data_old.at(local_beg_gidx[0] + loff, 0), iter-1);
           //std::cout << "from: " << from << "; uoff: " << uoff << "; loff: " << loff << std::endl;
         }
@@ -222,7 +224,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
     if(!is_top){
       // top row
-      dash::create_task(
+      dash::tasks::create(
        [=, &data_old, &data_new] {
         const element_t *__restrict down_row = data_old.local.row(1).lbegin();
         const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
@@ -246,10 +248,10 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
           std::free(up_row);
         },
         DART_PRIO_HIGH,
-        dash::in(data_old.at(local_beg_gidx[0] - 1,   0), iter-1),
-        dash::in(data_old.at(local_beg_gidx[0] + 1,   0), iter-1),
-        dash::in(data_old.at(local_beg_gidx[0],       0), iter-1),
-        dash::out(data_new.at(local_beg_gidx[0],      0), iter)
+        dash::tasks::in(data_old.at(local_beg_gidx[0] - 1,   0), iter-1),
+        dash::tasks::in(data_old.at(local_beg_gidx[0] + 1,   0), iter-1),
+        dash::tasks::in(data_old.at(local_beg_gidx[0],       0), iter-1),
+        dash::tasks::out(data_new.at(local_beg_gidx[0],      0), iter)
       );
   #if DEBUG
       printf("[%d] TOP    in %d: (%d), (%d), (%d); out %d: (%d)\n",
@@ -260,7 +262,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
     if(!is_bottom){
       // bottom row
-      dash::create_task(
+      dash::tasks::create(
         [=, &data_old, &data_new] {
           if (dash::myid() == 0)
             std::cout << "[0] Computing bottom row in iteration " << iter << std::endl;
@@ -286,10 +288,10 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
           std::free(down_row);
         },
         DART_PRIO_HIGH,
-        dash::in(data_old.at(local_end_gidx[0] - 1,   0), iter-1),
-        dash::in(data_old.at(local_end_gidx[0] + 1,   0), iter-1),
-        dash::in(data_old.at(local_end_gidx[0],       0), iter-1),
-        dash::out(data_new.at(local_end_gidx[0],      0), iter)
+        dash::tasks::in(data_old.at(local_end_gidx[0] - 1,   0), iter-1),
+        dash::tasks::in(data_old.at(local_end_gidx[0] + 1,   0), iter-1),
+        dash::tasks::in(data_old.at(local_end_gidx[0],       0), iter-1),
+        dash::tasks::out(data_new.at(local_end_gidx[0],      0), iter)
       );
   #if DEBUG
       printf("[%d] BOTTOM in %d: (%d [%p]), (%d [-]), (%d [%p]); out %d: (%d [%p]) \n",

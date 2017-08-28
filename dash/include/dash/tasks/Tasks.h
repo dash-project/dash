@@ -1,4 +1,5 @@
-
+#ifndef DASH__TASKS_TASKS_H__
+#define DASH__TASKS_TASKS_H__
 #include <dash/dart/if/dart_tasking.h>
 
 namespace dash {
@@ -73,7 +74,7 @@ namespace internal {
   create(TaskFunc f, dart_task_prio_t prio, const DepContainer& deps){
     dart_task_create(
       &dash::tasks::internal::invoke_task_action,
-      new dash::internal::task_function(f), 0,
+      new dash::tasks::internal::task_function(f), 0,
                      deps.data(), deps.size(), prio);
   }
 
@@ -102,7 +103,7 @@ namespace internal {
     }});
     dart_task_create(
       &dash::tasks::internal::invoke_task_action,
-      new dash::internal::task_function(f), 0,
+      new dash::tasks::internal::task_function(f), 0,
                      deps.data(), deps.size(), prio);
   }
 
@@ -112,6 +113,13 @@ namespace internal {
     return create_handle(f, DART_PRIO_LOW, args...);
   }
 
+  void
+  yield(int delay = -1) {
+    dart_task_yield(delay);
+  }
+
 } // namespace tasks
 
 } // namespace dash
+
+#endif // DASH__TASKS_TASKS_H__
