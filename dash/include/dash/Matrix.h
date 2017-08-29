@@ -772,7 +772,8 @@ template <
   typename T,
   dim_t    NumDimensions,
   typename IndexT   = dash::default_index_t,
-  class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
+  class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT>,
+  typename MSpaceCategory = dash::memory_space_host_tag>
 using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
 
 }  // namespace dash
