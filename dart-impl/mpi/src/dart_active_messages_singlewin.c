@@ -280,8 +280,8 @@ amsg_process_internal(
   dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
 
   // trigger progress
-  int flag;
-  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
+//  int flag;
+//  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
 
   if (!blocking) {
     // shortcut if there is nothing to do
