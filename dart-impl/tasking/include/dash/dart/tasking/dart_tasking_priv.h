@@ -163,10 +163,38 @@ dart__tasking__should_abort();
 dart_ret_t
 dart__tasking__fini();
 
-dart_thread_t *
-dart__tasking_current_thread();
-
 dart_ret_t
 dart__tasking__yield(int delay);
+
+/**
+ * Functions not exposed to the outside
+ */
+
+void
+dart__tasking__destroy_task(dart_task_t *task);
+
+dart_thread_t *
+dart__tasking__current_thread();
+
+static inline bool
+dart__tasking__is_root_task(dart_task_t *task)
+{
+  return task->state != DART_TASK_ROOT;
+}
+
+void
+dart__tasking__check_cancellation(dart_thread_t *thread);
+
+bool
+dart__tasking__cancellation_requested();
+
+void
+dart__tasking__cancel_task(dart_task_t *task);
+
+void
+dart__tasking__abort_current_task(dart_thread_t *thread) DART_NORETURN;
+
+void
+dart__tasking__cancellation_barrier(dart_thread_t *thread);
 
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */
