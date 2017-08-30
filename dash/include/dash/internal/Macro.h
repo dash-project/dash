@@ -42,4 +42,6 @@
   -> decltype(__VA_ARGS__)                                \
   /**/
 
+#define DASH__NORETURN __attribute__(( noreturn ))
+
 #endif // DASH__INTERNAL__MACRO_H_

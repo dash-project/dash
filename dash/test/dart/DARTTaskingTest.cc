@@ -2,6 +2,9 @@
 #include "DARTTaskingTest.h"
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_tasking.h>
+
+#include <dash/tasks/Tasks.h>
 
 #define TASK_CANCEL_CUTOFF 10
 
@@ -527,6 +530,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   dart_team_memalloc_aligned(DART_TEAM_ALL, 1, DART_TYPE_INT, &gptr2);
   dart_put_blocking(gptr2, &val, 1, DART_TYPE_INT);
 
+  // create a bunch of tasks, one of them will abort
   for (i = 1; i <= 100; i++) {
     globaltestdata_t td;
     td.expected = i-1;
@@ -581,4 +585,27 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   dart_team_memfree(gptr1);
   dart_team_memfree(gptr2);
 
+}
+
+TEST_F(DARTTaskingTest, Abort)
+{
+  static int value = 0;
+  // test the abortion mechanism of the C++ abstraction
+  struct DtorIncrement {
+    DtorIncrement() { }
+    ~DtorIncrement() {
+      ++value;
+    }
+  };
+
+  dash::tasks::create([](){
+    DtorIncrement dt;
+    dash::tasks::abort_task();
+    // this should not be executed
+    value = 10;
+  });
+
+  dash::tasks::complete();
+
+  ASSERT_EQ_U(1, value);
 }
