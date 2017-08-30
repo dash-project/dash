@@ -8,6 +8,7 @@
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
+#include <dash/dart/tasking/dart_tasking_cancellation.h>
 
 #include <pthread.h>
 #include <stdbool.h>

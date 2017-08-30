@@ -40,7 +40,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   // look for already allocated contexts
   // thread-local list, no locking required
   context_t* res = NULL;
-  dart_thread_t* thread = dart__tasking_current_thread();
+  dart_thread_t* thread = dart__tasking__current_thread();
   if (thread->ctxlist != NULL) {
     res = &thread->ctxlist->ctx;
     thread->ctxlist = thread->ctxlist->next;
@@ -96,7 +96,7 @@ void dart__tasking__context_release(context_t* ctx)
   context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - sizeof(struct context_list_s *));
 
-  dart_thread_t* thread = dart__tasking_current_thread();
+  dart_thread_t* thread = dart__tasking__current_thread();
   ctxlist->next = thread->ctxlist;
   thread->ctxlist = ctxlist;
 #endif
@@ -126,7 +126,7 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
 void dart__tasking__context_cleanup()
 {
 #ifdef USE_UCONTEXT
-  dart_thread_t* thread = dart__tasking_current_thread();
+  dart_thread_t* thread = dart__tasking__current_thread();
 
   context_list_t *ctxlist = thread->ctxlist;
 

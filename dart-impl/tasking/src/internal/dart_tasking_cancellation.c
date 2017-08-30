@@ -4,8 +4,9 @@
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
-#include <dash/dart/tasking/dart_tasking_remote.h>
+#include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/tasking/dart_tasking_remote.h>
 
 /**
  * Cancellation related functionality.

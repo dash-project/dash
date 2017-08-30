@@ -120,7 +120,7 @@ dart_ret_t dart_tasking_datadeps_init()
   return dart_tasking_remote_init();
 }
 
-void
+static void
 free_dephash_list(dart_dephash_elem_t *list)
 {
   dart_dephash_elem_t *elem = list;

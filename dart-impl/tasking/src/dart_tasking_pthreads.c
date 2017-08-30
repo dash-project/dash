@@ -1,6 +1,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/macro.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/hwinfo.h>
@@ -13,6 +14,7 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
+#include <dash/dart/tasking/dart_tasking_cancellation.h>
 
 #include <stdlib.h>
 #include <pthread.h>

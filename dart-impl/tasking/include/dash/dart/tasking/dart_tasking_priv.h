@@ -7,6 +7,7 @@
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
+#include <dash/dart/base/macro.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -90,16 +91,16 @@ typedef struct {
 } dart_thread_t;
 
 dart_ret_t
-dart__tasking__init();
+dart__tasking__init() DART_INTERNAL;
 
 int
-dart__tasking__thread_num();
+dart__tasking__thread_num() DART_INTERNAL;
 
 int
-dart__tasking__num_threads();
+dart__tasking__num_threads() DART_INTERNAL;
 
 int32_t
-dart__tasking__epoch_bound();
+dart__tasking__epoch_bound() DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__create_task(
@@ -122,37 +123,28 @@ dart__tasking__create_task_handle(
         dart_taskref_t  *ref);
 
 dart_ret_t
-dart__tasking__taskref_free(dart_taskref_t *tr);
+dart__tasking__taskref_free(dart_taskref_t *tr) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_wait(dart_taskref_t *tr);
+dart__tasking__task_wait(dart_taskref_t *tr) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_complete();
-
-dart_ret_t
-dart__tasking__phase();
+dart__tasking__task_complete() DART_INTERNAL;
 
 dart_taskref_t
-dart__tasking__current_task();
+dart__tasking__current_task() DART_INTERNAL;
 
 void
-dart__tasking__enqueue_runnable(dart_task_t *task);
+dart__tasking__cancel_bcast() DART_NORETURN DART_INTERNAL;
 
 void
-dart__tasking__cancel_bcast() DART_NORETURN;
+dart__tasking__cancel_global() DART_NORETURN DART_INTERNAL;
 
 void
-dart__tasking__cancel_global() DART_NORETURN;
-
-void
-dart__tasking__cancel_start();
-
-void
-dart__tasking__abort() DART_NORETURN;
+dart__tasking__abort() DART_NORETURN DART_INTERNAL;
 
 bool
-dart__tasking__should_abort();
+dart__tasking__should_abort() DART_INTERNAL;
 
 //void
 //dart__base__tasking_print_taskgraph();
@@ -161,40 +153,29 @@ dart__tasking__should_abort();
 //dart__base__tasking_sync_taskgraph();
 
 dart_ret_t
-dart__tasking__fini();
+dart__tasking__fini() DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__yield(int delay);
+dart__tasking__yield(int delay) DART_INTERNAL;
 
 /**
  * Functions not exposed to the outside
  */
 
 void
-dart__tasking__destroy_task(dart_task_t *task);
+dart__tasking__enqueue_runnable(dart_task_t *task) DART_INTERNAL;
+
+void
+dart__tasking__destroy_task(dart_task_t *task) DART_INTERNAL;
 
 dart_thread_t *
-dart__tasking__current_thread();
+dart__tasking__current_thread() DART_INTERNAL;
 
-static inline bool
+DART_INLINE
+bool
 dart__tasking__is_root_task(dart_task_t *task)
 {
   return task->state != DART_TASK_ROOT;
 }
-
-void
-dart__tasking__check_cancellation(dart_thread_t *thread);
-
-bool
-dart__tasking__cancellation_requested();
-
-void
-dart__tasking__cancel_task(dart_task_t *task);
-
-void
-dart__tasking__abort_current_task(dart_thread_t *thread) DART_NORETURN;
-
-void
-dart__tasking__cancellation_barrier(dart_thread_t *thread);
 
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */
