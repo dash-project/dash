@@ -45,7 +45,7 @@ class LocalSpaceAllocator {
 
   ~LocalSpaceAllocator();
 
-  pointer allocate(size_t n);
+  pointer allocate(size_t n, size_t alignment = alignof(T));
   void deallocate(pointer p, size_t n);
 
   size_type max_size() const noexcept;
@@ -98,14 +98,14 @@ LocalSpaceAllocator<T, MSpaceCategory>::LocalSpaceAllocator(
 
 template <typename T, typename MSpaceCategory>
 inline typename LocalSpaceAllocator<T, MSpaceCategory>::pointer
-LocalSpaceAllocator<T, MSpaceCategory>::allocate(size_t n)
+LocalSpaceAllocator<T, MSpaceCategory>::allocate(size_t n, size_t alignment)
 {
   DASH_LOG_DEBUG("LocalSpaceAllocator.allocate(n)",
                    "number values:", n);
 
   if (n > this->max_size()) throw std::bad_alloc();
 
-  auto p =  static_cast<pointer>(_space->allocate(n * sizeof(T), alignof(T)));
+  auto p =  static_cast<pointer>(_space->allocate(n * sizeof(T), alignment));
 
   DASH_LOG_DEBUG("LocalSpaceAllocator.allocate(n) >");
 

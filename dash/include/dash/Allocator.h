@@ -4,6 +4,7 @@
 #include <dash/allocator/AllocatorTraits.h>
 
 #include <dash/allocator/LocalAllocator.h>
+#include <dash/allocator/LocalSpaceAllocator.h>
 #include <dash/allocator/SymmetricAllocator.h>
 #include <dash/allocator/EpochSynchronizedAllocator.h>
 
