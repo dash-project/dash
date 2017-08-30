@@ -44,7 +44,7 @@ dart_ret_t dart_tasking_remote_release(
 /**
  * Broadcast the request to cancel execution of remaining tasks.
  */
-dart_ret_t dart_tasking_remote_cancel_bcast(dart_team_t team);
+dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team);
 
 /**
  * Check for new remote task dependency requests coming in.
