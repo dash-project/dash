@@ -81,11 +81,11 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
     dart_task_t *local_task);
 
 /**
- * Cancel a remote dependency for the local task. Subsequently, the
- * task will not be scheduled for execution anymore and will be canceled in turn.
+ * Cancel all remaining remote dependencies.
+ * All tasks that are still blocked by remote dependencies will be subsequently
+ * released if they have no local dependecies.
  */
-dart_ret_t dart_tasking_datadeps_cancel_remote_dep(
-    dart_task_t *local_task);
+dart_ret_t dart_tasking_datadeps_cancel_remote_deps();
 
 /**
  * Release all unhandled remote dependency requests.
@@ -94,6 +94,12 @@ dart_ret_t dart_tasking_datadeps_cancel_remote_dep(
  */
 dart_ret_t
 dart_tasking_datadeps_release_unhandled_remote();
+
+DART_INLINE
+dart_ret_t
+dart_tasking_datadeps_is_runnable(dart_task_t *task) {
+  return (task->unresolved_deps == 0) && (task->unresolved_remote_deps == 0);
+}
 
 /**
  * Check for new remote task dependency requests coming in

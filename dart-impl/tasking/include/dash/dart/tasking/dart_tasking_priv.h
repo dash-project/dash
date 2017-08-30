@@ -2,6 +2,7 @@
 #define DART__BASE__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
+#include <setjmp.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
@@ -22,11 +23,12 @@ typedef enum {
   DART_TASK_CANCELLED
 } dart_task_state_t;
 
+
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
   dart_task_action_t         fn;              // the action to be invoked
-  void                      *data;            // the data to be passed to passed to the action
+  void                      *data;            // the data to be passed to the action
   size_t                     data_size;       // the size of the data; data will be freed if data_size > 0
   int32_t                    unresolved_deps; // the number of unresolved task dependencies
   int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
@@ -39,6 +41,7 @@ struct dart_task_data {
   dart_task_state_t          state;
   int32_t                    epoch;
   context_t                 *taskctx;         // context to start/resume task
+  jmp_buf                    cancel_return;   // where to longjmp upon task cancellation
   int                        delay;           // delay in case this task yields
   dart_task_prio_t           prio;
   bool                       has_ref;
@@ -137,7 +140,20 @@ void
 dart__tasking__enqueue_runnable(dart_task_t *task);
 
 void
-dart__tasking__cancel_task(dart_task_t *task);
+dart__tasking__cancel_bcast() DART_NORETURN;
+
+void
+dart__tasking__cancel_global() DART_NORETURN;
+
+void
+dart__tasking__cancel_start();
+
+void
+dart__tasking__abort() DART_NORETURN;
+
+bool
+dart__tasking__should_abort();
+
 //void
 //dart__base__tasking_print_taskgraph();
 //

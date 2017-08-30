@@ -42,11 +42,9 @@ dart_ret_t dart_tasking_remote_release(
   const dart_task_dep_t *dep);
 
 /**
- * Cancel a remote dependency request, potentially cancelling the remote task.
+ * Broadcast the request to cancel execution of remaining tasks.
  */
-dart_ret_t dart_tasking_remote_cancel_taskdep(
-  dart_global_unit_t   unit,
-  taskref              remote_task);
+dart_ret_t dart_tasking_remote_cancel_bcast(dart_team_t team);
 
 /**
  * Check for new remote task dependency requests coming in.
@@ -64,6 +62,6 @@ dart_ret_t dart_tasking_remote_progress();
  * message queue. The call will block until no further incoming
  * messages are received.
  */
-dart_ret_t dart_tasking_remote_progress_blocking();
+dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team);
 
 #endif /* DART_TASKING_REMOTE_H_ */

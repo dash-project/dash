@@ -60,7 +60,7 @@ release_remote_dependency(void *data);
 static void
 request_direct_taskdep(void *data);
 static void
-cancel_taskdep(void *data);
+request_cancellation(void *data);
 
 static inline
 size_t
@@ -177,7 +177,7 @@ dart_ret_t dart_tasking_remote_release(
       dart_amsg_process(amsgq);
       continue;
     } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", unit);
+      DART_LOG_ERROR("Failed to send active message to unit %i", unit.id);
       return DART_ERR_OTHER;
     }
   }
@@ -226,7 +226,7 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
       dart_amsg_process(amsgq);
       continue;
     } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", unit);
+      DART_LOG_ERROR("Failed to send active message to unit %i", unit.id);
       return DART_ERR_OTHER;
     }
   }
@@ -235,40 +235,10 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 }
 
 
-dart_ret_t dart_tasking_remote_cancel_taskdep(
-  dart_global_unit_t   unit,
-  taskref              remote_task)
+dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
 {
-  dart_team_unit_t team_unit;
-  dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
-
-  DART_ASSERT(remote_task.local != NULL);
-  struct remote_task_dep_cancelation cancel;
-  cancel.task.remote = remote_task;
-
-  while (1) {
-    dart_ret_t ret;
-    ret = dart_amsg_trysend(
-        team_unit,
-        amsgq,
-        &cancel_taskdep,
-        &cancel,
-        sizeof(cancel));
-    if (ret == DART_OK) {
-      // the message was successfully sent
-      DART_LOG_INFO("Sent direct remote task dependency to unit %i "
-                    "(local task %p depdends on remote task %p)",
-                    unit, local_task, remote_task);
-      break;
-    } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be sent at the moment, just try again
-      dart_amsg_process(amsgq);
-      continue;
-    } else {
-      DART_LOG_ERROR("Failed to send active message to unit %i", unit);
-      return DART_ERR_OTHER;
-    }
-  }
+  DART_LOG_DEBUG("Broadcasting cancellation request across team %d", team);
+  return dart_amsg_bcast(team, amsgq, &request_cancellation, NULL, 0);
 
 }
 
@@ -287,9 +257,9 @@ dart_ret_t dart_tasking_remote_progress()
  * message queue. The call will block until no further incoming
  * messages are received.
  */
-dart_ret_t dart_tasking_remote_progress_blocking()
+dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
-  return dart_amsg_process_blocking(amsgq);
+  return dart_amsg_process_blocking(amsgq, team);
 }
 
 
@@ -358,12 +328,15 @@ request_direct_taskdep(void *data)
 }
 
 /**
- * An action called from the remote unit to signal the cancellation of a
- * matched remote task dependency.
+ * An action called from the remote unit to signal the cancellation of task
+ * processing.
  */
 static void
-cancel_taskdep(void *data)
+request_cancellation(void *data)
 {
-  struct remote_task_dep_cancelation *taskdep = (struct remote_task_dep_cancelation*) data;
-  dart_tasking_datadeps_cancel_remote_dep(taskdep->task.local);
+  // data is NULL
+  (void)data;
+  // we cannot call dart_task_cancel() here as it does not return
+  // just signal cancellation instead and let the threads detect it
+  dart__tasking__cancel_start();
 }

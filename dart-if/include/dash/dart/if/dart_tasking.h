@@ -10,6 +10,8 @@
  * can specify dependencies to data on remote units.
  */
 
+#include <stdbool.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 
@@ -104,21 +106,6 @@ dart_task_thread_num() __attribute__((weak));
 int
 dart_task_num_threads();
 
-/**
- * Yield the execution thread to execute another task.
- *
- * The current task will be re-inserted into the current thread's
- * task queue. The parameter \c delay determines the position at which the
- * task is enqueued, with non-negative integers denoting the reinsertion
- * position, starting from 0 as being the new head of the queue after dequeing
- * a replacement.
- * A value of -1 enforces this task to be placed at the end of the queue.
- * Note that yielded tasks are subject to work-stealing as well, allowing
- * other threads to pick up the current task later.
- */
-dart_ret_t
-dart_task_yield(int delay);
-
 
 /**
  * Add a task to the local task graph with dependencies.
@@ -182,7 +169,6 @@ dart_task_wait(dart_taskref_t *taskref);
 dart_taskref_t
 dart_task_current_task();
 
-
 /**
  * Wait for all child tasks to complete.
  * If the current task is the (implicit) root task, this call will
@@ -192,6 +178,60 @@ dart_task_current_task();
  */
 dart_ret_t
 dart_task_complete();
+
+/**
+ * Cancel the current task and start the cancellation on a global scale, i.e.,
+ * signal cancellation to all local and remote tasks in units in DART_TEAM_ALL.
+ * This method should be called by a single global task. For collective
+ * cancellation use \ref dart_task_cancel_global.
+ * There may not be two cancellation requests in flight at the
+ * same time.
+ * This method does not return.
+ */
+void
+dart_task_cancel_bcast() DART_NORETURN;
+
+/**
+ * Cancel the current task and start the cancellation locally, i.e., signalling
+ * cancellation to all local threads.
+ * This method has to be called from all units in DART_TEAM_ALL.
+ * There may not be two cancellation requests in flight at the
+ * same time.
+ * This method does not return.
+ */
+void
+dart_task_cancel_global() DART_NORETURN;
+
+/**
+ * Abort the execution of the current task and continue with the next task
+ * (unless there has been a previous cancellation request).
+ */
+void
+dart_task_abort() DART_NORETURN;
+
+/**
+ * Returns true if cancellation has previously been requested.
+ * This can be used in combination with \ref dart_task_abort to cleanup
+ * before aborting the current task to join the cancellation process.
+ */
+bool
+dart_task_should_abort();
+
+/**
+ * Yield the execution thread to execute another task.
+ *
+ * The current task will be re-inserted into the current thread's
+ * task queue. The parameter \c delay determines the position at which the
+ * task is enqueued, with non-negative integers denoting the reinsertion
+ * position, starting from 0 as being the new head of the queue after dequeing
+ * a replacement.
+ * A value of -1 enforces this task to be placed at the end of the queue.
+ * Note that yielded tasks are subject to work-stealing as well, allowing
+ * other threads to pick up the current task later.
+ */
+dart_ret_t
+dart_task_yield(int delay);
+
 
 #ifdef __cplusplus
 }

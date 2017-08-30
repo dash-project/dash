@@ -1,4 +1,3 @@
-
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/atomic.h>
 #include <dash/dart/base/assert.h>
@@ -20,18 +19,23 @@
 #include <stdbool.h>
 #include <time.h>
 #include <errno.h>
+#include <setjmp.h>
 
 
 
 // true if threads should process tasks. Set to false to quit parallel processing
-static volatile bool parallel = false;
+static volatile bool parallel         = false;
+// true if dart_task_canceled has been cancelled
+static volatile bool cancel_requested = false;
+// true if the tasking subsystem has been initialized
+static          bool initialized      = false;
 
+// counter to spin on while waiting for all threads to finish cancelling
 static volatile int thread_cancel_counter = 0;
 
 static int num_threads;
 
-static bool initialized = false;
-
+// thread-private data
 static pthread_key_t tpd_key;
 
 typedef struct {
@@ -78,8 +82,42 @@ dart_thread_t * get_current_thread();
 static
 dart_task_t * next_task(dart_thread_t *thread);
 
+static inline
+void destroy_task(dart_task_t *task);
+
 static
 void handle_task(dart_task_t *task, dart_thread_t *thread);
+
+static
+void cancellation_barrier(dart_thread_t *thread);
+
+static
+void abort_current_task(dart_thread_t *thread) DART_NORETURN;
+
+static void
+cancel_task(dart_task_t *task);
+
+static void
+cancel_thread_tasks(dart_thread_t *thread);
+
+static void
+check_cancellation(dart_thread_t *thread);
+
+static void
+invoke_taskfn(dart_task_t *task)
+{
+  DART_ASSERT(task->fn != NULL);
+  DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
+  if (setjmp(task->cancel_return) == 0) {
+    task->fn(task->data);
+    DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, task->fn, task->data);
+  } else {
+    // we got here through longjmp, the task is cancelled
+    task->state = DART_TASK_CANCELLED;
+    printf("Thread %d: Task %p cancelled!\n", get_current_thread()->thread_id, task);
+    DART_LOG_DEBUG("Task %p (fn:%p data:%p) cancelled", task, task->fn, task->data);
+  }
+}
 
 #ifdef USE_UCONTEXT
 
@@ -110,8 +148,8 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
-  task->fn(task->data);
-  // return into the current thread's context
+  invoke_taskfn(task);
+  // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
   dart__tasking__context_invoke(&thread->retctx);
@@ -128,6 +166,8 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
                       (context_func_t*)&wrap_task, task);
   }
 
+  printf("Thread %d invoking task %p\n", thread->thread_id, task);
+
   if (current_task->state == DART_TASK_SUSPENDED) {
     // store current task's state and jump into new task
     dart__tasking__context_swap(current_task->taskctx, task->taskctx);
@@ -137,46 +177,13 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
   }
 }
 
-static void
-cancel_thread_tasks(dart_thread_t *thread)
-{
-  dart_task_t* task;
-  while ((task = dart_tasking_taskqueue_pop(&thread->queue)) != NULL) {
-    task_list_t *succ = task->successor;
-    while (succ != NULL) {
-      int deps = DART_DEC_AND_FETCH32(&succ->task->unresolved_deps);
-      if (deps == 0) {
-        destroy_task(succ->task);
-      }
-    }
-    destroy_task(task);
-  }
-}
-
-dart_ret_t
-dart__tasking__cancel()
-{
-  // signal cancellation
-  DART_INC_AND_FETCH32(&thread_cancel_counter);
-  dart_thread_t *thread = get_current_thread();
-  // cancel our own remaining tasks
-  cancel_thread_tasks(thread);
-
-  // cancel all remote dependency handling
-  // TODO!
-
-  // mark current task as cancelled
-  thread->current_task->state = DART_TASK_CANCELLED;
-  // jump back to the thread's main routine
-  dart__tasking__context_invoke(&thread->retctx);
-}
-
-
 
 dart_ret_t
 dart__tasking__yield(int delay)
 {
   dart_thread_t *thread = get_current_thread();
+
+  if (cancel_requested) abort_current_task(thread);
 
   // first get a replacement task
   dart_task_t *next = next_task(thread);
@@ -218,32 +225,20 @@ dart__tasking__yield(int delay)
   // "nothing to be done here" (libgomp)
   // we do not execute another task to prevent serialization
   DART_LOG_INFO("Skipping dart__task__yield");
+  if (cancel_requested) abort_current_task(thread);
+
+  return DART_OK;
 }
 
-
-dart_ret_t
-dart__tasking__cancel()
-{
-  DART_LOG_ERROR("Support for contexts required to cancel tasks, aborting!");
-  dart_abort(DART_EXIT_UNSUPPORTED);
-}
 
 static
 void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
-
-  // save current task and set to new task
-  dart_task_t *current_task = get_current_task();
+  // set new task
   set_current_task(task);
 
-  dart_task_action_t fn = task->fn;
-  void *data = task->data;
-
-  DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
   //invoke the task function
-  DART_ASSERT(fn != NULL);
-  fn(data);
-  DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, fn, data);
+  invoke_taskfn(task);
 }
 #endif // USE_UCONTEXT
 
@@ -266,7 +261,7 @@ static int determine_num_threads()
     dart_hwinfo_t hw;
     dart_hwinfo(&hw);
     if (hw.num_cores > 0) {
-      num_threads = hw.num_cores * (hw.max_threads > 0) ? hw.max_threads : 1;
+      num_threads = hw.num_cores * ((hw.max_threads > 0) ? hw.max_threads : 1);
       if (num_threads <= 0) {
         num_threads = -1;
       }
@@ -426,14 +421,16 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->state = DART_TASK_RUNNING;
     dart__base__mutex_unlock(&(task->mutex));
 
-    // start execution, might yield in between
+    // start execution, change to another task in between
     invoke_task(task, thread);
+
+    if (!cancel_requested) {
+      // Implicit wait for child tasks
+      dart__tasking__task_complete();
+    }
 
     // the task may have changed once we get back here
     task = get_current_task();
-
-    // Implicit wait for child tasks
-    dart__tasking__task_complete();
 
     // we need to lock the task shortly here
     // to allow for atomic check and update
@@ -478,13 +475,9 @@ void* thread_main(void *data)
   // enter work loop
   while (parallel) {
 
-    if (DART_FETCH32(&thread_cancel_counter)) {
+    if (cancel_requested) {
       // someone called cancel, so cancel our tasks
-      cancel_thread_tasks(thread);
-      // signal that we are done canceling our tasks
-      DART_INC_AND_FETCH32(&thread_cancel_counter);
-      // wait for all other threads to finish cancelation
-      while (thread_cancel_counter) { }
+      cancellation_barrier(thread);
     }
 
     // look for incoming remote tasks and responses
@@ -511,10 +504,13 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->current_task = NULL;
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
+  thread->last_steal_thread = 0;
   dart_tasking_taskqueue_init(&thread->queue);
   dart_tasking_taskqueue_init(&thread->defered_queue);
   DART_LOG_TRACE("Thread %i has task queue %p and deferred queue %p",
     threadnum, &thread->queue, &thread->defered_queue);
+
+  printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
 }
 
 static
@@ -617,6 +613,10 @@ dart__tasking__epoch_bound()
 void
 dart__tasking__enqueue_runnable(dart_task_t *task)
 {
+  if (cancel_requested) {
+    cancel_task(task);
+    return;
+  }
   dart_thread_t *thread = get_current_thread();
   dart_taskqueue_t *q = &thread->queue;
   int32_t bound = dart__tasking__epoch_bound();
@@ -636,7 +636,7 @@ dart__tasking__create_task(
           size_t           ndeps,
           dart_task_prio_t prio)
 {
-  if (thread_cancel_counter) {
+  if (cancel_requested) {
     DART_LOG_DEBUG("dart__tasking__create_task: Ignoring task creation while "
                    "canceling tasks!");
     return DART_OK;
@@ -649,7 +649,7 @@ dart__tasking__create_task(
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
   task->state = DART_TASK_CREATED;
-  if (task->unresolved_deps == 0) {
+  if (dart_tasking_datadeps_is_runnable(task)) {
     dart__tasking__enqueue_runnable(task);
   }
 
@@ -666,7 +666,7 @@ dart__tasking__create_task_handle(
           dart_task_prio_t prio,
           dart_taskref_t  *ref)
 {
-  if (thread_cancel_counter) {
+  if (cancel_requested) {
     DART_LOG_DEBUG("dart__tasking__create_task_handle: Ignoring task creation "
                    "while canceling tasks!");
     return DART_OK;
@@ -680,7 +680,7 @@ dart__tasking__create_task_handle(
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
   task->state = DART_TASK_CREATED;
-  if (task->unresolved_deps == 0) {
+  if (dart_tasking_datadeps_is_runnable(task)) {
     dart__tasking__enqueue_runnable(task);
   }
 
@@ -704,7 +704,7 @@ dart__tasking__task_complete()
     // reset the active epoch
     root_task.epoch = DART_EPOCH_ANY;
     // make sure all incoming requests are served
-    dart_tasking_remote_progress_blocking();
+    dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     // release unhandled remote dependencies
     dart_tasking_datadeps_release_unhandled_remote();
     DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
@@ -728,18 +728,19 @@ dart__tasking__task_complete()
   context_t tmpctx  = thread->retctx;
 
   while (DART_FETCH32(&(task->num_children)) > 0) {
-//    DART_LOG_DEBUG("dart__tasking__task_complete: task %p has %lu tasks left", task, task->num_children);
     // a) look for incoming remote tasks and responses
-// TODO: DEBUG
-//    dart_tasking_remote_progress();
-    // b) process our tasks
+    dart_tasking_remote_progress();
+    // b) check cancellation
+    check_cancellation(thread);
+    // c) process our tasks
     dart_task_t *next = next_task(thread);
     handle_task(next, thread);
-    dart_tasking_remote_progress();
   }
 
   // restore context (in case we're called from within another task)
   thread->retctx = tmpctx;
+
+  check_cancellation(thread);
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (thread->current_task == &(root_task)) {
@@ -807,11 +808,144 @@ dart__tasking__task_wait(dart_taskref_t *tr)
   return DART_OK;
 }
 
+
+/**
+ * Cancellation related functionality.
+ */
+
+static void
+cancel_task(dart_task_t *task)
+{
+  task->state = DART_TASK_CANCELLED;
+  dart_tasking_datadeps_release_local_task(task);
+  DART_DEC_AND_FETCH32(&task->parent->num_children);
+  destroy_task(task);
+}
+
+static void
+cancel_thread_tasks(dart_thread_t *thread)
+{
+  dart_task_t* task;
+  while ((task = dart_tasking_taskqueue_pop(&thread->queue)) != NULL) {
+    cancel_task(task);
+  }
+}
+
+static void
+cancellation_barrier(dart_thread_t *thread) {
+  // cancel our own remaining tasks
+  cancel_thread_tasks(thread);
+  // signal that we are done canceling our tasks
+  DART_INC_AND_FETCH32(&thread_cancel_counter);
+  printf("Thread %d entering cancellation_barrier\n", thread->thread_id);
+  // wait for all other threads to finish cancelation
+  if (thread->thread_id == 0) {
+    while (DART_FETCH32(&thread_cancel_counter) < num_threads) { }
+    // thread 0 resets the barrier after it's done
+    // make sure all incoming requests have been served
+    dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+    // cancel all remaining tasks with remote dependencies
+    dart_tasking_datadeps_cancel_remote_deps();
+    thread_cancel_counter = 0;
+    cancel_requested      = false;
+  } else {
+    // busy wait for the barrier release
+    while(cancel_requested) { }
+  }
+}
+
+static void
+abort_current_task(dart_thread_t *thread) {
+  // mark current task as cancelled
+  thread->current_task->state = DART_TASK_CANCELLED;
+  if (thread->current_task == &root_task) {
+    // aborting the main task means aborting the application
+    DART_LOG_ERROR("Aborting the main task upon user request!");
+    dart_abort(DART_EXIT_ABORT);
+  }
+  // jump back before the beginning of the task
+  DART_LOG_DEBUG("abort_current_task: Aborting execution of task %p",
+                 thread->current_task);
+  longjmp(thread->current_task->cancel_return, 1);
+}
+
+void
+dart__tasking__cancel_bcast()
+{
+  DART_LOG_DEBUG("dart__tasking__cancel_bcast: cancelling remaining task "
+                 "execution throgh broadcast!");
+  if (!cancel_requested) {
+    // signal cancellation
+    cancel_requested = true;
+    // send cancellation request to all other units
+    dart_tasking_remote_bcast_cancel(DART_TEAM_ALL);
+  }
+  dart_thread_t *thread = get_current_thread();
+  // jump back to the thread's main routine
+  abort_current_task(thread);
+}
+
+void
+dart__tasking__cancel_global()
+{
+  DART_LOG_DEBUG("dart__tasking__cancel_global: cancelling remaining task "
+                 "execution in collective call!");
+  // signal cancellation
+  cancel_requested = true;
+  dart_thread_t *thread = get_current_thread();
+  // jump back to the thread's main routine
+  abort_current_task(thread);
+}
+
+void
+dart__tasking__abort()
+{
+  dart_thread_t *thread = get_current_thread();
+  DART_LOG_DEBUG("dart__tasking__abort: Aborting current task in thread %p",
+                 thread);
+  abort_current_task(thread);
+}
+
+bool
+dart__tasking__should_abort()
+{
+  // the current task should abort if cancellation was requested and
+  // it's an actual task, not the root task (which cannot abort)
+  return cancel_requested && (get_current_thread()->current_task != &root_task);
+}
+
+void
+dart__tasking__cancel_start()
+{
+  // just start the cancellation process, nothing else to be done here
+  cancel_requested = true;
+}
+
+static void
+check_cancellation(dart_thread_t *thread) {
+  if (cancel_requested) {
+    if (thread->current_task != &(root_task)) {
+      // abort task
+      printf("Thread %d aborting task %p\n", thread->thread_id, thread->current_task);
+      abort_current_task(thread);
+    } else {
+      cancellation_barrier(thread);
+    }
+  }
+}
+
+
 dart_taskref_t
 dart__tasking__current_task()
 {
   return get_current_task();
 }
+
+
+/**
+ * Tear-down related functions.
+ */
+
 
 static void
 stop_threads()

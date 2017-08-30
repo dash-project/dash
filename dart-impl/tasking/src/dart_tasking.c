@@ -124,6 +124,44 @@ dart_task_complete()
   return dart__tasking__task_complete();
 }
 
+
+/**
+ * Cancel the current task and start the cancellation on a global scale, i.e.,
+ * signal cancellation to all local and remote threads in units in DART_TEAM_ALL.
+ * There may not be two cancellation requests in flight at the
+ * same time.
+ */
+void
+dart_task_cancel_bcast() {
+  dart__tasking__cancel_bcast();
+}
+
+/**
+ * Cancel the current task and start the cancellation locally, i.e., signalling
+ * cancellation to all local threads.
+ * This method has to be called from all units in DART_TEAM_ALL.
+ * There may not be two cancellation requests in flight at the
+ * same time.
+ */
+void
+dart_task_cancel_global()
+{
+  dart__tasking__cancel_global();
+}
+
+
+void
+dart_task_abort()
+{
+  dart__tasking__abort();
+}
+
+bool
+dart_task_should_abort()
+{
+  return dart__tasking__should_abort();
+}
+
 /**
  * Yield the execution thread to execute another task.
  */
