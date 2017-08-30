@@ -82,22 +82,6 @@ const ElementType * min_element(
 
     uint8_t * min_vals_t_raw      = alloc.allocate(min_vals_t_bytes, align_bytes);
 
-
-
-    /*
-    size_t    min_vals_t_size     = n_threads + 1 +
-                                    (align_bytes / sizeof(min_pos));
-    size_t    min_vals_t_bytes    = min_vals_t_size * sizeof(min_pos);
-    min_pos * min_vals_t_raw      = new min_pos[min_vals_t_size];
-    void    * min_vals_t_alg      = min_vals_t_raw;
-    min_pos * min_vals_t          = static_cast<min_pos *>(
-                                      dash::align(
-                                        align_bytes,
-                                        sizeof(min_pos),
-                                        min_vals_t_alg,
-                                        min_vals_t_bytes));
-                                        */
-
     DASH_LOG_TRACE("dash::min_element", "min * alloc:",   min_vals_t_raw);
     //DASH_LOG_TRACE("dash::min_element", "min * aligned:", min_vals_t);
     DASH_LOG_TRACE("dash::min_element", "min * size:",    min_vals_t_bytes);
