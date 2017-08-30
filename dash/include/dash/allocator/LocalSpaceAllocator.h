@@ -6,7 +6,9 @@
 namespace dash {
 namespace allocator {
 
-template <typename T, typename MSpaceCategory = dash::memory_space_host_tag>
+template <
+  typename T,
+  typename MSpaceCategory = dash::memory_space_host_tag>
 class LocalSpaceAllocator {
   using memory_space = dash::MemorySpace<MSpaceCategory>;
   using memory_traits = dash::memory_space_traits<memory_space>;
