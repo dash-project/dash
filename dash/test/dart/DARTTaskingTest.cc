@@ -87,7 +87,7 @@ static void testfn_nested_deps(void *data) {
 }
 
 
-static void testfn_assign_cancel_global(void *data) {
+static void testfn_assign_cancel_barrier(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
   ASSERT_EQ(td->expected, *valptr);
@@ -97,7 +97,7 @@ static void testfn_assign_cancel_global(void *data) {
 
   if (td->assign == TASK_CANCEL_CUTOFF) {
     printf("Cancelling task %p\n", dart_task_current_task());
-    dart_task_cancel_global();
+    dart_task_cancel_barrier();
     // this should never be executed
     *valptr = 0;
   }
@@ -460,7 +460,7 @@ TEST_F(DARTTaskingTest, CancelLocal)
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
-        &testfn_assign_cancel_global,              // action to call
+        &testfn_assign_cancel_barrier,              // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency

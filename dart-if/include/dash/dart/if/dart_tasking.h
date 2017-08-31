@@ -200,7 +200,7 @@ dart_task_cancel_bcast() DART_NORETURN;
  * This method does not return.
  */
 void
-dart_task_cancel_global() DART_NORETURN;
+dart_task_cancel_barrier() DART_NORETURN;
 
 /**
  * Abort the execution of the current task and continue with the next task

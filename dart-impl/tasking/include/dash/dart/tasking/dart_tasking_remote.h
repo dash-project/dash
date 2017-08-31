@@ -9,9 +9,9 @@
 /**
  * @brief Initialize the remote task dependency system.
  */
-dart_ret_t dart_tasking_remote_init();
+dart_ret_t dart_tasking_remote_init() DART_INTERNAL;
 
-dart_ret_t dart_tasking_remote_fini();
+dart_ret_t dart_tasking_remote_fini() DART_INTERNAL;
 
 /**
  * Send a remote data dependency request for dependency \c dep of \c task
@@ -19,7 +19,7 @@ dart_ret_t dart_tasking_remote_fini();
 dart_ret_t
 dart_tasking_remote_datadep(
   dart_task_dep_t *dep,
-  dart_task_t     *task);
+  dart_task_t     *task) DART_INTERNAL;
 
 /**
  * Send a direct task dependency request \c unit to make sure
@@ -30,7 +30,7 @@ dart_ret_t
 dart_tasking_remote_direct_taskdep(
   dart_global_unit_t  unit,
   dart_task_t        *local_task,
-  taskref             remote_task);
+  taskref             remote_task) DART_INTERNAL;
 
 /**
  * Send a release for the remote task \c rtask to \c unit, potentially
@@ -39,19 +39,19 @@ dart_tasking_remote_direct_taskdep(
 dart_ret_t dart_tasking_remote_release(
   dart_global_unit_t     unit,
   taskref                rtask,
-  const dart_task_dep_t *dep);
+  const dart_task_dep_t *dep) DART_INTERNAL;
 
 /**
  * Broadcast the request to cancel execution of remaining tasks.
  */
-dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team);
+dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team) DART_INTERNAL;
 
 /**
  * Check for new remote task dependency requests coming in.
  * The call immediately returns if another thread is currently
  * processing the queue and will only process one chunk of data.
  */
-dart_ret_t dart_tasking_remote_progress();
+dart_ret_t dart_tasking_remote_progress() DART_INTERNAL;
 
 
 /**
@@ -62,6 +62,6 @@ dart_ret_t dart_tasking_remote_progress();
  * message queue. The call will block until no further incoming
  * messages are received.
  */
-dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team);
+dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team) DART_INTERNAL;
 
 #endif /* DART_TASKING_REMOTE_H_ */

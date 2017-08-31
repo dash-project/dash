@@ -524,13 +524,6 @@ init_threadpool(int num_threads)
   }
 }
 
-dart_thread_t *
-dart__tasking_current_thread()
-{
-  return &thread_pool[dart__tasking__thread_num()];
-}
-
-
 dart_ret_t
 dart__tasking__init()
 {

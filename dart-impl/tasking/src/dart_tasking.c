@@ -2,6 +2,7 @@
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/tasking/dart_tasking_cancellation.h>
 
 
 /**
@@ -144,9 +145,9 @@ dart_task_cancel_bcast() {
  * same time.
  */
 void
-dart_task_cancel_global()
+dart_task_cancel_barrier()
 {
-  dart__tasking__cancel_global();
+  dart__tasking__cancel_barrier();
 }
 
 

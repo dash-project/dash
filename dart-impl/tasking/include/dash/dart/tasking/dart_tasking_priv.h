@@ -6,8 +6,8 @@
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
-#include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/tasking/dart_tasking_context.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -109,7 +109,7 @@ dart__tasking__create_task(
         size_t           data_size,
   const dart_task_dep_t *deps,
         size_t           ndeps,
-        dart_task_prio_t prio);
+        dart_task_prio_t prio) DART_INTERNAL;
 
 
 dart_ret_t
@@ -120,7 +120,7 @@ dart__tasking__create_task_handle(
   const dart_task_dep_t *deps,
         size_t           ndeps,
         dart_task_prio_t prio,
-        dart_taskref_t  *ref);
+        dart_taskref_t  *ref) DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__taskref_free(dart_taskref_t *tr) DART_INTERNAL;
@@ -133,18 +133,6 @@ dart__tasking__task_complete() DART_INTERNAL;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;
-
-void
-dart__tasking__cancel_bcast() DART_NORETURN DART_INTERNAL;
-
-void
-dart__tasking__cancel_global() DART_NORETURN DART_INTERNAL;
-
-void
-dart__tasking__abort() DART_NORETURN DART_INTERNAL;
-
-bool
-dart__tasking__should_abort() DART_INTERNAL;
 
 //void
 //dart__base__tasking_print_taskgraph();

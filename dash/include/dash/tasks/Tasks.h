@@ -53,9 +53,9 @@ namespace internal {
     }
   };
 
-  struct GlobalCancellation{
+  struct BarrierCancellation{
     static void cancel() DASH__NORETURN {
-      dart_task_cancel_global();
+      dart_task_cancel_barrier();
     }
   };
 
@@ -66,7 +66,7 @@ namespace internal {
   };
 
   using BcastCancellationSignal  = CancellationSignal<BcastCancellation>;
-  using GlobalCancellationSignal = CancellationSignal<GlobalCancellation>;
+  using BarrierCancellationSignal = CancellationSignal<BarrierCancellation>;
   using AbortCancellationSignal  = CancellationSignal<AbortCancellation>;
 
   //template<typename FuncT>
@@ -146,9 +146,9 @@ namespace internal {
 
   DASH__NORETURN
   static void
-  cancel_global() {
+  cancel_barrier() {
     if (dart_task_should_abort()) abort_task();
-    throw(dash::tasks::internal::GlobalCancellationSignal());
+    throw(dash::tasks::internal::BarrierCancellationSignal());
   }
 
   DASH__NORETURN

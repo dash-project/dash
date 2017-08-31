@@ -41,7 +41,7 @@ cancel_thread_tasks(dart_thread_t *thread)
   }
 }
 
-void
+static void
 dart__tasking__cancellation_barrier(dart_thread_t *thread) {
   // cancel our own remaining tasks
   cancel_thread_tasks(thread);
@@ -65,8 +65,8 @@ dart__tasking__cancellation_barrier(dart_thread_t *thread) {
   }
 }
 
-void
-dart__tasking__abort_current_task(dart_thread_t *thread) {
+void dart__tasking__abort_current_task(dart_thread_t* thread)
+{
   // mark current task as cancelled
   thread->current_task->state = DART_TASK_CANCELLED;
   if (thread->current_task->state == DART_TASK_ROOT) {
@@ -97,7 +97,7 @@ dart__tasking__cancel_bcast()
 }
 
 void
-dart__tasking__cancel_global()
+dart__tasking__cancel_barrier()
 {
   DART_LOG_DEBUG("dart__tasking__cancel_global: cancelling remaining task "
                  "execution in collective call!");
