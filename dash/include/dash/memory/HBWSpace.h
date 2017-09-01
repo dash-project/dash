@@ -5,7 +5,11 @@
 #include <dash/Types.h>
 #include <dash/memory/MemorySpace.h>
 
+#ifdef DASH_ENABLE_MEMKIND
 #include <hbwmalloc.h>
+#else
+#include <cstdlib>
+#endif
 
 
 namespace dash {
@@ -47,7 +51,14 @@ class HBWSpace
       alignment = dash::memory::internal::next_power_of_2(alignment);
     }
 
+#ifdef DASH_ENABLE_MEMKIND
     auto ret = hbw_posix_memalign(&ptr, alignment, n);
+#else
+    DASH_LOG_WARN("HBWSpace.do_allocate(n, alignment)",
+        "hbw_malloc is not available --> fall back to std::malloc");
+
+    auto ret = posix_memalign(&ptr, alignment, n);
+#endif
     if (ret) {
       DASH_LOG_ERROR("HBWSpace.do_allocate(n, alignment) --> Cannot allocate memory", n, alignment);
       throw std::bad_alloc();
@@ -60,7 +71,11 @@ class HBWSpace
   void do_deallocate(void_pointer p, std::size_t, std::size_t alignment)
   {
     if (p) {
+#ifdef DASH_ENABLE_MEMKIND
       hbw_free(p);
+#else
+      std::free(p);
+#endif
     }
   }
 
