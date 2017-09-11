@@ -29,6 +29,7 @@ private:
   using HaloBlockT     = HaloBlock<ElementT, PatternT>;
   using HaloRegionT    = Region<ElementT, PatternT, MatrixT::ndim()>;
   using HaloMemoryT    = HaloMemory<HaloBlockT>;
+  using CoordsT        = typename HaloMemoryT::CoordsT;
   using region_index_t = typename HaloBlockT::region_index_t;
 
   static constexpr dim_t      NumDimensions = PatternT::ndim();
@@ -210,30 +211,50 @@ public:
 
   template <typename FunctionT>
   void setFixedHalos(FunctionT f) {
+    using signed_extent_t = typename std::make_signed<size_type>::type;
     for (const auto& region : _haloblock.boundary_regions()) {
       auto rel_dim = region.regionSpec().relevantDim() - 1;
-      if (region.borderRegion() && _cycle_spec[rel_dim] == Cycle::FIXED) {
-        auto pos_ptr = _halomemory.haloPos(region.index());
-        auto spec    = region.regionSpec();
-        auto rel_ext = region.region().offsets();
-        auto reg_ext = region.region().extents();
-        for (auto d = 0; d < rel_ext.size(); ++d) {
-          if (spec[d] == 0)
-            rel_ext[d] = -reg_ext[d];
-          else if (spec[d] == 1)
-            rel_ext[d] = 0;
-          else
-            rel_ext[d] = reg_ext[d];
+      if (region.borderRegion() && region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED) {
+        auto* pos_ptr = _halomemory.haloPos(region.index());
+        const auto& spec    = region.regionSpec();
+        std::array<signed_extent_t, NumDimensions> coords_offset{};
+        const auto& reg_ext = region.region().extents();
+        for (auto d = 0; d < NumDimensions; ++d) {
+          if (spec[d] == 0) {
+            coords_offset[d] -= reg_ext[d];
+            continue;
+          }
+          if (spec[d] == 2)
+            coords_offset[d] = reg_ext[d];
         }
-        auto it = region.begin();
-        for (auto i = 0; i < region.size(); ++i, ++it) {
+
+        auto it_reg_end = region.end();
+        //for (auto i = 0; i < region.size(); ++i, ++it) {
+        for (auto it = region.begin(); it != it_reg_end; ++it) {
           auto coords = it.gcoords();
-          for (auto d = 0; d < coords.size(); ++d)
-            coords[d] += rel_ext[d];
-          *(pos_ptr + i) = f(coords);
+          for (auto d = 0; d < NumDimensions; ++d)
+            coords[d] += coords_offset[d];
+          *(pos_ptr + it.rpos()) = f(coords);
         }
       }
     }
+  }
+
+  ElementT* haloElementAt(CoordsT coords) {
+    const auto& offsets = _view_global.offsets();
+    for(auto d = 0; d < NumDimensions; ++d) {
+      coords[d] -= offsets[d];
+    }
+    auto index = _haloblock.indexAt(_view_local, coords);
+    auto spec = _halo_reg_spec.spec(index);
+    auto halomem_pos = _halomemory.haloPos(index);
+    if(spec.level() == 0 || halomem_pos == nullptr)
+      return nullptr;
+
+    if(!_halomemory.toHaloMemoryCoordsWithCheck(index, coords))
+      return nullptr;
+
+    return _halomemory.haloPos(index) + _halomemory.haloValueAt(index, coords);
   }
 
 private:
@@ -253,7 +274,7 @@ private:
 
   void updateHaloIntern(Data& data, bool async) {
     auto rel_dim = data.region.regionSpec().relevantDim() - 1;
-    if (data.region.borderRegion() && _cycle_spec[rel_dim] == Cycle::FIXED)
+    if (data.region.borderRegion() && data.region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED)
       return;
 
     data.get_halos(data.halo_data);
@@ -263,7 +284,7 @@ private:
     }*/
 
     if (!async)
-      dart_wait(data.halo_data.handle);
+      dart_waitall(&data.halo_data.handle, 1);
       //dart_waitall(data.handle, data.num_handles);
   }
 

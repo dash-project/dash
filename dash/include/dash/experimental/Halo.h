@@ -718,10 +718,12 @@ private:
   using halo_extent_t   = typename halo_reg_spec_t::extent_t;
   using HaloExtsMaxT    = std::array<std::pair<halo_extent_t, halo_extent_t>, NumDimensions>;
   using size_type       = typename PatternT::size_type;
+  using CoordsT         = std::array<index_type, NumDimensions>;
 
 public:
   using region_index_t  = typename HaloRegionSpecT::region_index_t;
   using value_t         = ElementT;
+  using pattern_t       = PatternT;
 
 public:
   HaloBlock(GlobMemT& globmem, const PatternT& pattern, const ViewSpecT& view,
@@ -898,6 +900,29 @@ public:
 
   size_type boundary_size() const { return _size_bnd_elems; }
 
+  region_index_t indexAt(const ViewSpecT& view, const CoordsT& coords) const {
+    using signed_extent_t = typename std::make_signed<size_type>::type;
+    const auto& extents = view.extents();
+    const auto& offsets = view.offsets();
+
+    region_index_t index = 0;
+    if (coords[0] >= offsets[0] &&
+        coords[0] < static_cast<signed_extent_t>(extents[0]))
+      index = 1;
+    else if (coords[0] >= static_cast<signed_extent_t>(extents[0]))
+      index = 2;
+    for (auto d = 1; d < NumDimensions; ++d) {
+      if (coords[d] < offsets[d])
+        index *= 3;
+      else if (coords[d] < static_cast<signed_extent_t>(extents[d]))
+        index = 1 + index * 3;
+      else
+        index = 2 + index * 3;
+    }
+
+    return index;
+  }
+
 private:
   void pushBndElems(dim_t dim, std::array<index_type, NumDimensions>& offsets,
                     std::array<size_type, NumDimensions>& extents,
@@ -956,11 +981,17 @@ private:
   using HaloRegionSpecT                = HaloRegionSpec<NumDimensions>;
   using region_index_t                 = typename HaloRegionSpecT::region_index_t;
   static constexpr region_index_t MaxIndex = HaloRegionSpecT::MaxIndex;
+  using PatternT         = typename HaloBlockT::pattern_t;
+  using index_type       = typename PatternT::index_type;
+  using size_type        = typename PatternT::size_type;
+
+  static constexpr MemArrange  MemoryArrange    = PatternT::memory_order();
 
 public:
-  using ElementT                        = typename HaloBlockT::value_t;
+  using ElementT = typename HaloBlockT::value_t;
+  using CoordsT  = std::array<index_type, NumDimensions>;
 
-  HaloMemory(const HaloBlockT& haloblock) {
+  HaloMemory(const HaloBlockT& haloblock) : _haloblock(haloblock){
     _halobuffer.resize(haloblock.halo_size());
     auto* offset = _halobuffer.data();
 
@@ -976,7 +1007,52 @@ public:
 
   const std::vector<ElementT>& haloBuffer() const { return _halobuffer; }
 
+  bool toHaloMemoryCoordsWithCheck(const region_index_t region_index, CoordsT& coords) {
+    const auto& extents = _haloblock.halo_region(region_index)->region().extents();
+    for (auto d = 0; d < NumDimensions; ++d) {
+      if (coords[d] < 0)
+        coords[d] += extents[d];
+      else if (coords[d] >= _haloblock.view().extent(d))
+        coords[d] -= _haloblock.view().extent(d);
+
+      if(coords[d] >= extents[d] || coords[d] < 0)
+        return false;
+    }
+
+    return true;
+  }
+
+  void toHaloMemoryCoords(const region_index_t region_index, CoordsT& coords) {
+    const auto& extents = _haloblock.halo_region(region_index)->region().extents();
+    for (auto d = 0; d < NumDimensions; ++d) {
+      if (coords[d] < 0) {
+        coords[d] += extents[d];
+        continue;
+      }
+
+      if (coords[d] >= _haloblock.view().extent(d))
+        coords[d] -= _haloblock.view().extent(d);
+    }
+  }
+
+  size_type haloValueAt(const region_index_t region_index, const CoordsT& coords) {
+    const auto& extents = _haloblock.halo_region(region_index)->region().extents();
+    size_type off = 0;
+    if (MemoryArrange == ROW_MAJOR) {
+      off = coords[0];
+      for (auto d = 1; d < NumDimensions; ++d)
+        off = off * extents[d] + coords[d];
+    } else {
+      off = coords[NumDimensions - 1];
+      for (auto d = NumDimensions - 2; d >= 0; --d)
+        off = off * extents[d] + coords[d];
+    }
+
+    return off;
+  }
+
 private:
+  const HaloBlockT&               _haloblock;
   std::vector<ElementT>           _halobuffer;
   std::array<ElementT*, MaxIndex> _halo_offsets{};
 }; // class HaloMemory

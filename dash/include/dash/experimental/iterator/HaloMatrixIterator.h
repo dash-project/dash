@@ -65,6 +65,7 @@ public:
 
     setCoords();
     setStencilOffsets(stencil_spec);
+
   }
 
   /**
@@ -374,45 +375,12 @@ private:
     }
   }
 
-  ElementT valueHaloAt(CoordsT& halo_coords) {
-    using signed_extent_t = typename std::make_signed<typename local_layout_t::size_type>::type;
+  ElementT valueHaloAt(CoordsT halo_coords) {
 
-    region_index_t index = 0;
-    if (halo_coords[0] >= 0 &&
-        halo_coords[0] < static_cast<signed_extent_t>(_local_layout.extent(0)))
-      index = 1;
-    else if (halo_coords[0] >= static_cast<signed_extent_t>(_local_layout.extent(0)))
-      index = 2;
-    for (auto d = 1; d < NumDimensions; ++d) {
-      if (halo_coords[d] < 0)
-        index *= 3;
-      else if (halo_coords[d] < static_cast<signed_extent_t>(_local_layout.extent(d)))
-        index = 1 + index * 3;
-      else
-        index = 2 + index * 3;
-    }
+    auto index = _haloblock.indexAt(viewspec_t(_local_layout.extents()), halo_coords);
+    _halomemory.toHaloMemoryCoords(index, halo_coords);
 
-    const auto& extents = _haloblock.halo_region(index)->region().extents();
-    for (auto d = 0; d < NumDimensions; ++d) {
-      if (halo_coords[d] < 0) {
-        halo_coords[d] = extents[d] + halo_coords[d];
-        continue;
-      }
-      if (halo_coords[d] >= _haloblock.view().extent(d))
-        halo_coords[d] -= _haloblock.view().extent(d);
-    }
-    size_type off = 0;
-    if (MemoryArrange == ROW_MAJOR) {
-      off = halo_coords[0];
-      for (auto d = 1; d < NumDimensions; ++d)
-        off = off * extents[d] + halo_coords[d];
-    } else {
-      off = halo_coords[NumDimensions - 1];
-      for (auto d = NumDimensions - 2; d >= 0; --d)
-        off = off * extents[d] + halo_coords[d];
-    }
-
-    return *(_halomemory.haloPos(index) + off);
+    return *(_halomemory.haloPos(index) + _halomemory.haloValueAt(index, halo_coords));
   }
 
   ElementT* haloPos(const StencilT& stencil) {
