@@ -328,6 +328,7 @@ public:
                        static_cast<dart_locality_scope_t>(scope),
                        &num_scope_domains,
                        &dart_scope_domains);
+    (void)ret; // suppress warning
     DASH_ASSERT(DART_OK == ret || DART_ERR_NOTFOUND == ret);
 
     DASH_LOG_TRACE_VAR("LocalityDomain.scope_domains", num_scope_domains);

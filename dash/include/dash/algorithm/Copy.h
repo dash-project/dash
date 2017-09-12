@@ -182,7 +182,7 @@ ValueType * copy_block(
                      "left:",           total_elem_left);
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
+      dash::dart_storage<ValueType> ds(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_blocking(
           cur_out_first,
@@ -237,7 +237,7 @@ ValueType * copy_block(
                      "left:",           total_elem_left);
       auto dest_ptr = out_first + num_elem_copied;
       auto src_gptr = cur_in_first.dart_gptr();
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
+      dash::dart_storage<ValueType> ds(num_copy_elem);
       if (dart_get_blocking(
             dest_ptr,
             src_gptr,
@@ -333,7 +333,7 @@ dash::Future<ValueType *> copy_block_async(
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
       dart_handle_t  get_handle;
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
+      dash::dart_storage<ValueType> ds(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
           cur_out_first,
@@ -393,7 +393,7 @@ dash::Future<ValueType *> copy_block_async(
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
       dart_handle_t  get_handle;
-      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
+      dash::dart_storage<ValueType> ds(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
           dest_ptr,
@@ -471,7 +471,7 @@ GlobOutputIt copy_block(
                  "g_out_first:", out_first, out_first.dart_gptr());
 
   auto num_elements = std::distance(in_first, in_last);
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_elements);
+  dash::dart_storage<ValueType> ds(num_elements);
   DASH_ASSERT_RETURNS(
     dart_put_blocking(
       out_first.dart_gptr(),
@@ -511,7 +511,7 @@ dash::Future<GlobOutputIt> copy_block_async(
   auto src_ptr       = in_first;
   auto dest_gptr     = out_first.dart_gptr();
   dart_handle_t  put_handle;
-  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
+  dash::dart_storage<ValueType> ds(num_copy_elem);
   DASH_ASSERT_RETURNS(
     dart_put_handle(
         dest_gptr,
