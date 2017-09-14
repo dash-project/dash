@@ -6,7 +6,7 @@
 
 #include <dash/tasks/Tasks.h>
 
-#define TASK_CANCEL_CUTOFF 10
+#define TASK_CANCEL_CUTOFF 5
 
 typedef struct testdata {
   int  expected;
@@ -137,7 +137,8 @@ static void testfn_assign_cancel_bcast(void *data) {
   int newval = val+1;
   dart_put_blocking(td->dst, &newval, 1, DART_TYPE_INT);
   LOG_MESSAGE("[Task %p] testfn: incremented value from %i to %i (t:%d,s:%d,o:%p,u:%d)",
-    dart_task_current_task(), val, newval, td->src.teamid, td->dst.segid, td->dst.addr_or_offs.addr, td->dst.unitid);
+    dart_task_current_task(), val, newval, td->src.teamid, td->dst.segid,
+    td->dst.addr_or_offs.addr, td->dst.unitid);
 
   // unit 0 broadcasts the abort to all other units
   if (td->expected == TASK_CANCEL_CUTOFF) {
@@ -526,12 +527,15 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   dart_gptr_t gptr1, gptr2;
 
   dart_team_memalloc_aligned(DART_TEAM_ALL, 1, DART_TYPE_INT, &gptr1);
+  gptr1.unitid = dash::myid();
   dart_put_blocking(gptr1, &val, 1, DART_TYPE_INT);
   dart_team_memalloc_aligned(DART_TEAM_ALL, 1, DART_TYPE_INT, &gptr2);
+  gptr2.unitid = dash::myid();
   dart_put_blocking(gptr2, &val, 1, DART_TYPE_INT);
+  dash::barrier();
 
   // create a bunch of tasks, one of them will abort
-  for (i = 1; i <= 100; i++) {
+  for (i = 1; i <= 10; i++) {
     globaltestdata_t td;
     td.expected = i-1;
     // alternate allocations to avoid circular WAR dependencies
@@ -574,13 +578,16 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
 
   // fetch result
   dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT);
-  // we will have (TASK_CANCEL_CUTOFF) increments on the first value
-  ASSERT_EQ(TASK_CANCEL_CUTOFF, val);
+  // we will have (TASK_CANCEL_CUTOFF + 1) increments on the first value
+  ASSERT_EQ(TASK_CANCEL_CUTOFF+1, val);
 
   // fetch result
   dart_get_blocking(&val, gptr2, 1, DART_TYPE_INT);
-  // we will have (TASK_CANCEL_CUTOFF + 1) increments on the second value
-  ASSERT_EQ(TASK_CANCEL_CUTOFF + 1, val);
+  // we will have (TASK_CANCEL_CUTOFF) increments on the second value
+  ASSERT_EQ(TASK_CANCEL_CUTOFF, val);
+
+  gptr1.unitid = 0;
+  gptr2.unitid = 0;
 
   dart_team_memfree(gptr1);
   dart_team_memfree(gptr2);
