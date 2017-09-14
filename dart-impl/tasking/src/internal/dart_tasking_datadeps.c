@@ -12,7 +12,7 @@
 
 #include <stdbool.h>
 
-#define DART_DEPHASH_SIZE 1024
+#define DART_DEPHASH_SIZE 1023
 
 /**
  * Management of task data dependencies using a hash map that maps pointers to tasks.
@@ -31,15 +31,16 @@
   ((dep).gptr.addr_or_offs.addr)
 
 #define DEP_ADDR_EQ(dep1, dep2) \
-  (((dep1).gptr.teamid) == ((dep2).gptr.teamid)  && \
-   ((dep1).gptr.segid == ((dep2).gptr.segid)) && \
-   ((dep1).gptr.addr_or_offs.addr == ((dep1).gptr.addr_or_offs.addr))) \
+  ((dep1).gptr.addr_or_offs.addr == (dep2).gptr.addr_or_offs.addr && \
+   (dep1).gptr.segid   == (dep2).gptr.segid    && \
+   (dep1).gptr.unitid  == (dep2).gptr.unitid)
 
 typedef struct dart_dephash_elem {
-  struct dart_dephash_elem *next;
-  union taskref             task;
-  dart_task_dep_t           taskdep;
-  uint64_t                  epoch;
+  struct dart_dephash_elem *next;    // list pointer
+  union taskref             task;    // the task referred to by the dependency
+  dart_task_dep_t           taskdep; // the dependency
+  uint32_t                  epoch;   // the epoch/version of the depdenency
+  dart_global_unit_t        origin;  // the unit this dependency originated from
 } dart_dephash_elem_t;
 
 //static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
@@ -56,6 +57,7 @@ static dart_mutex_t         deferred_remote_mutex    = DART_MUTEX_INITIALIZER;
 
 static dart_taskqueue_t     remote_blocked_tasks;
 
+static dart_global_unit_t myguid;
 
 static dart_ret_t
 release_remote_dependencies(dart_task_t *task);
@@ -65,23 +67,22 @@ dephash_recycle_elem(dart_dephash_elem_t *elem);
 
 static inline int hash_gptr(dart_gptr_t gptr)
 {
-  /**
-   * Use the upper 61 bit of the pointer since we assume that pointers
-   * are 8-byte aligned.
-   */
-  dart_team_t team   = gptr.teamid;
-  int16_t     segid  = gptr.segid;
-  uint64_t    offset = gptr.addr_or_offs.offset;
-  offset >>= 3;
-  // mix in team and segment ID
-  offset |= segid;
-  offset |= (team << 16);
-  // use triplet (7, 11, 10), consider adding (21,17,48)
-  // proposed by Marsaglia
-  return ((offset ^ (offset >> 7) ^ (offset >> 11) ^ (offset >> 17))
-              % DART_DEPHASH_SIZE);
-  //return ((gptr.addr_or_offs.offset >> 3) % DART_DEPHASH_SIZE);
+  // use larger types to accomodate for the shifts below
+  // and unsigned to force logical shifts (instead of arithmetic)
+  // NOTE: we ignore the teamid here because gptr in dependencies contain
+  //       global unit IDs
+  uint32_t segid  = gptr.segid;
+  uint64_t hash   = gptr.addr_or_offs.offset;
+  uint64_t unitid = gptr.unitid; // 64-bit required for shift
+  // cut off the lower 2 bit, we assume that pointers are 4-byte aligned
+  hash >>= 2;
+  // mix in unit, team and segment ID
+  hash ^= (segid  << 16); // 16 bit segment ID
+  hash ^= (unitid << 32); // 24 bit unit ID
+  // using a prime number in modulo stirs reasonably well
+  return (hash % DART_DEPHASH_SIZE);
 }
+
 
 static inline bool release_local_dep_counter(dart_task_t *task) {
   int32_t num_local_deps  = DART_DEC_AND_FETCH32(&task->unresolved_deps);
@@ -116,6 +117,7 @@ static inline bool release_remote_dep_counter(dart_task_t *task) {
  */
 dart_ret_t dart_tasking_datadeps_init()
 {
+  dart_myid(&myguid);
   dart_tasking_taskqueue_init(&remote_blocked_tasks);
   return dart_tasking_remote_init();
 }
@@ -174,7 +176,10 @@ dart_ret_t dart_tasking_datadeps_progress()
  * Allocate a new element for the dependency hash, possibly from a free-list
  */
 static dart_dephash_elem_t *
-dephash_allocate_elem(const dart_task_dep_t *dep, taskref task)
+dephash_allocate_elem(
+  const dart_task_dep_t   *dep,
+        taskref            task,
+        dart_global_unit_t origin)
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
@@ -192,8 +197,9 @@ dephash_allocate_elem(const dart_task_dep_t *dep, taskref task)
 
   DART_ASSERT(task.local != NULL);
   DART_ASSERT(elem->task.local == NULL);
-  elem->task = task;
+  elem->task    = task;
   elem->taskdep = *dep;
+  elem->origin  = origin;
 
   return elem;
 }
@@ -229,7 +235,7 @@ static dart_ret_t dephash_add_local(
 {
   taskref tr;
   tr.local = task;
-  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr);
+  dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
   // we can take the task's epoch only for local tasks
   // so we have to do it here instead of dephash_allocate_elem
   elem->epoch = dep->epoch;
@@ -281,7 +287,8 @@ dart_tasking_datadeps_release_unhandled_remote()
      * For tasks with a higher epoch than the resolving task, send direct
      * task dependencies.
      */
-    dart_global_unit_t origin = DART_GLOBAL_UNIT_ID(rdep->taskdep.gptr.unitid);
+    // gptr in dependencies contain global unit IDs
+    dart_global_unit_t origin = rdep->origin;
 
     dart_task_t *candidate            = NULL;
     bool         found_exact_match    = false;
@@ -317,7 +324,8 @@ dart_tasking_datadeps_release_unhandled_remote()
 
           if (!IS_ACTIVE_TASK(task)) {
             dart__base__mutex_unlock(&task->mutex);
-            DART_LOG_INFO("Task %p matching remote task %p already finished", task, rdep->task);
+            DART_LOG_INFO("Task %p matching remote task %p already finished",
+                          task, rdep->task.local);
             continue;
           }
 
@@ -325,7 +333,7 @@ dart_tasking_datadeps_release_unhandled_remote()
             // found a direct match!
             if (candidate != NULL) {
               DART_LOG_WARN(
-                  "Found second candidate for a dependency in epoch %lu!",
+                  "Found second candidate for a dependency in epoch %d!",
                   rdep->epoch);
             }
             // keep the task locked
@@ -374,17 +382,13 @@ dart_tasking_datadeps_release_unhandled_remote()
     if (direct_dep_candidate != NULL) {
       // this task has to wait for the remote task to finish because it will
       // overwrite the input of the remote task
-
-      dart_global_unit_t target = DART_GLOBAL_UNIT_ID(
-                                        rdep->taskdep.gptr.unitid);
-      dart_tasking_remote_direct_taskdep(
-          target,
-          direct_dep_candidate,
-          rdep->task);
+      dart_global_unit_t target = rdep->origin;
+      dart_tasking_remote_direct_taskdep(target, direct_dep_candidate,
+                                         rdep->task);
       int32_t unresolved_deps = DART_FETCH_AND_INC32(
                                   &direct_dep_candidate->unresolved_remote_deps);
       DART_LOG_DEBUG("DIRECT task dep: task %p (ph:%i) directly depends on "
-                     "remote task %p (ph:%lu) at unit %i and has %i remote dependencies",
+                     "remote task %p (ph:%d) at unit %i and has %i remote dependencies",
                      direct_dep_candidate,
                      direct_dep_candidate->epoch,
                      rdep->task.local,
@@ -536,7 +540,6 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 {
   dart_global_unit_t myid;
   dart_myid(&myid);
-
   // look for the current epoch
   // we assume that the first OUT dependency defines the current epoch
   int out_epoch = DART_EPOCH_ANY, in_epoch = DART_EPOCH_ANY;
@@ -573,36 +576,51 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
+    // XXX: translate team-local unit id to global unit ID for simpler handling
+    // XXX: the gptr in dependencies is never deferenced
+    dart_global_unit_t guid;
+    if (dep.gptr.teamid != DART_TEAM_ALL) {
+      dart_team_unit_l2g(dep.gptr.teamid,
+                         DART_TEAM_UNIT_ID(dep.gptr.unitid),
+                         &guid);
+      dep.gptr.unitid = guid.id;
+      dep.gptr.teamid = 0;
+    } else {
+      guid.id = dep.gptr.unitid;
+    }
+
     if (dep.type != DART_DEP_DIRECT) {
       DART_LOG_TRACE("Datadeps: task %p dependency %zu: type:%i unit:%i "
                      "seg:%i addr:%p epoch:%i",
-                     task, i, dep.type, dep.gptr.unitid, dep.gptr.segid,
+                     task, i, dep.type, guid.id, dep.gptr.segid,
                      DEP_ADDR(dep), dep.epoch);
     }
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(task, dep);
-    } else if (dep.gptr.unitid != myid.id) {
-      if (task->parent->state == DART_TASK_ROOT) {
-        dart_tasking_remote_datadep(&dep, task);
-        int32_t unresolved_deps = DART_FETCH_AND_INC32(&task->unresolved_remote_deps);
-        DART_LOG_INFO(
-          "Sent remote dependency request for task %p "
-          "(unit=%i, segid=%i, offset=%p, num_deps=%i)",
-          task, dep.gptr.unitid, dep.gptr.segid,
-          dep.gptr.addr_or_offs.addr, unresolved_deps + 1);
-        if (unresolved_deps == 0) {
-          // insert the task into the queue for remotely blocked tasks
-          dart_tasking_taskqueue_push(&remote_blocked_tasks, task);
+    } else {
+      if (guid.id != myid.id) {
+        if (task->parent->state == DART_TASK_ROOT) {
+          dart_tasking_remote_datadep(&dep, task);
+          int32_t unresolved_deps = DART_FETCH_AND_INC32(&task->unresolved_remote_deps);
+          DART_LOG_INFO(
+            "Sent remote dependency request for task %p "
+            "(unit=%i, team=%i, segid=%i, offset=%p, num_deps=%i)",
+            task, guid.id, dep.gptr.teamid, dep.gptr.segid,
+            dep.gptr.addr_or_offs.addr, unresolved_deps + 1);
+          if (unresolved_deps == 0) {
+            // insert the task into the queue for remotely blocked tasks
+            dart_tasking_taskqueue_push(&remote_blocked_tasks, task);
+          }
+        } else {
+          DART_LOG_WARN("Ignoring remote dependency in nested task!");
         }
       } else {
-        DART_LOG_WARN("Ignoring remote dependency in nested task!");
-      }
-    } else {
-      dart_tasking_datadeps_match_local_datadep(dep, task);
+        dart_tasking_datadeps_match_local_datadep(dep, task);
 
-      // add this task to the hash table
-      dephash_add_local(&dep, task);
+        // add this task to the hash table
+        dephash_add_local(&dep, task);
+      }
     }
   }
 
@@ -627,10 +645,9 @@ dart_ret_t dart_tasking_datadeps_handle_remote_task(
   DART_LOG_INFO("Enqueuing remote task %p from unit %i for later resolution",
     remote_task.remote, origin.id);
   // cache this request and resolve it later
-  dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task);
+  dart_dephash_elem_t *rs = dephash_allocate_elem(&rdep->dep, remote_task, origin);
   dart__base__mutex_lock(&unhandled_remote_mutex);
-  rs->taskdep.gptr.unitid = origin.id;
-  rs->epoch = rdep->epoch;
+  rs->epoch  = rdep->epoch;
   DART_STACK_PUSH(unhandled_remote_deps, rs);
   dart__base__mutex_unlock(&unhandled_remote_mutex);
   return DART_OK;
@@ -647,16 +664,16 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(
     dart_global_unit_t origin)
 {
   bool enqueued = false;
-  dart_task_dep_t dep;
-  dep.type = DART_DEP_DIRECT;
-  dep.gptr = DART_GPTR_NULL;
-  dep.gptr.unitid = origin.id;
   DART_LOG_DEBUG("Remote direct task dependency for task %p: %p",
       local_task, remote_task.remote);
+  // dummy dependency
+  dart_task_dep_t dep;
+  dep.type   = DART_DEP_DIRECT;
+  dep.gptr   = DART_GPTR_NULL;
   if (IS_ACTIVE_TASK(local_task)) {
     dart__base__mutex_lock(&(local_task->mutex));
     if (IS_ACTIVE_TASK(local_task)) {
-      dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task);
+      dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
       DART_STACK_PUSH(local_task->remote_successor, rs);
       enqueued = true;
     }
@@ -717,7 +734,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         .type = DART_DEP_DIRECT
     };
     taskref ref = {.local = local_task};
-    dart_dephash_elem_t *dr = dephash_allocate_elem(&dep, ref);
+    dart_dephash_elem_t *dr = dephash_allocate_elem(&dep, ref, myguid);
     DART_STACK_PUSH(deferred_remote_releases, dr);
     DART_LOG_DEBUG("release_remote_dep : Defering release of task %p "
                    "with remote dep from epoch %d (bound %d)",
@@ -748,10 +765,7 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
     rs = rs->next;
 
     // send the release
-    dart_tasking_remote_release(
-        DART_GLOBAL_UNIT_ID(tmp->taskdep.gptr.unitid),
-        tmp->task,
-        &tmp->taskdep);
+    dart_tasking_remote_release(tmp->origin, tmp->task, &tmp->taskdep);
     dephash_recycle_elem(tmp);
   }
   task->remote_successor = NULL;
