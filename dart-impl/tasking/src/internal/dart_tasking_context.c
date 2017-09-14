@@ -1,4 +1,12 @@
 
+// whether to use mmap to allocate stack
+#define USE_MMAP 1
+
+#ifdef USE_MMAP
+#define _GNU_SOURCE
+#include <sys/mman.h>
+#endif
+
 #include <ucontext.h>
 #include <errno.h>
 #include <stddef.h>
@@ -14,6 +22,8 @@
  * NOTE: valgrind may report invalid read/write operations if tasks
  *       reference memory allocated in other contexts, i.e., stack variables
  *       passed as pointers to other tasks. This seems harmless, though.
+ *
+ * TODO: make the choice of whether to use mmap automatically
  */
 
 // Use 16K stack size per task
@@ -57,6 +67,31 @@ dart__tasking__context_entry(void)
   DART_ASSERT_MSG(NULL, "task context invocation function returned!");
 }
 
+static context_list_t *
+dart__tasking__context_allocate()
+{
+#ifdef USE_MMAP
+  // TODO: allocate guard pages and mprotect() them?
+  context_list_t *ctxlist = mmap(NULL,
+                                 sizeof(context_list_t) + task_stack_size,
+                                 PROT_EXEC|PROT_READ|PROT_WRITE,
+                                 MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK,
+                                 -1, 0);
+#else
+  context_list_t *ctxlist = calloc(1, sizeof(context_list_t) + task_stack_size);
+#endif
+  return ctxlist;
+}
+
+static void
+dart__tasking__context_free(context_list_t *ctxlist)
+{
+#ifdef USE_MMAP
+  munmap(ctxlist, sizeof(context_list_t) + task_stack_size);
+#else
+  free(ctxlist);
+#endif
+}
 
 context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 {
@@ -74,7 +109,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 
   if (res == NULL) {
     // allocate a new context
-    context_list_t *ctxlist = calloc(1, sizeof(context_list_t) + task_stack_size);
+    context_list_t *ctxlist = dart__tasking__context_allocate();
     ctxlist->next = NULL;
     // initialize context and set stack
     getcontext(&ctxlist->ctx.ctx);
@@ -90,7 +125,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   char *stack = (char*)res->uc_stack.ss_sp;
   *(uint64_t*)(stack) = 0xDEADBEEF;
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
-#endif
+#endif // DART_DEBUG
 
   makecontext(&res->ctx, &dart__tasking__context_entry, 0, 0);
   res->fn  = fn;
@@ -115,7 +150,7 @@ void dart__tasking__context_release(context_t* ctx)
         "Consider changing the stack size via DART_TASK_STACKSIZE! "
         "(current stack size: %zu)", task_stack_size);
   }
-#endif
+#endif // DART_DEBUG
 
   // thread-local list, no locking required
   context_list_t *ctxlist = (context_list_t*)
@@ -124,7 +159,7 @@ void dart__tasking__context_release(context_t* ctx)
   if (thread->ctxlist != NULL && thread->ctxlist->length > PER_THREAD_CTX_STORE)
   {
     // don't keep too many ctx around
-    free(ctxlist);
+    dart__tasking__context_free(ctxlist);
   } else {
     ctxlist->length = (thread->ctxlist != NULL) ? thread->ctxlist->length : 0;
     ctxlist->length++;
@@ -164,6 +199,7 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
     DART_STACK_PUSH(thread->ctxlist, ctxlist);
   }
 
+  // make sure we do not call the entry function upon next swap
   old_ctx->fn = old_ctx->arg = NULL;
 
   int ret = swapcontext(&old_ctx->ctx, &new_ctx->ctx);
@@ -186,9 +222,8 @@ void dart__tasking__context_cleanup()
   while (thread->ctxlist) {
     context_list_t *ctxlist;
     DART_STACK_POP(thread->ctxlist, ctxlist);
-    free(ctxlist);
+    dart__tasking__context_free(ctxlist);
   }
-  thread->ctxlist = NULL;
 #else
   DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
