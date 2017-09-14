@@ -16,14 +16,18 @@
  *       passed as pointers to other tasks. This seems harmless, though.
  */
 
+// Use 16K stack size per task
+#define DEFAULT_TASK_STACK_SIZE (1<<14)
+
+// the maximum number of ctx to store per thread
+#define PER_THREAD_CTX_STORE 10
 
 struct context_list_s {
   struct context_list_s *next;
   context_t              ctx;
+  int                    length;
 };
 
-// Use 16K stack size per task
-#define DEFAULT_TASK_STACK_SIZE (1<<14)
 
 static size_t task_stack_size = DEFAULT_TASK_STACK_SIZE;
 
@@ -63,6 +67,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   dart_thread_t* thread = dart__tasking__current_thread();
   if (thread->ctxlist != NULL) {
     res = &thread->ctxlist->ctx;
+    thread->ctxlist->length = 0;
     thread->ctxlist = thread->ctxlist->next;
   }
 
@@ -115,7 +120,15 @@ void dart__tasking__context_release(context_t* ctx)
   context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - offsetof(context_list_t, ctx));
   dart_thread_t* thread = dart__tasking__current_thread();
-  DART_STACK_PUSH(thread->ctxlist, ctxlist);
+  if (thread->ctxlist != NULL && thread->ctxlist->length > PER_THREAD_CTX_STORE)
+  {
+    // don't keep too many ctx around
+    free(ctxlist);
+  } else {
+    ctxlist->length = (thread->ctxlist != NULL) ? thread->ctxlist->length : 0;
+    ctxlist->length++;
+    DART_STACK_PUSH(thread->ctxlist, ctxlist);
+  }
 #else
   DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
@@ -169,12 +182,10 @@ void dart__tasking__context_cleanup()
 #ifdef USE_UCONTEXT
   dart_thread_t* thread = dart__tasking__current_thread();
 
-  context_list_t *ctxlist = thread->ctxlist;
-
-  while (ctxlist != NULL) {
-    context_list_t *next = ctxlist->next;
+  while (thread->ctxlist) {
+    context_list_t *ctxlist;
+    DART_STACK_POP(thread->ctxlist, ctxlist);
     free(ctxlist);
-    ctxlist = next;
   }
   thread->ctxlist = NULL;
 #else
