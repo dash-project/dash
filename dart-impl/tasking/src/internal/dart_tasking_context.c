@@ -1,8 +1,10 @@
 
 #include <ucontext.h>
 #include <errno.h>
+#include <stddef.h>
 
 #include <dash/dart/base/env.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 
@@ -32,6 +34,24 @@ void dart__tasking__context_init()
   }
 }
 
+static void
+dart__tasking__context_entry(void)
+{
+  context_list_t *ctxlist;
+  dart_thread_t  *thread  = dart__tasking__current_thread();
+  DART_STACK_POP(thread->ctxlist, ctxlist);
+
+  context_func_t *fn  = ctxlist->ctx.fn;
+  void           *arg = ctxlist->ctx.arg;
+  ctxlist->ctx.fn = ctxlist->ctx.arg = NULL;
+
+  // invoke function
+  fn(arg);
+
+  // fn should never return!
+  DART_ASSERT_MSG(NULL, "task context invocation function returned!");
+}
+
 
 context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 {
@@ -51,11 +71,11 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
     context_list_t *ctxlist = calloc(1, sizeof(context_list_t) + task_stack_size);
     ctxlist->next = NULL;
     // initialize context and set stack
-    getcontext(&ctxlist->ctx);
-    ctxlist->ctx.uc_link           = NULL;
-    ctxlist->ctx.uc_stack.ss_sp    = (char*)(ctxlist + 1);
-    ctxlist->ctx.uc_stack.ss_size  = task_stack_size;
-    ctxlist->ctx.uc_stack.ss_flags = 0;
+    getcontext(&ctxlist->ctx.ctx);
+    ctxlist->ctx.ctx.uc_link           = NULL;
+    ctxlist->ctx.ctx.uc_stack.ss_sp    = (char*)(ctxlist + 1);
+    ctxlist->ctx.ctx.uc_stack.ss_size  = task_stack_size;
+    ctxlist->ctx.ctx.uc_stack.ss_flags = 0;
     res = &ctxlist->ctx;
   }
 
@@ -66,10 +86,9 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
 #endif
 
-  // yep, makecontext takes a function taking no arguments and passes it args
-  typedef void (happy_compiler_context_func_t) (void);
-  makecontext(res, (happy_compiler_context_func_t*)fn, 1, arg);
-
+  makecontext(&res->ctx, &dart__tasking__context_entry, 0, 0);
+  res->fn  = fn;
+  res->arg = arg;
   return res;
 #endif
   return NULL;
@@ -94,18 +113,28 @@ void dart__tasking__context_release(context_t* ctx)
 
   // thread-local list, no locking required
   context_list_t *ctxlist = (context_list_t*)
-                                (((char*)ctx) - sizeof(struct context_list_s *));
-
+                                (((char*)ctx) - offsetof(context_list_t, ctx));
   dart_thread_t* thread = dart__tasking__current_thread();
-  ctxlist->next = thread->ctxlist;
-  thread->ctxlist = ctxlist;
+  DART_STACK_PUSH(thread->ctxlist, ctxlist);
+#else
+  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
 }
 
 void dart__tasking__context_invoke(context_t* ctx)
 {
 #ifdef USE_UCONTEXT
-  setcontext(ctx);
+  // first invocation --> prepend to thread's ctxlist
+  if (ctx->fn) {
+    dart_thread_t  *thread  = dart__tasking__current_thread();
+    context_list_t *ctxlist = (context_list_t*)
+                                (((char*)ctx) - offsetof(context_list_t, ctx));
+    DART_STACK_PUSH(thread->ctxlist, ctxlist);
+  }
+
+  setcontext(&ctx->ctx);
+#else
+  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
 }
 
@@ -113,13 +142,25 @@ dart_ret_t
 dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
 {
 #ifdef USE_UCONTEXT
-  int ret = swapcontext(old_ctx, new_ctx);
+  // first invocation --> prepend to thread's ctxlist
+  if (new_ctx->fn) {
+    dart_thread_t  *thread  = dart__tasking__current_thread();
+    context_list_t *ctxlist = (context_list_t*)
+                             (((char*)new_ctx) - offsetof(context_list_t, ctx));
+    DART_STACK_PUSH(thread->ctxlist, ctxlist);
+  }
+
+  old_ctx->fn = old_ctx->arg = NULL;
+
+  int ret = swapcontext(&old_ctx->ctx, &new_ctx->ctx);
   if (ret == -1) {
     DART_LOG_ERROR("Call to swapcontext failed! (errno=%i)", errno);
     return DART_ERR_OTHER;
   } else {
     return DART_OK;
   }
+#else
+  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
 }
 
@@ -136,5 +177,7 @@ void dart__tasking__context_cleanup()
     ctxlist = next;
   }
   thread->ctxlist = NULL;
+#else
+  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
 #endif
 }

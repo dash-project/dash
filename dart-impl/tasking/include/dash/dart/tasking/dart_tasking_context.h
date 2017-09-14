@@ -10,9 +10,16 @@
 // TODO: Make this a CMake variable?
 #define USE_UCONTEXT 1
 
+
+typedef void (context_func_t) (void*);
+
 #ifdef USE_UCONTEXT
 #include <ucontext.h>
-typedef ucontext_t context_t;
+typedef struct context_struct {
+  ucontext_t      ctx;
+  context_func_t *fn;
+  void           *arg;
+} context_t;
 #else
 // dummy type
 typedef char context_t;
@@ -20,8 +27,6 @@ typedef char context_t;
 
 // opaque type
 typedef struct context_list_s context_list_t;
-
-typedef void (context_func_t) (void*);
 
 /**
  * Initialize the task context store.
