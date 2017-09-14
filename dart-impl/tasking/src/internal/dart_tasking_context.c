@@ -26,6 +26,7 @@ struct context_list_s {
   struct context_list_s *next;
   context_t              ctx;
   int                    length;
+  char                   stack[];
 };
 
 
@@ -78,7 +79,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
     // initialize context and set stack
     getcontext(&ctxlist->ctx.ctx);
     ctxlist->ctx.ctx.uc_link           = NULL;
-    ctxlist->ctx.ctx.uc_stack.ss_sp    = (char*)(ctxlist + 1);
+    ctxlist->ctx.ctx.uc_stack.ss_sp    = ctxlist->stack;
     ctxlist->ctx.ctx.uc_stack.ss_size  = task_stack_size;
     ctxlist->ctx.ctx.uc_stack.ss_flags = 0;
     res = &ctxlist->ctx;
