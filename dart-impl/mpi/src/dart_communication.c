@@ -558,147 +558,100 @@ dart_ret_t dart_get_strided_handle(
   size_t             stride,
   dart_datatype_t    dtype,
   dart_stride_option stride_opt,
-  dart_handle_t*     handle)
+  dart_handle_t*     handleptr)
 {
-  MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
-  MPI_Datatype mpi_strided_type;
-  MPI_Type_vector(nblocks, nelems_block, stride, mpi_elem_type, &mpi_strided_type);
-  //MPI_Type_vector(nblocks, nelems_block, stride, MPI_LONG, &mpi_strided_type);
-  MPI_Type_commit(&mpi_strided_type);
-  MPI_Win      win;
-  dart_team_unit_t    team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
-  uint64_t     offset = gptr.addr_or_offs.offset;
-  int16_t      seg_id = gptr.segid;
+  dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
+  dart_team_t      teamid = gptr.teamid;
+  uint64_t         offset = gptr.addr_or_offs.offset;
+  int16_t          seg_id = gptr.segid;
 
-  *handle = NULL;
+  char * dest_ptr  = (char*) dest;
+  *handleptr = DART_HANDLE_NULL;
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_get_handle ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_get_strided_handle ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_strided_handle ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_get_strided_handle: uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nblocks * nelems_block);
+  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handleptr));
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
   if (nelems_block * nblocks > INT_MAX) {
-    DART_LOG_ERROR("dart_get_handle ! failed: nelem > INT_MAX");
+    DART_LOG_ERROR("dart_get_strided_handle ! failed: nelem * blocks > INT_MAX");
     return DART_ERR_INVAL;
   }
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", gptr.teamid);
-    return DART_ERR_INVAL;
-  }
-
-  DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
-  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
-    DART_LOG_DEBUG("dart_get: shared windows enabled");
+  DART_LOG_DEBUG("dart_get_strided_handle: shared windows enabled");
+  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_team_unit_t luid = team_data->sharedmem_tab[gptr.unitid];
-    char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
      */
-    DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d", seg_id);
-    if (seg_id)
-    {
-      if (dart_segment_get_baseptr( &team_data->segdata, seg_id, luid, &baseptr) != DART_OK)
-      {
-        DART_LOG_ERROR("dart_get ! dart_adapt_transtable_get_baseptr failed");
-        return DART_ERR_INVAL;
-      }
-    }
-    else
-      baseptr = dart_sharedmem_local_baseptr_set[luid.id];
+    DART_LOG_DEBUG("dart_get_strided_handle: shared memory segment, seg_id:%d", seg_id);
+    char* baseptr = seginfo->baseptr[luid.id] + offset;
 
-    baseptr += offset;
-    DART_LOG_DEBUG( "dart_get: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
+    DART_LOG_DEBUG( "dart_get_strided_handle: memcpy %zu bytes",
+        nblocks * nelems_block * dart__mpi__datatype_sizeof(dtype));
+
     size_t size_dtype = dart__mpi__datatype_sizeof(dtype);
     size_t size_nelems = nelems_block * size_dtype;
     size_t offset_dest = stride * size_dtype;
     size_t offset_src = offset_dest;
-    switch(stride_opt)
-    {
+    switch(stride_opt) {
       case STRIDED_TO_STRIDED: break;
       case STRIDED_TO_CONTIG: offset_dest = size_nelems; break;
       case CONTIG_TO_STRIDED: offset_src = size_nelems; break;
     }
 
-    for(size_t i = 0; i < nblocks; ++i)
-    {
-      memcpy(dest, baseptr, size_nelems);
-      dest = ((char*) dest) + offset_dest;
-      baseptr += offset_src;
-    }
-    /*
-     * Mark request as completed:
-     */
-    *handle            = malloc(sizeof(struct dart_handle_struct));
-    (*handle)->request = MPI_REQUEST_NULL;
-    if (seg_id != 0)
-    {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win = team_data->window;
-    }
-    else
-    {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win  = dart_win_local_alloc;
-    }
+    for(size_t i = 0; i < nblocks; ++i, dest_ptr += offset_dest, baseptr += offset_src)
+      memcpy(dest_ptr, baseptr, size_nelems);
 
     return DART_OK;
   }
 #else
-  DART_LOG_DEBUG("dart_get_handle: shared windows disabled");
+  DART_LOG_DEBUG("dart_get_strided_handle: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
    * nodes, use MPI_RGet:
    */
-  if (seg_id) {
+  MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
+  MPI_Datatype mpi_strided_type;
+  MPI_Type_vector(nblocks, nelems_block, stride, mpi_elem_type, &mpi_strided_type);
+  MPI_Type_commit(&mpi_strided_type);
 
-    /*
-     * The memory accessed is allocated with collective allocation.
-     */
-    win = team_data->window;
+  MPI_Win win = seginfo->win;
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
-    MPI_Aint disp_s;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR(
-        "dart_get_handle ! dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
+  dart_handle_t handle = calloc(1, sizeof(struct dart_handle_struct));
+  handle->dest         = team_unit_id.id;
+  handle->win          = win;
+  handle->needs_flush  = false;
 
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (collective allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-  } else {
-    /*
-     * The memory accessed is allocated with local allocation.
-     */
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (local allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-    win     = dart_win_local_alloc;
-  }
-  DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
-  MPI_Request mpi_req;
+  DART_LOG_DEBUG("dart_get_strided_handle:  -- MPI_Rget(dest %p, size %zu)",
+                  dest_ptr, nblocks * nelems_block);
+
   int mpi_ret = 0;
-  switch(stride_opt)
-  {
+  switch(stride_opt) {
     case STRIDED_TO_STRIDED:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   1,                      // origin count
                   mpi_strided_type,       // origin data type
                   team_unit_id.id,        // target rank
@@ -706,10 +659,10 @@ dart_ret_t dart_get_strided_handle(
                   1,                      // target count
                   mpi_strided_type,       // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
     case STRIDED_TO_CONTIG:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   nblocks * nelems_block, // origin count
                   mpi_elem_type,          // origin data type
                   team_unit_id.id,        // target rank
@@ -717,10 +670,10 @@ dart_ret_t dart_get_strided_handle(
                   1,                      // target count
                   mpi_strided_type,       // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
     case CONTIG_TO_STRIDED:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   1,                      // origin count
                   mpi_strided_type,       // origin data type
                   team_unit_id.id,        // target rank
@@ -728,19 +681,23 @@ dart_ret_t dart_get_strided_handle(
                   nblocks * nelems_block, // target count
                   mpi_elem_type,          // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
+    defualt: DART_LOG_ERROR("dart_get_strided_handle ! unknown stride option");
   }
+
   if (mpi_ret != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
+    free(handle);
+    DART_LOG_ERROR("dart_get_strided_handle ! MPI_Rget failed");
     return DART_ERR_INVAL;
   }
-  *handle            = malloc(sizeof(struct dart_handle_struct));
-  (*handle)->dest    = team_unit_id.id;
-  (*handle)->request = mpi_req;
-  (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%ld",
-                 (void*)(*handle), (*handle)->dest,
-                 (unsigned long)win, (long)mpi_req);
+
+  *handleptr = handle;
+
+  DART_LOG_TRACE("dart_get_strided_handle > handle(%p) dest:%d win:%"PRIu64,
+                 (void*) handle, handle->dest, (unsigned long)win);
+
+  MPI_Type_free(&mpi_strided_type);
+
   return DART_OK;
 }
 
@@ -752,200 +709,154 @@ dart_ret_t dart_get_indexed_handle(
   int*               indexes,
   dart_datatype_t    dtype,
   dart_stride_option stride_opt,
-  dart_handle_t*     handle)
+  dart_handle_t*     handleptr)
 {
-  MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
-  MPI_Datatype mpi_strided_type;
-  MPI_Type_create_indexed_block(nblocks, nelems_block, indexes, mpi_elem_type, &mpi_strided_type);
-  //MPI_Type_vector(nblocks, nelems_block, indexes, MPI_LONG, &mpi_strided_type);
-  MPI_Type_commit(&mpi_strided_type);
-  MPI_Win      win;
-  dart_team_unit_t    team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
-  uint64_t     offset = gptr.addr_or_offs.offset;
-  int16_t      seg_id = gptr.segid;
+  dart_team_unit_t team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
+  dart_team_t      teamid = gptr.teamid;
+  uint64_t         offset = gptr.addr_or_offs.offset;
+  int16_t          seg_id = gptr.segid;
 
-  *handle = NULL;
+  char* dest_ptr  = (char*) dest;
+  *handleptr = DART_HANDLE_NULL;
 
-  if (gptr.unitid < 0) {
-    DART_LOG_ERROR("dart_get_handle ! failed: gptr.unitid < 0");
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_get_indexed_handle ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_get_indexed_handle ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_get_indexed_handle: uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
+                 team_unit_id.id, offset, seg_id, gptr.teamid, nblocks * nelems_block);
+  DART_LOG_TRACE("dart_get_indexed_handle:  allocated handle:%p", (void *)(*handleptr));
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
   if (nelems_block * nblocks > INT_MAX) {
-    DART_LOG_ERROR("dart_get_handle ! failed: nelem > INT_MAX");
+    DART_LOG_ERROR("dart_get_indexed_handle ! failed: nelem * blocks > INT_MAX");
     return DART_ERR_INVAL;
   }
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
-  if (team_data == NULL) {
-    DART_LOG_ERROR("dart_get_handle ! failed: Unknown team %i!", gptr.teamid);
-    return DART_ERR_INVAL;
-  }
-
-  DART_LOG_DEBUG("dart_get_handle() uid:%d o:%"PRIu64" s:%d t:%d, nelem:%zu",
-                 team_unit_id.id, offset, seg_id, gptr.teamid, nelem);
-  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
-  if (seg_id >= 0 && team_data->sharedmem_tab[gptr.unitid].id >= 0) {
-    DART_LOG_DEBUG("dart_get: shared windows enabled");
+  DART_LOG_DEBUG("dart_get_indexed_handle: shared windows enabled");
+  if (seg_id >= 0 && team_data->sharedmem_tab[team_unit_id.id].id >= 0) {
     dart_team_unit_t luid = team_data->sharedmem_tab[gptr.unitid];
-    char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
      */
-    DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d", seg_id);
-    if (seg_id)
-    {
-      if (dart_segment_get_baseptr( &team_data->segdata, seg_id, luid, &baseptr) != DART_OK)
-      {
-        DART_LOG_ERROR("dart_get ! dart_adapt_transtable_get_baseptr failed");
-        return DART_ERR_INVAL;
-      }
-    }
-    else
-      baseptr = dart_sharedmem_local_baseptr_set[luid.id];
+    DART_LOG_DEBUG("dart_get_indexed_handle: shared memory segment, seg_id:%d", seg_id);
+    char* baseptr = seginfo->baseptr[luid.id] + offset;
 
-    baseptr += offset;
-    DART_LOG_DEBUG( "dart_get: memcpy %zu bytes", nelem * dart__mpi__datatype_sizeof(dtype));
+    DART_LOG_DEBUG( "dart_get_indexed_handle: memcpy %zu bytes",
+        nblocks * nelems_block * dart__mpi__datatype_sizeof(dtype));
+
     size_t size_dtype = dart__mpi__datatype_sizeof(dtype);
     size_t size_nelems = nelems_block * size_dtype;
 
-    if(stride_opt == STRIDED_TO_STRIDED)
-    {
-      for(size_t i = 0; i < nblocks; ++i)
-      {
+    if(stride_opt == STRIDED_TO_STRIDED) {
+      for(size_t i = 0; i < nblocks; ++i) {
         size_t size_offset = indexes[i] * size_dtype;
-        memcpy(((char*) dest) + size_offset, baseptr + size_offset, size_nelems);
+        memcpy(dest_ptr + size_offset, baseptr + size_offset, size_nelems);
       }
     }
-    else if(stride_opt == STRIDED_TO_CONTIG)
-    {
+    else if(stride_opt == STRIDED_TO_CONTIG) {
       for(size_t i = 0; i < nblocks; ++i)
-      {
-        memcpy(((char*)dest) + i * size_nelems, baseptr + indexes[i] * size_dtype, size_nelems);
-        //dest += ((char*) dest) + size_nelems;
-      }
+        memcpy((dest_ptr) + i * size_nelems, baseptr + indexes[i] * size_dtype, size_nelems);
+    }
+    else if(stride_opt == CONTIG_TO_STRIDED) {
+      for(size_t i = 0; i < nblocks; ++i, baseptr += size_nelems)
+        memcpy(dest_ptr + indexes[i] * size_dtype, baseptr, size_nelems);
     }
     else
-    {
-      for(size_t i = 0; i < nblocks; ++i)
-      {
-        memcpy((char*) dest + indexes[i] + size_dtype, baseptr, size_nelems);
-        baseptr += size_nelems;
-      }
-    }
-
-    /*
-     * Mark request as completed:
-     */
-    *handle            = malloc(sizeof(struct dart_handle_struct));
-    (*handle)->request = MPI_REQUEST_NULL;
-    if (seg_id != 0)
-    {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win = team_data->window;
-    }
-    else
-    {
-      (*handle)->dest = team_unit_id.id;
-      (*handle)->win  = dart_win_local_alloc;
-    }
+      DART_LOG_ERROR("dart_get_indexed_handle ! unknown stride option");
 
     return DART_OK;
   }
 #else
-  DART_LOG_DEBUG("dart_get_handle: shared windows disabled");
+  DART_LOG_DEBUG("dart_get_indexed_handle: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
    * nodes, use MPI_RGet:
    */
-  if (seg_id) {
+  MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
+  MPI_Datatype mpi_indexed_type;
+  MPI_Type_create_indexed_block(nblocks, nelems_block, indexes, mpi_elem_type, &mpi_indexed_type);
+  MPI_Type_commit(&mpi_indexed_type);
 
-    /*
-     * The memory accessed is allocated with collective allocation.
-     */
-    win = team_data->window;
+  MPI_Win win = seginfo->win;
+  offset += dart_segment_disp(seginfo, team_unit_id);
 
-    MPI_Aint disp_s;
-    if (dart_segment_get_disp(
-          &team_data->segdata,
-          seg_id,
-          team_unit_id,
-          &disp_s) != DART_OK) {
-      DART_LOG_ERROR(
-        "dart_get_handle ! dart_adapt_transtable_get_disp failed");
-      return DART_ERR_INVAL;
-    }
-    offset += disp_s;
 
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (collective allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-  } else {
-    /*
-     * The memory accessed is allocated with local allocation.
-     */
-    DART_LOG_DEBUG("dart_get_handle:  -- %zu elements (local allocation) "
-                   "from %d at offset %"PRIu64"",
-                   nelem, team_unit_id.id, offset);
-    win     = dart_win_local_alloc;
-  }
-  DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
-  MPI_Request mpi_req;
+  dart_handle_t handle = calloc(1, sizeof(struct dart_handle_struct));
+  handle->dest         = team_unit_id.id;
+  handle->win          = win;
+  handle->needs_flush  = false;
+
+  DART_LOG_DEBUG("dart_get_indexed_handle:  -- MPI_Rget(dest %p, size %zu)",
+                  dest_ptr, nblocks * nelems_block);
+
   int mpi_ret = 0;
-  switch(stride_opt)
-  {
+  switch(stride_opt) {
     case STRIDED_TO_STRIDED:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   1,                      // origin count
-                  mpi_strided_type,       // origin data type
+                  mpi_indexed_type,       // origin data type
                   team_unit_id.id,        // target rank
                   offset,                 // target disp in window
                   1,                      // target count
-                  mpi_strided_type,       // target data type
+                  mpi_indexed_type,       // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
     case STRIDED_TO_CONTIG:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   nblocks * nelems_block, // origin count
                   mpi_elem_type,          // origin data type
                   team_unit_id.id,        // target rank
                   offset,                 // target disp in window
                   1,                      // target count
-                  mpi_strided_type,       // target data type
+                  mpi_indexed_type,       // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
     case CONTIG_TO_STRIDED:
       mpi_ret = MPI_Rget(
-                  dest,                   // origin address
+                  dest_ptr,                   // origin address
                   1,                      // origin count
-                  mpi_strided_type,       // origin data type
+                  mpi_indexed_type,       // origin data type
                   team_unit_id.id,        // target rank
                   offset,                 // target disp in window
                   nblocks * nelems_block, // target count
                   mpi_elem_type,          // target data type
                   win,                    // window
-                  &mpi_req); break;
+                  &handle->reqs[0]); break;
+    default: DART_LOG_ERROR("dart_get_indexed_handle ! unknown stride option");
   }
+
   if (mpi_ret != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
+    free(handle);
+    DART_LOG_ERROR("dart_get_indexed_handle ! MPI_Rget failed");
     return DART_ERR_INVAL;
   }
-  *handle            = malloc(sizeof(struct dart_handle_struct));
-  (*handle)->dest    = team_unit_id.id;
-  (*handle)->request = mpi_req;
-  (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%ld",
-                 (void*)(*handle), (*handle)->dest,
-                 (unsigned long)win, (long)mpi_req);
+
+  *handleptr = handle;
+
+  DART_LOG_TRACE("dart_get_indexed_handle > handle(%p) dest:%d win:%"PRIu64,
+                 (void*) handle, handle->dest, (unsigned long)win);
+
+  MPI_Type_free(&mpi_indexed_type);
+
   return DART_OK;
 }
 /* -- Non-blocking dart one-sided operations -- */

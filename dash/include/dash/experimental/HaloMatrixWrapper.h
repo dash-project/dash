@@ -190,7 +190,7 @@ public:
 
   void waitHalosAsync() {
     for (auto& region : _region_data)
-      dart_wait(region.second.halo_data.handle);
+      dart_wait(&region.second.halo_data.handle);
   }
 
   void updateHalos() {
