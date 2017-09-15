@@ -10,6 +10,8 @@
 #include <ucontext.h>
 #include <errno.h>
 #include <stddef.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include <dash/dart/base/env.h>
 #include <dash/dart/base/assert.h>
@@ -36,14 +38,35 @@ struct context_list_s {
   struct context_list_s *next;
   context_t              ctx;
   int                    length;
-  char                   stack[];
+  char                  *stack;
+#ifdef USE_MMAP
+  // guard page, only used for mmap
+  char                  *ub_guard;
+  size_t                 size;
+#endif
 };
 
 
 static size_t task_stack_size = DEFAULT_TASK_STACK_SIZE;
+static size_t page_size;
+
+static size_t
+dart__tasking__context_pagesize()
+{
+  long sz = sysconf(_SC_PAGESIZE);
+  return sz;
+}
+
+static inline size_t
+dart__tasking__context_adjust_size(size_t size)
+{
+  size_t mask = page_size - 1;
+  return (size + mask) & ~mask;
+}
 
 void dart__tasking__context_init()
 {
+  page_size = dart__tasking__context_pagesize();
   if (dart__base__env__task_stacksize() > -1) {
     task_stack_size = dart__base__env__task_stacksize();
   }
@@ -71,14 +94,28 @@ static context_list_t *
 dart__tasking__context_allocate()
 {
 #ifdef USE_MMAP
+  // align to page boundary: first page contains struct data and pointer to
+  //                         second page, the start of the stack
+  size_t size = dart__tasking__context_adjust_size(sizeof(context_list_t))
+              + dart__tasking__context_adjust_size(task_stack_size)
+              + page_size;
   // TODO: allocate guard pages and mprotect() them?
-  context_list_t *ctxlist = mmap(NULL,
-                                 sizeof(context_list_t) + task_stack_size,
+  context_list_t *ctxlist = mmap(NULL, size,
                                  PROT_EXEC|PROT_READ|PROT_WRITE,
                                  MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK,
                                  -1, 0);
+  ctxlist->stack    = ((char*)ctxlist) + page_size;
+  ctxlist->ub_guard = ctxlist->stack + task_stack_size;
+  ctxlist->size     = size;
+  // mprotect upper-bound page
+  if (mprotect(ctxlist->ub_guard, page_size, PROT_NONE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
+                  errno, page_size, ctxlist->ub_guard, strerror(errno));
+  }
 #else
-  context_list_t *ctxlist = calloc(1, sizeof(context_list_t) + task_stack_size);
+  size_t size = sizeof(context_list_t) + task_stack_size;
+  context_list_t *ctxlist = calloc(1, size);
+  ctxlist->stack = (char*)(ctxlist + 1);
 #endif
   return ctxlist;
 }
@@ -87,7 +124,7 @@ static void
 dart__tasking__context_free(context_list_t *ctxlist)
 {
 #ifdef USE_MMAP
-  munmap(ctxlist, sizeof(context_list_t) + task_stack_size);
+  munmap(ctxlist, ctxlist->size);
 #else
   free(ctxlist);
 #endif
@@ -122,7 +159,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 
 #ifdef DART_DEBUG
   // set the stack guards
-  char *stack = (char*)res->uc_stack.ss_sp;
+  char *stack = (char*)res->ctx.uc_stack.ss_sp;
   *(uint64_t*)(stack) = 0xDEADBEEF;
   *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) = 0xDEADBEEF;
 #endif // DART_DEBUG
@@ -141,7 +178,7 @@ void dart__tasking__context_release(context_t* ctx)
 
 #ifdef DART_DEBUG
   // check the stack guards
-  char *stack = (char*)ctx->uc_stack.ss_sp;
+  char *stack = (char*)ctx->ctx.uc_stack.ss_sp;
   if (*(uint64_t*)(stack) != 0xDEADBEEF &&
       *(uint64_t*)(stack + task_stack_size - sizeof(uint64_t)) != 0xDEADBEEF)
   {
@@ -155,6 +192,7 @@ void dart__tasking__context_release(context_t* ctx)
   // thread-local list, no locking required
   context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - offsetof(context_list_t, ctx));
+
   dart_thread_t* thread = dart__tasking__current_thread();
   if (thread->ctxlist != NULL && thread->ctxlist->length > PER_THREAD_CTX_STORE)
   {
@@ -199,8 +237,10 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
     DART_STACK_PUSH(thread->ctxlist, ctxlist);
   }
 
-  // make sure we do not call the entry function upon next swap
-  old_ctx->fn = old_ctx->arg = NULL;
+  if (old_ctx->fn) {
+    // make sure we do not call the entry function upon next swap
+    old_ctx->fn = old_ctx->arg = NULL;
+  }
 
   int ret = swapcontext(&old_ctx->ctx, &new_ctx->ctx);
   if (ret == -1) {
