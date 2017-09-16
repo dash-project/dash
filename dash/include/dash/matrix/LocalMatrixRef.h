@@ -205,7 +205,7 @@ public:
    *       not have a pattern. The pattern of the referenced matrix
    *       refers to the global data domain.
    */
-  constexpr const PatternT      & pattern()             const;
+  constexpr const PatternT      & pattern()             const noexcept;
 
   inline          iterator        begin()                     noexcept;
   constexpr const_iterator        begin()               const noexcept;

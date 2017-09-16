@@ -202,6 +202,15 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+constexpr const
+typename LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::pattern() const noexcept
+{
+  return _refview._mat->_pattern;
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::begin() noexcept
