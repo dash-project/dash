@@ -975,6 +975,20 @@ TEST_F(MatrixTest, DelayedAlloc)
       }
     }
   }
+
+
+  // re-allocate to test variadic allocate
+  mx.deallocate();
+
+  mx.allocate(
+    extent_i,
+    extent_j,
+    extent_k,
+    num_units_i < 2 ? dash::NONE : dash::TILE(tilesize_i),
+    num_units_j < 2 ? dash::NONE : dash::TILE(tilesize_j),
+    num_units_k < 2 ? dash::NONE : dash::TILE(tilesize_k),
+    teamspec
+  );
 }
 
 TEST_F(MatrixTest, PatternScope)
@@ -1455,6 +1469,48 @@ TEST_F(MatrixTest, ConstMatrixRefs)
 
   EXPECT_EQ_U(global_range_sum, global_rows_sum);
   EXPECT_EQ_U(global_range_sum, global_elems_sum);
+}
+
+
+TEST_F(MatrixTest, LocalMatrixRefs)
+{
+  using value_t = unsigned int;
+  using uint    = unsigned int;
+
+  uint myid = static_cast<uint>(dash::Team::GlobalUnitID().id);
+
+  const uint nelts = 40;
+
+  dash::NArray<value_t, 2> mat(nelts, nelts);
+
+  for (int i = 0; i < mat.local.extent(0); ++i) {
+    auto lref = mat.local[i];
+    for (int j = 0; j < mat.local.extent(1); ++j) {
+      lref[j] = i*1000 + j;
+    }
+  }
+
+  // full operator(...)
+  for (int i = 0; i < mat.local.extent(0); ++i) {
+    for (int j = 0; j < mat.local.extent(1); ++j) {
+      ASSERT_EQ_U(mat.local(i, j), i*1000 + j);
+    }
+  }
+
+  // partial operator(...)
+  for (int i = 0; i < mat.local.extent(0); ++i) {
+    auto lref = mat.local[i];
+    for (int j = 0; j < mat.local.extent(1); ++j) {
+      ASSERT_EQ_U(lref(j), i*1000 + j);
+    }
+  }
+
+  // lbegin, lend
+  int cnt = 0;
+  for (auto i = mat.local.lbegin(); i != mat.local.lend(); ++i) {
+      ASSERT_EQ_U(*i, (cnt / nelts)*1000 + (cnt % nelts));
+      ++cnt;
+  }
 }
 
 TEST_F(MatrixTest, SubViewMatrix3Dim)
