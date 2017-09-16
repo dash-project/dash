@@ -1092,9 +1092,9 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dash::GlobViewIter<"
-              << typeid(ElementType).name() << ", "
-              << typeid(Pointer)
-              << ">("
+     << typeid(ElementType).name() << ", "
+     << typeid(Pointer).name()
+     << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << it.global().dart_gptr() << ")";
   return operator<<(os, ss.str());

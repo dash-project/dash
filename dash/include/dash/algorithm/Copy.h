@@ -510,7 +510,7 @@ dash::Future<GlobOutputIt> copy_block_async(
   auto num_copy_elem = std::distance(in_first, in_last);
   auto src_ptr       = in_first;
   auto dest_gptr     = out_first.dart_gptr();
-  dart_handle_t  put_handle;
+  dart_handle_t put_handle;
   dash::dart_storage<ValueType> ds(num_copy_elem);
   DASH_ASSERT_RETURNS(
     dart_put_handle(
