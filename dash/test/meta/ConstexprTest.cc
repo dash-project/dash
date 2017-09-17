@@ -91,11 +91,6 @@ TEST_F(ConstexprTest, HeadTail)
   EXPECT_EQ_U(arr, arr_join);
 }
 
-// -------------------------------------------------------------------------
-// reverse
-// -------------------------------------------------------------------------
-//
-
 TEST_F(ConstexprTest, Reverse)
 {
   constexpr std::array<int, 9> arr = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
