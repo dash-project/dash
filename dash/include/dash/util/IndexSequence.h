@@ -15,6 +15,7 @@ template <
 struct index_sequence
 { };
 
+
 template <
   std::size_t    N,
   std::size_t... Is >
@@ -25,6 +26,20 @@ struct make_index_sequence
 template <
   std::size_t... Is>
 struct make_index_sequence<0, Is...>
+  : index_sequence<Is...>
+{ };
+
+template <
+  std::size_t    N,
+  std::size_t... Is >
+struct rev_index_sequence
+  : rev_index_sequence<N-1, Is..., N-1>
+{ };
+
+
+template <
+  std::size_t... Is>
+struct rev_index_sequence<0, Is...>
   : index_sequence<Is...>
 { };
 

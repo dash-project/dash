@@ -263,6 +263,14 @@ append(
 // -------------------------------------------------------------------------
 // reverse
 // -------------------------------------------------------------------------
+namespace detail
+{
+  template <typename T, std::size_t ...Is>
+  constexpr std::array<T, sizeof...(Is)> reverse(
+    const std::array<T, sizeof...(Is)>& a, dash::ce::index_sequence<Is...>) {
+      return std::array<T, sizeof...(Is)>{std::get<Is>(a)...};
+  }
+}
 
 /**
  * Reverse elements of a sequence
@@ -273,21 +281,8 @@ template <
 constexpr std::array<ValueT, NElem>
 reverse(
   const std::array<ValueT, NElem> & values) {
-  //
-  // NOTE:
-  //
-  // This is elegant, correct, of high didactic value and does
-  // not scale well.
-  // Should be implemented using index from parameter pack like
-  //
-  //   { (std::get<NElem - I>(values)... }
-  //
-  return (NElem > 1
-          ? ( dash::ce::append(
-                dash::ce::reverse(
-                  dash::ce::tail(values)),
-                dash::ce::head(values)) )
-          : values);
+
+  return detail::reverse(values, dash::ce::rev_index_sequence<NElem>());
 }
 
 // -------------------------------------------------------------------------
