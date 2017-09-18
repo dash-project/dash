@@ -33,24 +33,32 @@ ValueType accumulate(
   GlobInputIt     in_last,
   ValueType       init)
 {
-  typedef typename GlobInputIt::index_type index_t;
+  struct local_result {
+    ValueType l_result;
+    bool      l_valid = false;
+  };
 
   auto & team      = in_first.team();
   auto myid        = team.myid();
   auto index_range = dash::local_range(in_first, in_last);
   auto l_first     = index_range.begin;
   auto l_last      = index_range.end;
-  auto l_result    = std::accumulate(l_first, l_last, init);
-  ValueType result = 0;
-
-  dash::Array<ValueType> l_results(team.size(), team);
-  l_results.local[0] = l_result;
+  ValueType result = init;
+  dash::Array<local_result> l_results(team.size(), team);
+  if (l_first != l_last) {
+    auto l_result  = std::accumulate(std::next(l_first), l_last, *l_first);
+    l_results.local[0].l_result = l_result;
+    l_results.local[0].l_valid  = true;
+  }
 
   team.barrier();
 
   if (myid == 0) {
-    for (int i = 0; i < team.size(); i++) {
-      result += l_results[i];
+    for (size_t i = 0; i < team.size(); i++) {
+      local_result lr = l_results[i];
+      if (lr.l_valid) {
+        result += lr.l_result;
+      }
     }
   }
   return result;
@@ -83,24 +91,33 @@ ValueType accumulate(
   ValueType       init,
   BinaryOperation binary_op = dash::plus<ValueType>())
 {
-  typedef typename GlobInputIt::index_type index_t;
+  struct local_result {
+    ValueType l_result;
+    bool      l_valid = false;
+  };
 
   auto & team      = in_first.team();
   auto myid        = team.myid();
   auto index_range = dash::local_range(in_first, in_last);
   auto l_first     = index_range.begin;
   auto l_last      = index_range.end;
-  auto l_result    = std::accumulate(l_first, l_last, init, binary_op);
-  ValueType result = 0;
+  ValueType result = init;
 
-  dash::Array<ValueType> l_results(team.size(), team);
-  l_results.local[0] = l_result;
+  dash::Array<local_result> l_results(team.size(), team);
+  if (l_first != l_last) {
+    auto l_result  = std::accumulate(std::next(l_first), l_last, *l_first, binary_op);
+    l_results.local[0].l_result = l_result;
+    l_results.local[0].l_valid  = true;
+  }
 
   team.barrier();
 
   if (myid == 0) {
-    for (int i = 0; i < team.size(); i++) {
-      result = binary_op(result, l_results[i]);
+    for (size_t i = 0; i < team.size(); i++) {
+      local_result lr = l_results[i];
+      if (lr.l_valid) {
+        result = binary_op(result, lr.l_result);
+      }
     }
   }
   return result;

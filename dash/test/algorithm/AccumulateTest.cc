@@ -14,7 +14,7 @@
 TEST_F(AccumulateTest, SimpleConstructor) {
   const size_t num_elem_local = 100;
   size_t num_elem_total       = _dash_size * num_elem_local;
-  auto value = 2;
+  auto value = 2, start = 10;
 
   dash::Array<int> target(num_elem_total, dash::BLOCKED);
 
@@ -24,30 +24,84 @@ TEST_F(AccumulateTest, SimpleConstructor) {
 
   int result = dash::accumulate(target.begin(),
 				target.end(),
-				0); //start value
+				start); //start value
 
   if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * value, result);
+    ASSERT_EQ_U(num_elem_total * value + start, result);
   }
 }
 
-TEST_F(AccumulateTest, SimpleConstructorDouble) {
-  const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
-  auto value = 2.4;
 
-  dash::Array<double> target(num_elem_total, dash::BLOCKED);
+TEST_F(AccumulateTest, SimpleConstructorMult) {
+  const size_t num_elem_local = 1;
+  using value_t = uint64_t;
+  size_t num_elem_total       = std::max(static_cast<ssize_t>(32), dash::size());
+  value_t value = 2, start = 10;
+
+  dash::Array<uint64_t> target(num_elem_total, dash::BLOCKED);
 
   dash::fill(target.begin(), target.end(), value);
 
   dash::barrier();
 
-  double result = dash::accumulate(target.begin(),
-				target.end(),
-				0.0); //start value
+  auto result = dash::accumulate(target.begin(),
+                                 target.end(),
+                                 start, //start value
+                                 dash::multiply<value_t>());
 
   if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * value, result);
+    ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
+  }
+}
+
+
+TEST_F(AccumulateTest, SimpleConstructorStruct) {
+  struct value_struct {
+    int x, y;
+    value_struct() : x(0), y(0)
+    { }
+    value_struct(int x, int y) : x(x), y(y)
+    { }
+    value_struct operator+(const value_struct& rhs) const {
+      value_struct result(x, y);
+      result.x += rhs.x;
+      result.y += rhs.y;
+      return result;
+    }
+    value_struct& operator+=(const value_struct& rhs) {
+      this->x += rhs.x;
+      this->y += rhs.y;
+      return *this;
+    }
+  };
+
+  const size_t num_elem_local = 100;
+  size_t num_elem_total       = _dash_size * num_elem_local;
+  constexpr int x = 1, y = 2;
+  value_struct value(x, y);
+
+  dash::Array<value_struct> target(num_elem_total, dash::BLOCKED);
+
+  dash::fill(target.begin(), target.end(), value);
+
+  dash::barrier();
+
+  // full-range reduce
+  auto result = dash::accumulate(target.begin(), target.end(),
+                                 value_struct(10, 20));
+
+  if(dash::myid() == 0) {
+    ASSERT_EQ_U(num_elem_total * x + 10, result.x);
+    ASSERT_EQ_U(num_elem_total * y + 20, result.y);
+  }
+
+  // half-range reduce
+  result = dash::accumulate(target.begin(), target.begin() + num_elem_total/2,
+                            value_struct(10, 20));
+
+  if(dash::myid() == 0) {
+    ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
+    ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
   }
 }
 
