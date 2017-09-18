@@ -51,7 +51,7 @@ ValueType accumulate(
     l_results.local[0].l_valid  = true;
   }
 
-  team.barrier();
+  l_results.barrier();
 
   if (myid == 0) {
     for (size_t i = 0; i < team.size(); i++) {
@@ -110,7 +110,7 @@ ValueType accumulate(
     l_results.local[0].l_valid  = true;
   }
 
-  team.barrier();
+  l_results.barrier();
 
   if (myid == 0) {
     for (size_t i = 0; i < team.size(); i++) {
