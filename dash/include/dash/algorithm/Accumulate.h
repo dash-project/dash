@@ -41,9 +41,9 @@ ValueType accumulate(
   auto l_first     = index_range.begin;
   auto l_last      = index_range.end;
   auto l_result    = std::accumulate(l_first, l_last, init);
-  auto result      = 0;
+  ValueType result = 0;
 
-  dash::Array<index_t> l_results(team.size(), team);
+  dash::Array<ValueType> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();
@@ -91,9 +91,9 @@ ValueType accumulate(
   auto l_first     = index_range.begin;
   auto l_last      = index_range.end;
   auto l_result    = std::accumulate(l_first, l_last, init, binary_op);
-  auto result      = 0;
+  ValueType result = 0;
 
-  dash::Array<index_t> l_results(team.size(), team);
+  dash::Array<ValueType> l_results(team.size(), team);
   l_results.local[0] = l_result;
 
   team.barrier();
