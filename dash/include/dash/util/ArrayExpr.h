@@ -263,14 +263,6 @@ append(
 // -------------------------------------------------------------------------
 // reverse
 // -------------------------------------------------------------------------
-namespace detail
-{
-  template <typename T, std::size_t ...Is>
-  constexpr std::array<T, sizeof...(Is)> reverse(
-    const std::array<T, sizeof...(Is)>& a, dash::ce::index_sequence<Is...>) {
-      return std::array<T, sizeof...(Is)>{std::get<Is>(a)...};
-  }
-}
 
 /**
  * Reverse elements of a sequence
@@ -282,7 +274,8 @@ constexpr std::array<ValueT, NElem>
 reverse(
   const std::array<ValueT, NElem> & values) {
 
-  return detail::reverse(values, dash::ce::rev_index_sequence<NElem>());
+  return detail::take_impl<NElem, ValueT, NElem>(
+      values, dash::ce::make_rev_index_sequence<NElem>());
 }
 
 // -------------------------------------------------------------------------
