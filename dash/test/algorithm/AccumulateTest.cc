@@ -11,7 +11,7 @@
 #include <array>
 
 
-TEST_F(AccumulateTest, SimpleConstructor) {
+TEST_F(AccumulateTest, SimpleStart) {
   const size_t num_elem_local = 100;
   size_t num_elem_total       = _dash_size * num_elem_local;
   auto value = 2, start = 10;
@@ -32,7 +32,7 @@ TEST_F(AccumulateTest, SimpleConstructor) {
 }
 
 
-TEST_F(AccumulateTest, SimpleConstructorMult) {
+TEST_F(AccumulateTest, OpMult) {
   const size_t num_elem_local = 1;
   using value_t = uint64_t;
   size_t num_elem_total       = std::max(static_cast<ssize_t>(32), dash::size());
@@ -55,7 +55,7 @@ TEST_F(AccumulateTest, SimpleConstructorMult) {
 }
 
 
-TEST_F(AccumulateTest, SimpleConstructorStruct) {
+TEST_F(AccumulateTest, SimpleStruct) {
   struct value_struct {
     int x, y;
     value_struct() : x(0), y(0)
