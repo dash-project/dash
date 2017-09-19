@@ -159,6 +159,13 @@ origin(const ViewT & view)
 
 #endif // DOXYGEN
 
+static inline auto origin() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return origin(std::forward<decltype(x)>(x));
+           });
+}
+
 } // namespace dash
 
 #endif // DASH__VIEW__ORIGIN_H__INCLUDED

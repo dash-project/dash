@@ -68,16 +68,26 @@ int main(int argc, char *argv[])
   dash::Array<float> a(array_size, dash::BLOCKCYCLIC(3));
   initialize_array(a);
 
-  dash::barrier();
   if (dash::myid() == 0) {
     print("array: " << range_str(a));
+
+    auto sb_array = a | sub(1, a.size()-1) | blocks();
+    for (const auto & b : sb_array) {
+      print("array | sub | block: " << range_str(b));
+    }
+
+    auto slb_array = a | sub(1, a.size()-1) | local() | blocks();
+    for (const auto & b : slb_array) {
+      print("array | sub | local | block: " << range_str(b));
+    }
   }
+  dash::barrier();
 
   auto l_array = a | local();
-  print("array | local(): " << range_str(l_array));
+  print("array | local:       " << range_str(l_array));
 
-  auto sl_array = a | sub<0>(2, a.size()-1) | local();
-  print("array | sub | local(): " << range_str(sl_array));
+  auto sl_array = a | sub(1, a.size()-1) | local();
+  print("array | sub | local: " << range_str(sl_array));
 
   dash::barrier();
 

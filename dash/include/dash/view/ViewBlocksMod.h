@@ -11,6 +11,7 @@
 #include <dash/view/ViewTraits.h>
 #include <dash/view/ViewMod.h>
 
+#include <dash/view/Utility.h>
 #include <dash/view/Local.h>
 #include <dash/view/Global.h>
 #include <dash/view/Origin.h>
@@ -683,6 +684,13 @@ class ViewBlocksMod
 };
 
 #endif // DOXYGEN
+
+static inline auto blocks() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return blocks(std::forward<decltype(x)>(x));
+           });
+}
 
 } // namespace dash
 

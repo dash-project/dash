@@ -4,6 +4,7 @@
 #include <dash/Iterator.h>
 #include <dash/Range.h>
 
+#include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
@@ -1671,6 +1672,13 @@ class IndexSetBlock
            );
   }
 }; // class IndexSetBlock
+
+static inline auto index() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return index(std::forward<decltype(x)>(x));
+           });
+}
 
 } // namespace dash
 
