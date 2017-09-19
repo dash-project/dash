@@ -69,26 +69,26 @@ int main(int argc, char *argv[])
   initialize_array(a);
 
   if (dash::myid() == 0) {
-    print("array: " << range_str(a));
+    print("a:                        " << range_str(a));
 
     auto sb_array = a | sub(1, a.size()-1) | blocks();
     for (const auto & b : sb_array) {
-      print("array | sub | block: " << range_str(b));
+      print("a | sub | block:          " << range_str(b));
     }
 
     auto slb_array = a | sub(1, a.size()-1) | local() | blocks();
     for (const auto & b : slb_array) {
-      print("array | sub | local | block: " << range_str(b));
+      print("a | sub | local | block:  " << range_str(b));
     }
   }
   dash::barrier();
 
   auto l_array = a | local();
-  print("array | local:       " << range_str(l_array));
+  print("a | local:                " << range_str(l_array));
+  dash::barrier();
 
   auto sl_array = a | sub(1, a.size()-1) | local();
-  print("array | sub | local: " << range_str(sl_array));
-
+  print("a | sub | local:          " << range_str(sl_array));
   dash::barrier();
 
   auto copy_num_elem       = a.size() / 2;
