@@ -48,9 +48,31 @@ inline void sum(const uint nelts,
   }
 }
 
+auto addvalue() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return std::forward<decltype(x)>(x) + 10;
+           });
+}
+
+auto subvalue() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return std::forward<decltype(x)>(x) - 3;
+           });
+}
+
+using namespace dash;
+
 int main(int argc, char *argv[])
 {
   dash::init(&argc, &argv);
+
+  int val = 100;
+  int mod = val | addvalue() | subvalue();
+
+  cout << "mod: " << mod << endl;
+  return 0;
 
   auto myid   = dash::myid();
   auto nunits = dash::size();
@@ -148,16 +170,16 @@ int main(int argc, char *argv[])
                      nview_str(block_rg));
       DASH_LOG_DEBUG("MatrixViewsExample", "block range origin iterator:",
                      dash::typestr(dash::origin(block_srg).begin()));
-      DASH_LOG_DEBUG("MatrixViewsExample", "block range origin:",
-                     nview_str(dash::origin(block_srg)));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     nview_str(block_srg));
+   // DASH_LOG_DEBUG("MatrixViewsExample", "block range origin:",
+   //                nview_str(dash::origin(block_srg)));
+   // DASH_LOG_DEBUG("MatrixViewsExample",
+   //                nview_str(block_srg));
     }
   }
   dash::barrier();
 
-  dash::finalize();
-  return EXIT_SUCCESS;
+//dash::finalize();
+//return EXIT_SUCCESS;
 
   // Array to store local copy:
   std::vector<value_t> local_copy(num_elem_per_unit);

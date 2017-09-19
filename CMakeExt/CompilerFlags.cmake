@@ -151,7 +151,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CXX_STD_FLAG "--std=c++${CPP_STD_VERSION}"
+  set (CXX_STD_FLAG "-std=c++${CPP_STD_VERSION}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
@@ -199,7 +199,7 @@ if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
        CACHE STRING "C compiler (clang) debug symbols flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CC_STD_FLAG "--std=c99"
+  set (CC_STD_FLAG "-std=c99"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-ggdb3"
        CACHE STRING "C compiler GDB debug symbols flag")

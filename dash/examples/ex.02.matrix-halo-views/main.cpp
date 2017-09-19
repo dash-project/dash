@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
                         matrix_view));
       DASH_LOG_DEBUG("MatrixViewsExample", "b_halo -----------------------",
                      nview_str(b_halo));
+      DASH_LOG_DEBUG("MatrixViewsExample", "size:", b_halo.size());
 #if 0
       auto b_halo_isect = dash::difference(
                             m_block,

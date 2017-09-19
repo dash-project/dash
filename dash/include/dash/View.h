@@ -71,6 +71,8 @@
  * \}
  */
 
+#include <dash/view/Utility.h>
+
 #include <dash/view/Block.h>
 #include <dash/view/Chunk.h>
 #include <dash/view/Domain.h>
