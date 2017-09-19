@@ -146,13 +146,6 @@ local(ViewType && v)
   return std::forward<ViewType>(v).local();
 }
 
-static inline auto local() {
-  return dash::make_pipeable(
-           [](auto && x) {
-             return local(std::forward<decltype(x)>(x));
-           });
-}
-
 #if 0
 template <class ContainerType>
 constexpr auto local(const ContainerType & c)
@@ -188,6 +181,13 @@ constexpr auto local(
   const GlobalIterator & g_it)
 ->  decltype((g_it - g_it.pos()).local()) {
   return g_it.local();
+}
+
+static inline auto local() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return local(std::forward<decltype(x)>(x));
+           });
 }
 
 // =========================================================================

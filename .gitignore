@@ -9,6 +9,7 @@ build.nasty*
 build.cov*
 build.gcc*
 build.clang*
+build.icc*
 build.analyze*
 build-ci*
 compile_commands.json

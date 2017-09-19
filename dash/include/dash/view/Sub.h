@@ -5,6 +5,7 @@
 #include <dash/Range.h>
 
 #include <dash/view/ViewMod.h>
+#include <dash/view/Utility.h>
 
 
 namespace dash {
@@ -92,12 +93,33 @@ sub(OffsetFirstT    begin,
 template <
   dim_t    SubDim  = 0,
   class    DomainT,
-  class    OffsetT >
+  class    OffsetT,
+  typename std::enable_if<
+             (!std::is_integral<DomainT>::value &&
+               std::is_integral<OffsetT>::value ),
+             int
+           >::type = 0 >
 constexpr auto
 sub(OffsetT    offset,
     DomainT && domain)
     -> decltype(dash::sub<SubDim>(offset, offset+1, domain)) {
   return dash::sub<SubDim>(offset, offset+1, domain);
+}
+
+template <
+  dim_t    SubDim  = 0,
+  class    OffsetT0,
+  class    OffsetT1,
+  typename std::enable_if<
+             ( std::is_integral<OffsetT0>::value &&
+               std::is_integral<OffsetT1>::value ),
+             int
+           >::type = 0 >
+static inline auto sub(OffsetT0 a, OffsetT1 b) {
+  return dash::make_pipeable(
+           [=](auto && x) {
+             return sub<SubDim>(a,b, std::forward<decltype(x)>(x));
+           });
 }
 
 } // namespace dash

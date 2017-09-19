@@ -76,6 +76,9 @@ int main(int argc, char *argv[])
   auto l_array = a | local();
   print("array | local(): " << range_str(l_array));
 
+  auto sl_array = a | sub<0>(2, a.size()-1) | local();
+  print("array | sub | local(): " << range_str(sl_array));
+
   dash::barrier();
 
   auto copy_num_elem       = a.size() / 2;

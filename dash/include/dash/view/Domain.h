@@ -4,6 +4,9 @@
 #include <dash/Types.h>
 #include <dash/Meta.h>
 
+#include <dash/view/Utility.h>
+
+
 namespace dash {
 
 namespace detail {
@@ -83,6 +86,13 @@ constexpr typename std::enable_if<
 >::type
 domain(const ContainerT & container) {
   return container;
+}
+
+static inline auto domain() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return domain(std::forward<decltype(x)>(x));
+           });
 }
 
 } // namespace dash

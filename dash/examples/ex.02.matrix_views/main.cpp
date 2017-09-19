@@ -48,24 +48,10 @@ inline void sum(const uint nelts,
   }
 }
 
-auto addvalue() {
-  return dash::make_pipeable(
-           [](auto && x) {
-             return std::forward<decltype(x)>(x) + 10;
-           });
-}
-
-auto subvalue() {
-  return dash::make_pipeable(
-           [](auto && x) {
-             return std::forward<decltype(x)>(x) - 3;
-           });
-}
-
-using namespace dash;
-
 int main(int argc, char *argv[])
 {
+  using namespace dash;
+
   dash::init(&argc, &argv);
 
   auto myid   = dash::myid();
