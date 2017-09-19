@@ -4,6 +4,17 @@
 #include <type_traits>
 #include <utility>
 
+/*
+ * Pipe utils adapted from implementation in range-v3,
+ * published under Boost Software License Version 1.0
+ * (c) Eric Niebler, Casey Carter
+ *
+ * See:
+ *   https://github.com/ericniebler/range-v3/
+ * Source:
+ *   include/range/v3/utility/functional.hpp
+ *
+ */
 
 namespace dash {
 
