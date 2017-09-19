@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 
+#include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
 
 
@@ -142,7 +143,14 @@ local(ViewType && v)
      !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(std::forward<ViewType>(v).local())
    >::type {
- return std::forward<ViewType>(v).local();
+  return std::forward<ViewType>(v).local();
+}
+
+static inline auto local() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return local(std::forward<decltype(x)>(x));
+           });
 }
 
 #if 0

@@ -68,12 +68,6 @@ int main(int argc, char *argv[])
 {
   dash::init(&argc, &argv);
 
-  int val = 100;
-  int mod = val | addvalue() | subvalue();
-
-  cout << "mod: " << mod << endl;
-  return 0;
-
   auto myid   = dash::myid();
   auto nunits = dash::size();
 

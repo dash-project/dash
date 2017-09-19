@@ -11,8 +11,9 @@ using std::vector;
 #define print(stream_expr__) \
   do { \
     std::ostringstream ss; \
-    ss   << stream_expr__; \
-    cout << ss.str() << endl; \
+    ss   << "[unit: " << dash::myid() << "] "; \
+    ss   << stream_expr__ << endl; \
+    cout << ss.str(); \
   } while(0)
 
 
@@ -55,6 +56,8 @@ auto initialize_array(ArrayT & array)
 
 int main(int argc, char *argv[])
 {
+  using namespace dash;
+
   dash::init(&argc, &argv);
 
   int elem_per_unit    = 5;
@@ -64,6 +67,16 @@ int main(int argc, char *argv[])
 
   dash::Array<float> a(array_size, dash::BLOCKCYCLIC(3));
   initialize_array(a);
+
+  dash::barrier();
+  if (dash::myid() == 0) {
+    print("array: " << range_str(a));
+  }
+
+  auto l_array = a | local();
+  print("array | local(): " << range_str(l_array));
+
+  dash::barrier();
 
   auto copy_num_elem       = a.size() / 2;
   auto copy_dest_begin_idx = a.size() / 4;
@@ -75,7 +88,6 @@ int main(int argc, char *argv[])
   a.barrier();
 
   if (dash::myid() == 0) {
-    print("array: " << range_str(a));
     print("copy target index range: "
             << "[" << copy_dest_begin_idx
             << "," << copy_dest_end_idx << ")");
