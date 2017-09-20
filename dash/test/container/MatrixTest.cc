@@ -38,31 +38,76 @@ TEST_F(MatrixTest, LocalAccess)
   const int n_brow = 4;
   const int n_bcol = 3;
 
-  auto myid = dash::myid();
+  auto myid   = dash::myid();
 
-  dash::NArray<int, 2> mat(n_brow * dash::size(),
-                           n_bcol * dash::size());
+  int  lcount = 0;
 
-  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                 "matrix extents:", mat.extent(0), "x", mat.extent(1));
-  DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                 "matrix local view:", mat.local.extents());
+  // Vanilla dash::NArray --------------------------------------------------
+  {
+    dash::NArray<int, 2> mat(n_brow * dash::size(),
+                             n_bcol * dash::size());
 
-  int lcount = (myid + 1) * 1000;
-  dash::generate(mat.begin(), mat.end(), 
-                 [&]() {
-                   return (lcount++);
-                 });
-  mat.barrier();
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   "matrix extents:", mat.extent(0), "x", mat.extent(1));
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   "matrix local view:", mat.local.extents());
 
-  DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+    lcount = (myid + 1) * 1000;
+    std::generate(mat.local.begin(), mat.local.end(), 
+                  [&]() { return (lcount++); });
+    EXPECT_EQ_U((myid + 1) * 1000 + mat.local.size(), lcount);
 
-  for (int i = 0; i < mat.local.extent(0); i++) {
-    for (int j = 0; j < mat.local.extent(1); j++) {
-      DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                     "mat.local[", i, "][", j, "]");
-      EXPECT_EQ(mat.local(i,j),
-                mat.local[i][j]);
+    mat.barrier();
+
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+
+    for (int i = 0; i < mat.local.extent(0); i++) {
+      for (int j = 0; j < mat.local.extent(1); j++) {
+        DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                       "mat.local[", i, "][", j, "] = ", mat.local[i][j]);
+        EXPECT_EQ(mat.local(i,j),
+                  mat.local[i][j]);
+      }
+    }
+  }
+
+  // Shift-Tiled dash::Matrix ----------------------------------------------
+  {
+    typedef dash::default_index_t       index_t;
+    typedef dash::ShiftTilePattern<2> pattern_t;
+
+    pattern_t pattern(
+      dash::SizeSpec<2>(
+        n_brow * dash::size(),
+        n_bcol * dash::size()),
+      dash::DistributionSpec<2>(
+        dash::TILE(n_brow),
+        dash::TILE(n_bcol))
+    );
+
+    dash::Matrix<int, 2, index_t, pattern_t> mat(pattern);
+
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   "matrix extents:", mat.extent(0), "x", mat.extent(1));
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   "matrix local view:", mat.local.extents());
+
+    lcount = (myid + 1) * 1000;
+    std::generate(mat.local.begin(), mat.local.end(), 
+                  [&]() { return (lcount++); });
+    EXPECT_EQ_U((myid + 1) * 1000 + mat.local.size(), lcount);
+
+    mat.barrier();
+
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
+
+    for (int i = 0; i < mat.local.extent(1); i++) {
+      for (int j = 0; j < mat.local.extent(0); j++) {
+        DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                       "mat.local[", i, "][", j, "] = ", mat.local[i][j]);
+//      EXPECT_EQ(mat.local(i,j),
+//                mat.local[i][j]);
+      }
     }
   }
 }
@@ -1575,7 +1620,8 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   }
 }
 
-TEST_F(MatrixTest, MoveSemantics){
+TEST_F(MatrixTest, MoveSemantics)
+{
   using matrix_t = dash::NArray<double, 2>;
   // move construction
   {
@@ -1618,12 +1664,18 @@ TEST_F(MatrixTest, MoveSemantics){
 }
 
 
-TEST_F(MatrixTest, MatrixRefLbegin){
+TEST_F(MatrixTest, MatrixRefLbegin)
+{
   using matrix_t = dash::Matrix<int, 2>;
-  size_t nelem = dash::size() * 10;
+
+  size_t nelem    = dash::size() * 10;
   size_t tilesize = 5;
-  matrix_t matrix(nelem, nelem, dash::TILE(tilesize), dash::TILE(tilesize));
-  auto& pattern = matrix.pattern();
+
+  matrix_t matrix(
+      nelem, nelem,
+      dash::TILE(tilesize), dash::TILE(tilesize));
+
+  auto & pattern = matrix.pattern();
   dash::fill(matrix.begin(), matrix.end(), -1);
 
   auto lbs = pattern.local_blockspec();
@@ -1642,3 +1694,4 @@ TEST_F(MatrixTest, MatrixRefLbegin){
     ASSERT_EQ_U(*iter, dash::myid());
   }
 }
+
