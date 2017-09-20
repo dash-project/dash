@@ -28,6 +28,8 @@ MatrixRefView<T, NumDim, PatternT>
 , _l_viewspec(other._l_viewspec)
 {
   DASH_LOG_TRACE("MatrixRefView(other)");
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _viewspec);
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _l_viewspec);
 }
 
 template <typename T, dim_t NumDim, class PatternT>
@@ -38,11 +40,13 @@ MatrixRefView<T, NumDim, PatternT>
 : _dim(0)
 , _mat(matrix)
 , _viewspec(matrix->extents())
-, _l_viewspec()
+, _l_viewspec(matrix->pattern().local_extents())
 {
   // TODO: Check if initializing local viewspec with default viewspec
   //       is okay.
   DASH_LOG_TRACE_VAR("MatrixRefView(matrix)", matrix);
+  DASH_LOG_TRACE_VAR("MatrixRefView(matrix)", _viewspec);
+  DASH_LOG_TRACE_VAR("MatrixRefView(matrix)", _l_viewspec);
 }
 
 template <typename T, dim_t NumDim, class PatternT>

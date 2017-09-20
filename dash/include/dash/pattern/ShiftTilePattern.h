@@ -626,6 +626,8 @@ public:
                    "phase coords:",       phase_coords);
     // Number of blocks preceeding the coordinates' block:
     auto block_offset_l = _local_blockspec.at(block_coords_l);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern.local_at", block_offset_l);
+
     auto local_index    =
            block_offset_l * _blocksize_spec.size() + // preceeding blocks
            _blocksize_spec.at(phase_coords);         // element phase
@@ -1586,7 +1588,7 @@ private:
     DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim()");
     if (Arrangement == dash::COL_MAJOR) {
       DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim", "column major");
-      for (auto d = 0; d < NumDimensions; ++d) {
+      for (auto d = NumDimensions-1; d >= 0; --d) {
         if (ds[d].type == dash::internal::DIST_TILE) {
           DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim >", d);
           return d;
@@ -1594,7 +1596,7 @@ private:
       }
     } else {
       DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim", "row major");
-      for (auto d = NumDimensions-1; d >= 0; --d) {
+      for (auto d = 0; d < NumDimensions; ++d) {
         if (ds[d].type == dash::internal::DIST_TILE) {
           DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim >", d);
           return d;

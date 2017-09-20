@@ -48,6 +48,8 @@ TEST_F(MatrixTest, LocalAccess)
                              n_bcol * dash::size());
 
     DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   dash::typestr(mat));
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
                    "matrix extents:", mat.extent(0), "x", mat.extent(1));
     DASH_LOG_DEBUG("MatrixTest.ElementAccess",
                    "matrix local view:", mat.local.extents());
@@ -64,9 +66,10 @@ TEST_F(MatrixTest, LocalAccess)
     for (int i = 0; i < mat.local.extent(0); i++) {
       for (int j = 0; j < mat.local.extent(1); j++) {
         DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                       "mat.local[", i, "][", j, "] = ", mat.local[i][j]);
-        EXPECT_EQ(mat.local(i,j),
-                  mat.local[i][j]);
+                       "mat.local[", i, "][", j, "]");
+        DASH_LOG_DEBUG("MatrixTest.ElementAccess", "=", mat.local[i][j]);
+        EXPECT_EQ(mat.local(i,j), mat.local[i][j]);
+        EXPECT_EQ(mat.local(i,j) / 1000, myid + 1);
       }
     }
   }
@@ -88,12 +91,14 @@ TEST_F(MatrixTest, LocalAccess)
     dash::Matrix<int, 2, index_t, pattern_t> mat(pattern);
 
     DASH_LOG_DEBUG("MatrixTest.ElementAccess",
+                   dash::typestr(mat));
+    DASH_LOG_DEBUG("MatrixTest.ElementAccess",
                    "matrix extents:", mat.extent(0), "x", mat.extent(1));
     DASH_LOG_DEBUG("MatrixTest.ElementAccess",
                    "matrix local view:", mat.local.extents());
 
     lcount = (myid + 1) * 1000;
-    std::generate(mat.local.begin(), mat.local.end(), 
+    std::generate(mat.lbegin(), mat.lend(),
                   [&]() { return (lcount++); });
     EXPECT_EQ_U((myid + 1) * 1000 + mat.local.size(), lcount);
 
@@ -101,12 +106,13 @@ TEST_F(MatrixTest, LocalAccess)
 
     DASH_LOG_DEBUG("MatrixTest.ElementAccess", "Matrix initialized");
 
-    for (int i = 0; i < mat.local.extent(1); i++) {
-      for (int j = 0; j < mat.local.extent(0); j++) {
+    for (int i = 0; i < mat.local.extent(0); i++) {
+      for (int j = 0; j < mat.local.extent(1); j++) {
         DASH_LOG_DEBUG("MatrixTest.ElementAccess",
-                       "mat.local[", i, "][", j, "] = ", mat.local[i][j]);
-//      EXPECT_EQ(mat.local(i,j),
-//                mat.local[i][j]);
+                       "mat.local[", i, "][", j, "]");
+        DASH_LOG_DEBUG("MatrixTest.ElementAccess", "=", mat.local[i][j]);
+        EXPECT_EQ(mat.local(i,j), mat.local[i][j]);
+        EXPECT_EQ(mat.local(i,j) / 1000, myid + 1);
       }
     }
   }
@@ -1663,7 +1669,7 @@ TEST_F(MatrixTest, MoveSemantics)
   }
 }
 
-
+#if 0
 TEST_F(MatrixTest, MatrixRefLbegin)
 {
   using matrix_t = dash::Matrix<int, 2>;
@@ -1694,4 +1700,5 @@ TEST_F(MatrixTest, MatrixRefLbegin)
     ASSERT_EQ_U(*iter, dash::myid());
   }
 }
+#endif
 

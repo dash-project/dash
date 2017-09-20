@@ -40,21 +40,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat) >", _refview._viewspec);
 }
 
-template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-template <class T_>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
-::LocalMatrixRef(
-  Matrix<T_, NumDim, index_type, PatternT> * mat,
-  std::array<index_type, NumDim> global_coords)
-  : _refview(mat->_ref._refview)
-{
-  auto local_extents = mat->_pattern.local_extents();
-  DASH_LOG_TRACE_VAR("LocalMatrixRef(mat, gcoords)", local_extents);
-  auto local_offsets = mat->_pattern.global(global_coords);
-  _refview._viewspec = ViewSpec_t(local_offsets, local_extents);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef(mat, gcoords) >", _refview._viewspec);
-}
-
 #if 0
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
@@ -289,7 +274,7 @@ inline T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() noexcept
 {
-  return begin().local() + size();
+  return end().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -297,7 +282,7 @@ constexpr const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() const noexcept
 {
-  return begin().local() + size();
+  return end().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -399,9 +384,9 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
         auto  l_coords   = _refview._coord;
   const auto& l_viewspec = _refview._l_viewspec;
   const auto& pattern    = _refview._mat->_pattern;
-  DASH_LOG_TRACE("LocalMatrixRef<0>.local()",
+  DASH_LOG_TRACE("LocalMatrixRef<0>.[]=()",
                  "coords:",         l_coords,
-                 "local viewspec:", l_viewspec.extents());
+                 "local viewspec:", l_viewspec);
 
   l_coords[NumDim-1] = pos;
 
@@ -409,7 +394,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   auto local_index = pattern.local_at(
                        l_coords,
                        l_viewspec);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.local()", local_index);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.[]=", local_index);
   return local_at(local_index);
 }
 
