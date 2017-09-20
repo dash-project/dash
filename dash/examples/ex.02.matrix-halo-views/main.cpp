@@ -1,4 +1,5 @@
 #include <libdash.h>
+#include "../util.h"
 
 using std::cout;
 using std::cerr;
@@ -8,45 +9,6 @@ using std::vector;
 
 using uint = unsigned int;
 
-template <class NViewType>
-std::string nview_str(
-  const NViewType   & nview) {
-  using value_t   = typename NViewType::value_type;
-  auto view_nrows = nview.extents()[0];
-  auto view_ncols = nview.extents()[1];
-  auto nindex     = dash::index(nview);
-  std::ostringstream ss;
-  for (int r = 0; r < view_nrows; ++r) {
-    ss << '\n';
-    for (int c = 0; c < view_ncols; ++c) {
-      int offset = r * view_ncols + c;
-      ss << std::fixed << std::setw(3)
-         << nindex[offset]
-         << ":"
-         << std::fixed << std::setprecision(5)
-         << static_cast<value_t>(nview[offset])
-         << " ";
-    }
-  }
-  return ss.str();
-}
-
-inline void sum(const uint nelts,
-                const dash::NArray<uint, 2> &matIn,
-                const uint myid) {
-  uint lclRows = matIn.pattern().local_extents()[0];
-
-  uint const *mPtr;
-  uint localSum = 0;
-
-  for (uint i = 0; i < lclRows; ++i) {
-    mPtr = matIn.local.row(i).lbegin();
-
-    for (uint j = 0; j < nelts; ++j) {
-      localSum += *(mPtr++);
-    }
-  }
-}
 
 int main(int argc, char *argv[])
 {

@@ -1,4 +1,5 @@
 #include <libdash.h>
+#include "../util.h"
 
 using std::cout;
 using std::cerr;
@@ -7,31 +8,6 @@ using std::cin;
 using std::endl;
 using std::vector;
 
-
-#define print(stream_expr__) \
-  do { \
-    std::ostringstream ss; \
-    ss   << "[unit: " << dash::myid() << "] "; \
-    ss   << stream_expr__ << endl; \
-    cout << ss.str(); \
-  } while(0)
-
-
-template <class ValueRange>
-static std::string range_str(
-  const ValueRange & vrange) {
-  typedef typename ValueRange::value_type value_t;
-  std::ostringstream ss;
-  auto idx = dash::index(vrange);
-  int        i   = 0;
-  for (const auto & v : vrange) {
-    ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
-       << std::fixed << std::setprecision(4)
-       << static_cast<const value_t>(v) << " ";
-    ++i;
-  }
-  return ss.str();
-}
 
 template <class ArrayT>
 auto initialize_array(ArrayT & array)
