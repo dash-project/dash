@@ -399,7 +399,15 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
+#if 0
     const_pointer gptr(
+#else
+    // TODO: Intermediate, should be `const_pointer`.
+    //       Actual issue is `const_pointer` defined as local pointer
+    //       type, should be global pointer for global iterator like
+    //       `GlobIter`:
+    dash::GlobPtr<ElementType> gptr(
+#endif
       _globmem->at(
         team_unit_t(local_pos.unit),
         local_pos.index)

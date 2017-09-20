@@ -80,17 +80,10 @@ int main(int argc, char *argv[])
           nview_str(matrix | sub<0>(1, extent_y-1)
                            | sub<1>(1, extent_x-1)) << '\n');
 
-    print("matrix | local | blocks");
-    auto m_l_blocks = matrix | local()
-                             | blocks();
-    for (const auto & blk : m_l_blocks) {
-      print("---" << nview_str(blk) << '\n');
-    }
-
     print("matrix | blocks | local");
     auto m_blocks_l = matrix | blocks()
                              | local();
-    for (const auto & blk : m_l_blocks) {
+    for (const auto & blk : m_blocks_l) {
       print("---" << nview_str(blk) << '\n');
     }
 
