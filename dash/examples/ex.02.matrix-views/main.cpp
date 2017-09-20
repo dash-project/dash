@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
                                0, matrix.extents()[1],
                                matrix));
 
-    DASH_LOG_DEBUG("MatrixViewsExample",
-                   nview_str(matrix_region));
+    print("matrix | sub<0>(2,-2) | sub<1>(2,-3) \n" <<
+          nview_str(matrix_region));
 
     auto matrix_reg_blocks = dash::blocks(matrix_region);
     for (const auto & reg_block : matrix_reg_blocks) {

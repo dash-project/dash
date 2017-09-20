@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  typedef dash::TilePattern<2>           pattern_t;
+  typedef dash::ShiftTilePattern<2>      pattern_t;
   typedef typename pattern_t::index_type   index_t;
   typedef float                            value_t;
 
@@ -52,8 +52,8 @@ int main(int argc, char *argv[])
 
   // Initialize matrix values:
   int li = 0;
-  std::generate(matrix.lbegin(),
-                matrix.lend(),
+  std::generate(matrix.local.begin(),
+                matrix.local.end(),
                 [&]() { return dash::myid() + 0.01 * li++; });
   dash::barrier();
 

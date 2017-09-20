@@ -69,16 +69,16 @@ int main(int argc, char *argv[])
 
   if (myid == 0) {
     auto matrix_view = dash::sub(0, matrix.extents()[0], matrix);
-    DASH_LOG_DEBUG("MatrixViewsExample",
-                   nview_str(matrix_view));
-      DASH_LOG_DEBUG("MatrixViewsExample", "matrix",
-                     "offsets:", matrix_view.offsets(),
-                     "extents:", matrix_view.extents());
+    print("matrix" << nview_str(matrix_view));
+
+    DASH_LOG_DEBUG("MatrixViewsExample", "matrix",
+                   "offsets:", matrix_view.offsets(),
+                   "extents:", matrix_view.extents());
 
     auto matrix_blocks = dash::blocks(matrix_view);
     for (const auto & m_block : matrix_blocks) {
-      DASH_LOG_DEBUG("MatrixViewsExample", "m_block ======================",
-                     nview_str(m_block));
+      print("matrix | block(n)" <<
+            nview_str(m_block));
       // halo view:
       auto b_halo = dash::sub<0>(
                       m_block.offsets()[0] > 0
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
                           ? m_block.offsets()[1] + m_block.extents()[1] + 1
                           : m_block.offsets()[1] + m_block.extents()[1],
                         matrix_view));
-      DASH_LOG_DEBUG("MatrixViewsExample", "b_halo -----------------------",
-                     nview_str(b_halo));
+      print("matrix | block(n) | expand({ -1,1 } , { -1,1 })" <<
+            nview_str(b_halo));
       DASH_LOG_DEBUG("MatrixViewsExample", "size:", b_halo.size());
 #if 0
       auto b_halo_isect = dash::difference(
