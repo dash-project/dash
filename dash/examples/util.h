@@ -39,25 +39,30 @@ static std::string range_str(
   return ss.str();
 }
 
+using namespace dash::internal::logging;
+
 template <class NViewType>
 std::string nview_str(
   const NViewType   & nview,
-  int                 prec = 2) {
+  int                 prec = 2)
+{
   using value_t   = typename NViewType::value_type;
   auto view_nrows = nview.extents()[0];
   auto view_ncols = nview.extents()[1];
   auto nindex     = dash::index(nview);
   std::ostringstream ss;
   for (int r = 0; r < view_nrows; ++r) {
-    ss << '\n' << r << "  ";
+    ss << '\n' << "  " << std::right << std::setw(2) << r << "  ";
     for (int c = 0; c < view_ncols; ++c) {
-      int offset = r * view_ncols + c;
+      int  offset = r * view_ncols + c;
+      value_t val = nview[offset];
       ss << std::fixed << std::setw(3)
          << nindex[offset]
+         << TermColorMod(unit_term_colors[(int)val])
          << " "
-         << std::fixed << std::setprecision(prec)
-         << static_cast<value_t>(nview[offset])
-         << "  ";
+         << std::fixed << std::setprecision(prec) << val
+         << "  "
+         << TermColorMod(TCOL_DEFAULT);
     }
   }
   return ss.str();

@@ -79,6 +79,20 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
  */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(pattern_type);
 
+/**
+ * Definition of type trait \c dash::detail::has_type_const_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c const_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_type);
+
+/**
+ * Definition of type trait \c dash::detail::has_type_const_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c nonconst_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(nonconst_type);
+
 } // namespace dash
 
 #include <type_traits>
@@ -87,6 +101,57 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(pattern_type);
 #ifndef DOXYGEN
 
 namespace dash {
+
+template <typename T>
+struct const_value_cast;
+
+template <typename T>
+struct const_value_cast<T *> {
+  typedef const T * type;
+};
+
+template <typename T>
+struct const_value_cast<T &> {
+  typedef const T & type;
+};
+
+template <typename T>
+struct const_value_cast {
+  typedef typename
+    std::conditional<
+      dash::has_type_const_type<T>::value,
+      typename T::const_type,
+      const T
+    >::type
+  type;
+};
+
+
+
+template <typename T>
+struct nonconst_value_cast;
+
+template <typename T>
+struct nonconst_value_cast<const T *> {
+  typedef T * type;
+};
+
+template <typename T>
+struct nonconst_value_cast<const T &> {
+  typedef T & type;
+};
+
+template <typename T>
+struct nonconst_value_cast {
+  typedef typename
+    std::conditional<
+      dash::has_type_nonconst_type<T>::value,
+      typename T::nonconst_type,
+      typename std::remove_const<T>::type
+    >::type
+  type;
+};
+
 
 /*
  * For reference, see

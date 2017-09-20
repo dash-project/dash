@@ -82,21 +82,24 @@ private:
     nonconst_value_type;
 public:
   typedef typename std::random_access_iterator_tag iterator_category;
-  typedef typename PatternType::index_type         difference_type;
 
-  typedef          ElementType                         value_type;
+  typedef typename PatternType::index_type           difference_type;
 
-  typedef          ReferenceType                        reference;
-  typedef typename ReferenceType::const_type      const_reference;
+  typedef          ElementType                            value_type;
 
-  typedef          PointerType                            pointer;
-  typedef typename PointerType::const_type          const_pointer;
+  typedef          ReferenceType                           reference;
+  typedef typename dash::const_value_cast<ReferenceType>::type
+                                                     const_reference;
 
-  typedef typename GlobMemType::local_pointer       local_pointer;
-  typedef typename GlobMemType::local_pointer          local_type;
+  typedef          PointerType                               pointer;
+  typedef typename dash::const_value_cast<PointerType>::type
+                                                       const_pointer;
 
-  typedef          PatternType                       pattern_type;
-  typedef typename PatternType::index_type             index_type;
+  typedef typename GlobMemType::local_pointer          local_pointer;
+  typedef typename GlobMemType::local_pointer             local_type;
+
+  typedef          PatternType                          pattern_type;
+  typedef typename PatternType::index_type                index_type;
 
 private:
   typedef GlobIter<

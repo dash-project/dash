@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  typedef dash::ShiftTilePattern<2>      pattern_t;
+  typedef dash::TilePattern<2>      pattern_t;
   typedef typename pattern_t::index_type   index_t;
   typedef float                            value_t;
 
@@ -50,32 +50,57 @@ int main(int argc, char *argv[])
   dash::Matrix<value_t, 2, dash::default_index_t, pattern_t>
     matrix(pattern);
 
-  // Initialize matrix values:
+  if (myid == 0) {
+    int gi = 0;
+    std::generate(matrix.begin(),
+                  matrix.end(),
+                  [&]() {
+                    auto u = matrix.pattern().unit_at(
+                               matrix.pattern().coords(gi));
+                    return u + 0.01 * gi++;
+                  });
+  }
+
+#if 0
   int li = 0;
-  std::generate(matrix.local.begin(),
-                matrix.local.end(),
-                [&]() { return dash::myid() + 0.01 * li++; });
+  for (auto lit = matrix.local.begin();
+       lit != matrix.local.end();
+       ++li, ++lit) {
+    print("matrix.local[" << li << "] = " << static_cast<double>(*lit));
+  }
+#endif
+
   dash::barrier();
 
   if (myid == 0) {
     print("matrix:" <<
           nview_str(matrix | sub(0,extent_y)) << '\n');
-    print("matrix | sub<0>(1,-1) | sub<1>(1,-1):" <<
+    print("matrix.local.size(): " << matrix.local.size());
+    print("matrix | sub<0>(1,-1) | sub<1>(1,-1)" <<
           nview_str(matrix | sub<0>(1, extent_y-1)
                            | sub<1>(1, extent_x-1)) << '\n');
 
-    auto m_blocks = matrix | sub<0>(1, extent_y-1)
-                           | sub<1>(1, extent_x-1)
-                           | blocks();
-    for (const auto & m_block : m_blocks) {
-      print("matrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks():" <<
-            nview_str(m_block) << '\n');
+    print("matrix | local | blocks");
+    auto m_l_blocks = matrix | local()
+                             | blocks();
+    for (const auto & blk : m_l_blocks) {
+      print("---" << nview_str(blk) << '\n');
     }
 
-    print("matrix | sub<0>(1,-1) | sub<1>(1,-1) | local:" <<
-          nview_str(matrix | sub<0>(1, extent_y-1)
-                           | sub<1>(1, extent_x-1)
-                           | local()) << '\n');
+    print("matrix | blocks | local");
+    auto m_blocks_l = matrix | blocks()
+                             | local();
+    for (const auto & blk : m_l_blocks) {
+      print("---" << nview_str(blk) << '\n');
+    }
+
+    print("matrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
+    auto m_s_blocks = matrix | sub<0>(1, extent_y-1)
+                             | sub<1>(1, extent_x-1)
+                             | blocks();
+    for (const auto & blk : m_s_blocks) {
+      print("---" << nview_str(blk) << '\n');
+    }
   }
   dash::barrier();
 

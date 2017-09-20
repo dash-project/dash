@@ -9,6 +9,7 @@
 #include <dash/HView.h>
 
 #include <dash/iterator/GlobIter.h>
+#include <dash/iterator/LocalViewIter.h>
 #include <dash/iterator/GlobViewIter.h>
 
 #include <dash/Matrix.h>
@@ -90,17 +91,25 @@ public:
   typedef typename PatternT::size_type                              size_type;
   typedef typename PatternT::index_type                       difference_type;
 
+#if 1
+  typedef LocalViewIter<      value_type, PatternT>                  iterator;
+  typedef LocalViewIter<const value_type, PatternT>            const_iterator;
+
+  typedef LocalViewIter<      value_type, PatternT>                   pointer;
+  typedef LocalViewIter<const value_type, PatternT>             const_pointer;
+#else
   typedef GlobViewIter<      value_type, PatternT>                   iterator;
   typedef GlobViewIter<const value_type, PatternT>             const_iterator;
+
+  typedef GlobViewIter<      value_type, PatternT>                    pointer;
+  typedef GlobViewIter<const value_type, PatternT>              const_pointer;
+#endif
 
   typedef std::reverse_iterator<iterator>                    reverse_iterator;
   typedef std::reverse_iterator<const_iterator>        const_reverse_iterator;
 
   typedef GlobRef<      value_type>                                 reference;
   typedef GlobRef<const value_type>                           const_reference;
-
-  typedef GlobViewIter<      value_type, PatternT>                    pointer;
-  typedef GlobViewIter<const value_type, PatternT>              const_pointer;
 
   typedef       T *                                             local_pointer;
   typedef const T *                                       const_local_pointer;

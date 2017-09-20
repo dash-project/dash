@@ -210,6 +210,26 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   return _refview._mat->_pattern;
 }
 
+#if 0
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline typename LocalMatrixRef<T, NumDim, NumDim, PatternT>::iterator
+LocalMatrixRef<T, NumDim, NumDim, PatternT>
+::begin() noexcept
+{
+  return iterator(
+    _refview._mat->_glob_mem,
+    _refview._mat->_pattern,
+    _refview._viewspec,
+    // iterator position in view index space
+    0,
+    // view index start offset
+    _refview._mat->_pattern.local_at(
+                          _refview._coord,
+                          _refview._l_viewspec)
+  );
+}
+#endif
+
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::iterator
 LocalMatrixRef<T, NumDim, CUR, PatternT>

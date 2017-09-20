@@ -20,9 +20,7 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
-#ifndef TYPE
-#define TYPE int
-#endif
+typedef int value_t;
 
 typedef dash::TilePattern<
   1,
@@ -31,12 +29,12 @@ typedef dash::TilePattern<
 > TilePattern_t;
 
 typedef dash::Array<
-  TYPE,
+  value_t,
   int,
   TilePattern_t
 > ArrayTiledDist_t;
 
-typedef dash::Array<TYPE>
+typedef dash::Array<value_t>
 ArrayBlockedDist_t;
 
 template<typename Iter>
