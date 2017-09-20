@@ -22,6 +22,8 @@
   } while(0)
 
 
+using namespace dash::internal::logging;
+
 template <class ValueRange>
 static std::string range_str(
   const ValueRange & vrange,
@@ -31,15 +33,16 @@ static std::string range_str(
   auto idx = dash::index(vrange);
   int        i   = 0;
   for (const auto & v : vrange) {
-    ss << std::setw(2) << *(dash::begin(idx) + i) << "|"
+    const value_t val = v;
+    ss << std::setw(3) << *(dash::begin(idx) + i) << "|"
        << std::fixed << std::setprecision(prec)
-       << static_cast<const value_t>(v) << " ";
+       << TermColorMod(unit_term_colors[(int)val])
+       << val
+       << TermColorMod(TCOL_DEFAULT);
     ++i;
   }
   return ss.str();
 }
-
-using namespace dash::internal::logging;
 
 template <class NViewType>
 std::string nview_str(

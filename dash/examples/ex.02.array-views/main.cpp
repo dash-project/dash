@@ -71,8 +71,13 @@ int main(int argc, char *argv[])
   auto copy_dest_begin_idx = a.size() / 4;
   auto copy_dest_end_idx   = copy_dest_begin_idx + copy_num_elem;
 
+  int buf_i = 0;
   std::vector<float> buf(copy_num_elem);
-  std::iota(buf.begin(), buf.end(), 0.9999);
+  std::transform(buf.begin(), buf.end(),
+                 buf.begin(),
+                 [&](const double & a) {
+                   return a + 6;
+                 });
 
   a.barrier();
 
