@@ -27,7 +27,7 @@ using namespace dash::internal::logging;
 template <class ValueRange>
 static std::string range_str(
   const ValueRange & vrange,
-  int                prec = 4) {
+  int                prec = 2) {
   typedef typename ValueRange::value_type value_t;
   std::ostringstream ss;
   auto idx = dash::index(vrange);
