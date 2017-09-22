@@ -18,9 +18,9 @@ int main(int argc, char *argv[])
   auto nunits = dash::size();
 
   const size_t block_size_x  = 2;
-  const size_t block_size_y  = 3;
+  const size_t block_size_y  = 2;
   const size_t block_size    = block_size_x * block_size_y;
-  size_t num_local_blocks_x  = 2;
+  size_t num_local_blocks_x  = 1;
   size_t num_local_blocks_y  = 2;
   size_t num_blocks_x        = nunits * num_local_blocks_x;
   size_t num_blocks_y        = nunits * num_local_blocks_y;
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
   size_t num_elem_per_unit   = num_elem_total / nunits;
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
-  typedef dash::SeqTilePattern<2>         pattern_t;
+  typedef dash::ShiftTilePattern<2>         pattern_t;
   typedef typename pattern_t::index_type    index_t;
   typedef float                             value_t;
 
@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
     for (auto bx = 0; bx < static_cast<int>(lblock_extents[0]); ++bx) {
       for (auto by = 0; by < static_cast<int>(lblock_extents[1]); ++by) {
         // Phase coordinates (bx,by) to global coordinates (gx,gy):
-        value_t value  = static_cast<value_t>(dash::myid().id + 1) +
-                           0.00001 * (
-                             ((lb + 1) * 10000) + ((bx + 1) * 100) + by + 1);
+        value_t value  = static_cast<value_t>(dash::myid().id)
+                         + 0.01 * lb
+                         + 0.0001 * (bx * lblock_extents[0] + by);
         lblock[bx][by] = value;
       }
     }
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
   if (myid == 0) {
     auto matrix_view = dash::sub(0, matrix.extents()[0], matrix);
-    print("matrix" << nview_str(matrix_view));
+    print("matrix" << nview_str(matrix_view, 4));
 
     DASH_LOG_DEBUG("MatrixViewsExample", "matrix",
                    "offsets:", matrix_view.offsets(),
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     auto matrix_blocks = dash::blocks(matrix_view);
     for (const auto & m_block : matrix_blocks) {
       print("matrix | block(n)" <<
-            nview_str(m_block));
+            nview_str(m_block, 4));
       // halo view:
       auto b_halo = dash::sub<0>(
                       m_block.offsets()[0] > 0
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
                           : m_block.offsets()[1] + m_block.extents()[1],
                         matrix_view));
       print("matrix | block(n) | expand({ -1,1 } , { -1,1 })" <<
-            nview_str(b_halo));
+            nview_str(b_halo, 4));
       DASH_LOG_DEBUG("MatrixViewsExample", "size:", b_halo.size());
 #if 0
       auto b_halo_isect = dash::difference(
