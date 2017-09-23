@@ -652,7 +652,7 @@ class ViewSubMod
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr std::array<size_type, NDim> extents() const {
+  constexpr decltype(_index_set.extents()) extents() const {
     return _index_set.extents();
   }
 
@@ -672,7 +672,7 @@ class ViewSubMod
     return _index_set.template offset<ExtDim>();
   }
 
-  constexpr std::array<index_type, NDim> offsets() const {
+  constexpr decltype(_index_set.offsets()) offsets() const {
     return _index_set.offsets();
   }
 

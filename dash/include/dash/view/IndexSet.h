@@ -1646,13 +1646,15 @@ class IndexSetBlock
            );
   }
 
-  constexpr index_type operator[](index_type block_phase) const noexcept {
+  constexpr index_type operator[](index_type block_phase)
+  const noexcept {
     return rel(block_phase);
   }
 
   template <dim_t NDim>
   constexpr index_type operator[](
-    const std::array<index_type, NDim> & block_phase_coords) const noexcept {
+    const std::array<index_type, NDim> & block_phase_coords)
+  const noexcept {
     return -1;
   }
 
