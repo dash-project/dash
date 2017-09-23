@@ -151,12 +151,8 @@ int main(int argc, char *argv[])
       // Block is assigned to selecte remote unit, create local copy:
       auto remote_block_matrix = matrix.block(gb);
 
-      auto remote_block_view   = // dash::sub(1,2,
-                                           dash::blocks(matrix)[gb];
-      auto remote_block_range  = dash::sub(1,2,
-                                  dash::make_range(
-                                   remote_block_view.begin(),
-                                   remote_block_view.end()));
+      auto remote_block_view   = dash::sub(1,5,
+                                           dash::blocks(matrix)[gb]);
 
       DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
                      dash::typestr(remote_block_view));
@@ -235,6 +231,11 @@ int main(int argc, char *argv[])
       copy_dest_begin = copy_dest_last;
 
 #if 0
+      auto remote_block_range  = dash::sub(1,5,
+                                  dash::make_range(
+                                   remote_block_view.begin(),
+                                   remote_block_view.end()));
+
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block range:", "-- type:",
                      dash::typestr(remote_block_range));

@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
           nview_str(matrix | sub<0>(1, extent_y-1)
                            | sub<1>(1, extent_x-1)) << '\n');
 
+#if 0
     print("\nmatrix | blocks | local");
     auto m_blocks_l = matrix | blocks()
                              | local();
@@ -89,6 +90,7 @@ int main(int argc, char *argv[])
       print("\n --- local blocks[" << m_blocks_l_idx[lb_idx++] << "]" <<
             nview_str(blk));
     }
+#endif
 
     print("\nmatrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
     auto m_s_blocks = matrix | sub<0>(1, extent_y-1)
@@ -97,8 +99,17 @@ int main(int argc, char *argv[])
     auto m_s_blocks_idx = m_s_blocks | index();
     int b_idx = 0;
     for (const auto & blk : m_s_blocks) {
-      print("\n --- blocks[" << m_s_blocks_idx[b_idx++] << "]" <<
+      print("\n --- blocks[" << m_s_blocks_idx[b_idx] << "]" <<
             nview_str(blk));
+
+      auto m_isect = matrix | sub<0>(1, extent_y-1)
+                            | sub<1>(1, extent_x-1)
+                            | intersect(blk);
+
+      print("\n --- blocks[" << m_s_blocks_idx[b_idx] << "] | isect" <<
+            nview_str(m_isect));
+
+      ++b_idx;
     }
   }
   dash::barrier();
