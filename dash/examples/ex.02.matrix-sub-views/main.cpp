@@ -50,25 +50,13 @@ int main(int argc, char *argv[])
   dash::Matrix<value_t, 2, dash::default_index_t, pattern_t>
     matrix(pattern);
 
-  if (myid == 0) {
-    int gi = 0;
-    std::generate(matrix.begin(),
-                  matrix.end(),
-                  [&]() {
-                    auto u = matrix.pattern().unit_at(
-                               matrix.pattern().coords(gi));
-                    return u + 0.01 * gi++;
-                  });
-  }
-
-#if 0
   int li = 0;
-  for (auto lit = matrix.local.begin();
-       lit != matrix.local.end();
-       ++li, ++lit) {
-    print("matrix.local[" << li << "] = " << static_cast<double>(*lit));
-  }
-#endif
+  std::generate(matrix.lbegin(),
+                matrix.lend(),
+                [&]() {
+                  auto   u = dash::myid();
+                  return u + 0.01 * li++;
+                });
 
   dash::barrier();
 
@@ -80,18 +68,6 @@ int main(int argc, char *argv[])
           nview_str(matrix | sub<0>(1, extent_y-1)
                            | sub<1>(1, extent_x-1)) << '\n');
 
-#if 0
-    print("\nmatrix | blocks | local");
-    auto m_blocks_l = matrix | blocks()
-                             | local();
-    auto m_blocks_l_idx = m_blocks_l | index();
-    int lb_idx = 0;
-    for (const auto & blk : m_blocks_l) {
-      print("\n --- local blocks[" << m_blocks_l_idx[lb_idx++] << "]" <<
-            nview_str(blk));
-    }
-#endif
-
     print("\nmatrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
     auto m_s_blocks = matrix | sub<0>(1, extent_y-1)
                              | sub<1>(1, extent_x-1)
@@ -99,14 +75,12 @@ int main(int argc, char *argv[])
     auto m_s_blocks_idx = m_s_blocks | index();
     int b_idx = 0;
     for (const auto & blk : m_s_blocks) {
-      print("\n --- blocks[" << m_s_blocks_idx[b_idx] << "]" <<
-            nview_str(blk));
-
       auto m_isect = matrix | sub<0>(1, extent_y-1)
                             | sub<1>(1, extent_x-1)
                             | intersect(blk);
 
-      print("\n --- blocks[" << m_s_blocks_idx[b_idx] << "] | isect" <<
+      print("\n --- matrix | sub {1,-1} {1-1} | intersect(" <<
+            "block(" << m_s_blocks_idx[b_idx] << "))" <<
             nview_str(m_isect));
 
       ++b_idx;

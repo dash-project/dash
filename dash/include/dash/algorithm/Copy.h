@@ -1022,8 +1022,8 @@ auto copy(
     DASH_LOG_TRACE("dash::copy:range", "no local subrange");
     // All elements in input range are remote
     out_last = dash::internal::copy_block(in_first,
-                                         in_last,
-                                         dest_first);
+                                          in_last,
+                                          dest_first);
   }
   DASH_LOG_TRACE("dash::copy:range >", "finished,",
                  "out_last:", out_last);
