@@ -121,12 +121,10 @@ int main(int argc, char *argv[])
 #endif
 
 #if 1
-      auto b_halo_exp = dash::expand<1>(
-                          static_cast<short>(-1),
-                          static_cast<short>(1),
-                      //  dash::expand<1>( -1, 1,
+      auto b_halo_exp = dash::expand<0>(-1, 1,
+                          dash::expand<1>(-1, 1,
                             m_block
-                      //  )
+                          )
                         );
       print("matrix | block(n) | expand<0>({ -1,1 })" <<
             nview_str(b_halo_exp, 4));

@@ -153,7 +153,7 @@ expand(
   SizeT           end,
   DomainT      && domain) {
   return detail::expand_dim<
-           static_cast<dim_t>(NDim),
+           static_cast<dim_t>(NDim - 1),
            static_cast<dim_t>(SubDim)
          >(begin, end,
            dash::origin(
