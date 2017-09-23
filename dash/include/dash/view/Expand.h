@@ -44,11 +44,9 @@ namespace detail {
     class    DomainT,
     class    OffsetFirstT,
     class    OffsetFinalT,
-    typename DomainValueT
-              = typename std::decay<DomainT>::type,
     typename OffsetsT,
     typename ExtentsT,
-    typename std::enable_if< CurDim == 0, char >::type = 0
+    typename std::enable_if< (CurDim < 0), char >::type = 0
   >
   constexpr auto
   expand_dim(
@@ -57,23 +55,7 @@ namespace detail {
     DomainT      && domain,
     OffsetsT        cur_offsets,
     ExtentsT        cur_extents) {
-    return ( CurDim == SubDim
-             // span in current dimension is to be expanded
-             ? dash::sub<CurDim>(
-                 ( cur_offsets[CurDim] + begin > 0
-                   ? cur_offsets[CurDim] + begin
-                   : 0 ),
-                 ( cur_offsets[CurDim] + cur_extents[CurDim] + end <
-                     domain.extents()[CurDim]
-                   ? cur_offsets[CurDim] + cur_extents[CurDim] + end
-                   : domain.extents()[CurDim] ),
-                 std::forward<DomainT>(domain))
-             // span in current dimension is unchanged
-             : dash::sub<CurDim>(
-                 (cur_offsets[CurDim]),
-                 (cur_offsets[CurDim] + cur_extents[CurDim]),
-                 std::forward<DomainT>(domain))
-           );
+    return std::forward<DomainT>(domain);
   }
 
   template <
@@ -86,7 +68,7 @@ namespace detail {
               = typename std::decay<DomainT>::type,
     typename OffsetsT,
     typename ExtentsT,
-    typename std::enable_if< (CurDim > 0), char >::type = 0
+    typename std::enable_if< (CurDim >= 0), char >::type = 0
   >
   constexpr auto
   expand_dim(
@@ -160,6 +142,22 @@ template <
              int
            >::type = 0 >
 static inline auto expand(OffsetT0 a, OffsetT1 b) {
+  return dash::make_pipeable(
+           [=](auto && x) {
+             return expand<SubDim>(a,b, std::forward<decltype(x)>(x));
+           });
+}
+
+template <
+  dim_t    SubDim  = 0,
+  class    OffsetT0,
+  class    OffsetT1,
+  typename std::enable_if<
+             ( std::is_integral<OffsetT0>::value &&
+               std::is_integral<OffsetT1>::value ),
+             int
+           >::type = 0 >
+static inline auto shift(OffsetT0 a, OffsetT1 b) {
   return dash::make_pipeable(
            [=](auto && x) {
              return expand<SubDim>(a,b, std::forward<decltype(x)>(x));

@@ -75,59 +75,39 @@ int main(int argc, char *argv[])
                    "offsets:", matrix_view.offsets(),
                    "extents:", matrix_view.extents());
 
-    auto matrix_blocks = dash::blocks(matrix_view);
+    auto matrix_blocks = dash::blocks(matrix);
     auto matrix_b_idx  = matrix_blocks | dash::index();
     int  b_idx         = 0;
     for (const auto & m_block : matrix_blocks) {
       auto b_offsets = m_block.offsets();
       auto b_extents = m_block.extents();
-      print("matrix | block[" << matrix_b_idx[b_idx] << "]:\n    " <<
+      // matrix block view:
+      print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "]:" <<
+            "\n       " << dash::typestr(m_block) <<
+            "\n       " <<
             "offsets: " << b_offsets[0] << "," << b_offsets[1] << " " <<
             "extents: " << b_extents[0] << "," << b_extents[1] <<
             nview_str(m_block, 4));
-      // halo view:
-      auto b_halo = dash::sub<0>(
-                      m_block.offsets()[0] > 0
-                        ? m_block.offsets()[0] -1
-                        : m_block.offsets()[0],
-                      m_block.offsets()[0] + m_block.extents()[0]
-                          < matrix_view.extents()[0]
-                        ? m_block.offsets()[0] + m_block.extents()[0] + 1
-                        : m_block.offsets()[0] + m_block.extents()[0],
-                      dash::sub<1>(
-                        m_block.offsets()[1] > 0
-                          ? m_block.offsets()[1] -1
-                          : m_block.offsets()[1],
-                        m_block.offsets()[1] + m_block.extents()[1]
-                            < matrix_view.extents()[1]
-                          ? m_block.offsets()[1] + m_block.extents()[1] + 1
-                          : m_block.offsets()[1] + m_block.extents()[1],
-                        matrix_view));
+      // matrix block halo view:
+      auto b_halo = m_block | dash::expand<0>(-1, 1)
+                            | dash::expand<1>(-1, 1);
+
       auto bh_offsets = b_halo.offsets();
       auto bh_extents = b_halo.extents();
-      print("matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
-            "expand({ -1,1 }, { -1,1 })\n    " <<
+      print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+            "expand({ -1,1 }, { -1,1 }):" <<
+            "\n       " << dash::typestr(b_halo) <<
+            "\n       " <<
             "offsets: " << bh_offsets[0] << "," << bh_offsets[1] << " " <<
             "extents: " << bh_extents[0] << "," << bh_extents[1] <<
             nview_str(b_halo, 4));
 #if 0
-      auto b_halo_isect = dash::difference(
-                            m_block,
-                            dash::sub<0>(
-                              1, m_block.extents()[0] - 1,
-                              dash::sub<1>(
-                                1, m_block.extents()[1] - 1,
-                                m_block)));
-#endif
-
-#if 1
-      auto b_halo_exp = dash::expand<0>(-1, 1,
-                          dash::expand<1>(-1, 1,
-                            m_block
-                          )
-                        );
-      print("matrix | block(n) | expand<0>({ -1,1 })" <<
-            nview_str(b_halo_exp, 4));
+      auto bh_blocks = b_halo | dash::blocks();
+      for (const auto & bh_block : bh_blocks) {
+        print("matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+              "expand({ -1,1 }, { -1,1 }) | block(n)" <<
+              nview_str(bh_block, 4));
+      }
 #endif
       ++b_idx;
     }

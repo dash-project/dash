@@ -80,25 +80,25 @@ int main(int argc, char *argv[])
           nview_str(matrix | sub<0>(1, extent_y-1)
                            | sub<1>(1, extent_x-1)) << '\n');
 
-    print("matrix | blocks | local");
+    print("\nmatrix | blocks | local");
     auto m_blocks_l = matrix | blocks()
                              | local();
     auto m_blocks_l_idx = m_blocks_l | index();
     int lb_idx = 0;
     for (const auto & blk : m_blocks_l) {
-      print("--- local blocks[" << m_blocks_l_idx[lb_idx++] << "]" <<
-            nview_str(blk) << '\n');
+      print("\n --- local blocks[" << m_blocks_l_idx[lb_idx++] << "]" <<
+            nview_str(blk));
     }
 
-    print("matrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
+    print("\nmatrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
     auto m_s_blocks = matrix | sub<0>(1, extent_y-1)
                              | sub<1>(1, extent_x-1)
                              | blocks();
     auto m_s_blocks_idx = m_s_blocks | index();
     int b_idx = 0;
     for (const auto & blk : m_s_blocks) {
-      print("--- blocks[" << m_s_blocks_idx[b_idx++] << "]" <<
-            nview_str(blk) << '\n');
+      print("\n --- blocks[" << m_s_blocks_idx[b_idx++] << "]" <<
+            nview_str(blk));
     }
   }
   dash::barrier();
