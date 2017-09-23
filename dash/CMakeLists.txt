@@ -354,7 +354,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   	# install custom config
   	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 	endif()
 
   # Examples
