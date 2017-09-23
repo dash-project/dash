@@ -8,6 +8,7 @@
 #ifndef DART_SEGMENT_H_
 #define DART_SEGMENT_H_
 #include <mpi.h>
+#include <stdbool.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/base/macro.h>
@@ -18,13 +19,15 @@ typedef int16_t dart_segid_t;
 
 typedef struct
 {
-  dart_segid_t segid; /* seg_id determines a global pointer uniquely */
   size_t       size;
-  MPI_Aint   * disp;   /* address set of memory location of all units in certain team. */
-  char      ** baseptr;
-  char       * selfbaseptr;
-  MPI_Win      win;
-  uint16_t     flags;
+  MPI_Aint   * disp;        /* offsets at all units in the team */
+  char      ** baseptr;     /* baseptr of all units in the sharedmem group */
+  char       * selfbaseptr; /* baseptr of the current unit */
+  MPI_Win      shmwin;      /* sharedmem window */
+  MPI_Win      win;         /* window used to access this segment */
+  uint16_t     flags;       /* 16 bit flags */
+  dart_segid_t segid;       /* ID of the segment, globally unique in a team */
+  bool         is_dynamic;  /* whether this is a shared memory segment */
 } dart_segment_info_t;
 
 // forward declaration to make the compiler happy
@@ -50,6 +53,7 @@ typedef struct {
 } dart_segmentdata_t;
 
 typedef enum {
+  DART_SEGMENT_LOCAL_ALLOC,
   DART_SEGMENT_ALLOC,
   DART_SEGMENT_REGISTER
 } dart_segment_type;
@@ -80,6 +84,23 @@ dart_segment_register(
   dart_segmentdata_t  *segdata,
   dart_segment_info_t *seg) DART_INTERNAL;
 
+/**
+ * Returns the segment info for the segment with ID \c segid.
+ */
+dart_segment_info_t * dart_segment_get_info(
+  dart_segmentdata_t *segdata,
+  dart_segid_t        segid) DART_INTERNAL;
+
+/**
+ * Returns the segment's displacement at unit \c team_unit_id.
+ */
+static inline
+MPI_Aint
+dart_segment_disp(dart_segment_info_t *seginfo, dart_team_unit_t team_unit_id)
+{
+  return (seginfo->disp != NULL) ? seginfo->disp[team_unit_id.id] : 0;
+}
+
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
@@ -92,7 +113,7 @@ dart_segment_register(
  * \retval non-negative integer Search successfully.
  * \retval negative integer Failure.
  */
-dart_ret_t dart_segment_get_win(
+dart_ret_t dart_segment_get_shmwin(
   dart_segmentdata_t * segdata,
   int16_t              seg_id,
   MPI_Win            * win) DART_INTERNAL;

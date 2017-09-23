@@ -214,7 +214,7 @@ public:
       if (_is_local) {
         _value = *_lptr;
       } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
+        dash::dart_storage<T> ds(1);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             static_cast<void *>(&_value), _gptr, ds.nelem, ds.dtype),
@@ -297,7 +297,7 @@ public:
     if (_is_local) {
       *tptr = *_lptr;
     } else {
-      dart_storage_t ds = dash::dart_storage<T>(1);
+      dash::dart_storage<T> ds(1);
       dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype);
     }
   }
@@ -350,7 +350,7 @@ public:
       if (_is_local) {
         *_lptr = _value;
       } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
+        dash::dart_storage<T> ds(1);
         DASH_ASSERT_RETURNS(
           dart_put(
             _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),
@@ -379,7 +379,7 @@ public:
       if (_is_local) {
         *_lptr = _value;
       } else {
-        dart_storage_t ds = dash::dart_storage<T>(1);
+        dash::dart_storage<T> ds(1);
         DASH_ASSERT_RETURNS(
           dart_put(
             _gptr, static_cast<const void *>(&_value), ds.nelem, ds.dtype),

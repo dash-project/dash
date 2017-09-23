@@ -1091,7 +1091,7 @@ std::ostream & operator<<(
           ElementType, Pattern, GlobStaticMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType, GlobStaticMem> ptr(it);
+  Pointer ptr(it.globmem(), it.dart_gptr());
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";
