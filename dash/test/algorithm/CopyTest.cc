@@ -172,9 +172,6 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       // Block is assigned to selecte remote unit, create local copy:
       auto remote_block_matrix = matrix.block(gb);
       auto remote_block_view   = dash::blocks(matrix)[gb];
-      auto remote_block_range  = dash::make_range(
-                                   remote_block_view.begin(),
-                                   remote_block_view.end());
 
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block view:",
@@ -209,6 +206,11 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       EXPECT_EQ_U(remote_block_matrix.viewspec().extents(),
                   dash::index(remote_block_view).extents());
 
+#if 0
+      auto remote_block_range  = dash::make_range(
+                                   remote_block_view.begin(),
+                                   remote_block_view.end());
+
       DASH_LOG_DEBUG("CopyTest.Blocking2DimGlobalToLocalBlock",
                      "source block range:",
                      dash::typestr(remote_block_range));
@@ -241,13 +243,13 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                   dash::index(remote_block_range).offsets());
       EXPECT_EQ_U(remote_block_matrix.viewspec().extents(),
                   dash::index(remote_block_range).extents());
-
-//     copy_dest_last    = dash::copy(remote_block_view.begin(),
-//                                    remote_block_view.end(),
-//                                    copy_dest_begin);
-//     // Validate number of copied elements:
-//     auto num_copied = copy_dest_last - copy_dest_begin;
-//     EXPECT_EQ_U(num_copied, block_size);
+#endif
+      copy_dest_last    = dash::copy(remote_block_view.begin(),
+                                     remote_block_view.end(),
+                                     copy_dest_begin);
+      // Validate number of copied elements:
+      auto num_copied = copy_dest_last - copy_dest_begin;
+      EXPECT_EQ_U(num_copied, block_size);
       // Advance local copy destination pointer:
       copy_dest_begin = copy_dest_last;
       ++rb;

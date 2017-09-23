@@ -12,6 +12,13 @@ using uint = unsigned int;
 
 int main(int argc, char *argv[])
 {
+  using dash::local;
+  using dash::expand;
+  using dash::shift;
+  using dash::sub;
+  using dash::blocks;
+  using dash::index;
+
   dash::init(&argc, &argv);
 
   auto myid   = dash::myid();
@@ -81,6 +88,7 @@ int main(int argc, char *argv[])
     for (const auto & m_block : matrix_blocks) {
       auto b_offsets = m_block.offsets();
       auto b_extents = m_block.extents();
+
       // matrix block view:
       print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "]:" <<
             "\n       " << dash::typestr(m_block) <<
@@ -88,6 +96,7 @@ int main(int argc, char *argv[])
             "offsets: " << b_offsets[0] << "," << b_offsets[1] << " " <<
             "extents: " << b_extents[0] << "," << b_extents[1] <<
             nview_str(m_block, 4));
+
       // matrix block halo view:
       auto b_halo = m_block | dash::expand<0>(-1, 1)
                             | dash::expand<1>(-1, 1);
@@ -101,6 +110,19 @@ int main(int argc, char *argv[])
             "offsets: " << bh_offsets[0] << "," << bh_offsets[1] << " " <<
             "extents: " << bh_extents[0] << "," << bh_extents[1] <<
             nview_str(b_halo, 4));
+
+      // matrix shifted block halo:
+      auto b_halo_s    = b_halo | shift<1>(1);
+
+      auto bhs_offsets = b_halo_s.offsets();
+      auto bhs_extents = b_halo_s.extents();
+      print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+            "expand({ -1,1 }, { -1,1 }) | shift(1):" <<
+            "\n       " << dash::typestr(b_halo_s) <<
+            "\n       " <<
+            "offsets: " << bhs_offsets[0] << "," << bhs_offsets[1] << " " <<
+            "extents: " << bhs_extents[0] << "," << bhs_extents[1] <<
+            nview_str(b_halo_s, 4));
 #if 0
       auto bh_blocks = b_halo | dash::blocks();
       for (const auto & bh_block : bh_blocks) {
