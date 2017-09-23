@@ -76,8 +76,14 @@ int main(int argc, char *argv[])
                    "extents:", matrix_view.extents());
 
     auto matrix_blocks = dash::blocks(matrix_view);
+    auto matrix_b_idx  = matrix_blocks | dash::index();
+    int  b_idx         = 0;
     for (const auto & m_block : matrix_blocks) {
-      print("matrix | block(n)" <<
+      auto b_offsets = m_block.offsets();
+      auto b_extents = m_block.extents();
+      print("matrix | block[" << matrix_b_idx[b_idx] << "]:\n    " <<
+            "offsets: " << b_offsets[0] << "," << b_offsets[1] << " " <<
+            "extents: " << b_extents[0] << "," << b_extents[1] <<
             nview_str(m_block, 4));
       // halo view:
       auto b_halo = dash::sub<0>(
@@ -97,9 +103,13 @@ int main(int argc, char *argv[])
                           ? m_block.offsets()[1] + m_block.extents()[1] + 1
                           : m_block.offsets()[1] + m_block.extents()[1],
                         matrix_view));
-      print("matrix | block(n) | expand({ -1,1 } , { -1,1 })" <<
+      auto bh_offsets = b_halo.offsets();
+      auto bh_extents = b_halo.extents();
+      print("matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+            "expand({ -1,1 }, { -1,1 })\n    " <<
+            "offsets: " << bh_offsets[0] << "," << bh_offsets[1] << " " <<
+            "extents: " << bh_extents[0] << "," << bh_extents[1] <<
             nview_str(b_halo, 4));
-      DASH_LOG_DEBUG("MatrixViewsExample", "size:", b_halo.size());
 #if 0
       auto b_halo_isect = dash::difference(
                             m_block,
@@ -108,15 +118,20 @@ int main(int argc, char *argv[])
                               dash::sub<1>(
                                 1, m_block.extents()[1] - 1,
                                 m_block)));
-
-      auto b_halo_exp = dash::expand<0>(
-                          -1, 1,
-                          dash::expand<1>(
-                            -1, 1,
-                            m_block));
-      DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
-                     nview_str(b_halo_exp));
 #endif
+
+#if 1
+      auto b_halo_exp = dash::expand<1>(
+                          static_cast<short>(-1),
+                          static_cast<short>(1),
+                      //  dash::expand<1>( -1, 1,
+                            m_block
+                      //  )
+                        );
+      print("matrix | block(n) | expand<0>({ -1,1 })" <<
+            nview_str(b_halo_exp, 4));
+#endif
+      ++b_idx;
     }
   }
   dash::barrier();

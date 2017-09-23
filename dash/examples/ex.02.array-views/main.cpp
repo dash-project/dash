@@ -23,7 +23,7 @@ auto initialize_array(ArrayT & array)
     array.local[li] =   // unit
                         (1.0000 * dash::myid().id) +
                       // local offset
-                      + (0.0100 * (li+1));
+                      + (0.0100 * li);
                       // global offset
                    // + (0.0001 * gi);
   }
