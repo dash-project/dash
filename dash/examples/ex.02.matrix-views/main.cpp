@@ -275,6 +275,7 @@ int main(int argc, char *argv[])
       DASH_LOG_DEBUG("MatrixViewsExample", "^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     }
   }
+  print("local copy of all remote values:\n" << local_copy);
 
   dash::finalize();
   return EXIT_SUCCESS;

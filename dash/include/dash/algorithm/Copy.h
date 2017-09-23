@@ -860,16 +860,9 @@ auto copy(
   DASH_LOG_TRACE("dash::copy:range", "source global in first:",  in_first);
   DASH_LOG_TRACE("dash::copy:range", "source global in last:",   in_last);
 
-  auto l_range_in      = dash::local(
-                           in_range);
-
-  DASH_LOG_TRACE("dash::copy:range", "source global to local:",  l_range_in);
-
   auto li_range_in     = dash::index(
                            dash::local(
                              in_range));
-  DASH_LOG_TRACE("dash::copy:range", "source local range:",
-                 l_range_in);
   DASH_LOG_TRACE("dash::copy:range", "source local index range:",
                  li_range_in);
   DASH_LOG_TRACE("dash::copy:range", "source g(local) index range:",

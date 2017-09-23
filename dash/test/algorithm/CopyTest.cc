@@ -205,6 +205,14 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                   dash::index(remote_block_view).offsets());
       EXPECT_EQ_U(remote_block_matrix.viewspec().extents(),
                   dash::index(remote_block_view).extents());
+#if 0
+      copy_dest_last    = dash::copy(remote_block_view.begin(),
+                                     remote_block_view.end(),
+                                     copy_dest_begin);
+#else
+      copy_dest_last    = dash::copy(remote_block_view,
+                                     copy_dest_begin);
+#endif
 
 #if 0
       auto remote_block_range  = dash::make_range(
@@ -243,10 +251,10 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                   dash::index(remote_block_range).offsets());
       EXPECT_EQ_U(remote_block_matrix.viewspec().extents(),
                   dash::index(remote_block_range).extents());
-#endif
-      copy_dest_last    = dash::copy(remote_block_view.begin(),
-                                     remote_block_view.end(),
+
+      copy_dest_last    = dash::copy(remote_block_range,
                                      copy_dest_begin);
+#endif
       // Validate number of copied elements:
       auto num_copied = copy_dest_last - copy_dest_begin;
       EXPECT_EQ_U(num_copied, block_size);
