@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
   }
 
   typedef dash::ShiftTilePattern<2>      pattern_t;
-  typedef typename pattern_t::index_type index_t;
-  typedef float                          value_t;
+  typedef typename pattern_t::index_type   index_t;
+  typedef float                            value_t;
 
   pattern_t pattern(
     dash::SizeSpec<2>(
@@ -56,22 +56,26 @@ int main(int argc, char *argv[])
     matrix(pattern);
 
   // Initialize matrix values:
-  for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
-    auto lblock         = matrix.local.block(lb);
-    auto lblock_view    = lblock.begin().viewspec();
-    auto lblock_extents = lblock_view.extents();
-    auto lblock_offsets = lblock_view.offsets();
-    dash__unused(lblock_offsets);
-    for (auto bx = 0; bx < static_cast<int>(lblock_extents[0]); ++bx) {
-      for (auto by = 0; by < static_cast<int>(lblock_extents[1]); ++by) {
-        // Phase coordinates (bx,by) to global coordinates (gx,gy):
-        value_t value  = static_cast<value_t>(dash::myid().id + 1) +
-                           0.00001 * (
-                             ((lb + 1) * 10000) + ((bx + 1) * 100) + by + 1);
-        lblock[bx][by] = value;
-      }
-    }
+#if 0
+  if (myid == 0) {
+    int gi = 0;
+    std::generate(matrix.begin(),
+                  matrix.end(),
+                  [&]() {
+                    auto u = matrix.pattern().unit_at(
+                               matrix.pattern().coords(gi));
+                    return u + 0.01 * gi++;
+                  });
   }
+#else
+  int li = 0;
+  std::generate(matrix.lbegin(),
+                matrix.lend(),
+                [&]() {
+                  auto   u = dash::myid();
+                  return u + 0.01 * li++;
+                });
+#endif
   dash::barrier();
 
   if (myid == 0) {
@@ -154,8 +158,7 @@ int main(int argc, char *argv[])
                                    remote_block_view.begin(),
                                    remote_block_view.end()));
 
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "source block view:", "-- type:",
+      DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
                      dash::typestr(remote_block_view));
       DASH_LOG_DEBUG("MatrixViewsExample", "-- type:",
                      "source block view iterator:",
@@ -184,16 +187,54 @@ int main(int argc, char *argv[])
                      "end.gpos:",   remote_block_view.end().gpos());
       DASH_LOG_DEBUG("MatrixViewsExample", "block view:",
                      nview_str(remote_block_view));
-      DASH_LOG_DEBUG("MatrixViewsExample", "block view is strided:",
-                     dash::index(remote_block_view).is_strided());
-   // DASH_LOG_DEBUG("MatrixViewsExample", "local(block view):",
-   //                nview_str(dash::local(remote_block_view)));
 
-   // DASH_ASSERT(remote_block_matrix.viewspec().offsets() ==
-   //             dash::index(remote_block_view).offsets());
-   // DASH_ASSERT(remote_block_matrix.viewspec().extents() ==
-   //             dash::index(remote_block_view).extents());
+      DASH_LOG_DEBUG("MatrixViewsExample", "block view index type:",
+                     dash::typestr(
+                       dash::index(remote_block_view)));
+      DASH_LOG_DEBUG("MatrixViewsExample", "block view index is strided:",
+                     dash::index(remote_block_view)
+                       .is_strided());
 
+      DASH_LOG_DEBUG("MatrixViewsExample", "local block view index type:",
+                     dash::typestr(
+                       dash::index(dash::local(remote_block_view))));
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "local block view index is strided:",
+                     dash::index(dash::local(remote_block_view))
+                       .is_strided());
+
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "local block view index domain type:",
+                     dash::typestr(
+                       dash::domain(
+                         dash::index(dash::local(remote_block_view)))));
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "local block view index domain is strided:",
+                     dash::domain(
+                       dash::index(dash::local(remote_block_view)))
+                         .is_strided());
+
+      DASH_LOG_DEBUG("MatrixViewsExample",
+                     "local block view index set size:",
+                     dash::index(dash::local(remote_block_view))
+                       .size());
+
+      DASH_ASSERT(remote_block_matrix.viewspec().offsets() ==
+                  dash::index(remote_block_view).offsets());
+      DASH_ASSERT(remote_block_matrix.viewspec().extents() ==
+                  dash::index(remote_block_view).extents());
+
+      copy_dest_last  = dash::copy(remote_block_view,
+                                   copy_dest_begin);
+
+      // Test number of copied elements:
+      auto num_copied = copy_dest_last - copy_dest_begin;
+      DASH_ASSERT(num_copied == block_size);
+
+      // Advance local copy destination pointer:
+      copy_dest_begin = copy_dest_last;
+
+#if 0
       DASH_LOG_DEBUG("MatrixViewsExample",
                      "source block range:", "-- type:",
                      dash::typestr(remote_block_range));
@@ -230,17 +271,6 @@ int main(int argc, char *argv[])
                      nview_str(remote_block_range));
       DASH_LOG_DEBUG("MatrixViewsExample", "local(block range):",
                      nview_str(dash::local(remote_block_range)));
-#if 0
-      copy_dest_last  = dash::copy(remote_block_view.begin(),
-                                   remote_block_view.end(),
-                                   copy_dest_begin);
-
-      // Test number of copied elements:
-      auto num_copied = copy_dest_last - copy_dest_begin;
-      DASH_ASSERT(num_copied == block_size);
-
-      // Advance local copy destination pointer:
-      copy_dest_begin = copy_dest_last;
 #endif
       DASH_LOG_DEBUG("MatrixViewsExample", "^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     }

@@ -480,7 +480,9 @@ class IndexSetBase
 
   constexpr bool is_sub() const noexcept {
     return (
-      derived().size() < this->pattern().size()
+      this->is_local()
+      ? derived().size() < this->pattern().local_size()
+      : derived().size() < this->pattern().size()
     );
   }
 
@@ -973,6 +975,17 @@ class IndexSetLocal
   , _size(calc_size())
   { }
 
+  constexpr bool is_strided() const noexcept {
+    return (
+      // Local sub range of one-dimensional range is contiguous:
+      this->ndim() == 1
+      ? base_t::is_strided()
+      : // Elements are contiguous within single block, block view
+        // is not strided:
+        this->domain().is_strided()
+    );
+  }
+
   constexpr const local_type & local() const noexcept {
     return *this;
   }
@@ -1068,19 +1081,35 @@ class IndexSetLocal
         ? this->pattern().local_size()
         // parent domain is sub-space, calculate size from sub-range:
         : ( !this->is_strided()
-           // blocked (not blockcyclic) distribution: single local
-           // element space with contiguous global index range
-            ? this->index_range_size(
-                this->index_range_intersect(
-                  // local range in global index space:
-                  { this->pattern().lbegin(),
-                    this->pattern().lend() - 1 },
-                  // domain range in global index space;
-                  { this->domain().first(),
-                    this->domain().last() }
-                )) + 1
-           // blockcyclic distribution: local element space chunked
-           // in global index range
+            // blocked (not blockcyclic) distribution: single local
+            // element space with contiguous global index range
+            ? ( this->ndim() == 1
+                // one-dimensional, simple intersect:
+                ? this->index_range_size(
+                    this->index_range_intersect(
+                      // local range in global index space:
+                      { this->pattern().lbegin(),
+                        this->pattern().lend() - 1 },
+                      // domain range in global index space;
+                      { this->domain().first(),
+                        this->domain().last() }
+                    )) + 1
+                // multi-dimensional, size calculation requires view spec:
+                : ( this->pattern().block_at(
+                      this->pattern().coords(this->domain().first())) ==
+                    this->pattern().block_at(
+                      this->pattern().coords(this->domain().last()))
+                    // First and last element are in same block so entire
+                    // range is within single block:
+                    ? ( this->pattern().unit_at(this->domain().first()) ==
+                        this->pattern().team().myid()
+                        ? this->domain().size()
+                        : 0 )
+                    // Range spans multiple blocks:
+                    : 123 )
+              )
+            // strided, e.g. blockcyclic distribution: local element space
+            // chunked in global index range
             : this->index_range_size(
                 this->index_range_g2l(
                   this->pattern(),
@@ -1585,6 +1614,14 @@ class IndexSetBlock
   , _block_idx(block_idx)
   , _size(calc_size(block_idx))
   { }
+
+  constexpr bool is_strided() const noexcept {
+    return (
+      // Elements are contiguous within single block, block view
+      // is not strided:
+      !dash::pattern_layout_traits<pattern_type>::type::blocked
+    );
+  }
 
   // ---- extents ---------------------------------------------------------
 
