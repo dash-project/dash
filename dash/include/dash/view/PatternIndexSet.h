@@ -29,10 +29,10 @@ namespace dash {
 
 // Forward-declarations
 
-template <class IndexSetT, class DomainT, std::size_t NDim>
+template <class IndexSetT, class DomainT, dim_t NDim>
 class IndexSetBase;
 
-template <class IndexSetT, class DomainT, class PatternT, std::size_t NDim>
+template <class IndexSetT, class DomainT, class PatternT, dim_t NDim>
 class PatternIndexSetBase;
 
 template <class DomainT>
@@ -44,7 +44,7 @@ class IndexSetLocal;
 template <class DomainT>
 class IndexSetGlobal;
 
-template <class DomainT, std::size_t SubDim>
+template <class DomainT, dim_t SubDim>
 class IndexSetSub;
 
 template <class DomainT>
@@ -57,7 +57,7 @@ class IndexSetBlock;
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim = DomainType::rank::value >
+  dim_t NDim = DomainType::rank::value >
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
@@ -95,10 +95,10 @@ class IndexSetBase
   typedef typename detail::index_set_domain_bind_t<view_domain_type>::type
     domain_member_type;
 
-  typedef std::integral_constant<std::size_t, NDim>
+  typedef std::integral_constant<dim_t, NDim>
     rank;
 
-  static constexpr std::size_t ndim() { return NDim; }
+  static constexpr dim_t ndim() { return NDim; }
 
  protected:
   domain_member_type     _domain;
@@ -194,12 +194,12 @@ class IndexSetBase
     return derived().extents();
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr size_type extent() const {
     return derived().extents()[ShapeDim];
   }
 
-  constexpr size_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(dim_t shape_dim) const {
     return derived().extents()[shape_dim];
   }
 
@@ -210,12 +210,12 @@ class IndexSetBase
     return std::array<index_type, NDim> { };
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type offset() const {
     return derived().offsets()[ShapeDim];
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return derived().offsets()[shape_dim];
   }
 
@@ -275,7 +275,7 @@ template <
   class       IndexSetType,
   class       DomainType,
   class       PatternType,
-  std::size_t NDim = PatternType::ndim() >
+  dim_t NDim = PatternType::ndim() >
 class PatternIndexSetBase
 : public IndexSetBase<
 //         IndexSetType,

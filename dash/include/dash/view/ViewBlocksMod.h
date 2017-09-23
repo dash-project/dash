@@ -58,7 +58,8 @@ struct view_traits<ViewBlockMod<DomainType, NDim> > {
   typedef ViewBlockMod<DomainType, NDim>                       global_type;
 
   typedef typename DomainType::index_type                       index_type;
-  typedef typename view_traits<domain_type>::size_type           size_type;
+  typedef typename DomainType::size_type                         size_type;
+//typedef typename view_traits<domain_type>::size_type           size_type;
   typedef typename std::conditional<
                      NDim == 1,
                      dash::IndexSetSub<DomainType, 0>,

@@ -135,7 +135,7 @@ using global_index_t
 
 // Forward-declarations
 
-template <class IndexSetType, class DomainType, std::size_t NDim>
+template <class IndexSetType, class DomainType, dim_t NDim>
 class IndexSetBase;
 
 template <class DomainType>
@@ -147,7 +147,7 @@ class IndexSetLocal;
 template <class DomainType>
 class IndexSetGlobal;
 
-template <class DomainType, std::size_t SubDim>
+template <class DomainType, dim_t SubDim>
 class IndexSetSub;
 
 template <class DomainType>
@@ -291,7 +291,7 @@ index(const ContainerType & c)
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim >
+  dim_t NDim >
 constexpr auto
 local(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
@@ -302,7 +302,7 @@ local(
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim >
+  dim_t NDim >
 constexpr auto
 global(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
@@ -335,7 +335,7 @@ struct index_set_domain_bind_t {
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim = DomainType::rank::value >
+  dim_t NDim = DomainType::rank::value >
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
@@ -373,13 +373,13 @@ class IndexSetBase
   typedef typename detail::index_set_domain_bind_t<view_domain_type>::type
     domain_member_type;
 
-  typedef std::integral_constant<std::size_t, NDim>
+  typedef std::integral_constant<dim_t, NDim>
     rank;
 
   typedef typename view_origin_type::pattern_type
     pattern_type;
 
-  static constexpr std::size_t ndim() { return NDim; }
+  static constexpr dim_t ndim() { return NDim; }
 
  protected:
   domain_member_type   _domain;
@@ -510,12 +510,12 @@ class IndexSetBase
     return pattern().extents();
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr size_type extent() const {
     return derived().extents()[ShapeDim];
   }
 
-  constexpr size_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(dim_t shape_dim) const {
     return derived().extents()[shape_dim];
   }
 
@@ -526,12 +526,12 @@ class IndexSetBase
     return std::array<index_type, NDim> { };
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type offset() const {
     return derived().offsets()[ShapeDim];
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return derived().offsets()[shape_dim];
   }
 
@@ -704,7 +704,7 @@ class IndexSetIdentity
 
 template <
   class       DomainType,
-  std::size_t SubDim >
+  dim_t SubDim >
 constexpr auto
 local(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.local()) {
@@ -713,7 +713,7 @@ local(const IndexSetSub<DomainType, SubDim> & index_set)
 
 template <
   class       DomainType,
-  std::size_t SubDim >
+  dim_t SubDim >
 constexpr auto
 global(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.global()) {
@@ -725,7 +725,7 @@ global(const IndexSetSub<DomainType, SubDim> & index_set)
  */
 template <
   class       DomainType,
-  std::size_t SubDim = 0 >
+  dim_t SubDim = 0 >
 class IndexSetSub
 : public IndexSetBase<
            IndexSetSub<DomainType, SubDim>,
@@ -754,7 +754,7 @@ class IndexSetSub
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
 
-  static constexpr std::size_t NDim = base_t::ndim();
+  static constexpr dim_t NDim = base_t::ndim();
  public:
   /**
    * Constructor, creates index set for given view.
@@ -782,7 +782,7 @@ class IndexSetSub
 
   // ---- extents ---------------------------------------------------------
 
-  template <std::size_t ExtDim>
+  template <dim_t ExtDim>
   constexpr size_type extent() const {
     return ( ExtDim == SubDim
              ? _domain_end_idx - _domain_begin_idx
@@ -790,7 +790,7 @@ class IndexSetSub
            );
   }
 
-  constexpr size_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(dim_t shape_dim) const {
     return ( shape_dim == SubDim
              ? _domain_end_idx - _domain_begin_idx
              : this->domain().extent(shape_dim)
@@ -805,7 +805,7 @@ class IndexSetSub
 
   // ---- offsets ---------------------------------------------------------
 
-  template <std::size_t ExtDim>
+  template <dim_t ExtDim>
   constexpr index_type offset() const {
     return ( ExtDim == SubDim
              ? _domain_begin_idx
@@ -813,7 +813,7 @@ class IndexSetSub
            );
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return ( shape_dim == SubDim
              ? _domain_begin_idx
              : this->domain().offset(shape_dim)
@@ -828,7 +828,7 @@ class IndexSetSub
   
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim = 0) const {
+  constexpr size_type size(dim_t sub_dim = 0) const {
     return extent(sub_dim) *
              (sub_dim + 1 < NDim && NDim > 0
                ? size(sub_dim + 1)
@@ -1003,12 +1003,12 @@ class IndexSetLocal
     return this->pattern().local_extents();
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type extent() const noexcept {
     return this->pattern().local_extents()[ShapeDim];
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const noexcept {
+  constexpr index_type extent(dim_t shape_dim) const noexcept {
     return this->pattern().local_extents()[shape_dim];
   }
 
@@ -1020,19 +1020,19 @@ class IndexSetLocal
     return std::array<index_type, NDim> { };
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type offset() const {
     return derived().offsets()[ShapeDim];
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return derived().offsets()[shape_dim];
   }
 #endif
 
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const noexcept {
+  constexpr size_type size(dim_t sub_dim) const noexcept {
     return _size;
   }
 
@@ -1375,7 +1375,7 @@ class IndexSetBlocks
 
   // Rank of blocks index set should depend on blockspec dimensions of
   // the domain's pattern type.
-  static constexpr std::size_t NBlocksDim = blocks_ndim::value;
+  static constexpr dim_t NBlocksDim = blocks_ndim::value;
 
  public:
   constexpr static bool  view_domain_is_local

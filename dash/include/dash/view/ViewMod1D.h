@@ -22,7 +22,7 @@
 namespace dash {
 
 
-template <class IndexSetType, class DomainType, std::size_t NDim>
+template <class IndexSetType, class DomainType, dim_t NDim>
 class IndexSetBase;
 
 template <class DomainType>
@@ -34,7 +34,7 @@ class IndexSetLocal;
 template <class DomainType>
 class IndexSetGlobal;
 
-template <class DomainType, std::size_t SubDim>
+template <class DomainType, dim_t SubDim>
 class IndexSetSub;
 
 template <class RangeOrigin>
