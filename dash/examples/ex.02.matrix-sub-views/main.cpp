@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
               "block(" << m_s_blocks_idx[b_idx] << ")) " <<
               "--- block[0,0] = " << std::fixed << std::setprecision(2) <<
               static_cast<double>(blk[{0,0}]) <<
-              nview_str(m_isect) << '\n');
+              nview_str(m_isect) << std::endl);
 
         ++b_idx;
       }
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
               "offsets: " << blk.offsets() << " " <<
               "extents: " << blk.extents());
 
-        print(nview_str(blk) << '\n');
+        print(nview_str(blk) << std::endl);
 
         ++b_idx;
       }

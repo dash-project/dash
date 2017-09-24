@@ -1202,6 +1202,90 @@ GlobOutputIt copy(
   return out_last;
 }
 
+// ======================================================================
+// Global to Global, Distributed Range
+// ======================================================================
+
+/**
+ * Specialization of \c dash::copy as global-to-global blocking copy
+ * operation.
+ *
+ * \ingroup  DashAlgorithms
+ */
+template <
+  class    GlobInputRange,
+  class    GlobOutputRange,
+  typename std::enable_if<
+             ( dash::view_traits<GlobInputRange>::is_view::value &&
+               dash::view_traits<GlobOutputRange>::is_view::value ),
+             int >::type = 0
+>
+GlobOutputRange copy(
+  GlobInputRange  in_g_range,
+  GlobOutputRange out_g_range)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
+
+  DASH_LOG_TRACE("dash::copy()", "range(out_gi, out_ge):",
+                 dash::typestr(out_g_range));
+  DASH_LOG_TRACE_VAR("dash::copy()", out_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", dash::index(out_g_range));
+
+  DASH_LOG_TRACE("dash::copy()", "range(in_gi, in_ge):",
+                 dash::typestr(in_g_range));
+  DASH_LOG_TRACE_VAR("dash::copy()", in_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", dash::index(in_g_range));
+
+  auto in_blocks    = dash::blocks(in_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", in_blocks);
+
+  auto l_in_blocks  = dash::local(in_blocks);
+  DASH_LOG_TRACE_VAR("dash::copy()", in_blocks);
+
+  auto out_blocks   = dash::blocks(out_g_range);
+  DASH_LOG_TRACE_VAR("dash::copy()", out_blocks);
+
+  auto l_out_blocks = dash::local(out_blocks);
+  DASH_LOG_TRACE_VAR("dash::copy()", out_blocks);
+
+  // Iterator to active output block:
+  auto out_block_it = out_blocks.begin();
+  // Iterator local blocks in input range:
+  for (auto l_out_block : l_out_blocks) {
+    DASH_LOG_TRACE_VAR("dash::copy()", l_out_block);
+    DASH_LOG_TRACE_VAR("dash::copy()",
+                       dash::global(dash::index(l_out_block)));
+  }
+
+  // local view on in/out ranges:
+  auto out_l_range  = dash::local(out_g_range);
+  DASH_LOG_TRACE("dash::copy()", "local(range(out_gi, out_ge)):",
+                 dash::typestr(out_l_range));
+  DASH_LOG_TRACE("dash::copy()", "local(range(out_gi, out_ge)):",
+                 out_l_range);
+  DASH_LOG_TRACE("dash::copy()", "index(local(range(out_gi, out_ge))):",
+                 dash::index(out_l_range));
+  DASH_LOG_TRACE("dash::copy()", "global(index(local(range(o_gi,o_ge)))):",
+                 dash::global(dash::index(out_l_range)));
+
+  auto in_l_range   = dash::local(in_g_range);
+  DASH_LOG_TRACE("dash::copy()", "local(range(in_gi, in_ge)):",
+                 dash::typestr(in_l_range));
+  DASH_LOG_TRACE("dash::copy()", "local(range(in_gi, in_ge)):",
+                 in_l_range);
+  DASH_LOG_TRACE("dash::copy()", "index(local(range(in_gi, in_ge))):",
+                 dash::index(in_l_range));
+
+  // Only sufficient if input- and output ranges have identical
+  // decomposition:
+  //
+  //   auto out_l_end    = std::copy(dash::begin(in_l_range),
+  //                                 dash::end(in_l_range),
+  //                                 dash::begin(out_l_range));
+
+  return out_g_range;
+}
+
 /**
  * Specialization of \c dash::copy as global-to-global blocking copy
  * operation.
