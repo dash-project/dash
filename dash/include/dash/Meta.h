@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/meta/TypeInfo.h>
+#include <dash/util/ArrayExpr.h>
 
 #include <type_traits>
 
@@ -102,6 +103,12 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(nonconst_type);
 
 namespace dash {
 
+// ==========================================================================
+// dash::const_value_cast<T &>::type -> const T &
+// dash::const_value_cast<T *>::type -> const T *
+// dash::const_value_cast<T  >::type -> const T
+// --------------------------------------------------------------------------
+
 template <typename T>
 struct const_value_cast;
 
@@ -127,6 +134,11 @@ struct const_value_cast {
 };
 
 
+// ==========================================================================
+// dash::nonconst_value_cast<const T &>::type -> T &
+// dash::nonconst_value_cast<const T *>::type -> T *
+// dash::nonconst_value_cast<const T  >::type -> T
+// --------------------------------------------------------------------------
 
 template <typename T>
 struct nonconst_value_cast;
@@ -151,6 +163,30 @@ struct nonconst_value_cast {
     >::type
   type;
 };
+
+
+// ==========================================================================
+// dash::array_value_cast<T>(std::array<U, N>)::type -> std::array<T, N>
+// --------------------------------------------------------------------------
+
+namespace detail {
+
+template<typename T, typename U, std::size_t I, std::size_t... Is>
+constexpr auto array_value_cast_indexed(
+  const std::array<U, I> &a, dash::ce::index_sequence<Is...>)
+  -> std::array<T, I> {
+  return {{ static_cast<T>(std::get<Is>(a))... }};
+}
+
+} // namespace detail
+
+template<typename T, typename U, std::size_t N>
+constexpr auto array_value_cast(
+  const std::array<U, N> & a) -> std::array<T, N> {
+  // tag dispatch to helper with array indices
+  return detail::array_value_cast_indexed<T>(
+           a, dash::ce::make_index_sequence<N>());
+}
 
 
 /*

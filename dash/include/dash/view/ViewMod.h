@@ -311,6 +311,28 @@ class ViewModBase
   constexpr index_type size() const {
     return dash::index(derived()).size();
   }
+
+  constexpr bool empty() const noexcept {
+    return size() == 0;
+  }
+
+  constexpr bool operator!() const noexcept {
+    return empty();
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !empty();
+  }
+
+  // ---- access ----------------------------------------------------------
+
+  template <typename IdxT>
+  constexpr const_reference operator[](
+              const std::array<
+                      IdxT, self_t::rank::value
+                    > & coords) const {
+    return derived()[ dash::linearize(derived(), coords) ];
+  }
 };
 
 

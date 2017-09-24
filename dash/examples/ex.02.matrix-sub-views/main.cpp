@@ -25,12 +25,7 @@ int main(int argc, char *argv[])
   size_t extent_x            = block_size_x * nunits;
   size_t extent_y            = block_size_y * nunits;
 
-  if (nunits < 2) {
-    cerr << "requires > 1 units" << endl;
-    return 1;
-  }
-
-  typedef dash::TilePattern<2>      pattern_t;
+  typedef dash::TilePattern<2>           pattern_t;
   typedef typename pattern_t::index_type   index_t;
   typedef float                            value_t;
 
@@ -64,26 +59,47 @@ int main(int argc, char *argv[])
     print("matrix:" <<
           nview_str(matrix | sub(0,extent_y)) << '\n');
     print("matrix.local.size(): " << matrix.local.size());
-    print("matrix | sub<0>(1,-1) | sub<1>(1,-1)" <<
-          nview_str(matrix | sub<0>(1, extent_y-1)
-                           | sub<1>(1, extent_x-1)) << '\n');
 
-    print("\nmatrix | sub<0>(1,-1) | sub<1>(1,-1) | blocks()");
-    auto m_s_blocks = matrix | sub<0>(1, extent_y-1)
-                             | sub<1>(1, extent_x-1)
-                             | blocks();
-    auto m_s_blocks_idx = m_s_blocks | index();
-    int b_idx = 0;
-    for (const auto & blk : m_s_blocks) {
-      auto m_isect = matrix | sub<0>(1, extent_y-1)
-                            | sub<1>(1, extent_x-1)
-                            | intersect(blk);
+    auto matrix_sub = matrix | sub<0>(3, extent_y-1)
+                             | sub<1>(1, extent_x-1);
 
-      print("\n --- matrix | sub {1,-1} {1-1} | intersect(" <<
-            "block(" << m_s_blocks_idx[b_idx] << "))" <<
-            nview_str(m_isect));
+    print("matrix | sub<0>(3,-1) | sub<1>(1,-1)" <<
+          nview_str(matrix_sub) << "\n\n");
 
-      ++b_idx;
+    print("matrix | sub<0>(3,-1) | sub<1>(1,-1) | blocks()\n");
+    {
+      auto m_s_blocks     = matrix_sub | blocks();
+      auto m_s_blocks_idx = m_s_blocks | index();
+      int b_idx = 0;
+      for (const auto & blk : m_s_blocks) {
+        auto m_isect = matrix_sub | intersect(blk);
+
+        print("--- matrix | sub {3,-1} {1-1} | intersect(" <<
+              "block(" << m_s_blocks_idx[b_idx] << ")) " <<
+              "--- block[0,0] = " << std::fixed << std::setprecision(2) <<
+              static_cast<double>(blk[{0,0}]) <<
+              nview_str(m_isect) << '\n');
+
+        ++b_idx;
+      }
+    }
+    print("matrix | sub<0>(3,-1) | sub<1>(1,-1) | local | blocks()\n");
+    {
+      auto m_s_l_blocks     = matrix_sub   | local() | blocks();
+      auto m_s_l_blocks_idx = m_s_l_blocks | index();
+      int b_idx = 0;
+      print("--- number of blocks: " << m_s_l_blocks.size());
+      for (const auto & blk : m_s_l_blocks) {
+        auto block_gidx = m_s_l_blocks_idx[b_idx];
+        print("--- matrix | sub {3,-1} {1-1} | local | " <<
+              "block(" << block_gidx << ") " <<
+              "offsets: " << blk.offsets() << " " <<
+              "extents: " << blk.extents());
+
+        print(nview_str(blk) << '\n');
+
+        ++b_idx;
+      }
     }
   }
   dash::barrier();

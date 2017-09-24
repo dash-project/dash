@@ -474,6 +474,7 @@ public:
     return offs;
   }
 
+
   /**
    * Convert the given cartesian point to a linear index, respective to
    * the offsets specified in the given ViewSpec.
@@ -492,6 +493,28 @@ public:
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec.offset(d);
+    }
+    return at(coords);
+  }
+
+  /**
+   * Convert the given cartesian point to a linear index, respective to
+   * the specified offsets.
+   *
+   * \param  point     An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  offsets   Offsets to apply on point coordinates
+   *                   before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point,
+    const std::array<OffsetType, NumDimensions> & offsets) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = point[d] + offsets[d];
     }
     return at(coords);
   }
@@ -764,6 +787,33 @@ public:
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec[d].offset;
+    }
+    if (!_distspec.is_tiled()) {
+      // Default case, no tiles
+      return parent_t::at(coords);
+    }
+    // Tiles in at least one dimension
+    return at(coords);
+  }
+
+  /**
+   * Convert the given cartesian point to a linear index, respective to
+   * the specified offsets.
+   *
+   * \param  point     An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  offsets   Offsets to apply on point coordinates
+   *                   before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point,
+    const std::array<OffsetType, NumDimensions> & offsets) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = point[d] + offsets[d];
     }
     if (!_distspec.is_tiled()) {
       // Default case, no tiles

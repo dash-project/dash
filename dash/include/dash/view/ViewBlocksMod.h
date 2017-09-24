@@ -238,6 +238,17 @@ class ViewBlockMod
                             _index_set, offset));
   }
 
+  constexpr const_reference operator[](
+              const std::array<
+                      typename self_t::index_set_type::index_type,
+                      self_t::rank::value
+                    > & coords) const {
+    return *(const_iterator(dash::origin(*this).begin(),
+                            _index_set,
+                            // offset:
+                            dash::linearize(*this, coords)));
+  }
+
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
@@ -456,6 +467,19 @@ constexpr ViewBlocksMod<ViewValueT>
 blocks(ViewType && domain) {
   return ViewBlocksMod<ViewValueT>(std::forward<ViewType>(domain));
 }
+
+#if 0
+/**
+ * `blocks(block(D)) -> block(D)`
+ */
+template <
+  class BlockDomain,
+  dim_t NBlockDim >
+constexpr ViewBlockMod<BlockDomain, NBlockDim> &
+blocks(ViewBlockMod<BlockDomain, NBlockDim> & block_view) {
+  return block_view;
+}
+#endif
 
 template <
   class DomainType,

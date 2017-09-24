@@ -688,7 +688,7 @@ TEST_F(MatrixTest, ViewIteration)
   }
 }
 
-TEST_F(MatrixTest, BlockCopy)
+TEST_F(MatrixTest, BlockCopyGlobalToGlobal)
 {
   typedef int element_t;
   int    myid = dash::myid().id;
@@ -721,8 +721,8 @@ TEST_F(MatrixTest, BlockCopy)
                  dash::Team::All(),
                  team_spec);
   // Fill matrix
-  auto block_a = matrix_a.block(1);
-  auto block_b = matrix_b.block(0);
+  auto block_a = matrix_a | dash::block(1);
+  auto block_b = matrix_b | dash::block(0);
   if (myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
     for(size_t row = 0; row < matrix_a.extent(0); ++row) {
@@ -739,18 +739,18 @@ TEST_F(MatrixTest, BlockCopy)
   LOG_MESSAGE("Copying block");
 
   // Copy block 1 of matrix_a to block 0 of matrix_b:
-  dash::copy(block_a.begin(),
-             block_a.end(),
-             block_b.begin());
+  dash::copy(block_a,
+             block_b);
   matrix_b.barrier();
 
   LOG_MESSAGE("Checking copy result");
   if (myid == 0) {
     LOG_MESSAGE("Checking copied matrix block values");
-    for(size_t col = 0; col < block_a.extent(0); ++col) {
-      for(size_t row = 0; row < block_a.extent(1); ++row) {
-        ASSERT_EQ_U(static_cast<element_t>(block_b[col][row]),
-            static_cast<element_t>(block_a[col][row]));
+    for(ssize_t col = 0; col < block_a.extent(0); ++col) {
+      for(ssize_t row = 0; row < block_a.extent(1); ++row) {
+        ASSERT_EQ_U(
+          static_cast<element_t>(block_b[{ col, row }]),
+          static_cast<element_t>(block_a[{ col, row }]));
       }
     }
   }

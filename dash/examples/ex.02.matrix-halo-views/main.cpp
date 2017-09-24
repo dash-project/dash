@@ -78,10 +78,6 @@ int main(int argc, char *argv[])
     auto matrix_view = dash::sub(0, matrix.extents()[0], matrix);
     print("matrix" << nview_str(matrix_view, 4));
 
-    DASH_LOG_DEBUG("MatrixViewsExample", "matrix",
-                   "offsets:", matrix_view.offsets(),
-                   "extents:", matrix_view.extents());
-
     auto matrix_blocks = dash::blocks(matrix);
     auto matrix_b_idx  = matrix_blocks | dash::index();
     int  b_idx         = 0;
@@ -91,7 +87,6 @@ int main(int argc, char *argv[])
 
       // matrix block view:
       print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "]:" <<
-            "\n       " << dash::typestr(m_block) <<
             "\n       " <<
             "offsets: " << b_offsets[0] << "," << b_offsets[1] << " " <<
             "extents: " << b_extents[0] << "," << b_extents[1] <<
@@ -105,7 +100,6 @@ int main(int argc, char *argv[])
       auto bh_extents = b_halo.extents();
       print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
             "expand({ -1,1 }, { -1,1 }):" <<
-            "\n       " << dash::typestr(b_halo) <<
             "\n       " <<
             "offsets: " << bh_offsets[0] << "," << bh_offsets[1] << " " <<
             "extents: " << bh_extents[0] << "," << bh_extents[1] <<
@@ -118,7 +112,6 @@ int main(int argc, char *argv[])
       auto bhs_extents = b_halo_s.extents();
       print("\n-- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
             "expand({ -1,1 }, { -1,1 }) | shift(1):" <<
-            "\n       " << dash::typestr(b_halo_s) <<
             "\n       " <<
             "offsets: " << bhs_offsets[0] << "," << bhs_offsets[1] << " " <<
             "extents: " << bhs_extents[0] << "," << bhs_extents[1] <<

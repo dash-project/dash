@@ -3,6 +3,7 @@
 
 #include <dash/Iterator.h>
 #include <dash/Range.h>
+#include <dash/Meta.h>
 
 #include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
@@ -183,6 +184,30 @@ index(const DomainType & v)
        decltype(v.index_set())
      >::type {
   return v.index_set();
+}
+
+template <
+  MemArrange  MemOrder = dash::ROW_MAJOR,
+  class       ViewType,
+  typename    CoordT,
+  dim_t       NDim     = dash::view_traits<
+                           typename dash::view_traits<ViewType>::origin_type
+                         >::rank::value,
+  class       IndexT   = typename dash::view_traits<ViewType>::index_type >
+auto linearize(
+         const ViewType                          & view,
+         const std::array<
+                 CoordT,
+                 static_cast<std::size_t>(NDim)> & coords)
+  -> IndexT {
+  return dash::CartesianIndexSpace< NDim, MemOrder, IndexT >(
+           view.extents()).at(
+             // coords:
+             dash::array_value_cast<IndexT>(coords)
+             // offsets:
+         //  ,
+         //  dash::array_value_cast<IndexT>(view.offsets())
+           );
 }
 
 
@@ -1044,6 +1069,18 @@ class IndexSetLocal
 #endif
 
   // ---- size ------------------------------------------------------------
+
+  constexpr bool empty() const noexcept {
+    return size() == 0;
+  }
+
+  constexpr bool operator!() const noexcept {
+    return empty();
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !empty();
+  }
 
   constexpr size_type size(dim_t sub_dim) const noexcept {
     return _size;
