@@ -1643,7 +1643,7 @@ class IndexSetBlock
     index_type         block_idx)
   : base_t(view)
   , _block_idx(block_idx)
-  , _size(calc_size(block_idx))
+  , _size(calc_size())
   { }
 
   constexpr explicit IndexSetBlock(
@@ -1651,7 +1651,7 @@ class IndexSetBlock
     index_type         block_idx)
   : base_t(std::move(view))
   , _block_idx(block_idx)
-  , _size(calc_size(block_idx))
+  , _size(calc_size())
   { }
 
   constexpr bool is_strided() const noexcept {
@@ -1666,20 +1666,14 @@ class IndexSetBlock
 
   constexpr std::array<size_type, NBlockDim>
   extents() const {
-    return ( this->is_local()
-             ? this->pattern().local_block(_block_idx).extents()
-             : this->pattern().block(_block_idx).extents()
-           );
+    return calc_viewspec().extents();
   }
 
   // ---- offsets ---------------------------------------------------------
 
   constexpr std::array<index_type, NBlockDim>
   offsets() const {
-    return ( this->is_local()
-             ? this->pattern().local_block(_block_idx).offsets()
-             : this->pattern().block(_block_idx).offsets()
-           );
+    return calc_viewspec().offsets();
   }
 
   // ---- access ----------------------------------------------------------
@@ -1699,7 +1693,7 @@ class IndexSetBlock
                    // global coords
                    this->pattern().coords(block_phase),
                    // viewspec
-                   this->pattern().local_block(_block_idx)
+                   this->calc_viewspec()
                  ) )
              : ( // translate block phase to global index:
                  dash::CartesianIndexSpace<NDomainDim>(
@@ -1707,18 +1701,22 @@ class IndexSetBlock
                  ).at(
                    // in-block coords
                    dash::CartesianIndexSpace<NBlockDim>(
-                     this->pattern().block(_block_idx).extents()
+                     this->extents()
                    ).coords(
                      block_phase >= this->pattern().block(_block_idx).size()
                      ? block_phase - 1
                      : block_phase ),
                    // block viewspec
-                   this->pattern().block(_block_idx))
+                   this->pattern().block(_block_idx).intersect(
+                     // domain viewspec
+                     ViewSpec<NDomainDim, index_type>(
+                       this->view_domain().offsets(),
+                       this->view_domain().extents()))
                  ) + (
                    block_phase >= this->pattern().block(_block_idx).size()
                    ? 1
                    : 0)
-
+               )
            );
   }
 
@@ -1739,16 +1737,27 @@ class IndexSetBlock
   }
 
  private:
-  constexpr index_type calc_size(index_type block_idx) const {
+  constexpr index_type calc_size() const {
+    return calc_viewspec().size();
+  }
+
+  ViewSpec<NDomainDim, index_type> calc_viewspec() const {
     return ( view_domain_is_local
-             ? ( // viewspec of local block referenced by this view:
-                 this->pattern().local_block(block_idx).size()
-               )
-             : ( // viewspec of block referenced by this view:
-                 this->pattern().block(block_idx).size()
-               )
+             ? // viewspec of local block referenced by this view:
+               this->pattern().local_block(_block_idx).intersect(
+                 // viewspec of domain:
+                 ViewSpec<NDomainDim, index_type>(
+                   this->view_domain().offsets(),
+                   this->view_domain().extents()) )
+             : // viewspec of block referenced by this view:
+               this->pattern().block(_block_idx).intersect(
+                 // viewspec of domain:
+                 ViewSpec<NDomainDim, index_type>(
+                   this->view_domain().offsets(),
+                   this->view_domain().extents()) )
            );
   }
+
 }; // class IndexSetBlock
 
 static inline auto index() {

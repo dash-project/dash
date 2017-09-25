@@ -50,12 +50,17 @@ std::string nview_str(
   int                 prec = 2)
 {
   using value_t   = typename NViewType::value_type;
-  auto view_nrows = nview.extents()[0];
-  auto view_ncols = nview.extents()[1];
-  auto nindex     = dash::index(nview);
+  const auto view_nrows = nview.extents()[0];
+  const auto view_ncols = nview.extents()[1];
+  const auto nindex     = dash::index(nview);
   std::ostringstream ss;
+
+  ss << "\n      ";
+  for (int c = 0; c < view_ncols; ++c) {
+    ss << std::setw(8 + prec) << std::left << c;
+  }
   for (int r = 0; r < view_nrows; ++r) {
-    ss << '\n' << "  " << std::right << std::setw(2) << r << "  ";
+    ss << '\n' << std::right << std::setw(3) << r << "  ";
     for (int c = 0; c < view_ncols; ++c) {
       int  offset = r * view_ncols + c;
       value_t val = nview[offset];

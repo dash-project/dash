@@ -91,6 +91,13 @@ std::ostream & operator<<(
 /**
  * Specifies view parameters for implementing submat, rows and cols
  *
+ * TODO: Should be specified as
+ *         ViewSpec<D>(begin Point<D> { 0, 2, 3 },
+ *                     end   Point<D> { 4, 7, 9 })
+ *         -> offset(d) = begin(d)
+ *            extent(d) = end(d) - begin(d)
+ *                              
+ *
  * \concept(DashCartesianSpaceConcept)
  */
 template<
@@ -101,15 +108,16 @@ class ViewSpec
 private:
   typedef ViewSpec<NDim, IndexType>
     self_t;
-  typedef typename std::make_unsigned<IndexType>::type
-    SizeType;
   typedef ViewPair<IndexType>
     ViewPair_t;
 
 public:
-  typedef ViewRegion<NDim, IndexType>         region_type;
-  typedef ViewRange<IndexType>                range_type;
-  typedef std::integral_constant<dim_t, NDim> rank;
+  typedef IndexType                                     index_type;
+  typedef typename std::make_unsigned<IndexType>::type   size_type;
+  typedef ViewRegion<NDim, IndexType>                  region_type;
+  typedef ViewRange<IndexType>                          range_type;
+
+  typedef std::integral_constant<dim_t, NDim>                 rank;
 
 public:
   template<dim_t NDim_, typename IndexType_>
@@ -118,10 +126,10 @@ public:
     const ViewSpec<NDim_, IndexType_> & viewspec);
 
 private:
-  SizeType                             _size    = 0;
-  SizeType                             _rank    = NDim;
-  std::array<SizeType, NDim>  _extents = {{ }};
-  std::array<IndexType, NDim> _offsets = {{ }};
+  size_type                    _size    = 0;
+  size_type                    _rank    = NDim;
+  std::array<size_type, NDim>  _extents = {{ }};
+  std::array<index_type, NDim> _offsets = {{ }};
 
 public:
   /**
@@ -143,7 +151,7 @@ public:
    * dimensions.
    */
   ViewSpec(
-    const std::array<SizeType, NDim> & extents)
+    const std::array<size_type, NDim> & extents)
   : _size(1),
     _rank(NDim),
     _extents(extents)
@@ -158,8 +166,8 @@ public:
    * Constructor, initialize with given extents and offsets.
    */
   ViewSpec(
-    const std::array<IndexType, NDim> & offsets,
-    const std::array<SizeType, NDim>  & extents)
+    const std::array<index_type, NDim> & offsets,
+    const std::array<size_type, NDim>  & extents)
   : _size(1),
     _rank(NDim),
     _extents(extents),
@@ -212,13 +220,13 @@ public:
    * Change the view specification's extent in every dimension.
    */
   template<typename ... Args>
-  void resize(SizeType arg, Args... args)
+  void resize(size_type arg, Args... args)
   {
     static_assert(
       sizeof...(Args) == (NDim-1),
       "Invalid number of arguments");
-    std::array<SizeType, NDim> extents =
-      { arg, (SizeType)(args)... };
+    std::array<size_type, NDim> extents =
+      { arg, (size_type)(args)... };
     resize(extents);
   }
 
@@ -254,8 +262,8 @@ public:
    */
   void resize_dim(
     dim_t     dimension,
-    IndexType offset,
-    SizeType  extent)
+    index_type offset,
+    size_type  extent)
   {
     _offsets[dimension] = offset;
     _extents[dimension] = extent;
@@ -288,16 +296,16 @@ public:
    * \return A copy if this view spec as a new instance of `ViewSpec<NDim-1>`
    *         with the sliced dimension removed
    */
-  ViewSpec<NDim-1, IndexType>
+  ViewSpec<NDim-1, index_type>
   slice(dim_t dimension)
   {
-    std::array<SizeType, NDim-1>  slice_extents;
-    std::array<IndexType, NDim-1> slice_offsets;
+    std::array<size_type, NDim-1>  slice_extents;
+    std::array<index_type, NDim-1> slice_offsets;
     for (dim_t d = dimension; d < _rank-1; d++) {
       slice_offsets[d] = _offsets[d+1];
       slice_extents[d] = _extents[d+1];
     }
-    return ViewSpec<NDim-1, IndexType>(slice_offsets,
+    return ViewSpec<NDim-1, index_type>(slice_offsets,
                                                 slice_extents);
   }
 
@@ -314,26 +322,26 @@ public:
     update_size();
   }
 
-  constexpr SizeType size() const
+  constexpr size_type size() const
   {
     return _size;
   }
 
-  constexpr SizeType size(dim_t dimension) const
+  constexpr size_type size(dim_t dimension) const
   {
     return _extents[dimension];
   }
 
-  constexpr const std::array<SizeType, NDim> & extents() const
+  constexpr const std::array<size_type, NDim> & extents() const
   {
     return _extents;
   }
 
-  constexpr SizeType extent(dim_t dim) const {
+  constexpr size_type extent(dim_t dim) const {
     return _extents[dim];
   }
 
-  constexpr const std::array<IndexType, NDim> & offsets() const
+  constexpr const std::array<index_type, NDim> & offsets() const
   {
     return _offsets;
   }
@@ -341,11 +349,11 @@ public:
   constexpr range_type range(dim_t dim) const
   {
     return range_type {
-             static_cast<IndexType>(_offsets[dim]),
-             static_cast<IndexType>(_offsets[dim] + _extents[dim]) };
+             static_cast<index_type>(_offsets[dim]),
+             static_cast<index_type>(_offsets[dim] + _extents[dim]) };
   }
 
-  constexpr IndexType offset(dim_t dim) const
+  constexpr index_type offset(dim_t dim) const
   {
     return _offsets[dim];
   }
@@ -356,20 +364,36 @@ public:
     reg.begin = _offsets;
     reg.end   = _offsets;
     for (dim_t d = 0; d < NDim; ++d) {
-      reg.end[d] += static_cast<IndexType>(_extents[d]);
+      reg.end[d] += static_cast<index_type>(_extents[d]);
     }
     return reg;
+  }
+
+  template <dim_t NDim_, typename IndexT_>
+  self_t intersect(const ViewSpec<NDim_, IndexT_> & other) {
+    // TODO: Implement using dash::ce::map(extents(), other.extents()) ...
+    auto isc_extents = extents();
+    auto isc_offsets = offsets();
+    for (dim_t d = 0; d < NDim_; ++d) {
+      auto offset_d  = std::max(isc_offsets[d], other.offsets()[d]);
+      isc_extents[d] = std::min(isc_offsets[d]  + isc_extents[d],
+                                other.offset(d) + other.extent(d))
+                       - offset_d;
+      isc_offsets[d] = offset_d;
+    }
+    return self_t(isc_offsets, isc_extents);
   }
 
 private:
   void update_size()
   {
     _size = 1;
-    for (SizeType d = 0; d < NDim; ++d) {
+    for (size_type d = 0; d < NDim; ++d) {
       _size *= _extents[d];
     }
   }
 };
+
 
 template <class ViewableType>
 struct is_view_region;

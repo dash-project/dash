@@ -4,6 +4,7 @@
 #include <dash/Types.h>
 #include <dash/Range.h>
 
+#include <dash/view/ViewSpec.h>
 #include <dash/view/ViewMod.h>
 #include <dash/view/Utility.h>
 #include <dash/view/Sub.h>

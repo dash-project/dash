@@ -52,25 +52,15 @@ struct view_traits
 #else // DOXYGEN
 
 template <class ViewableType>
-struct view_traits;
-
-template <class ViewableType>
-struct is_view_region;
-
-template <class ViewableType>
-struct is_view_region
-: std::integral_constant<
-    bool, 
-    view_traits<ViewableType>::is_view::value>
-{ };
-
-template <class ViewableType>
 struct rank;
 
 template <class ViewableType>
 struct rank
-: view_traits<ViewableType>::rank
+: std::integral_constant<dim_t, std::decay<ViewableType>::type::rank::value>
 { };
+
+template <class ViewableType>
+struct view_traits;
 
 template <class ViewType>
 class IndexSetIdentity;
@@ -87,6 +77,17 @@ namespace detail {
 template <class ViewableType>
 // struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
 struct is_view : dash::detail::has_type_index_set_type<ViewableType> { };
+
+
+template <class ViewableType>
+struct is_view_region;
+
+template <class ViewableType>
+struct is_view_region
+: std::integral_constant<
+    bool, 
+    dash::is_view<ViewableType>::value>
+{ };
 
 
 
@@ -136,7 +137,7 @@ namespace detail {
                                       global_type >::type         image_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
 
-    typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
+    typedef dash::rank<ViewT>                                  rank;
   };
 
   /**

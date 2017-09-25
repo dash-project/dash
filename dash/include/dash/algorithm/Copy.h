@@ -1216,8 +1216,8 @@ template <
   class    GlobInputRange,
   class    GlobOutputRange,
   typename std::enable_if<
-             ( dash::view_traits<GlobInputRange>::is_view::value &&
-               dash::view_traits<GlobOutputRange>::is_view::value ),
+             ( dash::is_view<GlobInputRange>::value &&
+               dash::is_view<GlobOutputRange>::value ),
              int >::type = 0
 >
 GlobOutputRange copy(
