@@ -6,6 +6,8 @@
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
+#include <dash/view/ViewSpec.h>
+
 #include <array>
 #include <algorithm>
 #include <sstream>

@@ -4,7 +4,7 @@
 #include <dash/Types.h>
 #include <dash/Range.h>
 
-#include <dash/view/SetIntersect.h>
+#include <dash/view/Intersect.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Local.h>
 #include <dash/view/Origin.h>

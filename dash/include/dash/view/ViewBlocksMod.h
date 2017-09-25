@@ -17,7 +17,7 @@
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Apply.h>
-#include <dash/view/Chunk.h>
+#include <dash/view/Chunks.h>
 #include <dash/view/Sub.h>
 
 #include <type_traits>

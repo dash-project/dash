@@ -1,5 +1,5 @@
-#ifndef DASH__VIEW__SET_INTERSECT_H__INCLUDED
-#define DASH__VIEW__SET_INTERSECT_H__INCLUDED
+#ifndef DASH__VIEW__INTERSECT_H__INCLUDED
+#define DASH__VIEW__INTERSECT_H__INCLUDED
 
 #include <dash/Types.h>
 #include <dash/Range.h>
@@ -17,8 +17,8 @@ template <
   class ViewTypeA,
   class ViewTypeB,
   typename std::enable_if<
-             dash::view_traits<ViewTypeA>::rank::value == 1 &&
-             dash::view_traits<ViewTypeB>::rank::value == 1,
+             dash::rank<ViewTypeA>::value == 1 &&
+             dash::rank<ViewTypeB>::value == 1,
              int >::type = 0
 >
 constexpr auto
@@ -63,8 +63,8 @@ template <
   dim_t CurDim,
   class ViewTypeA,
   class ViewTypeB,
-  dim_t NDimA = dash::view_traits<ViewTypeA>::rank::value,
-  dim_t NDimB = dash::view_traits<ViewTypeB>::rank::value,
+  dim_t NDimA = dash::rank<ViewTypeA>::value,
+  dim_t NDimB = dash::rank<ViewTypeB>::value,
   typename std::enable_if<
              (NDimA == NDimB) && (NDimA > 1) && (NDimB > 1) &&
              (CurDim >= 0),
@@ -96,8 +96,8 @@ intersect_dim(
 template <
   class ViewTypeA,
   class ViewTypeB,
-  dim_t NDimA = dash::view_traits<ViewTypeA>::rank::value,
-  dim_t NDimB = dash::view_traits<ViewTypeB>::rank::value,
+  dim_t NDimA = dash::rank<ViewTypeA>::value,
+  dim_t NDimB = dash::rank<ViewTypeB>::value,
   typename std::enable_if<
              (NDimA == NDimB) && (NDimA > 1) && (NDimB > 1),
              int >::type = 0
@@ -124,4 +124,4 @@ static inline auto intersect(const ViewType & v_rhs) {
 
 } // namespace dash
 
-#endif // DASH__VIEW__SET_INTERSECT_H__INCLUDED
+#endif // DASH__VIEW__INTERSECT_H__INCLUDED

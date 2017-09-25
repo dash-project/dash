@@ -484,10 +484,12 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
+#if DASH_CXX_VERSION < 14
     -> decltype(dash::index(
-                  std::declval<const view_domain_type &>()
-                )) {
+                  std::declval<const view_domain_type &>() ))
 //  -> typename view_traits<view_domain_type>::index_set_type {
+#endif
+  {
     return dash::index(_domain);
   }
 

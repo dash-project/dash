@@ -111,7 +111,7 @@ template <
   typename DomainValueT
             = typename std::decay<DomainT>::type,
   dim_t    NDim
-            = dash::view_traits<DomainValueT>::rank::value,
+            = dash::rank<DomainValueT>::value,
   typename std::enable_if<
              !dash::view_traits<DomainValueT>::is_origin::value,
              char >::type = 0

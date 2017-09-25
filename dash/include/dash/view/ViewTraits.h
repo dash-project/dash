@@ -54,6 +54,24 @@ struct view_traits
 template <class ViewableType>
 struct view_traits;
 
+template <class ViewableType>
+struct is_view_region;
+
+template <class ViewableType>
+struct is_view_region
+: std::integral_constant<
+    bool, 
+    view_traits<ViewableType>::is_view::value>
+{ };
+
+template <class ViewableType>
+struct rank;
+
+template <class ViewableType>
+struct rank
+: view_traits<ViewableType>::rank
+{ };
+
 template <class ViewType>
 class IndexSetIdentity;
 

@@ -35,20 +35,37 @@
  *
  * \par Expressions
  *
- * View Specifier            | Synopsis
- * ------------------------- | --------------------------------------------------
- * <tt>dash::sub</tt>        | Subrange of domain in a specified dimension
- * <tt>dash::intersect</tt>  | View from intersection of two domains
- * <tt>dash::difference</tt> | View from difference of two domains
- * <tt>dash::combine</tt>    | Composite view of two possibply unconnected domains
- * <tt>dash::local</tt>      | Local subspace of domain
- * <tt>dash::global</tt>     | Maps subspace to elements in global domain
- * <tt>dash::apply</tt>      | Obtain image of domain view (inverse of \c domain)
- * <tt>dash::domain</tt>     | Obtain domain of view image (inverse of \c apply)
- * <tt>dash::origin</tt>     | Obtain the view origin (root domain)
- * <tt>dash::blocks</tt>     | Decompose domain into blocks
- * <tt>dash::block</tt>      | Subspace of decomposed domain in a specific block
- * <tt>dash::index</tt>      | Returns a view's index set
+ * View Specifier               | Synopsis
+ * ---------------------------- | --------------------------------------------------
+ * <tt>dash::sub</tt>           | Subrange of domain in a specified dimension
+ * <tt>dash::intersect(v)</tt>  | View from intersection of two domains, result \
+ *                                remains regular rectangle for regular operands
+ * <tt>dash::difference</tt>    | View from difference of two domains
+ * <tt>dash::expand(ob,oe)</tt> | Resize Cartesian view by specified begin-\
+ *                              | and end offset
+ *
+ * <tt>dash::combine(v)</tt>    | Composite possibly unconnected domain into \
+ *                                view
+ * <tt>dash::group</tt>         | Group domains in view, group members are not\
+ *                                combined
+ *
+ * <tt>dash::local</tt>         | Local subspace of domain
+ * <tt>dash::remote</tt>        | Non-local subspace of domain
+ * <tt>dash::global</tt>        | Maps subspace to elements in global domain
+ *
+ * <tt>dash::domain</tt>        | Obtain domain of view image (inverse of \c apply)
+ * <tt>dash::origin</tt>        | Obtain the view origin (local or global root\
+ *                                domain)
+ * <tt>dash::global_origin</tt> | Obtain the view origin (global root domain)
+ *
+ * <tt>dash::blocks</tt>        | Decompose domain into blocks in data distribution
+ * <tt>dash::block</tt>         | Subspace of decomposed domain in a specific block
+ * <tt>dash::chunks</tt>        | Decompose domain into single contiguous ranges
+ * <tt>dash::strides</tt>       | Decompose domain into ranges with specified size
+ *
+ * <tt>dash::index</tt>         | Returns a view's index set
+ * <tt>dash::owner</tt>         | Maps elements in view to unit id of its memory \
+ *                                space
  *
  * \par Examples
  *
@@ -73,8 +90,9 @@
 
 #include <dash/view/Utility.h>
 
+#include <dash/view/ViewSpec.h>
 #include <dash/view/Block.h>
-#include <dash/view/Chunk.h>
+#include <dash/view/Chunks.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Global.h>
@@ -85,7 +103,7 @@
 #include <dash/view/Expand.h>
 
 #include <dash/view/SetUnion.h>
-#include <dash/view/SetIntersect.h>
+#include <dash/view/Intersect.h>
 #include <dash/view/SetDifference.h>
 
 #include <dash/view/IndexSet.h>
