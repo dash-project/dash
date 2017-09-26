@@ -173,6 +173,17 @@ class ViewBlockMod
                block_idx)
   { }
 
+  // ---- properties ------------------------------------------------------
+
+  constexpr bool is_strided() const noexcept {
+    return _index_set.is_strided();
+  }
+
+  constexpr bool is_local_at(dash::team_unit_t uid) const noexcept {
+    return _index_set.is_local()
+           && uid == _index_set.pattern().team().myid();
+  }
+
   // ---- extents ---------------------------------------------------------
 
   constexpr std::array<size_type, NDim> extents() const {
@@ -358,6 +369,17 @@ class ViewBlockMod<DomainType, 1>
                block_first_gidx(this->domain(), block_idx),
                block_final_gidx(this->domain(), block_idx))
   { }
+
+  constexpr bool is_strided() const noexcept {
+    return false; // 1-dimensional blocks are contiguous
+  }
+
+  constexpr bool is_local_at(dash::team_unit_t uid) const noexcept {
+    return // Domain is local, block must be local:
+           dash::view_traits<DomainType>::is_local::value ||
+           // First element is local, so block is local:
+           _index_set.pattern().unit_at(_index_set[0]) == uid;
+  }
 
   constexpr const_iterator begin() const {
     return const_iterator(dash::origin(*this).begin(),

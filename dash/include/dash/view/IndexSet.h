@@ -1002,6 +1002,10 @@ class IndexSetLocal
   , _size(calc_size())
   { }
 
+  constexpr bool is_local() const noexcept {
+    return true;
+  }
+
   constexpr bool is_strided() const noexcept {
     return (
       // Local sub range of one-dimensional range is contiguous:
@@ -1654,11 +1658,26 @@ class IndexSetBlock
   , _size(calc_size())
   { }
 
+  constexpr bool is_local() const noexcept {
+    return // Domain is local, block must be local:
+           dash::view_traits<DomainType>::is_local::value ||
+           // First element is local, so block is local:
+           ( this->pattern().unit_at(this->first()) ==
+             this->pattern().team().myid() );
+  }
+
   constexpr bool is_strided() const noexcept {
     return (
       // Elements are contiguous within single block, block view
       // is not strided:
-      !dash::pattern_layout_traits<pattern_type>::type::blocked
+      !dash::pattern_layout_traits<pattern_type>::type::blocked ||
+      // Block elements are contiguous but missing columns/rows for
+      // row-major/column-major storage order:
+      ( pattern_type::memory_order() == dash::ROW_MAJOR
+        ? this->extent(1) < this->pattern().blocksize(1) &&
+          this->extent(0) > 1
+        : this->extent(0) < this->pattern().blocksize(0) &&
+          this->extent(1) > 1 )
     );
   }
 

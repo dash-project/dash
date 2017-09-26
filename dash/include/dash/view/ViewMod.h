@@ -272,8 +272,9 @@ class ViewModBase
     return !(derived() == rhs);
   }
 
-  constexpr bool is_local() const {
-    return view_traits<ViewModType>::is_local::value;
+  constexpr bool is_local_at(dash::team_unit_t uid) const noexcept {
+    return view_traits<ViewModType>::is_local::value
+           && uid == dash::index(*this).pattern().team().myid();
   }
 
   // ---- extents ---------------------------------------------------------
