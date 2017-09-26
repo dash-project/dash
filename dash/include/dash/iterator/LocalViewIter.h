@@ -442,10 +442,11 @@ public:
     if (_viewspec != nullptr) {
       // Viewspec projection required:
       auto l_coords = coords(idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.[]", l_coords);
       idx = _pattern->local_memory_layout().at(l_coords);
     }
-    DASH_LOG_TRACE_VAR("LocalViewIter.[]", idx);
+    DASH_LOG_TRACE("LocalViewIter.[] >",
+                   "globmem.lbegin:", _globmem->lbegin(),
+                   "+", idx);
     // Global reference to element at given position:
     return *(_globmem->lbegin() + idx);
   }
@@ -461,10 +462,11 @@ public:
     if (_viewspec != nullptr) {
       // Viewspec projection required:
       auto l_coords = coords(idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.[]", l_coords);
       idx = _pattern->local_memory_layout().at();
     }
-    DASH_LOG_TRACE_VAR("LocalViewIter.[]", idx);
+    DASH_LOG_TRACE("LocalViewIter.[] >",
+                   "globmem.lbegin:", _globmem->lbegin(),
+                   "+", idx);
     // Global reference to element at given position:
     return *(_globmem->lbegin() + idx);
   }
@@ -922,8 +924,7 @@ private:
       l_coords = index_space.coords(l_index);
       // Apply offset of view projection to view coords:
       for (dim_t d = 0; d < NumDimensions; ++d) {
-        auto dim_offset  = _viewspec->offset(d);
-        l_coords[d]     += dim_offset;
+        l_coords[d] += _viewspec->offset(d);
       }
     } else {
       l_coords = _pattern->local_memory_layout().coords(l_index);

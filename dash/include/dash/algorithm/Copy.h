@@ -121,7 +121,7 @@ template <
 ValueType * copy_block(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
-  ValueType         * out_first)
+  ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy_block()",
                  "in_first:",  in_first.pos(),
@@ -267,7 +267,7 @@ template <
 dash::Future<ValueType *> copy_block_async(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
-  ValueType         * out_first)
+  ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy_block_async()",
                  "in_first:",  in_first.pos(),
@@ -459,9 +459,9 @@ template <
   class ValueType,
   class GlobOutputIt >
 GlobOutputIt copy_block(
-  ValueType * in_first,
-  ValueType * in_last,
-  GlobOutputIt      out_first)
+  ValueType    * in_first,
+  ValueType    * in_last,
+  GlobOutputIt   out_first)
 {
   DASH_LOG_TRACE("dash::copy_block()",
                  "l_in_first:",      in_first,
@@ -495,9 +495,9 @@ template <
   class ValueType,
   class GlobOutputIt >
 dash::Future<GlobOutputIt> copy_block_async(
-  ValueType * in_first,
-  ValueType * in_last,
-  GlobOutputIt      out_first)
+  ValueType     * in_first,
+  ValueType     * in_last,
+  GlobOutputIt    out_first)
 {
   DASH_LOG_TRACE("dash::copy_block_async()",
                  "l_in_first:",  in_first,
@@ -585,7 +585,7 @@ template <
 dash::Future<ValueType *> copy_async(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
-  ValueType         * out_first)
+  ValueType   * out_first)
 {
   const auto & team = in_first.team();
   dash::util::UnitLocality uloc(team, team.myid());
@@ -1030,9 +1030,33 @@ auto copy(
   return out_last;
 }
 
+/**
+ * Specialization of global to local copy for local iterators in global input
+ * range.
+ */
 template <
   class ValueType,
-  class GlobInputIt >
+  class GlobInputIt,
+  typename std::enable_if<
+             std::is_same<typename GlobInputIt::pointer, ValueType *>::value,
+             int >::type = 0 >
+ValueType * copy(
+  GlobInputIt   in_first,
+  GlobInputIt   in_last,
+  ValueType   * out_first)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, local view iterator to local");
+  return std::copy(static_cast<const ValueType *>(in_first),
+                   static_cast<const ValueType *>(in_first),
+                   out_first);
+}
+
+template <
+  class ValueType,
+  class GlobInputIt,
+  typename std::enable_if<
+             !std::is_same<typename GlobInputIt::pointer, ValueType *>::value,
+             int >::type = 0 >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
@@ -1044,10 +1068,9 @@ ValueType * copy(
   DASH_LOG_TRACE_VAR("dash::copy", in_last.dart_gptr());
   DASH_LOG_TRACE_VAR("dash::copy", out_first);
 
-//auto li_range_in_old = local_index_range(in_first, in_last);
-//DASH_LOG_TRACE("dash::copy", "source index range (old):",
-//               "(", li_range_in_old.begin, ",", li_range_in_old.end, ")");
-  auto in_range        = dash::make_range(in_first, in_last);
+  auto in_range = dash::make_range(in_first, in_last);
+  DASH_LOG_TRACE("dash::copy", "source value range type:",
+                 dash::typestr(in_range));
   DASH_LOG_TRACE("dash::copy", "source value range:", in_range);
   DASH_LOG_TRACE("dash::copy", "source index range:", dash::index(in_range));
   DASH_LOG_TRACE("dash::copy", "source range extents:", in_range.extents());

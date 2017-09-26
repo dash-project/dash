@@ -341,21 +341,18 @@ public:
     return _extents[dim];
   }
 
-  constexpr const std::array<index_type, NDim> & offsets() const
-  {
+  constexpr const std::array<index_type, NDim> & offsets() const {
     return _offsets;
   }
 
-  constexpr range_type range(dim_t dim) const
-  {
+  constexpr index_type offset(dim_t dim) const {
+    return _offsets[dim];
+  }
+
+  constexpr range_type range(dim_t dim) const {
     return range_type {
              static_cast<index_type>(_offsets[dim]),
              static_cast<index_type>(_offsets[dim] + _extents[dim]) };
-  }
-
-  constexpr index_type offset(dim_t dim) const
-  {
-    return _offsets[dim];
   }
 
   region_type region() const
