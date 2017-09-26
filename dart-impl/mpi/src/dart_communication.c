@@ -1194,7 +1194,7 @@ dart_ret_t dart_wait(
                    (unsigned long)handle->win);
     if (handle->num_reqs > 0) {
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      DART_LOG_DEBUG(
+      CHECK_MPI_RET(
         MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE),
         "MPI_Waitall");
 
@@ -1236,8 +1236,8 @@ dart_ret_t dart_waitall_local(
       if (handles[i] != DART_HANDLE_NULL) {
         for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
           if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
-            DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
-                          i, (void*)handles[i]->reqs[j]);
+            DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: 0x%x)",
+                          i, handles[i]->reqs[j]);
             DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
                           i, handles[i]->dest);
             mpi_req[r_n] = handles[i]->reqs[j];
@@ -1312,9 +1312,9 @@ dart_ret_t dart_waitall(
       if (handles[i] != DART_HANDLE_NULL) {
         for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
           if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
-            DART_LOG_DEBUG("dart_waitall: -- handle[%zu](%p): "
+            DART_LOG_DEBUG("dart_waitall: -- handle[%zu](0x%x): "
                           "dest:%d win:%"PRIu64,
-                          i, (void*)handles[i]->reqs[0],
+                          i, handles[i]->reqs[0],
                           handles[i]->dest,
                           (unsigned long)handles[i]->win);
             mpi_req[r_n] = handles[i]->reqs[j];
