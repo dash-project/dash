@@ -149,8 +149,7 @@ public:
     }
   }
 
-  ~HaloMatrixWrapper() {
-  }
+  ~HaloMatrixWrapper() {}
 
   iterator begin() noexcept { return _begin; }
 
@@ -176,11 +175,6 @@ public:
 
   const_iterator_bnd bend() const noexcept { return _bend; }
 
-  /*const HaloBlockView_t & haloRegion(dim_t dim, HaloRegion halo_region)
-  {
-    return _haloblock.halo_region(dim, halo_region);
-  }*/
-
   const HaloBlockT& haloBlock() { return _haloblock; }
 
   void updateHalosAsync() {
@@ -190,7 +184,7 @@ public:
 
   void waitHalosAsync() {
     for (auto& region : _region_data)
-      dart_wait(&region.second.halo_data.handle);
+      dart_wait_local(&region.second.halo_data.handle);
   }
 
   void updateHalos() {
@@ -207,7 +201,10 @@ public:
   const ViewSpecT& getLocalView() const { return _view_local; }
 
   const StencilSpecT& stencilSpec() const { return _stencil_spec; }
+
   const HaloMemoryT& haloMemory() const { return _halomemory; }
+
+  MatrixT& matrix() { return _matrix; }
 
   template <typename FunctionT>
   void setFixedHalos(FunctionT f) {
@@ -229,7 +226,6 @@ public:
         }
 
         auto it_reg_end = region.end();
-        //for (auto i = 0; i < region.size(); ++i, ++it) {
         for (auto it = region.begin(); it != it_reg_end; ++it) {
           auto coords = it.gcoords();
           for (auto d = 0; d < NumDimensions; ++d)
@@ -259,17 +255,14 @@ public:
 
 private:
   struct HaloData {
-    dart_handle_t               handle;
-    //size_type                   num_blocks;
-    //size_type                   num_elems_block;
-    //size_type                   stride;
-    std::vector<int>      indexes;
+    dart_handle_t     handle;
+    std::vector<int>  indexes;
   };
 
   struct Data {
-    const HaloRegionT&          region;
+    const HaloRegionT&             region;
     std::function<void(HaloData&)> get_halos;
-    HaloData                    halo_data;
+    HaloData                       halo_data;
   };
 
   void updateHaloIntern(Data& data, bool async) {
@@ -278,14 +271,9 @@ private:
       return;
 
     data.get_halos(data.halo_data);
-    /*for (auto i = 0; i < data.num_handles; ++i, it += data.cont_elems) {
-      dart_storage_t ds = dash::dart_storage<ElementT>(data.cont_elems);
-      dart_get_handle(off + ds.nelem * i, it.dart_gptr(), ds.nelem, ds.dtype, &(data.handle[i]));
-    }*/
 
     if (!async)
-      dart_waitall(&data.halo_data.handle, 1);
-      //dart_waitall(data.handle, data.num_handles);
+      dart_wait_local(&data.halo_data.handle);
   }
 
 private:

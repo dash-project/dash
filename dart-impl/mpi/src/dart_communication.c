@@ -691,6 +691,7 @@ dart_ret_t dart_get_strided_handle(
     return DART_ERR_INVAL;
   }
 
+  handle->num_reqs++;
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_strided_handle > handle(%p) dest:%d win:%"PRIu64,
@@ -850,6 +851,7 @@ dart_ret_t dart_get_indexed_handle(
     return DART_ERR_INVAL;
   }
 
+  handle->num_reqs++;
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_indexed_handle > handle(%p) dest:%d win:%"PRIu64,
