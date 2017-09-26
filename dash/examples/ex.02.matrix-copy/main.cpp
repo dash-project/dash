@@ -78,8 +78,8 @@ void run_example(MatrixT & matrix) {
   typedef typename MatrixT::value_type     value_t;
 
   int li = 0;
-  std::generate(matrix.local.begin(),
-                matrix.local.end(),
+  std::generate(matrix.lbegin(),
+                matrix.lend(),
                 [&]() {
                   return dash::myid() + 0.01 * li++;
                 });
@@ -93,24 +93,22 @@ void run_example(MatrixT & matrix) {
 
   dash::barrier();
 
-  auto l_matrix = matrix | local()
-                         | sub(0,matrix.local.extents()[0]);
+  print("matrix.pattern local size:    " << matrix.pattern().local_size());
+  print("matrix.pattern local extents: " << matrix.pattern().local_extents());
 
-  print("matrix | local size: "    << l_matrix.size());
+  auto l_matrix = matrix | local();
+
+  print("matrix | local size:    " << l_matrix.size());
   print("matrix | local extents: " << l_matrix.extents());
   print("matrix | local offsets: " << l_matrix.offsets());
-  print("matrix | local:" << nview_str(l_matrix));
+  print("matrix | local:" << 
+        nview_str(l_matrix));
 
   dash::barrier();
 
-  for (int li = 0; li < matrix.local.size(); ++li) {
-    auto lit = matrix.local.begin() + li;
-    DASH_ASSERT_EQ(*lit, *(matrix.lbegin() + li), "local value mismatch");
-  }
-
   // Copy local row
   {
-    auto l_row = matrix | local() | sub(0,1); // matrix.local.row(0);
+    auto l_row = matrix | local() | sub(0,1);
     DASH_LOG_DEBUG("matrix.local.row(0)",
           "type:",     dash::typestr(l_row));
     print("matrix.local.row(0): " <<
@@ -138,25 +136,25 @@ void run_example(MatrixT & matrix) {
           "extents: " << l_blocks.extents());
 
     int l_bi = 0;
+    auto l_blocks_idx = l_blocks | index();
     for (const auto & lb : l_blocks) {
-      print("matrix.local.blocks(): [" << l_bi << "]: " <<
-            "size: "    << lb.size()    << " " <<
-            "offsets: " << lb.offsets() << " " <<
-            "extents: " << lb.extents());
+      DASH_LOG_DEBUG("matrix.local.blocks()", "[", l_bi, "]",
+                     "size:",    lb.size(),
+                     "offsets:", lb.offsets(),
+                     "extents:", lb.extents());
 
-      DASH_LOG_DEBUG("matrix.local.block(0)", "print ...");
-      print("matrix.local.blocks(): [" << l_bi << "]: " <<
+      print("matrix.local.block(" << l_bi << "): " <<
+            "block[" << l_blocks_idx[l_bi] << "]" <<
             nview_str(lb));
-
+#if 0
+      std::vector<value_t> tmp(lb.size());
+      auto copy_end = dash::copy(lb.begin(), lb.end(),
+                                 tmp.data());
+      print("matrix.local.block(" << l_bi << ") copy: " << tmp);
+#endif
       ++l_bi;
     }
 
-#if 0
-    std::vector<value_t> tmp(l_block.size());
-    auto copy_end = dash::copy(l_block.begin(), l_block.end(),
-                               tmp.data());
-    print("matrix.local.block(0) copy: " << tmp);
-#endif
   }
   matrix.barrier();
 }

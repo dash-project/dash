@@ -445,11 +445,10 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    if (_viewspec != nullptr) {
-      // Viewspec projection required:
-      auto l_coords = coords(idx);
-      idx = _pattern->local_memory_layout().at(l_coords);
-    }
+    // Local coords at index, applies viewspec:
+    auto l_coords = coords(idx);
+    // Local index with respect to local block layout:
+    idx = _pattern->local_at(l_coords);
     DASH_LOG_TRACE("LocalViewIter.[]= >",
                    "globmem.lbegin:", _globmem->lbegin(),
                    "+", idx);
@@ -474,11 +473,10 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    if (_viewspec != nullptr) {
-      // Viewspec projection required:
-      auto l_coords = coords(idx);
-      idx = _pattern->local_memory_layout().at();
-    }
+    // Local coords at index, applies viewspec:
+    auto l_coords = coords(idx);
+    // Local index with respect to local block layout:
+    idx = _pattern->local_at(l_coords);
     DASH_LOG_TRACE("LocalViewIter.[] >",
                    "globmem.lbegin:", _globmem->lbegin(),
                    "+ index", idx,
@@ -514,6 +512,10 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
+    // Local coords at index, applies viewspec:
+    auto l_coords = coords(idx);
+    // Local index with respect to local block layout:
+    idx = _pattern->local_at(l_coords);
     DASH_LOG_TRACE_VAR("LocalViewIter.local=", idx);
     DASH_LOG_TRACE_VAR("LocalViewIter.local=", offset);
 
@@ -576,6 +578,9 @@ public:
   inline index_type gpos() const
   {
     DASH_LOG_TRACE_VAR("LocalViewIter.gpos()", _idx);
+
+    DASH_THROW(dash::exception::NotImplemented, "LocalViewIter.gpos");
+
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
       DASH_LOG_TRACE_VAR("LocalViewIter.gpos >", _idx);
@@ -611,6 +616,9 @@ public:
   inline typename pattern_type::local_index_t lpos() const
   {
     DASH_LOG_TRACE_VAR("LocalViewIter.lpos()", _idx);
+
+    DASH_THROW(dash::exception::NotImplemented, "LocalViewIter.lpos");
+
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;

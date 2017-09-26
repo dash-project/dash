@@ -60,7 +60,7 @@ std::string nview_str(
     ss << "\n   ";
     for (int c = 0; c < view_ncols; ++c) {
       int  offset = r * view_ncols + c;
-      value_t val = nview[offset];
+      value_t val = nview.begin()[offset];
       ss << std::fixed << std::setw(3)
          << nindex[offset]
          << TermColorMod(unit_term_colors[(int)val])
@@ -92,7 +92,7 @@ std::string nviewrc_str(
     ss << '\n' << std::right << std::setw(3) << r << "  ";
     for (int c = 0; c < view_ncols; ++c) {
       int  offset = r * view_ncols + c;
-      value_t val = nview[offset];
+      value_t val = nview.begin()[offset];
       ss << std::fixed << std::setw(3)
          << nindex[offset]
          << TermColorMod(unit_term_colors[(int)val])
