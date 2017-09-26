@@ -1119,21 +1119,21 @@ TEST_F(MatrixTest, UnderfilledBlockedPatternExtents)
   EXPECT_LE_U( corner[0] + matrix.local.extent(0), h );
 }
 
-TEST_F(MatrixTest, UnderfilledLocalViewSpec){
+TEST_F(MatrixTest, UnderfilledLocalViewSpec) {
   auto myid     = dash::myid();
   auto numunits = dash::Team::All().size();
   dash::TeamSpec<2> teamspec( numunits, 1 );
   teamspec.balance_extents();
 
-  uint32_t w= 13;
-  uint32_t h= 7;
+  uint32_t w = 13;
+  uint32_t h = 7;
   auto distspec= dash::DistributionSpec<2>( dash::BLOCKED, dash::BLOCKED );
   dash::NArray<uint32_t, 2> narray( dash::SizeSpec<2>( h, w ),
       distspec, dash::Team::All(), teamspec );
 
   narray.barrier();
   
-  if ( 0 == myid ) {
+  if (0 == myid) {
     LOG_MESSAGE("global extent is %lu x %lu",
                 narray.extent(0), narray.extent(1));
   }
@@ -1149,6 +1149,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
         ASSERT_EQ_U(el, 1);
       });
   dash::barrier();
+
   // test local view
   std::fill(narray.local.begin(), narray.local.end(), 2);
   std::for_each(narray.local.begin(), narray.local.end(), 
@@ -1157,7 +1158,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
       });
 
   uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
-  auto local_elements= narray.local.extent(0) * narray.local.extent(1);
+  auto local_elements      = narray.local.extent(0) * narray.local.extent(1);
   
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());

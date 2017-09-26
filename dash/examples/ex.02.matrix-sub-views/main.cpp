@@ -62,15 +62,12 @@ int main(int argc, char *argv[])
       auto m_s_blocks_idx = m_s_blocks | index();
       int b_idx = 0;
       for (const auto & blk : m_s_blocks) {
-        auto m_isect = matrix_sub | intersect(blk);
-
         print("block " << std::left << std::setw(2) 
                        << m_s_blocks_idx[b_idx] << '\n' <<
               "      " <<
-              (blk.is_strided() ? "strided, " : "contiguous, ") <<
-              (blk.is_local_at(myid) ? "local" : "remote") <<
+              (blk.is_strided()      ? "strided, " : "contiguous, ") <<
+              (blk.is_local_at(myid) ? "local"     : "remote") <<
               nview_str(blk) << std::endl);
-
         ++b_idx;
       }
     }
