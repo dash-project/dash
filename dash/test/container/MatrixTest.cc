@@ -1195,6 +1195,13 @@ TEST_F(MatrixTest, MatrixLBegin)
 
   int * l_first = matrix.lbegin();
 
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin",
+                     matrix.local.block(0).offsets());
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin",
+                     matrix.local.block(0).extents());
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin",
+                     matrix.local.block(0));
+
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
@@ -1274,22 +1281,10 @@ TEST_F(MatrixTest, CopyRow)
   dash::barrier();
   dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
 
-  auto l_prange = dash::local_range(row.begin(), row.end());
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
-                     static_cast<const value_t *>(l_prange.begin));
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
-                     static_cast<const value_t *>(l_prange.end));
-  auto l_irange = dash::local_index_range(row.begin(), row.end());
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.begin));
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.end));
-
-  EXPECT_EQ_U(row_size, l_irange.end - l_irange.begin);
-  EXPECT_EQ_U(row_size, l_prange.end - l_prange.begin);
-
   EXPECT_EQ_U(1,         decltype(row)::ndim());
   EXPECT_EQ_U(n_lextent, row_size);
-
   EXPECT_EQ_U(n_lextent, row.extents()[1]);
+  EXPECT_EQ_U(n_lextent, row.end() - row.begin());
 
   // Check values and test for each expression:
   int li = 0;

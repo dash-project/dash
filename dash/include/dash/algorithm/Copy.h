@@ -1047,7 +1047,7 @@ ValueType * copy(
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, local view iterator to local");
   return std::copy(static_cast<const ValueType *>(in_first),
-                   static_cast<const ValueType *>(in_first),
+                   static_cast<const ValueType *>(in_last),
                    out_first);
 }
 

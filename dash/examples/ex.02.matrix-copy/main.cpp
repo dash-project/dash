@@ -81,9 +81,9 @@ int main(int argc, char **argv)
   print("matrix.local.row(0) range type: " << dash::typestr(l_row_range));
   print("matrix.local.row(0) range: " << l_row_range);
 
-//std::vector<value_t> tmp(l_row.size());
-//auto copy_end = dash::copy(l_row.begin(), l_row.end(),
-//                           tmp.data());
+  std::vector<value_t> tmp(l_row.size());
+  auto copy_end = dash::copy(l_row.begin(), l_row.end(),
+                             tmp.data());
 
   matrix.barrier();
   dash::finalize();
