@@ -146,9 +146,9 @@ void run_example(MatrixT & matrix) {
       print("matrix.local.block(" << l_bi << "): " <<
             "block[" << l_blocks_idx[l_bi] << "]" <<
             nview_str(lb));
-#if 0
+#if 1
       std::vector<value_t> tmp(lb.size());
-      auto copy_end = dash::copy(lb.begin(), lb.end(),
+      auto copy_end = dash::copy(lb,
                                  tmp.data());
       print("matrix.local.block(" << l_bi << ") copy: " << tmp);
 #endif

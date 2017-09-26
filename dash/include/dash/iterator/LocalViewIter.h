@@ -579,34 +579,24 @@ public:
   {
     DASH_LOG_TRACE_VAR("LocalViewIter.gpos()", _idx);
 
-    DASH_THROW(dash::exception::NotImplemented, "LocalViewIter.gpos");
-
-    if (_viewspec == nullptr) {
-      // No viewspec mapping required:
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos >", _idx);
-      return _idx;
-    } else {
-      IndexType idx    = _idx;
-      IndexType offset = 0;
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos", *_viewspec);
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos", _max_idx);
-      // Convert iterator position (_idx) to local index and unit.
-      if (_idx > _max_idx) {
-        // Global iterator pointing past the range indexed by the pattern
-        // which is the case for .end() iterators.
-        idx    = _max_idx;
-        offset = _idx - _max_idx;
-      }
-      // Viewspec projection required:
-      auto g_coords = coords(idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos", _idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos", g_coords);
-      auto g_idx    = _pattern->memory_layout().at(g_coords);
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos", g_idx);
-      g_idx += offset;
-      DASH_LOG_TRACE_VAR("LocalViewIter.gpos >", g_idx);
-      return g_idx;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
+    DASH_LOG_TRACE_VAR("LocalViewIter.gpos", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
     }
+    // Local coords at index, applies viewspec:
+    auto l_coords = coords(idx);
+    // Global index with respect to local block layout:
+    IndexType g_idx = _pattern->global_index(_myid, l_coords);
+    DASH_LOG_TRACE_VAR("LocalViewIter.gpos", g_idx);
+    g_idx += offset;
+    DASH_LOG_TRACE_VAR("LocalViewIter.gpos >", g_idx);
+    return g_idx;
   }
 
   /**
@@ -616,8 +606,6 @@ public:
   inline typename pattern_type::local_index_t lpos() const
   {
     DASH_LOG_TRACE_VAR("LocalViewIter.lpos()", _idx);
-
-    DASH_THROW(dash::exception::NotImplemented, "LocalViewIter.lpos");
 
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -629,22 +617,15 @@ public:
       // which is the case for .end() iterators.
       idx    = _max_idx;
       offset = _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("LocalViewIter.lpos", _max_idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.lpos", idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.lpos", offset);
     }
-    // Global index to local index and unit:
+    // Local coords at index, applies viewspec:
+    auto l_coords = coords(idx);
+    // Local index with respect to local block layout:
+    idx = _pattern->local_at(l_coords);
+
     local_pos_t local_pos;
-    if (_viewspec == nullptr) {
-      // No viewspec mapping required:
-      local_pos        = _pattern->local(idx);
-    } else {
-      // Viewspec projection required:
-      DASH_LOG_TRACE_VAR("LocalViewIter.lpos", *_viewspec);
-      auto glob_coords = coords(idx);
-      local_pos        = _pattern->local_index(glob_coords);
-    }
-    local_pos.index += offset;
+    local_pos.unit  = _myid;
+    local_pos.index = idx + offset;
     DASH_LOG_TRACE("LocalViewIter.lpos >",
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
