@@ -90,19 +90,6 @@ int main(int argc, char *argv[])
                      dash::typestr(sreg_block.begin()));
       DASH_LOG_DEBUG("MatrixViewsExample",
                      nview_str(sreg_block));
-
-      auto block_rg  = dash::make_range(reg_block.begin(),
-                                        reg_block.end());
-      auto block_srg = dash::sub<0>(1,2, block_rg);
-
-      DASH_LOG_DEBUG("MatrixViewsExample", "------------------------------",
-                     nview_str(block_rg));
-      DASH_LOG_DEBUG("MatrixViewsExample", "block range origin iterator:",
-                     dash::typestr(dash::origin(block_srg).begin()));
-   // DASH_LOG_DEBUG("MatrixViewsExample", "block range origin:",
-   //                nview_str(dash::origin(block_srg)));
-   // DASH_LOG_DEBUG("MatrixViewsExample",
-   //                nview_str(block_srg));
     }
   }
   dash::barrier();
