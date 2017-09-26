@@ -135,8 +135,10 @@ void run_example(MatrixT & matrix) {
           "offsets: " << l_blocks.offsets() << " " <<
           "extents: " << l_blocks.extents());
 
-    int l_bi = 0;
     auto l_blocks_idx = l_blocks | index();
+//  print("matrix | local | blocks() | index:" << nview_str(l_blocks_idx));
+
+    int l_bi = 0;
     for (const auto & lb : l_blocks) {
       DASH_LOG_DEBUG("matrix.local.blocks()", "[", l_bi, "]",
                      "size:",    lb.size(),
