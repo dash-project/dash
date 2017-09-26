@@ -1708,9 +1708,14 @@ class IndexSetBlock
   constexpr index_type rel(index_type block_phase) const {
     return ( view_domain_is_local
              ? ( // translate block phase to local index:
-                 this->pattern().local_at(
-                   // global coords
-                   this->pattern().coords(block_phase),
+                 this->pattern().local_at( // local coords -> local index
+                   // phase to in-block coords
+                   dash::CartesianIndexSpace<NBlockDim>(
+                     this->extents()
+                   ).coords(
+                     block_phase >= this->pattern().block(_block_idx).size()
+                     ? block_phase - 1
+                     : block_phase ),
                    // viewspec
                    this->calc_viewspec()
                  ) )
@@ -1718,7 +1723,7 @@ class IndexSetBlock
                  dash::CartesianIndexSpace<NDomainDim>(
                    this->pattern().extents()
                  ).at(
-                   // in-block coords
+                   // phase to in-block coords
                    dash::CartesianIndexSpace<NBlockDim>(
                      this->extents()
                    ).coords(
@@ -1762,8 +1767,8 @@ class IndexSetBlock
 
   ViewSpec<NDomainDim, index_type> calc_viewspec() const {
     return ( view_domain_is_local
-             ? // viewspec of local block referenced by this view:
-               this->pattern().local_block(_block_idx).intersect(
+             ? // local viewspec of local block referenced by this view:
+               this->pattern().local_block_local(_block_idx).intersect(
                  // viewspec of domain:
                  ViewSpec<NDomainDim, index_type>(
                    this->view_domain().offsets(),

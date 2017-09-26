@@ -137,18 +137,14 @@ void run_example(MatrixT & matrix) {
             "size: "    << lb.size()    << " " <<
             "offsets: " << lb.offsets() << " " <<
             "extents: " << lb.extents());
+
+      DASH_LOG_DEBUG("matrix.local.block(0)", "print ...");
+      print("matrix.local.blocks(): [" << l_bi << "]: " <<
+            nview_str(lb));
+
       ++l_bi;
     }
 
-    auto l_block = matrix | local() | block(0); // matrix.local.block(0);
-    DASH_LOG_DEBUG("matrix.local.block(0)",
-          "type:",     dash::typestr(l_block));
-    print("matrix.local.block(0): " <<
-          "size: "    << l_block.size() << " " <<
-          "offsets: " << l_block.offsets() << " " <<
-          "extents: " << l_block.extents());
-
-//  print("matrix.local.block(0) " << nview_str(l_block));
 #if 0
     std::vector<value_t> tmp(l_block.size());
     auto copy_end = dash::copy(l_block.begin(), l_block.end(),
