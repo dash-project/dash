@@ -694,7 +694,7 @@ public:
 
   /**
    * Unit and local offset at the iterator's position.
-   * Projects iterator position from its view spec to global index domain.
+   * Projects iterator position from its view spec to local index domain.
    */
   inline typename pattern_type::local_index_t lpos() const
   {

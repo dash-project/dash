@@ -923,7 +923,7 @@ private:
       // Apply offset of view projection to view coords:
       for (dim_t d = 0; d < NumDimensions; ++d) {
         auto dim_offset  = _viewspec->offset(d);
-        l_coords[d]  += dim_offset;
+        l_coords[d]     += dim_offset;
       }
     } else {
       l_coords = _pattern->local_memory_layout().coords(l_index);
