@@ -1046,9 +1046,17 @@ ValueType * copy(
   ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, local view iterator to local");
-  return std::copy(static_cast<const ValueType *>(in_first),
-                   static_cast<const ValueType *>(in_last),
-                   out_first);
+  DASH_LOG_TRACE_VAR("dash::copy", in_last - in_first);
+// DASH_LOG_TRACE_VAR("dash::copy", in_first.viewspec().offsets());
+// DASH_LOG_TRACE_VAR("dash::copy", in_first.viewspec().extents());
+// DASH_LOG_TRACE_VAR("dash::copy", in_last.viewspec().offsets());
+// DASH_LOG_TRACE_VAR("dash::copy", in_last.viewspec().extents());
+  ValueType * out_last = std::copy(static_cast<const ValueType *>(in_first),
+                                   static_cast<const ValueType *>(in_last),
+                                   out_first);
+  DASH_LOG_TRACE_VAR("dash::copy", out_last - out_first);
+  DASH_LOG_TRACE_VAR("dash::copy >", out_last);
+  return out_last;
 }
 
 template <

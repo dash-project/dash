@@ -305,14 +305,15 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   value_t local_block_copy[block_size];
   int  lb      = 0;
   auto l_block = matrix.local.block(lb);
-  LOG_MESSAGE("Creating local copy of first local block");
-  value_t * local_block_copy_last =
-    dash::copy(l_block.begin(),
-               l_block.end(),
-               local_block_copy);
+  DASH_LOG_DEBUG("CopyTest.Blocking2Dim", "matrix.local.block(0):",
+                 "size:", l_block.size());
+  EXPECT_EQ_U(block_size, l_block.size());
+  auto local_block_copy_last = dash::copy(l_block.begin(),
+                                          l_block.end(),
+                                          local_block_copy);
   // Validate number of copied elements:
   auto num_copied = local_block_copy_last - local_block_copy;
-  EXPECT_EQ_U(num_copied, block_size);
+  EXPECT_EQ_U(block_size, num_copied);
   for (size_t bx = 0; bx < block_size_x; ++bx) {
     for (size_t by = 0; by < block_size_y; ++by) {
       auto    l_offset = (bx * block_size_y) + by;
