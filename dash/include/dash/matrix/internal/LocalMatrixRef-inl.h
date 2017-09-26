@@ -109,13 +109,13 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
   const auto& pattern = _refview._mat->_pattern;
   // Global view of local block:
-  auto l_block_g_view = pattern.local_block(block_lindex);
+//auto l_block_g_view = pattern.local_block(block_lindex);
   // Local view of local block:
   auto l_block_l_view = pattern.local_block_local(block_lindex);
   // Return a view specified by the block's viewspec:
   ViewT<NumDim> view;
   view._refview             = MatrixRefView_t(_refview._mat);
-  view._refview._viewspec   = l_block_g_view;
+  view._refview._viewspec   = l_block_l_view;
   view._refview._l_viewspec = l_block_l_view;
   DASH_LOG_TRACE("LocalMatrixRef.block >",
                  "global:",

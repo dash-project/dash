@@ -77,9 +77,9 @@ int main(int argc, char **argv)
         "offsets: " << l_row.offsets() << " "
         "extents: " << l_row.extents());
 
-  auto l_row_range = dash::make_range(l_row.begin(), l_row.end());
-  print("matrix.local.row(0) range type: " << dash::typestr(l_row_range));
-  print("matrix.local.row(0) range: " << l_row_range);
+// auto l_row_range = dash::make_range(l_row.begin(), l_row.end());
+// print("matrix.local.row(0) range type: " << dash::typestr(l_row_range));
+// print("matrix.local.row(0) range: " << l_row_range);
 
   std::vector<value_t> tmp(l_row.size());
   auto copy_end = dash::copy(l_row.begin(), l_row.end(),

@@ -156,8 +156,12 @@ TEST_F(MatrixTest, Views)
                                   l_block_view.offset(1), ")",
                      "extent: (", l_block_view.extent(0), ",",
                                   l_block_view.extent(1), ")");
-      // Verify matrix.block(b) == matrix.local.block(lb):
-      ASSERT_EQ_U(g_block_view, l_block_view);
+      // Verify matrix.block(b) vs. matrix.local.block(lb):
+      ASSERT_EQ_U(l_block_view.extents(), l_block_view.extents());
+      ASSERT_EQ_U(l_block_view.offsets(), l_block_view.offsets());
+
+      ASSERT_TRUE_U(std::equal(g_block.begin(), g_block.end(),
+                               l_block.begin(), l_block.end()));
       ++lb;
     }
   }
@@ -1194,6 +1198,13 @@ TEST_F(MatrixTest, MatrixLBegin)
   matrix.barrier();
 
   int * l_first = matrix.lbegin();
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin", l_first);
+
+  int * l_matrix_first = static_cast<int *>(matrix.local.begin());
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin", l_matrix_first);
+
+  EXPECT_EQ_U(l_first, l_matrix_first);
+  EXPECT_EQ_U(myid,    *l_matrix_first);
 
   DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin",
                      matrix.local.block(0).offsets());
@@ -1202,9 +1213,11 @@ TEST_F(MatrixTest, MatrixLBegin)
   DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin",
                      matrix.local.block(0));
 
-  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
-  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
-  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
+  int * l_block_first = static_cast<int *>(matrix.local.block(0).begin());
+  DASH_LOG_DEBUG_VAR("MatrixTest.MatrixLBegin", l_block_first);
+
+  EXPECT_EQ_U(l_first, l_block_first);
+  EXPECT_EQ_U(myid,    *l_block_first);
 }
 
 TEST_F(MatrixTest, DelayedPatternAllocation)
