@@ -63,7 +63,7 @@ int main(int argc, char **argv)
   dash::Matrix<value_t, 2, index_t, pattern_t>
     matrix_tiled(tiled_pattern);
 
-//  run_example(matrix_blocked);
+  run_example(matrix_blocked);
   run_example(matrix_tiled);
 
   dash::finalize();
@@ -89,20 +89,19 @@ void run_example(MatrixT & matrix) {
   if (dash::myid() == 0) {
     print("matrix:" <<
           nview_str(matrix | sub(0,matrix.extents()[0])));
+
+    std::vector<value_t> tmp(6);
+    auto copy_end = std::copy(matrix.begin() + 3,
+                              matrix.begin() + 9,
+                              tmp.data());
+    print("matrix.begin()[3...9]: " << tmp);
   }
 
   dash::barrier();
 
-  print("matrix.pattern local size:    " << matrix.pattern().local_size());
-  print("matrix.pattern local extents: " << matrix.pattern().local_extents());
-
   auto l_matrix = matrix | local();
 
-  print("matrix | local size:    " << l_matrix.size());
-  print("matrix | local extents: " << l_matrix.extents());
-  print("matrix | local offsets: " << l_matrix.offsets());
-  print("matrix | local:" << 
-        nview_str(l_matrix));
+  print("matrix | local:" << nview_str(l_matrix));
 
   dash::barrier();
 
@@ -136,7 +135,6 @@ void run_example(MatrixT & matrix) {
           "extents: " << l_blocks.extents());
 
     auto l_blocks_idx = l_blocks | index();
-//  print("matrix | local | blocks() | index:" << nview_str(l_blocks_idx));
 
     int l_bi = 0;
     for (const auto & lb : l_blocks) {
@@ -148,12 +146,12 @@ void run_example(MatrixT & matrix) {
       print("matrix.local.block(" << l_bi << "): " <<
             "block[" << l_blocks_idx[l_bi] << "]" <<
             nview_str(lb));
-#if 1
+
       std::vector<value_t> tmp(lb.size());
       auto copy_end = dash::copy(lb,
                                  tmp.data());
       print("matrix.local.block(" << l_bi << ") copy: " << tmp);
-#endif
+
       ++l_bi;
     }
 
