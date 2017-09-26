@@ -93,9 +93,15 @@ void run_example(MatrixT & matrix) {
 
   dash::barrier();
 
-  print("matrix.local size: "    << matrix.local.size());
-  print("matrix.local extents: " << matrix.local.extents());
-  print("matrix.local offsets: " << matrix.local.offsets());
+  auto l_matrix = matrix | local()
+                         | sub(0,matrix.local.extents()[0]);
+
+  print("matrix | local size: "    << l_matrix.size());
+  print("matrix | local extents: " << l_matrix.extents());
+  print("matrix | local offsets: " << l_matrix.offsets());
+  print("matrix | local:" << nview_str(l_matrix));
+
+  dash::barrier();
 
   for (int li = 0; li < matrix.local.size(); ++li) {
     auto lit = matrix.local.begin() + li;

@@ -15,6 +15,7 @@
     std::istringstream iss(mss.str()); \
     std::string item; \
     while (std::getline(iss, item)) { \
+      DASH_LOG_DEBUG("print", item); \
       oss   << "[  U:" << dash::myid() << " ] "; \
       oss   << item << std::endl; \
     } \

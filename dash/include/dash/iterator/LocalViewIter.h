@@ -392,9 +392,6 @@ public:
       // which is the case for .end() iterators.
       idx     = _max_idx;
       offset += _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("LocalViewIter.dart_gptr", _max_idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.dart_gptr", idx);
-      DASH_LOG_TRACE_VAR("LocalViewIter.dart_gptr", offset);
     }
     // Global index to local index and unit:
     local_pos_t local_pos = lpos();
@@ -418,7 +415,7 @@ public:
    */
   inline reference operator*()
   {
-    return this->operator[](_idx);
+    return this->operator[](0);
   }
 
   /**
@@ -428,7 +425,7 @@ public:
    */
   inline const_reference operator*() const
   {
-    return this->operator[](_idx);
+    return this->operator[](0);
   }
 
   /**
@@ -439,16 +436,25 @@ public:
     /// The global position of the element
     index_type idx)
   {
+    DASH_LOG_TRACE_VAR("LocalViewIter.[]=()", idx);
+    idx              += _idx;
+    IndexType offset  = 0;
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
     if (_viewspec != nullptr) {
       // Viewspec projection required:
       auto l_coords = coords(idx);
       idx = _pattern->local_memory_layout().at(l_coords);
     }
-    DASH_LOG_TRACE("LocalViewIter.[] >",
+    DASH_LOG_TRACE("LocalViewIter.[]= >",
                    "globmem.lbegin:", _globmem->lbegin(),
                    "+", idx);
     // Global reference to element at given position:
-    return *(_globmem->lbegin() + idx);
+    return *(_globmem->lbegin() + idx + offset);
   }
 
   /**
@@ -459,6 +465,15 @@ public:
     /// The global position of the element
     index_type idx) const
   {
+    DASH_LOG_TRACE_VAR("LocalViewIter.[]()", idx);
+    idx              += _idx;
+    IndexType offset  = 0;
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
     if (_viewspec != nullptr) {
       // Viewspec projection required:
       auto l_coords = coords(idx);
@@ -466,9 +481,10 @@ public:
     }
     DASH_LOG_TRACE("LocalViewIter.[] >",
                    "globmem.lbegin:", _globmem->lbegin(),
-                   "+", idx);
+                   "+ index", idx,
+                   "+ tail",  offset);
     // Global reference to element at given position:
-    return *(_globmem->lbegin() + idx);
+    return *(_globmem->lbegin() + idx + offset);
   }
 
   /**

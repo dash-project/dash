@@ -493,7 +493,7 @@ public:
    */
   inline reference operator*()
   {
-    return this->operator[](_idx);
+    return this->operator[](0);
   }
 
   /**
@@ -503,7 +503,7 @@ public:
    */
   inline const_reference operator*() const
   {
-    return this->operator[](_idx);
+    return this->operator[](0);
   }
 
   /**
@@ -512,22 +512,31 @@ public:
    */
   reference operator[](
     /// The global position of the element
-    index_type g_index)
+    index_type idx)
   {
     typedef typename pattern_type::local_index_t
       local_pos_t;
     // Global index to local index and unit:
     local_pos_t local_pos;
+    idx              += _idx;
+    IndexType offset  = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      local_pos        = _pattern->local(g_index);
+      local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      auto glob_coords = coords(g_index);
+      auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE("GlobViewIter.[]",
-                   "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
+                   "(index:", idx, " voffset:", _view_idx_offset, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     // Global reference to element at given position:
     return reference(
@@ -541,22 +550,31 @@ public:
    */
   const_reference operator[](
     /// The global position of the element
-    index_type g_index) const
+    index_type idx) const
   {
     typedef typename pattern_type::local_index_t
       local_pos_t;
+    idx              += _idx;
+    IndexType offset  = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      local_pos        = _pattern->local(g_index);
+      local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      auto glob_coords = coords(g_index);
+      auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE("GlobViewIter.[]",
-                   "(index:", g_index, " voffset:", _view_idx_offset, ") ->",
+                   "(index:", idx, " voffset:", _view_idx_offset, ") ->",
                    "(unit:", local_pos.unit, " index:", local_pos.index, ")");
     // Global reference to element at given position:
     return const_reference(
