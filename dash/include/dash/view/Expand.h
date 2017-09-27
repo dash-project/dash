@@ -151,6 +151,22 @@ static inline auto expand(OffsetT0 a, OffsetT1 b) {
 
 template <
   dim_t    SubDim  = 0,
+  class    OffsetT0,
+  class    OffsetT1,
+  typename std::enable_if<
+             ( std::is_integral<OffsetT0>::value &&
+               std::is_integral<OffsetT1>::value ),
+             int
+           >::type = 0 >
+static inline auto stretch(OffsetT0 a, OffsetT1 b) {
+  return dash::make_pipeable(
+           [=](auto && x) {
+             return expand<SubDim>(a,b, std::forward<decltype(x)>(x));
+           });
+}
+
+template <
+  dim_t    SubDim  = 0,
   class    OffsetT,
   typename std::enable_if<
              std::is_integral<OffsetT>::value,
