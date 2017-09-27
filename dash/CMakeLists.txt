@@ -9,6 +9,8 @@ set(BUILD_EXAMPLES ${BUILD_EXAMPLES}
     PARENT_SCOPE)
 set(BUILD_TESTS ${BUILD_TESTS}
     PARENT_SCOPE)
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS}
+    PARENT_SCOPE)
 set(BUILD_COVERAGE_TESTS ${BUILD_COVERAGE_TESTS}
     PARENT_SCOPE)
 set(ENABLE_LOGGING ${ENABLE_LOGGING}
@@ -279,10 +281,17 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   # Library compilation sources
   add_library(
-    ${DASH_LIBRARY}         # library name
+    ${DASH_LIBRARY} # library name
     ${DASH_LIBRARY_SOURCES} # sources
     ${DASH_LIBRARY_HEADERS} # headers
   )
+  if (${BUILD_SHARED_LIBS})
+    add_library(
+      ${DASH_LIBRARY} SHARED  # library name
+      ${DASH_LIBRARY_SOURCES} # sources
+      ${DASH_LIBRARY_HEADERS} # headers
+    )
+  endif()
   target_link_libraries(
     ${DASH_LIBRARY}           # library name
     ${DASH_LINK_DART_LIBRARY} # dependency: DART lib

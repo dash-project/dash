@@ -27,6 +27,11 @@
     std::cout << oss.str(); \
   } while(0)
 
+#define STEP(stream_m__) do { \
+  std::cin.ignore();          \
+  print(stream_m__);          \
+} while(0)
+
 
 using namespace dash::internal::logging;
 

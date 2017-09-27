@@ -19,6 +19,8 @@ file(GLOB_RECURSE DASH_DART_IMPL_MPI_HEADERS "include/*.h")
 # Load global build settings
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR}
     PARENT_SCOPE)
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS}
+    PARENT_SCOPE)
 set(ENABLE_DART_LOGGING ${ENABLE_DART_LOGGING}
     PARENT_SCOPE)
 set(ENABLE_UNIFIED_MEMORY_MODEL ${ENABLE_UNIFIED_MEMORY_MODEL}
@@ -195,6 +197,13 @@ add_library(
   ${DASH_DART_IMPL_MPI_SOURCES} # sources
   ${DASH_DART_IMPL_MPI_HEADERS} # headers
 )
+if (${BUILD_SHARED_LIBS})
+  add_library(
+    ${DASH_DART_IMPL_MPI_LIBRARY} SHARED # library name
+    ${DASH_DART_IMPL_MPI_SOURCES} # sources
+    ${DASH_DART_IMPL_MPI_HEADERS} # headers
+  )
+endif()
 # Link dependencies
 target_link_libraries(
   ${DASH_DART_IMPL_MPI_LIBRARY}

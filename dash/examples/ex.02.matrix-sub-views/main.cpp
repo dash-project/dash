@@ -4,11 +4,6 @@
 #include <iostream>
 #include <sstream>
 
-#define STEP(stream_m__) do { \
-  std::cin.ignore();          \
-  print(stream_m__);          \
-} while(0)
-
 
 int main(int argc, char *argv[])
 {
@@ -83,12 +78,24 @@ int main(int argc, char *argv[])
 
     STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()");
     {
-//    print(nview_str(matrix_sub | local()) << std::endl);
+      print("matrix | sub | local:" <<
+            nview_str(matrix_sub | local()));
+      print("matrix | sub | local: type: " <<
+            dash::typestr(matrix_sub | local()));
+      print("matrix | sub | local: strided: " <<
+            (matrix_sub | local() | index()).is_strided());
 
       auto m_s_l_blocks     = matrix_sub   | local() | blocks();
       auto m_s_l_blocks_idx = m_s_l_blocks | index();
+      print("matrix | sub | local | blocks: \n" <<
+            "size: " << m_s_l_blocks.size());
+
+      print("type:"         << dash::typestr(m_s_l_blocks));
+      print("origin type: " << dash::typestr(
+                                 dash::origin(m_s_l_blocks))
+                            << std::endl);
       int b_idx = 0;
-      print("--- number of blocks: " << m_s_l_blocks.size());
+
       for (const auto & blk : m_s_l_blocks) {
         STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()[b_idx]");
         auto block_gidx = m_s_l_blocks_idx[b_idx];
@@ -96,7 +103,7 @@ int main(int argc, char *argv[])
               "offsets: " << blk.offsets() << " " <<
               "extents: " << blk.extents());
 
-//      print(nview_str(blk) << std::endl);
+        print(nview_str(blk) << std::endl);
 
         ++b_idx;
       }
