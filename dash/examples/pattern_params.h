@@ -5,10 +5,10 @@ typedef dash::default_extent_t  extent_t;
 typedef dash::default_index_t   index_t;
 
 typedef struct cli_params_t {
-  std::string             type            = "seq";
+  std::string             type           = "tile";
   std::array<extent_t, 2> size       {{ 12, 12 }};
-  std::array<extent_t, 2> units      {{ 3,   4 }};
-  std::array<extent_t, 2> tile       {{ 3,   4 }};
+  std::array<extent_t, 2> units      {{  2,  2 }};
+  std::array<extent_t, 2> tile       {{  3,  4 }};
   bool                    blocked_display = false;
   bool                    balance_extents = false;
   bool                    cout            = false;

@@ -1,6 +1,14 @@
 #include <libdash.h>
 #include "../util.h"
 
+#include <iostream>
+#include <sstream>
+
+#define STEP(stream_m__) do { \
+  std::cin.ignore();          \
+  print(stream_m__);          \
+} while(0)
+
 
 int main(int argc, char *argv[])
 {
@@ -50,28 +58,30 @@ int main(int argc, char *argv[])
     print("matrix:" <<
           nview_str(matrix | sub(0,extent_y)) << '\n');
 
+    STEP("sub<0>(3,-1) | sub<1>(1,-1)");
+
     auto matrix_sub = matrix | sub<0>(3, extent_y-1)
                              | sub<1>(1, extent_x-1);
 
-    print("matrix | sub<0> | sub<1>" <<
-          nview_str(matrix_sub) << "\n\n");
+    print(nview_str(matrix_sub) << "\n\n");
 
-    print("matrix | sub<0> | sub<1> | blocks\n");
+    STEP("sub<0>(3,-1) | sub<1>(1,-1) | blocks()");
     {
       auto m_s_blocks     = matrix_sub | blocks();
       auto m_s_blocks_idx = m_s_blocks | index();
       int b_idx = 0;
       for (const auto & blk : m_s_blocks) {
-        print("block " << std::left << std::setw(2) 
-                       << m_s_blocks_idx[b_idx] << '\n' <<
-              "      " <<
+        STEP("block "  << std::left << std::setw(2) 
+                       << m_s_blocks_idx[b_idx] << '\n');
+        print("      " <<
               (blk.is_strided()      ? "strided, " : "contiguous, ") <<
               (blk.is_local_at(myid) ? "local"     : "remote") <<
               nview_str(blk) << std::endl);
         ++b_idx;
       }
     }
-    print("matrix | sub<0> | sub<1> | local | blocks()\n");
+
+    STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()");
     {
 //    print(nview_str(matrix_sub | local()) << std::endl);
 
@@ -80,6 +90,7 @@ int main(int argc, char *argv[])
       int b_idx = 0;
       print("--- number of blocks: " << m_s_l_blocks.size());
       for (const auto & blk : m_s_l_blocks) {
+        STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()[b_idx]");
         auto block_gidx = m_s_l_blocks_idx[b_idx];
         print("--- block(" << block_gidx << ") " <<
               "offsets: " << blk.offsets() << " " <<

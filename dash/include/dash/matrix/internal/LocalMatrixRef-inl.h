@@ -34,6 +34,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", local_extents);
 //std::array<index_type, NumDim> local_begin_coords = {{ }};
 //auto local_offsets = mat->_pattern.global(local_begin_coords);
+  _refview._viewspec   = ViewSpec_t(local_extents);
   _refview._l_viewspec = ViewSpec_t(local_extents);
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat) >", _refview._viewspec);
 }
@@ -593,13 +594,13 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
       "Wrong sub-dimension");
   LocalMatrixRef<T, NumDim, NumDim, PatternT> ref;
   ::std::fill(ref._refview._coord.begin(), ref._refview._coord.end(), 0);
-  ref._refview._l_viewspec = _refview._l_viewspec;
-  ref._refview._l_viewspec.resize_dim(
+  ref._refview._viewspec = _refview._viewspec;
+  ref._refview._viewspec.resize_dim(
                             SubDimension,
                             offset,
                             extent);
   DASH_LOG_TRACE_VAR("LocalMatrixRef.sub >",
-                     ref._refview._l_viewspec.size());
+                     ref._refview._viewspec.size());
   ref._refview._mat = _refview._mat;
   return ref;
 }
@@ -620,13 +621,13 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
       "Wrong sub-dimension");
   LocalMatrixRef<const T, NumDim, NumDim, PatternT> ref;
   ::std::fill(ref._refview._coord.begin(), ref._refview._coord.end(), 0);
-  ref._refview._l_viewspec = _refview._l_viewspec;
-  ref._refview._l_viewspec.resize_dim(
+  ref._refview._viewspec = _refview._viewspec;
+  ref._refview._viewspec.resize_dim(
                             SubDimension,
                             offset,
                             extent);
   DASH_LOG_TRACE_VAR("LocalMatrixRef.sub >",
-                     ref._refview._l_viewspec.size());
+                     ref._refview._viewspec.size());
   ref._refview._mat = _refview._mat;
   return ref;
 }
