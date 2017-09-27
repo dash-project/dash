@@ -89,15 +89,22 @@ int main(int argc, char *argv[])
           nview_str(matrix_region));
 
     auto matrix_reg_blocks = dash::blocks(matrix_region);
+    int bi = 0;
     for (const auto & reg_block : matrix_reg_blocks) {
-      auto sreg_block = dash::sub<0>(1,2, reg_block);
+      print("matrix | sub | sub | block[" << bi << "] " <<
+            "extents: " << reg_block.extents() << " " <<
+            "offsets: " << reg_block.offsets());
+      print(nview_str(reg_block) << '\n');
 
-      DASH_LOG_DEBUG("MatrixViewsExample", "==============================",
-                     nview_str(reg_block));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     dash::typestr(sreg_block.begin()));
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     nview_str(sreg_block));
+  //  auto sreg_block = reg_block | dash::intersect(
+  //                                  ViewSpec<2>({ 1,2 }));
+  //  if (!sreg_block) { continue; }
+  //  DASH_LOG_DEBUG("MatrixViewsExample", sreg_block.size());
+  //  DASH_LOG_DEBUG("MatrixViewsExample",
+  //                 dash::typestr(sreg_block.begin()));
+  //  DASH_LOG_DEBUG("MatrixViewsExample",
+  //                 nview_str(sreg_block));
+      ++bi;
     }
   }
   dash::barrier();
@@ -107,6 +114,8 @@ int main(int argc, char *argv[])
   // Pointer to first value in next copy destination range:
   value_t * copy_dest_begin = local_copy.data();
   value_t * copy_dest_last  = local_copy.data();
+
+  print("Number of blocks: " << num_blocks_total);
 
   for (size_t gb = 0; gb < num_blocks_total; ++gb) {
     // View of block at global block index gb:
@@ -119,9 +128,8 @@ int main(int argc, char *argv[])
                          (dash::Team::All().myid().id + 1) % nunits);
     if (g_block_unit == remote_unit_id) {
       DASH_LOG_DEBUG("MatrixViewsExample", "===========================");
-      DASH_LOG_DEBUG("MatrixViewsExample",
-                     "block gidx", gb,
-                     "at unit",    g_block_unit.id);
+      print("--- block gidx " << gb << " at unit " << g_block_unit.id);
+
       DASH_LOG_DEBUG("MatrixViewsExample", "vvvvvvvvvvvvvvvvvvvvvvvvvvv");
       // Block is assigned to selecte remote unit, create local copy:
       auto remote_block_matrix = dash::sub(1,5, matrix.block(gb));
