@@ -249,12 +249,28 @@ class ViewBlockMod
                             _index_set, offset));
   }
 
+  reference operator[](int offset) {
+    return *(iterator(dash::origin(*this).begin(),
+                            _index_set, offset));
+  }
+
   constexpr const_reference operator[](
               const std::array<
                       typename self_t::index_set_type::index_type,
                       self_t::rank::value
                     > & coords) const {
     return *(const_iterator(dash::origin(*this).begin(),
+                            _index_set,
+                            // offset:
+                            dash::linearize(*this, coords)));
+  }
+
+  reference operator[](
+              const std::array<
+                      typename self_t::index_set_type::index_type,
+                      self_t::rank::value
+                    > & coords) {
+    return *(iterator(dash::origin(*this).begin(),
                             _index_set,
                             // offset:
                             dash::linearize(*this, coords)));

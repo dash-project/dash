@@ -9,6 +9,12 @@ using std::vector;
 
 using uint = unsigned int;
 
+template <typename MatrixT, typename ViewMods>
+auto transform_in_view(MatrixT & mat, ViewMods && vmods) {
+  print("transform_in_view: " << nview_str(mat | vmods));
+  return 0;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -64,6 +70,8 @@ int main(int argc, char *argv[])
   if (myid == 0) {
     print("matrix:" <<
           nview_str(dash::sub(0, matrix.extents()[0], matrix)));
+
+    transform_in_view(matrix, sub<0>(2,4) | sub<1>(2,6));
 
     auto matrix_region = dash::size() > 1
                          ? dash::sub<0>(

@@ -1,6 +1,7 @@
 
 #include <libdash.h>
 #include "../util.h"
+#include "../pattern_params.h"
 
 #include <vector>
 #include <iostream>
@@ -26,13 +27,76 @@ int main(int argc, char **argv)
   typedef float                            value_t;
 
   int blocksize_x = 2;
-  int blocksize_y = 3;
+  int blocksize_y = 2;
 
   dash::init(&argc, &argv);
 
   auto myid   = dash::myid();
   auto nunits = dash::size();
 
+  auto params = parse_args(argc, argv);
+
+  if (dash::myid() == 0) {
+    print_params(params);
+
+    try {
+      dash::SizeSpec<2, extent_t> sizespec(params.size[0],  params.size[1]);
+      dash::TeamSpec<2, index_t>  teamspec(params.units[0], params.units[1]);
+
+      if(params.balance_extents) {
+        teamspec.balance_extents();
+      }
+      if (params.tile[0] < 0 && params.tile[1] < 0) {
+        auto max_team_extent = std::max(teamspec.extent(0),
+                                        teamspec.extent(1));
+        params.tile[0] = sizespec.extent(0) / max_team_extent;
+        params.tile[1] = sizespec.extent(1) / max_team_extent;
+      }
+      if (params.type == "summa") {
+        auto pattern = make_summa_pattern(params, sizespec, teamspec);
+        std::cout << "Pattern type:\n   "
+                  << pattern_to_string(pattern) << std::endl;
+        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
+          matrix(pattern);
+        run_example(matrix);
+      } else if (params.type == "block") {
+        auto pattern = make_block_pattern(params, sizespec, teamspec);
+        std::cout << "Pattern type:\n   "
+                  << pattern_to_string(pattern) << std::endl;
+        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
+          matrix(pattern);
+        run_example(matrix);
+      } else if (params.type == "tile") {
+        auto pattern = make_tile_pattern(params, sizespec, teamspec);
+        std::cout << "Pattern type:\n   "
+                  << pattern_to_string(pattern) << std::endl;
+        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
+          matrix(pattern);
+        run_example(matrix);
+      } else if (params.type == "shift") {
+        auto pattern = make_shift_tile_pattern(params, sizespec, teamspec);
+        std::cout << "Pattern type:\n   "
+                  << pattern_to_string(pattern) << std::endl;
+        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
+          matrix(pattern);
+        run_example(matrix);
+      } else if (params.type == "seq") {
+        auto pattern = make_seq_tile_pattern(params, sizespec, teamspec);
+        std::cout << "Pattern type:\n   "
+                  << pattern_to_string(pattern) << std::endl;
+        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
+          matrix(pattern);
+        run_example(matrix);
+      } else {
+        print_usage(argv);
+        exit(EXIT_FAILURE);
+      }
+    } catch (std::exception & excep) {
+      std::cerr << excep.what() << std::endl;
+    }
+  }
+
+#if 0
   dash::TeamSpec<2>         teamspec(dash::Team::All());
   teamspec.balance_extents();
 
@@ -65,7 +129,7 @@ int main(int argc, char **argv)
 
   run_example(matrix_blocked);
   run_example(matrix_tiled);
-
+#endif
   dash::finalize();
 
   return 0;
@@ -107,22 +171,11 @@ void run_example(MatrixT & matrix) {
 
   // Copy local row
   {
-    auto l_row = matrix | local() | sub(0,1);
-    DASH_LOG_DEBUG("matrix.local.row(0)",
+    auto l_row = matrix | sub(0, matrix.extent(0)) | local() | sub(1,2);
+    DASH_LOG_DEBUG("matrix.local.row(1)",
           "type:",     dash::typestr(l_row));
-    print("matrix.local.row(0): " <<
-          "size: "    << l_row.size() << " " <<
-          "offsets: " << l_row.offsets() << " " <<
-          "extents: " << l_row.extents());
 
-//  print("matrix.local.row(0) " << nview_str(l_row));
-
-#if 0
-    std::vector<value_t> tmp(l_row.size());
-    auto copy_end = dash::copy(l_row.begin(), l_row.end(),
-                               tmp.data());
-    print("matrix.local.row(0) copy: " << tmp);
-#endif
+    print("matrix.local.row(1) " << nview_str(l_row));
   }
   matrix.barrier();
 

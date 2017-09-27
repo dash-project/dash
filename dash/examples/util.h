@@ -2,9 +2,14 @@
 #define DASH__EXAMPLES__UTIL_H__INCLUDED
 
 #include <libdash.h>
+
+#include <array>
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <unistd.h>
+#include <cstddef>
 
 
 #define print(stream_expr__) \
@@ -102,6 +107,42 @@ std::string nviewrc_str(
          << TermColorMod(TCOL_DEFAULT);
     }
   }
+  return ss.str();
+}
+
+/**
+ * Create string describing of pattern instance.
+ */
+template<typename PatternType>
+static
+std::string pattern_to_string(
+  const PatternType & pattern)
+{
+  typedef typename PatternType::index_type index_t;
+
+  dash::dim_t ndim = pattern.ndim();
+
+  std::string storage_order = pattern.memory_order() == dash::ROW_MAJOR
+                              ? "ROW_MAJOR"
+                              : "COL_MAJOR";
+
+  std::array<index_t, 2> blocksize;
+  blocksize[0] = pattern.blocksize(0);
+  blocksize[1] = pattern.blocksize(1);
+
+  std::ostringstream ss;
+  ss << "dash::"
+     << PatternType::PatternName
+     << "<"
+     << ndim << ","
+     << storage_order << ","
+     << typeid(index_t).name()
+     << ">(\n"
+     << "        SizeSpec:  " << pattern.sizespec().extents()  << ",\n"
+     << "        TeamSpec:  " << pattern.teamspec().extents()  << ",\n"
+     << "        BlockSpec: " << pattern.blockspec().extents() << ",\n"
+     << "        BlockSize: " << blocksize << " )";
+
   return ss.str();
 }
 

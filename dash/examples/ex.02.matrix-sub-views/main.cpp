@@ -91,7 +91,6 @@ int main(int argc, char *argv[])
       }
     }
   }
-  dash::barrier();
 
   dash::finalize();
   return EXIT_SUCCESS;
