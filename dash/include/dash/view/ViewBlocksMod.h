@@ -755,6 +755,13 @@ static inline auto blocks() {
            });
 }
 
+static inline auto block(int bi) {
+  return dash::make_pipeable(
+           [=](auto && x) {
+             return blocks(std::forward<decltype(x)>(x))[bi];
+           });
+}
+
 } // namespace dash
 
 #endif // DASH__VIEW__VIEW_BLOCKS_MOD_H__INCLUDED

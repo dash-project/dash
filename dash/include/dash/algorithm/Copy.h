@@ -1038,22 +1038,24 @@ template <
   class ValueType,
   class GlobInputIt,
   typename std::enable_if<
-             std::is_same<typename GlobInputIt::pointer, ValueType *>::value,
+             std::is_pointer<typename GlobInputIt::pointer>::value,
              int >::type = 0 >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  typedef typename GlobInputIt::pointer pointer_t;
+
   DASH_LOG_TRACE("dash::copy()", "blocking, local view iterator to local");
   DASH_LOG_TRACE_VAR("dash::copy", in_last - in_first);
 // DASH_LOG_TRACE_VAR("dash::copy", in_first.viewspec().offsets());
 // DASH_LOG_TRACE_VAR("dash::copy", in_first.viewspec().extents());
 // DASH_LOG_TRACE_VAR("dash::copy", in_last.viewspec().offsets());
 // DASH_LOG_TRACE_VAR("dash::copy", in_last.viewspec().extents());
-  ValueType * out_last = std::copy(static_cast<const ValueType *>(in_first),
-                                   static_cast<const ValueType *>(in_last),
-                                   out_first);
+  auto out_last = std::copy(static_cast<pointer_t>(in_first.local()),
+                            static_cast<pointer_t>(in_last.local()),
+                            out_first);
   DASH_LOG_TRACE_VAR("dash::copy", out_last - out_first);
   DASH_LOG_TRACE_VAR("dash::copy >", out_last);
   return out_last;
@@ -1243,17 +1245,20 @@ GlobOutputIt copy(
  *
  * \ingroup  DashAlgorithms
  */
+
 template <
-  class    GlobInputRange,
-  class    GlobOutputRange,
+  typename GlobInputRange,
+  typename GlobOutputRange,
   typename std::enable_if<
              ( dash::is_view<GlobInputRange>::value &&
                dash::is_view<GlobOutputRange>::value ),
-             int >::type = 0
->
-GlobOutputRange copy(
-  GlobInputRange  in_g_range,
-  GlobOutputRange out_g_range)
+             int >::type = 0 >
+GlobOutputRange
+// dash::IteratorRange<
+//   typename OutputRange::iterator,
+//   typename OutputRange::iterator >
+copy(GlobInputRange && in_g_range,
+     GlobOutputRange   out_g_range)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 
@@ -1404,6 +1409,7 @@ GlobOutputIt copy(
 
   return out_first + num_elements;
 }
+
 
 
 // ======================================================================

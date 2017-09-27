@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
 
   index_t dst_block = dash::myid() + 1;
   
-  auto copy_end = dash::copy(matrix_a | local() | block(1),
-                             matrix_b | block(dst_block));
+// auto copy_end = dash::copy(matrix_a | local() | block(1),
+//                            matrix_b | block(dst_block));
 
   if (myid == 0) {
     print("matrix:" <<

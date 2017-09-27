@@ -14,6 +14,18 @@ using namespace dash;
 template <typename MatrixT>
 void run_example(MatrixT & matrix);
 
+#define RUN_EXAMPLE(pattern_type__) do { \
+  auto pattern = make_ ## pattern_type__ ## _pattern(   \
+                   params, sizespec, teamspec);         \
+  std::cout << "Pattern:\n   "                          \
+            << pattern_to_string(pattern) << std::endl; \
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)>  \
+    matrix(pattern);                                    \
+  std::cout << "Matrix:\n   "                           \
+            << typestr(matrix) << std::endl;            \
+  run_example(matrix);                                  \
+} while(0)
+
 
 int main(int argc, char **argv)
 {
@@ -38,62 +50,33 @@ int main(int argc, char **argv)
 
   if (dash::myid() == 0) {
     print_params(params);
+  }
 
-    try {
-      dash::SizeSpec<2, extent_t> sizespec(params.size[0],  params.size[1]);
-      dash::TeamSpec<2, index_t>  teamspec(params.units[0], params.units[1]);
+  dash::SizeSpec<2, extent_t> sizespec(params.size[0],  params.size[1]);
+  dash::TeamSpec<2, index_t>  teamspec(params.units[0], params.units[1]);
 
-      if(params.balance_extents) {
-        teamspec.balance_extents();
-      }
-      if (params.tile[0] < 0 && params.tile[1] < 0) {
-        auto max_team_extent = std::max(teamspec.extent(0),
-                                        teamspec.extent(1));
-        params.tile[0] = sizespec.extent(0) / max_team_extent;
-        params.tile[1] = sizespec.extent(1) / max_team_extent;
-      }
-      if (params.type == "summa") {
-        auto pattern = make_summa_pattern(params, sizespec, teamspec);
-        std::cout << "Pattern type:\n   "
-                  << pattern_to_string(pattern) << std::endl;
-        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
-          matrix(pattern);
-        run_example(matrix);
-      } else if (params.type == "block") {
-        auto pattern = make_block_pattern(params, sizespec, teamspec);
-        std::cout << "Pattern type:\n   "
-                  << pattern_to_string(pattern) << std::endl;
-        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
-          matrix(pattern);
-        run_example(matrix);
-      } else if (params.type == "tile") {
-        auto pattern = make_tile_pattern(params, sizespec, teamspec);
-        std::cout << "Pattern type:\n   "
-                  << pattern_to_string(pattern) << std::endl;
-        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
-          matrix(pattern);
-        run_example(matrix);
-      } else if (params.type == "shift") {
-        auto pattern = make_shift_tile_pattern(params, sizespec, teamspec);
-        std::cout << "Pattern type:\n   "
-                  << pattern_to_string(pattern) << std::endl;
-        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
-          matrix(pattern);
-        run_example(matrix);
-      } else if (params.type == "seq") {
-        auto pattern = make_seq_tile_pattern(params, sizespec, teamspec);
-        std::cout << "Pattern type:\n   "
-                  << pattern_to_string(pattern) << std::endl;
-        dash::Matrix<value_t, 2, index_t, decltype(pattern)>
-          matrix(pattern);
-        run_example(matrix);
-      } else {
-        print_usage(argv);
-        exit(EXIT_FAILURE);
-      }
-    } catch (std::exception & excep) {
-      std::cerr << excep.what() << std::endl;
-    }
+  if(params.balance_extents) {
+    teamspec.balance_extents();
+  }
+  if (params.tile[0] < 0 && params.tile[1] < 0) {
+    auto max_team_extent = std::max(teamspec.extent(0),
+                                    teamspec.extent(1));
+    params.tile[0] = sizespec.extent(0) / max_team_extent;
+    params.tile[1] = sizespec.extent(1) / max_team_extent;
+  }
+  if (params.type == "summa") {
+    RUN_EXAMPLE(summa);
+  } else if (params.type == "block") {
+    RUN_EXAMPLE(block);
+  } else if (params.type == "tile") {
+    RUN_EXAMPLE(tile);
+  } else if (params.type == "shift") {
+    RUN_EXAMPLE(shift_tile);
+  } else if (params.type == "seq") {
+    RUN_EXAMPLE(seq_tile);
+  } else {
+    print_usage(argv);
+    exit(EXIT_FAILURE);
   }
 
 #if 0
