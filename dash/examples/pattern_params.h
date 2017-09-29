@@ -7,23 +7,23 @@ typedef dash::default_index_t   index_t;
 typedef struct cli_params_t {
   std::string             type           = "tile";
   std::array<extent_t, 2> size       {{ 12, 12 }};
-  std::array<extent_t, 2> units      {{  2,  2 }};
   std::array<extent_t, 2> tile       {{  3,  4 }};
+  std::array<extent_t, 2> units;
   bool                    blocked_display = false;
   bool                    balance_extents = false;
   bool                    cout            = false;
 } cli_params;
+
+cli_params default_params;
 
 void print_usage(char **argv);
 cli_params parse_args(int argc, char * argv[]);
 void print_params(const cli_params & params);
 
 
-cli_params default_params;
-
-cli_params parse_args(int argc, char * argv[])
+cli_params parse_args(int argc, char * argv[], const cli_params & defaults)
 {
-  cli_params params = default_params;
+  cli_params params = defaults;
 
   for (auto i = 1; i < argc; i += 3) {
     std::string flag = argv[i];
@@ -43,7 +43,7 @@ cli_params parse_args(int argc, char * argv[])
     } else if (flag == "-t") {
       params.tile  = { static_cast<extent_t>(atoi(argv[i+1])),
                        static_cast<extent_t>(atoi(argv[i+2])) };
-    } else if (flag == "-e") {
+    } else if (flag == "-b") {
       params.balance_extents = true;
       i -= 2;
     } else {
@@ -51,8 +51,11 @@ cli_params parse_args(int argc, char * argv[])
       exit(EXIT_FAILURE);
     }
   }
-
   return params;
+}
+
+cli_params parse_args(int argc, char * argv[]) {
+  return parse_args(argc, argv, default_params);
 }
 
 void print_usage(char **argv)

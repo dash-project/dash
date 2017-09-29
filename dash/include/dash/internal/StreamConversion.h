@@ -18,6 +18,7 @@
 #include <cstring>
 #include <memory>
 #include <type_traits>
+#include <iostream>
 
 
 namespace dash {

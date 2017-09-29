@@ -38,15 +38,21 @@ int main(int argc, char **argv)
   typedef typename pattern_t::index_type   index_t;
   typedef float                            value_t;
 
-  int blocksize_x = 2;
-  int blocksize_y = 2;
-
   dash::init(&argc, &argv);
 
   auto myid   = dash::myid();
   auto nunits = dash::size();
 
-  auto params = parse_args(argc, argv);
+  cli_params defaults = default_params;
+  defaults.type            = "tile";
+  defaults.size            = {{ 12, 12 }};
+  defaults.tile            = {{  2,  2 }};
+  defaults.units           = {{  1, static_cast<unsigned>(nunits) }};
+  defaults.blocked_display = false;
+  defaults.balance_extents = false;
+  defaults.cout            = false;
+
+  auto params = parse_args(argc, argv, defaults);
 
   if (dash::myid() == 0) {
     print_params(params);
@@ -81,6 +87,9 @@ int main(int argc, char **argv)
   }
 
 #if 0
+  int blocksize_x = 2;
+  int blocksize_y = 2;
+
   dash::TeamSpec<2>         teamspec(dash::Team::All());
   teamspec.balance_extents();
 
@@ -142,7 +151,7 @@ void run_example(MatrixT & matrix) {
     auto copy_end = std::copy(matrix.begin() + 3,
                               matrix.begin() + 9,
                               tmp.data());
-    STEP("matrix.begin()[3...9]: " << tmp);
+    STEP("matrix.begin()[3...9]: " << range_str(tmp, 2));
   }
 
   dash::barrier();
@@ -175,9 +184,11 @@ void run_example(MatrixT & matrix) {
             nview_str(lb));
 
       std::vector<value_t> tmp(lb.size());
-      auto copy_end = dash::copy(lb,
-                                 tmp.data());
-      STEP("   matrix | local() | block(" << l_bi << ") copy: " << tmp);
+      auto copy_end = std::copy(lb.begin(),
+                                lb.end(),
+                                tmp.data());
+      STEP("   matrix | local() | block(" << l_bi << ") copy: " <<
+           range_str(tmp, 2));
 
       ++l_bi;
     }
