@@ -64,6 +64,7 @@ int main(int argc, char **argv)
     params.tile[0] = sizespec.extent(0) / max_team_extent;
     params.tile[1] = sizespec.extent(1) / max_team_extent;
   }
+
   if (params.type == "summa") {
     RUN_EXAMPLE(summa);
   } else if (params.type == "block") {
@@ -141,31 +142,21 @@ void run_example(MatrixT & matrix) {
     auto copy_end = std::copy(matrix.begin() + 3,
                               matrix.begin() + 9,
                               tmp.data());
-    print("matrix.begin()[3...9]: " << tmp);
+    STEP("matrix.begin()[3...9]: " << tmp);
   }
 
   dash::barrier();
 
   auto l_matrix = matrix | local();
 
-  print("matrix | local:" << nview_str(l_matrix));
+  STEP("matrix | local():" << nview_str(l_matrix));
 
   dash::barrier();
-
-  // Copy local row
-  {
-    auto l_row = matrix | sub(0, matrix.extent(0)) | local() | sub(1,2);
-    DASH_LOG_DEBUG("matrix.local.row(1)",
-          "type:",     dash::typestr(l_row));
-
-    print("matrix.local.row(1) " << nview_str(l_row));
-  }
-  matrix.barrier();
 
   // Copy local block
   {
     auto l_blocks = matrix | local() | blocks();
-    print("matrix.local.blocks(): " <<
+    STEP("matrix | local() | blocks(): " <<
           "size: "    << l_blocks.size()    << " " <<
           "offsets: " << l_blocks.offsets() << " " <<
           "extents: " << l_blocks.extents());
@@ -174,24 +165,23 @@ void run_example(MatrixT & matrix) {
 
     int l_bi = 0;
     for (const auto & lb : l_blocks) {
-      DASH_LOG_DEBUG("matrix.local.blocks()", "[", l_bi, "]",
+      DASH_LOG_DEBUG("matrix | local() | blocks()", "[", l_bi, "]",
                      "size:",    lb.size(),
                      "offsets:", lb.offsets(),
                      "extents:", lb.extents());
 
-      print("matrix.local.block(" << l_bi << "): " <<
+      STEP("-- matrix | local() | block(" << l_bi << "): " <<
             "block[" << l_blocks_idx[l_bi] << "]" <<
             nview_str(lb));
 
       std::vector<value_t> tmp(lb.size());
       auto copy_end = dash::copy(lb,
                                  tmp.data());
-      print("matrix.local.block(" << l_bi << ") copy: " << tmp);
+      STEP("   matrix | local() | block(" << l_bi << ") copy: " << tmp);
 
       ++l_bi;
     }
-
+    dash::barrier();
   }
-  matrix.barrier();
 }
 

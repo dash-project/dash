@@ -28,7 +28,9 @@
   } while(0)
 
 #define STEP(stream_m__) do { \
-  std::cin.ignore();          \
+  if (dash::myid() == 0) {    \
+    std::cin.ignore();        \
+  }                           \
   print(stream_m__);          \
 } while(0)
 
