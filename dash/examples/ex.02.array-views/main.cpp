@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
   dash::init(&argc, &argv);
 
-  int elem_per_unit    = 5;
+  int elem_per_unit    = 3;
   int elem_additional  = 2;
   int array_size       = dash::size() * elem_per_unit +
                            std::min<int>(elem_additional, dash::size());
@@ -46,27 +46,33 @@ int main(int argc, char *argv[])
     initialize_array(a);
 
     if (dash::myid() == 0) {
-      print("a:                        " << range_str(a));
+      print("a:                         " << range_str(a));
 
-      auto sb_array = a | sub(1, a.size()-1) | blocks();
+      STEP("- a | sub");
+      auto s_array = a | sub(1, a.size()-2);
+      print("  a | sub:                 " << range_str(s_array));
+
+      STEP("- a | sub | blocks");
+      auto sb_array = a | sub(1, a.size()-2) | blocks();
       for (const auto & b : sb_array) {
-        print("a | sub | block:          " << range_str(b));
-      }
-
-      auto slb_array = a | sub(1, a.size()-1) | local() | blocks();
-      for (const auto & b : slb_array) {
-        print("a | sub | local | block:  " << range_str(b));
+        print("  a | sub | blocks:        " << range_str(b));
       }
     }
     dash::barrier();
 
     auto l_array = a | local();
-    print("a | local:                " << range_str(l_array));
+    STEP("- a | local:               " << range_str(l_array));
     dash::barrier();
 
-    auto sl_array = a | sub(1, a.size()-1) | local();
-    print("a | sub | local:          " << range_str(sl_array));
+    auto sl_array = a | sub(1, a.size()-2) | local();
+    STEP("- a | sub | local:         " << range_str(sl_array));
     dash::barrier();
+
+    STEP("- a | sub | local | blocks");
+    auto slb_array = a | sub(1, a.size()-2) | local() | blocks();
+    for (const auto & b : slb_array) {
+      print("  a | sub | local | blocks:" << range_str(b));
+    }
 
     auto copy_num_elem       = a.size() / 2;
     auto copy_dest_begin_idx = a.size() / 4 - 1;
@@ -77,13 +83,13 @@ int main(int argc, char *argv[])
     std::transform(buf.begin(), buf.end(),
                    buf.begin(),
                    [&](const double & a) {
-                     return a + 6;
+                     return a + 6 + (0.01 * ++buf_i);
                    });
 
     a.barrier();
 
     if (dash::myid() == 0) {
-      print("copy target index range: "
+      STEP("copy to index range "
               << "[" << copy_dest_begin_idx
               << "," << copy_dest_end_idx << ")");
 
@@ -96,12 +102,12 @@ int main(int argc, char *argv[])
 
       // Printing temporaries from view expressions instead of
       // named values for testing:
-      print("target index set:  " << dash::index(dest_range));
-      print("target block set:  " << dash::index(dash::blocks(dest_range)));
-      print("copy target range: " << range_str(dest_range));
+      STEP("target index set:  " << dash::index(dest_range));
+      STEP("target block set:  " << dash::index(dash::blocks(dest_range)));
+      STEP("copy target range: " << range_str(dest_range));
 
       for (const auto & block : dest_blocks) {
-        print("copy to block: " << range_str(block));
+        print("copy to block:     " << range_str(block));
       }
 
       // copy local buffer to global array
@@ -112,7 +118,7 @@ int main(int argc, char *argv[])
     }
     a.barrier();
 
-    print("modified array: " << range_str(a));
+    print("modified array:    " << range_str(a));
   }
 
   dash::finalize();

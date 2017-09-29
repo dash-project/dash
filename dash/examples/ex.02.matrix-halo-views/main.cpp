@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
             nview_str(b_halo_s, 2));
 
       auto bhs_blocks = b_halo_s | dash::blocks();
-      STEP("  -- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+      STEP("   matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
             "expand({ -1,1 }, { -1,1 }) | shift<1>(1) | block(0)" <<
             nview_str(bhs_blocks[0], 2));
 
