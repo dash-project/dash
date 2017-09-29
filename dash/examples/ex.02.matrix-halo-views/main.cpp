@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
   if (myid == 0) {
     auto matrix_view = dash::sub(0, matrix.extents()[0], matrix);
-    print("matrix" << nview_str(matrix_view, 4));
+    print("matrix" << nview_str(matrix_view, 2));
 
     auto matrix_blocks = dash::blocks(matrix);
     auto matrix_b_idx  = matrix_blocks | dash::index();
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
             "\n       " <<
             "offsets: " << b_offsets[0] << "," << b_offsets[1] << " " <<
             "extents: " << b_extents[0] << "," << b_extents[1] <<
-            nview_str(m_block, 4));
+            nview_str(m_block, 2));
 
       // matrix block halo view:
       auto b_halo = m_block | dash::expand<0>(-1, 1)
@@ -89,16 +89,7 @@ int main(int argc, char *argv[])
             "\n       " <<
             "offsets: " << bh_offsets[0] << "," << bh_offsets[1] << " " <<
             "extents: " << bh_extents[0] << "," << bh_extents[1] <<
-            nview_str(b_halo, 4));
-
-#if 0
-      auto bh_blocks = b_halo | dash::blocks();
-      for (const auto & bh_block : bh_blocks) {
-        STEP("  -- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
-              "expand({ -1,1 }, { -1,1 }) | block(n)" <<
-              nview_str(bh_block, 4));
-      }
-#endif
+            nview_str(b_halo, 2));
 
       // matrix shifted block halo:
       auto b_halo_s    = b_halo | shift<1>(1);
@@ -106,11 +97,17 @@ int main(int argc, char *argv[])
       auto bhs_offsets = b_halo_s.offsets();
       auto bhs_extents = b_halo_s.extents();
       STEP("   matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
-            "expand({ -1,1 }, { -1,1 }) | shift(1):" <<
+            "expand({ -1,1 }, { -1,1 }) | shift<1>(1):" <<
             "\n       " <<
             "offsets: " << bhs_offsets[0] << "," << bhs_offsets[1] << " " <<
             "extents: " << bhs_extents[0] << "," << bhs_extents[1] <<
-            nview_str(b_halo_s, 4));
+            nview_str(b_halo_s, 2));
+
+      auto bhs_blocks = b_halo_s | dash::blocks();
+      STEP("  -- matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
+            "expand({ -1,1 }, { -1,1 }) | shift<1>(1) | block(0)" <<
+            nview_str(bhs_blocks[0], 2));
+
       ++b_idx;
     }
   }
