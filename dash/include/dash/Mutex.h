@@ -3,11 +3,6 @@
 
 #include <dash/Team.h>
 
-#include <cstdint>
-
-#include "Team.h"
-
-
 namespace dash {
 
 /**
