@@ -140,7 +140,7 @@ inline void sync_images(const Container & image_ids){
 template<typename T>
 void cobroadcast(Coarray<T> & coarr, const team_unit_t & master){
   using value_type        = typename Coarray<T>::value_type;
-  const dart_storage_t ds = dash::dart_storage<value_type>(coarr.local_size());
+  const dash::dart_storage<value_type> ds(coarr.local_size());
   DASH_ASSERT_RETURNS(
     dart_bcast(coarr.lbegin(),
                ds.nelem,
@@ -177,7 +177,7 @@ void coreduce(Coarray<T> & coarr,
   const auto & global_idx    = coarr.pattern().at(global_coords);
 
   const auto dart_gptr       = (coarr.begin() + global_idx).dart_gptr();
-  const dart_storage_t ds    = dash::dart_storage<value_type>(coarr.local_size());
+  const dash::dart_storage<value_type> ds(coarr.local_size());
 
   // as source and destination location is equal, master must not contribute
   // in accumulation as otherwise it's value is counted twice
