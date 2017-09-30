@@ -209,6 +209,7 @@ public:
   local_type local;
 
 public:
+  explicit
   UnorderedMap(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
