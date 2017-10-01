@@ -204,7 +204,7 @@ public:
   using reverse_iterator       = GlobIter<_element_type, _pattern_type>; 
   using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>; 
   using reference              = typename coarray::detail::__get_ref_type<_element_type>::type;
-  using const_reference        = typename coarray::detail::__get_const_ref_type<_element_type>::type;;
+  using const_reference        = typename coarray::detail::__get_const_ref_type<_element_type>::type;
   using local_pointer          = _element_type *;
   using const_local_pointer    = const _element_type *;
   template<int subrank>
