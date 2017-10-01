@@ -49,7 +49,7 @@ TEST_F(MatrixTest, LocalAccess)
                  "matrix local view:", mat.local.extents());
 
   int lcount = (myid + 1) * 1000;
-  dash::generate(mat.begin(), mat.end(), 
+  dash::generate(mat.begin(), mat.end(),
                  [&]() {
                    return (lcount++);
                  });
@@ -968,11 +968,14 @@ TEST_F(MatrixTest, DelayedAlloc)
 
 TEST_F(MatrixTest, VariadicDelayedAlloc)
 {
+
+  // similar test as MatrixTest.DelayedAlloc but using variadic constructor
+
   dash::team_unit_t myid(dash::myid());
   auto num_units   = dash::size();
 
   if (num_units < 4) {
-    LOG_MESSAGE("MatrixTest.DelayedAlloc requires at least 4 units");
+    LOG_MESSAGE("MatrixTest.VariadicDelayedAlloc requires at least 4 units");
     return;
   }
 
@@ -989,7 +992,7 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
   }
 
   if (myid == 0) {
-    DASH_LOG_TRACE_VAR("MatrixTest.DelayedAlloc", teamspec.extents());
+    DASH_LOG_TRACE_VAR("MatrixTest.VariadicDelayedAlloc", teamspec.extents());
   }
 
   auto num_units_i = teamspec.extent(0);
@@ -1019,7 +1022,7 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
     index_space_t;
 
   dash::barrier();
-  DASH_LOG_DEBUG("MatrixTest.DelayedAlloc",
+  DASH_LOG_DEBUG("MatrixTest.VariadicDelayedAlloc",
                  "Calling dash::Matrix default constructor");
 
   dash::Matrix<
@@ -1051,13 +1054,13 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
   auto n_local_blocks = pattern.local_blockspec().size();
   auto n_local_elem   = n_local_blocks * blocksize;
 
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", blockspec);
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", blocksizespec);
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", blocksize);
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", mx.local.extents());
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", mx.local.offsets());
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", n_local_blocks);
-  DASH_LOG_DEBUG_VAR("MatrixTest.DelayedAlloc", n_local_elem);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blockspec);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blocksizespec);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", blocksize);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", mx.local.extents());
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", mx.local.offsets());
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", n_local_blocks);
+  DASH_LOG_DEBUG_VAR("MatrixTest.VariadicDelayedAlloc", n_local_elem);
 
   ASSERT_EQ_U(mx.local.size(), n_local_elem);
 
@@ -1072,7 +1075,7 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
 
     value_t * block_lbegin = g_matrix_block.lbegin();
     value_t * block_lend   = g_matrix_block.lend();
-    DASH_LOG_DEBUG("MatrixTest.DelayedAlloc",
+    DASH_LOG_DEBUG("MatrixTest.VariadicDelayedAlloc",
                    "local block idx:",   lbi,
                    "block offset:",      g_matrix_block.offsets(),
                    "block extents:",     g_matrix_block.extents(),
@@ -1103,7 +1106,7 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
     for (index_t i = 0; i < static_cast<index_t>(extent_i); ++i) {
       for (index_t j = 0; j < static_cast<index_t>(extent_j); ++j) {
         for (index_t k = 0; k < static_cast<index_t>(extent_k); ++k) {
-          DASH_LOG_TRACE("MatrixTest.DelayedAlloc",
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
                          "coords:", i, j, k);
           // global coordinate:
           std::array<index_t, 3> gcoords {{ i, j, k }};
@@ -1119,14 +1122,14 @@ TEST_F(MatrixTest, VariadicDelayedAlloc)
           std::array<index_t, 3> phase_coords {{ i % tilesize_i,
                                                  j % tilesize_j,
                                                  k % tilesize_k }};
-          DASH_LOG_TRACE("MatrixTest.DelayedAlloc",
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
                          "block extents:", block_extents,
                          "phase coords:",  phase_coords);
           // canonical offset of element in block:
           index_t phase     = block_i_space.at(phase_coords);
           value_t expected  = block_unit + (0.01 * lbi) + (0.0001 * phase);
           value_t actual    = mx[i][j][k];
-          DASH_LOG_TRACE("MatrixTest.DelayedAlloc",
+          DASH_LOG_TRACE("MatrixTest.VariadicDelayedAlloc",
                          "coords:",      i, j, k,
                          "block index:", block_index,
                          "unit:",        block_unit,
@@ -1279,7 +1282,7 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
       distspec, dash::Team::All(), teamspec );
 
   narray.barrier();
-  
+
   if ( 0 == myid ) {
     LOG_MESSAGE("global extent is %lu x %lu",
                 narray.extent(0), narray.extent(1));
@@ -1291,21 +1294,21 @@ TEST_F(MatrixTest, UnderfilledLocalViewSpec){
 
   // test lbegin, lend
   std::fill(narray.lbegin(), narray.lend(), 1);
-  std::for_each(narray.lbegin(), narray.lend(), 
+  std::for_each(narray.lbegin(), narray.lend(),
       [](uint32_t & el){
         ASSERT_EQ_U(el, 1);
       });
   dash::barrier();
   // test local view
   std::fill(narray.local.begin(), narray.local.end(), 2);
-  std::for_each(narray.local.begin(), narray.local.end(), 
+  std::for_each(narray.local.begin(), narray.local.end(),
       [](uint32_t el){
         ASSERT_EQ_U(el, 2);
       });
 
-  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());  
+  uint32_t elementsvisited = std::distance(narray.lbegin(), narray.lend());
   auto local_elements= narray.local.extent(0) * narray.local.extent(1);
-  
+
   ASSERT_EQ_U(elementsvisited, local_elements);
   ASSERT_EQ_U(elementsvisited, narray.local.size());
 
@@ -1481,17 +1484,17 @@ TEST_F(MatrixTest, ConstMatrix)
     DASH_LOG_DEBUG_VAR("MatrixTest.ConstMatrix",
                        matrix.pattern().teamspec());
   }
-  
+
   auto const & matrix_by_ref = matrix;
   auto       & matrix_local  = matrix.local;
-  
+
   dash::fill(matrix.begin(), matrix.end(), 0);
   dash::barrier();
-  
+
   int el = matrix(0,0);
   el = matrix[0][0];
   ASSERT_EQ_U(el, 0);
-  
+
   el = matrix.local[0][0];
   ASSERT_EQ_U(el, 0);
 
@@ -1516,7 +1519,7 @@ TEST_F(MatrixTest, ConstMatrix)
   // el = ++(*(matrix_by_ref.local.lbegin()));
   // el = ++(*(matrix_by_ref.local.row(0).lbegin()));
   // matrix_by_ref.local.row(0)[0] = 5;
-  
+
   // test access using non-const & matrix.local
   matrix.barrier();
   *(matrix_local.lbegin()) = 5;
@@ -1683,7 +1686,7 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   EXPECT_EQ_U(dim_2_ext, matrix.extent(2));
 
   dash::fill(matrix.begin(), matrix.end(), 0.0);
-  
+
   if (dash::myid() == 0) {
     for (int i = 0; i < matrix.extent(0); ++i) {
       for (int j = 0; j < matrix.extent(1); ++j) {
@@ -1724,7 +1727,7 @@ TEST_F(MatrixTest, SubViewMatrix3Dim)
   EXPECT_EQ_U(sub_0_size, matrix[0].size());
   EXPECT_EQ_U(sub_0_size, std::distance(matrix[0].begin(),
                                         matrix[0].end()));
-  
+
   if (dash::myid().id == 0) {
   int visited = 0;
     for (auto it = matrix[0].begin(); it != matrix[0].end();
