@@ -247,6 +247,8 @@ foreach (ADDITIONAL_LIB ${ADDITIONAL_LIBRARIES})
   message (STATUS "    " ${ADDITIONAL_LIB})
 endforeach()
 
+set(ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES} PARENT_SCOPE)
+
 ## Build targets
 
 # DASH library for every enabled DART variant:
