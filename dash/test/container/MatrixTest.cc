@@ -969,7 +969,10 @@ TEST_F(MatrixTest, DelayedAlloc)
 TEST_F(MatrixTest, VariadicDelayedAlloc)
 {
 
-  // similar test as MatrixTest.DelayedAlloc but using variadic constructor
+  /*
+   * similar test as MatrixTest.DelayedAlloc but using variadic
+   * delayed allocation
+   */
 
   dash::team_unit_t myid(dash::myid());
   auto num_units   = dash::size();
