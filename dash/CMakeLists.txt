@@ -321,7 +321,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # cmake packaging
   if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
-	
+
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
@@ -340,13 +340,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     DESTINATION cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
-  	configure_package_config_file(
+    configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
       INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
-  	# install custom config
-  	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
+    # install custom config
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
           DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 	endif()
 

@@ -167,7 +167,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
     auto g_block_view = pattern.block(gb);
     // Unit assigned to block at global block index gb:
     auto g_block_unit = pattern.unit_at(
-                          std::array<index_t, 2> {0,0},
+                          std::array<index_t, 2> {{ 0,0 }},
                           g_block_view);
     LOG_MESSAGE("Block %zu: assigned to unit %d", gb, g_block_unit.id);
     if (g_block_unit == remote_unit_id) {
@@ -693,7 +693,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     dash::test::print_pattern_mapping(
       "matrix.a", pattern, 3,
       [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
-          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+          return _pattern.unit_at(std::array<index_t, 2> {{ _x, _y }});
       });
     dash::test::print_matrix("matrix.a", matrix_a, 2);
   }
