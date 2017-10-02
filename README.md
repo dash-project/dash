@@ -90,7 +90,8 @@ Docker Containers
 -----------------
 
 [![](https://images.microbadger.com/badges/version/dashproject/dash:mpich.svg)](https://microbadger.com/images/dashproject/dash:mpich "DASH Docker Container (MPICH backend)")
-[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi.svg)](https://microbadger.com/images/dashproject/dash:openmpi "DASH Docker Container (OpenMPI backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi2.svg)](https://microbadger.com/images/dashproject/dash:openmpi2 "DASH Docker Container (OpenMPI 2.x backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi3.svg)](https://microbadger.com/images/dashproject/dash:openmpi3 "DASH Docker Container (OpenMPI 3.x backend)")
 
 For pre-build Docker container images, see the
 [DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
