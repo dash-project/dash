@@ -36,12 +36,11 @@ void mock_team_locality(
 TEST_F(LoadBalancePatternTest, LocalSizes)
 {
   if (dash::size() < 2) {
-    LOG_MESSAGE("LoadBalancePatternTest.LocalSizes "
+    SKIP_TEST_MSG("LoadBalancePatternTest.LocalSizes "
                 "requires > 1 units");
-    return;
   }
 
-  return; // Temporarily disabled
+  SKIP_TEST_MSG("Temporarily disabled");
 
   typedef dash::LoadBalancePattern<1> pattern_t;
   typedef dash::util::TeamLocality    team_loc_t;
@@ -86,9 +85,8 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
 TEST_F(LoadBalancePatternTest, IndexMapping)
 {
   if (dash::size() < 2) {
-    LOG_MESSAGE("LoadBalancePatternTest.IndexMapping "
+    SKIP_TEST_MSG("LoadBalancePatternTest.IndexMapping "
                 "requires > 1 units");
-    return;
   }
 
   typedef dash::LoadBalancePattern<1> pattern_t;
@@ -102,7 +100,7 @@ TEST_F(LoadBalancePatternTest, IndexMapping)
 
   pattern_t pattern(dash::SizeSpec<1>(size), tloc);
 
-  if (dash::size() == 0) {
+  if (dash::myid() == 0) {
     dash::test::print_pattern_mapping(
       "pattern.unit_at", pattern, 2,
       [](const pattern_t & _pattern, int _x) -> dart_unit_t {
