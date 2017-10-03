@@ -6,7 +6,18 @@
 # export CCC_CC=clang-3.8
 # export CCC_CXX=clang++3.8
 
-BUILD_DIR=./build.analyze
+SCRIPT=$0
+while [ -h $SCRIPT ]
+do
+  BASE=$(dirname $SCRIPT)
+  SCRIPT=$(readlink $SCRIPT)
+  cd $BASE
+done
+
+cd $(dirname $SCRIPT)/..
+DASHDIR=$(pwd -P)
+
+BUILD_DIR=$DASHDIR/build.analyze
 REPORT_DIR=report            # relative to BUILD_DIR
 BUILD_WRAPPER="${SCANBUILD_BIN}";
 

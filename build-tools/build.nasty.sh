@@ -1,6 +1,17 @@
 #!/bin/sh
 
-BUILD_DIR=./build.nasty
+SCRIPT=$0
+while [ -h $SCRIPT ]
+do
+  BASE=$(dirname $SCRIPT)
+  SCRIPT=$(readlink $SCRIPT)
+  cd $BASE
+done
+
+cd $(dirname $SCRIPT)/..
+DASHDIR=$(pwd -P)
+
+BUILD_DIR=$DASHDIR/build.nasty
 
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
