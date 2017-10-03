@@ -273,21 +273,9 @@ template <
 constexpr std::array<ValueT, NElem>
 reverse(
   const std::array<ValueT, NElem> & values) {
-  //
-  // NOTE:
-  //
-  // This is elegant, correct, of high didactic value and does
-  // not scale well.
-  // Should be implemented using index from parameter pack like
-  //
-  //   { (std::get<NElem - I>(values)... }
-  //
-  return (NElem > 1
-          ? ( dash::ce::append(
-                dash::ce::reverse(
-                  dash::ce::tail(values)),
-                dash::ce::head(values)) )
-          : values);
+
+  return detail::take_impl<NElem, ValueT, NElem>(
+      values, dash::ce::make_rev_index_sequence<NElem>());
 }
 
 // -------------------------------------------------------------------------
