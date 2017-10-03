@@ -140,5 +140,5 @@ install(TARGETS ${DASH_DART_BASE_LIBRARY}
 
 # Export dependencies
 install(EXPORT "${DASH_DART_BASE_LIBRARY}-config"
-        DESTINATION cmake)
+        DESTINATION share/cmake)
 
