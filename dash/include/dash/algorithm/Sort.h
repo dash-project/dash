@@ -10,7 +10,6 @@
 #include <memory>
 #include <math.h>
 #include <mpi.h>
-#include <time.h>
 
 using namespace std;
 
@@ -37,16 +36,13 @@ void sort(
 
   ElementType first_possible_key = * dash::min_element (first, last);
   ElementType last_possible_key  = * dash::max_element (first, last);
-  auto diff = (abs(last_possible_key - first_possible_key) / p) * 0.1;
-
-  auto t_thresh = (double) n / p * 1.1;
+  ElementType diff = (abs(last_possible_key - first_possible_key) / p) * 0.1;
 
   dash::barrier();
 
   if (p == 1) {
     return std::sort(first, last);
   }
-
 
   // 1. Sort local data on each processor.
   if (lbegin_index != lend_index) {
@@ -55,8 +51,8 @@ void sort(
 
   dash::barrier();
 
-  // 2. Define a probe of p-1 splitter-guesses distributed evenly over the key
-  // data range
+  // 2. Define a probe of p-1 splitter-guesses distributed evenly over the
+  // key data range
   ElementType * splitter = new ElementType[p];
   ElementType * last_splitter = new ElementType[p];
   if (myid() == 0) {
@@ -80,8 +76,9 @@ void sort(
     dart_bcast (splitter, p * sizeof (ElementType), DART_TYPE_BYTE, 0,
                 DART_TEAM_ALL);
 
-    // 4. Produce local histogram by determining how much of each processor's
-    // local data fits between each key range defined by the splitter-guesses.
+    // 4. Produce local histograms by determining how much of each
+    // processor's local data fits between each key range defined by the
+    // splitter-guesses.
     std::fill (hist_node[myid()], hist_node[myid()] + p, 0);
 
     for (int i = 0, idx = 0; i < lend_index; i++) {
@@ -95,8 +92,9 @@ void sort(
     dart_allgather(hist_tmp, hist_node, sizeof(hist_t),
                    DART_TYPE_BYTE, DART_TEAM_ALL);
 
-    // 5. Sum up the histograms from each processor using a reduction to form a
-    // complete histogram.
+    // 5. Sum up the histograms from each processor using a reduction to
+    // form a complete histogram.
+
     std::fill (hist, hist + p, 0);
 
     for (int i = 0; i < p; i++) {
@@ -105,9 +103,8 @@ void sort(
       }
     }
 
-
-    // 6. Analyze the complete histogram on a single processor, determining any
-    // splitter values satisfied by a splitter-guess, and bounding any
+    // 6. Analyze the complete histogram on a single processor, determining
+    // any splitter values satisfied by a splitter-guess, and bounding any
     // unsatisfied splitter values by the closest splitter-guesses.
 
     if (myid() == 0 &&
@@ -122,7 +119,6 @@ void sort(
         } else {
           continue;
         }
-
         ElementType n = splitter[i] + change;
         if (n > last_possible_key) {
           n = last_possible_key;
@@ -138,8 +134,8 @@ void sort(
       }
     }
 
-    // 7. If any splitters have not been satisfied, produce a new probe and go
-    // back to step 3.
+    // 7. If any splitters have not been satisfied, produce a new probe and
+    // go back to step 3.
     dart_bcast (&retry, sizeof (retry), DART_TYPE_BYTE, 0, DART_TEAM_ALL);
 
   } while (retry);
@@ -151,53 +147,50 @@ void sort(
   // -> done in step 3
 
   // 9. On each processor, subdivide the local keys into p chunks (numbered 0
-  // through p-1) according to the splitters. Send each chunk to equivalently
-  // numbered processor.
-  size_t recvbuf_size = hist[myid()];
-  ElementType * recvbuf = new ElementType[recvbuf_size];
+  // through p-1) according to the splitters. Send each chunk to
+  // equivalently numbered processor.
 
-  int send_offset = 0;
-  int recv_offset = 0;
+  // use temporary space for receiving new elements
+  typedef dash::CSRPattern<1> pattern_t;
+  typedef pattern_t::size_type extent_t;
+  typedef pattern_t::index_type index_t;
 
-  MPI_Request req_send[p - 1];
-  MPI_Request req_recv[p - 1];
-  MPI_Status stat[p - 1];
-
-  for (int x = 0, r = 0; x < p; x++) {
-    int i = (myid() + x) % p;
-
-    size_t send_elems = hist_node[myid()][i];
-    size_t send_bytes = send_elems * sizeof (ElementType);
-    size_t recv_elems = hist_node[i][myid()];
-    size_t recv_bytes = recv_elems * sizeof (ElementType);
-
-    if (myid() == i) {
-      memcpy (recvbuf + recv_offset, lrange_begin + send_offset, send_bytes);
-    } else {
-      MPI_Isend(lrange_begin + send_offset, send_bytes, MPI_BYTE, i, 0,
-                MPI_COMM_WORLD, &req_send[r]);
-      MPI_Irecv(recvbuf + recv_offset, recv_bytes, MPI_BYTE, i, 0,
-                MPI_COMM_WORLD, &req_recv[r]);
-      r++;
-    }
-    send_offset += send_elems;
-    recv_offset += recv_elems;
+  std::vector<pattern_t::size_type> local_sizes(p);
+  for (int i = 0; i < p; i++) {
+    local_sizes[i] = hist[i];
   }
 
-  MPI_Waitall(p - 1, req_recv, stat);
-  MPI_Waitall(p - 1, req_send, stat);
+  pattern_t pat(local_sizes);
+  dash::Array<ElementType, pattern_t::index_type, pattern_t> arr(pat);
 
-  std::sort (recvbuf, recvbuf + hist[myid()]);
+  for (int x = 0; x < p; x++) {
+    int node = (myid() + x) % p;
+
+    size_t node_begin = std::accumulate (hist, hist + node, 0);
+
+    size_t range_begin = 0;
+    for (int i = 0; i < myid(); i++) {
+      range_begin += hist_node[i][node];
+    }
+
+    size_t send_offset = 0;
+    for (int i = 0; i < node; i++) {
+      send_offset += hist_node[myid()][i];
+    }
+
+    dash::copy(&lrange_begin[send_offset],
+               &lrange_begin[send_offset + hist_node[myid()][node]],
+               arr.begin() + node_begin + range_begin);
+  }
+
+  arr.barrier();
+
+  std::sort (arr.lbegin(), arr.lend());
 
   // 10. Merge the incoming data on each processor.
-  size_t out_offset = std::accumulate (hist, hist + myid(), 0);
+  size_t off = std::accumulate (hist, hist + myid(), 0);
 
-  // XXX: should use dash::copy
-  for (int i = 0; i < hist[myid()]; i++) {
-    first[out_offset + i] = recvbuf[i];
-  }
-
-  delete [] recvbuf;
+  dash::copy(arr.lbegin(), arr.lbegin() + hist[myid()], first + off);
 
   dash::barrier();
 }
