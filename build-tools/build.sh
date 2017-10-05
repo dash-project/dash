@@ -67,8 +67,8 @@ fi
 # Configure with build settings loaded previously:
 mkdir -p $ROOTDIR/$BUILD_DIR
 rm -Rf $ROOTDIR/$BUILD_DIR/*
-(cd $ROOTDIR/$BUILD_DIR && cmake $CMAKE_OPTIONS \
-                                 $ROOTDIR && \
+(cd $ROOTDIR/$BUILD_DIR && $CMAKE_COMMAND $CMAKE_OPTIONS \
+                                          $ROOTDIR && \
  await_confirm && \
  $MAKE_COMMAND) && \
 exit_message
