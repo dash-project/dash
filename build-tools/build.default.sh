@@ -30,13 +30,15 @@ if ! [ -z ${SOURCING+x} ]; then
 # installed.
 
 # relative to $ROOTDIR of dash
-BUILD_DIR=$DASHDIR/build.cov
+BUILD_DIR=build
 
 # custom cmake command
 CMAKE_COMMAND="cmake"
 
 # default release build settings:
-CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
@@ -66,19 +68,21 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=OFF \
-                        -DBUILD_COVERAGE_TESTS=ON \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_TESTS=ON \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
-                        -DPAPI_PREFIX=${PAPI_HOME}"
+                        -DPAPI_PREFIX=${PAPI_HOME} \
+                        \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
-# the mak e command used
+# the make command used
 MAKE_COMMAND="make -j 4"
 
 else
 
-  $(dirname $0)/build.sh cov $@
+  $(dirname $0)/build.sh $@
 
 fi
 

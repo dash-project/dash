@@ -1,27 +1,13 @@
 #!/bin/sh
+
+if ! [ -z ${SOURCING+x} ]; then
+
 # This script runs scan-build to perform a static code analysis
 # https://clang-analyzer.llvm.org/scan-build.html
 #
 # The actual compilers have to be set in the CCC prefix env. variables. e.g:
 # export CCC_CC=clang-3.8
 # export CCC_CXX=clang++3.8
-
-SCRIPT=$0
-while [ -h $SCRIPT ]
-do
-  BASE=$(dirname $SCRIPT)
-  SCRIPT=$(readlink $SCRIPT)
-  cd $BASE
-done
-
-cd $(dirname $SCRIPT)/..
-DASHDIR=$(pwd -P)
-
-BUILD_DIR=$DASHDIR/build.analyze
-REPORT_DIR=report            # relative to BUILD_DIR
-BUILD_WRAPPER="${SCANBUILD_BIN}";
-
-
 
 ## !! NOTE !!
 #
@@ -31,44 +17,6 @@ BUILD_WRAPPER="${SCANBUILD_BIN}";
 #  https://clang-analyzer.llvm.org/scan-build.html#recommended_debug
 #
 ##
-
-
-
-# try to find build wrapper
-if [ "$BUILD_WRAPPER" = "" ]; then
-  BUILD_WRAPPER="scan-build"
-fi
-if [ "$SCANBUILD_OPTS" = "" ]; then
-  SCANBUILD_OPTS="-analyze-headers -plist-html"
-fi
-SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
-SCANBUILD_OPTS="--force-analyze-debug-code -v ${SCANBUILD_OPTS}"
-
-which $BUILD_WRAPPER ||
-  (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
-   & exit 1);
-
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
-
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build and analyze using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
 
 # To specify a build configuration for a specific system, use:
 #
@@ -97,11 +45,30 @@ fi
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# Configure with default release build settings:
-rm -Rf $BUILD_DIR/*
-mkdir -p $BUILD_DIR/$REPORT_DIR
-(cd $BUILD_DIR && $BUILD_WRAPPER $SCANBUILD_OPTS \
-                  cmake3 -DCMAKE_BUILD_TYPE=Debug \
+
+BUILD_DIR=build.analyze
+REPORT_DIR=report            # relative to BUILD_DIR
+BUILD_WRAPPER="${SCANBUILD_BIN}";
+
+# try to find build wrapper
+if [ "$BUILD_WRAPPER" = "" ]; then
+  BUILD_WRAPPER="scan-build"
+fi
+if [ "$SCANBUILD_OPTS" = "" ]; then
+  SCANBUILD_OPTS="-analyze-headers -plist-html"
+fi
+SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
+SCANBUILD_OPTS="--force-analyze-debug-code -v ${SCANBUILD_OPTS}"
+
+which $BUILD_WRAPPER ||
+  (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
+   & exit 1);
+
+# custom cmake command
+CMAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS cmake3"
+
+# default release build settings:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
                         -DENABLE_COMPTIME_RED=OFF \
                         \
@@ -141,10 +108,14 @@ mkdir -p $BUILD_DIR/$REPORT_DIR
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
-                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        ../ && \
- await_confirm && \
- $BUILD_WRAPPER $SCANBUILD_OPTS make) && \
- (cp $BUILD_DIR/compile_commands.json .) && \
-exit_message
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+# the make command used
+MAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS make"
+
+else
+
+  $(dirname $0)/build.sh analyze $@
+
+fi
 

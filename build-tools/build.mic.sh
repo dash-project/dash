@@ -1,39 +1,6 @@
 #!/bin/sh
 
-SCRIPT=$0
-while [ -h $SCRIPT ]
-do
-  BASE=$(dirname $SCRIPT)
-  SCRIPT=$(readlink $SCRIPT)
-  cd $BASE
-done
-
-cd $(dirname $SCRIPT)/..
-DASHDIR=$(pwd -P)
-
-BUILD_DIR=$DASHDIR/build.mic
-
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
-
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "------------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
+if ! [ -z ${SOURCING+x} ]; then
 
 # To use an existing installation of gtest instead of downloading the sources
 # from the google test subversion repository, use:
@@ -52,10 +19,14 @@ fi
 
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 
-# Configure with default release build settings:
-mkdir -p $BUILD_DIR
-rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+# relative to $ROOTDIR of dash
+BUILD_DIR=build.mic
+
+# custom cmake command
+CMAKE_COMMAND="cmake"
+
+# default release build settings for supermic environment:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=supermic \
                         -DCMAKE_C_COMPILER=mpiicc \
                         -DCMAKE_CXX_COMPILER=mpiicc \
@@ -91,8 +62,14 @@ rm -Rf $BUILD_DIR/*
                         -DBUILD_DOCS=OFF \
                         \
                         -DPAPI_PREFIX=${PAPI_HOME} \
-                        -DIPM_PREFIX=${IPM_BASE} \
-                        ../ && \
- await_confirm && \
- make -j 5) && \
-exit_message
+                        -DIPM_PREFIX=${IPM_BASE}"
+
+# the make command used
+MAKE_COMMAND="make -j 5"
+
+else
+
+  $(dirname $0)/build.sh mic $@
+
+fi
+
