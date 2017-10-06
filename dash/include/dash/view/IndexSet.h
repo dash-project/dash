@@ -506,11 +506,13 @@ class IndexSetBase
   }
 
   constexpr bool is_sub() const noexcept {
+    // TODO: must not be defined depending on size as size() might
+    //       use is_sub()  itself
     return (
       this->is_local()
       ? derived().size() < this->pattern().local_size()
       : derived().size() < this->pattern().size()
-    );
+    ) || dash::domain(derived()).is_sub();
   }
 
   constexpr bool is_strided() const noexcept {
@@ -823,6 +825,13 @@ class IndexSetSub
   , _domain_end_idx(end_idx)
   { }
 
+#if 0
+  constexpr bool is_sub() const noexcept {
+    return true; // not necessarily true, sub<0, extent> should return
+                 // false despite of index set type
+  }
+#endif
+
   // ---- extents ---------------------------------------------------------
 
   template <dim_t ExtDim>
@@ -1129,7 +1138,7 @@ class IndexSetLocal
             // blocked (not blockcyclic) distribution: single local
             // element space with contiguous global index range
             ? ( this->ndim() == 1
-                // one-dimensional, simple intersect:
+            // one-dimensional, simple intersect:
                 ? this->index_range_size(
                     this->index_range_intersect(
                       // local range in global index space:
@@ -1139,7 +1148,7 @@ class IndexSetLocal
                       { this->domain().first(),
                         this->domain().last() }
                     )) + 1
-                // multi-dimensional, size calculation requires view spec:
+            // multi-dimensional, size calculation requires view spec:
                 : ( this->pattern().block_at(
                       this->pattern().coords(this->domain().first())) ==
                     this->pattern().block_at(
@@ -1155,61 +1164,67 @@ class IndexSetLocal
               )
             // strided, e.g. blockcyclic distribution: local element space
             // chunked in global index range
-            : this->index_range_size(
-                this->index_range_g2l(
-                  this->pattern(),
-                  // intersection of local range and domain range:
-                  this->index_range_intersect(
-                    // local range in global index space:
-                    {
-                      this->pattern().lbegin(),
-                      ( this->pattern().lend() < this->domain().last()
-                        // domain range contains end of local range:
-                        ? this->pattern().lend() - 1
-                        // domain range ends in local range, determine last
-                        // local index contained in domain from last local
-                        // block contained in domain range:
-                        //
-                        // gbi:     0    1     2    3     4     5
-                        // lbi:     0    0     1    1     2     2
-                        //          :                     :
-                        //       [  |  |xxxx|     |xxxx|  |  |xxxx]
-                        //          '---------------------'
-                        //
-                        // --> domain.end.gbi = 4 ------------.
-                        //     domain.end.lbi = 2 -.          |
-                        //                         |          |
-                        //                         v          |
-                        //     local.lblock(lbi  = 2).gbi = 5 |
-                        //                                  | |
-                        //   ! 5 > domain.end.gbi = 4 <-----'-'
-                        // --> local.lblock(lbi = 1)
-                        //
-                        // Resolve global index past the last element:
-                        //
-                        : ( domain_block_gidx_last()
-                            >= local_block_gidx_last()
-                              // Last local block is included in domain:
-                              ? this->pattern().block(
-                                  local_block_gidx_last()
-                                ).range(0).end - 1
-                              // Domain ends before last local block:
-                              : local_block_gidx_at_block_lidx(
-                                    domain_block_lidx_last())
-                                  > domain_block_gidx_last()
-                                ? this->pattern().local_block(
-                                      domain_block_lidx_last() - 1
+            : ( this->ndim() == 1
+              ? this->index_range_size(
+                  this->index_range_g2l(
+                    this->pattern(),
+                    // intersection of local range and domain range:
+                    this->index_range_intersect(
+                      // local range in global index space:
+                      {
+                        this->pattern().lbegin(),
+                        ( this->pattern().lend() < this->domain().last()
+                          // domain range contains end of local range:
+                          ? this->pattern().lend() - 1
+                          // domain range ends in local range, determine last
+                          // local index contained in domain from last local
+                          // block contained in domain range:
+                          //
+                          // gbi:     0    1     2    3     4     5
+                          // lbi:     0    0     1    1     2     2
+                          //          :                     :
+                          //       [  |  |xxxx|     |xxxx|  |  |xxxx]
+                          //          '---------------------'
+                          //
+                          // --> domain.end.gbi = 4 ------------.
+                          //     domain.end.lbi = 2 -.          |
+                          //                         |          |
+                          //                         v          |
+                          //     local.lblock(lbi  = 2).gbi = 5 |
+                          //                                  | |
+                          //   ! 5 > domain.end.gbi = 4 <-----'-'
+                          // --> local.lblock(lbi = 1)
+                          //
+                          // Resolve global index past the last element:
+                          //
+                          : ( domain_block_gidx_last()
+                              >= local_block_gidx_last()
+                                // Last local block is included in domain:
+                                ? this->pattern().block(
+                                    local_block_gidx_last()
                                   ).range(0).end - 1
-                                : this->pattern().local_block(
-                                      domain_block_lidx_last()
-                                  ).range(0).end - 1 )
-                      )
-                    },
-                    // domain range in global index space;
-                    { this->domain().first(),
-                      this->domain().last()
-                    })
-                )) + 1
+                                // Domain ends before last local block:
+                                : local_block_gidx_at_block_lidx(
+                                      domain_block_lidx_last())
+                                    > domain_block_gidx_last()
+                                  ? this->pattern().local_block(
+                                        domain_block_lidx_last() - 1
+                                    ).range(0).end - 1
+                                  : this->pattern().local_block(
+                                        domain_block_lidx_last()
+                                    ).range(0).end - 1 )
+                        )
+                      },
+                      // domain range in global index space;
+                      { this->domain().first(),
+                        this->domain().last()
+                      })
+                  )) + 1
+             // ndim != 1, multi-dimensional
+             : (
+                  6
+               )
+            )
           ) // domain.is_sub()
     );
   }

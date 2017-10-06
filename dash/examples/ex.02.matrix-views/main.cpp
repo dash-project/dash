@@ -7,6 +7,8 @@ using std::cin;
 using std::endl;
 using std::vector;
 
+using namespace dash;
+
 using uint = unsigned int;
 
 template <typename MatrixT, typename ViewMods>
@@ -18,7 +20,10 @@ auto transform_in_view(MatrixT & mat, ViewMods && vmods) {
 
 int main(int argc, char *argv[])
 {
-  using namespace dash;
+  using dash::sub;
+  using dash::local;
+  using dash::index;
+  using dash::blocks;
 
   dash::init(&argc, &argv);
 
@@ -88,13 +93,13 @@ int main(int argc, char *argv[])
     print("matrix | sub<0>(2,-2) | sub<1>(2,-3) \n" <<
           nview_str(matrix_region));
 
-    auto matrix_reg_blocks = dash::blocks(matrix_region);
+    auto matrix_reg_blocks = matrix_region | blocks();
     int bi = 0;
     for (const auto & reg_block : matrix_reg_blocks) {
       print("matrix | sub | sub | block[" << bi << "] " <<
             "extents: " << reg_block.extents() << " " <<
             "offsets: " << reg_block.offsets());
-      print(nview_str(reg_block));
+      print(nview_str(reg_block) << '\n');
 
   //  auto sreg_block = reg_block | dash::intersect(
   //                                  ViewSpec<2>({ 1,2 }));

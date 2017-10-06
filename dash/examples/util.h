@@ -28,7 +28,9 @@
   } while(0)
 
 #define STEP(stream_m__) do { \
-  std::cin.ignore();          \
+  if (dash::myid() == 0) {    \
+    std::cin.ignore();        \
+  }                           \
   print(stream_m__);          \
 } while(0)
 
@@ -41,11 +43,10 @@ static std::string range_str(
   int                prec = 2) {
   typedef typename ValueRange::value_type value_t;
   std::ostringstream ss;
-  auto idx = dash::index(vrange);
-  int        i   = 0;
+  int i   = 0;
   for (const auto & v : vrange) {
     const value_t val = v;
-    ss << std::setw(3) << *(dash::begin(idx) + i) << "|"
+    ss << std::setw(2 + prec) << std::right
        << std::fixed << std::setprecision(prec)
        << TermColorMod(unit_term_colors[(int)val])
        << val
