@@ -1,13 +1,15 @@
 # Generate and install DASH compiler wrapper
 
-
+# prepare additional includes variable
+set(ADDITIONAL_INCLUDES_WRAP "")
+foreach (ADDITIONAL_INCLUDE ${ADDITIONAL_INCLUDES})
+  set(ADDITIONAL_INCLUDES_WRAP "${ADDITIONAL_INCLUDES_WRAP} -I${ADDITIONAL_INCLUDE}")
+endforeach()
 
 
 # prepare additional libraries variable
 set(ADDITIONAL_LIBRARIES_WRAP "")
 foreach (ADDITIONAL_LIB ${ADDITIONAL_LIBRARIES})
-  #string(REGEX MATCH "^/.*$" IS_ABSOLUTE_PATH ${ADDITIONAL_LIB})
-  #if (${IS_ABSOLUTE_PATH})
   if (${ADDITIONAL_LIB} MATCHES "^/.*$")
     set(ADDITIONAL_LIBRARIES_WRAP
       "${ADDITIONAL_LIBRARIES_WRAP} ${ADDITIONAL_LIB}")

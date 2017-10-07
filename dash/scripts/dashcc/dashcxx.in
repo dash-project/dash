@@ -73,9 +73,11 @@ if ! ${LINK_ONLY} ; then
   # only include flags that are needed
   PARSE_CPPFLAGS ${CMAKE_CXXFLAGS}
 
-  # add include path
+  # add include paths
   CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
+  CXXFLAGS="$CXXFLAGS @ADDITIONAL_INCLUDES_WRAP@"
 
+  # add C++ standard flag
   CXXFLAGS="${CXXFLAGS} @CXX_STD_FLAG@"
 fi
 
