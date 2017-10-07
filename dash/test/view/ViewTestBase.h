@@ -78,9 +78,10 @@ region_values(const NViewType & view, const dash::ViewSpec<2> & vs) {
 template <typename RangeT>
 bool is_contiguous_ix(const RangeT & rng) {
   if (!rng) { return true; }
-  auto ix_prev = *dash::begin(rng);
+  auto ix_prev = rng.first();
   for (const auto & ix : rng) {
-    if (ix > ix_prev) { return false; }
+    if (ix < ix_prev || ix == ix_prev && ix != rng.first()) { return false; }
+    ix_prev = ix;
   }
   return true;
 }

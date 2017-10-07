@@ -82,10 +82,29 @@ TEST_F(MatrixViewTest, GlobalSubLocalBlocks)
       bool blk_is_local_expected = matrix.pattern().unit_at(
                                      blk_glob_viewspec.offsets()
                                    ) == myid;
+      bool blk_is_local_actual   = blk.is_local_at(myid);
       bool blk_is_strid_expected = !test::is_contiguous_ix(blk | index());
+      bool blk_is_strid_actual   = blk.is_strided();
 
-      EXPECT_EQ_U(blk_is_local_expected, blk.is_local_at(myid));
-      EXPECT_EQ_U(blk_is_strid_expected, blk.is_strided());
+      DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
+                     "block view idx:", b_idx, "-> block gidx:", blk_gidx,
+                     ":", range_str(blk));
+      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
+                         blk_is_local_expected);
+      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
+                         blk_is_local_actual);
+      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
+                         blk_is_strid_expected);
+      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
+                         blk_is_strid_actual);
+
+      if (!blk || !(blk | index())) {
+        EXPECT_EQ_U(blk.size(), 0);
+        EXPECT_EQ_U((blk | index()).size(), 0);
+      } else {
+        EXPECT_EQ_U(blk_is_local_expected, blk.is_local_at(myid));
+        EXPECT_EQ_U(blk_is_strid_expected, blk.is_strided());
+      }
       ++b_idx;
     }
   }
