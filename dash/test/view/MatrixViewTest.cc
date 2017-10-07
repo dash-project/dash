@@ -75,6 +75,9 @@ TEST_F(MatrixViewTest, GlobalSubLocalBlocks)
   {
     auto m_s_blocks     = matrix_sub | blocks();
     auto m_s_blocks_idx = m_s_blocks | index();
+    std::vector<double> m_s_b_values;
+    std::vector<double> m_s_values;
+
     int b_idx = 0;
     for (const auto & blk : m_s_blocks) {
       auto blk_gidx              = m_s_blocks_idx[b_idx];
@@ -90,14 +93,6 @@ TEST_F(MatrixViewTest, GlobalSubLocalBlocks)
       DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
                      "block view idx:", b_idx, "-> block gidx:", blk_gidx,
                      ":", range_str(blk));
-      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
-                         blk_is_local_expected);
-      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
-                         blk_is_local_actual);
-      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
-                         blk_is_strid_expected);
-      DASH_LOG_DEBUG_VAR("MatrixViewTest.GlobalSubLocalBlocks",
-                         blk_is_strid_actual);
 
       if (!blk || !(blk | index())) {
         EXPECT_EQ_U(blk.size(), 0);
@@ -105,9 +100,35 @@ TEST_F(MatrixViewTest, GlobalSubLocalBlocks)
       } else {
         EXPECT_EQ_U(blk_is_local_expected, blk.is_local_at(myid));
         EXPECT_EQ_U(blk_is_strid_expected, blk.is_strided());
+
+        std::copy(blk.begin(), blk.end(),
+                  std::back_inserter(m_s_b_values));
       }
       ++b_idx;
     }
+
+    // Block-wise element order differs from element order in sub-matrix
+    // which is canonical. Copy, sort and intersect both ranges to test
+    // equality:
+
+    std::copy(matrix_sub.begin(), matrix_sub.end(),
+              std::back_inserter(m_s_values));
+
+    DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
+                   "matrix_sub:", (m_s_values));
+    DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
+                   "copied from blocks:", (m_s_b_values));
+
+    std::sort(m_s_values.begin(),   m_s_values.end());
+    std::sort(m_s_b_values.begin(), m_s_b_values.end());
+
+    std::vector<double> m_s_isect;
+    std::set_difference(m_s_values.begin(),   m_s_values.end(),
+                        m_s_b_values.begin(), m_s_b_values.end(),
+                        std::back_inserter(m_s_isect));
+    DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
+                   "intersection:", (m_s_isect));
+    EXPECT_EQ_U(0, m_s_isect.size());
   }
 
   // --------------------------------------------------------------------
