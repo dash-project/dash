@@ -83,7 +83,8 @@ TEST_F(MatrixViewTest, GlobalSubLocalBlocks)
                                      blk_glob_viewspec.offsets()
                                    ) == myid;
       bool blk_is_local_actual   = blk.is_local_at(myid);
-      bool blk_is_strid_expected = !test::is_contiguous_ix(blk | index());
+      bool blk_is_strid_expected = blk.extent(1) < block_size_x &&
+                                   blk.extent(0) > 1;
       bool blk_is_strid_actual   = blk.is_strided();
 
       DASH_LOG_DEBUG("MatrixViewTest.GlobalSubLocalBlocks",
