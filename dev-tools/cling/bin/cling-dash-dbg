@@ -13,9 +13,6 @@ echo "Note: requires DASH-MPI build option BUILD_SHARED_LIBRARIES=ON"
 echo "-----------------------------------------------------------------"
 
 cling -std=c++14 \
-      -DDART_ENABLE_LOGGING \
-      -DDASH_ENABLE_LOGGING \
-      -DDASH_ENABLE_TRACE_LOGGING \
       -I ${DASH_DBG_BASE}/include/ \
       -L ${DASH_DBG_BASE}/lib \
       -l libdart-base \
@@ -23,5 +20,5 @@ cling -std=c++14 \
       -l libdash-mpi \
       -fcxx-exceptions \
       -include 'libdash.h' \
-      "${1}"
+      $1
 

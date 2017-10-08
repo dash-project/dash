@@ -10,7 +10,8 @@
 // .L libdart-mpi
 // .L libdash-mpi
 
-#include <libdash.h>
+// #include <libdash.h>
 
 // dash::init(NULL, NULL)
 
+dash::Array<int> arr(dash::size() * 10);

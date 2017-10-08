@@ -20,5 +20,5 @@ cling -std=c++14 \
       -l libdash-mpi \
       -fcxx-exceptions \
       -include 'libdash.h' \
-      "${1}"
+      $1
 

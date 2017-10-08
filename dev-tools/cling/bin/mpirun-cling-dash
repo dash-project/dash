@@ -1,0 +1,13 @@
+#!/bin/sh
+
+NUM_MPI_PROC=$1
+
+if [ "$NUM_MPI_PROC" -eq "" ] ;
+then
+  NUM_MPI_PROC=2
+fi
+
+mpirun -genv DASH_DBG_BASE ${DASH_DBG_BASE} \
+       -n $NUM_MPI_PROC \
+       xterm -e "${DASH_GIT_BASE}/dev-tools/cling/bin/cling-dash-dbg 2>mpirun-cling-dash.log"
+
