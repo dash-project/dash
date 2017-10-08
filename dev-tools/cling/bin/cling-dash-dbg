@@ -8,7 +8,7 @@ then
 fi
 
 echo "Loading DASH from (DASH_DBG_BASE):"
-echo "  ${DASH_BASE}"
+echo "  ${DASH_DBG_BASE}"
 echo "Note: requires DASH-MPI build option BUILD_SHARED_LIBRARIES=ON"
 echo "-----------------------------------------------------------------"
 
@@ -22,6 +22,6 @@ cling -std=c++14 \
       -l libdart-mpi \
       -l libdash-mpi \
       -fcxx-exceptions \
-      '#include <libdash.h>' 'dash::init(0,0)'
-
+      -include 'libdash.h' \
+      "${1}"
 

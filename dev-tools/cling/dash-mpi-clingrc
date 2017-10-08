@@ -12,5 +12,5 @@
 
 #include <libdash.h>
 
-dash::init(NULL, NULL)
+// dash::init(NULL, NULL)
 
