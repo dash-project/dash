@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if  [ "$DASH_DBG_BASE" = "" ] ;
+then
+  echo "Environment variable DASH_DBG_BASE not set"
+  echo "Set DASH_BASE to installation path of DASH"
+  exit -1
+fi
+
+echo "Loading DASH from (DASH_DBG_BASE):"
+echo "  ${DASH_BASE}"
+echo "Note: requires DASH-MPI build option BUILD_SHARED_LIBRARIES=ON"
+echo "-----------------------------------------------------------------"
+
+cling -std=c++14 \
+      -DDART_ENABLE_LOGGING \
+      -DDASH_ENABLE_LOGGING \
+      -DDASH_ENABLE_TRACE_LOGGING \
+      -I ${DASH_DBG_BASE}/include/ \
+      -L ${DASH_DBG_BASE}/lib \
+      -l libdart-base \
+      -l libdart-mpi \
+      -l libdash-mpi \
+      -fcxx-exceptions \
+      '#include <libdash.h>' 'dash::init(0,0)'
+
+

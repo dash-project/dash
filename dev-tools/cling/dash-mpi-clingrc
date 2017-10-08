@@ -1,0 +1,16 @@
+// Usage:
+//
+//    cling-dash clingrc
+//
+
+
+// Requires DASH build for MPI with build option `BUILD_SHARED_LIBRARIES`
+
+// .L libdart-base
+// .L libdart-mpi
+// .L libdash-mpi
+
+#include <libdash.h>
+
+dash::init(NULL, NULL)
+
