@@ -120,6 +120,11 @@ set_target_properties(
   COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
 )
 
+set_target_properties(
+  ${DASH_DART_BASE_LIBRARY}
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+)
+
 ## Installation
 
 DeployLibrary(${DASH_DART_BASE_LIBRARY})
@@ -135,5 +140,5 @@ install(TARGETS ${DASH_DART_BASE_LIBRARY}
 
 # Export dependencies
 install(EXPORT "${DASH_DART_BASE_LIBRARY}-config"
-        DESTINATION cmake)
+        DESTINATION share/cmake)
 
