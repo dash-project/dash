@@ -1,5 +1,11 @@
 # Generate and install DASH compiler wrapper
 
+# prepare additional compile flags variable
+set(ADDITIONAL_COMPILE_FLAGS_WRAP "")
+foreach (ADDITIONAL_COMPILE_FLAG ${ADDITIONAL_COMPILE_FLAGS})
+  set(ADDITIONAL_COMPILE_FLAGS_WRAP "${ADDITIONAL_COMPILE_FLAGS_WRAP} ${ADDITIONAL_COMPILE_FLAG}")
+endforeach()
+
 # prepare additional includes variable
 set(ADDITIONAL_INCLUDES_WRAP "")
 foreach (ADDITIONAL_INCLUDE ${ADDITIONAL_INCLUDES})
