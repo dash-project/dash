@@ -68,6 +68,7 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
+                        -DBUILD_SHARED_LIBS=ON \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=ON \
