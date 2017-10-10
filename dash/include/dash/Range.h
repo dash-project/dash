@@ -177,9 +177,27 @@ constexpr auto begin(RangeType && range)
  * \concept{DashRangeConcept}
  */
 template <typename RangeType>
+constexpr auto lbegin(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).begin()) {
+  return std::forward<RangeType>(range).lbegin();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <typename RangeType>
 constexpr auto begin(const RangeType & range)
   -> decltype(range.begin()) {
   return range.begin();
+}
+
+/**
+ * \concept{DashRangeConcept}
+ */
+template <class RangeType>
+constexpr auto lend(RangeType && range)
+  -> decltype(std::forward<RangeType>(range).end()) {
+  return std::forward<RangeType>(range).lend();
 }
 
 /**

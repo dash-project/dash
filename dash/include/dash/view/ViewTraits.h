@@ -89,6 +89,22 @@ struct is_view_region
     dash::is_view<ViewableType>::value>
 { };
 
+template <class ViewableType>
+struct is_local_view
+: std::integral_constant<
+    bool, 
+    ( dash::is_view<ViewableType>::value &&
+      dash::view_traits<ViewableType>::is_local::value ) >
+{ };
+
+template <class ViewableType>
+struct is_global_view
+: std::integral_constant<
+    bool, 
+    ( dash::is_view<ViewableType>::value &&
+      !dash::view_traits<ViewableType>::is_local::value ) >
+{ };
+
 
 
 namespace detail {

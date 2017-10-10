@@ -72,15 +72,15 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-  tests.push_back({4          , 1000000});
-  tests.push_back({16         , 100000});
-  tests.push_back({64         , 100000});
-  tests.push_back({256        , 10000});
-  tests.push_back({1024       , 10000});
-  tests.push_back({4096       , 1000});
-  tests.push_back({4*4096     , 5000});
-  tests.push_back({16*4096    , 1000});
-  tests.push_back({64*4096    , 500});
+  tests.push_back({4          , 10000000});
+  tests.push_back({16         , 1000000});
+  tests.push_back({64         , 1000000});
+  tests.push_back({256        , 100000});
+  tests.push_back({1024       , 100000});
+  tests.push_back({4096       , 10000});
+  tests.push_back({4*4096     , 50000});
+  tests.push_back({16*4096    , 10000});
+  tests.push_back({64*4096    , 5000});
 
   for (auto test: tests) {
     perform_test(test.first, test.second);

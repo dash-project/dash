@@ -1220,7 +1220,7 @@ class IndexSetLocal
                   )) + 1
              // ndim != 1, multi-dimensional
              : (
-                  6
+                 100
                )
             )
           ) // domain.is_sub()
@@ -1730,7 +1730,8 @@ class IndexSetBlock
                    dash::CartesianIndexSpace<NBlockDim>(
                      this->extents()
                    ).coords(
-                     block_phase >= this->pattern().local_block(_block_idx).size()
+                     block_phase >= this->pattern()
+                                          .local_block(_block_idx).size()
                      ? block_phase - 1
                      : block_phase ),
                    // block viewspec
@@ -1740,7 +1741,8 @@ class IndexSetBlock
                        this->view_domain().offsets(),
                        this->view_domain().extents()))
                  ) + (
-                   block_phase >= this->pattern().local_block(_block_idx).size()
+                   block_phase >= this->pattern()
+                                        .local_block(_block_idx).size()
                    ? 1
                    : 0)
                )

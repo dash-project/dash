@@ -53,67 +53,25 @@ int main(int argc, char *argv[])
     print("matrix:" <<
           nview_str(matrix | sub(0,extent_y)) << '\n');
 
-    STEP("sub<0>(3,-1) | sub<1>(1,-1)");
+    STEP("mat | sub<0>(3,-1) | sub<1>(1,-1)");
 
     auto matrix_sub = matrix | sub<0>(3, extent_y-1)
                              | sub<1>(1, extent_x-1);
 
     print(nview_str(matrix_sub) << "\n\n");
 
-    STEP("sub<0>(3,-1) | sub<1>(1,-1) | blocks()");
+    STEP("mat | sub<0>(3,-1) | sub<1>(1,-1) | blocks()");
     {
       auto m_s_blocks     = matrix_sub | blocks();
       auto m_s_blocks_idx = m_s_blocks | index();
       int b_idx = 0;
       for (const auto & blk : m_s_blocks) {
         STEP("block "  << std::left << std::setw(2) 
-                       << m_s_blocks_idx[b_idx] << '\n');
+                       << (blk | index()) << '\n');
         print("      " <<
               (blk.is_strided()      ? "strided, " : "contiguous, ") <<
               (blk.is_local_at(myid) ? "local"     : "remote") <<
               nview_str(blk) << std::endl);
-        ++b_idx;
-      }
-    }
-
-    STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()");
-    {
-      print("matrix | sub | local:" <<
-            nview_str(matrix_sub | local()));
-      print("matrix | sub | local: is_local: " <<
-            (matrix_sub | local() | index()).is_local());
-      print("matrix | sub | local: type: " <<
-            dash::typestr(matrix_sub | local()));
-      print("matrix | sub | local: is_strided: " <<
-            (matrix_sub | local() | index()).is_strided());
-      print("matrix | sub | local: is_sub: " <<
-            (matrix_sub | local() | index()).is_sub());
-      print("matrix | sub | local: domain is_sub: " <<
-            dash::domain(matrix_sub | local() | index()).is_sub());
-      print("matrix | sub | local: index set: " <<
-            (matrix_sub | local() | index()).first() << "," <<
-            (matrix_sub | local() | index()).last());
-
-      auto m_s_l_blocks     = matrix_sub   | local() | blocks();
-      auto m_s_l_blocks_idx = m_s_l_blocks | index();
-      print("matrix | sub | local | blocks: \n" <<
-            "size: " << m_s_l_blocks.size());
-
-      print("type:"         << dash::typestr(m_s_l_blocks));
-      print("origin type: " << dash::typestr(
-                                 dash::origin(m_s_l_blocks))
-                            << std::endl);
-      int b_idx = 0;
-
-      for (const auto & blk : m_s_l_blocks) {
-        STEP("sub<0>(3,-1) | sub<1>(1,-1) | local() | blocks()[b_idx]");
-        auto block_gidx = m_s_l_blocks_idx[b_idx];
-        print("--- block(" << block_gidx << ") " <<
-              "offsets: " << blk.offsets() << " " <<
-              "extents: " << blk.extents());
-
-        print(nview_str(blk) << std::endl);
-
         ++b_idx;
       }
     }
