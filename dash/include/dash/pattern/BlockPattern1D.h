@@ -1201,7 +1201,7 @@ private:
   constexpr std::array<IndexType, 2>
   initialize_local_range(SizeType l_size) const {
     return (l_size == 0)
-             ? std::array<IndexType, 2> {{ 0, 0 }}
+             ? std::array<IndexType, 2> {{ }}
              : std::array<IndexType, 2> {{
                  global(0),
                  global(l_size - 1) + 1

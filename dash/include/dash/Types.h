@@ -231,7 +231,11 @@ struct is_container_compatible :
               // std::is_trivially_copyable.
            && std::is_trivially_copyable<T>::value
 #elif defined(__GNUG__) && __GNUC__ < 5
-           && std::has_trivial_copy_constructor<T>::value
+           // deprecated in C++14
+        // && std::has_trivial_copy_constructor<T>::value
+           && std::is_trivially_copy_constructible<T>::value
+           // no test for assignment as const element type is
+           // allowed
 #endif
          >
 { };
