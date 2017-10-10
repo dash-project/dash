@@ -534,7 +534,7 @@ class IndexSetBase
            pat_mapping_traits::diagonal;
   }
 
-  // ---- extents ---------------------------------------------------------
+  // ---- extents --------------------------------------------------------
 
   constexpr std::array<size_type, NDim>
   extents() const {
@@ -550,7 +550,7 @@ class IndexSetBase
     return derived().extents()[shape_dim];
   }
 
-  // ---- offsets ---------------------------------------------------------
+  // ---- offsets --------------------------------------------------------
 
   constexpr std::array<index_type, NDim>
   offsets() const {
@@ -566,7 +566,21 @@ class IndexSetBase
     return derived().offsets()[shape_dim];
   }
 
-  // ---- access ----------------------------------------------------------
+  // ---- size -----------------------------------------------------------
+
+  constexpr bool empty() const noexcept {
+    return derived().size() == 0;
+  }
+
+  constexpr bool operator!() const noexcept {
+    return derived().empty();
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !derived().empty();
+  }
+
+  // ---- access ---------------------------------------------------------
 
   constexpr index_type rel(index_type image_index) const {
     return image_index;
@@ -1085,18 +1099,6 @@ class IndexSetLocal
 
   // ---- size ------------------------------------------------------------
 
-  constexpr bool empty() const noexcept {
-    return size() == 0;
-  }
-
-  constexpr bool operator!() const noexcept {
-    return empty();
-  }
-
-  constexpr explicit operator bool() const noexcept {
-    return !empty();
-  }
-
   constexpr size_type size(dim_t sub_dim) const noexcept {
     return _size;
   }
@@ -1242,7 +1244,8 @@ class IndexSetLocal
              this->pattern().coords(
                this->pattern().lend() - 1));
   }
-  constexpr index_type local_block_gidx_at_block_lidx(index_type lbi) const {
+  constexpr index_type local_block_gidx_at_block_lidx(
+      index_type lbi) const {
     return this->pattern().block_at(
              this->pattern().coords(
                this->pattern().local_block(lbi).offset(0)));

@@ -117,5 +117,6 @@
 
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewBlocksMod.h>
+#include <dash/view/ViewChunksMod.h>
 
 #endif // DASH__VIEW_H__INCLUDED
