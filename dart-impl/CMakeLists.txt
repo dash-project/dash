@@ -11,6 +11,18 @@ if (ENABLE_THREADSUPPORT)
       "${CMAKE_CXX_FLAGS} -DDART_ENABLE_THREADSUPPORT")
 endif ()
 
+# DART requires some additinal CFLAGS
+if (DASH_PLATFORM_IS_LINUX OR
+    DASH_PLATFORM_IS_OSX   OR
+    DASH_PLATFORM_IS_FREEBSD)
+  # -D_XOPEN_SOURCE=700 is required for pthread_mutexattr_settype
+  # and gethostname
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -D_XOPEN_SOURCE=700")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=700")
+endif()
+
 # DART base:
 add_subdirectory(base)
 

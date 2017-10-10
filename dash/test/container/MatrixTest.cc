@@ -882,9 +882,9 @@ TEST_F(MatrixTest, DelayedAlloc)
         extent_j,
         extent_k),
       dash::DistributionSpec<3>(
-        num_units_i < 2 ? dash::NONE : dash::TILE(tilesize_i),
-        num_units_j < 2 ? dash::NONE : dash::TILE(tilesize_j),
-        num_units_k < 2 ? dash::NONE : dash::TILE(tilesize_k)),
+        dash::TILE(tilesize_i),
+        dash::TILE(tilesize_j),
+        dash::TILE(tilesize_k)),
       teamspec
   );
 
@@ -990,9 +990,9 @@ TEST_F(MatrixTest, DelayedAlloc)
     extent_i,
     extent_j,
     extent_k,
-    num_units_i < 2 ? dash::NONE : dash::TILE(tilesize_i),
-    num_units_j < 2 ? dash::NONE : dash::TILE(tilesize_j),
-    num_units_k < 2 ? dash::NONE : dash::TILE(tilesize_k),
+    dash::TILE(tilesize_i),
+    dash::TILE(tilesize_j),
+    dash::TILE(tilesize_k),
     teamspec
   );
 }
