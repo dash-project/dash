@@ -19,6 +19,7 @@
 #include <dash/util/PatternMetrics.h>
 
 #include <dash/pattern/internal/PatternLogging.h>
+#include <dash/internal/StreamConversion.h>
 
 // needed for basename()
 #include <libgen.h>
