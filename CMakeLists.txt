@@ -31,6 +31,9 @@ else()
 endif()
 
 ## Build options
+set(DASH_CXX_STANDARD "14"
+    CACHE STRING "C++ standard version for DASH")
+
 option(BUILD_TESTS
        "Whether tests should be built" on)
 option(BUILD_COVERAGE_TESTS
@@ -115,14 +118,6 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
-
-if (ENABLE_THREADSUPPORT)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
-endif()
-
-if (ENABLE_COMPTIME_RED)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
-endif()
 
 # Load build modules to locate libraries after environment setup
 # has been loaded:
@@ -212,6 +207,14 @@ set(DASH_DART_BASE_INCLUDE_DIR
 ## Set compiler flags (depend on CMake options)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 
+if (ENABLE_THREADSUPPORT)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
+endif()
+
+if (ENABLE_COMPTIME_RED)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+endif()
+
 ## Build results output directories (/bin, /lib, /doc)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -298,6 +301,7 @@ message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
+message(INFO "C++ standard version:     ${CMAKE_CXX_STANDARD}")
 if (MPI_FOUND)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
 endif()

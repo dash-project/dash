@@ -78,9 +78,9 @@ int main(int argc, char* argv[]) {
   tests.push_back({256        , 100000});
   tests.push_back({1024       , 100000});
   tests.push_back({4096       , 10000});
-  tests.push_back({4*4096     , 50000});
-  tests.push_back({16*4096    , 10000});
-  tests.push_back({64*4096    , 5000});
+  tests.push_back({4*4096     , 2500});
+  tests.push_back({16*4096    , 1000});
+  tests.push_back({64*4096    , 250});
 
   for (auto test: tests) {
     perform_test(test.first, test.second);

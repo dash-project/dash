@@ -5,11 +5,11 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
+set(CMAKE_CXX_STANDARD ${DASH_CXX_STANDARD})
+
 
 find_package(OpenMP)
 
-
-set(CPP_STD_VERSION 14)
 
 # The following warning options are intentionally not enabled:
 #
@@ -138,8 +138,6 @@ endif()
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CXX_STD_FLAG "--std=c++${CPP_STD_VERSION}"
-       CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-g"
        CACHE STRING "C++ compiler (clang++) debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
@@ -151,8 +149,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CXX_STD_FLAG "-std=c++${CPP_STD_VERSION}"
-       CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
@@ -167,8 +163,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CXX_STD_FLAG "-std=c++${CPP_STD_VERSION}"
-       CACHE STRING "C++ compiler std flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
@@ -178,16 +172,15 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (CC_REPORT_FLAG "-qopt-report=4 -qopt-report-phase ipo")
   endif()
 
-
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
     message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
-  message(FATAL_ERROR,
-    "Cray compiler does not support C++${CPP_STD_VERSION} features and is only "
-          "eligible for building DART.")
+  message(WARNING,
+    "Cray compiler does not support C++11/14 features and is "
+    "only eligible for building DART.")
 endif()
 
 # Set C compiler flags:
