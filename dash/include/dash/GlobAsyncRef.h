@@ -18,20 +18,17 @@ namespace dash {
  *   GlobAsyncRef<int> gar1 = array.async[1];
  *   gar0 = 123;
  *   gar1 = 456;
- *   // Changes are is visible locally but not published to other
- *   // units, yet:
- *   assert(gar0 == 123);
- *   assert(gar1 == 456);
- *   assert(array[0] == 123);
- *   assert(array[1] == 456);
- *   assert(array.local[0] == 123);
- *   assert(array.local[1] == 456);
+ *   // Changes are not guaranteed to be visible locally
+ *   int val = array.async[0].get(); // might yield the old value
+ *   // Values can be read asynchronously, which will not block.
+ *   // Instead, the value will be available after `flush()`.
+ *   array.async[0].get(&val);
  *   // Changes can be published (committed) directly using a GlobAsyncRef
  *   // object:
  *   gar0.flush();
  *   // New value of array[0] is published to all units, array[1] is not
  *   // committed yet
- *   // Changes on a container can be publiched in bulk:
+ *   // Changes on a container can be published in bulk:
  *   array.flush();
  *   // From here, all changes are published
  * \endcode
@@ -61,6 +58,10 @@ private:
 private:
   /// Pointer to referenced element in global memory
   dart_gptr_t  _gptr;
+  /// Temporary value required for non-blocking put
+  nonconst_value_type _value;
+  /// DART handle for asynchronous transfers
+  dart_handle_t _handle = DART_HANDLE_NULL;
 
 private:
 
@@ -131,6 +132,12 @@ public:
    * of \c operator=(const self_t &).
    */
   GlobAsyncRef(const self_t & other) = delete;
+
+  ~GlobAsyncRef() {
+    if (_handle != DART_HANDLE_NULL) {
+      dart_wait_local(&_handle);
+    }
+  }
 
   /**
    * Unlike native reference types, global reference types are moveable.
@@ -209,6 +216,7 @@ public:
 
   /**
    * Return the value referenced by this \c GlobAsyncRef.
+   * This operation will block until the value has been transfered.
    */
   nonconst_value_type get() const {
     nonconst_value_type value;
@@ -236,7 +244,7 @@ public:
   }
 
   /**
-   * Asynchronously write  the value referenced by this \c GlobAsyncRef
+   * Asynchronously write the value referenced by this \c GlobAsyncRef
    * into \c tref.
    * This operation is guaranteed to be complete after a call to \ref flush,
    * at which point the referenced value can be used.
@@ -248,35 +256,48 @@ public:
   /**
    * Asynchronously set the value referenced by this \c GlobAsyncRef
    * to the value pointed to by \c tptr.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the pointer \c tptr can be re-used immediately.
+   * This operation is guaranteed to be complete after a call to \ref flush
+   * and the pointer \c tptr should not be reused before completion.
    */
   void set(const_value_type* tptr) {
-    set(*tptr);
-  }
-
-  /**
-   * Asynchronously set the value referenced by this \c GlobAsyncRef
-   * to the value pointed to by \c tref.
-   * This operation is guaranteed to be complete after a call to \ref flush,
-   * but the value referenced by \c tref can be re-used immediately.
-   */
-  void set(const_value_type& new_value) {
-    nonconst_value_type value;
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
-    DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", *tptr);
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
     dash::dart_storage<T> ds(1);
     DASH_ASSERT_RETURNS(
-      dart_put(
-        _gptr, static_cast<const void *>(&value), ds.nelem, ds.dtype),
+      dart_put(_gptr, static_cast<const void *>(tptr), ds.nelem, ds.dtype),
       DART_OK
     );
   }
 
   /**
-   * Value assignment operator, sets new value in local memory or calls
-   * non-blocking put on remote memory. This operator is only used for
-   * types which are comparable
+   * Asynchronously set the value referenced by this \c GlobAsyncRef
+   * to the value pointed to by \c new_value.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * but the value referenced by \c new_value can be re-used immediately.
+   */
+  void set(const_value_type& new_value) {
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", new_value);
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
+    dash::dart_storage<T> ds(1);
+    _value = new_value;
+    // check that we do not overwrite the handle if it has been used before
+    if (this->_handle != DART_HANDLE_NULL) {
+      DASH_ASSERT_RETURNS(
+        dart_wait_local(&this->_handle),
+        DART_OK
+      );
+    }
+    DASH_ASSERT_RETURNS(
+      dart_put_handle(_gptr, static_cast<const void *>(&_value),
+                      ds.nelem, ds.dtype, &_handle),
+      DART_OK
+    );
+  }
+
+  /**
+   * Value assignment operator, calls non-blocking put.
+   * This operation is guaranteed to be complete after a call to \ref flush,
+   * but the value referenced by \c new_value can be re-used immediately.
    */
   self_t &
   operator=(const_value_type & new_value)
@@ -286,89 +307,14 @@ public:
   }
 
   /**
-   * Value increment operator.
+   * Returns the underlying DART global pointer.
    */
-  self_t & operator+=(const_value_type & ref)
-  {
-    T val = this->get();
-    val += ref;
-    set(val);
-    return *this;
+  dart_gptr_t dart_gptr() const {
+    return this->_gptr;
   }
 
   /**
-   * Prefix increment operator.
-   */
-  self_t & operator++()
-  {
-    nonconst_value_type val = this->get();
-    ++val;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Value decrement operator.
-   */
-  self_t & operator-=(const_value_type & ref)
-  {
-    nonconst_value_type val = this->get();
-    val  -= ref;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Prefix decrement operator.
-   */
-  self_t & operator--()
-  {
-    nonconst_value_type val = this->get();
-    --val;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Multiplication operator.
-   */
-  self_t & operator*=(const_value_type& ref) {
-    nonconst_value_type val = this->get();
-    val   *= ref;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Division operator.
-   */
-  self_t & operator/=(const_value_type& ref) {
-    nonconst_value_type val = this->get();
-    val   /= ref;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Binary XOR operator.
-   */
-  self_t & operator^=(const_value_type& ref) {
-    nonconst_value_type val = this->get();
-    val   ^= ref;
-    set(val);
-    return *this;
-  }
-
-  /**
-   * Return the underlying DART pointer.
-   */
-  constexpr dart_gptr_t dart_gptr() const noexcept {
-    return _gptr;
-  }
-
-  /**
-   * Flush all pending asynchronous operations on this asynchronous reference
-   * and invalidate cached copies.
+   * Flush all pending asynchronous operations on this asynchronous reference.
    */
   void flush()
   {
