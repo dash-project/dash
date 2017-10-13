@@ -29,7 +29,8 @@ TEST_F(GlobAsyncRefTest, Push) {
   // Initialize values:
   dash::Array<int> array(dash::size() * num_elem_per_unit);
   array.barrier();
-  size_t lneighbor = (dash::myid() + dash::size() - 1) / dash::size();
+  size_t lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  size_t rneighbor = (dash::myid() + 1) % dash::size();
   // Assign values at left neighbor asynchronously:
   size_t start_idx = lneighbor * num_elem_per_unit;
   for (auto gi = start_idx; gi < (start_idx + num_elem_per_unit); ++gi) {
@@ -42,7 +43,7 @@ TEST_F(GlobAsyncRefTest, Push) {
   // Test values in local window. Changes by all units should be visible:
   for (auto li = 0; li < array.lcapacity(); ++li) {
     // All local values incremented once by all units
-    ASSERT_EQ_U(dash::myid().id + 1,
+    ASSERT_EQ_U(rneighbor,
                 array.local[li]);
   }
 }
@@ -73,12 +74,12 @@ TEST_F(GlobAsyncRefTest, GetSet) {
 
   array.barrier();
   garef.set(dash::myid());
-  ASSERT_EQ_U(garef.get(), dash::myid().id);
   garef.flush();
+  ASSERT_EQ_U(garef.get(), dash::myid().id);
   array.barrier();
   garef.set(dash::myid());
-  ASSERT_EQ_U(garef.get(), dash::myid().id);
   garef.flush();
+  ASSERT_EQ_U(garef.get(), dash::myid().id);
   array.barrier();
   int left_neighbor = (dash::myid() + dash::size() - 1) % dash::size();
   ASSERT_EQ_U(left_neighbor, array.local[0]);
@@ -141,6 +142,7 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
   {
     mytype data {1, 2.0};
     garef_rem = data;
+    garef_rem.flush();
     auto garef_a_rem = garef_rem.member<int>(&mytype::a);
     auto garef_b_rem = garef_rem.member<double>(&mytype::b);
 
@@ -148,7 +150,7 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
     int a = garef_a_rem.get();
     int b = garef_b_rem.get();
     ASSERT_EQ_U(a, 1);
-    ASSERT_EQ_U(b, 2.0);
+    ASSERT_EQ_U(b, 2);
   }
 
 }
