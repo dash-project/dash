@@ -38,8 +38,8 @@ TEST_F(GlobAsyncRefTest, Push) {
     array.async[gi] = dash::myid().id;
   }
   // Flush local window:
-  array.async.push();
-  array.barrier();
+  array.async.flush();
+  dash::barrier();
   // Test values in local window. Changes by all units should be visible:
   for (auto li = 0; li < array.lcapacity(); ++li) {
     // All local values incremented once by all units
