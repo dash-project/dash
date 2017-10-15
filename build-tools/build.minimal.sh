@@ -78,7 +78,7 @@ INSTALL_COMMAND="make install"
 
 else
 
-  $(dirname $0)/build.sh minimal $@
+  $(dirname $0)/build.sh $(echo $0 | sed "s/.*build.\(.*\).sh/\1/") $@
 
 fi
 
