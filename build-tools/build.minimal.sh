@@ -72,6 +72,10 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
 # the make command used
 MAKE_COMMAND="make -j 4"
 
+# the install command used
+# use a noop command if the built version is not useful to install
+INSTALL_COMMAND="make install"
+
 else
 
   $(dirname $0)/build.sh minimal $@

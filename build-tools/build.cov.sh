@@ -76,6 +76,10 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
 # the mak e command used
 MAKE_COMMAND="make -j 4"
 
+# the install command used
+# use a noop command if the built version is not useful to install
+INSTALL_COMMAND=":"
+
 else
 
   $(dirname $0)/build.sh cov $@

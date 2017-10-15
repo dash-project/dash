@@ -113,6 +113,10 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
 # the make command used
 MAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS make"
 
+# the install command used
+# use a noop command if the built version is not useful to install
+INSTALL_COMMAND=":"
+
 else
 
   $(dirname $0)/build.sh analyze $@
