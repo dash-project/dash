@@ -6,7 +6,6 @@
 #include <dash/Team.h>
 #include <dash/Exception.h>
 
-#include <assert.h>
 #include <array>
 #include <sstream>
 
