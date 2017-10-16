@@ -125,8 +125,6 @@ void run_example(MatrixT & matrix) {
 
   STEP("matrix | local() | index():" << dash::typestr(l_matrix));
 
-  return;
-
   STEP("matrix | local() | index():" << dash::typestr(l_matrix | index()));
   STEP("matrix | local():" << nview_str(l_matrix));
 

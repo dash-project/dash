@@ -23,6 +23,9 @@ endif(POLICY CMP0004)
 if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
+if(POLICY CMP0058)
+  cmake_policy(SET CMP0058 OLD)
+endif(POLICY CMP0058)
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set(DEFAULT_COMPTIME_RED on)
@@ -242,10 +245,19 @@ message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
 message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
         ${CMAKE_BUILD_TYPE})
+message(EMPH "C   compiler:             (CMAKE_C_COMPILER)               "
+        ${CMAKE_C_COMPILER_ID})
+message(EMPH "C++ compiler:             (CMAKE_CXX_COMPILER)             "
+        ${CMAKE_CXX_COMPILER_ID})
+message(EMPH "C++ standard version:     (DASH_CXX_STANDARD)              "
+        ${CMAKE_CXX_STANDARD})
 message(EMPH "Generic build:            (BUILD_GENERIC)                  "
         ${BUILD_GENERIC})
 message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
         ${BUILD_SHARED_LIBS})
+if (MPI_FOUND)
+  message(EMPH "MPI implementation:       " ${MPI_IMPL_ID})
+endif()
 
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
@@ -299,12 +311,6 @@ message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
-message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
-message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
-message(INFO "C++ standard version:     ${CMAKE_CXX_STANDARD}")
-if (MPI_FOUND)
-  message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
-endif()
 
 if (ENABLE_PAPI)
   if (PAPI_FOUND)
