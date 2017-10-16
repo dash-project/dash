@@ -191,24 +191,9 @@ public:
   }
 
   /**
-   * Value-based comparison operator, true if the value refernced by the
-   * GlobAsyncRef object is equal to \c value.
+   * Swap values with synchronous reads and asynchronous writes.
    */
-  bool operator==(const_value_type & value) const
-  {
-    return this->get() == value;
-  }
-
-  /**
-   * Value-based inequality comparison operator, true if the value refernced
-   * by the GlobAsyncRef object is not equal to \c value.
-   */
-  bool operator!=(const_value_type & value) const
-  {
-    return !(*this == value);
-  }
-
-  friend void swap(GlobAsyncRef<T> a, GlobAsyncRef<T> b) {
+  friend void swap(self_t & a, self_t & b) {
     nonconst_value_type temp = a->get();
     a = b->get();
     b = temp;
