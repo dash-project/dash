@@ -172,25 +172,6 @@ public:
   }
 
   /**
-   * Comparison operator, true if both GlobAsyncRef objects points to same
-   * element in local / global memory.
-   */
-  bool operator==(const self_t & other) const noexcept
-  {
-    return (_gptr == other._gptr);
-  }
-
-  /**
-   * Inequality comparison operator, true if both GlobAsyncRef objects points
-   * to different elements in local / global memory.
-   */
-  template <class GlobRefT>
-  constexpr bool operator!=(const GlobRefT & other) const noexcept
-  {
-    return !(*this == other);
-  }
-
-  /**
    * Swap values with synchronous reads and asynchronous writes.
    */
   friend void swap(self_t & a, self_t & b) {
