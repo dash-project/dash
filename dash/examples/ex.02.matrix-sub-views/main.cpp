@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     STEP("mat | sub<0>(3,-1) | sub<1>(1,-1) | blocks()");
     {
       auto m_s_blocks     = matrix_sub | blocks();
-      auto m_s_blocks_idx = m_s_blocks | index();
+      auto m_s_blocks_idx = matrix_sub | blocks() | index();
       int b_idx = 0;
       for (const auto & blk : m_s_blocks) {
         STEP("block "  << std::left << std::setw(2) 
