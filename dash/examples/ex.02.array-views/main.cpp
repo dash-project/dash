@@ -36,17 +36,18 @@ int main(int argc, char *argv[])
 
   dash::init(&argc, &argv);
 
-  int elem_per_unit    = 3;
   int elem_additional  = 2;
+  int block_size       = 2;
+  int elem_per_unit    = block_size * 2;
   int array_size       = dash::size() * elem_per_unit +
                            std::min<int>(elem_additional, dash::size());
 
   {
-    dash::Array<float> a(array_size, dash::BLOCKCYCLIC(2));
+    dash::Array<float> a(array_size, dash::BLOCKCYCLIC(block_size));
     initialize_array(a);
 
     if (dash::myid() == 0) {
-      print("a:                         " << range_str(a));
+      print("a: " << range_str(a));
 
       STEP("- a | sub");
       auto s_array = a | sub(1, a.size()-2);
@@ -70,8 +71,12 @@ int main(int argc, char *argv[])
 
     STEP("- a | sub | local | blocks");
     auto slb_array = a | sub(1, a.size()-2) | local() | blocks();
+    auto slb_arr_i = slb_array | index();
+    int i = 0;
     for (const auto & b : slb_array) {
-      print("  a | sub | local | blocks:" << range_str(b));
+      print("  a | sub | local | block(" << slb_arr_i[i] << "): " <<
+            range_str(b));
+      ++i;
     }
 
     auto copy_num_elem       = a.size() / 2;

@@ -17,12 +17,13 @@ void run_example(MatrixT & matrix);
 #define RUN_EXAMPLE(pattern_type__) do { \
   auto pattern = make_ ## pattern_type__ ## _pattern(   \
                    params, sizespec, teamspec);         \
-  std::cout << "Pattern:\n   "                          \
-            << pattern_to_string(pattern) << std::endl; \
+  if (dash::myid() == 0) {                              \
+    std::cout << "Pattern:\n   "                        \
+              << pattern_to_string(pattern)             \
+              << std::endl;                             \
+  }                                                     \
   dash::Matrix<value_t, 2, index_t, decltype(pattern)>  \
     matrix(pattern);                                    \
-  std::cout << "Matrix:\n   "                           \
-            << typestr(matrix) << std::endl;            \
   run_example(matrix);                                  \
 } while(0)
 
@@ -44,9 +45,9 @@ int main(int argc, char **argv)
   auto nunits = dash::size();
 
   cli_params defaults = default_params;
-  defaults.type            = "tile";
-  defaults.size            = {{  8,  8 }};
-  defaults.tile            = {{  2,  2 }};
+  defaults.type            = "seq";
+  defaults.size            = {{  8, 6 }};
+  defaults.tile            = {{  0, 0 }};
   defaults.units           = {{  1, static_cast<unsigned>(nunits) }};
   defaults.blocked_display = false;
   defaults.balance_extents = false;
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
   if(params.balance_extents) {
     teamspec.balance_extents();
   }
-  if (params.tile[0] < 0 && params.tile[1] < 0) {
+  if (params.tile[0] == 0 && params.tile[1] == 0) {
     auto max_team_extent = std::max(teamspec.extent(0),
                                     teamspec.extent(1));
     params.tile[0] = sizespec.extent(0) / max_team_extent;
@@ -122,6 +123,11 @@ void run_example(MatrixT & matrix) {
 
   auto l_matrix = matrix | local();
 
+  STEP("matrix | local() | index():" << dash::typestr(l_matrix));
+
+  return;
+
+  STEP("matrix | local() | index():" << dash::typestr(l_matrix | index()));
   STEP("matrix | local():" << nview_str(l_matrix));
 
   dash::barrier();
@@ -129,7 +135,7 @@ void run_example(MatrixT & matrix) {
   // Copy local block
   {
     auto l_blocks = matrix | local() | blocks();
-    STEP("matrix | local() | blocks(): " <<
+    STEP("-- matrix | local() | blocks(): " <<
           "size: "    << l_blocks.size()    << " " <<
           "offsets: " << l_blocks.offsets() << " " <<
           "extents: " << l_blocks.extents());
@@ -141,7 +147,7 @@ void run_example(MatrixT & matrix) {
                      "offsets:", lb.offsets(),
                      "extents:", lb.extents());
 
-      STEP("-- matrix | local() | blocks()[" << l_bi << "]: " <<
+      STEP("   matrix | local() | blocks()[" << l_bi << "]: " <<
             nview_str(lb));
 
       std::vector<value_t> tmp(lb.size());

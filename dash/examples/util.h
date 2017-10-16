@@ -3,6 +3,8 @@
 
 #include <libdash.h>
 
+#include <dash/internal/StreamConversion.h>
+
 #include <array>
 #include <string>
 #include <iostream>
@@ -35,6 +37,7 @@
 } while(0)
 
 
+using namespace dash;
 using namespace dash::internal::logging;
 
 template <class ValueRange>

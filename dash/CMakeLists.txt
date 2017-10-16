@@ -43,7 +43,7 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
     PARENT_SCOPE)
-set(CPP_STD_VERSION ${CPP_STD_VERSION}
+set(DASH_CXX_STANDARD ${DASH_CXX_STANDARD}
     PARENT_SCOPE)
 
 
@@ -317,7 +317,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD ${CPP_STD_VERSION}
+    CXX_STANDARD ${DASH_CXX_STANDARD}
   )
 
   if(ENABLE_COMPTIME_RED)
@@ -326,8 +326,9 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD_REQUIRED ${CPP_STD_VERSION}
+    CXX_STANDARD_REQUIRED ON
   )
+
   include_directories(
     ${ADDITIONAL_INCLUDES}
   )
@@ -337,7 +338,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # cmake packaging
   if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
-	
+
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
@@ -356,14 +357,15 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     DESTINATION cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
-  	configure_package_config_file(
+    configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
       INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
-  	# install custom config
-  	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+    # install custom config
+    install(
+      FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
+      DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 	endif()
 
   # Examples
@@ -419,11 +421,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          CXX_STANDARD ${CPP_STD_VERSION}
+          CXX_STANDARD ${DASH_CXX_STANDARD}
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          CXX_STANDARD_REQUIRED ${CPP_STD_VERSION}
+          CXX_STANDARD_REQUIRED ON
         )
 
         # Installation
@@ -480,7 +482,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      CXX_STANDARD ${CPP_STD_VERSION}
+      CXX_STANDARD ${DASH_CXX_STANDARD}
     )
 
     if(ENABLE_COMPTIME_RED)
@@ -489,7 +491,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
 
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      CXX_STANDARD_REQUIRED ${CPP_STD_VERSION}
+      CXX_STANDARD_REQUIRED ON
     )
 
     # Installation

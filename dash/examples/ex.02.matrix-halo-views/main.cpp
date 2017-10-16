@@ -31,9 +31,9 @@ int main(int argc, char *argv[])
   size_t extent_x            = block_size_x * num_blocks_x;
   size_t extent_y            = block_size_y * num_blocks_y;
 
-  typedef dash::TilePattern<2>         pattern_t;
-  typedef typename pattern_t::index_type    index_t;
-  typedef float                             value_t;
+  typedef dash::TilePattern<2>             pattern_t;
+  typedef typename pattern_t::index_type     index_t;
+  typedef float                              value_t;
 
   dash::TeamSpec<2> teamspec(dash::Team::All());
   teamspec.balance_extents();
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     auto matrix_view = dash::sub(0, matrix.extents()[0], matrix);
     print("matrix" << nview_str(matrix_view, 2));
 
-    auto matrix_blocks = dash::blocks(matrix);
+    auto matrix_blocks = matrix | dash::blocks();
     auto matrix_b_idx  = matrix_blocks | dash::index();
     int  b_idx         = 0;
     for (const auto & m_block : matrix_blocks) {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
       auto bhs_blocks = b_halo_s | dash::blocks();
       STEP("   matrix | block[" << matrix_b_idx[b_idx] << "] | " <<
-            "expand({ -1,1 }, { -1,1 }) | shift<1>(1) | block(0)" <<
+            "expand({ -1,1 }, { -1,1 }) | shift<1>(1) | block[0]" <<
             nview_str(bhs_blocks[0], 2));
 
       ++b_idx;
