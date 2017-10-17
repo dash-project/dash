@@ -78,7 +78,10 @@ MAKE_COMMAND="make -j 4"
 
 # the install command used
 # use a noop command if the built version is not useful to install
-INSTALL_COMMAND=":"
+INSTALL_COMMAND="make coverage"
+
+# a custom exit message, empty for the default message
+EXIT_MESSAGE="Done. To run code run code coverage measurement, run \"$INSTALL_COMMAND\" in $BUILD_DIR"
 
 else
 

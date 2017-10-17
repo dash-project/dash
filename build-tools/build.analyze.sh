@@ -117,6 +117,9 @@ MAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS make"
 # use a noop command if the built version is not useful to install
 INSTALL_COMMAND=":"
 
+# a custom exit message, empty for the default message
+EXIT_MESSAGE="Done. See the result in $BUILD_DIR."
+
 else
 
   $(dirname $0)/build.sh $(echo $0 | sed "s/.*build.\(.*\).sh/\1/") $@

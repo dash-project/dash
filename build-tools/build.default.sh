@@ -84,6 +84,9 @@ MAKE_COMMAND="make -j 4"
 # use a noop command if the built version is not useful to install
 INSTALL_COMMAND="make install"
 
+# a custom exit message, empty for the default message
+EXIT_MESSAGE=
+
 else
 
   $(dirname $0)/build.sh $(echo $0 | sed "s/.*build.\(.*\).sh/\1/") $@

@@ -54,8 +54,12 @@ check_install() {
     true; return $?
   fi
 
-  echo "Done. To install DASH, call this script with \"--install\""
-  echo "      or run \"$INSTALL_COMMAND\" in $BUILD_DIR"
+  if [ ! -z "$EXIT_MESSAGE" ]; then
+    echo $EXIT_MESSAGE
+  else
+    echo "Done. To install DASH, call this script with \"--install\""
+    echo "      or run \"$INSTALL_COMMAND\" in $BUILD_DIR"
+  fi
   false; return $?
 }
 
