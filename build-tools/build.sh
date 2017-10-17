@@ -29,23 +29,6 @@ get_remainder() {
   head -n 1 | cut -c 2-
 }
 
-confirm_purge() {
-  if $PURGE ; then
-    true; return $?
-  fi
-  if $FORCE ; then
-    false; return $?
-  fi
-
-  echo "   Purge build directory before building? [y/N]"
-  local CONF=`get_first_char`
-  if [ "$CONF" = "y" -o "$CONF" = "Y" ]; then
-    true; return $?
-  else
-    false; return $?
-  fi
-}
-
 confirm_build() {
   if ! $BUILD ; then
     echo "To build DASH, call \"$MAKE_COMMAND\" in $BUILD_DIR"
@@ -66,24 +49,14 @@ confirm_build() {
   fi
 }
 
-confirm_install() {
+check_install() {
   if $INSTALL ; then
     true; return $?
   fi
-  if $FORCE ; then
-    echo "To install DASH, run \"$INSTALL_COMMAND\" in $BUILD_DIR"
-    false; return $?
-  fi
 
-  echo ""
-  echo "   Done. Install DASH now? [y/N]"
-  local CONF=`get_first_char`
-  if [ "$CONF" = "y" -o "$CONF" = "Y" ]; then
-    true; return $?
-  else
-    echo "To install DASH, run \"$INSTALL_COMMAND\" in $BUILD_DIR"
-    false; return $?
-  fi
+  echo "Done. To install DASH, call this script with \"--install\""
+  echo "      or run \"$INSTALL_COMMAND\" in $BUILD_DIR"
+  false; return $?
 }
 
 list_build_types() {
@@ -224,11 +197,11 @@ fi
 
 # Configure with build settings loaded previously:
 mkdir -p $ROOTDIR/$BUILD_DIR
-if confirm_purge ; then
+if $PURGE ; then
   rm -Rf $ROOTDIR/$BUILD_DIR/*
 fi
 (cd $ROOTDIR/$BUILD_DIR && $CMAKE_COMMAND $CMAKE_OPTIONS \
                                           $ROOTDIR && \
  if confirm_build ; then BUILT=true ; $MAKE_COMMAND ; else BUILT=false ; fi && \
- if $BUILT && confirm_install ; then $INSTALL_COMMAND ; fi)
+ if $BUILT && check_install ; then $INSTALL_COMMAND ; fi)
 
