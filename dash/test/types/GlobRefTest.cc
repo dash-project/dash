@@ -42,16 +42,4 @@ TEST_F(GlobRefTest, ArithmeticOps)
 
   gref -= 1;
   ASSERT_EQ_U(gref, 1);
-
-  // postfix increment
-  value_t prev = gref++;
-  ASSERT_EQ_U(prev, 1);
-  ASSERT_EQ_U(gref, 2);
-
-
-  // postfix increment
-  prev = gref--;
-  ASSERT_EQ_U(prev, 2);
-  ASSERT_EQ_U(gref, 1);
-
 }
