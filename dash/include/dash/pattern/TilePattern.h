@@ -1,7 +1,6 @@
 #ifndef DASH__TILE_PATTERN_H_
 #define DASH__TILE_PATTERN_H_
 
-#include <assert.h>
 #include <functional>
 #include <cstring>
 #include <array>
