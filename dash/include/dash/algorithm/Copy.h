@@ -431,11 +431,12 @@ dash::Future<ValueType *> copy_async_impl(
     }
   }
 #ifdef DASH_ENABLE_TRACE_LOGGING
-  for (auto gptr : req_handles) {
+  for (auto gptr : *req_handles) {
     DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
   }
 #endif
   dash::Future<ValueType *> result(
+    // get
     [=]() mutable {
       // Wait for all get requests to complete:
       ValueType * _out = out_first + num_elem_copied;
@@ -474,11 +475,12 @@ dash::Future<ValueType *> copy_async_impl(
 #ifndef DASH__ALGORITHM__COPY__USE_FLUSH
     ,
     // test
-    [=]() mutable {
+    [=](ValueType ** out) mutable {
       int32_t flag;
       dart_testall_local(req_handles->data(), req_handles->size(), &flag);
       if (flag) {
         req_handles->clear();
+        *out = out_first + num_elem_copied;
       }
       return (flag != 0);
     },
@@ -574,7 +576,7 @@ dash::Future<GlobOutputIt> copy_async_impl(
     DASH_THROW(
       dash::exception::RuntimeError, "dart_put failed");
   }
-  req_handles.push_back(dest_gptr);
+  req_handles->push_back(dest_gptr);
 #else
   dart_handle_t  put_handle;
   dash::dart_storage<ValueType> ds(num_copy_elem);
@@ -592,20 +594,21 @@ dash::Future<GlobOutputIt> copy_async_impl(
 #endif
 
 #ifdef DASH_ENABLE_TRACE_LOGGING
-  for (auto gptr : req_handles) {
+  for (auto gptr : *req_handles) {
     DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
   }
 #endif
   dash::Future<GlobOutputIt> result(
+    // get
     [=]() mutable {
       // Wait for all get requests to complete:
       GlobOutputIt _out = out_first + num_copy_elem;
       DASH_LOG_TRACE("dash::copy_async_impl [Future]()",
-                    "  wait for", req_handles.size(), "async put request");
-      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
+                    "  wait for", req_handles->size(), "async put request");
+      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", *req_handles);
       DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
 #ifdef DASH_ENABLE_TRACE_LOGGING
-      for (auto gptr : req_handles) {
+      for (auto gptr : *req_handles) {
         DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  req_handle:",
                       gptr);
       }
@@ -628,6 +631,7 @@ dash::Future<GlobOutputIt> copy_async_impl(
         DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  No pending handles");
       }
 #endif
+      req_handles->clear();
       DASH_LOG_TRACE("dash::copy_async_impl [Future] >",
                     "  async requests completed, _out:", _out);
       return _out;
@@ -635,11 +639,12 @@ dash::Future<GlobOutputIt> copy_async_impl(
 #ifndef DASH__ALGORITHM__COPY__USE_FLUSH
     ,
     // test
-    [=]() mutable {
+    [=](GlobOutputIt *out) mutable {
       int32_t flag;
       dart_testall_local(req_handles->data(), req_handles->size(), &flag);
       if (flag) {
         req_handles->clear();
+        *out = out_first + num_copy_elem;
       }
       return (flag != 0);
     },
@@ -912,7 +917,7 @@ ValueType * copy(
   auto total_copy_elem = in_last - in_first;
 
   // Instead of testing in_first.local() and in_last.local(), this test for
-  // a local-only range only requires one call to in_first.local() which 
+  // a local-only range only requires one call to in_first.local() which
   // increases throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:

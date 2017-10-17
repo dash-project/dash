@@ -18,7 +18,7 @@ class Future
 private:
   typedef Future<ResultT>                self_t;
   typedef std::function<ResultT (void)>  get_func_t;
-  typedef std::function<bool (void)>     test_func_t;
+  typedef std::function<bool (ResultT*)> test_func_t;
   typedef std::function<void (void)>     destroy_func_t;
 
 private:
@@ -36,6 +36,7 @@ public:
       const Future<ResultT_> & future);
 
 public:
+
   Future()
   : _ready(false)
   { }
@@ -108,8 +109,7 @@ public:
   bool test() const
   {
     if (!_ready && _test_func) {
-      // do not set _ready here because we might have to call _get_func() above
-      return _test_func();
+      _ready = _test_func(&_value);
     }
     return _ready;
   }
