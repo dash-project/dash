@@ -102,15 +102,23 @@ Building from Source
 
 DASH is build using CMake.
 
-Build scripts are provided for typical DASH configurations and can serve
+A build script is provided with typical DASH configurations and can serve
 as starting points for custom builds:
 
 
-Script file name | Description 
-:--------------- | :-------------------------------------
-`build.sh`       | Standard release build
-`build.dev.sh`   | Development / debug build
-`build.mic.sh`   | Release build for Intel MIC (Xeon Phi)
+ Script calls        | Description
+:------------------- | :-------------------------------------
+`./build.sh`         | Standard release build
+`./build.sh minimal` | Minimal release build
+`./build.sh mic`     | Release build for Intel MIC (Xeon Phi)
+`./build.sh dev`     | Development build
+`./build.sh debug`   | Debug build (less compiler warnings)
+`./build.sh nasty`   | A build using the special MPI library `NastyMPI`
+`./build.sh cov`     | Run a code coverage measurement on DASH
+`./build.sh analyze` | Perform a static code analysus using scan-build
+
+
+For a complete list of available configurations see `./build.sh --list`
 
 
 ### Prerequisites
