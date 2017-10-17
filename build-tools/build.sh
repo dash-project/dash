@@ -86,18 +86,53 @@ confirm_install() {
   fi
 }
 
+list_build_types() {
+  echo "Available build types:"
+  for SCR in `(cd $SCRIPTDIR && ls)`; do
+    echo $SCR | sed -n "s/.*build.\(.*\).sh/  \1/p"
+  done | sort | uniq
+  exit 0
+}
+
+edit_build_type() {
+  if [ ! -e $SCRIPTDIR/my.build.$1.sh ]; then
+    if [ -e $SCRIPTDIR/build.$1.sh ]; then
+      cp $SCRIPTDIR/build.$1.sh $SCRIPTDIR/my.build.$1.sh
+    else
+      cp $SCRIPTDIR/build.default.sh $SCRIPTDIR/my.build.$1.sh
+    fi
+  fi
+
+  if [ ! -z $VISUAL ]; then
+    exec $VISUAL $SCRIPTDIR/my.build.$1.sh
+  elif [ ! -z $EDITOR ]; then
+    exec $EDITOR $SCRIPTDIR/my.build.$1.sh
+  else
+    echo "No editor found, set \"\$VISUAL\" or \"\$EDITOR\" to your default editor"
+    echo "The configuration is written to $SCRIPTDIR/my.build.$1.sh"
+    exit 1
+  fi
+  exit 0
+}
+
 print_help() {
-  echo "Usage: $0 [-f] [-p] [-n] [-i] [-h] [build type]"
+  echo "Usage: $0 [-f] [-p] [-n] [-i] [-h] [-l] [-e <t>] [build type]"
   echo "  -f --force    do not ask back for confirmation"
   echo "  -p --purge    purge the build directory before building"
   echo "  -n --nobuild  just configure the project with cmake"
   echo "  -i --install  install the project"
   echo "  -h --help     display this help and exit"
+  echo "  -l --list     list available build types and exit"
+  echo "  -e --edit <t> create and edit build type <t>"
   echo "  [build type]  specify which configuration to use,"
-  echo "                see \"[my.]build.<type>.sh\" scripts"
+  echo "                see \"--list\" for available types"
   exit 0
 }
 
+SCRIPTDIR=$(find_scriptdir $0)
+ROOTDIR=$(find_rootdir $SCRIPTDIR)
+
+EDIT=false
 parse_params() {
   local PAR=$(echo "$1" | get_first_char)
   local REM=$(echo "$1" | get_remainder)
@@ -112,6 +147,11 @@ parse_params() {
     INSTALL=true
   elif [ "$PAR" = "h" ]; then
     print_help
+  elif [ "$PAR" = "l" ]; then
+    list_build_types
+  elif [ "$PAR" = "e" ]; then
+    EDIT=true
+    return
   else
     echo "Unkown parameter" 1>&2
     exit 1
@@ -121,9 +161,6 @@ parse_params() {
     parse_params $REM
   fi
 }
-
-SCRIPTDIR=$(find_scriptdir $0)
-ROOTDIR=$(find_rootdir $SCRIPTDIR)
 
 SOURCING=true
 # load default options
@@ -148,6 +185,10 @@ while [ $# -gt 0 ]; do
     INSTALL=true
   elif [ "$1" = "--help" ]; then
     print_help
+  elif [ "$1" = "--list" ]; then
+    list_build_types
+  elif [ "$1" = "--edit" ]; then
+    EDIT=true
   elif [ "$(printf "%s" "$1" | get_first_char)" = "-" ]; then
     parse_params $(printf "%s" "$1" | get_remainder)
   else
@@ -157,6 +198,18 @@ while [ $# -gt 0 ]; do
     fi
     if [ -x $SCRIPTDIR/my.build.$1.sh ]; then
       . $SCRIPTDIR/my.build.$1.sh
+    fi
+  fi
+
+  if $EDIT ; then
+    if [ -z "$2" ]; then
+      echo "Specify the configuration type you want to edit."
+      exit 1
+    elif [ "$(printf "%s" "$2" | get_first_char)" = "-" ]; then
+      echo "The name of a configuration cannot start with '-'"
+      exit 1
+    else
+      edit_build_type $2
     fi
   fi
 
