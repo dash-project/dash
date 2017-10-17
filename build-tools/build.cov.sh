@@ -73,7 +73,7 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME}"
 
-# the mak e command used
+# the make command used
 MAKE_COMMAND="make -j 4"
 
 # the install command used

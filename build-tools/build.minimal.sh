@@ -27,7 +27,7 @@ if ! [ -z ${SOURCING+x} ]; then
 BUILD_DIR=build
 
 # custom cmake command
-CMAKE_COMMAND="cmake"
+#CMAKE_COMMAND="cmake"
 
 # minimal release build settings:
 CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
@@ -70,11 +70,11 @@ CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 # the make command used
-MAKE_COMMAND="make -j 4"
+#MAKE_COMMAND="make -j 4"
 
 # the install command used
 # use a noop command if the built version is not useful to install
-INSTALL_COMMAND="make install"
+#INSTALL_COMMAND="make install"
 
 else
 

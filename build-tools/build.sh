@@ -128,6 +128,9 @@ ROOTDIR=$(find_rootdir $SCRIPTDIR)
 SOURCING=true
 # load default options
 . $SCRIPTDIR/build.default.sh
+if [ -x $SCRIPTDIR/my.build.default.sh ]; then
+  . $SCRIPTDIR/my.build.default.sh
+fi
 
 FORCE=false
 PURGE=false
