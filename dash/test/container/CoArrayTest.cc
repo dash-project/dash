@@ -278,7 +278,7 @@ TEST_F(CoArrayTest, MemoryModel)
 
   {
     // array case
-    using coarr_atom_t = dash::Coarray<dash::Atomic<int[10][20]>>;
+    using coarr_atom_t = dash::Coarray<dash::Atomic<int>[10][20]>;
     coarr_atom_t y;
     y(i)[0][0] = i;
     y(i)[0][0] += 1;

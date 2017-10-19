@@ -147,40 +147,21 @@ template<
 class Coarray {
 private:
 
-  /**
-   * Trait to transform \cdash::Atomic<T[]...> to 
-   * \cdash::Atomic<T>
-   * __T  denotes the full type including \cdash::Atomic<>
-   * __UT denotes the underlying type without extens
-   */
-  template<typename __T, typename __UT>
-  struct __insert_atomic_if_necessary {
-    typedef __UT type;
-  };
-  template<typename __T, typename __UT>
-  struct __insert_atomic_if_necessary<dash::Atomic<__T>, __UT> {
-    typedef dash::Atomic<__UT> type;
-  };
-  
-private:
-
   using self_t          = Coarray<T, IndexType, PatternType>;
-  
-  using _underl_type    = typename dash::remove_atomic<T>::type;
-  using _native_type    = typename std::remove_all_extents<_underl_type>::type;
-  
-  using _rank           = std::integral_constant<int,
-                            std::rank<_underl_type>::value>;
-  
-  using _size_type      = typename std::make_unsigned<IndexType>::type;
-  using _sspec_type     = SizeSpec<_rank::value+1, _size_type>;
-  using _pattern_type   = PatternType;
   
   /**
    * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
    * was declared with \cdash::Atomic<T>
    */
-  using _element_type   = typename __insert_atomic_if_necessary<T, _native_type>::type;
+  using _element_type   = typename std::remove_all_extents<T>::type;
+  using _underl_type    = typename dash::remove_atomic<_element_type>::type;
+  
+  using _rank           = std::integral_constant<int,
+                            std::rank<T>::value>;
+  
+  using _size_type      = typename std::make_unsigned<IndexType>::type;
+  using _sspec_type     = SizeSpec<_rank::value+1, _size_type>;
+  using _pattern_type   = PatternType;
   
   using _storage_type   = Matrix<_element_type, _rank::value+1, IndexType, _pattern_type>;
   
@@ -216,13 +197,13 @@ private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              coarray::detail::__get_type_extents_as_array<_underl_type,
+              coarray::detail::__get_type_extents_as_array<T,
                 size_type, _rank::value>()));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type & first_dim) const noexcept {
     static_assert(
-        std::get<0>(coarray::detail::__get_type_extents_as_array<_underl_type,
+        std::get<0>(coarray::detail::__get_type_extents_as_array<T,
           size_type, _rank::value>()) == 0,
       "Array type is fully specified");
     
@@ -230,7 +211,7 @@ private:
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                coarray::detail::__get_type_extents_as_array<_underl_type,
+                coarray::detail::__get_type_extents_as_array<T,
                 size_type, _rank::value>())));
   }
   
