@@ -1,14 +1,13 @@
-#ifndef DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
-#define DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
+#ifndef DASH__HALO__ITERATOR__HALOMATRIXITERATOR_H
+#define DASH__HALO__ITERATOR__HALOMATRIXITERATOR_H
 
 #include <dash/Types.h>
 
-#include <dash/experimental/Halo.h>
+#include <dash/halo/Halo.h>
 
 #include <vector>
 
 namespace dash {
-namespace experimental {
 
 enum class StencilViewScope : std::uint8_t { INNER, BOUNDARY, ALL };
 
@@ -432,8 +431,7 @@ private:
   ElementT* _current_lmemory_addr;
 }; // class HaloMatrixIterator
 
-} // namespace experimental
 } // namespace dash
 
-#endif // DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
+#endif // DASH__HALO__ITERATOR__HALOMATRIXITERATOR_H
 

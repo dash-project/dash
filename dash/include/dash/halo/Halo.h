@@ -1,5 +1,5 @@
-#ifndef DASH__EXPERIMENTAL__HALO_H__
-#define DASH__EXPERIMENTAL__HALO_H__
+#ifndef DASH__HALO__HALO_H__
+#define DASH__HALO__HALO_H__
 
 #include <dash/memory/GlobStaticMem.h>
 #include <dash/iterator/GlobIter.h>
@@ -9,7 +9,6 @@
 #include <functional>
 
 namespace dash {
-namespace experimental {
 
 //TODO move to util/FunctionalExpr.h
 template<typename BaseT, typename ExpT>
@@ -30,6 +29,7 @@ private:
   using BaseT = Dimensional<int16_t, NumDimensions>;
 
 public:
+  // TODO constexpr
   Stencil() {
     for (dim_t i(0); i < NumDimensions; ++i) {
       this->_values[i] = 0;
@@ -37,7 +37,7 @@ public:
   }
 
   template <typename... Values>
-  Stencil(int16_t value, Values... values) : BaseT::Dimensional(value, values...) {
+  constexpr Stencil(int16_t value, Values... values) : BaseT::Dimensional(value, values...) {
   }
 
   // TODO as constexpr
@@ -47,8 +47,6 @@ public:
       max = std::max((int) max, (int) std::abs(this->_values[i]));
     return max;
   }
-
-private:
 }; // Stencil
 
 
@@ -64,6 +62,7 @@ private:
 public:
   constexpr StencilSpec(const SpecsT& specs) : _specs(specs) {}
 
+  // TODO constexpr
   StencilSpec(const SelfT& other) { _specs = other._specs; }
 
   constexpr const SpecsT& stencilSpecs() const { return _specs; }
@@ -102,6 +101,7 @@ private:
   using BaseT = Dimensional<Cycle, NumDimensions>;
 
 public:
+  // TODO constexpr
   CycleSpec() {
     for (dim_t i = 0; i < NumDimensions; ++i) {
       this->_values[i] = Cycle::NONE;
@@ -109,7 +109,7 @@ public:
   }
 
   template <typename... Values>
-  CycleSpec(Cycle value, Values... values) : BaseT::Dimensional(value, values...) {}
+  constexpr CycleSpec(Cycle value, Values... values) : BaseT::Dimensional(value, values...) {}
 }; // CycleSpec
 
 
@@ -1058,6 +1058,5 @@ private:
 }; // class HaloMemory
 
 } // namespace dash
-} // namespace experimental
 
-#endif // DASH__EXPERIMENTAL__HALO_H__
+#endif // DASH__HALO_HALO_H__

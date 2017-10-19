@@ -10,7 +10,7 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
+ *
  */
 
 #include <dash/Init.h>
@@ -21,7 +21,7 @@
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
 
-#include <dash/experimental/HaloMatrix.h>
+#include <dash/halo/HaloMatrixWrapper.h>
 
 #include <fstream>
 #include <string>
@@ -31,14 +31,14 @@
 
 
 using namespace std;
-using namespace dash::experimental;
 
-using element_t = unsigned char;
-using Pattern_t = dash::Pattern<2>;
-using index_t   = typename Pattern_t::index_type;
-using Array_t   = dash::NArray<element_t, 2, index_t, Pattern_t>;
-using Halo_t    = HaloSpec<2>;
-using HArray_t  = HaloMatrix<Array_t, Halo_t>;
+using element_t     = unsigned char;
+using Pattern_t     = dash::Pattern<2>;
+using index_t       = typename Pattern_t::index_type;
+using Array_t       = dash::NArray<element_t, 2, index_t, Pattern_t>;
+using StencilSpec_t = dash::StencilSpec<2,4>;
+using Stencil_t     = dash::Stencil<2>;
+using HaloWrapper_t = dash::HaloMatrixWrapper<Array_t, StencilSpec_t>;
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){
@@ -52,7 +52,7 @@ void write_pgm(const std::string & filename, const Array_t & data){
          << "255" << std::endl;
 
     // Buffer of matrix rows
-    std::vector<element_t> buffer(ext_x);
+    std::vector<element_t> buffer(data.size());
 
     for(long y=0; y<ext_y; ++y){
       const auto & first = data.begin();
@@ -119,22 +119,18 @@ void draw_circle(Array_t * dataptr, index_t x0, index_t y0, int r){
   }
 }
 
-void smooth(Array_t & data_old, Array_t & data_new){
-  // Add Halo Features
-  Halo_t halo_s({{{-1,1},{-1,1}}});
-  HArray_t hdata_old(data_old, halo_s);
-  HArray_t hdata_new(data_new, halo_s);
+void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
 
-  const auto & pattern = data_old.pattern();
+  const auto & pattern = halo_old.matrix().pattern();
 
   auto lext_x = pattern.local_extent(0);
   auto lext_y = pattern.local_extent(1);
 
-  auto olptr = data_old.lbegin();
-  auto nlptr = data_new.lbegin();
+  auto olptr = halo_old.matrix().lbegin();
+  auto nlptr = halo_new.matrix().lbegin();
 
   // Fetch Halo
-  hdata_old.updateHalosAsync();
+  halo_old.updateHalosAsync();
 
   // Inner cell
   for( index_t x=1; x<lext_x-1; x++ ) {
@@ -150,29 +146,29 @@ void smooth(Array_t & data_old, Array_t & data_new){
   // Boundary
 
   // Wait until all Halo updates ready
-  hdata_old.waitHalosAsync();
+  halo_old.waitHalosAsync();
 
   // Calculation of boundary Halo elements
-  for(auto it = hdata_old.bbegin(); it != hdata_old.bend(); ++it) 
+  auto bend = halo_old.bend();
+  for(auto it = halo_old.bbegin(); it != bend; ++it)
   {
     auto core = *it;
     *(nlptr+it.lpos()) = (0.40 * core) +
-                       (0.15 * it.halo_value(-1,  0)) +
-                       (0.15 * it.halo_value( 1,  0)) +
-                       (0.15 * it.halo_value( 0, -1)) +
-                       (0.15 * it.halo_value( 0, +1));
+                       (0.15 * it.valueAt(0)) +
+                       (0.15 * it.valueAt(1)) +
+                       (0.15 * it.valueAt(2)) +
+                       (0.15 * it.valueAt(3));
   }
-  data_new.barrier();
 }
 
 int main(int argc, char* argv[])
 {
   int sizex = 1000;
   int sizey = 1000;
-  int niter = 20;
+  int niter = 100;
 
   dash::init(&argc, &argv);
-  
+
   // Prepare grid
   dash::TeamSpec<2> ts;
   dash::SizeSpec<2> ss(sizex, sizey);
@@ -183,6 +179,12 @@ int main(int argc, char* argv[])
 
   Array_t data_old(pattern);
   Array_t data_new(pattern);
+
+  StencilSpec_t stencil_spec({ Stencil_t(-1, 0), Stencil_t(1, 0), Stencil_t( 0, -1), Stencil_t(0, 1)});
+  HaloWrapper_t halo_old(data_old, stencil_spec);
+  HaloWrapper_t halo_new(data_new, stencil_spec);
+  auto* halo_old_ptr = &halo_old;
+  auto* halo_new_ptr = &halo_new;
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
@@ -207,10 +209,11 @@ int main(int argc, char* argv[])
 
   for(int i=0; i<niter; ++i){
     // switch references
-    auto & data_prev = i%2 ? data_new : data_old;
-    auto & data_next = i%2 ? data_old : data_new;
 
-    smooth(data_prev, data_next);
+    smooth(*halo_old_ptr, *halo_new_ptr);
+
+    std::swap(halo_old_ptr, halo_new_ptr);
+
     dash::barrier();
   }
 

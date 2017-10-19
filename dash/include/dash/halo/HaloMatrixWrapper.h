@@ -1,5 +1,5 @@
-#ifndef DASH__HALOMATRIXWRAPPER_H_INCLUDED
-#define DASH__HALOMATRIXWRAPPER_H_INCLUDED
+#ifndef DASH__HALO_HALOMATRIXWRAPPER_H
+#define DASH__HALO_HALOMATRIXWRAPPER_H
 
 #include <dash/dart/if/dart.h>
 
@@ -7,13 +7,11 @@
 #include <dash/memory/GlobStaticMem.h>
 #include <dash/Matrix.h>
 
-#include <dash/experimental/Halo.h>
-#include <dash/experimental/iterator/HaloMatrixIterator.h>
+#include <dash/halo/iterator/HaloMatrixIterator.h>
 
 #include <type_traits>
 
 namespace dash {
-namespace experimental {
 
 template <typename MatrixT, typename StencilSpecT>
 class HaloMatrixWrapper {
@@ -253,6 +251,15 @@ public:
     return _halomemory.haloPos(index) + _halomemory.haloValueAt(index, coords);
   }
 
+  template<typename IteratorT, typename FunctionT>
+  void compute(IteratorT inputBegin, IteratorT inputEnd, IteratorT outputBegin, FunctionT func) {
+    while(inputBegin != inputEnd) {
+      *outputBegin = func(inputBegin);
+      ++inputBegin;
+      ++outputBegin;
+    }
+  }
+
 private:
   struct HaloData {
     dart_handle_t     handle;
@@ -296,6 +303,5 @@ private:
 };
 
 } // namespace dash
-} // namespace experimental
 
-#endif // DASH__HALOMATRIXWRAPPER_H_INCLUDED
+#endif // DASH__HALO_HALOMATRIXWRAPPER_H
