@@ -41,6 +41,8 @@ set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
     PARENT_SCOPE)
+set(ENABLE_DYLOC ${ENABLE_DYLOC}
+    PARENT_SCOPE)
 
 
 # Source- and header files to be compiled (OBJ):
@@ -68,6 +70,16 @@ include_directories(
 )
 
 set (ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS} -DDASH)
+
+if (ENABLE_DYLOC)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/dyloc.cmake)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_DYLOC)
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       dyloc-common dylocxx)
+# set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+#      ${DYLOC_INCLUDES})
+endif()
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -292,6 +304,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
+
+  set_target_properties(
+    ${DASH_LIBRARY}
+    PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+  )
+
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
       ${MPI_INCLUDE_PATH})
@@ -319,6 +337,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   include_directories(
     ${ADDITIONAL_INCLUDES}
+    ${DYLOC_INCLUDES}
   )
 
   DeployLibrary(${DASH_LIBRARY})
@@ -339,10 +358,10 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           DESTINATION lib
           EXPORT "${DASH_LIBRARY}-targets")
 
-  # exports
+  # Exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION cmake)
+    DESTINATION share/cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
   	configure_package_config_file(
@@ -428,17 +447,18 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
   if (BUILD_COVERAGE_TESTS)
     include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   endif()
 
- foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+  foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     set(DASH_LIBRARY "dash-${dart_variant}")
     set(DART_LIBRARY "dart-${dart_variant}")
     set(DASH_TEST "dash-test-${dart_variant}")
     include_directories(
       ${GTEST_INCLUDES}
+      ${DYLOC_INCLUDES}
       ${CMAKE_SOURCE_DIR}/dash/include
       ${ADDITIONAL_INCLUDES}
     )

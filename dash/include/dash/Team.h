@@ -328,7 +328,7 @@ public:
     /// where the team is split.
     dash::util::Locality::Scope scope,
     /// Number of parts to split this team's units into
-    unsigned                    num_parts);
+    unsigned                    num_parts = 0);
 
   /**
    * Split this Team's units into child Team instances at the specified
@@ -341,7 +341,7 @@ public:
     /// where the team is split.
     dart_locality_scope_t scope,
     /// Number of parts to split this team's units into
-    unsigned              num_parts)
+    unsigned              num_parts = 0)
   {
     return locality_split(
              static_cast<dash::util::Locality::Scope>(
@@ -563,9 +563,9 @@ private:
   {
     DASH_LOG_DEBUG("Team.register_team",
                    "team id:", team->_dartid);
-    DASH_ASSERT_RETURNS(
-      dart_team_locality_init(team->_dartid),
-      DART_OK);
+  // DASH_ASSERT_RETURNS(
+  //   dart_team_locality_init(team->_dartid),
+  //  DART_OK);
     dash::Team::_teams.insert(
       std::make_pair(team->_dartid, team));
   }
@@ -574,14 +574,11 @@ private:
   {
     DASH_LOG_DEBUG("Team.unregister_team",
                    "team id:", team->_dartid);
-//    if (team->_dartid != DART_TEAM_NULL)
-    {
-      DASH_ASSERT_RETURNS(
-        dart_team_locality_finalize(team->_dartid),
-        DART_OK);
-      dash::Team::_teams.erase(
-        team->_dartid);
-    }
+  // DASH_ASSERT_RETURNS(
+  //   dart_team_locality_finalize(team->_dartid),
+  //   DART_OK);
+    dash::Team::_teams.erase(
+      team->_dartid);
   }
 
 private:

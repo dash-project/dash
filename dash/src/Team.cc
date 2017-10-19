@@ -3,6 +3,8 @@
 
 #include <dash/util/Locality.h>
 
+#include <dylocxx.h>
+
 #include <list>
 #include <vector>
 #include <unordered_map>
@@ -146,26 +148,27 @@ Team::locality_split(
     return *result;
   }
 
+  // Number of child teams actually created:
+  size_t num_split = 0;
+
   if (num_parts == 0) {
     DASH_THROW(
       dash::exception::InvalidArgument,
       "Number of parts to split team must be greater than 0");
   }
 
-  dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
-                                        static_cast<int>(scope));
-
-  dart_group_t   group;
   std::vector<dart_group_t> sub_group_v(num_parts);
   dart_group_t * sub_groups = sub_group_v.data();
-
-  size_t num_split     = 0;
-
   for (unsigned i = 0; i < num_parts; i++) {
     DASH_ASSERT_RETURNS(
       dart_group_create(&sub_groups[i]),
       DART_OK);
   }
+#if 0
+  dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
+                                        static_cast<int>(scope));
+
+  dart_group_t   group;
 
   dart_domain_locality_t * domain;
   DASH_ASSERT_RETURNS(
@@ -178,7 +181,34 @@ Team::locality_split(
     dart_group_locality_split(
       group, domain, dart_scope, num_parts, &num_split, sub_groups),
     DART_OK);
+#else
   dart_team_t oldteam = _dartid;
+
+  auto & topo      = dyloc::team_topology(_dartid);
+  auto scope_dtags = topo.scope_domain_tags(
+                       static_cast<dyloc_locality_scope_t>(scope));
+
+  if (num_parts == 0) {
+    num_parts = scope_dtags.size();
+  }
+
+  if (num_parts == scope_dtags.size()) {
+    int group_idx = 0;
+    for (const auto & scope_dtag : scope_dtags) {
+      DYLOC_LOG_DEBUG_VAR("Team.locality_split", scope_dtag);
+      const auto & scope_domain = topo[scope_dtag];
+      for (auto scope_domain_unit_id : scope_domain.unit_ids) {
+        dart_group_addmember(sub_groups[group_idx], scope_domain_unit_id);
+      }
+    }
+  } else {
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "Team.locality_split does not support nparts != ndomains");
+  }
+  num_split = scope_dtags.size();
+#endif
+
 #if DASH_ENABLE_TRACE_LOGGING
   for(unsigned i = 0; i < num_parts; i++) {
     size_t sub_group_size = 0;

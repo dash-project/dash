@@ -1,10 +1,11 @@
 #include <dash/util/Locality.h>
 
+#include <dylocxx/dylocxx.h>
+
 #include <dash/Array.h>
 #include <dash/algorithm/Copy.h>
 
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
 
 #include <iostream>
 #include <iomanip>

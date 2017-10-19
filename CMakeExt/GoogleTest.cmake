@@ -52,7 +52,7 @@ else()
     # Wrap download, configure and build steps in a script to log output
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
-    LOG_BUILD ON
+    LOG_BUILD OFF
   )
   set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
   set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/googletest/include")

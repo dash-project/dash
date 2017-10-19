@@ -9,12 +9,10 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
-#include <dash/dart/if/dart_locality.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/assert.h>
-#include <dash/dart/base/locality.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_group_priv.h>
@@ -333,6 +331,7 @@ dart_ret_t dart_group_split(
   return DART_OK;
 }
 
+#if 0
 dart_ret_t dart_group_locality_split(
   const dart_group_t        group,
   dart_domain_locality_t  * domain,
@@ -520,7 +519,7 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split >");
   return DART_OK;
 }
-
+#endif
 
 dart_ret_t dart_group_ismember(
   const dart_group_t   g,

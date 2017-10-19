@@ -4,11 +4,12 @@
 #include <dash/util/Locality.h>
 
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_locality.h>
 
 #include <dash/algorithm/internal/String.h>
 
 #include <dash/Exception.h>
+
+#include <dylocxx.h>
 
 #include <string>
 #include <vector>
@@ -129,7 +130,7 @@ namespace internal {
 }
 
 /**
- * Wrapper of a single \c dart_domain_locality_t object.
+ * Wrapper of a single \c dyloc::locality_domain object.
  *
  * Usage examples:
  *
@@ -164,11 +165,11 @@ public:
 private:
   LocalityDomain(
     const self_t                 & parent,
-    dart_domain_locality_t       * domain);
+    dyloc::locality_domain       * domain);
 
 private:
-  /// Underlying \c dart_domain_locality_t object.
-  dart_domain_locality_t                          * _domain     = nullptr;
+  /// Underlying \c dyloc::locality_domain object.
+  dyloc::locality_domain                          * _domain     = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.
   std::string                                       _domain_tag = ".";
   /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
@@ -198,10 +199,10 @@ public:
   LocalityDomain() = default;
 
   explicit LocalityDomain(
-    const dart_domain_locality_t & domain);
+    const dyloc::locality_domain & domain);
 
   explicit LocalityDomain(
-    dart_domain_locality_t * domain);
+    dyloc::locality_domain * domain);
 
   ~LocalityDomain();
 
@@ -322,7 +323,8 @@ public:
     std::vector<self_t>       scope_domains;
     int                       num_scope_domains;
 
-    dart_domain_locality_t ** dart_scope_domains;
+#if 0
+    dyloc::locality_domain ** dart_scope_domains;
     dart_ret_t ret = dart_domain_scope_domains(
                        _domain,
                        static_cast<dart_locality_scope_t>(scope),
@@ -342,6 +344,17 @@ public:
       }
       free(dart_scope_domains);
     }
+#else
+    auto & topo      = dyloc::team_topology();
+    auto scope_dtags = topo.scope_domain_tags(
+                         static_cast<dyloc_locality_scope_t>(scope));
+    for (const auto & scope_dtag : scope_dtags) {
+      DASH_LOG_TRACE("LocalityDomain.scope_domains",
+                     "scope domain tag:", scope_dtag);
+      const auto & scope_domain = topo[scope_dtag];
+      scope_domains.emplace_back(scope_domain);
+    }
+#endif
     return scope_domains;
   }
 
@@ -378,7 +391,7 @@ public:
     return _domain_tag;
   }
 
-  inline const dart_domain_locality_t & dart_type() const
+  inline const dyloc::locality_domain & dart_type() const
   {
     DASH_ASSERT(_domain != nullptr);
     return *_domain;
@@ -390,11 +403,13 @@ public:
     return _domain->host;
   }
 
+#if 0
   inline int shared_mem_bytes() const
   {
     DASH_ASSERT(_domain != nullptr);
-    return _domain->shared_mem_bytes;
+    return _domain->hwinfo.shared_mem_bytes;
   }
+#endif
 
   inline iterator begin()
   {
@@ -488,7 +503,7 @@ public:
 private:
 
   inline void init(
-    dart_domain_locality_t * domain);
+    dyloc::locality_domain * domain);
 
   inline void collect_groups(
     const std::vector<std::string> & group_domain_tags)

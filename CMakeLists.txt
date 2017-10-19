@@ -79,6 +79,8 @@ option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
        "Specify whether libnuma features are enabled" on)
+option(ENABLE_DYLOC
+       "Specify whether dyloc features are enabled" on)
 option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
 option(ENABLE_HWLOC_PCI
@@ -128,7 +130,7 @@ endif()
 # has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
@@ -224,6 +226,7 @@ add_subdirectory(dart-if)
 # DART base:
 add_subdirectory(dart-impl)
 
+# DASH:
 add_subdirectory(dash)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateDASHCXX.cmake)
@@ -276,6 +279,8 @@ message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
         ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
 message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "
         ${ENABLE_LIBNUMA})
+message(INFO "dyloc support:            (ENABLE_DYLOC)                   "
+        ${ENABLE_DYLOC})
 message(INFO "hwloc support:            (ENABLE_HWLOC)                   "
         ${ENABLE_HWLOC})
 message(INFO "hwloc PCI support:        (ENABLE_HWLOC_PCI)               "
@@ -328,6 +333,11 @@ if (ENABLE_BLAS)
   endif()
 else()
   message(NOTE "BLAS                      disabled")
+endif()
+if (ENABLE_DYLOC)
+  message(INFO "dyloc                     enabled")
+else()
+  message(NOTE "dyloc                     disabled")
 endif()
 if (ENABLE_HWLOC)
   if (HWLOC_FOUND)
