@@ -3,13 +3,11 @@
 
 #include <dash/Matrix.h>
 #include <dash/Algorithm.h>
-#include <dash/experimental/Halo.h>
-#include <dash/experimental/HaloMatrixWrapper.h>
+#include <dash/halo/HaloMatrixWrapper.h>
 
 #include <iostream>
 
-
-using namespace dash::experimental;
+using namespace dash;
 
 TEST_F(HaloTest, CycleSpec)
 {
