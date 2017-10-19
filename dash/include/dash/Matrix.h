@@ -417,30 +417,32 @@ public:
   inline void                 barrier() const;
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the array's underlying global memory.
+   * Complete all outstanding non-blocking operations to all units
+   * on the container's underlying global memory.
    *
    * \see  DashContainerConcept
    */
   inline void                 flush();
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the narray's underlying global memory.
+   * Complete all outstanding non-blocking operations to the specified unit
+   * on the container's underlying global memory.
+   *
+   * \see  DashContainerConcept
+   */
+  inline void                 flush(dash::team_unit_t target);
+
+  /**
+   * Locally complete all outstanding non-blocking operations to all units
+   * on the container's underlying global memory.
    */
   inline void                 flush_local();
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the narray's underlying global memory.
+   * Locally complete all outstanding non-blocking operations to the specified
+   * unit on the container's underlying global memory.
    */
-  inline void                 flush_all();
-
-  /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the narray's underlying global memory.
-   */
-  inline void                 flush_local_all();
+  inline void                 flush_local(dash::team_unit_t target);
 
   /**
    * The pattern used to distribute matrix elements to units in its
@@ -520,7 +522,7 @@ public:
   constexpr operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
-  
+
   /**
    * Subscript operator, returns a \ref GlobRef if matrix has only one dimension
    */
