@@ -565,7 +565,7 @@ dart_ret_t dart_get_strided_handle(
   uint64_t         offset = gptr.addr_or_offs.offset;
   int16_t          seg_id = gptr.segid;
 
-  char * dest_ptr  = (char*) dest;
+  char* dest_ptr  = (char*) dest;
   *handleptr = DART_HANDLE_NULL;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -617,6 +617,8 @@ dart_ret_t dart_get_strided_handle(
       case STRIDED_TO_STRIDED: break;
       case STRIDED_TO_CONTIG: offset_dest = size_nelems; break;
       case CONTIG_TO_STRIDED: offset_src = size_nelems; break;
+      defualt: DART_LOG_ERROR("dart_get_indexed_handle ! unknown stride option");
+               return DART_ERR_INVAL;
     }
 
     for(size_t i = 0; i < nblocks; ++i, dest_ptr += offset_dest, baseptr += offset_src)
@@ -629,7 +631,7 @@ dart_ret_t dart_get_strided_handle(
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
-   * nodes, use MPI_RGet:
+   * nodes, use MPI_Rget:
    */
   MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
   MPI_Datatype mpi_strided_type;
@@ -647,7 +649,7 @@ dart_ret_t dart_get_strided_handle(
   DART_LOG_DEBUG("dart_get_strided_handle:  -- MPI_Rget(dest %p, size %zu)",
                   dest_ptr, nblocks * nelems_block);
 
-  int mpi_ret = 0;
+  int mpi_ret = -1;
   switch(stride_opt) {
     case STRIDED_TO_STRIDED:
       mpi_ret = MPI_Rget(
@@ -659,7 +661,8 @@ dart_ret_t dart_get_strided_handle(
                   1,                      // target count
                   mpi_strided_type,       // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
+                  &handle->reqs[0]);
+                break;
     case STRIDED_TO_CONTIG:
       mpi_ret = MPI_Rget(
                   dest_ptr,                   // origin address
@@ -670,7 +673,8 @@ dart_ret_t dart_get_strided_handle(
                   1,                      // target count
                   mpi_strided_type,       // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
+                  &handle->reqs[0]);
+                break;
     case CONTIG_TO_STRIDED:
       mpi_ret = MPI_Rget(
                   dest_ptr,                   // origin address
@@ -681,21 +685,23 @@ dart_ret_t dart_get_strided_handle(
                   nblocks * nelems_block, // target count
                   mpi_elem_type,          // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
-    defualt: DART_LOG_ERROR("dart_get_strided_handle ! unknown stride option");
+                  &handle->reqs[0]);
+                break;
+    default: DART_LOG_ERROR("dart_get_strided_handle ! unknown stride option");
   }
 
   if (mpi_ret != MPI_SUCCESS) {
     free(handle);
+    MPI_Type_free(&mpi_strided_type);
     DART_LOG_ERROR("dart_get_strided_handle ! MPI_Rget failed");
-    return DART_ERR_INVAL;
+    return DART_ERR_OTHER;
   }
 
   handle->num_reqs++;
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_strided_handle > handle(%p) dest:%d win:%"PRIu64,
-                 (void*) handle, handle->dest, (unsigned long)win);
+                 (void*) handle, handle->dest, (unsigned long) win);
 
   MPI_Type_free(&mpi_strided_type);
 
@@ -778,8 +784,10 @@ dart_ret_t dart_get_indexed_handle(
       for(size_t i = 0; i < nblocks; ++i, baseptr += size_nelems)
         memcpy(dest_ptr + indexes[i] * size_dtype, baseptr, size_nelems);
     }
-    else
+    else {
       DART_LOG_ERROR("dart_get_indexed_handle ! unknown stride option");
+      return DART_ERR_INVAL;
+    }
 
     return DART_OK;
   }
@@ -788,7 +796,7 @@ dart_ret_t dart_get_indexed_handle(
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
-   * nodes, use MPI_RGet:
+   * nodes, use MPI_Rget:
    */
   MPI_Datatype mpi_elem_type = dart__mpi__datatype(dtype);
   MPI_Datatype mpi_indexed_type;
@@ -819,7 +827,8 @@ dart_ret_t dart_get_indexed_handle(
                   1,                      // target count
                   mpi_indexed_type,       // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
+                  &handle->reqs[0]);
+                break;
     case STRIDED_TO_CONTIG:
       mpi_ret = MPI_Rget(
                   dest_ptr,                   // origin address
@@ -830,7 +839,8 @@ dart_ret_t dart_get_indexed_handle(
                   1,                      // target count
                   mpi_indexed_type,       // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
+                  &handle->reqs[0]);
+                break;
     case CONTIG_TO_STRIDED:
       mpi_ret = MPI_Rget(
                   dest_ptr,                   // origin address
@@ -841,21 +851,23 @@ dart_ret_t dart_get_indexed_handle(
                   nblocks * nelems_block, // target count
                   mpi_elem_type,          // target data type
                   win,                    // window
-                  &handle->reqs[0]); break;
+                  &handle->reqs[0]);
+                break;
     default: DART_LOG_ERROR("dart_get_indexed_handle ! unknown stride option");
   }
 
   if (mpi_ret != MPI_SUCCESS) {
     free(handle);
+    MPI_Type_free(&mpi_indexed_type);
     DART_LOG_ERROR("dart_get_indexed_handle ! MPI_Rget failed");
-    return DART_ERR_INVAL;
+    return DART_ERR_OTHER;
   }
 
   handle->num_reqs++;
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_indexed_handle > handle(%p) dest:%d win:%"PRIu64,
-                 (void*) handle, handle->dest, (unsigned long)win);
+                 (void*) handle, handle->dest, (unsigned long) win);
 
   MPI_Type_free(&mpi_indexed_type);
 

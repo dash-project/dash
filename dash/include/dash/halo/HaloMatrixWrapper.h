@@ -84,7 +84,7 @@ public:
               [off, it, num_blocks, ds_num_elems_block, ds_stride](HaloData& data) {
                 dart_get_strided_handle(off, it.dart_gptr(), num_blocks, ds_num_elems_block.nelem,
                     ds_stride.nelem, ds_num_elems_block.dtype, STRIDED_TO_CONTIG, &data.handle);
-              },std::move(halo_data)}));
+              }, std::move(halo_data)}));
 
         }
         // TODO more optimizations
@@ -121,7 +121,7 @@ public:
               [off, it, num_blocks, ds_num_elems_block, ds_stride](HaloData& data) {
                 dart_get_strided_handle(off, it.dart_gptr(), num_blocks, ds_num_elems_block.nelem,
                     ds_stride.nelem, ds_num_elems_block.dtype, STRIDED_TO_CONTIG, &data.handle);
-              },std::move(halo_data)}));
+              }, std::move(halo_data)}));
         }
         // TODO more optimizations
         else {
