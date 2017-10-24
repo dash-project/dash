@@ -254,8 +254,9 @@ private:
      * TODO: we have no way to statically check whether a TeamSpec was created
      *       using the team specified by the user.
      */
-    if (ArgcTeam && !ArgcTeamSpec) {
-      _teamspec = TeamSpec_t(_distspec, *_team);
+    /* Create a teamspec that matches the distribution spec */
+    if (ArgcDist && !ArgcTeamSpec) {
+      _teamspec = TeamSpec_t(_distspec, this->team());
     }
 
     check_tile_constraints();
@@ -278,9 +279,9 @@ private:
       }
 
       for (auto i = 0; i < NumDimensions; i++) {
-        DASH_ASSERT_ALWAYS(
-          _sizespec.extent(i) % (_distspec.dim(i).blocksz)
-          == 0);
+        DASH_ASSERT_MSG_ALWAYS(
+          _sizespec.extent(i) % (_distspec.dim(i).blocksz) == 0,
+          "Extent must match blocksize in each dimension!");
       }
     }
   }
