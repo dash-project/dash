@@ -317,7 +317,7 @@ public:
 
   template<typename... ARGS>
   HaloSpec(const ARGS&... args) {
-    std::vector<HaloRegionSpecT> tmp{args...};
+    std::array<HaloRegionSpecT, sizeof...(ARGS)> tmp{args...};
     for(auto& spec : tmp) {
       _specs[spec.index()] = spec;
       ++_num_regions;
@@ -346,12 +346,14 @@ public:
 
 private:
   void setRegionSpec(const StencilT& stencil) {
-        auto index = HaloRegionSpecT::index(stencil);
-        auto max = stencil.max();
-        if(_specs[index].extent() == 0)
-          ++_num_regions;
-        if(max >_specs[index].extent())
-          _specs[index] = HaloRegionSpecT(index,max);
+    auto index = HaloRegionSpecT::index(stencil);
+    auto max = stencil.max();
+
+    if(_specs[index].extent() == 0)
+      ++_num_regions;
+
+    if(max >_specs[index].extent())
+      _specs[index] = HaloRegionSpecT(index,max);
   }
 
   bool nextRegion(const StencilT& stencil, StencilT& stencil_combination) {
@@ -398,9 +400,9 @@ public:
    * regions.
    */
   RegionIter(GlobMemT& globmem, const PatternT& pattern, const ViewSpecT& _region_view,
-             index_type pos, index_type size)
-      : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos), _size(size),
-        _max_idx(_size - 1), _myid(dash::myid()), _lbegin(globmem.lbegin()) {}
+             index_type pos, size_type size)
+      : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
+        _max_idx(size - 1), _myid(pattern.team().myid()), _lbegin(globmem.lbegin()) {}
 
   /**
    * Copy constructor.
@@ -408,11 +410,21 @@ public:
   RegionIter(const SelfT& other) = default;
 
   /**
+   * Move constructor
+   */
+  RegionIter(SelfT&& other) = default;
+
+  /**
    * Assignment operator.
    *
    * \see DashGlobalIteratorConcept
    */
   SelfT& operator=(const SelfT& other) = default;
+
+  /**
+   * Move assignment operator
+   */
+  SelfT& operator=(SelfT&& other) = default;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -554,16 +566,12 @@ public:
     return res;
   }
 
-  index_type operator+(const SelfT& other) const { return _idx + other._idx; }
-
   SelfT operator-(index_type n) const {
     SelfT res{*this};
     res -= n;
 
     return res;
   }
-
-  index_type operator-(const SelfT& other) const { return _idx - other._idx; }
 
   bool operator<(const SelfT& other) const { return compare(other, std::less<index_type>()); }
 
@@ -619,8 +627,6 @@ private:
   const ViewSpecT _region_view;
   /// Iterator's position relative to the block border's iteration space.
   index_type _idx{0};
-  /// Number of elements in the block border's iteration space.
-  index_type _size{0};
   /// Maximum iterator position in the block border's iteration space.
   index_type _max_idx{0};
   /// Unit id of the active unit
@@ -670,7 +676,8 @@ public:
   Region(const HaloRegionSpecT& region_spec, const ViewSpecT& region, GlobMemT& globmem,
          const PatternT& pattern, const BorderT& border)
       : _region_spec(region_spec), _region(region), _border(border),
-        _border_region(std::any_of(border.begin(), border.end(), [](bool border_dim){ return border_dim == true;})),
+        _border_region(std::any_of(border.begin(), border.end(),
+              [](bool border_dim){ return border_dim == true;})),
         _beg(globmem, pattern, _region, 0, _region.size()),
         _end(globmem, pattern, _region, _region.size(), _region.size()) {}
 
@@ -704,7 +711,7 @@ private:
 template <typename ElementT, typename PatternT>
 class HaloBlock {
 private:
-  static const dim_t NumDimensions = PatternT::ndim();
+  static constexpr dim_t NumDimensions = PatternT::ndim();
 
   using SelfT           = HaloBlock<ElementT, PatternT>;
   using GlobMemT        = GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
@@ -895,7 +902,7 @@ public:
 
   size_type halo_size() const {
     return std::accumulate(_halo_regions.begin(), _halo_regions.end(), 0,
-                           [](size_type sum, region_t region) { return sum + region.size(); });
+                           [](size_type sum, region_t& region) { return sum + region.size(); });
   }
 
   size_type boundary_size() const { return _size_bnd_elems; }

@@ -132,7 +132,8 @@ public:
           HaloData halo_data{nullptr, std::vector<int>(num_blocks)};
           auto start_index = it.lpos().index;
           for(auto& index : halo_data.indexes) {
-            index = static_cast<int>(dart_storage<ElementT>(it_tmp.lpos().index - start_index).nelem);
+            index = static_cast<int>(dart_storage<ElementT>(
+                  it_tmp.lpos().index - start_index).nelem);
             it_tmp += num_elems_block;
           }
           _region_data.insert(std::make_pair(region.index(), Data{region,
@@ -209,7 +210,8 @@ public:
     using signed_extent_t = typename std::make_signed<size_type>::type;
     for (const auto& region : _haloblock.boundary_regions()) {
       auto rel_dim = region.regionSpec().relevantDim() - 1;
-      if (region.borderRegion() && region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED) {
+      if (region.borderRegion() && region.borderDim(rel_dim)
+          && _cycle_spec[rel_dim] == Cycle::FIXED) {
         auto* pos_ptr = _halomemory.haloPos(region.index());
         const auto& spec    = region.regionSpec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
@@ -274,9 +276,11 @@ private:
 
   void updateHaloIntern(Data& data, bool async) {
     auto rel_dim = data.region.regionSpec().relevantDim() - 1;
-    if (data.region.borderRegion() && data.region.borderDim(rel_dim) && _cycle_spec[rel_dim] == Cycle::FIXED)
-      return;
+    if (data.region.borderRegion() && data.region.borderDim(rel_dim)
+        && _cycle_spec[rel_dim] == Cycle::FIXED) {
 
+      return;
+    }
     data.get_halos(data.halo_data);
 
     if (!async)
