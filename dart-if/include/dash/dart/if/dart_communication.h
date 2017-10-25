@@ -516,11 +516,11 @@ dart_ret_t dart_get_indexed_handle(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
-void            * dest,
-dart_gptr_t       gptr,
-size_t            nelem,
-dart_datatype_t   dtype,
-dart_handle_t   * handle) DART_NOTHROW;
+  void            * dest,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * 'HANDLE' variant of dart_put.
@@ -540,11 +540,11 @@ dart_handle_t   * handle) DART_NOTHROW;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
-dart_gptr_t       gptr,
-const void      * src,
-size_t            nelem,
-dart_datatype_t   dtype,
-dart_handle_t   * handle) DART_NOTHROW;
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_handle_t   * handle) DART_NOTHROW;
 
 /**
  * Wait for the local and remote completion of an operation.
@@ -668,10 +668,10 @@ dart_ret_t dart_testall_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
-void         *  dest,
-dart_gptr_t     gptr,
-size_t          nelem,
-dart_datatype_t dtype) DART_NOTHROW;
+  void         *  dest,
+  dart_gptr_t     gptr,
+  size_t          nelem,
+  dart_datatype_t dtype) DART_NOTHROW;
 
 /**
  * 'BLOCKING' variant of dart_put.
@@ -688,10 +688,10 @@ dart_datatype_t dtype) DART_NOTHROW;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
-dart_gptr_t       gptr,
-const void      * src,
-size_t            nelem,
-dart_datatype_t   dtype) DART_NOTHROW;
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype) DART_NOTHROW;
 
 /** \} */
 
@@ -719,11 +719,11 @@ dart_datatype_t   dtype) DART_NOTHROW;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_send(
-const void         * sendbuf,
-size_t               nelem,
-dart_datatype_t      dtype,
-int                  tag,
-dart_global_unit_t   unit) DART_NOTHROW;
+  const void         * sendbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI recv.
@@ -740,11 +740,11 @@ dart_global_unit_t   unit) DART_NOTHROW;
  * \ingroup DartCommunication
  */
 dart_ret_t dart_recv(
-void               * recvbuf,
-size_t               nelem,
-dart_datatype_t      dtype,
-int                  tag,
-dart_global_unit_t   unit) DART_NOTHROW;
+  void               * recvbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI sendrecv.
