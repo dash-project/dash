@@ -44,6 +44,8 @@ private:
   SizeSpec_t           _sizespec;
   /// The distribution type for every pattern dimension
   DistributionSpec_t   _distspec;
+  /// The set of individual distributions provided
+  std::array<Distribution, NumDimensions> _dists;
   /// The cartesian arrangement of the units in the team to which the
   /// patterns element are mapped
   TeamSpec_t           _teamspec;
@@ -228,7 +230,7 @@ private:
     static_assert(ArgcDist < NumDimensions, "Number of distribution specifier"
         " exceeds the number of dimensions in variadic pattern constructor!");
     DASH_LOG_TRACE("PatternArguments.check(dist)");
-    _distspec[ArgcDist] = ds;
+    _dists[ArgcDist] = ds;
     parse<ArgcSize, ArgcDist+1, ArgcTeam,
       ArgcTeamSpec>(std::forward<Args>(args)...);
   }
@@ -250,16 +252,20 @@ private:
         "Incomplete size specification in "
         "variadic pattern constructor!");
 
+    if (ArgcDist > 0) {
+      _distspec = DistributionSpec_t(_dists);
+    }
+
+    check_tile_constraints();
+
     /*
      * TODO: we have no way to statically check whether a TeamSpec was created
      *       using the team specified by the user.
      */
-    /* Create a teamspec that matches the distribution spec */
-    if (ArgcDist && !ArgcTeamSpec) {
-      _teamspec = TeamSpec_t(_distspec, this->team());
+    /* Create a teamspec if none is provided */
+    if (!ArgcTeamSpec) {
+      create_team_spec();
     }
-
-    check_tile_constraints();
   }
 
   /// Check pattern constraints for tile
@@ -283,6 +289,36 @@ private:
           _sizespec.extent(i) % (_distspec.dim(i).blocksz) == 0,
           "Extent must match blocksize in each dimension!");
       }
+    }
+  }
+
+  void create_team_spec() {
+    // count the number of none-NONE dist specs
+    int num_explicit_dist = 0;
+    int explicit_dist_pos = -1;
+    for (auto i = 0; i < NumDimensions; i++) {
+      if (_distspec.dim(i).type != dash::internal::DIST_NONE) {
+        ++num_explicit_dist;
+        explicit_dist_pos = i;
+      }
+    }
+
+    /* infer a teamspec if possible or error out */
+    if (num_explicit_dist == NumDimensions) {
+      // balance extents if all dimensions have an explicit distribution
+      _teamspec = TeamSpec_t(this->team());
+      _teamspec.balance_extents();
+    } else if (num_explicit_dist == 1) {
+      // create a TeamSpec with the specific dimension set
+      std::array<Distribution, NumDimensions> dists;
+      dists[explicit_dist_pos].type = _distspec.dim(explicit_dist_pos).type;
+      DistributionSpec_t distspec(dists);
+      _teamspec = TeamSpec_t(distspec, this->team());
+    } else if (num_explicit_dist > 1) {
+      DASH_ASSERT_MSG_ALWAYS(
+        num_explicit_dist == 1 || num_explicit_dist == NumDimensions,
+        "Cannot infer TeamSpec from mixed DistributionSpec"
+      );
     }
   }
 };
