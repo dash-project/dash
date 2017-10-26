@@ -8,8 +8,10 @@
 #include <dash/TeamSpec.h>
 #include <dash/Matrix.h>
 
-#define NX 3
-#define NY 5
+#define NX  10
+#define BCX 5
+#define NY  6
+#define BCY 3
 
 
 TEST_F(VarArgsPatternTest, SimpleConstructorTest)
@@ -22,19 +24,19 @@ TEST_F(VarArgsPatternTest, SimpleConstructorTest)
   }
   {
     dash::Matrix<int, 2> mat(size*NX, size*NY,
-                             dash::BLOCKED, dash::BLOCKCYCLIC(5));
+                             dash::BLOCKED, dash::BLOCKCYCLIC(BCY));
     ASSERT_GT_U(mat.local_size(), 0);
   }
   {
     dash::Matrix<int, 2> mat(size*NX, size*NY,
-                             dash::BLOCKCYCLIC(3), dash::BLOCKCYCLIC(5));
+                             dash::BLOCKCYCLIC(BCX), dash::BLOCKCYCLIC(BCY));
     ASSERT_GT_U(mat.local_size(), 0);
   }
 
   //  NArray uses BlockPattern by default
   {
     dash::NArray<int, 2> mat(size*NX, size*NY,
-                             dash::BLOCKCYCLIC(3), dash::BLOCKCYCLIC(5));
+                             dash::BLOCKCYCLIC(BCX), dash::BLOCKCYCLIC(BCY));
     ASSERT_GT_U(mat.local_size(), 0);
   }
 
@@ -42,7 +44,7 @@ TEST_F(VarArgsPatternTest, SimpleConstructorTest)
   {
     dash::Matrix<int, 2, dash::default_index_t,
                  dash::ShiftTilePattern<2> > mat(size*NX, size*NY,
-                                                 dash::TILE(3), dash::TILE(5));
+                                                 dash::TILE(BCX), dash::TILE(BCY));
     ASSERT_GT_U(mat.local_size(), 0);
   }
 }
