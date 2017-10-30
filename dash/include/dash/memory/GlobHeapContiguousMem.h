@@ -342,7 +342,7 @@ public:
   /**
    * Insert value at the end of the given bucket.
    */
-  void push_back(container_list_index cont, value_type & val) {
+  local_iterator push_back(container_list_index cont, value_type & val) {
     auto cont_it = _container_list->begin();
     std::advance(cont_it, cont);
     auto c_data = *cont_it;
@@ -362,6 +362,7 @@ public:
 
     update_lbegin();
     update_lend();
+    return _lend;
   }
 
   /**

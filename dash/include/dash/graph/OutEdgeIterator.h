@@ -9,15 +9,12 @@ namespace dash {
 template<typename Graph>
 struct OutEdgeIteratorWrapper {
 
-  typedef Graph                                    graph_type;
-  typedef typename Graph::global_edge_iterator     iterator;
-  typedef const iterator                           const_iterator;
-  typedef typename Graph::local_edge_iterator      local_iterator;
-  typedef const local_iterator                     const_local_iterator;
-  typedef typename Graph::edge_index_type          edge_index_type;
-  typedef typename Graph::edge_properties_type     edge_properties_type;
-  typedef typename Graph::vertex_type              vertex_type;
-  typedef typename Graph::vertex_index_type        vertex_index_type;
+  typedef Graph                                        graph_type;
+  typedef typename Graph::global_out_edge_iterator     iterator;
+  typedef const iterator                               const_iterator;
+  typedef typename Graph::local_out_edge_iterator      local_iterator;
+  typedef const local_iterator                         const_local_iterator;
+  typedef typename Graph::edge_properties_type         edge_properties_type;
 
   /**
    * Constructs the wrapper.
@@ -25,13 +22,6 @@ struct OutEdgeIteratorWrapper {
   OutEdgeIteratorWrapper(graph_type * graph)
     : _graph(graph)
   { }
-
- /**
-   * Returns a property object for the given edge.
-   */
-  edge_properties_type & operator[](const edge_index_type & v) const {
-
-  }
 
   /**
    * Returns global iterator to the beginning of the edge list.
@@ -91,58 +81,6 @@ struct OutEdgeIteratorWrapper {
    */
   const_local_iterator lend() const {
     return _graph->_glob_mem_out_edge->lend();
-  }
-
-  /**
-   * Returns global iterator to the beginning of the edge list of the given 
-   * vertex
-   */
-  iterator vbegin(const vertex_type & v) {
-    return iterator(
-        _graph->_glob_mem_out_edge, 
-        v._index.unit, 
-        v._out_edge_ref, 
-        0
-    );
-  }
-
-  /**
-   * Returns global iterator to the end of the edge list of the given vertex
-   */
-  iterator vend(const vertex_type & v) {
-    return iterator(
-        _graph->_glob_mem_out_edge, 
-        v._index.unit, 
-        v._out_edge_ref, 
-        _graph->_glob_mem_out_edge->container_size(v._index.unit, 
-          v._out_edge_ref)
-    );
-  }
-
-  /**
-   * Returns global iterator to the beginning of the edge list of the given 
-   * vertex
-   */
-  const_iterator vbegin(const vertex_type & v) const {
-    return iterator(
-        _graph->_glob_mem_out_edge, 
-        v._index.unit, 
-        v._out_edge_ref, 
-        0
-    );
-  }
-
-  /**
-   * Returns global iterator to the end of the edge list of the given vertex
-   */
-  const_iterator vend(const vertex_type & v) const {
-    return iterator(
-        _graph->_glob_mem_out_edge, 
-        v._index.unit, 
-        v._out_edge_ref, 
-        _graph->_glob_mem_out_edge->container_size(v._index.unit, 
-          v._out_edge_ref)
-    );
   }
 
 private:
