@@ -362,6 +362,13 @@ Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MSpaceC>
 inline void
 Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
+::flush(dash::team_unit_t target) {
+  _glob_mem->flush(target);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MSpaceC>
+inline void
+Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
 ::flush_local() {
   _glob_mem->flush_local();
 }
@@ -369,15 +376,8 @@ Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MSpaceC>
 inline void
 Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
-::flush_all() {
-  _glob_mem->flush_all();
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MSpaceC>
-inline void
-Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
-::flush_local_all() {
-  _glob_mem->flush_local_all();
+::flush_local(dash::team_unit_t target) {
+  _glob_mem->flush_local(target);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MSpaceC>

@@ -1204,7 +1204,7 @@ private:
                           DART_OK);
     }
 
-    for (int u = 0; u < _nunits; ++u) {
+    for (size_type u = 0; u < _nunits; ++u) {
       if (u == _myid) {
         continue;
       }
@@ -1213,13 +1213,16 @@ private:
       // Last known local attached capacity of remote unit:
       auto& u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
       // Request current locally allocated capacity of remote unit:
-      size_type u_local_size_old =
-          u_bucket_cumul_sizes.size() == 0 ? 0 : u_bucket_cumul_sizes.back();
-      size_type u_local_size_new = _local_sizes[u];
-      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_old);
-      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size", u_local_size_new);
-      int u_local_size_diff = u_local_size_new - u_local_size_old;
-      new_remote_size += u_local_size_new;
+      size_type u_local_size_old  = u_bucket_cumul_sizes.size() == 0
+                                    ? 0
+                                    : u_bucket_cumul_sizes.back();
+      size_type u_local_size_new  = _local_sizes[u];
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
+                         u_local_size_old);
+      DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
+                         u_local_size_old);
+      difference_type u_local_size_diff  = u_local_size_new - u_local_size_old;
+      new_remote_size       += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
@@ -1250,8 +1253,9 @@ private:
 
     _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING
-    for (int u = 0; u < _nunits; ++u) {
-      DASH_LOG_TRACE("GlobHeapMem.update_remote_size", "unit", u,
+    for (size_type u = 0; u < _nunits; ++u) {
+      DASH_LOG_TRACE("GlobHeapMem.update_remote_size",
+                     "unit", u,
                      "cumulative bucket sizes:", _bucket_cumul_sizes[u]);
     }
 #endif

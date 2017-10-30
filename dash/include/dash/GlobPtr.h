@@ -21,6 +21,17 @@ std::ostream & operator<<(
 
 namespace dash {
 
+namespace internal {
+  static bool is_local(dart_gptr_t gptr) {
+    dart_team_unit_t luid;
+    DASH_ASSERT_RETURNS(
+      dart_team_myid(gptr.teamid, &luid),
+      DART_OK);
+    return gptr.unitid == luid.id;
+  }
+}
+
+
 // Forward-declarations
 template <typename T>                  class GlobRef;
 template <typename T,
@@ -483,11 +494,7 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    dart_team_unit_t luid;
-    DASH_ASSERT_RETURNS(
-      dart_team_myid(_rbegin_gptr.teamid, &luid),
-      DART_OK);
-    return _rbegin_gptr.unitid == luid.id;
+    return dash::internal::is_local(_rbegin_gptr);
   }
 
   constexpr explicit operator bool() const noexcept {

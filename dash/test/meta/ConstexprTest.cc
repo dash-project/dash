@@ -15,7 +15,7 @@ TEST_F(ConstexprTest, Accumulate)
     constexpr int acc = dash::ce::accumulate(
                           arr, 0, 9,
                           100, dash::ce::plus<int>);
-    
+
     if (dash::myid() == 0) {
       DASH_LOG_DEBUG_VAR("ConstexprTest.Accumulate", acc);
       EXPECT_EQ_U(136, acc);
@@ -25,7 +25,7 @@ TEST_F(ConstexprTest, Accumulate)
     constexpr int acc = dash::ce::accumulate(
                           arr, 2, 8,
                           100, dash::ce::plus<int>);
-    
+
     if (dash::myid() == 0) {
       DASH_LOG_DEBUG_VAR("ConstexprTest.Accumulate", acc);
       EXPECT_EQ_U(127, acc);
@@ -124,10 +124,10 @@ TEST_F(ConstexprTest, Split)
   constexpr int nright = 5;
 
   constexpr dash::ce::split<int, nleft, nright> arr_split(arr);
-  
+
   constexpr std::array<int, nleft>  exp_l = { 0, 1, 2, 3 };
   constexpr std::array<int, nright> exp_r = { 4, 5, 6, 7, 8 };
-  
+
   constexpr auto arr_l = arr_split.left();
   constexpr auto arr_r = arr_split.right();
 

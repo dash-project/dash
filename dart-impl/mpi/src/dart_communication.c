@@ -190,7 +190,7 @@ dart_ret_t dart_get(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_get ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -199,7 +199,7 @@ dart_ret_t dart_get(
     // use direct memcpy if we are on the same unit
     memcpy(dest, seginfo->selfbaseptr + offset,
         nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_get_blocking: memcpy nelem:%zu "
+    DART_LOG_DEBUG("dart_get: memcpy nelem:%zu "
                    "source (coll.): offset:%lu -> dest: %p",
                    nelem, offset, dest);
     return DART_OK;
@@ -286,7 +286,7 @@ dart_ret_t dart_put(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -307,7 +307,7 @@ dart_ret_t dart_put(
                           team_unit_id, nelem, dtype);
   }
 #else
-  DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
+  DART_LOG_DEBUG("dart_put: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
   // source on another node or shared memory windows disabled
@@ -384,7 +384,7 @@ dart_ret_t dart_accumulate(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_accumulate ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -528,7 +528,7 @@ dart_ret_t dart_compare_and_swap(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_compare_and_swap ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -578,7 +578,7 @@ dart_ret_t dart_get_handle(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_get_handle ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -619,7 +619,7 @@ dart_ret_t dart_get_handle(
   handle->needs_flush  = false;
 
   if (nchunks > 0) {
-    DART_LOG_TRACE("dart_get_blocking:  MPI_Rget (dest %p, size %zu)",
+    DART_LOG_TRACE("dart_get_handle:  MPI_Rget (dest %p, size %zu)",
                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Rget(dest_ptr,
                   nchunks,
@@ -631,7 +631,7 @@ dart_ret_t dart_get_handle(
                   win,
                  &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       return DART_ERR_INVAL;
     }
     offset   += nchunks * MAX_CONTIG_ELEMENTS;
@@ -641,7 +641,7 @@ dart_ret_t dart_get_handle(
   if (remainder > 0) {
     MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
     DART_LOG_TRACE(
-      "dart_get_blocking:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
+      "dart_get_handle:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
     if (MPI_Rget(dest_ptr,
                  remainder,
                  mpi_dtype,
@@ -652,7 +652,7 @@ dart_ret_t dart_get_handle(
                  win,
                  &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       return DART_ERR_INVAL;
     }
   }
@@ -690,7 +690,7 @@ dart_ret_t dart_put_handle(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put_handle ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -741,7 +741,7 @@ dart_ret_t dart_put_handle(
                 win,
                 &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get ! MPI_Put failed");
+      DART_LOG_ERROR("dart_put_handle ! MPI_Put failed");
       return DART_ERR_INVAL;
     }
   }
@@ -779,7 +779,7 @@ dart_ret_t dart_put_blocking(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put_blocking ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -792,7 +792,7 @@ dart_ret_t dart_put_blocking(
   if (team_unit_id.id == team_data->unitid) {
     memcpy(seginfo->selfbaseptr + offset, src,
         nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_put: memcpy nelem:%zu (from global allocation)"
+    DART_LOG_DEBUG("dart_put_blocking: memcpy nelem:%zu (from global allocation)"
                    "offset: %"PRIu64"", nelem, offset);
     return DART_OK;
   }
@@ -804,7 +804,7 @@ dart_ret_t dart_put_blocking(
                           team_unit_id, nelem, dtype);
   }
 #else
-  DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
+  DART_LOG_DEBUG("dart_put_blocking: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
   MPI_Win win  = seginfo->win;
@@ -929,7 +929,7 @@ dart_ret_t dart_get_blocking(
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
   const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
   char * dest_ptr  = (char*) dest;
-  MPI_Request reqs[2];
+  MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
   int nreqs = 0;
 
   if (nchunks > 0) {
@@ -1835,6 +1835,132 @@ dart_ret_t dart_allreduce(
            mpi_op,    // reduce operation
            comm),
     "MPI_Allreduce");
+  return DART_OK;
+}
+
+dart_ret_t dart_alltoall(
+  const void       * sendbuf,
+  size_t             sendcount,
+  dart_datatype_t    sendtype,
+  void             * recvbuf,
+  size_t             recvcount,
+  dart_datatype_t    recvtype,
+  dart_team_t        team)
+{
+  MPI_Datatype mpi_stype = dart__mpi__datatype(sendtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype(recvtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(
+        sendcount > MAX_CONTIG_ELEMENTS || recvcount > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_alltoall ! failed: nelem (%zu, %zu) > INT_MAX",
+                  sendcount, recvcount);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allreduce ! unknown teamid %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Comm comm = team_data->comm;
+
+  CHECK_MPI_RET(
+    MPI_Alltoall(
+           sendbuf,
+           sendcount,
+           mpi_stype,
+           recvbuf,
+           recvcount,
+           mpi_dtype,
+           comm),
+    "MPI_Alltoall");
+  return DART_OK;
+}
+dart_ret_t dart_alltoallv(
+  const void       * sendbuf,
+  const size_t     * sendcounts,
+  const size_t     * senddispls,
+  dart_datatype_t    sendtype,
+  void             * recvbuf,
+  const size_t     * recvcounts,
+  const size_t     * recvdispls,
+  dart_datatype_t    recvtype,
+  dart_team_t        team)
+{
+  MPI_Datatype mpi_stype = dart__mpi__datatype(sendtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype(recvtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_allreduce ! unknown teamid %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Comm comm = team_data->comm;
+
+  int comm_size = team_data->size;
+
+  // convert nrecvcounts and recvdispls
+  MPI_Comm_size(comm, &comm_size);
+
+  int *isendcounts = malloc(sizeof(int) * comm_size);
+  int *isenddispls  = malloc(sizeof(int) * comm_size);
+  int *irecvcounts = malloc(sizeof(int) * comm_size);
+  int *irecvdispls  = malloc(sizeof(int) * comm_size);
+
+  for (int i = 0; i < comm_size; i++) {
+    if (recvcounts[i] > MAX_CONTIG_ELEMENTS ||
+        recvdispls[i] > MAX_CONTIG_ELEMENTS ||
+        senddispls[i] > MAX_CONTIG_ELEMENTS ||
+        sendcounts[i] > MAX_CONTIG_ELEMENTS
+      )
+    {
+      DART_LOG_ERROR(
+        "dart_alltoall ! failed: nrecvcounts[%i] (%zu) > INT_MAX || "
+        "recvdispls[%i] (%zu) > INT_MAX", i, recvcounts[i], i, recvdispls[i]);
+      free(irecvcounts);
+      free(irecvdispls);
+      free(isendcounts);
+      free(isenddispls);
+      return DART_ERR_INVAL;
+    }
+    irecvcounts[i]  = recvcounts[i];
+    irecvdispls[i]  = recvdispls[i];
+    isendcounts[i]  = sendcounts[i];
+    isenddispls[i]  = senddispls[i];
+  }
+
+  if (MPI_Alltoallv(
+           sendbuf,
+           isendcounts,
+           isenddispls,
+           mpi_stype,
+           recvbuf,
+           irecvcounts,
+           irecvdispls,
+           mpi_dtype,
+           comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_alltoallv ! team:%d failed",
+                   team);
+    free(irecvcounts);
+    free(irecvdispls);
+    free(isendcounts);
+    free(isenddispls);
+    return DART_ERR_INVAL;
+  }
+  free(irecvcounts);
+  free(irecvdispls);
+  free(isendcounts);
+  free(isenddispls);
+  DART_LOG_TRACE("dart_alltoallv > team:%d",
+                 team);
   return DART_OK;
 }
 
