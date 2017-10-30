@@ -25,11 +25,8 @@ namespace dash {
 namespace allocator {
 
 /**
- * Encapsulates a memory allocation and deallocation strategy of global
- * memory regions distributed across local memory of units in a specified
- * team.
- *
- * \note This allocator allocates a symmetric amount of memory on each node.
+ * Encapsulates a memory allocation and deallocation strategy of local
+ * memory regions within a single dash::unit.
  *
  * Satisfied STL concepts:
  *
@@ -38,7 +35,9 @@ namespace allocator {
  *
  * \concept{DashAllocatorConcept}
  */
-template<typename ElementType, typename MSpaceCategory = dash::memory_space_host_tag,
+template <
+  typename ElementType,
+  typename MSpaceCategory = dash::memory_space_host_tag,
   typename LocalAlloc = dash::allocator::LocalSpaceAllocator<ElementType, MSpaceCategory>>
 class SymmetricAllocator
 {

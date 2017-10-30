@@ -73,7 +73,13 @@ const ElementType * min_element(
 
     DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
 
-    dash::allocator::LocalSpaceAllocator<uint8_t, dash::memory_space_hbw_tag> alloc{};
+#ifdef DASH_ENABLE_MEMKIND
+    using memory_space_t = dash::memory_space_hbw_tag;
+#else
+    using memory_space_t = dash::memory_space_host_tag;
+#endif
+
+    dash::allocator::LocalSpaceAllocator<uint8_t, memory_space_t> alloc{};
 
     int       align_bytes         = uloc.cache_line_size(0);
     int       single_element_sz   = ROUNDUP(sizeof(min_pos), align_bytes);

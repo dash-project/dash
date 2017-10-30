@@ -867,7 +867,7 @@ ValueType * copy(
   auto total_copy_elem = in_last - in_first;
 
   // Instead of testing in_first.local() and in_last.local(), this test for
-  // a local-only range only requires one call to in_first.local() which 
+  // a local-only range only requires one call to in_first.local() which
   // increases throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:

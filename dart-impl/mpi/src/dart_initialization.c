@@ -112,8 +112,12 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   /* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
    * by the local allocation function through
-   * dart_win_local_alloc. */
-  MPI_Win_lock_all(0, dart_win_local_alloc);
+   * dart_win_local_alloc.
+   *
+   * NOTE: We use MPI_MODE_NOCHECK since there will be no
+   * conflicting locks at all
+   */
+  MPI_Win_lock_all(MPI_MODE_NOCHECK, dart_win_local_alloc);
 
 
   /* put the localalloc in the segment table */
@@ -183,8 +187,12 @@ dart_ret_t do_init()
 
   /* Start an access epoch on win, and later on all the units
    * can access the attached memory region allocated by the
-   * collective allocation function through win. */
-  MPI_Win_lock_all(0, win);
+   * collective allocation function through win.
+   *
+   * NOTE: We use MPI_MODE_NOCHECK since there will be no
+   * conflicting locks at all
+   */
+  MPI_Win_lock_all(MPI_MODE_NOCHECK, win);
 
   DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 
