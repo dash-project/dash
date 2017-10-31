@@ -13,7 +13,6 @@
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
-#include <dash/dart/if/dart_team_group.h>
 
 #include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
@@ -49,7 +48,10 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 
   if (myid.id == gptr.unitid) {
     if (segid != DART_SEGMENT_LOCAL) {
-      if (dart_segment_get_selfbaseptr(&team_data->segdata, segid, (char **)addr) != DART_OK) {
+      if (dart_segment_get_selfbaseptr(
+            &team_data->segdata,
+            segid,
+            (char **)addr) != DART_OK) {
         DART_LOG_ERROR("dart_gptr_getaddr ! Unknown segment %i", segid);
         return DART_ERR_INVAL;
       }
@@ -60,6 +62,36 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
     }
   } else {
     *addr = NULL;
+  }
+  return DART_OK;
+}
+
+dart_ret_t dart_gptr_getoffset(const dart_gptr_t gptr, uint64_t *offset)
+{
+  int16_t seg_id = gptr.segid;
+  *offset = 0;
+  MPI_Aint displ;
+  dart_global_unit_t myid;
+  dart_myid(&myid);
+
+  if (seg_id) {
+    dart_team_unit_t unitid_rel = DART_TEAM_UNIT_ID(gptr.unitid);
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
+    if (team_data == NULL) {
+      DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", gptr.teamid);
+      return DART_ERR_INVAL;
+    }
+
+    if (dart_segment_get_disp(
+          &team_data->segdata,
+          seg_id,
+          unitid_rel,
+          &displ) != DART_OK) {
+      return DART_ERR_INVAL;
+    }
+    *offset = gptr.addr_or_offs.offset + displ;
+  } else if (myid.id == gptr.unitid) {
+    *offset = gptr.addr_or_offs.offset + dart_mempool_localalloc;
   }
   return DART_OK;
 }
@@ -308,6 +340,8 @@ dart_team_memalloc_aligned_dynamic(
   /* Attach the allocated shared memory to win */
   /* Calling MPI_Win_attach with nbytes == 0 leads to errors, see #239 */
   if (nbytes > 0) {
+    DART_LOG_TRACE("Attaching %zu at %p (%llu)", 
+                   nbytes, sub_mem, (long long unsigned)sub_mem);
     if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
       DART_LOG_ERROR(
         "dart_team_memalloc_aligned_dynamic: bytes:%lu MPI_Win_attach failed",
@@ -326,6 +360,8 @@ dart_team_memalloc_aligned_dynamic(
   } else {
     disp = 0;
   }
+
+  DART_LOG_TRACE("Communicating displacement: %llu", (long long unsigned)disp);
 
   // re-use previously allocated memory
   if (segment->disp == NULL) {

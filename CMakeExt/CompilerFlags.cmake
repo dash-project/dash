@@ -186,7 +186,7 @@ endif()
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CC_STD_FLAG "--std=c99"
+  set (CC_STD_FLAG "--std=c99 -fPIC"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-g"
        CACHE STRING "C compiler (clang) debug symbols flag")

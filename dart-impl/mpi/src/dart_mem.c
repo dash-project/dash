@@ -13,6 +13,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/logging.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS

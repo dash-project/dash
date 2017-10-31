@@ -21,7 +21,6 @@
 #define DART_MUTEX_INITIALIZER { 0 }
 #endif
 
-
 typedef struct dart_mutex {
 #ifdef DART_HAVE_PTHREADS
 pthread_mutex_t mutex;
@@ -42,7 +41,11 @@ dart__base__mutex_init(dart_mutex_t *mutex)
   DART_LOG_TRACE("%s: Initialized fast mutex %p", __FUNCTION__, mutex);
   return DART_OK;
 #else
-  DART_LOG_INFO("%s: thread-support disabled", __FUNCTION__);
+  static int single = 0;
+  if (!single) {
+    DART_LOG_WARN("%s: thread-support disabled", __FUNCTION__);
+    single = 1;
+  }
   return DART_OK;
 #endif
 }
@@ -67,7 +70,11 @@ dart__base__mutex_init_recursive(dart_mutex_t *mutex)
   DART_LOG_TRACE("%s: Initialized recursive mutex %p", __FUNCTION__, mutex);
   return DART_OK;
 #else
-  DART_LOG_INFO("%s: thread-support disabled", __FUNCTION__);
+  static int single = 0;
+  if (!single) {
+    DART_LOG_WARN("%s: thread-support disabled", __FUNCTION__);
+    single = 1;
+  }
   return DART_OK;
 #endif
 }
@@ -110,8 +117,6 @@ dart__base__mutex_trylock(dart_mutex_t *mutex)
 {
 #ifdef DART_HAVE_PTHREADS
   int ret = pthread_mutex_trylock(&mutex->mutex);
-  DART_LOG_TRACE("dart__base__mutex_trylock: lock %p aqcuired: %s",
-                 mutex, (ret == 0) ? "yes" : "no");
   return (ret == 0) ? DART_OK : DART_PENDING;
 #else
   return DART_OK;

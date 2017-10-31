@@ -38,7 +38,7 @@ set(DASH_CXX_STANDARD "14"
     CACHE STRING "C++ standard version for DASH")
 
 option(BUILD_TESTS
-       "Whether tests should be built" on)
+       "Whether tests should be built" off)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
         Implies BUILD_TESTS. Requires GCC." off)
@@ -91,6 +91,8 @@ option(ENABLE_HWLOC_PCI
        "Specify whether hwloc PCI features are enabled" on)
 option(ENABLE_LIKWID
        "Specify whether likwid support is enabled" off)
+option(ENABLE_AYUDAME
+       "Specify whether Ayudame support is enabled" off)
 option(ENABLE_PAPI
        "Specify whether PAPI features are enabled" on)
 option(ENABLE_MKL
@@ -132,7 +134,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
-
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Ayudame.cmake)
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 endif()
@@ -205,6 +207,9 @@ set(DASH_DART_IF_INCLUDE_DIR
     CACHE PATH INTERNAL FORCE)
 set(DASH_DART_BASE_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
+    CACHE PATH INTERNAL FORCE)
+set(DASH_DART_TASKING_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/tasking/include
     CACHE PATH INTERNAL FORCE)
 
 ## Set compiler flags (depend on CMake options)
@@ -309,6 +314,8 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
+message(INFO "Ayudame support:            (ENABLE_AYUDAME)               "
+        ${ENABLE_AYUDAME})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 
@@ -404,7 +411,15 @@ if (ENABLE_LIBNUMA)
 else()
   message(NOTE "libnuma                   disabled")
 endif()
+if (ENABLE_AYUDAME)
+  if (AYUDAME_FOUND)
+    message(INFO "Ayudame                   enabled")
+  else()
+    message(NOTE "Ayudame                   not found")
+  endif()
+else()
+  message(NOTE "Ayudame                   disabled")
+endif()
 if (ENABLE_NASTYMPI)
     message(INFO "NastyMPI                  enabled")
 endif()
-

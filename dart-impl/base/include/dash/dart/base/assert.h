@@ -22,9 +22,10 @@
   } \
 } while(0)
 
-#define DART_ASSERT_MSG(expr, msg) do { \
+#define DART_ASSERT_MSG(expr, msg, ...) do { \
   if (dart__unlikely(!(expr))) { \
-    DART_LOG_ERROR("Assertion failed: %s: %s", dart__tostr(expr), (msg)); \
+    DART_LOG_ERROR("Assertion failed: %s: "msg"", \
+       dart__tostr(expr), ##__VA_ARGS__); \
     dart_abort(DART_EXIT_ASSERT); \
   } \
 } while(0)

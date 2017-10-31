@@ -14,6 +14,7 @@
 
 #include <dash/dart/if/dart_util.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -143,7 +144,7 @@ typedef struct
 
 /**
  * Get the local memory address for the specified global pointer
- * gptr. I.e., if the global pointer has affinity to the local unit,
+ * \c gptr. I.e., if the global pointer has affinity to the local unit,
  * return the local memory address.
  *
  * \param      gptr Global pointer
@@ -158,6 +159,24 @@ typedef struct
 dart_ret_t dart_gptr_getaddr(
   const dart_gptr_t    gptr,
         void        ** addr) DART_NOTHROW;
+
+
+/**
+ * Get the local memory offset for the specified global pointer
+ * \c gptr even if the global pointer points to a remote unit.
+ *
+ * \param      gptr Global pointer
+ * \param[out] addr Pointer to a pointer that will hold the local
+ *                  address if the \c gptr points to a local memory element.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_gptr_getoffset(
+  const dart_gptr_t   gptr,
+        uint64_t    * offset) DART_NOTHROW;
 
 /**
  * Set the local memory address for the specified global pointer such

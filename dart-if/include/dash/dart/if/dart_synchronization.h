@@ -1,6 +1,7 @@
 #ifndef DART_SYNCHRONIZATION_H_INCLUDED
 #define DART_SYNCHRONIZATION_H_INCLUDED
 
+#include <dash/dart/if/dart_types.h>
 /**
  * \file dart_synchronization.h
  * \defgroup  DartSync    Synchronization primitives for mutual exclusion of units.

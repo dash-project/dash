@@ -12,6 +12,8 @@
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_team_group.h>
 
+#include <dash/dart/base/logging.h>
+#include <dash/dart/tasking/dart_tasking_init.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
@@ -19,12 +21,14 @@
 #include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_active_messages_priv.h>
 
 #define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;
 static int _dart_initialized = 0;
+static int _dart_task_initialized = 0;
 
 static
 dart_ret_t create_local_alloc(dart_team_data_t *team_data)
@@ -194,6 +198,10 @@ dart_ret_t do_init()
 
   _dart_initialized = 2;
 
+  dart_amsg_init();
+
+  _dart_initialized = 3;
+
   DART_LOG_DEBUG("dart_init > initialization finished");
   return DART_OK;
 }
@@ -249,6 +257,9 @@ dart_ret_t dart_init_thread(
     int thread_required = MPI_THREAD_MULTIPLE;
     MPI_Init_thread(argc, argv, thread_required, &thread_provided);
     DART_LOG_DEBUG("MPI_Init_thread provided = %i", thread_provided);
+    if (thread_provided != MPI_THREAD_MULTIPLE) {
+      DART_LOG_WARN("DART compiled with thread-support but MPI does not provide MPI_THREAD_MULTIPLE!");
+    }
   } else {
     MPI_Query_thread(&thread_provided);
     DART_LOG_DEBUG("MPI_Query_thread provided = %i", thread_provided);
@@ -264,7 +275,17 @@ dart_ret_t dart_init_thread(
   DART_LOG_DEBUG("dart_init_thread >> thread support enabled: %s",
             (*provided == DART_THREAD_MULTIPLE) ? "yes" : "no");
 
-  return do_init();
+  dart_ret_t ret = do_init();
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  if ((*provided == DART_THREAD_MULTIPLE) && dart_tasking_init) {
+    _dart_task_initialized = 1;
+    return dart_tasking_init();
+  }
+
+  return DART_OK;
 }
 
 
@@ -277,7 +298,12 @@ dart_ret_t dart_exit()
   dart_global_unit_t unitid;
   dart_myid(&unitid);
 
+  dart_amsgq_fini();
+
   dart__mpi__locality_finalize();
+
+  if (_dart_task_initialized && dart_tasking_fini)
+    dart_tasking_fini();
 
   _dart_initialized = 0;
 

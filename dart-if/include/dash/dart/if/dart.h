@@ -177,6 +177,17 @@ extern "C" {
 */
 #include "dart_synchronization.h"
 
+/*
+   --- DART tasking ---
+*/
+#include "dart_tasking.h"
+
+/*
+   --- DART active messages ---
+*/
+#include "dart_active_messages.h"
+
+
 
 #ifdef __cplusplus
 } // extern "C"

@@ -22,6 +22,10 @@ if (DASH_PLATFORM_IS_LINUX OR
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} -D_XOPEN_SOURCE=700")
 endif()
+set(CMAKE_C_FLAGS_DEBUG
+    "${CMAKE_C_FLAGS_DEBUG} -DDART_DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG
+    "${CMAKE_CXX_FLAGS_DEBUG} -DDART_DEBUG")
 
 # DART base:
 add_subdirectory(base)
@@ -37,4 +41,8 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(shmem)
+endif()
+
+if (ENABLE_THREADSUPPORT)
+  add_subdirectory(tasking)
 endif()

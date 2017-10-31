@@ -87,7 +87,7 @@ bool       dart_initialized() DART_NOTHROW;
  * \threadsafe_none
  * \ingroup DartInitialization
  */
-void       dart_abort(int errorcode) __attribute__((noreturn));
+void       dart_abort(int errorcode) DART_NORETURN;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF

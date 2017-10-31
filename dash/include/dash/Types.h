@@ -16,6 +16,13 @@ typedef enum MemArrange {
   COL_MAJOR
 } MemArrange;
 
+typedef enum {
+  /* Applications may use only one a single to concurrently access global data */
+  DASH_THREAD_SINGLE   = 0,
+  /* Applications may use multiple concurrent threads to access global data */
+  DASH_THREAD_MULTIPLE = 1
+} dash_concurrency_t;
+
 namespace internal {
 
 typedef enum DistributionType {

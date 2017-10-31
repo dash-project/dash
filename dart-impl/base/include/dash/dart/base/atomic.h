@@ -204,6 +204,17 @@ __fetch_and_addptr(char **ptr, int64_t val) {
 
 
 
+#define DART_FETCH64(ptr) \
+          *((int64_t*)(ptr))
+#define DART_FETCH32(ptr) \
+          *((int32_t*)(ptr))
+#define DART_FETCH16(ptr) \
+          *((int16_t*)(ptr))
+#define DART_FETCH8(ptr)  \
+          *((int8_t*)(ptr))
+#define DART_FETCHPTR(ptr) \
+          *((void**)(ptr))
+
 #define DART_FETCH_AND_ADD64(ptr, val) \
           __fetch_and_add64((ptr), (val))
 #define DART_FETCH_AND_ADD32(ptr, val) \

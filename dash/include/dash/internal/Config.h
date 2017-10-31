@@ -173,7 +173,7 @@
 #  define DASH__PLATFORM__POSIX
 #endif
 
-#ifdef _OPENMP
+#if defined(_OPENMP) && !defined(DASH_DISABLE_OPENMP)
 #  define DASH_ENABLE_OPENMP
 #  if _OPENMP >= 201307
 #    define DASH__OPENMP_VERSION 40
