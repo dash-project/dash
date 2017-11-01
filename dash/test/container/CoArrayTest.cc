@@ -302,7 +302,7 @@ TEST_F(CoArrayTest, Mutex){
   // arr(0) = x; arr(0).flush();
   auto gref = arr(0);
   gref = tmp + 1;
-  gref.flush();
+  //gref.flush();
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
   mx.unlock();
   
@@ -322,7 +322,7 @@ TEST_F(CoArrayTest, Mutex){
     int tmp = arr(0);
     auto gref = arr(0);
     gref = tmp + 1;
-    gref.flush();
+    //gref.flush();
     LOG_MESSAGE("Lock released at unit %d",
                 static_cast<int>(this_image()));
   }
@@ -360,7 +360,7 @@ TEST_F(CoArrayTest, Comutex){
       int tmp = arr(rand_unit);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       arr(rand_unit) = tmp + 1;
-      arr(rand_unit).flush();
+      //arr(rand_unit).flush();
     }
   }
   arr.sync_all();

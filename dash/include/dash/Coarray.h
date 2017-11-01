@@ -91,7 +91,9 @@ struct __get_local_type<element_type, pattern_type, 1> {
 
 template<typename element_type>
 struct __get_ref_type {
-  using type = GlobAsyncRef<element_type>;
+// GAR needs conversion operator
+//  using type = GlobAsyncRef<element_type>;
+  using type = GlobRef<element_type>;
 };
 
 /**
