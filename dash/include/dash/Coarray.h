@@ -424,7 +424,7 @@ public:
    * and flushes the memory.
    */
   inline void sync_all() {
-    _storage.flush_all();
+    _storage.flush();
     _storage.barrier();
   }
   
@@ -435,25 +435,17 @@ public:
   template<typename Container>
   inline void sync_images(const Container & image_ids){
     dash::coarray::sync_images(image_ids);
-    _storage.flush_all();
+    _storage.flush();
   }
   
   inline void flush(){
     _storage.flush();
   }
   
-  inline void flush_all(){
-    _storage.flush_all();
-  }
-  
   inline void flush_local(){
     _storage.flush_local();
   }
   
-  inline void flush_local_all(){
-    _storage.flush_local_all();
-  }
-
   /* ======================================================================== */
   /*                      Operators for element access                        */
   /* ======================================================================== */
