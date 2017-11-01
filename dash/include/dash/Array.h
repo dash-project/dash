@@ -384,40 +384,33 @@ public:
     _array->m_globmem->flush();
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced array
+   * to the specified unit.
+   */
+  inline void flush(dash::team_unit_t target) const {
+    // could also call _array->flush();
+    _array->m_globmem->flush(target);
+  }
+
+  /**
+   * Locally complete all outstanding asynchronous operations on the referenced array
+   * on all units.
+   */
   inline void flush_local() const {
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
-  inline void flush_all() const {
-    // could also call _array->flush();
-    _array->m_globmem->flush_all();
-  }
-
-  inline void flush_local_all() const {
-    // could also call _array->flush_local_all();
-    _array->m_globmem->flush_local_all();
-  }
-
   /**
-   * Block until all locally invoked operations on global memory have been
-   * communicated.
-   *
-   * \see DashAsyncProxyConcept
+   * Locally complete all outstanding asynchronous operations on the referenced array
+   * to the specified unit.
    */
-  inline void push() const {
-    _array->m_globmem->flush_local_all();
+  inline void flush_local(dash::team_unit_t target) const {
+    // could also call _array->flush_local();
+    _array->m_globmem->flush_local(target);
   }
 
-  /**
-   * Block until all remote operations on this unit's local memory have been
-   * completed.
-   *
-   * \see DashAsyncProxyConcept
-   */
-  inline void fetch() const {
-    _array->m_globmem->flush_all();
-  }
 };
 
 #endif // DOXYGEN
@@ -894,7 +887,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());
@@ -923,7 +916,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());
@@ -1193,7 +1186,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     if (nullptr != m_globmem) {
-      m_globmem->flush_all();
+      m_globmem->flush();
     }
     if (nullptr != m_team && *m_team != dash::Team::Null()) {
       m_team->barrier();
@@ -1202,7 +1195,7 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units
+   * Complete all outstanding non-blocking operations to all units
    * on the array's underlying global memory.
    */
   inline void flush() const {
@@ -1210,27 +1203,28 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the array's underlying global memory.
+   * Complete all outstanding non-blocking operations to the specified unit
+   * on the array's underlying global memory.
+   */
+  inline void flush(dash::team_unit_t target) const {
+    m_globmem->flush(target);
+  }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to all units on
+   * the array's underlying global memory.
    */
   inline void flush_local() const {
     m_globmem->flush_local();
   }
 
-  /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the array's underlying global memory.
-   */
-  inline void flush_all() const {
-    m_globmem->flush_all();
-  }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the array's underlying global memory.
+   * Locally complete all outstanding non-blocking operations to the
+   * specified unit on the array's underlying global memory.
    */
-  inline void flush_local_all() const {
-    m_globmem->flush_local_all();
+  inline void flush_local(dash::team_unit_t target) const {
+    m_globmem->flush_local(target);
   }
 
   /**

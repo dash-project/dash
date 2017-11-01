@@ -56,9 +56,9 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
       if (g < globmem.size()) {
         int gvalue = *gbegin;
         EXPECT_EQ((g % 3) + 1, gvalue);
+        EXPECT_EQ(*gbegin, globmem.begin()[g]);
       }
       EXPECT_EQ( gbegin, globmem.begin() + g);
-      EXPECT_EQ(*gbegin, globmem.begin()[g]);
 
       EXPECT_EQ( (globmem.size() - g), dash::distance(gbegin, gend));
       EXPECT_EQ(-(globmem.size() - g), dash::distance(gend,   gbegin));
