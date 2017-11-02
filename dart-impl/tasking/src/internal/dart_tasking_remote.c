@@ -282,7 +282,7 @@ enqueue_from_remote(void *data)
   DART_ASSERT(rdep->magic == 0xDEADBEEF);
   DART_ASSERT(rdep->rtask.remote != NULL);
   dart_epoch_dep_t dep;
-  dep.dep.gptr = rdep->gptr;
+  dep.dep.gptr = dart_tasking_datadeps_localize_gptr(rdep->gptr);
   dep.dep.type = DART_DEP_IN;
   dep.epoch    = rdep->epoch;
   taskref rtask = rdep->rtask;

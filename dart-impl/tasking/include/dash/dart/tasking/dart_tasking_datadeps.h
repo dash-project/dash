@@ -100,6 +100,21 @@ dart_tasking_datadeps_is_runnable(dart_task_t *task) {
   return (task->unresolved_deps == 0) && (task->unresolved_remote_deps == 0);
 }
 
+
+DART_INLINE
+dart_gptr_t
+dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
+{
+  void *addr;
+  dart_gptr_getaddr(gptr, &addr);
+  DART_ASSERT(addr != NULL);
+  dart_gptr_t res = gptr;
+  res.addr_or_offs.addr = addr;
+  res.segid = 0;
+  return res;
+}
+
+
 /**
  * Check for new remote task dependency requests coming in
  */

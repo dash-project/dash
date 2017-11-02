@@ -31,9 +31,7 @@
   ((dep).gptr.addr_or_offs.addr)
 
 #define DEP_ADDR_EQ(dep1, dep2) \
-  ((dep1).gptr.addr_or_offs.addr == (dep2).gptr.addr_or_offs.addr && \
-   (dep1).gptr.segid   == (dep2).gptr.segid    && \
-   (dep1).gptr.unitid  == (dep2).gptr.unitid)
+  (DEP_ADDR(dep1) == DEP_ADDR(dep2))
 
 typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;    // list pointer
@@ -82,7 +80,6 @@ static inline int hash_gptr(dart_gptr_t gptr)
   // using a prime number in modulo stirs reasonably well
   return (hash % DART_DEPHASH_SIZE);
 }
-
 
 static inline bool release_local_dep_counter(dart_task_t *task) {
   int32_t num_local_deps  = DART_DEC_AND_FETCH32(&task->unresolved_deps);
@@ -530,7 +527,7 @@ dart_tasking_datadeps_match_local_datadep(
 
 /**
  * Find all tasks this task depends on and add the task to the dependency hash
- * table. All latest tasks are considered up to the first task with OUT|INOUT
+ * table. All earlier tasks are considered up to the first task with OUT|INOUT
  * dependency.
  */
 dart_ret_t dart_tasking_datadeps_handle_task(
@@ -576,15 +573,12 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       continue;
     }
 
-    // XXX: translate team-local unit id to global unit ID for simpler handling
-    // XXX: the gptr in dependencies is never deferenced
+    // get the global unit ID in the dependency
     dart_global_unit_t guid;
     if (dep.gptr.teamid != DART_TEAM_ALL) {
       dart_team_unit_l2g(dep.gptr.teamid,
                          DART_TEAM_UNIT_ID(dep.gptr.unitid),
                          &guid);
-      dep.gptr.unitid = guid.id;
-      dep.gptr.teamid = 0;
     } else {
       guid.id = dep.gptr.unitid;
     }
@@ -598,8 +592,7 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(task, dep);
-    } else {
-      if (guid.id != myid.id) {
+    } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
           int32_t unresolved_deps = DART_FETCH_AND_INC32(&task->unresolved_remote_deps);
@@ -615,12 +608,13 @@ dart_ret_t dart_tasking_datadeps_handle_task(
         } else {
           DART_LOG_WARN("Ignoring remote dependency in nested task!");
         }
-      } else {
-        dart_tasking_datadeps_match_local_datadep(dep, task);
+    } else {
+      // translate the pointer to a local pointer
+      dep.gptr = dart_tasking_datadeps_localize_gptr(dep.gptr);
+      dart_tasking_datadeps_match_local_datadep(dep, task);
 
-        // add this task to the hash table
-        dephash_add_local(&dep, task);
-      }
+      // add this task to the hash table
+      dephash_add_local(&dep, task);
     }
   }
 
