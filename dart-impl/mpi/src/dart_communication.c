@@ -969,6 +969,8 @@ dart_ret_t dart_get_blocking(
       "MPI_Rget");
   }
 
+  DART_LOG_TRACE(
+    "dart_get_blocking:  MPI_Waitall (reqs=%d)", nreqs);
   CHECK_MPI_RET(
     MPI_Waitall(nreqs, reqs, MPI_STATUSES_IGNORE), "MPI_Waitall");
 
