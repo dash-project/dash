@@ -83,6 +83,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
+                        -DENABLE_VALGRIND=OFF \
                         \
                         -DBUILD_EXAMPLES=OFF \
                         -DBUILD_COVERAGE_TESTS=ON \

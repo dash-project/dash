@@ -16,6 +16,10 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#ifdef DART_ENABLE_VALGRIND
+#include <valgrind/valgrind.h>
+#endif
+
 #include <dash/dart/base/env.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
@@ -23,10 +27,6 @@
 
 /**
  * Management of task contexts needed for proper yielding of tasks.
- *
- * NOTE: valgrind may report invalid read/write operations if tasks
- *       reference memory allocated in other contexts, i.e., stack variables
- *       passed as pointers to other tasks. This seems harmless, though.
  *
  * TODO: make the choice of whether to use mmap automatically
  */
@@ -48,6 +48,9 @@ struct context_list_s {
 #endif
 #if defined(USE_MMAP)
   size_t                 size;
+#endif
+#if defined(DART_ENABLE_VALGRIND)
+  unsigned               vg_stack_id;
 #endif
 };
 
@@ -125,6 +128,7 @@ dart__tasking__context_allocate()
   context_list_t *ctxlist;
   DART_ASSERT_RETURNS(posix_memalign((void**)&ctxlist, page_size, size), 0);
 #endif
+
   ctxlist->stack    = ((char*)ctxlist) + page_size;
   ctxlist->next     = NULL;
   ctxlist->length   = 0;
@@ -136,6 +140,11 @@ dart__tasking__context_allocate()
     DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
                   errno, page_size, ctxlist->ub_guard, strerror(errno));
   }
+#endif
+
+#ifdef DART_ENABLE_VALGRIND
+  ctxlist->vg_stack_id = VALGRIND_STACK_REGISTER(ctxlist->stack,
+                                                 ctxlist->stack + task_stack_size);
 #endif
   return ctxlist;
 }
@@ -149,6 +158,9 @@ dart__tasking__context_free(context_list_t *ctxlist)
     DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
                   errno, page_size, ctxlist->ub_guard, strerror(errno));
   }
+#endif
+#ifdef DART_ENABLE_VALGRIND
+  VALGRIND_STACK_DEREGISTER(ctxlist->vg_stack_id);
 #endif
 #ifdef USE_MMAP
   munmap(ctxlist, ctxlist->size);

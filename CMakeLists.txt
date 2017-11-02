@@ -103,6 +103,8 @@ option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
+option(ENABLE_VALGRIND
+       "Specify whether the valgrind should be supported" off)
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -137,6 +139,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Ayudame.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Valgrind.cmake)
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 endif()
@@ -297,8 +300,10 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
-message(INFO "Ayudame support:            (ENABLE_AYUDAME)               "
+message(INFO "Ayudame support:          (ENABLE_AYUDAME)               "
         ${ENABLE_AYUDAME})
+message(INFO "Valgrind support:         (ENABLE_VALGRIND)               "
+        ${ENABLE_VALGRIND})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -410,4 +415,13 @@ else()
 endif()
 if (ENABLE_NASTYMPI)
     message(INFO "NastyMPI                  enabled")
+endif()
+if (ENABLE_VALGRIND)
+  if (VALGRIND_FOUND)
+    message(INFO "Valgrind                  enabled")
+  else()
+    message(INFO "Valgrind                  not found")
+  endif()
+else()
+    message(INFO "Valgrind                  disabled")
 endif()

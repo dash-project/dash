@@ -90,6 +90,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
+                        -DENABLE_VALGRIND=OFF \
                         \
                         -DENABLE_NASTYMPI=ON \
                         \
