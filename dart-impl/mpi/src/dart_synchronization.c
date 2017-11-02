@@ -340,10 +340,11 @@ dart_ret_t dart_lock_release(dart_lock_t lock)
 
     /* Wait for the update of our next pointer. */
     do {
-      // make sure to trigger progress for the writer
+      // trigger progress
       int flag;
       MPI_Iprobe(
-        MPI_ANY_SOURCE, MPI_ANY_TAG, team_data->comm, &flag, MPI_STATUS_IGNORE);
+        MPI_ANY_SOURCE, MPI_ANY_TAG,
+        team_data->comm, &flag, MPI_STATUS_IGNORE);
       DART_ASSERT_RETURNS(
         MPI_Fetch_and_op(
           NULL,
