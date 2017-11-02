@@ -36,6 +36,7 @@
  * 
  * \sa DashCoarrayLib
  * \sa dash::Comutex
+ * \sa dash::Coevent
  * 
  * \}
  */
@@ -137,7 +138,7 @@ struct make_coarray_symmetric_pattern {
 } // namespace coarray
 
 /**
- * A fortran style co_array.
+ * A fortran style coarray.
  * 
  * \ingroup DashCoarrayConcept
  * 
