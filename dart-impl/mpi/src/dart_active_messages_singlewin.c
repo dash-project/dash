@@ -280,12 +280,15 @@ amsg_process_internal(
   dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
 
   // trigger progress
-//  int flag;
-//  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
+  // XXX: if we do not do that, the application hangs with Open MPI 3.0.0. Bug?
+  int flag;
+  MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, amsgq->comm, &flag, MPI_STATUS_IGNORE);
 
   if (!blocking) {
-    // shortcut if there is nothing to do
-    if (*amsgq->tailpos_ptr == 0) return DART_OK;
+    // XXX: we cannot shortcut because we have to trigger the MPI progress
+    //      engine! Shortcutting will cause epic pain in the lowest circles of
+    //      the debug hell!
+    // if (*amsgq->tailpos_ptr == 0) return DART_OK;
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
     if (ret != DART_OK) {
       return DART_ERR_AGAIN;

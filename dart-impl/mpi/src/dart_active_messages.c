@@ -302,7 +302,7 @@ amsg_process_internal(
 
   if (!blocking) {
     // shortcut if there is nothing to do
-    if (*amsgq->tailpos_ptr == 0) return DART_OK;
+    // if (*amsgq->tailpos_ptr == 0) return DART_OK;
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
     if (ret != DART_OK) {
       return DART_ERR_AGAIN;
