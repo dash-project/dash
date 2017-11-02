@@ -1,8 +1,10 @@
 
 // whether to use mmap to allocate stack
-#define USE_MMAP 1
+//#define USE_MMAP 1
+// whether to protect the stack using mprotect
+//#define USE_MPROTECT 1
 
-#ifdef USE_MMAP
+#if defined(USE_MPROTECT) || defined(USE_MMAP)
 #define _GNU_SOURCE
 #include <sys/mman.h>
 #endif
@@ -12,6 +14,7 @@
 #include <stddef.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include <dash/dart/base/env.h>
 #include <dash/dart/base/assert.h>
@@ -37,11 +40,13 @@
 struct context_list_s {
   struct context_list_s *next;
   context_t              ctx;
-  int                    length;
   char                  *stack;
-#ifdef USE_MMAP
+  int                    length;
+#if defined(USE_MPROTECT)
   // guard page, only used for mmap
   char                  *ub_guard;
+#endif
+#if defined(USE_MMAP)
   size_t                 size;
 #endif
 };
@@ -67,8 +72,12 @@ dart__tasking__context_adjust_size(size_t size)
 void dart__tasking__context_init()
 {
   page_size = dart__tasking__context_pagesize();
-  if (dart__base__env__task_stacksize() > -1) {
-    task_stack_size = dart__base__env__task_stacksize();
+  size_t env_stack_size = dart__base__env__task_stacksize();
+  if (env_stack_size > -1) {
+    task_stack_size = env_stack_size;
+  }
+  if (task_stack_size < page_size) {
+    task_stack_size = page_size;
   }
 }
 
@@ -78,6 +87,7 @@ dart__tasking__context_entry(void)
   context_list_t *ctxlist;
   dart_thread_t  *thread  = dart__tasking__current_thread();
   DART_STACK_POP(thread->ctxlist, ctxlist);
+  DART_ASSERT(ctxlist != NULL);
 
   context_func_t *fn  = ctxlist->ctx.fn;
   void           *arg = ctxlist->ctx.arg;
@@ -93,29 +103,39 @@ dart__tasking__context_entry(void)
 static context_list_t *
 dart__tasking__context_allocate()
 {
-#ifdef USE_MMAP
   // align to page boundary: first page contains struct data and pointer to
   //                         second page, the start of the stack
+#ifdef USE_MPROTECT
   size_t size = dart__tasking__context_adjust_size(sizeof(context_list_t))
               + dart__tasking__context_adjust_size(task_stack_size)
               + page_size;
+#else
+  size_t size = dart__tasking__context_adjust_size(sizeof(context_list_t))
+              + dart__tasking__context_adjust_size(task_stack_size);
+#endif
   // TODO: allocate guard pages and mprotect() them?
+#ifdef USE_MMAP
   context_list_t *ctxlist = mmap(NULL, size,
                                  PROT_EXEC|PROT_READ|PROT_WRITE,
                                  MAP_PRIVATE|MAP_ANONYMOUS|MAP_STACK,
                                  -1, 0);
+  DART_ASSERT_MSG(ctxlist != MAP_FAILED, "Failed to mmap new stack!");
+  ctxlist->size = size;
+#else
+  context_list_t *ctxlist;
+  DART_ASSERT_RETURNS(posix_memalign((void**)&ctxlist, page_size, size), 0);
+#endif
   ctxlist->stack    = ((char*)ctxlist) + page_size;
+  ctxlist->next     = NULL;
+  ctxlist->length   = 0;
+
+#ifdef USE_MPROTECT
   ctxlist->ub_guard = ctxlist->stack + task_stack_size;
-  ctxlist->size     = size;
   // mprotect upper-bound page
   if (mprotect(ctxlist->ub_guard, page_size, PROT_NONE) != 0) {
     DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
                   errno, page_size, ctxlist->ub_guard, strerror(errno));
   }
-#else
-  size_t size = sizeof(context_list_t) + task_stack_size;
-  context_list_t *ctxlist = calloc(1, size);
-  ctxlist->stack = (char*)(ctxlist + 1);
 #endif
   return ctxlist;
 }
@@ -123,6 +143,13 @@ dart__tasking__context_allocate()
 static void
 dart__tasking__context_free(context_list_t *ctxlist)
 {
+#ifdef USE_MPROTECT
+  if (mprotect(ctxlist->ub_guard,
+               page_size, PROT_READ|PROT_EXEC|PROT_WRITE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
+                  errno, page_size, ctxlist->ub_guard, strerror(errno));
+  }
+#endif
 #ifdef USE_MMAP
   munmap(ctxlist, ctxlist->size);
 #else
