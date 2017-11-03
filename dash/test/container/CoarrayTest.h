@@ -12,7 +12,7 @@
 /**
  * Test fixture for class dash::co_array
  */
-class CoArrayTest : public dash::test::TestBase {
+class CoarrayTest : public dash::test::TestBase {
 protected:
 };
 

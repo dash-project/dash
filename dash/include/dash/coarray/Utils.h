@@ -4,9 +4,9 @@
 #include <dash/Types.h>
 
 /**
- * \defgroup  DashCoarrayLib  DASH Coarray Runtime Interface
+ * \defgroup  DashCoarrayLib  Coarray Runtime Interface
  * 
- * \ingroup DashLib
+ * \ingroup DashCoarrayConcept
  *
  * Functions of the \c dash::coarray extension to provide an interface similar to
  * CAF 2008

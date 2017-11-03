@@ -142,6 +142,22 @@ struct make_coarray_symmetric_pattern {
  * 
  * \ingroup DashCoarrayConcept
  * 
+ * Interface of the Coarray for scalar and array types showing local
+ * and global accesses:
+ * \code
+ * dash::Coarray<int> i;          // scalar Coarray
+ * dash::Coarray<int[10][20]> x;  // 2D-Coarray
+ * dash::Coarray<int[][20]> y(n); // one open dim,
+ *                                // set at runtime in ctor
+ * 
+ * // access syntax
+ * i(unit) = value; // global access
+ * i       = value; // local access
+ * 
+ * x(unit)[idx1][idx2] = value; // global access
+ * x[idx1][idx2]       = value; // local access
+ * \endcode
+ *
  */
 template<
   typename T,
@@ -307,7 +323,7 @@ public:
                                     TeamSpec<_rank::value+1>(team),
                                     team));
     *(_storage.lbegin()) = value;
-    sync_all();
+    _storage.barrier();
   }
   
   /* ======================================================================== */
@@ -427,7 +443,6 @@ public:
    * and flushes the memory.
    */
   inline void sync_all() {
-    _storage.flush();
     _storage.barrier();
   }
   
@@ -437,8 +452,8 @@ public:
    */
   template<typename Container>
   inline void sync_images(const Container & image_ids){
-    dash::coarray::sync_images(image_ids);
     _storage.flush();
+    dash::coarray::sync_images(image_ids);
   }
   
   inline void flush(){

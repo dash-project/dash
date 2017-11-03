@@ -1,4 +1,4 @@
-#include "CoArrayTest.h"
+#include "CoarrayTest.h"
 
 #include <type_traits>
 
@@ -14,7 +14,7 @@
 
 using namespace dash::coarray;
 
-TEST_F(CoArrayTest, TypesInterface)
+TEST_F(CoarrayTest, TypesInterface)
 {
   int n = 10;
 
@@ -88,7 +88,7 @@ TEST_F(CoArrayTest, TypesInterface)
   }
 }
 
-TEST_F(CoArrayTest, ContainerInterface)
+TEST_F(CoarrayTest, ContainerInterface)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
@@ -142,7 +142,7 @@ TEST_F(CoArrayTest, ContainerInterface)
   ASSERT_EQ_U(value_b, 0);
 }
 
-TEST_F(CoArrayTest, ElementAccess)
+TEST_F(CoarrayTest, ElementAccess)
 {
   constexpr int size = 10;
   dash::Coarray<int> x;
@@ -154,7 +154,7 @@ TEST_F(CoArrayTest, ElementAccess)
   ASSERT_EQ_U(value, 100*nextunit);
 }
 
-TEST_F(CoArrayTest, ArrayElementAccess)
+TEST_F(CoarrayTest, ArrayElementAccess)
 {
   constexpr int size = 10;
   dash::Coarray<int[size]> x;
@@ -170,7 +170,7 @@ TEST_F(CoArrayTest, ArrayElementAccess)
   }
 }
 
-TEST_F(CoArrayTest, Collectives)
+TEST_F(CoarrayTest, Collectives)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
@@ -188,7 +188,7 @@ TEST_F(CoArrayTest, Collectives)
   ASSERT_EQ_U(static_cast<int>(x[5][0]), 2 * dash::size());
 }
 
-TEST_F(CoArrayTest, Synchronization)
+TEST_F(CoarrayTest, Synchronization)
 {
   std::chrono::time_point<std::chrono::system_clock> start, end;
   
@@ -222,7 +222,7 @@ TEST_F(CoArrayTest, Synchronization)
   }
 }
 
-TEST_F(CoArrayTest, Iterators)
+TEST_F(CoarrayTest, Iterators)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
@@ -245,7 +245,7 @@ TEST_F(CoArrayTest, Iterators)
   // -------------------------------------------------------------------------
 }
 
-TEST_F(CoArrayTest, CoFutures)
+TEST_F(CoarrayTest, CoFutures)
 {
   dash::Coarray<int> x;
   int i = static_cast<int>(this_image());
@@ -256,7 +256,7 @@ TEST_F(CoArrayTest, CoFutures)
   //auto a = x(i).async;
 }
 
-TEST_F(CoArrayTest, MemoryModel)
+TEST_F(CoarrayTest, MemoryModel)
 {
   int i = static_cast<int>(this_image()); 
   {
@@ -287,7 +287,7 @@ TEST_F(CoArrayTest, MemoryModel)
   }
 }
 
-TEST_F(CoArrayTest, Mutex){
+TEST_F(CoarrayTest, Mutex){
   dash::Mutex mx;
   
   dash::Coarray<int> arr;
@@ -335,7 +335,7 @@ TEST_F(CoArrayTest, Mutex){
   }
 }
 
-TEST_F(CoArrayTest, Comutex){
+TEST_F(CoarrayTest, Comutex){
   const int repetitions = 10;
   
   dash::Comutex comx;
@@ -377,7 +377,7 @@ TEST_F(CoArrayTest, Comutex){
 // declare befor dash is initialized
 dash::Coarray<int> delay_alloc_arr;
 
-TEST_F(CoArrayTest, DelayedAllocation)
+TEST_F(CoarrayTest, DelayedAllocation)
 { 
   int i = static_cast<int>(this_image()); 
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);  
@@ -396,7 +396,7 @@ TEST_F(CoArrayTest, DelayedAllocation)
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);
 }
 
-TEST_F(CoArrayTest, StructType)
+TEST_F(CoarrayTest, StructType)
 {
   struct value_t {double a; int b;};
   dash::Coarray<value_t> x;
@@ -436,7 +436,7 @@ TEST_F(CoArrayTest, StructType)
   x.sync_all();
 }
 
-TEST_F(CoArrayTest, CoEvent)
+TEST_F(CoarrayTest, CoEvent)
 {
   dash::Coevent events;
   
@@ -490,7 +490,7 @@ TEST_F(CoArrayTest, CoEvent)
   }
 }
 
-TEST_F(CoArrayTest, CoEventIter)
+TEST_F(CoarrayTest, CoEventIter)
 {
   dash::Coevent events;
   
