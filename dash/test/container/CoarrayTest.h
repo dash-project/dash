@@ -13,7 +13,12 @@
  * Test fixture for class dash::co_array
  */
 class CoarrayTest : public dash::test::TestBase {
-protected:
+public:
+  /**
+   * Check if not two units share the same core
+   * within this team
+   */
+  bool core_mapping_is_unique(const dash::Team & );
 };
 
 #endif // DASH__TEST__COARRAY_TEST_H_

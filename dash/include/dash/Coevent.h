@@ -23,6 +23,8 @@ namespace dash {
  * Coevent can be used for point-to-point synchronization. Events can be posted
  * to any image. Waiting on non-local events is not supported.
  * 
+ * \note Coevents might deadlock if multiple units are pinned to the same
+ *       cpu-core. This is due to progress problems in MPI.
  * 
  * Example:
  * 

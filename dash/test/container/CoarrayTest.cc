@@ -6,6 +6,7 @@
 #include <dash/Atomic.h>
 #include <dash/Mutex.h>
 #include <dash/Algorithm.h>
+#include <dash/util/TeamLocality.h>
 
 // for std::lock_guard
 #include <mutex>
@@ -13,6 +14,19 @@
 #include <random>
 
 using namespace dash::coarray;
+
+bool CoarrayTest::core_mapping_is_unique(const dash::Team & team){
+  std::vector<int> unit_core_ids;
+
+  for(dash::global_unit_t unit{0}; unit<team.size(); ++unit){
+    const dash::util::UnitLocality uloc(unit);
+    unit_core_ids.push_back(uloc.hwinfo().core_id);
+  }
+
+  std::sort(unit_core_ids.begin(), unit_core_ids.end());
+  return (std::unique(unit_core_ids.begin(),
+                      unit_core_ids.end()) == unit_core_ids.end());
+}
 
 TEST_F(CoarrayTest, TypesInterface)
 {
@@ -336,6 +350,13 @@ TEST_F(CoarrayTest, Mutex){
 }
 
 TEST_F(CoarrayTest, Comutex){
+  // Check runtime conditions
+  // This might deadlock if multiple units are pinned to the same CPU
+  if(!core_mapping_is_unique(dash::Team::All())){
+    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
+  }
+
+  // Test Setup
   const int repetitions = 10;
   
   dash::Comutex comx;
@@ -442,6 +463,9 @@ TEST_F(CoarrayTest, CoEvent)
   
   if(num_images() < 2){
     SKIP_TEST_MSG("This test requires at least 2 units");
+  }
+  if(!core_mapping_is_unique(dash::Team::All())){
+    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
   }
 
   if(this_image() == 0){
