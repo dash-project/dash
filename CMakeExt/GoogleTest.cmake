@@ -41,6 +41,11 @@ else()
   # Download gtest from official github repository:
   message(STATUS "Downloading GTest from official repository")
   set(GTEST_PREFIX "${CMAKE_BINARY_DIR}/gtest")
+  set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
+  set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/googletest/include")
+  set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
+  set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
+
   ExternalProject_Add(
     GTestExternal
     GIT_REPOSITORY https://github.com/google/googletest.git
@@ -49,15 +54,13 @@ else()
     PREFIX "${GTEST_PREFIX}"
     CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
     INSTALL_COMMAND ""
+    # Necessary for ninja build
+    BUILD_BYPRODUCTS ${GTEST_LIBRARY}
     # Wrap download, configure and build steps in a script to log output
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON
   )
-  set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
-  set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/googletest/include")
-  set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
-  set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
 
   add_library(GTest IMPORTED STATIC GLOBAL)
   set_target_properties(
