@@ -516,12 +516,17 @@ TEST_F(CoarrayTest, CoEvent)
 
 TEST_F(CoarrayTest, CoEventIter)
 {
-  dash::Coevent events;
-  
   if(num_images() < 3){
     SKIP_TEST_MSG("This test requires at least 3 units");
   }
+  // Check runtime conditions
+  // This might deadlock if multiple units are pinned to the same CPU
+  if(!core_mapping_is_unique(dash::Team::All())){
+    SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
+  }
   
+  dash::Coevent events;
+
   auto snd = events.begin()+1;
   (*snd).post();
   
