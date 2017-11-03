@@ -56,13 +56,13 @@ inline void sync_all(){
 }
 
 /**
- * blocks until all selected units reach this statement. This statement does
+ * Blocks until all selected units reach this statement. This statement does
  * not imply a flush. If a flush is required, use the \c sync_all() method of
  * the Coarray
  * 
- * \note If possible use \c sync_all() for performance reasons. \c sync_images()
- *       is implemented using two-sided operations based on the implementation
- *       of \c MPI_Barrier() in OpenMPI
+ * \note If possible use \c sync_all() or \c Coevent for performance reasons.
+ *       \c sync_images() is implemented using two-sided operations based on 
+ *       the implementation of \c MPI_Barrier() in OpenMPI
  * 
  * \sa dash::coarray::sync_all()
  * 
@@ -105,8 +105,7 @@ inline void sync_images(const Container & image_ids){
               tag,
               global_unit_t{root});      
   }
-  // TODO: flush memory
-  //_storage.flush_local();
+
   // Second phase: recieve message from root
   DASH_LOG_DEBUG("Begin second phase of sync_images");
   if(myid == root){
