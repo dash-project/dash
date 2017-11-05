@@ -58,8 +58,8 @@ namespace detail {
    * with static member \c value indicating whether type \c T provides
    * dependent type \c domain_type.
    */
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type)
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type)
 }
 
 /**
