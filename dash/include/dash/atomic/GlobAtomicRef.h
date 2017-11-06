@@ -16,7 +16,7 @@ template<typename T>
 class Shared;
 
 /**
- * Specialization for atomic values. All atomic operations are 
+ * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
  */
 template<typename T>
@@ -138,7 +138,7 @@ public:
   }
 
   /// atomically assigns value
-  GlobRef<atomic_t> operator=(const T & value) const {
+  GlobRef<atomic_t> operator=(const T & value) {
     store(value);
     return *this;
   }
@@ -146,7 +146,7 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  void set(const T & value) const
+  void set(const T & value)
   {
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
@@ -164,8 +164,8 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  inline void store(const T & value) const {
-    exchange(value);
+  inline void store(const T & value) {
+    set(value);
   }
 
   /// atomically fetches value
@@ -201,7 +201,7 @@ public:
   void op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value) const
+    const T & value)
   {
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
@@ -228,7 +228,7 @@ public:
   T fetch_op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value) const
+    const T & value)
   {
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
@@ -249,19 +249,19 @@ public:
   /**
    * Atomically exchanges value
    */
-  T exchange(const T & value) const {
+  T exchange(const T & value) {
     return fetch_op(dash::second<T>(), value);
   }
 
   /**
    * Atomically compares the value with the value of expected and if thosei
    * are bitwise-equal, replaces the former with desired.
-   * 
+   *
    * \return  True if value is exchanged
-   * 
+   *
    * \see \c dash::atomic::compare_exchange
    */
-  bool compare_exchange(const T & expected, const T & desired) const {
+  bool compare_exchange(const T & expected, const T & desired) {
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
@@ -285,7 +285,7 @@ public:
    * DASH specific variant which is faster than \c fetch_add
    * but does not return value
    */
-  void add(const T & value) const
+  void add(const T & value)
   {
     op(dash::plus<T>(), value);
   }
@@ -298,7 +298,7 @@ public:
    */
   T fetch_add(
     /// Value to be added to global atomic variable.
-    const T & value) const
+    const T & value)
   {
     return fetch_op(dash::plus<T>(), value);
   }
@@ -307,7 +307,7 @@ public:
    * DASH specific variant which is faster than \c fetch_sub
    * but does not return value
    */
-  void sub(const T & value) const
+  void sub(const T & value)
   {
     op(dash::plus<T>(), -value);
   }
@@ -326,33 +326,27 @@ public:
   }
 
   /// prefix atomically increment value by one
-  T operator++ () const {
-    return fetch_add(1) + 1;
-  }
-
-  /// postfix atomically increment value by one
-  T operator++ (int) const {
-    return fetch_add(1);
+  self_t& operator++ () {
+    add(1);
+    return *this;
   }
 
   /// prefix atomically decrement value by one
-  T operator-- () const {
-    return fetch_sub(1) - 1;
-  }
-
-  /// postfix atomically decrement value by one
-  T operator-- (int) const {
-    return fetch_sub(1);
+  self_t& operator-- () {
+    sub(1);
+    return *this;
   }
 
   /// atomically increment value by ref
-  T operator+=(const T & value) const {
-    return fetch_add(value) + value;
+  self_t& operator+=(const T & value) {
+    add(value);
+    return *this;
   }
 
   /// atomically decrement value by ref
-  T operator-=(const T & value) const {
-    return fetch_sub(value) - value;
+  self_t& operator-=(const T & value) {
+    sub(value);
+    return *this;
   }
 
 };
