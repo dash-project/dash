@@ -21,11 +21,6 @@ TEST_F(GlobRefTest, IsLocal) {
   ASSERT_EQ_U(true, gref.is_local());
 }
 
-typedef struct value_struct {
-  double x;
-  int    y;
-} value_struct_t;
-
 TEST_F(GlobRefTest, Member) {
   struct value_t {
     double x; int y;

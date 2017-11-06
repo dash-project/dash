@@ -152,7 +152,7 @@ void cobroadcast(Coarray<T> & coarr, const team_unit_t & master){
 /**
  * Performes a broadside reduction of the Coarray images.
  * \param coarr   perform the reduction on this array
- * \param op      reduce operation
+ * \param op      one of the \ref DashReduceOperations 
  * \param master  unit which recieves the result. -1 to broadcast to all units
  * 
  * \ingroup DashCoarrayLib
@@ -164,6 +164,9 @@ void coreduce(Coarray<T> & coarr,
 {
   using value_type = typename Coarray<T>::value_type;
   using index_type = typename Coarray<T>::index_type;
+
+  static_assert(dash::dart_datatype<value_type>::value != DART_TYPE_UNDEFINED,
+      "Cannot reduce unknown type!");
 
   constexpr auto ndim     = Coarray<T>::ndim();
   const auto team_dart_id = coarr.team().dart_id();
