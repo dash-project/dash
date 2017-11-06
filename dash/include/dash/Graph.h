@@ -80,53 +80,70 @@ private:
   friend out_edge_it_wrapper;
 
   typedef GlobHeapContiguousMem<
-    vertex_container_type>                            glob_mem_vert_type;
-  typedef GlobHeapContiguousMem<
-    edge_container_type>                              glob_mem_edge_type;
-  typedef 
-    GlobHeapCombinedMem<glob_mem_edge_type>           glob_mem_edge_comb_type;
-  typedef std::vector<std::list<edge_type>>           edge_list_type;
+    vertex_container_type>                        glob_mem_vert_type;             
+  typedef GlobHeapContiguousMem<                                                  
+    edge_container_type>                          glob_mem_edge_type;             
+  typedef                                                                         
+    GlobHeapCombinedMem<glob_mem_edge_type>       glob_mem_edge_comb_type;        
+  typedef std::vector<std::list<edge_type>>       edge_list_type;                 
+                                                                                  
+public:                                                                           
+                                                                                  
+  typedef typename                                                                
+    glob_mem_vert_type::container_list_index      vertex_cont_ref_type;           
+  typedef typename                                                                
+    glob_mem_edge_type::container_list_index      edge_cont_ref_type;             
+  typedef VertexSizeType                          vertex_size_type;               
+  typedef EdgeSizeType                            edge_size_type;                 
+                                                                                  
+  typedef VertexProperties                        vertex_properties_type;         
+  typedef EdgeProperties                          edge_properties_type;           
+                                                                                  
+  typedef GlobRef<vertex_type>                    reference;                      
+                                                                                  
+  typedef VertexIndex<vertex_size_type>           vertex_index_type;              
+                                                                                  
+  typedef typename                                                                
+    glob_mem_vert_type::local_iterator            local_vertex_iterator;          
+  typedef typename                                                                
+    glob_mem_edge_type::local_iterator            local_in_edge_iterator;         
+  typedef typename                                                                
+    glob_mem_edge_type::local_iterator            local_out_edge_iterator;        
+  typedef local_out_edge_iterator                 local_inout_edge_iterator;      
+  typedef typename                                                                
+    glob_mem_edge_comb_type::local_iterator       local_edge_iterator;            
+                                                                                  
+  typedef typename                                                                
+    glob_mem_vert_type::global_iterator           global_vertex_iterator;         
+  typedef typename                                                                
+    glob_mem_edge_type::global_iterator           global_in_edge_iterator;        
+  typedef typename                                                                
+    glob_mem_edge_type::global_iterator           global_out_edge_iterator;       
+  typedef global_out_edge_iterator                global_inout_edge_iterator;     
+  typedef typename                                     
+    glob_mem_edge_comb_type::global_iterator      global_edge_iterator;
+                                                       
 
-public:
+  typedef VertexProxy<self_t, local_vertex_iterator>                     
+    local_vertex_proxy_type;
+  typedef VertexProxy<self_t, global_vertex_iterator>                     
+    global_vertex_proxy_type;
+  typedef EdgeProxy<self_t, local_inout_edge_iterator>                       
+    local_inout_edge_proxy_type;
+  typedef EdgeProxy<self_t, global_inout_edge_iterator>                       
+    global_inout_edge_proxy_type;
+  typedef EdgeProxy<self_t, local_edge_iterator>                       
+    local_edge_proxy_type;
+  typedef EdgeProxy<self_t, global_edge_iterator>                       
+    global_edge_proxy_type;
 
-  typedef typename 
-    glob_mem_vert_type::container_list_index          vertex_cont_ref_type;
-  typedef typename 
-    glob_mem_edge_type::container_list_index          edge_cont_ref_type;
-  typedef VertexSizeType                              vertex_size_type;
-  typedef EdgeSizeType                                edge_size_type;
-
-  typedef VertexProperties                            vertex_properties_type;
-  typedef EdgeProperties                              edge_properties_type;
-
-  typedef GlobRef<vertex_type>                        reference;
-
-  typedef VertexIndex<vertex_size_type>               vertex_index_type;
-
-  typedef typename 
-    glob_mem_vert_type::local_iterator                local_vertex_iterator;
-  typedef typename 
-    glob_mem_edge_type::local_iterator                local_in_edge_iterator;
-  typedef typename 
-    glob_mem_edge_type::local_iterator                local_out_edge_iterator;
-  typedef typename 
-    glob_mem_edge_comb_type::local_iterator           local_edge_iterator;
-
-  typedef typename 
-    glob_mem_vert_type::global_iterator               global_vertex_iterator;
-  typedef typename 
-    glob_mem_edge_type::global_iterator               global_in_edge_iterator;
-  typedef typename 
-    glob_mem_edge_type::global_iterator               global_out_edge_iterator;
-  typedef typename 
-    glob_mem_edge_comb_type::global_iterator          global_edge_iterator;
+  friend local_vertex_proxy_type;
+  friend global_vertex_proxy_type;
+  friend local_edge_proxy_type;
+  friend global_edge_proxy_type;
   
 public:
 
-  vertex_it_wrapper      vertices = vertex_it_wrapper(this);
-  edge_it_wrapper        edges = edge_it_wrapper(this);
-  in_edge_it_wrapper     in_edges = in_edge_it_wrapper(this);
-  out_edge_it_wrapper    out_edges = out_edge_it_wrapper(this);
 
 public:
 
@@ -172,6 +189,74 @@ public:
    * Move-assignment operator. Explicitly deleted.
    */
   self_t & operator=(self_t &&) = delete;
+
+  /**
+   * Returns an object handling interactions with a vertex pointed to by
+   * the given iterator.
+   */
+  local_vertex_proxy_type operator[](local_vertex_iterator & it) {
+    return local_vertex_proxy_type(it, this);
+  }
+
+  /**
+   * Returns an object handling interactions with a vertex pointed to by
+   * the given iterator.
+   */
+  global_vertex_proxy_type operator[](global_vertex_iterator & it) {
+    return global_vertex_proxy_type(it, this);
+  }
+
+  /**
+   * Returns an object handling interactions with an edge pointed to by
+   * the given iterator.
+   */
+  local_inout_edge_proxy_type operator[](local_inout_edge_iterator & it) {
+    return local_inout_edge_proxy_type(it, this);
+  }
+
+  /**
+   * Returns an object handling interactions with an edge pointed to by
+   * the given iterator.
+   */
+  global_inout_edge_proxy_type operator[](global_inout_edge_iterator & it) {
+    return global_inout_edge_proxy_type(it, this);
+  }
+
+  /**
+   * Returns an object handling interactions with an edge pointed to by
+   * the given iterator.
+   */
+  global_edge_proxy_type operator[](global_edge_iterator & it) {
+    return global_edge_proxy_type(it, this);
+  }
+
+  /**
+   * Returns a vertex iterator range object.
+   */
+  vertex_it_wrapper & vertices() {
+    return _vertices;
+  }
+
+  /**
+   * Returns an edge iterator range object.
+   */
+  edge_it_wrapper & edges() {
+    return _edges;
+  }
+  
+  /**
+   * Returns an in-edge iterator range object.
+   */
+  in_edge_it_wrapper & in_edges() {
+    return _in_edges;
+  }
+
+  /**
+   * Returns an out-edge iterator range object.
+   */
+  out_edge_it_wrapper & out_edges() {
+    return _out_edges;
+  }
 
   /**
    * Returns the number of vertices in the whole graph.
@@ -227,15 +312,15 @@ public:
   /**
    * Removes a given vertex.
    */
-  void remove_vertex(const vertex_index_type & v) {
+  void remove_vertex(const local_vertex_iterator & v) {
     
   }
 
   /**
-   * Removes all edges (in & out) from the given vertex).
+   * Removes a given vertex.
    */
-  void clear_vertex(const vertex_index_type & v) {
-
+  void remove_vertex(const global_vertex_iterator & v) {
+    
   }
 
   /**
@@ -373,8 +458,8 @@ public:
       for(int j = i + 1; j < remote_edges_displs.size(); ++j) {
         remote_edges_displs[j] += remote_edges_count[i];
       }
+    _remote_edges[i].clear();
     }
-    _remote_edges.clear();
     // exchange amount of edges to be transferred with other units
     std::vector<std::size_t> edge_count(_team->size());
     DASH_ASSERT_RETURNS(
@@ -543,6 +628,14 @@ private:
   edge_size_type              _alloc_edges_per_vertex;
   /** Edges that have to be added to vertices on another unit in next commit */
   edge_list_type              _remote_edges;
+  /** wrapper for vertex iterator ranges */
+  vertex_it_wrapper           _vertices = vertex_it_wrapper(this);
+  /** wrapper for edge iterator ranges */
+  edge_it_wrapper             _edges = edge_it_wrapper(this);
+  /** wrapper for in-edge iterator ranges */
+  in_edge_it_wrapper          _in_edges = in_edge_it_wrapper(this);
+  /** wrapper for out-edge iterator ranges */
+  out_edge_it_wrapper         _out_edges = out_edge_it_wrapper(this);
 
 };
 

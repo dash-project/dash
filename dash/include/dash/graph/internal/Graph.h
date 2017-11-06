@@ -48,9 +48,6 @@ class Vertex {
   typedef typename GraphType::vertex_properties_type   properties_type;
 
   friend GraphType;
-  friend InEdgeIteratorWrapper<GraphType>;
-  friend OutEdgeIteratorWrapper<GraphType>;
-  friend EdgeIteratorWrapper<GraphType>;
 
 public:
 
@@ -72,6 +69,139 @@ public:
 
   /** Properties of this vertex */
   properties_type       properties;
+
+};
+
+template<typename GraphType, typename IteratorType>
+class VertexProxy {
+
+  typedef GraphType                                     graph_type;
+  typedef IteratorType                                  iterator_type;
+  typedef VertexProxy<GraphType, IteratorType>          self_t;
+  typedef typename GraphType::vertex_type               vertex_type;
+  typedef typename GraphType::vertex_properties_type    properties_type;
+
+  template<typename Parent, typename GlobMemType>
+  class edge_range {
+
+    typedef Parent parent_type;
+    typedef GlobMemType glob_mem_type;
+    typedef typename glob_mem_type::global_iterator     global_iterator;
+    typedef typename glob_mem_type::local_iterator      local_iterator;
+    typedef typename parent_type::graph_type::local_vertex_iterator
+      local_vertex_iterator;
+
+    public:
+
+      edge_range(parent_type & p, glob_mem_type * gmem) 
+        : _parent(p),
+          _glob_mem(gmem)
+      { }
+
+      global_iterator begin() {
+        return begin(_parent._iterator);
+      }
+
+      global_iterator end() {
+        return end(_parent._iterator);
+      }
+
+    private:
+
+      template<typename VertexIteratorType>
+      global_iterator begin(VertexIteratorType it) {
+        auto lpos = _parent._iterator.lpos();
+        return global_iterator(
+            _glob_mem,
+            lpos.unit,
+            lpos.index,
+            0
+        );
+      }
+
+      global_iterator begin(local_vertex_iterator it) {
+        return global_iterator(
+            _glob_mem,
+            _parent._graph->_myid,
+            it.pos(),
+            0
+        );
+      }
+      
+      template<typename VertexIteratorType>
+      global_iterator end(VertexIteratorType it) {
+        auto lpos = _parent._iterator.lpos();
+        return global_iterator(
+            _glob_mem,
+            lpos.unit,
+            lpos.index,
+            _glob_mem->container_size(lpos.unit, lpos.index)
+        );
+      }
+
+      global_iterator end(local_vertex_iterator it) {
+        return global_iterator(
+            _glob_mem,
+            _parent._graph->_myid,
+            it.pos(),
+            _glob_mem->container_size(_parent._graph->_myid, it.pos())
+        );
+      }
+
+    private:
+
+      parent_type &    _parent;
+      glob_mem_type *  _glob_mem;
+
+  };
+
+  typedef edge_range<self_t, typename graph_type::glob_mem_edge_type> 
+    inout_edge_range_type;
+  typedef edge_range<self_t, typename graph_type::glob_mem_edge_comb_type> 
+    edge_range_type;
+
+public:
+
+  VertexProxy() = delete;
+
+  VertexProxy(iterator_type it, graph_type * g) 
+    : _iterator(it),
+      _graph(g),
+      _out_edges(*this, g->_glob_mem_out_edge),
+      _in_edges(*this, g->_glob_mem_in_edge),
+      _edges(*this, g->_glob_mem_edge)
+  { }
+
+  inout_edge_range_type & out_edges() {
+    return _out_edges;
+  }
+
+  inout_edge_range_type & in_edges() {
+    return _in_edges;
+  }
+
+  edge_range_type & edges() {
+    return _edges;
+  }
+
+  properties_type & properties() {
+    // load properties lazily
+    if(!_vertex_loaded) {
+      _vertex = *_iterator;
+      _vertex_loaded = true;
+    }
+    return _vertex.properties;
+  }
+
+private:
+
+  iterator_type           _iterator;
+  vertex_type             _vertex;
+  bool                    _vertex_loaded = false;
+  graph_type *            _graph;
+  inout_edge_range_type   _out_edges;
+  inout_edge_range_type   _in_edges;
+  edge_range_type         _edges;
 
 };
 
@@ -148,6 +278,41 @@ private:
   vertex_index_type     _source;
   /** Target vertex the edge is pointing to */
   vertex_index_type     _target;
+
+};
+
+template<typename GraphType, typename IteratorType>
+class EdgeProxy {
+
+  typedef GraphType                                         graph_type;
+  typedef IteratorType                                      iterator_type;
+  typedef typename GraphType::edge_type                     edge_type;
+  typedef typename GraphType::edge_properties_type          properties_type;
+
+public:
+
+  EdgeProxy() = delete;
+
+  EdgeProxy(iterator_type it, graph_type * g) 
+    : _iterator(it),
+      _graph(g)
+  { }
+
+  properties_type & properties() {
+    // load properties lazily
+    if(!_edge_loaded) {
+      _edge = *_iterator;
+      _edge_loaded = true;
+    }
+    return _edge.properties;
+  }
+
+private:
+
+  iterator_type         _iterator;
+  edge_type             _edge;
+  bool                  _edge_loaded = false;
+  graph_type *          _graph;
 
 };
 

@@ -362,7 +362,7 @@ public:
 
     update_lbegin();
     update_lend();
-    return _lend;
+    return _lend - 1;
   }
 
   /**
