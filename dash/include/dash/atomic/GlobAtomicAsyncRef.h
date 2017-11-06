@@ -135,7 +135,7 @@ public:
   }
 
   /// atomically assigns value
-  GlobRef<atomic_t> operator=(const T & value) const {
+  GlobRef<atomic_t> operator=(const T & value) {
     store(value);
     return *this;
   }
@@ -144,7 +144,7 @@ public:
    * Set the value of the shared atomic variable.
    * The operation will block until the local memory can be re-used.
    */
-  void set(const T & value) const
+  void set(const T & value)
   {
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.set()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
@@ -163,7 +163,7 @@ public:
    * The operation will return immediately and the memory pointed to
    * by \c ptr should not be re-used before the operation has been completed.
    */
-  void set(const T * ptr) const
+  void set(const T * ptr)
   {
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.set()", *ptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
@@ -182,7 +182,7 @@ public:
    * Set the value of the shared atomic variable.
    * The operation will block until the local memory can be re-used.
    */
-  inline void store(const T & value) const {
+  inline void store(const T & value) {
     set(value);
   }
 
@@ -191,7 +191,7 @@ public:
    * The operation will return immediately and the memory pointed to
    * by \c ptr should not be re-used before the operation has been completed.
    */
-  inline void store(const T * ptr) const {
+  inline void store(const T * ptr) {
     set(ptr);
   }
 
@@ -257,7 +257,7 @@ public:
   void op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value) const
+    const T & value)
   {
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.op",   _gptr);
@@ -282,7 +282,7 @@ public:
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
     const T & value,
-          T * result) const
+          T * result)
   {
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.fetch_op",   _gptr);
@@ -301,7 +301,7 @@ public:
    */
   void exchange(
     const T & value,
-          T * result) const {
+          T * result) {
     fetch_op(dash::second<T>(), value, result);
   }
 
@@ -319,7 +319,7 @@ public:
   void compare_exchange(
     const T & expected,
     const T & desired,
-          T * result) const {
+          T * result) {
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   expected);
@@ -338,7 +338,7 @@ public:
    * DASH specific variant which is faster than \c fetch_add
    * but does not return value.
    */
-  void add(const T & value) const
+  void add(const T & value)
   {
     op(dash::plus<T>(), value);
   }
@@ -355,7 +355,7 @@ public:
     /// Value to be added to global atomic variable.
     const T & value,
     /// Pointer to store result to
-          T * result) const
+          T * result)
   {
     fetch_op(dash::plus<T>(), value, result);
   }
@@ -364,7 +364,7 @@ public:
    * DASH specific variant which is faster than \c fetch_sub
    * but does not return value.
    */
-  void sub(const T & value) const
+  void sub(const T & value)
   {
     op(dash::plus<T>(), -value);
   }
@@ -381,7 +381,7 @@ public:
     /// Value to be subtracted from global atomic variable.
     const T & value,
     /// Pointer to store result to
-          T * result) const
+          T * result)
   {
     fetch_op(dash::plus<T>(), -value, result);
   }
