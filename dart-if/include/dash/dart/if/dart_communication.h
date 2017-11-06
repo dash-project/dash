@@ -249,6 +249,34 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op) DART_NOTHROW;
 
+
+/**
+ * Perform an element-wise atomic update on the values pointed to by \c gptr
+ * by applying the operation \c op with the corresponding value in \c value
+ * on them.
+ *
+ * DART Equivalent to MPI_Accumulate. In contrast to \ref dart_accumulate, this
+ * function blocks until the local buffer can be reused.
+ *
+ * \param gptr    A global pointer determining the target of the accumulate
+ *                operation.
+ * \param values  The local buffer holding the elements to accumulate.
+ * \param nelem   The number of local elements to accumulate per unit.
+ * \param dtype   The data type to use in the accumulate operation \c op.
+ * \param op      The accumulation operation to perform.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_accumulate_blocking_local(
+  dart_gptr_t      gptr,
+  const void     * values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op) DART_NOTHROW;
+
 /**
  * Perform an element-wise atomic update on the value of type \c dtype pointed
  * to by \c gptr by applying the operation \c op with \c value on it and
@@ -706,18 +734,18 @@ dart_ret_t dart_recv(
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
