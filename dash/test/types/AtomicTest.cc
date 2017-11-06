@@ -327,7 +327,7 @@ TEST_F(AtomicTest, AlgorithmVariant){
   for(int i=0; i<dash::size(); ++i){
     dash::atomic::add(array[i], i+1);
   }
-  
+
   dash::barrier();
 
   for(int i=0; i<dash::size(); ++i){
@@ -354,7 +354,7 @@ TEST_F(AtomicTest, AtomicInContainer){
     array[i].add(i+1);
     matrix[i].add(i+1);
   }
-  
+
   dash::barrier();
 
   LOG_MESSAGE("Trivial Type: is_atomic_type %d",
@@ -386,15 +386,15 @@ TEST_F(AtomicTest, AtomicInterface){
   array[1]++;
   --(array[2]);
   array[3]--;
-  
+
   dash::barrier();
   ASSERT_EQ_U(array[0].load(), dash::size());
   ASSERT_EQ_U(array[1].load(), dash::size());
   ASSERT_EQ_U(array[2].load(), -dash::size());
   ASSERT_EQ_U(array[3].load(), -dash::size());
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     auto oldval = array[3].exchange(1);
     ASSERT_EQ_U(oldval, -dash::size());
@@ -402,10 +402,10 @@ TEST_F(AtomicTest, AtomicInterface){
   dash::barrier();
   ASSERT_EQ_U(array[3].load(), 1);
   dash::barrier();
-  
+
   value_t myid     = static_cast<value_t>(dash::myid().id);
   value_t id_right = (myid + 1) % dash::size();
-  
+
   array[myid].store(myid);
   array.barrier();
   ASSERT_EQ_U(id_right, array[id_right].load());
@@ -430,13 +430,13 @@ TEST_F(AtomicTest, AtomicInterface){
 
 TEST_F(AtomicTest, MutexInterface){
   dash::Mutex mx;
-  
+
   dash::Shared<int> shared(dash::team_unit_t{0});
-  
+
   if(dash::myid() == 0){
     shared.set(0);
   }
-  
+
   mx.lock();
   int tmp = shared.get();
   std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -444,34 +444,34 @@ TEST_F(AtomicTest, MutexInterface){
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(shared.get()));
   // I guess here a flush is required, blocked by issue 322
   mx.unlock();
-  
+
   dash::barrier();
-  
+
   while(!mx.try_lock()){  }
   // lock aquired
   tmp = shared.get();
   std::this_thread::sleep_for(std::chrono::microseconds(100));
   shared.set(tmp + 1);
   mx.unlock();
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     int result = shared.get();
     EXPECT_EQ_U(result, static_cast<int>(dash::size()*2));
   }
-  
+
   dash::barrier();
-  
+
   // this even works with std::lock_guard
   {
     std::lock_guard<dash::Mutex> lg(mx);
     int tmp = shared.get();
     shared.set(tmp + 1);
   }
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     int result = shared.get();
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*3);
@@ -506,4 +506,78 @@ TEST_F(AtomicTest, AtomicSignal){
     } while (count == 0);
     ASSERT_GT_U(count, 0);
   }
+}
+
+
+TEST_F(AtomicTest, AsyncAtomic){
+
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+
+  // asynchronous atomic set
+  if (dash::myid() == 0) {
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].set(i);
+    }
+  }
+  array.barrier();
+
+  ASSERT_EQ_U(array[dash::myid()].get(), dash::myid());
+
+  int val = -1;
+  // kick off an asynchronous transfer
+  array.async[dash::myid()].get(&val);
+
+  // wait for the above asynchronous transfer to complete
+  array.flush();
+  ASSERT_EQ_U(dash::myid(), val);
+
+  dash::barrier();
+
+  // test fetch_op
+
+  if (dash::myid() == 0) {
+    std::vector<value_t> vec(dash::size());
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].exchange(0, &vec[i]);
+    }
+    array.flush();
+    for (size_t i = 0; i < dash::size(); ++i) {
+      ASSERT_EQ_U(i, vec[i]);
+    }
+  }
+
+  dash::barrier();
+
+  // atomic increment on unit zero
+  array.async[0].add(1);
+
+  // flush on AtomicAsyncRef
+  array.async[0].flush();
+  dash::barrier();
+  if (dash::myid() == 0) ASSERT_EQ_U(array.async[0].get(), dash::size());
+
+  dash::fill(array.begin(), array.end(), 0);
+
+  array.async[dash::myid()].fetch_add(dash::myid(), &val);
+  array.barrier();
+  ASSERT_EQ_U(0, val);
+
+  if (dash::myid() == 1) {
+    std::vector<value_t> vec(dash::size());
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].compare_exchange(i, 2*i, &vec[i]);
+    }
+    array.flush();
+    for (size_t i = 0; i < dash::size(); ++i) {
+      ASSERT_EQ_U(i, vec[i]);
+      ASSERT_EQ_U(2*i, array[i].get());
+    }
+  }
+
+  dash::barrier();
+
 }
