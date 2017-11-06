@@ -133,6 +133,21 @@ sub(
 }
 
 /**
+ * Atomic multiply operation on the referenced shared value.
+ */
+template<typename T>
+typename std::enable_if<
+  std::is_integral<T>::value,
+  void>::type
+multiply(
+  dash::GlobRef<dash::Atomic<T>> ref,
+  const T & value)
+{
+  ref.multiply(value);
+}
+
+
+/**
  * Atomic fetch-and-add operation on the referenced shared value.
  *
  * \return  The value of the referenced shared variable before the

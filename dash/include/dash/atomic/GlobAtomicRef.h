@@ -325,6 +325,28 @@ public:
     return fetch_op(dash::plus<T>(), -value);
   }
 
+  /**
+   * DASH specific variant which is faster than \c fetch_multiply
+   * but does not return value
+   */
+  void multiply(const T & value)
+  {
+    op(dash::multiply<T>(), value);
+  }
+
+  /**
+   * Atomic fetch-and-multiply operation on the referenced shared value.
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  T fetch_multiply(
+    /// Value to be added to global atomic variable.
+    const T & value)
+  {
+    return fetch_op(dash::multiply<T>(), value);
+  }
+
   /// prefix atomically increment value by one
   self_t& operator++ () {
     add(1);

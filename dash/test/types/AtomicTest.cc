@@ -579,5 +579,16 @@ TEST_F(AtomicTest, AsyncAtomic){
   }
 
   dash::barrier();
+  dash::fill(array.begin(), array.end(), 1);
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    for (size_t i = 0; i < dash::size(); ++i) {
+      array.async[i].multiply(2);
+    }
+  }
+  array.barrier();
+  ASSERT_EQ_U(2, array[dash::myid()].get());
+  array.barrier();
 
 }

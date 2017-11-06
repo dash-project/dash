@@ -387,6 +387,32 @@ public:
   }
 
   /**
+   * DASH specific variant which is faster than \c fetch_mul
+   * but does not return value.
+   */
+  void multiply(const T & value)
+  {
+    op(dash::multiply<T>(), value);
+  }
+
+  /**
+   * Atomic fetch-and-multiply operation on the referenced shared value.
+   *
+   * The value before the operation will be stored into the memory location
+   * pointed to by \c result.
+   *
+   * The operation will be completed after a call to \ref flush.
+   */
+  void fetch_multiply (
+    /// Value to be subtracted from global atomic variable.
+    const T & value,
+    /// Pointer to store result to
+          T * result)
+  {
+    fetch_op(dash::multiply<T>(), value, result);
+  }
+
+  /**
    * Flush all pending asynchronous operations on this asynchronous reference.
    */
   void flush()
