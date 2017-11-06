@@ -327,12 +327,33 @@ TEST_F(AtomicTest, AlgorithmVariant){
   for(int i=0; i<dash::size(); ++i){
     dash::atomic::add(array[i], i+1);
   }
-
   dash::barrier();
-
   for(int i=0; i<dash::size(); ++i){
     value_t elem_arr_local = dash::atomic::load(array[i]);
     ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i+1))));
+  }
+
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::sub(array[i], 1);
+  }
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(elem_arr_local, static_cast<value_t>((dash::size()*(i))));
+  }
+
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    dash::atomic::multiply(array[i], -1);
+  }
+  dash::barrier();
+  for(int i=0; i<dash::size(); ++i){
+    value_t elem_arr_local = dash::atomic::load(array[i]);
+    ASSERT_EQ_U(
+      elem_arr_local,
+      static_cast<value_t>((dash::size()*i*(std::pow(-1, dash::size()))))
+    );
   }
 }
 
@@ -418,6 +439,9 @@ TEST_F(AtomicTest, AtomicInterface){
   array.barrier();
   ASSERT_EQ_U(-myid, array[myid].load());
   array.barrier();
+  array[1].multiply(-1);
+  array.barrier();
+  ASSERT_EQ_U(std::pow(-1, dash::size()+1), array[1].get());
   bool ret = array[myid].compare_exchange(0,10);
   if(myid == 0){
     ASSERT_EQ_U(true, ret);
