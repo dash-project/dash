@@ -16,7 +16,7 @@ namespace dash {
  * A fortran style comutex.
  *
  * Comutex is used to ensure mutual exclusion on a certain image.
- * The interface is similar to \cdash::Coarray but does not allow
+ * The interface is similar to \c dash::Coarray but does not allow
  * local accesses. Hence it does not fulfill the DASH Container Concept.
  * 
  * \note In its current implementation the Comutex does not scale well as
@@ -38,7 +38,7 @@ namespace dash {
  * \endcode
  * 
  * \TODO: Use custom mutex to avoid storing the team multiple times
- *        (Each \cdash::Mutex) contains the team itself.
+ *        (Each \c dash::Mutex) contains the team itself.
  * 
  * 
  *

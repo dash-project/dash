@@ -117,10 +117,13 @@ public:
    * the second initialization is skipped.
    */
   inline void initialize(Team & team = dash::Team::All()) noexcept {
-    _team = &team;
-    _event_counts.allocate(_team->size());
-    dash::fill(_event_counts.begin(), _event_counts.end(), 0);
-    _is_initialized = true;
+    if(!_is_initialized){
+      _team = &team;
+      _event_counts.allocate(_team->size());
+      dash::fill(_event_counts.begin(), _event_counts.end(), 0);
+      _event_counts.barrier();
+      _is_initialized = true;
+    }
   }
   
   inline Team & team() {
