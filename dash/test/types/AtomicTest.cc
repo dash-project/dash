@@ -397,8 +397,9 @@ TEST_F(AtomicTest, AtomicInterface){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
+  size_t num_elem = std::max(static_cast<ssize_t>(10), dash::size());
 
-  array_t array(10);
+  array_t array(num_elem);
 
   dash::fill(array.begin(), array.end(), 0);
   dash::barrier();
@@ -436,6 +437,7 @@ TEST_F(AtomicTest, AtomicInterface){
   ASSERT_EQ_U(id_right+2, array[id_right].fetch_op(dash::plus<value_t>(), 1));
   array.barrier();
   array[myid].exchange(-myid);
+  array[1].exchange(-1);
   array.barrier();
   ASSERT_EQ_U(-myid, array[myid].load());
   array.barrier();
