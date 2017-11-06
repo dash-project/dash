@@ -57,7 +57,7 @@ template <
   std::size_t Rank,
   std::size_t... Is >
 constexpr std::array<ValueT, Rank>
-__get_type_extents_as_array_impl(
+type_extents_as_array_impl(
     dash::ce::index_sequence<Is...>) {
   return { ( static_cast<ValueT>(std::extent<ArrayT,Is>::value) )... };
 }
@@ -67,16 +67,23 @@ template <
   class ValueT,
   std::size_t Rank >
 constexpr std::array<ValueT, Rank>
-__get_type_extents_as_array() {
-  return __get_type_extents_as_array_impl<ArrayT,ValueT,Rank>(
+type_extents_as_array() {
+  return type_extents_as_array_impl<ArrayT,ValueT,Rank>(
       dash::ce::make_index_sequence<Rank>());
+}
+
+template <
+  typename T >
+constexpr bool type_is_complete() {
+  return (std::get<0>(coarray::detail::type_extents_as_array<T,
+          int, std::rank<T>::value>()) > 0);
 }
 
 template<
   typename element_type,
   typename pattern_type,
   int rank> 
-struct __get_local_type {
+struct local_ref_type {
   using type = LocalMatrixRef<element_type,
                               rank+1,
                               rank-1,
@@ -86,12 +93,12 @@ struct __get_local_type {
 template<
   typename element_type,
   typename pattern_type>
-struct __get_local_type<element_type, pattern_type, 1> {
+struct local_ref_type<element_type, pattern_type, 1> {
   using type = element_type &;
 };
 
 template<typename element_type>
-struct __get_ref_type {
+struct ref_type {
 // GAR needs conversion operator
 //  using type = GlobAsyncRef<element_type>;
   using type = GlobRef<element_type>;
@@ -101,12 +108,12 @@ struct __get_ref_type {
  * atomics cannot be accessed asynchronously
  */
 template<typename element_type>
-struct __get_ref_type<dash::Atomic<element_type>> {
+struct ref_type<dash::Atomic<element_type>> {
   using type = GlobRef<dash::Atomic<element_type>>;
 };
 
 template<typename element_type>
-struct __get_const_ref_type {
+struct const_ref_type {
   using type = GlobAsyncRef<const element_type>;
 };
 
@@ -114,7 +121,7 @@ struct __get_const_ref_type {
  * atomics cannot be accessed asynchronously
  */
 template<typename element_type>
-struct __get_const_ref_type<dash::Atomic<element_type>> {
+struct const_ref_type<dash::Atomic<element_type>> {
   using type = GlobRef<dash::Atomic<const element_type>>;
 };
 
@@ -126,12 +133,13 @@ struct __get_const_ref_type<dash::Atomic<element_type>> {
  */
 template<
   typename T,
-  typename IndexType = dash::default_index_t>
+  typename IndexType = dash::default_index_t,
+  MemArrange Arrangement = ROW_MAJOR>
 struct make_coarray_symmetric_pattern {
   using type = BlockPattern<
                 std::rank<
                   typename dash::remove_atomic<T>::type>::value+1,
-                ROW_MAJOR,
+                Arrangement,
                 IndexType>;
 };
 
@@ -139,9 +147,7 @@ struct make_coarray_symmetric_pattern {
 
 /**
  * A fortran style coarray.
- * 
- * \ingroup DashCoarrayConcept
- * 
+ *  
  * Interface of the Coarray for scalar and array types showing local
  * and global accesses:
  * \code
@@ -158,40 +164,43 @@ struct make_coarray_symmetric_pattern {
  * x[idx1][idx2]       = value; // local access
  * \endcode
  *
+ * \ingroup DashCoarrayConcept
  */
 template<
   typename T,
   typename IndexType = dash::default_index_t,
-  class PatternType  = typename coarray::make_coarray_symmetric_pattern<T,IndexType>::type >
+  MemArrange Arrangement = ROW_MAJOR >
 class Coarray {
 private:
 
-  using self_t          = Coarray<T, IndexType, PatternType>;
+  using self_t          = Coarray<T, IndexType, Arrangement>;
   
   /**
-   * _element_type has no extent and is wrapped with \cdash::Atomic, if coarray
-   * was declared with \cdash::Atomic<T>
+   * _element_type has no extent and is wrapped with \c dash::Atomic, if coarray
+   * was declared with \c dash::Atomic<T>
    */
   using _element_type   = typename std::remove_all_extents<T>::type;
-  using _underl_type    = typename dash::remove_atomic<_element_type>::type;
+  using _base_type      = typename dash::remove_atomic<_element_type>::type;
   
-  using _rank           = std::integral_constant<int,
+  using _valuetype_rank = std::integral_constant<int,
                             std::rank<T>::value>;
+  using _rank           = std::integral_constant<int,
+                            _valuetype_rank::value+1>;
   
   using _size_type      = typename std::make_unsigned<IndexType>::type;
-  using _sspec_type     = SizeSpec<_rank::value+1, _size_type>;
-  using _pattern_type   = PatternType;
+  using _sspec_type     = SizeSpec<_rank::value, _size_type>;
+  using _pattern_type   = typename coarray::make_coarray_symmetric_pattern<T,IndexType, Arrangement>::type;
   
-  using _storage_type   = Matrix<_element_type, _rank::value+1, IndexType, _pattern_type>;
+  using _storage_type   = Matrix<_element_type, _rank::value, IndexType, _pattern_type>;
   
-  template<int _subrank = _rank::value>
+  template<int _subrank = _valuetype_rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
-  using _local_type     = typename coarray::detail::__get_local_type<
+  using _local_ref_type = typename coarray::detail::local_ref_type<
                                       _element_type,
                                       _pattern_type,
-                                      _rank::value>::type; 
+                                      _valuetype_rank::value>::type; 
 
-  using _offset_type    = std::array<IndexType, _rank::value+1>;
+  using _offset_type    = std::array<IndexType, _rank::value>;
 
 public:
   // Types
@@ -203,39 +212,38 @@ public:
   using const_iterator         = GlobIter<const _element_type, _pattern_type>; 
   using reverse_iterator       = GlobIter<_element_type, _pattern_type>; 
   using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>; 
-  using reference              = typename coarray::detail::__get_ref_type<_element_type>::type;
-  using const_reference        = typename coarray::detail::__get_const_ref_type<_element_type>::type;
+  using reference              = typename coarray::detail::ref_type<_element_type>::type;
+  using const_reference        = typename coarray::detail::const_ref_type<_element_type>::type;
   using local_pointer          = _element_type *;
   using const_local_pointer    = const _element_type *;
   template<int subrank>
   using view_type              = _view_type<subrank>;
-  using local_type             = _local_type;
+  using local_type             = _local_ref_type;
   using pattern_type           = _pattern_type;
   
 private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
-              coarray::detail::__get_type_extents_as_array<T,
-                size_type, _rank::value>()));
+              coarray::detail::type_extents_as_array<T,
+                size_type, _valuetype_rank::value>()));
   }
 
   constexpr _sspec_type _make_size_spec(const size_type & first_dim) const noexcept {
     static_assert(
-        std::get<0>(coarray::detail::__get_type_extents_as_array<T,
-          size_type, _rank::value>()) == 0,
-      "Array type is fully specified");
+        !coarray::detail::type_is_complete<T>(),
+      "Array type may not be fully specified");
     
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
                 first_dim,
-                coarray::detail::__get_type_extents_as_array<T,
-                size_type, _rank::value>())));
+                coarray::detail::type_extents_as_array<T,
+                size_type, _valuetype_rank::value>())));
   }
   
   constexpr _offset_type _offsets_unit(const team_unit_t & unit) const noexcept {
-    return _storage.pattern().global(unit, std::array<index_type, _rank::value+1> {});
+    return _storage.pattern().global(unit, std::array<index_type, _rank::value> {});
   }
   
   constexpr _offset_type _extents_unit(const team_unit_t & unit) const noexcept {
@@ -245,7 +253,7 @@ private:
 public:
   
   static constexpr dim_t ndim() noexcept {
-    return static_cast<dim_t>(_rank::value + 1);
+    return static_cast<dim_t>(_rank::value);
   }
   
   /**
@@ -257,14 +265,10 @@ public:
    */
   explicit Coarray(Team & team = Team::All()) {
     if(dash::is_initialized() &&
-        (std::is_array<_underl_type>::value == false 
-         || std::extent<_underl_type, 0>::value != 0))
+        (std::is_array<_base_type>::value == false 
+         || std::extent<_base_type, 0>::value != 0))
     {
-      _storage.allocate(_pattern_type(_make_size_spec(),
-                                      DistributionSpec<_rank::value+1>(),
-                                      TeamSpec<_rank::value+1,
-                                               IndexType>(team),
-                                      team));
+      allocate(team);
     }
   }
 
@@ -275,14 +279,11 @@ public:
    * \endcode
    */
   template<
-  int __rank = _rank::value,
-  typename = typename std::enable_if<(__rank != 0)>::type>
+  int __valuetype_rank = _valuetype_rank::value,
+  typename = typename std::enable_if<(__valuetype_rank != 0)>::type>
   explicit Coarray(const size_type & first_dim, Team & team = Team::All()) {
     if(dash::is_initialized()){
-      _storage.allocate(_pattern_type(_make_size_spec(first_dim),
-                                      DistributionSpec<_rank::value+1>(),
-                                      TeamSpec<_rank::value+1>(team),
-                                      team));
+      allocate(first_dim, team);
     }
   }
   
@@ -295,7 +296,7 @@ public:
    * 
    * \todo enforce using pattern properties
    * 
-   * \cdash::coarray::make_coarray_asymmetric_pattern
+   * \c dash::coarray::make_coarray_asymmetric_pattern
    * \param extents vector of all extents
    * \param team
    */
@@ -305,8 +306,8 @@ public:
       extents.insert(extents.begin(), static_cast<size_type>(dash::size()));
       // asymmetric pattern
       const _pattern_type a_pattern(extents,
-                                    DistributionSpec<_rank::value+1>(),
-                                    TeamSpec<_rank::value+1>(team),
+                                    DistributionSpec<_rank::value>(),
+                                    TeamSpec<_rank::value>(team),
                                     team);
       _storage.allocate(a_pattern);
     }
@@ -314,14 +315,11 @@ public:
 #endif
   
   template<
-  int __rank = _rank::value,
-  typename = typename std::enable_if<(__rank == 0)>::type>
+  int __valuetype_rank = _valuetype_rank::value,
+  typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   explicit Coarray(const value_type & value, Team & team = Team::All()){
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH has to be initialized");
-    _storage.allocate(_pattern_type(_make_size_spec(),
-                                    DistributionSpec<_rank::value+1>(),
-                                    TeamSpec<_rank::value+1>(team),
-                                    team));
+    allocate(team);
     *(_storage.lbegin()) = value;
     _storage.barrier();
   }
@@ -378,17 +376,6 @@ public:
     return _storage.size();
   }
 
-  /**
-   * For fully specified array types, \c dash::Coarray<T[N...]> is a fixed-size
-   * container. Hence the value equals the value returned by \c max_size .
-   * For containers with one open dimension, the size is determined by dash.
-   * If dash is not initialized, it always returns zero.
-   * \TODO Currently _storage.size() is returned.
-   */
-  constexpr size_type max_size() const noexcept {
-    return _storage.size();
-  }
-
   constexpr bool empty() const noexcept {
     return _storage.size() == 0;
   }
@@ -409,16 +396,29 @@ public:
   /**
    * allocate an array which was initialized before dash has been initialized
    */
-  inline void allocate(){
-    _storage.allocate(_pattern_type(_make_size_spec()));
+  inline void allocate(Team & team = dash::Team::All()){
+    if(_storage.size() == 0){
+      _storage.allocate(_pattern_type(_make_size_spec(),
+                                      DistributionSpec<_rank::value>(),
+                                      TeamSpec<_rank::value,
+                                               IndexType>(team),
+                                      team));
+    }
   }
 
   /**
    * allocate an array which was initialized before dash has been initialized
    */
-  inline void allocate(const size_type & n){
-    if(n > 0){
-      _storage.allocate(_pattern_type(_make_size_spec(n)));
+  inline void allocate(
+      const size_type & n,
+      Team & team = dash::Team::All())
+  {
+    if((_storage.size() == 0) && (n > 0)){
+      _storage.allocate(_pattern_type(_make_size_spec(n),
+                                      DistributionSpec<_rank::value>(),
+                                      TeamSpec<_rank::value,
+                                               IndexType>(team),
+                                      team));
     }
   }
  
@@ -470,35 +470,35 @@ public:
   /**
    * Operator to select remote unit
    */
-  template<int __rank = _rank::value>
-  inline view_type<__rank> operator()(const team_unit_t & unit) {
+  template<int __valuetype_rank = _valuetype_rank::value>
+  inline view_type<__valuetype_rank> operator()(const team_unit_t & unit) {
     return this->operator ()(static_cast<index_type>(unit));
   }
   /**
    * Operator to select remote unit for array types
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank != 0), view_type<__rank>>::type
-  inline operator()(const index_type & local_unit) {
-    return _storage[local_unit];
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank != 0), view_type<__valuetype_rank>>::type
+  inline operator()(const index_type & unit) {
+    return _storage[unit];
   }
   
   /**
    * Operator to select remote unit for scalar types
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank == 0), reference>::type
-  inline operator()(const index_type & local_unit) {
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank == 0), reference>::type
+  inline operator()(const index_type & unit) {
     // TODO: workaround to get async access
-    return static_cast<reference>(_storage.at(local_unit));
+    return static_cast<reference>(_storage.at(unit));
   }
 
   /**
    * optimized bracket operator for accessing local elements
    * of 1-D Coarray (const version)
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank == 1),
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank == 1),
              const local_type>::type
   inline operator[](const index_type & idx) const 
   {
@@ -510,8 +510,8 @@ public:
    * optimized bracket operator for accessing local elements
    * of 1-D Coarray
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank == 1), local_type>::type
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank == 1), local_type>::type
   inline operator[](const index_type & idx) {
     return *(_storage.lbegin()+idx);
   }
@@ -522,9 +522,10 @@ public:
    *   x[2][3] = 42;
    * \endcode
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank > 1), local_type>::type
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank > 1), local_type>::type
   inline operator[](const index_type & idx) {
+    // dereference first dimension and return a view on the remaining ones
     return _storage.local[0][idx];
   }
   
@@ -535,8 +536,8 @@ public:
    *   i = 42;
    * \endcode
    */
-  template<int __rank = _rank::value>
-  typename std::enable_if<(__rank == 0), value_type>::type
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(__valuetype_rank == 0), value_type>::type
   inline operator=(const value_type & value){
     return *(_storage.lbegin()) = value;
   }
@@ -550,8 +551,8 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline operator value_type() const {
     return *(_storage.lbegin());
   }
@@ -560,11 +561,10 @@ public:
    * convert scalar Coarray to a global reference.
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   explicit inline operator reference() {
-    return static_cast<reference>(
-            *(_storage.begin()+static_cast<index_type>(dash::myid())));
+    return _storage[static_cast<index_type>(_storage.team().myid())];
   }
   
   /**
@@ -573,8 +573,8 @@ public:
    */
   template<
     typename MEMTYPE,
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(size_t offs) {
     char * s_begin = reinterpret_cast<char *>(_storage.lbegin());
     s_begin += offs;
@@ -592,8 +592,8 @@ public:
   template<
     class MEMTYPE,
     class P=T,
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline MEMTYPE & member(const MEMTYPE P::*mem) {
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
@@ -608,8 +608,8 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type & operator +=(const value_type & value) {
     return *(_storage.lbegin()) += value;
   }
@@ -618,8 +618,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type & operator -=(const value_type & value) {
     return *(_storage.lbegin()) -= value;
   }
@@ -628,8 +628,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type & operator *=(const value_type & value) {
     return *(_storage.lbegin()) *= value;
   }
@@ -638,8 +638,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type & operator /=(const value_type & value) {
     return *(_storage.lbegin()) /= value;
   }
@@ -653,8 +653,8 @@ public:
    * \endcode
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator +(const value_type & value) const {
     return *(_storage.lbegin()) + value;
   }
@@ -663,8 +663,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator -(const value_type & value) const {
     return *(_storage.lbegin()) - value;
   }
@@ -673,8 +673,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator *(const value_type & value) const {
     return *(_storage.lbegin()) * value;
   }
@@ -683,8 +683,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator /(const value_type & value) const {
     return *(_storage.lbegin()) / value;
   }
@@ -693,8 +693,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator ++() {
     return ++(*(_storage.lbegin()));
   }
@@ -702,8 +702,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator ++(int) {
     return (*(_storage.lbegin()))++;
   }
@@ -712,8 +712,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator --() {
     return --(*(_storage.lbegin()));
   }
@@ -721,8 +721,8 @@ public:
    * allows fortran like local access of scalars
    */
   template<
-    int __rank = _rank::value,
-    typename = typename std::enable_if<(__rank == 0)>::type>
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   inline value_type operator --(int) {
     return (*(_storage.lbegin()))--;
   }
