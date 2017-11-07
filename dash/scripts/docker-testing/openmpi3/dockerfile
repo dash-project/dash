@@ -26,8 +26,8 @@ RUN           cd papi*/src/                     \
               && make                           \
               && make install
 
-# Openmpi 2.1
-ADD           https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.gz ompi.tgz
+# Openmpi 3.0
+ADD           https://www.open-mpi.org/software/ompi/v3.0/downloads/openmpi-3.0.0.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                         \
            && ./configure --prefix=/opt/openmpi   \

@@ -190,7 +190,7 @@ dart_ret_t dart_get(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_get ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -199,7 +199,7 @@ dart_ret_t dart_get(
     // use direct memcpy if we are on the same unit
     memcpy(dest, seginfo->selfbaseptr + offset,
         nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_get_blocking: memcpy nelem:%zu "
+    DART_LOG_DEBUG("dart_get: memcpy nelem:%zu "
                    "source (coll.): offset:%lu -> dest: %p",
                    nelem, offset, dest);
     return DART_OK;
@@ -286,7 +286,7 @@ dart_ret_t dart_put(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -307,7 +307,7 @@ dart_ret_t dart_put(
                           team_unit_id, nelem, dtype);
   }
 #else
-  DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
+  DART_LOG_DEBUG("dart_put: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
   // source on another node or shared memory windows disabled
@@ -384,7 +384,7 @@ dart_ret_t dart_accumulate(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_accumulate ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -528,7 +528,7 @@ dart_ret_t dart_compare_and_swap(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_compare_and_swap ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -578,7 +578,7 @@ dart_ret_t dart_get_handle(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_get_handle ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -619,7 +619,7 @@ dart_ret_t dart_get_handle(
   handle->needs_flush  = false;
 
   if (nchunks > 0) {
-    DART_LOG_TRACE("dart_get_blocking:  MPI_Rget (dest %p, size %zu)",
+    DART_LOG_TRACE("dart_get_handle:  MPI_Rget (dest %p, size %zu)",
                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
     if (MPI_Rget(dest_ptr,
                   nchunks,
@@ -631,7 +631,7 @@ dart_ret_t dart_get_handle(
                   win,
                  &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       return DART_ERR_INVAL;
     }
     offset   += nchunks * MAX_CONTIG_ELEMENTS;
@@ -641,7 +641,7 @@ dart_ret_t dart_get_handle(
   if (remainder > 0) {
     MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
     DART_LOG_TRACE(
-      "dart_get_blocking:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
+      "dart_get_handle:  MPI_Rget (dest %p, size %zu)", dest_ptr, remainder);
     if (MPI_Rget(dest_ptr,
                  remainder,
                  mpi_dtype,
@@ -652,7 +652,7 @@ dart_ret_t dart_get_handle(
                  win,
                  &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       return DART_ERR_INVAL;
     }
   }
@@ -690,7 +690,7 @@ dart_ret_t dart_put_handle(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put_handle ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -741,7 +741,7 @@ dart_ret_t dart_put_handle(
                 win,
                 &handle->reqs[handle->num_reqs++]) != MPI_SUCCESS) {
       free(handle);
-      DART_LOG_ERROR("dart_get ! MPI_Put failed");
+      DART_LOG_ERROR("dart_put_handle ! MPI_Put failed");
       return DART_ERR_INVAL;
     }
   }
@@ -779,7 +779,7 @@ dart_ret_t dart_put_blocking(
   dart_segment_info_t *seginfo = dart_segment_get_info(
                                     &(team_data->segdata), seg_id);
   if (dart__unlikely(seginfo == NULL)) {
-    DART_LOG_ERROR("dart_get_blocking ! "
+    DART_LOG_ERROR("dart_put_blocking ! "
                    "Unknown segment %i on team %i", seg_id, teamid);
     return DART_ERR_INVAL;
   }
@@ -792,7 +792,7 @@ dart_ret_t dart_put_blocking(
   if (team_unit_id.id == team_data->unitid) {
     memcpy(seginfo->selfbaseptr + offset, src,
         nelem * dart__mpi__datatype_sizeof(dtype));
-    DART_LOG_DEBUG("dart_put: memcpy nelem:%zu (from global allocation)"
+    DART_LOG_DEBUG("dart_put_blocking: memcpy nelem:%zu (from global allocation)"
                    "offset: %"PRIu64"", nelem, offset);
     return DART_OK;
   }
@@ -804,7 +804,7 @@ dart_ret_t dart_put_blocking(
                           team_unit_id, nelem, dtype);
   }
 #else
-  DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
+  DART_LOG_DEBUG("dart_put_blocking: shared windows disabled");
 #endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
 
   MPI_Win win  = seginfo->win;
@@ -929,7 +929,7 @@ dart_ret_t dart_get_blocking(
   const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
   const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
   char * dest_ptr  = (char*) dest;
-  MPI_Request reqs[2];
+  MPI_Request reqs[2] = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
   int nreqs = 0;
 
   if (nchunks > 0) {
@@ -1398,6 +1398,8 @@ dart_ret_t dart_test_local(
   dart_handle_t * handleptr,
   int32_t       * is_finished)
 {
+  int flag;
+
   DART_LOG_DEBUG("dart_test_local()");
   if (handleptr == NULL ||
       *handleptr == DART_HANDLE_NULL ||
@@ -1405,18 +1407,20 @@ dart_ret_t dart_test_local(
     *is_finished = 1;
     return DART_OK;
   }
+  *is_finished = 0;
 
   dart_handle_t handle = *handleptr;
   if (MPI_Testall(handle->num_reqs, handle->reqs,
-               is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  &flag, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
     return DART_ERR_OTHER;
   }
 
-  if (is_finished) {
+  if (flag) {
     // deallocate handle
     free(handle);
     *handleptr = DART_HANDLE_NULL;
+    *is_finished = 1;
   }
   DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
@@ -1427,11 +1431,15 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * is_finished)
 {
+  int flag;
+
   DART_LOG_DEBUG("dart_testall_local()");
   if (handles == NULL || n == 0) {
     DART_LOG_DEBUG("dart_testall_local: empty handles");
+    *is_finished = 1;
     return DART_OK;
   }
+  *is_finished = 0;
 
   MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof (MPI_Request));
   size_t r_n = 0;
@@ -1447,14 +1455,14 @@ dart_ret_t dart_testall_local(
   }
 
   if (r_n) {
-    if (MPI_Testall(r_n, mpi_req, is_finished,
+    if (MPI_Testall(r_n, mpi_req, &flag,
                     MPI_STATUSES_IGNORE) != MPI_SUCCESS){
       FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
       DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
       return DART_ERR_OTHER;
     }
 
-    if (*is_finished) {
+    if (flag) {
       for (size_t i = 0; i < n; i++) {
         if (handles[i] != DART_HANDLE_NULL) {
           // free the handle
@@ -1462,7 +1470,10 @@ dart_ret_t dart_testall_local(
           handles[i] = DART_HANDLE_NULL;
         }
       }
+      *is_finished = 1;
     }
+  } else {
+    *is_finished = 1;
   }
   FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
   DART_LOG_DEBUG("dart_testall_local > finished");

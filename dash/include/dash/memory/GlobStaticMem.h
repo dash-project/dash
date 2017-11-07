@@ -254,7 +254,7 @@ public:
   /**
    * Move constructor
    *
-   * \TODO make move constructor defaultable by using RAII 
+   * \TODO make move constructor defaultable by using RAII
    */
   GlobStaticMem(self_t && other)
   : _allocator(std::move(other._allocator)),
@@ -284,7 +284,7 @@ public:
   /**
    * Move-assignment operator.
    *
-   * \TODO make move constructor defaultable by using RAII 
+   * \TODO make move constructor defaultable by using RAII
    */
   self_t & operator=(self_t && other) {
     // deallocate old memory
@@ -458,38 +458,42 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units.
+   * Complete all outstanding non-blocking operations to all units.
    */
   void flush() noexcept
-  {
-    dart_flush(_begptr);
-  }
-
-  /**
-   * Complete all outstanding non-blocking operations executed by all units.
-   */
-  void flush_all() noexcept
   {
     dart_flush_all(_begptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Complete all outstanding non-blocking operations to the specified unit.
    */
-  void flush_local() noexcept
+  void flush(dash::team_unit_t target) noexcept
   {
-    dart_flush_local(_begptr);
+    dart_gptr_t gptr = _begptr;
+    gptr.unitid = target.id;
+    dart_flush(gptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Locally complete all outstanding non-blocking operations to all units.
    */
-  void flush_local_all() noexcept
+  void flush_local() noexcept
   {
     dart_flush_local_all(_begptr);
   }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to the specified
+   * unit.
+   */
+  void flush_local(dash::team_unit_t target) noexcept
+  {
+    dart_gptr_t gptr = _begptr;
+    gptr.unitid = target.id;
+    dart_flush_local(gptr);
+  }
+
 
   /**
    * Resolve the global pointer from an element position in a unit's
