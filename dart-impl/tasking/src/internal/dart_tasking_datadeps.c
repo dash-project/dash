@@ -469,7 +469,8 @@ dart_tasking_datadeps_match_local_datadep(
        elem != NULL; elem = elem->next)
   {
     if (DEP_ADDR_EQ(elem->taskdep, dep)) {
-      if (elem->task.local == task) {
+      dart_task_t *elem_task = elem->task.local;
+      if (elem_task == task) {
         // simply upgrade the dependency to an output dependency
         if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
           elem->taskdep.type = DART_DEP_INOUT;
@@ -484,34 +485,40 @@ dart_tasking_datadeps_match_local_datadep(
                      dep.gptr.segid,
                      DEP_ADDR(elem->taskdep),
                      elem->taskdep.gptr.segid,
-                     elem->task.local);
+                     elem_task);
 
       DART_LOG_TRACE("Checking task %p against task %p "
                      "(deptype: %i vs %i)",
-                     elem->task.local, task, elem->taskdep.type,
+                     elem_task, task, elem->taskdep.type,
                      dep.type);
 
       // lock the task here to avoid race condition
-      dart__base__mutex_lock(&(elem->task.local->mutex));
-      if (IS_ACTIVE_TASK(elem->task.local) &&
+      dart__base__mutex_lock(&(elem_task->mutex));
+      if (IS_ACTIVE_TASK(elem_task) &&
           (IS_OUT_DEP(dep) ||
               (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
-        // OUT dependencies have to wait for all previous dependencies
-        int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                      &task->unresolved_deps);
-        DART_LOG_TRACE("Making task %p a local successor of task %p "
-                       "(successor: %p, state: %i | num_deps: %i)",
-                       task, elem->task.local,
-                       elem->task.local->successor,
-                       elem->task.local->state, unresolved_deps);
-        dart_tasking_tasklist_prepend(&(elem->task.local->successor), task);
+        // check whether this task is already in the successor list
+        if (dart_tasking_tasklist_contains(elem_task->successor, task)){
+          // the task is already in the list, don't add it again!
+          DART_LOG_TRACE("Task %p already a local successor of task %p, skipping",
+                        task, elem_task);
+        } else {
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a local successor of task %p "
+                        "(successor: %p, state: %i | num_deps: %i)",
+                        task, elem_task,
+                        elem_task->successor,
+                        elem_task->state, unresolved_deps);
+          dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+        }
       }
-      dart__base__mutex_unlock(&(elem->task.local->mutex));
+      dart__base__mutex_unlock(&(elem_task->mutex));
       if (IS_OUT_DEP(elem->taskdep)) {
         // we can stop at the first OUT|INOUT dependency
         DART_LOG_TRACE("Stopping search for dependencies for task %p at "
                        "first OUT dependency encountered from task %p!",
-                       task, elem->task.local);
+                       task, elem_task);
         return DART_OK;
       }
     }

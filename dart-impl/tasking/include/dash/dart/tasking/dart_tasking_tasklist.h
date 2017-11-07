@@ -14,6 +14,13 @@ void dart_tasking_tasklist_prepend(
   task_list_t           ** tl,
   struct dart_task_data *  task) DART_INTERNAL;
 
+/**
+ * Check whether the task is already in the tasklist.
+ */
+bool dart_tasking_tasklist_contains(
+  task_list_t           * tl,
+  struct dart_task_data * task) DART_INTERNAL;
+
 task_list_t * dart_tasking_tasklist_allocate_elem() DART_INTERNAL;
 
 void dart_tasking_tasklist_deallocate_elem(task_list_t *tl) DART_INTERNAL;

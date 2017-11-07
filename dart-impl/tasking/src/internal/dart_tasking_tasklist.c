@@ -30,6 +30,17 @@ void dart_tasking_tasklist_prepend(task_list_t **tl, dart_task_t *task)
 }
 
 
+bool dart_tasking_tasklist_contains(
+  task_list_t           * tl,
+  struct dart_task_data * task)
+{
+  for (task_list_t *elem = tl; elem != NULL; elem = elem->next) {
+    if (elem->task == task) return true;
+  }
+  return false;
+}
+
+
 void dart_tasking_tasklist_fini()
 {
   while (free_task_list != NULL) {
