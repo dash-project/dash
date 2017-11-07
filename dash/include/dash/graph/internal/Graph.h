@@ -72,6 +72,10 @@ public:
 
 };
 
+/**
+ * Proxy type for vertices. Encapsulates logic for data retrieval, data manipulation 
+ * and iterator retrieval.
+ */
 template<typename GraphType, typename IteratorType>
 class VertexProxy {
 
@@ -81,6 +85,10 @@ class VertexProxy {
   typedef typename GraphType::vertex_type               vertex_type;
   typedef typename GraphType::vertex_properties_type    properties_type;
 
+  /**
+   * Handles the iterator ranges for adjacency iteration of the respective 
+   * vertex.
+   */
   template<typename Parent, typename GlobMemType>
   class edge_range {
 
@@ -96,21 +104,35 @@ class VertexProxy {
 
     public:
 
+      /*
+       * Constructs the range handler object.
+       */
       edge_range(parent_type & p, glob_mem_type * gmem) 
         : _parent(p),
           _glob_mem(gmem)
       { }
 
+      /**
+       * Returns global iterator to the first element in the edge list of
+       * the given vertex.
+       */
       global_iterator begin() {
         return begin(_parent._iterator);
       }
 
+      /**
+       * Returns global iterator past the last element in the edge list of
+       * the given vertex.
+       */
       global_iterator end() {
         return end(_parent._iterator);
       }
 
     private:
 
+      /**
+       * Begin iterator for global vertex iterators.
+       */
       template<typename VertexIteratorType>
       global_iterator begin(VertexIteratorType it) {
         auto lpos = _parent._iterator.lpos();
@@ -123,6 +145,9 @@ class VertexProxy {
         );
       }
 
+      /**
+       * Begin iterator for local vertex iterators.
+       */
       global_iterator begin(local_vertex_iterator it) {
         auto index = it_position(_glob_mem, it.pos());
         return global_iterator(
@@ -133,6 +158,9 @@ class VertexProxy {
         );
       }
       
+      /**
+       * End iterator for global vertex iterators.
+       */
       template<typename VertexIteratorType>
       global_iterator end(VertexIteratorType it) {
         auto lpos = _parent._iterator.lpos();
@@ -145,6 +173,9 @@ class VertexProxy {
         );
       }
 
+      /**
+       * End iterator for local vertex iterators.
+       */
       global_iterator end(local_vertex_iterator it) {
         auto index = it_position(_glob_mem, it.pos());
         return global_iterator(
@@ -155,18 +186,28 @@ class VertexProxy {
         );
       }
 
+      /**
+       * Determines the position of the edge-list for inbound and outbound
+       * edge memory spaces.
+       */
       template<typename _GMem>
       index_type it_position(_GMem * gmem, index_type pos) {
         return pos;
       }
 
+      /**
+       * Determines the position of the edge-list for the combined edge memory 
+       * space.
+       */
       index_type it_position(glob_mem_edge_comb_type * gmem, index_type pos) {
         return pos * 2;
       }
 
     private:
 
+      /** Reference to the corresponding VertexProxy object */
       parent_type &    _parent;
+      /** Reference to the GlobMem object of the targeted memory space */
       glob_mem_type *  _glob_mem;
 
   };
@@ -178,8 +219,14 @@ class VertexProxy {
 
 public:
 
+  /**
+   * Default constructor. Explicitly deleted.
+   */
   VertexProxy() = delete;
 
+  /**
+   * Constructs the object with a vertex iterator.
+   */
   VertexProxy(iterator_type it, graph_type * g) 
     : _iterator(it),
       _graph(g),
@@ -188,19 +235,31 @@ public:
       _edges(*this, g->_glob_mem_edge)
   { }
 
+  /**
+   * Returns a range for adjacent outbound edges of the referenced vertex.
+   */
   inout_edge_range_type & out_edges() {
     return _out_edges;
   }
 
+  /**
+   * Returns a range for adjacent inbound edges of the referenced vertex.
+   */
   inout_edge_range_type & in_edges() {
     return _in_edges;
   }
 
+  /**
+   * Returns a range for adjacent edges of the referenced vertex.
+   */
   edge_range_type & edges() {
     return _edges;
   }
 
-  properties_type & properties() {
+  /**
+   * Returns the properties of the referenced vertex. Data is loaded lazily.
+   */
+  properties_type & attributes() {
     // load properties lazily
     if(!_vertex_loaded) {
       _vertex = *_iterator;
@@ -209,14 +268,30 @@ public:
     return _vertex.properties;
   }
 
+  /**
+   * Sets the attribute data for the referenced vertex.
+   */
+  void set_attributes(properties_type & prop) {
+    _vertex.properties = prop;
+    auto ref = *_iterator;
+    ref = _vertex;
+  }
+
 private:
 
+  /** Iterator to the referenced vertex */
   iterator_type           _iterator;
+  /** data of the referenced vertex */
   vertex_type             _vertex;
+  /** Whether the vertex data has already been loaded */
   bool                    _vertex_loaded = false;
+  /** Pointer to the graph container */
   graph_type *            _graph;
+  /** Range object for outbound edges */
   inout_edge_range_type   _out_edges;
+  /** Range object for inbbound edges */
   inout_edge_range_type   _in_edges;
+  /** Range object for edges */
   edge_range_type         _edges;
 
 };
@@ -232,8 +307,6 @@ class Edge {
   typedef typename GraphType::vertex_index_type        vertex_index_type;
   typedef typename GraphType::edge_properties_type     properties_type;
 
-  friend GraphType;
-  
 public:
 
   /**
@@ -250,8 +323,8 @@ public:
       const properties_type & properties,
       const team_unit_t owner
   ) 
-    : _source(owner, source.pos()),
-      _target(owner, target.pos()),
+    : source(owner, source.pos()),
+      target(owner, target.pos()),
       properties(properties)
   { }
 
@@ -264,8 +337,8 @@ public:
       const properties_type & properties,
       const team_unit_t owner
   )
-    : _source(owner, source.pos()),
-      _target(target.lpos().unit, target.lpos().index),
+    : source(owner, source.pos()),
+      target(target.lpos().unit, target.lpos().index),
       properties(properties)
   { }
 
@@ -277,8 +350,8 @@ public:
       const vertex_index_type & target, 
       const properties_type & properties
   )
-    : _source(source),
-      _target(target),
+    : source(source),
+      target(target),
       properties(properties)
   { }
 
@@ -286,48 +359,102 @@ public:
 
   /** Properties of this edge */
   properties_type       properties;
-
-private:
-
-  //TODO: Examine, if saving source can be avoided
   /** Source vertex the edge is pointing from */
-  vertex_index_type     _source;
+  vertex_index_type     source;
   /** Target vertex the edge is pointing to */
-  vertex_index_type     _target;
+  vertex_index_type     target;
 
 };
 
+/**
+ * Proxy type for edges. Encapsulates logic for data retrieval and 
+ * manipulation.
+ */
 template<typename GraphType, typename IteratorType>
 class EdgeProxy {
 
-  typedef GraphType                                         graph_type;
-  typedef IteratorType                                      iterator_type;
-  typedef typename GraphType::edge_type                     edge_type;
-  typedef typename GraphType::edge_properties_type          properties_type;
+  typedef GraphType                                          graph_type;
+  typedef IteratorType                                       iterator_type;
+  typedef typename graph_type::edge_type                     edge_type;
+  typedef typename graph_type::edge_properties_type          properties_type;
+  typedef typename graph_type::global_vertex_iterator        vertex_iterator;
 
 public:
-
+  /**
+   * Default constructor. Explicitly deleted.
+   */
   EdgeProxy() = delete;
 
+  /**
+   * Constructs the edge proxy from a given edge iterator.
+   */
   EdgeProxy(iterator_type it, graph_type * g) 
     : _iterator(it),
       _graph(g)
   { }
 
-  properties_type & properties() {
-    // load properties lazily
-    if(!_edge_loaded) {
-      _edge = *_iterator;
-      _edge_loaded = true;
-    }
+  /**
+   * Returns the properties of the referenced edge. Data is loaded lazily.
+   */
+  properties_type & attributes() {
+    lazy_load();
     return _edge.properties;
+  }
+
+  /**
+   * Returns iglobal iterator to the source vertex.
+   */
+  vertex_iterator source() {
+    lazy_load();
+    return vertex_iterator(
+        _graph->_glob_mem_vertex,
+        _edge.source.unit,
+        _edge.source.offset
+    );
+  }
+
+  /**
+   * Returns iglobal iterator to the target vertex.
+   */
+  vertex_iterator target() {
+    lazy_load();
+    return vertex_iterator(
+        _graph->_glob_mem_vertex,
+        _edge.target.unit,
+        _edge.target.offset
+    );
+  }
+
+  /**
+   * Sets the attribute data for the referenced edge.
+   */
+  void set_attributes(properties_type & prop) {
+    _edge.properties = prop;
+    auto ref = *_iterator;
+    ref = _edge;
   }
 
 private:
 
+  /**
+   * Loads edge data lazily.
+   */
+  void lazy_load() {
+    if(!_edge_loaded) {
+      _edge = *_iterator;
+      _edge_loaded = true;
+    }
+  }
+
+private:
+
+  /** Iterator to the referenced edge */
   iterator_type         _iterator;
+  /** Data of the referenced edge */
   edge_type             _edge;
+  /** Whether edge data has already been loaded */
   bool                  _edge_loaded = false;
+  /** Pointer to the graph container */
   graph_type *          _graph;
 
 };

@@ -194,7 +194,7 @@ public:
    * Returns an object handling interactions with a vertex pointed to by
    * the given iterator.
    */
-  local_vertex_proxy_type operator[](local_vertex_iterator & it) {
+  local_vertex_proxy_type operator[](local_vertex_iterator it) {
     return local_vertex_proxy_type(it, this);
   }
 
@@ -202,7 +202,7 @@ public:
    * Returns an object handling interactions with a vertex pointed to by
    * the given iterator.
    */
-  global_vertex_proxy_type operator[](global_vertex_iterator & it) {
+  global_vertex_proxy_type operator[](global_vertex_iterator it) {
     return global_vertex_proxy_type(it, this);
   }
 
@@ -210,7 +210,7 @@ public:
    * Returns an object handling interactions with an edge pointed to by
    * the given iterator.
    */
-  local_inout_edge_proxy_type operator[](local_inout_edge_iterator & it) {
+  local_inout_edge_proxy_type operator[](local_inout_edge_iterator it) {
     return local_inout_edge_proxy_type(it, this);
   }
 
@@ -218,7 +218,7 @@ public:
    * Returns an object handling interactions with an edge pointed to by
    * the given iterator.
    */
-  global_inout_edge_proxy_type operator[](global_inout_edge_iterator & it) {
+  global_inout_edge_proxy_type operator[](global_inout_edge_iterator it) {
     return global_inout_edge_proxy_type(it, this);
   }
 
@@ -226,7 +226,7 @@ public:
    * Returns an object handling interactions with an edge pointed to by
    * the given iterator.
    */
-  global_edge_proxy_type operator[](global_edge_iterator & it) {
+  global_edge_proxy_type operator[](global_edge_iterator it) {
     return global_edge_proxy_type(it, this);
   }
 
@@ -491,13 +491,13 @@ public:
     );
     // add missing edges to local memory space
     for(auto edge : edges) {
-      if(edge._source.unit == _myid) {
-        add_local_edge(edge._source, edge._target, edge.properties, 
+      if(edge.source.unit == _myid) {
+        add_local_edge(edge.source, edge.target, edge.properties, 
             _glob_mem_out_edge);
       }
-      if(edge._target.unit == _myid) {
+      if(edge.target.unit == _myid) {
         // _glob_mem_in_edge == _glob_mem_out_edge for undirected graph types
-        add_local_edge(edge._target, edge._source, edge.properties, 
+        add_local_edge(edge.target, edge.source, edge.properties, 
             _glob_mem_in_edge);
         //TODO: for directed graphs, should target and source really be mutated
         //      in the in-edge list?
