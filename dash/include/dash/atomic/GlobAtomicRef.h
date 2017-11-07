@@ -320,7 +320,7 @@ public:
    */
   T fetch_sub (
     /// Value to be subtracted from global atomic variable.
-    const T & value) const
+    const T & value)
   {
     return fetch_op(dash::plus<T>(), -value);
   }
@@ -353,10 +353,20 @@ public:
     return *this;
   }
 
+  /// postfix atomically increment value by one
+  T operator++ (int) {
+    return fetch_add(1);
+  }
+
   /// prefix atomically decrement value by one
   self_t& operator-- () {
     sub(1);
     return *this;
+  }
+
+  /// postfix atomically decrement value by one
+  T operator-- (int) {
+    return fetch_sub(1);
   }
 
   /// atomically increment value by ref

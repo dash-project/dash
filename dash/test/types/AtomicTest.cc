@@ -416,6 +416,16 @@ TEST_F(AtomicTest, AtomicInterface){
   ASSERT_EQ_U(array[3].load(), -2*dash::size());
 
   dash::barrier();
+  if (dash::myid() == dash::size()-1){
+    value_t prev = array[0]++;
+    ASSERT_EQ_U(prev, dash::size());
+    ASSERT_EQ_U(array[0].load(), dash::size()+1);
+
+    prev = array[0]--;
+    ASSERT_EQ_U(prev, dash::size()+1);
+    ASSERT_EQ_U(array[0].load(), dash::size());
+  }
+  dash::barrier();
 
   if(dash::myid() == 0){
     auto oldval = array[3].exchange(1);
