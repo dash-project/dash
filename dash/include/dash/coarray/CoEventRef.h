@@ -20,7 +20,7 @@ public:
     Team & team = dash::Team::Null())
   : _team(team),
     _gptr(gptr) {}
-  
+
   /**
    * post an event to this unit. This function is thread-safe
    */
@@ -30,7 +30,7 @@ public:
     gref.add(1);
     DASH_LOG_DEBUG("event posted");
   }
-  
+
   /**
    * returns the number of arrived events at this unit
    */
@@ -39,7 +39,7 @@ public:
     GlobRef<event_ctr_t> gref(_gptr);
     return gref.load();
   }
-  
+
   inline Team & team() {
     return _team;
   }
@@ -48,8 +48,8 @@ public:
   }
   inline bool operator !=(const self_t & other) const noexcept {
     return !(*this == other);
-  }  
-  
+  }
+
 private:
   Team   & _team = dash::Team::All();
   gptr_t   _gptr;

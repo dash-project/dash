@@ -21,20 +21,20 @@ public:
   using iterator_category = std::random_access_iterator_tag;
 
 public:
-  
+
   explicit CoEventIter(
     const gptr_t & pos,
     Team & team = dash::Team::Null())
   : _team(team),
     _gptr(pos) {}
-  
+
   inline Team & team() {
     return _team;
   }
   inline value_type operator[] (int pos) const {
     return value_type(_gptr + pos, _team);
   }
-  
+
   inline value_type operator* () const {
     return CoEventRef(_gptr, _team);
   }
@@ -58,7 +58,7 @@ public:
   }
   inline bool operator !=(const self_t & other) const noexcept {
     return !(*this == other);
-  }  
+  }
   /*
    * Arith. operators
    */
@@ -92,7 +92,7 @@ public:
   inline self_t operator -(int i) const noexcept {
     return self_t(_gptr - i);
   }
-  
+
 private:
   Team   & _team = dash::Team::Null();
   gptr_t   _gptr;

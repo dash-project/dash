@@ -16,21 +16,21 @@ namespace dash {
 
 /**
  * \ingroup DashCoarrayConcept
- * 
+ *
  *
  * A fortran style coevent.
  *
  * Coevent can be used for point-to-point synchronization. Events can be posted
  * to any image. Waiting on non-local events is not supported.
- * 
+ *
  * \note Coevents might deadlock if multiple units are pinned to the same
  *       cpu-core. This is due to progress problems in MPI.
- * 
+ *
  * Example:
- * 
+ *
  * \code
  * Coevent events;
- * 
+ *
  * events(2).post();
  * if(this_image() == 2){
  *  events.wait();
@@ -47,12 +47,12 @@ public:
   using const_iterator = coarray::CoEventIter;
   using reference      = coarray::CoEventRef;
   using size_type      = int;
-  
+
 private:
   dash::Array<event_cnt_t> _event_counts;
-  
+
 public:
-  
+
   /**
    * Constructor to setup and initialize an Coevent.
    */
@@ -62,30 +62,30 @@ public:
         initialize(team);
       }
     }
-  
+
   iterator begin() noexcept {
     return iterator(static_cast<gptr_t>(_event_counts.begin()));
   }
-  
+
   const_iterator begin() const noexcept {
     return const_iterator(static_cast<gptr_t>(_event_counts.begin()));
   }
-  
+
   iterator end() {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
     return iterator(static_cast<gptr_t>(_event_counts.end()));
   }
-  
+
   const_iterator end() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
     return const_iterator(static_cast<gptr_t>(_event_counts.end()));
   }
-  
+
   size_type size() const {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
     return _team->size();
   }
-  
+
   /**
    * wait for a given number of incoming events.
    * This function is thread-safe
@@ -106,7 +106,7 @@ public:
     // decrement the counter
     gref.sub(count);
   }
-  
+
   inline int test() {
     DASH_LOG_DEBUG("test for events on this unit");
     return _event_counts.at(static_cast<int>(_team->myid())).load();
@@ -125,7 +125,7 @@ public:
       _is_initialized = true;
     }
   }
-  
+
   inline Team & team() {
     return *_team;
   }
@@ -145,7 +145,7 @@ public:
   inline reference operator()(const team_unit_t & unit) noexcept {
     return this->operator()(static_cast<int>(unit));
   }
-  
+
 private:
   Team * _team;
   bool   _is_initialized = false;

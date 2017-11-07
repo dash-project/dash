@@ -33,11 +33,11 @@
  * declaring a \c dash::Coarray variable.
  *
  * \par Types
- * 
+ *
  * \sa DashCoarrayLib
  * \sa dash::Comutex
  * \sa dash::Coevent
- * 
+ *
  * \}
  */
 
@@ -82,7 +82,7 @@ constexpr bool type_is_complete() {
 template<
   typename element_type,
   typename pattern_type,
-  int rank> 
+  int rank>
 struct local_ref_type {
   using type = LocalMatrixRef<element_type,
                               rank+1,
@@ -147,7 +147,7 @@ struct make_coarray_symmetric_pattern {
 
 /**
  * A fortran style coarray.
- *  
+ *
  * Interface of the Coarray for scalar and array types showing local
  * and global accesses:
  * \code
@@ -155,11 +155,11 @@ struct make_coarray_symmetric_pattern {
  * dash::Coarray<int[10][20]> x;  // 2D-Coarray
  * dash::Coarray<int[][20]> y(n); // one open dim,
  *                                // set at runtime in ctor
- * 
+ *
  * // access syntax
  * i(unit) = value; // global access
  * i       = value; // local access
- * 
+ *
  * x(unit)[idx1][idx2] = value; // global access
  * x[idx1][idx2]       = value; // local access
  * \endcode
@@ -174,31 +174,31 @@ class Coarray {
 private:
 
   using self_t          = Coarray<T, IndexType, Arrangement>;
-  
+
   /**
    * _element_type has no extent and is wrapped with \c dash::Atomic, if coarray
    * was declared with \c dash::Atomic<T>
    */
   using _element_type   = typename std::remove_all_extents<T>::type;
   using _base_type      = typename dash::remove_atomic<_element_type>::type;
-  
+
   using _valuetype_rank = std::integral_constant<int,
                             std::rank<T>::value>;
   using _rank           = std::integral_constant<int,
                             _valuetype_rank::value+1>;
-  
+
   using _size_type      = typename std::make_unsigned<IndexType>::type;
   using _sspec_type     = SizeSpec<_rank::value, _size_type>;
   using _pattern_type   = typename coarray::make_coarray_symmetric_pattern<T,IndexType, Arrangement>::type;
-  
+
   using _storage_type   = Matrix<_element_type, _rank::value, IndexType, _pattern_type>;
-  
+
   template<int _subrank = _valuetype_rank::value>
   using _view_type      = typename _storage_type::template view_type<_subrank>;
   using _local_ref_type = typename coarray::detail::local_ref_type<
                                       _element_type,
                                       _pattern_type,
-                                      _valuetype_rank::value>::type; 
+                                      _valuetype_rank::value>::type;
 
   using _offset_type    = std::array<IndexType, _rank::value>;
 
@@ -208,10 +208,10 @@ public:
   using difference_type        = IndexType;
   using index_type             = IndexType;
   using size_type              = _size_type;
-  using iterator               = GlobIter<_element_type, _pattern_type>; 
-  using const_iterator         = GlobIter<const _element_type, _pattern_type>; 
-  using reverse_iterator       = GlobIter<_element_type, _pattern_type>; 
-  using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>; 
+  using iterator               = GlobIter<_element_type, _pattern_type>;
+  using const_iterator         = GlobIter<const _element_type, _pattern_type>;
+  using reverse_iterator       = GlobIter<_element_type, _pattern_type>;
+  using const_reverse_iterator = GlobIter<const _element_type, _pattern_type>;
   using reference              = typename coarray::detail::ref_type<_element_type>::type;
   using const_reference        = typename coarray::detail::const_ref_type<_element_type>::type;
   using local_pointer          = _element_type *;
@@ -220,7 +220,7 @@ public:
   using view_type              = _view_type<subrank>;
   using local_type             = _local_ref_type;
   using pattern_type           = _pattern_type;
-  
+
 private:
   constexpr _sspec_type _make_size_spec() const noexcept {
     return _sspec_type(dash::ce::append(
@@ -233,7 +233,7 @@ private:
     static_assert(
         !coarray::detail::type_is_complete<T>(),
       "Array type may not be fully specified");
-    
+
     return _sspec_type(dash::ce::append(
               std::array<size_type, 1> {static_cast<size_type>(dash::size())},
               dash::ce::replace_nth<0>(
@@ -241,21 +241,21 @@ private:
                 coarray::detail::type_extents_as_array<T,
                 size_type, _valuetype_rank::value>())));
   }
-  
+
   constexpr _offset_type _offsets_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().global(unit, std::array<index_type, _rank::value> {});
   }
-  
+
   constexpr _offset_type _extents_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().local_extents(unit);
   }
-  
+
 public:
-  
+
   static constexpr dim_t ndim() noexcept {
     return static_cast<dim_t>(_rank::value);
   }
-  
+
   /**
    * Constructor for scalar types and fully specified array types:
    * \code
@@ -265,7 +265,7 @@ public:
    */
   explicit Coarray(Team & team = Team::All()) {
     if(dash::is_initialized() &&
-        (std::is_array<_base_type>::value == false 
+        (std::is_array<_base_type>::value == false
          || std::extent<_base_type, 0>::value != 0))
     {
       allocate(team);
@@ -286,16 +286,16 @@ public:
       allocate(first_dim, team);
     }
   }
-  
+
 #if 0
   // disabled as currently no at least 2-dimensional pattern supports this
   /**
    * Constructor for array types, where local size is not equal among
    * all units. Requires a pattern that supports an asymmetric layout.
    * Possibly generated using
-   * 
+   *
    * \todo enforce using pattern properties
-   * 
+   *
    * \c dash::coarray::make_coarray_asymmetric_pattern
    * \param extents vector of all extents
    * \param team
@@ -313,7 +313,7 @@ public:
     }
   }
 #endif
-  
+
   template<
   int __valuetype_rank = _valuetype_rank::value,
   typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
@@ -323,19 +323,19 @@ public:
     *(_storage.lbegin()) = value;
     _storage.barrier();
   }
-  
+
   /* ======================================================================== */
   /*                         DASH Container Concept                           */
   /* ======================================================================== */
-  
+
   constexpr const pattern_type & pattern() const noexcept {
     return _storage.pattern();
   }
-  
+
   iterator begin() noexcept {
     return _storage.begin();
   }
-  
+
   constexpr const_iterator begin() const noexcept {
     return _storage.begin();
   }
@@ -343,11 +343,11 @@ public:
   constexpr const_iterator cbegin() const noexcept {
     return _storage.begin();
   }
-  
+
   iterator end() noexcept {
     return _storage.end();
   }
-  
+
   constexpr const_iterator end() const noexcept {
     return _storage.end();
   }
@@ -355,23 +355,23 @@ public:
   constexpr const_iterator cend() const noexcept {
     return _storage.cend();
   }
-  
+
   local_pointer lbegin() noexcept {
     return _storage.lbegin();
   }
-  
+
   constexpr const_local_pointer lbegin() const noexcept {
     return _storage.lbegin();
   }
-  
+
   local_pointer lend() noexcept {
     return _storage.lend();
   }
-  
+
   constexpr const_local_pointer lend() const noexcept {
     return _storage.lend();
   }
-  
+
   constexpr size_type size() const noexcept {
     return _storage.size();
   }
@@ -384,15 +384,15 @@ public:
     std::swap(this->_storage, other._storage);
     dash::barrier();
   }
-  
+
   constexpr size_type local_size() const noexcept {
     return _storage.local_size();
   }
-  
+
   constexpr bool is_local(index_type gi) const noexcept {
     return _storage.is_local(gi);
   }
-  
+
   /**
    * allocate an array which was initialized before dash has been initialized
    */
@@ -421,7 +421,7 @@ public:
                                       team));
     }
   }
- 
+
   /**
    * free the memory allocated by this coarray. After deallocation, the coarray
    * cannot be used anymore.
@@ -429,15 +429,15 @@ public:
   inline void deallocate(){
     _storage.deallocate();
   }
-  
+
   inline Team & team() {
     return _storage.team();
   }
-  
+
   inline void barrier() {
     _storage.barrier();
   }
-  
+
   /**
    * Blocks until all team members of this container have reached the statement
    * and flushes the memory.
@@ -445,7 +445,7 @@ public:
   inline void sync_all() {
     _storage.barrier();
   }
-  
+
   /**
    * Blocks until all selected team members of this container have reached
    * the statement and flushes the memory.
@@ -455,15 +455,15 @@ public:
     _storage.flush();
     dash::coarray::sync_images(image_ids);
   }
-  
+
   inline void flush(){
     _storage.flush();
   }
-  
+
   inline void flush_local(){
     _storage.flush_local();
   }
-  
+
   /* ======================================================================== */
   /*                      Operators for element access                        */
   /* ======================================================================== */
@@ -482,7 +482,7 @@ public:
   inline operator()(const index_type & unit) {
     return _storage[unit];
   }
-  
+
   /**
    * Operator to select remote unit for scalar types
    */
@@ -500,7 +500,7 @@ public:
   template<int __valuetype_rank = _valuetype_rank::value>
   typename std::enable_if<(__valuetype_rank == 1),
              const local_type>::type
-  inline operator[](const index_type & idx) const 
+  inline operator[](const index_type & idx) const
   {
     return const_cast<const local_type>(
         *(_storage.lbegin()+idx));
@@ -528,7 +528,7 @@ public:
     // dereference first dimension and return a view on the remaining ones
     return _storage.local[0][idx];
   }
-  
+
   /**
    * allows fortran like local assignment of scalars
    * \code
@@ -556,7 +556,7 @@ public:
   inline operator value_type() const {
     return *(_storage.lbegin());
   }
-  
+
   /**
    * convert scalar Coarray to a global reference.
    */
@@ -566,7 +566,7 @@ public:
   explicit inline operator reference() {
     return _storage[static_cast<index_type>(_storage.team().myid())];
   }
-  
+
   /**
    * Get a reference to a member of a certain type at the
    * specified offset
@@ -613,7 +613,7 @@ public:
   inline value_type & operator +=(const value_type & value) {
     return *(_storage.lbegin()) += value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -623,7 +623,7 @@ public:
   inline value_type & operator -=(const value_type & value) {
     return *(_storage.lbegin()) -= value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -633,7 +633,7 @@ public:
   inline value_type & operator *=(const value_type & value) {
     return *(_storage.lbegin()) *= value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -643,7 +643,7 @@ public:
   inline value_type & operator /=(const value_type & value) {
     return *(_storage.lbegin()) /= value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    * \code
@@ -658,7 +658,7 @@ public:
   inline value_type operator +(const value_type & value) const {
     return *(_storage.lbegin()) + value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -668,7 +668,7 @@ public:
   inline value_type operator -(const value_type & value) const {
     return *(_storage.lbegin()) - value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -678,7 +678,7 @@ public:
   inline value_type operator *(const value_type & value) const {
     return *(_storage.lbegin()) * value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -688,7 +688,7 @@ public:
   inline value_type operator /(const value_type & value) const {
     return *(_storage.lbegin()) / value;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -707,7 +707,7 @@ public:
   inline value_type operator ++(int) {
     return (*(_storage.lbegin()))++;
   }
-  
+
   /**
    * allows fortran like local access of scalars
    */
@@ -726,7 +726,7 @@ public:
   inline value_type operator --(int) {
     return (*(_storage.lbegin()))--;
   }
-  
+
 private:
   /// storage backend
   _storage_type _storage;

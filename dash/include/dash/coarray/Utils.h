@@ -3,9 +3,11 @@
 
 #include <dash/Types.h>
 
+#define DART_TAG_SYNC_IMAGES 10016;
+
 /**
  * \defgroup  DashCoarrayLib  Coarray Runtime Interface
- * 
+ *
  * \ingroup DashCoarrayConcept
  *
  * Functions of the \c dash::coarray extension to provide an interface similar to
@@ -43,12 +45,12 @@ inline ssize_t num_images() {
 }
 
 /**
- * blocks until all units reach this statement. This statement does not 
+ * blocks until all units reach this statement. This statement does not
  * imply a flush. If a flush is required, use the corresponding
  * \c dash::Coarray::sync_all() method of Coarray.
- * 
+ *
  * \sa dash::coarray::sync_images()
- * 
+ *
  * \ingroup DashCoarrayLib
  */
 inline void sync_all(){
@@ -59,17 +61,18 @@ inline void sync_all(){
  * Blocks until all selected units reach this statement. This statement does
  * not imply a flush. If a flush is required, use the \c sync_all() method of
  * the Coarray
- * 
+ *
  * \note If possible use \c sync_all() or \c Coevent for performance reasons.
- *       \c sync_images() is implemented using two-sided operations based on 
- *       the implementation of \c MPI_Barrier() in OpenMPI
- * 
+ *       \c sync_images() is implemented using two-sided operations based on
+ *       a implementation of \c MPI_Barrier(). For dispatching the messages
+ *       we use tag DART_TAG_SYNC_IMAGES
+ *
  * \sa dash::coarray::sync_all()
- * 
+ *
  * \ingroup DashCoarrayLib
  */
 template<typename Container>
-inline void sync_images(const Container & image_ids){    
+inline void sync_images(const Container & image_ids){
   using element = typename Container::value_type;
 
   auto myid     = this_image();
@@ -82,10 +85,9 @@ inline void sync_images(const Container & image_ids){
     return;
   }
 
-  auto root        = global_unit_t{
+  auto root          = global_unit_t{
                         *(std::min(image_ids.begin(), image_ids.end()))};
-  // 10000 + -MCA_COLL_BASE_TAG_BARRIER of openmpi
-  auto tag           =  10016;
+  auto tag           =  DART_TAG_SYNC_IMAGES;
   // DART does not specify if nullptr is allowed as target
   char buffer        = 0;
 
@@ -103,7 +105,7 @@ inline void sync_images(const Container & image_ids){
     // I am a leave, send message to root
     dart_send(&buffer, 1, DART_TYPE_BYTE,
               tag,
-              global_unit_t{root});      
+              global_unit_t{root});
   }
 
   // Second phase: recieve message from root
@@ -130,10 +132,10 @@ inline void sync_images(const Container & image_ids){
  * Broadcasts the value on master to all other members of this co_array
  * \note fortran defines this function only for scalar Coarray.
  *       This implementation allows you to broadcast arrays as well
- * 
+ *
  * \param coarr  coarray which should be broadcasted
  * \param master the value of this unit will be broadcastet
- * 
+ *
  * \ingroup DashCoarrayLib
  */
 template<typename T>
@@ -152,9 +154,9 @@ void cobroadcast(Coarray<T> & coarr, const team_unit_t & master){
 /**
  * Performes a broadside reduction of the Coarray images.
  * \param coarr   perform the reduction on this array
- * \param op      one of the \ref DashReduceOperations 
+ * \param op      one of the \ref DashReduceOperations
  * \param master  unit which recieves the result. -1 to broadcast to all units
- * 
+ *
  * \ingroup DashCoarrayLib
  */
 template<typename T, typename BinaryOp>
