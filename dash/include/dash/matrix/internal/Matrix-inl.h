@@ -130,7 +130,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   other._lend     = nullptr;
   DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
   return *this;
-};
+}
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 MatrixRef<T, NumDim, NumDim, PatternT>
