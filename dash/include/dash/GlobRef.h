@@ -285,16 +285,28 @@ public:
 
   self_t & operator++() {
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
+    operator=(++val);
     return *this;
+  }
+
+  nonconst_value_type operator++(int) {
+    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type res = val++;
+    operator=(val);
+    return res;
   }
 
   self_t & operator--() {
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
+    operator=(--val);
     return *this;
+  }
+
+  nonconst_value_type operator--(int) {
+    nonconst_value_type val = operator nonconst_value_type();
+    nonconst_value_type res = val--;
+    operator=(val);
+    return res;
   }
 
   self_t & operator*=(const_value_type& ref) {
