@@ -493,27 +493,28 @@ dart_tasking_datadeps_match_local_datadep(
                      dep.type);
 
       // lock the task here to avoid race condition
-      dart__base__mutex_lock(&(elem_task->mutex));
-      if (IS_ACTIVE_TASK(elem_task) &&
-          (IS_OUT_DEP(dep) ||
-              (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep)))){
-        // check whether this task is already in the successor list
-        if (dart_tasking_tasklist_contains(elem_task->successor, task)){
-          // the task is already in the list, don't add it again!
-          DART_LOG_TRACE("Task %p already a local successor of task %p, skipping",
-                        task, elem_task);
-        } else {
-          int32_t unresolved_deps = DART_INC_AND_FETCH32(
-                                        &task->unresolved_deps);
-          DART_LOG_TRACE("Making task %p a local successor of task %p "
-                        "(successor: %p, state: %i | num_deps: %i)",
-                        task, elem_task,
-                        elem_task->successor,
-                        elem_task->state, unresolved_deps);
-          dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+      if (IS_OUT_DEP(dep) ||
+              (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
+        dart__base__mutex_lock(&(elem_task->mutex));
+        if (IS_ACTIVE_TASK(elem_task)){
+          // check whether this task is already in the successor list
+          if (dart_tasking_tasklist_contains(elem_task->successor, task)){
+            // the task is already in the list, don't add it again!
+            DART_LOG_TRACE("Task %p already a local successor of task %p, skipping",
+                          task, elem_task);
+          } else {
+            int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                          &task->unresolved_deps);
+            DART_LOG_TRACE("Making task %p a local successor of task %p "
+                          "(successor: %p, state: %i | num_deps: %i)",
+                          task, elem_task,
+                          elem_task->successor,
+                          elem_task->state, unresolved_deps);
+            dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+          }
         }
+        dart__base__mutex_unlock(&(elem_task->mutex));
       }
-      dart__base__mutex_unlock(&(elem_task->mutex));
       if (IS_OUT_DEP(elem->taskdep)) {
         // we can stop at the first OUT|INOUT dependency
         DART_LOG_TRACE("Stopping search for dependencies for task %p at "
