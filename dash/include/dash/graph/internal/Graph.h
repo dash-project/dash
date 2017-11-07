@@ -86,10 +86,13 @@ class VertexProxy {
 
     typedef Parent parent_type;
     typedef GlobMemType glob_mem_type;
+    typedef typename glob_mem_type::index_type          index_type;
     typedef typename glob_mem_type::global_iterator     global_iterator;
     typedef typename glob_mem_type::local_iterator      local_iterator;
     typedef typename parent_type::graph_type::local_vertex_iterator
       local_vertex_iterator;
+    typedef typename parent_type::graph_type::glob_mem_edge_comb_type
+      glob_mem_edge_comb_type;
 
     public:
 
@@ -111,19 +114,21 @@ class VertexProxy {
       template<typename VertexIteratorType>
       global_iterator begin(VertexIteratorType it) {
         auto lpos = _parent._iterator.lpos();
+        auto index = it_position(_glob_mem, lpos.index);
         return global_iterator(
             _glob_mem,
             lpos.unit,
-            lpos.index,
+            index,
             0
         );
       }
 
       global_iterator begin(local_vertex_iterator it) {
+        auto index = it_position(_glob_mem, it.pos());
         return global_iterator(
             _glob_mem,
             _parent._graph->_myid,
-            it.pos(),
+            index,
             0
         );
       }
@@ -131,21 +136,32 @@ class VertexProxy {
       template<typename VertexIteratorType>
       global_iterator end(VertexIteratorType it) {
         auto lpos = _parent._iterator.lpos();
+        auto index = it_position(_glob_mem, lpos.index);
         return global_iterator(
             _glob_mem,
             lpos.unit,
-            lpos.index,
-            _glob_mem->container_size(lpos.unit, lpos.index)
+            index,
+            _glob_mem->container_size(lpos.unit, index)
         );
       }
 
       global_iterator end(local_vertex_iterator it) {
+        auto index = it_position(_glob_mem, it.pos());
         return global_iterator(
             _glob_mem,
             _parent._graph->_myid,
-            it.pos(),
-            _glob_mem->container_size(_parent._graph->_myid, it.pos())
+            index,
+            _glob_mem->container_size(_parent._graph->_myid, index)
         );
+      }
+
+      template<typename _GMem>
+      index_type it_position(_GMem * gmem, index_type pos) {
+        return pos;
+      }
+
+      index_type it_position(glob_mem_edge_comb_type * gmem, index_type pos) {
+        return pos * 2;
       }
 
     private:
