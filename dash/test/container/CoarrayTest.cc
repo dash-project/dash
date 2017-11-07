@@ -35,7 +35,7 @@ TEST_F(CoarrayTest, TypesInterface)
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
   dash::Coarray<int[][20]>   y(n);
-  
+
   // check scalar case
   {
     using value_type             = decltype(i)::value_type;
@@ -53,7 +53,7 @@ TEST_F(CoarrayTest, TypesInterface)
     using view_type              = decltype(i)::view_type<decltype(i)::ndim()>;
     using local_type             = decltype(i)::local_type;
     using pattern_type           = decltype(i)::pattern_type;
-    
+
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
@@ -74,7 +74,7 @@ TEST_F(CoarrayTest, TypesInterface)
     using view_type              = decltype(x)::view_type<decltype(x)::ndim()>;
     using local_type             = decltype(x)::local_type;
     using pattern_type           = decltype(x)::pattern_type;
-    
+
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
@@ -96,7 +96,7 @@ TEST_F(CoarrayTest, TypesInterface)
     using view_type              = decltype(y)::view_type<decltype(y)::ndim()>;
     using local_type             = decltype(y)::local_type;
     using pattern_type           = decltype(y)::pattern_type;
-    
+
     static_assert(std::rank<value_type>::value == 0,
                   "base type must have rank 0");
   }
@@ -106,9 +106,9 @@ TEST_F(CoarrayTest, ContainerInterface)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
-  
+
   int value = 10;
-  
+
   // access syntax
   // custom proxy reference necessary
   i(0) = value; // global access
@@ -117,7 +117,7 @@ TEST_F(CoarrayTest, ContainerInterface)
   // access using team_unit_t
   x(static_cast<dash::team_unit_t>(0))[1][2] = value; // global access
   x[2][3]    = value; // local access
-  
+
   // conversion test
   int b = i;
 #if 1
@@ -126,11 +126,11 @@ TEST_F(CoarrayTest, ContainerInterface)
   int d = i--;
   int e = ++i;
   int f = --i;
-  
+
   // expression test
   int g = ((b + i) * i) / i;
   int h = i + b;
-  
+
   // Coarray to Coarray
   if(num_images() >= 2){
     x(0)[3][4] = x(1)[1][2];
@@ -151,7 +151,7 @@ TEST_F(CoarrayTest, ContainerInterface)
 
   int value_a = swap_a[0];
   int value_b = swap_b[0];
-  
+
   ASSERT_EQ_U(value_a, 1);
   ASSERT_EQ_U(value_b, 0);
 }
@@ -188,13 +188,13 @@ TEST_F(CoarrayTest, Collectives)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
-  
+
   if(this_image() == 0){
     i = 10;
   }
   cobroadcast(i, dash::team_unit_t{0});
   ASSERT_EQ_U(static_cast<int>(i), 10);
-  
+
   std::fill(x.lbegin(), x.lend(), 2);
   x.barrier();
   coreduce(x, dash::plus<int>());
@@ -205,14 +205,14 @@ TEST_F(CoarrayTest, Collectives)
 TEST_F(CoarrayTest, Synchronization)
 {
   std::chrono::time_point<std::chrono::system_clock> start, end;
-  
+
   if(num_images() < 3){
     SKIP_TEST_MSG("This test requires at least 3 units");
   }
   dash::barrier();
-  
+
   start = std::chrono::system_clock::now();
-  
+
   if(this_image() != 2){
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -222,13 +222,13 @@ TEST_F(CoarrayTest, Synchronization)
   sync_all();
   int elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>
                       (end-start).count();
-  
+
   // sleeps for pretty printing only
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   LOG_MESSAGE("Unit %d finished after %d ms",
               static_cast<int>(this_image()), elapsed_ms);
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  
+
   if(this_image() != 2){
     ASSERT_GE_U(elapsed_ms, 490);
   } else {
@@ -240,16 +240,16 @@ TEST_F(CoarrayTest, Iterators)
 {
   dash::Coarray<int>         i;
   dash::Coarray<int[10][20]> x;
-  
+
   EXPECT_EQ_U(std::distance(i.begin(), i.end()), dash::size());
-  
+
   // -------------------------------------------------------------------------
   // Bug in DASH Matrix
   EXPECT_EQ_U(std::distance(x(0).begin(), x(0).end()), 10*20);
-  
+
   dash::NArray<int, 3> matrix(dash::size(), 10, 20);
   EXPECT_EQ_U(std::distance(matrix[0].begin(), matrix[0].end()), 10*20);
-  
+
   int visited = 0;
   auto curpos = matrix[0].begin();
   while(curpos != matrix[0].end()){
@@ -265,14 +265,14 @@ TEST_F(CoarrayTest, CoFutures)
   int i = static_cast<int>(this_image());
   x = i;
   x.barrier();
-  
+
   // at this point, there is no possibility to get an async MatrixRef
   //auto a = x(i).async;
 }
 
 TEST_F(CoarrayTest, MemoryModel)
 {
-  int i = static_cast<int>(this_image()); 
+  int i = static_cast<int>(this_image());
   {
     // scalar case
     using Coarray_t = dash::Coarray<dash::Atomic<int>>;
@@ -282,12 +282,20 @@ TEST_F(CoarrayTest, MemoryModel)
     x(i) = i;
     x.barrier();
     x(i) += 1;
+    // add to local part
+    x += 10;
+    x -= 5;
     int result = x(i).load();
-    EXPECT_EQ_U(result, i+1);
-    // at this point, there is no possibility to get an async MatrixRef
-    //auto a = x(i).async;
+    EXPECT_EQ_U(result, i+6);
+
+    EXPECT_EQ_U(++x, i+7);
+    EXPECT_EQ_U(--x, i+6);
+    
+    // check type conversion to base type
+    result = static_cast<int>(x);
+    EXPECT_EQ_U(result, i+6);
   }
-  
+
   dash::barrier();
 
   {
@@ -303,9 +311,9 @@ TEST_F(CoarrayTest, MemoryModel)
 
 TEST_F(CoarrayTest, Mutex){
   dash::Mutex mx;
-  
+
   dash::Coarray<int> arr;
-  
+
   arr = 0;
   arr.sync_all();
 
@@ -319,19 +327,19 @@ TEST_F(CoarrayTest, Mutex){
   //gref.flush();
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(arr(0)));
   mx.unlock();
-  
+
   arr.sync_all();
-  
+
   if(this_image() == 0){
     int result = arr;
     EXPECT_EQ_U(result, static_cast<int>(dash::size()));
   }
-  
+
   arr.sync_all();
   // this even works with std::lock_guard
   {
     std::lock_guard<dash::Mutex> lg(mx);
-    LOG_MESSAGE("Lock aquired at unit %d", 
+    LOG_MESSAGE("Lock aquired at unit %d",
                 static_cast<int>(this_image()));
     int tmp = arr(0);
     auto gref = arr(0);
@@ -340,9 +348,9 @@ TEST_F(CoarrayTest, Mutex){
     LOG_MESSAGE("Lock released at unit %d",
                 static_cast<int>(this_image()));
   }
-  
+
   arr.sync_all();
-  
+
   if(this_image() == 0){
     int result = arr;
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*2);
@@ -358,17 +366,17 @@ TEST_F(CoarrayTest, Comutex){
 
   // Test Setup
   const int repetitions = 10;
-  
+
   dash::Comutex comx;
   dash::Coarray<int> arr;
-  
+
   std::random_device rd;
   std::default_random_engine dre(rd());
   std::uniform_int_distribution<int> uniform_dist(0, dash::size()-1);
-  
+
   arr = 0;
   arr.sync_all();
-  
+
   // only for logging
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -387,7 +395,7 @@ TEST_F(CoarrayTest, Comutex){
   arr.sync_all();
   // only for logging
   std::this_thread::sleep_for(std::chrono::microseconds(100));
-  
+
   // sum should be dash::size() * repetitions
   auto sum = dash::accumulate(arr.begin(), arr.end(), 0, dash::plus<int>());
   if(this_image() == 0){
@@ -399,20 +407,20 @@ TEST_F(CoarrayTest, Comutex){
 dash::Coarray<int> delay_alloc_arr;
 
 TEST_F(CoarrayTest, DelayedAllocation)
-{ 
-  int i = static_cast<int>(this_image()); 
-  EXPECT_EQ_U(delay_alloc_arr.size(), 0);  
+{
+  int i = static_cast<int>(this_image());
+  EXPECT_EQ_U(delay_alloc_arr.size(), 0);
   dash::barrier();
 
   delay_alloc_arr.allocate();
   delay_alloc_arr(i) = i;
   delay_alloc_arr.barrier();
-  
+
   int result = delay_alloc_arr(i);
   EXPECT_EQ_U(result, i);
-  
+
   dash::barrier();
-  
+
   delay_alloc_arr.deallocate();
   EXPECT_EQ_U(delay_alloc_arr.size(), 0);
 }
@@ -425,7 +433,7 @@ TEST_F(CoarrayTest, StructType)
   int    b_exp = static_cast<int>(this_image());
 
   x.member(&value_t::a) = a_exp;
-  x.member(&value_t::b) = b_exp; 
+  x.member(&value_t::b) = b_exp;
   x.sync_all();
   double a_got_loc = x.member(&value_t::a);
   int    b_got_loc = x.member(&value_t::b);
@@ -460,7 +468,7 @@ TEST_F(CoarrayTest, StructType)
 TEST_F(CoarrayTest, CoEvent)
 {
   dash::Coevent events;
-  
+
   if(num_images() < 2){
     SKIP_TEST_MSG("This test requires at least 2 units");
   }
@@ -475,18 +483,18 @@ TEST_F(CoarrayTest, CoEvent)
   // TODO this barrier should not be necessary, but without
   // the gptr is not updated
   dash::barrier();
-  
+
   if(this_image() == 1){
     LOG_MESSAGE("waiting for incoming event");
     events.wait();
     LOG_MESSAGE("event recieved");
   }
   dash::barrier();
-  
+
   if(num_images() < 3){
     return;
   }
-  
+
   events(0).post();
   // same here
   dash::barrier();
@@ -496,7 +504,7 @@ TEST_F(CoarrayTest, CoEvent)
     events.wait(num_images());
     LOG_MESSAGE("event recieved");
   }
-  
+
   dash::barrier();
   if(this_image() != 0){
     events(0).post();
@@ -524,12 +532,12 @@ TEST_F(CoarrayTest, CoEventIter)
   if(!core_mapping_is_unique(dash::Team::All())){
     SKIP_TEST_MSG("Multiple units are mapped to the same core => possible deadlock");
   }
-  
+
   dash::Coevent events;
 
   auto snd = events.begin()+1;
   (*snd).post();
-  
+
   if(num_images() == 3){
     ASSERT_EQ_U(events.begin()+3, events.end());
   }

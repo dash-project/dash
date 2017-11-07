@@ -93,6 +93,13 @@ struct local_ref_type {
 template<
   typename element_type,
   typename pattern_type>
+struct local_ref_type<dash::Atomic<element_type>, pattern_type, 1> {
+  using type = GlobRef<element_type>;
+};
+
+template<
+  typename element_type,
+  typename pattern_type>
 struct local_ref_type<element_type, pattern_type, 1> {
   using type = element_type &;
 };
@@ -205,6 +212,8 @@ private:
 public:
   // Types
   using value_type             = _element_type;
+  /// Same as value_type but without atomic wrapper
+  using value_base_type        = _base_type;
   using difference_type        = IndexType;
   using index_type             = IndexType;
   using size_type              = _size_type;
@@ -248,6 +257,10 @@ private:
 
   constexpr _offset_type _extents_unit(const team_unit_t & unit) const noexcept {
     return _storage.pattern().local_extents(unit);
+  }
+
+  inline index_type _myid() const {
+    return static_cast<index_type>(_storage.team().myid());
   }
 
 public:
@@ -489,8 +502,7 @@ public:
   template<int __valuetype_rank = _valuetype_rank::value>
   typename std::enable_if<(__valuetype_rank == 0), reference>::type
   inline operator()(const index_type & unit) {
-    // TODO: workaround to get async access
-    return static_cast<reference>(_storage.at(unit));
+    return _storage.at(unit);
   }
 
   /**
@@ -498,7 +510,9 @@ public:
    * of 1-D Coarray (const version)
    */
   template<int __valuetype_rank = _valuetype_rank::value>
-  typename std::enable_if<(__valuetype_rank == 1),
+  typename std::enable_if<(
+            __valuetype_rank == 1 &&
+            !is_atomic<value_type>::value),
              const local_type>::type
   inline operator[](const index_type & idx) const
   {
@@ -511,10 +525,13 @@ public:
    * of 1-D Coarray
    */
   template<int __valuetype_rank = _valuetype_rank::value>
-  typename std::enable_if<(__valuetype_rank == 1), local_type>::type
+  typename std::enable_if<(
+            __valuetype_rank == 1 &&
+            !is_atomic<value_type>::value), local_type>::type
   inline operator[](const index_type & idx) {
     return *(_storage.lbegin()+idx);
   }
+
   /**
    * Provides access to local array part
    * \code
@@ -523,10 +540,24 @@ public:
    * \endcode
    */
   template<int __valuetype_rank = _valuetype_rank::value>
-  typename std::enable_if<(__valuetype_rank > 1), local_type>::type
+  typename std::enable_if<(
+      __valuetype_rank > 1 &&
+      !is_atomic<value_type>::value), local_type>::type
   inline operator[](const index_type & idx) {
     // dereference first dimension and return a view on the remaining ones
     return _storage.local[0][idx];
+  }
+
+  /**
+   * operator for local atomic accesses
+   */
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(
+            __valuetype_rank > 0 &&
+            is_atomic<value_type>::value), local_type>::type
+  inline operator[](const index_type & idx) {
+    // dereference first dimension and return a view on the remaining ones
+    return operator()(_myid())[idx];
   }
 
   /**
@@ -537,10 +568,25 @@ public:
    * \endcode
    */
   template<int __valuetype_rank = _valuetype_rank::value>
-  typename std::enable_if<(__valuetype_rank == 0), value_type>::type
+  typename std::enable_if<(
+      __valuetype_rank == 0 &&
+      !is_atomic<value_type>::value), value_type>::type
   inline operator=(const value_type & value){
     return *(_storage.lbegin()) = value;
   }
+
+  /**
+   * fortran like local assignment of scalar coarrays
+   * of atomic value types
+   */
+  template<int __valuetype_rank = _valuetype_rank::value>
+  typename std::enable_if<(
+      __valuetype_rank == 0 &&
+      is_atomic<value_type>::value), value_type>::type
+  inline operator=(const value_type & value){
+    return operator()(_myid()) = value;
+  }
+
 
   /**
    * allows fortran like local access of scalars
@@ -552,9 +598,24 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline operator value_type() const {
     return *(_storage.lbegin());
+  }
+
+  /**
+   * conversion operator for an atomic scalar coarray to the native
+   * (non-atomic) type
+   */
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline operator value_base_type() {
+    return _storage[_myid()];
   }
 
   /**
@@ -564,7 +625,7 @@ public:
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
   explicit inline operator reference() {
-    return _storage[static_cast<index_type>(_storage.team().myid())];
+    return _storage[myid()];
   }
 
   /**
@@ -609,29 +670,64 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type & operator +=(const value_type & value) {
     return *(_storage.lbegin()) += value;
   }
 
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline value_base_type operator +=(const value_base_type & value) {
+    return operator()(_myid()) += value;
+  }
+
+
   /**
    * allows fortran like local access of scalars
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type & operator -=(const value_type & value) {
     return *(_storage.lbegin()) -= value;
   }
 
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline value_base_type operator -=(const value_base_type & value) {
+    return operator()(_myid()) -= value;
+  }
+
+
   /**
    * allows fortran like local access of scalars
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type & operator *=(const value_type & value) {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type & operator *=(const value_type & value) {
     return *(_storage.lbegin()) *= value;
+  }
+
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline reference operator *=(const value_type & value) {
+    return operator()(_myid()) *= value;
   }
 
   /**
@@ -639,10 +735,22 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type & operator /=(const value_type & value) {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type & operator /=(const value_type & value) {
     return *(_storage.lbegin()) /= value;
   }
+
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline reference operator /=(const value_type & value) {
+    return operator()(_myid()) /= value;
+  }
+
 
   /**
    * allows fortran like local access of scalars
@@ -654,7 +762,9 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type operator +(const value_type & value) const {
     return *(_storage.lbegin()) + value;
   }
@@ -664,7 +774,9 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type operator -(const value_type & value) const {
     return *(_storage.lbegin()) - value;
   }
@@ -674,7 +786,9 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type operator *(const value_type & value) const {
     return *(_storage.lbegin()) * value;
   }
@@ -684,8 +798,10 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type operator /(const value_type & value) const {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type operator /(const value_type & value) const {
     return *(_storage.lbegin()) / value;
   }
 
@@ -694,17 +810,31 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
   inline value_type & operator ++() {
     return ++(*(_storage.lbegin()));
   }
+
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline value_base_type operator ++() {
+    return ++(operator()(_myid()));
+  }
+ 
   /**
    * allows fortran like local access of scalars
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type operator ++(int) {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type operator ++(int) {
     return (*(_storage.lbegin()))++;
   }
 
@@ -713,17 +843,31 @@ public:
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type & operator --() {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type & operator --() {
     return --(*(_storage.lbegin()));
   }
+
+  template<
+    int __valuetype_rank = _valuetype_rank::value,
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        is_atomic<value_type>::value)>::type>
+  inline value_base_type operator --() {
+    return --(operator()(_myid()));
+  }
+
   /**
    * allows fortran like local access of scalars
    */
   template<
     int __valuetype_rank = _valuetype_rank::value,
-    typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type operator --(int) {
+    typename = typename std::enable_if<(
+        __valuetype_rank == 0 &&
+        !is_atomic<value_type>::value)>::type>
+   inline value_type operator --(int) {
     return (*(_storage.lbegin()))--;
   }
 
