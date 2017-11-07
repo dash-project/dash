@@ -695,7 +695,7 @@ public:
   template<
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type operator ++() {
+  inline value_type & operator ++() {
     return ++(*(_storage.lbegin()));
   }
   /**
@@ -714,7 +714,7 @@ public:
   template<
     int __valuetype_rank = _valuetype_rank::value,
     typename = typename std::enable_if<(__valuetype_rank == 0)>::type>
-  inline value_type operator --() {
+  inline value_type & operator --() {
     return --(*(_storage.lbegin()));
   }
   /**
