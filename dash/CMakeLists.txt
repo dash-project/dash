@@ -362,6 +362,9 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${CMAKE_CURRENT_SOURCE_DIR}/examples)
     foreach(examplename ${DASH_TEST_DIRECTORIES})
       set(exampletarget ${examplename}.${dart_variant})
+      # clear target specific settings
+      set(target_libraries "")
+      set(target_includes "")
       if (EXISTS
          ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/main.cpp)
 
@@ -370,6 +373,23 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${exampletarget}
           examples/${examplename}/main.cpp
         )
+        # Add custom cmake file if any
+        if (EXISTS
+            ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/CMakeLists.txt)
+          add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename})
+          if(${CMAKE_VERSION} VERSION_GREATER 3.0.2 )
+            target_include_directories(
+              ${exampletarget}
+              PRIVATE ${target_includes}
+            )
+          else()
+            include_directories(${target_includes})
+          endif()
+          target_link_libraries(
+            ${exampletarget}
+            ${target_libraries}
+          )
+        endif()
         include_directories(
           ${CMAKE_SOURCE_DIR}/dash/include
           ${ADDITIONAL_INCLUDES}
@@ -428,7 +448,7 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
   if (BUILD_COVERAGE_TESTS)
     include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   endif()
