@@ -12,9 +12,6 @@ namespace dash {
 template<typename T>
 class Atomic;
 
-template<typename T>
-class Shared;
-
 /**
  * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
@@ -138,10 +135,19 @@ public:
     return dash::internal::is_local(_gptr);
   }
 
-  /// atomically assigns value
-  GlobRef<atomic_t> operator=(const T & value) {
+  /**
+   * atomically assigns value
+   *
+   * \return The assigned value.
+   *
+   * \note This operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator=, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator%3D.
+   */
+  T operator=(const T & value) {
     store(value);
-    return *this;
+    return value;
   }
 
   /**
@@ -350,7 +356,11 @@ public:
 
   /**
    * prefix atomically increment value by one
-   * Note that this operator does not return a reference but a copy of the value
+   *
+   * \return  The value of the referenced shared variable after the
+   *          operation.
+   *
+   * \note This operator does not return a reference but a copy of the value
    * in order to ensure atomicity. This is consistent with the C++ std::atomic
    * \c operator++, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
@@ -361,6 +371,9 @@ public:
 
   /**
    * postfix atomically increment value by one
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
    */
   T operator++ (int) {
     return fetch_add(1);
@@ -368,7 +381,11 @@ public:
 
   /**
    * prefix atomically decrement value by one
-   * Note that this operator does not return a reference but a copy of the value
+   *
+   * \return  The value of the referenced shared variable after the
+   *          operation.
+   *
+   * \note This operator does not return a reference but a copy of the value
    * in order to ensure atomicity. This is consistent with the C++ std::atomic
    * \c operator--, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
@@ -379,6 +396,9 @@ public:
 
   /**
    * postfix atomically decrement value by one
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
    */
   T operator-- (int) {
     return fetch_sub(1);
@@ -387,7 +407,10 @@ public:
   /**
    * atomically increment value by ref
    *
-   * Note that this operator does not return a reference but a copy of the value
+   * \return  The value of the referenced shared variable after the
+   *          operation.
+   *
+   * \note This operator does not return a reference but a copy of the value
    * in order to ensure atomicity. This is consistent with the C++ std::atomic
    * \c operator+=, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith2.
@@ -398,6 +421,9 @@ public:
 
   /**
    * atomically decrement value by ref
+   *
+   * \return  The value of the referenced shared variable after the
+   *          operation.
    *
    * Note that this operator does not return a reference but a copy of the value
    * in order to ensure atomicity. This is consistent with the C++ std::atomic

@@ -13,9 +13,6 @@ namespace dash {
 template<typename T>
 class Atomic;
 
-template<typename T>
-class Shared;
-
 /**
  * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
@@ -86,7 +83,7 @@ public:
   explicit GlobAsyncRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
+    DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>(dart_gptr_t)", dart_gptr);
   }
 
   /**
@@ -118,8 +115,8 @@ public:
   inline bool operator!=(const T & value) const = delete;
 
   operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    DASH_LOG_TRACE("GlobAsyncRef<Atomic>.GlobPtr()", "conversion operator");
+    DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.T()", _gptr);
     return GlobPtr<atomic_t>(_gptr);
   }
 
@@ -135,10 +132,19 @@ public:
     return GlobPtr<T>(_gptr).is_local();
   }
 
-  /// atomically assigns value
-  GlobRef<atomic_t> operator=(const T & value) {
+  /**
+   * atomically assigns value
+   *
+   * \return The assigned value.
+   *
+   * \note This operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator=, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator%3D.
+   */
+  T operator=(const T & value) {
     store(value);
-    return *this;
+    return value;
   }
 
   /**
@@ -204,8 +210,8 @@ public:
    */
   T get() const
   {
-    DASH_LOG_DEBUG("GlobRef<Atomic>.get()");
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.get", _gptr);
+    DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.get()");
+    DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.get", _gptr);
     value_type nothing;
     value_type result;
     dart_ret_t ret = dart_fetch_and_op(
@@ -216,7 +222,7 @@ public:
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.get >", result);
+    DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.get >", result);
     return result;
   }
 
@@ -229,8 +235,8 @@ public:
    */
   void get(T * result) const
   {
-    DASH_LOG_DEBUG("GlobRef<Atomic>.get()");
-    DASH_LOG_TRACE_VAR("GlobRef<Atomic>.get", _gptr);
+    DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.get()");
+    DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.get", _gptr);
     value_type nothing;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
@@ -325,7 +331,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   expected);
     DASH_LOG_TRACE_VAR(
-      "GlobRef<Atomic>.compare_exchange", typeid(desired).name());
+      "GlobAsyncRef<Atomic>.compare_exchange", typeid(desired).name());
     dart_ret_t ret = dart_compare_and_swap(
                        _gptr,
                        reinterpret_cast<const void * const>(&desired),
