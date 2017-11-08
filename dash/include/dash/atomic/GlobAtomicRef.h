@@ -347,38 +347,54 @@ public:
     return fetch_op(dash::multiply<T>(), value);
   }
 
-  /// prefix atomically increment value by one
-  self_t& operator++ () {
-    add(1);
-    return *this;
+  /**
+   * prefix atomically increment value by one
+   * Note that this operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator++, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
+   */
+  T operator++ () {
+    return fetch_add(1) + 1;
   }
 
-  /// postfix atomically increment value by one
+  /**
+   * postfix atomically increment value by one
+   */
   T operator++ (int) {
     return fetch_add(1);
   }
 
-  /// prefix atomically decrement value by one
-  self_t& operator-- () {
-    sub(1);
-    return *this;
+  /**
+   * prefix atomically decrement value by one
+   * Note that this operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator++, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
+   */
+  T operator-- () {
+    return fetch_sub(1) + 1;
   }
 
-  /// postfix atomically decrement value by one
+  /**
+   * postfix atomically decrement value by one
+   */
   T operator-- (int) {
     return fetch_sub(1);
   }
 
-  /// atomically increment value by ref
-  self_t& operator+=(const T & value) {
-    add(value);
-    return *this;
+  /**
+   * atomically increment value by ref
+   */
+  T operator+=(const T & value) {
+    return fetch_add(value) + value;
   }
 
-  /// atomically decrement value by ref
+  /**
+   * atomically decrement value by ref
+   */
   self_t& operator-=(const T & value) {
-    sub(value);
-    return *this;
+    return fetch_sub(value) - value;
   }
 
 };
