@@ -386,6 +386,11 @@ public:
 
   /**
    * atomically increment value by ref
+   *
+   * Note that this operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator+=, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith2.
    */
   T operator+=(const T & value) {
     return fetch_add(value) + value;
@@ -393,8 +398,13 @@ public:
 
   /**
    * atomically decrement value by ref
+   *
+   * Note that this operator does not return a reference but a copy of the value
+   * in order to ensure atomicity. This is consistent with the C++ std::atomic
+   * \c operator-=, see
+   * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith2.
    */
-  self_t& operator-=(const T & value) {
+  T operator-=(const T & value) {
     return fetch_sub(value) - value;
   }
 

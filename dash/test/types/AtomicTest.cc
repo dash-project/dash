@@ -458,6 +458,10 @@ TEST_F(AtomicTest, AtomicInterface){
     ASSERT_EQ_U(false, ret);
   }
   array.barrier();
+  array[0] += 1;
+  array[0] -= 1;
+  array.barrier();
+  ASSERT_EQ_U(10, array[0].get());
 }
 
 TEST_F(AtomicTest, MutexInterface){
