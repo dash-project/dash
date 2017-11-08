@@ -544,7 +544,20 @@ public:
       __valuetype_rank > 1 &&
       !is_atomic<value_type>::value), local_type>::type
   inline operator[](const index_type & idx) {
-    // dereference first dimension and return a view on the remaining ones
+    // The Coarray internally is based on dash::Narray, with extents:
+    // global: team.size() x T[0] x ... x T[n]
+    // local: 1 x T[0] x ... x T[n]
+    // The first (0) dimenson of the Narray is used for the Coindex.
+    // Example: Coarray<T[10][5]> ~ NArray<T, 3,...>(team.size(), 10, 5)
+    //
+    // The pattern of the NArray is created in a way, that the offset in the
+    // first (0) dimension selects the unit the data is local to. While the
+    // dimensionality of the local and global parts are always equal, the rank
+    // of the local part is reduced by one (the co-dimension).
+    //
+    // Hence: deref. first dimension and return a view on the remaining ones.
+    // This is logically equivalent to _storage[myid][idx] but uses (faster)
+    // local view types
     return _storage.local[0][idx];
   }
 
