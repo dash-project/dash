@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
   array_t energy(ranks);
   double initEnergy = calcEnergy(current_halo->matrix(), energy);
 
-  const auto &lview = halomat.getLocalView();
+  const auto &lview = halomat.local_view();
   auto offset = lview.extent(1);
   long inner_start = offset + 1;
   long inner_end = lview.extent(0) * (offset - 1) - 1;
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
     auto& new_matrix = new_halo->matrix();
 
     // Update Halos asynchroniously
-    current_halo->updateHalosAsync();
+    current_halo->update_async();
 
     // optimized calculation of inner matrix elements
     auto* current_begin = current_matrix.lbegin();
@@ -143,21 +143,21 @@ int main(int argc, char *argv[])
     for(auto it = current_halo->ibegin(); it != it_end; ++it)
     {
       auto core = *it;
-      auto dtheta = (it.valueAt(0) + it.valueAt(1) - 2 * core) / (dx * dx) +
-                    (it.valueAt(2) + it.valueAt(3) - 2 * core) /(dy * dy);
+      auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
+                    (it.value_at(2) + it.value_at(3) - 2 * core) /(dy * dy);
       new_begin[it.lpos()] = core + k * dtheta * dt;
     }
 
     // Wait until all Halo updates ready
-    current_halo->waitHalosAsync();
+    current_halo->wait();
 
     // Calculation of boundary Halo elements
     auto it_bend = current_halo->bend();
     for (auto it = current_halo->bbegin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
-          (it.valueAt(0) + it.valueAt(1) - 2 * core) / (dx * dx) +
-          (it.valueAt(2) + it.valueAt(3) - 2 * core) / (dy * dy);
+          (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
+          (it.value_at(2) + it.value_at(3) - 2 * core) / (dy * dy);
       new_begin[it.lpos()] = core + k * dtheta * dt;
     }
 

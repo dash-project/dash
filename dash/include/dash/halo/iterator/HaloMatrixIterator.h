@@ -28,7 +28,7 @@ class HaloMatrixIterator {
  private:
   static constexpr dim_t       NumDimensions = PatternT::ndim();
   static constexpr std::size_t NumStencilPoints =
-    StencilSpecT::numStencilPoints();
+    StencilSpecT::num_stencil_points();
   static constexpr MemArrange MemoryArrange = PatternT::memory_order();
 
   using SelfT = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
@@ -53,21 +53,21 @@ class HaloMatrixIterator {
 
   {
     if( Scope == StencilViewScope::INNER )
-      setViewLocal( _haloblock.view_inner() );
+      set_view_local( _haloblock.view_inner() );
 
     if( Scope == StencilViewScope::ALL )
-      setViewLocal( _haloblock.view_safe() );
+      set_view_local( _haloblock.view_safe() );
 
     if( Scope == StencilViewScope::BOUNDARY )
-      setViewLocal( _haloblock.view() );
+      set_view_local( _haloblock.view() );
 
     if( Scope == StencilViewScope::BOUNDARY )
       _size = _haloblock.boundary_size();
     else
       _size = _view_local.size();
 
-    setCoords();
-    setStencilOffsets( stencil_spec );
+    set_coords();
+    set_stencil_offsets( stencil_spec );
   }
 
   /**
@@ -103,7 +103,7 @@ class HaloMatrixIterator {
    * \see DashGlobalIteratorConcept
    */
   reference operator[]( index_type idx ) const {
-    auto coords = setCoords( idx );
+    auto coords = set_coords( idx );
     return _local_memory[_local_layout.at( coords )];
   }
 
@@ -113,7 +113,7 @@ class HaloMatrixIterator {
 
   const CoordsT& coords() const { return _coords; };
 
-  bool isHaloValue( const region_index_t index_stencil ) {
+  bool is_halo_value( const region_index_t index_stencil ) {
     if( Scope == StencilViewScope::INNER )
       return false;
 
@@ -129,7 +129,7 @@ class HaloMatrixIterator {
     return false;
   }
 
-  std::vector<ElementT> haloValues() {
+  std::vector<ElementT> halo_values() {
     // TODO: is the given offset in halospec range?
     std::vector<ElementT> halos;
     if( Scope == StencilViewScope::INNER )
@@ -148,12 +148,12 @@ class HaloMatrixIterator {
       // TODO check wether region is nullptr or not
       // TODO implement as method in HaloRegionSpec
       if( halo )
-        halos.push_back( valueHaloAt( halo_coords ) );
+        halos.push_back( value_halo_at( halo_coords ) );
     }
     return halos;
   }
 
-  ElementT valueAt( const region_index_t index_stencil ) {
+  ElementT value_at( const region_index_t index_stencil ) {
     // TODO: is the given offset in halospec range?
 
     if( Scope == StencilViewScope::INNER )
@@ -171,16 +171,16 @@ class HaloMatrixIterator {
     // TODO check wether region is nullptr or not
     // TODO implement as method in HaloRegionSpec
     if( halo )
-      return valueHaloAt( halo_coords );
+      return value_halo_at( halo_coords );
 
     return *( _current_lmemory_addr + _stencil_offsets[index_stencil] );
   }
 
-  ElementT valueAt( const StencilT& stencil ) {
+  ElementT value_at( const StencilT& stencil ) {
     // TODO: is the given offset in halospec range?
 
     if( Scope == StencilViewScope::INNER ) {
-      return *haloPos( stencil );
+      return *halo_pos( stencil );
     } else {
       auto halo_coords{ _coords };
 
@@ -194,9 +194,9 @@ class HaloMatrixIterator {
       // TODO check wether region is nullptr or not
       // TODO implement as method in HaloRegionSpec
       if( halo )
-        return valueHaloAt( halo_coords );
+        return value_halo_at( halo_coords );
 
-      return *haloPos( stencil );
+      return *halo_pos( stencil );
     }
   }
 
@@ -205,7 +205,7 @@ class HaloMatrixIterator {
    */
   SelfT& operator++() {
     ++_idx;
-    setCoords();
+    set_coords();
 
     return *this;
   }
@@ -216,7 +216,7 @@ class HaloMatrixIterator {
   SelfT operator++( int ) {
     SelfT result = *this;
     ++_idx;
-    setCoords();
+    set_coords();
 
     return result;
   }
@@ -226,7 +226,7 @@ class HaloMatrixIterator {
    */
   SelfT& operator--() {
     --_idx;
-    setCoords();
+    set_coords();
 
     return *this;
   }
@@ -237,21 +237,21 @@ class HaloMatrixIterator {
   SelfT operator--( int ) {
     SelfT result = *this;
     --_idx;
-    setCoords();
+    set_coords();
 
     return result;
   }
 
   SelfT& operator+=( index_type n ) {
     _idx += n;
-    setCoords();
+    set_coords();
 
     return *this;
   }
 
   SelfT& operator-=( index_type n ) {
     _idx -= n;
-    setCoords();
+    set_coords();
 
     return *this;
   }
@@ -328,7 +328,7 @@ class HaloMatrixIterator {
     return false;
   }
 
-  void setViewLocal( const viewspec_t& view_tmp ) {
+  void set_view_local( const viewspec_t& view_tmp ) {
     if( Scope == StencilViewScope::BOUNDARY ) {
       const auto& bnd_elems = _haloblock.boundary_elements();
       _bnd_elements.reserve( bnd_elems.size() );
@@ -352,8 +352,8 @@ class HaloMatrixIterator {
     }
   }
 
-  void setCoords() {
-    _coords       = setCoords( _idx );
+  void set_coords() {
+    _coords       = set_coords( _idx );
     size_type off = 0;
     if( MemoryArrange == ROW_MAJOR ) {
       off = _coords[0];
@@ -367,7 +367,7 @@ class HaloMatrixIterator {
     _current_lmemory_addr = _local_memory + off;
   }
 
-  std::array<index_type, NumDimensions> setCoords( index_type idx ) const {
+  std::array<index_type, NumDimensions> set_coords( index_type idx ) const {
     if( Scope == StencilViewScope::BOUNDARY ) {
       auto local_idx = idx;
       for( const auto& region : _bnd_elements ) {
@@ -387,16 +387,16 @@ class HaloMatrixIterator {
     }
   }
 
-  ElementT valueHaloAt( CoordsT halo_coords ) {
+  ElementT value_halo_at( CoordsT halo_coords ) {
     auto index =
-      _haloblock.indexAt( viewspec_t( _local_layout.extents() ), halo_coords );
-    _halomemory.toHaloMemoryCoords( index, halo_coords );
+      _haloblock.index_at( viewspec_t( _local_layout.extents() ), halo_coords );
+    _halomemory.to_halo_mem_coords( index, halo_coords );
 
-    return *( _halomemory.haloPos( index )
-              + _halomemory.haloValueAt( index, halo_coords ) );
+    return *( _halomemory.pos_at( index )
+              + _halomemory.value_at( index, halo_coords ) );
   }
 
-  ElementT* haloPos( const StencilT& stencil ) {
+  ElementT* halo_pos( const StencilT& stencil ) {
     ElementT* halo_pos = _current_lmemory_addr;
     if( MemoryArrange == ROW_MAJOR ) {
       halo_pos += stencil[NumDimensions - 1];
@@ -411,7 +411,7 @@ class HaloMatrixIterator {
     return halo_pos;
   }
 
-  void setStencilOffsets( const StencilSpecT& stencil_spec ) {
+  void set_stencil_offsets( const StencilSpecT& stencil_spec ) {
     for( auto i = 0; i < NumStencilPoints; ++i ) {
       signed_size_type offset = 0;
       if( MemoryArrange == ROW_MAJOR ) {

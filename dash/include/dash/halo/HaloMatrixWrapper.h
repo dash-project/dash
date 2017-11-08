@@ -68,9 +68,9 @@ class HaloMatrixWrapper {
       // number of contiguous elements
       size_type num_blocks      = 1;
       size_type num_elems_block = 1;
-      auto      rel_dim         = region.regionSpec().relevantDim();
-      auto      level           = region.regionSpec().level();
-      auto*     off             = _halomemory.haloPos( region.index() );
+      auto      rel_dim         = region.spec().relevant_dim();
+      auto      level           = region.spec().level();
+      auto*     off             = _halomemory.pos_at( region.index() );
       auto      it              = region.begin();
 
       if( MemoryArrange == ROW_MAJOR ) {
@@ -211,46 +211,52 @@ class HaloMatrixWrapper {
 
   const_iterator_bnd bend() const noexcept { return _bend; }
 
-  const HaloBlockT& haloBlock() { return _haloblock; }
+  const HaloBlockT& halo_block() { return _haloblock; }
 
-  void updateHalosAsync() {
+  void update() {
     for( auto& region : _region_data )
-      updateHaloIntern( region.second, true );
+      update_halo_intern( region.second, false );
   }
 
-  void waitHalosAsync() {
+  void update_at( region_index_t index ) {
+    auto it_find = _region_data.find( index );
+    if( it_find != _region_data.end() )
+      update_halo_intern( it_find->second, false );
+  }
+
+  void update_async() {
+    for( auto& region : _region_data )
+      update_halo_intern( region.second, true );
+  }
+
+  void update_async_at( region_index_t index ) {
+    auto it_find = _region_data.find( index );
+    if( it_find != _region_data.end() )
+      update_halo_intern( it_find->second, true );
+  }
+
+  void wait() {
     for( auto& region : _region_data )
       dart_wait_local( &region.second.halo_data.handle );
   }
 
-  void updateHalos() {
-    for( auto& region : _region_data )
-      updateHaloIntern( region.second, false );
-  }
+  const ViewSpecT& local_view() const { return _view_local; }
 
-  void updateHalo( region_index_t index ) {
-    auto it_find = _region_data.find( index );
-    if( it_find != _region_data.end() )
-      updateHaloIntern( it_find->second, false );
-  }
+  const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 
-  const ViewSpecT& getLocalView() const { return _view_local; }
-
-  const StencilSpecT& stencilSpec() const { return _stencil_spec; }
-
-  const HaloMemoryT& haloMemory() const { return _halomemory; }
+  const HaloMemoryT& halo_memory() const { return _halomemory; }
 
   MatrixT& matrix() { return _matrix; }
 
   template <typename FunctionT>
-  void setFixedHalos( FunctionT f ) {
+  void set_fixed_halos( FunctionT f ) {
     using signed_extent_t = typename std::make_signed<size_type>::type;
     for( const auto& region : _haloblock.boundary_regions() ) {
-      auto rel_dim = region.regionSpec().relevantDim() - 1;
-      if( region.borderRegion() && region.borderDim( rel_dim )
+      auto rel_dim = region.spec().relevant_dim() - 1;
+      if( region.is_border_region() && region.border_dim( rel_dim )
           && _cycle_spec[rel_dim] == Cycle::FIXED ) {
-        auto*       pos_ptr = _halomemory.haloPos( region.index() );
-        const auto& spec    = region.regionSpec();
+        auto*       pos_ptr = _halomemory.pos_at( region.index() );
+        const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
         const auto& reg_ext = region.region().extents();
         for( auto d = 0; d < NumDimensions; ++d ) {
@@ -273,22 +279,21 @@ class HaloMatrixWrapper {
     }
   }
 
-  ElementT* haloElementAt( CoordsT coords ) {
+  ElementT* halo_element_at( CoordsT coords ) {
     const auto& offsets = _view_global.offsets();
     for( auto d = 0; d < NumDimensions; ++d ) {
       coords[d] -= offsets[d];
     }
-    auto index       = _haloblock.indexAt( _view_local, coords );
+    auto index       = _haloblock.index_at( _view_local, coords );
     auto spec        = _halo_reg_spec.spec( index );
-    auto halomem_pos = _halomemory.haloPos( index );
+    auto halomem_pos = _halomemory.pos_at( index );
     if( spec.level() == 0 || halomem_pos == nullptr )
       return nullptr;
 
-    if( !_halomemory.toHaloMemoryCoordsWithCheck( index, coords ) )
+    if( !_halomemory.to_halo_mem_coords_check( index, coords ) )
       return nullptr;
 
-    return _halomemory.haloPos( index )
-           + _halomemory.haloValueAt( index, coords );
+    return _halomemory.pos_at( index ) + _halomemory.value_at( index, coords );
   }
 
   template <typename IteratorT, typename FunctionT>
@@ -313,9 +318,9 @@ class HaloMatrixWrapper {
     HaloData                         halo_data;
   };
 
-  void updateHaloIntern( Data& data, bool async ) {
-    auto rel_dim = data.region.regionSpec().relevantDim() - 1;
-    if( data.region.borderRegion() && data.region.borderDim( rel_dim )
+  void update_halo_intern( Data& data, bool async ) {
+    auto rel_dim = data.region.spec().relevant_dim() - 1;
+    if( data.region.is_border_region() && data.region.border_dim( rel_dim )
         && _cycle_spec[rel_dim] == Cycle::FIXED ) {
       return;
     }

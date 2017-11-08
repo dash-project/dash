@@ -242,22 +242,22 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
   auto* sum_local = sum_halo.lbegin();
 
-  halo_wrapper.updateHalosAsync();
+  halo_wrapper.update_async();
 
   auto it_iend = halo_wrapper.iend();
   for(auto it = halo_wrapper.ibegin(); it != it_iend; ++it) {
-    for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      *sum_local += it.valueAt(i);
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(i);
 
     *sum_local += *it;
   }
 
-  halo_wrapper.waitHalosAsync();
+  halo_wrapper.wait();
 
   auto it_bend = halo_wrapper.bend();
   for(auto it = halo_wrapper.bbegin(); it != it_bend; ++it) {
-    for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      *sum_local += it.valueAt(i);
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(i);
 
     *sum_local += *it;
   }
@@ -301,8 +301,8 @@ long calc_sum_check(long*** matrix,T begin, T end) {
 
 template<typename HaloWrapperT>
 unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper) {
-  auto& stencil_spec = halo_wrapper.stencilSpec();
-  halo_wrapper.updateHalosAsync();
+  auto& stencil_spec = halo_wrapper.stencil_spec();
+  halo_wrapper.update_async();
 
   dash::Array<long> sum_halo(dash::size());
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
@@ -310,18 +310,18 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper) {
   auto* sum_local = sum_halo.lbegin();
   auto it_iend = halo_wrapper.iend();
   for(auto it = halo_wrapper.ibegin(); it != it_iend; ++it) {
-    for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      *sum_local += it.valueAt(i);
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(i);
 
     *sum_local += *it;
   }
 
-  halo_wrapper.waitHalosAsync();
+  halo_wrapper.wait();
 
   auto it_bend = halo_wrapper.bend();
   for(auto it = halo_wrapper.bbegin(); it != it_bend; ++it) {
-    for(auto i = 0; i < stencil_spec.numStencilPoints(); ++i)
-      *sum_local += it.valueAt(i);
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(i);
 
     *sum_local += *it;
   }
@@ -621,7 +621,7 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
   CycleSpecT cycle_spec(Cycle::FIXED, Cycle::FIXED, Cycle::FIXED);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
 
-  halo_wrapper.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
+  halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 10;
   });
   auto sum_halo = calc_sum_halo(halo_wrapper);
@@ -735,7 +735,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   CycleSpecT cycle_spec(Cycle::NONE, Cycle::CYCLIC, Cycle::FIXED);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
 
-  halo_wrapper.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
+  halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
   auto sum_halo = calc_sum_halo(halo_wrapper);
@@ -869,13 +869,13 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
   HaloMatrixWrapper<MatrixColT,StencilSpecT> halo_wrapper_col(matrix_halo_col, stencil_spec, cycle_spec);
 
-  halo_wrapper.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
+  halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
 
   auto sum_halo = calc_sum_halo(halo_wrapper);
 
-  halo_wrapper_col.setFixedHalos([](const std::array<dash::default_index_t,3>& coords) {
+  halo_wrapper_col.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
   auto sum_halo_col = calc_sum_halo(halo_wrapper_col);

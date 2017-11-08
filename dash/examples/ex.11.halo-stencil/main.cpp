@@ -130,7 +130,7 @@ void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
   auto nlptr = halo_new.matrix().lbegin();
 
   // Fetch Halo
-  halo_old.updateHalosAsync();
+  halo_old.update_async();
 
   // Inner cell
   for( index_t x=1; x<lext_x-1; x++ ) {
@@ -146,7 +146,7 @@ void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
   // Boundary
 
   // Wait until all Halo updates ready
-  halo_old.waitHalosAsync();
+  halo_old.wait();
 
   // Calculation of boundary Halo elements
   auto bend = halo_old.bend();
@@ -154,10 +154,10 @@ void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new){
   {
     auto core = *it;
     *(nlptr+it.lpos()) = (0.40 * core) +
-                       (0.15 * it.valueAt(0)) +
-                       (0.15 * it.valueAt(1)) +
-                       (0.15 * it.valueAt(2)) +
-                       (0.15 * it.valueAt(3));
+                       (0.15 * it.value_at(0)) +
+                       (0.15 * it.value_at(1)) +
+                       (0.15 * it.value_at(2)) +
+                       (0.15 * it.value_at(3));
   }
 }
 
