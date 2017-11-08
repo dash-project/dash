@@ -135,7 +135,7 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    return GlobPtr<T>(_gptr).is_local();
+    return dash::internal::is_local(_gptr);
   }
 
   /// atomically assigns value
