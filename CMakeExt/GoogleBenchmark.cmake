@@ -36,7 +36,7 @@ else()
   set(GBENCH_INCLUDES "${GBENCH_PREFIX}/src/GBenchExternal/include")
   set(GBENCH_LIBRARY  "${GBENCH_LOCATION}/${LIBPREFIX}benchmark${LIBSUFFIX}")
 
-
+  set(GBENCH_CMAKE_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE};-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}")
   # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
   if("${CMAKE_VERSION}" VERSION_LESS 3.2.0)
     ExternalProject_Add(
@@ -45,7 +45,7 @@ else()
       GIT_TAG master
       TIMEOUT 10
       PREFIX "${GBENCH_PREFIX}"
-      CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
+      CMAKE_ARGS ${GBENCH_CMAKE_ARGS}
       INSTALL_COMMAND ""
       # Wrap download, configure and build steps in a script to log output
       LOG_DOWNLOAD ON
@@ -59,7 +59,7 @@ else()
       GIT_TAG master
       TIMEOUT 10
       PREFIX "${GBENCH_PREFIX}"
-      CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
+      CMAKE_ARGS ${GBENCH_CMAKE_ARGS}
       INSTALL_COMMAND ""
       # Necessary for ninja build
       BUILD_BYPRODUCTS ${GBENCH_LIBRARY}
