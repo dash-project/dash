@@ -68,7 +68,7 @@ else()
       LOG_CONFIGURE ON
       LOG_BUILD ON
     )
-endif()
+  endif()
   add_library(GBench IMPORTED STATIC GLOBAL)
   set_target_properties(
     GBench

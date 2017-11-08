@@ -35,12 +35,18 @@ fi
 #
 
 # To use an existing installation of gtest instead of downloading the sources
-# from the google test subversion repository, use:
+# from the google test git repository, use:
 #
 #                    -DGTEST_LIBRARY_PATH=${HOME}/gtest \
 #                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
 #
 
+# To use an existing installation of google benchmark instead of downloading
+# the sources from the google benchmark git repository, use:
+#
+#                    -DGBENCH_LIBRARY_PATH=${HOME}/gbench \
+#                    -DGBENCH_INCLUDE_PATH=${HOME}/gbench/include \
+#
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 #
 
