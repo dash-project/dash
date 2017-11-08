@@ -370,7 +370,7 @@ public:
    * prefix atomically decrement value by one
    * Note that this operator does not return a reference but a copy of the value
    * in order to ensure atomicity. This is consistent with the C++ std::atomic
-   * \c operator++, see
+   * \c operator--, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
    */
   T operator-- () {
