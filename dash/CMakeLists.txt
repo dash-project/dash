@@ -457,15 +457,24 @@ if (BUILD_TESTS)
     set(DASH_LIBRARY "dash-${dart_variant}")
     set(DART_LIBRARY "dart-${dart_variant}")
     set(DASH_TEST "dash-test-${dart_variant}")
-    include_directories(
-      ${GTEST_INCLUDES}
-      ${CMAKE_SOURCE_DIR}/dash/include
-      ${ADDITIONAL_INCLUDES}
-    )
     add_executable(
       ${DASH_TEST}
       ${DASH_TEST_SOURCES}
     )
+    if(${CMAKE_VERSION} VERSION_GREATER 3.0.2 )
+      target_include_directories(
+        ${DASH_TEST}
+        PRIVATE ${GTEST_INCLUDES}
+        PRIVATE ${CMAKE_SOURCE_DIR}/dash/include
+        PRIVATE ${ADDITIONAL_INCLUDES}
+      )
+    else()
+      include_directories(
+        ${GTEST_INCLUDES}
+        ${CMAKE_SOURCE_DIR}/dash/include
+        ${ADDITIONAL_INCLUDES}
+      )
+    endif()
     target_link_libraries(
       ${DASH_TEST}
       GTest
