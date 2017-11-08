@@ -52,12 +52,9 @@ private:
 
 public:
   /**
-   * Default constructor, creates an GlobRef object referencing an element in
-   * global memory.
+   * Reference semantics forbid declaration without definition.
    */
-  GlobRef()
-  : _gptr(DART_GPTR_NULL) {
-  }
+  GlobRef() = delete;
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -92,13 +89,17 @@ public:
   }
 
   /**
-   * Copy constructor.
+   * Like native references, global reference types cannot be copied.
+   *
+   * Default definition of copy constructor would conflict with semantics
+   * of \c operator=(const self_t &).
    */
-  GlobRef(
-    /// GlobRef instance to copy.
-    const GlobRef<atomic_t> & other)
-  : _gptr(other._gptr)
-  { }
+  GlobRef(const self_t & other) = delete;
+
+  /**
+   * Unlike native reference types, global reference types are moveable.
+   */
+  GlobRef(self_t && other)      = default;
 
   self_t & operator=(const self_t & other) = delete;
 
