@@ -44,7 +44,7 @@ TEST_F(HaloTest, IndexToCoords)
 
 TEST_F(HaloTest, HaloSpec)
 {
-  using HaloRegSpecT =HaloRegionSpec<3>;
+  using HaloRegSpecT =RegionSpec<3>;
   using HaloSpecT = HaloSpec<3>;
   using RCoordsT = RegionCoords<3>;
 
@@ -67,7 +67,7 @@ TEST_F(HaloTest, HaloSpec)
 
 TEST_F(HaloTest, HaloSpecStencils)
 {
-  using HaloRegSpecT =HaloRegionSpec<3>;
+  using HaloRegSpecT =RegionSpec<3>;
   using HaloSpecT = HaloSpec<3>;
   using RCoordsT = RegionCoords<3>;
   using StencilT = Stencil<3>;
@@ -100,7 +100,7 @@ TEST_F(HaloTest, HaloSpecStencils)
 
     EXPECT_EQ(halo_spec.spec(16).coords(), RCoordsT({1,2,1}));
     EXPECT_EQ((uint32_t)halo_spec.extent(16), 2);
-    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+    for(auto i = 0; i < RCoordsT::MaxIndex; ++i) {
       if(i != 16)
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
     }
@@ -116,7 +116,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(3), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(4), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
-    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+    for(auto i = 0; i < RCoordsT::MaxIndex; ++i) {
       if(i != 3 && i != 4 && i != 12)
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
     }
@@ -140,7 +140,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(9), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(10), 2);
     EXPECT_EQ((uint32_t)halo_spec.extent(12), 1);
-    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+    for(auto i = 0; i < RCoordsT::MaxIndex; ++i) {
       if(i != 0 && i != 1 && i != 3 && i != 4 && i != 9 && i != 10 && i!= 12)
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
     }
@@ -164,7 +164,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(23), 3);
     EXPECT_EQ((uint32_t)halo_spec.extent(25), 3);
     EXPECT_EQ((uint32_t)halo_spec.extent(26), 3);
-    for(auto i = 0; i < HaloRegSpecT::MaxIndex; ++i) {
+    for(auto i = 0; i < RCoordsT::MaxIndex; ++i) {
       if(i != 14 && i != 16 && i != 17 && i != 22 && i != 23 && i != 25 && i!= 26)
         EXPECT_EQ((uint32_t)halo_spec.extent(i), 0);
     }
