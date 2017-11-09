@@ -760,11 +760,12 @@ dart__tasking__taskref_free(dart_taskref_t *tr)
 dart_ret_t
 dart__tasking__task_wait(dart_taskref_t *tr)
 {
-  dart_thread_t *thread = get_current_thread();
 
   if (tr == NULL || *tr == NULL || (*tr)->state == DART_TASK_DESTROYED) {
     return DART_ERR_INVAL;
   }
+
+  dart_thread_t *thread = get_current_thread();
 
   // the thread just contributes to the execution
   // of available tasks until the task waited on finishes
@@ -772,11 +773,40 @@ dart__tasking__task_wait(dart_taskref_t *tr)
     dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
-    dart_tasking_remote_progress();
   }
 
   dart__tasking__destroy_task(*tr);
   *tr = NULL;
+
+  return DART_OK;
+}
+
+dart_ret_t
+dart__tasking__task_test(dart_taskref_t *tr, int *flag)
+{
+  if (flag == NULL) {
+    return DART_ERR_INVAL;
+  }
+  *flag = 0;
+  if (tr == NULL || *tr == NULL || (*tr)->state == DART_TASK_DESTROYED) {
+    return DART_ERR_INVAL;
+  }
+
+  if ((*tr)->state != DART_TASK_FINISHED) {
+    // if this is the only thread executing we have to execute at least one task
+    if (num_threads == 1) {
+      dart_thread_t *thread = get_current_thread();
+      dart_tasking_remote_progress();
+      dart_task_t *task = next_task(thread);
+      handle_task(task, thread);
+    }
+
+    if ((*tr)->state != DART_TASK_FINISHED) {
+      *flag = 1;
+      dart__tasking__destroy_task(*tr);
+      *tr = NULL;
+    }
+  }
 
   return DART_OK;
 }
@@ -793,10 +823,10 @@ dart__tasking__current_thread()
   return get_current_thread();
 }
 
+
 /**
  * Tear-down related functions.
  */
-
 
 static void
 stop_threads()

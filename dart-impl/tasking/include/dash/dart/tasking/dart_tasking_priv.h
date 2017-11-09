@@ -8,6 +8,7 @@
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
+#include <dash/dart/tasking/dart_tasking_phase.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -40,7 +41,7 @@ struct dart_task_data {
   int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;
-  int32_t                    epoch;
+  dart_taskphase_t           phase;
   context_t                 *taskctx;         // context to start/resume task
   jmp_buf                    cancel_return;   // where to longjmp upon task cancellation
   int                        delay;           // delay in case this task yields
@@ -127,6 +128,9 @@ dart__tasking__taskref_free(dart_taskref_t *tr) DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__task_wait(dart_taskref_t *tr) DART_INTERNAL;
+
+dart_ret_t
+dart__tasking__task_test(dart_taskref_t *tr, int *flag) DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__task_complete() DART_INTERNAL;

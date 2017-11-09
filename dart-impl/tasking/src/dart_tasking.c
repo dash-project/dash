@@ -117,6 +117,19 @@ dart_task_wait(dart_taskref_t *taskref)
 }
 
 /**
+ * Test for the completion of a task created through
+ * \c dart_task_create_handle.
+ * If the task has finished execution, the parameter \c flag will be set to 1
+ * and the handle should not be waited or tested on later, i.e., do not call
+ * \ref dart_task_wait on the same handle if the test was successful.
+ */
+dart_ret_t
+dart_task_test(dart_taskref_t *taskref, int *flag)
+{
+  return dart__tasking__task_test(taskref, flag);
+}
+
+/**
  * Wait for all defined tasks to complete.
  */
 dart_ret_t
@@ -173,3 +186,14 @@ dart_task_yield(int delay)
 }
 
 
+void
+dart_task_phase_advance()
+{
+  dart__tasking__phase_advance();
+}
+
+dart_taskphase_t
+dart_task_phase_current()
+{
+  return dart__tasking__phase_current();
+}
