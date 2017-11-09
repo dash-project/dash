@@ -11,6 +11,8 @@
  */
 
 #include <stdbool.h>
+#include <limits.h>
+#include <stdint.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -22,9 +24,16 @@ extern "C" {
 typedef struct dart_task_data dart_task_t;
 typedef dart_task_t* dart_taskref_t;
 
+typedef int32_t dart_taskphase_t;
+
 #define DART_TASK_NULL ((dart_taskref_t)NULL)
 
-#define DART_EPOCH_ANY ((int32_t)-1)
+/// the dependency can refer to any previous task (used for local dependencies)
+#define DART_PHASE_ANY   ((dart_taskphase_t)INT_MAX)
+/// the first dependency phase, which can be executed without synchronization
+#define DART_PHASE_FIRST ((dart_taskphase_t)-1)
+/// the dependency should assume the phase of the task it belongs to
+#define DART_PHASE_TASK  ((dart_taskphase_t)-2)
 
 typedef enum {
   DART_PRIO_HIGH = 0,
@@ -48,51 +57,11 @@ typedef struct dart_task_dep {
   };
   /// dependency type, see \ref dart_task_deptype_t
   dart_task_deptype_t type;
-  /// the epoch this dependency refers to
-  int32_t             epoch;
+  /// the phase this dependency refers to
+  /// INPUT dependencies refer to any previous phase
+  /// OUTPUT dependencies refer to this phase
+  dart_taskphase_t   phase;
 } dart_task_dep_t;
-
-DART_INLINE
-dart_task_dep_t dart_task_create_datadep(
-  dart_gptr_t         gptr,
-  dart_task_deptype_t type,
-  int32_t             epoch)
-{
-  dart_task_dep_t res;
-  res.gptr  = gptr;
-  res.type  = type;
-  res.epoch = epoch;
-  return res;
-}
-
-DART_INLINE
-dart_task_dep_t dart_task_create_local_datadep(
-  void                * ptr,
-  dart_task_deptype_t   type,
-  int32_t               epoch)
-{
-  dart_task_dep_t res;
-  res.gptr = DART_GPTR_NULL;
-  res.gptr.addr_or_offs.addr = ptr;
-  dart_global_unit_t myid;
-  dart_myid(&myid);
-  res.gptr.unitid = myid.id;
-  res.gptr.teamid = DART_TEAM_ALL;
-  res.epoch       = epoch;
-  res.type        = type;
-  return res;
-}
-
-DART_INLINE
-dart_task_dep_t dart_task_create_directdep(
-  dart_taskref_t      task)
-{
-  dart_task_dep_t res;
-  res.task  = task;
-  res.type  = DART_DEP_DIRECT;
-  res.epoch = -1;
-  return res;
-}
 
 /**
  * Returns the current thread's number.
@@ -231,6 +200,21 @@ dart_task_should_abort();
  */
 dart_ret_t
 dart_task_yield(int delay);
+
+/**
+ * Advance to the next task execution phase.
+ * This function is not blocking and only increments a counter that
+ * represents the current phase. It is the user's responsibility to keep
+ * the phase counter in sync.
+ */
+void
+dart_task_phase_advance();
+
+/**
+ * Returns the current value of the phase counter.
+ */
+dart_taskphase_t
+dart_task_phase_current();
 
 
 #ifdef __cplusplus

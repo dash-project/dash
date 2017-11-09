@@ -5,6 +5,7 @@
 #include <dash/dart/if/dart_tasking.h>
 
 #include <dash/tasks/Tasks.h>
+#include <dash/Array.h>
 
 #define TASK_CANCEL_CUTOFF 5
 
@@ -551,16 +552,16 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
     // local output dependency
     dart_task_dep_t dep[3];
     dep[0].gptr  = out_gptr;
-    dep[0].epoch = i;
+    dep[0].phase = DART_PHASE_TASK;
     dep[0].type  = DART_DEP_OUT;
     // remote input dependency
     dep[1].gptr  = in_gptr;
-    dep[1].epoch = i-1;
+    dep[1].phase = DART_PHASE_TASK;
     dep[1].type  = DART_DEP_IN;
     // serialize iterations locally, otherwise only one result would be valid
     dep[2].gptr  = in_gptr;
     dep[2].gptr.unitid = dash::myid();
-    dep[2].epoch = i-1;
+    dep[2].phase = DART_PHASE_TASK;
     dep[2].type  = DART_DEP_IN;
     ASSERT_EQ(
       DART_OK,
@@ -572,6 +573,7 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
         3,                   // number of dependencies
         DART_PRIO_LOW)
     );
+    dart_task_phase_advance();
   }
 
   dart_task_complete();
@@ -579,12 +581,12 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   // fetch result
   dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT);
   // we will have (TASK_CANCEL_CUTOFF + 1) increments on the first value
-  ASSERT_EQ(TASK_CANCEL_CUTOFF+1, val);
+  ASSERT_EQ_U(TASK_CANCEL_CUTOFF+1, val);
 
   // fetch result
   dart_get_blocking(&val, gptr2, 1, DART_TYPE_INT);
   // we will have (TASK_CANCEL_CUTOFF) increments on the second value
-  ASSERT_EQ(TASK_CANCEL_CUTOFF, val);
+  ASSERT_EQ_U(TASK_CANCEL_CUTOFF, val);
 
   gptr1.unitid = 0;
   gptr2.unitid = 0;
@@ -593,6 +595,66 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   dart_team_memfree(gptr2);
 
 }
+
+
+TEST_F(DARTTaskingTest, CancelBcastGlobalInDepRoot)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  int i;
+  int val = 0;
+  dash::Array<int> array(dash::size());
+  array.local[0] = 0;
+  dash::barrier();
+
+  // create a bunch of tasks, one of them will abort
+  for (i = 1; i <= 10; i++) {
+    globaltestdata_t td;
+    td.expected = i-1;
+
+    dart_gptr_t gptr_out = array[dash::myid()].dart_gptr();
+    dart_gptr_t gptr_in  = array[0].dart_gptr();
+    td.src      = gptr_in;
+    td.dst      = gptr_out;
+
+    // force serialization through an output chain
+    // local output dependency
+    dart_task_dep_t dep[2];
+    dep[0].gptr  = gptr_out;
+    dep[0].phase = DART_PHASE_TASK;
+    dep[0].type  = DART_DEP_OUT;
+    // remote input dependency (read values from 0)
+    dep[1].gptr  = gptr_in;
+    dep[1].phase = DART_PHASE_TASK;
+    dep[1].type  = DART_DEP_IN;
+    // only the first unit should create a task in the first iteration
+    // because all other tasks in the initial iteration cannot sync
+    // against the initial task on unit 0
+    if (i > 1 || dash::myid() == 0) {
+      ASSERT_EQ(
+        DART_OK,
+        dart_task_create(
+          &testfn_assign_cancel_bcast,              // action to call
+          &td,                 // argument to pass
+          sizeof(td),          // size of the tasks's data (if to be copied)
+          dep,                 // dependency
+          2,                   // number of dependencies
+          DART_PRIO_LOW)
+      );
+    }
+    dart_task_phase_advance();
+  }
+
+  dart_task_complete();
+
+  int expected = TASK_CANCEL_CUTOFF+1;
+  // check result
+  ASSERT_EQ_U(expected, static_cast<int>(array[dash::myid()]));
+
+}
+
 
 TEST_F(DARTTaskingTest, Abort)
 {

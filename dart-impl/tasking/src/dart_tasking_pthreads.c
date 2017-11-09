@@ -61,7 +61,6 @@ static dart_task_t root_task = {
     .remote_successor = NULL,
     .local_deps = NULL,
     .num_children = 0,
-    .epoch  = DART_EPOCH_ANY,
     .state  = DART_TASK_ROOT};
 
 static void
@@ -344,8 +343,9 @@ dart_task_t * create_task(
   task->num_children = 0;
   task->parent       = get_current_task();
   task->state        = DART_TASK_NASCENT;
-  task->epoch        = task->parent->state != DART_TASK_ROOT ?
-                          task->parent->epoch : DART_EPOCH_ANY;
+  task->phase        = task->parent->state == DART_TASK_ROOT ?
+                                                dart__tasking__phase_current()
+                                                : DART_PHASE_ANY;
   task->has_ref      = false;
   task->remote_successor = NULL;
   task->local_deps   = NULL;
@@ -369,11 +369,11 @@ void dart__tasking__destroy_task(dart_task_t *task)
   task->data_size        = 0;
   task->fn               = NULL;
   task->parent           = NULL;
-  task->epoch            = DART_EPOCH_ANY;
   task->prev             = NULL;
   task->remote_successor = NULL;
   task->successor        = NULL;
   task->state            = DART_TASK_DESTROYED;
+  task->phase            = DART_PHASE_ANY;
   task->has_ref          = false;
 
   dart_tasking_datadeps_reset(task);
@@ -576,12 +576,6 @@ dart__tasking__num_threads()
   return (initialized ? num_threads : 1);
 }
 
-int32_t
-dart__tasking__epoch_bound()
-{
-  return root_task.epoch;
-}
-
 void
 dart__tasking__enqueue_runnable(dart_task_t *task)
 {
@@ -589,13 +583,14 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart__tasking__cancel_task(task);
     return;
   }
+
   dart_thread_t *thread = get_current_thread();
   dart_taskqueue_t *q = &thread->queue;
-  int32_t bound = dart__tasking__epoch_bound();
-  if (bound != DART_EPOCH_ANY && task->epoch > bound) {
+  if (!dart__tasking__phase_is_runnable(task->phase)) {
     // if the task's phase is outside the phase bound we defer it
     q = &thread->defered_queue;
   }
+
   dart_tasking_taskqueue_push(q, task);
 }
 
@@ -674,7 +669,7 @@ dart__tasking__task_complete()
 
   if (thread->current_task == &(root_task)) {
     // reset the active epoch
-    root_task.epoch = DART_EPOCH_ANY;
+    dart__tasking__phase_set_runnable(DART_PHASE_ANY);
     // make sure all incoming requests are served
     dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     // release unhandled remote dependencies
@@ -725,8 +720,11 @@ dart__tasking__task_complete()
     }
     task_recycle_list = NULL;
     pthread_mutex_unlock(&task_recycle_mutex);
+    // reset the runnable phase
+    dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
   }
   dart_tasking_datadeps_reset(thread->current_task);
+
 
   return DART_OK;
 }

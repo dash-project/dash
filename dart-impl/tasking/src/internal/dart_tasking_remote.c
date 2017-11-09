@@ -28,7 +28,7 @@ struct remote_data_dep {
   /** pointer to a task on the origin unit. Only valid at the origin! */
   taskref            rtask;
   uint64_t           magic;
-  int32_t            epoch;
+  dart_taskphase_t   phase;
 };
 
 struct remote_task_dep {
@@ -107,7 +107,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
   rdep.magic       = 0xDEADBEEF;
-  rdep.epoch       = dep->epoch;
+  rdep.phase       = dep->phase;
   dart_myid(&rdep.runit);
   // the amsgq is opened on DART_TEAM_ALL and deps container global IDs
   dart_team_unit_t team_unit = DART_TEAM_UNIT_ID(dep->gptr.unitid);
@@ -220,7 +220,7 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
       // the message was successfully sent
       DART_LOG_INFO("Sent direct remote task dependency to unit %i "
                     "(local task %p depdends on remote task %p)",
-                    unit, local_task, remote_task);
+                    unit.id, local_task, remote_task.local);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -281,15 +281,15 @@ enqueue_from_remote(void *data)
   struct remote_data_dep *rdep = (struct remote_data_dep *)data;
   DART_ASSERT(rdep->magic == 0xDEADBEEF);
   DART_ASSERT(rdep->rtask.remote != NULL);
-  dart_epoch_dep_t dep;
-  dep.dep.gptr = dart_tasking_datadeps_localize_gptr(rdep->gptr);
-  dep.dep.type = DART_DEP_IN;
-  dep.epoch    = rdep->epoch;
+  dart_task_dep_t dep;
+  dep.gptr      = dart_tasking_datadeps_localize_gptr(rdep->gptr);
+  dep.type      = DART_DEP_IN;
+  dep.phase     = rdep->phase;
   taskref rtask = rdep->rtask;
   DART_LOG_INFO("Received remote dependency request for task %p "
                 "(unit=%i, segid=%i, addr=%p, ph=%li)",
                 rdep->rtask.remote, rdep->runit.id, rdep->gptr.segid,
-                rdep->gptr.addr_or_offs.addr, dep.epoch);
+                rdep->gptr.addr_or_offs.addr, dep.phase);
   dart_tasking_datadeps_handle_remote_task(&dep, rtask, rdep->runit);
 }
 

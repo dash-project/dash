@@ -173,3 +173,14 @@ dart_task_yield(int delay)
 }
 
 
+void
+dart_task_phase_advance()
+{
+  dart__tasking__phase_advance();
+}
+
+dart_taskphase_t
+dart_task_phase_current()
+{
+  return dart__tasking__phase_current();
+}
