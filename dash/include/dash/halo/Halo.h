@@ -10,16 +10,6 @@
 
 namespace dash {
 
-// TODO move to util/FunctionalExpr.h
-template <typename BaseT, typename ExpT>
-constexpr BaseT pow(BaseT base, ExpT exp) {
-  static_assert(std::is_integral<BaseT>::value, "Base must be an integer.");
-  static_assert(std::is_integral<ExpT>::value && std::is_unsigned<ExpT>::value,
-                "Exponent must be an unsigned integer.");
-
-  return (exp == 0 ? 1 : base * pow(base, exp - 1));
-}
-
 template <dim_t NumDimensions>
 class Stencil : public Dimensional<int16_t, NumDimensions> {
 private:
@@ -127,7 +117,7 @@ public:
 
   // maximal number of regions
   static constexpr auto MaxIndex =
-    pow(REGION_INDEX_BASE, static_cast<udim_t>(NumDimensions));
+    ce::pow(REGION_INDEX_BASE, static_cast<udim_t>(NumDimensions));
 
 public:
   RegionCoords() {
