@@ -801,7 +801,7 @@ dart__tasking__task_test(dart_taskref_t *tr, int *flag)
       handle_task(task, thread);
     }
 
-    if ((*tr)->state != DART_TASK_FINISHED) {
+    if ((*tr)->state == DART_TASK_FINISHED) {
       *flag = 1;
       dart__tasking__destroy_task(*tr);
       *tr = NULL;

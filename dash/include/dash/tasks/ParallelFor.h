@@ -21,12 +21,13 @@ namespace tasks{
     size_t chunk_size,
     RangeFunc f)
   {
+    // TODO: extend this to handle GlobIter!
     if (chunk_size == 0) chunk_size = 1;
     InputIter from = begin;
     while (from < end) {
       InputIter to = from + chunk_size;
       if (to > end) to = end;
-      dash::tasks::create(
+      dash::tasks::async(
         [=](){
           f(from, to);
         }
@@ -47,6 +48,7 @@ namespace tasks{
     RangeFunc f,
     DepGeneratorFunc depdency_generator)
   {
+    // TODO: extend this to handle GlobIter!
     if (chunk_size == 0) chunk_size = 1;
     InputIter from = begin;
     while (from < end) {
@@ -56,7 +58,7 @@ namespace tasks{
       deps.reserve(10);
       auto dep_inserter = std::inserter(deps, deps.begin());
       depdency_generator(from, to, dep_inserter);
-      dash::tasks::create(
+      dash::tasks::async(
         [=](){
           f(from, to);
         },

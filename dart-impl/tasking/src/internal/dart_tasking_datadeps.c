@@ -77,6 +77,11 @@ static inline int hash_gptr(dart_gptr_t gptr)
   hash ^= (segid  << 16); // 16 bit segment ID
   hash ^= (unitid << 32); // 24 bit unit ID
   // using a prime number in modulo stirs reasonably well
+
+  DART_LOG_TRACE("hash_gptr(u:%d, s:%d, o:%p) => (%d)",
+                 unitid, segid, gptr.addr_or_offs.offset,
+                 (hash % DART_DEPHASH_SIZE));
+
   return (hash % DART_DEPHASH_SIZE);
 }
 

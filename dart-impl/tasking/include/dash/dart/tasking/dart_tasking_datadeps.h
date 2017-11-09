@@ -100,11 +100,23 @@ dart_gptr_t
 dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
 {
   void *addr;
-  dart_gptr_getaddr(gptr, &addr);
-  DART_ASSERT(addr != NULL);
   dart_gptr_t res = gptr;
-  res.addr_or_offs.addr = addr;
+  // segment IDs <0 are reserved for attached memory so tey already contain
+  // absolute addresses.
+  if (gptr.segid >= 0) {
+    dart_gptr_getaddr(gptr, &addr);
+    DART_ASSERT(addr != NULL);
+    res.addr_or_offs.addr = addr;
+  }
   res.segid = 0;
+
+  if (gptr.teamid != DART_TEAM_ALL) {
+    dart_global_unit_t guid;
+    dart_myid(&guid);
+    res.unitid = guid.id;
+    res.teamid = DART_TEAM_ALL;
+  }
+
   return res;
 }
 

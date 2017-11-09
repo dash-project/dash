@@ -667,7 +667,7 @@ TEST_F(DARTTaskingTest, Abort)
     }
   };
 
-  dash::tasks::create([](){
+  dash::tasks::async([](){
     DtorIncrement dt;
     dash::tasks::abort_task();
     // this should not be executed
