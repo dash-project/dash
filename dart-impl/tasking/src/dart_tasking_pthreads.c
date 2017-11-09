@@ -161,6 +161,9 @@ dart__tasking__yield(int delay)
 {
   dart_thread_t *thread = get_current_thread();
 
+  // progress
+  dart_tasking_remote_progress();
+
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
 
