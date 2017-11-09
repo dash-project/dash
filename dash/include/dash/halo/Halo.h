@@ -443,8 +443,8 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  reference operator[](pattern_index_t idx) const {
-    auto coords    = glob_coords(idx);
+  reference operator[](pattern_index_t n) const {
+    auto coords    = glob_coords(_idx + n);
     auto local_pos = _pattern.local_index(coords);
 
     return reference(_globmem.at(local_pos.unit, local_pos.index));
@@ -835,7 +835,9 @@ public:
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
                  _globmem, _pattern, border));
-      _halo_reg_mapping[index] = &_halo_regions.back();
+      auto& region_tmp = _halo_regions.back();
+      _size_halo_elems += region_tmp.size();
+      _halo_reg_mapping[index] = &region_tmp;
       _boundary_regions.push_back(
         Region_t(spec, ViewSpec_t(bnd_region_offsets, bnd_region_extents),
                  _globmem, _pattern, border));
@@ -935,12 +937,7 @@ public:
     return _boundary_elements;
   }
 
-  pattern_size_t halo_size() const {
-    return std::accumulate(_halo_regions.begin(), _halo_regions.end(), 0,
-                           [](pattern_size_t sum, const Region_t& region) {
-                             return sum + region.size();
-                           });
-  }
+  pattern_size_t halo_size() const { return _size_halo_elems; }
 
   pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
@@ -1020,6 +1017,8 @@ private:
   std::vector<ViewSpec_t> _boundary_elements;
 
   pattern_size_t _size_bnd_elems = 0;
+
+  pattern_size_t _size_halo_elems = 0;
 
 };  // class HaloBlock
 

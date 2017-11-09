@@ -98,8 +98,8 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  reference operator[](pattern_index_t idx) const {
-    auto coords = set_coords(idx);
+  reference operator[](pattern_index_t n) const {
+    auto coords = set_coords(_idx + n);
     return _local_memory[_local_layout.at(coords)];
   }
 
