@@ -39,7 +39,7 @@ T load(const dash::GlobRef<dash::Atomic<T>>& ref){
  * Set the value of the atomic reference
  */
 template<typename T>
-void store(dash::GlobRef<dash::Atomic<T>>&& ref,
+void store(const dash::GlobRef<dash::Atomic<T>>& ref,
            const T & value)
 {
   ref.store(value);
@@ -50,7 +50,7 @@ void store(dash::GlobRef<dash::Atomic<T>>&& ref,
  * the old value
  */
 template<typename T>
-T exchange(dash::GlobRef<dash::Atomic<T>>&& ref,
+T exchange(const dash::GlobRef<dash::Atomic<T>>& ref,
            const T & value)
 {
   return ref.exchange(value);
@@ -64,7 +64,7 @@ T exchange(dash::GlobRef<dash::Atomic<T>>&& ref,
  */
 template<typename T>
 bool compare_exchange(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const T & expected,
   const T & desired)
 {
@@ -78,7 +78,7 @@ template<
   typename T,
   typename BinaryOp >
 void op(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const BinaryOp  binary_op,
   /// Value to be added to global atomic variable.
   const T & value)
@@ -96,7 +96,7 @@ template<
   typename T,
   typename BinaryOp >
 T fetch_op(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const BinaryOp  binary_op,
   /// Value to be added to global atomic variable.
   const T & value)
@@ -112,7 +112,7 @@ typename std::enable_if<
   std::is_integral<T>::value,
   void>::type
 add(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const T & value)
 {
   ref.add(value);
@@ -126,7 +126,7 @@ typename std::enable_if<
   std::is_integral<T>::value,
   void>::type
 sub(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const T & value)
 {
   ref.sub(value);
@@ -140,7 +140,7 @@ typename std::enable_if<
   std::is_integral<T>::value,
   void>::type
 multiply(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   const T & value)
 {
   ref.multiply(value);
@@ -158,7 +158,7 @@ typename std::enable_if<
   std::is_integral<T>::value,
   T>::type
 fetch_add(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   /// Value to be added to global atomic variable.
   const T & value)
 {
@@ -176,7 +176,7 @@ typename std::enable_if<
   std::is_integral<T>::value,
   T>::type
 fetch_sub(
-  dash::GlobRef<dash::Atomic<T>>&& ref,
+  const dash::GlobRef<dash::Atomic<T>>& ref,
   /// Value to be subtracted from global atomic variable.
   const T & value)
 {

@@ -660,8 +660,8 @@ public:
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
-  typedef GlobRef<      value_type>                                reference;
-  typedef GlobRef<const value_type>                          const_reference;
+  typedef          GlobRef<value_type>                             reference;
+  typedef typename GlobRef<value_type>::const_type           const_reference;
 
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;

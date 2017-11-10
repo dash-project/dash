@@ -35,14 +35,15 @@ class GlobRef<dash::Atomic<T>>
     const GlobRef<U> & gref);
 
 public:
-  typedef T
-    value_type;
-  typedef GlobRef<const dash::Atomic<T>>
-    const_type;
-
-private:
-  typedef dash::Atomic<T>      atomic_t;
-  typedef GlobRef<atomic_t>      self_t;
+  using value_type          = T;
+  using const_value_type    = typename std::add_const<T>::type;
+  using nonconst_value_type = typename std::remove_const<T>::type;
+  using atomic_t            = dash::Atomic<T>;
+  using const_atomic_t      = typename dash::Atomic<const_value_type>;
+  using nonconst_atomic_t   = typename dash::Atomic<nonconst_value_type>;
+  using self_t              = GlobRef<atomic_t>;
+  using const_type          = GlobRef<const_atomic_t>;
+  using nonconst_type       = GlobRef<dash::Atomic<nonconst_value_type>>;
 
 private:
   dart_gptr_t _gptr;
@@ -71,9 +72,17 @@ public:
   template<typename PatternT>
   GlobRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<atomic_t, PatternT> & gptr)
+    const GlobPtr<const_atomic_t, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
+
+  template<typename PatternT>
+  GlobRef(
+    /// Pointer to referenced object in global memory
+    const GlobPtr<nonconst_atomic_t, PatternT> & gptr)
+  : GlobRef(gptr.dart_gptr())
+  { }
+
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -123,6 +132,22 @@ public:
     return GlobPtr<atomic_t>(_gptr);
   }
 
+  /**
+   * Implicit conversion to const type.
+   */
+  operator const_type() const {
+    return const_type(_gptr);
+  }
+
+  /**
+   * Implicit conversion to const type.
+   */
+  explicit
+  operator nonconst_type() const {
+    return nonconst_type(_gptr);
+  }
+
+
   dart_gptr_t dart_gptr() const {
     return _gptr;
   }
@@ -145,7 +170,7 @@ public:
    * \c operator=, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator%3D.
    */
-  T operator=(const T & value) {
+  T operator=(const T & value) const {
     store(value);
     return value;
   }
@@ -153,8 +178,10 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  void set(const T & value)
+  void set(const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
     dart_ret_t ret = dart_accumulate(
@@ -171,7 +198,7 @@ public:
   /**
    * Set the value of the shared atomic variable.
    */
-  inline void store(const T & value) {
+  inline void store(const T & value) const {
     set(value);
   }
 
@@ -208,8 +235,10 @@ public:
   void op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value)
+    const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
     value_type acc = value;
@@ -235,8 +264,10 @@ public:
   T fetch_op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value)
+    const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
@@ -256,7 +287,7 @@ public:
   /**
    * Atomically exchanges value
    */
-  T exchange(const T & value) {
+  T exchange(const T & value) const {
     return fetch_op(dash::second<T>(), value);
   }
 
@@ -268,7 +299,9 @@ public:
    *
    * \see \c dash::atomic::compare_exchange
    */
-  bool compare_exchange(const T & expected, const T & desired) {
+  bool compare_exchange(const T & expected, const T & desired) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
@@ -292,8 +325,10 @@ public:
    * DASH specific variant which is faster than \c fetch_add
    * but does not return value
    */
-  void add(const T & value)
+  void add(const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     op(dash::plus<T>(), value);
   }
 
@@ -303,9 +338,9 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  T fetch_add(
+  T fetch_add (
     /// Value to be added to global atomic variable.
-    const T & value)
+    const T & value) const
   {
     return fetch_op(dash::plus<T>(), value);
   }
@@ -314,7 +349,7 @@ public:
    * DASH specific variant which is faster than \c fetch_sub
    * but does not return value
    */
-  void sub(const T & value)
+  void sub(const T & value) const
   {
     op(dash::plus<T>(), -value);
   }
@@ -327,7 +362,7 @@ public:
    */
   T fetch_sub (
     /// Value to be subtracted from global atomic variable.
-    const T & value)
+    const T & value) const
   {
     return fetch_op(dash::plus<T>(), -value);
   }
@@ -336,7 +371,7 @@ public:
    * DASH specific variant which is faster than \c fetch_multiply
    * but does not return value
    */
-  void multiply(const T & value)
+  void multiply(const T & value) const
   {
     op(dash::multiply<T>(), value);
   }
@@ -349,7 +384,7 @@ public:
    */
   T fetch_multiply(
     /// Value to be added to global atomic variable.
-    const T & value)
+    const T & value) const
   {
     return fetch_op(dash::multiply<T>(), value);
   }
@@ -365,7 +400,7 @@ public:
    * \c operator++, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
    */
-  T operator++ () {
+  T operator++ () const {
     return fetch_add(1) + 1;
   }
 
@@ -375,7 +410,7 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  T operator++ (int) {
+  T operator++ (int) const {
     return fetch_add(1);
   }
 
@@ -390,7 +425,7 @@ public:
    * \c operator--, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
    */
-  T operator-- () {
+  T operator-- () const {
     return fetch_sub(1) + 1;
   }
 
@@ -400,7 +435,7 @@ public:
    * \return  The value of the referenced shared variable before the
    *          operation.
    */
-  T operator-- (int) {
+  T operator-- (int) const {
     return fetch_sub(1);
   }
 
@@ -415,7 +450,7 @@ public:
    * \c operator+=, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith2.
    */
-  T operator+=(const T & value) {
+  T operator+=(const T & value) const {
     return fetch_add(value) + value;
   }
 
@@ -430,7 +465,7 @@ public:
    * \c operator-=, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith2.
    */
-  T operator-=(const T & value) {
+  T operator-=(const T & value) const {
     return fetch_sub(value) - value;
   }
 
