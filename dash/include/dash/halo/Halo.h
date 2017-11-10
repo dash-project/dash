@@ -178,9 +178,9 @@ private:
   using Self_t = RegionSpec<NumDimensions>;
 
 public:
+  using RegionCoords_t  = RegionCoords<NumDimensions>;
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using region_extent_t = uint16_t;
-  using RegionCoords_t  = RegionCoords<NumDimensions>;
   using region_coord_t  = typename RegionCoords_t::region_coord_t;
 
 public:
@@ -1027,7 +1027,7 @@ private:
 public:
   using Element_t = typename HaloBlockT::Element_t;
   using ElementCoords_t =
-    std::array<typename Pattern_t::index_type NumDimensions>;
+    std::array<typename Pattern_t::index_type, NumDimensions>;
   using region_index_t = typename RegionCoords_t::region_index_t;
   using pattern_size_t = typename Pattern_t::size_type;
 

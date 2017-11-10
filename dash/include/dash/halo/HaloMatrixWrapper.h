@@ -16,17 +16,14 @@ namespace dash {
 template <typename MatrixT, typename StencilSpecT>
 class HaloMatrixWrapper {
 private:
-  using Pattern_t = typename MatrixT::pattern_type;
+  using Pattern_t       = typename MatrixT::pattern_type;
+  using pattern_index_t = typename Pattern_t::index_type;
 
   static constexpr auto NumDimensions = Pattern_t::ndim();
-  static constexpr auto MemoryArrange = Pattern_t::memory_order();
-
-  using pattern_size_t  = typename Pattern_t::size_type;
-  using pattern_index_t = typename Pattern_t::index_type;
-  using HaloSpec_t      = HaloSpec<NumDimensions>;
-  using Region_t        = Region<Element_t, Pattern_t, NumDimensions>;
 
 public:
+  using Element_t = typename MatrixT::value_type;
+
   using iterator       = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
                                       StencilViewScope::ALL>;
   using const_iterator = const iterator;
@@ -37,13 +34,19 @@ public:
                                           StencilViewScope::BOUNDARY>;
   using const_iterator_bnd = const iterator_bnd;
 
-  using Element_t       = typename MatrixT::value_type;
   using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
   using CycleSpec_t     = CycleSpec<NumDimensions>;
   using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
+
+private:
+  static constexpr auto MemoryArrange = Pattern_t::memory_order();
+
+  using pattern_size_t = typename Pattern_t::size_type;
+  using HaloSpec_t     = HaloSpec<NumDimensions>;
+  using Region_t       = Region<Element_t, Pattern_t, NumDimensions>;
 
 public:
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,
