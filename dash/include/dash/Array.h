@@ -286,8 +286,8 @@ public:
   typedef       T *                                             pointer;
   typedef const T *                                       const_pointer;
 
-  typedef GlobAsyncRef<      T>                         async_reference;
-  typedef GlobAsyncRef<const T>                   const_async_reference;
+  typedef          GlobAsyncRef<T>                      async_reference;
+  typedef typename GlobAsyncRef<T>::const_type    const_async_reference;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -363,7 +363,7 @@ public:
    * Subscript operator, access to local array element at given position.
    */
   constexpr const_async_reference operator[](const size_type n) const  {
-    return async_reference(
+    return const_async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
 

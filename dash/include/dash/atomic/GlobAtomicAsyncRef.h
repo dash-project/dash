@@ -36,14 +36,16 @@ class GlobAsyncRef<dash::Atomic<T>>
     const GlobAsyncRef<U> & gref);
 
 public:
-  typedef T
-    value_type;
-  typedef GlobAsyncRef<const dash::Atomic<T>>
-    const_type;
+  using value_type          = T;
+  using const_value_type    = typename std::add_const<T>::type;
+  using nonconst_value_type = typename std::remove_const<T>::type;
+  using atomic_t            = dash::Atomic<T>;
+  using const_atomic_t      = typename dash::Atomic<const_value_type>;
+  using nonconst_atomic_t   = typename dash::Atomic<nonconst_value_type>;
+  using self_t              = GlobAsyncRef<atomic_t>;
+  using const_type          = GlobAsyncRef<const_atomic_t>;
+  using nonconst_type       = GlobAsyncRef<dash::Atomic<nonconst_value_type>>;
 
-private:
-  typedef dash::Atomic<T>        atomic_t;
-  typedef GlobAsyncRef<atomic_t> self_t;
 
 private:
   dart_gptr_t _gptr;
@@ -120,6 +122,17 @@ public:
     return GlobPtr<atomic_t>(_gptr);
   }
 
+  operator GlobAsyncRef<const_atomic_t>()
+  {
+    return GlobAsyncRef<const_atomic_t>(_gptr);
+  }
+
+  explicit
+  operator GlobAsyncRef<nonconst_atomic_t>()
+  {
+    return GlobAsyncRef<nonconst_atomic_t>(_gptr);
+  }
+
   dart_gptr_t dart_gptr() const {
     return _gptr;
   }
@@ -142,7 +155,7 @@ public:
    * \c operator=, see
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator%3D.
    */
-  T operator=(const T & value) {
+  T operator=(const T & value) const {
     store(value);
     return value;
   }
@@ -151,15 +164,17 @@ public:
    * Set the value of the shared atomic variable.
    * The operation will block until the local memory can be re-used.
    */
-  void set(const T & value)
+  void set(const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+            "Cannot modify value referenced by GlobAsyncRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.set()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
     dart_ret_t ret = dart_accumulate_blocking_local(
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        1,
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_REPLACE);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.set >");
@@ -170,15 +185,17 @@ public:
    * The operation will return immediately and the memory pointed to
    * by \c ptr should not be re-used before the operation has been completed.
    */
-  void set(const T * ptr)
+  void set(const T * ptr) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+            "Cannot modify value referenced by GlobAsyncRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.set()", *ptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<const void * const>(ptr),
                        1,
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_REPLACE);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.set >");
@@ -189,7 +206,7 @@ public:
    * Set the value of the shared atomic variable.
    * The operation will block until the local memory can be re-used.
    */
-  inline void store(const T & value) {
+  inline void store(const T & value) const {
     set(value);
   }
 
@@ -198,7 +215,7 @@ public:
    * The operation will return immediately and the memory pointed to
    * by \c ptr should not be re-used before the operation has been completed.
    */
-  inline void store(const T * ptr) {
+  inline void store(const T * ptr) const {
     set(ptr);
   }
 
@@ -212,13 +229,13 @@ public:
   {
     DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.get()");
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.get", _gptr);
-    value_type nothing;
-    value_type result;
+    nonconst_value_type nothing;
+    nonconst_value_type result;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
                        reinterpret_cast<void * const>(&result),
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
@@ -237,12 +254,12 @@ public:
   {
     DASH_LOG_DEBUG("GlobAsyncRef<Atomic>.get()");
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.get", _gptr);
-    value_type nothing;
+    nonconst_value_type nothing;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
                        reinterpret_cast<void * const>(result),
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_NO_OP);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
   }
@@ -264,8 +281,10 @@ public:
   void op(
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    const T & value)
+    const T & value) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+            "Cannot modify value referenced by GlobAsyncRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.op",   _gptr);
     DASH_LOG_TRACE("GlobAsyncRef<Atomic>.op", "dart_accumulate");
@@ -273,7 +292,7 @@ public:
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        1,
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        binary_op.dart_operation());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate_blocking_local failed");
   }
@@ -289,8 +308,10 @@ public:
     BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
     const T & value,
-          T * result)
+          T * result) const
   {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+            "Cannot modify value referenced by GlobAsyncRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.fetch_op",   typeid(value).name());
@@ -298,7 +319,7 @@ public:
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
                        reinterpret_cast<void * const>(result),
-                       dash::dart_punned_datatype<T>::value,
+                       dash::dart_punned_datatype<nonconst_value_type>::value,
                        binary_op.dart_operation());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
   }
@@ -308,8 +329,8 @@ public:
    */
   void exchange(
     const T & value,
-          T * result) {
-    fetch_op(dash::second<T>(), value, result);
+          T * result) const {
+    fetch_op(dash::second<nonconst_value_type>(), value, result);
   }
 
   /**
@@ -326,7 +347,9 @@ public:
   void compare_exchange(
     const T & expected,
     const T & desired,
-          T * result) {
+          T * result) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+            "Cannot modify value referenced by GlobAsyncRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobAsyncRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.compare_exchange",   expected);
@@ -337,7 +360,7 @@ public:
                        reinterpret_cast<const void * const>(&desired),
                        reinterpret_cast<const void * const>(&expected),
                        reinterpret_cast<void * const>(result),
-                       dash::dart_punned_datatype<T>::value);
+                       dash::dart_punned_datatype<nonconst_value_type>::value);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
   }
 
@@ -345,9 +368,9 @@ public:
    * DASH specific variant which is faster than \c fetch_add
    * but does not return value.
    */
-  void add(const T & value)
+  void add(const T & value) const
   {
-    op(dash::plus<T>(), value);
+    op(dash::plus<nonconst_value_type>(), value);
   }
 
   /**
@@ -362,18 +385,18 @@ public:
     /// Value to be added to global atomic variable.
     const T & value,
     /// Pointer to store result to
-          T * result)
+          T * result) const
   {
-    fetch_op(dash::plus<T>(), value, result);
+    fetch_op(dash::plus<nonconst_value_type>(), value, result);
   }
 
   /**
    * DASH specific variant which is faster than \c fetch_sub
    * but does not return value.
    */
-  void sub(const T & value)
+  void sub(const T & value) const
   {
-    op(dash::plus<T>(), -value);
+    op(dash::plus<nonconst_value_type>(), -value);
   }
 
   /**
@@ -388,18 +411,18 @@ public:
     /// Value to be subtracted from global atomic variable.
     const T & value,
     /// Pointer to store result to
-          T * result)
+          T * result) const
   {
-    fetch_op(dash::plus<T>(), -value, result);
+    fetch_op(dash::plus<nonconst_value_type>(), -value, result);
   }
 
   /**
    * DASH specific variant which is faster than \c fetch_mul
    * but does not return value.
    */
-  void multiply(const T & value)
+  void multiply(const T & value) const
   {
-    op(dash::multiply<T>(), value);
+    op(dash::multiply<nonconst_value_type>(), value);
   }
 
   /**
@@ -414,15 +437,15 @@ public:
     /// Value to be subtracted from global atomic variable.
     const T & value,
     /// Pointer to store result to
-          T * result)
+          T * result) const
   {
-    fetch_op(dash::multiply<T>(), value, result);
+    fetch_op(dash::multiply<nonconst_value_type>(), value, result);
   }
 
   /**
    * Flush all pending asynchronous operations on this asynchronous reference.
    */
-  void flush()
+  void flush() const
   {
     DASH_ASSERT_RETURNS(
       dart_flush(_gptr),

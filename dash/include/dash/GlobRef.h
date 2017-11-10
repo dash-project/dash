@@ -26,18 +26,6 @@ struct has_subscript_operator
   static bool const value = sizeof(check<T>(0)) == sizeof(yes);
 };
 
-template<typename ReferenceT, typename TargetT>
-struct match_const
-{
-  using type = TargetT;
-};
-
-template<typename ReferenceT, typename TargetT>
-struct match_const<const ReferenceT, TargetT>
-{
-  using type = typename std::add_const<TargetT>::type;
-};
-
 template<typename T>
 class GlobRef
 {
@@ -432,25 +420,25 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobRef<typename dash::match_const<T, MEMTYPE>::type>
+  GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
   member(size_t offs) const {
     dart_gptr_t dartptr = _gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
-    return GlobRef<typename dash::match_const<T, MEMTYPE>::type>(dartptr);
+    return GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>(dartptr);
   }
 
   /**
    * Get the member via pointer to member
    */
   template<class MEMTYPE, class P=T>
-  GlobRef<typename dash::match_const<T, MEMTYPE>::type>
+  GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
     // TODO: Thaaaat ... looks hacky.
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
-    return member<typename dash::match_const<T, MEMTYPE>::type>(offs);
+    return member<typename dash::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
   /**

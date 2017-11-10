@@ -76,7 +76,7 @@ public:
   : GlobRef(gptr.dart_gptr())
   {
     static_assert(std::is_same<value_type, const_value_type>::value,
-                  "Cannot create GlobRef<Async<T>> from GlobPtr<const_atomic_t>!");
+                  "Cannot create GlobRef<Atomic<T>> from GlobPtr<const_atomic_t>!");
   }
 
   template<typename PatternT>
@@ -129,12 +129,6 @@ public:
     return load();
   }
 
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    return GlobPtr<atomic_t>(_gptr);
-  }
-
   /**
    * Implicit conversion to const type.
    */
@@ -184,7 +178,7 @@ public:
   void set(const T & value) const
   {
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
     dart_ret_t ret = dart_accumulate(
@@ -210,8 +204,8 @@ public:
   {
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
-    value_type nothing;
-    value_type result;
+    nonconst_value_type nothing;
+    nonconst_value_type result;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<void * const>(&nothing),
@@ -242,10 +236,10 @@ public:
     const T & value) const
   {
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
-    value_type acc = value;
+    nonconst_value_type acc = value;
     DASH_LOG_TRACE("GlobRef<Atomic>.op", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
                        _gptr,
@@ -271,11 +265,11 @@ public:
     const T & value) const
   {
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot modify value referenced by GlobRef<Async<const T>>!");
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
-    value_type res;
+    nonconst_value_type res;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
                        reinterpret_cast<const void * const>(&value),
@@ -311,7 +305,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
     DASH_LOG_TRACE_VAR(
       "GlobRef<Atomic>.compare_exchange", typeid(desired).name());
-    value_type result;
+    nonconst_value_type result;
     dart_ret_t ret = dart_compare_and_swap(
                        _gptr,
                        reinterpret_cast<const void * const>(&desired),
