@@ -260,7 +260,7 @@ public:
 
         // attach new container location to global memory space
         dart_gptr_t gptr = DART_GPTR_NULL;
-        dart_storage_t ds = dart_storage<value_type>(c_data->container->size());
+        dash::dart_storage<value_type> ds(c_data->container->size());
         DASH_ASSERT_RETURNS(
           dart_team_memregister(
             _team->dart_id(), 
