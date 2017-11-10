@@ -74,7 +74,10 @@ public:
     /// Pointer to referenced object in global memory
     const GlobPtr<const_atomic_t, PatternT> & gptr)
   : GlobRef(gptr.dart_gptr())
-  { }
+  {
+    static_assert(std::is_same<value_type, const_value_type>::value,
+                  "Cannot create GlobRef<Async<T>> from GlobPtr<const_atomic_t>!");
+  }
 
   template<typename PatternT>
   GlobRef(
@@ -222,7 +225,7 @@ public:
   }
 
   /**
-   * Set the value of the shared atomic variable.
+   * Get the value of the shared atomic variable.
    */
   inline T load() const {
     return get();
@@ -233,8 +236,9 @@ public:
    */
   template<typename BinaryOp>
   void op(
+    /// Binary operation to be performed on global atomic variable
     BinaryOp  binary_op,
-    /// Value to be added to global atomic variable.
+    /// Value to be used in binary op on global atomic variable.
     const T & value) const
   {
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
