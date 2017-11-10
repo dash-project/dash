@@ -1,6 +1,7 @@
-
 #include <dash/dart/if/dart_tasking.h>
+#include <dash/dart/if/dart_communication.h>
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
 
 static dart_taskphase_t creation_phase = DART_PHASE_FIRST;
@@ -39,4 +40,26 @@ dart_taskphase_t
 dart__tasking__phase_runnable()
 {
   return runnable_phase;
+}
+
+dart_ret_t
+dart__tasking__phase_resync(dart_team_t team)
+{
+  dart_taskphase_t max_phase;
+
+  int ret = dart_allreduce(
+      &creation_phase,
+      &max_phase,
+      1, DART_TYPE_INT,
+      DART_OP_MAX,
+      team);
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  dart_taskphase_t new_phase = ++max_phase;
+  DART_ASSERT_MSG(new_phase >= creation_phase, "Phase overflow detected!");
+  creation_phase = new_phase;
+
+  return DART_OK;
 }

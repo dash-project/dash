@@ -225,6 +225,15 @@ dart_task_phase_advance();
 dart_taskphase_t
 dart_task_phase_current();
 
+/**
+ * Resyncs the phases among all units to the highest phase and avances it.
+ * This is useful if at some pointer phases may have diverged, i.e., due to
+ * task creation on subteams.
+ * \note This involves a blocking collective operation on all units in \c team.
+ */
+dart_ret_t
+dart_task_phase_resync(dart_team_t team);
+
 
 #ifdef __cplusplus
 }

@@ -441,6 +441,11 @@ namespace internal {
   }
 
   template<typename T=int>
+  void resync_barrier(dash::Team& team = dash::Team::All()) {
+    dart_task_phase_resync(team.dart_id());
+  }
+
+  template<typename T=int>
   void
   yield(int delay = -1) {
     if (dart_task_should_abort()) abort_task();

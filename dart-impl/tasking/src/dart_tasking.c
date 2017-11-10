@@ -197,3 +197,9 @@ dart_task_phase_current()
 {
   return dart__tasking__phase_current();
 }
+
+dart_ret_t
+dart_task_phase_resync(dart_team_t team)
+{
+  return dart__tasking__phase_resync(team);
+}
