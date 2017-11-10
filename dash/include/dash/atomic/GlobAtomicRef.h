@@ -76,7 +76,7 @@ public:
   : GlobRef(gptr.dart_gptr())
   {
     static_assert(std::is_same<value_type, const_value_type>::value,
-                  "Cannot create GlobRef<Atomic<T>> from GlobPtr<const_atomic_t>!");
+            "Cannot create GlobRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
   }
 
   template<typename PatternT>

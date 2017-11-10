@@ -63,7 +63,7 @@ public:
   template<typename PatternT>
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<atomic_t, PatternT> & gptr)
+    const GlobPtr<nonconst_atomic_t, PatternT> & gptr)
   : GlobAsyncRef(gptr.dart_gptr())
   { }
 
@@ -72,11 +72,14 @@ public:
    * memory.
    */
   template<typename PatternT>
-  GlobAsyncRef(
+  explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<atomic_t, PatternT> & gptr)
+    const GlobPtr<const_atomic_t, PatternT> & gptr)
   : GlobAsyncRef(gptr.dart_gptr())
-  { }
+  {
+    static_assert(std::is_same<value_type, const_value_type>::value,
+        "Cannot create GlobAsyncRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
+  }
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -115,12 +118,6 @@ public:
 
   inline bool operator==(const T & value) const = delete;
   inline bool operator!=(const T & value) const = delete;
-
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobAsyncRef<Atomic>.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.T()", _gptr);
-    return GlobPtr<atomic_t>(_gptr);
-  }
 
   operator GlobAsyncRef<const_atomic_t>()
   {
