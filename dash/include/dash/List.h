@@ -96,7 +96,8 @@ namespace dash {
  *
  * Usage examples:
  *
- * \code
+ * <code>
+ *
  * size_t initial_local_capacity = 100;
  * size_t initial_capacity       = dash::size() * initial_local_capacity;
  * dash::List<int> list(initial_capacity);
@@ -156,7 +157,7 @@ namespace dash {
  * //      .-- 3 <-' |  .-- 8 <-' |  .-- 13 --'
  * //      `-> 4 ----'  `-> 9 ----'  `-> 14 ---> Nil
  *
- * \endcode
+ * </code>
  */
 
 /**
@@ -278,7 +279,7 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global list instances
    * that are declared before \c dash::Init().
    */
-  List(
+  explicit List(
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
@@ -292,7 +293,7 @@ public:
    * Constructor, creates a new constainer instance with the specified
    * initial global container capacity and associated units.
    */
-  List(
+  explicit List(
     size_type   nelem = 0,
     Team      & team  = dash::Team::All())
   : local(this),
@@ -544,7 +545,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  constexpr const Team & team() const noexcept
+  constexpr Team & team() const noexcept
   {
     return *_team;
   }

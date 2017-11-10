@@ -113,7 +113,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
@@ -195,32 +194,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    // Degrading to 1-dimensional team spec for now:
-//  _teamspec(_distspec, *_team),
-    _teamspec(_arguments.teamspec()),
-    _memory_layout(_arguments.sizespec().extents()),
-    _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
-    _blocksize_spec(initialize_blocksizespec(
-        _arguments.sizespec(),
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        _arguments.sizespec(),
-        _distspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _major_tiled_dim,
-        _nunits)),
-    _local_memory_layout(
-        initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()) {
+  : ShiftTilePattern(PatternArguments_t(arg, args...)) {
     DASH_LOG_TRACE("ShiftTilePattern()", "Constructor with Argument list");
     initialize_local_range();
   }
@@ -262,8 +236,7 @@ public:
     /// ShiftTilePattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
+    /// all dimensions.
     const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
     const TeamSpec_t         & teamspec,
@@ -288,7 +261,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -357,7 +329,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -615,8 +586,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<SizeType, NumDimensions> local_extents(
-      team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+  std::array<SizeType, NumDimensions> local_extents() const {
     // Same local memory layout for all units:
     return _local_memory_layout.extents();
   }
@@ -1470,6 +1440,31 @@ public:
   }
 
 private:
+
+  ShiftTilePattern(const PatternArguments_t & arguments)
+  : _distspec(arguments.distspec()),
+    _team(&arguments.team()),
+    _teamspec(arguments.teamspec()),
+    _memory_layout(arguments.sizespec().extents()),
+    _nunits(_teamspec.size()),
+    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
+    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
+    _blocksize_spec(initialize_blocksizespec(
+        arguments.sizespec(),
+        _distspec,
+        _teamspec)),
+    _blockspec(initialize_blockspec(
+        arguments.sizespec(),
+        _blocksize_spec,
+        _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _major_tiled_dim,
+        _nunits)),
+    _local_memory_layout(
+        initialize_local_extents(_team->myid())),
+    _local_capacity(initialize_local_capacity())
+  {}
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
@@ -1501,7 +1496,6 @@ private:
    */
   BlockSpec_t initialize_blockspec(
     const SizeSpec_t         & sizespec,
-    const DistributionSpec_t & distspec,
     const BlockSizeSpec_t    & blocksizespec,
     const TeamSpec_t         & teamspec) const
   {
@@ -1552,8 +1546,7 @@ private:
    * Currently calculated as (num_local_blocks * block_size), thus
    * ignoring underfilled blocks.
    */
-  SizeType initialize_local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
+  SizeType initialize_local_capacity() const
   {
     // Assumes balanced distribution property, i.e.
     // range = k * blocksz * nunits

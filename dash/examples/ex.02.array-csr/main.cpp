@@ -1,3 +1,10 @@
+/**
+ * \example ex.02.array-csr/main.cpp
+ * Example illustrating access to elements in a \c dash::Array by
+ * global index and the CSR pattern.
+ */
+
+
 #include <iostream>
 #include <string>
 #include <vector>

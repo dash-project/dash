@@ -1,3 +1,9 @@
+/**
+ * \example ex.03.globref/main.cpp
+ * Example illustrating the use of DASH global 
+ * references, i.e.,  \c dash::GlobRef
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>

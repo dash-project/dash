@@ -290,7 +290,6 @@ dart_ret_t dart_reduce(
  * \param nelem   The number of local elements to accumulate per unit.
  * \param dtype   The data type to use in the accumulate operation \c op.
  * \param op      The accumulation operation to perform.
- * \param team    The team to participate in the accumulate.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -320,7 +319,6 @@ dart_ret_t dart_accumulate(
  *                \c op.
  * \param dtype   The data type to use in the operation \c op.
  * \param op      The operation to perform.
- * \param team    The team to participate in the operation.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -509,6 +507,8 @@ dart_ret_t dart_flush_local_all(
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
+#define DART_HANDLE_NULL (dart_handle_t)NULL
+
 /**
  * 'HANDLE' variant of dart_get.
  * Neither local nor remote completion is guaranteed. A later
@@ -569,9 +569,11 @@ dart_ret_t dart_put_handle(
  */
 
 dart_ret_t dart_wait(
-  dart_handle_t handle) DART_NOTHROW;
+  dart_handle_t * handle) DART_NOTHROW;
 /**
  * Wait for the local and remote completion of operations.
+ * Upon success, the handle is invalidated and may not be used in another
+ * \c dart_wait or \c dart_test operation.
  *
  * \param handles Array of handles of operations to wait for.
  * \param n Number of \c handles to wait for.
@@ -582,11 +584,13 @@ dart_ret_t dart_wait(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
-  dart_handle_t * handles,
-  size_t          n) DART_NOTHROW;
+  dart_handle_t handles[],
+  size_t        n) DART_NOTHROW;
 
 /**
  * Wait for the local completion of an operation.
+ * Upon success, the handle is invalidated and may not be used in another
+ * \c dart_wait or \c dart_test operation.
  *
  * \param handle Handle of an operations to wait for.
  *
@@ -596,10 +600,12 @@ dart_ret_t dart_waitall(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_wait_local(
-    dart_handle_t handle);
+  dart_handle_t * handle) DART_NOTHROW;
 
 /**
  * Wait for the local completion of operations.
+ * Upon success, the handles are invalidated and may not be used in another
+ * \c dart_wait or \c dart_test operation.
  *
  * \param handles Array of handles of operations to wait for.
  * \param n Number of \c handles to wait for.
@@ -610,11 +616,13 @@ dart_ret_t dart_wait_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall_local(
-    dart_handle_t * handles,
-    size_t          n) DART_NOTHROW;
+  dart_handle_t handles[],
+  size_t        n) DART_NOTHROW;
 
 /**
  * Test for the local completion of an operation.
+ * If the transfer completed, the handle is invalidated and may not be used
+ * in another \c dart_wait or \c dart_test operation.
  *
  * \param handle The handle of an operation to test for completion.
  * \param[out] result \c True if the operation has completed.
@@ -625,11 +633,13 @@ dart_ret_t dart_waitall_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
-  dart_handle_t   handle,
+  dart_handle_t * handle,
   int32_t       * result) DART_NOTHROW;
 
 /**
  * Test for the local completion of operations.
+ * If the transfers completed, the handles are invalidated and may not be
+ * used in another \c dart_wait or \c dart_test operation.
  *
  * \param handles Array of handles of operations to test for completion.
  * \param n Number of \c handles to test for completion.
@@ -641,7 +651,7 @@ dart_ret_t dart_test_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
-  dart_handle_t * handles,
+  dart_handle_t   handles[],
   size_t          n,
   int32_t       * result) DART_NOTHROW;
 

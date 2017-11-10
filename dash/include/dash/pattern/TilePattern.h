@@ -1,7 +1,6 @@
 #ifndef DASH__TILE_PATTERN_H_
 #define DASH__TILE_PATTERN_H_
 
-#include <assert.h>
 #include <functional>
 #include <cstring>
 #include <array>
@@ -85,9 +84,9 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSpec_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSizeSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -114,7 +113,6 @@ public:
   } local_coords_t;
 
 private:
-  PatternArguments_t          _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
@@ -192,30 +190,7 @@ public:
     /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
-  : _arguments(arg, args...),
-    _distspec(_arguments.distspec()),
-    _team(&_arguments.team()),
-    _myid(_team->myid()),
-    _teamspec(_arguments.teamspec()),
-    _memory_layout(_arguments.sizespec().extents()),
-    _nunits(_teamspec.size()),
-    _blocksize_spec(initialize_blocksizespec(
-        _arguments.sizespec(),
-        _distspec,
-        _teamspec)),
-    _blockspec(initialize_blockspec(
-        _arguments.sizespec(),
-        _distspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_blockspec(initialize_local_blockspec(
-        _blockspec,
-        _blocksize_spec,
-        _teamspec)),
-    _local_memory_layout(
-        initialize_local_extents(_myid)),
-    _local_capacity(
-        initialize_local_capacity(_local_memory_layout))
+  : TilePattern(PatternArguments_t(arg, args...))
   {
     DASH_LOG_TRACE("TilePattern()", "Constructor with Argument list");
     initialize_local_range();
@@ -258,8 +233,7 @@ public:
     /// TilePattern size (extent, number of elements) in every dimension
     const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
+    /// all dimensions.
     const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
     const TeamSpec_t         & teamspec,
@@ -280,7 +254,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -350,7 +323,6 @@ public:
         _teamspec)),
     _blockspec(initialize_blockspec(
         sizespec,
-        _distspec,
         _blocksize_spec,
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
@@ -1381,8 +1353,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity(
-    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
+  constexpr SizeType local_capacity() const {
     return local_size();
   }
 
@@ -1521,6 +1492,32 @@ public:
   }
 
 private:
+
+  TilePattern(const PatternArguments_t & arguments)
+  : _distspec(arguments.distspec()),
+    _team(&arguments.team()),
+    _myid(_team->myid()),
+    _teamspec(arguments.teamspec()),
+    _memory_layout(arguments.sizespec().extents()),
+    _nunits(_teamspec.size()),
+    _blocksize_spec(initialize_blocksizespec(
+        arguments.sizespec(),
+        _distspec,
+        _teamspec)),
+    _blockspec(initialize_blockspec(
+        arguments.sizespec(),
+        _blocksize_spec,
+        _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _blocksize_spec,
+        _teamspec)),
+    _local_memory_layout(
+        initialize_local_extents(_myid)),
+    _local_capacity(
+        initialize_local_capacity(_local_memory_layout))
+  {}
+
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
@@ -1570,7 +1567,6 @@ private:
    */
   BlockSpec_t initialize_blockspec(
     const SizeSpec_t         & sizespec,
-    const DistributionSpec_t & distspec,
     const BlockSizeSpec_t    & blocksizespec,
     const TeamSpec_t         & teamspec) const
   {

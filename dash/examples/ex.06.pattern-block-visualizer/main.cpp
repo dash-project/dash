@@ -1,3 +1,9 @@
+/**
+ * \example ex.06.pattern-block-visualizer/main.cpp
+ * Example demonstrating the instantiation of 
+ * different patterns and their visualization.
+ */ 
+
 #include <unistd.h>
 #include <iostream>
 #include <iomanip>

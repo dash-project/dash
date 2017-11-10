@@ -222,6 +222,7 @@ TEST_F(ArrayTest, TeamSplit)
   LOG_MESSAGE("... Team split finished");
 
   dash::Array<double> array_a(ext_x, myteam);
+  ASSERT_EQ_U(array_a.team(), myteam);
 
   array_a.barrier();
   // Check if array is allocated
@@ -229,3 +230,44 @@ TEST_F(ArrayTest, TeamSplit)
   team_all.barrier();
 }
 
+TEST_F(ArrayTest, MoveSemantics){
+  using array_t = dash::Array<double>;
+  // move construction
+  {
+    array_t array_a(10);
+
+    *(array_a.lbegin()) = 5;
+    dash::barrier();
+
+    array_t array_b(std::move(array_a));
+    int value = *(array_b.lbegin());
+    ASSERT_EQ_U(value, 5);
+  }
+  dash::barrier();
+  //move assignment
+  {
+    array_t array_a(10);
+    {
+      array_t array_b(8);
+
+      *(array_a.lbegin()) = 1;
+      *(array_b.lbegin()) = 2;
+      array_a = std::move(array_b);
+      // leave scope of array_b
+    }
+    ASSERT_EQ_U(*(array_a.lbegin()), 2);
+  }
+  dash::barrier();
+  // swap
+  {
+    array_t array_a(10);
+    array_t array_b(8);
+
+    *(array_a.lbegin()) = 1;
+    *(array_b.lbegin()) = 2;
+
+    std::swap(array_a, array_b);
+    ASSERT_EQ_U(*(array_a.lbegin()), 2);
+    ASSERT_EQ_U(*(array_b.lbegin()), 1);
+  }
+}

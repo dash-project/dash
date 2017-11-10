@@ -8,13 +8,20 @@
 namespace dash {
 
 /**
- * \ingroup     DashAlgorithms
+ * Check whether any element in the range satisfies predicate \c p.
+ *
+ * \returns \c true if at least one element satisfies \c p, \c false otherwise.
+ *
+ * \see dash::find_if
+ * \see dash::find_if_not
+ * \see dash::all_of
+ * \ingroup DashAlgorithms
  */
 template<
   typename ElementType,
   class    PatternType,
   typename UnaryPredicate >
-GlobIter<ElementType, PatternType> any_of(
+bool any_of(
   /// Iterator to the initial position in the sequence
   GlobIter<ElementType, PatternType>   first,
   /// Iterator to the final position in the sequence

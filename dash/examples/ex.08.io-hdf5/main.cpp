@@ -1,3 +1,10 @@
+/**
+ * \example ex.08.io-hdf5/main.cpp
+ * Example demonstrating the use of 
+ * \c dash::io::hdf5 to read and write 
+ * HDF5 files.
+ */
+
 #include <libdash.h>
 #include <iostream>
 

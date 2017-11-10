@@ -238,7 +238,10 @@ public:
   ~GlobStaticMem()
   {
     DASH_LOG_TRACE_VAR("GlobStaticMem.~GlobStaticMem()", _begptr);
-    _allocator.deallocate(_begptr);
+    // check if has been moved away
+    if(!DART_GPTR_ISNULL(_begptr)){
+      _allocator.deallocate(_begptr);
+    }
     DASH_LOG_TRACE("GlobStaticMem.~GlobStaticMem >");
   }
 
@@ -246,13 +249,67 @@ public:
    * Copy constructor.
    */
   GlobStaticMem(const self_t & other)
-    = default;
+    = delete;
 
   /**
-   * Assignment operator.
+   * Move constructor
+   *
+   * \TODO make move constructor defaultable by using RAII
+   */
+  GlobStaticMem(self_t && other)
+  : _allocator(std::move(other._allocator)),
+    _begptr(other._begptr),
+    _team(other._team),
+    _teamid(other._teamid),
+    _nunits(other._nunits),
+    _myid(other._myid),
+    _nlelem(other._nlelem),
+    _lbegin(other._lbegin),
+    _lend(other._lend)
+  {
+    // avoid deallocation of underlying memory
+    // in the dead hull
+    other._begptr = DART_GPTR_NULL;
+    other._lbegin = nullptr;
+    other._lend   = nullptr;
+  }
+
+  /**
+   * Copy-assignment operator.
+   *
    */
   self_t & operator=(const self_t & rhs)
-    = default;
+    = delete;
+
+  /**
+   * Move-assignment operator.
+   *
+   * \TODO make move constructor defaultable by using RAII
+   */
+  self_t & operator=(self_t && other) {
+    // deallocate old memory
+    if(!DART_GPTR_ISNULL(_begptr)){
+      _allocator.deallocate(_begptr);
+    }
+
+    _allocator = std::move(other._allocator);
+    _begptr    = other._begptr;
+    _team      = other._team;
+    _teamid    = other._teamid;
+    _nunits    = other._nunits;
+    _myid      = other._myid;
+    _nlelem    = other._nlelem;
+    _lbegin    = other._lbegin;
+    _lend      = other._lend;
+
+    // avoid deallocation of underlying memory
+    // in the dead hull
+    other._begptr = DART_GPTR_NULL;
+    other._lbegin = nullptr;
+    other._lend   = nullptr;
+
+    return *this;
+  }
 
   /**
    * Equality comparison operator.
@@ -393,7 +450,7 @@ public:
   /**
    * Synchronize all units associated with this global memory instance.
    */
-  void barrier() const noexcept
+  void barrier() const
   {
     DASH_ASSERT_RETURNS(
       dart_barrier(_teamid),
@@ -401,38 +458,42 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units.
+   * Complete all outstanding non-blocking operations to all units.
    */
   void flush() noexcept
-  {
-    dart_flush(_begptr);
-  }
-
-  /**
-   * Complete all outstanding non-blocking operations executed by all units.
-   */
-  void flush_all() noexcept
   {
     dart_flush_all(_begptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Complete all outstanding non-blocking operations to the specified unit.
    */
-  void flush_local() noexcept
+  void flush(dash::team_unit_t target) noexcept
   {
-    dart_flush_local(_begptr);
+    dart_gptr_t gptr = _begptr;
+    gptr.unitid = target.id;
+    dart_flush(gptr);
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit.
+   * Locally complete all outstanding non-blocking operations to all units.
    */
-  void flush_local_all() noexcept
+  void flush_local() noexcept
   {
     dart_flush_local_all(_begptr);
   }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to the specified
+   * unit.
+   */
+  void flush_local(dash::team_unit_t target) noexcept
+  {
+    dart_gptr_t gptr = _begptr;
+    gptr.unitid = target.id;
+    dart_flush_local(gptr);
+  }
+
 
   /**
    * Resolve the global pointer from an element position in a unit's
@@ -525,7 +586,7 @@ template<
 GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
 {
   dart_gptr_t gptr;
-  dart_storage_t ds = dart_storage<T>(nelem);
+  dash::dart_storage<T> ds(nelem);
   if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
     return GlobPtr<T, MemSpaceT>(nullptr);
   }

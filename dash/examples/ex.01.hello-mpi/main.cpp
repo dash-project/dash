@@ -1,3 +1,12 @@
+/**
+ * \example ex.01.hello-mpi/main.cpp
+ * A simple "hello world" example in which every unit sends a string to 
+ * \c std::cout containing it's \c dash::myid() , the \c dash::size(),
+ * the name of the host, the version of the underlying runtime system, 
+ * and it's process id.
+ */
+
+
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>

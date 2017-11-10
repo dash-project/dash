@@ -219,8 +219,8 @@ dart_ret_t dart_gptr_setunit(
 /**
  * Get the flags field for the segment specified by the global pointer.
  *
- * \param gptr Global Pointer describing a segment.
- * \param unit The flags to get for segment in \c gptr
+ * \param gptr  Global Pointer describing a segment.
+ * \param flags The flags to get for segment in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -239,8 +239,8 @@ dart_ret_t dart_gptr_getflags(
  * fast access. The remaining flags can be queried through
  * \ref dart_gptr_getflags.
  *
- * \param gptr Global Pointer describing a segment.
- * \param unit The flags to set for segment in \c gptr
+ * \param gptr  Global Pointer describing a segment.
+ * \param flags The flags to set for segment in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -330,7 +330,6 @@ dart_ret_t dart_team_memalloc_aligned(
  * After this operation, the global pointer can be reset using
  * \ref DART_GPTR_NULL.
  *
- * \param teamid The team to participate in the collective deallocation.
  * \param gptr Global pointer pointing to the memory to deallocate.
  *
  * \see DART_GPTR_NULL
@@ -397,7 +396,6 @@ dart_ret_t dart_team_memregister(
  * externally allocated memory.
  * Does not de-allocate memory.
  *
- * \param teamid The team to participate in the collective operation.
  * \param gptr   Pointer to a global pointer object to set up.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.

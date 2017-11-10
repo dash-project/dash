@@ -32,10 +32,10 @@
  * A distributed array of fixed size.
  *
  * Like all DASH containers, \c dash::Array is initialized by specifying
-  * an arrangement of units in a team (\c dash::TeamSpec) and a
- * distribution pattern (\c dash::Pattern).
+  * an arrangement of units in a team (\ref dash::TeamSpec) and a
+ * distribution pattern (\ref dash::Pattern).
  *
- * DASH arrays support delayed allocation (\c dash::Array::allocate),
+ * DASH arrays support delayed allocation (\ref dash::Array::allocate),
  * so global memory of an array instance can be allocated any time after
  * declaring a \c dash::Array variable.
  *
@@ -61,19 +61,19 @@
  *
  * \par Methods
  *
- * Return Type              | Method                | Parameters                                            | Description
- * ------------------------ | --------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
- * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                | Container proxy object representing a view specifier on the container's local elements.
- * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
- * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                | Iterator referencing the first container element.
- * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                | Iterator referencing the element past the last container element.
- * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
- * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
- * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                | Number of elements in the container.
- * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                | Number of local elements in the container, same as <tt>local().size()</tt>.
- * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
- * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec<DD> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
- * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                | Deallocation of the container and its elements.
+ * Return Type              | Method                | Parameters                                              | Description
+ * ------------------------ | --------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------
+ * <tt>local_type</tt>      | <tt>local</tt>        | &nbsp;                                                  | Container proxy object representing a view specifier on the container's local elements.
+ * <tt>pattern_type</tt>    | <tt>pattern</tt>      | &nbsp;                                                  | Object implementing the Pattern concept specifying the container's data distribution and iteration pattern.
+ * <tt>iterator</tt>        | <tt>begin</tt>        | &nbsp;                                                  | Iterator referencing the first container element.
+ * <tt>iterator</tt>        | <tt>end</tt>          | &nbsp;                                                  | Iterator referencing the element past the last container element.
+ * <tt>Element *</tt>       | <tt>lbegin</tt>       | &nbsp;                                                  | Native pointer referencing the first local container element, same as <tt>local().begin()</tt>.
+ * <tt>Element *</tt>       | <tt>lend</tt>         | &nbsp;                                                  | Native pointer referencing the element past the last local container element, same as <tt>local().end()</tt>.
+ * <tt>size_type</tt>       | <tt>size</tt>         | &nbsp;                                                  | Number of elements in the container.
+ * <tt>size_type</tt>       | <tt>local_size</tt>   | &nbsp;                                                  | Number of local elements in the container, same as <tt>local().size()</tt>.
+ * <tt>bool</tt>            | <tt>is_local</tt>     | <tt>index_type gi</tt>                                  | Whether the element at the given linear offset in global index space <tt>gi</tt> is local.
+ * <tt>bool</tt>            | <tt>allocate</tt>     | <tt>size_type n, DistributionSpec\<DD\> ds, Team t</tt> | Allocation of <tt>n</tt> container elements distributed in Team <tt>t</tt> as specified by distribution spec <tt>ds</tt>
+ * <tt>void</tt>            | <tt>deallocate</tt>   | &nbsp;                                                  | Deallocation of the container and its elements.
  *
  * \}
  *
@@ -168,6 +168,12 @@ public:
     _viewspec(viewspec)
   { }
 
+  LocalArrayRef(const self_t &) = default;
+  LocalArrayRef(self_t &&)      = default;
+
+  self_t & operator=(const self_t &) = default;
+  self_t & operator=(self_t &&)      = default;
+
   /**
    * Pointer to initial local element in the array.
    */
@@ -206,14 +212,14 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_reference operator[](const size_t n) const {
+  constexpr const_reference operator[](const size_type n) const {
     return (_array->m_lbegin)[n];
   }
 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline reference operator[](const size_t n) {
+  inline reference operator[](const size_type n) {
     return (_array->m_lbegin)[n];
   }
 
@@ -245,9 +251,9 @@ public:
 
 private:
   /// Pointer to array instance referenced by this view.
-  const Array_t * const _array;
+  const Array_t * _array;
   /// The view's offset and extent within the referenced array.
-  ViewSpec_t            _viewspec;
+  ViewSpec_t      _viewspec;
 };
 
 #ifndef DOXYGEN
@@ -292,7 +298,7 @@ public:
   }
 
 private:
-  Array<T, IndexType, PatternType> * const _array;
+  Array<T, IndexType, PatternType> * _array;
 
 public:
   /**
@@ -302,6 +308,13 @@ public:
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
+
+  AsyncArrayRef(const self_t &) = default;
+  AsyncArrayRef(self_t &&)      = default;
+
+  self_t & operator=(const self_t &) = default;
+  self_t & operator=(self_t &&)      = default;
+
 
   /**
    * Pointer to initial local element in the array.
@@ -349,7 +362,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_async_reference operator[](const size_t n) const  {
+  constexpr const_async_reference operator[](const size_type n) const  {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
@@ -357,7 +370,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  async_reference operator[](const size_t n) {
+  async_reference operator[](const size_type n) {
     return async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
@@ -371,40 +384,33 @@ public:
     _array->m_globmem->flush();
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced array
+   * to the specified unit.
+   */
+  inline void flush(dash::team_unit_t target) const {
+    // could also call _array->flush();
+    _array->m_globmem->flush(target);
+  }
+
+  /**
+   * Locally complete all outstanding asynchronous operations on the referenced array
+   * on all units.
+   */
   inline void flush_local() const {
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
-  inline void flush_all() const {
-    // could also call _array->flush();
-    _array->m_globmem->flush_all();
-  }
-
-  inline void flush_local_all() const {
-    // could also call _array->flush_local_all();
-    _array->m_globmem->flush_local_all();
-  }
-
   /**
-   * Block until all locally invoked operations on global memory have been
-   * communicated.
-   *
-   * \see DashAsyncProxyConcept
+   * Locally complete all outstanding asynchronous operations on the referenced array
+   * to the specified unit.
    */
-  inline void push() const {
-    _array->m_globmem->flush_local_all();
+  inline void flush_local(dash::team_unit_t target) const {
+    // could also call _array->flush_local();
+    _array->m_globmem->flush_local(target);
   }
 
-  /**
-   * Block until all remote operations on this unit's local memory have been
-   * completed.
-   *
-   * \see DashAsyncProxyConcept
-   */
-  inline void fetch() const {
-    _array->m_globmem->flush_all();
-  }
 };
 
 #endif // DOXYGEN
@@ -660,7 +666,9 @@ public:
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
 
-  typedef dash::GlobStaticMem<value_type>                            glob_mem_type;
+  typedef dash::GlobStaticMem<value_type>                      glob_mem_type;
+
+  typedef DistributionSpec<1>                              distribution_spec;
 
 public:
   template<
@@ -696,10 +704,10 @@ public:
   }
 
 private:
-  typedef DistributionSpec<1>
-    DistributionSpec_t;
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
+  typedef std::unique_ptr<glob_mem_type>
+    PtrGlobMemType_t;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -715,7 +723,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  glob_mem_type      * m_globmem   = nullptr;
+  PtrGlobMemType_t     m_globmem;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array
@@ -750,6 +758,7 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global array instances
    * that are declared before \c dash::Init().
    */
+  explicit
   Array(
     Team & team = dash::Team::Null())
   : local(this),
@@ -757,7 +766,7 @@ public:
     m_team(&team),
     m_pattern(
       SizeSpec_t(0),
-      DistributionSpec_t(dash::BLOCKED),
+      distribution_spec(dash::BLOCKED),
       team),
     m_globmem(nullptr),
     m_size(0),
@@ -774,7 +783,7 @@ public:
    */
   Array(
     size_type                  nelem,
-    const DistributionSpec_t & distribution,
+    const distribution_spec  & distribution,
     Team                     & team = dash::Team::All())
   : local(this),
     async(this),
@@ -795,6 +804,7 @@ public:
   /**
    * Delegating constructor, specifies the array's global capacity.
    */
+  explicit
   Array(
     size_type   nelem,
     Team      & team = dash::Team::All())
@@ -811,7 +821,7 @@ public:
   Array(
     size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
-    const DistributionSpec_t          & distribution,
+    const distribution_spec           & distribution,
     Team                              & team = dash::Team::All())
   : local(this),
     async(this),
@@ -849,6 +859,7 @@ public:
   /**
    * Constructor, specifies distribution pattern explicitly.
    */
+  explicit
   Array(
     const PatternType & pattern)
   : local(this),
@@ -876,7 +887,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());
@@ -884,7 +895,14 @@ public:
    */
   Array(const self_t & other) = delete;
 
-  Array(self_t && other)      = delete;
+  /**
+   * Move construction is supported for the container with the following
+   * limitations:
+   *
+   * The pattern has to be movable or copyable
+   * The underlying memory does not have to be movable (it might).
+   */
+  Array(self_t && other)      = default;
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of
@@ -898,7 +916,7 @@ public:
    * \code
    * dash::Array<int> a1(1024 * dash::size());
    * dash::fill(a1.begin(), a1.end(), 123);
-   * 
+   *
    * // create copy of array a1:
    * dash::Array<int> a2(a1.size());
    * dash::copy(a1.begin(), a1.end(), a2.begin());
@@ -906,7 +924,14 @@ public:
    */
   self_t & operator=(const self_t & rhs) = delete;
 
-  self_t & operator=(self_t && other)    = delete;
+  /**
+   * Move assignment is supported for the container with the following
+   * limitations:
+   *
+   * The pattern has to be movable or copyable
+   * The underlying memory does not have to be movable (it might).
+   */
+  self_t & operator=(self_t && other)    = default;
 
   /**
    * Destructor, deallocates array elements.
@@ -1098,7 +1123,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  constexpr const Team & team() const noexcept
+  constexpr Team & team() const noexcept
   {
     return *m_team;
   }
@@ -1161,7 +1186,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     if (nullptr != m_globmem) {
-      m_globmem->flush_all();
+      m_globmem->flush();
     }
     if (nullptr != m_team && *m_team != dash::Team::Null()) {
       m_team->barrier();
@@ -1170,7 +1195,7 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by all units
+   * Complete all outstanding non-blocking operations to all units
    * on the array's underlying global memory.
    */
   inline void flush() const {
@@ -1178,27 +1203,28 @@ public:
   }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the array's underlying global memory.
+   * Complete all outstanding non-blocking operations to the specified unit
+   * on the array's underlying global memory.
+   */
+  inline void flush(dash::team_unit_t target) const {
+    m_globmem->flush(target);
+  }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to all units on
+   * the array's underlying global memory.
    */
   inline void flush_local() const {
     m_globmem->flush_local();
   }
 
-  /**
-   * Complete all outstanding non-blocking operations executed by all units
-   * on the array's underlying global memory.
-   */
-  inline void flush_all() const {
-    m_globmem->flush_all();
-  }
 
   /**
-   * Complete all outstanding non-blocking operations executed by the
-   * local unit on the array's underlying global memory.
+   * Locally complete all outstanding non-blocking operations to the
+   * specified unit on the array's underlying global memory.
    */
-  inline void flush_local_all() const {
-    m_globmem->flush_local_all();
+  inline void flush_local(dash::team_unit_t target) const {
+    m_globmem->flush_local(target);
   }
 
   /**
@@ -1209,6 +1235,10 @@ public:
     return m_pattern;
   }
 
+  /**
+   * Delayed allocation of global memory using a
+   * one-dimensional distribution spec.
+   */
   bool allocate(
     size_type                   nelem,
     dash::DistributionSpec<1>   distribution,
@@ -1239,6 +1269,23 @@ public:
     return ret;
   }
 
+
+  /**
+   * Delayed allocation of global memory using the default blocked
+   * distribution spec.
+   */
+  bool allocate(
+    size_type   nelem,
+    Team      & team = dash::Team::All())
+  {
+    return allocate(nelem, dash::BLOCKED, team);
+  }
+
+  /**
+   * Delayed allocation of global memory using a
+   * one-dimensional distribution spec and
+   * initializing values.
+   */
   bool allocate(
     size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
@@ -1286,18 +1333,20 @@ public:
     m_team->unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
-    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
     if (m_globmem != nullptr) {
-      delete m_globmem;
-      m_globmem = nullptr;
+      m_globmem.reset();
     }
     m_size = 0;
     DASH_LOG_TRACE_VAR("Array.deallocate >", this);
   }
 
+  /**
+   * Delayed allocation of global memory using the specified pattern.
+   */
   bool allocate(const PatternType & pattern)
   {
-		DASH_LOG_TRACE("Array._allocate()", "pattern",
+    DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
     if (&m_pattern != &pattern) {
       DASH_LOG_TRACE("Array.allocate()", "using specified pattern");
@@ -1316,9 +1365,9 @@ public:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(m_lcapacity, *m_team);
+    m_globmem   = PtrGlobMemType_t(new glob_mem_type(m_lcapacity, *m_team));
     // Global iterators:
-    m_begin     = iterator(m_globmem, m_pattern);
+    m_begin     = iterator(m_globmem.get(), m_pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin();
@@ -1366,9 +1415,9 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(local_elements, *m_team);
+    m_globmem   = PtrGlobMemType_t(new glob_mem_type(local_elements, *m_team));
     // Global iterators:
-    m_begin     = iterator(m_globmem, pattern);
+    m_begin     = iterator(m_globmem.get(), pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin();

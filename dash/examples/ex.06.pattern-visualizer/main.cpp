@@ -1,3 +1,10 @@
+/**
+ * \example ex.06.pattern-block-visualizer/main.cpp
+ * Example demonstrating the instantiation of 
+ * different patterns and their visualization
+ * using \c dash::tools::PatternVisualizer.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <fstream>

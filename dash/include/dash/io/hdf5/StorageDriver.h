@@ -127,7 +127,7 @@ class StoreHDF {
       std::string datapath,
       /// options how to open and modify data
       hdf5_options foptions = hdf5_options(),
-      /// \cstd::function to convert native type into h5 type
+      /// \c std::function to convert native type into h5 type
       type_converter_fun_type to_h5_dt_converter = get_h5_datatype<
           typename dash::view_traits<View_t>::origin_type::value_type>) {
     using Container_t = typename dash::view_traits<View_t>::origin_type;
@@ -274,7 +274,7 @@ class StoreHDF {
           std::string datapath,
           /// options how to open and modify data
           hdf5_options foptions = hdf5_options(),
-          /// \cstd::function to convert native type into h5 type
+          /// \c std::function to convert native type into h5 type
           type_converter_fun_type to_h5_dt_converter =
               get_h5_datatype<typename Container_t::value_type>) {
     using pattern_t = typename Container_t::pattern_type;
@@ -398,7 +398,7 @@ class StoreHDF {
           std::string datapath,
           /// options how to open and modify data
           hdf5_options foptions = hdf5_options(),
-          /// \cstd::function to convert native type into h5 type
+          /// \c std::function to convert native type into h5 type
           type_converter_fun_type to_h5_dt_converter =
               get_h5_datatype<typename Container_t::value_type>) {}
 

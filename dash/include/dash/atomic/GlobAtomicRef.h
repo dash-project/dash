@@ -156,7 +156,7 @@ public:
                        1,
                        dash::dart_punned_datatype<T>::value,
                        DART_OP_REPLACE);
-    dart_flush_all(_gptr);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG("GlobRef<Atomic>.store >");
   }
@@ -213,7 +213,7 @@ public:
                        1,
                        dash::dart_punned_datatype<T>::value,
                        binary_op.dart_operation());
-    dart_flush_all(_gptr);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op >", acc);
   }
@@ -240,7 +240,7 @@ public:
                        reinterpret_cast<void * const>(&res),
                        dash::dart_punned_datatype<T>::value,
                        binary_op.dart_operation());
-    dart_flush_all(_gptr);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op >", res);
     return res;
@@ -274,7 +274,7 @@ public:
                        reinterpret_cast<const void * const>(&expected),
                        reinterpret_cast<void * const>(&result),
                        dash::dart_punned_datatype<T>::value);
-    dart_flush_all(_gptr);
+    dart_flush(_gptr);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange >",
       (expected == result));
@@ -282,7 +282,7 @@ public:
   }
 
   /**
-   * DASH specific variant which is faster than \cfetch_add
+   * DASH specific variant which is faster than \c fetch_add
    * but does not return value
    */
   void add(const T & value) const
@@ -304,7 +304,7 @@ public:
   }
 
   /**
-   * DASH specific variant which is faster than \cfetch_sub
+   * DASH specific variant which is faster than \c fetch_sub
    * but does not return value
    */
   void sub(const T & value) const

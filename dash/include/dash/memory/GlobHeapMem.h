@@ -210,7 +210,7 @@ private:
 public:
   typedef AllocatorType                                      allocator_type;
   typedef typename std::decay<ElementType>::type                 value_type;
-  
+
   typedef typename AllocatorType::size_type                       size_type;
   typedef typename AllocatorType::difference_type           difference_type;
   typedef typename AllocatorType::difference_type                index_type;
@@ -1140,7 +1140,7 @@ private:
     // Implicit barrier in allocator.attach
     DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                        attach_buckets_sizes_gptr);
-    for (int u = 0; u < _nunits; ++u) {
+    for (size_type u = 0; u < _nunits; ++u) {
       if (u == _myid) {
         continue;
       }
@@ -1157,7 +1157,7 @@ private:
                          u_local_size_old);
       DASH_LOG_TRACE_VAR("GlobHeapMem.update_remote_size",
                          u_local_size_old);
-      int u_local_size_diff  = u_local_size_new - u_local_size_old;
+      difference_type u_local_size_diff  = u_local_size_new - u_local_size_old;
       new_remote_size       += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
@@ -1176,7 +1176,7 @@ private:
                                  u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
-        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
+        dash::dart_storage<size_type> ds(u_num_attach_buckets);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
@@ -1208,7 +1208,7 @@ private:
     // Implicit barrier in allocator.detach
     _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING
-    for (int u = 0; u < _nunits; ++u) {
+    for (size_type u = 0; u < _nunits; ++u) {
       DASH_LOG_TRACE("GlobHeapMem.update_remote_size",
                      "unit", u,
                      "cumulative bucket sizes:", _bucket_cumul_sizes[u]);

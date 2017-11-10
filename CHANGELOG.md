@@ -137,7 +137,7 @@
 
 ## Build System
 
-- Drastically improved continuous integration, CI configurations for
+- Improved continuous integration, CI configurations for
   Travis and CircleCI
 - Added codedocs (http://codedocs.xyz) in deploy chain to automate API
   documentation updates
@@ -150,6 +150,7 @@
 - Support for HDF5.
 - Generate cmake package for DASH and DART
 - Added build configuration for code coverage tests
+- Check MPI implementation for compilance with MPI3
 - Enforce minimum C++ compiler versions:
     - GCC: 5.1.0
     - Clang: 3.8.0
@@ -161,6 +162,10 @@
     - `DASH_ENABLE_HDF5`: Whether DASH has been compiled with HDF5 support.
     - `DASH__ARCH__HAS_RDTSC`: Whether the target architecture provides
       an RDTSC micro-instruction.
+
+- Added compiler wrapper dashc++ (and aliases dashcxx and dashCC) that includes 
+  DASH-specific flags compiler and linker flags. To use the wrapper, simply 
+  replace mpicxx with dashcxx when building your application.
 
 ### Bugfixes:
 

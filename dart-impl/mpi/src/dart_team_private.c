@@ -260,7 +260,7 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
   int size;
 
-  MPI_Comm_size(DART_COMM_WORLD, &size);
+  MPI_Comm_size(team_data->comm, &size);
 
   MPI_Comm sharedmem_comm;
   MPI_Group sharedmem_group, group_all;
@@ -277,11 +277,8 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
       sharedmem_comm,
         &(team_data->sharedmem_nodesize));
 
-  // dart_unit_mapping[index] = (int*)malloc (
-  // dart_sharedmem_size[index] * sizeof (int));
-
     MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-    MPI_Comm_group(DART_COMM_WORLD, &group_all);
+    MPI_Comm_group(team_data->comm, &group_all);
 
     int * dart_unit_mapping  = malloc(
         team_data->sharedmem_nodesize * sizeof(int));
@@ -293,8 +290,6 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
       sharedmem_ranks[i] = i;
     }
 
-  // MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index],
-  //     sharedmem_ranks, group_all, dart_unit_mapping[index]);
     MPI_Group_translate_ranks(
       sharedmem_group,
       team_data->sharedmem_nodesize,

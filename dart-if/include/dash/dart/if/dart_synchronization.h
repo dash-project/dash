@@ -49,7 +49,6 @@ dart_ret_t dart_team_lock_init(
  * Collective operation to destroy a \c lock initialized using
  * \ref dart_team_lock_init.
  *
- * \param teamid The team this lock is used on.
  * \param lock   The \c lock to free.
  * \return \c DART_OK on sucess or an error code from \ref dart_ret_t otherwise.
  *
