@@ -14,6 +14,16 @@ enum class StencilViewScope : std::uint8_t { INNER, BOUNDARY, ALL };
 template <typename ElementT, typename PatternT, typename StencilSpecT,
           StencilViewScope Scope>
 class HaloMatrixIterator {
+private:
+  static constexpr auto NumDimensions    = PatternT::ndim();
+  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
+  static constexpr auto MemoryArrange    = PatternT::memory_order();
+
+  using Self_t = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
+  using ViewSpec_t            = typename PatternT::viewspec_type;
+  using pattern_size_t        = typename PatternT::size_type;
+  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
+
 public:
   // Iterator traits
   using iterator_category = std::random_access_iterator_tag;
@@ -22,23 +32,14 @@ public:
   using pointer           = ElementT*;
   using reference         = ElementT&;
 
-private:
-  using pattern_index_t                  = typename PatternT::index_type;
-  using pattern_size_t                   = typename PatternT::size_type;
-  static constexpr auto NumDimensions    = PatternT::ndim();
-  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
-  static constexpr auto MemoryArrange    = PatternT::memory_order();
-
-  using Self_t = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
-  using HaloBlock_t    = HaloBlock<ElementT, PatternT>;
-  using HaloMemory_t   = HaloMemory<HaloBlock_t>;
-  using ViewSpec_t     = typename PatternT::viewspec_type;
-  using region_index_t = typename RegionCoords<NumDimensions>::region_index_t;
+  using HaloBlock_t     = HaloBlock<ElementT, PatternT>;
+  using HaloMemory_t    = HaloMemory<HaloBlock_t>;
+  using pattern_index_t = typename PatternT::index_type;
+  using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
   using LocalLayout_t =
     CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
-  using Stencil_t             = Stencil<NumDimensions>;
-  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
-  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
+  using Stencil_t       = Stencil<NumDimensions>;
+  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
 
 public:
   HaloMatrixIterator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory,
@@ -52,7 +53,7 @@ public:
       set_view_local(_haloblock.view_inner());
 
     if(Scope == StencilViewScope::ALL)
-      set_view_local(_haloblock.view_safe());
+      set_view_local(_haloblock.view_guaranteed());
 
     if(Scope == StencilViewScope::BOUNDARY)
       set_view_local(_haloblock.view());

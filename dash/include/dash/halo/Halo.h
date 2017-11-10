@@ -39,12 +39,12 @@ public:
 template <dim_t NumDimensions, std::size_t NumStencilPoints>
 class StencilSpec {
 private:
-  using Self_t    = StencilSpec<NumDimensions, NumStencilPoints>;
-  using Stencil_t = Stencil<NumDimensions>;
-  using Specs_t   = std::array<Stencil_t, NumStencilPoints>;
+  using Self_t = StencilSpec<NumDimensions, NumStencilPoints>;
 
 public:
   using stencil_size_t = std::size_t;
+  using Stencil_t      = Stencil<NumDimensions>;
+  using Specs_t        = std::array<Stencil_t, NumStencilPoints>;
 
 public:
   constexpr StencilSpec(const Specs_t& specs) : _specs(specs) {}
@@ -102,15 +102,15 @@ public:
 template <dim_t NumDimensions>
 class RegionCoords : public Dimensional<uint8_t, NumDimensions> {
 private:
-  using Self_t   = RegionCoords<NumDimensions>;
-  using Base_t   = Dimensional<uint8_t, NumDimensions>;
-  using Coords_t = std::array<uint8_t, NumDimensions>;
-  using udim_t   = std::make_unsigned<dim_t>::type;
+  using Self_t = RegionCoords<NumDimensions>;
+  using Base_t = Dimensional<uint8_t, NumDimensions>;
+  using udim_t = std::make_unsigned<dim_t>::type;
 
 public:
   using region_coord_t = uint8_t;
   using region_index_t = uint32_t;
   using region_size_t  = uint32_t;
+  using Coords_t       = std::array<uint8_t, NumDimensions>;
 
   // index calculation base 3^N regions for N-Dimensions
   static constexpr uint8_t REGION_INDEX_BASE = 3;
@@ -175,13 +175,13 @@ private:
 template <dim_t NumDimensions>
 class RegionSpec : public Dimensional<uint8_t, NumDimensions> {
 private:
-  using Self_t         = RegionSpec<NumDimensions>;
-  using RegionCoords_t = RegionCoords<NumDimensions>;
-  using region_coord_t = typename RegionCoords_t::region_coord_t;
+  using Self_t = RegionSpec<NumDimensions>;
 
 public:
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using region_extent_t = uint16_t;
+  using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using region_coord_t  = typename RegionCoords_t::region_coord_t;
 
 public:
   RegionSpec(const RegionCoords_t& coords, const region_extent_t extent)
@@ -278,11 +278,13 @@ std::ostream& operator<<(std::ostream&                    os,
 template <dim_t NumDimensions>
 class HaloSpec {
 private:
-  using Self_t          = HaloSpec<NumDimensions>;
-  using RegionCoords_t  = RegionCoords<NumDimensions>;
+  using Self_t         = HaloSpec<NumDimensions>;
+  using RegionCoords_t = RegionCoords<NumDimensions>;
+  using Stencil_t      = Stencil<NumDimensions>;
+
+public:
   using RegionSpec_t    = RegionSpec<NumDimensions>;
   using Specs_t         = std::array<RegionSpec_t, RegionCoords_t::MaxIndex>;
-  using Stencil_t       = Stencil<NumDimensions>;
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using region_size_t   = typename RegionCoords_t::region_index_t;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
@@ -361,11 +363,6 @@ template <typename ElementT, typename PatternT,
 class RegionIter {
 private:
   using Self_t = RegionIter<ElementT, PatternT, PointerT, ReferenceT>;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
-  using ViewSpec_t      = typename PatternT::viewspec_type;
-  using pattern_index_t = typename PatternT::index_type;
-  using pattern_size_t  = typename PatternT::size_type;
 
   static const auto NumDimensions = PatternT::ndim();
 
@@ -379,6 +376,12 @@ public:
 
   using const_reference = const reference;
   using const_pointer   = const pointer;
+
+  using GlobMem_t =
+    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using ViewSpec_t      = typename PatternT::viewspec_type;
+  using pattern_index_t = typename PatternT::index_type;
+  using pattern_size_t  = typename PatternT::size_type;
 
 public:
   /**
@@ -663,18 +666,16 @@ auto distance(
 
 template <typename ElementT, typename PatternT, dim_t NumDimensions>
 class Region {
-private:
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
-  using RegionSpec_t   = RegionSpec<NumDimensions>;
-  using ViewSpec_t     = typename PatternT::viewspec_type;
-  using region_index_t = typename RegionSpec_t::region_index_t;
-  using pattern_size_t = typename PatternT::size_type;
-  using Border_t       = std::array<bool, NumDimensions>;
-
 public:
   using iterator       = RegionIter<ElementT, PatternT>;
   using const_iterator = const iterator;
+  using RegionSpec_t   = RegionSpec<NumDimensions>;
+  using GlobMem_t =
+    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using ViewSpec_t     = typename PatternT::viewspec_type;
+  using Border_t       = std::array<bool, NumDimensions>;
+  using region_index_t = typename RegionSpec_t::region_index_t;
+  using pattern_size_t = typename PatternT::size_type;
 
 public:
   Region(const RegionSpec_t& region_spec, const ViewSpec_t& region,
@@ -718,27 +719,27 @@ class HaloBlock {
 private:
   static constexpr auto NumDimensions = PatternT::ndim();
 
-  using Self_t = HaloBlock<ElementT, PatternT>;
-  using GlobMem_t =
-    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
-  using CycleSpec_t     = CycleSpec<NumDimensions>;
+  using Self_t          = HaloBlock<ElementT, PatternT>;
   using pattern_index_t = typename PatternT::index_type;
-  using pattern_size_t  = typename PatternT::size_type;
-  using ViewSpec_t      = typename PatternT::viewspec_type;
-  using HaloSpec_t      = HaloSpec<NumDimensions>;
   using RegionSpec_t    = RegionSpec<NumDimensions>;
   using Region_t        = Region<ElementT, PatternT, NumDimensions>;
-  using RegionVector_t  = std::vector<Region_t>;
   using RegionCoords_t  = RegionCoords<NumDimensions>;
-  using region_index_t  = typename RegionSpec_t::region_index_t;
   using region_extent_t = typename RegionSpec_t::region_extent_t;
   using HaloExtsMax_t =
     std::array<std::pair<region_extent_t, region_extent_t>, NumDimensions>;
-  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
 
 public:
   using Element_t = ElementT;
   using Pattern_t = PatternT;
+  using GlobMem_t =
+    GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT>>;
+  using CycleSpec_t     = CycleSpec<NumDimensions>;
+  using pattern_size_t  = typename PatternT::size_type;
+  using ViewSpec_t      = typename PatternT::viewspec_type;
+  using HaloSpec_t      = HaloSpec<NumDimensions>;
+  using RegionVector_t  = std::vector<Region_t>;
+  using region_index_t  = typename RegionSpec_t::region_index_t;
+  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
 
 public:
   HaloBlock(GlobMem_t& globmem, const PatternT& pattern, const ViewSpec_t& view,
@@ -747,7 +748,7 @@ public:
   : _globmem(globmem), _pattern(pattern), _view(view),
     _halo_reg_spec(halo_reg_spec) {
     _view_inner = view;
-    _view_safe  = view;
+    _view_guaranteed  = view;
 
     // TODO put functionallity to HaloSpec
     HaloExtsMax_t halo_extents_max{};
@@ -870,7 +871,7 @@ public:
           push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
                          halo_extents_max, cycle_spec);
         }
-        _view_safe.resize_dim(d, safe_offset, safe_extent);
+        _view_guaranteed.resize_dim(d, safe_offset, safe_extent);
       } else {
         push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, halo_extents_max,
                        cycle_spec);
@@ -919,7 +920,7 @@ public:
 
   const ViewSpec_t& view() const { return _view; }
 
-  const ViewSpec_t& view_safe() const { return _view_safe; }
+  const ViewSpec_t& view_guaranteed() const { return _view_guaranteed; }
 
   const ViewSpec_t& view_inner() const { return _view_inner; }
 
@@ -992,7 +993,7 @@ private:
 
   const HaloSpec_t& _halo_reg_spec;
 
-  ViewSpec_t _view_safe;
+  ViewSpec_t _view_guaranteed;
 
   ViewSpec_t _view_inner;
 
@@ -1016,16 +1017,19 @@ template <typename HaloBlockT>
 class HaloMemory {
 private:
   static constexpr auto NumDimensions = HaloBlockT::ndim();
-  using RegionCoords_t                = RegionCoords<NumDimensions>;
-  using region_index_t                = typename RegionCoords_t::region_index_t;
-  using Pattern_t                     = typename HaloBlockT::Pattern_t;
-  using pattern_index_t               = typename Pattern_t::index_type;
-  using pattern_size_t                = typename Pattern_t::size_type;
-  using Element_t                     = typename HaloBlockT::Element_t;
-  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
+
+  using RegionCoords_t = RegionCoords<NumDimensions>;
+  using Pattern_t      = typename HaloBlockT::Pattern_t;
 
   static constexpr auto MaxIndex      = RegionCoords_t::MaxIndex;
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
+
+public:
+  using Element_t = typename HaloBlockT::Element_t;
+  using ElementCoords_t =
+    std::array<typename Pattern_t::index_type NumDimensions>;
+  using region_index_t = typename RegionCoords_t::region_index_t;
+  using pattern_size_t = typename Pattern_t::size_type;
 
 public:
   HaloMemory(const HaloBlockT& haloblock) : _haloblock(haloblock) {

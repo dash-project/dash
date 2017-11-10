@@ -23,15 +23,8 @@ private:
 
   using pattern_size_t  = typename Pattern_t::size_type;
   using pattern_index_t = typename Pattern_t::index_type;
-  using Element_t       = typename MatrixT::value_type;
-  using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
   using HaloSpec_t      = HaloSpec<NumDimensions>;
-  using CycleSpec_t     = CycleSpec<NumDimensions>;
-  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
   using Region_t        = Region<Element_t, Pattern_t, NumDimensions>;
-  using HaloMemory_t    = HaloMemory<HaloBlock_t>;
-  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
-  using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
 
 public:
   using iterator       = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
@@ -44,6 +37,14 @@ public:
                                           StencilViewScope::BOUNDARY>;
   using const_iterator_bnd = const iterator_bnd;
 
+  using Element_t       = typename MatrixT::value_type;
+  using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
+  using CycleSpec_t     = CycleSpec<NumDimensions>;
+  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
+  using HaloMemory_t    = HaloMemory<HaloBlock_t>;
+  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
+  using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
+
 public:
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,
                     const CycleSpec_t& cycle_spec = CycleSpec_t())
@@ -53,7 +54,7 @@ public:
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_reg_spec, cycle_spec),
     _halomemory(_haloblock), _begin(_haloblock, _halomemory, _stencil_spec, 0),
-    _end(_haloblock, _halomemory, _stencil_spec, _haloblock.view_safe().size()),
+    _end(_haloblock, _halomemory, _stencil_spec, _haloblock.view_guaranteed().size()),
     _ibegin(_haloblock, _halomemory, _stencil_spec, 0),
     _iend(_haloblock, _halomemory, _stencil_spec,
           _haloblock.view_inner().size()),
