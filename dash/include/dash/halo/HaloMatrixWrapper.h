@@ -57,7 +57,8 @@ public:
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_reg_spec, cycle_spec),
     _halomemory(_haloblock), _begin(_haloblock, _halomemory, _stencil_spec, 0),
-    _end(_haloblock, _halomemory, _stencil_spec, _haloblock.view_guaranteed().size()),
+    _end(_haloblock, _halomemory, _stencil_spec,
+         _haloblock.view_inner_with_boundaries().size()),
     _ibegin(_haloblock, _halomemory, _stencil_spec, 0),
     _iend(_haloblock, _halomemory, _stencil_spec,
           _haloblock.view_inner().size()),
@@ -237,7 +238,7 @@ public:
       dart_wait_local(&region.second.halo_data.handle);
   }
 
-  const ViewSpec_t& local_view() const { return _view_local; }
+  const ViewSpec_t& view_local() const { return _view_local; }
 
   const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 

@@ -747,8 +747,8 @@ public:
             const CycleSpec_t& cycle_spec = CycleSpec_t{})
   : _globmem(globmem), _pattern(pattern), _view(view),
     _halo_reg_spec(halo_reg_spec) {
-    _view_inner = view;
-    _view_guaranteed  = view;
+    _view_inner                 = view;
+    _view_inner_with_boundaries = view;
 
     // TODO put functionallity to HaloSpec
     HaloExtsMax_t halo_extents_max{};
@@ -871,7 +871,7 @@ public:
           push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
                          halo_extents_max, cycle_spec);
         }
-        _view_guaranteed.resize_dim(d, safe_offset, safe_extent);
+        _view_inner_with_boundaries.resize_dim(d, safe_offset, safe_extent);
       } else {
         push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, halo_extents_max,
                        cycle_spec);
@@ -916,11 +916,11 @@ public:
 
   const RegionVector_t& boundary_regions() const { return _boundary_regions; }
 
-  // const halo_regs_t& halo_regions() const { return _halo_regions; }
-
   const ViewSpec_t& view() const { return _view; }
 
-  const ViewSpec_t& view_guaranteed() const { return _view_guaranteed; }
+  const ViewSpec_t& view_inner_with_boundaries() const {
+    return _view_inner_with_boundaries;
+  }
 
   const ViewSpec_t& view_inner() const { return _view_inner; }
 
@@ -993,7 +993,7 @@ private:
 
   const HaloSpec_t& _halo_reg_spec;
 
-  ViewSpec_t _view_guaranteed;
+  ViewSpec_t _view_inner_with_boundaries;
 
   ViewSpec_t _view_inner;
 

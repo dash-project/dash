@@ -53,7 +53,7 @@ public:
       set_view_local(_haloblock.view_inner());
 
     if(Scope == StencilViewScope::ALL)
-      set_view_local(_haloblock.view_guaranteed());
+      set_view_local(_haloblock.view_inner_with_boundaries());
 
     if(Scope == StencilViewScope::BOUNDARY)
       set_view_local(_haloblock.view());
