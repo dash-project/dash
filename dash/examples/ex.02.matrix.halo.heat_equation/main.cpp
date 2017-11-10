@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
   array_t energy(ranks);
   double initEnergy = calcEnergy(current_halo->matrix(), energy);
 
-  const auto &lview = halomat.local_view();
+  const auto &lview = halomat.view_local();
   auto offset = lview.extent(1);
   long inner_start = offset + 1;
   long inner_end = lview.extent(0) * (offset - 1) - 1;
