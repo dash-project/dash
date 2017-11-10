@@ -628,3 +628,43 @@ TEST_F(AtomicTest, AsyncAtomic){
   array.barrier();
 
 }
+
+TEST_F(AtomicTest, ConstTest) {
+
+  dash::Array<dash::Atomic<int>> array(dash::size());
+  const dash::Array<dash::Atomic<int>>& carr = array;
+  array[dash::myid()].set(0);
+  dash::barrier();
+
+  // conversion non-const -> const
+  dash::GlobRef<dash::Atomic<const int>> gref1 = array[0];
+  // assignment const -> const
+  dash::GlobRef<dash::Atomic<const int>> gref2 = carr[0];
+  // explicit conversion const->non-const
+  dash::GlobRef<dash::Atomic<int>> gref3 =
+                        static_cast<dash::GlobRef<dash::Atomic<int>>>(carr[0]);
+
+  // should fail!
+  //gref1.add(1);
+
+  // works
+  ASSERT_EQ_U(0, gref1.get());
+
+  /**
+   * GlobAsyncRef
+   */
+
+  // conversion non-const -> const
+  dash::GlobAsyncRef<dash::Atomic<const int>> agref1 = array.async[0];
+  // assignment const -> const
+  dash::GlobAsyncRef<dash::Atomic<const int>> agref2 = carr.async[0];
+  // explicit conversion const->non-const
+  dash::GlobAsyncRef<dash::Atomic<int>> agref3 =
+                        static_cast<dash::GlobAsyncRef<dash::Atomic<int>>>(carr.async[0]);
+
+  // should fail!
+  //agref1.add(1);
+
+  // works
+  ASSERT_EQ_U(0, agref1.get());
+}
