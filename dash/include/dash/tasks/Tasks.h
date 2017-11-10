@@ -272,7 +272,7 @@ namespace internal {
       _dep.type  = DART_DEP_DIRECT;
     }
 
-    operator dart_task_dep_t() {
+    operator dart_task_dep_t() const {
       return _dep;
     }
 
@@ -371,7 +371,9 @@ namespace internal {
     dart_task_prio_t prio,
     TaskDependency   dep,
     const Args&...   args){
-    std::array<dart_task_dep_t, sizeof...(args)+1> deps({{dep,
+    std::array<const dart_task_dep_t, sizeof...(args)+1> deps(
+    {{
+      static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
     async(f, prio, deps);
@@ -420,7 +422,9 @@ namespace internal {
     TaskDependency dep,
     const Args&... args) -> TaskHandle<decltype(f())>
   {
-    std::array<dart_task_dep_t, sizeof...(args)+1> deps({{dep,
+    std::array<const dart_task_dep_t, sizeof...(args)+1> deps(
+    {{
+      static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
     return async_handle(f, prio, deps);
