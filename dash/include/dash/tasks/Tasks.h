@@ -242,6 +242,10 @@ namespace internal {
 
   class TaskDependency {
   public:
+
+    constexpr
+    TaskDependency() { }
+
     template<typename ElementT>
     TaskDependency(
       const dash::GlobRef<ElementT>& globref,
@@ -272,12 +276,13 @@ namespace internal {
       _dep.type  = DART_DEP_DIRECT;
     }
 
+    constexpr
     operator dart_task_dep_t() const {
       return _dep;
     }
 
   protected:
-    dart_task_dep_t _dep;
+    dart_task_dep_t _dep = {{DART_GPTR_NULL}, DART_DEP_IGNORE, DART_PHASE_ANY};
   };
 
   template<typename ElementT>
@@ -308,6 +313,13 @@ namespace internal {
   TaskDependency
   direct(const TaskHandle<T>& taskref) {
     return TaskDependency(taskref);
+  }
+
+  template<typename T=int>
+  constexpr
+  TaskDependency
+  none() {
+    return TaskDependency();
   }
 
   template<typename T=int>
