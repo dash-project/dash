@@ -82,8 +82,10 @@ class VertexProxy {
   typedef GraphType                                     graph_type;
   typedef IteratorType                                  iterator_type;
   typedef VertexProxy<GraphType, IteratorType>          self_t;
-  typedef typename GraphType::vertex_type               vertex_type;
-  typedef typename GraphType::vertex_properties_type    properties_type;
+  typedef typename graph_type::vertex_type              vertex_type;
+  typedef typename graph_type::vertex_properties_type   properties_type;
+  typedef typename graph_type::global_vertex_iterator   global_vertex_iterator;
+  typedef typename graph_type::local_vertex_iterator    local_vertex_iterator;
 
   /**
    * Handles the iterator ranges for adjacency iteration of the respective 
@@ -272,9 +274,27 @@ public:
    * Sets the attribute data for the referenced vertex.
    */
   void set_attributes(properties_type & prop) {
+    set_attributes(prop, _iterator);
+  }
+
+private:
+
+  /**
+   * Overload of set_aatributes for global pointers.
+   */
+  void set_attributes(properties_type & prop, global_vertex_iterator it) {
     _vertex.properties = prop;
     auto ref = *_iterator;
     ref = _vertex;
+  }
+
+  /**
+   * Overload of set_aatributes for local pointers.
+   */
+  void set_attributes(properties_type & prop, local_vertex_iterator it) {
+    _vertex.properties = prop;
+    typename iterator_type::pointer ptr = _iterator;
+    *ptr = _vertex;
   }
 
 private:
