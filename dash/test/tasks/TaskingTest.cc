@@ -107,7 +107,7 @@ TEST_F(TaskingTest, RemoteDepsCentral)
     // have all units except for 0 skip the first round
     if (dash::myid() == 0 || i > 0) {
       dash::tasks::async(
-        [&array, i](){
+        [=, &array](){
           int val = array[0];
           ASSERT_EQ_U(i, val);
           array[dash::myid()] = val + 1;

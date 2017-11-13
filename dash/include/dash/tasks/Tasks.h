@@ -145,8 +145,8 @@ namespace internal {
      * Create a TaskHandle from a DART task handle and a pointer to the return
      * value that is shared with the task instance.
      */
-    TaskHandle(dart_taskref_t ref, std::shared_ptr<T>& retval)
-    : _ref(ref), _ret(retval) { }
+    TaskHandle(dart_taskref_t ref, std::shared_ptr<T> retval)
+    : _ref(ref), _ret(std::move(retval)) { }
 
     // Do not allow copying the task handle to avoid double references
     TaskHandle(const self_t&) = delete;
@@ -200,6 +200,7 @@ namespace internal {
     void wait() {
       if (_ref != DART_TASK_NULL) {
         dart_task_wait(&_ref);
+        _ready = true;
       }
     }
 
