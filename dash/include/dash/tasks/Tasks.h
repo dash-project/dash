@@ -122,35 +122,56 @@ namespace internal {
       throw;
     }
   }
-
 } // namespace internal
 
+  /**
+   * Class representing a task created through \ref dash::tasks::async_handle.
+   *
+   * The handle can be used to test whether the task has finished execution,
+   * to wait for its completion, and to retrieve it's return value.
+   */
   template<typename T>
   class TaskHandle {
   public:
     using self_t = TaskHandle<T>;
 
-    // create an empty task handle
+    /**
+     * create an empty task handle
+     */
+    constexpr
     TaskHandle() { }
 
-    TaskHandle(dart_taskref_t ref, std::shared_ptr<T> retval)
+    /**
+     * Create a TaskHandle from a DART task handle and a pointer to the return
+     * value that is shared with the task instance.
+     */
+    TaskHandle(dart_taskref_t ref, std::shared_ptr<T>& retval)
     : _ref(ref), _ret(retval) { }
 
     // Do not allow copying the task handle to avoid double references
     TaskHandle(const self_t&) = delete;
     self_t& operator=(const self_t&) = delete;
 
+    /**
+     * Move constructor.
+     */
     TaskHandle(self_t&& other) {
       _ref = other._ref;
       other._ref = DART_TASK_NULL;
+      _ready = other._ready;
       std::swap(_ret, other._ret);
     }
 
+    /**
+     * Move operator.
+     */
     self_t& operator=(self_t&& other) {
       if (&other == this) return;
       _ref = other._ref;
       other._ref = DART_TASK_NULL;
+      _ready = other._ready;
       std::swap(_ret, other._ret);
+      return *this;
     }
 
     ~TaskHandle() {
@@ -159,27 +180,41 @@ namespace internal {
       }
     }
 
+    /**
+     * Test for completion of the task.
+     */
     bool test() {
+      if (_ready) return true;
       if (_ref != DART_TASK_NULL) {
         int flag;
         dart_task_test(&_ref, &flag);
         if (flag != 0) _ready = true;
         return (flag != 0);
       }
+      DASH_ASSERT(_ready || _ref != DART_TASK_NULL); // should not happen
     }
 
+    /**
+     * Wait for completion of the task.
+     */
     void wait() {
       if (_ref != DART_TASK_NULL) {
         dart_task_wait(&_ref);
       }
     }
 
+    /**
+     * Get the result of the task and wait for it if the task has not completed.
+     */
     T get() {
       DASH_ASSERT(_ready || _ref != DART_TASK_NULL);
       if (!_ready) wait();
       return *_ret;
     }
 
+    /**
+     * Return the underlying DART task handle.
+     */
     dart_taskref_t dart_handle() const {
       return _ref;
     }
@@ -191,29 +226,51 @@ namespace internal {
   };
 
 
+  /**
+   * Class representing a handle to a task created through
+   * \ref dash::tasks::async_handle.
+   *
+   * The handle can be used to test whether the task has finished execution
+   * and to wait its completion.
+   *
+   * This is the specialization for \c TaskHandle<void>, which does not return
+   * a value.
+   */
   template<>
   class TaskHandle<void> {
   public:
     using self_t = TaskHandle<void>;
 
-    // create an empty task handle
+    /**
+     * Create an empty task handle
+     */
+    constexpr
     TaskHandle() { }
 
+    /**
+     * Create a TaskHandle from a DART task handle.
+     */
     TaskHandle(dart_taskref_t ref) : _ref(ref) { }
 
     // Do not allow copying the task handle to avoid double references
     TaskHandle(const self_t&) = delete;
     self_t& operator=(const self_t&) = delete;
 
+    /**
+     * Move constructor.
+     */
     TaskHandle(self_t&& other) {
       _ref = other._ref;
       other._ref = DART_TASK_NULL;
+      _ready = other._ready;
     }
 
     self_t& operator=(self_t&& other) {
       if (&other == this) return *this;
       _ref = other._ref;
       other._ref = DART_TASK_NULL;
+      _ready = other._ready;
+      return *this;
     }
 
     ~TaskHandle() {
@@ -222,40 +279,70 @@ namespace internal {
       }
     }
 
+    /**
+     * Test for completion of the task.
+     */
     bool test() {
-      int flag;
-      dart_task_test(&_ref, &flag);
-      return (flag != 0);
+      if (_ready) return true;
+      if (_ref != DART_TASK_NULL) {
+        int flag;
+        dart_task_test(&_ref, &flag);
+        if (flag != 0) _ready = true;
+        return (flag != 0);
+      }
+      DASH_ASSERT(_ready || _ref != DART_TASK_NULL); // should not happen
+      return false;
     }
 
+    /**
+     * Wait for completion of the task.
+     */
     void wait() {
-      dart_task_wait(&_ref);
+      if (_ref != DART_TASK_NULL) {
+        dart_task_wait(&_ref);
+      }
     }
 
+    /**
+     * Return the underlying DART task handle.
+     */
     dart_taskref_t dart_handle() const {
       return _ref;
     }
 
   private:
-    dart_taskref_t _ref = DART_TASK_NULL;
+    dart_taskref_t _ref   = DART_TASK_NULL;
+    bool           _ready = false;
   };
 
+  /**
+   * A class representing a task dependency.
+   */
   class TaskDependency {
   public:
 
+    /**
+     * Create an empty dependency that will be ignored.
+     */
     constexpr
     TaskDependency() { }
 
-    template<typename ElementT>
+    /**
+     * Create a data dependency using a DART global pointer.
+     */
     TaskDependency(
-      const dash::GlobRef<ElementT>& globref,
-      dart_task_deptype_t       type,
-      dart_taskphase_t          phase = DART_PHASE_TASK) {
-      _dep.gptr  = globref.dart_gptr();
+      dart_gptr_t         gptr,
+      dart_task_deptype_t type,
+      dart_taskphase_t    phase = DART_PHASE_TASK)
+      : _dep({{gptr}, type, phase}) {
+      _dep.gptr  = gptr;
       _dep.type  = type;
       _dep.phase = phase;
     }
 
+    /**
+     * Create a data dependency using a local pointer.
+     */
     template<typename T>
     TaskDependency(
       const T             * lptr,
@@ -270,12 +357,19 @@ namespace internal {
       _dep.phase = phase;
     }
 
+    /**
+     * Create a direct task dependency using a \ref TaskHandle created
+     * previously.
+     */
     template<typename T>
     TaskDependency(const TaskHandle<T>& handle) {
       _dep.task  = handle.dart_handle();
       _dep.type  = DART_DEP_DIRECT;
     }
 
+    /**
+     * Return the underlying DART dependency descriptor.
+     */
     constexpr
     operator dart_task_dep_t() const {
       return _dep;
@@ -285,36 +379,121 @@ namespace internal {
     dart_task_dep_t _dep = {{DART_GPTR_NULL}, DART_DEP_IGNORE, DART_PHASE_ANY};
   };
 
-  template<typename ElementT>
-  TaskDependency
-  in(const dash::GlobRef<ElementT>& globref, int32_t phase = DART_PHASE_TASK) {
-    return TaskDependency(globref, DART_DEP_IN, phase);
+  /**
+   * Create an input dependency using the global memory reference \c globref.
+   *
+   * \sa TaskDependency
+   */
+  template<typename GlobRefT>
+  auto
+  in(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
+    -> decltype((void)(globref.dart_gptr()), TaskDependency()) {
+    return TaskDependency(globref.dart_gptr(), DART_DEP_IN, phase);
   }
 
+  /**
+   * Create an input dependency using the global memory range \c globref.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT>
+  auto
+  in(RangeT&& range, int32_t phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin().dart_gptr()), TaskDependency()) {
+    return TaskDependency(range.begin().dart_gptr(), DART_DEP_IN, phase);
+  }
+
+
+  /**
+   * Create an input dependency using the local memory pointer \c lptr.
+   *
+   * \sa TaskDependency
+   */
   template<typename T>
   TaskDependency
   in(const T* lptr, int32_t phase = DART_PHASE_TASK) {
     return TaskDependency(lptr, DART_DEP_IN, phase);
   }
 
-  template<typename ElementT>
+  /**
+   * Create an input dependency using the local memory pointer \c lptr.
+   *
+   * \sa TaskDependency
+   */
+  template<typename T>
+  constexpr
   TaskDependency
-  out(const dash::GlobRef<ElementT>& globref, int32_t phase = DART_PHASE_TASK) {
-    return TaskDependency(globref, DART_DEP_OUT, phase);
+  in(T* lptr, int32_t phase = DART_PHASE_TASK) {
+    return dash::tasks::in(const_cast<const T*>(lptr), phase);
   }
 
+  /**
+   * Create an output dependency using the global memory reference \c globref.
+   *
+   * \sa TaskDependency
+   */
+  template<typename GlobRefT>
+  auto
+  out(GlobRefT&& globref, int32_t phase = DART_PHASE_TASK)
+    -> decltype((void)(globref.dart_gptr()), TaskDependency())  {
+    return TaskDependency(globref.dart_gptr(), DART_DEP_OUT, phase);
+  }
+
+  /**
+   * Create an output dependency using the global memory range \c globref.
+   *
+   * The first element in the range is used as a sentinel, i.e., no sub-range
+   * matching is performed.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT>
+  auto
+  out(RangeT&& range, int32_t phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin().dart_gptr()), TaskDependency()) {
+    return TaskDependency(range.begin().dart_gptr(), DART_DEP_OUT, phase);
+  }
+
+  /**
+   * Create an output dependency using the local memory pointer \c lptr.
+   *
+   * \sa TaskDependency
+   */
   template<typename T>
   TaskDependency
   out(const T* lptr, int32_t phase = DART_PHASE_TASK) {
     return TaskDependency(lptr, DART_DEP_OUT, phase);
   }
 
+  /**
+   * Create an output dependency using the local memory pointer \c lptr.
+   *
+   * \sa TaskDependency
+   */
+  template<typename T>
+  constexpr
+  TaskDependency
+  out(T* lptr, int32_t phase = DART_PHASE_TASK) {
+    return dash::tasks::out(const_cast<const T*>(lptr), phase);
+  }
+
+
+  /**
+   * Create a direct dependency to the task referenced by \c TaskHandle.
+   *
+   * \sa TaskDependency
+   */
   template<typename T>
   TaskDependency
   direct(const TaskHandle<T>& taskref) {
     return TaskDependency(taskref);
   }
 
+  /**
+   * Create an empty dependency that will be ignored.
+   *
+   * \sa TaskDependency
+   */
   template<typename T=int>
   constexpr
   TaskDependency
@@ -322,44 +501,60 @@ namespace internal {
     return TaskDependency();
   }
 
+  /**
+   * Abort the execution of the current task.
+   *
+   * This function does not return.
+   */
   template<typename T=int>
-  void
-  abort_task() DASH__NORETURN;
-
-  template<typename T>
+  [[noreturn]]
   void
   abort_task() {
     throw(dash::tasks::internal::AbortCancellationSignal());
   }
 
+  /**
+   * Abort the execution of the current and all remaining tasks and wait for
+   * all other units to abort.
+   *
+   * This function does not return.
+   */
   template<typename T=int>
-  void
-  cancel_barrier() DASH__NORETURN;
-
-  template<typename T>
+  [[noreturn]]
   void
   cancel_barrier() {
+    // check to avoid double abort
     if (dart_task_should_abort()) abort_task();
     throw(dash::tasks::internal::BarrierCancellationSignal());
   }
 
+  /**
+   * Abort the execution of the current all remaining tasks and broadcast a
+   * cancellation request to all other units.
+   *
+   * This function does not return.
+   */
   template<typename T=int>
-  void
-  cancel_bcast() DASH__NORETURN;
-
-  template<typename T>
+  [[noreturn]]
   void
   cancel_bcast() {
+    // check to avoid double abort
     if (dart_task_should_abort()) abort_task();
     throw(dash::tasks::internal::BcastCancellationSignal());
   }
 
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * after all dependencies specified in \c deps have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
   template<class TaskFunc, typename DepContainer>
   void
   async(
     TaskFunc            f,
     dart_task_prio_t    prio,
-    const DepContainer& deps){
+    DepContainer&&      deps) {
     if (dart_task_should_abort()) abort_task();
     dart_task_create(
       &dash::tasks::internal::invoke_task_action<void>,
@@ -367,7 +562,13 @@ namespace internal {
                      deps.data(), deps.size(), prio);
   }
 
-  template<class TaskFunc, typename ... Args>
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * without any dependencies.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc>
   void
   async(
     TaskFunc         f,
@@ -376,14 +577,20 @@ namespace internal {
     async(f, prio, deps);
   }
 
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
   template<class TaskFunc, typename ... Args>
   void
   async(
-    TaskFunc         f,
-    dart_task_prio_t prio,
-    TaskDependency   dep,
-    const Args&...   args){
-    std::array<const dart_task_dep_t, sizeof...(args)+1> deps(
+    TaskFunc                f,
+    dart_task_prio_t        prio,
+    TaskDependency          dep,
+    Args&&...               args){
+    std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
@@ -391,12 +598,27 @@ namespace internal {
     async(f, prio, deps);
   }
 
+  /**
+   * Create an asynchronous task that will execute \c f with normal priority
+   * after all dependencies specified in \c deps have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
   template<class TaskFunc, typename ... Args>
   void
-  async(TaskFunc f, const Args&... args){
-    async(f, DART_PRIO_LOW, args...);
+  async(TaskFunc f, Args&&... args){
+    async(f, DART_PRIO_LOW, std::forward<Args>(args)...);
   }
 
+  /**
+   * Return a handle to an asynchronous task that will execute \c f with
+   * priority \c prio after all dependencies specified in \c deps have been
+   * satisfied.
+   *
+   * \note This function is a cancellation point.
+   *
+   * \sa TaskHandle
+   */
   template<class TaskFunc, typename DepContainer>
   auto
   async_handle(
@@ -416,6 +638,14 @@ namespace internal {
     return TaskHandle<return_t>(handle, retval);
   }
 
+  /**
+   * Return a handle to an asynchronous task that will execute \c f with
+   * priority \c prio.
+   *
+   * \note This function is a cancellation point.
+   *
+   * \sa TaskHandle
+   */
   template<class TaskFunc>
   auto
   async_handle(
@@ -426,15 +656,24 @@ namespace internal {
     return async_handle(f, prio, deps);
   }
 
+  /**
+   * Return a handle to an asynchronous task that will execute \c f with
+   * priority \c prio after all specified dependencies have been
+   * satisfied.
+   *
+   * \note This function is a cancellation point.
+   *
+   * \sa TaskHandle
+   */
   template<class TaskFunc, typename ... Args>
   auto
   async_handle(
     TaskFunc f,
     dart_task_prio_t prio,
-    TaskDependency dep,
-    const Args&... args) -> TaskHandle<decltype(f())>
+    TaskDependency   dep,
+    Args&&...        args) -> TaskHandle<decltype(f())>
   {
-    std::array<const dart_task_dep_t, sizeof...(args)+1> deps(
+    std::array<dart_task_dep_t, sizeof...(args)+1> deps(
     {{
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
@@ -442,15 +681,31 @@ namespace internal {
     return async_handle(f, prio, deps);
   }
 
+  /**
+   * Return a handle to an asynchronous task that will execute \c f with normal
+   * priority after all specified dependencies have been satisfied.
+   *
+   * \sa TaskHandle
+   */
   template<class TaskFunc, typename ... Args>
   auto
   async_handle(
-    TaskFunc f,
-    const Args&... args) -> TaskHandle<decltype(f())>
+    TaskFunc  f,
+    Args&&... args) -> TaskHandle<decltype(f())>
   {
-    return async_handle(f, DART_PRIO_LOW, args...);
+    return async_handle(f, DART_PRIO_LOW, std::forward<Args>(args)...);
   }
 
+  /**
+   * Perform an asynchronous barrier to signal the completion of the current
+   * task execution phase.
+   *
+   * This operation does not block but should be called on all units
+   * synchronously, i.e., all units should perform the same number of
+   * \c async_barrier calls to phases synchronized.
+   * This function should only be called on the main task and will have no
+   * effect in any other task.
+   */
   template<typename T=int>
   void async_barrier() {
     dart_task_phase_advance();
@@ -461,6 +716,11 @@ namespace internal {
     dart_task_phase_resync(team.dart_id());
   }
 
+  /**
+   * Yield the current thread in order to execute another task.
+   *
+   * \note This function is a cancellation point.
+   */
   template<typename T=int>
   void
   yield(int delay = -1) {
@@ -468,6 +728,11 @@ namespace internal {
     dart_task_yield(delay);
   }
 
+  /**
+   * Wait for the execution of all previously created tasks to complete.
+   *
+   * \note This function is a cancellation point.
+   */
   template<typename T=int>
   void
   complete() {
