@@ -47,10 +47,15 @@ public:
   { }
 
   Future(const get_func_t & func)
-  : _get_func(func),
-    _ready(false)
+  : _get_func(func)
   { }
 
+  Future(
+    const get_func_t     & get_func,
+    const test_func_t    & test_func)
+  : _get_func(get_func),
+    _test_func(test_func)
+  { }
 
   Future(
     const get_func_t     & get_func,
@@ -58,18 +63,11 @@ public:
     const destroy_func_t & destroy_func)
   : _get_func(get_func),
     _test_func(test_func),
-    _destroy_func(destroy_func),
-    _ready(false)
+    _destroy_func(destroy_func)
   { }
 
-  Future(
-    const self_t & other)
-  : _get_func(other._get_func),
-    _test_func(other._test_func),
-    _destroy_func(other._destroy_func),
-    _value(other._value),
-    _ready(other._ready)
-  { }
+  Future(const self_t& other) = delete;
+  Future(self_t&& other)      = default;
 
   ~Future() {
     if (_destroy_func) {
@@ -77,17 +75,9 @@ public:
     }
   }
 
-  Future<ResultT> & operator=(const self_t & other)
-  {
-    if (this != &other) {
-      _get_func     = other._get_func;
-      _test_func    = other._test_func;
-      _destroy_func = other._destroy_func;
-      _value        = other._value;
-      _ready        = other._ready;
-    }
-    return *this;
-  }
+  /// copy-assignment is not permitted
+  Future<ResultT> & operator=(const self_t& other) = delete;
+  Future<ResultT> & operator=(self_t&& other)      = default;
 
   void wait()
   {
@@ -106,7 +96,7 @@ public:
     DASH_LOG_TRACE_VAR("Future.wait >", _ready);
   }
 
-  bool test() const
+  bool test()
   {
     if (!_ready && _test_func) {
       _ready = _test_func(&_value);
