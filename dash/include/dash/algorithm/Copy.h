@@ -144,46 +144,23 @@ ValueType * copy_impl(
   auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
   DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
 
-  // MPI uses offset type int, do not copy more than INT_MAX bytes:
-  size_type max_copy_elem   = (std::numeric_limits<int>::max() /
-                               sizeof(ValueType));
   size_type num_elem_copied = 0;
-  DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
-  if (num_elem_total > max_copy_elem) {
-    DASH_LOG_DEBUG("dash::copy_impl",
-                   "cannot copy", num_elem_total, "elements",
-                   "in a single dart_get operation");
-  }
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
     DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
-    while (num_elem_copied < num_elem_total) {
-      // Number of elements left to copy:
-      auto total_elem_left = num_elem_total - num_elem_copied;
-      auto num_copy_elem   = (num_elem_total > max_copy_elem)
-                             ? max_copy_elem
-                             : num_elem_total;
-      if (num_copy_elem > total_elem_left) {
-        num_copy_elem = total_elem_left;
-      }
-      DASH_LOG_TRACE("dash::copy_impl",
-                     "copy max:",       max_copy_elem,
-                     "get elements:",   num_copy_elem,
-                     "total:",          num_elem_total,
-                     "copied:",         num_elem_copied,
-                     "left:",           total_elem_left);
-      auto cur_in_first  = g_in_first + num_elem_copied;
-      auto cur_out_first = out_first  + num_elem_copied;
-      dash::dart_storage<ValueType> ds(num_copy_elem);
-      DASH_ASSERT_RETURNS(
-        dart_get_blocking(
-          cur_out_first,
-          cur_in_first.dart_gptr(),
-          ds.nelem,
-          ds.dtype),
-        DART_OK);
-      num_elem_copied += num_copy_elem;
-    }
+    DASH_LOG_TRACE("dash::copy_impl",
+                    "get elements:",   num_elem_total);
+    auto cur_in_first  = g_in_first;
+    auto cur_out_first = out_first;
+    dash::dart_storage<ValueType> ds(num_elem_total);
+    DASH_ASSERT_RETURNS(
+      dart_get_blocking(
+        cur_out_first,
+        cur_in_first.dart_gptr(),
+        ds.nelem,
+        ds.dtype),
+      DART_OK);
+    num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
     DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
@@ -205,9 +182,7 @@ ValueType * copy_impl(
       // Number of elements left to copy:
       auto total_elem_left = num_elem_total - num_elem_copied;
       // Number of elements to copy in this iteration.
-      auto num_copy_elem   = (num_unit_elem < max_copy_elem)
-                             ? num_unit_elem
-                             : max_copy_elem;
+      auto num_copy_elem   = num_unit_elem;
       if (num_copy_elem > total_elem_left) {
         num_copy_elem = total_elem_left;
       }
@@ -221,7 +196,6 @@ ValueType * copy_impl(
                      "->",
                      "unit elements:",  num_unit_elem,
                      "max elem/unit:",  max_elem_per_unit,
-                     "copy max:",       max_copy_elem,
                      "get elements:",   num_copy_elem,
                      "total:",          num_elem_total,
                      "copied:",         num_elem_copied,
