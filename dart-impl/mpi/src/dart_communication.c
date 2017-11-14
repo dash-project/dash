@@ -50,7 +50,7 @@
  * Temporary space allocation:
  *   - on the stack for allocations <=64B
  *   - on the heap otherwise
- * Mainly meant to be used in dart_waitall_* and dart_testall_local
+ * Mainly meant to be used in dart_waitall* and dart_testall*
  */
 #define ALLOC_TMP(__size) ((__size)<=64) ? alloca((__size)) : malloc((__size))
 /**
@@ -1284,6 +1284,27 @@ dart_ret_t dart_waitall_local(
   return ret;
 }
 
+static
+dart_ret_t wait_remote_completion(
+  dart_handle_t *handles,
+  size_t         n
+)
+{
+  for (size_t i = 0; i < n; i++) {
+    if (handles[i] != DART_HANDLE_NULL && handles[i]->needs_flush) {
+      DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%zu]: %p, dest: %d))",
+                      i, (void*)handles[i], handles[i]->dest);
+      /*
+        * MPI_Win_flush to wait for remote completion if required:
+        */
+      if (MPI_Win_flush(handles[i]->dest, handles[i]->win) != MPI_SUCCESS) {
+        return DART_ERR_INVAL;
+      }
+    }
+  }
+  return DART_OK;
+}
+
 dart_ret_t dart_waitall(
   dart_handle_t handles[],
   size_t        n)
@@ -1356,19 +1377,10 @@ dart_ret_t dart_waitall(
      * wait for completion of MPI requests at origins and targets:
      */
     DART_LOG_DEBUG("dart_waitall: waiting for remote completion");
-    for (size_t i = 0; i < n; i++) {
-      if (handles[i] != DART_HANDLE_NULL && handles[i]->needs_flush) {
-        DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%zu]: %p, dest: %d))",
-                       i, (void*)handles[i], handles[i]->dest);
-        /*
-         * MPI_Win_flush to wait for remote completion if required:
-         */
-        if (MPI_Win_flush(handles[i]->dest, handles[i]->win) != MPI_SUCCESS) {
-          DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
-          FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
-          return DART_ERR_INVAL;
-        }
-      }
+    if (DART_OK != wait_remote_completion(handles, n)) {
+      DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
+      FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+      return DART_ERR_OTHER;
     }
 
     /*
@@ -1453,6 +1465,64 @@ dart_ret_t dart_testall_local(
     }
 
     if (*is_finished) {
+      for (size_t i = 0; i < n; i++) {
+        if (handles[i] != DART_HANDLE_NULL) {
+          // free the handle
+          free(handles[i]);
+          handles[i] = DART_HANDLE_NULL;
+        }
+      }
+    }
+  }
+  FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+  DART_LOG_DEBUG("dart_testall_local > finished");
+  return DART_OK;
+}
+
+
+dart_ret_t dart_testall(
+  dart_handle_t   handles[],
+  size_t          n,
+  int32_t       * is_finished)
+{
+  DART_LOG_DEBUG("dart_testall_local()");
+  if (handles == NULL || n == 0) {
+    DART_LOG_DEBUG("dart_testall_local: empty handles");
+    return DART_OK;
+  }
+
+  MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof (MPI_Request));
+  size_t r_n = 0;
+  for (size_t i = 0; i < n; ++i) {
+    if (handles[i] != DART_HANDLE_NULL) {
+      for (uint8_t j = 0; j < handles[i]->num_reqs; ++j) {
+        if (handles[i]->reqs[j] != MPI_REQUEST_NULL){
+          mpi_req[r_n] = handles[i]->reqs[j];
+          ++r_n;
+        }
+      }
+    }
+  }
+
+  if (r_n) {
+    if (MPI_Testall(r_n, mpi_req, is_finished,
+                    MPI_STATUSES_IGNORE) != MPI_SUCCESS){
+      FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+      DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
+      return DART_ERR_OTHER;
+    }
+
+    if (*is_finished) {
+      /*
+      * wait for completion of MPI requests at origins and targets:
+      */
+      DART_LOG_DEBUG("dart_testall: waiting for remote completion");
+      if (DART_OK != wait_remote_completion(handles, n)) {
+        DART_LOG_ERROR("dart_testall: MPI_Win_flush failed");
+        FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
+        return DART_ERR_OTHER;
+      }
+
       for (size_t i = 0; i < n; i++) {
         if (handles[i] != DART_HANDLE_NULL) {
           // free the handle

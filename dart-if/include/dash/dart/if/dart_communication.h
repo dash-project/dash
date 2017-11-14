@@ -601,6 +601,24 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * result) DART_NOTHROW;
 
+/**
+ * Test for the completion of operations and ensure remote completion.
+ * If the transfers completed, the handles are invalidated and may not be
+ * used in another \c dart_wait or \c dart_test operation.
+ *
+ * \param handles Array of handles of operations to test for completion.
+ * \param n Number of \c handles to test for completion.
+ * \param[out] result \c True if all operations have completed.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_testall(
+  dart_handle_t   handles[],
+  size_t          n,
+  int32_t       * is_finished);
 
 /**
  * Free the handle without testing or waiting for completion of the operation.
@@ -718,18 +736,18 @@ dart_ret_t dart_recv(
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
