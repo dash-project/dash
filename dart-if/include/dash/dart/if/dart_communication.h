@@ -583,6 +583,23 @@ dart_ret_t dart_test_local(
   int32_t       * result) DART_NOTHROW;
 
 /**
+ * Test for the completion of an operation and ensure remote completion.
+ * If the transfer completed, the handle is invalidated and may not be used
+ * in another \c dart_wait or \c dart_test operation.
+ *
+ * \param handle The handle of an operation to test for completion.
+ * \param[out] result \c True if the operation has completed.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_test(
+  dart_handle_t * handleptr,
+  int32_t       * is_finished);
+
+/**
  * Test for the local completion of operations.
  * If the transfers completed, the handles are invalidated and may not be
  * used in another \c dart_wait or \c dart_test operation.

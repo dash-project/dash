@@ -1420,11 +1420,10 @@ dart_ret_t dart_test_local(
   *is_finished = 0;
 
   dart_handle_t handle = *handleptr;
-  if (MPI_Testall(handle->num_reqs, handle->reqs,
-                  &flag, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
-    return DART_ERR_OTHER;
-  }
+  CHECK_MPI_RET(
+    MPI_Testall(handle->num_reqs, handle->reqs,
+                &flag, MPI_STATUSES_IGNORE),
+    "MPI_Testall");
 
   if (flag) {
     // deallocate handle
@@ -1433,6 +1432,44 @@ dart_ret_t dart_test_local(
     *is_finished = 1;
   }
   DART_LOG_DEBUG("dart_test_local > finished");
+  return DART_OK;
+}
+
+
+dart_ret_t dart_test(
+  dart_handle_t * handleptr,
+  int32_t       * is_finished)
+{
+  int flag;
+
+  DART_LOG_DEBUG("dart_test()");
+  if (handleptr == NULL ||
+      *handleptr == DART_HANDLE_NULL ||
+      (*handleptr)->num_reqs == 0) {
+    *is_finished = 1;
+    return DART_OK;
+  }
+  *is_finished = 0;
+
+  dart_handle_t handle = *handleptr;
+  CHECK_MPI_RET(
+    MPI_Testall(handle->num_reqs, handle->reqs,
+                &flag, MPI_STATUSES_IGNORE),
+    "MPI_Testall");
+
+  if (flag) {
+    if (handle->needs_flush) {
+      CHECK_MPI_RET(
+        MPI_Win_flush(handle->dest, handle->win),
+        "MPI_Win_flush"
+      );
+    }
+    // deallocate handle
+    free(handle);
+    *handleptr = DART_HANDLE_NULL;
+    *is_finished = 1;
+  }
+  DART_LOG_DEBUG("dart_test > finished");
   return DART_OK;
 }
 
