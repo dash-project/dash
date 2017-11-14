@@ -15,6 +15,15 @@ in the [DASH Documentation Wiki](http://doc.dash-project.org/) for useful hints
 on the code base, build configurations, debugging, HPC system setups etc.
 
 
+Design Guidelines
+-----------------
+
+DASH follows the terminology and concepts described in the
+[ISO C++ Core Guidelines](https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md).
+We kindly, yet firmly, ask all contributors to get familiar with this insightful
+document to keep pull request review cycles nice and brief.
+
+
 Code Style
 ----------
 
@@ -36,7 +45,7 @@ and some DASH-specific tags.
 
 This example should illustrate all you need:
 
-~~~c++
+```c++
 /**
  * Multi-line comment opened with double-star "/**".
  * First paragraph is brief description.
@@ -81,7 +90,7 @@ bool wombatify(
 ) {
   // Any comment here is ignored, no matter how it is formatted.
 }
-~~~
+```
 
 
 Contributing Code
