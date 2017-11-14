@@ -54,6 +54,8 @@ static dart_mutex_t         deferred_remote_mutex    = DART_MUTEX_INITIALIZER;
 
 static dart_taskqueue_t     remote_blocked_tasks;
 
+dart_taskqueue_t            local_deferred_tasks; // visible outside this CU
+
 static dart_global_unit_t myguid;
 
 static dart_ret_t
@@ -120,6 +122,7 @@ dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
   dart_tasking_taskqueue_init(&remote_blocked_tasks);
+  dart_tasking_taskqueue_init(&local_deferred_tasks);
   return dart_tasking_remote_init();
 }
 
@@ -162,6 +165,7 @@ dart_ret_t dart_tasking_datadeps_fini()
   }
   freelist_head = NULL;
   dart_tasking_taskqueue_finalize(&remote_blocked_tasks);
+  dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
 
@@ -265,9 +269,36 @@ release_deferred_remote_releases()
   dart__base__mutex_unlock(&deferred_remote_mutex);
 }
 
+dart_ret_t
+dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread)
+{
+  dart_tasking_taskqueue_lock(&local_deferred_tasks);
+
+  // also lock the thread's queue for the time we're processing to reduce
+  // overhead
+  dart_tasking_taskqueue_lock(&thread->queue);
+
+  dart_task_t *task;
+  while (
+    (task = dart_tasking_taskqueue_pop_unsafe(&local_deferred_tasks)) != NULL)
+  {
+    // enqueue the task if if has gained no additional remote dependecies
+    // since it's deferrement
+    // Note: only check remote deps here because we know that local dependenices
+    //       have been resolved if the task ended up in this queue.
+    // Note: if the task has gained remote dependencies we drop the reference
+    //       here because it will be released through a remote dep release later.
+    if (DART_FETCH32(&task->unresolved_remote_deps) == 0) {
+      dart_tasking_taskqueue_push_unsafe(&thread->queue, task);
+    }
+  }
+
+  dart_tasking_taskqueue_unlock(&thread->queue);
+  dart_tasking_taskqueue_unlock(&local_deferred_tasks);
+}
 
 dart_ret_t
-dart_tasking_datadeps_release_unhandled_remote()
+dart_tasking_datadeps_handle_defered_remote()
 {
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote dependencies: %p",

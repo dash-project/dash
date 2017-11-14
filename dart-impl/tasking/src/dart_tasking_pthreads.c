@@ -297,7 +297,7 @@ dart_task_t * next_task(dart_thread_t *thread)
     for (int i = 0; i < num_threads; ++i) {
       task = dart_tasking_taskqueue_popback(&thread_pool[target].queue);
       if (task != NULL) {
-        DART_LOG_DEBUG("Stole task %p from thread %i", task, i);
+        DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
         thread->last_steal_thread = target;
         break;
       }
@@ -415,12 +415,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // the task may have changed once we get back here
     task = get_current_task();
 
-    // we need to lock the task shortly here
-    // to allow for atomic check and update
-    // of remote successors in dart_tasking_datadeps_handle_remote_task
-    dart__base__mutex_lock(&(task->mutex));
-    task->state = DART_TASK_FINISHED;
-    dart__base__mutex_unlock(&(task->mutex));
     dart_tasking_datadeps_release_local_task(task);
 
     // let the parent know that we are done
@@ -431,8 +425,17 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     dart__tasking__context_release(task->taskctx);
     task->taskctx = NULL;
 
+    bool has_ref = task->has_ref;
+
+    // we need to lock the task shortly here
+    // to allow for atomic check and update
+    // of remote successors in dart_tasking_datadeps_handle_remote_task
+    dart__base__mutex_lock(&(task->mutex));
+    task->state = DART_TASK_FINISHED;
+    dart__base__mutex_unlock(&(task->mutex));
+
     // clean up
-    if (!task->has_ref){
+    if (!has_ref){
       // only destroy the task if there are no references outside
       // referenced tasks will be destroyed in task_wait/task_freeref
       dart__tasking__destroy_task(task);
@@ -587,14 +590,19 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
-  dart_thread_t *thread = get_current_thread();
-  dart_taskqueue_t *q = &thread->queue;
+  // check whether the task has to be deferred
   if (!dart__tasking__phase_is_runnable(task->phase)) {
-    // if the task's phase is outside the phase bound we defer it
-    q = &thread->defered_queue;
+    dart_tasking_taskqueue_lock(&local_deferred_tasks);
+    if (!dart__tasking__phase_is_runnable(task->phase)) {
+      dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
+    }
+    dart_tasking_taskqueue_unlock(&local_deferred_tasks);
+  } else {
+    dart_thread_t *thread = get_current_thread();
+    dart_taskqueue_t *q = &thread->queue;
+    dart_tasking_taskqueue_push(q, task);
   }
 
-  dart_tasking_taskqueue_push(q, task);
 }
 
 dart_ret_t
@@ -671,18 +679,15 @@ dart__tasking__task_complete()
     "only valid on MASTER thread!");
 
   if (thread->current_task == &(root_task)) {
-    // reset the active epoch
-    dart__tasking__phase_set_runnable(DART_PHASE_ANY);
     // make sure all incoming requests are served
     dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     // release unhandled remote dependencies
-    dart_tasking_datadeps_release_unhandled_remote();
+    dart_tasking_datadeps_handle_defered_remote();
     DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
+    // reset the active epoch
+    dart__tasking__phase_set_runnable(DART_PHASE_ANY);
     // release the deferred queue
-    for (int i = 0; i < num_threads; ++i) {
-      dart_thread_t *t = &thread_pool[i];
-      dart_tasking_taskqueue_move(&t->queue, &t->defered_queue);
-    }
+    dart_tasking_datadeps_handle_defered_local(thread);
   }
 
   // 1) wake up all threads (might later be done earlier)
@@ -735,16 +740,16 @@ dart__tasking__task_complete()
 dart_ret_t
 dart__tasking__taskref_free(dart_taskref_t *tr)
 {
-  if (tr == NULL || *tr == NULL) {
+  if (tr == NULL || *tr == DART_TASK_NULL) {
     return DART_ERR_INVAL;
   }
 
   // free the task if already destroyed
   dart__base__mutex_lock(&(*tr)->mutex);
-  if ((*tr)->state == DART_TASK_DESTROYED && (*tr)->has_ref) {
+  if ((*tr)->state == DART_TASK_FINISHED && (*tr)->has_ref) {
     dart__base__mutex_unlock(&(*tr)->mutex);
     dart__tasking__destroy_task(*tr);
-    *tr = NULL;
+    *tr = DART_TASK_NULL;
     return DART_OK;
   }
 
@@ -765,18 +770,31 @@ dart__tasking__task_wait(dart_taskref_t *tr)
     return DART_ERR_INVAL;
   }
 
-  dart_thread_t *thread = get_current_thread();
+  dart_task_t *reftask = *tr;
+  // the task has to be locked to avoid race conditions
+  dart__base__mutex_lock(&(reftask->mutex));
 
   // the thread just contributes to the execution
   // of available tasks until the task waited on finishes
-  while ((*tr)->state != DART_TASK_FINISHED) {
+  while (reftask->state != DART_TASK_FINISHED) {
+    dart__base__mutex_unlock(&(reftask->mutex));
+
+    dart_thread_t *thread = get_current_thread();
+
     dart_tasking_remote_progress();
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
+
+    // lock the task for the check in the while header
+    dart__base__mutex_lock(&(reftask->mutex));
   }
 
-  dart__tasking__destroy_task(*tr);
-  *tr = NULL;
+  // finally we have to destroy the task
+  dart__base__mutex_unlock(&(reftask->mutex));
+  reftask->has_ref = false;
+  dart__tasking__destroy_task(reftask);
+
+  *tr = DART_TASK_NULL;
 
   return DART_OK;
 }
@@ -792,22 +810,30 @@ dart__tasking__task_test(dart_taskref_t *tr, int *flag)
     return DART_ERR_INVAL;
   }
 
-  if ((*tr)->state != DART_TASK_FINISHED) {
-    // if this is the only thread executing we have to execute at least one task
-    if (num_threads == 1) {
-      dart_thread_t *thread = get_current_thread();
-      dart_tasking_remote_progress();
-      dart_task_t *task = next_task(thread);
-      handle_task(task, thread);
-    }
+  dart_task_t *reftask = *tr;
+  // the task has to be locked to avoid race conditions
+  dart__base__mutex_lock(&(reftask->mutex));
+  dart_task_state_t state = reftask->state;
+  dart__base__mutex_unlock(&(reftask->mutex));
 
-    if ((*tr)->state == DART_TASK_FINISHED) {
-      *flag = 1;
-      dart__tasking__destroy_task(*tr);
-      *tr = NULL;
-    }
+  // if this is the only available thread we have to execute at least one task
+  if (num_threads == 1 && state != DART_TASK_FINISHED) {
+    dart_thread_t *thread = get_current_thread();
+    dart_tasking_remote_progress();
+    dart_task_t *task = next_task(thread);
+    handle_task(task, thread);
+
+    // check if this was our task
+    dart__base__mutex_lock(&(reftask->mutex));
+    state = reftask->state;
+    dart__base__mutex_unlock(&(reftask->mutex));
   }
 
+  if (state == DART_TASK_FINISHED) {
+    *flag = 1;
+    dart__tasking__destroy_task(reftask);
+    *tr = DART_TASK_NULL;
+  }
   return DART_OK;
 }
 

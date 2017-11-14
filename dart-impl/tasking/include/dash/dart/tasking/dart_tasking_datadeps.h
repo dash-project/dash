@@ -17,6 +17,9 @@ typedef union taskref {
   remote_task_t        remote;
 } taskref;
 
+extern dart_taskqueue_t local_deferred_tasks DART_INTERNAL;
+
+
 /**
  * Initialize the data dependency management system.
  */
@@ -86,7 +89,15 @@ dart_ret_t dart_tasking_datadeps_cancel_remote_deps() DART_INTERNAL;
  * to avoid deadlocks.
  */
 dart_ret_t
-dart_tasking_datadeps_release_unhandled_remote() DART_INTERNAL;
+dart_tasking_datadeps_handle_defered_remote() DART_INTERNAL;
+
+/**
+ * Release local tasks whose releases have been deferred.
+ * Tasks may have gained remote (direct) dependencies so not all tasks may be
+ * released.
+ */
+dart_ret_t
+dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread) DART_INTERNAL;
 
 DART_INLINE
 bool
