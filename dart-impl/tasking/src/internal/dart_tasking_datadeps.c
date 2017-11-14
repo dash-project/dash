@@ -40,7 +40,7 @@ typedef struct dart_dephash_elem {
   dart_global_unit_t        origin;  // the unit this dependency originated from
 } dart_dephash_elem_t;
 
-//static dart_dephash_elem_t *local_deps[DART_DEPHASH_SIZE];
+
 static dart_dephash_elem_t *freelist_head            = NULL;
 static dart_mutex_t         local_deps_mutex         = DART_MUTEX_INITIALIZER;
 
@@ -48,12 +48,11 @@ static dart_mutex_t         local_deps_mutex         = DART_MUTEX_INITIALIZER;
 static dart_dephash_elem_t *unhandled_remote_deps    = NULL;
 static dart_mutex_t         unhandled_remote_mutex   = DART_MUTEX_INITIALIZER;
 
-// list of incoming remote dependency releases defered to matching step
-static dart_dephash_elem_t *deferred_remote_releases = NULL;
-static dart_mutex_t         deferred_remote_mutex    = DART_MUTEX_INITIALIZER;
-
+// list of tasks that have no local dependencies but wait for a remote release
 static dart_taskqueue_t     remote_blocked_tasks;
 
+// list of tasks that have been deferred because they are in a phase
+// that is not ready to run yet
 dart_taskqueue_t            local_deferred_tasks; // visible outside this CU
 
 static dart_global_unit_t myguid;
@@ -249,26 +248,6 @@ static dart_ret_t dephash_add_local(
   return DART_OK;
 }
 
-static void
-release_deferred_remote_releases()
-{
-  dart__base__mutex_lock(&deferred_remote_mutex);
-  dart_dephash_elem_t *elem;
-  dart_dephash_elem_t *next = deferred_remote_releases;
-  while ((elem = next) != NULL) {
-    next = elem->next;
-    dart_task_t *task = elem->task.local;
-    bool runnable = release_remote_dep_counter(task);
-    if (runnable) {
-      // enqueue as runnable
-      dart__tasking__enqueue_runnable(task);
-    }
-    dephash_recycle_elem(elem);
-  }
-  deferred_remote_releases = NULL;
-  dart__base__mutex_unlock(&deferred_remote_mutex);
-}
-
 dart_ret_t
 dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread)
 {
@@ -430,11 +409,6 @@ dart_tasking_datadeps_handle_defered_remote()
   unhandled_remote_deps = NULL;
   dart__base__mutex_unlock(&unhandled_remote_mutex);
 
-  /**
-   * Finally release all defered remote dependency releases
-   */
-  release_deferred_remote_releases();
-
   return DART_OK;
 }
 
@@ -593,13 +567,13 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
-          int32_t unresolved_deps = DART_FETCH_AND_INC32(&task->unresolved_remote_deps);
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(&task->unresolved_remote_deps);
           DART_LOG_INFO(
             "Sent remote dependency request for task %p "
             "(unit=%i, team=%i, segid=%i, offset=%p, num_deps=%i)",
             task, guid.id, dep.gptr.teamid, dep.gptr.segid,
-            dep.gptr.addr_or_offs.addr, unresolved_deps + 1);
-          if (unresolved_deps == 0) {
+            dep.gptr.addr_or_offs.addr, unresolved_deps);
+          if (unresolved_deps == 1) {
             // insert the task into the queue for remotely blocked tasks
             dart_tasking_taskqueue_push(&remote_blocked_tasks, task);
           }
@@ -717,30 +691,12 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
 dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart_task_t *local_task)
 {
-  // block the release of the task if it's not to be executed yet
-  dart__base__mutex_lock(&deferred_remote_mutex);
-  if (!dart__tasking__phase_is_runnable(local_task->phase)) {
-    // dummy dependency
-    dart_task_dep_t dep = {
-        .gptr = DART_GPTR_NULL,
-        .type = DART_DEP_DIRECT
-    };
-    taskref ref = {.local = local_task};
-    dart_dephash_elem_t *dr = dephash_allocate_elem(&dep, ref, myguid);
-    DART_STACK_PUSH(deferred_remote_releases, dr);
-    DART_LOG_DEBUG("release_remote_dep : Defering release of task %p "
-                   "with remote dep from phase %d (bound %d)",
-                   local_task, local_task->phase,
-                   dart__tasking__phase_runnable());
-  } else {
-    // immediately release the task
-    bool runnable = release_remote_dep_counter(local_task);
-    if (runnable) {
-      // enqueue as runnable
-      dart__tasking__enqueue_runnable(local_task);
-    }
+  // release the task if it is runnable
+  bool runnable = release_remote_dep_counter(local_task);
+  if (runnable) {
+    // enqueue as runnable
+    dart__tasking__enqueue_runnable(local_task);
   }
-  dart__base__mutex_unlock(&deferred_remote_mutex);
   return DART_OK;
 }
 
