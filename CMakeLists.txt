@@ -23,6 +23,9 @@ endif(POLICY CMP0004)
 if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
+if(POLICY CMP0058) 
+  cmake_policy(SET CMP0058 NEW) 
+endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set(DEFAULT_COMPTIME_RED on)
@@ -73,6 +76,8 @@ option(ENABLE_UNIFIED_MEMORY_MODEL
        "Specify whether to assume unified memory model" on)
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
+option(ENABLE_DYNAMIC_WINDOWS
+       "Specify whether to use dynamic MPI windows for collective allocation" on)
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
@@ -224,6 +229,8 @@ add_subdirectory(dart-impl)
 
 add_subdirectory(dash)
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateDASHCXX.cmake)
+
 ## Documentation
 if (BUILD_DOCS)
   CreateDoxygenTarget()
@@ -264,6 +271,8 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
+message(INFO "MPI dynamic windows:      (ENABLE_SHARED_WINDOWS)          "
+        ${ENABLE_DYNAMIC_WINDOWS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})
 message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
