@@ -1194,8 +1194,8 @@ dart_ret_t dart_wait(
                    (unsigned long)handle->win);
     if (handle->num_reqs > 0) {
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      DART_LOG_DEBUG(
-        MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE),
+      CHECK_MPI_RET(
+        MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUSES_IGNORE),
         "MPI_Waitall");
 
       if (handle->needs_flush) {
