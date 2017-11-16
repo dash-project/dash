@@ -694,10 +694,12 @@ dart_config_t;
  * Create a strided data type using blocks of size \c blocklen and a stride
  * of \c stride.
  *
- * \param      basetype The type of elements in the blocks.
- * \param      stride   The stride between blocks.
- * \param      blocklen The number of elements of type \c basetype in each block.
- * \param[out] newtype  The newly created data type.
+ * \param      basetype   The type of elements in the blocks.
+ * \param      num_blocks The number of blocks of size \c blocklen separated by
+ *                        \c stride.
+ * \param      stride     The stride between blocks.
+ * \param      blocklen   The number of elements of type \c basetype in each block.
+ * \param[out] newtype    The newly created data type.
  *
  * \return \ref DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -706,6 +708,7 @@ dart_config_t;
 dart_ret_t
 dart_type_create_strided(
   dart_datatype_t   basetype,
+  size_t            num_blocks,
   size_t            stride,
   size_t            blocklen,
   dart_datatype_t * newtype);
