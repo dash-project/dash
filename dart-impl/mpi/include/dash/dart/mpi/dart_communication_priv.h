@@ -33,11 +33,11 @@ typedef struct dart_datatype_struct {
   MPI_Datatype         mpi_type;
   dart_datatype_t      base_type;
   dart_type_kind_t     kind;
+  MPI_Datatype         max_type;
   union {
     // used for basic types
     struct {
       size_t           size;
-      MPI_Datatype     max_contig_type;
     } basic;
     // used for DART_KIND_STRIDED
     struct {
@@ -107,10 +107,9 @@ bool dart__mpi__datatype_isbasic(dart_datatype_t dart_type) {
 }
 
 DART_INLINE
-MPI_Datatype dart__mpi__datatype_contigtype(dart_datatype_t dart_type) {
+MPI_Datatype dart__mpi__datatype_maxtype(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return (dts->kind == DART_KIND_BASIC)
-            ? dts->basic.max_contig_type : MPI_DATATYPE_NULL;
+  return dts->max_type;
 }
 
 
