@@ -74,16 +74,18 @@ init_basic_datatype(
   dart_type->base_type = DART_TYPE_UNDEFINED;
   dart_type->mpi_type  = mpi_type;
   dart_type->kind = DART_KIND_BASIC;
-  int ret = MPI_Type_size(mpi_type, &size);
-  if (ret != MPI_SUCCESS) {
-    DART_LOG_ERROR("Failed to query size of MPI data type!");
-    dart_abort(-1);
+  dart_type->basic.size = 0;
+  if (mpi_type != MPI_DATATYPE_NULL) {
+    int ret = MPI_Type_size(mpi_type, &size);
+    if (ret != MPI_SUCCESS) {
+      DART_LOG_ERROR("Failed to query size of MPI data type!");
+      dart_abort(-1);
+    }
+    dart_type->basic.size = size;
+
+    // create the type used for large transfers
+    dart_type->max_type = create_max_datatype(mpi_type);
   }
-  dart_type->basic.size = size;
-
-  // create the type used for large transfers
-  dart_type->max_type = create_max_datatype(mpi_type);
-
 }
 
 dart_ret_t
