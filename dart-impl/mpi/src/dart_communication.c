@@ -1719,6 +1719,8 @@ dart_ret_t dart_test_local(
   dart_handle_t * handleptr,
   int32_t       * is_finished)
 {
+  int flag;
+
   DART_LOG_DEBUG("dart_test_local()");
   if (handleptr == NULL ||
       *handleptr == DART_HANDLE_NULL ||
@@ -1726,18 +1728,20 @@ dart_ret_t dart_test_local(
     *is_finished = 1;
     return DART_OK;
   }
+  *is_finished = 0;
 
   dart_handle_t handle = *handleptr;
   if (MPI_Testall(handle->num_reqs, handle->reqs,
-               is_finished, MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+                  &flag, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
     return DART_ERR_OTHER;
   }
 
-  if (is_finished) {
+  if (flag) {
     // deallocate handle
     free(handle);
     *handleptr = DART_HANDLE_NULL;
+    *is_finished = 1;
   }
   DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
@@ -1748,11 +1752,15 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * is_finished)
 {
+  int flag;
+
   DART_LOG_DEBUG("dart_testall_local()");
   if (handles == NULL || n == 0) {
     DART_LOG_DEBUG("dart_testall_local: empty handles");
+    *is_finished = 1;
     return DART_OK;
   }
+  *is_finished = 0;
 
   MPI_Request *mpi_req = ALLOC_TMP(2 * n * sizeof (MPI_Request));
   size_t r_n = 0;
@@ -1768,14 +1776,14 @@ dart_ret_t dart_testall_local(
   }
 
   if (r_n) {
-    if (MPI_Testall(r_n, mpi_req, is_finished,
+    if (MPI_Testall(r_n, mpi_req, &flag,
                     MPI_STATUSES_IGNORE) != MPI_SUCCESS){
       FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
       DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
       return DART_ERR_OTHER;
     }
 
-    if (*is_finished) {
+    if (flag) {
       for (size_t i = 0; i < n; i++) {
         if (handles[i] != DART_HANDLE_NULL) {
           // free the handle
@@ -1783,7 +1791,10 @@ dart_ret_t dart_testall_local(
           handles[i] = DART_HANDLE_NULL;
         }
       }
+      *is_finished = 1;
     }
+  } else {
+    *is_finished = 1;
   }
   FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
   DART_LOG_DEBUG("dart_testall_local > finished");
