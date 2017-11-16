@@ -114,7 +114,7 @@ public:
   explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   { }
-  
+
   /**
    * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
    * avoid unintendet conversion
@@ -131,7 +131,7 @@ public:
    * of \c operator=(const self_t &).
    */
   GlobRef(const self_t & other) = delete;
- 
+
   /**
    * Unlike native reference types, global reference types are moveable.
    */
@@ -168,11 +168,7 @@ public:
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &t, 1);
     DASH_LOG_TRACE_VAR("GlobRef.T >", _gptr);
     return t;
   }
@@ -204,12 +200,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-        _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, &val, 1);
     DASH_LOG_TRACE_VAR("GlobRef.set >", _gptr);
   }
 
@@ -217,54 +208,32 @@ public:
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &t, 1);
     return t;
   }
 
   void get(nonconst_value_type *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, tptr, 1);
   }
 
   void get(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &tref, 1);
   }
 
   void put(const_value_type& tref) {
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-          _gptr, static_cast<const void *>(&tref), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, &tref, 1);
   }
 
   void put(const_value_type* tptr) {
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-          _gptr, static_cast<const void *>(tptr), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, tptr, 1);
   }
 
   self_t & operator+=(const nonconst_value_type& ref) {
@@ -396,7 +365,7 @@ public:
   }
 
   /**
-   * specialization which swappes the values of two global references 
+   * specialization which swappes the values of two global references
    */
   inline void swap(dash::GlobRef<T> & b){
     T tmp = static_cast<T>(*this);

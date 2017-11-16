@@ -10,10 +10,16 @@ namespace dash {
 
 namespace internal {
 
+  /**
+   * Non-blocking write of \c nelem values from \c src to the global memory
+   * location referenced by \c gptr.
+   *
+   * \sa dart_put
+   */
   template<typename T>
   inline
   void
-  put(const T *src, const dart_gptr_t& gptr, size_t nelem) {
+  put(const dart_gptr_t& gptr, const T *src, size_t nelem) {
     dash::dart_storage<T> ds(nelem);
     DASH_ASSERT_RETURNS(
       dart_put(gptr,
@@ -24,24 +30,36 @@ namespace internal {
       DART_OK);
   }
 
+  /**
+   * Non-blocking read of \c nelem values the global memory
+   * location referenced by \c gptr into memory referenced by \c src.
+   *
+   * \sa dart_get
+   */
   template<typename T>
   inline
   void
   get(const dart_gptr_t& gptr, T *dst, size_t nelem) {
     dash::dart_storage<T> ds(nelem);
     DASH_ASSERT_RETURNS(
-      dart_get(gptr,
-               dst,
+      dart_get(dst,
+               gptr,
                ds.nelem,
                ds.dtype,
                ds.dtype),
       DART_OK);
   }
 
+  /**
+   * Blocking write of \c nelem values from \c src to the global memory
+   * location referenced by \c gptr.
+   *
+   * \sa dart_put_blocking
+   */
   template<typename T>
   inline
   void
-  put_blocking(const T *src, const dart_gptr_t& gptr, size_t nelem) {
+  put_blocking(const dart_gptr_t& gptr, const T *src, size_t nelem) {
     dash::dart_storage<T> ds(nelem);
     DASH_ASSERT_RETURNS(
       dart_put_blocking(gptr,
@@ -52,17 +70,75 @@ namespace internal {
       DART_OK);
   }
 
+  /**
+   * Blocking read of \c nelem values the global memory
+   * location referenced by \c gptr into memory referenced by \c src.
+   *
+   * \sa dart_get_blocking
+   */
   template<typename T>
   inline
   void
   get_blocking(const dart_gptr_t& gptr, T *dst, size_t nelem) {
     dash::dart_storage<T> ds(nelem);
     DASH_ASSERT_RETURNS(
-      dart_get_blocking(gptr,
-                        dst,
+      dart_get_blocking(dst,
+                        gptr,
                         ds.nelem,
                         ds.dtype,
                         ds.dtype),
+      DART_OK);
+  }
+
+  /**
+   * Write of \c nelem values from \c src to the global memory
+   * location referenced by \c gptr. Creates a handle that can be used to
+   * wait for completion.
+   *
+   * \sa dart_put_handle
+   */
+  template<typename T>
+  inline
+  void
+  put_handle(
+    const dart_gptr_t & gptr,
+    const T           * src,
+    size_t              nelem,
+    dart_handle_t     * handle) {
+    dash::dart_storage<T> ds(nelem);
+    DASH_ASSERT_RETURNS(
+      dart_put_handle(gptr,
+                      src,
+                      ds.nelem,
+                      ds.dtype,
+                      ds.dtype,
+                      handle),
+      DART_OK);
+  }
+
+  /**
+   * Non-blocking read of \c nelem values the global memory
+   * location referenced by \c gptr into memory referenced by \c src.
+   * Creates a handle that can be used to wait for completion.
+   *
+   * \sa dart_get_handle
+   */
+  template<typename T>
+  inline
+  void
+  get_handle(
+    const dart_gptr_t & gptr,
+    T                 * dst,
+    size_t              nelem,
+    dart_handle_t     * handle) {
+    dash::dart_storage<T> ds(nelem);
+    DASH_ASSERT_RETURNS(
+      dart_get_handle(dst,
+                      gptr,
+                      ds.nelem,
+                      ds.dtype,
+                      ds.dtype,
+                      handle),
       DART_OK);
   }
 
@@ -107,7 +183,7 @@ void put_value_async(
   /// [IN]  Global pointer referencing target address of value
   const GlobPtrType & gptr)
 {
-  dash::internal::put(&newval, gptr.dart_gptr(), 1);
+  dash::internal::put(gptr.dart_gptr(), &newval, 1);
 }
 
 /**
@@ -141,7 +217,7 @@ void put_value(
   /// [IN]  Global pointer referencing target address of value
   const GlobPtrType & gptr)
 {
-  dash::internal::put_blocking(&newval, gptr.dart_gptr(), 1);
+  dash::internal::put_blocking(gptr.dart_gptr(), &newval, 1);
 }
 
 /**

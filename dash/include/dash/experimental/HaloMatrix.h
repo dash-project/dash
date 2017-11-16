@@ -6,6 +6,7 @@
 #include <dash/Pattern.h>
 #include <dash/memory/GlobStaticMem.h>
 #include <dash/Matrix.h>
+#include <dash/Onesided.h>
 
 #include <dash/experimental/Halo.h>
 #include <dash/experimental/iterator/HaloMatrixIterator.h>
@@ -230,8 +231,9 @@ private:
       auto off = _halomemory.haloPos(dim, region);
       auto it = data.blockview.begin();
       for(auto i = 0; i < data.num_handles; ++i, it += data.cont_elems){
-        dash::dart_storage<value_t> ds(data.cont_elems);
-        dart_get_handle (off + ds.nelem * i, it.dart_gptr(), ds.nelem, ds.dtype, &(data.handle[i]));
+        dash::internal::get_handle(
+          it.dart_gptr(), off + data.cont_elems * i,
+          data.cont_elems, &(data.handle[i]));
       }
       if(!async)
         dart_waitall(data.handle, data.num_handles);

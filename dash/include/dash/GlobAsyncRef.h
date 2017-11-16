@@ -187,11 +187,7 @@ public:
   nonconst_value_type get() const {
     nonconst_value_type value;
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&value), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &value, 1);
     return value;
   }
 
@@ -202,11 +198,7 @@ public:
    * at which point the referenced value can be used.
    */
   void get(nonconst_value_type *tptr) const {
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get(_gptr, tptr, 1);
   }
 
   /**
@@ -228,11 +220,7 @@ public:
   void set(const_value_type* tptr) {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", *tptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put(_gptr, static_cast<const void *>(tptr), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put(_gptr, tptr, 1);
   }
 
   /**
@@ -244,7 +232,6 @@ public:
   void set(const_value_type& new_value) {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
-    dash::dart_storage<T> ds(1);
     _value = new_value;
     // check that we do not overwrite the handle if it has been used before
     if (this->_handle != DART_HANDLE_NULL) {
@@ -253,11 +240,7 @@ public:
         DART_OK
       );
     }
-    DASH_ASSERT_RETURNS(
-      dart_put_handle(_gptr, static_cast<const void *>(&_value),
-                      ds.nelem, ds.dtype, &_handle),
-      DART_OK
-    );
+    dash::internal::put_handle(_gptr, &_value, 1, &_handle);
   }
 
   /**

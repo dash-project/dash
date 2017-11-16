@@ -24,7 +24,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   int g_src_index       = unit_src * block_size;
   // Copy values:
   dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
@@ -66,7 +66,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   int g_src_index       = unit_src * block_size;
   // Copy values:
   dash::dart_storage<value_t> ds(block_size);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
@@ -99,7 +99,7 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   array.barrier();
   // Copy values from first two blocks:
   dash::dart_storage<value_t> ds(num_elem_copy);
-  LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
+  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
@@ -143,7 +143,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
       dart_handle_t handle;
 
       dash::dart_storage<value_t> ds(block_size);
-      LOG_MESSAGE("DART storage: dtype:%d nelem:%zu", ds.dtype, ds.nelem);
+      LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
       EXPECT_EQ_U(
         DART_OK,
         dart_get_handle(
