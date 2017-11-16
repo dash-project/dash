@@ -343,7 +343,8 @@ dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -366,7 +367,8 @@ dart_ret_t dart_put(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 
 /**
@@ -476,7 +478,8 @@ dart_ret_t dart_get_handle(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
   dart_handle_t   * handle) DART_NOTHROW;
 
 /**
@@ -500,7 +503,8 @@ dart_ret_t dart_put_handle(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
   dart_handle_t   * handle) DART_NOTHROW;
 
 /**
@@ -628,7 +632,8 @@ dart_ret_t dart_get_blocking(
   void         *  dest,
   dart_gptr_t     gptr,
   size_t          nelem,
-  dart_datatype_t dtype) DART_NOTHROW;
+  dart_datatype_t src_type,
+  dart_datatype_t dst_type) DART_NOTHROW;
 
 /**
  * 'BLOCKING' variant of dart_put.
@@ -648,7 +653,8 @@ dart_ret_t dart_put_blocking(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 /** \} */
 
@@ -679,8 +685,8 @@ dart_ret_t dart_send(
   const void         * sendbuf,
   size_t               nelem,
   dart_datatype_t      dtype,
-	int                  tag,
-	dart_global_unit_t   unit) DART_NOTHROW;
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI recv.
@@ -700,24 +706,24 @@ dart_ret_t dart_recv(
   void               * recvbuf,
   size_t               nelem,
   dart_datatype_t      dtype,
-	int                  tag,
-	dart_global_unit_t   unit) DART_NOTHROW;
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.

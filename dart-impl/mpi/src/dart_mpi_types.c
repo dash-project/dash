@@ -14,6 +14,23 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <mpi.h>
+#include <string.h>
+
+#define DART_TYPE_NAMELEN 256
+
+static const char* __dart_base_type_names[DART_TYPE_LAST+1] = {
+  "UNDEFINED",
+  "BYTE",
+  "SHORT",
+  "INT",
+  "UNSIGNED INT",
+  "LONG",
+  "UNSIGNED LONG",
+  "LONG LONG",
+  "FLOAT",
+  "DOUBLE",
+  "INVALID"
+};
 
 dart_datatype_struct_t __dart_base_types[DART_TYPE_LAST];
 
@@ -86,9 +103,36 @@ dart__mpi__datatype_init()
   return DART_OK;
 }
 
+char* dart__mpi__datatype_name(dart_datatype_t dart_type)
+{
+  char *buf = NULL;
+  if (dart_type <= DART_TYPE_LAST) {
+    buf = strdup(__dart_base_type_names[dart_type]);
+  } else {
+    dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+    if (dts->kind == DART_KIND_INDEXED) {
+      buf = malloc(DART_TYPE_NAMELEN);
+      char *base_name = dart__mpi__datatype_name(dts->base_type);
+      snprintf(buf, DART_TYPE_NAMELEN, "INDEXED(%i:%s)",
+                dts->indexed.count, base_name);
+      free(base_name);
+    } else if (dts->kind == DART_KIND_STRIDED){
+      buf = malloc(DART_TYPE_NAMELEN);
+      char *base_name = dart__mpi__datatype_name(dts->base_type);
+      snprintf(buf, DART_TYPE_NAMELEN, "STRIDED(%i:%i:%s)",
+                dts->strided.blocklen, dts->strided.stride, base_name);
+      free(base_name);
+    } else {
+      DART_LOG_ERROR("INVALID data type detected!");
+    }
+  }
+  return buf;
+}
+
 dart_ret_t
 dart_type_create_strided(
   dart_datatype_t   basetype_id,
+  size_t            num_blocks,
   size_t            stride,
   size_t            blocklen,
   dart_datatype_t * newtype)
@@ -108,9 +152,14 @@ dart_type_create_strided(
     return DART_ERR_INVAL;
   }
 
+  if (num_blocks > INT_MAX || stride > INT_MAX || blocklen > INT_MAX) {
+    DART_LOG_ERROR("dart_type_create_strided: arguments out of range (>INT_MAX)");
+    return DART_ERR_INVAL;
+  }
+
   MPI_Datatype mpi_dtype = basetype->mpi_type;
   MPI_Datatype new_mpi_dtype;
-  MPI_Type_vector(1, blocklen, stride, mpi_dtype, &new_mpi_dtype);
+  MPI_Type_vector(num_blocks, blocklen, stride, mpi_dtype, &new_mpi_dtype);
   MPI_Type_commit(&new_mpi_dtype);
   dart_datatype_struct_t *new_struct;
   new_struct = malloc(sizeof(struct dart_datatype_struct));

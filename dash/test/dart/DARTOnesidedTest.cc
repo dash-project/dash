@@ -29,6 +29,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
+    ds.dtype,
     ds.dtype
   );
   for (size_t l = 0; l < block_size; ++l) {
@@ -70,6 +71,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     ds.nelem,
+    ds.dtype,
     ds.dtype
   );
   for (size_t l = 0; l < block_size; ++l) {
@@ -102,7 +104,8 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
     ds.nelem,                         // number of elements
-    ds.dtype                          // data type
+    ds.dtype,                         // src data type
+    ds.dtype                          // dst data type
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
   for (size_t l = 0; l < block_size; ++l) {
@@ -147,6 +150,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             local_array + (block * block_size),
             (array.begin() + (u * block_size)).dart_gptr(),
             ds.nelem,
+            ds.dtype,
             ds.dtype,
             &handle)
       );

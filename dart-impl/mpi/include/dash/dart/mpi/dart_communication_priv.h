@@ -41,8 +41,8 @@ typedef struct dart_datatype_struct {
     } basic;
     // used for DART_KIND_STRIDED
     struct {
-      size_t           stride;
-      size_t           blocklen;
+      int              stride;
+      int              blocklen;
     } strided;
     // used for DART_KIND_INDEXED
     struct {
@@ -102,8 +102,22 @@ int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
 }
 
 DART_INLINE
+dart_datatype_t dart__mpi__datatype_base(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+  return (dts->kind == DART_KIND_BASIC) ? dart_type : dts->base_type;
+}
+
+DART_INLINE
 bool dart__mpi__datatype_isbasic(dart_datatype_t dart_type) {
   return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_BASIC);
+}
+
+DART_INLINE
+bool dart__mpi__datatype_samebase(
+  dart_datatype_t lhs_type,
+  dart_datatype_t rhs_type) {
+  return (
+    dart__mpi__datatype_base(lhs_type) == dart__mpi__datatype_base(rhs_type));
 }
 
 DART_INLINE
@@ -111,6 +125,8 @@ MPI_Datatype dart__mpi__datatype_maxtype(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
   return dts->max_type;
 }
+
+char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
 
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */
