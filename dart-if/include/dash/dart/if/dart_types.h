@@ -692,11 +692,10 @@ dart_config_t;
 
 /**
  * Create a strided data type using blocks of size \c blocklen and a stride
- * of \c stride.
+ * of \c stride. The number of elements copied using the resulting datatype
+ * has to be a multiple of \c blocklen.
  *
  * \param      basetype   The type of elements in the blocks.
- * \param      num_blocks The number of blocks of size \c blocklen separated by
- *                        \c stride.
  * \param      stride     The stride between blocks.
  * \param      blocklen   The number of elements of type \c basetype in each block.
  * \param[out] newtype    The newly created data type.
@@ -708,7 +707,6 @@ dart_config_t;
 dart_ret_t
 dart_type_create_strided(
   dart_datatype_t   basetype,
-  size_t            num_blocks,
   size_t            stride,
   size_t            blocklen,
   dart_datatype_t * newtype);
@@ -716,7 +714,9 @@ dart_type_create_strided(
 
 /**
  * Create an indexed data type using \c count blocks of size \c blocklen[i]
- * with offsets \c offset[i] for each <tt>0 <= i < count</tt>.
+ * with offsets \c offset[i] for each <tt>0 <= i < count</tt>. The number of
+ * elements copied using the resulting datatype has to be a multiple of
+ * Sum(\c blocklen[0:i]).
  *
  * \param      basetype The type of elements in the blocks.
  * \param      count    The number of blocks.

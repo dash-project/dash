@@ -10,6 +10,8 @@
 #include <stdbool.h>
 
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -30,25 +32,39 @@ typedef enum {
 } dart_type_kind_t;
 
 typedef struct dart_datatype_struct {
-  MPI_Datatype         mpi_type;
+  /// the underlying data-type (type == base_type for basic types)
   dart_datatype_t      base_type;
+  /// the kind of this type (basic, strided, indexed)
   dart_type_kind_t     kind;
-  MPI_Datatype         max_type;
+  /// the overall number of elements in this type
+  size_t               num_elem;
   union {
-    // used for basic types
+    /// used for basic types
     struct {
+      /// the size in bytes of this type
       size_t           size;
+      /// the underlying MPI type
+      MPI_Datatype     mpi_type;
+      /// the underlying MPI type used to handle large (>2GB) transfers
+      MPI_Datatype     max_type;
     } basic;
-    // used for DART_KIND_STRIDED
+    /// used for DART_KIND_STRIDED
+    /// NOTE: the underlying MPI strided type is created dynamically based on
+    ///       the number of blocks required.
     struct {
+      /// the stride between blocks of size \c num_elem
       int              stride;
-      int              blocklen;
     } strided;
-    // used for DART_KIND_INDEXED
+    /// used for DART_KIND_INDEXED
     struct {
+      /// the underlying MPI type
+      MPI_Datatype     mpi_type;
+      /// the numbers of elements in each block
       int            * blocklens;
+      /// the offsets at which each block starts
       int            * offsets;
-      int              count;
+      /// the number of blocks
+      int              num_blocks;
     } indexed;
   };
 } dart_datatype_struct_t;
@@ -91,11 +107,6 @@ dart_datatype_struct_t * dart__mpi__datatype_struct(
 }
 
 DART_INLINE
-MPI_Datatype dart__mpi__datatype(dart_datatype_t dart_datatype) {
-  return dart__mpi__datatype_struct(dart_datatype)->mpi_type;
-}
-
-DART_INLINE
 int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
   return (dts->kind == DART_KIND_BASIC) ? dts->basic.size : -1;
@@ -113,6 +124,16 @@ bool dart__mpi__datatype_isbasic(dart_datatype_t dart_type) {
 }
 
 DART_INLINE
+bool dart__mpi__datatype_isstrided(dart_datatype_t dart_type) {
+  return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_STRIDED);
+}
+
+DART_INLINE
+bool dart__mpi__datatype_isindexed(dart_datatype_t dart_type) {
+  return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_INDEXED);
+}
+
+DART_INLINE
 bool dart__mpi__datatype_samebase(
   dart_datatype_t lhs_type,
   dart_datatype_t rhs_type) {
@@ -123,10 +144,53 @@ bool dart__mpi__datatype_samebase(
 DART_INLINE
 MPI_Datatype dart__mpi__datatype_maxtype(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return dts->max_type;
+  return (dts->kind == DART_KIND_BASIC) ? dts->basic.max_type
+                                        : dart__mpi__datatype_maxtype(
+                                            dts->base_type);
+}
+
+DART_INLINE
+size_t dart__mpi__datatype_num_elem(dart_datatype_t dart_type) {
+  return (dart__mpi__datatype_struct(dart_type)->num_elem);
+}
+
+MPI_Datatype
+dart__mpi__create_strided_mpi(
+  dart_datatype_t dart_type,
+  size_t          num_blocks) DART_INTERNAL;
+
+void
+dart__mpi__destroy_strided_mpi(MPI_Datatype *mpi_type) DART_INTERNAL;
+
+DART_INLINE
+void
+dart__mpi__datatype_convert_mpi(
+  dart_datatype_t  dart_type,
+  size_t           dart_num_elem,
+  MPI_Datatype   * mpi_type,
+  int            * mpi_num_elem)
+{
+  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+  switch(dts->kind) {
+    case DART_KIND_BASIC:
+      *mpi_num_elem = dart_num_elem;
+      *mpi_type     = dts->basic.mpi_type;
+      break;
+    case DART_KIND_STRIDED:
+      *mpi_num_elem = 1;
+      *mpi_type     = dart__mpi__create_strided_mpi(
+                                      dart_type, dart_num_elem / dts->num_elem);
+      break;
+    case DART_KIND_INDEXED:
+      *mpi_num_elem = dart_num_elem / dts->num_elem;
+      *mpi_type     = dts->indexed.mpi_type;
+      break;
+    default:
+      // should not happen!
+      DART_ASSERT_MSG(NULL, "Unknown DART type detected!");
+  }
 }
 
 char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
-
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */
