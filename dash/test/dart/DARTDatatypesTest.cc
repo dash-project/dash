@@ -253,13 +253,90 @@ TEST_F(DARTDatatypesTest, IndexedGetSimple) {
   // contig-to-indexed
   memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
-  // indexed-to-contig
   dart_get_blocking(buf, gptr, num_elems, DART_TYPE_INT, new_type);
 
   idx = 0;
   for (size_t i = 0; i < num_blocks; ++i) {
     for (size_t j = 0; j < blocklens[i]; ++j) {
       ASSERT_EQ_U(local_ptr[idx], buf[offsets[i] + j]);
+      ++idx;
+    }
+  }
+
+  dart_type_destroy(&new_type);
+
+  delete[] buf;
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+}
+
+TEST_F(DARTDatatypesTest, IndexedPutSimple) {
+
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t num_blocks        = 5;
+
+  std::vector<size_t> blocklens(num_blocks);
+  std::vector<size_t> offsets(num_blocks);
+
+  // set up offsets and block lengths
+  size_t num_elems = 0;
+  for (int i = 0; i < num_blocks; ++i) {
+    blocklens[i] = (i+1);
+    offsets[i]   = (i*10);
+    num_elems   += blocklens[i];
+  }
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+
+  dart_datatype_t new_type;
+  dart_type_create_indexed(DART_TYPE_INT, num_blocks, blocklens.data(),
+                           offsets.data(), &new_type);
+
+  dash::barrier();
+
+  int *buf = new int[num_elem_per_unit];
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    buf[i] = i;
+  }
+
+  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  // indexed-to-contig
+  dart_put_blocking(gptr, buf, num_elems, new_type, DART_TYPE_INT);
+
+  dash::barrier();
+
+  size_t idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(buf[offsets[i] + j], local_ptr[idx]);
+      ++idx;
+    }
+  }
+
+  // check we haven't copied more elements than requested
+  for (size_t i = idx; i < num_elem_per_unit; ++i) {
+    ASSERT_EQ_U(0, local_ptr[i]);
+  }
+
+  // contig-to-indexed
+  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  dash::barrier();
+
+  dart_put_blocking(gptr, buf, num_elems, DART_TYPE_INT, new_type);
+  dash::barrier();
+
+  idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(buf[idx], local_ptr[offsets[i] + j]);
       ++idx;
     }
   }
