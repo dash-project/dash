@@ -52,6 +52,8 @@ namespace dash {
 
 #include <dash/Pattern.h>
 
+#include <dash/halo/HaloMatrixWrapper.h>
+
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
 #include <dash/util/Trace.h>
