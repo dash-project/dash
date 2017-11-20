@@ -1176,6 +1176,11 @@ dart_ret_t dart_get_handle(
                                  handle->reqs, &handle->num_reqs);
   }
 
+  if (handle->num_reqs == 0) {
+    free(handle);
+    handle = DART_HANDLE_NULL;
+  }
+
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d",
@@ -1242,6 +1247,11 @@ dart_ret_t dart_put_handle(
                                  handle->reqs,
                                  &handle->num_reqs,
                                  &handle->needs_flush);
+  }
+
+  if (handle->num_reqs == 0) {
+    free(handle);
+    handle = DART_HANDLE_NULL;
   }
 
   *handleptr = handle;
