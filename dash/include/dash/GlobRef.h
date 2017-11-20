@@ -114,7 +114,7 @@ public:
   explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   { }
-  
+
   /**
    * Constructor to convert \c GlobAsyncRef to GlobRef. Set to explicit to
    * avoid unintendet conversion
@@ -131,7 +131,7 @@ public:
    * of \c operator=(const self_t &).
    */
   GlobRef(const self_t & other) = delete;
- 
+
   /**
    * Unlike native reference types, global reference types are moveable.
    */
@@ -175,18 +175,6 @@ public:
     );
     DASH_LOG_TRACE_VAR("GlobRef.T >", _gptr);
     return t;
-  }
-
-  template <class GlobRefT>
-  constexpr bool operator==(const GlobRefT & other) const noexcept
-  {
-    return _gptr == other._gptr;
-  }
-
-  template <class GlobRefT>
-  constexpr bool operator!=(const GlobRefT & other) const noexcept
-  {
-    return !(*this == other);
   }
 
   constexpr bool operator==(const_value_type & value) const
@@ -297,30 +285,28 @@ public:
 
   self_t & operator++() {
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
+    operator=(++val);
     return *this;
   }
 
   nonconst_value_type operator++(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val++;
+    nonconst_value_type res = val++;
     operator=(val);
-    return result;
+    return res;
   }
 
   self_t & operator--() {
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
+    operator=(--val);
     return *this;
   }
 
   nonconst_value_type operator--(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val--;
+    nonconst_value_type res = val--;
     operator=(val);
-    return result;
+    return res;
   }
 
   self_t & operator*=(const_value_type& ref) {
@@ -396,7 +382,7 @@ public:
   }
 
   /**
-   * specialization which swappes the values of two global references 
+   * specialization which swappes the values of two global references
    */
   inline void swap(dash::GlobRef<T> & b){
     T tmp = static_cast<T>(*this);
