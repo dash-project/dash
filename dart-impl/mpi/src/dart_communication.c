@@ -60,10 +60,12 @@
     if ((_num_elem % src_num_elem) != 0 || (_num_elem % dst_num_elem) != 0) { \
       char *src_name = dart__mpi__datatype_name(_src_type);                   \
       char *dst_name = dart__mpi__datatype_name(dst_type);                    \
-      DART_LOG_ERROR("%s ! Type-mismatch would lead to truncation (%s vs %s)",\
-                    __FUNCTION__, src_name, dst_name);                        \
+      DART_LOG_ERROR(                                                         \
+        "%s ! Type-mismatch would lead to truncation (%s vs %s with %zu elems)",\
+                    __FUNCTION__, src_name, dst_name, _num_elem);             \
       free(src_name);                                                         \
       free(dst_name);                                                         \
+      return DART_ERR_INVAL;                                                  \
     }                                                                         \
   } while (0)
 
