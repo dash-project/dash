@@ -522,3 +522,100 @@ TEST_F(DARTOnesidedTest, IndexedPutSimple) {
   gptr.unitid = 0;
   dart_team_memfree(gptr);
 }
+
+
+TEST_F(DARTOnesidedTest, IndexedToIndexedGet) {
+
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t num_blocks_to     = 10;
+  constexpr size_t num_blocks_from   = 5;
+
+  std::vector<size_t> blocklens_to(num_blocks_to);
+  std::vector<size_t> offsets_to(num_blocks_to);
+  std::vector<size_t> blocklens_from(num_blocks_from);
+  std::vector<size_t> offsets_from(num_blocks_from);
+
+  // set up offsets and block lengths
+  size_t num_elems_to = 0;
+  for (int i = 0; i < num_blocks_to; ++i) {
+    blocklens_to[i] = (i+1);
+    offsets_to[i]   = (i*5);
+    num_elems_to   += blocklens_to[i];
+  }
+
+  size_t num_elems_from = 0;
+  for (int i = 0; i < num_blocks_from; ++i) {
+    blocklens_from[i] = (i+1)+8;
+    offsets_from[i]   = (i*10);
+    num_elems_from   += blocklens_from[i];
+  }
+
+  ASSERT_EQ_U(num_elems_from, num_elems_to);
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = i;
+  }
+
+  dart_datatype_t to_type;
+  dart_type_create_indexed(DART_TYPE_INT, num_blocks_to,
+                           blocklens_to.data(),
+                           offsets_to.data(), &to_type);
+
+  dart_datatype_t from_type;
+  dart_type_create_indexed(DART_TYPE_INT, num_blocks_from,
+                           blocklens_from.data(),
+                           offsets_from.data(), &from_type);
+
+  dash::barrier();
+
+  int *buf = new int[num_elem_per_unit];
+  memset(buf, 0, sizeof(int)*num_elem_per_unit);
+
+  int *index_map_to = new int[num_elem_per_unit];
+  memset(index_map_to, 0, sizeof(int)*num_elem_per_unit);
+
+  int *index_map_from = new int[num_elem_per_unit];
+  memset(index_map_from, 0, sizeof(int)*num_elem_per_unit);
+
+  // populate the flat list of indices to copy from
+  size_t idx = 0;
+  for (size_t i = 0; i < num_blocks_from; ++i) {
+    for (size_t j = 0; j < blocklens_from[i]; ++j) {
+      index_map_from[idx] = offsets_from[i] + j;
+      ++idx;
+    }
+  }
+
+  // populate the mapping from target indices to values
+  idx = 0;
+  for (size_t i = 0; i < num_blocks_to; ++i) {
+    for (size_t j = 0; j < blocklens_to[i]; ++j) {
+      index_map_to[offsets_to[i] + j] = index_map_from[idx];
+      ++idx;
+    }
+  }
+
+  // indexed-to-indexed
+  dart_get_blocking(buf, gptr, num_elems_to, from_type, to_type);
+
+  for (size_t i = 0; i < num_elem_per_unit; ++i) {
+    ASSERT_EQ_U(local_ptr[index_map_to[i]], buf[i]);
+  }
+
+  dart_type_destroy(&from_type);
+  dart_type_destroy(&to_type);
+
+  delete[] buf;
+  delete[] index_map_to;
+  delete[] index_map_from;
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+}
+
