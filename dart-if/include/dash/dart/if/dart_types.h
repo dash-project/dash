@@ -740,6 +740,10 @@ dart_type_create_indexed(
  * Destroy a data type that was previously created using
  * \ref dart_type_create_strided or \ref dart_type_create_indexed.
  *
+ * Data types can be destroyed before pending operations using that type have
+ * completed. However, after destruction a type may not be used to start
+ * new operations.
+ *
  * \param      dart_type The type to be destroyed.
  *
  * \return \ref DART_OK on success, any other of \ref dart_ret_t otherwise.
