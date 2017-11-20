@@ -199,6 +199,9 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
   dash::barrier();
   int *buf = new int[num_elem_per_unit];
 
+  dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
+  gptr.unitid = neighbor;
+
   for (int stride = 1; stride <= max_stride_size; stride++) {
 
     LOG_MESSAGE("Testing GET with stride %i", stride);
@@ -206,15 +209,12 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
     dart_datatype_t new_type;
     dart_type_create_strided(DART_TYPE_INT, stride, 1, &new_type);
 
-    dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
-
     // global-to-local strided-to-contig
     memset(buf, 0, sizeof(int)*num_elem_per_unit);
-    gptr.unitid = neighbor;
     dart_get_blocking(buf, gptr, num_elem_per_unit / stride,
                       new_type, DART_TYPE_INT);
 
-    // the first 50 elements should have a value
+    // the first elements should have a value
     for (int i = 0; i < num_elem_per_unit / stride; ++i) {
       ASSERT_EQ_U(i*stride, buf[i]);
     }
@@ -235,6 +235,8 @@ TEST_F(DARTOnesidedTest, StridedGetSimple) {
     }
     dart_type_destroy(&new_type);
   }
+
+  dash::barrier();
 
   // clean-up
   gptr.unitid = 0;
