@@ -257,19 +257,20 @@ TEST_F(DARTOnesidedTest, StridedPutSimple) {
     DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
   gptr.unitid = dash::myid();
   dart_gptr_getaddr(gptr, (void**)&local_ptr);
-  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
 
   dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
+  gptr.unitid = neighbor;
 
   int *buf = new int[num_elem_per_unit];
   for (int i = 0; i < num_elem_per_unit; ++i) {
     buf[i] = i;
   }
-  gptr.unitid = neighbor;
 
   for (int stride = 1; stride <= max_stride_size; stride++) {
 
     LOG_MESSAGE("Testing PUT with stride %i", stride);
+
+    memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
 
     dash::barrier();
     dart_datatype_t new_type;
@@ -279,15 +280,15 @@ TEST_F(DARTOnesidedTest, StridedPutSimple) {
     dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
                       new_type, DART_TYPE_INT);
 
-    dash::barrier();
-
-    // the first 50 elements should have a value
+    // the first elements should have a value
     for (int i = 0; i < num_elem_per_unit / stride; ++i) {
       ASSERT_EQ_U(i*stride, local_ptr[i]);
     }
 
     // local-to-global strided-to-contig
     memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+    dash::barrier();
 
     dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
                       DART_TYPE_INT, new_type);
@@ -367,6 +368,8 @@ TEST_F(DARTOnesidedTest, BlockedStridedToStrided) {
   dart_type_destroy(&from_type);
   dart_type_destroy(&to_type);
 
+  dash::barrier();
+
   delete[] buf;
   // clean-up
   gptr.unitid = 0;
@@ -441,6 +444,8 @@ TEST_F(DARTOnesidedTest, IndexedGetSimple) {
 
   dart_type_destroy(&new_type);
 
+  dash::barrier();
+
   delete[] buf;
   // clean-up
   gptr.unitid = 0;
@@ -482,6 +487,8 @@ TEST_F(DARTOnesidedTest, IndexedPutSimple) {
   }
 
   memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  dash::barrier();
 
   // indexed-to-contig
   dart_put_blocking(gptr, buf, num_elems, new_type, DART_TYPE_INT);
@@ -612,6 +619,8 @@ TEST_F(DARTOnesidedTest, IndexedToIndexedGet) {
 
   dart_type_destroy(&from_type);
   dart_type_destroy(&to_type);
+
+  dash::barrier();
 
   delete[] buf;
   delete[] index_map_to;
