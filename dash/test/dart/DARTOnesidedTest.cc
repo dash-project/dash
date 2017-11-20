@@ -272,27 +272,26 @@ TEST_F(DARTOnesidedTest, StridedPutSimple) {
 
     memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
 
-    dash::barrier();
     dart_datatype_t new_type;
     dart_type_create_strided(DART_TYPE_INT, stride, 1, &new_type);
 
+    dash::barrier();
     // local-to-global strided-to-contig
     dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
                       new_type, DART_TYPE_INT);
+    dash::barrier();
 
     // the first elements should have a value
     for (int i = 0; i < num_elem_per_unit / stride; ++i) {
       ASSERT_EQ_U(i*stride, local_ptr[i]);
     }
 
-    // local-to-global strided-to-contig
+    // local-to-global contig-to-strided
     memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
 
     dash::barrier();
-
     dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
                       DART_TYPE_INT, new_type);
-
     dash::barrier();
 
     // every other element should have a value
@@ -331,6 +330,7 @@ TEST_F(DARTOnesidedTest, BlockedStridedToStrided) {
   for (int i = 0; i < num_elem_per_unit; ++i) {
     local_ptr[i] = i;
   }
+  dash::barrier();
 
   // global-to-local strided-to-contig
   int *buf = new int[num_elem_per_unit];
