@@ -12,15 +12,6 @@ namespace dash {
 
 #ifndef DOXYGEN
 
-// Forward-declaration
-template<
-  typename ElementType,
-  class    PatternType,
-  class    GlobMemType,
-  class    PointerType,
-  class    ReferenceType >
-class GlobStencilIter;
-// Forward-declaration
 template<
   typename ElementType,
   class    PatternType,
@@ -118,15 +109,6 @@ public:
   friend std::ostream & operator<<(
            std::ostream & os,
            const GlobIter<T_, P_, GM_, Ptr_, Ref_> & it);
-
-  // For conversion to GlobStencilIter
-  template<
-    typename T_,
-    class    P_,
-    class    GM_,
-    class    Ptr_,
-    class    Ref_ >
-  friend class GlobStencilIter;
 
   // For conversion to GlobViewIter
   template<

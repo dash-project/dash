@@ -453,6 +453,49 @@ dart_ret_t dart_flush_local_all(
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
+typedef enum {
+  STRIDED_TO_STRIDED = 0,
+  STRIDED_TO_CONTIG,
+  CONTIG_TO_STRIDED
+} dart_stride_option;
+
+dart_ret_t dart_get_strided_handle(
+  void          * dest,
+  dart_gptr_t     gptr,
+  size_t          nblocks,
+  size_t          nelems_block,
+  size_t          stride,
+  dart_datatype_t dtype,
+  dart_stride_option stride_opt,
+  dart_handle_t * handle);
+
+dart_ret_t dart_get_indexed_handle(
+  void          * dest,
+  dart_gptr_t     gptr,
+  size_t          nblocks,
+  size_t          nelems_block,
+  int*            indexes,
+  dart_datatype_t dtype,
+  dart_stride_option stride_opt,
+  dart_handle_t * handle);
+
+/**
+ * 'HANDLE' variant of dart_get.
+ * Neither local nor remote completion is guaranteed. A later
+ * dart_wait*() call or a fence/flush operation is needed to guarantee
+ * completion.
+ *
+ * \param dest   Local target memory to store the data.
+ * \param gptr   Global pointer being the source of the data transfer.
+ * \param nelem  The number of elements of \c dtype in buffer \c dest.
+ * \param dtype  The data type of the values in buffer \c dest.
+ * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
 #define DART_HANDLE_NULL (dart_handle_t)NULL
 
 /**
@@ -679,8 +722,8 @@ dart_ret_t dart_send(
   const void         * sendbuf,
   size_t               nelem,
   dart_datatype_t      dtype,
-	int                  tag,
-	dart_global_unit_t   unit) DART_NOTHROW;
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI recv.
@@ -700,24 +743,24 @@ dart_ret_t dart_recv(
   void               * recvbuf,
   size_t               nelem,
   dart_datatype_t      dtype,
-	int                  tag,
-	dart_global_unit_t   unit) DART_NOTHROW;
+  int                  tag,
+  dart_global_unit_t   unit) DART_NOTHROW;
 
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
