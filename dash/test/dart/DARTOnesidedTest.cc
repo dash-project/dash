@@ -181,351 +181,344 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   ASSERT_EQ_U(num_elem_copy, l);
 }
 
-/*
-TEST_F(DARTOnesidedTest, GetStridedHandleAllRemote)
-{
-  if (dash::size() < 2) {
-    return;
+
+TEST_F(DARTOnesidedTest, StridedGetSimple) {
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t max_stride_size   = 5;
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = i;
   }
 
-  using value_t = int;
-  const size_t block_size = 50;
-  size_t num_elem_total   = dash::size() * block_size;
+  dash::barrier();
+  int *buf = new int[num_elem_per_unit];
 
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  // Array to store local copy:
-  std::vector<value_t> local_array(num_elem_total);
-  // Array of handles, one for each dart_get_handle:
-  std::vector<dart_handle_t> handles;
-  handles.reserve(dash::size());
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t i = 0; i < block_size; ++i)
-    array.local[i] = ((dash::myid() + 1) * 1000) + i;
+  for (int stride = 1; stride <= max_stride_size; stride++) {
 
-  array.barrier();
+    LOG_MESSAGE("Testing GET with stride %i", stride);
 
-  LOG_MESSAGE("Requesting remote blocks");
-  // Copy values from all blocks in strides:
-  size_t stride = 5;
-  size_t nblocks = block_size / stride;
-  size_t nelems_block = 3;
+    dart_datatype_t new_type;
+    dart_type_create_strided(DART_TYPE_INT, stride, 1, &new_type);
 
-  LOG_MESSAGE("DART stride: stride:%d nblocks:%d", stride, nblocks, nelems_block);
+    dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
 
-  LOG_MESSAGE("STRIDE_TO_STRIDE");
+    // global-to-local strided-to-contig
+    memset(buf, 0, sizeof(int)*num_elem_per_unit);
+    gptr.unitid = neighbor;
+    dart_get_blocking(buf, gptr, num_elem_per_unit / stride,
+                      new_type, DART_TYPE_INT);
 
-  for (size_t u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_strided_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, stride,
-          dash::dart_datatype<value_t>::value,
-          STRIDED_TO_STRIDED,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  for (size_t g = 0; g < array.size(); ++g) {
-    if(g % stride < nelems_block)
-      ASSERT_EQ_U((value_t)array[g], local_array[g]);
-    else
-      ASSERT_EQ_U(0, local_array[g]);
-  }
-
-  dash::Team::All().barrier();
-
-  LOG_MESSAGE("CONTIG_TO_STRIDE");
-
-  handles.clear();
-  std::fill(local_array.begin(), local_array.end(), 0);
-
-  for (auto u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_strided_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, stride,
-          dash::dart_datatype<value_t>::value,
-          CONTIG_TO_STRIDED,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  for (auto g = 0, l = 0; l < local_array.size(); ++l) {
-    if(l % block_size == 0)
-      g = l;
-    if(l % stride < nelems_block) {
-      ASSERT_EQ_U((value_t)array[g], local_array[l]);
-      ++g;
+    // the first 50 elements should have a value
+    for (int i = 0; i < num_elem_per_unit / stride; ++i) {
+      ASSERT_EQ_U(i*stride, buf[i]);
     }
-    else
-      ASSERT_EQ_U(0, local_array[l]);
 
-  }
+    // global-to-local strided-to-contig
+    memset(buf, 0, sizeof(int)*num_elem_per_unit);
 
-  dash::Team::All().barrier();
+    dart_get_blocking(buf, gptr, num_elem_per_unit / stride,
+                      DART_TYPE_INT, new_type);
 
-  LOG_MESSAGE("STRIDE_TO_CONTIG");
-
-  handles.clear();
-  std::fill(local_array.begin(), local_array.end(), 0);
-
-  for (auto u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_strided_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, stride,
-          dash::dart_datatype<value_t>::value,
-          STRIDED_TO_CONTIG,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  auto nelems_cont = nblocks * nelems_block;
-  for (auto g = 0, l = 0; g < array.size(); ++g) {
-    auto test_new_block = g % block_size;
-    if(test_new_block == 0)
-      l = g;
-
-    if(test_new_block < nelems_cont) {
-      ASSERT_EQ_U((value_t)array[l], local_array[g]);
-      auto test_index = l % stride;
-      if(test_index < nelems_block - 1)
-        ++l;
-      else
-        l += stride - test_index;
-    }
-    else
-      ASSERT_EQ_U(0, local_array[g]);
-  }
-
-  dash::Team::All().barrier();
-}
-
-TEST_F(DARTOnesidedTest, GetIndexedHandleAllRemote)
-{
-  if (dash::size() < 2) {
-    return;
-  }
-
-  using value_t = int;
-  const size_t block_size = 50;
-  size_t num_elem_total   = dash::size() * block_size;
-
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  // Array to store local copy:
-  std::vector<value_t> local_array(num_elem_total);
-  // Array of handles, one for each dart_get_handle:
-  std::vector<dart_handle_t> handles;
-  handles.reserve(dash::size());
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t i = 0; i < block_size; ++i)
-    array.local[i] = ((dash::myid() + 1) * 1000) + i;
-
-  array.barrier();
-
-  LOG_MESSAGE("Requesting remote blocks");
-
-  constexpr size_t nblocks = 7;
-  std::array<int,nblocks> indexes{0,5,10,20,25,40,45};
-  size_t nelems_block = 3;
-
-  LOG_MESSAGE("STRIDE_TO_STRIDE");
-
-  for (size_t u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_indexed_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, indexes.data(),
-          dash::dart_datatype<value_t>::value,
-          STRIDED_TO_STRIDED,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  auto index = indexes.begin();
-  size_t next_block = 0;
-
-  for (size_t g = 0; g < array.size(); ++g) {
-    if(g % block_size == 0 && g != 0) {
-      next_block += block_size;
-      index = indexes.begin();
-    }
-    auto index_tmp = next_block + *index;
-    if(g >= index_tmp && g < index_tmp + nelems_block) {
-      ASSERT_EQ_U((value_t)array[g], local_array[g]);
-      if(g == index_tmp + nelems_block - 1)
-        ++index;
-    }
-    else
-      ASSERT_EQ_U(0, local_array[g]);
-
-  }
-
-  dash::Team::All().barrier();
-
-  LOG_MESSAGE("CONTIG_TO_STRIDE");
-
-  handles.clear();
-  std::fill(local_array.begin(), local_array.end(), 0);
-
-  for (auto u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_indexed_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, indexes.data(),
-          dash::dart_datatype<value_t>::value,
-          CONTIG_TO_STRIDED,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  index = indexes.begin();
-  next_block = 0;
-
-  for (auto g = 0, l = 0; l < local_array.size(); ++l) {
-    if(l % block_size == 0 && l != 0) {
-      next_block += block_size;
-      index = indexes.begin();
-      g=l;
-    }
-    auto index_tmp = next_block + *index;
-    if(l >= index_tmp && l < index_tmp + nelems_block) {
-      ASSERT_EQ_U((value_t)array[g], local_array[l]);
-      if(l == index_tmp + nelems_block - 1)
-        ++index;
-      ++g;
-    }
-    else
-      ASSERT_EQ_U(0, local_array[l]);
-
-  }
-
-  dash::Team::All().barrier();
-
-  LOG_MESSAGE("STRIDE_TO_CONTIG");
-
-  handles.clear();
-  std::fill(local_array.begin(), local_array.end(), 0);
-
-  for (auto u = 0; u < dash::size(); ++u) {
-    dart_handle_t handle;
-
-    EXPECT_EQ_U(
-      DART_OK,
-      dart_get_indexed_handle(
-          local_array.data() + (u * block_size),
-          (array.begin() + (u * block_size)).dart_gptr(),
-          nblocks, nelems_block, indexes.data(),
-          dash::dart_datatype<value_t>::value,
-          STRIDED_TO_CONTIG,
-          &handle)
-    );
-    LOG_MESSAGE("dart_get_handle returned handle %p",
-                static_cast<void*>(handle));
-    handles.push_back(handle);
-  }
-  // Wait for completion of get operations:
-  LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall_local(
-    handles.data(),
-    handles.size()
-  );
-
-  LOG_MESSAGE("Validating values");
-  auto nelems_cont = nblocks * nelems_block;
-  for (auto g = 0, l = 0; g < array.size(); ++g) {
-    auto test_new_block = g % block_size;
-    if(test_new_block == 0 && g != 0) {
-      next_block += block_size;
-      index = indexes.begin();
-      l=g;
-    }
-    auto index_tmp = next_block + *index;
-    if(test_new_block < nelems_cont) {
-      if(g >= index_tmp && g < index_tmp + nelems_block) {
-        ASSERT_EQ_U((value_t)array[l], local_array[g]);
-        if(g == index_tmp + nelems_block - 1)
-          ++index;
-        ++l;
+    // every other element should have a value
+    for (int i = 0; i < num_elem_per_unit; ++i) {
+      if (i%stride == 0) {
+        ASSERT_EQ_U(i/stride, buf[i]);
+      } else {
+        ASSERT_EQ_U(0, buf[i]);
       }
-      else
-        l += index_tmp;
     }
-    else
-      ASSERT_EQ_U(0, local_array[g]);
-
+    dart_type_destroy(&new_type);
   }
 
-  dash::Team::All().barrier();
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+
+  delete[] buf;
+
 }
-*/
+
+
+TEST_F(DARTOnesidedTest, StridedPutSimple) {
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t max_stride_size   = 5;
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  dart_unit_t neighbor = (dash::myid() + 1) % dash::size();
+
+  int *buf = new int[num_elem_per_unit];
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    buf[i] = i;
+  }
+  gptr.unitid = neighbor;
+
+  for (int stride = 1; stride <= max_stride_size; stride++) {
+
+    LOG_MESSAGE("Testing PUT with stride %i", stride);
+
+    dash::barrier();
+    dart_datatype_t new_type;
+    dart_type_create_strided(DART_TYPE_INT, stride, 1, &new_type);
+
+    // local-to-global strided-to-contig
+    dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
+                      new_type, DART_TYPE_INT);
+
+    dash::barrier();
+
+    // the first 50 elements should have a value
+    for (int i = 0; i < num_elem_per_unit / stride; ++i) {
+      ASSERT_EQ_U(i*stride, local_ptr[i]);
+    }
+
+    // local-to-global strided-to-contig
+    memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+    dart_put_blocking(gptr, buf, num_elem_per_unit / stride,
+                      DART_TYPE_INT, new_type);
+
+    dash::barrier();
+
+    // every other element should have a value
+    for (int i = 0; i < num_elem_per_unit; ++i) {
+      if (i%stride == 0) {
+        ASSERT_EQ_U(i/stride, local_ptr[i]);
+      } else {
+        ASSERT_EQ_U(0, local_ptr[i]);
+      }
+    }
+
+    dart_type_destroy(&new_type);
+  }
+
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+
+  delete[] buf;
+}
+
+
+TEST_F(DARTOnesidedTest, BlockedStridedToStrided) {
+
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t from_stride       = 5;
+  constexpr size_t from_block_size   = 2;
+  constexpr size_t to_stride         = 2;
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = i;
+  }
+
+  // global-to-local strided-to-contig
+  int *buf = new int[num_elem_per_unit];
+  memset(buf, 0, sizeof(int)*num_elem_per_unit);
+
+  dart_datatype_t to_type;
+  dart_type_create_strided(DART_TYPE_INT, to_stride, 1, &to_type);
+  dart_datatype_t from_type;
+  dart_type_create_strided(DART_TYPE_INT, from_stride,
+                           from_block_size, &from_type);
+
+  // strided-to-strided get
+  dart_get_blocking(buf, gptr, num_elem_per_unit / from_stride * from_block_size,
+                    from_type, to_type);
+
+  int value = 0;
+  for (int i = 0;
+       i < num_elem_per_unit/from_stride*to_stride*from_block_size;
+       ++i) {
+    if (i%to_stride == 0) {
+      ASSERT_EQ_U(value, buf[i]);
+      // consider the block size we used as source
+      // if
+      if ((value%from_stride) < (from_block_size-1)) {
+        // expect more elements with incremented value
+        ++value;
+      } else {
+        value += from_stride - (from_block_size  - 1);
+      }
+    } else {
+      ASSERT_EQ_U(0, buf[i]);
+    }
+  }
+
+  dart_type_destroy(&from_type);
+  dart_type_destroy(&to_type);
+
+  delete[] buf;
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+}
+
+
+TEST_F(DARTOnesidedTest, IndexedGetSimple) {
+
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t num_blocks        = 5;
+
+  std::vector<size_t> blocklens(num_blocks);
+  std::vector<size_t> offsets(num_blocks);
+
+  // set up offsets and block lengths
+  size_t num_elems = 0;
+  for (int i = 0; i < num_blocks; ++i) {
+    blocklens[i] = (i+1);
+    offsets[i]   = (i*10);
+    num_elems   += blocklens[i];
+  }
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    local_ptr[i] = i;
+  }
+
+  dart_datatype_t new_type;
+  dart_type_create_indexed(DART_TYPE_INT, num_blocks, blocklens.data(),
+                           offsets.data(), &new_type);
+
+  dash::barrier();
+
+  int *buf = new int[num_elem_per_unit];
+  memset(buf, 0, sizeof(int)*num_elem_per_unit);
+
+  // indexed-to-contig
+  dart_get_blocking(buf, gptr, num_elems, new_type, DART_TYPE_INT);
+
+  size_t idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(local_ptr[offsets[i] + j], buf[idx]);
+      ++idx;
+    }
+  }
+
+  // check we haven't copied more elements than requested
+  for (size_t i = idx; i < num_elem_per_unit; ++i) {
+    ASSERT_EQ_U(0, buf[i]);
+  }
+
+
+  // contig-to-indexed
+  memset(buf, 0, sizeof(int)*num_elem_per_unit);
+
+  dart_get_blocking(buf, gptr, num_elems, DART_TYPE_INT, new_type);
+
+  idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(local_ptr[idx], buf[offsets[i] + j]);
+      ++idx;
+    }
+  }
+
+  dart_type_destroy(&new_type);
+
+  delete[] buf;
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+}
+
+TEST_F(DARTOnesidedTest, IndexedPutSimple) {
+
+  constexpr size_t num_elem_per_unit = 120;
+  constexpr size_t num_blocks        = 5;
+
+  std::vector<size_t> blocklens(num_blocks);
+  std::vector<size_t> offsets(num_blocks);
+
+  // set up offsets and block lengths
+  size_t num_elems = 0;
+  for (int i = 0; i < num_blocks; ++i) {
+    blocklens[i] = (i+1);
+    offsets[i]   = (i*10);
+    num_elems   += blocklens[i];
+  }
+
+  dart_gptr_t gptr;
+  int *local_ptr;
+  dart_team_memalloc_aligned(
+    DART_TEAM_ALL, num_elem_per_unit, DART_TYPE_INT, &gptr);
+  gptr.unitid = dash::myid();
+  dart_gptr_getaddr(gptr, (void**)&local_ptr);
+
+  dart_datatype_t new_type;
+  dart_type_create_indexed(DART_TYPE_INT, num_blocks, blocklens.data(),
+                           offsets.data(), &new_type);
+
+  dash::barrier();
+
+  int *buf = new int[num_elem_per_unit];
+  for (int i = 0; i < num_elem_per_unit; ++i) {
+    buf[i] = i;
+  }
+
+  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  // indexed-to-contig
+  dart_put_blocking(gptr, buf, num_elems, new_type, DART_TYPE_INT);
+
+  dash::barrier();
+
+  size_t idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(buf[offsets[i] + j], local_ptr[idx]);
+      ++idx;
+    }
+  }
+
+  // check we haven't copied more elements than requested
+  for (size_t i = idx; i < num_elem_per_unit; ++i) {
+    ASSERT_EQ_U(0, local_ptr[i]);
+  }
+
+  // contig-to-indexed
+  memset(local_ptr, 0, sizeof(int)*num_elem_per_unit);
+
+  dash::barrier();
+
+  dart_put_blocking(gptr, buf, num_elems, DART_TYPE_INT, new_type);
+  dash::barrier();
+
+  idx = 0;
+  for (size_t i = 0; i < num_blocks; ++i) {
+    for (size_t j = 0; j < blocklens[i]; ++j) {
+      ASSERT_EQ_U(buf[idx], local_ptr[offsets[i] + j]);
+      ++idx;
+    }
+  }
+
+  dart_type_destroy(&new_type);
+
+  delete[] buf;
+  // clean-up
+  gptr.unitid = 0;
+  dart_team_memfree(gptr);
+}
