@@ -181,6 +181,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   ASSERT_EQ_U(num_elem_copy, l);
 }
 
+/*
 TEST_F(DARTOnesidedTest, GetStridedHandleAllRemote)
 {
   if (dash::size() < 2) {
@@ -527,3 +528,4 @@ TEST_F(DARTOnesidedTest, GetIndexedHandleAllRemote)
 
   dash::Team::All().barrier();
 }
+*/
