@@ -73,16 +73,6 @@
   CHECK_EQUAL_BASETYPE(_src_type, _dst_type);                                 \
   CHECK_NUM_ELEM(_src_type, _dst_type, _num_elem);
 
-#define CHECK_IS_BASICTYPE(_dtype) \
-  do {                                                                        \
-    if (dart__unlikely(!dart__mpi__datatype_isbasic(_dtype))) {               \
-      char *name = dart__mpi__datatype_name(_dtype);                          \
-      DART_LOG_ERROR("dart_get ! Cannot fetch-op non-basic type (%s)", name); \
-      free(name);                                                             \
-      return DART_ERR_INVAL;                                                  \
-    }                                                                         \
-  } while (0)
-
 /**
  * Temporary space allocation:
  *   - on the stack for allocations <=64B

@@ -193,4 +193,22 @@ dart__mpi__datatype_convert_mpi(
 
 char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
 
+/**
+ * Helper macro that checks whether the given type is a basic type
+ * and errors out in case of an error.
+ */
+
+#define CHECK_IS_BASICTYPE(_dtype) \
+  do {                                                                        \
+    if (dart__unlikely(!dart__mpi__datatype_isbasic(_dtype))) {               \
+      char *name = dart__mpi__datatype_name(_dtype);                          \
+      DART_LOG_ERROR(                                                         \
+                 "%s ! Only basic types allowed in this operation (%s given)",\
+                 __FUNCTION__, name);                                         \
+      free(name);                                                             \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
+
+
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */

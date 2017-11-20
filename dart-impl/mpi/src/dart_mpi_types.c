@@ -187,7 +187,6 @@ dart__mpi__create_strided_mpi(
     dart__mpi__datatype_struct(dts->base_type)->basic.mpi_type,
     &new_mpi_dtype);
   MPI_Type_commit(&new_mpi_dtype);
-  printf("Created new strided MPI type %p (%d, %d, %d)\n", new_mpi_dtype, num_blocks, dts->num_elem, dts->strided.stride);
   return new_mpi_dtype;
 }
 
