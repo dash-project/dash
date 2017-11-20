@@ -107,11 +107,16 @@ struct dart_handle_struct
   bool        needs_flush;
 };
 
+/**
+ * Help to check for return of MPI call.
+ * Since DART currently does not define an MPI error handler the abort will not
+ * be reached.
+ */
 #define CHECK_MPI_RET(__call, __name)                      \
   do {                                                     \
-    if (dart__unlikely(__call != MPI_SUCCESS)) {         \
+    if (dart__unlikely(__call != MPI_SUCCESS)) {           \
       DART_LOG_ERROR("%s ! %s failed!", __func__, __name); \
-      return DART_ERR_OTHER;                               \
+      dart_abort(DART_EXIT_ABORT);                         \
     }                                                      \
   } while (0)
 
@@ -165,6 +170,44 @@ static dart_ret_t put_shared_mem(
  * basic data types and complex data types.
  */
 
+static __attribute__((always_inline)) inline
+int
+dart__mpi__get(
+  void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+  int target_rank, MPI_Aint target_disp, int target_count,
+  MPI_Datatype target_datatype, MPI_Win win,
+  MPI_Request *reqs, uint8_t * num_reqs)
+{
+  if (reqs != NULL) {
+    return MPI_Rget(origin_addr, origin_count, origin_datatype,
+               target_rank, target_disp, target_count, target_datatype,
+               win, &reqs[(*num_reqs)++]);
+  } else {
+    return MPI_Get(origin_addr, origin_count, origin_datatype,
+                   target_rank, target_disp, target_count,
+                   target_datatype, win);
+  }
+}
+
+static __attribute__((always_inline)) inline
+int
+dart__mpi__put(
+  const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+  int target_rank, MPI_Aint target_disp, int target_count,
+  MPI_Datatype target_datatype, MPI_Win win,
+  MPI_Request *reqs, uint8_t * num_reqs)
+{
+  if (reqs != NULL) {
+    return MPI_Rput(origin_addr, origin_count, origin_datatype,
+               target_rank, target_disp, target_count, target_datatype,
+               win, &reqs[(*num_reqs)++]);
+  } else {
+    return MPI_Put(origin_addr, origin_count, origin_datatype,
+                   target_rank, target_disp, target_count,
+                   target_datatype, win);
+  }
+}
+
 static inline
 dart_ret_t
 dart__mpi__get_basic(
@@ -212,67 +255,34 @@ dart__mpi__get_basic(
   char * dest_ptr  = (char*) dest;
 
   if (nchunks > 0) {
-    if (reqs != NULL) {
-      DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)",
-                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
-      CHECK_MPI_RET(
-        MPI_Rget(dest_ptr,
-                nchunks,
-                dart__mpi__datatype_maxtype(dtype),
-                team_unit_id.id,
-                offset,
-                nchunks,
-                dart__mpi__datatype_maxtype(dtype),
-                win,
-                &reqs[(*num_reqs)++]),
-        "MPI_Rget");
-    } else {
-      DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-                    dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
-      CHECK_MPI_RET(
-        MPI_Get(dest_ptr,
-                nchunks,
-                dart__mpi__datatype_maxtype(dtype),
-                team_unit_id.id,
-                offset,
-                nchunks,
-                dart__mpi__datatype_maxtype(dtype),
-                win),
-        "MPI_Get");
-    }
+    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
+                  dest_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      dart__mpi__get(dest_ptr, nchunks,
+                     dart__mpi__datatype_maxtype(dtype),
+                     team_unit_id.id,
+                     offset,
+                     nchunks,
+                     dart__mpi__datatype_maxtype(dtype),
+                     win, reqs, num_reqs),
+      "MPI_Get");
     offset   += nchunks * MAX_CONTIG_ELEMENTS;
     dest_ptr += nchunks * MAX_CONTIG_ELEMENTS;
   }
 
   if (remainder > 0) {
-    if (reqs != NULL) {
-      DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)",
-                     dest_ptr, remainder);
-      CHECK_MPI_RET(
-        MPI_Rget(dest_ptr,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                team_unit_id.id,
-                offset,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                win,
-                &reqs[(*num_reqs)++]),
-        "MPI_Rget");
-    } else {
-      DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
-                     dest_ptr, remainder);
-      CHECK_MPI_RET(
-        MPI_Get(dest_ptr,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                team_unit_id.id,
-                offset,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                win),
-        "MPI_Get");
-    }
+    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)",
+                    dest_ptr, remainder);
+    CHECK_MPI_RET(
+      dart__mpi__get(dest_ptr,
+              remainder,
+              dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+              team_unit_id.id,
+              offset,
+              remainder,
+              dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+              win, reqs, num_reqs),
+      "MPI_Get");
   }
   return DART_OK;
 }
@@ -302,39 +312,31 @@ dart__mpi__get_complex(
   int src_num_elem, dst_num_elem;
   dart__mpi__datatype_convert_mpi(
     src_type, nelem, &src_mpi_type, &src_num_elem);
-  dart__mpi__datatype_convert_mpi(
-    dst_type, nelem, &dst_mpi_type, &dst_num_elem);
-  if (reqs != NULL) {
-    DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", dest_ptr, nelem);
-    CHECK_MPI_RET(
-      MPI_Rget(dest_ptr,
-              dst_num_elem,
-              dst_mpi_type,
-              team_unit_id.id,
-              offset,
-              src_num_elem,
-              src_mpi_type,
-              win,
-              &reqs[(*num_reqs)++]),
-      "MPI_Rget");
+  if (src_type != dst_type) {
+    dart__mpi__datatype_convert_mpi(
+      dst_type, nelem, &dst_mpi_type, &dst_num_elem);
   } else {
-    DART_LOG_TRACE("dart_get:  MPI_Get (dest %p, size %zu)", dest_ptr, nelem);
-    CHECK_MPI_RET(
-      MPI_Get(dest_ptr,
-              dst_num_elem,
-              dst_mpi_type,
-              team_unit_id.id,
-              offset,
-              src_num_elem,
-              src_mpi_type,
-              win),
-      "MPI_Get");
+    dst_mpi_type = src_mpi_type;
+    dst_num_elem = src_num_elem;
   }
+
+  DART_LOG_TRACE("dart_get:  MPI_Rget (dest %p, size %zu)", dest_ptr, nelem);
+  CHECK_MPI_RET(
+    dart__mpi__get(dest_ptr,
+            dst_num_elem,
+            dst_mpi_type,
+            team_unit_id.id,
+            offset,
+            src_num_elem,
+            src_mpi_type,
+            win,
+            reqs, num_reqs),
+    "MPI_Rget");
   // clean-up strided data types
   if (dart__mpi__datatype_isstrided(src_type)) {
     dart__mpi__destroy_strided_mpi(&src_mpi_type);
   }
-  if (dart__mpi__datatype_isstrided(dst_type)) {
+  if (src_type != dst_type && dart__mpi__datatype_isstrided(dst_type)) {
     dart__mpi__destroy_strided_mpi(&dst_mpi_type);
   }
   return DART_OK;
@@ -389,34 +391,19 @@ dart__mpi__put_basic(
   const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
 
   if (nchunks > 0) {
-    if (reqs != NULL) {
-      DART_LOG_TRACE("dart_put:  MPI_Rput (src %p, size %zu)",
-                    src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
-      CHECK_MPI_RET(
-        MPI_Rput(src_ptr,
-                nchunks,
-                dart__mpi__datatype_struct(dtype)->basic.max_type,
-                team_unit_id.id,
-                offset,
-                nchunks,
-                dart__mpi__datatype_struct(dtype)->basic.max_type,
-                win,
-                &reqs[(*num_reqs)++]),
-        "MPI_Rput");
-    } else {
-      DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)",
-                    src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
-      CHECK_MPI_RET(
-        MPI_Put(src_ptr,
-                nchunks,
-                dart__mpi__datatype_struct(dtype)->basic.max_type,
-                team_unit_id.id,
-                offset,
-                nchunks,
-                dart__mpi__datatype_struct(dtype)->basic.max_type,
-                win),
-        "MPI_Put");
-    }
+    DART_LOG_TRACE("dart_put:  MPI_Rput (src %p, size %zu)",
+                  src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      dart__mpi__put(src_ptr,
+              nchunks,
+              dart__mpi__datatype_struct(dtype)->basic.max_type,
+              team_unit_id.id,
+              offset,
+              nchunks,
+              dart__mpi__datatype_struct(dtype)->basic.max_type,
+              win,
+              reqs, num_reqs),
+      "MPI_Put");
     offset  += nchunks * MAX_CONTIG_ELEMENTS;
     src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
   }
@@ -424,34 +411,17 @@ dart__mpi__put_basic(
   if (remainder > 0) {
     DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", src_ptr, remainder);
 
-    if (reqs != NULL) {
-      DART_LOG_TRACE("dart_put:  MPI_Rput (src %p, size %zu)",
-                     src_ptr, remainder);
-      CHECK_MPI_RET(
-        MPI_Rput(src_ptr,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                team_unit_id.id,
-                offset,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                win,
-                &reqs[(*num_reqs)++]),
-        "MPI_Rput");
-    } else {
-      DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)",
-                     src_ptr, remainder);
-      CHECK_MPI_RET(
-        MPI_Put(src_ptr,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                team_unit_id.id,
-                offset,
-                remainder,
-                dart__mpi__datatype_struct(dtype)->basic.mpi_type,
-                win),
-        "MPI_Put");
-    }
+    CHECK_MPI_RET(
+      dart__mpi__put(src_ptr,
+              remainder,
+              dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+              team_unit_id.id,
+              offset,
+              remainder,
+              dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+              win,
+            reqs, num_reqs),
+      "MPI_Put");
   }
   return DART_OK;
 }
@@ -484,48 +454,35 @@ dart__mpi__put_complex(
   int src_num_elem, dst_num_elem;
   dart__mpi__datatype_convert_mpi(
     src_type, nelem, &src_mpi_type, &src_num_elem);
-  dart__mpi__datatype_convert_mpi(
-    dst_type, nelem, &dst_mpi_type, &dst_num_elem);
-
-  if (reqs != NULL) {
-
-    DART_LOG_TRACE(
-      "dart_put:  MPI_Rput (src %p, size %zu, src_type %p, dst_type %p)",
-      src_ptr, nelem, src_mpi_type, dst_mpi_type);
-
-    CHECK_MPI_RET(
-      MPI_Rput(src_ptr,
-              src_num_elem,
-              src_mpi_type,
-              team_unit_id.id,
-              offset,
-              dst_num_elem,
-              dst_mpi_type,
-              win,
-              &reqs[(*num_reqs)++]),
-      "MPI_Rput");
-
+  if (src_type != dst_type) {
+    dart__mpi__datatype_convert_mpi(
+      dst_type, nelem, &dst_mpi_type, &dst_num_elem);
   } else {
-
-    DART_LOG_TRACE("dart_put:  MPI_Put (src %p, size %zu)", src_ptr, nelem);
-
-    CHECK_MPI_RET(
-      MPI_Put(src_ptr,
-              src_num_elem,
-              src_mpi_type,
-              team_unit_id.id,
-              offset,
-              dst_num_elem,
-              dst_mpi_type,
-              win),
-      "MPI_Put");
-
+    dst_mpi_type = src_mpi_type;
+    dst_num_elem = src_num_elem;
   }
+
+  DART_LOG_TRACE(
+    "dart_put:  MPI_Put (src %p, size %zu, src_type %p, dst_type %p)",
+    src_ptr, nelem, src_mpi_type, dst_mpi_type);
+
+  CHECK_MPI_RET(
+    dart__mpi__put(src_ptr,
+            src_num_elem,
+            src_mpi_type,
+            team_unit_id.id,
+            offset,
+            dst_num_elem,
+            dst_mpi_type,
+            win,
+            reqs, num_reqs),
+    "MPI_Put");
+
   // clean-up strided data types
   if (dart__mpi__datatype_isstrided(src_type)) {
     dart__mpi__destroy_strided_mpi(&src_mpi_type);
   }
-  if (dart__mpi__datatype_isstrided(dst_type)) {
+  if (src_type != dst_type && dart__mpi__datatype_isstrided(dst_type)) {
     dart__mpi__destroy_strided_mpi(&dst_mpi_type);
   }
   return DART_OK;
