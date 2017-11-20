@@ -176,3 +176,350 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
 }
+
+TEST_F(DARTOnesidedTest, GetStridedHandleAllRemote)
+{
+  if (dash::size() < 2) {
+    return;
+  }
+
+  using value_t = int;
+  const size_t block_size = 50;
+  size_t num_elem_total   = dash::size() * block_size;
+
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  // Array to store local copy:
+  std::vector<value_t> local_array(num_elem_total);
+  // Array of handles, one for each dart_get_handle:
+  std::vector<dart_handle_t> handles;
+  handles.reserve(dash::size());
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t i = 0; i < block_size; ++i)
+    array.local[i] = ((dash::myid() + 1) * 1000) + i;
+
+  array.barrier();
+
+  LOG_MESSAGE("Requesting remote blocks");
+  // Copy values from all blocks in strides:
+  size_t stride = 5;
+  size_t nblocks = block_size / stride;
+  size_t nelems_block = 3;
+
+  LOG_MESSAGE("DART stride: stride:%d nblocks:%d", stride, nblocks, nelems_block);
+
+  LOG_MESSAGE("STRIDE_TO_STRIDE");
+
+  for (size_t u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_strided_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, stride,
+          dash::dart_datatype<value_t>::value,
+          STRIDED_TO_STRIDED,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  for (size_t g = 0; g < array.size(); ++g) {
+    if(g % stride < nelems_block)
+      ASSERT_EQ_U((value_t)array[g], local_array[g]);
+    else
+      ASSERT_EQ_U(0, local_array[g]);
+  }
+
+  dash::Team::All().barrier();
+
+  LOG_MESSAGE("CONTIG_TO_STRIDE");
+
+  handles.clear();
+  std::fill(local_array.begin(), local_array.end(), 0);
+
+  for (auto u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_strided_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, stride,
+          dash::dart_datatype<value_t>::value,
+          CONTIG_TO_STRIDED,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  for (auto g = 0, l = 0; l < local_array.size(); ++l) {
+    if(l % block_size == 0)
+      g = l;
+    if(l % stride < nelems_block) {
+      ASSERT_EQ_U((value_t)array[g], local_array[l]);
+      ++g;
+    }
+    else
+      ASSERT_EQ_U(0, local_array[l]);
+
+  }
+
+  dash::Team::All().barrier();
+
+  LOG_MESSAGE("STRIDE_TO_CONTIG");
+
+  handles.clear();
+  std::fill(local_array.begin(), local_array.end(), 0);
+
+  for (auto u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_strided_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, stride,
+          dash::dart_datatype<value_t>::value,
+          STRIDED_TO_CONTIG,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  auto nelems_cont = nblocks * nelems_block;
+  for (auto g = 0, l = 0; g < array.size(); ++g) {
+    auto test_new_block = g % block_size;
+    if(test_new_block == 0)
+      l = g;
+
+    if(test_new_block < nelems_cont) {
+      ASSERT_EQ_U((value_t)array[l], local_array[g]);
+      auto test_index = l % stride;
+      if(test_index < nelems_block - 1)
+        ++l;
+      else
+        l += stride - test_index;
+    }
+    else
+      ASSERT_EQ_U(0, local_array[g]);
+  }
+
+  dash::Team::All().barrier();
+}
+
+TEST_F(DARTOnesidedTest, GetIndexedHandleAllRemote)
+{
+  if (dash::size() < 2) {
+    return;
+  }
+
+  using value_t = int;
+  const size_t block_size = 50;
+  size_t num_elem_total   = dash::size() * block_size;
+
+  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
+  // Array to store local copy:
+  std::vector<value_t> local_array(num_elem_total);
+  // Array of handles, one for each dart_get_handle:
+  std::vector<dart_handle_t> handles;
+  handles.reserve(dash::size());
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (size_t i = 0; i < block_size; ++i)
+    array.local[i] = ((dash::myid() + 1) * 1000) + i;
+
+  array.barrier();
+
+  LOG_MESSAGE("Requesting remote blocks");
+
+  constexpr size_t nblocks = 7;
+  std::array<int,nblocks> indexes{0,5,10,20,25,40,45};
+  size_t nelems_block = 3;
+
+  LOG_MESSAGE("STRIDE_TO_STRIDE");
+
+  for (size_t u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_indexed_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, indexes.data(),
+          dash::dart_datatype<value_t>::value,
+          STRIDED_TO_STRIDED,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  auto index = indexes.begin();
+  size_t next_block = 0;
+
+  for (size_t g = 0; g < array.size(); ++g) {
+    if(g % block_size == 0 && g != 0) {
+      next_block += block_size;
+      index = indexes.begin();
+    }
+    auto index_tmp = next_block + *index;
+    if(g >= index_tmp && g < index_tmp + nelems_block) {
+      ASSERT_EQ_U((value_t)array[g], local_array[g]);
+      if(g == index_tmp + nelems_block - 1)
+        ++index;
+    }
+    else
+      ASSERT_EQ_U(0, local_array[g]);
+
+  }
+
+  dash::Team::All().barrier();
+
+  LOG_MESSAGE("CONTIG_TO_STRIDE");
+
+  handles.clear();
+  std::fill(local_array.begin(), local_array.end(), 0);
+
+  for (auto u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_indexed_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, indexes.data(),
+          dash::dart_datatype<value_t>::value,
+          CONTIG_TO_STRIDED,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  index = indexes.begin();
+  next_block = 0;
+
+  for (auto g = 0, l = 0; l < local_array.size(); ++l) {
+    if(l % block_size == 0 && l != 0) {
+      next_block += block_size;
+      index = indexes.begin();
+      g=l;
+    }
+    auto index_tmp = next_block + *index;
+    if(l >= index_tmp && l < index_tmp + nelems_block) {
+      ASSERT_EQ_U((value_t)array[g], local_array[l]);
+      if(l == index_tmp + nelems_block - 1)
+        ++index;
+      ++g;
+    }
+    else
+      ASSERT_EQ_U(0, local_array[l]);
+
+  }
+
+  dash::Team::All().barrier();
+
+  LOG_MESSAGE("STRIDE_TO_CONTIG");
+
+  handles.clear();
+  std::fill(local_array.begin(), local_array.end(), 0);
+
+  for (auto u = 0; u < dash::size(); ++u) {
+    dart_handle_t handle;
+
+    EXPECT_EQ_U(
+      DART_OK,
+      dart_get_indexed_handle(
+          local_array.data() + (u * block_size),
+          (array.begin() + (u * block_size)).dart_gptr(),
+          nblocks, nelems_block, indexes.data(),
+          dash::dart_datatype<value_t>::value,
+          STRIDED_TO_CONTIG,
+          &handle)
+    );
+    LOG_MESSAGE("dart_get_handle returned handle %p",
+                static_cast<void*>(handle));
+    handles.push_back(handle);
+  }
+  // Wait for completion of get operations:
+  LOG_MESSAGE("Waiting for completion of async requests");
+  dart_waitall_local(
+    handles.data(),
+    handles.size()
+  );
+
+  LOG_MESSAGE("Validating values");
+  auto nelems_cont = nblocks * nelems_block;
+  for (auto g = 0, l = 0; g < array.size(); ++g) {
+    auto test_new_block = g % block_size;
+    if(test_new_block == 0 && g != 0) {
+      next_block += block_size;
+      index = indexes.begin();
+      l=g;
+    }
+    auto index_tmp = next_block + *index;
+    if(test_new_block < nelems_cont) {
+      if(g >= index_tmp && g < index_tmp + nelems_block) {
+        ASSERT_EQ_U((value_t)array[l], local_array[g]);
+        if(g == index_tmp + nelems_block - 1)
+          ++index;
+        ++l;
+      }
+      else
+        l += index_tmp;
+    }
+    else
+      ASSERT_EQ_U(0, local_array[g]);
+
+  }
+
+  dash::Team::All().barrier();
+}
