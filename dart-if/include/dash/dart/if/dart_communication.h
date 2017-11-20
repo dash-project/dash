@@ -455,32 +455,6 @@ dart_ret_t dart_flush_local_all(
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
-typedef enum {
-  STRIDED_TO_STRIDED = 0,
-  STRIDED_TO_CONTIG,
-  CONTIG_TO_STRIDED
-} dart_stride_option;
-
-dart_ret_t dart_get_strided_handle(
-  void          * dest,
-  dart_gptr_t     gptr,
-  size_t          nblocks,
-  size_t          nelems_block,
-  size_t          stride,
-  dart_datatype_t dtype,
-  dart_stride_option stride_opt,
-  dart_handle_t * handle);
-
-dart_ret_t dart_get_indexed_handle(
-  void          * dest,
-  dart_gptr_t     gptr,
-  size_t          nblocks,
-  size_t          nelems_block,
-  int*            indexes,
-  dart_datatype_t dtype,
-  dart_stride_option stride_opt,
-  dart_handle_t * handle);
-
 /**
  * 'HANDLE' variant of dart_get.
  * Neither local nor remote completion is guaranteed. A later

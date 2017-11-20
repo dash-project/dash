@@ -10,6 +10,7 @@
 #include <dash/halo/iterator/HaloMatrixIterator.h>
 
 #include <type_traits>
+#include <vector>
 
 namespace dash {
 
@@ -80,24 +81,29 @@ public:
           for(auto i = rel_dim - 1; i < NumDimensions; ++i)
             num_elems_block *= region.region().extent(i);
 
+          size_t region_size      = region.size();
           auto ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
-          num_blocks              = region.size() / num_elems_block;
+          num_blocks              = region_size / num_elems_block;
           auto           it_dist  = it + num_elems_block;
           pattern_size_t stride =
             (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
                              : 1;
           auto     ds_stride = dart_storage<Element_t>(stride);
-          HaloData halo_data{ nullptr, std::vector<int>(0) };
+          HaloData halo_data;
+          dart_datatype_t stride_type;
+          dart_type_create_strided(
+            ds_num_elems_block.dtype, ds_stride.nelem,
+            ds_num_elems_block.nelem, &stride_type);
+          _dart_types.push_back(stride_type);
 
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
-                                  [off, it, num_blocks, ds_num_elems_block,
-                                   ds_stride](HaloData& data) {
-                                    dart_get_strided_handle(
-                                      off, it.dart_gptr(), num_blocks,
-                                      ds_num_elems_block.nelem, ds_stride.nelem,
-                                      ds_num_elems_block.dtype,
-                                      STRIDED_TO_CONTIG, &data.handle);
+                                  [off, it, region_size, ds_num_elems_block,
+                                   stride_type](HaloData& data) {
+                                    dart_get_handle(
+                                      off, it.dart_gptr(), region_size,
+                                      stride_type, ds_num_elems_block.dtype,
+                                      &data.handle);
                                   },
                                   std::move(halo_data) }));
 
@@ -105,24 +111,37 @@ public:
         // TODO more optimizations
         else {
           num_elems_block *= region.region().extent(NumDimensions - 1);
+          size_t region_size      = region.size();
           auto ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
-          num_blocks              = region.size() / num_elems_block;
+          num_blocks              = region_size / num_elems_block;
           auto     it_tmp         = it;
-          HaloData halo_data{ nullptr, std::vector<int>(num_blocks) };
+          HaloData halo_data;
           auto     start_index = it.lpos().index;
-          for(auto& index : halo_data.indexes) {
-            index = static_cast<int>(
-              dart_storage<Element_t>(it_tmp.lpos().index - start_index).nelem);
+          std::vector<size_t> block_sizes(num_blocks);
+          std::vector<size_t> block_offsets(num_blocks);
+          std::fill(
+            block_sizes.begin(), block_sizes.end(), ds_num_elems_block.nelem);
+          for(auto& index : block_offsets) {
+            index =
+               dart_storage<Element_t>(it_tmp.lpos().index - start_index).nelem;
             it_tmp += num_elems_block;
           }
+          dart_datatype_t index_type;
+          dart_type_create_indexed(
+            ds_num_elems_block.dtype,
+            num_blocks,             // number of blocks
+            block_sizes.data(),     // size of each block
+            block_offsets.data(),   // offset of first element of each block
+            &index_type);
+          _dart_types.push_back(index_type);
           _region_data.insert(std::make_pair(
             region.index(),
             Data{ region,
-                  [off, it, num_blocks, ds_num_elems_block](HaloData& data) {
-                    dart_get_indexed_handle(
-                      off, it.dart_gptr(), num_blocks, ds_num_elems_block.nelem,
-                      data.indexes.data(), ds_num_elems_block.dtype,
-                      STRIDED_TO_CONTIG, &data.handle);
+                  [off, it, ds_num_elems_block,region_size, index_type]
+                  (HaloData& data) {
+                    dart_get_handle(
+                      off, it.dart_gptr(), region_size, index_type,
+                      ds_num_elems_block.dtype, &data.handle);
                   },
                   std::move(halo_data) }));
         }
@@ -132,48 +151,69 @@ public:
           for(auto i = 0; i < rel_dim; ++i)
             num_elems_block *= region.region().extent(i);
 
+          size_t region_size      = region.size();
           auto ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
-          num_blocks              = region.size() / num_elems_block;
+          num_blocks              = region_size / num_elems_block;
           auto           it_dist  = it + num_elems_block;
           pattern_size_t stride =
             (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
                              : 1;
           auto     ds_stride = dart_storage<Element_t>(stride);
-          HaloData halo_data{ nullptr, std::vector<int>(0) };
+          HaloData halo_data;
+
+          dart_datatype_t stride_type;
+          dart_type_create_strided(
+            ds_num_elems_block.dtype, ds_stride.nelem,
+            ds_num_elems_block.nelem, &stride_type);
+          _dart_types.push_back(stride_type);
 
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
-                                  [off, it, num_blocks, ds_num_elems_block,
-                                   ds_stride](HaloData& data) {
-                                    dart_get_strided_handle(
-                                      off, it.dart_gptr(), num_blocks,
-                                      ds_num_elems_block.nelem, ds_stride.nelem,
-                                      ds_num_elems_block.dtype,
-                                      STRIDED_TO_CONTIG, &data.handle);
+                                  [off, it, region_size, ds_num_elems_block,
+                                   stride_type](HaloData& data) {
+                                    dart_get_handle(
+                                      off, it.dart_gptr(), region_size,
+                                      stride_type, ds_num_elems_block.dtype,
+                                      &data.handle);
                                   },
                                   std::move(halo_data) }));
         }
         // TODO more optimizations
         else {
           num_elems_block *= region.region().extent(0);
+          size_t region_size      = region.size();
           auto ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
-          num_blocks              = region.size() / num_elems_block;
+          num_blocks              = region_size / num_elems_block;
           auto     it_tmp         = it;
-          HaloData halo_data{ nullptr, std::vector<int>(num_blocks) };
+          HaloData halo_data;
+          std::vector<size_t> block_sizes(num_blocks);
+          std::vector<size_t> block_offsets(num_blocks);
+          std::fill(
+              block_sizes.begin(), block_sizes.end(), ds_num_elems_block.nelem);
           auto     start_index = it.lpos().index;
-          for(auto& index : halo_data.indexes) {
-            index = static_cast<int>(
-              dart_storage<Element_t>(it_tmp.lpos().index - start_index).nelem);
+          for(auto& index : block_offsets) {
+            index =
+              dart_storage<Element_t>(it_tmp.lpos().index - start_index).nelem;
             it_tmp += num_elems_block;
           }
+
+          dart_datatype_t index_type;
+          dart_type_create_indexed(
+            ds_num_elems_block.dtype,
+            num_blocks,             // number of blocks
+            block_sizes.data(),     // size of each block
+            block_offsets.data(),   // offset of first element of each block
+            &index_type);
+          _dart_types.push_back(index_type);
+
           _region_data.insert(std::make_pair(
             region.index(),
             Data{ region,
-                  [off, it, num_blocks, ds_num_elems_block](HaloData& data) {
-                    dart_get_indexed_handle(
-                      off, it.dart_gptr(), num_blocks, ds_num_elems_block.nelem,
-                      data.indexes.data(), ds_num_elems_block.dtype,
-                      STRIDED_TO_CONTIG, &data.handle);
+                  [off, it, index_type, region_size, ds_num_elems_block]
+                  (HaloData& data) {
+                    dart_get_handle(
+                      off, it.dart_gptr(), region_size, index_type,
+                      ds_num_elems_block.dtype, &data.handle);
                   },
                   std::move(halo_data) }));
         }
@@ -183,7 +223,12 @@ public:
     }
   }
 
-  ~HaloMatrixWrapper() {}
+  ~HaloMatrixWrapper() {
+    for(auto& dart_type : _dart_types) {
+      dart_type_destroy(&dart_type);
+    }
+    _dart_types.clear();
+  }
 
   iterator begin() noexcept { return _begin; }
 
@@ -306,8 +351,7 @@ public:
 
 private:
   struct HaloData {
-    dart_handle_t    handle;
-    std::vector<int> indexes;
+    dart_handle_t       handle = DART_HANDLE_NULL;
   };
 
   struct Data {
@@ -338,6 +382,7 @@ private:
   const HaloBlock_t              _haloblock;
   HaloMemory_t                   _halomemory;
   std::map<region_index_t, Data> _region_data;
+  std::vector<dart_datatype_t>   _dart_types;
 
   iterator       _begin;
   iterator       _end;
