@@ -517,6 +517,7 @@ TEST_F(AtomicTest, ElementCompare){
 
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
 
   ASSERT_EQ_U(0, array[dash::myid()]);
   ASSERT_EQ_U(0UL, array[dash::myid()]);
