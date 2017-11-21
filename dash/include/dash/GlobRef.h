@@ -177,6 +177,17 @@ public:
     return t;
   }
 
+  template <class GlobRefT, typename ValueT = typename GlobRefT::value_type>
+  bool operator==(const GlobRefT & other) {
+    ValueT val = other.get();
+    return operator==(val);
+  }
+
+  template <class GlobRefT>
+  bool operator!=(const GlobRefT & other) {
+    return !(*this == other);
+  }
+
   constexpr bool operator==(const_value_type & value) const
   {
     return static_cast<T>(*this) == value;
