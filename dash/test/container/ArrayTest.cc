@@ -284,6 +284,7 @@ TEST_F(ArrayTest, ElementCompare){
   array_t arr(dash::size());
 
   dash::fill(arr.begin(), arr.end(), 0);
+  arr.barrier();
 
   ASSERT_EQ_U(arr[0], arr[1]);
 
