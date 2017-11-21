@@ -45,9 +45,11 @@ class GlobAsyncRef
     typename ElementT >
   friend class GlobAsyncRef;
 
-private:
+public:
   typedef GlobAsyncRef<T>
     self_t;
+
+  typedef T value_type;
 
   typedef typename std::remove_const<T>::type
     nonconst_value_type;
@@ -261,6 +263,15 @@ public:
   dart_gptr_t dart_gptr() const {
     return this->_gptr;
   }
+
+  /**
+   * Disallow implicit comparison with other global references.
+   */
+  template <class ValueT>
+  bool operator==(const GlobAsyncRef<ValueT> & other) = delete;
+
+  template <class ValueT>
+  bool operator!=(const GlobAsyncRef<ValueT> & other) = delete;
 
   /**
    * Flush all pending asynchronous operations on this asynchronous reference.

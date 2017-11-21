@@ -173,24 +173,25 @@ public:
     return t;
   }
 
-  template <class GlobRefT>
-  constexpr bool operator==(const GlobRefT & other) const noexcept
-  {
-    return _gptr == other._gptr;
+  template <typename ValueT>
+  bool operator==(const GlobRef<ValueT> & other) const {
+    ValueT val = other.get();
+    return operator==(val);
   }
 
-  template <class GlobRefT>
-  constexpr bool operator!=(const GlobRefT & other) const noexcept
-  {
+  template <typename ValueT>
+  bool operator!=(const GlobRef<ValueT> & other) const {
     return !(*this == other);
   }
 
-  constexpr bool operator==(const_value_type & value) const
+  template<typename ValueT>
+  constexpr bool operator==(const ValueT& value) const
   {
     return static_cast<T>(*this) == value;
   }
 
-  constexpr bool operator!=(const_value_type & value) const
+  template<typename ValueT>
+  constexpr bool operator!=(const ValueT& value) const
   {
     return !(*this == value);
   }
@@ -266,30 +267,28 @@ public:
 
   self_t & operator++() {
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
+    operator=(++val);
     return *this;
   }
 
   nonconst_value_type operator++(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val++;
+    nonconst_value_type res = val++;
     operator=(val);
-    return result;
+    return res;
   }
 
   self_t & operator--() {
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
+    operator=(--val);
     return *this;
   }
 
   nonconst_value_type operator--(int) {
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val--;
+    nonconst_value_type res = val--;
     operator=(val);
-    return result;
+    return res;
   }
 
   self_t & operator*=(const_value_type& ref) {
