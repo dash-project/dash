@@ -273,7 +273,6 @@ TEST_F(ArrayTest, MoveSemantics){
   }
 }
 
-
 TEST_F(ArrayTest, ElementCompare){
   using value_t = int;
   using array_t = dash::Array<value_t>;
@@ -285,6 +284,19 @@ TEST_F(ArrayTest, ElementCompare){
   array_t arr(dash::size());
 
   dash::fill(arr.begin(), arr.end(), 0);
+  arr.barrier();
 
   ASSERT_EQ_U(arr[0], arr[1]);
+
+  ASSERT_EQ_U(0, arr[dash::myid()]);
+  ASSERT_EQ_U(arr[dash::myid()], 0);
+  ASSERT_EQ_U(arr[dash::myid()], 0UL);
+
+  dash::barrier();
+  arr[dash::myid()] = dash::myid();
+  ASSERT_EQ_U(dash::myid(), arr[dash::myid()]);
+  dash::barrier();
+  if (dash::myid() > 0) {
+    ASSERT_NE_U(arr[0], arr[dash::myid()]);
+  }
 }
