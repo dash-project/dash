@@ -327,7 +327,7 @@ TEST_F(AtomicTest, AlgorithmVariant){
   for(int i=0; i<dash::size(); ++i){
     dash::atomic::add(array[i], i+1);
   }
-  
+
   dash::barrier();
 
   for(int i=0; i<dash::size(); ++i){
@@ -354,7 +354,7 @@ TEST_F(AtomicTest, AtomicInContainer){
     array[i].add(i+1);
     matrix[i].add(i+1);
   }
-  
+
   dash::barrier();
 
   LOG_MESSAGE("Trivial Type: is_atomic_type %d",
@@ -386,15 +386,15 @@ TEST_F(AtomicTest, AtomicInterface){
   array[1]++;
   --(array[2]);
   array[3]--;
-  
+
   dash::barrier();
   ASSERT_EQ_U(array[0].load(), dash::size());
   ASSERT_EQ_U(array[1].load(), dash::size());
   ASSERT_EQ_U(array[2].load(), -dash::size());
   ASSERT_EQ_U(array[3].load(), -dash::size());
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     auto oldval = array[3].exchange(1);
     ASSERT_EQ_U(oldval, -dash::size());
@@ -402,10 +402,10 @@ TEST_F(AtomicTest, AtomicInterface){
   dash::barrier();
   ASSERT_EQ_U(array[3].load(), 1);
   dash::barrier();
-  
+
   value_t myid     = static_cast<value_t>(dash::myid().id);
   value_t id_right = (myid + 1) % dash::size();
-  
+
   array[myid].store(myid);
   array.barrier();
   ASSERT_EQ_U(id_right, array[id_right].load());
@@ -430,13 +430,13 @@ TEST_F(AtomicTest, AtomicInterface){
 
 TEST_F(AtomicTest, MutexInterface){
   dash::Mutex mx;
-  
+
   dash::Shared<int> shared(dash::team_unit_t{0});
-  
+
   if(dash::myid() == 0){
     shared.set(0);
   }
-  
+
   mx.lock();
   int tmp = shared.get();
   std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -444,34 +444,34 @@ TEST_F(AtomicTest, MutexInterface){
   LOG_MESSAGE("Before %d, after %d", tmp, static_cast<int>(shared.get()));
   // I guess here a flush is required, blocked by issue 322
   mx.unlock();
-  
+
   dash::barrier();
-  
+
   while(!mx.try_lock()){  }
   // lock aquired
   tmp = shared.get();
   std::this_thread::sleep_for(std::chrono::microseconds(100));
   shared.set(tmp + 1);
   mx.unlock();
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     int result = shared.get();
     EXPECT_EQ_U(result, static_cast<int>(dash::size()*2));
   }
-  
+
   dash::barrier();
-  
+
   // this even works with std::lock_guard
   {
     std::lock_guard<dash::Mutex> lg(mx);
     int tmp = shared.get();
     shared.set(tmp + 1);
   }
-  
+
   dash::barrier();
-  
+
   if(dash::myid() == 0){
     int result = shared.get();
     EXPECT_EQ_U(result, static_cast<int>(dash::size())*3);
@@ -491,8 +491,6 @@ TEST_F(AtomicTest, AtomicSignal){
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
 
-  int neighbor = (dash::myid() + 1) % dash::size();
-
   if (dash::myid() != 0) {
     // send the signal
     array[0].add(1);
@@ -506,4 +504,27 @@ TEST_F(AtomicTest, AtomicSignal){
     } while (count == 0);
     ASSERT_GT_U(count, 0);
   }
+}
+
+TEST_F(AtomicTest, ElementCompare){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("At least 2 units required");
+  }
+
+  array_t array(dash::size());
+  dash::fill(array.begin(), array.end(), 0);
+
+  ASSERT_EQ_U(0, array[dash::myid()]);
+  ASSERT_EQ_U(0UL, array[dash::myid()]);
+  ASSERT_EQ_U(array[dash::myid()], 0);
+  ASSERT_EQ_U(array[dash::myid()], 0UL);
+  // forbidden
+  //ASSERT_EQ_U(array[0], array[dash::myid()]);
+
+  // OK
+  ASSERT_EQ_U(array[0].get(), array[dash::myid()]);
 }
