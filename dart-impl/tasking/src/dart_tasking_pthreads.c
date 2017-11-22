@@ -234,7 +234,7 @@ static void wait_for_work()
 
 static int determine_num_threads()
 {
-  int num_threads = dart__base__env__num_threads();
+  int num_threads = dart__base__env__number(DART_NUMTHREADS_ENVSTR);
 
   if (num_threads == -1) {
     // query hwinfo

@@ -10,6 +10,15 @@
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
 
+/**
+ * Name of the environment variable specifying the number of threads to use.
+ */
+#define DART_NUMTHREADS_ENVSTR    "DART_NUM_THREADS"
+/**
+ * Name of the environment variable specifying the size of the task stack size.
+ */
+#define DART_TASKSTACKSIZE_ENVSTR "DART_TASK_STACKSIZE"
+
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
 struct task_list;

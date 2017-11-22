@@ -3,8 +3,6 @@
 #include <dash/dart/base/env.h>
 
 #define DART_LOGLEVEL_ENVSTR      "DART_LOG_LEVEL"
-#define DART_NUMTHREADS_ENVSTR    "DART_NUM_THREADS"
-#define DART_TASKSTACKSIZE_ENVSTR "DART_TASK_STACKSIZE"
 
 /**
  * Returns the log level set in DART_LOG_LEVEL, defaults to DART_LOGLEVEL_TRACE
@@ -37,70 +35,54 @@ dart__base__env__log_level()
 }
 
 /**
- * Returns the number of threads set in DART_NUM_THREADS or -1
- * if the environment variable is not set.
+ * Returns the number provided in the environment variable or -1
+ * if the environment variable is not set or does not represent a number.
  */
 int
-dart__base__env__num_threads()
+dart__base__env__number(const char *env)
 {
-  static int num_threads = -1;
-  static int parsed = 0;
-  if (!parsed) {
+  int result = -1;
+  char *endptr;
+  const char *envstr = getenv(env);
+  if (envstr && *envstr != '\0') {
+    result = strtol(envstr, &endptr, 10);
+    if (*endptr != '\0') {
+      // parsing failed
+      result = -1;
+    }
+  }
+  return result;
+}
+
+ssize_t dart__base__env__size(const char *env)
+{
+  size_t res = -1;
+  const char *envstr = getenv(env);
+  if (envstr != NULL) {
     char *endptr;
-    parsed = 1;
-    const char *envstr = getenv(DART_NUMTHREADS_ENVSTR);
-    if (envstr && *envstr != '\0') {
-      num_threads = strtol(envstr, &endptr, 10);
-      if (*endptr != '\0') {
-        // parsing failed
-        num_threads = -1;
+    if (sizeof(size_t) == sizeof(long long int)) {
+      res = strtoll(envstr, &endptr, 10);
+    } else {
+      res = strtol(envstr, &endptr, 10);
+    }
+    DART_LOG_TRACE("%s: %s (%lu %s)", env, envstr, res, endptr);
+    if (*endptr != '\0') {
+      // check for B, K, M, or G suffix
+      switch(*endptr) {
+      case 'G':
+        res *= 1024; /* fall-through */
+      case 'M':
+        res *= 1024; /* fall-through */
+      case 'K':
+        res *= 1024; /* fall-through */
+      case 'B':
+        break;
+      default:
+        // error
+        res = -1;
       }
     }
   }
-  return num_threads;
-}
-
-static
-size_t parse_size(const char *envstr)
-{
-  size_t res = -1;
-  char *endptr;
-  if (sizeof(size_t) == sizeof(long long int)) {
-    res = strtoll(envstr, &endptr, 10);
-  } else {
-    res = strtol(envstr, &endptr, 10);
-  }
-  if (*endptr != '\0') {
-    // check for B, K, M, or G suffix
-    switch(*endptr) {
-    case 'G':
-      res *= 1024; /* fall-through */
-    case 'M':
-      res *= 1024; /* fall-through */
-    case 'K':
-      res *= 1024; /* fall-through */
-    case 'B':
-      break;
-    default:
-      // error
-      res = -1;
-    }
-  }
+  DART_LOG_TRACE("%s: %s (%lu)", env, envstr, res);
   return res;
-}
-
-ssize_t
-dart__base__env__task_stacksize()
-{
-  static size_t stack_size = -1;
-  static int parsed = 0;
-  if (!parsed) {
-    parsed = 1;
-    const char *envstr = getenv(DART_TASKSTACKSIZE_ENVSTR);
-
-    if (envstr && *envstr != '\0') {
-      stack_size = parse_size(envstr);
-    }
-  }
-  return stack_size;
 }
