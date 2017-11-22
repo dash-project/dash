@@ -75,11 +75,15 @@ dart__tasking__context_adjust_size(size_t size)
 void dart__tasking__context_init()
 {
   page_size = dart__tasking__context_pagesize();
-  size_t env_stack_size = dart__base__env__task_stacksize();
+  ssize_t env_stack_size = dart__base__env__task_stacksize();
   if (env_stack_size > -1) {
+    DART_LOG_INFO("Using user-provided task stack size of %zu", task_stack_size);
     task_stack_size = env_stack_size;
+  } else {
+    DART_LOG_INFO("Using default task stack size of %zu", task_stack_size);
   }
   if (task_stack_size < page_size) {
+    DART_LOG_INFO("Rounding up task stack size to page size (%zu)", page_size);
     task_stack_size = page_size;
   }
 }
