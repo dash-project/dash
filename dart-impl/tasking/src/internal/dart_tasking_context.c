@@ -2,7 +2,7 @@
 // whether to use mmap to allocate stack
 //#define USE_MMAP 1
 // whether to protect the stack using mprotect
-//#define USE_MPROTECT 1
+#define USE_MPROTECT 1
 
 #if defined(USE_MPROTECT) || defined(USE_MMAP)
 #define _GNU_SOURCE
@@ -31,8 +31,8 @@
  * TODO: make the choice of whether to use mmap automatically
  */
 
-// Use 16K stack size per task
-#define DEFAULT_TASK_STACK_SIZE (1<<14)
+// Use 2M stack size per task
+#define DEFAULT_TASK_STACK_SIZE (1<<21)
 
 // the maximum number of ctx to store per thread
 #define PER_THREAD_CTX_STORE 10
@@ -42,10 +42,6 @@ struct context_list_s {
   context_t              ctx;
   char                  *stack;
   int                    length;
-#if defined(USE_MPROTECT)
-  // guard page, only used for mmap
-  char                  *ub_guard;
-#endif
 #if defined(USE_MMAP)
   size_t                 size;
 #endif
@@ -112,12 +108,13 @@ dart__tasking__context_allocate()
 {
   // align to page boundary: first page contains struct data and pointer to
   //                         second page, the start of the stack
+  size_t meta_size = dart__tasking__context_adjust_size(sizeof(context_list_t));
 #ifdef USE_MPROTECT
-  size_t size = dart__tasking__context_adjust_size(sizeof(context_list_t))
+  size_t size = meta_size
               + dart__tasking__context_adjust_size(task_stack_size)
-              + page_size;
+              + 2 * page_size; // upper and lower guard pages
 #else
-  size_t size = dart__tasking__context_adjust_size(sizeof(context_list_t))
+  size_t size = meta_size
               + dart__tasking__context_adjust_size(task_stack_size);
 #endif
   // TODO: allocate guard pages and mprotect() them?
@@ -133,16 +130,29 @@ dart__tasking__context_allocate()
   DART_ASSERT_RETURNS(posix_memalign((void**)&ctxlist, page_size, size), 0);
 #endif
 
-  ctxlist->stack    = ((char*)ctxlist) + page_size;
+#ifdef USE_MPROTECT
+  ctxlist->stack    = ((char*)ctxlist) + meta_size + page_size;
+#else
+  ctxlist->stack    = ((char*)ctxlist) + meta_size;
+#endif
   ctxlist->next     = NULL;
   ctxlist->length   = 0;
 
+  DART_LOG_TRACE("Allocated context %p (sp:%p)",
+                 &ctxlist->ctx, ctxlist->stack);
+
 #ifdef USE_MPROTECT
-  ctxlist->ub_guard = ctxlist->stack + task_stack_size;
-  // mprotect upper-bound page
-  if (mprotect(ctxlist->ub_guard, page_size, PROT_NONE) != 0) {
-    DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
-                  errno, page_size, ctxlist->ub_guard, strerror(errno));
+  void *ub_guard = ctxlist->stack + task_stack_size;
+  // mprotect upper guard page
+  if (mprotect(ub_guard, page_size, PROT_NONE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect upper guard page of size %zu at %p: %s",
+                  errno, page_size, ub_guard, strerror(errno));
+  }
+  void *lb_guard = ctxlist->stack - page_size;
+  // mprotect lower guard page
+  if (mprotect(lb_guard, page_size, PROT_NONE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect lower guard page of size %zu at %p: %s",
+                  errno, page_size, lb_guard, strerror(errno));
   }
 #endif
 
@@ -156,11 +166,19 @@ dart__tasking__context_allocate()
 static void
 dart__tasking__context_free(context_list_t *ctxlist)
 {
+  DART_LOG_TRACE("Freeing context %p (sp:%p)",
+                 &ctxlist->ctx, ctxlist->ctx.ctx.uc_stack.ss_sp);
 #ifdef USE_MPROTECT
-  if (mprotect(ctxlist->ub_guard,
-               page_size, PROT_READ|PROT_EXEC|PROT_WRITE) != 0) {
-    DART_LOG_WARN("Failed(%d) to mprotect upper bound page of size %zu at %p: %s",
-                  errno, page_size, ctxlist->ub_guard, strerror(errno));
+  void *ub_guard = ctxlist->stack + task_stack_size;
+  if (mprotect(ub_guard, page_size, PROT_READ|PROT_EXEC|PROT_WRITE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect upper guard page of size %zu at %p: %s",
+                  errno, page_size, ub_guard, strerror(errno));
+  }
+
+  void *lb_guard = ctxlist->stack - page_size;
+  if (mprotect(lb_guard, page_size, PROT_READ|PROT_EXEC|PROT_WRITE) != 0) {
+    DART_LOG_WARN("Failed(%d) to mprotect lower guard page of size %zu at %p: %s",
+                  errno, page_size, lb_guard, strerror(errno));
   }
 #endif
 #ifdef DART_ENABLE_VALGRIND
@@ -185,9 +203,9 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
     res = &thread->ctxlist->ctx;
     thread->ctxlist->length = 0;
     thread->ctxlist = thread->ctxlist->next;
-  }
-
-  if (res == NULL) {
+    DART_LOG_TRACE("Reusing context %p (sp: %p)",
+                   &res->ctx, res->ctx.uc_stack.ss_sp);
+  } else  {
     // allocate a new context
     context_list_t *ctxlist = dart__tasking__context_allocate();
     ctxlist->next = NULL;
@@ -198,7 +216,11 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
     ctxlist->ctx.ctx.uc_stack.ss_size  = task_stack_size;
     ctxlist->ctx.ctx.uc_stack.ss_flags = 0;
     res = &ctxlist->ctx;
+    DART_LOG_TRACE("Created new context %p (sp:%p)",
+                  &res->ctx, res->ctx.uc_stack.ss_sp);
   }
+
+  DART_ASSERT(res->ctx.uc_stack.ss_sp != NULL);
 
 #ifdef DART_DEBUG
   // set the stack guards
@@ -210,6 +232,7 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   makecontext(&res->ctx, &dart__tasking__context_entry, 0, 0);
   res->fn  = fn;
   res->arg = arg;
+
   return res;
 #endif
   return NULL;
@@ -218,6 +241,9 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 void dart__tasking__context_release(context_t* ctx)
 {
 #ifdef USE_UCONTEXT
+  DART_LOG_TRACE("Releasing context %p (sp:%p)",
+                 &ctx->ctx, ctx->ctx.uc_stack.ss_sp);
+  DART_ASSERT(ctx->ctx.uc_stack.ss_sp != NULL);
 
 #ifdef DART_DEBUG
   // check the stack guards
@@ -260,8 +286,11 @@ void dart__tasking__context_invoke(context_t* ctx)
     context_list_t *ctxlist = (context_list_t*)
                                 (((char*)ctx) - offsetof(context_list_t, ctx));
     DART_STACK_PUSH(thread->ctxlist, ctxlist);
+    DART_ASSERT(ctx->ctx.uc_stack.ss_sp != NULL);
   }
 
+  DART_LOG_TRACE("Invoking context %p (sp:%p)",
+                 &ctx->ctx, ctx->ctx.uc_stack.ss_sp);
   setcontext(&ctx->ctx);
 #else
   DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
@@ -285,6 +314,9 @@ dart__tasking__context_swap(context_t* old_ctx, context_t* new_ctx)
     old_ctx->fn = old_ctx->arg = NULL;
   }
 
+  DART_LOG_TRACE("Swapping context %p (sp:%p) -> %p (sp:%p)",
+                 &old_ctx->ctx, old_ctx->ctx.uc_stack.ss_sp,
+                 &new_ctx->ctx, new_ctx->ctx.uc_stack.ss_sp);
   int ret = swapcontext(&old_ctx->ctx, &new_ctx->ctx);
   if (ret == -1) {
     DART_LOG_ERROR("Call to swapcontext failed! (errno=%i)", errno);
