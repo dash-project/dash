@@ -176,7 +176,7 @@ void fence_local(
  * \nonblocking
  */
 template<typename T, typename GlobPtrType>
-constexpr
+inline
 void put_value_async(
   /// [IN]  Value to set
   const T           & newval,
@@ -193,7 +193,7 @@ void put_value_async(
  * \nonblocking
  */
 template<typename T, typename GlobPtrType>
-constexpr
+inline
 void get_value_async(
   /// [OUT] Local pointer that will contain the value of the
   ///       global address
@@ -210,7 +210,7 @@ void get_value_async(
  * \blocking
  */
 template<typename T, typename GlobPtrType>
-constexpr
+inline
 void put_value(
   /// [IN]  Value to set
   const T           & newval,
@@ -226,7 +226,7 @@ void put_value(
  * \blocking
  */
 template<typename T, typename GlobPtrType>
-constexpr
+inline
 void get_value(
   /// [OUT] Local pointer that will contain the value of the
   ///       global address
