@@ -265,6 +265,9 @@ dart_task_t *task_deque_pop(struct task_deque *deque)
     task->prev = NULL;
     task->next = NULL;
   }
+  // post condition
+  DART_ASSERT((deque->head != NULL && deque->tail != NULL)
+            || (deque->head == NULL && deque->tail == NULL));
   return task;
 }
 

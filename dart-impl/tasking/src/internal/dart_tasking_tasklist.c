@@ -40,6 +40,38 @@ bool dart_tasking_tasklist_contains(
   return false;
 }
 
+void dart_tasking_tasklist_remove(
+  task_list_t           ** tl,
+  struct dart_task_data *  task)
+{
+  task_list_t * prev = *tl;
+  if (tl == NULL || *tl == NULL) return;
+  if ((*tl)->task == task) {
+    *tl = (*tl)->next;
+    dart_tasking_tasklist_deallocate_elem(prev);
+  } else {
+    for (task_list_t *elem = (*tl)->next; elem != NULL; elem = elem->next) {
+      if (elem->task == task) {
+        prev->next = elem->next;
+        dart_tasking_tasklist_deallocate_elem(elem);
+        break;
+      }
+      prev = elem;
+    }
+  }
+}
+
+struct dart_task_data *
+dart_tasking_tasklist_pop(task_list_t ** tl)
+{
+  if (tl == NULL || *tl == NULL) return NULL;
+
+  task_list_t *elem = *tl;
+  dart_task_t *task = elem->task;
+  *tl = elem->next;
+  dart_tasking_tasklist_deallocate_elem(elem);
+  return task;
+}
 
 void dart_tasking_tasklist_fini()
 {

@@ -92,7 +92,6 @@ invoke_taskfn(dart_task_t *task)
   } else {
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
-    printf("Thread %d: Task %p cancelled!\n", get_current_thread()->thread_id, task);
     DART_LOG_DEBUG("Task %p (fn:%p data:%p) cancelled", task, task->fn, task->data);
   }
 }
@@ -143,8 +142,6 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
     task->taskctx = dart__tasking__context_create(
                       (context_func_t*)&wrap_task, task);
   }
-
-  printf("Thread %d invoking task %p\n", thread->thread_id, task);
 
   if (current_task->state == DART_TASK_SUSPENDED) {
     // store current task's state and jump into new task
@@ -594,6 +591,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   if (!dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
+      DART_LOG_TRACE("Deferring release of task %p", task);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
     }
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);

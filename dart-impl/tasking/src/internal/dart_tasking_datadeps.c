@@ -49,7 +49,8 @@ static dart_dephash_elem_t *unhandled_remote_deps    = NULL;
 static dart_mutex_t         unhandled_remote_mutex   = DART_MUTEX_INITIALIZER;
 
 // list of tasks that have no local dependencies but wait for a remote release
-static dart_taskqueue_t     remote_blocked_tasks;
+static task_list_t         *remote_blocked_tasks     = NULL;
+static dart_mutex_t         remote_blocked_tasks_mutex  = DART_MUTEX_INITIALIZER;
 
 // list of tasks that have been deferred because they are in a phase
 // that is not ready to run yet
@@ -108,8 +109,10 @@ static inline bool release_remote_dep_counter(dart_task_t *task) {
                  "remote unresolved dependencies left", task, num_local_deps,
                  num_remote_deps);
   if (num_remote_deps == 0) {
-    // insert the task into the queue for remotely blocked tasks
-    dart_tasking_taskqueue_remove(&remote_blocked_tasks, task);
+    // remove the task from the queue for remotely blocked tasks
+    dart__base__mutex_lock(&remote_blocked_tasks_mutex);
+    dart_tasking_tasklist_remove(&remote_blocked_tasks, task);
+    dart__base__mutex_unlock(&remote_blocked_tasks_mutex);
   }
   return (num_local_deps == 0 && num_remote_deps == 0);
 }
@@ -120,7 +123,6 @@ static inline bool release_remote_dep_counter(dart_task_t *task) {
 dart_ret_t dart_tasking_datadeps_init()
 {
   dart_myid(&myguid);
-  dart_tasking_taskqueue_init(&remote_blocked_tasks);
   dart_tasking_taskqueue_init(&local_deferred_tasks);
   return dart_tasking_remote_init();
 }
@@ -163,7 +165,6 @@ dart_ret_t dart_tasking_datadeps_fini()
     elem = tmp;
   }
   freelist_head = NULL;
-  dart_tasking_taskqueue_finalize(&remote_blocked_tasks);
   dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
@@ -383,8 +384,10 @@ dart_tasking_datadeps_handle_defered_remote()
                      target.id,
                      unresolved_deps + 1);
       if (unresolved_deps == 0) {
-        // insert the task into the queue for remotely blocked tasks
-        dart_tasking_taskqueue_push(&remote_blocked_tasks, direct_dep_candidate);
+        // insert the task into the list of remotely blocked tasks
+        dart__base__mutex_lock(&remote_blocked_tasks_mutex);
+        dart_tasking_tasklist_prepend(&remote_blocked_tasks, direct_dep_candidate);
+        dart__base__mutex_unlock(&remote_blocked_tasks_mutex);
       }
     }
 
@@ -574,8 +577,10 @@ dart_ret_t dart_tasking_datadeps_handle_task(
             task, guid.id, dep.gptr.teamid, dep.gptr.segid,
             dep.gptr.addr_or_offs.addr, unresolved_deps);
           if (unresolved_deps == 1) {
-            // insert the task into the queue for remotely blocked tasks
-            dart_tasking_taskqueue_push(&remote_blocked_tasks, task);
+            // insert the task into the list for remotely blocked tasks
+            dart__base__mutex_lock(&remote_blocked_tasks_mutex);
+            dart_tasking_tasklist_prepend(&remote_blocked_tasks, task);
+            dart__base__mutex_unlock(&remote_blocked_tasks_mutex);
           }
         } else {
           DART_LOG_WARN("Ignoring remote dependency in nested task!");
@@ -663,21 +668,15 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   DART_LOG_TRACE("Releasing local dependencies of task %p", task);
 
   // release local successors
-  task_list_t *tl = task->successor;
-  while (tl != NULL) {
-    task_list_t *tmp = tl->next;
-    DART_ASSERT(tl->task != NULL);
-    DART_LOG_TRACE("  Releasing task %p", tl->task);
-    bool runnable = release_local_dep_counter(tl->task);
+  dart_task_t *succ;
+  while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
+    DART_LOG_TRACE("  Releasing task %p", succ);
+    bool runnable = release_local_dep_counter(succ);
 
-    if (tl->task->state == DART_TASK_CREATED &&
+    if (succ->state == DART_TASK_CREATED &&
         runnable) {
-      dart__tasking__enqueue_runnable(tl->task);
+      dart__tasking__enqueue_runnable(succ);
     }
-
-    dart_tasking_tasklist_deallocate_elem(tl);
-
-    tl = tmp;
   }
 
   return DART_OK;
@@ -729,12 +728,14 @@ static dart_ret_t release_remote_dependencies(dart_task_t *task)
 dart_ret_t dart_tasking_datadeps_cancel_remote_deps()
 {
   dart_task_t *task;
-  while ((task = dart_tasking_taskqueue_pop(&remote_blocked_tasks)) != NULL) {
+  dart__base__mutex_lock(&remote_blocked_tasks_mutex);
+  while ((task = dart_tasking_tasklist_pop(&remote_blocked_tasks)) != NULL) {
     task->unresolved_remote_deps = 0;
     int32_t unresolved_deps = DART_FETCH32(&task->unresolved_deps);
     if (unresolved_deps == 0) {
       dart__tasking__enqueue_runnable(task);
     }
   }
+  dart__base__mutex_unlock(&remote_blocked_tasks_mutex);
   return DART_OK;
 }
