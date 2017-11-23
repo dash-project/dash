@@ -12,7 +12,7 @@ protected:
   virtual ~HaloTest() {
   }
 
-  static constexpr long ext_per_dim = 150;
+  static constexpr long ext_per_dim = 100;
 
 };
 

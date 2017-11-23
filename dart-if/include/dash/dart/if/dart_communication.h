@@ -329,10 +329,13 @@ dart_ret_t dart_compare_and_swap(
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
  *
- * \param dest   The local destination buffer to store the data to.
- * \param gptr   A global pointer determining the source of the get operation.
- * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c dest.
+ * \param dest      The local destination buffer to store the data to.
+ * \param gptr      A global pointer determining the source of the get operation.
+ * \param nelem     The number of elements of type \c dtype to transfer.
+ * \param src_type  The data type of the values at the source.
+ * \param dst_type  The data type of the values in buffer \c dest.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -343,7 +346,8 @@ dart_ret_t dart_get(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -352,10 +356,13 @@ dart_ret_t dart_get(
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
  *
- * \param gptr   A global pointer determining the target of the put operation.
- * \param src    The local source buffer to load the data from.
- * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c src.
+ * \param gptr      A global pointer determining the target of the put operation.
+ * \param src       The local source buffer to load the data from.
+ * \param nelem     The number of elements of type \c dtype to transfer.
+ * \param src_type  The data type of the values in buffer \c src.
+ * \param dst_type  The data type of the values at the target.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -366,7 +373,8 @@ dart_ret_t dart_put(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 
 /**
@@ -453,49 +461,6 @@ dart_ret_t dart_flush_local_all(
  */
 typedef struct dart_handle_struct * dart_handle_t;
 
-typedef enum {
-  STRIDED_TO_STRIDED = 0,
-  STRIDED_TO_CONTIG,
-  CONTIG_TO_STRIDED
-} dart_stride_option;
-
-dart_ret_t dart_get_strided_handle(
-  void          * dest,
-  dart_gptr_t     gptr,
-  size_t          nblocks,
-  size_t          nelems_block,
-  size_t          stride,
-  dart_datatype_t dtype,
-  dart_stride_option stride_opt,
-  dart_handle_t * handle);
-
-dart_ret_t dart_get_indexed_handle(
-  void          * dest,
-  dart_gptr_t     gptr,
-  size_t          nblocks,
-  size_t          nelems_block,
-  int*            indexes,
-  dart_datatype_t dtype,
-  dart_stride_option stride_opt,
-  dart_handle_t * handle);
-
-/**
- * 'HANDLE' variant of dart_get.
- * Neither local nor remote completion is guaranteed. A later
- * dart_wait*() call or a fence/flush operation is needed to guarantee
- * completion.
- *
- * \param dest   Local target memory to store the data.
- * \param gptr   Global pointer being the source of the data transfer.
- * \param nelem  The number of elements of \c dtype in buffer \c dest.
- * \param dtype  The data type of the values in buffer \c dest.
- * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
- *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- *
- * \threadsafe
- * \ingroup DartCommunication
- */
 #define DART_HANDLE_NULL (dart_handle_t)NULL
 
 /**
@@ -504,11 +469,14 @@ dart_ret_t dart_get_indexed_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param dest   Local target memory to store the data.
- * \param gptr   Global pointer being the source of the data transfer.
- * \param nelem  The number of elements of \c dtype in buffer \c dest.
- * \param dtype  The data type of the values in buffer \c dest.
+ * \param dest      Local target memory to store the data.
+ * \param gptr      Global pointer being the source of the data transfer.
+ * \param nelem     The number of elements of \c dtype in buffer \c dest.
+ * \param src_type  The data type of the values at the source.
+ * \param dst_type  The data type of the values in buffer \c dest.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -519,7 +487,8 @@ dart_ret_t dart_get_handle(
   void            * dest,
   dart_gptr_t       gptr,
   size_t            nelem,
-  dart_datatype_t   dtype,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
   dart_handle_t   * handle) DART_NOTHROW;
 
 /**
@@ -528,11 +497,14 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param gptr   Global pointer being the target of the data transfer.
- * \param src    Local source memory to transfer data from.
- * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c dest.
+ * \param gptr      Global pointer being the target of the data transfer.
+ * \param src       Local source memory to transfer data from.
+ * \param nelem     The number of elements of type \c dtype to transfer.
+ * \param src_type  The data type of the values in buffer \c src.
+ * \param dst_type  The data type of the values at the target.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -543,7 +515,8 @@ dart_ret_t dart_put_handle(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype,
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type,
   dart_handle_t   * handle) DART_NOTHROW;
 
 /**
@@ -657,10 +630,13 @@ dart_ret_t dart_testall_local(
  * 'BLOCKING' variant of dart_get.
  * Both local and remote completion is guaranteed.
  *
- * \param dest   Local target memory to store the data.
- * \param gptr   Global pointer being the source of the data transfer.
- * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c dest.
+ * \param dest      Local target memory to store the data.
+ * \param gptr      Global pointer being the source of the data transfer.
+ * \param nelem     The number of elements of type \c dtype to transfer.
+ * \param src_type  The data type of the values at the source.
+ * \param dst_type  The data type of the values in buffer \c dest.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -671,16 +647,20 @@ dart_ret_t dart_get_blocking(
   void         *  dest,
   dart_gptr_t     gptr,
   size_t          nelem,
-  dart_datatype_t dtype) DART_NOTHROW;
+  dart_datatype_t src_type,
+  dart_datatype_t dst_type) DART_NOTHROW;
 
 /**
  * 'BLOCKING' variant of dart_put.
  * Both local and remote completion is guaranteed.
  *
- * \param gptr   Global pointer being the target of the data transfer.
- * \param src    Local source memory to transfer data from.
- * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c dest.
+ * \param gptr      Global pointer being the target of the data transfer.
+ * \param src       Local source memory to transfer data from.
+ * \param nelem     The number of elements of type \c dtype to transfer.
+ * \param src_type  The data type of the values in buffer \c src.
+ * \param dst_type  The data type of the values at the target.
+ *
+ * \note Base-type conversion is not performed.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -691,7 +671,8 @@ dart_ret_t dart_put_blocking(
   dart_gptr_t       gptr,
   const void      * src,
   size_t            nelem,
-  dart_datatype_t   dtype) DART_NOTHROW;
+  dart_datatype_t   src_type,
+  dart_datatype_t   dst_type) DART_NOTHROW;
 
 /** \} */
 

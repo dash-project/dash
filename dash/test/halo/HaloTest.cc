@@ -224,8 +224,8 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
     }
 
     for(auto i = 0; i < ext_per_dim; ++i)
-      delete matrix_check[i];
-    delete matrix_check;
+      delete[] matrix_check[i];
+    delete[] matrix_check;
   }
 
   matrix_halo.barrier();
@@ -391,10 +391,10 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 
     for(auto i = 0; i < ext_per_dim; ++i) {
       for(auto j = 0; j < ext_per_dim; ++j)
-        delete matrix_check[i][j];
-      delete matrix_check[i];
+        delete[] matrix_check[i][j];
+      delete[] matrix_check[i];
     }
-    delete matrix_check;
+    delete[] matrix_check;
   }
 
   matrix_halo.barrier();
@@ -494,10 +494,10 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
 
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
-        delete matrix_check[i][j];
-      delete matrix_check[i];
+        delete[] matrix_check[i][j];
+      delete[] matrix_check[i];
     }
-    delete matrix_check;
+    delete[] matrix_check;
   }
 
   dash::Team::All().barrier();
@@ -598,10 +598,10 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
 
     for(auto i = 0; i < ext_per_dim_check; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
-        delete matrix_check[i][j];
-      delete matrix_check[i];
+        delete[] matrix_check[i][j];
+      delete[] matrix_check[i];
     }
-    delete matrix_check;
+    delete[] matrix_check;
   }
 
 
@@ -713,10 +713,10 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
     }
     for(auto i = 0; i < ext_per_dim; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
-        delete matrix_check[i][j];
-      delete matrix_check[i];
+        delete[] matrix_check[i][j];
+      delete[] matrix_check[i];
     }
-    delete matrix_check;
+    delete[] matrix_check;
   }
 
   matrix_halo.barrier();
@@ -845,10 +845,10 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
     for(auto i = 0; i < ext_per_dim; ++i) {
       for(auto j = 0; j < ext_per_dim_check; ++j)
-        delete matrix_check[i][j];
-      delete matrix_check[i];
+        delete[] matrix_check[i][j];
+      delete[] matrix_check[i];
     }
-    delete matrix_check;
+    delete[] matrix_check;
 
   }
 
