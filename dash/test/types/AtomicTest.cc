@@ -327,6 +327,7 @@ TEST_F(AtomicTest, AlgorithmVariant){
   for(int i=0; i<dash::size(); ++i){
     dash::atomic::add(array[i], i+1);
   }
+
   dash::barrier();
   for(int i=0; i<dash::size(); ++i){
     value_t elem_arr_local = dash::atomic::load(array[i]);
@@ -405,22 +406,14 @@ TEST_F(AtomicTest, AtomicInterface){
   dash::barrier();
 
   ++(array[0]);
-  --(array[3]);
+  array[1]++;
+  --(array[2]);
+  array[3]--;
 
   dash::barrier();
   ASSERT_EQ_U(array[0].load(), dash::size());
   ASSERT_EQ_U(array[3].load(), -dash::size());
 
-  dash::barrier();
-  if (dash::myid() == dash::size()-1){
-    value_t prev = array[0]++;
-    ASSERT_EQ_U(prev, dash::size());
-    ASSERT_EQ_U(array[0].load(), dash::size()+1);
-
-    prev = array[0]--;
-    ASSERT_EQ_U(prev, dash::size()+1);
-    ASSERT_EQ_U(array[0].load(), dash::size());
-  }
   dash::barrier();
 
   if(dash::myid() == 0){
@@ -527,8 +520,6 @@ TEST_F(AtomicTest, AtomicSignal){
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
 
-  int neighbor = (dash::myid() + 1) % dash::size();
-
   if (dash::myid() != 0) {
     // send the signal
     array[0].add(1);
@@ -545,13 +536,16 @@ TEST_F(AtomicTest, AtomicSignal){
 }
 
 
-TEST_F(AtomicTest, AsyncAtomic){
-
+TEST_F(AtomicTest, ElementCompare){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
 
   array_t array(dash::size());
+
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("At least 2 units required");
+  }
 
   // asynchronous atomic set
   if (dash::myid() == 0) {
@@ -668,3 +662,25 @@ TEST_F(AtomicTest, ConstTest) {
   // works
   ASSERT_EQ_U(0, agref1.get());
 }
+
+TEST_F(AtomicTest, AsyncAtomic){
+  using value_t = int;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  ASSERT_EQ_U(0, array[dash::myid()]);
+  ASSERT_EQ_U(0UL, array[dash::myid()]);
+  ASSERT_EQ_U(array[dash::myid()], 0);
+  ASSERT_EQ_U(array[dash::myid()], 0UL);
+  // forbidden
+  //ASSERT_EQ_U(array[0], array[dash::myid()]);
+
+  // OK
+  ASSERT_EQ_U(array[0].get(), array[dash::myid()]);
+}
+

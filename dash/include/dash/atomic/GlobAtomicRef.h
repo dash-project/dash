@@ -112,19 +112,6 @@ public:
 
   self_t & operator=(const self_t & other) = delete;
 
-  inline bool operator==(const self_t & other) const noexcept
-  {
-    return _gptr == other._gptr;
-  }
-
-  inline bool operator!=(const self_t & other) const noexcept
-  {
-    return !(*this == other);
-  }
-
-  inline bool operator==(const T & value) const = delete;
-  inline bool operator!=(const T & value) const = delete;
-
   operator T() const {
     return load();
   }

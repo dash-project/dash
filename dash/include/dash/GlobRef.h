@@ -160,33 +160,30 @@ public:
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &t, 1);
     DASH_LOG_TRACE_VAR("GlobRef.T >", _gptr);
     return t;
   }
 
-  template <class GlobRefT>
-  constexpr bool operator==(const GlobRefT & other) const noexcept
-  {
-    return _gptr == other._gptr;
+  template <typename ValueT>
+  bool operator==(const GlobRef<ValueT> & other) const {
+    ValueT val = other.get();
+    return operator==(val);
   }
 
-  template <class GlobRefT>
-  constexpr bool operator!=(const GlobRefT & other) const noexcept
-  {
+  template <typename ValueT>
+  bool operator!=(const GlobRef<ValueT> & other) const {
     return !(*this == other);
   }
 
-  constexpr bool operator==(const_value_type & value) const
+  template<typename ValueT>
+  constexpr bool operator==(const ValueT& value) const
   {
     return static_cast<T>(*this) == value;
   }
 
-  constexpr bool operator!=(const_value_type & value) const
+  template<typename ValueT>
+  constexpr bool operator!=(const ValueT& value) const
   {
     return !(*this == value);
   }
@@ -215,12 +212,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.set", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-        _gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, &val, 1);
     DASH_LOG_TRACE_VAR("GlobRef.set >", _gptr);
   }
 
@@ -228,32 +220,20 @@ public:
     DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     nonconst_value_type t;
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &t, 1);
     return t;
   }
 
   void get(nonconst_value_type *tptr) const {
     DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(tptr), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, tptr, 1);
   }
 
   void get(nonconst_value_type& tref) const {
     DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_get_blocking(static_cast<void *>(&tref), _gptr, ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::get_blocking(_gptr, &tref, 1);
   }
 
   void
@@ -262,12 +242,7 @@ public:
                   "Cannot assign to GlobRef<const T>!");
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-          _gptr, static_cast<const void *>(&tref), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, &tref, 1);
   }
 
   void
@@ -276,12 +251,7 @@ public:
                   "Cannot modify value referenced by GlobRef<const T>!");
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    dash::dart_storage<T> ds(1);
-    DASH_ASSERT_RETURNS(
-      dart_put_blocking(
-          _gptr, static_cast<const void *>(tptr), ds.nelem, ds.dtype),
-      DART_OK
-    );
+    dash::internal::put_blocking(_gptr, tptr, 1);
   }
 
   const self_t &
@@ -323,8 +293,7 @@ public:
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
-    ++val;
-    operator=(val);
+    operator=(++val);
     return *this;
   }
 
@@ -333,9 +302,9 @@ public:
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val++;
+    nonconst_value_type res = val++;
     operator=(val);
-    return result;
+    return res;
   }
 
   const self_t &
@@ -343,8 +312,7 @@ public:
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
-    --val;
-    operator=(val);
+    operator=(--val);
     return *this;
   }
 
@@ -353,9 +321,9 @@ public:
     static_assert(std::is_same<value_type, nonconst_value_type>::value,
                   "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
-    nonconst_value_type result = val--;
+    nonconst_value_type res = val--;
     operator=(val);
-    return result;
+    return res;
   }
 
   const self_t &
