@@ -148,15 +148,11 @@ ValueType * copy_impl(
     auto cur_in_first  = g_in_first;
     auto cur_out_first = out_first;
     dart_handle_t handle;
-    dash::dart_storage<ValueType> ds(num_elem_total);
-    DASH_ASSERT_RETURNS(
-      dart_get_handle(
-        cur_out_first,
-        cur_in_first.dart_gptr(),
-        ds.nelem,
-        ds.dtype,
-        &handle),
-      DART_OK);
+    dash::internal::get_handle(
+      cur_in_first.dart_gptr(),
+      cur_out_first,
+      num_elem_total,
+      &handle);
     handles.push_back(handle);
     num_elem_copied = num_elem_total;
   } else {
@@ -201,18 +197,7 @@ ValueType * copy_impl(
       auto dest_ptr = out_first + num_elem_copied;
       auto src_gptr = cur_in_first.dart_gptr();
       dart_handle_t handle;
-      dash::dart_storage<ValueType> ds(num_copy_elem);
-      if (dart_get_handle(
-            dest_ptr,
-            src_gptr,
-            ds.nelem,
-            ds.dtype,
-            &handle)
-          != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
-        DASH_THROW(
-          dash::exception::RuntimeError, "dart_get failed");
-      }
+      dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
       num_elem_copied += num_copy_elem;
       handles.push_back(handle);
     }
@@ -247,15 +232,11 @@ GlobOutputIt copy_impl(
 
   auto num_elements = std::distance(in_first, in_last);
   dart_handle_t handle;
-  dash::dart_storage<ValueType> ds(num_elements);
-  DASH_ASSERT_RETURNS(
-    dart_put_handle(
-      out_first.dart_gptr(),
-      in_first,
-      ds.nelem,
-      ds.dtype,
-      &handle),
-    DART_OK);
+  dash::internal::put_handle(
+    out_first.dart_gptr(),
+    in_first,
+    num_elements, 
+    &handle);
   handles.push_back(handle);
 
   auto out_last = out_first + num_elements;
@@ -264,6 +245,7 @@ GlobOutputIt copy_impl(
 
   return out_last;
 }
+
 } // namespace internal
 
 
