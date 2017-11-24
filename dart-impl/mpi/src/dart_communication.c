@@ -1667,6 +1667,8 @@ dart_ret_t dart_testall(
         }
       }
     }
+  } else {
+    *is_finished = 1;
   }
   FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
   DART_LOG_DEBUG("dart_testall_local > finished");
