@@ -153,7 +153,9 @@ ValueType * copy_impl(
       cur_out_first,
       num_elem_total,
       &handle);
-    handles.push_back(handle);
+    if (handle != DART_HANDLE_NULL) {
+      handles.push_back(handle);
+    }
     num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
@@ -199,7 +201,9 @@ ValueType * copy_impl(
       dart_handle_t handle;
       dash::internal::get_handle(src_gptr, dest_ptr, num_copy_elem, &handle);
       num_elem_copied += num_copy_elem;
-      handles.push_back(handle);
+      if (handle != DART_HANDLE_NULL) {
+        handles.push_back(handle);
+      }
     }
   }
 
@@ -235,9 +239,11 @@ GlobOutputIt copy_impl(
   dash::internal::put_handle(
     out_first.dart_gptr(),
     in_first,
-    num_elements, 
+    num_elements,
     &handle);
-  handles.push_back(handle);
+  if (handle != DART_HANDLE_NULL) {
+    handles.push_back(handle);
+  }
 
   auto out_last = out_first + num_elements;
   DASH_LOG_TRACE("dash::copy_impl >",
@@ -450,6 +456,11 @@ dash::Future<ValueType *> copy_async(
     out_last = out_first + total_copy_elem;
   }
   DASH_LOG_TRACE("dash::copy_async", "preparing future");
+  if (handles->size() == 0) {
+    DASH_LOG_TRACE("dash::copy_async >", "finished (no pending handles), ",
+                   "out_last:", out_last);
+    return dash::Future<ValueType *>(out_last);
+  }
   dash::Future<ValueType *> fut_result(
     // wait
     [=]() mutable {
@@ -721,6 +732,10 @@ dash::Future<GlobOutputIt> copy_async(
                                             in_last,
                                             out_first,
                                             *handles);
+
+  if (handles->size() == 0) {
+    return dash::Future<GlobOutputIt>(out_last);
+  }
   dash::Future<GlobOutputIt> fut_result(
     // get
     [=]() mutable {
