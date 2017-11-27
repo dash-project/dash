@@ -166,7 +166,7 @@ namespace internal {
      * Move operator.
      */
     self_t& operator=(self_t&& other) {
-      if (&other == this) return;
+      if (&other == this) return *this;
       _ref = other._ref;
       other._ref = DART_TASK_NULL;
       _ready = other._ready;
