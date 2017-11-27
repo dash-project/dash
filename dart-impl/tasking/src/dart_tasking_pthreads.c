@@ -35,10 +35,6 @@ static int num_threads;
 // thread-private data
 static pthread_key_t tpd_key;
 
-typedef struct {
-  int           thread_id;
-} tpd_t;
-
 static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -256,16 +252,10 @@ static int determine_num_threads()
   return num_threads;
 }
 
-static void destroy_tsd(void *tsd)
-{
-  free(tsd);
-}
-
 static inline
 dart_thread_t * get_current_thread()
 {
-  tpd_t *tpd = (tpd_t*)pthread_getspecific(tpd_key);
-  return &thread_pool[tpd->thread_id];
+  return (dart_thread_t*)pthread_getspecific(tpd_key);
 }
 
 static inline
@@ -448,10 +438,8 @@ static
 void* thread_main(void *data)
 {
   DART_ASSERT(data != NULL);
-  tpd_t *tpd = (tpd_t*)data;
-  pthread_setspecific(tpd_key, tpd);
-
-  dart_thread_t *thread = get_current_thread();
+  dart_thread_t *thread = (dart_thread_t*)data;
+  pthread_setspecific(tpd_key, thread);
 
   set_current_task(&root_task);
 
@@ -518,9 +506,8 @@ init_threadpool(int num_threads)
 
   for (int i = 1; i < num_threads; i++)
   {
-    tpd_t *tpd = malloc(sizeof(tpd_t));
-    tpd->thread_id = i; // 0 is reserved for master thread
-    int ret = pthread_create(&thread_pool[i].pthread, NULL, &thread_main, tpd);
+    int ret = pthread_create(&thread_pool[i].pthread, NULL,
+                             &thread_main, &thread_pool[i]);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
     }
@@ -546,15 +533,13 @@ dart__tasking__init()
   // set up the active message queue
   dart_tasking_datadeps_init();
 
-  pthread_key_create(&tpd_key, &destroy_tsd);
+  pthread_key_create(&tpd_key, NULL);
 
   // initialize all task threads before creating them
   init_threadpool(num_threads);
 
-  // set master thread id
-  tpd_t *tpd = malloc(sizeof(tpd_t));
-  tpd->thread_id = 0;
-  pthread_setspecific(tpd_key, tpd);
+  // set master thread private data
+  pthread_setspecific(tpd_key, &thread_pool[0]);
 
   set_current_task(&root_task);
 
@@ -570,13 +555,14 @@ dart__tasking__init()
 int
 dart__tasking__thread_num()
 {
-  return (initialized ? ((tpd_t*)pthread_getspecific(tpd_key))->thread_id : 0);
+  return (dart__likely(initialized) ? get_current_thread()->thread_id
+                                    : 0);
 }
 
 int
 dart__tasking__num_threads()
 {
-  return (initialized ? num_threads : 1);
+  return (dart__likely(initialized) ? num_threads : 1);
 }
 
 void
