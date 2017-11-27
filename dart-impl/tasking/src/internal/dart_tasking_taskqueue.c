@@ -45,6 +45,7 @@ dart_tasking_taskqueue_init(dart_taskqueue_t *tq)
 {
   tq->lowprio.head  = tq->lowprio.tail  = NULL;
   tq->highprio.head = tq->highprio.tail = NULL;
+  tq->num_elem      = 0;
   dart__base__mutex_init(&tq->mutex);
 }
 
@@ -75,11 +76,13 @@ dart_tasking_taskqueue_push_unsafe(
   } else {
     task_deque_push(&tq->lowprio, task);
   }
+  ++tq->num_elem;
 }
 
 dart_task_t *
 dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 {
+  if (tq->num_elem == 0) return NULL; // shortcut on empty q
   dart__base__mutex_lock(&tq->mutex);
   dart_task_t *task = dart_tasking_taskqueue_pop_unsafe(tq);
   dart__base__mutex_unlock(&tq->mutex);
@@ -89,6 +92,11 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 dart_task_t *
 dart_tasking_taskqueue_pop_unsafe(dart_taskqueue_t *tq)
 {
+  if (0 == tq->num_elem--){
+    // another thread stole the task
+    tq->num_elem = 0;
+    return NULL;
+  }
   dart_task_t *task = task_deque_pop(&tq->highprio);
   if (task == NULL) {
     task = task_deque_pop(&tq->lowprio);
@@ -122,6 +130,7 @@ dart_tasking_taskqueue_pushback_unsafe(
   } else {
     task_deque_pushback(&tq->lowprio, task);
   }
+  ++tq->num_elem;
 }
 
 void
@@ -151,12 +160,13 @@ dart_tasking_taskqueue_insert_unsafe(
   } else {
     task_deque_insert(&tq->lowprio, task, pos);
   }
-
+  ++tq->num_elem;
 }
 
 dart_task_t *
 dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
 {
+  if (tq->num_elem == 0) return NULL; // shortcut on empty q
   dart__base__mutex_lock(&tq->mutex);
   dart_task_t * task = dart_tasking_taskqueue_popback_unsafe(tq);
   dart__base__mutex_unlock(&tq->mutex);
@@ -166,6 +176,11 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
 dart_task_t *
 dart_tasking_taskqueue_popback_unsafe(dart_taskqueue_t *tq)
 {
+  if (0 == tq->num_elem--){
+    // another thread stole the task
+    tq->num_elem = 0;
+    return NULL;
+  }
   dart_task_t * task = task_deque_popback(&tq->highprio);
   if (task == NULL) {
     task = task_deque_popback(&tq->lowprio);
@@ -209,6 +224,7 @@ dart_tasking_taskqueue_remove_unsafe(dart_taskqueue_t *tq, dart_task_t *task)
     } else if (task == tq->lowprio.tail) {
       tq->lowprio.tail = prev;
     }
+    --tq->num_elem;
   }
 }
 
@@ -227,11 +243,15 @@ dart_tasking_taskqueue_move_unsafe(dart_taskqueue_t *dst, dart_taskqueue_t *src)
 {
   task_deque_move(&dst->highprio, &src->highprio);
   task_deque_move(&dst->lowprio, &src->lowprio);
+
+  dst->num_elem += src->num_elem;
+  src->num_elem  = 0;
 }
 
 void
 dart_tasking_taskqueue_finalize(dart_taskqueue_t *tq)
 {
+  DART_ASSERT(tq->num_elem == 0);
   dart__base__mutex_destroy(&tq->mutex);
   tq->lowprio.head  = tq->lowprio.tail  = NULL;
   tq->highprio.head = tq->highprio.tail = NULL;
