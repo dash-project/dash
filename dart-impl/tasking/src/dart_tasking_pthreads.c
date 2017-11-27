@@ -42,7 +42,7 @@ static dart_task_t *task_recycle_list     = NULL;
 static dart_task_t *task_free_list        = NULL;
 static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static dart_thread_t *thread_pool;
+static dart_thread_t **thread_pool;
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -282,11 +282,14 @@ dart_task_t * next_task(dart_thread_t *thread)
     // successful thread
     int target = thread->last_steal_thread;
     for (int i = 0; i < num_threads; ++i) {
-      task = dart_tasking_taskqueue_popback(&thread_pool[target].queue);
-      if (task != NULL) {
-        DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
-        thread->last_steal_thread = target;
-        break;
+      dart_thread_t *target_thread = thread_pool[target];
+      if (dart__likely(target_thread != NULL)) {
+        task = dart_tasking_taskqueue_popback(&target_thread->queue);
+        if (task != NULL) {
+          DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
+          thread->last_steal_thread = target;
+          break;
+        }
       }
       target = (target + 1) % num_threads;
     }
@@ -435,11 +438,43 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 }
 
 static
+void dart_thread_init(dart_thread_t *thread, int threadnum)
+{
+  thread->thread_id = threadnum;
+  thread->current_task = NULL;
+  thread->taskcntr  = 0;
+  thread->ctxlist   = NULL;
+  thread->last_steal_thread = 0;
+  dart_tasking_taskqueue_init(&thread->queue);
+  DART_LOG_TRACE("Thread %i (%p) has task queue %p",
+    threadnum, thread, &thread->queue);
+
+  printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
+}
+
+struct thread_init_data {
+  pthread_t pthread;
+  int       threadid;
+};
+
+static
 void* thread_main(void *data)
 {
   DART_ASSERT(data != NULL);
-  dart_thread_t *thread = (dart_thread_t*)data;
+  struct thread_init_data* tid = (struct thread_init_data*)data;
+  dart_thread_t *thread = malloc(sizeof(dart_thread_t));
+
+  // populate the thread-private data
+  int threadid    = tid->threadid;
+  dart_thread_init(thread, threadid);
+  thread->pthread = tid->pthread;
+  free(tid);
+  tid = NULL;
+
+  // set thread-private data
   pthread_setspecific(tpd_key, thread);
+  // make thread available to other threads
+  thread_pool[threadid] = thread;
 
   set_current_task(&root_task);
 
@@ -468,29 +503,12 @@ void* thread_main(void *data)
 }
 
 static
-void dart_thread_init(dart_thread_t *thread, int threadnum)
-{
-  thread->thread_id = threadnum;
-  thread->current_task = NULL;
-  thread->taskcntr  = 0;
-  thread->ctxlist   = NULL;
-  thread->last_steal_thread = 0;
-  dart_tasking_taskqueue_init(&thread->queue);
-  dart_tasking_taskqueue_init(&thread->defered_queue);
-  DART_LOG_TRACE("Thread %i has task queue %p and deferred queue %p",
-    threadnum, &thread->queue, &thread->defered_queue);
-
-  printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
-}
-
-static
 void dart_thread_finalize(dart_thread_t *thread)
 {
   thread->thread_id = -1;
   thread->current_task = NULL;
   thread->ctxlist = NULL;
   dart_tasking_taskqueue_finalize(&thread->queue);
-  dart_tasking_taskqueue_finalize(&thread->defered_queue);
 }
 
 
@@ -498,16 +516,20 @@ static void
 init_threadpool(int num_threads)
 {
   // initialize all task threads before creating them
-  thread_pool = malloc(sizeof(dart_thread_t) * num_threads);
-  for (int i = 0; i < num_threads; i++)
-  {
-    dart_thread_init(&thread_pool[i], i);
-  }
+  thread_pool = calloc(num_threads, sizeof(dart_thread_t*));
+  dart_thread_t *master_thread = malloc(sizeof(dart_thread_t));
+  // initialize master thread data, the other threads will do it themselves
+  dart_thread_init(master_thread, 0);
+  thread_pool[0] = master_thread;
 
+  // start-up all other threads
   for (int i = 1; i < num_threads; i++)
   {
-    int ret = pthread_create(&thread_pool[i].pthread, NULL,
-                             &thread_main, &thread_pool[i]);
+    // will be free'd by the thread
+    struct thread_init_data *tid = malloc(sizeof(*tid));
+    tid->threadid = i;
+    int ret = pthread_create(&tid->pthread, NULL,
+                             &thread_main, tid);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
     }
@@ -539,7 +561,7 @@ dart__tasking__init()
   init_threadpool(num_threads);
 
   // set master thread private data
-  pthread_setspecific(tpd_key, &thread_pool[0]);
+  pthread_setspecific(tpd_key, thread_pool[0]);
 
   set_current_task(&root_task);
 
@@ -851,7 +873,7 @@ stop_threads()
 
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
-    pthread_join(thread_pool[i].pthread, NULL);
+    pthread_join(thread_pool[i]->pthread, NULL);
   }
 }
 
@@ -859,18 +881,23 @@ static void
 destroy_threadpool(bool print_stats)
 {
   for (int i = 1; i < num_threads; i++) {
-    dart_thread_finalize(&thread_pool[i]);
+    dart_thread_finalize(thread_pool[i]);
   }
 
 #ifdef DART_ENABLE_LOGGING
   if (print_stats) {
     DART_LOG_INFO("######################");
     for (int i = 0; i < num_threads; ++i) {
-      DART_LOG_INFO("Thread %i executed %lu tasks", i, thread_pool[i].taskcntr);
+      DART_LOG_INFO("Thread %i executed %lu tasks", i, thread_pool[i]->taskcntr);
     }
     DART_LOG_INFO("######################");
   }
 #endif // DART_ENABLE_LOGGING
+
+  for (int i = 0; i < num_threads; ++i) {
+    free(thread_pool[i]);
+    thread_pool[i] = NULL;
+  }
 
   free(thread_pool);
   thread_pool = NULL;
