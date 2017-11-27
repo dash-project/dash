@@ -82,6 +82,7 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
         &neighbor_val,
         arr[neighbor_id],
         ds.nelem,
+        ds.dtype,
         ds.dtype));
 
   ASSERT_EQ_U(

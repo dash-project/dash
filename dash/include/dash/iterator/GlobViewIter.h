@@ -25,14 +25,6 @@ template<
   class    PointerType,
   class    ReferenceType >
 class GlobIter;
-// Forward-declaration
-template<
-  typename ElementType,
-  class    PatternType,
-  class    GlobMemType,
-  class    PointerType,
-  class    ReferenceType >
-class GlobStencilIter;
 #endif
 
 /**
@@ -126,15 +118,6 @@ public:
   friend std::ostream & operator<<(
       std::ostream & os,
       const GlobViewIter<T_, P_, GM_, Ptr_, Ref_> & it);
-
-  // For conversion to GlobStencilIter
-  template<
-    typename T_,
-    class    P_,
-    class    Ptr_,
-    class    GM_,
-    class    Ref_ >
-  friend class GlobStencilIter;
 
   template<
     typename T_,
