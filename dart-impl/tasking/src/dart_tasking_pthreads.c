@@ -873,6 +873,8 @@ stop_threads()
 
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
+    // wait for the thread to populate it's thread data
+    while (thread_pool[i] == 0) {}
     pthread_join(thread_pool[i]->pthread, NULL);
   }
 }
