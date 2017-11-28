@@ -76,7 +76,8 @@ namespace tasks{
     InputIter end,
     RangeFunc f)
   {
-    parallel_for(begin, end, dart_task_num_threads(), f);
+    parallel_for(begin, end,
+                 dash::distance(begin, end) / dart_task_num_threads(), f);
   }
 
 } // namespace tasks
