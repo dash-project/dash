@@ -198,7 +198,7 @@ bool Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory
-  // use _lcapacity as tje collective allocator requires symmetric allocations
+  // use _lcapacity as the collective allocator requires symmetric allocations
   _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
   _begin           = iterator(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
@@ -245,9 +245,6 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename MS
 void Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
 ::deallocate()
 {
-  if (_size == 0) {
-    return;
-  }
   DASH_LOG_TRACE_VAR("Matrix.deallocate()", this);
   // Assure all units are synchronized before deallocation, otherwise
   // other units might still be working on the matrix:
@@ -259,7 +256,13 @@ void Matrix<T, NumDim, IndexT, PatternT, MSpaceC>
   _team->unregister_deallocator(
     this, std::bind(&Matrix::deallocate, this));
   // Actual destruction of the array instance:
+
+  //TODO: this is not thread safe and bad style
+  //use std shared_ptr instead
   delete _glob_mem;
+  //avoid double free
+  _glob_mem = nullptr;
+
   _size = 0;
 }
 

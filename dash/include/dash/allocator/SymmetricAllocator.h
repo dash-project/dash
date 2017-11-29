@@ -230,15 +230,12 @@ public:
     local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
 
 
-    if (!lp) {
-      if (num_local_elem > 0) {
-        std::stringstream ss;
-        ss << "Allocating local segment (nelem: " << num_local_elem
-           << ") failed!";
-        DASH_LOG_ERROR("SymmetricAllocator.allocate", ss.str());
-        DASH_THROW(dash::exception::RuntimeError, ss.str());
-      }
-      return DART_GPTR_NULL;
+    if (!lp && num_local_elem > 0) {
+      std::stringstream ss;
+      ss << "Allocating local segment (nelem: " << num_local_elem
+         << ") failed!";
+      DASH_LOG_ERROR("SymmetricAllocator.allocate", ss.str());
+      DASH_THROW(dash::exception::RuntimeError, ss.str());
     }
 
     pointer gptr;

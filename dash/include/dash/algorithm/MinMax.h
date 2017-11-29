@@ -54,7 +54,7 @@ const ElementType * min_element(
     = std::less<const ElementType &>())
 {
 #ifdef DASH_ENABLE_OPENMP
-#define ROUNDUP(T, A) ((T + A - 1) & ~(T + A - 1))
+#define ROUNDUP(T, A) ((T + A - 1) & ~(A - 1))
 
   typedef typename std::decay<ElementType>::type      value_t;
   dash::util::UnitLocality uloc;
@@ -71,15 +71,9 @@ const ElementType * min_element(
 
     typedef struct min_pos_t { value_t val; size_t idx; } min_pos;
 
-    DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
+    DASH_LOG_TRACE("dash::min_element", "sizeof(min_pos):", sizeof(min_pos));
 
-#ifdef DASH_ENABLE_MEMKIND
-    using memory_space_t = dash::memory_space_hbw_tag;
-#else
-    using memory_space_t = dash::memory_space_host_tag;
-#endif
-
-    dash::allocator::LocalSpaceAllocator<uint8_t, memory_space_t> alloc{};
+    dash::allocator::LocalSpaceAllocator<uint8_t> alloc{};
 
     int       align_bytes         = uloc.cache_line_size(0);
     int       single_element_sz   = ROUNDUP(sizeof(min_pos), align_bytes);
@@ -129,7 +123,7 @@ const ElementType * min_element(
     min_pos min_pos_l = * (reinterpret_cast<min_pos *>(min_vals_t_raw));
 
     for (int t = 1; t < n_threads; t++) {
-      const min_pos & mpt = *(reinterpret_cast<min_pos *>(min_vals_t_raw + t_id * single_element_sz));
+      const min_pos & mpt = *(reinterpret_cast<min_pos *>(min_vals_t_raw + t * single_element_sz));
       if (compare(mpt.val, min_pos_l.val)) {
         min_pos_l = mpt;
       }
