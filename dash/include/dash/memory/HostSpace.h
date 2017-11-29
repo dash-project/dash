@@ -1,12 +1,12 @@
 #ifndef DASH__MEMORY__HOST_SPACE_H__INCLUDED
 #define DASH__MEMORY__HOST_SPACE_H__INCLUDED
 
+#include <cstdlib>
+
 #include <dash/Exception.h>
 #include <dash/Types.h>
 #include <dash/memory/MemorySpace.h>
 #include <dash/memory/internal/Util.h>
-
-#include <cstdlib>
 
 namespace dash {
 
@@ -45,8 +45,8 @@ class HostSpace
       alignment = dash::memory::internal::next_power_of_2(alignment);
     }
 
-    auto ret = posix_memalign(&ptr, alignment, n);
-    if (ret) {
+    ptr = aligned_alloc(alignment, n);
+    if (nullptr == ptr) {
       DASH_LOG_ERROR("HostSpace.do_allocate(n, alignment) --> Cannot allocate memory", n, alignment);
       throw std::bad_alloc();
     }
