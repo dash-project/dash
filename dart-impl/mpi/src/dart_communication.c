@@ -172,8 +172,8 @@ dart__mpi__get(
 {
   if (reqs != NULL) {
     return MPI_Rget(origin_addr, origin_count, origin_datatype,
-               target_rank, target_disp, target_count, target_datatype,
-               win, &reqs[(*num_reqs)++]);
+                    target_rank, target_disp, target_count, target_datatype,
+                    win, &reqs[(*num_reqs)++]);
   } else {
     return MPI_Get(origin_addr, origin_count, origin_datatype,
                    target_rank, target_disp, target_count,
@@ -191,8 +191,8 @@ dart__mpi__put(
 {
   if (reqs != NULL) {
     return MPI_Rput(origin_addr, origin_count, origin_datatype,
-               target_rank, target_disp, target_count, target_datatype,
-               win, &reqs[(*num_reqs)++]);
+                    target_rank, target_disp, target_count, target_datatype,
+                    win, &reqs[(*num_reqs)++]);
   } else {
     return MPI_Put(origin_addr, origin_count, origin_datatype,
                    target_rank, target_disp, target_count,
@@ -609,7 +609,7 @@ dart_ret_t dart_accumulate(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%d unit:%d",
                  nelem, dtype, op, team_unit_id.id);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
@@ -703,7 +703,7 @@ dart_ret_t dart_fetch_and_op(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d "
+  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%ld op:%d unit:%d "
                  "offset:%"PRIu64" segid:%d",
                  dtype, op, team_unit_id.id,
                  gptr.addr_or_offs.offset, seg_id);
@@ -755,7 +755,7 @@ dart_ret_t dart_compare_and_swap(
 
   CHECK_UNITID_RANGE(team_unit_id, team_data);
 
-  DART_LOG_TRACE("dart_compare_and_swap() dtype:%d unit:%d offset:%"PRIu64,
+  DART_LOG_TRACE("dart_compare_and_swap() dtype:%ld unit:%d offset:%"PRIu64,
                  dtype, team_unit_id.id, gptr.addr_or_offs.offset);
 
   dart_segment_info_t *seginfo = dart_segment_get_info(
@@ -1492,6 +1492,39 @@ dart_ret_t dart_waitall(
   return DART_OK;
 }
 
+/**
+ * Wrapper around MPI_Testall to account for broken MPICH implementation.
+ * MPICH <= 3.2.1 and its derivatives seem to be affected
+ */
+inline static
+int
+dart__mpi__testall(int num_reqs, MPI_Request *reqs, int *flag_ptr)
+{
+#if defined(MPICH_NUMVERSION) && MPICH_NUMVERSION <= 30201300
+  int flag_result = 1;
+  for (int i = 0; i < num_reqs; ++i) {
+    int flag;
+    /*
+     * if the test succeeds the request is set to MPI_REQUEST_NULL,
+     * which can be safely passed to MPI_Test again.
+     * Eventually we will have all requests tested succesfully.
+     */
+    int ret = MPI_Test(&reqs[i], &flag, MPI_STATUS_IGNORE);
+    if (ret != MPI_SUCCESS) {
+      return ret;
+    }
+    // one incomplete request will flip the flag to 0
+    flag_result &= flag;
+  }
+  *flag_ptr = flag_result;
+  // we checked all requests succesfully
+  return MPI_SUCCESS;
+#else
+  return MPI_Testall(num_reqs, reqs,
+                flag_ptr, MPI_STATUSES_IGNORE);
+#endif //defined(MPICH_NUMVERSION) && MPICH_NUMVERSION <= 30201300
+}
+
 dart_ret_t dart_test_local(
   dart_handle_t * handleptr,
   int32_t       * is_finished)
@@ -1509,8 +1542,7 @@ dart_ret_t dart_test_local(
 
   dart_handle_t handle = *handleptr;
   CHECK_MPI_RET(
-    MPI_Testall(handle->num_reqs, handle->reqs,
-                &flag, MPI_STATUSES_IGNORE),
+    dart__mpi__testall(handle->num_reqs, handle->reqs, &flag),
     "MPI_Testall");
 
   if (flag) {
@@ -1541,8 +1573,7 @@ dart_ret_t dart_test(
 
   dart_handle_t handle = *handleptr;
   CHECK_MPI_RET(
-    MPI_Testall(handle->num_reqs, handle->reqs,
-                &flag, MPI_STATUSES_IGNORE),
+    dart__mpi__testall(handle->num_reqs, handle->reqs, &flag),
     "MPI_Testall");
 
   if (flag) {
@@ -1590,8 +1621,7 @@ dart_ret_t dart_testall_local(
   }
 
   if (r_n) {
-    if (MPI_Testall(r_n, mpi_req, &flag,
-                    MPI_STATUSES_IGNORE) != MPI_SUCCESS){
+    if (dart__mpi__testall(r_n, mpi_req, &flag) != MPI_SUCCESS){
       FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
       DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
       return DART_ERR_OTHER;
@@ -1641,10 +1671,10 @@ dart_ret_t dart_testall(
   }
 
   if (r_n) {
-    if (MPI_Testall(r_n, mpi_req, is_finished,
-                    MPI_STATUSES_IGNORE) != MPI_SUCCESS){
+    DART_LOG_TRACE("  MPI_Testall on %zu requests", r_n);
+    if (dart__mpi__testall(r_n, mpi_req, is_finished) != MPI_SUCCESS){
+      DART_LOG_ERROR("dart_testall: MPI_Testall failed");
       FREE_TMP(2 * n * sizeof(MPI_Request), mpi_req);
-      DART_LOG_ERROR("dart_testall_local: MPI_Testall failed!");
       return DART_ERR_OTHER;
     }
 
