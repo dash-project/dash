@@ -130,7 +130,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   other._lend     = nullptr;
   DASH_LOG_TRACE("Matrix.operator=(&&)", "Move-Assigned");
   return *this;
-};
+}
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 MatrixRef<T, NumDim, NumDim, PatternT>
@@ -362,6 +362,13 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT>
+::flush(dash::team_unit_t target) {
+  _glob_mem->flush(target);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline void
+Matrix<T, NumDim, IndexT, PatternT>
 ::flush_local() {
   _glob_mem->flush_local();
 }
@@ -369,15 +376,8 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT>
-::flush_all() {
-  _glob_mem->flush_all();
-}
-
-template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline void
-Matrix<T, NumDim, IndexT, PatternT>
-::flush_local_all() {
-  _glob_mem->flush_local_all();
+::flush_local(dash::team_unit_t target) {
+  _glob_mem->flush_local(target);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

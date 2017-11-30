@@ -23,6 +23,9 @@ endif(POLICY CMP0004)
 if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
+if(POLICY CMP0058) 
+  cmake_policy(SET CMP0058 NEW) 
+endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set(DEFAULT_COMPTIME_RED on)
@@ -225,6 +228,8 @@ add_subdirectory(dart-if)
 add_subdirectory(dart-impl)
 
 add_subdirectory(dash)
+
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateDASHCXX.cmake)
 
 ## Documentation
 if (BUILD_DOCS)

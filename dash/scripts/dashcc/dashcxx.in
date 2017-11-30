@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+###################################################
+# Compiler wrapper for the DASH C++ PGAS          #
+# framework.                                      #
+# The wrapper is used similar to mpicxx and the   #
+# like to ensure that the correct include         #
+# paths and libraries are passed to the compiler. #
+#                                                 #
+# Options:                                        #
+#   --dash:verbose: print compiler invocation     #
+#   --dash:nocppflags: do not pass DASH-related   #
+#                      pre-processor macros       #
+###################################################
+
+DASH_VERBOSE=false
+CXXFLAGS=""
+CXX="@DASHCC@"
+INSTALL_PREFIX="@CMAKE_INSTALL_PREFIX@"
+COMPILE_ONLY=false
+LINK_ONLY=true
+DASH_NOCPPFLAGS=false
+COMPILER_ARGS=""
+
+function INVOKE_COMPILER()
+{
+  if ${DASH_VERBOSE} ; then
+    echo $@
+  fi
+
+  exec $@
+}
+
+function PARSE_CPPFLAGS()
+{
+  for flag in $@ ; do
+    if ! ${DASH_NOCPPFLAGS} && [[ $flag == -DDASH* ]] ; then
+      CXXFLAGS="$CXXFLAGS $flag"
+    fi
+  done
+}
+
+##
+# parse wrapper arguments
+##
+for arg in $@ ; do
+  # check whether to linking is done
+  if [ "$arg" == "-c" ] ; then
+    COMPILE_ONLY=true
+    LINK_ONLY=false
+  fi
+  # check for source files
+  if [[ $arg == *\.cc || $arg == *\.cpp ]] ; then
+    LINK_ONLY=false
+  fi
+  if [ "$arg" == "--dash:verbose" -o "$arg" == "-dash:verbose" ] ; then
+    DASH_VERBOSE=true
+  elif [ "$arg" == "--dash:nocppflags" -o "$arg" == "-dash:nocppflags" ] ; then
+    DASH_NOCPPFLAGS=true
+  else
+    COMPILER_ARGS="$COMPILER_ARGS $arg"
+  fi
+done
+
+##
+# parse CMAKE_CXXFLAGS for macro definitions
+# and set the language version flag
+##
+
+if ! ${LINK_ONLY} ; then
+  CMAKE_BUILD_TYPE="@CMAKE_BUILD_TYPE@"
+  CMAKE_CXXFLAGS="@CXXFLAGS_WRAP@"
+  # only include flags that are needed
+  PARSE_CPPFLAGS ${CMAKE_CXXFLAGS}
+
+  # add include paths
+  CXXFLAGS="$CXXFLAGS -I${INSTALL_PREFIX}/include"
+  CXXFLAGS="$CXXFLAGS @ADDITIONAL_INCLUDES_WRAP@"
+
+  # add additional compiler flags
+  PARSE_CPPFLAGS @ADDITIONAL_COMPILE_FLAGS_WRAP@
+
+  # add C++ standard flag
+  CXXFLAGS="${CXXFLAGS} @CXX_STD_FLAG@"
+fi
+
+# assemble LDFLAGS only if linking is done
+
+if ! ${COMPILE_ONLY} ; then
+
+  LDFLAGS="@CMAKE_EXE_LINKER_FLAGS@ -L${INSTALL_PREFIX}/lib"
+  DART_IMPL="@DART_IMPLEMENTATION@"
+
+  LDFLAGS="${LDFLAGS} -ldash-${DART_IMPL} -ldart-${DART_IMPL} -ldart-base"
+  LDFLAGS="${LDFLAGS} @ADDITIONAL_LIBRARIES_WRAP@"
+fi
+
+INVOKE_COMPILER $CXX $CXXFLAGS $COMPILER_ARGS $LDFLAGS
