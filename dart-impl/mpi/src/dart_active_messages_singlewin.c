@@ -34,8 +34,10 @@ struct dart_amsgq {
 
 struct dart_amsg_header {
   dart_task_action_t fn;
-  dart_global_unit_t remote;
   size_t             data_size;
+#ifdef DART_ENABLE_LOGGING
+  dart_global_unit_t remote;
+#endif // DART_ENABLE_LOGGING
 };
 
 static bool initialized       = false;
@@ -86,7 +88,6 @@ dart_amsg_openq(
   dart_team_t    team,
   dart_amsgq_t * queue)
 {
-  dart_team_unit_t unitid;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
   res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->dbuf = malloc(res->size);
@@ -153,6 +154,7 @@ dart_amsg_trysend(
   //lock the tailpos window
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target.id, 0, amsgq->win);
 
+#ifdef DART_AMSGQ_ATOMICS
   // Add the size of the message to the tailpos at the target
   if (MPI_Fetch_and_op(
         &msg_size,
@@ -166,11 +168,21 @@ dart_amsg_trysend(
     dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_NOTINIT;
   }
-
   MPI_Win_flush(target.id, amsgq->win);
 
-  DART_LOG_TRACE("MPI_Fetch_and_op returned offset %llu at unit %i",
-                 remote_offset, target);
+  DART_LOG_TRACE("MPI_Fetch_and_op returned offset %lu at unit %i",
+                 remote_offset, target.id);
+
+#else
+
+  MPI_Request req;
+  MPI_Rget(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win, &req);
+  MPI_Wait(&req, MPI_STATUS_IGNORE);
+
+  DART_LOG_TRACE("MPI_Rget returned offset %lu at unit %i",
+                 remote_offset, target.id);
+
+#endif // DART_AMSGQ_ATOMICS
 
   if (remote_offset >= amsgq->size) {
     DART_LOG_ERROR("Received offset larger than message queue size from "
@@ -181,6 +193,7 @@ dart_amsg_trysend(
   }
 
   if ((remote_offset + msg_size) >= amsgq->size) {
+#ifdef DART_AMSGQ_ATOMICS
     uint64_t tmp;
     // if not, revert the operation and free the lock to try again.
     MPI_Fetch_and_op(
@@ -191,6 +204,7 @@ dart_amsg_trysend(
       0,
       MPI_REPLACE,
       amsgq->win);
+#endif // DART_AMSGQ_ATOMICS
     MPI_Win_unlock(target.id, amsgq->win);
     DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
                    "(current offset %llu of %llu)",
@@ -200,12 +214,15 @@ dart_amsg_trysend(
   }
 
   struct dart_amsg_header header;
+#ifdef DART_ENABLE_LOGGING
   header.remote = unitid;
+#endif //DART_ENABLE_LOGGING
   header.fn = remote_fn_ptr;
   header.data_size = data_size;
 
   // we now have a slot in the message queue
   MPI_Aint queue_disp = remote_offset + sizeof(*(amsgq->tailpos_ptr));
+  // put the header
   MPI_Put(
       &header,
       sizeof(header),
@@ -216,6 +233,7 @@ dart_amsg_trysend(
       MPI_BYTE,
       amsgq->win);
   queue_disp += sizeof(header);
+  // put the payload
   MPI_Put(
     data,
     data_size,
@@ -225,6 +243,11 @@ dart_amsg_trysend(
     data_size,
     MPI_BYTE,
     amsgq->win);
+#ifndef DART_AMSGQ_ATOMICS
+  // update the offset
+  remote_offset += msg_size;
+  MPI_Put(&remote_offset, 1, MPI_UINT64_T, target.id, 0, 1, MPI_UINT64_T, amsgq->win);
+#endif // !DART_AMSGQ_ATOMICS
   MPI_Win_unlock(target.id, amsgq->win);
 
   dart__base__mutex_unlock(&amsgq->send_mutex);
