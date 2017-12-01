@@ -442,5 +442,6 @@ task_deque_filter_runnable(
     task->next = task->prev = NULL;
     task = next;
   }
+  return DART_OK;
 }
 

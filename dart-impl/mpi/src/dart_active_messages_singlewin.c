@@ -76,6 +76,7 @@ dart_amsgq_fini()
   free(offsets);
   offsets = NULL;
   initialized = false;
+  return DART_OK;
 }
 
 dart_ret_t

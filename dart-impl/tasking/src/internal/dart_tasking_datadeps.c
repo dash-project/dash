@@ -275,6 +275,7 @@ dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread)
 
   dart_tasking_taskqueue_unlock(&thread->queue);
   dart_tasking_taskqueue_unlock(&local_deferred_tasks);
+  return DART_OK;
 }
 
 dart_ret_t
