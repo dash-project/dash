@@ -35,8 +35,8 @@
 
 typedef struct dart_dephash_elem {
   struct dart_dephash_elem *next;    // list pointer
-  union taskref             task;    // the task referred to by the dependency
   dart_task_dep_t           taskdep; // the dependency
+  union taskref             task;    // the task referred to by the dependency
   dart_global_unit_t        origin;  // the unit this dependency originated from
 } dart_dephash_elem_t;
 

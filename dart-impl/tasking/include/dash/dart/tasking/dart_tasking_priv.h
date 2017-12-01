@@ -47,13 +47,13 @@ struct dart_task_data {
   struct dart_task_data     *parent;          // the task that created this task
   struct dart_dephash_elem  *remote_successor;
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
-  int                        num_children;
   dart_mutex_t               mutex;
   dart_task_state_t          state;
   dart_taskphase_t           phase;
   context_t                 *taskctx;         // context to start/resume task
   jmp_buf                    cancel_return;   // where to longjmp upon task cancellation
   int                        delay;           // delay in case this task yields
+  int                        num_children;
   dart_task_prio_t           prio;
   bool                       has_ref;
 };

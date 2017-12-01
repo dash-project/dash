@@ -23,11 +23,10 @@ static bool initialized = false;
 struct remote_data_dep {
   /** Global pointer to the data \c rtask depends on */
   dart_gptr_t        gptr;
-  /** The remote (origin) unit ID */
-  dart_global_unit_t runit;
   /** pointer to a task on the origin unit. Only valid at the origin! */
   taskref            rtask;
-  uint64_t           magic;
+  /** The remote (origin) unit ID */
+  dart_global_unit_t runit;
   dart_taskphase_t   phase;
 };
 
@@ -41,7 +40,6 @@ struct remote_task_dep {
   dart_task_t        *successor;
   /** The origin unit of the request */
   dart_global_unit_t  runit;
-  uint64_t            magic;
 };
 
 
@@ -106,7 +104,6 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   struct remote_data_dep rdep;
   rdep.gptr        = dep->gptr;
   rdep.rtask.local = task;
-  rdep.magic       = 0xDEADBEEF;
   rdep.phase       = dep->phase;
   dart_myid(&rdep.runit);
   // the amsgq is opened on DART_TEAM_ALL and deps container global IDs
@@ -150,7 +147,6 @@ dart_ret_t dart_tasking_remote_release(
   struct remote_data_dep response;
   response.rtask = rtask;
   response.gptr  = dep->gptr;
-  response.magic = 0xDEADBEEF;
   dart_team_unit_t team_unit;
   dart_myid(&response.runit);
   dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
@@ -200,7 +196,6 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
   struct remote_task_dep taskdep;
   taskdep.task      = remote_task.local;
   taskdep.successor = local_task;
-  taskdep.magic     = 0xDEADBEEF;
   dart_myid(&taskdep.runit);
   dart_team_unit_t team_unit;
   dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
@@ -279,7 +274,6 @@ static void
 enqueue_from_remote(void *data)
 {
   struct remote_data_dep *rdep = (struct remote_data_dep *)data;
-  DART_ASSERT(rdep->magic == 0xDEADBEEF);
   DART_ASSERT(rdep->rtask.remote != NULL);
   dart_task_dep_t dep;
   dep.gptr      = dart_tasking_datadeps_localize_gptr(rdep->gptr);
@@ -301,7 +295,6 @@ enqueue_from_remote(void *data)
 static void release_remote_dependency(void *data)
 {
   struct remote_data_dep *response = (struct remote_data_dep *)data;
-  DART_ASSERT(response->magic == 0xDEADBEEF);
   DART_ASSERT(response->rtask.local != NULL);
   dart_task_t *task = response->rtask.local;
   DART_LOG_INFO("release_remote_dependency : Received remote dependency "
@@ -319,7 +312,6 @@ static void
 request_direct_taskdep(void *data)
 {
   struct remote_task_dep *taskdep = (struct remote_task_dep*) data;
-  DART_ASSERT(taskdep->magic == 0xDEADBEEF);
   DART_ASSERT(taskdep->task != NULL);
   DART_ASSERT(taskdep->successor != NULL);
   taskref successor = {taskdep->successor};
