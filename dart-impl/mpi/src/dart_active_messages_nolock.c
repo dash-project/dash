@@ -49,11 +49,6 @@ struct dart_amsg_header {
   uint32_t           data_size;
 };
 
-typedef struct {
-  int32_t writecnt;  // lower 32 bit: registered writer
-  int32_t offset;    // upper 32 bit: offset in the message queue
-}  atomic_value_t;
-
 static bool initialized = false;
 static bool needs_translation = false;
 static intptr_t *offsets = NULL;
@@ -159,7 +154,6 @@ dart_amsg_trysend(
   const int32_t  decrement = -1;
   int32_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint32_t remote_offset = 0;
-  atomic_value_t atomic_result = {0, 0};
 
   do {
 
@@ -179,66 +173,69 @@ dart_amsg_trysend(
 
     base_offset = 1 + queue_num * amsgq->queue_size;
 
-    // 2. atomically increment writer counter and set message size
-    atomic_value_t atomic_update;
-    atomic_update.writecnt = increment;
-    atomic_update.offset   = msg_size;
+    // 2. register as a writer
     MPI_Fetch_and_op(
-      &atomic_update,
-      &atomic_result,
-      MPI_UINT64_T,
+      &increment,
+      &writecnt,
+      MPI_INT32_T,
       target.id,
       base_offset,
       MPI_SUM,
       amsgq->queue_win);
     MPI_Win_flush(target.id, amsgq->queue_win);
 
-    writecnt      = atomic_result.writecnt;   // upper 32 bit
-    remote_offset = atomic_result.offset;     // lower 32 bit
-
     /*printf("  Writecnt %i (%X), offset %i (%X) [%p]\n",
            atomic_result.writecnt, atomic_result.writecnt,
            atomic_result.offset, atomic_result.offset, *(void**)&atomic_result);
     */
 
-    if (writecnt < 0 || remote_offset > amsgq->queue_size) {
-      // undo changes and try again if the target has swapped window
-      int32_t neg_msg_size = -msg_size;
-      int32_t tmp;
-
-      MPI_Fetch_and_op(
-        &neg_msg_size,
-        &tmp,
-        MPI_INT32_T,
-        target.id,
-        base_offset,
-        MPI_SUM,
-        amsgq->queue_win);
-      MPI_Win_flush(target.id, amsgq->queue_win);
-
-      MPI_Fetch_and_op(
-        &decrement,
-        &tmp,
-        MPI_INT32_T,
-        target.id,
-        base_offset + sizeof(int32_t),
-        MPI_SUM,
-        amsgq->queue_win);
-      MPI_Win_flush(target.id, amsgq->queue_win);
-
-      if (remote_offset > amsgq->queue_size) {
-        DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
-                      "(current offset %u of %lu, writecnt: %i)",
-                      msg_size, target.id, remote_offset, amsgq->queue_size,
-                       writecnt);
-
-        // come back later
-        return DART_ERR_AGAIN;
-      }
-    }
-
     // repeat if the target has swapped windows in between
   } while (writecnt < 0);
+
+
+  // 3. update offset
+  MPI_Fetch_and_op(
+    &msg_size,
+    &remote_offset,
+    MPI_INT32_T,
+    target.id,
+    base_offset + sizeof(int32_t),
+    MPI_SUM,
+    amsgq->queue_win);
+  MPI_Win_flush(target.id, amsgq->queue_win);
+  if (remote_offset > amsgq->queue_size) {
+    DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
+                   "(current offset %u of %lu, writecnt: %i)",
+                   msg_size, target.id, remote_offset, amsgq->queue_size,
+                    writecnt);
+    // deregister
+    // TODO: use MPI_Accumulate here
+    int32_t neg_msg_size = -msg_size;
+    MPI_Fetch_and_op(
+      &neg_msg_size,
+      &remote_offset,
+      MPI_INT32_T,
+      target.id,
+      base_offset + sizeof(int32_t),
+      MPI_SUM,
+      amsgq->queue_win);
+    MPI_Win_flush(target.id, amsgq->queue_win);
+
+    MPI_Fetch_and_op(
+      &decrement,
+      &writecnt,
+      MPI_INT32_T,
+      target.id,
+      base_offset,
+      MPI_SUM,
+      amsgq->queue_win);
+    MPI_Win_flush(target.id, amsgq->queue_win);
+
+    dart__base__mutex_unlock(&amsgq->send_mutex);
+
+    // come back later
+    return DART_ERR_AGAIN;
+  }
 
 
   DART_LOG_TRACE("MPI_Fetch_and_op returned offset %u at unit %i",
@@ -278,7 +275,6 @@ dart_amsg_trysend(
   // 5. Deregister as a writer
   //    Use int64_t here, we cannot perform 64-bit substraction using only
   //    32bit lower part
-  int64_t dec = -1;
 
 #if 0
   MPI_Fetch_and_op(
@@ -309,8 +305,8 @@ dart_amsg_trysend(
   // DEBUG
 #endif
 
-  MPI_Accumulate(&dec, 1, MPI_INT64_T, target.id,
-                 base_offset, 1, MPI_INT64_T, MPI_SUM, amsgq->queue_win);
+  MPI_Accumulate(&decrement, 1, MPI_INT32_T, target.id,
+                 base_offset, 1, MPI_INT32_T, MPI_SUM, amsgq->queue_win);
   // local flush is sufficient, just make sure we can return
   MPI_Win_flush_local(target.id, amsgq->queue_win);
 
@@ -385,25 +381,22 @@ amsg_process_internal(
     //printf("Reading from queue %i\n", queuenum);
 
     //check whether there are active messages available
-    atomic_value_t atomic_value;
     MPI_Fetch_and_op(
-      &atomic_value,
-      &atomic_value,
-      MPI_UINT64_T,
+      NULL,
+      &tailpos,
+      MPI_INT32_T,
       unitid.id,
-      base_offset,
+      base_offset + sizeof(int32_t),
       MPI_NO_OP,
       amsgq->queue_win);
     MPI_Win_flush_local(unitid.id, amsgq->queue_win);
-
-    tailpos = atomic_value.offset;
 
     /*printf("  Writecnt %i (%X), offset %i (%X) [%p]\n",
            atomic_value.writecnt, atomic_value.writecnt,
            atomic_value.offset, atomic_value.offset, *(void**)&atomic_value);
     */
 
-    if (tailpos != 0) {
+    if (tailpos > 0) {
 
       // swap the current queuenumber
       char newqueuenum = (queuenum + 1) % 2;
@@ -419,30 +412,21 @@ amsg_process_internal(
         amsgq->queue_win);
       MPI_Win_flush(unitid.id, amsgq->queue_win);
 
-      // wait for all current writers to finish
-      // and set writecnt and tailpos to a negative value to signal the swap
-      atomic_value_t cas_res;
-      atomic_value_t cas_cmp = {0, tailpos};    // upper 32bit zero (no pending writer)
-      atomic_value_t cas_val = {INT32_MIN, INT32_MIN};  // upper and lower 32bit 1
-      int32_t  writecnt;
+      // wait for all active writers to finish
+      // and set writecnt to INT_MIN to signal the swap
+      int32_t writecnt;
       do {
+        const int32_t zero   = 0;
+        const int32_t minval = INT32_MIN;
         MPI_Compare_and_swap(
-          &cas_val,
-          &cas_cmp,
-          &cas_res,
-          MPI_UINT64_T,
+          &minval,
+          &zero,
+          &writecnt,
+          MPI_INT32_T,
           unitid.id,
           base_offset,
           amsgq->queue_win);
         MPI_Win_flush(unitid.id, amsgq->queue_win);
-        writecnt = cas_res.writecnt;   // upper 32 bit
-        tailpos  = cas_res.offset;     // lower 32 bit
-        cas_cmp.writecnt = 0;          // upper 32 bit zero
-        cas_cmp.offset   = tailpos;
-        /*printf("  Writecnt %i (%X), tailpos %i (%X) [%p]\n",
-               cas_res.writecnt, cas_res.writecnt,
-               cas_res.offset, cas_res.offset, *(void**)&cas_res);
-        */
       } while (writecnt > 0);
 
 
