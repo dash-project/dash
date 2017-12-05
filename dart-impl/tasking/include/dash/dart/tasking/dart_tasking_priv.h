@@ -83,10 +83,10 @@ struct task_deque{
 };
 
 typedef struct dart_taskqueue {
+  size_t              num_elem;
   struct task_deque   lowprio;
   struct task_deque   highprio;
   dart_mutex_t        mutex;
-  size_t              num_elem;
 } dart_taskqueue_t;
 
 typedef struct {

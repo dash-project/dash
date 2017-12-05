@@ -29,6 +29,10 @@
 static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
 static          bool initialized      = false;
+// whether or not worker threads should poll for incoming remote messages
+// Disabling this in the task setup phase might be beneficial due to 
+// MPI-internal congestion
+static volatile bool worker_poll_remote = false;
 
 static int num_threads;
 
@@ -449,7 +453,8 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
     threadnum, thread, &thread->queue);
 
-  printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
+  if (threadnum == 0)
+    printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
 }
 
 struct thread_init_data {
@@ -485,7 +490,8 @@ void* thread_main(void *data)
     dart__tasking__check_cancellation(thread);
 
     // look for incoming remote tasks and responses
-    dart_tasking_remote_progress();
+    if (worker_poll_remote)
+      dart_tasking_remote_progress();
     // process the next task
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
@@ -694,6 +700,8 @@ dart__tasking__task_complete()
     dart__tasking__phase_set_runnable(DART_PHASE_ANY);
     // release the deferred queue
     dart_tasking_datadeps_handle_defered_local(thread);
+    // enable worker threads to poll for remote messages
+    worker_poll_remote = true;
   }
 
   // 1) wake up all threads (might later be done earlier)
@@ -736,6 +744,8 @@ dart__tasking__task_complete()
     pthread_mutex_unlock(&task_recycle_mutex);
     // reset the runnable phase
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
+    // disable remote polling of worker threads
+    worker_poll_remote = false;
   }
   dart_tasking_datadeps_reset(thread->current_task);
 
