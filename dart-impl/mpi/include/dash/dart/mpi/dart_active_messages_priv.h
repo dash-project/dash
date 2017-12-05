@@ -10,8 +10,8 @@
 
 
 //#define DART_AMSGQ_SENDRECV
-//#define DART_AMSGQ_LOCKFREE
-#define DART_AMSGQ_SINGLEWIN
+#define DART_AMSGQ_LOCKFREE
+//#define DART_AMSGQ_SINGLEWIN
 
 /**
  * Initialize the active messaging subsystem, mainly to determine the
