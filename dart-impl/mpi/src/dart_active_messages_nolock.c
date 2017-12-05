@@ -184,6 +184,8 @@ dart_amsg_trysend(
       amsgq->queue_win);
     MPI_Win_flush(target.id, amsgq->queue_win);
 
+    //printf("Writing to queue %d: writecnt %d\n", queue_num, remote_offset);
+
     /*printf("  Writecnt %i (%X), offset %i (%X) [%p]\n",
            atomic_result.writecnt, atomic_result.writecnt,
            atomic_result.offset, atomic_result.offset, *(void**)&atomic_result);
@@ -208,6 +210,7 @@ dart_amsg_trysend(
                    "(current offset %u of %lu, writecnt: %i)",
                    msg_size, target.id, remote_offset, amsgq->queue_size,
                     writecnt);
+    //printf("  Full queue: remote_offset %d\n", remote_offset);
     // deregister
     // TODO: use MPI_Accumulate here
     int32_t neg_msg_size = -msg_size;
@@ -303,6 +306,19 @@ dart_amsg_trysend(
   MPI_Win_flush(target.id, amsgq->queue_win);
   //printf("  Exit state: writecnt %d, offset %d [%p]\n", atomic_result.writecnt, atomic_result.offset, *(void**)&atomic_result);
   // DEBUG
+#endif
+
+#if 0
+  MPI_Fetch_and_op(
+    &decrement,
+    &writecnt,
+    MPI_INT32_T,
+    target.id,
+    base_offset,
+    MPI_SUM,
+    amsgq->queue_win);
+  MPI_Win_flush(target.id, amsgq->queue_win);
+  printf("  Deregistering as writer: writecnt %d\n", writecnt);
 #endif
 
   MPI_Accumulate(&decrement, 1, MPI_INT32_T, target.id,
@@ -412,6 +428,8 @@ amsg_process_internal(
         amsgq->queue_win);
       MPI_Win_flush(unitid.id, amsgq->queue_win);
 
+      //printf("Tailpos on queue %d: %d\n", queuenum, tailpos);
+
       // wait for all active writers to finish
       // and set writecnt to INT_MIN to signal the swap
       int32_t writecnt;
@@ -427,8 +445,20 @@ amsg_process_internal(
           base_offset,
           amsgq->queue_win);
         MPI_Win_flush(unitid.id, amsgq->queue_win);
+        //printf("  Active writers on queue %d: writecnt %d\n", queuenum, writecnt);
       } while (writecnt > 0);
 
+      MPI_Fetch_and_op(
+        NULL,
+        &tailpos,
+        MPI_INT32_T,
+        unitid.id,
+        base_offset + sizeof(int32_t),
+        MPI_NO_OP,
+        amsgq->queue_win);
+      MPI_Win_flush_local(unitid.id, amsgq->queue_win);
+
+      //printf("  Tailpos on queue %d: %d\n", queuenum, tailpos);
 
       // at this point we can safely process the queue as all pending writers
       // are finished and new writers write to the other queue
