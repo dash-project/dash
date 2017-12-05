@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <dash/dart/base/env.h>
 
 #define DART_LOGLEVEL_ENVSTR      "DART_LOG_LEVEL"
@@ -84,5 +85,23 @@ ssize_t dart__base__env__size(const char *env)
     }
   }
   DART_LOG_TRACE("%s: %s (%lu)", env, envstr, res);
+  return res;
+}
+
+
+bool dart__base__env__bool(const char *env)
+{
+  bool res = false;
+  const char *envstr = getenv(env);
+  if (envstr != NULL) {
+    if (strcasecmp(envstr, "yes")  == 0 ||
+        strcasecmp(envstr, "true") == 0 ||
+        atoi(envstr)                > 0)
+    {
+      res = true;
+    }
+  }
+
+  DART_LOG_TRACE("%s: %s (%i)", env, envstr, res);
   return res;
 }

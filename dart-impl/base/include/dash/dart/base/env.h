@@ -7,6 +7,7 @@
 #ifndef DASH_DART_BASE_ENV_H_
 #define DASH_DART_BASE_ENV_H_
 
+#include <stdbool.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
 
@@ -24,7 +25,6 @@ dart__base__env__log_level() DART_INTERNAL;
 int
 dart__base__env__number(const char *env) DART_INTERNAL;
 
-
 /**
  * Parse a size from the provided environment variable.
  * The size value can be postfixed by 'K', 'M', 'G' for kilo-, mega-, and
@@ -34,5 +34,14 @@ dart__base__env__number(const char *env) DART_INTERNAL;
  */
 ssize_t dart__base__env__size(const char *env) DART_INTERNAL;
 
+
+/**
+ * Returns a Boolean value parsed from the environment variable.
+ * Possible values are '0'/'1', 'True'/'False', 'Yes'/'No'
+ * (both lower- and upper-case).
+ *
+ * \return The parsed value (false on error).
+ */
+bool dart__base__env__bool(const char *env) DART_INTERNAL;
 
 #endif /* DASH_DART_BASE_ENV_H_ */
