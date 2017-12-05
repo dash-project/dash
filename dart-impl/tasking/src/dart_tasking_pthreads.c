@@ -15,6 +15,7 @@
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
+#include <dash/dart/tasking/dart_tasking_affinity.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -22,8 +23,6 @@
 #include <time.h>
 #include <errno.h>
 #include <setjmp.h>
-
-
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -47,6 +46,8 @@ static dart_task_t *task_free_list        = NULL;
 static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t **thread_pool;
+
+static bool bind_threads = false;
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -455,6 +456,8 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
 
   if (threadnum == 0)
     printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
+
+  bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR);
 }
 
 struct thread_init_data {
@@ -467,6 +470,11 @@ void* thread_main(void *data)
 {
   DART_ASSERT(data != NULL);
   struct thread_init_data* tid = (struct thread_init_data*)data;
+
+  if (bind_threads) {
+    set_thread_affinity(tid->pthread, tid->threadid);
+  }
+
   dart_thread_t *thread = malloc(sizeof(dart_thread_t));
 
   // populate the thread-private data
@@ -521,7 +529,9 @@ void dart_thread_finalize(dart_thread_t *thread)
 static void
 init_threadpool(int num_threads)
 {
-  // initialize all task threads before creating them
+  if (bind_threads) {
+    set_thread_affinity(pthread_self(), 0);
+  }
   thread_pool = calloc(num_threads, sizeof(dart_thread_t*));
   dart_thread_t *master_thread = malloc(sizeof(dart_thread_t));
   // initialize master thread data, the other threads will do it themselves
@@ -865,7 +875,6 @@ dart__tasking__current_thread()
   return get_current_thread();
 }
 
-
 /**
  * Tear-down related functions.
  */
@@ -955,3 +964,5 @@ dart__tasking__fini()
 
   return DART_OK;
 }
+
+

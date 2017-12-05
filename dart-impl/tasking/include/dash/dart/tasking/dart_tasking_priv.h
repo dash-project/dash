@@ -18,6 +18,11 @@
  * Name of the environment variable specifying the size of the task stack size.
  */
 #define DART_TASKSTACKSIZE_ENVSTR "DART_TASK_STACKSIZE"
+/**
+ * Name of the environment variable specifying whether threads should be
+ * bound to a single CPU core/hw-thread.
+ */
+#define DART_THREAD_AFFINITY_ENVSTR "DART_BIND_THREADS"
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
