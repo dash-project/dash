@@ -2,6 +2,8 @@
 #define DASH__GRAPH_H__INCLUDED
 
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 #include <dash/graph/VertexIterator.h>
 #include <dash/graph/EdgeIterator.h>
 #include <dash/graph/InEdgeIterator.h>
@@ -139,15 +141,12 @@ public:
 
   friend local_vertex_proxy_type;
   friend global_vertex_proxy_type;
+  friend local_inout_edge_proxy_type;
+  friend global_inout_edge_proxy_type;
   friend local_edge_proxy_type;
   friend global_edge_proxy_type;
-  
-public:
-
 
 public:
-
-  //TODO: add constructor that can construct a graph with edge iterators
 
   /**
    * Constructs an empty graph.
@@ -162,6 +161,140 @@ public:
       _remote_edges(team.size())
   {
     allocate(n_vertices, n_vertex_edges);
+  }
+
+  /**
+   * Constructs a graph from an iterator range pointing to elements of type
+   * std::pair<vertex_size_type, vertex_size_type>.
+   * Assumes vertex IDs are taken from a contiguous range [0...n] and n is
+   * divisible by the number of units in the Team of the container.
+   * Partitions vertices based on their id:
+   * vertex_id / (n / num_units) = owner
+   * 
+   * /todo Add 
+   */
+  template<typename InputIterator>
+  Graph(
+      InputIterator begin, 
+      InputIterator end, 
+      vertex_size_type n_vertices, 
+      Team & team = dash::Team::All()
+  )
+    : _team(&team),
+      _myid(team.myid()),
+      _remote_edges(team.size())
+  {
+    // TODO: find heuristic to allocate a reasonable amount of edge memory 
+    //       per vertex
+    allocate(n_vertices, 0);
+
+    std::unordered_map<vertex_size_type, local_vertex_iterator> lvertices;
+    std::unordered_map<vertex_size_type, global_vertex_iterator> gvertices;
+    // TODO: find method that uses less memory
+    std::unordered_set<vertex_size_type> remote_vertices_set;
+    std::vector<std::vector<vertex_size_type>> remote_vertices(_team->size());
+    for(auto it = begin; it != end; ++it) {
+      auto v = it->first;
+      auto u = it->second;
+
+      if(lvertices.find(v) == lvertices.end()) {
+        lvertices[v] = add_vertex();
+      }
+      auto target_owner = vertex_owner(u, n_vertices);
+      if(target_owner == _myid) {
+        if(lvertices.find(u) == lvertices.end()) {
+          lvertices[u] = add_vertex();
+        }
+      } else {
+        // collect vertices for remote nodes and prevent adding vertices more
+        // than once
+        bool inserted;
+        std::tie(std::ignore, inserted) = remote_vertices_set.insert(u);
+        if(inserted) {
+          remote_vertices[target_owner].push_back(u);
+        }
+      }
+    }
+
+    // send vertices to their owner units and receive their local index
+    {
+      std::vector<std::size_t> sizes_send(remote_vertices.size());
+      std::vector<std::size_t> displs_send(remote_vertices.size());
+      std::vector<vertex_size_type> remote_vertices_send;
+      int total_send = 0;
+      for(int i = 0; i < remote_vertices.size(); ++i) {
+        sizes_send[i] = remote_vertices[i].size() * sizeof(vertex_size_type);
+        displs_send[i] = total_send * sizeof(vertex_size_type);
+        total_send += remote_vertices[i].size();
+      }
+      remote_vertices_send.reserve(total_send);
+      for(auto & vertex_set : remote_vertices) {
+        remote_vertices_send.insert(remote_vertices_send.end(), 
+            vertex_set.begin(), vertex_set.end());
+      }
+      std::vector<std::size_t> sizes_recv(remote_vertices.size());
+      std::vector<std::size_t> displs_recv(remote_vertices.size());
+      dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
+          DART_TYPE_BYTE, _team->dart_id());
+      int total_recv = 0;
+      for(int i = 0; i < sizes_recv.size(); ++i) {
+        displs_recv[i] = total_recv;
+        total_recv += sizes_recv[i] / sizeof(vertex_size_type);
+      }
+      std::vector<vertex_size_type> remote_vertices_recv(total_recv);
+      if(total_send > 0 || total_recv > 0) {
+        dart_alltoallv(remote_vertices_send.data(), sizes_send.data(), 
+            displs_send.data(), DART_TYPE_BYTE, remote_vertices_recv.data(), 
+            sizes_recv.data(), displs_recv.data(), _team->dart_id());
+      }
+
+      // exchange data
+      for(auto & index : remote_vertices_recv) {
+        if(lvertices.find(index) == lvertices.end()) {
+          auto v = add_vertex();
+          index = v.pos();
+        } else {
+          index = lvertices[index].pos();
+        }
+      }
+      if(total_send > 0 || total_recv > 0) {
+        dart_alltoallv(remote_vertices_recv.data(), sizes_recv.data(), 
+            displs_recv.data(), DART_TYPE_BYTE, remote_vertices_send.data(), 
+            sizes_send.data(), displs_send.data(), _team->dart_id());
+      }
+      // all vertices have been added - commit changes to global memory space
+      commit();
+      // remote_vertices_send now contains the local indices in the iteration 
+      // space of the corresponding unit
+      team_unit_t unit { 0 };
+      int index = 0;
+      for(auto & lindex : remote_vertices_send) {
+        if(index >= sizes_send[unit]) {
+          ++unit;
+          index = 0;
+        }
+        gvertices[remote_vertices[unit][index]] = global_vertex_iterator(
+            _glob_mem_vertex, unit, lindex);
+        ++index;
+      }
+    }
+
+    // finally add edges with the vertex iterators gained from the previous
+    // steps
+    for(auto it = begin; it != end; ++it) {
+      auto v_it = lvertices[it->first];
+      auto u = it->second;
+
+      if(vertex_owner(u, n_vertices) == _myid) {
+        auto u_it = lvertices[u];
+        add_edge(v_it, u_it);
+      } else {
+        auto u_it = gvertices[u];
+        add_edge(v_it, u_it);
+      }
+    }
+    // commit edges
+    commit();
   }
 
   /** Destructs the graph.
@@ -349,7 +482,7 @@ public:
    * Adds an edge between two given vertices with the given properties 
    * locally.
    * Edges that belong to vertices held on a different unit are marked for
-   * transfer. These edges will be transferred after calling \c barrier().
+   * transfer. These edges will be transferred after calling \c commit().
    * 
    * \return Pair, with pair::first set to the index of the newly created edge
    *         and pair::second set to a boolean indicating whether the edge has
@@ -379,7 +512,7 @@ public:
   /**
    * Adds an edge between two given vertices locally.
    * Edges that belong to vertices held on a different unit are marked for
-   * transfer. These edges will be transferred after calling \c barrier().
+   * transfer. These edges will be transferred after calling \c commit().
    * 
    * \return Pair, with pair::first set to the index of the newly created edge
    *         and pair::second set to a boolean indicating whether the edge has
@@ -396,7 +529,7 @@ public:
   /**
    * Adds an edge between two given vertices locally.
    * Edges that belong to vertices held on a different unit are marked for
-   * transfer. These edges will be transferred after calling \c barrier().
+   * transfer. These edges will be transferred after calling \c commit().
    * 
    * \return Pair, with pair::first set to the index of the newly created edge
    *         and pair::second set to a boolean indicating whether the edge has
@@ -444,7 +577,7 @@ public:
    * Commits local changes of the graph to global memory space since the last
    * call of this method.
    */
-  void barrier() {
+  void commit() {
     // move all edges that have to be added by other units in a contiguous 
     // memory region
     std::vector<edge_type> remote_edges;
@@ -606,6 +739,11 @@ private:
   ) {
     auto edge = edge_type(source, target, prop);
     return glob_mem_edge->push_back(source.offset, edge);
+  }
+
+  team_unit_t vertex_owner(vertex_size_type v, vertex_size_type n_vertices) {
+    team_unit_t owner { v / (n_vertices / _team->size()) };
+    return owner;
   }
 
 private:
