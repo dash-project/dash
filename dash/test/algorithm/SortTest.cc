@@ -24,6 +24,9 @@ TEST_F(SortTest, ArraySort)
   // Wait for all units
   array.barrier();
 
+  int wait = 1;
+  while(wait);
+
   dash::sort(array.begin(), array.end());
 
   if (dash::myid() == 0) {
