@@ -40,7 +40,7 @@ inline dart_ret_t transform_blocking_impl(
 
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<void *>(values),
+                        values,
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op);
@@ -63,7 +63,7 @@ dart_ret_t transform_impl(
 
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<void *>(values),
+                        values,
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op);
@@ -162,7 +162,7 @@ GlobOutputIt transform(
   InputIt         in_a_last,
   /// Iterator on begin of second local range
   GlobInputIt     in_b_first,
-  /// Iterator on first element of global output range 
+  /// Iterator on first element of global output range
   GlobOutputIt    out_first,
   /// Reduce operation
   BinaryOperation binary_op);
