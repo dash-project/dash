@@ -22,29 +22,183 @@ namespace dash {
 namespace detail {
 
 template <typename T>
-struct PartitionInfo {
+struct PartitionBorder {
 public:
-  bool is_last_iter;
-  bool is_stable;
-  T    lower_bound;
-  T    upper_bound;
+  std::vector<bool> is_last_iter;
+  std::vector<bool> is_stable;
+  std::vector<T>    lower_bound;
+  std::vector<T>    upper_bound;
 
-  PartitionInfo()
-    : is_last_iter(false)
-    , is_stable(false)
-    , lower_bound(std::numeric_limits<T>::min())
-    , upper_bound(std::numeric_limits<T>::max())
+  PartitionBorder(size_t nsplitter, T _lower_bound, T _upper_bound)
   {
-  }
-  PartitionInfo(
-      bool _is_last_iter, bool _is_stable, T _lower_bound, T _upper_bound)
-    : is_last_iter(_is_last_iter)
-    , is_stable(_is_stable)
-    , lower_bound(_lower_bound)
-    , upper_bound(_upper_bound)
-  {
+    std::fill_n(std::back_inserter(is_last_iter), nsplitter, false);
+    std::fill_n(std::back_inserter(is_stable), nsplitter, false);
+    std::fill_n(std::back_inserter(lower_bound), nsplitter, _lower_bound);
+    std::fill_n(std::back_inserter(upper_bound), nsplitter, _upper_bound);
   }
 };
+
+template <typename T>
+inline void calculate_boundaries(
+    PartitionBorder<T>& p_borders, std::vector<T>& partitions)
+{
+  DASH_ASSERT_EQ(
+      p_borders.is_stable.size(), partitions.size() - 1,
+      "invalid number of partition borders");
+  // recalculate partition boundaries
+  for (std::size_t idx = 0; idx < partitions.size() - 1; ++idx) {
+    // case A: partition is already stable -> done
+    if (p_borders.is_stable[idx]) continue;
+    // case B: we have the last iteration
+    //-> test upper bound directly
+    if (p_borders.is_last_iter[idx]) {
+      partitions[idx]          = p_borders.upper_bound[idx];
+      p_borders.is_stable[idx] = true;
+    }
+    else {
+      // case C: ordinary iteration
+      partitions[idx] =
+          (p_borders.lower_bound[idx] + p_borders.upper_bound[idx]) / 2;
+
+      if (partitions[idx] == p_borders.lower_bound[idx]) {
+        // if we cannot move the partition to the left
+        //-> last iteration
+        p_borders.is_last_iter[idx] = true;
+      }
+    }
+  }
+}
+
+template <typename ElementType, typename DifferenceType>
+inline std::pair<std::vector<DifferenceType>, std::vector<DifferenceType>>
+local_histogram(
+    std::vector<ElementType> const& partitions,
+    ElementType const*              lbegin,
+    ElementType const*              lend)
+{
+  auto const nborders = partitions.size() - 1;
+  auto const sz       = partitions.size() + 1;
+  // Number of elements less than P
+  std::vector<DifferenceType> n_lt(sz, 0);
+  // Number of elements less than equals P
+  std::vector<DifferenceType> n_le(sz, 0);
+
+  auto const n_l_elem = std::distance(lbegin, lend);
+
+  std::size_t idx;
+
+  for (idx = 0; idx < nborders; ++idx) {
+    auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
+    if (lb_it != lbegin) --lb_it;
+    auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
+
+    n_lt[idx + 1] = std::distance(lbegin, lb_it);
+    n_le[idx + 1] = std::distance(lbegin, ub_it);
+  }
+
+  DASH_ASSERT(idx + 1 == sz);
+  n_lt[idx + 1] = n_l_elem;
+  n_le[idx + 1] = n_l_elem;
+
+  return std::make_pair(n_lt, n_le);
+}
+
+template <typename DifferenceType, typename ArrayType>
+inline void global_histogram(
+    std::vector<DifferenceType> const& l_nlt,
+    std::vector<DifferenceType> const& l_nle,
+    ArrayType&                         g_nlt,
+    ArrayType&                         g_nle)
+{
+  auto const sz_unit0 = g_nlt.pattern().local_size(dash::team_unit_t{0});
+
+#if defined(DASH_ENABLE_ASSERTIONS)
+  DASH_ASSERT_EQ(sz_unit0, 2, "invalid number of local elements at unit 0");
+  auto const myid = g_nlt.pattern().team().myid();
+  if (myid != 0) {
+    DASH_ASSERT_EQ(
+        g_nlt.pattern().local_size(myid), 1,
+        "invalid number of local elements");
+  }
+#endif
+
+  /* reduce among all units */
+  std::fill(g_nlt.lbegin(), g_nlt.lend(), 0);
+  std::fill(g_nle.lbegin(), g_nle.lend(), 0);
+
+  // TODO: verify if this is really necessary,
+  // depends on whether dash::transform is collective or non-collective
+  g_nlt.team().barrier();
+
+  dash::transform<DifferenceType>(
+      &(*std::begin(l_nlt)), &(*(std::begin(l_nlt) + sz_unit0)),  // A
+      g_nlt.begin(),                                              // B
+      g_nlt.begin(),                  // B = op(B,A)
+      dash::plus<DifferenceType>());  // op
+
+  dash::transform<DifferenceType>(
+      &(*std::begin(l_nle)), &(*(std::begin(l_nle) + sz_unit0)),  // A
+      g_nle.begin(),                                              // B
+      g_nle.begin(),                  // B = op(B,A)
+      dash::plus<DifferenceType>());  // op
+
+  using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType>>;
+
+  for (std::size_t idx = sz_unit0; idx < l_nlt.size(); ++idx) {
+    // accumulate g_nlt
+    auto ref_clt        = g_nlt.begin() + idx;
+    auto atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
+    atomic_ref_clt.add(l_nlt[idx]);
+
+    // accumulate g_nle
+    auto ref_cle        = g_nle.begin() + idx;
+    auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
+    atomic_ref_cle.add(l_nle[idx]);
+  }
+}
+
+template <typename ElementType, typename DifferenceType, typename ArrayType>
+inline bool validate_partitions(
+    PartitionBorder<ElementType>&      p_borders,
+    std::vector<ElementType> const&    partitions,
+    std::vector<DifferenceType> const& C,
+    ArrayType const&                   g_nlt,
+    ArrayType const&                   g_nle)
+{
+  using array_value_t =
+      typename std::decay<decltype(g_nlt)>::type::value_type;
+
+  static_assert(
+      std::is_same<DifferenceType, array_value_t>::value,
+      "local and global array value types must be equal");
+
+  std::vector<DifferenceType> l_nlt(g_nlt.size(), 0);
+  std::vector<DifferenceType> l_nle(g_nle.size(), 0);
+
+  dash::copy(g_nle.begin(), g_nle.end(), l_nle.data());
+  dash::copy(g_nlt.begin(), g_nlt.end(), l_nlt.data());
+
+  for (std::size_t idx = 0; idx < partitions.size() - 1; ++idx) {
+    if (l_nlt[idx + 1] < C[idx + 1] && C[idx + 1] <= l_nle[idx + 1]) {
+      p_borders.is_stable[idx] = true;
+    }
+    else {
+      if (l_nlt[idx + 1] <= C[idx + 1]) {
+        p_borders.upper_bound[idx] = partitions[idx];
+      }
+      else {
+        p_borders.lower_bound[idx] = partitions[idx];
+      }
+    }
+  }
+
+  // Exit condition: is there any non-stable partition
+  auto const nonstable_it = std::find(
+      p_borders.is_stable.cbegin(), p_borders.is_stable.cend(), false);
+
+  // exit condition
+  return nonstable_it == p_borders.is_stable.cend();
+}
 }  // namespace detail
 
 template <typename GlobRandomIt>
@@ -82,10 +236,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // Starting offsets of all units
   std::vector<difference_type> C(nunits + 1, 0);
-  // Number of elements less than splitter border
-  std::vector<difference_type> l_CLT(nunits + 1);
-  // Number of elements lass than or equal to splitter border
-  std::vector<difference_type> l_CLE(nunits + 1);
 
   /* number of elements less than (or equal) to splitter border accumulated */
   using pattern_t = dash::CSRPattern<1>;
@@ -126,14 +276,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto lbegin = l_mem_begin + l_range.begin;
   auto lend   = l_mem_begin + l_range.end;
 
+  // initial local sort
   std::sort(lbegin, lend);
 
-  // collect local sizes of other units
-  // TODO: maybe there is a better approach than attaching to a separate array
-  // dash::Array<size_type> local_sizes(pattern.team().size(),
-  // pattern.team());
-  // local_sizes.local[0] = n_l_elem;
-  //
   dash::team_unit_t unit{0};
   dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
 
@@ -149,131 +294,39 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const min = static_cast<value_type>(*partitions_min_it);
   auto const max = static_cast<value_type>(*partitions_max_it);
 
-  // We have n
-  using partition_info_t = detail::PartitionInfo<value_type>;
-  auto const npartitions = nunits - 1;
-  // TODO: use back_inserter instead  of generate
-  std::vector<partition_info_t> sort_partition_info{npartitions};
+  auto const                          nboundaries = nunits - 1;
+  detail::PartitionBorder<value_type> p_borders(nboundaries, min, max);
 
-  // init partitions
-  std::generate(
-      std::begin(sort_partition_info), std::end(sort_partition_info),
-      [max, min]() { return partition_info_t(false, false, min, max); });
+  size_t iter = 0;
+  bool   done = false;
 
-  size_t iter = 0, idx;
-
-  auto it_unstable = sort_partition_info.cend();
   do {
     iter++;
 
-    DASH_ASSERT(npartitions == sort_partition_info.size());
+    detail::calculate_boundaries(p_borders, partitions);
 
-    // recalculate partition boundaries
-    for (idx = 0; idx < npartitions; ++idx) {
-      auto& p_info = sort_partition_info.at(idx);
-      // case A: partition is already stable -> done
-      if (p_info.is_stable) continue;
-      // case B: we have the last iteration
-      //-> test upper bound directly
-      if (p_info.is_last_iter) {
-        partitions[idx]  = p_info.upper_bound;
-        p_info.is_stable = true;
-      }
-      else {
-        // case C: ordinary iteration
-        partitions[idx] = (p_info.lower_bound + p_info.upper_bound) / 2;
+    auto histograms = detail::local_histogram<value_type, difference_type>(
+        partitions, lbegin, lend);
 
-        if (partitions[idx] == p_info.lower_bound) {
-          // if we cannot move the partition to the left
-          //-> last iteration
-          p_info.is_last_iter = true;
-        }
-      }
-    }
+    auto l_nlt = histograms.first;
+    auto l_nle = histograms.second;
 
-    l_CLT[0] = 0;
-    l_CLE[0] = 0;
-
-    /* histogram of l_CLT and l_CLE */
-    for (idx = 0; idx < npartitions; ++idx) {
-      auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
-      if (lb_it != lbegin) --lb_it;
-      auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
-
-      l_CLT[idx + 1] = std::distance(lbegin, lb_it);
-      l_CLE[idx + 1] = std::distance(lbegin, ub_it);
-    }
-
-    l_CLT[idx + 1] = n_l_elem;
-    l_CLE[idx + 1] = n_l_elem;
-
-    /* reduce among all units */
-    std::fill(g_CLT.lbegin(), g_CLT.lend(), 0);
-    std::fill(g_CLT.lbegin(), g_CLT.lend(), 0);
-
-    team.barrier();
-
-    DASH_ASSERT(lsizes[0] == 2);
-    // dash::transform<difference_type>(std::begin(l_CLT), std::begin(l_CLT) +
-    // 2, g_CLT.begin(), dash::plus<difference_type>());
-    // dash::transform<difference_type>(std::begin(l_CLE), std::begin(l_CLE) +
-    // 2, g_CLE.begin(), dash::plus<difference_type>());
-    dash::transform<difference_type>(
-        &(*std::begin(l_CLT)), &(*(std::begin(l_CLT) + lsizes[0])),  // A
-        g_CLT.begin(),                                               // B
-        g_CLT.begin(),                   // B = op(B,A)
-        dash::plus<difference_type>());  // op
-
-    dash::transform<difference_type>(
-        &(*std::begin(l_CLE)), &(*(std::begin(l_CLE) + lsizes[0])),  // A
-        g_CLE.begin(),                                               // B
-        g_CLE.begin(),                   // B = op(B,A)
-        dash::plus<difference_type>());  // op
-
-    using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<difference_type>>;
-    for (idx = lsizes[0]; idx < l_CLT.size(); ++idx) {
-      // accumulate g_CLT
-      auto ref_clt        = g_CLT.begin() + idx;
-      auto atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
-      atomic_ref_clt.add(l_CLT[idx]);
-
-      // accumulate g_CLE
-      auto ref_cle        = g_CLE.begin() + idx;
-      auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
-      atomic_ref_cle.add(l_CLE[idx]);
-    }
+    detail::global_histogram(l_nlt, l_nle, g_CLT, g_CLE);
 
     team.barrier();
 
     // TODO: this step may be more efficient with block wise copy local
     // communication
-    DASH_ASSERT(g_CLE.size() == l_CLE.size());
-    DASH_ASSERT(g_CLT.size() == l_CLT.size());
-    dash::copy(g_CLE.begin(), g_CLE.end(), l_CLE.data());
-    dash::copy(g_CLT.begin(), g_CLT.end(), l_CLT.data());
+    DASH_ASSERT(g_CLE.size() == l_nle.size());
+    DASH_ASSERT(g_CLT.size() == l_nlt.size());
 
-    for (idx = 0; idx < npartitions; ++idx) {
-      auto& p_info = sort_partition_info.at(idx);
-      if (l_CLT[idx + 1] < C[idx + 1] && C[idx + 1] <= l_CLE[idx + 1]) {
-        p_info.is_stable = true;
-      }
-      else {
-        if (l_CLT[idx + 1] <= C[idx + 1]) {
-          p_info.upper_bound = partitions[idx];
-        }
-        else {
-          p_info.lower_bound = partitions[idx];
-        }
-      }
-    }
+    done = validate_partitions(p_borders, partitions, C, g_CLT, g_CLE);
 
-    it_unstable = std::find_if(
-        sort_partition_info.cbegin(), sort_partition_info.cend(),
-        [](const partition_info_t& info) { return info.is_stable == false; });
+  } while (!done);
 
-  } while (it_unstable != sort_partition_info.cend());
+  auto histograms = detail::local_histogram<value_type, difference_type>(
+      partitions, lbegin, lend);
 }
-
 }  // namespace dash
 
 #endif
