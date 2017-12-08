@@ -15,7 +15,7 @@
 
 
 static dart_amsgq_t amsgq;
-#define DART_RTASK_QLEN 1024
+#define DART_RTASK_QLEN 1024*1024
 
 static bool initialized = false;
 
@@ -42,8 +42,12 @@ struct remote_task_dep {
   dart_global_unit_t  runit;
 };
 
-
 struct remote_task_dep_cancelation {
+  // local task at the target
+  taskref task;
+};
+
+struct remote_task_release {
   // local task at the target
   taskref task;
 };
@@ -112,7 +116,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   DART_ASSERT(task != NULL);
 
   while (1) {
-    ret = dart_amsg_trysend(
+    ret = dart_amsg_buffered_send(
             team_unit,
             amsgq,
             &enqueue_from_remote,
@@ -144,11 +148,9 @@ dart_ret_t dart_tasking_remote_release(
   taskref                 rtask,
   const dart_task_dep_t * dep)
 {
-  struct remote_data_dep response;
-  response.rtask = rtask;
-  response.gptr  = dep->gptr;
+  struct remote_task_release response;
+  response.task = rtask;
   dart_team_unit_t team_unit;
-  dart_myid(&response.runit);
   dart_team_unit_g2l(DART_TEAM_ALL, unit, &team_unit);
 
   DART_ASSERT(rtask.remote != NULL);
@@ -156,17 +158,17 @@ dart_ret_t dart_tasking_remote_release(
   while (1) {
     dart_ret_t ret;
     ret = dart_amsg_trysend(
-        team_unit,
-        amsgq,
-        &release_remote_dependency,
-        &response,
-        sizeof(response));
+            team_unit,
+            amsgq,
+            &release_remote_dependency,
+            &response,
+            sizeof(response));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit t:%i "
           "(segid=%i, offset=%p, fn=%p, rtask=%p)",
-          team_unit.id, response.gptr.segid,
-          response.gptr.addr_or_offs.offset,
+          team_unit.id, dep->gptr.segid,
+          dep->gptr.addr_or_offs.offset,
           &release_remote_dependency, rtask.local);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
@@ -205,12 +207,12 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(
-        team_unit,
-        amsgq,
-        &request_direct_taskdep,
-        &taskdep,
-        sizeof(taskdep));
+    ret = dart_amsg_buffered_send(
+            team_unit,
+            amsgq,
+            &request_direct_taskdep,
+            &taskdep,
+            sizeof(taskdep));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent direct remote task dependency to unit %i "
@@ -255,6 +257,7 @@ dart_ret_t dart_tasking_remote_progress()
  */
 dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
+  dart_amsg_flush_buffer(amsgq);
   return dart_amsg_process_blocking(amsgq, team);
 }
 
@@ -294,15 +297,13 @@ enqueue_from_remote(void *data)
  */
 static void release_remote_dependency(void *data)
 {
-  struct remote_data_dep *response = (struct remote_data_dep *)data;
-  DART_ASSERT(response->rtask.local != NULL);
-  dart_task_t *task = response->rtask.local;
+  struct remote_task_release *response = (struct remote_task_release *)data;
+  DART_ASSERT(response->task.local != NULL);
+  dart_task_t *task = response->task.local;
   DART_LOG_INFO("release_remote_dependency : Received remote dependency "
-                "release from unit %i for task %p (segid=%i, offset=%p)",
-                response->runit.id, task, response->gptr.segid,
-                response->gptr.addr_or_offs.offset);
+                "release for task %p", task);
 
-  dart_tasking_datadeps_release_remote_dep(response->rtask.local);
+  dart_tasking_datadeps_release_remote_dep(response->task.local);
 }
 
 /**
