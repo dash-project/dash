@@ -15,7 +15,7 @@
 
 
 static dart_amsgq_t amsgq;
-#define DART_RTASK_QLEN 1024
+#define DART_RTASK_QLEN 1024*1024
 
 static bool initialized = false;
 
@@ -116,7 +116,7 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
   DART_ASSERT(task != NULL);
 
   while (1) {
-    ret = dart_amsg_trysend(
+    ret = dart_amsg_buffered_send(
             team_unit,
             amsgq,
             &enqueue_from_remote,
@@ -207,12 +207,12 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(
-        team_unit,
-        amsgq,
-        &request_direct_taskdep,
-        &taskdep,
-        sizeof(taskdep));
+    ret = dart_amsg_buffered_send(
+            team_unit,
+            amsgq,
+            &request_direct_taskdep,
+            &taskdep,
+            sizeof(taskdep));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent direct remote task dependency to unit %i "
@@ -257,6 +257,7 @@ dart_ret_t dart_tasking_remote_progress()
  */
 dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
+  dart_amsg_flush_buffer(amsgq);
   return dart_amsg_process_blocking(amsgq, team);
 }
 

@@ -91,6 +91,23 @@ dart_ret_t
 dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team);
 
 /**
+ * Flush messages that were sent using \c dart_amsg_buffered_send.
+ */
+dart_ret_t
+dart_amsg_flush_buffer(dart_amsgq_t amsgq);
+
+/**
+ * Buffer the active message until it is sent out using \c dart_amsg_flush_buffer.
+ */
+dart_ret_t
+dart_amsg_buffered_send(
+  dart_team_unit_t    target,
+  dart_amsgq_t        amsgq,
+  dart_task_action_t  fn,
+  const void         *data,
+  size_t              data_size);
+
+/**
  * Collective operation on all members of the team involved in the active message queue.
  * Synchronizes all units in the team and processes all remaining messages.
  */
