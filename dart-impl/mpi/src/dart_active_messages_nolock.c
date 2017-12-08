@@ -205,7 +205,7 @@ dart_amsg_trysend(
     MPI_SUM,
     amsgq->queue_win);
   MPI_Win_flush(target.id, amsgq->queue_win);
-  if (remote_offset > amsgq->queue_size) {
+  if (remote_offset + msg_size > amsgq->queue_size) {
     DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
                    "(current offset %u of %lu, writecnt: %i)",
                    msg_size, target.id, remote_offset, amsgq->queue_size,
