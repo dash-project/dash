@@ -89,12 +89,13 @@ dart_amsg_openq(
   dart_amsgq_t * queue)
 {
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
-  res->queue_size = 2*sizeof(int32_t) +
+  res->queue_size =
       msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->team = team;
 
-  size_t win_size = 2 * res->queue_size + 1;
+  printf("Allocating queue with queue-size %zu\n", res->queue_size);
 
+  size_t win_size = 2 * (res->queue_size + 2*sizeof(int32_t)) + 1;
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
 
@@ -171,7 +172,7 @@ dart_amsg_trysend(
 
     //printf("Writing %uB to queue %i at unit %i\n", msg_size, queue_num, target.id);
 
-    base_offset = 1 + queue_num * amsgq->queue_size;
+    base_offset = 1 + queue_num * (amsgq->queue_size + 2*sizeof(int32_t));
 
     // 2. register as a writer
     MPI_Fetch_and_op(
@@ -392,7 +393,7 @@ amsg_process_internal(
     dart_team_myid(amsgq->team, &unitid);
 
     char queuenum = amsgq->current_queue;
-    int32_t base_offset = 1 + queuenum * amsgq->queue_size;
+    int32_t base_offset = 1 + queuenum * (amsgq->queue_size + 2*sizeof(int32_t));
 
     //printf("Reading from queue %i\n", queuenum);
 
