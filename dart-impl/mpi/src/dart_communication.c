@@ -852,8 +852,11 @@ dart_ret_t dart_get_handle(
 
   *handleptr = handle;
 
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d",
-                 (void*)(handle), handle->dest);
+  if (NULL != handle) {
+    DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d",
+                   (void*)(handle), handle->dest);
+  }
+
   return ret;
 }
 
@@ -925,8 +928,10 @@ dart_ret_t dart_put_handle(
 
   *handleptr = handle;
 
-  DART_LOG_TRACE("dart_put_handle > handle(%p) dest:%d",
+  if (NULL != handle) {
+    DART_LOG_TRACE("dart_put_handle > handle(%p) dest:%d",
                  (void*)(handle), handle->dest);
+  }
 
   return ret;
 }
