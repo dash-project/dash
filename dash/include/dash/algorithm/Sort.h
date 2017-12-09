@@ -17,6 +17,27 @@
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Transform.h>
 
+#ifdef DASH_ENABLE_TRACE_LOGGING
+#define MAX_ELEMS_LOGGING 20
+#define DEBUG_TRACE_RANGE(desc, begin, end)                                 \
+  do {                                                                      \
+    using value_t =                                                         \
+        typename std::iterator_traits<decltype(begin)>::value_type;         \
+    using difference_t =                                                    \
+        typename std::iterator_traits<decltype(begin)>::difference_type;    \
+    auto const nelems = std::distance(begin, end);                          \
+    auto const max_elems =                                                  \
+        std::min<difference_t>(nelems, MAX_ELEMS_LOGGING);                  \
+    std::ostringstream os;                                                  \
+    std::copy(                                                              \
+        begin, begin + max_elems, std::ostream_iterator<value_t>(os, " ")); \
+    if (nelems > MAX_ELEMS_LOGGING) os << "...";                            \
+    DASH_LOG_TRACE(desc, os.str());                                         \
+  } while (0)
+#else
+#define DEBUG_TRACE_RANGE(desc, begin, end)
+#endif
+
 namespace dash {
 
 namespace detail {
@@ -39,14 +60,14 @@ public:
 };
 
 template <typename T>
-inline void calculate_boundaries(
+inline void psort_calculate_boundaries(
     PartitionBorder<T>& p_borders, std::vector<T>& partitions)
 {
   DASH_ASSERT_EQ(
-      p_borders.is_stable.size(), partitions.size() - 1,
+      p_borders.is_stable.size(), partitions.size(),
       "invalid number of partition borders");
   // recalculate partition boundaries
-  for (std::size_t idx = 0; idx < partitions.size() - 1; ++idx) {
+  for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
     // case A: partition is already stable -> done
     if (p_borders.is_stable[idx]) continue;
     // case B: we have the last iteration
@@ -71,13 +92,13 @@ inline void calculate_boundaries(
 
 template <typename ElementType, typename DifferenceType>
 inline std::pair<std::vector<DifferenceType>, std::vector<DifferenceType>>
-local_histogram(
+psort_local_histogram(
     std::vector<ElementType> const& partitions,
     ElementType const*              lbegin,
     ElementType const*              lend)
 {
-  auto const nborders = partitions.size() - 1;
-  auto const sz       = partitions.size() + 1;
+  auto const nborders = partitions.size();
+  auto const sz       = partitions.size() + 2;
   // Number of elements less than P
   std::vector<DifferenceType> n_lt(sz, 0);
   // Number of elements less than equals P
@@ -89,14 +110,12 @@ local_histogram(
 
   for (idx = 0; idx < nborders; ++idx) {
     auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
-    if (lb_it != lbegin) --lb_it;
     auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
 
     n_lt[idx + 1] = std::distance(lbegin, lb_it);
     n_le[idx + 1] = std::distance(lbegin, ub_it);
   }
 
-  DASH_ASSERT(idx + 1 == sz);
   n_lt[idx + 1] = n_l_elem;
   n_le[idx + 1] = n_l_elem;
 
@@ -104,7 +123,7 @@ local_histogram(
 }
 
 template <typename DifferenceType, typename ArrayType>
-inline void global_histogram(
+inline void psort_global_histogram(
     std::vector<DifferenceType> const& l_nlt,
     std::vector<DifferenceType> const& l_nle,
     ArrayType&                         g_nlt,
@@ -112,13 +131,18 @@ inline void global_histogram(
 {
   auto const sz_unit0 = g_nlt.pattern().local_size(dash::team_unit_t{0});
 
+  DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
+  DASH_ASSERT_EQ(g_nlt.size(), l_nlt.size(), "Sizes must match");
+  DASH_ASSERT_EQ(g_nle.size(), l_nle.size(), "Sizes must match");
+
 #if defined(DASH_ENABLE_ASSERTIONS)
   DASH_ASSERT_EQ(sz_unit0, 2, "invalid number of local elements at unit 0");
   auto const myid = g_nlt.pattern().team().myid();
-  if (myid != 0) {
+  if (myid.id != 0) {
     DASH_ASSERT_EQ(
         g_nlt.pattern().local_size(myid), 1,
         "invalid number of local elements");
+    DASH_ASSERT_EQ(g_nlt.lsize(), 1, "invalid number of local elements");
   }
 #endif
 
@@ -126,39 +150,28 @@ inline void global_histogram(
   std::fill(g_nlt.lbegin(), g_nlt.lend(), 0);
   std::fill(g_nle.lbegin(), g_nle.lend(), 0);
 
-  // TODO: verify if this is really necessary,
-  // depends on whether dash::transform is collective or non-collective
   g_nlt.team().barrier();
-
-  dash::transform<DifferenceType>(
-      &(*std::begin(l_nlt)), &(*(std::begin(l_nlt) + sz_unit0)),  // A
-      g_nlt.begin(),                                              // B
-      g_nlt.begin(),                  // B = op(B,A)
-      dash::plus<DifferenceType>());  // op
-
-  dash::transform<DifferenceType>(
-      &(*std::begin(l_nle)), &(*(std::begin(l_nle) + sz_unit0)),  // A
-      g_nle.begin(),                                              // B
-      g_nle.begin(),                  // B = op(B,A)
-      dash::plus<DifferenceType>());  // op
 
   using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType>>;
 
-  for (std::size_t idx = sz_unit0; idx < l_nlt.size(); ++idx) {
+  // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
+  for (std::size_t idx = 0; idx < l_nlt.size(); ++idx) {
     // accumulate g_nlt
-    auto ref_clt        = g_nlt.begin() + idx;
+    auto ref_clt        = g_nlt[idx];
     auto atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
     atomic_ref_clt.add(l_nlt[idx]);
 
     // accumulate g_nle
-    auto ref_cle        = g_nle.begin() + idx;
+    auto ref_cle        = g_nle[idx];
     auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
     atomic_ref_cle.add(l_nle[idx]);
   }
+
+  g_nlt.team().barrier();
 }
 
 template <typename ElementType, typename DifferenceType, typename ArrayType>
-inline bool validate_partitions(
+inline bool psort_validate_partitions(
     PartitionBorder<ElementType>&      p_borders,
     std::vector<ElementType> const&    partitions,
     std::vector<DifferenceType> const& C,
@@ -175,15 +188,17 @@ inline bool validate_partitions(
   std::vector<DifferenceType> l_nlt(g_nlt.size(), 0);
   std::vector<DifferenceType> l_nle(g_nle.size(), 0);
 
+  // TODO: this step may be more efficient with block wise copy
+  // to overlap communication and computation
   dash::copy(g_nle.begin(), g_nle.end(), l_nle.data());
   dash::copy(g_nlt.begin(), g_nlt.end(), l_nlt.data());
 
-  for (std::size_t idx = 0; idx < partitions.size() - 1; ++idx) {
+  for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
     if (l_nlt[idx + 1] < C[idx + 1] && C[idx + 1] <= l_nle[idx + 1]) {
       p_borders.is_stable[idx] = true;
     }
     else {
-      if (l_nlt[idx + 1] <= C[idx + 1]) {
+      if (l_nlt[idx + 1] >= C[idx + 1]) {
         p_borders.upper_bound[idx] = partitions[idx];
       }
       else {
@@ -232,8 +247,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const  nunits = team.size();
   auto const  myid   = team.myid();
 
-  std::vector<value_type> partitions(nunits, 0);
-
   // Starting offsets of all units
   std::vector<difference_type> C(nunits + 1, 0);
 
@@ -246,11 +259,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   std::fill(lsizes.begin() + 1, lsizes.end(), 1);
   pattern_t pat(lsizes, team);
 
-  dash::Array<difference_type, index_type, pattern_t> g_CLT(pat);
-  dash::Array<difference_type, index_type, pattern_t> g_CLE(pat);
+  dash::Array<difference_type, index_type, pattern_t> g_nlt(pat);
+  dash::Array<difference_type, index_type, pattern_t> g_nle(pat);
 
-  std::vector<difference_type> myT_CLT(nunits);
-  std::vector<difference_type> myT_CLE(nunits);
+  dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
+  dash::Array<difference_type> g_nle_all(nunits * nunits, team);
+
   std::vector<difference_type> myT_C(nunits);
   std::vector<difference_type> myC(nunits + 1);
 
@@ -295,7 +309,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const max = static_cast<value_type>(*partitions_max_it);
 
   auto const                          nboundaries = nunits - 1;
+  std::vector<value_type>             partitions(nboundaries, 0);
   detail::PartitionBorder<value_type> p_borders(nboundaries, min, max);
+
+  DEBUG_TRACE_RANGE("locally sorted array", lbegin, lend);
 
   size_t iter = 0;
   bool   done = false;
@@ -303,30 +320,70 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   do {
     iter++;
 
-    detail::calculate_boundaries(p_borders, partitions);
+    detail::psort_calculate_boundaries(p_borders, partitions);
 
-    auto histograms = detail::local_histogram<value_type, difference_type>(
-        partitions, lbegin, lend);
+    auto const histograms =
+        detail::psort_local_histogram<value_type, difference_type>(
+            partitions, lbegin, lend);
 
-    auto l_nlt = histograms.first;
-    auto l_nle = histograms.second;
+    auto const& l_nlt = histograms.first;
+    auto const& l_nle = histograms.second;
 
-    detail::global_histogram(l_nlt, l_nle, g_CLT, g_CLE);
+    detail::psort_global_histogram(l_nlt, l_nle, g_nlt, g_nle);
 
+    DASH_ASSERT(g_nle.size() == l_nle.size());
+    DASH_ASSERT(g_nlt.size() == l_nlt.size());
+
+    done = detail::psort_validate_partitions(
+        p_borders, partitions, C, g_nlt, g_nle);
+
+    //ensure that all units are synchronized at the end of an iteration
     team.barrier();
-
-    // TODO: this step may be more efficient with block wise copy local
-    // communication
-    DASH_ASSERT(g_CLE.size() == l_nle.size());
-    DASH_ASSERT(g_CLT.size() == l_nlt.size());
-
-    done = validate_partitions(p_borders, partitions, C, g_CLT, g_CLE);
 
   } while (!done);
 
-  auto histograms = detail::local_histogram<value_type, difference_type>(
-      partitions, lbegin, lend);
+  auto const histograms =
+      detail::psort_local_histogram<value_type, difference_type>(
+          partitions, lbegin, lend);
+
+  auto const& nlt = histograms.first;
+  auto const& nle = histograms.second;
+
+  DASH_ASSERT_EQ(
+      histograms.first.size(), histograms.second.size(),
+      "length of histogram arrays does not match");
+
+  DEBUG_TRACE_RANGE("final partition borders", partitions.begin(), partitions.end());
+  DEBUG_TRACE_RANGE("final histograms: nlt", nlt.begin(), nlt.end());
+  DEBUG_TRACE_RANGE("final histograms: nle", nle.begin(), nle.end());
+
+  // transpose final histograms
+  for (std::size_t idx = 1; idx < nlt.size(); ++idx) {
+    auto const unit_id = static_cast<dash::team_unit_t>(idx - 1);
+    DASH_ASSERT_EQ(
+        g_nlt_all.pattern().local_size(unit_id), nlt.size() - 1,
+        "Invalid Array length");
+    auto const offset = unit_id * nunits + myid;
+    g_nlt_all.async[offset] = nlt[idx];
+    g_nle_all.async[offset] = nle[idx];
+  }
+
+  // complete outstanding requests...
+  g_nlt_all.async.flush();
+  g_nle_all.async.flush();
+
+  team.barrier();
+
+  DEBUG_TRACE_RANGE(
+      "transposed histograms: g_nlt_all.local", g_nlt_all.lbegin(),
+      g_nlt_all.lend());
+  DEBUG_TRACE_RANGE(
+      "transposed histograms: g_nle_all.local", g_nle_all.lbegin(),
+      g_nle_all.lend());
+
+
 }
+
 }  // namespace dash
 
 #endif

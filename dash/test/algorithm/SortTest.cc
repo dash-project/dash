@@ -3,6 +3,8 @@
 #include <dash/Array.h>
 #include <dash/algorithm/Sort.h>
 
+#include <algorithm>
+
 TEST_F(SortTest, ArraySort)
 {
   typedef uint32_t                                      Element_t;
@@ -23,6 +25,11 @@ TEST_F(SortTest, ArraySort)
       array.lbegin(), array.lend(), []() { return distribution(generator); });
   // Wait for all units
   array.barrier();
+
+  std::ostringstream os;
+  std::copy(array.lbegin(), array.lend(), std::ostream_iterator<Element_t>(os, " "));
+
+  DASH_LOG_DEBUG("SortTest.ArraySort", "local values", os.str());
 
   int wait = 1;
   while(wait);
