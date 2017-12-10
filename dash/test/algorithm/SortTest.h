@@ -8,11 +8,12 @@
  */
 class SortTest : public dash::test::TestBase {
 protected:
-
-  SortTest() {
+  SortTest()
+  {
   }
 
-  virtual ~SortTest() {
+  virtual ~SortTest()
+  {
   }
 };
-#endif // DASH__TEST__SORT_TEST_H_
+#endif  // DASH__TEST__SORT_TEST_H_
