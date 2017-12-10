@@ -66,7 +66,13 @@ template <class ViewType>
 class IndexSetIdentity;
 
 namespace detail {
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type);
+  /**
+   * Definition of type trait \c dash::detail::has_type_domain_type<T>
+   * with static member \c value indicating whether type \c T provides
+   * dependent type \c domain_type.
+   */
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type)
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type)
 }
 
 /**

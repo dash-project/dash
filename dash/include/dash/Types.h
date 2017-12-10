@@ -142,18 +142,11 @@ struct dart_datatype_<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
-} // namespace internal
+template<typename T>
+struct dart_datatype<const T> : dart_datatype<T> { };
 
-/**
- * Type trait for mapping to DART data types.
- */
-template<typename Type>
-struct dart_datatype
-: public dash::internal::dart_datatype_<
-           typename std::remove_const<
-             typename std::remove_reference<Type>::type
-           >::type > {
-};
+template<typename T>
+struct dart_datatype<volatile T> : dart_datatype<T> { };
 
 namespace internal {
 
