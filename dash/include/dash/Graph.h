@@ -173,10 +173,10 @@ public:
    * 
    * /todo Add 
    */
-  template<typename InputIterator>
+  template<typename ForwardIterator>
   Graph(
-      InputIterator begin, 
-      InputIterator end, 
+      ForwardIterator begin, 
+      ForwardIterator end, 
       vertex_size_type n_vertices, 
       Team & team = dash::Team::All()
   )
@@ -219,11 +219,13 @@ public:
     // send vertices to their owner units and receive their local index
     {
       std::vector<std::size_t> sizes_send(remote_vertices.size());
+      std::vector<std::size_t> sizes_send_n(remote_vertices.size());
       std::vector<std::size_t> displs_send(remote_vertices.size());
       std::vector<vertex_size_type> remote_vertices_send;
       int total_send = 0;
       for(int i = 0; i < remote_vertices.size(); ++i) {
         sizes_send[i] = remote_vertices[i].size() * sizeof(vertex_size_type);
+        sizes_send_n[i] = remote_vertices[i].size();
         displs_send[i] = total_send * sizeof(vertex_size_type);
         total_send += remote_vertices[i].size();
       }
@@ -239,9 +241,10 @@ public:
       int total_recv = 0;
       for(int i = 0; i < sizes_recv.size(); ++i) {
         displs_recv[i] = total_recv;
-        total_recv += sizes_recv[i] / sizeof(vertex_size_type);
+        total_recv += sizes_recv[i];
       }
-      std::vector<vertex_size_type> remote_vertices_recv(total_recv);
+      std::vector<vertex_size_type> remote_vertices_recv(total_recv / 
+        sizeof(vertex_size_type));
       if(total_send > 0 || total_recv > 0) {
         dart_alltoallv(remote_vertices_send.data(), sizes_send.data(), 
             displs_send.data(), DART_TYPE_BYTE, remote_vertices_recv.data(), 
@@ -269,9 +272,15 @@ public:
       team_unit_t unit { 0 };
       int index = 0;
       for(auto & lindex : remote_vertices_send) {
-        if(index >= sizes_send[unit]) {
+        while(index >= sizes_send_n[unit]) {
           ++unit;
           index = 0;
+          if(unit >= _team->size()) {
+            break;
+          }
+        }
+        if(unit >= _team->size()) {
+          break;
         }
         gvertices[remote_vertices[unit][index]] = global_vertex_iterator(
             _glob_mem_vertex, unit, lindex);
