@@ -201,7 +201,7 @@ public:
     // Gather information about the max amount of containers a single unit
     // currently holds
     std::vector<size_type> container_count(_team->size());
-    int my_container_count = _container_list->size();
+    size_type my_container_count = _container_list->size();
     DASH_ASSERT_RETURNS(
         dart_allgather(&my_container_count, container_count.data(), 
           sizeof(size_type), DART_TYPE_BYTE, _team->dart_id()),
