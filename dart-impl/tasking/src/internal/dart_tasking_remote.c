@@ -15,7 +15,8 @@
 
 
 static dart_amsgq_t amsgq;
-#define DART_RTASK_QLEN 1024*1024
+//#define DART_RTASK_QLEN 1024*1024
+#define DART_RTASK_QLEN 1024
 
 static bool initialized = false;
 
@@ -257,7 +258,6 @@ dart_ret_t dart_tasking_remote_progress()
  */
 dart_ret_t dart_tasking_remote_progress_blocking(dart_team_t team)
 {
-  dart_amsg_flush_buffer(amsgq);
   return dart_amsg_process_blocking(amsgq, team);
 }
 

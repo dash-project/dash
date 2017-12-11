@@ -732,6 +732,10 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
     return DART_ERR_INVAL;
   }
 
+  // flush our buffer
+  dart_amsg_flush_buffer(amsgq);
+
+  // keep processing until all incoming messages have been dealt with
   MPI_Ibarrier(team_data->comm, &req);
   do {
     amsg_process_internal(amsgq, true);
