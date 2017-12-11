@@ -21,15 +21,19 @@
 
 // 100*512B (512KB) receives posted by default
 //#define DEFAULT_MSG_SIZE 256
-#define NUM_MSG 100
+//#define NUM_MSG 100
+
+#define AMSGQ_MPI_TAG 10001
+
 
 struct dart_amsgq {
-  MPI_Request  recv_reqs[NUM_MSG];
-  char *       recv_bufs[NUM_MSG];
-  char *       send_buf;
-  size_t       send_bufsize;
-  MPI_Request  send_req;
+  MPI_Request *recv_reqs;
+  char *      *recv_bufs;
+  MPI_Request *send_reqs;
+  char *      *send_bufs;
+  int         *outidx;
   size_t       msg_size;
+  int          msg_count;
   dart_team_t  team;
   MPI_Comm     comm;
   dart_mutex_t send_mutex;
@@ -97,7 +101,6 @@ dart_amsg_openq(
   dart_team_t    team,
   dart_amsgq_t * queue)
 {
-  dart_team_unit_t unitid;
   *queue = NULL;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
@@ -111,22 +114,28 @@ dart_amsg_openq(
   dart__base__mutex_init(&res->send_mutex);
   dart__base__mutex_init(&res->processing_mutex);
   res->msg_size = sizeof(struct dart_amsg_header) + msg_size;
-  res->send_buf = malloc(res->msg_size);
-  res->send_req = MPI_REQUEST_NULL;
+  res->msg_count = msg_count;
+  res->send_bufs = malloc(msg_count*sizeof(*res->send_bufs));
+  res->send_reqs = malloc(msg_count*sizeof(*res->send_reqs));
+  res->recv_bufs = malloc(msg_count*sizeof(*res->recv_bufs));
+  res->recv_reqs = malloc(msg_count*sizeof(*res->recv_reqs));
+  res->outidx    = malloc(msg_count*sizeof(*res->outidx));
 //  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
 
   // post receives
-  for (int i = 0; i < NUM_MSG; ++i) {
+  for (int i = 0; i < msg_count; ++i) {
     res->recv_bufs[i] = malloc(res->msg_size);
     MPI_Irecv(
       res->recv_bufs[i],
       res->msg_size,
       MPI_BYTE,
       MPI_ANY_SOURCE,
-      MPI_ANY_TAG,
+      AMSGQ_MPI_TAG,
       res->comm,
       &res->recv_reqs[i]);
+    res->send_bufs[i] = malloc(res->msg_size);
+    res->send_reqs[i] = MPI_REQUEST_NULL;
   }
 
   MPI_Barrier(res->comm);
@@ -162,37 +171,51 @@ dart_amsg_trysend(
 
   dart_myid(&unitid);
 
-  MPI_Wait(&amsgq->send_req, MPI_STATUS_IGNORE);
-//  // wait for a previous request to complete
-//  if (amsgq->send_req != MPI_REQUEST_NULL) {
-//    int flag;
-//    MPI_Test(&amsgq->send_req, &flag, MPI_STATUS_IGNORE);
-//
-//    if (!flag) {
-//      dart__base__mutex_unlock(&amsgq->send_mutex);
-//      return DART_ERR_AGAIN;
-//    }
-//  }
+  int idx = 0;
 
+  // search for a free handle
+  bool found = false;
+  for (idx = 0; idx < amsgq->msg_count; ++idx) {
+    if (amsgq->send_reqs[idx] == MPI_REQUEST_NULL) {
+      // we found one
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    int flag;
+    MPI_Testany(amsgq->msg_count, amsgq->send_reqs, &idx, &flag, MPI_STATUSES_IGNORE);
+    if (flag) {
+      if (idx == MPI_UNDEFINED) {
+        // there were no active handles -> pick the first
+        idx = 0;
+      }
+    } else {
+      dart__base__mutex_unlock(&amsgq->send_mutex);
+      // come back later
+      return DART_ERR_AGAIN;
+    }
+  }
 
   struct dart_amsg_header header;
   header.remote = unitid;
   header.fn = remote_fn_ptr;
   header.data_size = data_size;
 
-  memcpy(amsgq->send_buf, &header, sizeof(header));
-  memcpy(amsgq->send_buf + sizeof(header), data, data_size);
+  char *sendbuf = amsgq->send_bufs[idx];
+
+  memcpy(sendbuf, &header, sizeof(header));
+  memcpy(sendbuf + sizeof(header), data, data_size);
 
   int ret = MPI_Isend(
-              amsgq->send_buf, amsgq->msg_size,
-              MPI_BYTE, target.id, 0, amsgq->comm,
-              &amsgq->send_req);
+              sendbuf, amsgq->msg_size,
+              MPI_BYTE, target.id, AMSGQ_MPI_TAG, amsgq->comm,
+              &amsgq->send_reqs[idx]);
+  dart__base__mutex_unlock(&amsgq->send_mutex);
+
   if (ret != MPI_SUCCESS) {
-    dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_AGAIN;
   }
-
-  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
                 "%i starting at offset %li",
@@ -244,8 +267,6 @@ amsg_process_internal(
 {
   uint64_t num_msg;
 
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
-
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
     if (ret != DART_OK) {
@@ -255,24 +276,15 @@ amsg_process_internal(
     dart__base__mutex_lock(&amsgq->processing_mutex);
   }
 
-  // progress on send
-
-  dart__base__mutex_lock(&amsgq->send_mutex);
-  if (amsgq->send_req != MPI_REQUEST_NULL) {
-    int flag;
-    MPI_Test(&amsgq->send_req, &flag, MPI_STATUS_IGNORE);
-  }
-  dart__base__mutex_unlock(&amsgq->send_mutex);
-
   do {
     num_msg = 0;
     int outcount;
-    int outidx[NUM_MSG];
     MPI_Testsome(
-      NUM_MSG, amsgq->recv_reqs, &outcount, outidx, MPI_STATUSES_IGNORE);
+      amsgq->msg_count, amsgq->recv_reqs, &outcount,
+      amsgq->outidx, MPI_STATUSES_IGNORE);
     for (int i = 0; i < outcount; ++i) {
       // pick the message
-      int idx = outidx[i];
+      int   idx  = amsgq->outidx[i];
       char *dbuf = amsgq->recv_bufs[idx];
       // unpack the message
       struct dart_amsg_header *header = (struct dart_amsg_header *)dbuf;
@@ -290,7 +302,7 @@ amsg_process_internal(
       // repost the recv
       MPI_Irecv(
         amsgq->recv_bufs[idx], amsgq->msg_size, MPI_BYTE,
-        MPI_ANY_SOURCE, MPI_ANY_TAG,
+        MPI_ANY_SOURCE, AMSGQ_MPI_TAG,
         amsgq->comm, &amsgq->recv_reqs[idx]);
 
       ++num_msg;
@@ -311,7 +323,6 @@ dart_amsg_process(dart_amsgq_t amsgq)
 dart_ret_t
 dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 {
-  int         flag = 0;
   MPI_Request req;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
@@ -320,14 +331,19 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
     return DART_ERR_INVAL;
   }
 
-  if (amsgq->send_req != MPI_REQUEST_NULL)
-    MPI_Wait(&amsgq->send_req, MPI_STATUS_IGNORE);
-
+  int         barrier_flag = 0;
+  int         send_flag = 0;
   MPI_Ibarrier(team_data->comm, &req);
   do {
     amsg_process_internal(amsgq, true);
-    MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
-  } while (!flag);
+    if (!barrier_flag) {
+      MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
+    }
+    if (!send_flag) {
+      MPI_Testall(amsgq->msg_count, amsgq->send_reqs,
+                  &send_flag, MPI_STATUSES_IGNORE);
+    }
+  } while (!barrier_flag && !send_flag);
   amsg_process_internal(amsgq, true);
   MPI_Barrier(team_data->comm);
   return DART_OK;
@@ -346,17 +362,50 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 
 //  MPI_Comm_free(&amsgq->comm);
 
-  for (int i = 0; i < NUM_MSG; ++i) {
+  for (int i = 0; i < amsgq->msg_count; ++i) {
     MPI_Cancel(&amsgq->recv_reqs[i]);
     free(amsgq->recv_bufs[i]);
+    free(amsgq->send_bufs[i]);
   }
 
+  free(amsgq->recv_bufs);
+  free(amsgq->send_bufs);
+  free(amsgq->recv_reqs);
+  free(amsgq->send_reqs);
+  free(amsgq->outidx);
   free(amsgq);
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
 
   return DART_OK;
+}
+
+
+/**
+ * Flush messages that were sent using \c dart_amsg_buffered_send.
+ */
+dart_ret_t
+dart_amsg_flush_buffer(dart_amsgq_t amsgq)
+{
+
+  MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
+
+  return DART_OK;
+}
+
+/**
+ * Buffer the active message until it is sent out using \c dart_amsg_flush_buffer.
+ */
+dart_ret_t
+dart_amsg_buffered_send(
+  dart_team_unit_t    target,
+  dart_amsgq_t        amsgq,
+  dart_task_action_t  fn,
+  const void         *data,
+  size_t              data_size)
+{
+  return dart_amsg_trysend(target, amsgq, fn, data, data_size);
 }
 
 
