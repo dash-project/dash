@@ -73,18 +73,26 @@ amsgq_test_sendreqs_unsafe(dart_amsgq_t amsgq)
   MPI_Testsome(
     amsgq->send_tailpos, amsgq->send_reqs, &outcount,
     amsgq->send_outidx, MPI_STATUSES_IGNORE);
-  printf("  MPI_Testsome: send_tailpos %d, outcount %d\n", amsgq->send_tailpos, outcount);
+  DART_LOG_TRACE("  MPI_Testsome: send_tailpos %d, outcount %d",
+                 amsgq->send_tailpos, outcount);
   if (outcount > 0) {
     if (outcount == amsgq->send_tailpos) {
       // all messages have finished --> nothing to be done
       amsgq->send_tailpos = 0;
-      printf("  All send messages finished\n");
+      DART_LOG_TRACE("  All send messages finished");
     } else {
+#if 0
+      printf("  Finished requests: ");
+      for (int outidx = 0; outidx < outcount; ++outidx) {
+        printf("%d ", amsgq->send_outidx[outidx]);
+      }
+      printf("\n");
+#endif
       // move requests from the back to the free spots
       int back_pos = amsgq->msg_count - 1;
       for (int outidx = 0; outidx < outcount; ++outidx) {
         int done_idx = amsgq->send_outidx[outidx];
-        printf("  outidx %d -> done_idx %d\n", outidx, done_idx);
+        DART_LOG_TRACE("  outidx %d -> done_idx %d", outidx, done_idx);
         while (back_pos > done_idx &&
                 amsgq->send_reqs[back_pos] == MPI_REQUEST_NULL) back_pos--;
         if (done_idx >= back_pos) {
@@ -92,7 +100,7 @@ amsgq_test_sendreqs_unsafe(dart_amsgq_t amsgq)
           break;
         }
 
-        printf("  Moving back_pos %d to done_idx %d\n", back_pos, done_idx);
+        DART_LOG_TRACE("  Moving back_pos %d to done_idx %d", back_pos, done_idx);
         // copy the request and buffer to the front
         amsgq->send_reqs[done_idx]  = amsgq->send_reqs[back_pos];
         amsgq->send_reqs[back_pos] = MPI_REQUEST_NULL;
@@ -103,7 +111,7 @@ amsgq_test_sendreqs_unsafe(dart_amsgq_t amsgq)
       }
       amsgq->send_tailpos -= outcount;
     }
-    printf("  send_tailpos: %d\n", amsgq->send_tailpos);
+    DART_LOG_TRACE("  send_tailpos: %d", amsgq->send_tailpos);
   } else {
     // come back later
     return DART_ERR_AGAIN;
@@ -224,7 +232,6 @@ dart_amsg_trysend(
 
   // search for a free handle if necessary
   if (amsgq->send_tailpos == amsgq->msg_count) {
-    printf("Testing send requests\n");
     int ret = amsgq_test_sendreqs_unsafe(amsgq);
     if (ret != DART_OK) {
       dart__base__mutex_unlock(&amsgq->send_mutex);
@@ -232,7 +239,7 @@ dart_amsg_trysend(
     }
   }
   int idx = amsgq->send_tailpos++;
-  printf("Send request idx: %d\n", idx);
+  DART_LOG_TRACE("Send request idx: %d", idx);
 
   struct dart_amsg_header header;
   header.remote = unitid;
@@ -367,7 +374,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
 dart_ret_t
 dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 {
-  MPI_Request req;
+  MPI_Request req = MPI_REQUEST_NULL;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
@@ -377,10 +384,9 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 
   int         barrier_flag = 0;
   int         send_flag = 0;
-  MPI_Ibarrier(team_data->comm, &req);
   do {
     amsg_process_internal(amsgq, true);
-    if (!barrier_flag) {
+    if (req == MPI_REQUEST_NULL && !barrier_flag) {
       MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
     }
     if (!send_flag) {
@@ -388,11 +394,13 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
                   &send_flag, MPI_STATUSES_IGNORE);
       if (send_flag) {
         amsgq->send_tailpos = 0;
+        MPI_Ibarrier(team_data->comm, &req);
       }
     }
   } while (!barrier_flag && !send_flag);
   amsg_process_internal(amsgq, true);
   MPI_Barrier(team_data->comm);
+  amsg_process_internal(amsgq, true);
   return DART_OK;
 }
 
@@ -408,6 +416,8 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 {
 
 //  MPI_Comm_free(&amsgq->comm);
+
+  MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
 
   for (int i = 0; i < amsgq->msg_count; ++i) {
     MPI_Cancel(&amsgq->recv_reqs[i]);
