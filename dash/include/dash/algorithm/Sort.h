@@ -560,7 +560,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       async_copies.push_back(fut);
     }
     else {
-      // Local case: send_disp = target_disp;
       std::copy(
           lcopy.begin() + send_disp, lcopy.begin() + send_disp + send_count,
           lbegin + target_disp);
