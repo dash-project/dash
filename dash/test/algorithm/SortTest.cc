@@ -25,11 +25,10 @@ TEST_F(SortTest, ArraySort)
 
   std::generate(
       array.lbegin(), array.lend(), []() { return distribution(generator); });
+
   // Wait for all units
   array.barrier();
 
-  int wait = 0;
-  while(wait);
   dash::sort(array.begin(), array.end());
 
   if (dash::myid() == 0) {

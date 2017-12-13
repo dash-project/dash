@@ -127,66 +127,67 @@ template <typename DifferenceType, typename ArrayType>
 inline void psort_global_histogram(
     std::vector<DifferenceType> const& l_nlt,
     std::vector<DifferenceType> const& l_nle,
-    ArrayType&                         g_nlt,
-    ArrayType&                         g_nle)
+    ArrayType&                         g_nlt_nle)
 {
   DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
-  DASH_ASSERT_EQ(g_nlt.size(), l_nlt.size() - 1, "Sizes must match");
-  DASH_ASSERT_EQ(g_nle.size(), l_nle.size() - 1, "Sizes must match");
+  DASH_ASSERT_EQ(
+      g_nlt_nle.size(), (l_nlt.size() - 1) * 2, "Sizes must match");
 
   /* reduce among all units */
-  std::fill(g_nlt.lbegin(), g_nlt.lend(), 0);
-  std::fill(g_nle.lbegin(), g_nle.lend(), 0);
+  std::fill(g_nlt_nle.lbegin(), g_nlt_nle.lend(), 0);
 
-  g_nlt.team().barrier();
+  g_nlt_nle.team().barrier();
 
   using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType>>;
 
   // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
     // accumulate g_nlt
-    auto ref_clt        = g_nlt[idx - 1];
-    auto atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
+    auto const g_idx_nlt      = (idx - 1) * 2;
+    auto       ref_clt        = g_nlt_nle[g_idx_nlt];
+    auto       atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
     atomic_ref_clt.add(l_nlt[idx]);
 
     // accumulate g_nle
-    auto ref_cle        = g_nle[idx - 1];
+    auto ref_cle        = g_nlt_nle[g_idx_nlt + 1];
     auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
     atomic_ref_cle.add(l_nle[idx]);
   }
 
-  g_nlt.team().barrier();
+  g_nlt_nle.team().barrier();
 }
 
 template <typename ElementType, typename DifferenceType, typename ArrayType>
 inline bool psort_validate_partitions(
     PartitionBorder<ElementType>&      p_borders,
     std::vector<ElementType> const&    partitions,
-    std::vector<DifferenceType> const& C,
-    ArrayType const&                   g_nlt,
-    ArrayType const&                   g_nle)
+    std::vector<DifferenceType> const& acc_unit_count,
+    ArrayType const&                   g_nlt_nle)
 {
   using array_value_t =
-      typename std::decay<decltype(g_nlt)>::type::value_type;
+      typename std::decay<decltype(g_nlt_nle)>::type::value_type;
 
   static_assert(
       std::is_same<DifferenceType, array_value_t>::value,
       "local and global array value types must be equal");
 
-  std::vector<DifferenceType> l_nlt(g_nlt.size() + 1, 0);
-  std::vector<DifferenceType> l_nle(g_nle.size() + 1, 0);
+  std::vector<DifferenceType> l_nlt_nle(g_nlt_nle.size() + 2);
+
+  // first two values are 0
+  std::fill(l_nlt_nle.begin(), l_nlt_nle.begin() + 2, 0);
 
   // TODO: this step may be more efficient with block wise copy
   // to overlap communication and computation
-  dash::copy(g_nle.begin(), g_nle.end(), l_nle.data() + 1);
-  dash::copy(g_nlt.begin(), g_nlt.end(), l_nlt.data() + 1);
+  dash::copy(g_nlt_nle.begin(), g_nlt_nle.end(), l_nlt_nle.data() + 2);
 
   for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
-    if (l_nlt[idx + 1] < C[idx + 1] && C[idx + 1] <= l_nle[idx + 1]) {
+    auto const nlt_idx = (idx + 1) * 2;
+    if (l_nlt_nle[nlt_idx] < acc_unit_count[idx + 1] &&
+        acc_unit_count[idx + 1] <= l_nlt_nle[nlt_idx + 1]) {
       p_borders.is_stable[idx] = true;
     }
     else {
-      if (l_nlt[idx + 1] >= C[idx + 1]) {
+      if (l_nlt_nle[nlt_idx] >= acc_unit_count[idx + 1]) {
         p_borders.upper_bound[idx] = partitions[idx];
       }
       else {
@@ -233,7 +234,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     return;
   }
 
-  // gl
+  // TODO: instead of std::sort we may accept a user-defined local sort
+  // function
+
   auto       begin_ptr = static_cast<const_pointer_type>(begin);
   auto       end_ptr   = static_cast<const_pointer_type>(end);
   auto const n_g_elem  = dash::distance(begin_ptr, end_ptr);
@@ -247,17 +250,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const  nunits = team.size();
   auto const  myid   = team.myid();
 
-  dash::Array<difference_type> g_nlt(nunits, team);
-  dash::Array<difference_type> g_nle(nunits, team);
+  dash::Array<difference_type> g_nlt_nle(nunits * 2, team);
 
   // Buffer for partition loops
-  dash::Array<difference_type> g_nlt_buf(g_nlt.pattern());
-  dash::Array<difference_type> g_nle_buf(g_nle.pattern());
+  dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
 
   dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
   dash::Array<difference_type> g_nle_all(nunits * nunits, team);
 
-  // std::vector<difference_type> myT_C(nunits);
   std::vector<difference_type> l_target_count(nunits + 1);
 
   // local distance
@@ -285,16 +285,16 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   std::vector<value_type> const lcopy(lbegin, lend);
 
   // Starting offsets of all units
-  std::vector<difference_type> C(nunits + 1);
+  std::vector<difference_type> acc_unit_count(nunits + 1);
   // initial counts
   dash::team_unit_t       unit{0};
   const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
 
-  C[0] = 0;
+  acc_unit_count[0] = 0;
 
   for (; unit < last; ++unit) {
-    auto const u_size = pattern.local_size(unit);
-    C[unit + 1]       = u_size + C[unit];
+    auto const u_size        = pattern.local_size(unit);
+    acc_unit_count[unit + 1] = u_size + acc_unit_count[unit];
   };
 
   // TODO: provide dash::min_max
@@ -325,20 +325,17 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
 
-    detail::psort_global_histogram(l_nlt, l_nle, g_nlt, g_nle);
-
-    DASH_ASSERT(g_nle.size() == l_nle.size() - 1);
-    DASH_ASSERT(g_nlt.size() == l_nlt.size() - 1);
+    // detail::psort_global_histogram(l_nlt, l_nle, g_nlt, g_nle);
+    detail::psort_global_histogram(l_nlt, l_nle, g_nlt_nle);
 
     done = detail::psort_validate_partitions(
-        p_borders, partitions, C, g_nlt, g_nle);
+        p_borders, partitions, acc_unit_count, g_nlt_nle);
 
-    // Two Buffers eliminate a barrier as, otherwise, some units may be one
+    // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
     if (!done) {
-      std::swap(g_nlt, g_nlt_buf);
-      std::swap(g_nle, g_nle_buf);
+      std::swap(g_nlt_nle, g_nlt_nle_buf);
     }
 
   } while (!done);
@@ -406,7 +403,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       std::accumulate(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
 
   // Calculate the deficit
-  auto my_deficit = C[myid + 1] - n_my_elements;
+  auto my_deficit = acc_unit_count[myid + 1] - n_my_elements;
 
   unit = static_cast<team_unit_t>(0);
 
@@ -451,8 +448,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   g_target_count.async.flush();
 
   team.barrier();
-
-  /* g_target_count only local access */
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final target count", g_target_count.lbegin(), g_target_count.lend());
