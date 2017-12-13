@@ -10,8 +10,6 @@ TEST_F(SortTest, ArraySort)
 {
   typedef uint32_t                                   Element_t;
   typedef dash::Array<Element_t>                     Array_t;
-  typedef typename Array_t::pattern_type::index_type index_t;
-  typedef typename Array_t::value_type               value_t;
 
   static std::uniform_int_distribution<Element_t> distribution(0, 100);
   static std::random_device                       rd;
@@ -40,3 +38,5 @@ TEST_F(SortTest, ArraySort)
     }
   }
 }
+
+//TODO: add additional unit tests with various pattern types and containers

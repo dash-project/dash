@@ -18,6 +18,37 @@
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Transform.h>
 
+namespace dash {
+
+#ifdef DOXYGEN
+
+/**
+ * Sorts the elements in the range, defined by \c [begin, end) in ascending
+ * order. The order of equal elements is not guaranteed to be preserved.
+ *
+ * In terms of data distribution, source and destination ranges passed to
+ * \c dash::sort must be global (\c GlobIter<ValueType>).
+ *
+ * The operation is collective among the team of the owning dash container.
+ *
+ * Example:
+ *
+ * \code
+ *       dash::sort(array.begin(),
+ *                  array.end();
+ * \endcode
+ *
+ * \ingroup  DashAlgorithms
+ */
+template <class GlobRandomIt>
+void sort(
+  GlobRandomIt  begin,
+  GlobRandomIt  end
+);
+
+#else
+
+
 #ifdef DASH_ENABLE_TRACE_LOGGING
 #define MAX_ELEMS_LOGGING 25
 #define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end)                         \
@@ -39,7 +70,6 @@
 #define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end)
 #endif
 
-namespace dash {
 
 namespace detail {
 
@@ -205,12 +235,9 @@ inline bool psort_validate_partitions(
 }
 }  // namespace detail
 
-template <typename GlobRandomIt>
+template <class GlobRandomIt>
 void sort(GlobRandomIt begin, GlobRandomIt end)
 {
-  // TODO: this approach supports only blocked patterns with contiguous memory
-  // blocks
-
   auto pattern             = begin.pattern();
   using iter_t             = decltype(begin);
   using iter_pattern_t     = decltype(pattern);
@@ -219,10 +246,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   using value_type         = typename iter_t::value_type;
   using difference_type    = index_type;
   using const_pointer_type = typename iter_t::const_pointer;
-
-  static_assert(
-      std::is_unsigned<value_type>::value,
-      "only unsigned types are supported");
 
   if (pattern.team() == dash::Team::Null()) {
     DASH_LOG_DEBUG("dash::sort", "Sorting on dash::Team::Null()");
@@ -558,6 +581,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   team.barrier();
 }
+
+#endif //DOXYGEN
 
 }  // namespace dash
 
