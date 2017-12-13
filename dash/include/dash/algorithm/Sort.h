@@ -130,22 +130,9 @@ inline void psort_global_histogram(
     ArrayType&                         g_nlt,
     ArrayType&                         g_nle)
 {
-  auto const sz_unit0 = g_nlt.pattern().local_size(dash::team_unit_t{0});
-
   DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
-  DASH_ASSERT_EQ(g_nlt.size(), l_nlt.size(), "Sizes must match");
-  DASH_ASSERT_EQ(g_nle.size(), l_nle.size(), "Sizes must match");
-
-#if defined(DASH_ENABLE_ASSERTIONS)
-  DASH_ASSERT_EQ(sz_unit0, 2, "invalid number of local elements at unit 0");
-  auto const myid = g_nlt.pattern().team().myid();
-  if (myid.id != 0) {
-    DASH_ASSERT_EQ(
-        g_nlt.pattern().local_size(myid), 1,
-        "invalid number of local elements");
-    DASH_ASSERT_EQ(g_nlt.lsize(), 1, "invalid number of local elements");
-  }
-#endif
+  DASH_ASSERT_EQ(g_nlt.size(), l_nlt.size() - 1, "Sizes must match");
+  DASH_ASSERT_EQ(g_nle.size(), l_nle.size() - 1, "Sizes must match");
 
   /* reduce among all units */
   std::fill(g_nlt.lbegin(), g_nlt.lend(), 0);
@@ -156,14 +143,14 @@ inline void psort_global_histogram(
   using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType>>;
 
   // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
-  for (std::size_t idx = 0; idx < l_nlt.size(); ++idx) {
+  for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
     // accumulate g_nlt
-    auto ref_clt        = g_nlt[idx];
+    auto ref_clt        = g_nlt[idx - 1];
     auto atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
     atomic_ref_clt.add(l_nlt[idx]);
 
     // accumulate g_nle
-    auto ref_cle        = g_nle[idx];
+    auto ref_cle        = g_nle[idx - 1];
     auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
     atomic_ref_cle.add(l_nle[idx]);
   }
@@ -186,13 +173,13 @@ inline bool psort_validate_partitions(
       std::is_same<DifferenceType, array_value_t>::value,
       "local and global array value types must be equal");
 
-  std::vector<DifferenceType> l_nlt(g_nlt.size(), 0);
-  std::vector<DifferenceType> l_nle(g_nle.size(), 0);
+  std::vector<DifferenceType> l_nlt(g_nlt.size() + 1, 0);
+  std::vector<DifferenceType> l_nle(g_nle.size() + 1, 0);
 
   // TODO: this step may be more efficient with block wise copy
   // to overlap communication and computation
-  dash::copy(g_nle.begin(), g_nle.end(), l_nle.data());
-  dash::copy(g_nlt.begin(), g_nlt.end(), l_nlt.data());
+  dash::copy(g_nle.begin(), g_nle.end(), l_nle.data() + 1);
+  dash::copy(g_nlt.begin(), g_nlt.end(), l_nlt.data() + 1);
 
   for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
     if (l_nlt[idx + 1] < C[idx + 1] && C[idx + 1] <= l_nle[idx + 1]) {
@@ -260,17 +247,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const  nunits = team.size();
   auto const  myid   = team.myid();
 
-  /* number of elements less than (or equal) to splitter border accumulated */
-  using pattern_t = dash::CSRPattern<1>;
+  dash::Array<difference_type> g_nlt(nunits, team);
+  dash::Array<difference_type> g_nle(nunits, team);
 
-  // Unit 0 is the only unit with two elements
-  std::vector<size_type> lsizes(nunits);
-  lsizes[0] = 2;
-  std::fill(lsizes.begin() + 1, lsizes.end(), 1);
-  pattern_t pat(lsizes, team);
-
-  dash::Array<difference_type, index_type, pattern_t> g_nlt(pat);
-  dash::Array<difference_type, index_type, pattern_t> g_nle(pat);
+  // Buffer for partition loops
+  dash::Array<difference_type> g_nlt_buf(g_nlt.pattern());
+  dash::Array<difference_type> g_nle_buf(g_nle.pattern());
 
   dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
   dash::Array<difference_type> g_nle_all(nunits * nunits, team);
@@ -345,14 +327,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
     detail::psort_global_histogram(l_nlt, l_nle, g_nlt, g_nle);
 
-    DASH_ASSERT(g_nle.size() == l_nle.size());
-    DASH_ASSERT(g_nlt.size() == l_nlt.size());
+    DASH_ASSERT(g_nle.size() == l_nle.size() - 1);
+    DASH_ASSERT(g_nlt.size() == l_nlt.size() - 1);
 
     done = detail::psort_validate_partitions(
         p_borders, partitions, C, g_nlt, g_nle);
 
-    // ensure that all units are synchronized at the end of an iteration
-    team.barrier();
+    // Two Buffers eliminate a barrier as, otherwise, some units may be one
+    // iteration ahead and modify shared data while the others are still not
+    // done
+    if (!done) {
+      std::swap(g_nlt, g_nlt_buf);
+      std::swap(g_nle, g_nle_buf);
+    }
 
   } while (!done);
 
@@ -386,7 +373,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
         g_nlt_all.pattern().local_size(
             static_cast<dash::team_unit_t>(transposed_unit)),
         l_nlt.size() - 1, "Invalid Array length");
-    auto const offset       = transposed_unit * nunits + myid.id;
+    auto const offset = transposed_unit * nunits + myid.id;
 
     g_nlt_all.async[offset] = l_nlt[idx];
     g_nle_all.async[offset] = l_nle[idx];
@@ -444,7 +431,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition distribution", g_partition_dist.lbegin(),
       g_partition_dist.lend());
-
 
   team.barrier();
 
