@@ -41,13 +41,9 @@ namespace dash {
  * \ingroup  DashAlgorithms
  */
 template <class GlobRandomIt>
-void sort(
-  GlobRandomIt  begin,
-  GlobRandomIt  end
-);
+void sort(GlobRandomIt begin, GlobRandomIt end);
 
 #else
-
 
 #ifdef DASH_ENABLE_TRACE_LOGGING
 #define MAX_ELEMS_LOGGING 25
@@ -69,7 +65,6 @@ void sort(
 #else
 #define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end)
 #endif
-
 
 namespace detail {
 
@@ -122,7 +117,7 @@ inline void psort_calculate_boundaries(
 }
 
 template <typename ElementType, typename DifferenceType>
-inline std::pair<std::vector<DifferenceType>, std::vector<DifferenceType>>
+inline std::pair<std::vector<DifferenceType>, std::vector<DifferenceType> >
 psort_local_histogram(
     std::vector<ElementType> const& partitions,
     ElementType const*              lbegin,
@@ -168,7 +163,7 @@ inline void psort_global_histogram(
 
   g_nlt_nle.team().barrier();
 
-  using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType>>;
+  using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType> >;
 
   // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
@@ -273,16 +268,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const  nunits = team.size();
   auto const  myid   = team.myid();
 
-  dash::Array<difference_type> g_nlt_nle(nunits * 2, team);
-
-  // Buffer for partition loops
-  dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
-
-  dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
-  dash::Array<difference_type> g_nle_all(nunits * nunits, team);
-
-  std::vector<difference_type> l_target_count(nunits + 1);
-
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
 
@@ -303,9 +288,31 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // initial local sort
   std::sort(lbegin, lend);
-
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
+
+  auto const lmin = *lbegin;
+  auto const lmax = *(lend - 1);
+
+  dash::Shared<dash::Atomic<value_type> > g_min(
+      static_cast<dash::team_unit_t>(0), team);
+  dash::Shared<dash::Atomic<value_type> > g_max(
+      static_cast<dash::team_unit_t>(0), team);
+
+  g_min.get().op(dash::min<value_type>(), lmin);
+  g_max.get().op(dash::max<value_type>(), lmax);
+
+  // No subsequent barriers are need for Shared due to container constructors
+
+  dash::Array<difference_type> g_nlt_nle(nunits * 2, team);
+
+  // Buffer for partition loops
+  dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
+
+  dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
+  dash::Array<difference_type> g_nle_all(nunits * nunits, team);
+
+  std::vector<difference_type> l_target_count(nunits + 1);
 
   // Starting offsets of all units
   std::vector<difference_type> acc_unit_count(nunits + 1);
@@ -320,12 +327,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     acc_unit_count[unit + 1] = u_size + acc_unit_count[unit];
   };
 
-  // TODO: provide dash::min_max
-  auto const partitions_min_it = dash::min_element(begin, end);
-  auto const partitions_max_it = dash::max_element(begin, end);
-
-  auto const min = static_cast<value_type>(*partitions_min_it);
-  auto const max = static_cast<value_type>(*partitions_max_it);
+  auto const min = static_cast<value_type>(g_min.get());
+  auto const max = static_cast<value_type>(g_max.get());
 
   auto const                          nboundaries = nunits - 1;
   std::vector<value_type>             partitions(nboundaries, 0);
@@ -333,7 +336,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
 
-  bool   done = false;
+  bool done = false;
 
   do {
     detail::psort_calculate_boundaries(p_borders, partitions);
@@ -536,7 +539,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   unit = static_cast<team_unit_t>(0);
 
-  std::vector<dash::Future<iter_t>> async_copies{};
+  std::vector<dash::Future<iter_t> > async_copies{};
 
   DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
 
@@ -550,7 +553,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
 
     if (unit != myid) {
-      auto const gidx = pattern.global_index(unit, lcoords);
+      auto const gidx = pattern.global_index(unit, {});
 
       auto fut = dash::copy_async(
           &(*(lcopy.begin() + send_disp)),
@@ -578,7 +581,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   team.barrier();
 }
 
-#endif //DOXYGEN
+#endif  // DOXYGEN
 
 }  // namespace dash
 
