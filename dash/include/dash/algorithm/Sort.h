@@ -276,7 +276,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   dash::Array<difference_type> g_nle_all(nunits * nunits, team);
 
   // std::vector<difference_type> myT_C(nunits);
-  std::vector<difference_type> myC(nunits + 1);
+  std::vector<difference_type> l_target_count(nunits + 1);
 
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
@@ -298,6 +298,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // initial local sort
   std::sort(lbegin, lend);
+
+  // Temporary local buffer (sorted);
+  std::vector<value_type> const lcopy(lbegin, lend);
 
   // Starting offsets of all units
   std::vector<difference_type> C(nunits + 1);
@@ -357,8 +360,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       detail::psort_local_histogram<value_type, difference_type>(
           partitions, lbegin, lend);
 
-  auto const& nlt = histograms.first;
-  auto const& nle = histograms.second;
+  /* How many elements are less than P
+   * or less than equals P */
+  auto const& l_nlt = histograms.first;
+  auto const& l_nle = histograms.second;
 
   DASH_ASSERT_EQ(
       histograms.first.size(), histograms.second.size(),
@@ -366,18 +371,25 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition borders", partitions.begin(), partitions.end());
-  DASH_SORT_LOG_TRACE_RANGE("final histograms: nlt", nlt.begin(), nlt.end());
-  DASH_SORT_LOG_TRACE_RANGE("final histograms: nle", nle.begin(), nle.end());
+  DASH_SORT_LOG_TRACE_RANGE(
+      "final histograms: l_nlt", l_nlt.begin(), l_nlt.end());
+  DASH_SORT_LOG_TRACE_RANGE(
+      "final histograms: l_nle", l_nle.begin(), l_nle.end());
 
-  // transpose final histograms
-  for (std::size_t idx = 1; idx < nlt.size(); ++idx) {
-    auto const unit_id = static_cast<dash::team_unit_t>(idx - 1);
+  /*
+   * Transpose (Shuffle) the final histograms to communicate
+   * the partition distribution
+   */
+  for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
+    auto const transposed_unit = idx - 1;
     DASH_ASSERT_EQ(
-        g_nlt_all.pattern().local_size(unit_id), nlt.size() - 1,
-        "Invalid Array length");
-    auto const offset       = unit_id * nunits + myid;
-    g_nlt_all.async[offset] = nlt[idx];
-    g_nle_all.async[offset] = nle[idx];
+        g_nlt_all.pattern().local_size(
+            static_cast<dash::team_unit_t>(transposed_unit)),
+        l_nlt.size() - 1, "Invalid Array length");
+    auto const offset       = transposed_unit * nunits + myid.id;
+
+    g_nlt_all.async[offset] = l_nlt[idx];
+    g_nle_all.async[offset] = l_nle[idx];
   }
 
   // complete outstanding requests...
@@ -386,6 +398,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   team.barrier();
 
+  /* Calculate final distribution per partition. Each unit is responsible one
+   * partition. */
+
   DASH_SORT_LOG_TRACE_RANGE(
       "transposed histograms: g_nlt_all.local", g_nlt_all.lbegin(),
       g_nlt_all.lend());
@@ -393,79 +408,128 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "transposed histograms: g_nle_all.local", g_nle_all.lbegin(),
       g_nle_all.lend());
 
-  // Let us now collect the items which we have to send
-  auto const n_my_elements =
-      std::accumulate(g_nlt_all.lbegin(), g_nlt_all.lend(), 0);
+  auto& g_partition_dist = g_nlt_all;
 
+  /* Calculate number of elements to receive for each partition:
+   * We first assume that we we receive exactly the number of elements which
+   * are less than P.
+   * The output are the end offsets for each partition
+   */
+  auto const n_my_elements =
+      std::accumulate(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
+
+  // Calculate the deficit
   auto my_deficit = C[myid + 1] - n_my_elements;
 
   unit = static_cast<team_unit_t>(0);
 
+  // If there is a deficit, look how much unit j can supply
   for (; unit < last && my_deficit > 0; ++unit) {
-    auto const supply_unit = g_nle_all.local[unit] - g_nlt_all.local[unit];
+    auto const supply_unit =
+        g_nle_all.local[unit] - g_partition_dist.local[unit];
 
     DASH_ASSERT_GE(supply_unit, 0, "ivalid supply of target unit");
     if (supply_unit <= my_deficit) {
-      g_nlt_all.local[unit] += supply_unit;
+      g_partition_dist.local[unit] += supply_unit;
       my_deficit -= supply_unit;
     }
     else {
-      g_nlt_all.local[unit] += my_deficit;
+      g_partition_dist.local[unit] += my_deficit;
       my_deficit = 0;
     }
   }
 
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
 
-  // again transpose everything in g_nle_all
-  //
-  unit = static_cast<team_unit_t>(0);
+  DASH_SORT_LOG_TRACE_RANGE(
+      "final partition distribution", g_partition_dist.lbegin(),
+      g_partition_dist.lend());
+
+
+  team.barrier();
+
+  /*
+   * Transpose the final distribution again to obtain the end offsets
+   */
+  auto& g_target_count = g_nle_all;
+  unit                 = static_cast<team_unit_t>(0);
 
   for (; unit < last; ++unit) {
     DASH_ASSERT_EQ(
-        g_nle_all.pattern().local_size(unit), g_nlt_all.lsize(),
+        g_target_count.pattern().local_size(unit), g_partition_dist.lsize(),
         "Invalid Array length");
-    auto const offset       = unit * nunits + myid;
-    g_nle_all.async[offset] = g_nlt_all.local[unit];
+    auto const offset            = unit * nunits + myid;
+    g_target_count.async[offset] = g_partition_dist.local[unit];
   }
 
-  g_nle_all.async.flush();
+  g_target_count.async.flush();
+
   team.barrier();
 
+  /* g_target_count only local access */
+
   DASH_SORT_LOG_TRACE_RANGE(
-      "final target count", g_nle_all.lbegin(), g_nle_all.lend());
+      "final target count", g_target_count.lbegin(), g_target_count.lend());
 
   DASH_ASSERT_EQ(
-      g_nle_all.lsize(), myC.size() - 1, "Array sizes do not match");
+      g_target_count.lsize(), l_target_count.size() - 1,
+      "Array sizes do not match");
 
-  myC[0] = 0;
-  std::copy(g_nle_all.lbegin(), g_nle_all.lend(), myC.begin() + 1);
+  l_target_count[0] = 0;
+  std::copy(
+      g_target_count.lbegin(), g_target_count.lend(),
+      l_target_count.begin() + 1);
 
-  // g_nlt_all.local[unit] = myC[unit + 1] - myC[unit];
+  /* g_send_count only local access */
+  auto& g_send_count = g_partition_dist;
+
   std::transform(
-      myC.begin() + 1, myC.end(), myC.begin(), g_nlt_all.lbegin(),
+      l_target_count.begin() + 1, l_target_count.end(),
+      l_target_count.begin(), g_send_count.lbegin(),
       std::minus<difference_type>());
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "send count", g_nlt_all.lbegin(), g_nlt_all.lend());
+      "send count", g_send_count.lbegin(), g_send_count.lend());
 
-  std::vector<difference_type> send_offsets(nunits);
-  send_offsets[0] = 0;
+  std::vector<difference_type> l_send_displs(nunits);
+  l_send_displs[0] = 0;
 
-  DASH_ASSERT_EQ(g_nlt_all.lsize(), nunits, "Array sizes must match");
+  DASH_ASSERT_EQ(g_send_count.lsize(), nunits, "Array sizes must match");
 
   std::transform(
-      g_nlt_all.lbegin(), g_nlt_all.lend() - 1, send_offsets.begin(),
-      send_offsets.begin() + 1, std::plus<difference_type>());
+      g_send_count.lbegin(), g_send_count.lend() - 1, l_send_displs.begin(),
+      l_send_displs.begin() + 1, std::plus<difference_type>());
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "send displs", send_offsets.begin(), send_offsets.end());
+      "send displs", l_send_displs.begin(), l_send_displs.end());
 
-  //TODO: Maybe there is a better way to obtain the correct type??
+  // Implicit barrier in Array Constructor
+  dash::Array<difference_type> g_target_displs(nunits * nunits);
+  g_target_displs.local[myid] = 0;
+
+  std::vector<difference_type> l_target_displs(nunits, 0);
+
+  unit = static_cast<team_unit_t>(1);
+
+  for (; unit < last; ++unit) {
+    auto const            prev_u = unit - 1;
+    difference_type const val    = (prev_u == myid)
+                                    ? g_send_count.local[prev_u]
+                                    : g_send_count[prev_u * nunits + myid];
+
+    l_target_displs[unit]                 = val + l_target_displs[prev_u];
+    g_target_displs[unit * nunits + myid] = l_target_displs[unit];
+  }
+
+  team.barrier();
+
+  DASH_SORT_LOG_TRACE_RANGE(
+      "target displs", g_target_displs.lbegin(), g_target_displs.lend());
+
+  // TODO: Maybe there is a better way to obtain the correct type??
   using local_coords_t = typename iter_pattern_t::local_coords_t;
-  local_coords_t xx{};
-  using coords_array_t = decltype(xx.coords);
-
+  local_coords_t xx__{dash::team_unit_t{}, {}};
+  using coords_array_t = decltype(xx__.coords);
 
   coords_array_t const lcoords{};
 
@@ -473,40 +537,45 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   std::vector<dash::Future<iter_t>> async_copies{};
 
-  std::vector<value_type> buf;
-  buf.reserve(n_l_elem);
+  DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
 
-  std::copy(lbegin, lend, buf.begin());
-
-  team.barrier();
-
-#if 0
   for (; unit < last; ++unit) {
+    auto const send_count = g_send_count.local[unit];
+    DASH_ASSERT_GE(send_count, 0, "invalid send count");
+    if (send_count == 0) continue;
+    auto const target_disp = g_target_displs.local[unit];
+    DASH_ASSERT_GE(target_disp, 0, "invalid taget_disp");
+    auto const send_disp = l_send_displs[unit];
+    DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
+
     if (unit != myid) {
       auto const gidx = pattern.global_index(unit, lcoords);
-      auto const send_count = g_nlt_all.local[unit];
-      std::size_t target_disp;
-      if (unit > myid) {
-        target_disp = std::accumulate(
-            g_nlt_all.lbegin(), g_nlt_all.lbegin() + unit - 1, 0);
-      }
-      else {
-        target_disp =
-            std::accumulate(g_nlt_all.lbegin(), g_nlt_all.lbegin() + unit, 0);
-      }
-      DASH_ASSERT_RANGE(0, gidx, n_g_elem, "invalid global index");
-      DASH_ASSERT_GE(send_offsets[unit], 0, "send offset has to be >= 0");
+
       auto fut = dash::copy_async(
-          lbegin + send_offsets[unit], lbegin + send_count,
+          &(*(lcopy.begin() + send_disp)),
+          &(*(lcopy.begin() + send_disp + send_count)),
           begin + gidx + target_disp);
+
       async_copies.push_back(fut);
+    }
+    else {
+      // Local case: send_disp = target_disp;
+      std::copy(
+          lcopy.begin() + send_disp, lcopy.begin() + send_disp + send_count,
+          lbegin + target_disp);
     }
   }
 
-  for (auto & fut : async_copies) {
+  for (auto& fut : async_copies) {
     fut.wait();
   }
-#endif
+
+  team.barrier();
+
+  std::sort(lbegin, lend);
+  DASH_SORT_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
+
+  team.barrier();
 }
 
 }  // namespace dash

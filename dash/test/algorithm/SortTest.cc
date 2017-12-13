@@ -4,6 +4,7 @@
 #include <dash/algorithm/Sort.h>
 
 #include <algorithm>
+#include <random>
 
 TEST_F(SortTest, ArraySort)
 {
@@ -14,31 +15,21 @@ TEST_F(SortTest, ArraySort)
 
   static std::uniform_int_distribution<Element_t> distribution(0, 100);
   static std::random_device                       rd;
-  static std::default_random_engine generator(rd() + dash::myid());
-  /// Using a prime to cause inconvenient strides
+  static std::mt19937 generator(rd() + dash::myid());
+
   size_t num_local_elem = 10;
 
-  LOG_MESSAGE("SortTest.TestAllItemsFilled: allocate array");
+  LOG_MESSAGE("SortTest.ArraySort: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
+
   std::generate(
       array.lbegin(), array.lend(), []() { return distribution(generator); });
   // Wait for all units
   array.barrier();
 
-  std::ostringstream os;
-  std::copy(
-      array.lbegin(), array.lend(),
-      std::ostream_iterator<Element_t>(os, " "));
-
-  DASH_LOG_DEBUG("SortTest.ArraySort", "local values", os.str());
-
-  // if (dash::myid() == 0) {
-  int wait = 1;
-  while (wait)
-    ;
-  //}
-
+  int wait = 0;
+  while(wait);
   dash::sort(array.begin(), array.end());
 
   if (dash::myid() == 0) {
