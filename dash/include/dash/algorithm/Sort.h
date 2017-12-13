@@ -333,12 +333,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
 
-  size_t iter = 0;
   bool   done = false;
 
   do {
-    iter++;
-
     detail::psort_calculate_boundaries(p_borders, partitions);
 
     auto const histograms =
