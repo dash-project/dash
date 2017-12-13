@@ -530,13 +530,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   DASH_SORT_LOG_TRACE_RANGE(
       "target displs", g_target_displs.lbegin(), g_target_displs.lend());
 
-  // TODO: Maybe there is a better way to obtain the correct type??
-  using local_coords_t = typename iter_pattern_t::local_coords_t;
-  local_coords_t xx__{dash::team_unit_t{}, {}};
-  using coords_array_t = decltype(xx__.coords);
-
-  coords_array_t const lcoords{};
-
   unit = static_cast<team_unit_t>(0);
 
   std::vector<dash::Future<iter_t> > async_copies{};
@@ -553,6 +546,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
 
     if (unit != myid) {
+      //The array passed to global_index is 0 initialized
       auto const gidx = pattern.global_index(unit, {});
 
       auto fut = dash::copy_async(
