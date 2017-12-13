@@ -26,10 +26,12 @@ void mock_team_locality(
   unit_0_hwinfo.min_threads = 2;
   unit_0_hwinfo.min_cpu_mhz = unit_0_hwinfo.min_cpu_mhz * 2;
   unit_0_hwinfo.max_cpu_mhz = unit_0_hwinfo.min_cpu_mhz;
+  unit_0_hwinfo.max_shmem_mbps = unit_0_hwinfo.max_shmem_mbps * 2;
 
   // Half min. number of threads and CPU capacity of unit 1:
   unit_1_hwinfo.min_cpu_mhz = unit_1_hwinfo.min_cpu_mhz / 2;
   unit_1_hwinfo.max_cpu_mhz = unit_1_hwinfo.min_cpu_mhz;
+  unit_1_hwinfo.max_shmem_mbps = unit_1_hwinfo.max_shmem_mbps / 2;
 }
 
 
@@ -41,8 +43,6 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
     return;
   }
 
-  return; // Temporarily disabled
-
   typedef dash::LoadBalancePattern<1> pattern_t;
   typedef dash::util::TeamLocality    team_loc_t;
 
@@ -50,11 +50,10 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   team_loc_t tloc(dash::Team::All());
 
   mock_team_locality(tloc);
-
   // Ratio unit 0 CPU capacity / unit 1 CPU capacity:
-  double cpu_cap_ratio      = 8.0;
-  double cap_balanced       = static_cast<double>(size) /
-                                (8 + 1 + (2 * (dash::size() - 2)));
+  double cap_ratio      = 4.0;
+  double cap_balanced   = static_cast<double>(size) /
+                                (4 + 1 + (2 * (dash::size() - 2)));
 
   pattern_t pat(dash::SizeSpec<1>(size), tloc);
 
@@ -70,7 +69,7 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_1_lsize_exp);
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_x_lsize_exp);
 
-  EXPECT_EQ_U(cpu_cap_ratio,
+  EXPECT_EQ_U(cap_ratio,
               std::floor(
                 pat.local_size(dash::team_unit_t{0}) /
                 pat.local_size(dash::team_unit_t{1})));
