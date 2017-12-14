@@ -229,6 +229,48 @@ inline bool psort_validate_partitions(
   // exit condition
   return nonstable_it == p_borders.is_stable.cend();
 }
+
+template <typename DifferenceType>
+void calc_final_partition_dist(
+    dash::Array<DifferenceType> const& g_partition_supply,
+    std::vector<DifferenceType> const& acc_unit_count,
+    dash::Array<DifferenceType>&       g_partition_dist)
+{
+  /* Calculate number of elements to receive for each partition:
+   * We first assume that we we receive exactly the number of elements which
+   * are less than P.
+   * The output are the end offsets for each partition
+   */
+
+  auto const myid = g_partition_supply.team().myid();
+  auto const n_my_elements =
+      std::accumulate(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
+
+  // Calculate the deficit
+  auto my_deficit = acc_unit_count[myid + 1] - n_my_elements;
+
+  dash::team_unit_t       unit(0);
+  dash::team_unit_t const last(g_partition_supply.team().size());
+
+  // If there is a deficit, look how much unit j can supply
+  for (; unit < last && my_deficit > 0; ++unit) {
+    auto const supply_unit =
+        g_partition_supply.local[unit] - g_partition_dist.local[unit];
+
+    DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
+    if (supply_unit <= my_deficit) {
+      g_partition_dist.local[unit] += supply_unit;
+      my_deficit -= supply_unit;
+    }
+    else {
+      g_partition_dist.local[unit] += my_deficit;
+      my_deficit = 0;
+    }
+  }
+
+  DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
+}
+
 }  // namespace detail
 
 template <class GlobRandomIt>
@@ -313,12 +355,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // Buffer for partition loops
   dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
 
-  dash::Array<difference_type> g_nlt_all(
+  dash::Array<difference_type> g_partition_dist(
       nunits * nunits, dash::BLOCKED, team);
-  dash::Array<difference_type> g_nle_all(
+  dash::Array<difference_type> g_partition_supply(
       nunits * nunits, dash::BLOCKED, team);
 
-  std::vector<difference_type> l_target_count(nunits + 1);
 
   // Starting offsets of all units
   std::vector<difference_type> acc_unit_count(nunits + 1);
@@ -393,67 +434,40 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
    * Transpose (Shuffle) the final histograms to communicate
    * the partition distribution
    */
+
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
     auto const transposed_unit = idx - 1;
     DASH_ASSERT_EQ(
-        g_nlt_all.pattern().local_size(
+        g_partition_dist.pattern().local_size(
             static_cast<dash::team_unit_t>(transposed_unit)),
         l_nlt.size() - 1, "Invalid Array length");
     auto const offset = transposed_unit * nunits + myid.id;
 
-    g_nlt_all.async[offset].set(&(l_nlt[idx]));
-    g_nle_all.async[offset].set(&(l_nle[idx]));
+    g_partition_dist.async[offset].set(&(l_nlt[idx]));
+    g_partition_supply.async[offset].set(&(l_nle[idx]));
   }
 
   // complete outstanding requests...
-  g_nlt_all.async.flush();
-  g_nle_all.async.flush();
+  g_partition_dist.async.flush();
+  g_partition_supply.async.flush();
 
   team.barrier();
 
-  /* Calculate final distribution per partition. Each unit is responsible for
-   * one partition.
-   */
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "transposed histograms: g_nlt_all.local", g_nlt_all.lbegin(),
-      g_nlt_all.lend());
+      "initial partition distribution: g_partition_dist.local",
+      g_partition_dist.lbegin(), g_partition_dist.lend());
+
   DASH_SORT_LOG_TRACE_RANGE(
-      "transposed histograms: g_nle_all.local", g_nle_all.lbegin(),
-      g_nle_all.lend());
+      "partition supply: g_partition_supply.local",
+      g_partition_supply.lbegin(), g_partition_supply.lend());
 
-  auto& g_partition_dist = g_nlt_all;
-
-  /* Calculate number of elements to receive for each partition:
-   * We first assume that we we receive exactly the number of elements which
-   * are less than P.
-   * The output are the end offsets for each partition
+  /* Calculate final distribution per partition. Each unit calculate their
+   * local distribution independently.
+   * All accesses are only to local memory
    */
-  auto const n_my_elements =
-      std::accumulate(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
-
-  // Calculate the deficit
-  auto my_deficit = acc_unit_count[myid + 1] - n_my_elements;
-
-  unit = static_cast<team_unit_t>(0);
-
-  // If there is a deficit, look how much unit j can supply
-  for (; unit < last && my_deficit > 0; ++unit) {
-    auto const supply_unit =
-        g_nle_all.local[unit] - g_partition_dist.local[unit];
-
-    DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
-    if (supply_unit <= my_deficit) {
-      g_partition_dist.local[unit] += supply_unit;
-      my_deficit -= supply_unit;
-    }
-    else {
-      g_partition_dist.local[unit] += my_deficit;
-      my_deficit = 0;
-    }
-  }
-
-  DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
+  detail::calc_final_partition_dist(
+      g_partition_supply, acc_unit_count, g_partition_dist);
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition distribution", g_partition_dist.lbegin(),
@@ -464,7 +478,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   /*
    * Transpose the final distribution again to obtain the end offsets
    */
-  auto& g_target_count = g_nle_all;
+  auto& g_target_count = g_partition_supply;
   unit                 = static_cast<team_unit_t>(0);
 
   for (; unit < last; ++unit) {
@@ -481,6 +495,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final target count", g_target_count.lbegin(), g_target_count.lend());
+
+
+  std::vector<difference_type> l_target_count(nunits + 1);
 
   DASH_ASSERT_EQ(
       g_target_count.lsize(), l_target_count.size() - 1,
