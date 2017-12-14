@@ -271,6 +271,81 @@ void calc_final_partition_dist(
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
 }
 
+template <typename DifferenceType>
+std::vector<DifferenceType> calc_send_count(
+    dash::Array<DifferenceType> const& g_target_count,
+    dash::Array<DifferenceType>&       g_send_count)
+{
+  auto const                  nunits = g_target_count.team().size();
+  std::vector<DifferenceType> l_target_count(nunits + 1);
+
+  DASH_ASSERT_EQ(
+      g_target_count.lsize(), l_target_count.size() - 1,
+      "Array sizes do not match");
+
+  l_target_count[0] = 0;
+  std::copy(
+      g_target_count.lbegin(), g_target_count.lend(),
+      l_target_count.begin() + 1);
+
+  std::transform(
+      l_target_count.begin() + 1, l_target_count.end(),
+      l_target_count.begin(), g_send_count.lbegin(),
+      std::minus<DifferenceType>());
+
+  std::vector<DifferenceType> l_send_displs(nunits);
+  l_send_displs[0] = 0;
+
+  DASH_ASSERT_EQ(g_send_count.lsize(), nunits, "Array sizes must match");
+
+  std::transform(
+      g_send_count.lbegin(), g_send_count.lend() - 1, l_send_displs.begin(),
+      l_send_displs.begin() + 1, std::plus<DifferenceType>());
+
+  return l_send_displs;
+}
+
+template <typename DifferenceType>
+void calc_target_displs(
+    dash::Array<DifferenceType> const& g_send_count,
+    dash::Array<DifferenceType>&       g_target_displs)
+{
+  auto const nunits = g_target_displs.team().size();
+  auto const myid   = g_target_displs.team().myid();
+
+  if (0 == myid) {
+    // Unit 0 always writes to target offset 0
+    std::fill(g_target_displs.lbegin(), g_target_displs.lend(), 0);
+  }
+
+  std::vector<DifferenceType> l_target_displs(nunits, 0);
+
+  team_unit_t       unit(1);
+  team_unit_t const last(nunits);
+
+  auto const target_displs_lbegin = myid * nunits;
+  auto const target_displs_lend   = target_displs_lbegin + nunits;
+
+  for (; unit < last; ++unit) {
+    auto const           prev_u = unit - 1;
+    DifferenceType const val    = (prev_u == myid)
+                                   ? g_send_count.local[prev_u]
+                                   : g_send_count[prev_u * nunits + myid];
+
+    l_target_displs[unit]    = val + l_target_displs[prev_u];
+    auto const target_offset = unit * nunits + myid;
+    if (target_displs_lbegin <= target_offset &&
+        target_offset < target_displs_lend) {
+      g_target_displs.local[target_offset % nunits] = l_target_displs[unit];
+    }
+    else {
+      g_target_displs.async[target_offset].set(&(l_target_displs[unit]));
+    }
+  }
+
+  g_target_displs.async.flush();
+}
+
 }  // namespace detail
 
 template <class GlobRandomIt>
@@ -359,7 +434,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       nunits * nunits, dash::BLOCKED, team);
   dash::Array<difference_type> g_partition_supply(
       nunits * nunits, dash::BLOCKED, team);
-
 
   // Starting offsets of all units
   std::vector<difference_type> acc_unit_count(nunits + 1);
@@ -453,7 +527,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   team.barrier();
 
-
   DASH_SORT_LOG_TRACE_RANGE(
       "initial partition distribution: g_partition_dist.local",
       g_partition_dist.lbegin(), g_partition_dist.lend());
@@ -496,75 +569,24 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   DASH_SORT_LOG_TRACE_RANGE(
       "final target count", g_target_count.lbegin(), g_target_count.lend());
 
-
-  std::vector<difference_type> l_target_count(nunits + 1);
-
-  DASH_ASSERT_EQ(
-      g_target_count.lsize(), l_target_count.size() - 1,
-      "Array sizes do not match");
-
-  l_target_count[0] = 0;
-  std::copy(
-      g_target_count.lbegin(), g_target_count.lend(),
-      l_target_count.begin() + 1);
-
   /* g_send_count only local access */
-  auto& g_send_count = g_partition_dist;
-
-  std::transform(
-      l_target_count.begin() + 1, l_target_count.end(),
-      l_target_count.begin(), g_send_count.lbegin(),
-      std::minus<difference_type>());
+  auto& g_send_count  = g_partition_dist;
+  auto  l_send_displs = detail::calc_send_count(g_target_count, g_send_count);
 
   DASH_SORT_LOG_TRACE_RANGE(
       "send count", g_send_count.lbegin(), g_send_count.lend());
 
-  std::vector<difference_type> l_send_displs(nunits);
-  l_send_displs[0] = 0;
-
-  DASH_ASSERT_EQ(g_send_count.lsize(), nunits, "Array sizes must match");
-
-  std::transform(
-      g_send_count.lbegin(), g_send_count.lend() - 1, l_send_displs.begin(),
-      l_send_displs.begin() + 1, std::plus<difference_type>());
-
   DASH_SORT_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
+
   // Implicit barrier in Array Constructor
+  // team.barrier();
   dash::Array<difference_type> g_target_displs(
       nunits * nunits, dash::BLOCKED, team);
 
-  if (0 == myid) {
-    // Unit 0 always writes to target offset 0
-    std::fill(g_target_displs.lbegin(), g_target_displs.lend(), 0);
-  }
+  detail::calc_target_displs(g_send_count, g_target_displs);
 
-  std::vector<difference_type> l_target_displs(nunits, 0);
-
-  unit = static_cast<team_unit_t>(1);
-
-  auto const target_displs_lbegin = myid * nunits;
-  auto const target_displs_lend   = target_displs_lbegin + nunits;
-
-  for (; unit < last; ++unit) {
-    auto const            prev_u = unit - 1;
-    difference_type const val    = (prev_u == myid)
-                                    ? g_send_count.local[prev_u]
-                                    : g_send_count[prev_u * nunits + myid];
-
-    l_target_displs[unit]    = val + l_target_displs[prev_u];
-    auto const target_offset = unit * nunits + myid;
-    if (target_displs_lbegin <= target_offset &&
-        target_offset < target_displs_lend) {
-      g_target_displs.local[target_offset % nunits] = l_target_displs[unit];
-    }
-    else {
-      g_target_displs.async[target_offset].set(&(l_target_displs[unit]));
-    }
-  }
-
-  g_target_displs.async.flush();
   team.barrier();
 
   DASH_SORT_LOG_TRACE_RANGE(
