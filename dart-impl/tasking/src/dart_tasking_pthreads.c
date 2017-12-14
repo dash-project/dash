@@ -593,8 +593,8 @@ dart__tasking__init()
 int
 dart__tasking__thread_num()
 {
-  return (dart__likely(initialized) ? get_current_thread()->thread_id
-                                    : 0);
+  dart_thread_t *t = get_current_thread();
+  return (dart__likely(t) ? t->thread_id : 0);
 }
 
 int
