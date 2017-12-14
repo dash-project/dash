@@ -114,8 +114,8 @@ public:
     if(Scope == StencilViewScope::INNER)
       return false;
 
-    auto        halo_coords{ _coords };
-    const auto& stencil = _stencil_spec[index_stencil];
+    auto        halo_coords =  _coords ;
+    const auto& stencil     = _stencil_spec[index_stencil];
     for(auto d = 0; d < NumDimensions; ++d) {
       halo_coords[d] += stencil[d];
       if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
@@ -132,9 +132,9 @@ public:
       return halos;
 
     for(auto i = 0; i < NumStencilPoints; ++i) {
-      auto        halo_coords{ _coords };
-      const auto& stencil = _stencil_spec[i];
-      bool        halo    = false;
+      auto        halo_coords =  _coords ;
+      const auto& stencil     = _stencil_spec[i];
+      bool        halo        = false;
       for(auto d = 0; d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
@@ -153,9 +153,9 @@ public:
     if(Scope == StencilViewScope::INNER)
       return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
 
-    auto        halo_coords{ _coords };
-    const auto& stencil = _stencil_spec[index_stencil];
-    bool        halo    = false;
+    auto        halo_coords =  _coords ;
+    const auto& stencil     = _stencil_spec[index_stencil];
+    bool        halo        = false;
     for(auto d = 0; d < NumDimensions; ++d) {
       halo_coords[d] += stencil[d];
       if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
@@ -174,9 +174,8 @@ public:
     if(Scope == StencilViewScope::INNER) {
       return *halo_pos(stencil);
     } else {
-      auto halo_coords{ _coords };
-
-      bool halo = false;
+      auto halo_coords  = _coords ;
+      bool halo         = false;
       for(auto d = 0; d < NumDimensions; ++d) {
         halo_coords[d] += stencil[d];
         if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
