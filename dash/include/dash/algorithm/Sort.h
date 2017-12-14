@@ -166,6 +166,7 @@ inline void psort_global_histogram(
   using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType> >;
 
   // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
+  // TODO: better apply dash::transform instead
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
     // accumulate g_nlt
     auto const g_idx_nlt      = (idx - 1) * 2;
@@ -304,13 +305,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // No subsequent barriers are need for Shared due to container constructors
 
-  dash::Array<difference_type> g_nlt_nle(nunits * 2, team);
+  dash::Array<difference_type> g_nlt_nle(nunits * 2, dash::BLOCKED, team);
 
   // Buffer for partition loops
   dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
 
-  dash::Array<difference_type> g_nlt_all(nunits * nunits, team);
-  dash::Array<difference_type> g_nle_all(nunits * nunits, team);
+  dash::Array<difference_type> g_nlt_all(
+      nunits * nunits, dash::BLOCKED, team);
+  dash::Array<difference_type> g_nle_all(
+      nunits * nunits, dash::BLOCKED, team);
 
   std::vector<difference_type> l_target_count(nunits + 1);
 
@@ -508,12 +511,20 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
   // Implicit barrier in Array Constructor
-  dash::Array<difference_type> g_target_displs(nunits * nunits);
-  g_target_displs.local[myid] = 0;
+  dash::Array<difference_type> g_target_displs(
+      nunits * nunits, dash::BLOCKED, team);
+
+  if (0 == myid) {
+    // Unit 0 always writes to target offset 0
+    std::fill(g_target_displs.lbegin(), g_target_displs.lend(), 0);
+  }
 
   std::vector<difference_type> l_target_displs(nunits, 0);
 
   unit = static_cast<team_unit_t>(1);
+
+  auto const target_displs_lbegin = myid * nunits;
+  auto const target_displs_lend = target_displs_lbegin + nunits;
 
   for (; unit < last; ++unit) {
     auto const            prev_u = unit - 1;
@@ -521,8 +532,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
                                     ? g_send_count.local[prev_u]
                                     : g_send_count[prev_u * nunits + myid];
 
-    l_target_displs[unit]                 = val + l_target_displs[prev_u];
-    g_target_displs[unit * nunits + myid] = l_target_displs[unit];
+    l_target_displs[unit]          = val + l_target_displs[prev_u];
+    auto const target_offset       = unit * nunits + myid;
+    if (target_displs_lbegin <= target_offset && target_offset < target_displs_lend) {
+      g_target_displs.local[target_offset % nunits] = l_target_displs[unit];
+    } else {
+      g_target_displs[target_offset] = l_target_displs[unit];
+    }
   }
 
   team.barrier();
@@ -546,7 +562,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
 
     if (unit != myid) {
-      //The array passed to global_index is 0 initialized
+      // The array passed to global_index is 0 initialized
       auto const gidx = pattern.global_index(unit, {});
 
       auto fut = dash::copy_async(

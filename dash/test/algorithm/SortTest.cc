@@ -29,6 +29,8 @@ TEST_F(SortTest, ArraySort)
 
   auto const true_sum = dash::accumulate(array.begin(), array.end(), 0);
 
+  int wait = 0;
+  while(wait);
   dash::sort(array.begin(), array.end());
 
   auto const actual_sum = dash::accumulate(array.begin(), array.end(), 0);
