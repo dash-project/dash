@@ -84,61 +84,78 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+#ifdef DOXYGEN
 
-namespace internal {
+/**
+ * Type trait for mapping to DART data types.
+ */
+template<typename Type>
+struct dart_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+/**
+ * Type trait for mapping to punned DART data type for reduce operations.
+ */
+template <typename T>
+struct dart_punned_datatype {
+  static constexpr const dart_datatype_t value;
+};
+
+#else
 
 template<typename Type>
-struct dart_datatype_ {
+struct dart_datatype {
   static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
 };
 
 template<>
-struct dart_datatype_<char> {
+struct dart_datatype<char> {
   static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
 };
 
 template<>
-struct dart_datatype_<unsigned char> {
+struct dart_datatype<unsigned char> {
   static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
 };
 
 template<>
-struct dart_datatype_<short> {
+struct dart_datatype<short> {
   static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
 };
 
 template<>
-struct dart_datatype_<unsigned short> {
+struct dart_datatype<unsigned short> {
   static constexpr const dart_datatype_t value = DART_TYPE_SHORT;
 };
 
 template<>
-struct dart_datatype_<int> {
+struct dart_datatype<int> {
   static constexpr const dart_datatype_t value = DART_TYPE_INT;
 };
 
 template<>
-struct dart_datatype_<unsigned int> {
+struct dart_datatype<unsigned int> {
   static constexpr const dart_datatype_t value = DART_TYPE_UINT;
 };
 
 template<>
-struct dart_datatype_<float> {
+struct dart_datatype<float> {
   static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
 };
 
 template<>
-struct dart_datatype_<long> {
+struct dart_datatype<long> {
   static constexpr const dart_datatype_t value = DART_TYPE_LONG;
 };
 
 template<>
-struct dart_datatype_<unsigned long> {
+struct dart_datatype<unsigned long> {
   static constexpr const dart_datatype_t value = DART_TYPE_ULONG;
 };
 
 template<>
-struct dart_datatype_<double> {
+struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
@@ -147,6 +164,7 @@ struct dart_datatype<const T> : dart_datatype<T> { };
 
 template<typename T>
 struct dart_datatype<volatile T> : dart_datatype<T> { };
+
 
 namespace internal {
 
@@ -177,34 +195,16 @@ struct dart_pun_datatype_size<8>
 
 } // namespace internal
 
-#ifdef DOXYGEN
-
-/**
- * Type trait for mapping to punned DART data type for reduce operations.
- */
 template <typename T>
 struct dart_punned_datatype {
-  static constexpr const dart_datatype_t value;
-};
-
-#else
-
-template <typename T>
-struct dart_punned_datatype {
-private:
-  typedef typename std::remove_const<
-                     typename std::remove_reference<T>::type
-                   >::type
-    TDec;
-public:
   static constexpr const dart_datatype_t value
                            = std::conditional<
                                // only use type punning if T is not a DART
                                // data type:
-                               dash::dart_datatype<TDec>::value
+                               dash::dart_datatype<T>::value
                                  == DART_TYPE_UNDEFINED,
-                               internal::dart_pun_datatype_size<sizeof(TDec)>,
-                               dash::dart_datatype<TDec>
+                               internal::dart_pun_datatype_size<sizeof(T)>,
+                               dash::dart_datatype<T>
                              >::type::value;
 };
 
@@ -224,11 +224,7 @@ struct is_container_compatible :
               // std::is_trivially_copyable.
            && std::is_trivially_copyable<T>::value
 #elif defined(__GNUG__) && __GNUC__ < 5
-           // deprecated in C++14
-        // && std::has_trivial_copy_constructor<T>::value
-           && std::is_trivially_copy_constructible<T>::value
-           // no test for assignment as const element type is
-           // allowed
+           && std::has_trivial_copy_constructor<T>::value
 #endif
          >
 { };
