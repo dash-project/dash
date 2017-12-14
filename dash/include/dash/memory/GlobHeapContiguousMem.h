@@ -124,22 +124,6 @@ public:
   }
 
   /**
-   * Returns a reference to the requested element.
-   */
-  /*
-  value_type & get(bucket_index bucket, index_type index) {
-    auto it = _container_list->begin();
-    std::advance(it, cont);
-    auto c_data = *it;
-    if(c_data.container->size() > pos) {
-      return c_data.container->operator[](pos);
-    }
-    pos -= c_data.container->size();
-    return c_data.unattached_container->operator[](pos);
-  }
-  */
-
-  /**
    * Destructor, collectively frees underlying global memory.
    */
   ~GlobHeapContiguousMem() { }
@@ -311,6 +295,8 @@ public:
    * Iterator to the beginning of the memory space's local portion.
    */
   local_iterator lbegin() const {
+    // TODO: use iterator of _container, if _unattached_containers do not 
+    //       contain any data
     return _lbegin;
   }
 
@@ -337,18 +323,6 @@ public:
     update_lend();
     return _lend - 1;
   }
-
-  /**
-   * Returns the local size of a given bucket.
-   */
-  /*
-  size_type container_local_size(container_list_index index) const {
-    auto cont_it = _container_list->begin();
-    std::advance(cont_it, index);
-    auto c_data = *cont_it;
-    return c_data.container->size() + c_data.unattached_container->size();
-  }
-  */
 
   /**
    * Returns the global size of a given bucket.
@@ -419,17 +393,6 @@ public:
   }
 
 private:
-
-  /**
-   * Returns indices of attached and unattached containers from _buckets given 
-   * a bucket index from _global_buckets
-   */
-  /*
-  std::pair<local_bucket_index_type, local_bucket_index_type> 
-    local_buckets(bucket_index_type index) {
-    return std::make_pair(index * 2, (index * 2) + 1);
-  }
-  */
 
   /**
    * Native pointer of the initial address of the local memory of
