@@ -33,6 +33,14 @@
   }\
 } while(0)
 
+#define DASH_ASSERT_MSG_ALWAYS(expr, msg) do { \
+  if (!(expr)) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion failed: " \
+               << " " << __FILE__ << ":" << __LINE__); \
+  }\
+} while(0)
+
 #if defined(DASH_ENABLE_ASSERTIONS)
 
 #define DASH_ASSERT(expr) do { \

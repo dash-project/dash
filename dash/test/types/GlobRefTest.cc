@@ -20,38 +20,34 @@ TEST_F(GlobRefTest, ArithmeticOps)
   ASSERT_EQ_U(gref, 0);
 
   // prefix increment
-  ++gref;
+  ASSERT_EQ_U(++gref, 1);
   ASSERT_EQ_U(gref, 1);
 
-  ++(++gref);
+  ASSERT_EQ_U(++(++gref), 3);
+  ASSERT_EQ_U(gref, 3);
+
+  // postfix increment
+  ASSERT_EQ_U(gref++, 3);
+  ASSERT_EQ_U(gref, 4);
+
+  // postfix decrement
+  ASSERT_EQ_U(gref--, 4);
   ASSERT_EQ_U(gref, 3);
 
   // prefix decrement
-  --(--gref);
+  ASSERT_EQ_U(--(--gref), 1);
   ASSERT_EQ_U(gref, 1);
 
   // unary operations
-  gref *= 2;
+  ASSERT_EQ_U(gref *= 2, 2);
   ASSERT_EQ_U(gref, 2);
 
-  gref /= 2;
+  ASSERT_EQ_U(gref /= 2, 1);
   ASSERT_EQ_U(gref, 1);
 
-  gref += 1;
+  ASSERT_EQ_U(gref += 1, 2);
   ASSERT_EQ_U(gref, 2);
 
-  gref -= 1;
+  ASSERT_EQ_U(gref -= 1, 1);
   ASSERT_EQ_U(gref, 1);
-
-  // postfix increment
-  value_t prev = gref++;
-  ASSERT_EQ_U(prev, 1);
-  ASSERT_EQ_U(gref, 2);
-
-
-  // postfix increment
-  prev = gref--;
-  ASSERT_EQ_U(prev, 2);
-  ASSERT_EQ_U(gref, 1);
-
 }
