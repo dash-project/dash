@@ -243,6 +243,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   using difference_type    = index_type;
   using const_pointer_type = typename iter_t::const_pointer;
 
+  static_assert(
+      std::is_integral<value_type>::value,
+      "Only integral types are supported");
+
   if (pattern.team() == dash::Team::Null()) {
     DASH_LOG_DEBUG("dash::sort", "Sorting on dash::Team::Null()");
     return;
@@ -295,15 +299,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const lmin = *lbegin;
   auto const lmax = *(lend - 1);
 
-  dash::Shared<dash::Atomic<value_type> > g_min(
-      static_cast<dash::team_unit_t>(0), team);
-  dash::Shared<dash::Atomic<value_type> > g_max(
-      static_cast<dash::team_unit_t>(0), team);
+  dash::Shared<dash::Atomic<value_type> > g_min(dash::team_unit_t{0}, team);
+  dash::Shared<dash::Atomic<value_type> > g_max(dash::team_unit_t{0}, team);
 
   g_min.get().op(dash::min<value_type>(), lmin);
   g_max.get().op(dash::max<value_type>(), lmax);
 
-  // No subsequent barriers are need for Shared due to container constructors
+  // No subsequent barriers are needed for Shared due to container
+  // constructors
 
   dash::Array<difference_type> g_nlt_nle(nunits * 2, dash::BLOCKED, team);
 
@@ -398,8 +401,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
         l_nlt.size() - 1, "Invalid Array length");
     auto const offset = transposed_unit * nunits + myid.id;
 
-    g_nlt_all.async[offset] = l_nlt[idx];
-    g_nle_all.async[offset] = l_nle[idx];
+    g_nlt_all.async[offset].set(&(l_nlt[idx]));
+    g_nle_all.async[offset].set(&(l_nle[idx]));
   }
 
   // complete outstanding requests...
@@ -408,8 +411,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   team.barrier();
 
-  /* Calculate final distribution per partition. Each unit is responsible one
-   * partition. */
+  /* Calculate final distribution per partition. Each unit is responsible for
+   * one partition.
+   */
 
   DASH_SORT_LOG_TRACE_RANGE(
       "transposed histograms: g_nlt_all.local", g_nlt_all.lbegin(),
@@ -438,7 +442,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     auto const supply_unit =
         g_nle_all.local[unit] - g_partition_dist.local[unit];
 
-    DASH_ASSERT_GE(supply_unit, 0, "ivalid supply of target unit");
+    DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
     if (supply_unit <= my_deficit) {
       g_partition_dist.local[unit] += supply_unit;
       my_deficit -= supply_unit;
@@ -467,8 +471,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     DASH_ASSERT_EQ(
         g_target_count.pattern().local_size(unit), g_partition_dist.lsize(),
         "Invalid Array length");
-    auto const offset            = unit * nunits + myid;
-    g_target_count.async[offset] = g_partition_dist.local[unit];
+    auto const offset = unit * nunits + myid;
+    g_target_count.async[offset].set(&(g_partition_dist.local[unit]));
   }
 
   g_target_count.async.flush();
@@ -524,7 +528,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   unit = static_cast<team_unit_t>(1);
 
   auto const target_displs_lbegin = myid * nunits;
-  auto const target_displs_lend = target_displs_lbegin + nunits;
+  auto const target_displs_lend   = target_displs_lbegin + nunits;
 
   for (; unit < last; ++unit) {
     auto const            prev_u = unit - 1;
@@ -532,15 +536,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
                                     ? g_send_count.local[prev_u]
                                     : g_send_count[prev_u * nunits + myid];
 
-    l_target_displs[unit]          = val + l_target_displs[prev_u];
-    auto const target_offset       = unit * nunits + myid;
-    if (target_displs_lbegin <= target_offset && target_offset < target_displs_lend) {
+    l_target_displs[unit]    = val + l_target_displs[prev_u];
+    auto const target_offset = unit * nunits + myid;
+    if (target_displs_lbegin <= target_offset &&
+        target_offset < target_displs_lend) {
       g_target_displs.local[target_offset % nunits] = l_target_displs[unit];
-    } else {
-      g_target_displs[target_offset] = l_target_displs[unit];
+    }
+    else {
+      g_target_displs.async[target_offset].set(&(l_target_displs[unit]));
     }
   }
 
+  g_target_displs.async.flush();
   team.barrier();
 
   DASH_SORT_LOG_TRACE_RANGE(
