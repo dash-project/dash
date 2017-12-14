@@ -1764,7 +1764,7 @@ dart_ret_t dart_allgatherv(
     DART_LOG_ERROR("dart_allgatherv ! unknown teamid %d", teamid);
     return DART_ERR_INVAL;
   }
-  if (sendbuf == recvbuf || NULL == sendbuf) {
+  if (sendbuf == recvbuf) {
     sendbuf = MPI_IN_PLACE;
   }
   MPI_Comm comm      = team_data->comm;
