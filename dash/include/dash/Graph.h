@@ -92,9 +92,9 @@ private:
 public:                                                                           
                                                                                   
   typedef typename                                                                
-    glob_mem_vert_type::container_list_index      vertex_cont_ref_type;           
+    glob_mem_vert_type::bucket_index_type         vertex_cont_ref_type;           
   typedef typename                                                                
-    glob_mem_edge_type::container_list_index      edge_cont_ref_type;             
+    glob_mem_edge_type::bucket_index_type         edge_cont_ref_type;             
   typedef VertexSizeType                          vertex_size_type;               
   typedef EdgeSizeType                            edge_size_type;                 
                                                                                   

@@ -22,46 +22,21 @@ namespace dash {
 
 namespace internal {
 
-/**
- * Helper class encapsulating single bucket container.
- */
-template <typename GlobMemType>
+template<typename ContainerType>
 struct container_data {
 
-  typedef typename GlobMemType::container_type            container_type;
-  typedef typename GlobMemType::value_type                value_type;
-  typedef typename GlobMemType::index_type                index_type;
-  typedef typename GlobMemType::size_type                 size_type;
-  typedef typename GlobMemType::local_iterator            local_iterator;
-  typedef typename local_iterator::bucket_type            bucket_type;
-  typedef typename std::list<bucket_type>                 bucket_list;
+  typedef ContainerType                                    container_type;
+  typedef typename ContainerType::value_type               value_type;
+  typedef typename ContainerType::difference_type          index_type;
   typedef typename 
-    GlobMemType::bucket_cumul_sizes_map::difference_type  bucket_sizes_index;
+    GlobHeapLocalPtr<value_type, index_type>::bucket_type  bucket_type;
 
-  /**
-   * Constructor. Creates containers for globally available elements and 
-   * locally available (unattached) elements.
-   */
-  container_data(size_type n_local_elem) 
-  : container(new container_type()),
-    unattached_container(new container_type())
-  { 
-    container->reserve(n_local_elem);
-  }
+  container_data(bucket_type & bkt)
+    : bucket(bkt)
+  { }
 
-  /**
-   * Default constructor. Explicitly deleted.
-   */
-  container_data() = delete;
-
-  /** container for globally available elements */
-  std::shared_ptr<container_type>     container;
-  /** container for locally available (unattached) elements */
-  std::shared_ptr<container_type>     unattached_container;
-  /** pointer to corresponding bucket in GlobHeapContiguousMem object */
-  bucket_type *                       container_bucket;
-  /** pointer to corresponding bucket in GlobHeapContiguousMem object */
-  bucket_type *                       unattached_container_bucket;
+  container_type  container;
+  bucket_type &   bucket;
 
 };
 
@@ -76,25 +51,26 @@ template<typename ContainerType>
 class GlobHeapContiguousMem {
 
 private:
-  typedef GlobHeapContiguousMem<ContainerType>          self_t;
+  typedef GlobHeapContiguousMem<ContainerType>         self_t;
 
 public:
-  typedef ContainerType                                 container_type;
-  typedef internal::container_data<self_t>              data_type;
-  typedef std::list<data_type>                          container_list_type;
-  typedef typename 
-    container_list_type::difference_type                container_list_index;
-  typedef typename ContainerType::value_type            value_type;
-  typedef typename ContainerType::difference_type       index_type;
-  typedef GlobHeapLocalPtr<value_type, index_type>      local_iterator;
-  typedef GlobPtr<value_type, self_t>                   global_iterator;
-  typedef typename ContainerType::size_type             size_type;
-  typedef typename local_iterator::bucket_type          bucket_type;
-  typedef typename std::list<bucket_type>               bucket_list;
-  typedef typename std::list<bucket_type *>             bucket_ptr_list;
-  typedef local_iterator                                local_pointer;
-  typedef local_iterator                                const_local_pointer;
-  typedef std::vector<std::vector<size_type>>           bucket_cumul_sizes_map;
+  typedef ContainerType                                container_type;
+  typedef internal::container_data<container_type>     data_type;
+  typedef std::vector<data_type>                       container_list_type;
+  typedef typename ContainerType::value_type           value_type;
+  typedef typename ContainerType::difference_type      index_type;
+  typedef GlobHeapLocalPtr<value_type, index_type>     local_iterator;
+  typedef GlobPtr<value_type, self_t>                  global_iterator;
+  typedef typename ContainerType::size_type            size_type;
+  typedef typename local_iterator::bucket_type         bucket_type;
+  // must be List because of GlobHeapLocalPtr
+  typedef typename std::list<bucket_type>              bucket_list_type;
+  typedef typename std::list<bucket_type *>            bucket_ptr_list;
+  typedef typename bucket_ptr_list::difference_type    bucket_index_type;
+  typedef typename bucket_list_type::difference_type   local_bucket_index_type;
+  typedef local_iterator                               local_pointer;
+  typedef local_iterator                               const_local_pointer;
+  typedef std::vector<std::vector<size_type>>          bucket_cumul_sizes_map;
   
   template<typename T_, class GMem_>
   friend class dash::GlobPtr;
@@ -106,8 +82,7 @@ public:
    * Constructor.
    */
   GlobHeapContiguousMem(Team & team = dash::Team::All())
-    : _container_list(new container_list_type()),
-      _buckets(),
+    : _buckets(),
       _global_buckets(),
       _team(&team),
       _teamid(team.dart_id()),
@@ -119,39 +94,40 @@ public:
   /**
    * Adds a new bucket into memory space.
    */
-  container_list_index add_container(size_type n_elements) {
+  bucket_index_type add_container(size_type n_elements) {
+    // TODO: set capacity
     increment_bucket_sizes();
-    auto c_data = data_type(n_elements);
    
     // create bucket data and add to bucket list
     bucket_type cont_bucket { 
       0, 
-      c_data.container->data(), 
+      nullptr, 
       DART_GPTR_NULL,
       false
     };
     bucket_type unattached_cont_bucket {
       0,
-      c_data.unattached_container->data(),
+      nullptr,
       DART_GPTR_NULL,
       false
     };
     _buckets.push_back(cont_bucket);
-    // add a pointer to the corresponding bucket data
-    c_data.container_bucket = &(_buckets.back());
     // for global iteration, only _container's bucket is needed
     _global_buckets.push_back(&(_buckets.back()));
-    _buckets.push_back(unattached_cont_bucket);
-    c_data.unattached_container_bucket = &(_buckets.back());
 
-    _container_list->push_back(c_data);
-    return _container_list->size() - 1;
+    _unattached_containers.emplace_back(_buckets.back());
+    auto & unattached_container = _unattached_containers.back().container;
+    unattached_container.reserve(n_elements);
+
+    _buckets.push_back(unattached_cont_bucket);
+    return _global_buckets.size() - 1;
   }
 
   /**
    * Returns a reference to the requested element.
    */
-  value_type & get(container_list_index cont, index_type pos) {
+  /*
+  value_type & get(bucket_index bucket, index_type index) {
     auto it = _container_list->begin();
     std::advance(it, cont);
     auto c_data = *it;
@@ -161,6 +137,7 @@ public:
     pos -= c_data.container->size();
     return c_data.unattached_container->operator[](pos);
   }
+  */
 
   /**
    * Destructor, collectively frees underlying global memory.
@@ -200,113 +177,118 @@ public:
   void commit() {
     // Gather information about the max amount of containers a single unit
     // currently holds
-    std::vector<size_type> container_count(_team->size());
-    size_type my_container_count = _container_list->size();
+    std::vector<size_type> bucket_count(_team->size());
+    size_type my_bucket_count = _unattached_containers.size();
     DASH_ASSERT_RETURNS(
-        dart_allgather(&my_container_count, container_count.data(), 
+        dart_allgather(&my_bucket_count, bucket_count.data(), 
           sizeof(size_type), DART_TYPE_BYTE, _team->dart_id()),
         DART_OK
     );
-    auto max_containers = std::max_element(container_count.begin(),
-                                           container_count.end());
+    auto max_buckets = std::max_element(bucket_count.begin(),
+                                           bucket_count.end());
 
+    container_type * new_container = new container_type();
+    new_container->reserve(_local_size);
+    int count = 0;
+    int elements = 0;
     int bucket_num = 0;
-    int bucket_cumul = 0;
-
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // Important for performance:
-    // TODO: put multiple containers into one bucket
-    // TODO: update only containers with unattached_container.size() > 0
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // attach buckets for the maximum amount of containers, even if this unit
-    // holds less containers
-    {
-      data_type * c_data;
-      auto c_data_it = _container_list->begin();
-      auto current_size = _container_list->size();
-      for(int i = 0; i < *max_containers; ++i) {
-        if(i < current_size) {
-          c_data = &(*c_data_it);
-          // merge public and local containers
-          c_data->container->insert(c_data->container->end(),
-              c_data->unattached_container->begin(),
-              c_data->unattached_container->end());
-          c_data->unattached_container->clear();
-          // update memory location & size of _container
-          c_data->container_bucket->lptr = c_data->container->data();
-          c_data->container_bucket->size = c_data->container->size();
-          // update memory location & size of _unattached_container
-          c_data->unattached_container_bucket->lptr 
-            = c_data->unattached_container->data();
-          c_data->unattached_container_bucket->size = 0;
-          ++c_data_it;
-        } else {
-          // if other units add more containers, create an empty container to 
-          // store a dart_gptr for the collective allocation
-          auto cont_it = _container_list->begin();
-          auto cont_index = add_container(0);
-          std::advance(cont_it, cont_index);
-          c_data = &(*cont_it);
+    size_type bucket_cumul = 0;
+    auto unattached_container_it = _unattached_containers.begin();
+    bucket_type * last_bucket;
+    int elements_before = 0;
+    for(auto & bucket : _buckets) {
+      elements_before = elements;
+      // move data to new range
+      if(bucket.lptr != nullptr) {
+        // TODO: optimize memory usage (delete already moved elements)
+        new_container->insert(new_container->end(), bucket.lptr, 
+            bucket.lptr + bucket.size);
+        elements += bucket.size;
+      }
+      // bucket list alternates between attached and unattached buckets.
+      // if bucket is already attached:
+      if(count % 2 == 0) {
+        if(bucket.size > 0) {
+          bucket.lptr = new_container->data() + elements_before;
         }
-
-        //  detach old container location from global memory space, if it has
-        //  been attached before
-        if(c_data->container_bucket->gptr != DART_GPTR_NULL) {
-          DASH_ASSERT_RETURNS(
-            dart_team_memderegister(c_data->container_bucket->gptr),
-            DART_OK
-          );
+        last_bucket = &bucket;
+      } else {
+        // if bucket is unattached:
+        if(bucket.size > 0) {
+          if(last_bucket->size == 0) {
+            last_bucket->lptr = new_container->data() + elements_before;
+          }
+          last_bucket->size += bucket.size;
+          bucket.size = 0;
+          bucket.lptr = nullptr;
+          unattached_container_it->container.clear();
+          ++unattached_container_it;
         }
-
-        // attach new container location to global memory space
-        dart_gptr_t gptr = DART_GPTR_NULL;
-        dash::dart_storage<value_type> ds(c_data->container->size());
-        DASH_ASSERT_RETURNS(
-          dart_team_memregister(
-            _team->dart_id(), 
-            ds.nelem, 
-            ds.dtype, 
-            c_data->container->data(), 
-            &gptr),
-          DART_OK
-        );
-        // no need to update gptr of local bucket list in c_data
-        c_data->container_bucket->gptr = gptr;
-        
         // update cumulated bucket sizes
-        bucket_cumul += c_data->container->size();
+        bucket_cumul += last_bucket->size;
         _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
         ++bucket_num;
       }
-      _team->barrier();
+      ++count;
     }
-
-    // distribute bucket sizes between all units
-    // TODO: use one allgather for all buckets
-    // TODO: make it work for unevenly distributed amount of buckets
-    auto bucket_count = _bucket_cumul_sizes[_myid].size();
-    for(auto c_data : *_container_list) {
-      std::vector<size_type> bucket_sizes(bucket_count * _team->size());
-      std::vector<size_type> local_buckets(_bucket_cumul_sizes[_myid]);
-      DASH_ASSERT_RETURNS(
-        dart_allgather(local_buckets.data(), bucket_sizes.data(), 
-          sizeof(size_type) * local_buckets.size(), DART_TYPE_BYTE, _team->dart_id()),
-        DART_OK
-      );
-      _size = 0;
-      auto begin = bucket_sizes.begin();
-      for(int i = 0; i < _team->size(); ++i) {
-        auto end = begin + bucket_count - 1;
-        std::copy(begin, end + 1, _bucket_cumul_sizes[i].begin());
-        begin = end + 1;
-        _size += *end;
+    // 2 local buckets per global bucket
+    count /= 2;
+    for(int i = count; i < *max_buckets; ++i) {
+      add_container(0);
+      if(count > 0) {
+        _bucket_cumul_sizes[_myid][count] = 
+          _bucket_cumul_sizes[_myid][count - 1]; 
+      } else {
+        _bucket_cumul_sizes[_myid][count] = 0; 
       }
     }
 
+    //  detach old container location from global memory space, if it has
+    //  been attached before
+    if(_dart_gptr != DART_GPTR_NULL) {
+      DASH_ASSERT_RETURNS(
+        dart_team_memderegister(_dart_gptr),
+        DART_OK
+      );
+    }
+
+    _container.reset(new_container);
+
+    // attach new container location to global memory space
+    dash::dart_storage<value_type> ds(_container->size());
+    DASH_ASSERT_RETURNS(
+      dart_team_memregister(
+        _team->dart_id(), 
+        ds.nelem, 
+        ds.dtype, 
+        _container->data(), 
+        &_dart_gptr),
+      DART_OK
+    );
+
+    // distribute bucket sizes between all units
+    auto bucket_amount = _bucket_cumul_sizes[_myid].size();
+    std::vector<size_type> bucket_sizes(bucket_amount * _team->size());
+    std::vector<size_type> local_buckets(_bucket_cumul_sizes[_myid]);
+    DASH_ASSERT_RETURNS(
+      dart_allgather(local_buckets.data(), bucket_sizes.data(), 
+        sizeof(size_type) * local_buckets.size(), DART_TYPE_BYTE, _team->dart_id()),
+      DART_OK
+    );
+    _size = 0;
+    auto begin = bucket_sizes.begin();
+    for(int i = 0; i < _team->size(); ++i) {
+      auto end = begin + bucket_amount;
+      std::copy(begin, end, _bucket_cumul_sizes[i].begin());
+      begin = end;
+      _size += *(end - 1);
+    }
+
+    // update local iterators
     update_lbegin();
     update_lend();
-    int b_num = 0;
 
+    // update global iterators
     _begin = global_iterator(this, 0);
     _end = global_iterator(this, _size);
   }
@@ -342,22 +324,13 @@ public:
   /**
    * Insert value at the end of the given bucket.
    */
-  local_iterator push_back(container_list_index cont, value_type & val) {
-    auto cont_it = _container_list->begin();
-    std::advance(cont_it, cont);
-    auto c_data = *cont_it;
-    // use _unattached container, if _container is full
+  local_iterator push_back(bucket_index_type index, value_type & val) {
     // we don't want a realloc of _container because this changes the memory
     // location, which invalidates global pointers of other units
-    if(c_data.container->capacity() == c_data.container->size()) {
-      c_data.unattached_container->push_back(val);
-      c_data.unattached_container_bucket->lptr 
-        = c_data.unattached_container->data();
-      ++(c_data.unattached_container_bucket->size);
-    } else {
-      c_data.container->push_back(val);
-      ++(c_data.container_bucket->size);
-    }
+    auto & unatt = _unattached_containers[index];
+    unatt.container.push_back(val);
+    unatt.bucket.size = unatt.container.size();
+    unatt.bucket.lptr = unatt.container.data();
     ++_local_size;
 
     update_lbegin();
@@ -368,12 +341,14 @@ public:
   /**
    * Returns the local size of a given bucket.
    */
+  /*
   size_type container_local_size(container_list_index index) const {
     auto cont_it = _container_list->begin();
     std::advance(cont_it, index);
     auto c_data = *cont_it;
     return c_data.container->size() + c_data.unattached_container->size();
   }
+  */
 
   /**
    * Returns the global size of a given bucket.
@@ -408,7 +383,7 @@ public:
     /// Unit id mapped to address in global memory space.
     team_unit_t unit,
     /// Index of bucket containing the referenced address.
-    index_type  bucket_index,
+    bucket_index_type  bucket_index,
     /// Offset of the referenced address in the bucket's memory space.
     index_type  bucket_phase) const
   {
@@ -417,23 +392,18 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    // Get the referenced bucket's dart_gptr:
-    auto bucket_it = _global_buckets.begin();
-    std::advance(bucket_it, bucket_index);
-    auto dart_gptr = (*bucket_it)->gptr;
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->attached);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->gptr);
-    if (unit == _myid) {
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->lptr);
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.dart_gptr_at", (*bucket_it)->size);
-      DASH_ASSERT_LT(bucket_phase, (*bucket_it)->size,
-                     "bucket phase out of bounds");
-    }
+    auto dart_gptr = _dart_gptr;
     if (DART_GPTR_ISNULL(dart_gptr)) {
       DASH_LOG_TRACE("GlobDynamicMem.dart_gptr_at",
                      "bucket.gptr is DART_GPTR_NULL");
       dart_gptr = DART_GPTR_NULL;
     } else {
+      size_type bucket_start;
+      if(bucket_index > 0) {
+        bucket_start = _bucket_cumul_sizes[unit][bucket_index - 1];
+      } else {
+        bucket_start = 0;
+      }
       // Move dart_gptr to unit and local offset:
       DASH_ASSERT_RETURNS(
         dart_gptr_setunit(&dart_gptr, unit),
@@ -441,7 +411,7 @@ public:
       DASH_ASSERT_RETURNS(
         dart_gptr_incaddr(
           &dart_gptr,
-          bucket_phase * sizeof(value_type)),
+          (bucket_start + bucket_phase) * sizeof(value_type)),
         DART_OK);
     }
     DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
@@ -450,7 +420,17 @@ public:
 
 private:
 
-  // NOTE: method copied from GlobHeapMem.h
+  /**
+   * Returns indices of attached and unattached containers from _buckets given 
+   * a bucket index from _global_buckets
+   */
+  /*
+  std::pair<local_bucket_index_type, local_bucket_index_type> 
+    local_buckets(bucket_index_type index) {
+    return std::make_pair(index * 2, (index * 2) + 1);
+  }
+  */
+
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
@@ -458,32 +438,20 @@ private:
    */
   void update_lbegin() noexcept
   {
-    local_iterator unit_lbegin(
-             // iteration space
-             _buckets.begin(), _buckets.end(),
-             // position in iteration space
-             0,
-             // bucket at position in iteration space,
-             // offset in bucket
-             _buckets.begin(), 0);
+    // cannot use lightweight constructor here, because the first bucket might 
+    // be empty
+    local_iterator unit_lbegin(_buckets.begin(), _buckets.end(), 0);
     _lbegin = unit_lbegin;
   }
 
-  // NOTE: method copied from GlobHeapMem.h
   /**
    * Update internal native pointer of the final address of the local memory
    * of a unit.
    */
   void update_lend() noexcept
   {
-    local_iterator unit_lend(
-             // iteration space
-             _buckets.begin(), _buckets.end(),
-             // position in iteration space
-             _local_size,
-             // bucket at position in iteration space,
-             // offset in bucket
-             _buckets.end(), 0);
+    local_iterator unit_lend(_buckets.begin(), _buckets.end(), _local_size,
+        _buckets.end(), 0);
     _lend = unit_lend;
   }
 
@@ -500,12 +468,16 @@ private:
 
 private:
 
-  /** List of all attached container */
-  std::shared_ptr<container_list_type>    _container_list;
   /** List of buckets for GlobHeapLocalPtr */
-  bucket_list                             _buckets;
+  bucket_list_type                        _buckets;
   /** list of buckets available for global iteration */
   bucket_ptr_list                         _global_buckets;
+  /** Container holding globally visible data */
+  std::unique_ptr<container_type>         _container;
+  /** List of containers holding locally visible data of each bucket */
+  container_list_type                     _unattached_containers;
+  /** DART gptr of _container */
+  dart_gptr_t                             _dart_gptr = DART_GPTR_NULL;
   /** Team associated with this memory space */
   Team *                                  _team;
   /** ID of the team */
