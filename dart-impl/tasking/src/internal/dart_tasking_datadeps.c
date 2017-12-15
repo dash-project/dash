@@ -250,7 +250,8 @@ static dart_ret_t dephash_add_local(
 }
 
 dart_ret_t
-dart_tasking_datadeps_handle_defered_local(dart_thread_t *thread)
+dart_tasking_datadeps_handle_defered_local(
+  dart_thread_t    * thread)
 {
   dart_tasking_taskqueue_lock(&local_deferred_tasks);
 

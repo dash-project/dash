@@ -23,6 +23,11 @@
  * bound to a single CPU core/hw-thread.
  */
 #define DART_THREAD_AFFINITY_ENVSTR "DART_BIND_THREADS"
+/**
+ * Name of the environment variable specifying the number of phases after which
+ * to perform a dependency matching.
+ */
+#define DART_MATCHING_FREQUENCY_ENVSTR "DART_TASK_MATCHING_FREQ"
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
@@ -176,6 +181,11 @@ dart__tasking__destroy_task(dart_task_t *task) DART_INTERNAL;
 
 dart_thread_t *
 dart__tasking__current_thread() DART_INTERNAL;
+
+void
+dart__tasking__perform_matching(
+  dart_thread_t    * thread,
+  dart_taskphase_t   phase) DART_INTERNAL;
 
 DART_INLINE
 bool

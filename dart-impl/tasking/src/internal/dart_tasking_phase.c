@@ -2,7 +2,9 @@
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
+#include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
+#include <dash/dart/tasking/dart_tasking_priv.h>
 
 static dart_taskphase_t creation_phase = DART_PHASE_FIRST;
 static dart_taskphase_t runnable_phase = DART_PHASE_FIRST;
@@ -10,7 +12,15 @@ static dart_taskphase_t runnable_phase = DART_PHASE_FIRST;
 void
 dart__tasking__phase_advance()
 {
+  static dart_taskphase_t matching_interval = INT_MIN;
+  if (matching_interval == INT_MIN) {
+    matching_interval = dart__base__env__number(DART_MATCHING_FREQUENCY_ENVSTR);
+  }
   ++creation_phase;
+  if (matching_interval > 0 && creation_phase % matching_interval == 0) {
+    dart__tasking__perform_matching(dart__tasking__current_thread(),
+                                    creation_phase);
+  }
 }
 
 dart_taskphase_t
