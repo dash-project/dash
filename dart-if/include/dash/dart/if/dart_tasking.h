@@ -208,7 +208,7 @@ dart_task_should_abort();
  * other threads to pick up the current task later.
  */
 dart_ret_t
-dart_task_yield(int delay);
+dart_task_yield(int delay) __attribute__((weak));
 
 /**
  * Advance to the next task execution phase.
