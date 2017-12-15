@@ -685,6 +685,21 @@ dart__tasking__create_task_handle(
 }
 
 
+void
+dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
+{
+  // make sure all incoming requests are served
+  dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+  // release unhandled remote dependencies
+  dart_tasking_datadeps_handle_defered_remote();
+  DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
+  // reset the active epoch
+  dart__tasking__phase_set_runnable(phase);
+  // release the deferred queue
+  dart_tasking_datadeps_handle_defered_local(thread);
+}
+
+
 dart_ret_t
 dart__tasking__task_complete()
 {
@@ -696,15 +711,7 @@ dart__tasking__task_complete()
     "only valid on MASTER thread!");
 
   if (thread->current_task == &(root_task)) {
-    // make sure all incoming requests are served
-    dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
-    // release unhandled remote dependencies
-    dart_tasking_datadeps_handle_defered_remote();
-    DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
-    // reset the active epoch
-    dart__tasking__phase_set_runnable(DART_PHASE_ANY);
-    // release the deferred queue
-    dart_tasking_datadeps_handle_defered_local(thread);
+    dart__tasking__perform_matching(thread, DART_PHASE_ANY);
   }
 
   // 1) wake up all threads (might later be done earlier)
