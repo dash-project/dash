@@ -158,26 +158,22 @@ inline void psort_global_histogram(
   DASH_ASSERT_EQ(
       g_nlt_nle.size(), (l_nlt.size() - 1) * 2, "Sizes must match");
 
-  /* reduce among all units */
   std::fill(g_nlt_nle.lbegin(), g_nlt_nle.lend(), 0);
 
   g_nlt_nle.team().barrier();
 
-  using glob_atomic_ref_t = dash::GlobRef<dash::Atomic<DifferenceType> >;
-
-  // TODO: Implement GlobAsyncRef<Atomic>, so we can asynchronously accumulate
-  // TODO: better apply dash::transform instead
+  // TODO: implement dash::transform_async
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
-    // accumulate g_nlt
-    auto const g_idx_nlt      = (idx - 1) * 2;
-    auto       ref_clt        = g_nlt_nle[g_idx_nlt];
-    auto       atomic_ref_clt = glob_atomic_ref_t(ref_clt.dart_gptr());
-    atomic_ref_clt.add(l_nlt[idx]);
 
-    // accumulate g_nle
-    auto ref_cle        = g_nlt_nle[g_idx_nlt + 1];
-    auto atomic_ref_cle = glob_atomic_ref_t(ref_cle.dart_gptr());
-    atomic_ref_cle.add(l_nle[idx]);
+    std::array<DifferenceType, 2> vals{{l_nlt[idx], l_nle[idx]}};
+    auto const g_idx_nlt      = (idx - 1) * 2;
+
+  dash::transform<DifferenceType>(
+      &(*std::begin(vals)),      // A
+      &(*std::end(vals)),
+      g_nlt_nle.begin() + g_idx_nlt,              // B
+      g_nlt_nle.begin() + g_idx_nlt,              // B = op(B,A)
+      dash::plus<DifferenceType>());  // op
   }
 
   g_nlt_nle.team().barrier();
@@ -578,7 +574,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   DASH_SORT_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
-
 
   // Implicit barrier in Array Constructor
   // team.barrier();
