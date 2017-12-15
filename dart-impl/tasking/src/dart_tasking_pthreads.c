@@ -456,8 +456,6 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
 
   if (threadnum == 0)
     printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
-
-  bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR);
 }
 
 struct thread_init_data {
@@ -529,6 +527,7 @@ void dart_thread_finalize(dart_thread_t *thread)
 static void
 init_threadpool(int num_threads)
 {
+  init_thread_affinity();
   if (bind_threads) {
     set_thread_affinity(pthread_self(), 0);
   }
@@ -572,6 +571,8 @@ dart__tasking__init()
   dart_tasking_datadeps_init();
 
   pthread_key_create(&tpd_key, NULL);
+
+  bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR);
 
   // initialize all task threads before creating them
   init_threadpool(num_threads);
@@ -922,6 +923,7 @@ destroy_threadpool(bool print_stats)
 
   free(thread_pool);
   thread_pool = NULL;
+  destroy_thread_affinity();
 }
 
 static void
