@@ -116,8 +116,8 @@ inline void psort_calculate_boundaries(
   }
 }
 
-template <typename ElementType, typename DifferenceType>
-inline std::pair<std::vector<DifferenceType>, std::vector<DifferenceType> >
+template <typename ElementType, typename IndexType>
+inline std::pair<std::vector<IndexType>, std::vector<IndexType> >
 psort_local_histogram(
     std::vector<ElementType> const& partitions,
     ElementType const*              lbegin,
@@ -126,9 +126,9 @@ psort_local_histogram(
   auto const nborders = partitions.size();
   auto const sz       = partitions.size() + 2;
   // Number of elements less than P
-  std::vector<DifferenceType> n_lt(sz, 0);
+  std::vector<IndexType> n_lt(sz, 0);
   // Number of elements less than equals P
-  std::vector<DifferenceType> n_le(sz, 0);
+  std::vector<IndexType> n_le(sz, 0);
 
   auto const n_l_elem = std::distance(lbegin, lend);
 
@@ -148,11 +148,11 @@ psort_local_histogram(
   return std::make_pair(n_lt, n_le);
 }
 
-template <typename DifferenceType, typename ArrayType>
+template <typename IndexType, typename ArrayType>
 inline void psort_global_histogram(
-    std::vector<DifferenceType> const& l_nlt,
-    std::vector<DifferenceType> const& l_nle,
-    ArrayType&                         g_nlt_nle)
+    std::vector<IndexType> const& l_nlt,
+    std::vector<IndexType> const& l_nle,
+    ArrayType&                    g_nlt_nle)
 {
   DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
   DASH_ASSERT_EQ(
@@ -164,36 +164,35 @@ inline void psort_global_histogram(
 
   // TODO: implement dash::transform_async
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
+    std::array<IndexType, 2> vals{{l_nlt[idx], l_nle[idx]}};
+    auto const g_idx_nlt = (idx - 1) * 2;
 
-    std::array<DifferenceType, 2> vals{{l_nlt[idx], l_nle[idx]}};
-    auto const g_idx_nlt      = (idx - 1) * 2;
-
-  dash::transform<DifferenceType>(
-      &(*std::begin(vals)),      // A
-      &(*std::end(vals)),
-      g_nlt_nle.begin() + g_idx_nlt,              // B
-      g_nlt_nle.begin() + g_idx_nlt,              // B = op(B,A)
-      dash::plus<DifferenceType>());  // op
+    dash::transform<IndexType>(
+        &(*std::begin(vals)),  // A
+        &(*std::end(vals)),
+        g_nlt_nle.begin() + g_idx_nlt,  // B
+        g_nlt_nle.begin() + g_idx_nlt,  // B = op(B,A)
+        dash::plus<IndexType>());       // op
   }
 
   g_nlt_nle.team().barrier();
 }
 
-template <typename ElementType, typename DifferenceType, typename ArrayType>
+template <typename ElementType, typename IndexType, typename ArrayType>
 inline bool psort_validate_partitions(
-    PartitionBorder<ElementType>&      p_borders,
-    std::vector<ElementType> const&    partitions,
-    std::vector<DifferenceType> const& acc_unit_count,
-    ArrayType const&                   g_nlt_nle)
+    PartitionBorder<ElementType>&   p_borders,
+    std::vector<ElementType> const& partitions,
+    std::vector<IndexType> const&   acc_unit_count,
+    ArrayType const&                g_nlt_nle)
 {
   using array_value_t =
       typename std::decay<decltype(g_nlt_nle)>::type::value_type;
 
   static_assert(
-      std::is_same<DifferenceType, array_value_t>::value,
+      std::is_same<IndexType, array_value_t>::value,
       "local and global array value types must be equal");
 
-  std::vector<DifferenceType> l_nlt_nle(g_nlt_nle.size() + 2);
+  std::vector<IndexType> l_nlt_nle(g_nlt_nle.size() + 2);
 
   // first two values are 0
   std::fill(l_nlt_nle.begin(), l_nlt_nle.begin() + 2, 0);
@@ -226,11 +225,11 @@ inline bool psort_validate_partitions(
   return nonstable_it == p_borders.is_stable.cend();
 }
 
-template <typename DifferenceType>
+template <typename IndexType>
 void calc_final_partition_dist(
-    dash::Array<DifferenceType> const& g_partition_supply,
-    std::vector<DifferenceType> const& acc_unit_count,
-    dash::Array<DifferenceType>&       g_partition_dist)
+    dash::Array<IndexType> const& g_partition_supply,
+    std::vector<IndexType> const& acc_unit_count,
+    dash::Array<IndexType>&       g_partition_dist)
 {
   /* Calculate number of elements to receive for each partition:
    * We first assume that we we receive exactly the number of elements which
@@ -267,13 +266,13 @@ void calc_final_partition_dist(
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
 }
 
-template <typename DifferenceType>
-std::vector<DifferenceType> calc_send_count(
-    dash::Array<DifferenceType> const& g_target_count,
-    dash::Array<DifferenceType>&       g_send_count)
+template <typename IndexType>
+std::vector<IndexType> calc_send_count(
+    dash::Array<IndexType> const& g_target_count,
+    dash::Array<IndexType>&       g_send_count)
 {
-  auto const                  nunits = g_target_count.team().size();
-  std::vector<DifferenceType> l_target_count(nunits + 1);
+  auto const             nunits = g_target_count.team().size();
+  std::vector<IndexType> l_target_count(nunits + 1);
 
   DASH_ASSERT_EQ(
       g_target_count.lsize(), l_target_count.size() - 1,
@@ -286,25 +285,24 @@ std::vector<DifferenceType> calc_send_count(
 
   std::transform(
       l_target_count.begin() + 1, l_target_count.end(),
-      l_target_count.begin(), g_send_count.lbegin(),
-      std::minus<DifferenceType>());
+      l_target_count.begin(), g_send_count.lbegin(), std::minus<IndexType>());
 
-  std::vector<DifferenceType> l_send_displs(nunits);
+  std::vector<IndexType> l_send_displs(nunits);
   l_send_displs[0] = 0;
 
   DASH_ASSERT_EQ(g_send_count.lsize(), nunits, "Array sizes must match");
 
   std::transform(
       g_send_count.lbegin(), g_send_count.lend() - 1, l_send_displs.begin(),
-      l_send_displs.begin() + 1, std::plus<DifferenceType>());
+      l_send_displs.begin() + 1, std::plus<IndexType>());
 
   return l_send_displs;
 }
 
-template <typename DifferenceType>
+template <typename IndexType>
 void calc_target_displs(
-    dash::Array<DifferenceType> const& g_send_count,
-    dash::Array<DifferenceType>&       g_target_displs)
+    dash::Array<IndexType> const& g_send_count,
+    dash::Array<IndexType>&       g_target_displs)
 {
   auto const nunits = g_target_displs.team().size();
   auto const myid   = g_target_displs.team().myid();
@@ -314,7 +312,7 @@ void calc_target_displs(
     std::fill(g_target_displs.lbegin(), g_target_displs.lend(), 0);
   }
 
-  std::vector<DifferenceType> l_target_displs(nunits, 0);
+  std::vector<IndexType> l_target_displs(nunits, 0);
 
   team_unit_t       unit(1);
   team_unit_t const last(nunits);
@@ -323,10 +321,10 @@ void calc_target_displs(
   auto const target_displs_lend   = target_displs_lbegin + nunits;
 
   for (; unit < last; ++unit) {
-    auto const           prev_u = unit - 1;
-    DifferenceType const val    = (prev_u == myid)
-                                   ? g_send_count.local[prev_u]
-                                   : g_send_count[prev_u * nunits + myid];
+    auto const      prev_u = unit - 1;
+    IndexType const val    = (prev_u == myid)
+                              ? g_send_count.local[prev_u]
+                              : g_send_count[prev_u * nunits + myid];
 
     l_target_displs[unit]    = val + l_target_displs[prev_u];
     auto const target_offset = unit * nunits + myid;
@@ -342,6 +340,66 @@ void calc_target_displs(
   g_target_displs.async.flush();
 }
 
+template <typename GlobIterT, typename PatternT>
+auto calc_unit_counts(
+    PatternT const& pattern, GlobIterT const begin, GlobIterT const end)
+    -> std::vector<typename std::decay<decltype(pattern)>::type::index_type>
+{
+  using index_type = typename std::decay<decltype(pattern)>::type::index_type;
+
+  auto const nunits = pattern.team().size();
+
+  dash::team_unit_t       unit{0};
+  const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
+
+  auto const unit_first = pattern.unit_at(begin.pos());
+  auto const unit_last  = pattern.unit_at(end.pos() - 1);
+
+  // Starting offsets of all units
+  std::vector<index_type> acc_unit_count(nunits + 1);
+  acc_unit_count[0] = 0;
+
+  for (; unit < last; ++unit) {
+    // first linear global index of unit
+    auto const u_gidx_begin = pattern.global_index(unit, {});
+    // Number of elements located at current source unit:
+    auto const u_size = pattern.local_size(unit);
+    // last global index of unit
+    auto const u_gidx_end = u_gidx_begin + u_size;
+
+    if (u_gidx_end - 1 < begin.pos() || u_gidx_begin >= end.pos()) {
+      // This unit does not participate...
+      acc_unit_count[unit + 1] = acc_unit_count[unit];
+    }
+    else {
+      std::size_t n_u_elements;
+      if (unit == unit_last) {
+        // The local range of this unit has the global end
+        n_u_elements = end.pos() - u_gidx_begin;
+      }
+      else if (unit == unit_first) {
+        // The local range of this unit has the global begin
+        auto const u_begin_disp = begin.pos() - u_gidx_begin;
+        n_u_elements            = u_size - u_begin_disp;
+      }
+      else {
+        // This is an inner unit
+        // TODO: Is this really necessary or can we assume that
+        // n_u_elements == u_size, i.e., local_pos.index == 0?
+        auto const local_pos =
+            pattern.local(static_cast<index_type>(u_gidx_begin));
+
+        n_u_elements = u_size - local_pos.index;
+
+        DASH_ASSERT_EQ(local_pos.unit, unit, "units must match");
+      }
+
+      acc_unit_count[unit + 1] = n_u_elements + acc_unit_count[unit];
+    }
+  }
+  return acc_unit_count;
+}
+
 }  // namespace detail
 
 template <class GlobRandomIt>
@@ -353,7 +411,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   using index_type         = typename iter_pattern_t::index_type;
   using size_type          = typename iter_pattern_t::size_type;
   using value_type         = typename iter_t::value_type;
-  using difference_type    = index_type;
   using const_pointer_type = typename iter_t::const_pointer;
 
   static_assert(
@@ -385,6 +442,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   dash::Team& team   = pattern.team();
   auto const  nunits = team.size();
   auto const  myid   = team.myid();
+
+  auto const unit_at_begin = pattern.unit_at(begin.pos());
 
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
@@ -420,29 +479,15 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // No subsequent barriers are needed for Shared due to container
   // constructors
+  using array_t = dash::Array<index_type>;
 
-  dash::Array<difference_type> g_nlt_nle(nunits * 2, dash::BLOCKED, team);
+  array_t g_nlt_nle(nunits * 2, dash::BLOCKED, team);
 
   // Buffer for partition loops
-  dash::Array<difference_type> g_nlt_nle_buf(g_nlt_nle.pattern());
+  array_t g_nlt_nle_buf(g_nlt_nle.pattern());
 
-  dash::Array<difference_type> g_partition_dist(
-      nunits * nunits, dash::BLOCKED, team);
-  dash::Array<difference_type> g_partition_supply(
-      nunits * nunits, dash::BLOCKED, team);
-
-  // Starting offsets of all units
-  std::vector<difference_type> acc_unit_count(nunits + 1);
-  // initial counts
-  dash::team_unit_t       unit{0};
-  const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
-
-  acc_unit_count[0] = 0;
-
-  for (; unit < last; ++unit) {
-    auto const u_size        = pattern.local_size(unit);
-    acc_unit_count[unit + 1] = u_size + acc_unit_count[unit];
-  };
+  array_t g_partition_dist(nunits * nunits, dash::BLOCKED, team);
+  array_t g_partition_supply(nunits * nunits, dash::BLOCKED, team);
 
   auto const min = static_cast<value_type>(g_min.get());
   auto const max = static_cast<value_type>(g_max.get());
@@ -455,11 +500,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   bool done = false;
 
+  auto const acc_unit_count = detail::calc_unit_counts(pattern, begin, end);
+
   do {
     detail::psort_calculate_boundaries(p_borders, partitions);
 
     auto const histograms =
-        detail::psort_local_histogram<value_type, difference_type>(
+        detail::psort_local_histogram<value_type, index_type>(
             partitions, lbegin, lend);
 
     auto const& l_nlt = histograms.first;
@@ -481,7 +528,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   } while (!done);
 
   auto const histograms =
-      detail::psort_local_histogram<value_type, difference_type>(
+      detail::psort_local_histogram<value_type, index_type>(
           partitions, lbegin, lend);
 
   /* How many elements are less than P
@@ -547,8 +594,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   /*
    * Transpose the final distribution again to obtain the end offsets
    */
-  auto& g_target_count = g_partition_supply;
-  unit                 = static_cast<team_unit_t>(0);
+  auto&             g_target_count = g_partition_supply;
+  dash::team_unit_t unit{0};
+  auto const        last = static_cast<dash::team_unit_t>(nunits);
 
   for (; unit < last; ++unit) {
     DASH_ASSERT_EQ(
@@ -577,8 +625,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // Implicit barrier in Array Constructor
   // team.barrier();
-  dash::Array<difference_type> g_target_displs(
-      nunits * nunits, dash::BLOCKED, team);
+  array_t g_target_displs(nunits * nunits, dash::BLOCKED, team);
 
   detail::calc_target_displs(g_send_count, g_target_displs);
 
@@ -597,19 +644,26 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     auto const send_count = g_send_count.local[unit];
     DASH_ASSERT_GE(send_count, 0, "invalid send count");
     if (send_count == 0) continue;
-    auto const target_disp = g_target_displs.local[unit];
-    DASH_ASSERT_GE(target_disp, 0, "invalid taget_disp");
+    auto target_disp = g_target_displs.local[unit];
+    DASH_ASSERT_GE(target_disp, 0, "invalid target disp");
     auto const send_disp = l_send_displs[unit];
     DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
 
     if (unit != myid) {
-      // The array passed to global_index is 0 initialized
-      auto const gidx = pattern.global_index(unit, {});
+      iter_t it_copy{};
+      if (unit == unit_at_begin) {
+        it_copy = begin;
+      }
+      else {
+        // The array passed to global_index is 0 initialized
+        index_type gidx = pattern.global_index(unit, {});
+        it_copy         = iter_t{&(begin.globmem()), pattern, gidx};
+      }
 
       auto fut = dash::copy_async(
           &(*(lcopy.begin() + send_disp)),
           &(*(lcopy.begin() + send_disp + send_count)),
-          begin + gidx + target_disp);
+          it_copy + target_disp);
 
       async_copies.push_back(fut);
     }

@@ -6,12 +6,15 @@
 #include <algorithm>
 #include <random>
 
-TEST_F(SortTest, ArraySort)
+template <typename GlobIter>
+void perform_test(GlobIter begin, GlobIter end);
+
+TEST_F(SortTest, ArrayBlockedFullRange)
 {
-  typedef uint32_t               Element_t;
+  typedef int32_t               Element_t;
   typedef dash::Array<Element_t> Array_t;
 
-  static std::uniform_int_distribution<Element_t> distribution(0, 100);
+  static std::uniform_int_distribution<Element_t> distribution(-100, 100);
   static std::random_device                       rd;
   static std::mt19937 generator(rd() + dash::myid());
 
@@ -27,17 +30,51 @@ TEST_F(SortTest, ArraySort)
   // Wait for all units
   array.barrier();
 
-  auto const true_sum = dash::accumulate(array.begin(), array.end(), 0);
+  perform_test(array.begin(), array.end());
+}
 
-  dash::sort(array.begin(), array.end());
+TEST_F(SortTest, ArrayBlockedPartialRange)
+{
+  typedef int32_t               Element_t;
+  typedef dash::Array<Element_t> Array_t;
 
-  auto const actual_sum = dash::accumulate(array.begin(), array.end(), 0);
+  static std::uniform_int_distribution<Element_t> distribution(-100, 100);
+  static std::random_device                       rd;
+  static std::mt19937 generator(rd() + dash::myid());
+
+  size_t num_local_elem = 10;
+
+  LOG_MESSAGE("SortTest.ArrayPartialGlobalRange: allocate array");
+  // Initialize global array:
+  Array_t array(num_local_elem * dash::size());
+
+  std::generate(
+      array.lbegin(), array.lend(), []() { return distribution(generator); });
+
+  // Wait for all units
+  array.barrier();
+
+  auto begin = array.begin() + array.lsize() / 2;
+  auto end = array.end() - array.lsize() / 2;
+
+  perform_test(begin, end);
+}
+
+template <typename GlobIter>
+void perform_test(GlobIter begin, GlobIter end) {
+  using Element_t = typename decltype(begin)::value_type;
+
+  auto const true_sum = dash::accumulate(begin, end, 0);
+
+  dash::sort(begin, end);
+
+  auto const actual_sum = dash::accumulate(begin, end, 0);
 
   if (dash::myid() == 0) {
 
     EXPECT_EQ_U(true_sum, actual_sum);
 
-    for (auto it = array.begin() + 1; it < array.end(); ++it) {
+    for (auto it = begin + 1; it < end; ++it) {
       auto const a = static_cast<const Element_t>(*(it - 1));
       auto const b = static_cast<const Element_t>(*it);
 
@@ -45,5 +82,6 @@ TEST_F(SortTest, ArraySort)
     }
   }
 }
+
 
 // TODO: add additional unit tests with various pattern types and containers
