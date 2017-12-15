@@ -4,7 +4,7 @@
 #include "../TestBase.h"
 
 /**
- * Test fixture for class dash::transform
+ * Test fixture for class dash::sort
  */
 class SortTest : public dash::test::TestBase {
 protected:
