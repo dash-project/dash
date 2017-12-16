@@ -414,7 +414,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   using const_pointer_type = typename iter_t::const_pointer;
 
   static_assert(
-      std::is_integral<value_type>::value,
+      std::is_arithmetic<value_type>::value,
       "Only integral types are supported");
 
   if (pattern.team() == dash::Team::Null()) {

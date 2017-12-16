@@ -20,7 +20,7 @@ TEST_F(SortTest, ArrayBlockedFullRange)
 
   size_t num_local_elem = 10;
 
-  LOG_MESSAGE("SortTest.ArraySort: allocate array");
+  LOG_MESSAGE("SortTest.ArrayBlockedFullRange: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
 
@@ -44,7 +44,34 @@ TEST_F(SortTest, ArrayBlockedPartialRange)
 
   size_t num_local_elem = 10;
 
-  LOG_MESSAGE("SortTest.ArrayPartialGlobalRange: allocate array");
+  LOG_MESSAGE("SortTest.ArrayBlockedPartialRange: allocate array");
+  // Initialize global array:
+  Array_t array(num_local_elem * dash::size());
+
+  std::generate(
+      array.lbegin(), array.lend(), []() { return distribution(generator); });
+
+  // Wait for all units
+  array.barrier();
+
+  auto begin = array.begin() + array.lsize() / 2;
+  auto end = array.end() - array.lsize() / 2;
+
+  perform_test(begin, end);
+}
+
+TEST_F(SortTest, ArrayOfDoubles)
+{
+  typedef double               Element_t;
+  typedef dash::Array<Element_t> Array_t;
+
+  static std::uniform_real_distribution<Element_t> distribution(1.0, 2.0);
+  static std::random_device                       rd;
+  static std::mt19937 generator(rd() + dash::myid());
+
+  size_t num_local_elem = 10;
+
+  LOG_MESSAGE("SortTest.ArrayOfDoubles: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
 
