@@ -86,7 +86,7 @@ public:
 };
 
 template <typename T>
-inline void psort_calculate_boundaries(
+inline void psort__calc_boundaries(
     PartitionBorder<T>& p_borders, std::vector<T>& partitions)
 {
   DASH_ASSERT_EQ(
@@ -118,7 +118,7 @@ inline void psort_calculate_boundaries(
 
 template <typename ElementType, typename IndexType>
 inline std::pair<std::vector<IndexType>, std::vector<IndexType> >
-psort_local_histogram(
+psort__local_histogram(
     std::vector<ElementType> const& partitions,
     ElementType const*              lbegin,
     ElementType const*              lend)
@@ -132,7 +132,9 @@ psort_local_histogram(
 
   auto const n_l_elem = std::distance(lbegin, lend);
 
-  std::size_t idx;
+  if (n_l_elem == 0) return std::make_pair(n_lt, n_le);
+
+ std::size_t idx;
 
   for (idx = 0; idx < nborders; ++idx) {
     auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
@@ -149,7 +151,7 @@ psort_local_histogram(
 }
 
 template <typename IndexType, typename ArrayType>
-inline void psort_global_histogram(
+inline void psort__global_histogram(
     std::vector<IndexType> const& l_nlt,
     std::vector<IndexType> const& l_nle,
     ArrayType&                    g_nlt_nle)
@@ -267,7 +269,7 @@ void calc_final_partition_dist(
 }
 
 template <typename IndexType>
-std::vector<IndexType> calc_send_count(
+std::vector<IndexType> psort__calc_send_count(
     dash::Array<IndexType> const& g_target_count,
     dash::Array<IndexType>&       g_send_count)
 {
@@ -279,6 +281,7 @@ std::vector<IndexType> calc_send_count(
       "Array sizes do not match");
 
   l_target_count[0] = 0;
+
   std::copy(
       g_target_count.lbegin(), g_target_count.lend(),
       l_target_count.begin() + 1);
@@ -300,7 +303,7 @@ std::vector<IndexType> calc_send_count(
 }
 
 template <typename IndexType>
-void calc_target_displs(
+void psort__calc_target_displs(
     dash::Array<IndexType> const& g_send_count,
     dash::Array<IndexType>&       g_target_displs)
 {
@@ -341,7 +344,7 @@ void calc_target_displs(
 }
 
 template <typename GlobIterT, typename PatternT>
-auto calc_unit_counts(
+auto psort__calc_unit_counts(
     PatternT const& pattern, GlobIterT const begin, GlobIterT const end)
     -> std::vector<typename std::decay<decltype(pattern)>::type::index_type>
 {
@@ -430,10 +433,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // TODO: instead of std::sort we may accept a user-defined local sort
   // function
 
-  auto       begin_ptr = static_cast<const_pointer_type>(begin);
-  auto       end_ptr   = static_cast<const_pointer_type>(end);
-  auto const n_g_elem  = dash::distance(begin_ptr, end_ptr);
-  if (n_g_elem == 0) {
+  if (begin >= end) {
     DASH_LOG_DEBUG("dash::sort", "empty range");
     pattern.team().barrier();
     return;
@@ -468,17 +468,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
-  auto const lmin = *lbegin;
-  auto const lmax = *(lend - 1);
+  auto const lmin =
+      (n_l_elem > 0) ? *lbegin : std::numeric_limits<value_type>::max();
+  auto const lmax =
+      (n_l_elem > 0) ? *(lend - 1) : std::numeric_limits<value_type>::min();
 
   dash::Shared<dash::Atomic<value_type> > g_min(dash::team_unit_t{0}, team);
   dash::Shared<dash::Atomic<value_type> > g_max(dash::team_unit_t{0}, team);
 
   g_min.get().op(dash::min<value_type>(), lmin);
   g_max.get().op(dash::max<value_type>(), lmax);
-
   // No subsequent barriers are needed for Shared due to container
   // constructors
+
   using array_t = dash::Array<index_type>;
 
   array_t g_nlt_nle(nunits * 2, dash::BLOCKED, team);
@@ -492,6 +494,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const min = static_cast<value_type>(g_min.get());
   auto const max = static_cast<value_type>(g_max.get());
 
+  auto const acc_unit_count = detail::psort__calc_unit_counts(pattern, begin, end);
+
   auto const                          nboundaries = nunits - 1;
   std::vector<value_type>             partitions(nboundaries, 0);
   detail::PartitionBorder<value_type> p_borders(nboundaries, min, max);
@@ -500,20 +504,18 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   bool done = false;
 
-  auto const acc_unit_count = detail::calc_unit_counts(pattern, begin, end);
 
   do {
-    detail::psort_calculate_boundaries(p_borders, partitions);
+    detail::psort__calc_boundaries(p_borders, partitions);
 
     auto const histograms =
-        detail::psort_local_histogram<value_type, index_type>(
+        detail::psort__local_histogram<value_type, index_type>(
             partitions, lbegin, lend);
 
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
 
-    // detail::psort_global_histogram(l_nlt, l_nle, g_nlt, g_nle);
-    detail::psort_global_histogram(l_nlt, l_nle, g_nlt_nle);
+    detail::psort__global_histogram(l_nlt, l_nle, g_nlt_nle);
 
     done = detail::psort_validate_partitions(
         p_borders, partitions, acc_unit_count, g_nlt_nle);
@@ -528,7 +530,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   } while (!done);
 
   auto const histograms =
-      detail::psort_local_histogram<value_type, index_type>(
+      detail::psort__local_histogram<value_type, index_type>(
           partitions, lbegin, lend);
 
   /* How many elements are less than P
@@ -615,7 +617,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   /* g_send_count only local access */
   auto& g_send_count  = g_partition_dist;
-  auto  l_send_displs = detail::calc_send_count(g_target_count, g_send_count);
+  auto  l_send_displs = detail::psort__calc_send_count(g_target_count, g_send_count);
 
   DASH_SORT_LOG_TRACE_RANGE(
       "send count", g_send_count.lbegin(), g_send_count.lend());
@@ -627,7 +629,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // team.barrier();
   array_t g_target_displs(nunits * nunits, dash::BLOCKED, team);
 
-  detail::calc_target_displs(g_send_count, g_target_displs);
+  detail::psort__calc_target_displs(g_send_count, g_target_displs);
 
   team.barrier();
 
