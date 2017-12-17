@@ -14,6 +14,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/algorithm/Fill.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Transform.h>
@@ -73,6 +74,7 @@ struct PartitionBorder {
 public:
   std::vector<bool> is_last_iter;
   std::vector<bool> is_stable;
+  std::vector<bool> is_skipped;
   std::vector<T>    lower_bound;
   std::vector<T>    upper_bound;
 
@@ -80,6 +82,7 @@ public:
   {
     std::fill_n(std::back_inserter(is_last_iter), nsplitter, false);
     std::fill_n(std::back_inserter(is_stable), nsplitter, false);
+    std::fill_n(std::back_inserter(is_skipped), nsplitter, false);
     std::fill_n(std::back_inserter(lower_bound), nsplitter, _lower_bound);
     std::fill_n(std::back_inserter(upper_bound), nsplitter, _upper_bound);
   }
@@ -94,7 +97,7 @@ inline void psort__calc_boundaries(
       "invalid number of partition borders");
   // recalculate partition boundaries
   for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
-    // case A: partition is already stable -> done
+    // case A: partition is already stable or skipped
     if (p_borders.is_stable[idx]) continue;
     // case B: we have the last iteration
     //-> test upper bound directly
@@ -120,6 +123,7 @@ template <typename ElementType, typename SizeType>
 inline std::pair<std::vector<SizeType>, std::vector<SizeType> >
 psort__local_histogram(
     std::vector<ElementType> const& partitions,
+    std::vector<bool> const&        partitions_skipped,
     ElementType const*              lbegin,
     ElementType const*              lend)
 {
@@ -137,6 +141,8 @@ psort__local_histogram(
   std::size_t idx;
 
   for (idx = 0; idx < nborders; ++idx) {
+    if (partitions_skipped[idx]) continue;
+
     auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
     auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
 
@@ -166,6 +172,9 @@ inline void psort__global_histogram(
 
   // TODO: implement dash::transform_async
   for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
+    // we communicate only non-zero values
+    if (l_nlt[idx] == 0 && l_nle[idx] == 0) continue;
+
     std::array<SizeType, 2> vals{{l_nlt[idx], l_nle[idx]}};
     auto const g_idx_nlt = (idx - 1) * 2;
 
@@ -187,23 +196,40 @@ inline bool psort_validate_partitions(
     std::vector<SizeType> const&    acc_unit_count,
     dash::Array<SizeType> const&    g_nlt_nle)
 {
-  std::vector<SizeType> l_nlt_nle(g_nlt_nle.size() + 2);
+  std::vector<SizeType> l_nlt_nle(g_nlt_nle.size() + 2, 0);
 
-  // first two values are 0
-  std::fill(l_nlt_nle.begin(), l_nlt_nle.begin() + 2, 0);
+  auto const first_p = std::find(
+      p_borders.is_skipped.cbegin(), p_borders.is_skipped.cend(), false);
+
+  auto const first_p_idx =
+      std::distance(p_borders.is_skipped.cbegin(), first_p);
 
   // TODO: this step may be more efficient with block wise copy
   // to overlap communication and computation
+  //
+  // We may further reduce communication if we start copying from the first
+  // partition which is not skipped (i.e., first_p_idx). However, this assumes
+  // that an increasing number of units implies an increasing number of global
+  // indices. This may not always be the case especially in 2D patterns.
   dash::copy(g_nlt_nle.begin(), g_nlt_nle.end(), l_nlt_nle.data() + 2);
 
-  for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
+  for (std::size_t idx = first_p_idx; idx < partitions.size(); ++idx) {
+    //Search the next non-empty (non-skipped partition)
+    auto const peer_it = std::find(
+        p_borders.is_skipped.cbegin() + idx + 1, p_borders.is_skipped.cend(),
+        false);
+
+    auto const peer_dist =
+        std::distance(p_borders.is_skipped.cbegin() + idx, peer_it);
+
     auto const nlt_idx = (idx + 1) * 2;
-    if (l_nlt_nle[nlt_idx] < acc_unit_count[idx + 1] &&
-        acc_unit_count[idx + 1] <= l_nlt_nle[nlt_idx + 1]) {
+
+    if (l_nlt_nle[nlt_idx] < acc_unit_count[idx + peer_dist] &&
+        acc_unit_count[idx + peer_dist] <= l_nlt_nle[nlt_idx + 1]) {
       p_borders.is_stable[idx] = true;
     }
     else {
-      if (l_nlt_nle[nlt_idx] >= acc_unit_count[idx + 1]) {
+      if (l_nlt_nle[nlt_idx] >= acc_unit_count[idx + peer_dist]) {
         p_borders.upper_bound[idx] = partitions[idx];
       }
       else {
@@ -221,7 +247,7 @@ inline bool psort_validate_partitions(
 }
 
 template <typename SizeType>
-void calc_final_partition_dist(
+void psort__calc_final_partition_dist(
     dash::Array<SizeType> const& g_partition_supply,
     std::vector<SizeType> const& acc_unit_count,
     dash::Array<SizeType>&       g_partition_dist)
@@ -321,7 +347,6 @@ void psort__calc_target_displs(
     SizeType const val    = (prev_u == myid)
                              ? g_send_count.local[prev_u]
                              : g_send_count[prev_u * nunits + myid];
-
     l_target_displs[unit]    = val + l_target_displs[prev_u];
     auto const target_offset = unit * nunits + myid;
     if (target_displs_lbegin <= target_offset &&
@@ -422,7 +447,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   }
 
   // TODO: instead of std::sort we may accept a user-defined local sort
-  // function
+  // function. Alterantively, we may use a parallel sort algorithm for the
+  // local portion
 
   if (begin >= end) {
     DASH_LOG_DEBUG("dash::sort", "empty range");
@@ -439,15 +465,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // local distance
   auto const l_range = dash::local_index_range(begin, end);
 
-  if (l_range.begin == l_range.end) {
-    // TODO: empty local size
-  }
-
   auto l_mem_begin = begin.globmem().lbegin();
-
-  if (l_mem_begin == nullptr) {
-    // TODO: handle local nullptr
-  }
 
   auto const n_l_elem = l_range.end - l_range.begin;
 
@@ -475,12 +493,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   using array_t = dash::Array<size_type>;
 
   array_t g_nlt_nle(nunits * 2, dash::BLOCKED, team);
-
   // Buffer for partition loops
   array_t g_nlt_nle_buf(g_nlt_nle.pattern());
 
   array_t g_partition_dist(nunits * nunits, dash::BLOCKED, team);
+  std::fill(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
+
   array_t g_partition_supply(nunits * nunits, dash::BLOCKED, team);
+  std::fill(g_partition_supply.lbegin(), g_partition_supply.lend(), 0);
 
   auto const min = static_cast<value_type>(g_min.get());
   auto const max = static_cast<value_type>(g_max.get());
@@ -488,11 +508,24 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const acc_unit_count =
       detail::psort__calc_unit_counts(pattern, begin, end);
 
-  auto const                          nboundaries = nunits - 1;
-  std::vector<value_type>             partitions(nboundaries, 0);
+  auto const              nboundaries = nunits - 1;
+  std::vector<value_type> partitions(nboundaries, 0);
+
   detail::PartitionBorder<value_type> p_borders(nboundaries, min, max);
 
+  for (std::size_t idx = 1; idx < acc_unit_count.size(); ++idx) {
+    auto const skipped =
+        ((acc_unit_count[idx] - acc_unit_count[idx - 1]) == 0);
+
+    p_borders.is_skipped[idx - 1] = skipped;
+    // We mark skipped partitions as stable
+    p_borders.is_stable[idx - 1] = skipped;
+  }
+
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
+  DASH_SORT_LOG_TRACE_RANGE(
+      "skipped partitions", p_borders.is_skipped.cbegin(),
+      p_borders.is_skipped.cend());
 
   bool done = false;
 
@@ -501,7 +534,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
     auto const histograms =
         detail::psort__local_histogram<value_type, size_type>(
-            partitions, lbegin, lend);
+            partitions, p_borders.is_skipped, lbegin, lend);
 
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
@@ -522,7 +555,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   auto const histograms =
       detail::psort__local_histogram<value_type, size_type>(
-          partitions, lbegin, lend);
+          partitions, p_borders.is_skipped, lbegin, lend);
 
   /* How many elements are less than P
    * or less than equals P */
@@ -540,26 +573,35 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   DASH_SORT_LOG_TRACE_RANGE(
       "final histograms: l_nle", l_nle.begin(), l_nle.end());
 
-  /*
-   * Transpose (Shuffle) the final histograms to communicate
-   * the partition distribution
-   */
+  if (n_l_elem > 0) {
+    /*
+     * Transpose (Shuffle) the final histograms to communicate
+     * the partition distribution
+     */
+    for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
+      auto const transposed_unit = idx - 1;
+      DASH_ASSERT_EQ(
+          g_partition_dist.pattern().local_size(
+              static_cast<dash::team_unit_t>(transposed_unit)),
+          l_nlt.size() - 1, "Invalid Array length");
+      auto const offset = transposed_unit * nunits + myid.id;
 
-  for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
-    auto const transposed_unit = idx - 1;
-    DASH_ASSERT_EQ(
-        g_partition_dist.pattern().local_size(
-            static_cast<dash::team_unit_t>(transposed_unit)),
-        l_nlt.size() - 1, "Invalid Array length");
-    auto const offset = transposed_unit * nunits + myid.id;
+      if (transposed_unit != myid) {
+        // We communicate only non-zero values
+        if (l_nlt[idx] > 0) g_partition_dist.async[offset].set(&(l_nlt[idx]));
 
-    g_partition_dist.async[offset].set(&(l_nlt[idx]));
-    g_partition_supply.async[offset].set(&(l_nle[idx]));
+        if (l_nle[idx] > 0)
+          g_partition_supply.async[offset].set(&(l_nle[idx]));
+      }
+      else {
+        g_partition_dist.local[myid.id]   = l_nlt[idx];
+        g_partition_supply.local[myid.id] = l_nle[idx];
+      }
+    }
+    // complete outstanding requests...
+    g_partition_dist.async.flush();
+    g_partition_supply.async.flush();
   }
-
-  // complete outstanding requests...
-  g_partition_dist.async.flush();
-  g_partition_supply.async.flush();
 
   team.barrier();
 
@@ -571,11 +613,11 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "partition supply: g_partition_supply.local",
       g_partition_supply.lbegin(), g_partition_supply.lend());
 
-  /* Calculate final distribution per partition. Each unit calculate their
+  /* Calculate final distribution per partition. Each unit calculates their
    * local distribution independently.
    * All accesses are only to local memory
    */
-  detail::calc_final_partition_dist(
+  detail::psort__calc_final_partition_dist(
       g_partition_supply, acc_unit_count, g_partition_dist);
 
   DASH_SORT_LOG_TRACE_RANGE(
@@ -595,8 +637,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     DASH_ASSERT_EQ(
         g_target_count.pattern().local_size(unit), g_partition_dist.lsize(),
         "Invalid Array length");
-    auto const offset = unit * nunits + myid;
-    g_target_count.async[offset].set(&(g_partition_dist.local[unit]));
+    if (unit != myid && g_partition_dist.local[unit] > 0) {
+      // We communicate only non-zero values
+      auto const offset = unit * nunits + myid;
+      g_target_count.async[offset].set(&(g_partition_dist.local[unit]));
+    }
+    else {
+      g_target_count.local[myid] = g_partition_dist.local[unit];
+    }
   }
 
   g_target_count.async.flush();
