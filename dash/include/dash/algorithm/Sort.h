@@ -64,7 +64,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
     DASH_LOG_TRACE(desc, os.str());                                         \
   } while (0)
 #else
-#define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end)
+#define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end) \
+  do {                                              \
+  } while (0)
 #endif
 
 namespace detail {
@@ -214,7 +216,7 @@ inline bool psort_validate_partitions(
   dash::copy(g_nlt_nle.begin(), g_nlt_nle.end(), l_nlt_nle.data() + 2);
 
   for (std::size_t idx = first_p_idx; idx < partitions.size(); ++idx) {
-    //Search the next non-empty (non-skipped partition)
+    // Search the next non-empty (non-skipped partition)
     auto const peer_it = std::find(
         p_borders.is_skipped.cbegin() + idx + 1, p_borders.is_skipped.cend(),
         false);
