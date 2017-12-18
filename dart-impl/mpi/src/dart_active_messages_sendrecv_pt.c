@@ -26,11 +26,18 @@
 
 #define AMSGQ_MPI_TAG 10001
 
+struct dart_amsg_header {
+  dart_task_action_t fn;
+  dart_global_unit_t remote;
+  int32_t            data_size;
+  char               data[];
+};
+
 struct msg_list {
-  struct msg_list    * next;
-  MPI_Request          request;
-  dart_global_unit_t   target;
-  char                 buf[];
+  struct msg_list    *    next;
+  MPI_Request             request;
+  dart_global_unit_t      target;
+  struct dart_amsg_header msg[];
 };
 
 struct dart_amsgq {
@@ -50,12 +57,6 @@ struct dart_amsgq {
   volatile int blocking;
   pthread_t    pthread;
   volatile int active;
-};
-
-struct dart_amsg_header {
-  dart_task_action_t fn;
-  dart_global_unit_t remote;
-  size_t             data_size;
 };
 
 static bool initialized       = false;
@@ -95,11 +96,6 @@ void* thread_main(void *args)
       AMSGQ_MPI_TAG,
       amsgq->comm,
       &amsgq->recv_reqs[i]);
-
-    // preallocate send messages
-    struct msg_list *msg = malloc(sizeof(*msg) + amsgq->msg_size);
-    msg->next        = amsgq->send_free;
-    amsgq->send_free = msg;
   }
 
   dart__base__mutex_lock(&amsgq->send_mutex);
@@ -120,12 +116,24 @@ void* thread_main(void *args)
       amsgq->send_requested = amsgq->send_requested->next;
       dart__base__mutex_unlock(&amsgq->send_mutex);
 
-      MPI_Isend(msg->buf, amsgq->msg_size,
+      MPI_Isend(msg->msg, amsgq->msg_size,
                 MPI_BYTE, msg->target.id, AMSGQ_MPI_TAG, amsgq->comm,
                 &msg->request);
       msg->next = amsgq->send_posted;
       amsgq->send_posted = msg;
     }
+
+    // poll receives
+    if (blocking) {
+      amsg_process_internal(amsgq, true);
+      // signal completion if everything is done
+      if (amsgq->send_posted == NULL) {
+        amsgq->blocking = false;
+      }
+    } else {
+      amsg_process_internal(amsgq, false);
+    }
+
     // poll send requests
     struct msg_list *prev = NULL;
     struct msg_list *msg = amsgq->send_posted;
@@ -149,16 +157,6 @@ void* thread_main(void *args)
       msg = next;
     }
 
-    // poll receives
-    if (blocking) {
-      amsg_process_internal(amsgq, true);
-      // signal completion if everything is done
-      if (amsgq->send_posted == NULL) {
-        amsgq->blocking = false;
-      }
-    } else {
-      amsg_process_internal(amsgq, false);
-    }
   }
 
   return NULL;
@@ -262,12 +260,12 @@ dart_amsg_trysend(
 
   msg->target.id = target.id;
 
-  struct dart_amsg_header *header = (struct dart_amsg_header *)msg->buf;
+  struct dart_amsg_header *header = msg->msg;
   header->remote = unitid;
   header->fn = remote_fn_ptr;
   header->data_size = data_size;
 
-  memcpy(header + sizeof(header), data, data_size);
+  memcpy(header->data, data, data_size);
 
   // register the message for sending
   msg->next = amsgq->send_requested;
@@ -276,7 +274,7 @@ dart_amsg_trysend(
 
   DART_LOG_INFO("Enqueued message of size %zu with payload %zu to unit "
                 "%i starting at offset %li",
-                    msg_size, data_size, target, remote_offset);
+                    msg_size, data_size, target.id, remote_offset);
 
   return DART_OK;
 }
@@ -372,8 +370,6 @@ dart_amsg_process(dart_amsgq_t amsgq)
 dart_ret_t
 dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 {
-  MPI_Request req = MPI_REQUEST_NULL;
-
   dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
   if (team_data == NULL) {
     DART_LOG_ERROR("dart_gptr_getaddr ! Unknown team %i", team);
@@ -381,16 +377,23 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
   }
 
   amsgq->blocking = true;
+#if 0
+  MPI_Request req = MPI_REQUEST_NULL;
   int barrier_flag = 0;
   do {
     if (req != MPI_REQUEST_NULL && !barrier_flag) {
-      MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
-    }
-    if (!amsgq->blocking) {
-      // all sends have finished
-      MPI_Ibarrier(team_data->comm, &req);
+      MPI_Wait(&req, MPI_STATUS_IGNORE);
+    } else {
+      if (!amsgq->blocking) {
+        // all sends have finished
+        MPI_Ibarrier(amsgq->comm, &req);
+      }
     }
   } while (!barrier_flag);
+#else
+  while (amsgq->blocking) {}
+  MPI_Barrier(amsgq->comm);
+#endif
 
   // wait another round to finish
   amsgq->blocking = true;
