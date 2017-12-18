@@ -249,7 +249,7 @@ dart_amsg_trysend(
                         (dart_task_action_t)translate_fnptr(fn, target, amsgq);
 
   DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p",
-                 target, amsgq->team, remote_fn_ptr);
+                 target.id, amsgq->team, remote_fn_ptr);
 
   dart_myid(&unitid);
 
@@ -259,6 +259,8 @@ dart_amsg_trysend(
   }
   struct msg_list *msg = amsgq->send_free;
   amsgq->send_free = amsgq->send_free->next;
+
+  msg->target.id = target.id;
 
   struct dart_amsg_header *header = (struct dart_amsg_header *)msg->buf;
   header->remote = unitid;
@@ -322,14 +324,6 @@ amsg_process_internal(
 {
   uint64_t num_msg;
 
-#if 0
-  // process outgoing messages if necessary
-  if (amsgq->send_tailpos > 0 &&
-    dart__base__mutex_trylock(&amsgq->send_mutex) == DART_OK) {
-    amsgq_test_sendreqs_unsafe(amsgq);
-    dart__base__mutex_unlock(&amsgq->send_mutex);
-  }
-#endif
   do {
     num_msg = 0;
     int outcount;
