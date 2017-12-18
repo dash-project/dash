@@ -699,11 +699,15 @@ dart__tasking__create_task_handle(
 void
 dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
 {
+  // prevent worker threads from polling for remote messages
+  worker_poll_remote = false;
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // release unhandled remote dependencies
   dart_tasking_datadeps_handle_defered_remote();
   DART_LOG_DEBUG("task_complete: releasing deferred tasks of all threads");
+  // make sure all newly incoming requests are served
+  dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // reset the active epoch
   dart__tasking__phase_set_runnable(phase);
   // release the deferred queue
