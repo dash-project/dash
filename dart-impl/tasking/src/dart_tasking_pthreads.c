@@ -205,6 +205,9 @@ dart__tasking__yield(int delay)
   // "nothing to be done here" (libgomp)
   // we do not execute another task to prevent serialization
   DART_LOG_INFO("Skipping dart__task__yield");
+  // progress
+  dart_tasking_remote_progress();
+  // check for abort
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
 
@@ -612,20 +615,22 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
+  bool enqueued = false;
   // check whether the task has to be deferred
   if (!dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
       DART_LOG_TRACE("Deferring release of task %p", task);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
+      enqueued = true;
     }
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
-  } else {
+  }
+  if (!enqueued){
     dart_thread_t *thread = get_current_thread();
     dart_taskqueue_t *q = &thread->queue;
     dart_tasking_taskqueue_push(q, task);
   }
-
 }
 
 dart_ret_t
