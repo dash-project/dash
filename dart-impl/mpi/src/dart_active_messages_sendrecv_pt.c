@@ -39,6 +39,7 @@ struct dart_amsgq {
   int         *recv_outidx;
   struct msg_list *send_requested;
   struct msg_list *send_posted;
+  struct msg_list *send_free;
   size_t       msg_size;
   int          msg_count;
   dart_team_t  team;
@@ -94,8 +95,21 @@ void* thread_main(void *args)
       AMSGQ_MPI_TAG,
       amsgq->comm,
       &amsgq->recv_reqs[i]);
+
+    // preallocate send messages
+    struct msg_list *msg = malloc(sizeof(*msg) + amsgq->msg_size);
+    msg->next        = amsgq->send_free;
+    amsgq->send_free = msg;
   }
 
+  dart__base__mutex_lock(&amsgq->send_mutex);
+  for (int i = 0; i < amsgq->msg_count; ++i) {
+    // preallocate send messages
+    struct msg_list *msg = malloc(sizeof(*msg) + amsgq->msg_size);
+    msg->next        = amsgq->send_free;
+    amsgq->send_free = msg;
+  }
+  dart__base__mutex_unlock(&amsgq->send_mutex);
 
   while (amsgq->active) {
     bool blocking = amsgq->blocking;
@@ -126,7 +140,11 @@ void* thread_main(void *args)
         } else {
           prev->next = next;
         }
-        free(msg);
+        dart__base__mutex_lock(&amsgq->send_mutex);
+        msg->next = amsgq->send_free;
+        amsgq->send_free = msg;
+        dart__base__mutex_unlock(&amsgq->send_mutex);
+
       }
       msg = next;
     }
@@ -235,7 +253,12 @@ dart_amsg_trysend(
 
   dart_myid(&unitid);
 
-  struct msg_list *msg = malloc(sizeof(struct msg_list) + amsgq->msg_size);
+  dart__base__mutex_lock(&amsgq->send_mutex);
+  if (amsgq->send_free == NULL) {
+    return DART_ERR_AGAIN;
+  }
+  struct msg_list *msg = amsgq->send_free;
+  amsgq->send_free = amsgq->send_free->next;
 
   struct dart_amsg_header *header = (struct dart_amsg_header *)msg->buf;
   header->remote = unitid;
@@ -245,7 +268,6 @@ dart_amsg_trysend(
   memcpy(header + sizeof(header), data, data_size);
 
   // register the message for sending
-  dart__base__mutex_lock(&amsgq->send_mutex);
   msg->next = amsgq->send_requested;
   amsgq->send_requested = msg;
   dart__base__mutex_unlock(&amsgq->send_mutex);
@@ -348,7 +370,9 @@ amsg_process_internal(
 dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq)
 {
-  return amsg_process_internal(amsgq, false);
+  // nothing to be done
+  (void)amsgq;
+  return DART_OK;
 }
 
 dart_ret_t

@@ -15,9 +15,10 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#if !defined(DART_AMSGQ_LOCKFREE) \
- && !defined(DART_AMSGQ_SENDRECV) \
- && !defined(DART_AMSGQ_SINGLEWIN)
+#if !defined(DART_AMSGQ_LOCKFREE)  \
+ && !defined(DART_AMSGQ_SENDRECV)  \
+ && !defined(DART_AMSGQ_SINGLEWIN) \
+ && !defined(DART_AMSGQ_SENDRECV_PT)
 
 struct dart_amsgq {
   /// window holding the tail ptr
