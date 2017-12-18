@@ -431,10 +431,11 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   free(amsgq->send_reqs);
   free(amsgq->recv_outidx);
   free(amsgq->send_outidx);
-  free(amsgq);
 
   dart__base__mutex_destroy(&amsgq->send_mutex);
   dart__base__mutex_destroy(&amsgq->processing_mutex);
+
+  free(amsgq);
 
   return DART_OK;
 }
@@ -446,9 +447,10 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 dart_ret_t
 dart_amsg_flush_buffer(dart_amsgq_t amsgq)
 {
-
+  dart__base__mutex_lock(&amsgq->send_mutex);
   MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
-
+  amsgq->msg_count = 0;
+  dart__base__mutex_unlock(&amsgq->send_mutex);
   return DART_OK;
 }
 

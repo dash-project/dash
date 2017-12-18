@@ -29,7 +29,7 @@ static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
 static          bool initialized      = false;
 // whether or not worker threads should poll for incoming remote messages
-// Disabling this in the task setup phase might be beneficial due to 
+// Disabling this in the task setup phase might be beneficial due to
 // MPI-internal congestion
 static volatile bool worker_poll_remote = false;
 
