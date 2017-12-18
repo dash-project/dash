@@ -627,8 +627,14 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
   if (!enqueued){
+    dart_taskqueue_t *q;
     dart_thread_t *thread = get_current_thread();
-    dart_taskqueue_t *q = &thread->queue;
+    if (thread == NULL) {
+      // we were called from a different thread, i.e., some progress thread
+      q = &thread_pool[0]->queue;
+    } else {
+      q = &thread->queue;
+    }
     dart_tasking_taskqueue_push(q, task);
   }
 }
