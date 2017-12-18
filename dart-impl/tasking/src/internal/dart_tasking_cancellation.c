@@ -35,14 +35,27 @@ dart__tasking__cancel_task(dart_task_t *task)
 static void
 cancel_thread_tasks(dart_thread_t *thread)
 {
+#if 0
   dart_task_t* task;
   while ((task = dart_tasking_taskqueue_pop(&thread->queue)) != NULL) {
+    dart__tasking__cancel_task(task);
+  }
+#endif
+}
+
+static void
+cancel_global_tasks()
+{
+  dart_task_t* task;
+  while ((task = dart_tasking_taskqueue_pop(&global_queue)) != NULL) {
     dart__tasking__cancel_task(task);
   }
 }
 
 static void
 dart__tasking__cancellation_barrier(dart_thread_t *thread) {
+  // cancel remaining tasks in the global queue
+  cancel_global_tasks();
   // cancel our own remaining tasks
   cancel_thread_tasks(thread);
   // signal that we are done canceling our tasks

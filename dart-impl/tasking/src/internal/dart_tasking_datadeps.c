@@ -257,7 +257,7 @@ dart_tasking_datadeps_handle_defered_local(
 
   // also lock the thread's queue for the time we're processing to reduce
   // overhead
-  dart_tasking_taskqueue_lock(&thread->queue);
+  dart_tasking_taskqueue_lock(&global_queue);
 
   dart_task_t *task;
   while (
@@ -270,11 +270,11 @@ dart_tasking_datadeps_handle_defered_local(
     // Note: if the task has gained remote dependencies we drop the reference
     //       here because it will be released through a remote dep release later.
     if (DART_FETCH32(&task->unresolved_remote_deps) == 0) {
-      dart_tasking_taskqueue_push_unsafe(&thread->queue, task);
+      dart_tasking_taskqueue_push_unsafe(&global_queue, task);
     }
   }
 
-  dart_tasking_taskqueue_unlock(&thread->queue);
+  dart_tasking_taskqueue_unlock(&global_queue);
   dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   return DART_OK;
 }

@@ -29,7 +29,7 @@ static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
 static          bool initialized      = false;
 // whether or not worker threads should poll for incoming remote messages
-// Disabling this in the task setup phase might be beneficial due to 
+// Disabling this in the task setup phase might be beneficial due to
 // MPI-internal congestion
 static volatile bool worker_poll_remote = false;
 
@@ -48,6 +48,8 @@ static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 static dart_thread_t **thread_pool;
 
 static bool bind_threads = false;
+
+struct dart_taskqueue global_queue;
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -102,8 +104,7 @@ invoke_taskfn(dart_task_t *task)
 static
 void requeue_task(dart_task_t *task)
 {
-  dart_thread_t *thread = get_current_thread();
-  dart_taskqueue_t *q = &thread->queue;
+  dart_taskqueue_t *q = &global_queue;
   int delay = task->delay;
   if (delay == 0) {
     dart_tasking_taskqueue_push(q, task);
@@ -284,7 +285,8 @@ dart_task_t * next_task(dart_thread_t *thread)
   // stop processing tasks if they are cancelled
   if (dart__tasking__cancellation_requested()) return NULL;
 
-  dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
+  dart_task_t *task = dart_tasking_taskqueue_pop(&global_queue);
+#if 0
   if (task == NULL) {
     // try to steal from another thread, round-robbing starting at the last
     // successful thread
@@ -302,6 +304,7 @@ dart_task_t * next_task(dart_thread_t *thread)
       target = (target + 1) % num_threads;
     }
   }
+#endif
   return task;
 }
 
@@ -453,9 +456,11 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
+#if 0
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
     threadnum, thread, &thread->queue);
+#endif
 
   if (threadnum == 0)
     printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
@@ -523,7 +528,9 @@ void dart_thread_finalize(dart_thread_t *thread)
   thread->thread_id = -1;
   thread->current_task = NULL;
   thread->ctxlist = NULL;
+#if 0
   dart_tasking_taskqueue_finalize(&thread->queue);
+#endif
 }
 
 
@@ -566,6 +573,9 @@ dart__tasking__init()
   DART_LOG_INFO("Using %i threads", num_threads);
 
   dart__tasking__context_init();
+
+
+  dart_tasking_taskqueue_init(&global_queue);
 
   // keep threads running
   parallel = true;
@@ -627,8 +637,7 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
   if (!enqueued){
-    dart_thread_t *thread = get_current_thread();
-    dart_taskqueue_t *q = &thread->queue;
+    dart_taskqueue_t *q = &global_queue;
     dart_tasking_taskqueue_push(q, task);
   }
 }
@@ -973,6 +982,7 @@ dart__tasking__fini()
   dart__tasking__context_cleanup();
   destroy_threadpool(true);
 
+  dart_tasking_taskqueue_finalize(&global_queue);
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
 

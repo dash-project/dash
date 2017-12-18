@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <setjmp.h>
+#include <pthread.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
@@ -101,7 +102,7 @@ typedef struct dart_taskqueue {
 
 typedef struct {
   dart_task_t           * current_task;
-  struct dart_taskqueue   queue;
+  //struct dart_taskqueue   queue;
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
@@ -109,6 +110,9 @@ typedef struct {
   int                     thread_id;
   int                     last_steal_thread;
 } dart_thread_t;
+
+
+struct dart_taskqueue global_queue DART_INTERNAL;
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;
