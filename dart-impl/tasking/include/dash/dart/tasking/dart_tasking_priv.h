@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <setjmp.h>
+#include <pthread.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
