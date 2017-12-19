@@ -2,7 +2,6 @@
 #define DART__BASE__INTERNAL__TASKING_H__
 
 #include <stdbool.h>
-#include <setjmp.h>
 #include <pthread.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_tasking.h>
@@ -62,7 +61,6 @@ struct dart_task_data {
   dart_task_state_t          state;
   dart_taskphase_t           phase;
   context_t                 *taskctx;         // context to start/resume task
-  jmp_buf                    cancel_return;   // where to longjmp upon task cancellation
   int                        delay;           // delay in case this task yields
   int                        num_children;
   dart_task_prio_t           prio;
