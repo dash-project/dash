@@ -203,7 +203,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
       gptr_r.unitid = (team->myid() + 1) % team->size();
       dash::dart_storage<elem_t> ds(elem_per_thread);
       ASSERT_EQ_U(
-        dart_get_blocking(check, gptr_r, ds.nelem, ds.dtype),
+        dart_get_blocking(check, gptr_r, ds.nelem, ds.dtype, ds.dtype),
         DART_OK);
 
       team->barrier();
