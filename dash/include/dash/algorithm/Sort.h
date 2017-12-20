@@ -310,8 +310,8 @@ void psort__calc_send_count(
     LocalArrayT&                                   l_send_count,
     std::vector<typename LocalArrayT::value_type>& l_send_displs)
 {
-  using value_t = typename LocalArrayT::value_type;
-  auto const            nunits = l_target_count.pattern().team().size();
+  using value_t               = typename LocalArrayT::value_type;
+  auto const           nunits = l_target_count.pattern().team().size();
   std::vector<value_t> target_count(nunits + 1);
 
   DASH_ASSERT_EQ(
@@ -321,12 +321,11 @@ void psort__calc_send_count(
   target_count[0] = 0;
 
   std::copy(
-      l_target_count.begin(), l_target_count.end(),
-      target_count.begin() + 1);
+      l_target_count.begin(), l_target_count.end(), target_count.begin() + 1);
 
   std::transform(
-      target_count.begin() + 1, target_count.end(),
-      target_count.begin(), l_send_count.begin(), std::minus<value_t>());
+      target_count.begin() + 1, target_count.end(), target_count.begin(),
+      l_send_count.begin(), std::minus<value_t>());
 
   DASH_ASSERT_EQ(l_send_displs.size(), nunits, "invalid vector size");
   DASH_ASSERT_EQ(l_send_count.size(), nunits, "invalid local array size");
@@ -435,6 +434,32 @@ auto psort__calc_unit_counts(
     }
   }
   return acc_unit_count;
+}
+
+template <typename SizeType>
+void psort__solve_fixed_partitions(
+    std::vector<bool> const &     skipped_partitions,
+    std::vector<SizeType>&           l_nlt,
+    std::vector<SizeType>&           l_nle)
+{
+  auto const begin           = skipped_partitions.cbegin();
+  auto const end             = skipped_partitions.cend();
+  auto       it              = begin;
+  auto const fst_non_skipped = std::find(begin, end, false);
+  while ((it = std::find(it, end, true)) != end && it > fst_non_skipped) {
+    // find next non-skipped
+    auto const nlt_idx        = std::distance(begin, it) + 1;
+    auto       it_non_skipped = std::find(it, end, false);
+    auto const nels           = std::distance(it, it_non_skipped);
+    auto const val            = *(l_nlt.begin() + nlt_idx + nels);
+
+    DASH_ASSERT_EQ(l_nlt[nlt_idx], 0, "value of empty partition must be 0");
+    DASH_ASSERT_EQ(l_nle[nlt_idx], 0, "value of empty partition must be 0");
+
+    std::fill_n(l_nlt.begin() + nlt_idx, nels, val);
+    std::fill_n(l_nle.begin() + nlt_idx, nels, val);
+    std::advance(it, nels);
+  }
 }
 
 }  // namespace detail
@@ -592,31 +617,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto& l_nlt = histograms.first;
   auto& l_nle = histograms.second;
 
-  // TODO: fix skipped partitions
-
   DASH_ASSERT_EQ(
       histograms.first.size(), histograms.second.size(),
       "length of histogram arrays does not match");
 
   if (n_l_elem > 0) {
-    auto const begin           = p_borders.is_skipped.cbegin();
-    auto const end             = p_borders.is_skipped.cend();
-    auto       it              = begin;
-    auto const fst_non_skipped = std::find(begin, end, false);
-    while ((it = std::find(it, end, true)) != end && it > fst_non_skipped) {
-      // find next non-skipped
-      auto const nlt_idx        = std::distance(begin, it) + 1;
-      auto       it_non_skipped = std::find(it, end, false);
-      auto const nels           = std::distance(it, it_non_skipped);
-      auto const val            = *(l_nlt.begin() + nlt_idx + nels);
-
-      DASH_ASSERT_EQ(l_nlt[nlt_idx], 0, "value of empty partition must be 0");
-      DASH_ASSERT_EQ(l_nle[nlt_idx], 0, "value of empty partition must be 0");
-
-      std::fill_n(l_nlt.begin() + nlt_idx, nels, val);
-      std::fill_n(l_nle.begin() + nlt_idx, nels, val);
-      std::advance(it, nels);
-    }
+    detail::psort__solve_fixed_partitions(p_borders.is_skipped, l_nlt, l_nle);
   }
 
   DASH_SORT_LOG_TRACE_RANGE(
@@ -698,15 +704,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     if (unit != myid) {
       // We communicate only non-zero values
       auto const offset = unit * nunits + myid;
-      DASH_LOG_TRACE(
-          "modify g_target_count", "global offset: ", offset,
-          "value: ", g_partition_dist.local[unit]);
       g_target_count.async[offset].set(&(g_partition_dist.local[unit]));
     }
     else {
-      DASH_LOG_TRACE(
-          "modify g_target_count", "local offset: ", myid.id,
-          "value: ", g_partition_dist.local[unit]);
       g_target_count.local[myid] = g_partition_dist.local[unit];
     }
   }
