@@ -1196,7 +1196,7 @@ dart_ret_t dart_wait(
                    (unsigned long)handle->win);
     if (handle->num_reqs > 0) {
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      DART_LOG_DEBUG(
+      CHECK_MPI_RET(
         MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE),
         "MPI_Waitall");
 
@@ -1410,12 +1410,15 @@ dart_ret_t dart_test_local(
   *is_finished = 0;
 
   dart_handle_t handle = *handleptr;
-  if (MPI_Testall(handle->num_reqs, handle->reqs,
+  if (handle->num_reqs == 1) {
+    MPI_Test(&handle->reqs[0], &flag, MPI_STATUS_IGNORE);
+  } else {
+    if (MPI_Testall(handle->num_reqs, handle->reqs,
                   &flag, MPI_STATUSES_IGNORE) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
-    return DART_ERR_OTHER;
+      DART_LOG_ERROR("dart_test_local: MPI_Test failed!");
+      return DART_ERR_OTHER;
+    }
   }
-
   if (flag) {
     // deallocate handle
     free(handle);
