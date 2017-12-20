@@ -12,7 +12,7 @@
 #include <string>
 #include <functional>
 
-#include "gbench_mpi_tweaks.h"
+#include "../util/gbench_mpi_tweaks.h"
 
 #ifdef DASH_ENABLE_HDF5
 
