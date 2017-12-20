@@ -8,7 +8,13 @@
 #ifndef DART_TASKING_DATADEPS_H_
 #define DART_TASKING_DATADEPS_H_
 
+#include <dash/dart/base/assert.h>
+
 #include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/if/dart_tasking.h>
+
+// segment ID for localized gptr
+#define DART_TASKING_DATADEPS_LOCAL_SEGID ((uint16_t)-1)
 
 typedef void* remote_task_t;
 
@@ -115,11 +121,13 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
   // segment IDs <0 are reserved for attached memory so tey already contain
   // absolute addresses.
   if (gptr.segid >= 0) {
-    dart_gptr_getaddr(gptr, &addr);
+    dart_ret_t ret = dart_gptr_getaddr(gptr, &addr);
+    DART_ASSERT_MSG(ret == DART_OK, "Failed to translate gptr={u.=%d,s=%d,o=%p}",
+                    gptr.unitid, gptr.segid, gptr.addr_or_offs.addr);
     DART_ASSERT(addr != NULL);
     res.addr_or_offs.addr = addr;
   }
-  res.segid = 0;
+  res.segid = DART_TASKING_DATADEPS_LOCAL_SEGID;
 
   if (gptr.teamid != DART_TEAM_ALL) {
     dart_global_unit_t guid;

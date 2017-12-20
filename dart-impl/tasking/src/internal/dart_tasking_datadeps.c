@@ -24,9 +24,6 @@
 #define IS_OUT_DEP(taskdep) \
   (((taskdep).type == DART_DEP_OUT || (taskdep).type == DART_DEP_INOUT))
 
-#define IS_ACTIVE_TASK(task) \
-  ((task)->state == DART_TASK_RUNNING || (task)->state == DART_TASK_CREATED)
-
 #define DEP_ADDR(dep) \
   ((dep).gptr.addr_or_offs.addr)
 
@@ -465,7 +462,7 @@ dart_tasking_datadeps_match_local_datadep(
           elem->taskdep.type = DART_DEP_INOUT;
         }
         // nothing to be done for this dependency
-        continue;
+        break;
       }
       DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
                      "of task %p",
