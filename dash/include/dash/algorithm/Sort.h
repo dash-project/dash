@@ -263,11 +263,11 @@ inline bool psort_validate_partitions(
   return nonstable_it == p_borders.is_stable.cend();
 }
 
-template <typename SizeType>
+template <typename LocalArrayT>
 void psort__calc_final_partition_dist(
-    dash::Array<SizeType> const& g_partition_supply,
-    std::vector<SizeType> const& acc_unit_count,
-    dash::Array<SizeType>&       g_partition_dist)
+    LocalArrayT const&                                   l_partition_supply,
+    std::vector<typename LocalArrayT::value_type> const& acc_unit_count,
+    LocalArrayT&                                         l_partition_dist)
 {
   /* Calculate number of elements to receive for each partition:
    * We first assume that we we receive exactly the number of elements which
@@ -275,28 +275,28 @@ void psort__calc_final_partition_dist(
    * The output are the end offsets for each partition
    */
 
-  auto const myid = g_partition_supply.team().myid();
+  auto const myid = l_partition_supply.pattern().team().myid();
   auto const n_my_elements =
-      std::accumulate(g_partition_dist.lbegin(), g_partition_dist.lend(), 0);
+      std::accumulate(l_partition_dist.begin(), l_partition_dist.end(), 0);
 
   // Calculate the deficit
   auto my_deficit = acc_unit_count[myid + 1] - n_my_elements;
 
   dash::team_unit_t       unit(0);
-  dash::team_unit_t const last(g_partition_supply.team().size());
+  dash::team_unit_t const last(l_partition_supply.pattern().team().size());
 
   // If there is a deficit, look how much unit j can supply
   for (; unit < last && my_deficit > 0; ++unit) {
     auto const supply_unit =
-        g_partition_supply.local[unit] - g_partition_dist.local[unit];
+        l_partition_supply[unit] - l_partition_dist[unit];
 
     DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
     if (supply_unit <= my_deficit) {
-      g_partition_dist.local[unit] += supply_unit;
+      l_partition_dist[unit] += supply_unit;
       my_deficit -= supply_unit;
     }
     else {
-      g_partition_dist.local[unit] += my_deficit;
+      l_partition_dist[unit] += my_deficit;
       my_deficit = 0;
     }
   }
@@ -304,37 +304,38 @@ void psort__calc_final_partition_dist(
   DASH_ASSERT_GE(my_deficit, 0, "Invalid local deficit");
 }
 
-template <typename SizeType>
+template <typename LocalArrayT>
 void psort__calc_send_count(
-    dash::Array<SizeType> const& g_target_count,
-    dash::Array<SizeType>&       g_send_count,
-    std::vector<SizeType>&       l_send_displs)
+    LocalArrayT const&                             l_target_count,
+    LocalArrayT&                                   l_send_count,
+    std::vector<typename LocalArrayT::value_type>& l_send_displs)
 {
-  auto const            nunits = g_target_count.team().size();
-  std::vector<SizeType> l_target_count(nunits + 1);
+  using value_t = typename LocalArrayT::value_type;
+  auto const            nunits = l_target_count.pattern().team().size();
+  std::vector<value_t> target_count(nunits + 1);
 
   DASH_ASSERT_EQ(
-      g_target_count.lsize(), l_target_count.size() - 1,
+      l_target_count.size(), target_count.size() - 1,
       "Array sizes do not match");
 
-  l_target_count[0] = 0;
+  target_count[0] = 0;
 
   std::copy(
-      g_target_count.lbegin(), g_target_count.lend(),
-      l_target_count.begin() + 1);
+      l_target_count.begin(), l_target_count.end(),
+      target_count.begin() + 1);
 
   std::transform(
-      l_target_count.begin() + 1, l_target_count.end(),
-      l_target_count.begin(), g_send_count.lbegin(), std::minus<SizeType>());
+      target_count.begin() + 1, target_count.end(),
+      target_count.begin(), l_send_count.begin(), std::minus<value_t>());
 
   DASH_ASSERT_EQ(l_send_displs.size(), nunits, "invalid vector size");
-  DASH_ASSERT_EQ(g_send_count.lsize(), nunits, "invalid local array size");
+  DASH_ASSERT_EQ(l_send_count.size(), nunits, "invalid local array size");
 
   l_send_displs[0] = 0;
 
   std::transform(
-      g_send_count.lbegin(), g_send_count.lend() - 1, l_send_displs.begin(),
-      l_send_displs.begin() + 1, std::plus<SizeType>());
+      l_send_count.begin(), l_send_count.end() - 1, l_send_displs.begin(),
+      l_send_displs.begin() + 1, std::plus<value_t>());
 }
 
 template <typename SizeType>
@@ -600,9 +601,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   if (n_l_elem > 0) {
     auto const begin           = p_borders.is_skipped.cbegin();
     auto const end             = p_borders.is_skipped.cend();
-    auto       it              = std::find(begin, end, true);
+    auto       it              = begin;
     auto const fst_non_skipped = std::find(begin, end, false);
-    while (it != end && it > fst_non_skipped) {
+    while ((it = std::find(it, end, true)) != end && it > fst_non_skipped) {
       // find next non-skipped
       auto const nlt_idx        = std::distance(begin, it) + 1;
       auto       it_non_skipped = std::find(it, end, false);
@@ -615,7 +616,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       std::fill_n(l_nlt.begin() + nlt_idx, nels, val);
       std::fill_n(l_nle.begin() + nlt_idx, nels, val);
       std::advance(it, nels);
-      it = std::find(it, end, true);
     }
   }
 
@@ -671,7 +671,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
    * All accesses are only to local memory
    */
   detail::psort__calc_final_partition_dist(
-      g_partition_supply, l_acc_unit_count, g_partition_dist);
+      g_partition_supply.local, l_acc_unit_count, g_partition_dist.local);
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition distribution", g_partition_dist.lbegin(),
@@ -724,7 +724,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   if (n_l_elem > 0) {
     detail::psort__calc_send_count(
-        g_target_count, g_send_count, l_send_displs);
+        g_target_count.local, g_send_count.local, l_send_displs);
   }
   else {
     std::fill(g_send_count.lbegin(), g_send_count.lend(), 0);
