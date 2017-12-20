@@ -265,8 +265,8 @@ inline bool psort_validate_partitions(
 
 template <typename LocalArrayT>
 void psort__calc_final_partition_dist(
-    LocalArrayT const&                                   l_partition_supply,
     std::vector<typename LocalArrayT::value_type> const& acc_unit_count,
+    LocalArrayT const&                                   l_partition_supply,
     LocalArrayT&                                         l_partition_dist)
 {
   /* Calculate number of elements to receive for each partition:
@@ -438,9 +438,9 @@ auto psort__calc_unit_counts(
 
 template <typename SizeType>
 void psort__solve_fixed_partitions(
-    std::vector<bool> const &     skipped_partitions,
-    std::vector<SizeType>&           l_nlt,
-    std::vector<SizeType>&           l_nle)
+    std::vector<bool> const& skipped_partitions,
+    std::vector<SizeType>&   l_nlt,
+    std::vector<SizeType>&   l_nle)
 {
   auto const begin           = skipped_partitions.cbegin();
   auto const end             = skipped_partitions.cend();
@@ -460,6 +460,41 @@ void psort__solve_fixed_partitions(
     std::fill_n(l_nle.begin() + nlt_idx, nels, val);
     std::advance(it, nels);
   }
+}
+
+template <typename T, typename SizeType>
+detail::PartitionBorder<T> psort__setup_partition_borders(
+    std::vector<SizeType> const& acc_unit_count,
+    std::size_t                  nboundaries,
+    T                            min,
+    T                            max)
+{
+  detail::PartitionBorder<T> p_borders(nboundaries, min, max);
+  auto const                 nunits = nboundaries + 1;
+
+  for (std::size_t idx = 1; idx < nunits; ++idx) {
+    auto const sz_left  = acc_unit_count[idx] - acc_unit_count[idx - 1];
+    auto const sz_right = acc_unit_count[idx + 1] - acc_unit_count[idx];
+
+    auto const skipped = sz_left == 0 || sz_right == 0;
+
+    std::size_t border_idx;
+    if (idx % 2) {
+      border_idx = (idx / 2) * 2;
+    }
+    else {
+      border_idx = idx - 1;
+    }
+
+    p_borders.is_skipped[border_idx] = skipped;
+    p_borders.is_stable[border_idx]  = skipped;
+
+    if (sz_left == 0 && sz_right == 0) {
+      ++idx;
+    }
+  }
+
+  return p_borders;
 }
 
 }  // namespace detail
@@ -554,29 +589,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const              nboundaries = nunits - 1;
   std::vector<value_type> partitions(nboundaries, 0);
 
-  detail::PartitionBorder<value_type> p_borders(nboundaries, min, max);
-
-  for (std::size_t idx = 1; idx < nunits; ++idx) {
-    auto const sz_left  = l_acc_unit_count[idx] - l_acc_unit_count[idx - 1];
-    auto const sz_right = l_acc_unit_count[idx + 1] - l_acc_unit_count[idx];
-
-    auto const skipped = sz_left == 0 || sz_right == 0;
-
-    std::size_t border_idx;
-    if (idx % 2) {
-      border_idx = (idx / 2) * 2;
-    }
-    else {
-      border_idx = idx - 1;
-    }
-
-    p_borders.is_skipped[border_idx] = skipped;
-    p_borders.is_stable[border_idx]  = skipped;
-
-    if (sz_left == 0 && sz_right == 0) {
-      ++idx;
-    }
-  }
+  auto p_borders = detail::psort__setup_partition_borders(
+      l_acc_unit_count, nboundaries, min, max);
 
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
   DASH_SORT_LOG_TRACE_RANGE(
@@ -677,7 +691,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
    * All accesses are only to local memory
    */
   detail::psort__calc_final_partition_dist(
-      g_partition_supply.local, l_acc_unit_count, g_partition_dist.local);
+      l_acc_unit_count,
+      g_partition_supply.local,  // local read only
+      g_partition_dist.local     // local read-write
+      );
 
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition distribution", g_partition_dist.lbegin(),
@@ -724,7 +741,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   if (n_l_elem > 0) {
     detail::psort__calc_send_count(
-        g_target_count.local, g_send_count.local, l_send_displs);
+        g_target_count.local,  // local read-only
+        g_send_count.local,    // local read-write
+        l_send_displs);
   }
   else {
     std::fill(g_send_count.lbegin(), g_send_count.lend(), 0);
@@ -740,7 +759,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   // team.barrier();
   array_t g_target_displs(nunits * nunits, dash::BLOCKED, team);
 
-  detail::psort__calc_target_displs(g_send_count, g_target_displs);
+  detail::psort__calc_target_displs(
+      g_send_count,    // global read
+      g_target_displs  // global write
+      );
 
   team.barrier();
 
