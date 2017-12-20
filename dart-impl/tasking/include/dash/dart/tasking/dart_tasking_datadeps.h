@@ -25,6 +25,15 @@ typedef union taskref {
 
 extern dart_taskqueue_t local_deferred_tasks DART_INTERNAL;
 
+/**
+ * A dependency type for input dependencies that should be inserted
+ * instead of appended, e.g., for a task created remotely.
+ * This dependency will cause additional depdencies to be inserted for later
+ * (already existing) tasks.
+ * For internal use only.
+ */
+#define DART_DEP_DELAYED_IN (DART_DEP_IGNORE + 1)
+
 
 /**
  * Initialize the data dependency management system.

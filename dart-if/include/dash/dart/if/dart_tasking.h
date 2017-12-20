@@ -44,8 +44,9 @@ typedef enum dart_task_deptype {
   DART_DEP_IN,
   DART_DEP_OUT,
   DART_DEP_INOUT,
+  DART_DEP_COPYIN,
   DART_DEP_DIRECT,
-  DART_DEP_IGNORE
+  DART_DEP_IGNORE  // should always be the last
 } dart_task_deptype_t;
 
 typedef struct dart_task_dep {
@@ -54,6 +55,12 @@ typedef struct dart_task_dep {
     dart_gptr_t       gptr;
     /// use for type DIRECT dependencies
     dart_taskref_t    task;
+    /// use for type COPYIN -- TODO: add src/dest data types here and hide behind a pointer
+    struct {
+      dart_gptr_t  gptr; // the src, has to match an OUTPUT dependency
+      void       * dest; // the destination
+      size_t       size; // the number of consecutive bytes to copy
+    }               copyin;
   };
   /// dependency type, see \ref dart_task_deptype_t
   dart_task_deptype_t type;

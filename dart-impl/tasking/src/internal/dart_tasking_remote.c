@@ -9,9 +9,11 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
+#include <dash/dart/tasking/dart_tasking_copyin.h>
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 
 static dart_amsgq_t amsgq;
@@ -53,6 +55,14 @@ struct remote_task_release {
   taskref task;
 };
 
+struct remote_sendrequest {
+  dart_gptr_t            src_gptr;
+  int32_t                num_bytes;
+  dart_taskphase_t       phase;
+  int                    tag;
+  dart_global_unit_t     unit;
+};
+
 
 /**
  * Forward declarations of remote tasking actions
@@ -65,6 +75,8 @@ static void
 request_direct_taskdep(void *data);
 static void
 request_cancellation(void *data);
+static void
+request_send(void *data);
 
 static inline
 size_t
@@ -77,11 +89,12 @@ max_size(size_t lhs, size_t rhs)
 dart_ret_t dart_tasking_remote_init()
 {
   if (!initialized) {
+    size_t size = max_size(sizeof(struct remote_data_dep),
+                           sizeof(struct remote_task_dep));
+    size = max_size(size, sizeof(struct remote_sendrequest));
     DART_ASSERT_RETURNS(
       dart_amsg_openq(
-        max_size(sizeof(struct remote_data_dep),
-                 sizeof(struct remote_task_dep)),
-        DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
+        size, DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
       DART_OK);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
@@ -234,11 +247,46 @@ dart_ret_t dart_tasking_remote_direct_taskdep(
 }
 
 
+dart_ret_t dart_tasking_remote_sendrequest(
+  dart_global_unit_t     unit,
+  dart_gptr_t            src_gptr,
+  size_t                 num_bytes,
+  int                    tag,
+  dart_taskphase_t       phase)
+{
+  DART_ASSERT(num_bytes <= INT_MAX);
+
+  struct remote_sendrequest request;
+  dart_myid(&request.unit);
+  request.num_bytes = num_bytes;
+  request.src_gptr  = src_gptr;
+  request.tag       = tag;
+  request.phase     = phase;
+
+  while (1) {
+    int ret;
+    ret = dart_amsg_trysend(DART_TEAM_UNIT_ID(unit.id), amsgq,
+                            &request_send, &request, sizeof(request));
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be sent at the moment, just try again
+      dart_amsg_process(amsgq);
+      continue;
+    } else {
+      DART_LOG_ERROR(
+          "Failed to send active message to unit %i", unit.id);
+      return DART_ERR_OTHER;
+    }
+  }
+  return DART_OK;
+}
+
 dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team)
 {
   DART_LOG_DEBUG("Broadcasting cancellation request across team %d", team);
   return dart_amsg_bcast(team, amsgq, &request_cancellation, NULL, 0);
-
 }
 
 /**
@@ -319,6 +367,17 @@ request_direct_taskdep(void *data)
   dart_tasking_datadeps_handle_remote_direct(taskdep->task,
                                              successor,
                                              taskdep->runit);
+}
+
+
+static void
+request_send(void *data)
+{
+  struct remote_sendrequest *request = (struct remote_sendrequest *) data;
+
+  dart_tasking_copyin_sendrequest(
+    request->src_gptr, request->num_bytes,
+    request->phase,    request->tag,   request->unit);
 }
 
 /**

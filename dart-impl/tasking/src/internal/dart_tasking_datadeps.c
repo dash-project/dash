@@ -9,6 +9,7 @@
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
+#include <dash/dart/tasking/dart_tasking_copyin.h>
 
 #include <stdbool.h>
 
@@ -238,10 +239,13 @@ static dart_ret_t dephash_add_local(
   taskref tr;
   tr.local = task;
   dart_dephash_elem_t *elem = dephash_allocate_elem(dep, tr, myguid);
+
+  dart__base__mutex_lock(&(task->parent->mutex));
   dephash_require_alloc(task->parent);
   // put the new entry at the beginning of the list
   int slot = hash_gptr(dep->gptr);
   DART_STACK_PUSH(task->parent->local_deps[slot], elem);
+  dart__base__mutex_unlock(&(task->parent->mutex));
 
   return DART_OK;
 }
@@ -436,6 +440,83 @@ dart_tasking_datadeps_handle_local_direct(
   return DART_OK;
 }
 
+
+static dart_ret_t
+dart_tasking_datadeps_handle_copyin(
+  dart_task_t     * task,
+  dart_task_dep_t   dep)
+{
+  int slot;
+  dart_gptr_t dest_gptr;
+
+  dest_gptr.addr_or_offs.addr = dep.copyin.dest;
+  dest_gptr.flags             = 0;
+  dest_gptr.segid             = DART_TASKING_DATADEPS_LOCAL_SEGID;
+  dest_gptr.teamid            = 0;
+  dest_gptr.unitid            = myguid.id;
+  slot = hash_gptr(dest_gptr);
+  dart_dephash_elem_t *elem = NULL;
+  int iter = 0;
+  do {
+    // check whether this is the first task with copyin
+    if (task->parent->local_deps != NULL) {
+      for (elem = task->parent->local_deps[slot];
+          elem != NULL; elem = elem->next) {
+        if (elem->taskdep.gptr.addr_or_offs.addr == dep.copyin.dest) {
+          if (elem->taskdep.phase < dep.phase) {
+            // phases are stored in decending order so we can stop here
+            break;
+          }
+          // So far we can only re-use prefetching in the same phase
+          // TODO: can we figure out whether we can go back further?
+          //       Might need help from the remote side.
+          if (IS_OUT_DEP(elem->taskdep) && dep.phase == elem->taskdep.phase) {
+            // we're not the first --> add a dependency to the task that does the copy
+            dart_task_t *elem_task = elem->task.local;
+            DART_INC_AND_FETCH32(&task->unresolved_deps);
+            // lock the task here to avoid race condition
+            dart__base__mutex_lock(&(elem_task->mutex));
+            dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+            dart__base__mutex_unlock(&(elem_task->mutex));
+
+            // add this task to the hash table
+            dart_task_dep_t in_dep;
+            in_dep.type  = DART_DEP_IN;
+            in_dep.gptr  = dest_gptr;
+            in_dep.phase = dep.phase;
+            dephash_add_local(&in_dep, task);
+
+            DART_LOG_TRACE("Copyin: task %p waits for task %p to copy", task, elem_task);
+
+            // we're done
+            return DART_OK;
+          }
+        }
+      }
+    }
+
+    if (iter > 0) {
+      // this shouldn't happen
+      DART_ASSERT_MSG(iter, "FAILED to create copyin task!");
+    }
+
+    // we haven't found a task that does the prefetching in this phase
+    // so create a new one
+    taskref tr;
+    tr.local = task;
+    DART_LOG_TRACE("Creating copyin task in phase %d (dest %p)", dep.phase, dep.copyin.dest);
+    dart_tasking_copyin_create_task(&dep, dest_gptr, tr);
+  } while (0 == iter++);
+
+  return DART_OK;
+}
+
+
+/**
+ * Match a local data dependency.
+ * This ignores phases and matches a dependency to the last previous depdendency
+ * encountered.
+ */
 static dart_ret_t
 dart_tasking_datadeps_match_local_datadep(
   dart_task_dep_t   dep,
@@ -519,6 +600,117 @@ dart_tasking_datadeps_match_local_datadep(
   return DART_OK;
 }
 
+
+/**
+ * Match a delayed local data dependency.
+ * This is similar to \ref dart_tasking_datadeps_match_local_datadep but
+ * handles the local dependency honoring the phase, i.e., later depdendencies
+ * are skipped. This also potententially adds dependencies to the graph.
+ */
+static dart_ret_t
+dart_tasking_datadeps_match_delayed_local_datadep(
+  dart_task_dep_t   dep,
+  dart_task_t     * task)
+{
+  int slot;
+  slot = hash_gptr(dep.gptr);
+
+  // shortcut if no dependencies to match, yet
+  if (task->parent->local_deps == NULL) return DART_OK;
+
+  dart_task_t *next_out_task = NULL; // the task with the next output dependency
+
+  DART_LOG_DEBUG("Handling delayed input dependency in phase %d", dep.phase);
+
+  /*
+   * iterate over all dependent tasks until we find the first task with
+   * OUT|INOUT dependency on the same pointer
+   */
+  for (dart_dephash_elem_t *elem = task->parent->local_deps[slot], *prev = NULL;
+       elem != NULL; prev = elem, elem = elem->next)
+  {
+    // skip dependencies that were created in a later phase
+    DART_LOG_TRACE("  phase %d vs phase %d", elem->taskdep.phase, dep.phase);
+    if (elem->taskdep.phase > dep.phase) {
+      if (DEP_ADDR_EQ(elem->taskdep, dep) && IS_OUT_DEP(elem->taskdep)){
+        next_out_task = elem->task.local;
+      }
+      continue;
+    }
+
+    if (DEP_ADDR_EQ(elem->taskdep, dep)) {
+      dart_task_t *elem_task = elem->task.local;
+      DART_ASSERT_MSG(elem_task != task,
+                      "Cannot insert existing task with delayed dependency!");
+
+      if (IS_OUT_DEP(elem->taskdep)) {
+        // lock the task here to avoid race condition
+        dart__base__mutex_lock(&(elem_task->mutex));
+        if (IS_ACTIVE_TASK(elem_task)){
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a local successor of task %p using delayed dependency "
+                        "(successor: %p, state: %i | num_deps: %i)",
+                        task, elem_task,
+                        elem_task->successor,
+                        elem_task->state, unresolved_deps);
+
+          dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+        }
+        dart__base__mutex_unlock(&(elem_task->mutex));
+
+        // register this task with the next out task to avoid overwriting
+        if (next_out_task) {
+          dart__base__mutex_lock(&(next_out_task->mutex));
+          DART_ASSERT_MSG(IS_ACTIVE_TASK(next_out_task),
+                          "Cannot insert delayed dependency if the next task "
+                          "is already running (WTF?!)");
+          int32_t unresolved_deps = DART_INC_AND_FETCH32(
+                                        &next_out_task->unresolved_deps);
+          DART_LOG_TRACE("Making task %p a local successor of next_out_task %p using delayed dependency  "
+                        "(successor: %p, state: %i | num_deps: %i)",
+                        task, next_out_task,
+                        next_out_task->successor,
+                        next_out_task->state, unresolved_deps);
+          dart_tasking_tasklist_prepend(&(task->successor), next_out_task);
+          dart__base__mutex_unlock(&(next_out_task->mutex));
+          // no need to add this dependency to the hash table
+        } else {
+          // there is no later task so we better insert this dependency into
+          // the hash table
+          taskref tr;
+          tr.local = task;
+          dart_dephash_elem_t *new_elem = dephash_allocate_elem(&dep, tr, myguid);
+          dart__base__mutex_lock(&(task->parent->mutex));
+          dephash_require_alloc(task->parent);
+          if (prev == NULL) {
+            // we are still at the head of the hash table slot, i.e.,
+            // our match was the very first task we encountered
+            new_elem->next                 = task->parent->local_deps[slot];
+            task->parent->local_deps[slot] = new_elem;
+            DART_LOG_TRACE("Inserting delayed dependency at the beginning of the slot");
+          } else {
+            new_elem->next = prev->next;
+            prev->next     = new_elem;
+            DART_LOG_TRACE("Inserting delayed dependency in the middle");
+          }
+          dart__base__mutex_unlock(&(task->parent->mutex));
+        }
+        return DART_OK;
+      }
+    }
+  }
+
+  if (!IS_OUT_DEP(dep)) {
+    DART_LOG_TRACE("No matching output dependency found for local input "
+        "dependency %p of task %p in phase %i",
+        DEP_ADDR(dep), task, task->phase);
+    printf("Couldn't find an active task to match delayed input dependency!\n");
+  }
+  return DART_OK;
+}
+
+
 /**
  * Find all tasks this task depends on and add the task to the dependency hash
  * table. All earlier tasks are considered up to the first task with OUT|INOUT
@@ -566,6 +758,8 @@ dart_ret_t dart_tasking_datadeps_handle_task(
 
     if (dep.type == DART_DEP_DIRECT) {
       dart_tasking_datadeps_handle_local_direct(task, dep);
+    } else if (dep.type == DART_DEP_COPYIN){
+      dart_tasking_datadeps_handle_copyin(task, dep);
     } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
@@ -587,10 +781,15 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     } else {
       // translate the pointer to a local pointer
       dep.gptr = dart_tasking_datadeps_localize_gptr(dep.gptr);
-      dart_tasking_datadeps_match_local_datadep(dep, task);
+      if (dep.type == DART_DEP_DELAYED_IN) {
+        // delayed input dependencies need some special treatment
+        dart_tasking_datadeps_match_delayed_local_datadep(dep, task);
+      } else {
+        dart_tasking_datadeps_match_local_datadep(dep, task);
 
-      // add this task to the hash table
-      dephash_add_local(&dep, task);
+        // add this task to the hash table
+        dephash_add_local(&dep, task);
+      }
     }
   }
 

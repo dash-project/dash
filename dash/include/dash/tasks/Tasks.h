@@ -335,11 +335,8 @@ namespace internal {
       dart_gptr_t         gptr,
       dart_task_deptype_t type,
       dart_taskphase_t    phase = DART_PHASE_TASK)
-      : _dep({{gptr}, type, phase}) {
-      _dep.gptr  = gptr;
-      _dep.type  = type;
-      _dep.phase = phase;
-    }
+      : _dep({{gptr}, type, phase})
+    { }
 
     /**
      * Create a data dependency using a local pointer.
@@ -355,6 +352,22 @@ namespace internal {
       _dep.gptr.unitid = dash::myid();
       _dep.gptr.teamid = dash::Team::All().dart_id();
       _dep.type  = type;
+      _dep.phase = phase;
+    }
+
+    /**
+     * Create a copy-in dependency using a DART global pointer.
+     */
+    TaskDependency(
+      dart_gptr_t         gptr,
+      size_t              num_bytes,
+      void               *ptr,
+      dart_taskphase_t    phase = DART_PHASE_TASK)
+    {
+      _dep.copyin.gptr = gptr;
+      _dep.copyin.dest = ptr;
+      _dep.copyin.size = num_bytes;
+      _dep.type  = DART_DEP_COPYIN;
       _dep.phase = phase;
     }
 
@@ -426,6 +439,39 @@ namespace internal {
   TaskDependency
   in(T* lptr, int32_t phase = DART_PHASE_TASK) {
     return dash::tasks::in(const_cast<const T*>(lptr), phase);
+  }
+
+  /**
+   * Create an input dependency using the global memory reference \c globref.
+   *
+   * \sa TaskDependency
+   */
+  template<typename GlobRefT, typename T>
+  auto
+  copyin(
+    GlobRefT&& globref,
+    size_t     nelem,
+    T        * target,
+    int32_t    phase = DART_PHASE_TASK)
+    -> decltype((void)(globref.dart_gptr()), TaskDependency()) {
+    return TaskDependency(globref.dart_gptr(), nelem*sizeof(T), target, phase);
+  }
+
+  /**
+   * Create an input dependency using the global memory range \c globref.
+   *
+   * \sa TaskDependency
+   */
+  template<typename RangeT, typename T>
+  auto
+  copyin(
+    RangeT&&   range,
+    size_t     nelem,
+    T        * target,
+    int32_t    phase = DART_PHASE_TASK)
+    -> decltype((void)(range.begin().dart_gptr()), TaskDependency()) {
+    return TaskDependency(range.begin().dart_gptr(),
+                          nelem*sizeof(T), target, phase);
   }
 
   /**
