@@ -87,7 +87,7 @@ invoke_taskfn(dart_task_t *task)
 {
   DART_ASSERT(task->fn != NULL);
   DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
-  if (setjmp(task->cancel_return) == 0) {
+  if (setjmp(task->taskctx->cancel_return) == 0) {
     task->fn(task->data);
     DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, task->fn, task->data);
   } else {
@@ -220,6 +220,10 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 {
   // set new task
   set_current_task(task);
+
+  // allocate a context (required for setjmp)
+  task->taskctx = dart__tasking__context_create(
+                    (context_func_t*)&wrap_task, task);
 
   //invoke the task function
   invoke_taskfn(task);

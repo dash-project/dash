@@ -1897,6 +1897,12 @@ dart_ret_t dart_reduce(
   return DART_OK;
 }
 
+/******************************************************
+ *
+ * Two-sided communication.
+ *
+ ******************************************************/
+
 dart_ret_t dart_send(
   const void         * sendbuf,
   size_t              nelem,
@@ -2035,4 +2041,122 @@ dart_ret_t dart_sendrecv(
   return DART_OK;
 }
 
+
+dart_ret_t dart_send_handle(
+  const void         * sendbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  int                  tag,
+  dart_global_unit_t   unit,
+  dart_handle_t      * handle)
+{
+  MPI_Comm comm;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+  dart_team_t team = DART_TEAM_ALL;
+
+  if (dart__unlikely(handle == NULL)){
+    return DART_ERR_INVAL;
+  }
+
+  *handle = DART_HANDLE_NULL;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_send ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_send ! unknown teamid %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
+  MPI_Request request;
+
+  comm = team_data->comm;
+  // dart_unit = MPI rank in comm_world
+  CHECK_MPI_RET(
+    MPI_Isend(
+        sendbuf,
+        nelem,
+        mpi_dtype,
+        unit.id,
+        tag,
+        comm,
+        &request),
+    "MPI_Isend");
+
+  *handle = malloc(sizeof(struct dart_handle_struct));
+  (*handle)->needs_flush = false;
+  (*handle)->dest = unit.id;
+  (*handle)->num_reqs = 1;
+  (*handle)->reqs[0] = request;
+  (*handle)->reqs[1] = MPI_REQUEST_NULL;
+
+  return DART_OK;
+}
+
+dart_ret_t dart_recv_handle(
+  void                * recvbuf,
+  size_t                nelem,
+  dart_datatype_t       dtype,
+  int                   tag,
+  dart_global_unit_t    unit,
+  dart_handle_t       * handle)
+{
+  MPI_Comm comm;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+  dart_team_t team = DART_TEAM_ALL;
+
+  if (dart__unlikely(handle == NULL)){
+    return DART_ERR_INVAL;
+  }
+
+  *handle = DART_HANDLE_NULL;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_recv ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(team);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_recv ! unknown teamid %d", team);
+    return DART_ERR_INVAL;
+  }
+
+  CHECK_UNITID_RANGE(unit, team_data);
+
+  MPI_Request request;
+
+  comm = team_data->comm;
+  // dart_unit = MPI rank in comm_world
+  CHECK_MPI_RET(
+    MPI_Irecv(
+        recvbuf,
+        nelem,
+        mpi_dtype,
+        unit.id,
+        tag,
+        comm,
+        &request),
+    "MPI_Irecv");
+
+  *handle = malloc(sizeof(struct dart_handle_struct));
+  (*handle)->needs_flush = false;
+  (*handle)->dest = unit.id;
+  (*handle)->num_reqs = 1;
+  (*handle)->reqs[0] = request;
+  (*handle)->reqs[1] = MPI_REQUEST_NULL;
+
+  return DART_OK;
+}
 

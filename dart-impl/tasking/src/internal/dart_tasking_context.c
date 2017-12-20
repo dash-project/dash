@@ -193,11 +193,11 @@ dart__tasking__context_free(context_list_t *ctxlist)
 
 context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
 {
+  context_t* res = NULL;
 #ifdef USE_UCONTEXT
 
   // look for already allocated contexts
   // thread-local list, no locking required
-  context_t* res = NULL;
   dart_thread_t* thread = dart__tasking__current_thread();
   if (thread->ctxlist != NULL) {
     res = &thread->ctxlist->ctx;
@@ -233,9 +233,10 @@ context_t* dart__tasking__context_create(context_func_t *fn, void *arg)
   res->fn  = fn;
   res->arg = arg;
 
+#else // USE_UCONTEXT
+  res = malloc(sizeof(*res));
+#endif // USE_UCONTEXT
   return res;
-#endif
-  return NULL;
 }
 
 void dart__tasking__context_release(context_t* ctx)
@@ -273,7 +274,7 @@ void dart__tasking__context_release(context_t* ctx)
     DART_STACK_PUSH(thread->ctxlist, ctxlist);
   }
 #else
-  DART_ASSERT_MSG(NULL, "Cannot call %s without UCONTEXT support!", __FUNCTION__);
+  free(ctx);
 #endif
 }
 

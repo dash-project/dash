@@ -77,7 +77,7 @@ void dart__tasking__abort_current_task(dart_thread_t* thread)
   // jump back before the beginning of the task
   DART_LOG_DEBUG("abort_current_task: Aborting execution of task %p",
                  thread->current_task);
-  longjmp(thread->current_task->cancel_return, 1);
+  longjmp(thread->current_task->taskctx->cancel_return, 1);
 }
 
 void

@@ -5,6 +5,7 @@
 #ifndef DART_TASKING_DART_TASKING_CONTEXT_H_
 #define DART_TASKING_DART_TASKING_CONTEXT_H_
 
+#include <setjmp.h>
 #include <dash/dart/base/macro.h>
 
 // TODO: Make this a CMake variable?
@@ -19,10 +20,12 @@ typedef struct context_struct {
   ucontext_t      ctx;
   context_func_t *fn;
   void           *arg;
+  jmp_buf         cancel_return;   // where to longjmp upon task cancellation
 } context_t;
 #else
-// dummy type
-typedef char context_t;
+typedef struct context_struct {
+  jmp_buf         cancel_return;   // where to longjmp upon task cancellation
+} context_t;
 #endif
 
 // opaque type
