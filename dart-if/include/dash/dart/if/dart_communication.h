@@ -706,18 +706,18 @@ dart_ret_t dart_recv(
 /**
  * DART Equivalent to MPI sendrecv.
  *
- * \param sendbuf      Buffer containing the data to be sent by the 
+ * \param sendbuf      Buffer containing the data to be sent by the
  *                     source unit.
  * \param send_nelem   Number of values sentby the source unit.
  * \param send_dtype   The data type of values in \c sendbuf.
  * \param dest         Unitthe message is sent to.
- * \param send_tag     Message tag for the distinction between different 
+ * \param send_tag     Message tag for the distinction between different
  *                     messages of the source unit.
  * \param recvbuf      Buffer for the incoming data.
  * \param recv_nelem   Number of values received by the destination unit.
  * \param recv_dtype   The data type of values in \c recvbuf.
  * \param src          Unit sending the message.
- * \param recv_tag     Message tag for the distinction between different 
+ * \param recv_tag     Message tag for the distinction between different
  *                     messages of the destination unit.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -737,6 +737,51 @@ dart_ret_t dart_sendrecv(
   int                  recv_tag,
   dart_global_unit_t   src) DART_NOTHROW;
 
+/**
+ * DART Equivalent to MPI_Isend.
+ *
+ * \param sendbuf Buffer containing the data to be sent by the unit.
+ * \param nelem   Number of values sent to the specified unit.
+ * \param dtype   The data type of values in \c sendbuf.
+ * \param tag     Message tag for the distinction between different messages.
+ * \param unit    Unit the message is sent to.
+ * \param handle  The handle to be used to wait for the send to complete.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_send_handle(
+  const void         * sendbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  int                  tag,
+  dart_global_unit_t   unit,
+  dart_handle_t      * handle);
+
+/**
+ * DART Equivalent to MPI_Irecv.
+ *
+ * \param recvbuf Buffer for the incoming data.
+ * \param nelem   Number of values received by the unit
+ * \param dtype   The data type of values in \c recvbuf.
+ * \param tag     Message tag for the distinction between different messages.
+ * \param unit    Unit sending the message.
+ * \param handle  The handle to be used to wait for the recv to complete.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_recv_handle(
+  void                * recvbuf,
+  size_t                nelem,
+  dart_datatype_t       dtype,
+  int                   tag,
+  dart_global_unit_t    unit,
+  dart_handle_t       * handle);
 
 /** \} */
 
