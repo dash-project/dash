@@ -206,7 +206,7 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
        CACHE STRING "C compiler GDB debug symbols flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
+  set (CC_STD_FLAG "-std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
   # using Cray
