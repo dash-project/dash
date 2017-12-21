@@ -71,7 +71,7 @@ dart__tasking__context_adjust_size(size_t size)
 void dart__tasking__context_init()
 {
   page_size = dart__tasking__context_pagesize();
-  ssize_t env_stack_size = dart__base__env__size(DART_TASKSTACKSIZE_ENVSTR);
+  ssize_t env_stack_size = dart__base__env__size(DART_TASKSTACKSIZE_ENVSTR, -1);
   if (env_stack_size > -1) {
     DART_LOG_INFO("Using user-provided task stack size of %zu", task_stack_size);
     task_stack_size = env_stack_size;

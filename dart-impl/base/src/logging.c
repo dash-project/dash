@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_config.h>
@@ -14,6 +15,7 @@
 
 #include <dash/dart/if/dart_tasking.h>
 
+#define DART_LOGLEVEL_ENVSTR      "DART_LOG_LEVEL"
 
 /* Width of unit id field in log messages in number of characters */
 #define UNIT_WIDTH 4
@@ -25,6 +27,34 @@
 #define LINE_WIDTH 4
 /* Maximum length of a single log message in number of characters */
 #define MAX_MESSAGE_LENGTH 256;
+
+static const struct dart_env_str2int env_vals[] = {
+  {"ERROR", DART_LOGLEVEL_ERROR},
+  {"WARN",  DART_LOGLEVEL_WARN},
+  {"INFO",  DART_LOGLEVEL_INFO},
+  {"DEBUG", DART_LOGLEVEL_DEBUG},
+  {"TRACE", DART_LOGLEVEL_TRACE},
+  {NULL, -1}
+};
+
+
+/**
+ * Returns the log level set in DART_LOG_LEVEL, defaults to DART_LOGLEVEL_TRACE
+ * if the environment variable is not set.
+ */
+enum dart__base__logging_loglevel
+dart__logging__log_level()
+{
+  static enum dart__base__logging_loglevel level = DART_LOGLEVEL_TRACE;
+  static int parsed = 0;
+  if (!parsed) {
+    parsed = 1;
+    level  = dart__base__env__str2int(DART_LOGLEVEL_ENVSTR, env_vals,
+                                      DART_LOGLEVEL_TRACE);
+  }
+
+  return level;
+}
 
 
 static dart_mutex_t logmutex = DART_MUTEX_INITIALIZER;
@@ -65,7 +95,7 @@ const char * dart_base_logging_basename(const char *path) {
     return base ? base+1 : path;
 }
 
-static inline 
+static inline
 double dart_base_logging_timestamp_ms()
 {
   struct timespec ts;
@@ -83,7 +113,7 @@ dart__base__log_message(
   ...
 )
 {
-  if (level > dart__base__env__log_level() ||
+  if (level > dart__logging__log_level() ||
       level > DART_LOGLEVEL_TRACE) {
     return;
   }
@@ -91,7 +121,6 @@ dart__base__log_message(
   va_start(argp, format);
   const int maxlen = MAX_MESSAGE_LENGTH;
   char      msg_buf[maxlen];
-  pid_t     pid = getpid();
   vsnprintf(msg_buf, maxlen, format, argp);
 //  if (sn_ret < 0 || sn_ret >= maxlen) {
 //    break;

@@ -9,25 +9,7 @@
 #include <dash/dart/base/macro.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
-
-/**
- * Name of the environment variable specifying the number of threads to use.
- */
-#define DART_NUMTHREADS_ENVSTR    "DART_NUM_THREADS"
-/**
- * Name of the environment variable specifying the size of the task stack size.
- */
-#define DART_TASKSTACKSIZE_ENVSTR "DART_TASK_STACKSIZE"
-/**
- * Name of the environment variable specifying whether threads should be
- * bound to a single CPU core/hw-thread.
- */
-#define DART_THREAD_AFFINITY_ENVSTR "DART_BIND_THREADS"
-/**
- * Name of the environment variable specifying the number of phases after which
- * to perform a dependency matching.
- */
-#define DART_MATCHING_FREQUENCY_ENVSTR "DART_TASK_MATCHING_FREQ"
+#include <dash/dart/tasking/dart_tasking_envstr.h>
 
 // forward declaration, defined in dart_tasking_datadeps.c
 struct dart_dephash_elem;
