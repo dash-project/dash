@@ -296,7 +296,8 @@ dart_task_t * next_task(dart_thread_t *thread)
     for (int i = 0; i < num_threads; ++i) {
       dart_thread_t *target_thread = thread_pool[target];
       if (dart__likely(target_thread != NULL)) {
-        task = dart_tasking_taskqueue_popback(&target_thread->queue);
+        //task = dart_tasking_taskqueue_popback(&target_thread->queue);
+        task = dart_tasking_taskqueue_pop(&target_thread->queue);
         if (task != NULL) {
           DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
           thread->last_steal_thread = target;
@@ -503,7 +504,8 @@ void* thread_main(void *data)
     dart__tasking__check_cancellation(thread);
 
     // look for incoming remote tasks and responses
-    if (worker_poll_remote)
+    // NOTE: only the last thread does the polling
+    if (worker_poll_remote && threadid == num_threads-1)
       dart_tasking_remote_progress();
     // process the next task
     dart_task_t *task = next_task(thread);
