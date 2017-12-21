@@ -306,17 +306,14 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+    CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
   )
 
   if(ENABLE_COMPTIME_RED)
     cotire(${DASH_LIBRARY})
   endif()
 
-  set_target_properties(
-    ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD_REQUIRED 11
-  )
   include_directories(
     ${ADDITIONAL_INCLUDES}
   )
@@ -408,11 +405,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          CXX_STANDARD 11
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD_REQUIRED 11
+          CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+          CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
         )
 
         # Installation
@@ -469,17 +463,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      CXX_STANDARD 11
+      CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+      CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
     )
 
     if(ENABLE_COMPTIME_RED)
       cotire(${DASH_TEST})
     endif()
-
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      CXX_STANDARD_REQUIRED 11
-    )
 
     # Installation
     DeployBinary(${DASH_TEST})
