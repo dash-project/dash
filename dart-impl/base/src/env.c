@@ -26,7 +26,7 @@ dart__base__env__str2int(
     if (envstr != NULL) {
       const struct dart_env_str2int *val;
       while ((val = &values[i++])->envstr != NULL) {
-        if (strcmp(envstr, val->envstr) == 0) {
+        if (strcasecmp(envstr, val->envstr) == 0) {
           res = val->value;
           break;
         }
