@@ -69,9 +69,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
   } while (0)
 #endif
 
-#define OFF_DIST 0
-#define OFF_SUPP 3
-#define OFF_DISP 6
+#define OFF_DIST(nunits) (nunits * 0)
+#define OFF_SUPP(nunits) (nunits * 1)
+#define OFF_DISP(nunits) (nunits * 2)
 
 namespace detail {
 
@@ -280,8 +280,8 @@ void psort__calc_final_partition_dist(
 
   auto const myid       = l_partition_dist.pattern().team().myid();
   auto const nunits     = l_partition_dist.pattern().team().size();
-  auto       dist_begin = l_partition_dist.begin() + OFF_DIST;
-  auto       supp_begin = l_partition_dist.begin() + OFF_SUPP;
+  auto       dist_begin = l_partition_dist.begin() + OFF_DIST(nunits);
+  auto       supp_begin = l_partition_dist.begin() + OFF_SUPP(nunits);
 
   auto const n_my_elements =
       std::accumulate(dist_begin, dist_begin + nunits, 0);
@@ -322,8 +322,8 @@ void psort__calc_send_count(
 
   target_count[0] = 0;
 
-  auto l_target_count = &(partition_dist[OFF_SUPP]);
-  auto l_send_count   = &(partition_dist[OFF_DIST]);
+  auto l_target_count = &(partition_dist[OFF_SUPP(nunits)]);
+  auto l_send_count   = &(partition_dist[OFF_DIST(nunits)]);
 
   std::copy(
       l_target_count, l_target_count + nunits, target_count.begin() + 1);
@@ -347,7 +347,7 @@ void psort__calc_target_displs(dash::Array<SizeType>& g_partition_dist)
   auto const nunits = g_partition_dist.team().size();
   auto const myid   = g_partition_dist.team().myid();
 
-  auto l_target_displs = &(g_partition_dist.local[OFF_DISP]);
+  auto l_target_displs = &(g_partition_dist.local[OFF_DISP(nunits)]);
 
   if (0 == myid) {
     // Unit 0 always writes to target offset 0
@@ -360,20 +360,20 @@ void psort__calc_target_displs(dash::Array<SizeType>& g_partition_dist)
   team_unit_t const last(nunits);
 
   auto const u_blocksize          = g_partition_dist.lsize();
-  auto const target_displs_lbegin = myid * u_blocksize + OFF_DISP;
+  auto const target_displs_lbegin = myid * u_blocksize + OFF_DISP(nunits);
   auto const target_displs_lend   = target_displs_lbegin + nunits;
 
   for (; unit < last; ++unit) {
     auto const     prev_u = unit - 1;
     SizeType const val =
         (prev_u == myid)
-            ? g_partition_dist.local[prev_u + OFF_DIST]
-            : g_partition_dist[prev_u * u_blocksize + myid + OFF_DIST];
+            ? g_partition_dist.local[prev_u + OFF_DIST(nunits)]
+            : g_partition_dist[prev_u * u_blocksize + myid + OFF_DIST(nunits)];
     target_displs[unit]      = val + target_displs[prev_u];
-    auto const target_offset = unit * u_blocksize + myid + OFF_DISP;
+    auto const target_offset = unit * u_blocksize + myid + OFF_DISP(nunits);
     if (target_displs_lbegin <= target_offset &&
         target_offset < target_displs_lend) {
-      g_partition_dist.local[(target_offset % nunits) + OFF_DISP] =
+      g_partition_dist.local[(target_offset % nunits) + OFF_DISP(nunits)] =
           target_displs[unit];
     }
     else {
@@ -659,18 +659,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       auto const transposed_unit = idx - 1;
 
       if (transposed_unit != myid) {
-        auto const offset =
-            transposed_unit * g_partition_dist.lsize() + myid;
+        auto const offset = transposed_unit * g_partition_dist.lsize() + myid;
         // We communicate only non-zero values
         if (l_nlt[idx] > 0)
-          g_partition_dist.async[offset + OFF_DIST].set(&(l_nlt[idx]));
+          g_partition_dist.async[offset + OFF_DIST(nunits)].set(
+              &(l_nlt[idx]));
 
         if (l_nle[idx] > 0)
-          g_partition_dist.async[offset + OFF_SUPP].set(&(l_nle[idx]));
+          g_partition_dist.async[offset + OFF_SUPP(nunits)].set(
+              &(l_nle[idx]));
       }
       else {
-        g_partition_dist.local[myid + OFF_DIST] = l_nlt[idx];
-        g_partition_dist.local[myid + OFF_SUPP] = l_nle[idx];
+        g_partition_dist.local[myid + OFF_DIST(nunits)] = l_nlt[idx];
+        g_partition_dist.local[myid + OFF_SUPP(nunits)] = l_nle[idx];
       }
     }
     // complete outstanding requests...
@@ -680,12 +681,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   team.barrier();
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "initial partition distribution:", g_partition_dist.lbegin() + OFF_DIST,
-      g_partition_dist.lbegin() + OFF_DIST + nunits);
+      "initial partition distribution:",
+      g_partition_dist.lbegin() + OFF_DIST(nunits),
+      g_partition_dist.lbegin() + OFF_DIST(nunits) + nunits);
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "partition supply", g_partition_dist.lbegin() + OFF_SUPP,
-      g_partition_dist.lbegin() + OFF_SUPP + nunits);
+      "partition supply", g_partition_dist.lbegin() + OFF_SUPP(nunits),
+      g_partition_dist.lbegin() + OFF_SUPP(nunits) + nunits);
 
   /* Calculate final distribution per partition. Each unit calculates their
    * local distribution independently.
@@ -695,8 +697,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       l_acc_unit_count, g_partition_dist.local);
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "final partition distribution", g_partition_dist.lbegin() + OFF_DIST,
-      g_partition_dist.lbegin() + OFF_DIST + nunits);
+      "final partition distribution",
+      g_partition_dist.lbegin() + OFF_DIST(nunits),
+      g_partition_dist.lbegin() + OFF_DIST(nunits) + nunits);
 
   team.barrier();
 
@@ -708,17 +711,17 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const        last = static_cast<dash::team_unit_t>(nunits);
 
   for (; unit < last; ++unit) {
-    if (g_partition_dist.local[OFF_DIST + unit] == 0) continue;
+    if (g_partition_dist.local[OFF_DIST(nunits) + unit] == 0) continue;
 
     if (unit != myid) {
       // We communicate only non-zero values
       auto const offset = unit * g_partition_dist.lsize() + myid;
-      g_partition_dist.async[offset + OFF_SUPP].set(
-          &(g_partition_dist.local[OFF_DIST + unit]));
+      g_partition_dist.async[offset + OFF_SUPP(nunits)].set(
+          &(g_partition_dist.local[OFF_DIST(nunits) + unit]));
     }
     else {
-      g_partition_dist.local[OFF_SUPP + myid] =
-          g_partition_dist.local[OFF_DIST + unit];
+      g_partition_dist.local[OFF_SUPP(nunits) + myid] =
+          g_partition_dist.local[OFF_DIST(nunits) + unit];
     }
   }
 
@@ -727,9 +730,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   team.barrier();
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "final target count", g_partition_dist.lbegin() + OFF_SUPP,
-      g_partition_dist.lbegin() + OFF_SUPP + nunits);
-
+      "final target count", g_partition_dist.lbegin() + OFF_SUPP(nunits),
+      g_partition_dist.lbegin() + OFF_SUPP(nunits) + nunits);
 
   std::vector<size_type> l_send_displs(nunits, 0);
 
@@ -738,13 +740,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   }
   else {
     std::fill(
-        g_partition_dist.lbegin() + OFF_DIST,
-        g_partition_dist.lbegin() + OFF_DIST + nunits, 0);
+        g_partition_dist.lbegin() + OFF_DIST(nunits),
+        g_partition_dist.lbegin() + OFF_DIST(nunits) + nunits, 0);
   }
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "send count", g_partition_dist.lbegin() + OFF_DIST,
-      g_partition_dist.lbegin() + OFF_DIST + nunits);
+      "send count", g_partition_dist.lbegin() + OFF_DIST(nunits),
+      g_partition_dist.lbegin() + OFF_DIST(nunits) + nunits);
 
   DASH_SORT_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
@@ -756,7 +758,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   team.barrier();
 
   DASH_SORT_LOG_TRACE_RANGE(
-      "target displs", &(g_partition_dist.local[OFF_DISP]), &(g_partition_dist.local[OFF_DISP]) + nunits);
+      "target displs", &(g_partition_dist.local[OFF_DISP(nunits)]),
+      &(g_partition_dist.local[OFF_DISP(nunits)]) + nunits);
 
   unit = static_cast<team_unit_t>(0);
 
@@ -765,10 +768,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
 
   for (; unit < last; ++unit) {
-    auto const send_count = g_partition_dist.local[unit + OFF_DIST];
+    auto const send_count = g_partition_dist.local[unit + OFF_DIST(nunits)];
     DASH_ASSERT_GE(send_count, 0, "invalid send count");
     if (send_count == 0) continue;
-    auto target_disp = g_partition_dist.local[unit + OFF_DISP];
+    auto target_disp = g_partition_dist.local[unit + OFF_DISP(nunits)];
     DASH_ASSERT_GE(target_disp, 0, "invalid target disp");
     auto const send_disp = l_send_displs[unit];
     DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
