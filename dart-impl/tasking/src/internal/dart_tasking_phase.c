@@ -14,7 +14,8 @@ dart__tasking__phase_advance()
 {
   static dart_taskphase_t matching_interval = INT_MIN;
   if (matching_interval == INT_MIN) {
-    matching_interval = dart__base__env__number(DART_MATCHING_FREQUENCY_ENVSTR);
+    matching_interval = dart__base__env__number(
+                          DART_MATCHING_FREQUENCY_ENVSTR, -1);
   }
   ++creation_phase;
   if (matching_interval > 0 && creation_phase % matching_interval == 0) {

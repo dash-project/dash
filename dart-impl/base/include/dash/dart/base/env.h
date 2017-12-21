@@ -7,23 +7,32 @@
 #ifndef DASH_DART_BASE_ENV_H_
 #define DASH_DART_BASE_ENV_H_
 
+#include <unistd.h>
 #include <stdbool.h>
 #include <dash/dart/base/macro.h>
-#include <dash/dart/base/logging.h>
+
+struct dart_env_str2int{
+  const char *envstr;
+  int         value;
+};
 
 /**
- * Returns the log level set in DART_LOG_LEVEL, defaults to DART_LOGLEVEL_TRACE
- * if the environment variable is not set.
+ * Parse a integral value from a set of options, e.g., from an enum.
+ * The array values should be null-terminated, i.e., the last entry should
+ * be {NULL, 0}.
  */
-enum dart__base__logging_loglevel
-dart__base__env__log_level() DART_INTERNAL;
+int
+dart__base__env__str2int(
+  const char                    * env,
+  const struct dart_env_str2int * values,
+  int                             fallback) DART_INTERNAL;
 
 /**
  * Returns the number provided in the environment variable or -1
  * if the environment variable is not set or does not represent a number.
  */
 int
-dart__base__env__number(const char *env) DART_INTERNAL;
+dart__base__env__number(const char *env, int fallback) DART_INTERNAL;
 
 /**
  * Parse a size from the provided environment variable.
@@ -32,7 +41,7 @@ dart__base__env__number(const char *env) DART_INTERNAL;
  *
  * \return The parsed value or -1 on error.
  */
-ssize_t dart__base__env__size(const char *env) DART_INTERNAL;
+ssize_t dart__base__env__size(const char *env, ssize_t fallback) DART_INTERNAL;
 
 
 /**
@@ -42,6 +51,11 @@ ssize_t dart__base__env__size(const char *env) DART_INTERNAL;
  *
  * \return The parsed value (false on error).
  */
-bool dart__base__env__bool(const char *env) DART_INTERNAL;
+bool dart__base__env__bool(const char *env, bool fallback) DART_INTERNAL;
+
+/**
+ * Returns the string value of the environment variable or NULL if not set.
+ */
+const char* dart__base__env__string(const char *env) DART_INTERNAL;
 
 #endif /* DASH_DART_BASE_ENV_H_ */

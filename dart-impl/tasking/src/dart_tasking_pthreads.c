@@ -242,7 +242,7 @@ static void wait_for_work()
 
 static int determine_num_threads()
 {
-  int num_threads = dart__base__env__number(DART_NUMTHREADS_ENVSTR);
+  int num_threads = dart__base__env__number(DART_NUMTHREADS_ENVSTR, -1);
 
   if (num_threads == -1) {
     // query hwinfo
@@ -581,7 +581,7 @@ dart__tasking__init()
 
   pthread_key_create(&tpd_key, NULL);
 
-  bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR);
+  bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR, false);
 
   // initialize all task threads before creating them
   init_threadpool(num_threads);
