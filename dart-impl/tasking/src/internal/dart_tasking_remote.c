@@ -182,7 +182,7 @@ dart_ret_t dart_tasking_remote_release(
       DART_LOG_INFO("Sent remote dependency release to unit t:%i "
           "(segid=%i, offset=%p, fn=%p, rtask=%p)",
           team_unit.id, dep->gptr.segid,
-          dep->gptr.addr_or_offs.offset,
+          dep->gptr.addr_or_offs.addr,
           &release_remote_dependency, rtask.local);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
@@ -332,7 +332,7 @@ enqueue_from_remote(void *data)
   dep.phase     = rdep->phase;
   taskref rtask = rdep->rtask;
   DART_LOG_INFO("Received remote dependency request for task %p "
-                "(unit=%i, segid=%i, addr=%p, ph=%li)",
+                "(unit=%i, segid=%i, addr=%p, ph=%i)",
                 rdep->rtask.remote, rdep->runit.id, rdep->gptr.segid,
                 rdep->gptr.addr_or_offs.addr, dep.phase);
   dart_tasking_datadeps_handle_remote_task(&dep, rtask, rdep->runit);

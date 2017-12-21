@@ -62,6 +62,11 @@ release_remote_dependencies(dart_task_t *task);
 static void
 dephash_recycle_elem(dart_dephash_elem_t *elem);
 
+static dart_ret_t
+dart_tasking_datadeps_match_delayed_local_datadep(
+  const dart_task_dep_t * dep,
+        dart_task_t     * task);
+
 static inline int hash_gptr(dart_gptr_t gptr)
 {
   // use larger types to accomodate for the shifts below
@@ -78,8 +83,8 @@ static inline int hash_gptr(dart_gptr_t gptr)
   hash ^= (unitid << 32); // 24 bit unit ID
   // using a prime number in modulo stirs reasonably well
 
-  DART_LOG_TRACE("hash_gptr(u:%d, s:%d, o:%p) => (%d)",
-                 unitid, segid, gptr.addr_or_offs.offset,
+  DART_LOG_TRACE("hash_gptr(u:%lu, s:%d, o:%p) => (%lu)",
+                 unitid, segid, gptr.addr_or_offs.addr,
                  (hash % DART_DEPHASH_SIZE));
 
   return (hash % DART_DEPHASH_SIZE);
@@ -286,11 +291,22 @@ dart_tasking_datadeps_handle_defered_remote()
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote dependencies: %p",
                  unhandled_remote_deps);
-  dart_dephash_elem_t **local_deps = dart__tasking__current_task()->local_deps;
+  dart_task_t *current_task = dart__tasking__current_task();
+  DART_ASSERT(dart__tasking__is_root_task(current_task));
+  dart_dephash_elem_t **local_deps = current_task->local_deps;
   dart__base__mutex_lock(&unhandled_remote_mutex);
   dart_dephash_elem_t *next = unhandled_remote_deps;
   while ((rdep = next) != NULL) {
     next = rdep->next;
+
+    if (rdep->taskdep.type == DART_DEP_DELAYED_IN) {
+      // dispatch handling of delayed local dependencies
+      dart_tasking_datadeps_match_delayed_local_datadep(
+        &rdep->taskdep, rdep->task.local);
+      dephash_recycle_elem(rdep);
+      continue;
+    }
+
     /**
      * Iterate over all possible tasks and find the closest-matching
      * local task that satisfies the remote dependency.
@@ -619,6 +635,9 @@ dart_tasking_datadeps_match_delayed_local_datadep(
   int slot;
   slot = hash_gptr(dep->gptr);
 
+  // decrement dependecy counter used to prevent premature running
+  DART_FETCH_AND_DEC32(&task->unresolved_deps);
+
   // shortcut if no dependencies to match, yet
   if (task->parent->local_deps == NULL) return DART_OK;
 
@@ -786,8 +805,23 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       // translate the pointer to a local pointer
       dep.gptr = dart_tasking_datadeps_localize_gptr(dep.gptr);
       if (dep.type == DART_DEP_DELAYED_IN) {
-        // delayed input dependencies need some special treatment
-        dart_tasking_datadeps_match_delayed_local_datadep(&dep, task);
+        /**
+         * delayed input dependencies should be treated as remote dependencies.
+         * we further delay their processing to make sure we know all relevant
+         * local tasks before trying to insert them into the dependency graph
+         *
+         * the dependency will be handled in
+         * dart_tasking_datadeps_handle_defered_remote
+         */
+        taskref tr;
+        tr.local = task;
+        dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, tr, guid);
+        // increase the dependency counter here to prevent the task from running
+        // before the matching has been done
+        DART_FETCH_AND_INC32(&task->unresolved_deps);
+        dart__base__mutex_lock(&unhandled_remote_mutex);
+        DART_STACK_PUSH(unhandled_remote_deps, rs);
+        dart__base__mutex_unlock(&unhandled_remote_mutex);
       } else {
         dart_tasking_datadeps_match_local_datadep(&dep, task);
 
