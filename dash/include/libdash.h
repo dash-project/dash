@@ -40,17 +40,28 @@ namespace dash {
 
 #include <dash/Onesided.h>
 
+#include <dash/Future.h>
+#include <dash/Execution.h>
 #include <dash/LaunchPolicy.h>
 
-#include <dash/Container.h>
-#include <dash/Shared.h>
-#include <dash/SharedCounter.h>
-#include <dash/Exception.h>
-#include <dash/Algorithm.h>
 #include <dash/Atomic.h>
 #include <dash/Mutex.h>
 
+#include <dash/Container.h>
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+#include <dash/List.h>
+#include <dash/UnorderedMap.h>
+
 #include <dash/Pattern.h>
+
+#include <dash/Shared.h>
+#include <dash/SharedCounter.h>
+
+#include <dash/Exception.h>
+#include <dash/Algorithm.h>
+
+#include <dash/Allocator.h>
 
 #include <dash/halo/HaloMatrixWrapper.h>
 
@@ -71,7 +82,5 @@ namespace dash {
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
-
-#include <dash/tools/PatternVisualizer.h>
 
 #endif // DASH__LIBDASH_H_
