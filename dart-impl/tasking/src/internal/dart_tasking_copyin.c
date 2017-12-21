@@ -154,6 +154,8 @@ dart_tasking_copyin_create_task(
   static enum dart_copyin_t impl = COPYIN_UNDEFINED;
   if (impl == COPYIN_UNDEFINED) {
     impl = dart__base__env__str2int(DART_COPYIN_IMPL_ENVSTR, env_vals, COPYIN_GET);
+    DART_LOG_INFO("Using copyin implementation %s",
+                  impl == COPYIN_GET ? "GET" : "SENDRECV");
   }
 
   dart_ret_t ret;
@@ -179,7 +181,8 @@ dart_tasking_copyin_sendrequest(
   dart_global_unit_t     unit)
 {
   struct copyin_taskdata arg;
-  arg.src       = src_gptr;
+  arg.src       = dart_tasking_datadeps_localize_gptr(src_gptr);
+  arg.dst       = NULL;
   arg.num_bytes = num_bytes;
   arg.unit      = unit.id;
   arg.tag       = tag;
