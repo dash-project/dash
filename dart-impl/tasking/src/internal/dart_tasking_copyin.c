@@ -65,9 +65,9 @@ dart_tasking_copyin_get_taskfn(void *data);
 
 static dart_ret_t
 dart_tasking_copyin_create_task_sendrecv(
-  dart_task_dep_t *dep,
-  dart_gptr_t      dest_gptr,
-  taskref          local_task)
+  const dart_task_dep_t * dep,
+        dart_gptr_t       dest_gptr,
+        taskref           local_task)
 {
   static int global_tag_counter = 0; // next tag for pre-fetch communication
 
@@ -118,9 +118,9 @@ dart_tasking_copyin_create_task_sendrecv(
 
 static dart_ret_t
 dart_tasking_copyin_create_task_get(
-  dart_task_dep_t *dep,
-  dart_gptr_t      dest_gptr,
-  taskref          local_task)
+  const dart_task_dep_t *dep,
+        dart_gptr_t      dest_gptr,
+        taskref          local_task)
 {
   // unused
   (void)local_task;
@@ -147,9 +147,9 @@ dart_tasking_copyin_create_task_get(
 
 dart_ret_t
 dart_tasking_copyin_create_task(
-  dart_task_dep_t *dep,
-  dart_gptr_t      dest_gptr,
-  taskref          local_task)
+  const dart_task_dep_t *dep,
+        dart_gptr_t      dest_gptr,
+        taskref          local_task)
 {
   static enum dart_copyin_t impl = COPYIN_UNDEFINED;
   if (impl == COPYIN_UNDEFINED) {

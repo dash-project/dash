@@ -420,10 +420,10 @@ dart_tasking_datadeps_handle_defered_remote()
 
 static dart_ret_t
 dart_tasking_datadeps_handle_local_direct(
-  dart_task_t     * task,
-  dart_task_dep_t   dep)
+  const dart_task_dep_t * dep,
+        dart_task_t     * task)
 {
-  dart_task_t *deptask = dep.task;
+  dart_task_t *deptask = dep->task;
   if (deptask != DART_TASK_NULL) {
     dart__base__mutex_lock(&(deptask->mutex));
     if (IS_ACTIVE_TASK(deptask)) {
@@ -443,13 +443,13 @@ dart_tasking_datadeps_handle_local_direct(
 
 static dart_ret_t
 dart_tasking_datadeps_handle_copyin(
-  dart_task_t     * task,
-  dart_task_dep_t   dep)
+  const dart_task_dep_t * dep,
+        dart_task_t     * task)
 {
   int slot;
   dart_gptr_t dest_gptr;
 
-  dest_gptr.addr_or_offs.addr = dep.copyin.dest;
+  dest_gptr.addr_or_offs.addr = dep->copyin.dest;
   dest_gptr.flags             = 0;
   dest_gptr.segid             = DART_TASKING_DATADEPS_LOCAL_SEGID;
   dest_gptr.teamid            = 0;
@@ -457,20 +457,23 @@ dart_tasking_datadeps_handle_copyin(
   slot = hash_gptr(dest_gptr);
   dart_dephash_elem_t *elem = NULL;
   int iter = 0;
+  DART_LOG_TRACE("Handling copyin dep (unit %d, phase %d)",
+                 dep->copyin.gptr.unitid, dep->phase);
+
   do {
     // check whether this is the first task with copyin
     if (task->parent->local_deps != NULL) {
       for (elem = task->parent->local_deps[slot];
           elem != NULL; elem = elem->next) {
-        if (elem->taskdep.gptr.addr_or_offs.addr == dep.copyin.dest) {
-          if (elem->taskdep.phase < dep.phase) {
+        if (elem->taskdep.gptr.addr_or_offs.addr == dep->copyin.dest) {
+          if (elem->taskdep.phase < dep->phase) {
             // phases are stored in decending order so we can stop here
             break;
           }
           // So far we can only re-use prefetching in the same phase
           // TODO: can we figure out whether we can go back further?
           //       Might need help from the remote side.
-          if (IS_OUT_DEP(elem->taskdep) && dep.phase == elem->taskdep.phase) {
+          if (IS_OUT_DEP(elem->taskdep) && dep->phase == elem->taskdep.phase) {
             // we're not the first --> add a dependency to the task that does the copy
             dart_task_t *elem_task = elem->task.local;
             DART_INC_AND_FETCH32(&task->unresolved_deps);
@@ -483,7 +486,7 @@ dart_tasking_datadeps_handle_copyin(
             dart_task_dep_t in_dep;
             in_dep.type  = DART_DEP_IN;
             in_dep.gptr  = dest_gptr;
-            in_dep.phase = dep.phase;
+            in_dep.phase = dep->phase;
             dephash_add_local(&in_dep, task);
 
             DART_LOG_TRACE("Copyin: task %p waits for task %p to copy", task, elem_task);
@@ -504,8 +507,9 @@ dart_tasking_datadeps_handle_copyin(
     // so create a new one
     taskref tr;
     tr.local = task;
-    DART_LOG_TRACE("Creating copyin task in phase %d (dest %p)", dep.phase, dep.copyin.dest);
-    dart_tasking_copyin_create_task(&dep, dest_gptr, tr);
+    DART_LOG_TRACE("Creating copyin task in phase %d (dest %p)",
+                   dep->phase, dep->copyin.dest);
+    dart_tasking_copyin_create_task(dep, dest_gptr, tr);
   } while (0 == iter++);
 
   return DART_OK;
@@ -519,11 +523,11 @@ dart_tasking_datadeps_handle_copyin(
  */
 static dart_ret_t
 dart_tasking_datadeps_match_local_datadep(
-  dart_task_dep_t   dep,
-  dart_task_t     * task)
+  const dart_task_dep_t * dep,
+        dart_task_t     * task)
 {
   int slot;
-  slot = hash_gptr(dep.gptr);
+  slot = hash_gptr(dep->gptr);
 
   // shortcut if no dependencies to match, yet
   if (task->parent->local_deps == NULL) return DART_OK;
@@ -535,11 +539,11 @@ dart_tasking_datadeps_match_local_datadep(
   for (dart_dephash_elem_t *elem = task->parent->local_deps[slot];
        elem != NULL; elem = elem->next)
   {
-    if (DEP_ADDR_EQ(elem->taskdep, dep)) {
+    if (DEP_ADDR_EQ(elem->taskdep, *dep)) {
       dart_task_t *elem_task = elem->task.local;
       if (elem_task == task) {
         // simply upgrade the dependency to an output dependency
-        if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(dep)) {
+        if (elem->taskdep.type == DART_DEP_IN && IS_OUT_DEP(*dep)) {
           elem->taskdep.type = DART_DEP_INOUT;
         }
         // nothing to be done for this dependency
@@ -548,8 +552,8 @@ dart_tasking_datadeps_match_local_datadep(
       DART_LOG_TRACE("Task %p local dependency on %p (s:%i) vs %p (s:%i) "
                      "of task %p",
                      task,
-                     DEP_ADDR(dep),
-                     dep.gptr.segid,
+                     DEP_ADDR(*dep),
+                     dep->gptr.segid,
                      DEP_ADDR(elem->taskdep),
                      elem->taskdep.gptr.segid,
                      elem_task);
@@ -557,10 +561,10 @@ dart_tasking_datadeps_match_local_datadep(
       DART_LOG_TRACE("Checking task %p against task %p "
                      "(deptype: %i vs %i)",
                      elem_task, task, elem->taskdep.type,
-                     dep.type);
+                     dep->type);
 
-      if (IS_OUT_DEP(dep) ||
-              (dep.type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
+      if (IS_OUT_DEP(*dep) ||
+              (dep->type == DART_DEP_IN  && IS_OUT_DEP(elem->taskdep))) {
         // lock the task here to avoid race condition
         dart__base__mutex_lock(&(elem_task->mutex));
         if (IS_ACTIVE_TASK(elem_task)){
@@ -592,10 +596,10 @@ dart_tasking_datadeps_match_local_datadep(
     }
   }
 
-  if (!IS_OUT_DEP(dep)) {
+  if (!IS_OUT_DEP(*dep)) {
     DART_LOG_TRACE("No matching output dependency found for local input "
         "dependency %p of task %p in phase %i",
-        DEP_ADDR(dep), task, task->phase);
+        DEP_ADDR(*dep), task, task->phase);
   }
   return DART_OK;
 }
@@ -609,18 +613,18 @@ dart_tasking_datadeps_match_local_datadep(
  */
 static dart_ret_t
 dart_tasking_datadeps_match_delayed_local_datadep(
-  dart_task_dep_t   dep,
-  dart_task_t     * task)
+  const dart_task_dep_t * dep,
+        dart_task_t     * task)
 {
   int slot;
-  slot = hash_gptr(dep.gptr);
+  slot = hash_gptr(dep->gptr);
 
   // shortcut if no dependencies to match, yet
   if (task->parent->local_deps == NULL) return DART_OK;
 
   dart_task_t *next_out_task = NULL; // the task with the next output dependency
 
-  DART_LOG_DEBUG("Handling delayed input dependency in phase %d", dep.phase);
+  DART_LOG_DEBUG("Handling delayed input dependency in phase %d", dep->phase);
 
   /*
    * iterate over all dependent tasks until we find the first task with
@@ -630,15 +634,15 @@ dart_tasking_datadeps_match_delayed_local_datadep(
        elem != NULL; prev = elem, elem = elem->next)
   {
     // skip dependencies that were created in a later phase
-    DART_LOG_TRACE("  phase %d vs phase %d", elem->taskdep.phase, dep.phase);
-    if (elem->taskdep.phase > dep.phase) {
-      if (DEP_ADDR_EQ(elem->taskdep, dep) && IS_OUT_DEP(elem->taskdep)){
+    DART_LOG_TRACE("  phase %d vs phase %d", elem->taskdep.phase, dep->phase);
+    if (elem->taskdep.phase > dep->phase) {
+      if (DEP_ADDR_EQ(elem->taskdep, *dep) && IS_OUT_DEP(elem->taskdep)){
         next_out_task = elem->task.local;
       }
       continue;
     }
 
-    if (DEP_ADDR_EQ(elem->taskdep, dep)) {
+    if (DEP_ADDR_EQ(elem->taskdep, *dep)) {
       dart_task_t *elem_task = elem->task.local;
       DART_ASSERT_MSG(elem_task != task,
                       "Cannot insert existing task with delayed dependency!");
@@ -680,7 +684,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           // the hash table
           taskref tr;
           tr.local = task;
-          dart_dephash_elem_t *new_elem = dephash_allocate_elem(&dep, tr, myguid);
+          dart_dephash_elem_t *new_elem = dephash_allocate_elem(dep, tr, myguid);
           dart__base__mutex_lock(&(task->parent->mutex));
           dephash_require_alloc(task->parent);
           if (prev == NULL) {
@@ -701,10 +705,10 @@ dart_tasking_datadeps_match_delayed_local_datadep(
     }
   }
 
-  if (!IS_OUT_DEP(dep)) {
+  if (!IS_OUT_DEP(*dep)) {
     DART_LOG_TRACE("No matching output dependency found for local input "
         "dependency %p of task %p in phase %i",
-        DEP_ADDR(dep), task, task->phase);
+        DEP_ADDR(*dep), task, task->phase);
     printf("Couldn't find an active task to match delayed input dependency!\n");
   }
   return DART_OK;
@@ -757,9 +761,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
     }
 
     if (dep.type == DART_DEP_DIRECT) {
-      dart_tasking_datadeps_handle_local_direct(task, dep);
+      dart_tasking_datadeps_handle_local_direct(&dep, task);
     } else if (dep.type == DART_DEP_COPYIN){
-      dart_tasking_datadeps_handle_copyin(task, dep);
+      dart_tasking_datadeps_handle_copyin(&dep, task);
     } else if (guid.id != myid.id) {
         if (task->parent->state == DART_TASK_ROOT) {
           dart_tasking_remote_datadep(&dep, task);
@@ -783,9 +787,9 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       dep.gptr = dart_tasking_datadeps_localize_gptr(dep.gptr);
       if (dep.type == DART_DEP_DELAYED_IN) {
         // delayed input dependencies need some special treatment
-        dart_tasking_datadeps_match_delayed_local_datadep(dep, task);
+        dart_tasking_datadeps_match_delayed_local_datadep(&dep, task);
       } else {
-        dart_tasking_datadeps_match_local_datadep(dep, task);
+        dart_tasking_datadeps_match_local_datadep(&dep, task);
 
         // add this task to the hash table
         dephash_add_local(&dep, task);
