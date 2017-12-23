@@ -673,7 +673,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   bool done = false;
 
   auto cur = g_nlt_nle.begin();
-  // auto tmp = cur + 2 * nunits;
+  auto tmp = cur + NLT_NLE_BLOCK * nunits;
 
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
@@ -696,9 +696,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
-    // if (!done) {
-    team.barrier();  // std::swap(cur, tmp);
-    //}
+    if (!done) {
+      std::swap(cur, tmp);
+    }
 
   } while (!done);
 
