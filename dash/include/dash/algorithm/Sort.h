@@ -696,9 +696,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
-    if (!done) {
-      std::swap(cur, tmp);
-    }
+    std::swap(cur, tmp);
 
   } while (!done);
 
