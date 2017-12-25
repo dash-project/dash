@@ -152,7 +152,7 @@ TEST_F(DARTActiveMessagesTest, Broadcast)
   if (dash::myid() == 0) {
     dart_memalloc(ds.nelem, ds.dtype, &gptr);
     value_t zero = static_cast<value_t>(0);
-    dart_put_blocking(gptr, &zero, 1, ds.dtype);
+    dart_put_blocking(gptr, &zero, 1, ds.dtype, ds.dtype);
     dart_amsg_bcast(
       DART_TEAM_ALL, q, &remote_fn_increment_gptr<value_t>, &gptr, sizeof(gptr));
   }
@@ -162,7 +162,7 @@ TEST_F(DARTActiveMessagesTest, Broadcast)
   if (dash::myid() == 0) {
     value_t expected = static_cast<value_t>(dash::size() - 1);
     value_t actual;
-    dart_get_blocking(&actual, gptr, 1, ds.dtype);
+    dart_get_blocking(&actual, gptr, 1, ds.dtype, ds.dtype);
     ASSERT_EQ_U(expected, actual);
     dart_memfree(gptr);
   }

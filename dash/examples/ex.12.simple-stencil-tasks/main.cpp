@@ -251,7 +251,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
           dart_get_handle(
             up_row,
             data_old[local_beg_gidx[0] - 1][0].dart_gptr(),
-            gext_y, dash::dart_datatype<element_t>::value,
+            gext_y,
+            dash::dart_datatype<element_t>::value,
+            dash::dart_datatype<element_t>::value,
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)
@@ -299,7 +301,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
           dart_get_handle(
             down_row,
             data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-            gext_y, dash::dart_datatype<element_t>::value,
+            gext_y,
+            dash::dart_datatype<element_t>::value,
+            dash::dart_datatype<element_t>::value,
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)

@@ -133,10 +133,10 @@ static void testfn_assign_cancel_bcast_barrier(void *data) {
 static void testfn_assign_cancel_bcast(void *data) {
   globaltestdata_t *td = (globaltestdata_t*)data;
   int val;
-  dart_get_blocking(&val, td->src, 1, DART_TYPE_INT);
+  dart_get_blocking(&val, td->src, 1, DART_TYPE_INT, DART_TYPE_INT);
   ASSERT_EQ_U(td->expected, val);
   int newval = val+1;
-  dart_put_blocking(td->dst, &newval, 1, DART_TYPE_INT);
+  dart_put_blocking(td->dst, &newval, 1, DART_TYPE_INT, DART_TYPE_INT);
   LOG_MESSAGE("[Task %p] testfn: incremented value from %i to %i (t:%d,s:%d,o:%p,u:%d)",
     dart_task_current_task(), val, newval, td->src.teamid, td->dst.segid,
     td->dst.addr_or_offs.addr, td->dst.unitid);
@@ -144,12 +144,12 @@ static void testfn_assign_cancel_bcast(void *data) {
   // unit 0 broadcasts the abort to all other units
   if (td->expected == TASK_CANCEL_CUTOFF) {
     if (dash::myid() == 0) {
-      dart_get_blocking(&val, td->dst, 1, DART_TYPE_INT);
+      dart_get_blocking(&val, td->dst, 1, DART_TYPE_INT, DART_TYPE_INT);
       printf("Cancelling task %p with dst=%d\n", dart_task_current_task(), val);
       dart_task_cancel_bcast();
       // this should never be executed
       int zero = 0;
-      dart_put_blocking(td->dst, &zero, 1, DART_TYPE_INT);
+      dart_put_blocking(td->dst, &zero, 1, DART_TYPE_INT, DART_TYPE_INT);
     }
   }
 }
@@ -529,10 +529,10 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
 
   dart_team_memalloc_aligned(DART_TEAM_ALL, 1, DART_TYPE_INT, &gptr1);
   gptr1.unitid = dash::myid();
-  dart_put_blocking(gptr1, &val, 1, DART_TYPE_INT);
+  dart_put_blocking(gptr1, &val, 1, DART_TYPE_INT, DART_TYPE_INT);
   dart_team_memalloc_aligned(DART_TEAM_ALL, 1, DART_TYPE_INT, &gptr2);
   gptr2.unitid = dash::myid();
-  dart_put_blocking(gptr2, &val, 1, DART_TYPE_INT);
+  dart_put_blocking(gptr2, &val, 1, DART_TYPE_INT, DART_TYPE_INT);
   dash::barrier();
 
   // create a bunch of tasks, one of them will abort
@@ -579,12 +579,12 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
   dart_task_complete();
 
   // fetch result
-  dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT);
+  dart_get_blocking(&val, gptr1, 1, DART_TYPE_INT, DART_TYPE_INT);
   // we will have (TASK_CANCEL_CUTOFF + 1) increments on the first value
   ASSERT_EQ_U(TASK_CANCEL_CUTOFF+1, val);
 
   // fetch result
-  dart_get_blocking(&val, gptr2, 1, DART_TYPE_INT);
+  dart_get_blocking(&val, gptr2, 1, DART_TYPE_INT, DART_TYPE_INT);
   // we will have (TASK_CANCEL_CUTOFF) increments on the second value
   ASSERT_EQ_U(TASK_CANCEL_CUTOFF, val);
 

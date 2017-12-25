@@ -10,7 +10,7 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
+ *
  * \todo fix \c dash::copy problem
  */
 
@@ -178,7 +178,9 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dart_get_blocking(
         up_row,
         data_old(local_beg_gidx[0] - 1, 0).dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
+        gext_y,
+        dash::dart_datatype<element_t>::value,
+        dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -204,7 +206,9 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dart_get_blocking(
         down_row,
         data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
+        gext_y,
+        dash::dart_datatype<element_t>::value,
+        dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
