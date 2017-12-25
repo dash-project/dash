@@ -24,8 +24,8 @@ set (DART_C_STD_PREFERED "99")
 set (DASH_CXX_STD_REQUIRED "11")
 set (DASH_CXX_STD_PREFERED "14")
 
-if (ENABLE_DEV_COMPILER_WARNINGS 
-  OR ENABLE_EXT_COMPILER_WARNINGS 
+if (ENABLE_DEV_COMPILER_WARNINGS
+  OR ENABLE_EXT_COMPILER_WARNINGS
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -84,13 +84,13 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Wreorder -Wnon-virtual-dtor")
   set (DASH_DEVELOPER_CXX_FLAGS
        "${DASH_DEVELOPER_CXX_FLAGS} -Woverloaded-virtual")
-  
+
   # C-only warning flags
 
   set (DASH_DEVELOPER_CC_FLAGS "${DASH_DEVELOPER_CCXX_FLAGS}")
   set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wbad-function-cast")
-  set (DASH_DEVELOPER_CC_FLAGS 
+  set (DASH_DEVELOPER_CC_FLAGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -114,7 +114,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
 endif()
 
-# disable warnings on unknown warning flags 
+# disable warnings on unknown warning flags
 
 set (CC_WARN_FLAG  "${CC_WARN_FLAG}  -Wall -Wextra -Wpedantic")
 set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wall -Wextra -Wpedantic")
@@ -144,8 +144,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   set (CXX_GDB_FLAG "-g"
        CACHE STRING "C++ compiler (clang++) debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
-  
+  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
     message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
   endif()
@@ -157,7 +157,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
@@ -171,7 +171,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-ipo")
   endif()
@@ -229,10 +229,10 @@ set(CMAKE_C_FLAGS_RELEASE
 set(CMAKE_CXX_FLAGS_RELEASE
     "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_ENV_SETUP_FLAGS}")
 
-set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
-set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_REPORT_FLAG} ${CC_WARN_FLAG}")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} ${CC_REPORT_FLAG} ${CC_WARN_FLAG}")
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CC_GDB_FLAG}")
 
@@ -244,15 +244,15 @@ set(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 
-set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
     "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
     "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
     "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
