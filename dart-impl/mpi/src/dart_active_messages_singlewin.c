@@ -17,6 +17,8 @@
 
 #if defined(DART_AMSGQ_SINGLEWIN)
 
+#define DART_AMSGQ_ATOMICS 1
+
 struct dart_amsgq {
   /// window holding the tail ptr
   MPI_Win      win;
@@ -34,10 +36,10 @@ struct dart_amsgq {
 
 struct dart_amsg_header {
   dart_task_action_t fn;
-  size_t             data_size;
 #ifdef DART_ENABLE_LOGGING
   dart_global_unit_t remote;
 #endif // DART_ENABLE_LOGGING
+  int                data_size;
 };
 
 static bool initialized       = false;
@@ -195,6 +197,11 @@ dart_amsg_trysend(
   if ((remote_offset + msg_size) >= amsgq->size) {
 #ifdef DART_AMSGQ_ATOMICS
     uint64_t tmp;
+    static int msg_printed = 0;
+    if (!msg_printed) {
+      msg_printed = 1;
+      DART_LOG_WARN("Message queue at unit %d is full, please consider raising the queue size (currently %zuB)", target.id, amsgq->size);
+    }
     // if not, revert the operation and free the lock to try again.
     MPI_Fetch_and_op(
       &remote_offset,

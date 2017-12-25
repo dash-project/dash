@@ -2,37 +2,39 @@
 #include <string.h>
 #include <strings.h>
 #include <dash/dart/base/env.h>
+#include <dash/dart/base/logging.h>
 
-#define DART_LOGLEVEL_ENVSTR      "DART_LOG_LEVEL"
 
 /**
- * Returns the log level set in DART_LOG_LEVEL, defaults to DART_LOGLEVEL_TRACE
- * if the environment variable is not set.
+ * Returns the string value of the environment variable or NULL if not set.
  */
-enum dart__base__logging_loglevel
-dart__base__env__log_level()
+const char* dart__base__env__string(const char *env)
 {
-  static enum dart__base__logging_loglevel level = DART_LOGLEVEL_TRACE;
-  static int parsed = 0;
-  if (!parsed) {
-    parsed = 1;
-    const char *envstr = getenv(DART_LOGLEVEL_ENVSTR);
-    if (envstr && *envstr != '\0') {
-      if (strncmp(envstr, "ERROR", 5) == 0) {
-        level = DART_LOGLEVEL_ERROR;
-      } else if (strncmp(envstr, "WARN", 4) == 0) {
-        level = DART_LOGLEVEL_WARN;
-      } else if (strncmp(envstr, "INFO", 4) == 0) {
-        level = DART_LOGLEVEL_INFO;
-      } else if (strncmp(envstr, "DEBUG", 5) == 0) {
-        level = DART_LOGLEVEL_DEBUG;
-      } else if (strncmp(envstr, "TRACE", 5) == 0) {
-        level = DART_LOGLEVEL_TRACE;
+  return getenv(env);
+}
+
+int
+dart__base__env__str2int(
+  const char                    * env,
+  const struct dart_env_str2int * values,
+  int                             fallback)
+{
+  int res = fallback;
+  if (values != NULL) {
+    int i = 0;
+    const char *envstr = getenv(env);
+    if (envstr != NULL) {
+      const struct dart_env_str2int *val;
+      while ((val = &values[i++])->envstr != NULL) {
+        if (strcasecmp(envstr, val->envstr) == 0) {
+          res = val->value;
+          break;
+        }
       }
     }
   }
 
-  return level;
+  return res;
 }
 
 /**
@@ -40,9 +42,9 @@ dart__base__env__log_level()
  * if the environment variable is not set or does not represent a number.
  */
 int
-dart__base__env__number(const char *env)
+dart__base__env__number(const char *env, int fallback)
 {
-  int result = -1;
+  int result = fallback;
   char *endptr;
   const char *envstr = getenv(env);
   if (envstr && *envstr != '\0') {
@@ -55,9 +57,9 @@ dart__base__env__number(const char *env)
   return result;
 }
 
-ssize_t dart__base__env__size(const char *env)
+ssize_t dart__base__env__size(const char *env, ssize_t fallback)
 {
-  size_t res = -1;
+  size_t res = fallback;
   const char *envstr = getenv(env);
   if (envstr != NULL) {
     char *endptr;
@@ -89,9 +91,9 @@ ssize_t dart__base__env__size(const char *env)
 }
 
 
-bool dart__base__env__bool(const char *env)
+bool dart__base__env__bool(const char *env, bool fallback)
 {
-  bool res = false;
+  bool res = fallback;
   const char *envstr = getenv(env);
   if (envstr != NULL) {
     if (strcasecmp(envstr, "yes")  == 0 ||
