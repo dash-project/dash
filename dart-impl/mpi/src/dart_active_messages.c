@@ -13,7 +13,9 @@
  * Name of the environment variable controlling the active message queue
  * implementation to use.
  *
- * Possible values: dualwin, singlewin, nolock, sendrecv
+ * Possible values: 'dualwin', 'singlewin', 'nolock', 'sendrecv'
+ *
+ * The default is 'nolock'.
  */
 #define DART_AMSGQ_IMPL_ENVSTR "DART_AMSGQ_IMPL"
 
