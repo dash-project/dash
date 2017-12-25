@@ -374,7 +374,7 @@ dart_team_memalloc_aligned_dynamic(
     "baseptr:%p segid:%i across team %d",
     nbytes, gptr_unitid, sub_mem, segment->segid, teamid);
 
-	return DART_OK;
+  return DART_OK;
 }
 
 static dart_ret_t
@@ -453,6 +453,7 @@ dart_team_memalloc_aligned(
   dart_datatype_t   dtype,
   dart_gptr_t     * gptr)
 {
+  CHECK_IS_BASICTYPE(dtype);
 #ifdef DART_MPI_ENABLE_DYNAMIC_WINDOWS
   return dart_team_memalloc_aligned_dynamic(teamid, nelem, dtype, gptr);
 #else
@@ -554,6 +555,7 @@ dart_team_memregister_aligned(
    void            * addr,
    dart_gptr_t     * gptr)
 {
+  CHECK_IS_BASICTYPE(dtype);
   size_t   size;
   int      dtype_size = dart__mpi__datatype_sizeof(dtype);
   size_t   nbytes     = nelem * dtype_size;
@@ -621,6 +623,7 @@ dart_team_memregister(
    void            * addr,
    dart_gptr_t     * gptr)
 {
+  CHECK_IS_BASICTYPE(dtype);
   int    nil;
   size_t size;
   int    dtype_size = dart__mpi__datatype_sizeof(dtype);
@@ -728,5 +731,3 @@ dart_team_memderegister(
     unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
   return DART_OK;
 }
-
-

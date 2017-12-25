@@ -96,7 +96,9 @@ dart_segment_info_t * dart_segment_get_info(
  */
 static inline
 MPI_Aint
-dart_segment_disp(dart_segment_info_t *seginfo, dart_team_unit_t team_unit_id)
+dart_segment_disp(
+  const dart_segment_info_t *seginfo,
+  dart_team_unit_t           team_unit_id)
 {
   return (seginfo->disp != NULL) ? seginfo->disp[team_unit_id.id] : 0;
 }

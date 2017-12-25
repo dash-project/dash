@@ -166,6 +166,12 @@ struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
+template<typename T>
+struct dart_datatype<const T> : dart_datatype<T> { };
+
+template<typename T>
+struct dart_datatype<volatile T> : dart_datatype<T> { };
+
 
 namespace internal {
 

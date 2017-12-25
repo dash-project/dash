@@ -19,6 +19,11 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
+set (DART_C_STD_REQUIRED "99")
+set (DART_C_STD_PREFERED "99")
+set (DASH_CXX_STD_REQUIRED "11")
+set (DASH_CXX_STD_PREFERED "14")
+
 if (ENABLE_DEV_COMPILER_WARNINGS 
   OR ENABLE_EXT_COMPILER_WARNINGS 
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
@@ -134,7 +139,7 @@ endif()
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CXX_STD_FLAG "--std=c++11"
+  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-g"
        CACHE STRING "C++ compiler (clang++) debug symbols flag")
@@ -147,7 +152,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CXX_STD_FLAG "--std=c++11"
+  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
@@ -163,7 +168,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CXX_STD_FLAG "-std=c++11"
+  set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
   set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
@@ -189,24 +194,30 @@ endif()
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CC_STD_FLAG "--std=c99 -fPIC"
+  set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-g"
        CACHE STRING "C compiler (clang) debug symbols flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CC_STD_FLAG "--std=c99 -fPIC"
+  set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-ggdb3"
        CACHE STRING "C compiler GDB debug symbols flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CC_STD_FLAG "-std=c99"
+  set (CC_STD_FLAG "-std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
   # using Cray
-  set (CC_STD_FLAG "-h c99"
+  set (CC_STD_FLAG "-h c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
+endif()
+
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+  # clear STD flags as set using CXX_STANDARD
+  set(CXX_STD_FLAG "")
+  set(CC_STD_FLAG  "")
 endif()
 
 set(CMAKE_C_FLAGS_DEBUG
