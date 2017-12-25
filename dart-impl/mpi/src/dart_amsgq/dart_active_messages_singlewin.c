@@ -15,11 +15,9 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#if defined(DART_AMSGQ_SINGLEWIN)
-
 #define DART_AMSGQ_ATOMICS 1
 
-struct dart_amsgq {
+struct dart_amsgq_impl_data {
   /// window holding the tail ptr
   MPI_Win      win;
   uint64_t    *tailpos_ptr;
@@ -42,55 +40,16 @@ struct dart_amsg_header {
   int                data_size;
 };
 
-static bool initialized       = false;
-static bool needs_translation = false;
-static ptrdiff_t *offsets     = NULL;
 
-static inline
-uint64_t translate_fnptr(
-  dart_task_action_t fnptr,
-  dart_team_unit_t   target,
-  dart_amsgq_t       amsgq);
-
-static inline dart_ret_t exchange_fnoffsets();
-
-/**
- * Initialize the active messaging subsystem, mainly to determine the
- * offsets of function pointers between different units.
- * This has to be done only once in a collective global operation.
- *
- * We assume that there is a single offset for all function pointers.
- */
+static
 dart_ret_t
-dart_amsg_init()
-{
-  if (initialized) return DART_OK;
-
-  int ret = exchange_fnoffsets();
-  if (ret != DART_OK) return ret;
-
-  initialized = true;
-
-  return DART_OK;
-}
-
-dart_ret_t
-dart_amsgq_fini()
-{
-  free(offsets);
-  offsets = NULL;
-  initialized = false;
-  return DART_OK;
-}
-
-dart_ret_t
-dart_amsg_openq(
+dart_amsg_singlewin_openq(
   size_t         msg_size,
   size_t         msg_count,
   dart_team_t    team,
-  dart_amsgq_t * queue)
+  struct dart_amsgq_impl_data** queue)
 {
-  struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
+  struct dart_amsgq_impl_data* res = calloc(1, sizeof(struct dart_amsgq_impl_data));
   res->size = msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->dbuf = malloc(res->size);
   res->size += sizeof(*(res->tailpos_ptr));
@@ -130,26 +89,20 @@ dart_amsg_openq(
   return DART_OK;
 }
 
-
+static
 dart_ret_t
-dart_amsg_trysend(
-  dart_team_unit_t    target,
-  dart_amsgq_t        amsgq,
-  dart_task_action_t  fn,
-  const void         *data,
-  size_t              data_size)
+dart_amsg_singlewin_trysend(
+  dart_team_unit_t              target,
+  struct dart_amsgq_impl_data * amsgq,
+  dart_task_action_t            fn,
+  const void                  * data,
+  size_t                        data_size)
 {
   dart_global_unit_t unitid;
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint64_t remote_offset = 0;
 
   dart__base__mutex_lock(&amsgq->send_mutex);
-
-  dart_task_action_t remote_fn_ptr =
-                        (dart_task_action_t)translate_fnptr(fn, target, amsgq);
-
-  DART_LOG_DEBUG("dart_amsg_trysend: u:%i t:%i translated fn:%p",
-                 target, amsgq->team, remote_fn_ptr);
 
   dart_myid(&unitid);
 
@@ -213,18 +166,18 @@ dart_amsg_trysend(
       amsgq->win);
 #endif // DART_AMSGQ_ATOMICS
     MPI_Win_unlock(target.id, amsgq->win);
-    DART_LOG_TRACE("Not enough space for message of size %i at unit %i "
-                   "(current offset %llu of %llu)",
-                   msg_size, target, remote_offset, amsgq->size);
+    DART_LOG_TRACE("Not enough space for message of size %lu at unit %i "
+                   "(current offset %lu of %lu)",
+                   msg_size, target.id, remote_offset, amsgq->size);
     dart__base__mutex_unlock(&amsgq->send_mutex);
     return DART_ERR_AGAIN;
   }
 
   struct dart_amsg_header header;
 #ifdef DART_ENABLE_LOGGING
-  header.remote = unitid;
+  header.remote    = unitid;
 #endif //DART_ENABLE_LOGGING
-  header.fn = remote_fn_ptr;
+  header.fn        = fn;
   header.data_size = data_size;
 
   // we now have a slot in the message queue
@@ -261,54 +214,18 @@ dart_amsg_trysend(
 
   DART_LOG_INFO("Sent message of size %zu with payload %zu to unit "
                 "%i starting at offset %li",
-                    msg_size, data_size, target, remote_offset);
-
-  return DART_OK;
-}
-
-dart_ret_t
-dart_amsg_bcast(
-  dart_team_t         team,
-  dart_amsgq_t        amsgq,
-  dart_task_action_t  fn,
-  const void         *data,
-  size_t              data_size)
-{
-  size_t size;
-  dart_team_unit_t myid;
-  dart_team_size(team, &size);
-  dart_team_myid(team, &myid);
-
-  // This is a quick and dirty approach.
-  // TODO: try to overlap multiple transfers!
-  for (size_t i = 0; i < size; i++) {
-    if (i == myid.id) continue;
-    do {
-      dart_ret_t ret = dart_amsg_trysend(
-                        DART_TEAM_UNIT_ID(i), amsgq, fn, data, data_size);
-      if (ret == DART_OK) {
-        break;
-      } else if (ret == DART_ERR_AGAIN) {
-        // just try again
-        continue;
-      } else {
-        return ret;
-      }
-    } while (1);
-  }
+                    msg_size, data_size, target.id, remote_offset);
 
   return DART_OK;
 }
 
 
 static dart_ret_t
-amsg_process_internal(
-  dart_amsgq_t amsgq,
-  bool         blocking)
+amsg_singlewin_process_internal(
+  struct dart_amsgq_impl_data* amsgq,
+  bool                         blocking)
 {
   uint64_t         tailpos;
-
-  dart_team_data_t *team_data = dart_adapt_teamlist_get(amsgq->team);
 
   // trigger progress
   // XXX: if we do not do that, the application hangs with Open MPI 3.0.0. Bug?
@@ -350,7 +267,7 @@ amsg_process_internal(
 
     if (tailpos > 0) {
       uint64_t   zero = 0;
-      DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
+      DART_LOG_INFO("Checking for new active messages (tailpos=%lu)", tailpos);
       // copy the content of the queue for processing
       MPI_Get(
           dbuf,
@@ -399,7 +316,7 @@ amsg_process_internal(
         DART_LOG_INFO("Invoking active message %p from %i on data %p of "
                       "size %i starting from tailpos %i",
                       header->fn,
-                      header->remote,
+                      header->remote.id,
                       data,
                       header->data_size,
                       startpos);
@@ -413,14 +330,18 @@ amsg_process_internal(
   return DART_OK;
 }
 
+static
 dart_ret_t
-dart_amsg_process(dart_amsgq_t amsgq)
+dart_amsg_singlewin_process(struct dart_amsgq_impl_data* amsgq)
 {
-  return amsg_process_internal(amsgq, false);
+  return amsg_singlewin_process_internal(amsgq, false);
 }
 
+static
 dart_ret_t
-dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
+dart_amsg_singlewin_process_blocking(
+  struct dart_amsgq_impl_data* amsgq,
+  dart_team_t                  team)
 {
   int         flag = 0;
   MPI_Request req;
@@ -433,23 +354,17 @@ dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 
   MPI_Ibarrier(team_data->comm, &req);
   do {
-    amsg_process_internal(amsgq, true);
+    amsg_singlewin_process_internal(amsgq, true);
     MPI_Test(&req, &flag, MPI_STATUSES_IGNORE);
   } while (!flag);
-  amsg_process_internal(amsgq, true);
+  amsg_singlewin_process_internal(amsgq, true);
   MPI_Barrier(team_data->comm);
   return DART_OK;
 }
 
+static
 dart_ret_t
-dart_amsg_sync(dart_amsgq_t amsgq)
-{
-  MPI_Barrier(amsgq->comm);
-  return dart_amsg_process(amsgq);
-}
-
-dart_ret_t
-dart_amsg_closeq(dart_amsgq_t amsgq)
+dart_amsg_singlewin_closeq(struct dart_amsgq_impl_data* amsgq)
 {
   free(amsgq->dbuf);
   amsgq->dbuf = NULL;
@@ -465,83 +380,14 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 }
 
 
-/**
- * Private functions
- */
-
-
-/**
- * Translate the function pointer to make it suitable for the target rank
- * using a static translation table. We do the translation everytime we send
- * a message as it saves space.
- */
-static inline
-uint64_t translate_fnptr(
-  dart_task_action_t fnptr,
-  dart_team_unit_t target,
-  dart_amsgq_t amsgq) {
-  intptr_t remote_fnptr = (intptr_t)fnptr;
-  if (needs_translation) {
-    ptrdiff_t  remote_fn_offset;
-    dart_global_unit_t global_target_id;
-    dart_team_unit_l2g(amsgq->team, target, &global_target_id);
-    remote_fn_offset = offsets[global_target_id.id];
-    remote_fnptr += remote_fn_offset;
-    DART_LOG_TRACE("Translated function pointer %p into %p on unit %i",
-                   fnptr, remote_fnptr, global_target_id.id);
-  }
-  return remote_fnptr;
-}
-
-static inline dart_ret_t exchange_fnoffsets() {
-
-  size_t numunits;
-  dart_size(&numunits);
-  uint64_t  base  = (uint64_t)&dart_amsg_openq;
-  uint64_t *bases = calloc(numunits, sizeof(uint64_t));
-  if (!bases) {
-    return DART_ERR_INVAL;
-  }
-
-  DART_LOG_TRACE("Exchanging offsets (dart_amsg_openq = %p)",
-                 &dart_amsg_openq);
-  if (MPI_Allgather(
-        &base,
-        1,
-        MPI_UINT64_T,
-        bases,
-        1,
-        MPI_UINT64_T,
-        DART_COMM_WORLD) != MPI_SUCCESS) {
-    DART_LOG_ERROR("Failed to exchange base pointer offsets!");
-    return DART_ERR_NOTINIT;
-  }
-
-  // check whether we need to use offsets at all
-  for (size_t i = 0; i < numunits; i++) {
-    if (bases[i] != base) {
-      needs_translation = true;
-      DART_LOG_INFO("Using base pointer offsets for active messages "
-                    "(%p against %p on unit %i).", base, bases[i], i);
-      break;
-    }
-  }
-
-  if (needs_translation) {
-    offsets = malloc(numunits * sizeof(ptrdiff_t));
-    if (!offsets) {
-      return DART_ERR_INVAL;
-    }
-    DART_LOG_TRACE("Active message function offsets:");
-    for (size_t i = 0; i < numunits; i++) {
-      offsets[i] = bases[i] - ((uintptr_t)&dart_amsg_openq);
-      DART_LOG_TRACE("   %i: %lli", i, offsets[i]);
-    }
-  }
-
-  free(bases);
+dart_ret_t dart_amsg_singlewin_init(dart_amsgq_impl_t* impl)
+{
+  impl->openq   = dart_amsg_singlewin_openq;
+  impl->closeq  = dart_amsg_singlewin_closeq;
+  impl->bsend   = NULL; // no buffered send
+  impl->flush   = NULL; // no buffered send
+  impl->trysend = dart_amsg_singlewin_trysend;
+  impl->process = dart_amsg_singlewin_process;
+  impl->process_blocking = dart_amsg_singlewin_process_blocking;
   return DART_OK;
 }
-
-#endif // DART_AMSGQ_LOCKFREE
-
