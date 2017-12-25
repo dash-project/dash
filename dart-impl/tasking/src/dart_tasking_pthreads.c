@@ -913,11 +913,14 @@ stop_threads()
   // wake up all threads waiting for work
   pthread_cond_broadcast(&task_avail_cond);
 
+  // use a volatile pointer to wait for threads to set their data
+  dart_thread_t* volatile *thread_pool_v = (dart_thread_t* volatile *)thread_pool;
+
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
     // wait for the thread to populate it's thread data
-    while (thread_pool[i] == 0) {}
-    pthread_join(thread_pool[i]->pthread, NULL);
+    while (thread_pool_v[i] == NULL) {}
+    pthread_join(thread_pool_v[i]->pthread, NULL);
   }
 }
 
