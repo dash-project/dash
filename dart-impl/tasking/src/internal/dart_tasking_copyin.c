@@ -259,7 +259,8 @@ dart_tasking_copyin_get_taskfn(void *data)
 
   int flag = 0;
   dart_handle_t handle;
-  dart_get_handle(td->dst, td->src, td->num_bytes, DART_TYPE_BYTE, &handle);
+  dart_get_handle(td->dst, td->src, td->num_bytes,
+                  DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
   dart_test_local(&handle, &flag);
   // lower task priority to better overlap communication/computation
   dart_task_t *task = dart__tasking__current_task();
