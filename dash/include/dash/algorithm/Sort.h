@@ -73,27 +73,50 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
 #define OFF_SUPP(nunits) (nunits * 1)
 #define OFF_DISP(nunits) (nunits * 2)
 
-// Each unit has
 #define NLT_NLE_BLOCK 2
 
 namespace detail {
 
+struct UnitInfo {
+  std::size_t nunits;
+  // prefix sum over the number of local elements of all unit
+  std::vector<size_t>            acc_unit_count;
+  std::vector<dash::team_unit_t> contributing_remote_units;
+
+  UnitInfo(std::size_t p_nunits)
+    : nunits(p_nunits)
+    , acc_unit_count(nunits + 1)
+  {
+    contributing_remote_units.reserve(nunits - 1);
+  }
+};
+
 template <typename T>
 struct PartitionBorder {
 public:
-  std::vector<bool> is_last_iter;
+  // tracks if we have found a stable partition border
   std::vector<bool> is_stable;
+  // tracks if a partition is skipped
   std::vector<bool> is_skipped;
-  std::vector<T>    lower_bound;
-  std::vector<T>    upper_bound;
+  // lower bound of each partition
+  std::vector<T> lower_bound;
+  // upper bound of each partition
+  std::vector<T> upper_bound;
+  // Special case for the last iteration in finding partition borders
+  std::vector<bool> is_last_iter;
+
+  std::vector<std::pair<dash::team_unit_t, dash::team_unit_t> >
+      bounding_units;
 
   PartitionBorder(size_t nsplitter, T _lower_bound, T _upper_bound)
+    : is_stable(nsplitter, false)
+    , is_skipped(nsplitter, false)
+    , lower_bound(nsplitter, _lower_bound)
+    , upper_bound(nsplitter, _upper_bound)
+    , is_last_iter(nsplitter, false)
+    , bounding_units(
+          nsplitter, std::make_pair(dash::team_unit_t{}, dash::team_unit_t{}))
   {
-    std::fill_n(std::back_inserter(is_last_iter), nsplitter, false);
-    std::fill_n(std::back_inserter(is_stable), nsplitter, false);
-    std::fill_n(std::back_inserter(is_skipped), nsplitter, true);
-    std::fill_n(std::back_inserter(lower_bound), nsplitter, _lower_bound);
-    std::fill_n(std::back_inserter(upper_bound), nsplitter, _upper_bound);
   }
 };
 
@@ -133,10 +156,11 @@ inline void psort__calc_boundaries(
 template <typename ElementType, typename SizeType>
 inline std::pair<std::vector<SizeType>, std::vector<SizeType> >
 psort__local_histogram(
-    std::vector<ElementType> const& partitions,
-    std::vector<bool> const&        partitions_skipped,
-    ElementType const*              lbegin,
-    ElementType const*              lend)
+    std::vector<ElementType> const&     partitions,
+    std::vector<size_t> const&          valid_partitions,
+    PartitionBorder<ElementType> const& p_borders,
+    ElementType const*                  lbegin,
+    ElementType const*                  lend)
 {
   DASH_LOG_TRACE("< psort__local_histogram ");
   auto const nborders = partitions.size();
@@ -152,20 +176,26 @@ psort__local_histogram(
 
   if (n_l_elem == 0) return std::make_pair(n_lt, n_le);
 
-  std::size_t idx;
-
-  for (idx = 0; idx < nborders; ++idx) {
-    if (partitions_skipped[idx]) continue;
-
+  for (auto const& idx : valid_partitions) {
     auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
     auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
 
-    n_lt[idx + 1] = std::distance(lbegin, lb_it);
-    n_le[idx + 1] = std::distance(lbegin, ub_it);
+    auto const left_u = p_borders.bounding_units[idx].first;
+    DASH_ASSERT_NE(left_u, dash::team_unit_t{}, "invalid bounding unit");
+
+    n_lt[left_u + 1] = std::distance(lbegin, lb_it);
+    n_le[left_u + 1] = std::distance(lbegin, ub_it);
   }
 
-  n_lt[idx + 1] = n_l_elem;
-  n_le[idx + 1] = n_l_elem;
+  auto const last_valid_border_idx = *std::prev(valid_partitions.cend(), 1);
+
+  auto const last_unit =
+      p_borders.bounding_units[last_valid_border_idx].first;
+
+  std::fill(
+      std::next(std::begin(n_lt), last_unit + 2), std::end(n_lt), n_l_elem);
+  std::fill(
+      std::next(std::begin(n_le), last_unit + 2), std::end(n_le), n_l_elem);
 
   DASH_LOG_TRACE("psort__local_histogram >");
   return std::make_pair(n_lt, n_le);
@@ -175,6 +205,7 @@ template <typename SizeType, typename GlobIter>
 inline void psort__global_histogram(
     std::vector<SizeType> const& l_nlt,
     std::vector<SizeType> const& l_nle,
+    std::vector<size_t> const&   valid_partitions,
     GlobIter                     it_nlt_nle)
 {
   DASH_LOG_TRACE("< psort__global_histogram ");
@@ -191,13 +222,18 @@ inline void psort__global_histogram(
 
   team.barrier();
 
+  auto const last_valid_border = *std::prev(valid_partitions.cend(), 1);
+
   // TODO: implement dash::transform_async
-  for (std::size_t idx = 1; idx < l_nlt.size(); ++idx) {
+  // We have to add 2
+  // --> +1 because we start at idx 1
+  // --> +1 to get the last idx
+  for (std::size_t idx = 1; idx < last_valid_border + 2; ++idx) {
     // we communicate only non-zero values
     if (l_nlt[idx] == 0 && l_nle[idx] == 0) continue;
 
     std::array<SizeType, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
-    auto const g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
+    auto const                          g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
 
     dash::transform<SizeType>(
         &(*std::begin(vals)),  // A
@@ -213,98 +249,73 @@ inline void psort__global_histogram(
 
 template <typename ElementType, typename GlobIter>
 inline bool psort__validate_partitions(
-    PartitionBorder<ElementType>&                     p_borders,
-    std::vector<ElementType> const&                   partitions,
-    std::vector<typename GlobIter::value_type> const& acc_unit_count,
-    GlobIter                                          it_g_nlt_nle)
+    UnitInfo const&                 p_unit_info,
+    std::vector<ElementType> const& partitions,
+    std::vector<size_t> const&      valid_partitions,
+    PartitionBorder<ElementType>&   p_borders,
+    GlobIter                        it_g_nlt_nle)
 {
   DASH_LOG_TRACE("< psort__validate_partitions");
   using value_t = typename GlobIter::value_type;
   using index_t = typename GlobIter::index_type;
 
+  if (valid_partitions.size() == 0) return true;
+
   auto const nunits = it_g_nlt_nle.pattern().team().size();
   auto const myid   = it_g_nlt_nle.pattern().team().myid();
 
+  //
   // The first two elements are always 0
-  std::vector<value_t> l_nlt_nle((NLT_NLE_BLOCK * nunits) + 2, 0);
-
-  auto const first_valid_it = std::find(
-      p_borders.is_skipped.cbegin(), p_borders.is_skipped.cend(), false);
-
-  if (first_valid_it == p_borders.is_skipped.cend()) {
-    return true;
-  }
-
-  auto const first_valid_idx =
-      std::distance(p_borders.is_skipped.cbegin(), first_valid_it);
-
-  // We may further reduce communication if we start copying from the first
-  // partition which is not skipped (i.e., first_valid_idx). However, this
-  // assumes
-  // that an increasing number of units implies an increasing number of global
-  // indices. This may not always be the case especially in 2D patterns.
+  std::vector<value_t> l_nlt_nle(NLT_NLE_BLOCK * nunits, 0);
+  auto                 l_nlt_nle_data = l_nlt_nle.data();
 
   std::vector<dash::Future<value_t*> > futures;
 
-  // TODO: dash::copy does not work with BLOCKCYCLIC patterns.
-  // TODO: add unit test and create issue
-  //
-  //--> That is also the reason why we explicitly use
-  // dash::internal::copy_async_impl instead of dash::copy_async.
-  for (std::size_t u = 0; u < nunits; ++u) {
-    index_t lidx      = u * NLT_NLE_BLOCK;
-    auto    cpy_begin = it_g_nlt_nle + lidx;
-    if (u == myid.id) {
-      auto lbegin = cpy_begin.local();
-      std::copy(lbegin, lbegin + NLT_NLE_BLOCK, l_nlt_nle.data() + lidx + 2);
-    }
-    else {
-      auto cpy_end = cpy_begin + NLT_NLE_BLOCK;
-      auto fut     = dash::internal::copy_async_impl(
-          cpy_begin, cpy_end, l_nlt_nle.data() + lidx + 2);
-      futures.push_back(fut);
-    }
-  }
+  std::transform(
+      p_unit_info.contributing_remote_units.begin(),
+      p_unit_info.contributing_remote_units.end(),
+      std::back_inserter(futures),
+      [it_g_nlt_nle, l_nlt_nle_data](std::size_t unit) {
+        index_t lidx      = unit * NLT_NLE_BLOCK;
+        auto    cpy_begin = it_g_nlt_nle + lidx;
+        auto    cpy_end   = cpy_begin + NLT_NLE_BLOCK;
+        // TODO: dash::copy does not work with BLOCKCYCLIC patterns.
+        // TODO: add unit test and create issue
+        //
+        //--> That is also the reason why we explicitly use
+        // dash::internal::copy_async_impl instead of dash::copy_async
+        return dash::internal::copy_async_impl(
+            cpy_begin, cpy_end, l_nlt_nle_data + lidx);
+      });
+
+  // copy local portion
+  index_t lidx      = myid * NLT_NLE_BLOCK;
+  auto    cpy_begin = it_g_nlt_nle + lidx;
+  auto    lbegin    = cpy_begin.local();
+  std::copy(lbegin, lbegin + NLT_NLE_BLOCK, l_nlt_nle_data + lidx);
 
   for (auto& fut : futures) {
     fut.wait();
   }
 
-  for (std::size_t idx = first_valid_idx; idx < partitions.size(); ++idx) {
-    // Search the next non-empty (non-skipped partition)
-    if (p_borders.is_skipped[idx]) continue;
+  auto const& acc_unit_count = p_unit_info.acc_unit_count;
 
-    auto const peer_it = std::find(
-        p_borders.is_skipped.cbegin() + idx + 1, p_borders.is_skipped.cend(),
-        false);
+  for (auto const& border_idx : valid_partitions) {
+    auto const left_u  = p_borders.bounding_units[border_idx].first;
+    auto const nlt_idx = left_u * NLT_NLE_BLOCK;
 
-    std::size_t peer_idx;
-
-    if (p_borders.is_skipped.cend() == peer_it) {
-      // This is the last non-empty partition
-      DASH_ASSERT_GT(
-          acc_unit_count[idx + 1], acc_unit_count[idx],
-          "second to last partition is invalid");
-
-      peer_idx = idx + 1;
-    }
-    else {
-      peer_idx =
-          std::distance(p_borders.is_skipped.cbegin() + idx, peer_it) + idx;
-    }
-
-    auto const nlt_idx = (idx + 1) * NLT_NLE_BLOCK;
+    auto const peer_idx = left_u + 1;
 
     if (l_nlt_nle[nlt_idx] < acc_unit_count[peer_idx] &&
         acc_unit_count[peer_idx] <= l_nlt_nle[nlt_idx + 1]) {
-      p_borders.is_stable[idx] = true;
+      p_borders.is_stable[border_idx] = true;
     }
     else {
       if (l_nlt_nle[nlt_idx] >= acc_unit_count[peer_idx]) {
-        p_borders.upper_bound[idx] = partitions[idx];
+        p_borders.upper_bound[border_idx] = partitions[border_idx];
       }
       else {
-        p_borders.lower_bound[idx] = partitions[idx];
+        p_borders.lower_bound[border_idx] = partitions[border_idx];
       }
     }
   }
@@ -319,7 +330,7 @@ inline bool psort__validate_partitions(
 }
 
 template <typename LocalArrayT>
-void psort__calc_final_partition_dist(
+inline void psort__calc_final_partition_dist(
     std::vector<typename LocalArrayT::value_type> const& acc_unit_count,
     LocalArrayT&                                         l_partition_dist)
 {
@@ -364,7 +375,7 @@ void psort__calc_final_partition_dist(
 }
 
 template <typename LocalArrayT>
-void psort__calc_send_count(
+inline void psort__calc_send_count(
     LocalArrayT&                                   partition_dist,
     std::vector<typename LocalArrayT::value_type>& l_send_displs)
 {
@@ -397,7 +408,7 @@ void psort__calc_send_count(
 }
 
 template <typename SizeType>
-void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
+inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
 {
   DASH_LOG_TRACE("< psort__calc_target_displs");
   auto const nunits = g_partition_data.team().size();
@@ -442,15 +453,16 @@ void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
   g_partition_data.async.flush();
 }
 
-template <typename GlobIterT, typename PatternT>
-auto psort__calc_unit_counts(
-    PatternT const& pattern, GlobIterT const begin, GlobIterT const end)
-    -> std::vector<typename PatternT::size_type>
+template <typename GlobIterT>
+inline UnitInfo psort__setup_unit_info(
+    typename GlobIterT::pattern_type const& pattern,
+    GlobIterT const                         begin,
+    GlobIterT const                         end)
 {
-  DASH_LOG_TRACE("< psort__calc_unit_counts");
-  using size_type = typename PatternT::size_type;
+  DASH_LOG_TRACE("< psort__setup_unit_info");
 
   auto const nunits = pattern.team().size();
+  auto const myid   = pattern.team().myid();
 
   dash::team_unit_t       unit{0};
   const dash::team_unit_t last{static_cast<dart_unit_t>(nunits)};
@@ -459,23 +471,29 @@ auto psort__calc_unit_counts(
   auto const unit_last  = pattern.unit_at(end.pos() - 1);
 
   // Starting offsets of all units
-  std::vector<size_type> acc_unit_count(nunits + 1);
-  acc_unit_count[0] = 0;
+  UnitInfo unit_info(nunits);
+  auto&    acc_unit_count = unit_info.acc_unit_count;
+  acc_unit_count[0]       = 0;
 
   for (; unit < last; ++unit) {
-    // first linear global index of unit
-    auto const u_gidx_begin = pattern.global_index(unit, {});
     // Number of elements located at current source unit:
     auto const u_size = pattern.local_size(unit);
+    // first linear global index of unit
+    auto const u_gidx_begin = pattern.global_index(unit, {});
     // last global index of unit
     auto const u_gidx_end = u_gidx_begin + u_size;
 
-    if (u_gidx_end - 1 < begin.pos() || u_gidx_begin >= end.pos()) {
+    DASH_LOG_TRACE(
+        "local indexes", unit, ": ", u_gidx_begin, " ", u_size, " ",
+        u_gidx_end);
+
+    if (u_size == 0 || u_gidx_end - 1 < begin.pos() ||
+        u_gidx_begin >= end.pos()) {
       // This unit does not participate...
       acc_unit_count[unit + 1] = acc_unit_count[unit];
     }
     else {
-      size_type n_u_elements;
+      std::size_t n_u_elements;
       if (unit == unit_last) {
         // The local range of this unit has the global end
         n_u_elements = end.pos() - u_gidx_begin;
@@ -497,14 +515,16 @@ auto psort__calc_unit_counts(
       }
 
       acc_unit_count[unit + 1] = n_u_elements + acc_unit_count[unit];
+      if (unit != myid) unit_info.contributing_remote_units.push_back(unit);
     }
   }
-  DASH_LOG_TRACE("psort__calc_unit_counts >");
-  return acc_unit_count;
+
+  DASH_LOG_TRACE("psort__setup_unit_info >");
+  return unit_info;
 }
 
 template <typename SizeType>
-void psort__solve_fixed_partitions(
+inline void psort__solve_fixed_partitions(
     std::vector<bool> const& skipped_partitions,
     std::vector<SizeType>&   l_nlt,
     std::vector<SizeType>&   l_nle)
@@ -531,38 +551,90 @@ void psort__solve_fixed_partitions(
   DASH_LOG_TRACE("psort__solve_fixed_partitions >");
 }
 
-template <typename T, typename SizeType>
-detail::PartitionBorder<T> psort__setup_partition_borders(
-    std::vector<SizeType> const& acc_unit_count,
-    std::size_t                  nboundaries,
-    T                            min,
-    T                            max)
+template <typename T>
+inline detail::PartitionBorder<T> psort__setup_partition_borders(
+    UnitInfo& unit_info, T min, T max)
 {
   DASH_LOG_TRACE("< psort__solve_fixed_partitions");
-  detail::PartitionBorder<T> p_borders(nboundaries, min, max);
-  auto const                 nunits = nboundaries + 1;
+  auto const                 nunits = unit_info.nunits;
+  detail::PartitionBorder<T> p_borders(nunits - 1, min, max);
 
-  for (std::size_t idx = 1; idx < nunits; ++idx) {
-    auto const sz_left  = acc_unit_count[idx] - acc_unit_count[idx - 1];
-    auto const sz_right = acc_unit_count[idx + 1] - acc_unit_count[idx];
+  auto const& acc_unit_count = unit_info.acc_unit_count;
 
-    auto const skipped = sz_left == 0 || sz_right == 0;
+  auto const last = acc_unit_count.cend();
 
-    std::size_t border_idx;
-    if (idx % NLT_NLE_BLOCK) {
-      border_idx = (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK;
-    }
-    else {
-      border_idx = idx - 1;
-    }
+  // find the first non-empty unit
+  auto left = std::upper_bound(std::next(acc_unit_count.cbegin()), last, 0);
 
-    p_borders.is_skipped[border_idx] = skipped;
-    p_borders.is_stable[border_idx]  = skipped;
-
-    if (sz_left == 0 && sz_right == 0) {
-      ++idx;
-    }
+  if (left == last) {
+    std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
+    return p_borders;
   }
+
+  // find next unit with a non-zero local portion to obtain first partition
+  // border
+  auto right = std::upper_bound(left, last, *left);
+
+  if (right == last) {
+    std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
+    return p_borders;
+  }
+
+  auto const get_border_idx = [](std::size_t const& idx) {
+    return (idx % NLT_NLE_BLOCK) ? (idx / NLT_NLE_BLOCK) * NLT_NLE_BLOCK
+                                 : idx - 1;
+  };
+
+  auto left_u     = std::distance(acc_unit_count.cbegin(), left) - 1;
+  auto right_u    = std::distance(acc_unit_count.cbegin(), right) - 1;
+  auto border_idx = get_border_idx(right_u);
+
+  // mark everything as skipped until the first partition border
+  std::fill(
+      p_borders.is_skipped.begin(), p_borders.is_skipped.begin() + border_idx,
+      true);
+
+  p_borders.bounding_units[border_idx] = std::make_pair(
+      dash::team_unit_t{static_cast<dart_unit_t>(left_u)},
+      dash::team_unit_t{static_cast<dart_unit_t>(right_u)});
+
+  // unit_info.border_peer[left_u] = right_u;
+  // unit_info.border[left_u]      = border_idx;
+
+  // find subsequent partitions
+  left = right;
+
+  while ((right = std::upper_bound(right, last, *right)) != last) {
+    auto const last_border_idx = border_idx;
+
+    left_u     = std::distance(acc_unit_count.cbegin(), left) - 1;
+    right_u    = std::distance(acc_unit_count.cbegin(), right) - 1;
+    border_idx = get_border_idx(right_u);
+
+    auto const dist = border_idx - last_border_idx;
+
+    // mark all skipped partitions as stable and skipped
+    std::fill_n(
+        std::next(p_borders.is_skipped.begin(), last_border_idx + 1),
+        dist - 1, true);
+
+    // unit_info.border_peer[left_u] = right_u;
+    // unit_info.border[left_u]      = border_idx;
+    p_borders.bounding_units[border_idx] = std::make_pair(
+        dash::team_unit_t{static_cast<dart_unit_t>(left_u)},
+        dash::team_unit_t{static_cast<dart_unit_t>(right_u)});
+
+    left = right;
+  }
+
+  // mark trailing empty parititons as stable and skipped
+  std::fill(
+      std::next(p_borders.is_skipped.begin(), border_idx + 1),
+      p_borders.is_skipped.end(), true);
+
+  std::copy(
+      p_borders.is_skipped.begin(), p_borders.is_skipped.end(),
+      p_borders.is_stable.begin());
 
   DASH_LOG_TRACE("psort__solve_fixed_partitions >");
   return p_borders;
@@ -637,15 +709,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   g_min.get().op(dash::min<value_type>(), lmin);
   g_max.get().op(dash::max<value_type>(), lmax);
   // No subsequent barriers are needed for Shared due to container
-  // constructors
+  // constructors...
 
   using array_t = dash::Array<size_type>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
-  // Buffer for partition loops
-  // array_t g_nlt_nle_buf(g_nlt_nle.pattern());
 
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
@@ -656,14 +726,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto const min = static_cast<value_type>(g_min.get());
   auto const max = static_cast<value_type>(g_max.get());
 
-  auto const l_acc_unit_count =
-      detail::psort__calc_unit_counts(pattern, begin, end);
+  auto p_unit_info = detail::psort__setup_unit_info(pattern, begin, end);
+  auto const& l_acc_unit_count = p_unit_info.acc_unit_count;
 
   auto const              nboundaries = nunits - 1;
   std::vector<value_type> partitions(nboundaries, 0);
 
-  auto p_borders = detail::psort__setup_partition_borders(
-      l_acc_unit_count, nboundaries, min, max);
+  auto p_borders =
+      detail::psort__setup_partition_borders(p_unit_info, min, max);
 
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
   DASH_SORT_LOG_TRACE_RANGE(
@@ -675,23 +745,47 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   auto cur = g_nlt_nle.begin();
   auto tmp = cur + NLT_NLE_BLOCK * nunits;
 
+  // collect all valid partitions in a temporary vector
+  std::vector<size_t> valid_partitions;
+
+  {
+    // make this as a separately scoped block to deallocate non-required
+    // temporary memory
+    std::vector<size_t> all_borders(partitions.size());
+    std::iota(all_borders.begin(), all_borders.end(), 0);
+
+    auto const& is_skipped = p_borders.is_skipped;
+
+    std::copy_if(
+        all_borders.begin(), all_borders.end(),
+        std::back_inserter(valid_partitions),
+        [&is_skipped](size_t idx) { return is_skipped[idx] == false; });
+  }
+
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
 
     auto const histograms =
         detail::psort__local_histogram<value_type, size_type>(
-            partitions, p_borders.is_skipped, lbegin, lend);
+            partitions, valid_partitions, p_borders, lbegin, lend);
 
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
 
-    detail::psort__global_histogram(l_nlt, l_nle, cur);
+    DASH_SORT_LOG_TRACE_RANGE(
+        "local histogram nlt", l_nlt.begin(), l_nlt.end());
 
     DASH_SORT_LOG_TRACE_RANGE(
-        "global histogram", g_nlt_nle.lbegin(), g_nlt_nle.lend());
+        "local histogram nle", l_nle.begin(), l_nle.end());
+
+    detail::psort__global_histogram(l_nlt, l_nle, valid_partitions, cur);
+
+    DASH_SORT_LOG_TRACE_RANGE(
+        "global histogram", (cur + (myid * NLT_NLE_BLOCK)).local(),
+        (cur + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
 
     done = detail::psort__validate_partitions(
-        p_borders, partitions, l_acc_unit_count, cur);
+        p_unit_info, partitions, valid_partitions, p_borders, cur);
 
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
@@ -701,7 +795,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   } while (!done);
 
   auto histograms = detail::psort__local_histogram<value_type, size_type>(
-      partitions, p_borders.is_skipped, lbegin, lend);
+      partitions, valid_partitions, p_borders, lbegin, lend);
 
   /* How many elements are less than P
    * or less than equals P */
@@ -713,7 +807,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "length of histogram arrays does not match");
 
   if (n_l_elem > 0) {
-    detail::psort__solve_fixed_partitions(p_borders.is_skipped, l_nlt, l_nle);
+    // detail::psort__solve_fixed_partitions(p_borders.is_skipped, l_nlt,
+    // l_nle);
   }
 
   DASH_SORT_LOG_TRACE_RANGE(
@@ -724,6 +819,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "final histograms: l_nle", l_nle.begin(), l_nle.end());
 
   if (n_l_elem > 0) {
+    // TODO; minimize communication to copy only until the last valid border
     /*
      * Transpose (Shuffle) the final histograms to communicate
      * the partition distribution
@@ -809,6 +905,35 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   std::vector<size_type> l_send_displs(nunits, 0);
 
   if (n_l_elem > 0) {
+    // auto const& bounding_units   = p_borders.bounding_units;
+    auto ptr_target_count = &(g_partition_data.local[OFF_SUPP(nunits)]);
+
+    auto const last_skipped = p_borders.is_skipped.cend();
+    auto       it_skipped =
+        std::find(p_borders.is_skipped.cbegin(), last_skipped, true);
+
+    auto it_valid = valid_partitions.cbegin();
+
+    std::size_t skipped_idx = 0;
+
+    while (std::find(it_skipped, last_skipped, true) != last_skipped) {
+      skipped_idx = std::distance(p_borders.is_skipped.cbegin(), it_skipped);
+
+      it_valid =
+          std::upper_bound(it_valid, valid_partitions.cend(), skipped_idx);
+
+      if (it_valid == valid_partitions.cend()) break;
+
+      auto const left_u         = p_borders.bounding_units[*it_valid].first;
+      auto const n_contig_skips = *it_valid - left_u;
+      std::fill_n(
+          ptr_target_count + left_u + 1, n_contig_skips,
+          ptr_target_count[left_u]);
+
+      std::advance(it_skipped, n_contig_skips);
+      std::advance(it_valid, 1);
+    }
+
     detail::psort__calc_send_count(g_partition_data.local, l_send_displs);
   }
   else {
@@ -834,44 +959,49 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "target displs", &(g_partition_data.local[OFF_DISP(nunits)]),
       &(g_partition_data.local[OFF_DISP(nunits)]) + nunits);
 
-  unit = static_cast<team_unit_t>(0);
-
   std::vector<dash::Future<iter_type> > async_copies{};
+  async_copies.reserve(p_unit_info.contributing_remote_units.size());
 
   DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
 
-  for (; unit < last; ++unit) {
-    auto const send_count = g_partition_data.local[unit + OFF_DIST(nunits)];
-    DASH_ASSERT_GE(send_count, 0, "invalid send count");
-    if (send_count == 0) continue;
-    auto target_disp = g_partition_data.local[unit + OFF_DISP(nunits)];
-    DASH_ASSERT_GE(target_disp, 0, "invalid target disp");
-    auto const send_disp = l_send_displs[unit];
-    DASH_ASSERT_GE(send_disp, 0, "invalid send disp");
+  auto const l_partition_data = g_partition_data.local;
 
-    if (unit != myid) {
-      iter_type it_copy{};
-      if (unit == unit_at_begin) {
-        it_copy = begin;
-      }
-      else {
-        // The array passed to global_index is 0 initialized
-        auto gidx = pattern.global_index(unit, {});
-        it_copy   = iter_type{&(begin.globmem()), pattern, gidx};
-      }
+  auto const get_send_info = [l_partition_data, &l_send_displs,
+                              nunits](dash::team_unit_t const unit) {
+    auto const send_count  = l_partition_data[unit + OFF_DIST(nunits)];
+    auto const target_disp = l_partition_data[unit + OFF_DISP(nunits)];
+    auto const send_disp   = l_send_displs[unit];
+    return std::make_tuple(send_count, send_disp, target_disp);
+  };
 
-      auto fut = dash::copy_async(
-          &(*(lcopy.begin() + send_disp)),
-          &(*(lcopy.begin() + send_disp + send_count)),
-          it_copy + target_disp);
+  size_type send_count, send_disp, target_disp;
 
-      async_copies.push_back(fut);
+  for (auto const& unit : p_unit_info.contributing_remote_units) {
+    std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
+
+    iter_type it_copy{};
+    if (unit == unit_at_begin) {
+      it_copy = begin;
     }
     else {
-      std::copy(
-          lcopy.begin() + send_disp, lcopy.begin() + send_disp + send_count,
-          lbegin + target_disp);
+      // The array passed to global_index is 0 initialized
+      auto gidx = pattern.global_index(unit, {});
+      it_copy   = iter_type{&(begin.globmem()), pattern, gidx};
     }
+
+    auto fut = dash::copy_async(
+        &(*(lcopy.begin() + send_disp)),
+        &(*(lcopy.begin() + send_disp + send_count)), it_copy + target_disp);
+
+    async_copies.push_back(fut);
+  }
+
+  std::tie(send_count, send_disp, target_disp) = get_send_info(myid);
+
+  if (send_count) {
+    std::copy(
+        lcopy.begin() + send_disp, lcopy.begin() + send_disp + send_count,
+        lbegin + target_disp);
   }
 
   for (auto& fut : async_copies) {
@@ -888,6 +1018,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
 #endif  // DOXYGEN
 
-}  // namespace dash
+}  // namespace detail
 
 #endif

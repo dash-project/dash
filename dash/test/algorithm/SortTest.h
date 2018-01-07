@@ -8,6 +8,8 @@
  */
 class SortTest : public dash::test::TestBase {
 protected:
+  size_t const num_local_elem = 100;
+
   SortTest()
   {
   }

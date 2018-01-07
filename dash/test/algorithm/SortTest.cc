@@ -43,8 +43,6 @@ TEST_F(SortTest, ArrayBlockedFullRange)
   typedef int32_t                Element_t;
   typedef dash::Array<Element_t> Array_t;
 
-  size_t num_local_elem = 10;
-
   LOG_MESSAGE("SortTest.ArrayBlockedFullRange: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
@@ -60,8 +58,6 @@ TEST_F(SortTest, ArrayBlockedPartialRange)
 {
   typedef int32_t                Element_t;
   typedef dash::Array<Element_t> Array_t;
-
-  size_t num_local_elem = 100;
 
   LOG_MESSAGE("SortTest.ArrayBlockedPartialRange: allocate array");
   // Initialize global array:
@@ -87,8 +83,6 @@ TEST_F(SortTest, ArrayEmptyLocalRangeBegin)
   typedef int32_t                Element_t;
   typedef dash::Array<Element_t> Array_t;
 
-  size_t num_local_elem = 10;
-
   LOG_MESSAGE("SortTest.ArrayEmptyLocalBegin: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
@@ -112,8 +106,6 @@ TEST_F(SortTest, ArrayEmptyLocalRangeEnd)
   typedef int32_t                Element_t;
   typedef dash::Array<Element_t> Array_t;
 
-  size_t num_local_elem = 10;
-
   LOG_MESSAGE("SortTest.ArrayEmptyLocalRangeEnd: allocate array");
   // Initialize global array:
   Array_t array(num_local_elem * dash::size());
@@ -129,12 +121,69 @@ TEST_F(SortTest, ArrayEmptyLocalRangeEnd)
   perform_test(begin, end);
 }
 
+TEST_F(SortTest, ArrayUnderfilled)
+{
+  typedef int32_t                Element_t;
+  typedef dash::Array<Element_t> Array_t;
+  // Choose block size and number of blocks so at least
+  // one unit has an empty local range and one unit has an
+  // underfilled block.
+  // Using a prime as block size for 'inconvenient' strides.
+  int    block_size = 19;
+  size_t num_units  = dash::Team::All().size();
+  size_t num_elem   = ((num_units - 1) * block_size) - block_size / 2;
+  if (num_units < 2) {
+    num_elem = block_size - 1;
+  }
+
+  LOG_MESSAGE(
+      "Units: %d, block size: %d, elements: %d", static_cast<int>(num_units),
+      block_size, static_cast<int>(num_elem));
+
+  // Initialize global array:
+  Array_t array(num_elem, dash::BLOCKCYCLIC(block_size));
+
+  LOG_MESSAGE("Number of local elements: %zu", array.lsize());
+
+  rand_range(array.begin(), array.end());
+
+  array.barrier();
+
+  perform_test(array.begin(), array.end());
+}
+TEST_F(SortTest, ArrayEmptyLocalRangeMiddle)
+{
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("At least 2 units are required");
+  }
+
+  using pattern_t = dash::CSRPattern<1>;
+  using extent_t  = pattern_t::size_type;
+  using index_t   = pattern_t::index_type;
+  using value_t   = int32_t;
+
+  auto const nunits = dash::size();
+
+  std::vector<extent_t> local_sizes{};
+
+  for (std::size_t u = 0; u < nunits; ++u) {
+    local_sizes.push_back((u % 2) ? 0 : num_local_elem);
+  }
+
+  pattern_t                                pattern(local_sizes);
+  dash::Array<value_t, index_t, pattern_t> array(pattern);
+
+  rand_range(array.begin(), array.end());
+
+  array.barrier();
+
+  perform_test(array.begin(), array.end());
+}
+
 TEST_F(SortTest, ArrayOfDoubles)
 {
   typedef double                 Element_t;
   typedef dash::Array<Element_t> Array_t;
-
-  size_t num_local_elem = 100;
 
   LOG_MESSAGE("SortTest.ArrayOfDoubles: allocate array");
   // Initialize global array:
