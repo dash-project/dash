@@ -374,8 +374,10 @@ inline void psort__calc_final_partition_dist(
   DASH_LOG_TRACE("psort__calc_final_partition_dist >");
 }
 
-template <typename LocalArrayT>
+template <typename LocalArrayT, typename ElementType>
 inline void psort__calc_send_count(
+    PartitionBorder<ElementType> const&            p_borders,
+    std::vector<size_t> const&                     valid_partitions,
     LocalArrayT&                                   partition_dist,
     std::vector<typename LocalArrayT::value_type>& l_send_displs)
 {
@@ -389,6 +391,31 @@ inline void psort__calc_send_count(
 
   auto l_target_count = &(partition_dist[OFF_SUPP(nunits)]);
   auto l_send_count   = &(partition_dist[OFF_DIST(nunits)]);
+
+  auto const last_skipped = p_borders.is_skipped.cend();
+  auto       it_skipped =
+      std::find(p_borders.is_skipped.cbegin(), last_skipped, true);
+
+  auto it_valid = valid_partitions.cbegin();
+
+  std::size_t skipped_idx = 0;
+
+  while (std::find(it_skipped, last_skipped, true) != last_skipped) {
+    skipped_idx = std::distance(p_borders.is_skipped.cbegin(), it_skipped);
+
+    it_valid =
+        std::upper_bound(it_valid, valid_partitions.cend(), skipped_idx);
+
+    if (it_valid == valid_partitions.cend()) break;
+
+    auto const left_u         = p_borders.bounding_units[*it_valid].first;
+    auto const n_contig_skips = *it_valid - left_u;
+    std::fill_n(
+        l_target_count + left_u + 1, n_contig_skips, l_target_count[left_u]);
+
+    std::advance(it_skipped, n_contig_skips);
+    std::advance(it_valid, 1);
+  }
 
   std::copy(
       l_target_count, l_target_count + nunits, target_count.begin() + 1);
@@ -523,39 +550,11 @@ inline UnitInfo psort__setup_unit_info(
   return unit_info;
 }
 
-template <typename SizeType>
-inline void psort__solve_fixed_partitions(
-    std::vector<bool> const& skipped_partitions,
-    std::vector<SizeType>&   l_nlt,
-    std::vector<SizeType>&   l_nle)
-{
-  DASH_LOG_TRACE("< psort__solve_fixed_partitions");
-  auto const begin           = skipped_partitions.cbegin();
-  auto const end             = skipped_partitions.cend();
-  auto       it              = begin;
-  auto const fst_non_skipped = std::find(begin, end, false);
-  while ((it = std::find(it, end, true)) != end && it > fst_non_skipped) {
-    // find next non-skipped
-    auto const nlt_idx        = std::distance(begin, it) + 1;
-    auto       it_non_skipped = std::find(it, end, false);
-    auto const nels           = std::distance(it, it_non_skipped);
-    auto const val            = *(l_nlt.begin() + nlt_idx + nels);
-
-    DASH_ASSERT_EQ(l_nlt[nlt_idx], 0, "value of empty partition must be 0");
-    DASH_ASSERT_EQ(l_nle[nlt_idx], 0, "value of empty partition must be 0");
-
-    std::fill_n(l_nlt.begin() + nlt_idx, nels, val);
-    std::fill_n(l_nle.begin() + nlt_idx, nels, val);
-    std::advance(it, nels);
-  }
-  DASH_LOG_TRACE("psort__solve_fixed_partitions >");
-}
-
 template <typename T>
 inline detail::PartitionBorder<T> psort__setup_partition_borders(
     UnitInfo& unit_info, T min, T max)
 {
-  DASH_LOG_TRACE("< psort__solve_fixed_partitions");
+  DASH_LOG_TRACE("< psort__setup_partition_borders");
   auto const                 nunits = unit_info.nunits;
   detail::PartitionBorder<T> p_borders(nunits - 1, min, max);
 
@@ -636,7 +635,7 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
       p_borders.is_skipped.begin(), p_borders.is_skipped.end(),
       p_borders.is_stable.begin());
 
-  DASH_LOG_TRACE("psort__solve_fixed_partitions >");
+  DASH_LOG_TRACE("psort__setup_partition_borders >");
   return p_borders;
 }
 
@@ -806,11 +805,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       histograms.first.size(), histograms.second.size(),
       "length of histogram arrays does not match");
 
-  if (n_l_elem > 0) {
-    // detail::psort__solve_fixed_partitions(p_borders.is_skipped, l_nlt,
-    // l_nle);
-  }
-
   DASH_SORT_LOG_TRACE_RANGE(
       "final partition borders", partitions.begin(), partitions.end());
   DASH_SORT_LOG_TRACE_RANGE(
@@ -906,35 +900,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   if (n_l_elem > 0) {
     // auto const& bounding_units   = p_borders.bounding_units;
-    auto ptr_target_count = &(g_partition_data.local[OFF_SUPP(nunits)]);
-
-    auto const last_skipped = p_borders.is_skipped.cend();
-    auto       it_skipped =
-        std::find(p_borders.is_skipped.cbegin(), last_skipped, true);
-
-    auto it_valid = valid_partitions.cbegin();
-
-    std::size_t skipped_idx = 0;
-
-    while (std::find(it_skipped, last_skipped, true) != last_skipped) {
-      skipped_idx = std::distance(p_borders.is_skipped.cbegin(), it_skipped);
-
-      it_valid =
-          std::upper_bound(it_valid, valid_partitions.cend(), skipped_idx);
-
-      if (it_valid == valid_partitions.cend()) break;
-
-      auto const left_u         = p_borders.bounding_units[*it_valid].first;
-      auto const n_contig_skips = *it_valid - left_u;
-      std::fill_n(
-          ptr_target_count + left_u + 1, n_contig_skips,
-          ptr_target_count[left_u]);
-
-      std::advance(it_skipped, n_contig_skips);
-      std::advance(it_valid, 1);
-    }
-
-    detail::psort__calc_send_count(g_partition_data.local, l_send_displs);
+    detail::psort__calc_send_count(
+        p_borders, valid_partitions, g_partition_data.local, l_send_displs);
   }
   else {
     std::fill(
