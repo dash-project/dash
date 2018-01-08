@@ -717,6 +717,10 @@ public:
     return *_team;
   }
 
+  global_vertex_iterator vertex_gptr(local_vertex_iterator it) {
+    return global_vertex_iterator(_glob_mem_vertex, _myid, it.pos());
+  }
+
 private:
 
   /**

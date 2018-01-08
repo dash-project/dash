@@ -130,6 +130,14 @@ class VertexProxy {
         return end(_parent._iterator);
       }
 
+      local_iterator lbegin() {
+        return lbegin(_parent._iterator);
+      }
+
+      local_iterator lend() {
+        return lend(_parent._iterator);
+      }
+
     private:
 
       /**
@@ -185,6 +193,118 @@ class VertexProxy {
             _parent._graph->_myid,
             index,
             _glob_mem->container_size(_parent._graph->_myid, index)
+        );
+      }
+
+      /**
+       * Local begin iterator for global vertex iterators.
+       */
+      template<typename VertexIteratorType>
+      local_iterator lbegin(VertexIteratorType it) {
+        auto lpos = _parent._iterator.lpos();
+        auto index = it_position(_glob_mem, lpos.index);
+        auto lindex = index * 2;
+        auto bucket_it = _glob_mem->_buckets.begin();
+        std::advance(bucket_it, lindex);
+        // if bucket empty, advance to end iterator
+        if(bucket_it->size == 0) {
+          std::advance(bucket_it, 2);
+        }
+        auto position = 0;
+        // TODO: position WRONG, if there are uncommitted changes
+        //       save cumulated sizes of unattached containers somewhere
+        if(index > 0) {
+          position = 
+            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+        }
+        // use lightweight constructor to avoid costly increment operations
+        return local_iterator(
+            _glob_mem->_buckets.begin(),
+            _glob_mem->_buckets.end(),
+            position,
+            bucket_it,
+            0
+        );
+      }
+
+      /**
+       * Local begin iterator for local vertex iterators.
+       */
+      local_iterator lbegin(local_vertex_iterator it) {
+        auto index = it_position(_glob_mem, it.pos());
+        auto lindex = index * 2;
+        auto bucket_it = _glob_mem->_buckets.begin();
+        std::advance(bucket_it, lindex);
+        // if bucket empty, advance to end iterator
+        if(bucket_it->size == 0) {
+          std::advance(bucket_it, 2);
+        }
+        auto position = 0;
+        // TODO: position WRONG, if there are uncommitted changes
+        //       save cumulated sizes of unattached containers somewhere
+        if(index > 0) {
+          position = 
+            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+        }
+        // use lightweight constructor to avoid costly increment operations
+        return local_iterator(
+            _glob_mem->_buckets.begin(),
+            _glob_mem->_buckets.end(),
+            position,
+            bucket_it,
+            0
+        );
+      }
+      
+      /**
+       * Local end iterator for global vertex iterators.
+       */
+      template<typename VertexIteratorType>
+      local_iterator lend(VertexIteratorType it) {
+        auto lpos = _parent._iterator.lpos();
+        auto index = it_position(_glob_mem, lpos.index) + 1;
+        auto lindex = index * 2;
+        auto bucket_it = _glob_mem->_buckets.begin();
+        //std::advance(bucket_it, lindex);
+        auto position = 0;
+        // TODO: position WRONG, if there are uncommitted changes
+        //       save cumulated sizes of unattached containers somewhere
+        if(index > 0) {
+          position = 
+            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+        }
+        // use lightweight constructor to avoid costly increment operations
+        return local_iterator(
+            _glob_mem->_buckets.begin(),
+            _glob_mem->_buckets.end(),
+            position,
+            bucket_it,
+            0
+        );
+      }
+
+      /**
+       * Local end iterator for local vertex iterators.
+       */
+      local_iterator lend(local_vertex_iterator it) {
+        auto index = it_position(_glob_mem, it.pos()) + 1;
+        auto lindex = index * 2;
+        auto bucket_it = _glob_mem->_buckets.begin();
+        //std::advance(bucket_it, index);
+        auto position = 0;
+        // TODO: position WRONG, if there are uncommitted changes
+        //       save cumulated sizes of unattached containers somewhere
+        if(index > 0) {
+          position = 
+            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+        }
+        // use lightweight constructor to avoid costly increment operations
+        return local_iterator(
+            _glob_mem->_buckets.begin(),
+            _glob_mem->_buckets.end(),
+            position,
+            bucket_it,
+            0
         );
       }
 
