@@ -21,7 +21,7 @@ public:
   typedef GlobPtr<value_type, self_t>                  global_iterator;
   typedef typename glob_mem_type::local_iterator       local_iterator;
   typedef typename local_iterator::bucket_type         bucket_type;
-  typedef typename std::list<bucket_type>              bucket_list;
+  typedef typename std::vector<bucket_type>            bucket_list;
   typedef local_iterator                               local_pointer;
   typedef local_iterator                               const_local_pointer;
 

@@ -203,6 +203,9 @@ public:
     DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
                    "unit:", unit,
                    "lidx:", local_index);
+    if(unit > _bucket_cumul_sizes->size()) {
+      std::cout << std::endl;
+    }
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
 
     for (size_type unit = 0; unit < _idx_unit_id; ++unit) {
@@ -237,8 +240,8 @@ public:
     _myid(gmem->team().myid()),
     _idx_unit_id(unit),
     _idx_local_idx(0),
-    _idx_bucket_idx(0),
-    _idx_bucket_phase(0)
+    _idx_bucket_idx(bucket_index),
+    _idx_bucket_phase(local_index)
   {
     DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
                    "unit:", unit,
@@ -252,7 +255,14 @@ public:
     if(bucket_index > 0) {
       local_index += (*_bucket_cumul_sizes)[_idx_unit_id.id][bucket_index - 1];
     }
+    _idx_local_idx += local_index;
+    _idx += local_index;
+    /*
+    if(bucket_index > 0) {
+      local_index += (*_bucket_cumul_sizes)[_idx_unit_id.id][bucket_index - 1];
+    }
     increment(local_index);
+    */
     DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx) >",
                    "gidx:",   _idx,
                    "maxidx:", _max_idx,
@@ -320,7 +330,7 @@ public:
    *
    * \return  A global reference to the element at the pointer's position.
    */
-  reference operator*() const
+  reference operator*() const 
   {
     auto lptr = local();
     if (lptr != nullptr) {

@@ -8,7 +8,7 @@
 #include <dash/GlobSharedRef.h>
 #include <dash/Team.h>
 
-#include <dash/memory/GlobHeapLocalPtr.h>
+#include <dash/memory/GlobHeapContiguousLocalPtr.h>
 #include <dash/memory/internal/GlobHeapMemTypes.h>
 #include <dash/memory/GlobHeapContiguousPtr.h>
 #include <dash/memory/GlobHeapCombinedMem.h>
@@ -28,15 +28,15 @@ struct container_data {
   typedef ContainerType                                    container_type;
   typedef typename ContainerType::value_type               value_type;
   typedef typename ContainerType::difference_type          index_type;
-  typedef typename 
-    GlobHeapLocalPtr<value_type, index_type>::bucket_type  bucket_type;
+  typedef typename GlobHeapContiguousLocalPtr<value_type, 
+          index_type>::bucket_list::difference_type        bucket_index_type;
 
-  container_data(bucket_type & bkt)
+  container_data(bucket_index_type bkt)
     : bucket(bkt)
   { }
 
-  container_type  container;
-  bucket_type &   bucket;
+  container_type      container;
+  bucket_index_type   bucket;
 
 };
 
@@ -59,12 +59,13 @@ public:
   typedef std::vector<data_type>                       container_list_type;
   typedef typename ContainerType::value_type           value_type;
   typedef typename ContainerType::difference_type      index_type;
-  typedef GlobHeapLocalPtr<value_type, index_type>     local_iterator;
+  typedef GlobHeapContiguousLocalPtr<value_type, 
+          index_type>                                  local_iterator;
   typedef GlobPtr<value_type, self_t>                  global_iterator;
   typedef typename ContainerType::size_type            size_type;
   typedef typename local_iterator::bucket_type         bucket_type;
   // must be List because of GlobHeapLocalPtr
-  typedef typename std::list<bucket_type>              bucket_list_type;
+  typedef typename std::vector<bucket_type>            bucket_list_type;
   typedef typename std::list<bucket_type *>            bucket_ptr_list;
   typedef typename bucket_ptr_list::difference_type    bucket_index_type;
   typedef typename bucket_list_type::difference_type   local_bucket_index_type;
@@ -75,6 +76,8 @@ public:
   template<typename T_, class GMem_>
   friend class dash::GlobPtr;
   friend class GlobHeapCombinedMem<self_t>;
+  template<typename G_, typename It_>
+  friend class VertexProxy;
 
 public:
 
@@ -115,7 +118,7 @@ public:
     // for global iteration, only _container's bucket is needed
     _global_buckets.push_back(&(_buckets.back()));
 
-    _unattached_containers.emplace_back(_buckets.back());
+    _unattached_containers.emplace_back(_buckets.size() - 1);
     auto & unattached_container = _unattached_containers.back().container;
     unattached_container.reserve(n_elements);
 
@@ -315,13 +318,20 @@ public:
     // location, which invalidates global pointers of other units
     auto & unatt = _unattached_containers[index];
     unatt.container.push_back(val);
-    unatt.bucket.size = unatt.container.size();
-    unatt.bucket.lptr = unatt.container.data();
+    auto & bucket = _buckets[unatt.bucket];
+    bucket.size = unatt.container.size();
+    bucket.lptr = unatt.container.data();
     ++_local_size;
 
     update_lbegin();
     update_lend();
-    return _lend - 1;
+    return local_iterator(
+        _buckets.begin(), 
+        _buckets.end(), 
+        _local_size - 1, 
+        _buckets.begin() + _local_size, 
+        bucket.size - 1
+    );
   }
 
   /**
@@ -413,7 +423,8 @@ private:
    */
   void update_lend() noexcept
   {
-    local_iterator unit_lend(_buckets.begin(), _buckets.end(), _local_size,
+    local_iterator unit_lend(
+        _buckets.begin(), _buckets.end(), _local_size,
         _buckets.end(), 0);
     _lend = unit_lend;
   }
