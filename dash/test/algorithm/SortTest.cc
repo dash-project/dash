@@ -1,6 +1,7 @@
 #include "SortTest.h"
 
 #include <dash/Array.h>
+#include <dash/Matrix.h>
 #include <dash/algorithm/Generate.h>
 #include <dash/algorithm/Sort.h>
 

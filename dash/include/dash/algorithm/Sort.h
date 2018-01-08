@@ -761,6 +761,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
         [&is_skipped](size_t idx) { return is_skipped[idx] == false; });
   }
 
+  if (valid_partitions.size() == 0) {
+    // Edge case: We may have a team spanning at least 2 units, however the
+    // global range is owned by  only 1 unit
+    team.barrier();
+    return;
+  }
+
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
 
