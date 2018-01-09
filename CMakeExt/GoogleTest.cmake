@@ -91,10 +91,13 @@ if (BUILD_TESTS)
                           WORKING_DIRECTORY ${GTEST_SUBMOD})
         endif()
         if (NOT git_res EQUAL 0)
-          message(FATAL_ERROR "GoogleTest: Failed to checkout commit ${GTEST_GIT_TAG}: ${git_err}")
+          message(WARNING "GoogleTest: Failed to checkout commit ${GTEST_GIT_TAG}: ${git_err}")
         endif()
       endif()
+    endif()
 
+
+    if (git_res EQUAL 0)
       # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
       # TODO: do we still need to set BUILD_BYPRODUCTS?
       if("${CMAKE_VERSION}" VERSION_LESS 3.2.0)
@@ -143,7 +146,10 @@ if (BUILD_TESTS)
       set (GTEST_FOUND 1 PARENT_SCOPE)
 
     else ()
-      message(STATUS "GoogleTest: Failed to update submodule, disabling tests")
+      message(WARNING "GoogleTest: Failed to update submodule, disabling tests\n"
+                      "            GIT returned ${git_res}\n"
+                      "            GIT stdout: ${git_out} \n"
+                      "            GIT stderr: ${git_err}")
       set (GTEST_FOUND 0)
       set (GTEST_FOUND 0 PARENT_SCOPE)
     endif()
