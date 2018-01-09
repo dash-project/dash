@@ -834,9 +834,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternSubLocalBlocks)
                   l_block.size());
       EXPECT_EQ_U(l_block_index.size(), l_block.size());
 
-      l_blocks_sub_values.insert(l_blocks_sub_values.end(),
-                                 l_block.begin(),
-                                 l_block.end());
+      std::move(l_block.begin(), l_block.end(), std::back_inserter(l_blocks_sub_values));
       ++l_b_idx;
       l_idx += l_block.size();
     }
@@ -1255,9 +1253,7 @@ TEST_F(ViewTest, BlocksView1Dim)
       DASH_LOG_DEBUG("ViewTest.BlocksView1Dim", "----",
                      range_str(block));
 
-      gview_blocks_values.insert(gview_blocks_values.end(),
-                                 block.begin(),
-                                 block.end());
+      std::move(block.begin(), block.end(), std::back_inserter(gview_blocks_values));
       b_idx++;
     }
     EXPECT_EQ_U(gview_isect.size(),
