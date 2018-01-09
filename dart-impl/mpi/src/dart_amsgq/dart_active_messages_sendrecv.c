@@ -308,17 +308,24 @@ dart_amsg_sendrevc_process_blocking(
     amsg_process_sendrecv_internal(amsgq, true);
     if (req != MPI_REQUEST_NULL) {
       MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
+      if (barrier_flag) {
+        DART_LOG_DEBUG("Finished blocking processing of messages!");
+      }
     }
     if (!send_flag) {
       MPI_Testall(amsgq->send_tailpos, amsgq->send_reqs,
                   &send_flag, MPI_STATUSES_IGNORE);
       if (send_flag) {
+        DART_LOG_DEBUG("MPI_Testall: all %d sent active messages completed!",
+                       amsgq->send_tailpos);
         amsgq->send_tailpos = 0;
         MPI_Ibarrier(team_data->comm, &req);
       }
     }
-  } while (!barrier_flag && !send_flag);
+  } while (!barrier_flag);
   amsg_process_sendrecv_internal(amsgq, true);
+  // final synchronization
+  MPI_Barrier(team_data->comm);
   return DART_OK;
 }
 
@@ -329,10 +336,27 @@ dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 
 //  MPI_Comm_free(&amsgq->comm);
 
-  MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
+  if (amsgq->send_tailpos > 0) {
+    DART_LOG_INFO("Waiting for %d active messages to complete",
+                  amsgq->send_tailpos);
+    MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
+  }
+
+  int outcount = 0;
+  MPI_Testsome(
+    amsgq->msg_count, amsgq->recv_reqs, &outcount,
+    amsgq->recv_outidx, MPI_STATUSES_IGNORE);
+
+  if (outcount) {
+    DART_LOG_WARN("Cowardly refusing to invoke %d unhandled incoming active "
+                  "messages upon shutdown!", outcount);
+  }
+
 
   for (int i = 0; i < amsgq->msg_count; ++i) {
-    MPI_Cancel(&amsgq->recv_reqs[i]);
+    if (amsgq->recv_reqs[i] != MPI_REQUEST_NULL) {
+      MPI_Cancel(&amsgq->recv_reqs[i]);
+    }
     free(amsgq->recv_bufs[i]);
     free(amsgq->send_bufs[i]);
   }
