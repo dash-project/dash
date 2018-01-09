@@ -57,7 +57,7 @@ if (BUILD_TESTS)
     if (gtest_file_cnt EQUAL 0)
       # we first need to initialize the submodule
       message(STATUS "GoogleTest: Fetching submodule into vendor/googletest")
-      execute_process(COMMAND "git" submodule update --init --quiet vendor/googletest
+      execute_process(COMMAND git submodule update --init vendor/googletest
                       TIMEOUT 10
                       RESULT_VARIABLE git_res
                       OUTPUT_VARIABLE git_out
@@ -68,7 +68,7 @@ if (BUILD_TESTS)
     if (git_res EQUAL 0)
       # checkout desired version
       message(STATUS "GoogleTest: Checking out commit ${GTEST_GIT_TAG}")
-      execute_process(COMMAND "git" checkout -q ${GTEST_GIT_TAG}
+      execute_process(COMMAND git checkout -q ${GTEST_GIT_TAG}
                       RESULT_VARIABLE git_res
                       OUTPUT_VARIABLE git_out
                       ERROR_VARIABLE  git_err
@@ -76,7 +76,7 @@ if (BUILD_TESTS)
       if (NOT git_res EQUAL 0)
         # try to fetch latest commit from origin
         message(STATUS "GoogleTest: Checkout failed, trying to fetch latest commit")
-        execute_process(COMMAND "git" submodule update --init --quiet vendor/googletest
+        execute_process(COMMAND git submodule update --remote vendor/googletest
                         TIMEOUT 10
                         RESULT_VARIABLE git_res
                         OUTPUT_VARIABLE git_out
@@ -84,7 +84,7 @@ if (BUILD_TESTS)
                         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
         if (git_res EQUAL 0)
           message(STATUS "GoogleTest: Checking out commit ${GTEST_GIT_TAG}")
-          execute_process(COMMAND "git" checkout -q ${GTEST_GIT_TAG}
+          execute_process(COMMAND git checkout -q ${GTEST_GIT_TAG}
                           RESULT_VARIABLE git_res
                           OUTPUT_VARIABLE git_out
                           ERROR_VARIABLE  git_err
@@ -96,6 +96,7 @@ if (BUILD_TESTS)
       endif()
 
       # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
+      # TODO: do we still need to set BUILD_BYPRODUCTS?
       if("${CMAKE_VERSION}" VERSION_LESS 3.2.0)
         ExternalProject_Add(
           GTestExternal
