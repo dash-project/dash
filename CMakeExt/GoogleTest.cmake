@@ -19,7 +19,7 @@ if (BUILD_TESTS)
   if (NOT "${GTEST_LIBRARY_PATH}" STREQUAL "" AND
       NOT "${GTEST_INCLUDE_PATH}" STREQUAL "")
     # Location of existing gtest installation has been specified:
-    set(GTEST_INCLUDES "${GTEST_INCLUDE_PATH}" PARENT_SCOPE)
+    set(GTEST_INCLUDES "${GTEST_INCLUDE_PATH}")
     set(GTEST_LIBRARY  "${GTEST_LIBRARY_PATH}/${LIBPREFIX}gtest${LIBSUFFIX}")
     set(GTEST_MAINLIB  "${GTEST_LIBRARY_PATH}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
     message(STATUS "Using existing installation of GTest")
