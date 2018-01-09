@@ -23,8 +23,8 @@ endif(POLICY CMP0004)
 if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
-if(POLICY CMP0058) 
-  cmake_policy(SET CMP0058 NEW) 
+if(POLICY CMP0058)
+  cmake_policy(SET CMP0058 NEW)
 endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -247,6 +247,9 @@ message(EMPH "Generic build:            (BUILD_GENERIC)                  "
 message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
         ${BUILD_SHARED_LIBS})
 
+message(INFO "Build tests:              (BUILD_TESTS)                    "
+        ${BUILD_TESTS})
+
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
@@ -400,4 +403,12 @@ endif()
 if (ENABLE_NASTYMPI)
     message(INFO "NastyMPI                  enabled")
 endif()
-
+if (BUILD_TESTS)
+  if (GTEST_FOUND)
+    message(INFO "googletest                enabled")
+  else()
+    message(NOTE "googletest                not found")
+  endif()
+else()
+  message(NOTE "googletest                disabled")
+endif()
