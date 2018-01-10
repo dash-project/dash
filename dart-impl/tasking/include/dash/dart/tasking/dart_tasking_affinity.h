@@ -37,7 +37,7 @@ set_thread_affinity(pthread_t pthread, int dart_thread_id)
     }
   } while (cnt != dart_thread_id);
 
-  printf("Binding thread %d to CPU %d\n", dart_thread_id, entry);
+  //printf("Binding thread %d to CPU %d\n", dart_thread_id, entry);
   hwloc_bitmap_set(cpuset, entry);
 
   hwloc_set_thread_cpubind(topology, pthread, cpuset, 0);
