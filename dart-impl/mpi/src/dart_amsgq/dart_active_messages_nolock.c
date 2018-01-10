@@ -71,7 +71,7 @@ dart_amsg_nolock_openq(
       msg_count * (sizeof(struct dart_amsg_header) + msg_size);
   res->team = team;
 
-  printf("Allocating queue with queue-size %zu\n", res->queue_size);
+  //printf("Allocating queue with queue-size %zu\n", res->queue_size);
 
   size_t win_size = 2 * (res->queue_size + 2*sizeof(int32_t)) + 1;
 
@@ -145,7 +145,7 @@ dart_amsg_nolock_sendbuf(
       amsgq->queue_win);
     MPI_Win_flush_local(target.id, amsgq->queue_win);
 
-    printf("Writing %uB to queue %i at unit %i\n", msg_size, queue_num, target.id);
+    //printf("Writing %uB to queue %i at unit %i\n", msg_size, queue_num, target.id);
 
     base_offset = 1 + queue_num * (amsgq->queue_size + 2*sizeof(int32_t));
 
@@ -160,7 +160,7 @@ dart_amsg_nolock_sendbuf(
       amsgq->queue_win);
     MPI_Win_flush(target.id, amsgq->queue_win);
 
-    printf("Writing to queue %d: writecnt %d\n", queue_num, writecnt);
+    //printf("Writing to queue %d: writecnt %d\n", queue_num, writecnt);
 
     // repeat if the target has swapped windows in between
   } while (writecnt < 0);
@@ -204,7 +204,7 @@ dart_amsg_nolock_sendbuf(
       MPI_SUM,
       amsgq->queue_win);
     MPI_Win_flush(target.id, amsgq->queue_win);
-    printf("  Full queue: remote_offset %d (roll-back to offset %d, witecnt %d)\n", remote_offset, tmp, writecnt);
+    //printf("  Full queue: remote_offset %d (roll-back to offset %d, witecnt %d)\n", remote_offset, tmp, writecnt);
 
     dart__base__mutex_unlock(&amsgq->send_mutex);
 
@@ -215,8 +215,8 @@ dart_amsg_nolock_sendbuf(
 
   DART_LOG_TRACE("MPI_Fetch_and_op returned offset %u at unit %i",
                  remote_offset, target.id);
-  printf("  MPI_Fetch_and_op returned offset %u (%X) at unit %i\n",
-                 remote_offset, remote_offset, target.id);
+  //printf("  MPI_Fetch_and_op returned offset %u (%X) at unit %i\n",
+  //               remote_offset, remote_offset, target.id);
 
   // 4. Write our payload
 
@@ -554,7 +554,7 @@ amsg_process_nolock_internal(
         amsgq->queue_win);
       MPI_Win_flush(unitid.id, amsgq->queue_win);
 
-      printf("Tailpos on queue %d: %d\n", queuenum, tailpos);
+      //printf("Tailpos on queue %d: %d\n", queuenum, tailpos);
 
       // wait for all active writers to finish
       // and set writecnt to INT_MIN to signal the swap
@@ -571,7 +571,7 @@ amsg_process_nolock_internal(
           base_offset,
           amsgq->queue_win);
         MPI_Win_flush(unitid.id, amsgq->queue_win);
-        printf("  Active writers on queue %d: writecnt %d\n", queuenum, writecnt);
+        //printf("  Active writers on queue %d: writecnt %d\n", queuenum, writecnt);
       } while (writecnt > 0);
 
       MPI_Fetch_and_op(
@@ -584,7 +584,7 @@ amsg_process_nolock_internal(
         amsgq->queue_win);
       MPI_Win_flush_local(unitid.id, amsgq->queue_win);
 
-      printf("  Tailpos on queue %d: %d\n", queuenum, tailpos);
+      //printf("  Tailpos on queue %d: %d\n", queuenum, tailpos);
 
       // at this point we can safely process the queue as all pending writers
       // are finished and new writers write to the other queue
@@ -621,7 +621,7 @@ amsg_process_nolock_internal(
         num_msg++;
       }
 
-      printf("  Processed %d messages\n", num_msg);
+      //printf("  Processed %d messages\n", num_msg);
 
       // Finally: reset the old queue for the next swap
       uint64_t zero = 0;
@@ -701,7 +701,7 @@ dart_amsg_nolock_flush_buffer(struct dart_amsgq_impl_data * amsgq)
       msg = next;
     }
 
-    printf("Flushing %d messages (%zu) to target %d\n", cnt, pos, target.id);
+    //printf("Flushing %d messages (%zu) to target %d\n", cnt, pos, target.id);
 
     // send out the buffer at once, to one target at a time
     // TODO: can we overlap this somehow?
