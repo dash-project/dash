@@ -5,6 +5,7 @@
 #include <dash/memory/GlobStaticMem.h>
 
 #include <dash/internal/Logging.h>
+#include <dash/util/FunctionalExpr.h>
 
 #include <functional>
 

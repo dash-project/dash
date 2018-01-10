@@ -52,7 +52,7 @@ else()
     ExternalProject_Add(
       GTestExternal
       GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG master
+      GIT_TAG be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0
       TIMEOUT 10
       PREFIX "${GTEST_PREFIX}"
       CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
@@ -66,7 +66,7 @@ else()
     ExternalProject_Add(
       GTestExternal
       GIT_REPOSITORY https://github.com/google/googletest.git
-      GIT_TAG master
+      GIT_TAG be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0
       TIMEOUT 10
       PREFIX "${GTEST_PREFIX}"
       CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"

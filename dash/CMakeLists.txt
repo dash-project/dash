@@ -180,10 +180,8 @@ else()
          ${BLAS_LIBRARIES})
     set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
          ${BLAS95_LIBRARIES})
-    set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+    set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
          ${BLAS_LINKER_FLAGS})
-#   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-#        cblas)
   endif()
 
   if (ENABLE_LAPACK AND LAPACK_FOUND)
@@ -212,6 +210,15 @@ if (ENABLE_SCALAPACK)
     set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
          ${SCALAPACK_LIBRARIES})
   endif()
+endif()
+
+if (HAVE_STD_TRIVIALLY_COPYABLE)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_HAVE_STD_TRIVIALLY_COPYABLE)
+endif()
+if (HAVE_TRIVIAL_COPY_INTRINSIC)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_HAVE_TRIVIAL_COPY_INTRINSIC)
 endif()
 
 # enable algorithms which are supported by current build config
@@ -306,17 +313,14 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+    CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
   )
 
   if(ENABLE_COMPTIME_RED)
     cotire(${DASH_LIBRARY})
   endif()
 
-  set_target_properties(
-    ${DASH_LIBRARY} PROPERTIES
-    CXX_STANDARD_REQUIRED 11
-  )
   include_directories(
     ${ADDITIONAL_INCLUDES}
   )
@@ -408,11 +412,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          CXX_STANDARD 11
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD_REQUIRED 11
+          CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+          CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
         )
 
         # Installation
@@ -469,17 +470,13 @@ if (BUILD_TESTS)
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      CXX_STANDARD 11
+      CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+      CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
     )
 
     if(ENABLE_COMPTIME_RED)
       cotire(${DASH_TEST})
     endif()
-
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      CXX_STANDARD_REQUIRED 11
-    )
 
     # Installation
     DeployBinary(${DASH_TEST})
