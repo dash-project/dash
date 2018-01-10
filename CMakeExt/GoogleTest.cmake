@@ -41,23 +41,44 @@ else()
   # Download gtest from official github repository:
   message(STATUS "Downloading GTest from official repository")
   set(GTEST_PREFIX "${CMAKE_BINARY_DIR}/gtest")
-  ExternalProject_Add(
-    GTestExternal
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG master
-    TIMEOUT 10
-    PREFIX "${GTEST_PREFIX}"
-    CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
-    INSTALL_COMMAND ""
-    # Wrap download, configure and build steps in a script to log output
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON
-  )
   set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
   set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/googletest/include")
   set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
   set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
+
+
+  # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
+  if("${CMAKE_VERSION}" VERSION_LESS 3.2.0)
+    ExternalProject_Add(
+      GTestExternal
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0
+      TIMEOUT 10
+      PREFIX "${GTEST_PREFIX}"
+      CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
+      INSTALL_COMMAND ""
+      # Wrap download, configure and build steps in a script to log output
+      LOG_DOWNLOAD ON
+      LOG_CONFIGURE ON
+      LOG_BUILD ON
+    )
+  else()
+    ExternalProject_Add(
+      GTestExternal
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0
+      TIMEOUT 10
+      PREFIX "${GTEST_PREFIX}"
+      CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
+      INSTALL_COMMAND ""
+      # Necessary for ninja build
+      BUILD_BYPRODUCTS ${GTEST_LIBRARY}
+      # Wrap download, configure and build steps in a script to log output
+      LOG_DOWNLOAD ON
+      LOG_CONFIGURE ON
+      LOG_BUILD ON
+    )
+endif()
 
   add_library(GTest IMPORTED STATIC GLOBAL)
   set_target_properties(
