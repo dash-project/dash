@@ -202,6 +202,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
             element_t *__restrict down_row = static_cast<element_t*>(
                                      std::malloc(sizeof(element_t) * gext_y));
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
+      std::cout << "Computing bottom row in iter " << iter << std::endl;
       // copy line
       dart_get_blocking(
         down_row,
@@ -244,6 +245,10 @@ int main(int argc, char* argv[])
 
   if (argc > 2) {
     sizey = atoll(argv[2]);
+  }
+
+  if (argc > 3) {
+    niter = atoi(argv[3]);
   }
 
 

@@ -250,6 +250,10 @@ int main(int argc, char* argv[])
     sizey = atoll(argv[2]);
   }
 
+  if (argc > 3) {
+    niter = atoi(argv[3]);
+  }
+
 
   // Prepare grid
   dash::TeamSpec<2> ts;
