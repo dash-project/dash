@@ -719,7 +719,8 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           }
           dart__base__mutex_unlock(&(task->parent->mutex));
         }
-        return DART_OK;
+        // we're done here
+        break;
       }
     }
   }
@@ -733,6 +734,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
 
   // schedule the  task if it has no dependencies
   if (task->unresolved_deps == 0) {
+    DART_LOG_TRACE("Releasing task %p with delayed dependency", task);
     dart__tasking__enqueue_runnable(task);
   }
 
