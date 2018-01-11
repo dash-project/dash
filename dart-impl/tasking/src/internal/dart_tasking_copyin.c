@@ -141,7 +141,7 @@ dart_tasking_copyin_create_task_get(
   arg.num_bytes = dep->copyin.size;
   arg.unit      = 0; // not needed
 
-  dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
+  return dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
                    deps, 2, DART_PRIO_HIGH);
 }
 
@@ -166,6 +166,8 @@ dart_tasking_copyin_create_task(
   } else {
     // just in case...
     DART_ASSERT(impl == COPYIN_GET || impl == COPYIN_SENDRECV);
+    DART_LOG_ERROR("Unknown copyin type: %d", impl);
+    ret = DART_ERR_INVAL;
   }
 
   return ret;
