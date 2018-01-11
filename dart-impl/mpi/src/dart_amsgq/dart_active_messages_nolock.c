@@ -776,6 +776,27 @@ dart_amsg_nolock_bsend(
 static dart_ret_t
 dart_amsg_nolock_closeq(struct dart_amsgq_impl_data* amsgq)
 {
+  // check for late messages
+  uint32_t tailpos;
+  dart_team_unit_t unitid;
+  dart_team_myid(amsgq->team, &unitid);
+  char queuenum = amsgq->current_queue;
+  int32_t base_offset = 1 + queuenum * (amsgq->queue_size + 2*sizeof(int32_t));
+  MPI_Fetch_and_op(
+    NULL,
+    &tailpos,
+    MPI_INT32_T,
+    unitid.id,
+    base_offset + sizeof(int32_t),
+    MPI_NO_OP,
+    amsgq->queue_win);
+  MPI_Win_flush_local(unitid.id, amsgq->queue_win);
+  if (tailpos > 0) {
+    DART_LOG_WARN("Cowardly refusing to invoke unhandled incoming active "
+                  "messages upon shutdown (tailpos %d)!", tailpos);
+  }
+
+  // free window
   amsgq->queue_ptr = NULL;
   MPI_Win_unlock_all(amsgq->queue_win);
   MPI_Win_free(&(amsgq->queue_win));

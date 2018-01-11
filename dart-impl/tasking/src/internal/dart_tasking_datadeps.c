@@ -730,6 +730,12 @@ dart_tasking_datadeps_match_delayed_local_datadep(
         DEP_ADDR(*dep), task, task->phase);
     printf("Couldn't find an active task to match delayed input dependency!\n");
   }
+
+  // schedule the  task if it has no dependencies
+  if (task->unresolved_deps == 0) {
+    dart__tasking__enqueue_runnable(task);
+  }
+
   return DART_OK;
 }
 
