@@ -133,7 +133,7 @@ dart_amsg_sendrecv_openq(
   res->recv_reqs   = malloc(msg_count*sizeof(*res->recv_reqs));
   res->recv_outidx = malloc(msg_count*sizeof(*res->recv_outidx));
   res->send_outidx = malloc(msg_count*sizeof(*res->send_outidx));
-//  MPI_Comm_dup(team_data->comm, &res->comm);
+  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
 
   // post receives
@@ -318,6 +318,7 @@ dart_amsg_sendrevc_process_blocking(
       }
     }
   } while (!barrier_flag && !send_flag);
+  MPI_Barrier(team_data->comm);
   amsg_process_sendrecv_internal(amsgq, true);
   return DART_OK;
 }
@@ -327,7 +328,7 @@ dart_ret_t
 dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 {
 
-//  MPI_Comm_free(&amsgq->comm);
+  MPI_Comm_free(&amsgq->comm);
 
   MPI_Waitall(amsgq->msg_count, amsgq->send_reqs, MPI_STATUSES_IGNORE);
 
