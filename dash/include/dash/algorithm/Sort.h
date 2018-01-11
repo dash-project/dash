@@ -486,6 +486,7 @@ inline UnitInfo psort__setup_unit_info(
     GlobIterT const                         begin,
     GlobIterT const                         end)
 {
+  using size_type = typename GlobIterT::pattern_type::size_type;
   DASH_LOG_TRACE("< psort__setup_unit_info");
 
   auto const nunits = pattern.team().size();
@@ -504,9 +505,13 @@ inline UnitInfo psort__setup_unit_info(
 
   for (; unit < last; ++unit) {
     // Number of elements located at current source unit:
-    auto const u_size = pattern.local_size(unit);
+    auto const u_extents = pattern.local_extents(unit);
+    auto const u_size    = std::accumulate(
+        std::begin(u_extents), std::end(u_extents), 1,
+        std::multiplies<size_type>());
     // first linear global index of unit
-    auto const u_gidx_begin = pattern.global_index(unit, {});
+    auto const u_gidx_begin =
+        (unit == myid) ? pattern.lbegin() : pattern.global_index(unit, {});
     // last global index of unit
     auto const u_gidx_end = u_gidx_begin + u_size;
 
