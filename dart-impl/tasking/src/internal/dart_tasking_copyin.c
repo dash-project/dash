@@ -204,7 +204,8 @@ dart_tasking_copyin_send_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
-  //printf("Posting send to unit %d (tag %d, size %zu)\n", td->unit, td->tag, td->num_bytes);
+  DART_LOG_TRACE("Posting send to unit %d (tag %d, size %zu)", 
+                 td->unit, td->tag, td->num_bytes);
   dart_handle_t handle;
   dart_send_handle(td->src.addr_or_offs.addr, td->num_bytes, DART_TYPE_BYTE,
                    td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
@@ -215,8 +216,10 @@ dart_tasking_copyin_send_taskfn(void *data)
   task->prio = DART_PRIO_LOW;
   while (!flag) {
     dart_task_yield(-1);
+    DART_LOG_TRACE("Testing send to unit %d (tag %d)", td->unit, td->tag);
     dart_test_local(&handle, &flag);
   }
+  DART_LOG_TRACE("Send to unit %d completed (tag %d)", td->unit, td->tag);
 
   //printf("Send to unit %d completed (tag %d)\n", td->unit, td->tag);
 }
@@ -227,8 +230,8 @@ dart_tasking_copyin_recv_taskfn(void *data)
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
   if (DART_GPTR_ISNULL(td->src)) {
-    //printf("Posting recv from unit %d (tag %d, size %zu)\n",
-    //       td->unit, td->tag, td->num_bytes);
+    DART_LOG_TRACE("Posting recv from unit %d (tag %d, size %zu)",
+                   td->unit, td->tag, td->num_bytes);
 
     dart_handle_t handle;
     dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
@@ -240,9 +243,10 @@ dart_tasking_copyin_recv_taskfn(void *data)
     task->prio = DART_PRIO_LOW;
     while (!flag) {
       dart_task_yield(-1);
+      DART_LOG_TRACE("Testing recv from unit %d (tag %d)", td->unit, td->tag);
       dart_test_local(&handle, &flag);
     }
-    //printf("Recv from unit %d completed (tag %d)\n", td->unit, td->tag);
+    DART_LOG_TRACE("Recv from unit %d completed (tag %d)", td->unit, td->tag);
 
   } else {
     //printf("Local memcpy of size %zu: %p -> %p\n", td->num_bytes, td->src, td->dst);
@@ -257,6 +261,8 @@ dart_tasking_copyin_get_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
+  DART_LOG_TRACE("Posting get from unit %d (size %zu)",
+                 td->unit, td->num_bytes);
   int flag = 0;
   dart_handle_t handle;
   dart_get_handle(td->dst, td->src, td->num_bytes,
@@ -269,4 +275,5 @@ dart_tasking_copyin_get_taskfn(void *data)
     dart_task_yield(-1);
     dart_test_local(&handle, &flag);
   }
+  DART_LOG_TRACE("Get from unit %d completed (tag %d)", td->unit, td->tag);
 }
