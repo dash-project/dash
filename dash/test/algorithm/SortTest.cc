@@ -198,6 +198,41 @@ TEST_F(SortTest, ArrayOfDoubles)
   perform_test(array.begin(), array.end());
 }
 
+TEST_F(SortTest, MatrixBlockedRow)
+{
+  using value_t     = int32_t;
+  using block_pat_t = dash::BlockPattern<2, dash::ROW_MAJOR>;
+  using narray_t =
+      dash::NArray<value_t, 2, dash::default_index_t, block_pat_t>;
+
+  size_t team_size = dash::Team::All().size();
+  size_t extent_x  = 17;
+  size_t extent_y  = 5 + team_size * 3;
+  size_t size      = extent_x * extent_y;
+
+  // Ceil division
+  size_t block_size_x = extent_x;
+  size_t block_size_y = dash::math::div_ceil(extent_y, team_size);
+
+  LOG_MESSAGE(
+      "ex: %d, ey: %d, bsx: %d, bsy: %d", static_cast<int>(extent_y),
+      static_cast<int>(extent_x), static_cast<int>(block_size_y),
+      static_cast<int>(block_size_x));
+
+  block_pat_t pat_blocked_row{
+      dash::SizeSpec<2>(extent_y, extent_x),
+      dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
+      dash::TeamSpec<2>(dash::Team::All()), dash::Team::All()};
+
+  narray_t mat{pat_blocked_row};
+
+  rand_range(mat.begin(), mat.end());
+
+  mat.barrier();
+
+  perform_test(mat.begin(), mat.end());
+}
+
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end)
 {
