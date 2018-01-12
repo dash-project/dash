@@ -56,6 +56,18 @@ divides(const T x, const T y) {
 }
 
 /**
+ * Compile-time equivalent to `std::pow()` for integral data types
+ */
+template <typename BaseT, typename ExpT>
+constexpr BaseT pow(BaseT base, ExpT exp) {
+  static_assert(std::is_integral<BaseT>::value, "Base must be an integer.");
+  static_assert(std::is_integral<ExpT>::value && std::is_unsigned<ExpT>::value,
+                "Exponent must be an unsigned integer.");
+
+  return (exp == 0 ? 1 : base * pow(base, exp - 1));
+}
+
+/**
  * Compile-time equivalent to `std::accumulate()`
  */
 template <typename T,         ///< result type

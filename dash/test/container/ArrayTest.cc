@@ -4,6 +4,7 @@
 #include <dash/Array.h>
 
 #include <dash/algorithm/ForEach.h>
+#include <dash/algorithm/Fill.h>
 
 #include <dash/pattern/BlockPattern1D.h>
 #include <dash/pattern/TilePattern1D.h>
@@ -269,5 +270,33 @@ TEST_F(ArrayTest, MoveSemantics){
     std::swap(array_a, array_b);
     ASSERT_EQ_U(*(array_a.lbegin()), 2);
     ASSERT_EQ_U(*(array_b.lbegin()), 1);
+  }
+}
+
+TEST_F(ArrayTest, ElementCompare){
+  using value_t = int;
+  using array_t = dash::Array<value_t>;
+
+  if(dash::size() < 2){
+    SKIP_TEST();
+  }
+
+  array_t arr(dash::size());
+
+  dash::fill(arr.begin(), arr.end(), 0);
+  arr.barrier();
+
+  ASSERT_EQ_U(arr[0], arr[1]);
+
+  ASSERT_EQ_U(0, arr[dash::myid()]);
+  ASSERT_EQ_U(arr[dash::myid()], 0);
+  ASSERT_EQ_U(arr[dash::myid()], 0UL);
+
+  dash::barrier();
+  arr[dash::myid()] = dash::myid();
+  ASSERT_EQ_U(dash::myid(), arr[dash::myid()]);
+  dash::barrier();
+  if (dash::myid() > 0) {
+    ASSERT_NE_U(arr[0], arr[dash::myid()]);
   }
 }
