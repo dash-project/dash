@@ -49,6 +49,8 @@ ValueType accumulate(
     auto l_result  = std::accumulate(std::next(l_first), l_last, *l_first);
     l_results.local[0].l_result = l_result;
     l_results.local[0].l_valid  = true;
+  } else {
+    l_results.local[0].l_valid  = false;
   }
 
   l_results.barrier();
@@ -108,6 +110,8 @@ ValueType accumulate(
     auto l_result  = std::accumulate(std::next(l_first), l_last, *l_first, binary_op);
     l_results.local[0].l_result = l_result;
     l_results.local[0].l_valid  = true;
+  } else {
+    l_results.local[0].l_valid  = false;
   }
 
   l_results.barrier();
