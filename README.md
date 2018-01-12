@@ -100,7 +100,7 @@ For pre-build Docker container images, see the
 Building from Source
 --------------------
 
-DASH is build using CMake.
+DASH is built using CMake.
 
 A build script is provided with typical DASH configurations and can serve
 as starting points for custom builds:
@@ -136,6 +136,18 @@ Optional third-party libraries directly supported by DASH:
 - LIKWID
 - HDF5
 
+### Getting the sources 
+
+DASH is hosted on Github at https://github.com/dash-project/dash and makes
+use of git submodules to include third-party software (mainly the GoogleTest 
+framework required for building the tests). The build environment will take 
+care of cloning the submodules upon  first invocation. However, there might 
+be cases where recursive cloning is  required, e.g., if there is no internet 
+access available during the configuration step.
+
+In that case, please use a recursive clone: 
+
+    (dash/)$ git clone --recursive https://github.com/dash-project/dash.git
 
 ### Building DASH from Source
 
