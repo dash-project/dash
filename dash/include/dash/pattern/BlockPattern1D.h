@@ -1223,12 +1223,12 @@ private:
                // becomes 0.
              : ((_nblocks / _nunits) * _blocksize
                // Unbalanced blocks owned by the unit:
-               + (unit < (_nblocks % _nunits)
+               + (static_cast<SizeType>(unit) < (_nblocks % _nunits)
                  ? _blocksize
                  : 0 )
                // If the last block in the dimension is underfilled and
                // assigned to the local unit, subtract the missing extent:
-               - (unit ==
+               - (static_cast<SizeType>(unit) ==
                     // Unit id assigned to the last block:
                     (_nblocks % _nunits == 0
                     ? _nunits - 1

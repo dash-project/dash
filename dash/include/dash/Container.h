@@ -70,6 +70,7 @@
 // Static containers:
 #include<dash/Array.h>
 #include<dash/Matrix.h>
+#include<dash/Coarray.h>
 
 // Dynamic containers:
 #include<dash/List.h>
