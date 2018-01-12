@@ -69,6 +69,8 @@ CMAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS cmake3"
 
 # default release build settings:
 CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
                         -DENABLE_COMPTIME_RED=OFF \
                         \

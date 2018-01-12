@@ -44,6 +44,8 @@ BUILD_DIR=build.nasty
 
 # default release build settings with nasty mpi:
 CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
                         -DDART_IMPLEMENTATIONS=mpi \

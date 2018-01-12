@@ -40,6 +40,8 @@ BUILD_DIR=build.dev
 # default developer build settings:
 CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \

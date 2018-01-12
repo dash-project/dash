@@ -27,6 +27,8 @@ CMAKE_COMMAND="cmake"
 
 # default release build settings for supermic environment:
 CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=supermic \
                         -DCMAKE_C_COMPILER=mpiicc \
                         -DCMAKE_CXX_COMPILER=mpiicc \
