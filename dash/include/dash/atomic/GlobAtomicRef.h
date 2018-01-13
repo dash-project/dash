@@ -411,7 +411,7 @@ public:
    * http://en.cppreference.com/w/cpp/atomic/atomic/operator_arith.
    */
   T operator-- () const {
-    return fetch_sub(1) + 1;
+    return fetch_sub(1) - 1;
   }
 
   /**
