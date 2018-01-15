@@ -96,6 +96,7 @@ dart_ret_t dart_tasking_remote_init()
       dart_amsg_openq(
         size, DART_RTASK_QLEN, DART_TEAM_ALL, &amsgq),
       DART_OK);
+    DART_ASSERT(amsgq != NULL);
     DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
     initialized = true;
   }
@@ -138,6 +139,11 @@ dart_ret_t dart_tasking_remote_datadep(dart_task_dep_t *dep, dart_task_t *task)
             sizeof(rdep));
     if (ret == DART_OK) {
       // the message was successfully sent
+      DART_LOG_INFO("Sent remote dependency request to unit t:%i "
+          "(segid=%i, offset=%p, fn=%p, task=%p)",
+          team_unit.id, dep->gptr.segid,
+          dep->gptr.addr_or_offs.addr,
+          &release_remote_dependency, task);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
