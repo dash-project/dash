@@ -160,6 +160,12 @@ struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
+template<typename T>
+struct dart_datatype<const T> : dart_datatype<T> { };
+
+template<typename T>
+struct dart_datatype<volatile T> : dart_datatype<T> { };
+
 
 namespace internal {
 
@@ -213,13 +219,10 @@ template <class T>
 struct is_container_compatible :
   public std::integral_constant<bool,
               std::is_standard_layout<T>::value
-#if ( !defined(__CRAYC) && !defined(__GNUC__) ) || \
-    ( defined(__GNUG__) && __GNUC__ >= 5 )
-              // The Cray compiler (as of CCE8.5.6) does not support
-              // std::is_trivially_copyable.
-           && std::is_trivially_copyable<T>::value
-#elif defined(__GNUG__) && __GNUC__ < 5
-           && std::has_trivial_copy_constructor<T>::value
+#ifdef DASH_HAVE_STD_TRIVIALLY_COPYABLE
+              && std::is_trivially_copyable<T>::value
+#elif defined DASH_HAVE_TRIVIAL_COPY_INTRINSIC
+              && __has_trivial_copy(T)
 #endif
          >
 { };

@@ -1,10 +1,5 @@
 #include <iostream>
-#include <chrono>
 #include <libdash.h>
-#include <iomanip>
-#include <utility>
-
-#include <dash/experimental/HaloMatrix.h>
 
 using namespace std;
 
@@ -16,41 +11,47 @@ using matrix_t     = dash::Matrix<
                        double, 2,
                        typename pattern_t::index_type,
                        pattern_t>;
-using array_t      = dash::Array<double>;
-using time_point_t = std::chrono::time_point<std::chrono::system_clock>;
-using time_diff_t  = std::chrono::duration<double>;
+using StencilSpecT = dash::StencilSpec<2,4>;
+using StencilT = dash::Stencil<2>;
+using CycleSpecT = dash::CycleSpec<2>;
+using Cycle     = dash::Cycle;
+using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t, StencilSpecT>;
 
-void print_matrix(const matrix_t *matrix) {
-  auto rows = matrix->extent(0);
-  auto cols = matrix->extent(1);
+using array_t      = dash::Array<double>;
+
+void print_matrix(const matrix_t& matrix) {
+  auto rows = matrix.extent(0);
+  auto cols = matrix.extent(1);
   cout << fixed;
-  cout.precision(1);
+  cout.precision(4);
   cout << "Matrix:" << endl;
   for (auto r = 0; r < rows; ++r) {
     for (auto c = 0; c < cols; ++c)
-      cout << " " << setw(3) << (*matrix)[r][c];
+      cout << " " << setw(3) << (double) matrix[r][c];
     cout << endl;
   }
 }
 
-double calcEnergy(const matrix_t *m, array_t &a) {
-  a[dash::myid()] = std::accumulate(
-                      (*m).local.lbegin(),
-                      (*m).local.lend(),
-                      0.0);
-  m->barrier();
-  return dash::accumulate(a.begin(), a.end(), 0.0);
+double calcEnergy(const matrix_t& m, array_t &a) {
+  *a.lbegin() = std::accumulate( m.lbegin(), m.lend(), 0.0);
+  a.barrier();
+
+  if(dash::myid() == 0)
+    return std::accumulate(a.begin(), a.end(), 0.0);
+  else
+    return 0.0;
 }
 
 int main(int argc, char *argv[])
 {
-  using dash::experimental::HaloSpec;
-  using dash::experimental::HaloMatrix;
 
   if (argc < 3) {
     cerr << "Not enough arguments ./<prog> matrix_ext iterations" << endl;
     return 1;
   }
+  using HaloBlockT = dash::HaloBlock<double,pattern_t>;
+  using HaloMemT = dash::HaloMemory<HaloBlockT>;
+
   auto matrix_ext = std::atoi(argv[1]);
   auto iterations = std::atoi(argv[2]);
 
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
   auto ranks = dash::size();
 
   dist_spec_t dist(dash::BLOCKED, dash::BLOCKED);
-  team_spec_t tspec;
+  team_spec_t tspec(ranks,1);
 
   tspec.balance_extents();
 
@@ -71,32 +72,29 @@ int main(int argc, char *argv[])
   matrix_t matrix2(pattern);
 
   if (myid == 0) {
-    std::fill(matrix.local.lbegin(), matrix.local.lend(), 1.0);
-    std::fill(matrix2.local.lbegin(), matrix2.local.lend(), 1.0);
+    std::fill(matrix.lbegin(), matrix.lend(), 1.0);
+    std::fill(matrix2.lbegin(), matrix2.lend(), 1.0);
   } else {
-    std::fill(matrix.local.lbegin(), matrix.local.lend(), 0.0);
-    std::fill(matrix2.local.lbegin(), matrix2.local.lend(), 0.0);
+    std::fill(matrix.lbegin(), matrix.lend(), 0.0);
+    std::fill(matrix2.lbegin(), matrix2.lend(), 0.0);
   }
-
-  matrix_t *current_matrix = &matrix;
-  matrix_t *new_matrix = &matrix2;
 
   matrix.barrier();
 
 #ifdef DEBUG
   if (myid == 0)
-    print_matrix(current_matrix);
+    print_matrix(matrix);
 #endif
 
-  HaloSpec<2> halo_s({ { { -1, 1 }, { -1, 1 } } });
+  StencilSpecT stencil_spec({ StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1)});
 
-  HaloMatrix<matrix_t, HaloSpec<2> > halomat(matrix, halo_s);
-  HaloMatrix<matrix_t, HaloSpec<2> > halomat2(matrix2, halo_s);
+  CycleSpecT cycle{Cycle::CYCLIC, Cycle::CYCLIC};
 
-  HaloMatrix<matrix_t, HaloSpec<2> > *current_halo = &halomat;
-  HaloMatrix<matrix_t, HaloSpec<2> > *new_halo = &halomat2;
+  HaloMatrixWrapperT halomat(matrix, stencil_spec, cycle);
+  HaloMatrixWrapperT halomat2(matrix2, stencil_spec, cycle);
 
-  time_point_t s_total, e_total;
+  HaloMatrixWrapperT* current_halo = &halomat;
+  HaloMatrixWrapperT* new_halo = &halomat2;
 
   double dx{ 1.0 };
   double dy{ 1.0 };
@@ -105,74 +103,74 @@ int main(int argc, char *argv[])
 
   // initial total energy
   array_t energy(ranks);
-  double initEnergy = calcEnergy(&matrix, energy);
+  double initEnergy = calcEnergy(current_halo->matrix(), energy);
 
-  const auto &lview = halomat.getLocalView();
+  const auto &lview = halomat.view_local();
   auto offset = lview.extent(1);
   long inner_start = offset + 1;
   long inner_end = lview.extent(0) * (offset - 1) - 1;
 
-  // start time measurement
-  s_total = std::chrono::system_clock::now();
+  current_halo->matrix().barrier();
+
   for (auto d = 0; d < iterations; ++d) {
+
+    auto& current_matrix = current_halo->matrix();
+    auto& new_matrix = new_halo->matrix();
+
     // Update Halos asynchroniously
-    current_halo->updateHalosAsync();
+    current_halo->update_async();
 
     // optimized calculation of inner matrix elements
-    auto current_begin = current_matrix->local.lbegin();
-    auto new_begin = new_matrix->local.lbegin();
+    auto* current_begin = current_matrix.lbegin();
+    auto* new_begin = new_matrix.lbegin();
+#if 0
     for (auto i = inner_start; i < inner_end; i += offset) {
-      auto center = current_begin + i;
-      auto center_y_plus = center + offset;
-      auto center_y_minus = center - offset;
+      auto* center = current_begin + i;
+      auto* center_y_plus = center + offset;
+      auto* center_y_minus = center - offset;
       for (auto j = 0; j < offset - 2;
            ++j, ++center, ++center_y_plus, ++center_y_minus) {
-        auto dtheta =
+        /*auto dtheta =
             (*(center - 1) + *(center + 1) - 2 * (*center)) / (dx * dx) +
             (*(center_y_minus) + *(center_y_plus) - 2 * (*center)) / (dy * dy);
-        *(new_begin + i + j) = *center + k * dtheta * dt;
+        *(new_begin + i + j) = *center + k * dtheta * dt;*/
+        *(new_begin + i + j) = calc(center, center_y_minus, center_y_plus, center - 1, center + 1);
       }
     }
-
+#endif
     // slow version
-    /*for(auto it = current_halo->ibegin(); it != current_halo->iend(); ++it)
+    auto it_end = current_halo->iend();
+    for(auto it = current_halo->ibegin(); it != it_end; ++it)
     {
       auto core = *it;
-      auto dtheta = (it.halo_value(1, -1) + it.halo_value(1, 1) - 2 * core) /
-    (dx * dx) +
-                    (it.halo_value(0, -1) + it.halo_value(0, 1) - 2 * core) /
-    (dy * dy);
-      *(new_begin + it.lpos()) = core + k * dtheta * dt;
-    }*/
+      auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
+                    (it.value_at(2) + it.value_at(3) - 2 * core) /(dy * dy);
+      new_begin[it.lpos()] = core + k * dtheta * dt;
+    }
 
     // Wait until all Halo updates ready
-    current_halo->waitHalosAsync();
+    current_halo->wait();
 
     // Calculation of boundary Halo elements
-    for (auto it = current_halo->bbegin(); it != current_halo->bend(); ++it) {
+    auto it_bend = current_halo->bend();
+    for (auto it = current_halo->bbegin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
-          (it.halo_value(1, -1) + it.halo_value(1, 1) - 2 * core) / (dx * dx) +
-          (it.halo_value(0, -1) + it.halo_value(0, 1) - 2 * core) / (dy * dy);
-      *(new_begin + it.lpos()) = core + k * dtheta * dt;
+          (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
+          (it.value_at(2) + it.value_at(3) - 2 * core) / (dy * dy);
+      new_begin[it.lpos()] = core + k * dtheta * dt;
     }
 
     // swap current matrix and current halo matrix
-    std::swap(current_matrix, new_matrix);
     std::swap(current_halo, new_halo);
-
-    new_matrix->barrier();
+    current_matrix.barrier();
   }
-  // finish time measurement
-  e_total = std::chrono::system_clock::now();
-  double diff_total = time_diff_t(e_total - s_total).count();
-
   // final total energy
-  double endEnergy = calcEnergy(new_matrix, energy);
+  double endEnergy = calcEnergy(current_halo->matrix(), energy);
 
 #ifdef DEBUG
   if (myid == 0)
-    print_matrix(&matrix);
+    print_matrix(current_halo->matrix());
 #endif
 
   // Output
@@ -185,15 +183,6 @@ int main(int argc, char *argv[])
     cout << "Matrixspec: " << matrix_ext << " x " << matrix_ext << endl;
     cout << "Iterations: " << iterations << endl;
     cout.flush();
-  }
-
-  for (auto id = 0; id < ranks; ++id) {
-    dash::Team::All().barrier();
-    if (id == myid) {
-      cout << "ID: " << id << " - Total Time: " << diff_total
-           << " - iteration avg: " << diff_total / iterations << endl;
-      cout.flush();
-    }
   }
 
   dash::finalize();

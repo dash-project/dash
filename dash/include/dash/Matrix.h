@@ -306,24 +306,12 @@ public:
     const PatternT & pat);
 
   /**
-   * Constructor, creates a new instance of Matrix.
-   */
-  explicit
-  Matrix(
-    /// Number of elements
-    size_t nelem,
-    /// Team containing all units operating on the Matrix instance
-    Team & t = dash::Team::All())
-  : Matrix(PatternT(nelem, t))
-  { }
-
-  /**
    * Constructor, creates a new instance of Matrix
    * of given extents.
    */
   template<typename... Args>
-  Matrix(SizeType arg, Args... args)
-  : Matrix(PatternT(arg, args... ))
+  Matrix(SizeType arg, Args&&... args)
+  : Matrix(PatternT(arg, std::forward<Args>(args)...))
   { }
 
   /**
