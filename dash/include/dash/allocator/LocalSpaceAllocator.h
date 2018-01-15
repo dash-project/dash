@@ -2,6 +2,7 @@
 #define DASH__ALLOCATOR__LOCAL_SPACE_ALLOCATOR_H__INCLUDED
 
 #include <dash/memory/MemorySpace.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 namespace allocator {

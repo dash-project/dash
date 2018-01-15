@@ -241,6 +241,7 @@ public:
     // check if has been moved away
     if(!DART_GPTR_ISNULL(_begptr)){
       _allocator.deallocate(_begptr);
+      _begptr = DART_GPTR_NULL;
     }
     DASH_LOG_TRACE("GlobStaticMem.~GlobStaticMem >");
   }

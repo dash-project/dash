@@ -2,6 +2,7 @@
 #define DASH__MEMORY__UTIL_H__INCLUDED
 
 #include <climits>
+#include <cstddef>
 #include <type_traits>
 
 namespace dash {
