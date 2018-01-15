@@ -3,23 +3,21 @@
 
 #include <dash/dart/if/dart.h>
 
-#include <dash/Types.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
 
-#include <dash/allocator/internal/Types.h>
 #include <dash/allocator/AllocatorTraits.h>
 #include <dash/allocator/LocalSpaceAllocator.h>
+#include <dash/allocator/internal/Types.h>
 
-
-#include <vector>
 #include <algorithm>
-#include <utility>
 #include <cassert>
 #include <tuple>
-
+#include <utility>
+#include <vector>
 
 namespace dash {
 namespace allocator {
@@ -36,17 +34,17 @@ namespace allocator {
  * \concept{DashAllocatorConcept}
  */
 template <
-  typename ElementType,
-  typename MSpaceCategory = dash::memory_space_host_tag,
-  typename LocalAlloc = dash::allocator::LocalSpaceAllocator<ElementType, MSpaceCategory>>
-class SymmetricAllocator
-{
+    typename ElementType,
+    typename MSpaceCategory = dash::memory_space_host_tag,
+    typename LocalAlloc =
+        dash::allocator::LocalSpaceAllocator<ElementType, MSpaceCategory>>
+class SymmetricAllocator {
   template <class T, class U>
-  friend bool operator==(const SymmetricAllocator<T>& lhs,
-                         const SymmetricAllocator<U>& rhs);
+  friend bool operator==(
+      const SymmetricAllocator<T>& lhs, const SymmetricAllocator<U>& rhs);
   template <class T, class U>
-  friend bool operator!=(const SymmetricAllocator<T>& lhs,
-                         const SymmetricAllocator<U>& rhs);
+  friend bool operator!=(
+      const SymmetricAllocator<T>& lhs, const SymmetricAllocator<U>& rhs);
 
 private:
   using self_t = SymmetricAllocator<ElementType>;
@@ -77,8 +75,8 @@ private:
   using internal_value_type = std::tuple<local_pointer, size_t, pointer>;
 
 private:
-  dart_team_t    _team_id = DART_TEAM_NULL;
-  allocator_type _alloc;
+  dart_team_t                      _team_id = DART_TEAM_NULL;
+  allocator_type                   _alloc;
   std::vector<internal_value_type> _segments;
 
 public:
@@ -156,19 +154,19 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  self_t & operator=(const self_t & other) = delete;
+  self_t& operator=(const self_t& other) = delete;
 
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(self_t && other) noexcept
+  self_t& operator=(self_t&& other) noexcept
   {
     // Take ownership of other instance's allocation vector:
     if (this != &other) {
       clear();
-      _alloc = std::move(other._alloc);
+      _alloc    = std::move(other._alloc);
       _segments = std::move(other._segments);
-      _team_id = other._team_id;
+      _team_id  = other._team_id;
       // clear origin without deallocating gptrs
       other._segments.clear();
     }
@@ -186,7 +184,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  bool operator==(const self_t & rhs) const noexcept
+  bool operator==(const self_t& rhs) const noexcept
   {
     return (_team_id == rhs._team_id && _alloc == rhs._alloc);
   }
@@ -203,7 +201,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  bool operator!=(const self_t & rhs) const noexcept
+  bool operator!=(const self_t& rhs) const noexcept
   {
     return !(*this == rhs);
   }
@@ -222,31 +220,28 @@ public:
    */
   pointer allocate(size_type num_local_elem)
   {
-    DASH_LOG_DEBUG("SymmetricAllocator.allocate(nlocal)",
-                   "number of local values:", num_local_elem);
+    DASH_LOG_DEBUG(
+        "SymmetricAllocator.allocate(nlocal)",
+        "number of local values:", num_local_elem);
 
-    DASH_ASSERT_EQ(_segments.size(), 0, "Number of allocated _segments must be 0");
+    DASH_ASSERT_EQ(
+        _segments.size(), 0, "Number of allocated _segments must be 0");
 
     local_pointer lp = AllocatorTraits::allocate(_alloc, num_local_elem);
 
-
-    if (!lp) {
-      if (num_local_elem > 0) {
-        std::stringstream ss;
-        ss << "Allocating local segment (nelem: " << num_local_elem
-           << ") failed!";
-        DASH_LOG_ERROR("SymmetricAllocator.allocate", ss.str());
-        DASH_THROW(dash::exception::RuntimeError, ss.str());
-      }
-      return DART_GPTR_NULL;
+    if (!lp && num_local_elem > 0) {
+      std::stringstream ss;
+      ss << "Allocating local segment (nelem: " << num_local_elem
+         << ") failed!";
+      DASH_LOG_ERROR("SymmetricAllocator.allocate", ss.str());
+      DASH_THROW(dash::exception::RuntimeError, ss.str());
     }
 
-    pointer gptr;
+    pointer                         gptr;
     dash::dart_storage<ElementType> ds(num_local_elem);
 
     if (dart_team_memregister(_team_id, ds.nelem, ds.dtype, lp, &gptr) !=
         DART_OK) {
-
       gptr = DART_GPTR_NULL;
       AllocatorTraits::deallocate(_alloc, lp, num_local_elem);
 
@@ -254,7 +249,10 @@ public:
           "SymmetricAllocator.attach", "cannot attach local memory", gptr);
     }
     else {
-      DASH_LOG_TRACE("SymmetricAllocator.allocate(nlocal)", "allocated memory segment (lp, nelem, gptr)", lp, num_local_elem, gptr);
+      DASH_LOG_TRACE(
+          "SymmetricAllocator.allocate(nlocal)",
+          "allocated memory segment (lp, nelem, gptr)", lp, num_local_elem,
+          gptr);
       _segments.push_back(std::make_tuple(lp, num_local_elem, gptr));
     }
     DASH_LOG_DEBUG_VAR("SymmetricAllocator.allocate >", gptr);
@@ -280,7 +278,7 @@ private:
    */
   void clear() noexcept
   {
-    for (auto &tuple : _segments) {
+    for (auto& tuple : _segments) {
       _deallocate(std::get<2>(tuple), true);
     }
     _segments.clear();
@@ -290,46 +288,48 @@ private:
    * active unit's local memory.
    */
   void _deallocate(
-    /// gptr to be deallocated
-    pointer gptr,
-    /// if true, only free memory but keep gptr in vector
-    bool    keep_reference = false)
+      /// gptr to be deallocated
+      pointer gptr,
+      /// if true, only free memory but keep gptr in vector
+      bool keep_reference = false)
   {
-    DASH_ASSERT_RANGE(0, _segments.size(), 1, "SymmatricAllocator supports only 1 or 0 memory _segments");
+    DASH_ASSERT_RANGE(
+        0, _segments.size(), 1,
+        "SymmatricAllocator supports only 1 or 0 memory _segments");
 
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
       // deallocated again.
-      DASH_LOG_DEBUG("SymmetricAllocator.deallocate >",
-                     "DASH not initialized, abort");
+      DASH_LOG_DEBUG(
+          "SymmetricAllocator.deallocate >", "DASH not initialized, abort");
       return;
     }
 
     if (_segments.size() == 0) {
-      DASH_LOG_WARN("SymmetricAllocator.deallocate >",
-                     "cannot free gptr", gptr);
+      DASH_LOG_WARN(
+          "SymmetricAllocator.deallocate >", "cannot free gptr", gptr);
       return;
     }
 
-    auto & tuple = *_segments.begin();
+    auto& tuple = *_segments.begin();
 
-    auto & seg_lptr = std::get<0>(tuple);
-    auto & seg_nelem = std::get<1>(tuple);
-    auto & seg_gptr = std::get<2>(tuple);
+    auto& seg_lptr  = std::get<0>(tuple);
+    auto& seg_nelem = std::get<1>(tuple);
+    auto& seg_gptr  = std::get<2>(tuple);
 
     DASH_ASSERT(DART_GPTR_EQUAL(gptr, seg_gptr));
 
-    DASH_LOG_TRACE("SymmetricAllocator.deallocate", "allocating memory segment (lptr, nelem, gptr)", seg_lptr, seg_nelem, seg_gptr);
+    DASH_LOG_TRACE(
+        "SymmetricAllocator.deallocate",
+        "allocating memory segment (lptr, nelem, gptr)", seg_lptr, seg_nelem,
+        seg_gptr);
 
-    DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memderegister");
-    DASH_ASSERT_RETURNS(
-      dart_team_memderegister(gptr),
-      DART_OK);
+    DASH_LOG_DEBUG(
+        "SymmetricAllocator.deallocate", "dart_team_memderegister");
+    DASH_ASSERT_RETURNS(dart_team_memderegister(gptr), DART_OK);
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "barrier");
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_team_id),
-      DART_OK);
+    DASH_ASSERT_RETURNS(dart_barrier(_team_id), DART_OK);
 
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "_segments.erase");
     AllocatorTraits::deallocate(_alloc, seg_lptr, seg_nelem);
@@ -342,26 +342,23 @@ private:
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate >");
   }
 
-}; // class SymmetricAllocator
+};  // class SymmetricAllocator
 
 template <class T, class U>
 bool operator==(
-  const SymmetricAllocator<T> & lhs,
-  const SymmetricAllocator<U> & rhs)
+    const SymmetricAllocator<T>& lhs, const SymmetricAllocator<U>& rhs)
 {
-  return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id );
+  return (sizeof(T) == sizeof(U) && lhs._team_id == rhs._team_id);
 }
 
 template <class T, class U>
 bool operator!=(
-  const SymmetricAllocator<T> & lhs,
-  const SymmetricAllocator<U> & rhs)
+    const SymmetricAllocator<T>& lhs, const SymmetricAllocator<U>& rhs)
 {
   return !(lhs == rhs);
 }
 
-} // namespace allocator
-} // namespace dash
+}  // namespace allocator
+}  // namespace dash
 
-#endif // DASH__ALLOCATOR__SYMMETRIC_ALLOCATOR_H__INCLUDED
+#endif  // DASH__ALLOCATOR__SYMMETRIC_ALLOCATOR_H__INCLUDED
