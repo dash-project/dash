@@ -725,13 +725,6 @@ dart_tasking_datadeps_match_delayed_local_datadep(
     }
   }
 
-  if (!IS_OUT_DEP(*dep)) {
-    DART_LOG_TRACE("No matching output dependency found for local input "
-        "dependency %p of task %p in phase %i",
-        DEP_ADDR(*dep), task, task->phase);
-    printf("Couldn't find an active task to match delayed input dependency!\n");
-  }
-
   // schedule the  task if it has no dependencies
   if (task->unresolved_deps == 0) {
     DART_LOG_TRACE("Releasing task %p with delayed dependency", task);
