@@ -101,21 +101,6 @@ public:
 
 }; // class Atomic
 
-/**
- * type traits for \c dash::Atomic
- *
- * true if type is atomic
- * false otherwise
- */
-template<typename T>
-struct is_atomic {
-  static constexpr bool value = false;
-};
-template<typename T>
-struct is_atomic<dash::Atomic<T>> {
-  static constexpr bool value = true;
-};
-
 template<typename T>
 std::ostream & operator<<(
   std::ostream    & os,
@@ -128,6 +113,7 @@ std::ostream & operator<<(
 
 } // namespace dash
 
+#include <dash/atomic/Type_traits.h>
 #include <dash/atomic/GlobAtomicRef.h>
 #include <dash/atomic/Operation.h>
 
