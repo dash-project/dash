@@ -418,6 +418,13 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // the task may have changed once we get back here
     task = get_current_task();
 
+    // we need to lock the task shortly here before releasing datadeps
+    // to allow for atomic check and update
+    // of remote successors in dart_tasking_datadeps_handle_remote_task
+    dart__base__mutex_lock(&(task->mutex));
+    task->state = DART_TASK_FINISHED;
+    dart__base__mutex_unlock(&(task->mutex));
+
     dart_tasking_datadeps_release_local_task(task);
 
     // let the parent know that we are done
@@ -429,13 +436,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->taskctx = NULL;
 
     bool has_ref = task->has_ref;
-
-    // we need to lock the task shortly here
-    // to allow for atomic check and update
-    // of remote successors in dart_tasking_datadeps_handle_remote_task
-    dart__base__mutex_lock(&(task->mutex));
-    task->state = DART_TASK_FINISHED;
-    dart__base__mutex_unlock(&(task->mutex));
 
     // clean up
     if (!has_ref){

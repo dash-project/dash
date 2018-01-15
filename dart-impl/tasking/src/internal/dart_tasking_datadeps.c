@@ -386,6 +386,22 @@ dart_tasking_datadeps_handle_defered_remote()
       }
     }
 
+    if (candidate != NULL) {
+      // we have a local task to satisfy the remote task
+      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
+                     "task %p from origin %i",
+                     candidate, rdep->task.remote, origin.id);
+      DART_STACK_PUSH(candidate->remote_successor, rdep);
+      dart__base__mutex_unlock(&(candidate->mutex));
+    } else {
+      // the remote dependency cannot be served --> send release
+      DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
+                     "which could not be handled in phase %i",
+                     rdep->task.remote, origin.id,
+                     rdep->taskdep.phase);
+      dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
+    }
+
     if (direct_dep_candidate != NULL) {
       // this task has to wait for the remote task to finish because it will
       // overwrite the input of the remote task
@@ -410,20 +426,8 @@ dart_tasking_datadeps_handle_defered_remote()
       }
     }
 
-    if (candidate != NULL) {
-      // we have a local task to satisfy the remote task
-      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
-                     "task %p from origin %i",
-                     candidate, rdep->task.remote, origin.id);
-      DART_STACK_PUSH(candidate->remote_successor, rdep);
-      dart__base__mutex_unlock(&(candidate->mutex));
-    } else {
-      // the remote dependency cannot be served --> send release
-      DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
-                     "which could not be handled in phase %i",
-                     rdep->task.remote, origin.id,
-                     rdep->taskdep.phase);
-      dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
+    if (candidate == NULL) {
+      // release the dependency object
       dephash_recycle_elem(rdep);
     }
   }

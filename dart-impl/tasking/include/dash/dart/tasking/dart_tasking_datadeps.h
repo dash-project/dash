@@ -145,6 +145,10 @@ dart_tasking_datadeps_localize_gptr(dart_gptr_t gptr)
     res.teamid = DART_TEAM_ALL;
   }
 
+  DART_LOG_TRACE("Localized gptr: [u:%d,t:%d,s:%d,o:%p] -> [u:%d,t:%d,s:%d,o:%p]",
+                 gptr.unitid, gptr.teamid, gptr.segid, gptr.addr_or_offs.addr,
+                 res.unitid, res.teamid, res.segid, res.addr_or_offs.addr);
+
   return res;
 }
 
