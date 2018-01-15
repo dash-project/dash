@@ -189,60 +189,6 @@ dart_ret_t dart_allreduce(
   dart_team_t      team) DART_NOTHROW;
 
 /**
- * DART Equivalent to MPI alltoall.
- *
- * \param sendbuf   The buffer containing the data to be sent by each unit.
- * \param sendcount Number of values sent to each unit.
- * \param sendtype  The data type of values in \c sendbuf.
- * \param recvbuf   The buffer to hold the received data.
- * \param recvcount Number of values received by each unit.
- * \param recvtype  The data type of values in \c recvbuf.
- * \param team      The team to participate in the alltoall.
- *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- *
- * \threadsafe_data{team}
- * \ingroup DartCommunication
- */
-dart_ret_t dart_alltoall(
-  const void       * sendbuf,
-  size_t             sendcount,
-  dart_datatype_t    sendtype,
-  void             * recvbuf,
-  size_t             recvcount,
-  dart_datatype_t    recvtype,
-  dart_team_t        team) DART_NOTHROW;
-
-/**
- * DART Equivalent to MPI alltoall.
- *
- * \param sendbuf    The buffer containing the data to be sent by each unit.
- * \param sendcounts Array of length team size specifying the number of elements to send to each processor
- * \param senddispls Array of length team size specifying the displacements of elements to send.
- * \param sendtype   The data type of values in \c sendbuf.
- * \param recvbuf    The buffer to hold the received data.
- * \param recvcounts Array of length team size specifying the number of elements to receive to each processor
- * \param recvdispls Array of length team size specifying the displacements of elements to receive.
- * \param recvtype   The data type of values in \c recvbuf.
- * \param team       The team to participate in the alltoall.
- *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- *
- * \threadsafe_data{team}
- * \ingroup DartCommunication
- */
-dart_ret_t dart_alltoallv(
-  const void       * sendbuf,
-  const size_t     * sendcounts,
-  const size_t     * senddispls,
-  dart_datatype_t    sendtype,
-  void             * recvbuf,
-  const size_t     * recvcounts,
-  const size_t     * recvdispls,
-  dart_datatype_t    recvtype,
-  dart_team_t        team) DART_NOTHROW;
-
-/**
  * DART Equivalent to MPI_Reduce.
  *
  * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
