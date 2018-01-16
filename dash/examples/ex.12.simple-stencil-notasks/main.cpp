@@ -268,8 +268,10 @@ int main(int argc, char* argv[])
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
-  std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
-  std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  if (dash::myid() == 0) {
+    std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
+    std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  }
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
