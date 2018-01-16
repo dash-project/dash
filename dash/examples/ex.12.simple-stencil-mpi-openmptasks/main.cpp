@@ -201,7 +201,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
         if (!flag)
         {
-          #pragma omp yield
+          #pragma omp taskyield
         }
       } while (!flag);
 }
@@ -215,7 +215,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
         if (!flag)
         {
-          #pragma omp yield
+          #pragma omp taskyield
         }
       } while (!flag);
 }
@@ -250,7 +250,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
         if (!flag)
         {
-          #pragma omp yield
+          #pragma omp taskyield
         }
       } while (!flag);
 }
@@ -264,7 +264,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
         if (!flag)
         {
-          #pragma omp yield
+          #pragma omp taskyield
         }
       } while (!flag);
 }
