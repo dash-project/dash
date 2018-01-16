@@ -42,8 +42,7 @@
 
 #define YIELD_ON_COMM
 
-//using element_t = unsigned char;
-using element_t = float;
+using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 

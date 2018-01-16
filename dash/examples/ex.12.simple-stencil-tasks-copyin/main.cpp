@@ -42,8 +42,7 @@
 
 #define YIELD_ON_COMM
 
-//using element_t = unsigned char;
-using element_t = float;
+using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
@@ -343,8 +342,8 @@ int main(int argc, char* argv[])
   }
   dash::barrier();
 
-//  if (sizex <= 1000)
-//    write_pgm("testimg_input.pgm", data_old);
+  if (sizex <= 1000)
+    write_pgm("testimg_input_task_copyin.pgm", data_old);
 
   Timer timer;
 
@@ -366,7 +365,7 @@ int main(int argc, char* argv[])
   std::free(up_row);
   std::free(down_row);
 
-//  if (sizex <= 1000)
-//    write_pgm("testimg_output.pgm", data_new);
+  if (sizex <= 1000)
+    write_pgm("testimg_output_task_copyin.pgm", data_new);
   dash::finalize();
 }

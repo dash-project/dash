@@ -33,7 +33,7 @@
 using namespace std;
 
 using element_t = double;
-#define MPI_TYPE MPI_CHAR
+#define MPI_TYPE MPI_DOUBLE
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
@@ -118,6 +118,10 @@ void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
   }
 }
 
+static element_t *__restrict up_row_ptr = NULL;
+static element_t *__restrict low_row_ptr = NULL;
+
+
 void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
   // Todo: use stencil iterator
   const auto& pattern = data_old.pattern();
@@ -129,83 +133,97 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 
   // this unit might be empty
   if (lext_x > 0) {
-
+    if (up_row_ptr == NULL) {
+      up_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
+    }
+    if (low_row_ptr == NULL) {
+      low_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
+    }
     auto local_beg_gidx = pattern.coords(pattern.global(0));
     auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
-
-    auto olptr = data_old.lbegin();
-    auto nlptr = data_new.lbegin();
-
-    // Boundary
-    bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
-    bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
-
-
-    // initiate send and receive
-    std::vector<MPI_Request> reqs;
-    reqs.reserve(4);
-    element_t *__restrict up_row_ptr = NULL;
-    element_t *__restrict low_row_ptr = NULL;
 
     int up_neighbor   = (dash::myid() + dash::size() - 1) % dash::size();
     int down_neighbor = (dash::myid() + 1) % dash::size();
 
-    // send and receive top row
-    if (!is_top) {
-      MPI_Request req;
-      auto top_row = data_old.local.row(0);
-      assert(top_row.lbegin() != NULL);
-      // send upwards
-      MPI_Isend(top_row.lbegin(), gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
-      reqs.push_back(req);
-      // recv from above
-      up_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
-      MPI_Irecv(up_row_ptr, gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
-      reqs.push_back(req);
-    }
+    bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
+    bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
 
-    // send and receive bottom row
-    if (!is_bottom) {
-      MPI_Request req;
-      auto bot_row = data_old.local.row(lext_x - 1);
-      assert(bot_row.lbegin() != NULL);
-      // send downwards
-      MPI_Isend(
-        bot_row.lbegin(), gext_y, MPI_TYPE,
-        down_neighbor, 0, MPI_COMM_WORLD, &req);
-      reqs.push_back(req);
-      // recv upwards
-      low_row_ptr = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
-      MPI_Irecv(low_row_ptr, gext_y, MPI_TYPE, down_neighbor, 0, MPI_COMM_WORLD, &req);
-      reqs.push_back(req);
-    }
+    int rows_per_task = lext_x / (omp_get_num_threads() *2);
+    if (rows_per_task == 0) rows_per_task = 1;
 
     // Inner rows
-    for( index_t x=1; x<lext_x-1; x++ ) {
+    index_t x;
+//#pragma omp parallel for shared(data_old, data_new, lext_y, lext_x) default(none)
+    for (x=1; x<lext_x-1; x+=rows_per_task) {
+      index_t from = x;
+      index_t to   = from + rows_per_task;
+      if (to > lext_x-1) to = lext_x-1;
       const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
-      const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
-      const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
+      const element_t *__restrict   up_row = (x == 1) ? data_old.local.row(0).lbegin() : data_old.local.row(x-rows_per_task).lbegin();
+      const element_t *__restrict down_row = data_old.local.row(to).lbegin();
             element_t *__restrict  out_row = data_new.local.row(x).lbegin();
-      for( index_t y=1; y<lext_y-1; y++ ) {
-        out_row[y] =
-          ( 0.40 * curr_row[y] +
-            0.15 * curr_row[y-1] +
-            0.15 * curr_row[y+1] +
-            0.15 * down_row[y] +
-            0.15 *   up_row[y]);
+      Array_t *data_old_ptr = &data_old, *data_new_ptr = &data_new;
+#pragma omp task firstprivate(curr_row, up_row, down_row, out_row, lext_x, lext_y, data_old_ptr, data_new_ptr) \
+      depend(in: curr_row[0], up_row[0], down_row[0]) depend(out:out_row[0])
+{
+      for (index_t xx = from; xx < to; xx++)
+      {
+        curr_row = data_old_ptr->local.row(xx).lbegin();
+          up_row = data_old_ptr->local.row(xx-1).lbegin();
+        down_row = data_old_ptr->local.row(xx+1).lbegin();
+         out_row = data_new_ptr->local.row(xx).lbegin();
+        for( index_t y=1; y<lext_y-1; y++ ) {
+          out_row[y] =
+            ( 0.40 * curr_row[y] +
+              0.15 * curr_row[y-1] +
+              0.15 * curr_row[y+1] +
+              0.15 * down_row[y] +
+              0.15 *   up_row[y]);
+        }
       }
+}
     }
 
     // Boundary
 
-    // wait for data exchange to complete
-    MPI_Waitall(reqs.size(), reqs.data(), MPI_STATUSES_IGNORE);
-
     if(!is_top){
-      // top row
       const element_t *__restrict down_row = data_old.local.row(1).lbegin();
       const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
-            element_t *__restrict  out_row = data_new.lbegin();
+            element_t *__restrict  out_row = data_new.local.row(0).lbegin();
+
+      // task to fetch the upper row
+#pragma omp task depend(out: up_row_ptr[0]) firstprivate(up_row_ptr, gext_y, up_neighbor)
+{
+      MPI_Request req;
+      MPI_Irecv(up_row_ptr, gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
+      int flag;
+      do {
+        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+        if (!flag)
+        {
+          #pragma omp yield
+        }
+      } while (!flag);
+}
+      // task to send the upper row
+#pragma omp task depend(in: curr_row[0]) firstprivate(curr_row, gext_y, up_neighbor)
+{
+      MPI_Request req;
+      MPI_Isend(curr_row, gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
+      int flag;
+      do {
+        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+        if (!flag)
+        {
+          #pragma omp yield
+        }
+      } while (!flag);
+}
+      // task to compute the row
+#pragma omp task firstprivate(curr_row, up_row_ptr, down_row, out_row, lext_x, lext_y) \
+    depend(in: curr_row[0], up_row_ptr[0], down_row[0]) depend(out: out_row[0])
+{
+      // top row
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -214,7 +232,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
             0.15 * curr_row[y-1] +
             0.15 * curr_row[y+1]);
       }
-      std::free(up_row_ptr);
+}
     }
 
     if(!is_bottom){
@@ -222,8 +240,42 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-      std::cout << "Computing bottom row in iter " << iter << std::endl;
-      // copy line
+            // task to fetch the upper row
+#pragma omp task depend(out: low_row_ptr[0]) firstprivate(low_row_ptr, gext_y, down_neighbor)
+{
+      MPI_Request req;
+      MPI_Irecv(low_row_ptr, gext_y, MPI_TYPE, down_neighbor, 0, MPI_COMM_WORLD, &req);
+      int flag;
+      do {
+        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+        if (!flag)
+        {
+          #pragma omp yield
+        }
+      } while (!flag);
+}
+      // task to send the upper row
+#pragma omp task depend(in: curr_row[0]) firstprivate(curr_row, gext_y, down_neighbor)
+{
+      MPI_Request req;
+      MPI_Isend(curr_row, gext_y, MPI_TYPE, down_neighbor, 0, MPI_COMM_WORLD, &req);
+      int flag;
+      do {
+        MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
+        if (!flag)
+        {
+          #pragma omp yield
+        }
+      } while (!flag);
+}
+      element_t *up_row_dep = data_old.local.row(x-rows_per_task).lbegin();
+      assert(up_row_dep != NULL);
+      // task to compute the row
+#pragma omp task firstprivate(curr_row, low_row_ptr, up_row, out_row, lext_x, lext_y) \
+    depend(in: curr_row[0], low_row_ptr[0], up_row_dep[0]) depend(out: out_row[0])
+{
+      // bottom row
+      //std::cout << "Computing bottom row in iter " << iter << std::endl;
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -232,7 +284,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
             0.15 * curr_row[y-1] +
             0.15 * curr_row[y+1]);
       }
-      std::free(low_row_ptr);
+}
     }
   }
 }
@@ -280,7 +332,6 @@ int main(int argc, char* argv[])
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }
-
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
 
@@ -315,10 +366,13 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_notask.pgm", data_old);
+    write_pgm("testimg_input_mpiomptasks.pgm", data_old);
 
   Timer timer;
 
+#pragma omp parallel
+#pragma omp master
+{
   for(int i=0; i<niter; ++i){
     // switch references
     auto & data_prev = i%2 ? data_new : data_old;
@@ -326,13 +380,17 @@ int main(int argc, char* argv[])
 
     smooth(data_prev, data_next, i);
   }
+}
   dash::barrier();
   if (dash::myid() == 0) {
     std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
   }
 
   if (sizex <= 1000)
-    write_pgm("testimg_output_notask.pgm", data_new);
+    write_pgm("testimg_output_mpiomptasks.pgm", data_new);
+
+  std::free(up_row_ptr);
+  std::free(low_row_ptr);
 
   dash::finalize();
 }
