@@ -36,3 +36,4 @@ dash/include/dash/util/StaticConfig.h
 cscope.files
 .ycm_*
 TAGS
+*.kdev4*
