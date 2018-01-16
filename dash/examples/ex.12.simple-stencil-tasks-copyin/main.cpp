@@ -305,8 +305,13 @@ int main(int argc, char* argv[])
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }
-  std::cerr << "data_old.lbegin(): " << data_old.lbegin() << "\n"
-            << "data_new.lbegin(): " << data_new.lbegin() << std::endl;
+
+  // create a dummy task to fire up the worker threads and exclude them
+  // from time measurements (similar to OpenMP version)
+  dash::tasks::async([]()
+    {if (dash::myid() > dash::size()) std::cout << "huh?"; }
+  );
+  dash::tasks::complete();
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
