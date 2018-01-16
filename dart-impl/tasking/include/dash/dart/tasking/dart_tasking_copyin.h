@@ -36,6 +36,12 @@ dart_tasking_copyin_sendrequest(
   int                    tag,
   dart_global_unit_t     unit) DART_INTERNAL;
 
+/**
+ * Create delayed tasks created by \c dart_tasking_copyin_create_task
+ * from remote unit.
+ */
+void
+dart_tasking_copyin_create_delayed_tasks() DART_INTERNAL;
 
 /**
  * Create a task that performs the copy-in.

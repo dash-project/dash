@@ -475,7 +475,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
     threadnum, thread, &thread->queue);
 
   if (threadnum == 0)
-    printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
+    DART_LOG_INFO("sizeof(dart_task_t) = %zu", sizeof(dart_task_t));
 }
 
 struct thread_init_data {
