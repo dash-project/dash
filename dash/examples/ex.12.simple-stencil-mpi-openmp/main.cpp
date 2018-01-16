@@ -10,7 +10,7 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
+ *
  * \todo fix \c dash::copy problem
  */
 
@@ -30,18 +30,13 @@
 #include <mpi.h>
 #include <cassert>
 
-// required for tasking abstraction
-#include <functional>
-#include <array>
-#include <dash/dart/if/dart.h>
-
 using namespace std;
 
-using element_t = unsigned char;
+using element_t = double;
+#define MPI_TYPE MPI_DOUBLE
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
-#define MPI_TYPE MPI_CHAR
 
 
 void write_pgm(const std::string & filename, const Array_t & data){
@@ -319,7 +314,7 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_notask.pgm", data_old);
+    write_pgm("testimg_input_mpi_openmp.pgm", data_old);
 
   Timer timer;
 
@@ -336,7 +331,7 @@ int main(int argc, char* argv[])
   }
 
   if (sizex <= 1000)
-    write_pgm("testimg_output_notask.pgm", data_new);
+    write_pgm("testimg_output_mpi_openmp.pgm", data_new);
 
   dash::finalize();
 }
