@@ -148,23 +148,38 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     bool    is_top      = (local_beg_gidx[0] == 0) ? true : false;
     bool    is_bottom   = (local_end_gidx[0] == (gext_x-1)) ? true : false;
 
+    int rows_per_task = lext_x / (omp_get_num_threads() *2);
+    if (rows_per_task == 0) rows_per_task = 1;
+
     // Inner rows
+    index_t x;
 //#pragma omp parallel for shared(data_old, data_new, lext_y, lext_x) default(none)
-    for( index_t x=1; x<lext_x-1; x++ ) {
+    for (x=1; x<lext_x-1; x+=rows_per_task) {
+      index_t from = x;
+      index_t to   = from + rows_per_task;
+      if (to > lext_x-1) to = lext_x-1;
       const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
-      const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
-      const element_t *__restrict down_row = data_old.local.row(x+1).lbegin();
+      const element_t *__restrict   up_row = (x == 1) ? data_old.local.row(0).lbegin() : data_old.local.row(x-rows_per_task).lbegin();
+      const element_t *__restrict down_row = data_old.local.row(to).lbegin();
             element_t *__restrict  out_row = data_new.local.row(x).lbegin();
-#pragma omp task firstprivate(curr_row, up_row, down_row, out_row, lext_x, lext_y) \
+      Array_t *data_old_ptr = &data_old, *data_new_ptr = &data_new;
+#pragma omp task firstprivate(curr_row, up_row, down_row, out_row, lext_x, lext_y, data_old_ptr, data_new_ptr) \
       depend(in: curr_row[0], up_row[0], down_row[0]) depend(out:out_row[0])
 {
-      for( index_t y=1; y<lext_y-1; y++ ) {
-        out_row[y] =
-          ( 0.40 * curr_row[y] +
-            0.15 * curr_row[y-1] +
-            0.15 * curr_row[y+1] +
-            0.15 * down_row[y] +
-            0.15 *   up_row[y]);
+      for (index_t xx = from; xx < to; xx++)
+      {
+        curr_row = data_old_ptr->local.row(xx).lbegin();
+          up_row = data_old_ptr->local.row(xx-1).lbegin();
+        down_row = data_old_ptr->local.row(xx+1).lbegin();
+         out_row = data_new_ptr->local.row(xx).lbegin();
+        for( index_t y=1; y<lext_y-1; y++ ) {
+          out_row[y] =
+            ( 0.40 * curr_row[y] +
+              0.15 * curr_row[y-1] +
+              0.15 * curr_row[y+1] +
+              0.15 * down_row[y] +
+              0.15 *   up_row[y]);
+        }
       }
 }
     }
@@ -174,7 +189,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     if(!is_top){
       const element_t *__restrict down_row = data_old.local.row(1).lbegin();
       const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
-            element_t *__restrict  out_row = data_new.lbegin();
+            element_t *__restrict  out_row = data_new.local.row(0).lbegin();
 
       // task to fetch the upper row
 #pragma omp task depend(out: up_row_ptr[0]) firstprivate(up_row_ptr, gext_y, up_neighbor)
@@ -225,7 +240,6 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-      std::cout << "Computing bottom row in iter " << iter << std::endl;
             // task to fetch the upper row
 #pragma omp task depend(out: low_row_ptr[0]) firstprivate(low_row_ptr, gext_y, down_neighbor)
 {
@@ -244,7 +258,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
 #pragma omp task depend(in: curr_row[0]) firstprivate(curr_row, gext_y, down_neighbor)
 {
       MPI_Request req;
-      MPI_Isend(curr_row, gext_y, MPI_TYPE, up_neighbor, 0, MPI_COMM_WORLD, &req);
+      MPI_Isend(curr_row, gext_y, MPI_TYPE, down_neighbor, 0, MPI_COMM_WORLD, &req);
       int flag;
       do {
         MPI_Test(&req, &flag, MPI_STATUS_IGNORE);
@@ -254,11 +268,14 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
         }
       } while (!flag);
 }
+      element_t *up_row_dep = data_old.local.row(x-rows_per_task).lbegin();
+      assert(up_row_dep != NULL);
       // task to compute the row
 #pragma omp task firstprivate(curr_row, low_row_ptr, up_row, out_row, lext_x, lext_y) \
-    depend(in: curr_row[0], low_row_ptr[0], up_row[0]) depend(out: out_row[0])
+    depend(in: curr_row[0], low_row_ptr[0], up_row_dep[0]) depend(out: out_row[0])
 {
       // bottom row
+      //std::cout << "Computing bottom row in iter " << iter << std::endl;
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -348,7 +365,7 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_notask.pgm", data_old);
+    write_pgm("testimg_input_mpiomptasks.pgm", data_old);
 
   Timer timer;
 
@@ -369,7 +386,7 @@ int main(int argc, char* argv[])
   }
 
   if (sizex <= 1000)
-    write_pgm("testimg_output_notask.pgm", data_new);
+    write_pgm("testimg_output_mpiomptasks.pgm", data_new);
 
   std::free(up_row_ptr);
   std::free(low_row_ptr);
