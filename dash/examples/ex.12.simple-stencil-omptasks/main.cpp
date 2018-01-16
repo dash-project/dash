@@ -37,7 +37,7 @@
 
 using namespace std;
 
-using element_t = unsigned char;
+using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
@@ -140,12 +140,14 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     auto olptr = data_old.lbegin();
     auto nlptr = data_new.lbegin();
 
+    int rows_per_task = lext_x / (dart_task_num_threads() *2);
+    if (rows_per_task == 0) rows_per_task = 1;
 #pragma omp parallel
     {
 #pragma omp master
     {
     // Inner rows
-  #pragma omp taskloop grainsize(1)
+  #pragma omp taskloop 
     for( index_t x=1; x<lext_x-1; x++ ) {
       const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
       const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
@@ -202,7 +204,6 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
             element_t *__restrict down_row = static_cast<element_t*>(
                                      std::malloc(sizeof(element_t) * gext_y));
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-      std::cout << "Computing bottom row in iter " << iter << std::endl;
       // copy line
       dart_get_blocking(
         down_row,
@@ -252,7 +253,6 @@ int main(int argc, char* argv[])
   }
 
 
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
 
   // Prepare grid
   dash::TeamSpec<2> ts;
@@ -267,9 +267,16 @@ int main(int argc, char* argv[])
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
-  std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
-  std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
-
+  if (dash::myid() == 0) {
+#pragma omp parallel
+{
+#pragma omp master
+{
+    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+}}
+    std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
+    std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  }
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
 
