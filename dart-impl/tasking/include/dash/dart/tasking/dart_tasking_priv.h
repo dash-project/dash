@@ -63,8 +63,10 @@ struct dart_task_data {
 #define DART_STACK_POP(_head, _elem) \
   do {                               \
     _elem = _head;                   \
-    _head = _elem->next;             \
-    _elem->next = NULL;              \
+    if (_elem != NULL) {             \
+      _head = _elem->next;           \
+      _elem->next = NULL;            \
+    }                                \
   } while (0)
 
 
