@@ -294,9 +294,6 @@ void smooth(Array_t & data_old, Array_t & data_new){
                                         std::malloc(sizeof(element_t) * gext_y));
                 element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
 
-
-          std::cout << "Computing bottom row" << std::endl;
-
           // copy line
 #ifdef YIELD_ON_COMM
           dart_handle_t handle;
@@ -388,6 +385,13 @@ int main(int argc, char* argv[])
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }
+
+  // create a dummy task to fire up the worker threads and exclude them
+  // from time measurements (similar to OpenMP version)
+  dash::tasks::async([]()
+    {if (dash::myid() > dash::size()) std::cout << "huh?"; }
+  );
+  dash::tasks::complete();
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
