@@ -42,8 +42,7 @@
 
 #define YIELD_ON_COMM
 
-//using element_t = unsigned char;
-using element_t = float;
+using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
@@ -251,7 +250,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
           dart_get_handle(
             up_row,
             data_old[local_beg_gidx[0] - 1][0].dart_gptr(),
-            gext_y, dash::dart_datatype<element_t>::value,
+            gext_y,
+            dash::dart_datatype<element_t>::value,
+            dash::dart_datatype<element_t>::value,
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)
@@ -299,7 +300,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
           dart_get_handle(
             down_row,
             data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-            gext_y, dash::dart_datatype<element_t>::value,
+            gext_y,
+            dash::dart_datatype<element_t>::value,
+            dash::dart_datatype<element_t>::value,
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)
@@ -361,6 +364,10 @@ int main(int argc, char* argv[])
     sizey = atoll(argv[2]);
   }
 
+  if (argc > 3) {
+    niter = atoi(argv[3]);
+  }
+
   // Prepare grid
   dash::TeamSpec<2> ts;
   dash::SizeSpec<2> ss(sizex, sizey);
@@ -378,6 +385,13 @@ int main(int argc, char* argv[])
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }
+
+  // create a dummy task to fire up the worker threads and exclude them
+  // from time measurements (similar to OpenMP version)
+  dash::tasks::async([]()
+    {if (dash::myid() > dash::size()) std::cout << "huh?"; }
+  );
+  dash::tasks::complete();
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);

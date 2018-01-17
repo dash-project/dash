@@ -10,7 +10,7 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
+ *
  * \todo fix \c dash::copy problem
  */
 
@@ -37,7 +37,7 @@
 
 using namespace std;
 
-using element_t = unsigned char;
+using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
@@ -178,7 +178,9 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       dart_get_blocking(
         up_row,
         data_old(local_beg_gidx[0] - 1, 0).dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
+        gext_y,
+        dash::dart_datatype<element_t>::value,
+        dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -200,11 +202,14 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
             element_t *__restrict down_row = static_cast<element_t*>(
                                      std::malloc(sizeof(element_t) * gext_y));
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
+      //std::cout << "Computing bottom row in iter " << iter << std::endl;
       // copy line
       dart_get_blocking(
         down_row,
         data_old[local_end_gidx[0] + 1].begin().dart_gptr(),
-        gext_y, dash::dart_datatype<element_t>::value);
+        gext_y,
+        dash::dart_datatype<element_t>::value,
+        dash::dart_datatype<element_t>::value);
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
           ( 0.40 * curr_row[y] +
@@ -242,6 +247,10 @@ int main(int argc, char* argv[])
     sizey = atoll(argv[2]);
   }
 
+  if (argc > 3) {
+    niter = atoi(argv[3]);
+  }
+
 
   std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
 
@@ -258,9 +267,10 @@ int main(int argc, char* argv[])
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
-  std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
-  std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
-
+  if (dash::myid() == 0) {
+    std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
+    std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  }
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
 

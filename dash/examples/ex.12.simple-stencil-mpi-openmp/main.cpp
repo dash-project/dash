@@ -10,7 +10,7 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
+ *
  * \todo fix \c dash::copy problem
  */
 
@@ -30,18 +30,13 @@
 #include <mpi.h>
 #include <cassert>
 
-// required for tasking abstraction
-#include <functional>
-#include <array>
-#include <dash/dart/if/dart.h>
-
 using namespace std;
 
-using element_t = unsigned char;
+using element_t = double;
+#define MPI_TYPE MPI_DOUBLE
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
-#define MPI_TYPE MPI_CHAR
 
 
 void write_pgm(const std::string & filename, const Array_t & data){
@@ -228,6 +223,7 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
+      std::cout << "Computing bottom row in iter " << iter << std::endl;
       // copy line
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
@@ -263,6 +259,10 @@ int main(int argc, char* argv[])
     sizey = atoll(argv[2]);
   }
 
+  if (argc > 3) {
+    niter = atoi(argv[3]);
+  }
+
 
   // Prepare grid
   dash::TeamSpec<2> ts;
@@ -277,8 +277,10 @@ int main(int argc, char* argv[])
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
-  std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
-  std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  if (dash::myid() == 0) {
+    std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
+    std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
+  }
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
@@ -314,7 +316,7 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_notask.pgm", data_old);
+    write_pgm("testimg_input_mpi_openmp.pgm", data_old);
 
   Timer timer;
 
@@ -331,7 +333,7 @@ int main(int argc, char* argv[])
   }
 
   if (sizex <= 1000)
-    write_pgm("testimg_output_notask.pgm", data_new);
+    write_pgm("testimg_output_mpi_openmp.pgm", data_new);
 
   dash::finalize();
 }

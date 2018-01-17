@@ -28,6 +28,8 @@
 static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
 static          bool initialized      = false;
+// true if the worker threads are running (delayed thread-startup)
+static          bool threads_running  = false;
 // whether or not worker threads should poll for incoming remote messages
 // Disabling this in the task setup phase might be beneficial due to
 // MPI-internal congestion
@@ -157,6 +159,11 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 dart_ret_t
 dart__tasking__yield(int delay)
 {
+  if (!threads_running) {
+    // threads are not running --> no tasks to yield to
+    return DART_OK;
+  }
+
   dart_thread_t *thread = get_current_thread();
 
   // progress
@@ -202,6 +209,11 @@ dart__tasking__yield(int delay)
 dart_ret_t
 dart__tasking__yield(int delay)
 {
+  if (!threads_running) {
+    // threads are not running --> no tasks to yield to
+    return DART_OK;
+  }
+
   // "nothing to be done here" (libgomp)
   // we do not execute another task to prevent serialization
   DART_LOG_INFO("Skipping dart__task__yield");
@@ -418,6 +430,13 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // the task may have changed once we get back here
     task = get_current_task();
 
+    // we need to lock the task shortly here before releasing datadeps
+    // to allow for atomic check and update
+    // of remote successors in dart_tasking_datadeps_handle_remote_task
+    dart__base__mutex_lock(&(task->mutex));
+    task->state = DART_TASK_FINISHED;
+    dart__base__mutex_unlock(&(task->mutex));
+
     dart_tasking_datadeps_release_local_task(task);
 
     // let the parent know that we are done
@@ -429,13 +448,6 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->taskctx = NULL;
 
     bool has_ref = task->has_ref;
-
-    // we need to lock the task shortly here
-    // to allow for atomic check and update
-    // of remote successors in dart_tasking_datadeps_handle_remote_task
-    dart__base__mutex_lock(&(task->mutex));
-    task->state = DART_TASK_FINISHED;
-    dart__base__mutex_unlock(&(task->mutex));
 
     // clean up
     if (!has_ref){
@@ -463,7 +475,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
     threadnum, thread, &thread->queue);
 
   if (threadnum == 0)
-    printf("sizeof(dart_task_t) = %zu\n", sizeof(dart_task_t));
+    DART_LOG_INFO("sizeof(dart_task_t) = %zu", sizeof(dart_task_t));
 }
 
 struct thread_init_data {
@@ -532,6 +544,24 @@ void dart_thread_finalize(dart_thread_t *thread)
   dart_tasking_taskqueue_finalize(&thread->queue);
 }
 
+static void
+start_threads(int num_threads)
+{
+  DART_ASSERT(!threads_running);
+  // start-up all worker threads
+  for (int i = 1; i < num_threads; i++)
+  {
+    // will be free'd by the thread
+    struct thread_init_data *tid = malloc(sizeof(*tid));
+    tid->threadid = i;
+    int ret = pthread_create(&tid->pthread, NULL,
+                             &thread_main, tid);
+    if (ret != 0) {
+      DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
+    }
+  }
+  threads_running = true;
+}
 
 static void
 init_threadpool(int num_threads)
@@ -545,19 +575,6 @@ init_threadpool(int num_threads)
   // initialize master thread data, the other threads will do it themselves
   dart_thread_init(master_thread, 0);
   thread_pool[0] = master_thread;
-
-  // start-up all other threads
-  for (int i = 1; i < num_threads; i++)
-  {
-    // will be free'd by the thread
-    struct thread_init_data *tid = malloc(sizeof(*tid));
-    tid->threadid = i;
-    int ret = pthread_create(&tid->pthread, NULL,
-                             &thread_main, tid);
-    if (ret != 0) {
-      DART_LOG_ERROR("Failed to create thread %i of %i!", i, num_threads);
-    }
-  }
 }
 
 dart_ret_t
@@ -653,6 +670,12 @@ dart__tasking__create_task(
                    "canceling tasks!");
     return DART_OK;
   }
+
+  // start threads upon first task creation
+  if (!threads_running) {
+    start_threads(num_threads);
+  }
+
   dart_task_t *task = create_task(fn, data, data_size, prio);
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
@@ -683,6 +706,12 @@ dart__tasking__create_task_handle(
                    "while canceling tasks!");
     return DART_OK;
   }
+
+  // start threads upon first task creation
+  if (!threads_running) {
+    start_threads(num_threads);
+  }
+
   dart_task_t *task = create_task(fn, data, data_size, prio);
   task->has_ref = true;
 
@@ -726,6 +755,11 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
 dart_ret_t
 dart__tasking__task_complete()
 {
+  if (!threads_running) {
+    // threads are not running --> nothing to be done here
+    return DART_OK;
+  }
+
   dart_thread_t *thread = get_current_thread();
 
   DART_ASSERT_MSG(
@@ -913,12 +947,17 @@ stop_threads()
   // wake up all threads waiting for work
   pthread_cond_broadcast(&task_avail_cond);
 
+  // use a volatile pointer to wait for threads to set their data
+  dart_thread_t* volatile *thread_pool_v = (dart_thread_t* volatile *)thread_pool;
+
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
     // wait for the thread to populate it's thread data
-    while (thread_pool[i] == 0) {}
-    pthread_join(thread_pool[i]->pthread, NULL);
+    while (thread_pool_v[i] == NULL) {}
+    pthread_join(thread_pool_v[i]->pthread, NULL);
   }
+
+  threads_running = false;
 }
 
 static void

@@ -36,6 +36,16 @@ struct copyin_taskdata {
   int           tag;         // a tag to use in case of send/recv
 };
 
+struct copyin_task {
+  struct copyin_task *next;
+  dart_task_dep_t in_dep;
+  struct copyin_taskdata arg;
+};
+
+static struct copyin_task *delayed_tasks = NULL;
+static dart_mutex_t delayed_tasks_mtx = DART_MUTEX_INITIALIZER;
+
+
 /**
  * A task action to prefetch data in a COPYIN dependency.
  * The argument should be a pointer to an object of type
@@ -141,7 +151,7 @@ dart_tasking_copyin_create_task_get(
   arg.num_bytes = dep->copyin.size;
   arg.unit      = 0; // not needed
 
-  dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
+  return dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
                    deps, 2, DART_PRIO_HIGH);
 }
 
@@ -166,11 +176,12 @@ dart_tasking_copyin_create_task(
   } else {
     // just in case...
     DART_ASSERT(impl == COPYIN_GET || impl == COPYIN_SENDRECV);
+    DART_LOG_ERROR("Unknown copyin type: %d", impl);
+    ret = DART_ERR_INVAL;
   }
 
   return ret;
 }
-
 
 void
 dart_tasking_copyin_sendrequest(
@@ -180,23 +191,39 @@ dart_tasking_copyin_sendrequest(
   int                    tag,
   dart_global_unit_t     unit)
 {
-  struct copyin_taskdata arg;
-  arg.src       = dart_tasking_datadeps_localize_gptr(src_gptr);
-  arg.dst       = NULL;
-  arg.num_bytes = num_bytes;
-  arg.unit      = unit.id;
-  arg.tag       = tag;
+  struct copyin_task *ct = malloc(sizeof(*ct));
+  ct->arg.src       = dart_tasking_datadeps_localize_gptr(src_gptr);
+  ct->arg.dst       = NULL;
+  ct->arg.num_bytes = num_bytes;
+  ct->arg.unit      = unit.id;
+  ct->arg.tag       = tag;
 
-  dart_task_dep_t in_dep;
-  in_dep.type   = DART_DEP_DELAYED_IN;
-  in_dep.phase  = phase;
-  in_dep.gptr   = src_gptr;
+  ct->in_dep.type   = DART_DEP_DELAYED_IN;
+  ct->in_dep.phase  = phase;
+  ct->in_dep.gptr   = src_gptr;
 
-  DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d in phase %d",
+  DART_LOG_TRACE("Copyin: defering task creation to send to unit %d with tag %d in phase %d",
                  unit.id, tag, phase);
 
-  dart_task_create(&dart_tasking_copyin_send_taskfn, &arg, sizeof(arg),
-                   &in_dep, 1, DART_PRIO_HIGH);
+  dart__base__mutex_lock(&delayed_tasks_mtx);
+  DART_STACK_PUSH(delayed_tasks, ct);
+  dart__base__mutex_unlock(&delayed_tasks_mtx);
+}
+
+void
+dart_tasking_copyin_create_delayed_tasks()
+{
+  dart__base__mutex_lock(&delayed_tasks_mtx);
+  while(delayed_tasks != NULL) {
+    struct copyin_task *ct;
+    DART_STACK_POP(delayed_tasks, ct);
+    DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d",
+                  ct->arg.unit, ct->arg.tag);
+    dart_task_create(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
+                     &ct->in_dep, 1, DART_PRIO_HIGH);
+    free(ct);
+  }
+  dart__base__mutex_unlock(&delayed_tasks_mtx);
 }
 
 static void
@@ -204,7 +231,8 @@ dart_tasking_copyin_send_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
-  //printf("Posting send to unit %d (tag %d, size %zu)\n", td->unit, td->tag, td->num_bytes);
+  DART_LOG_TRACE("Posting send to unit %d (tag %d, size %zu)",
+                 td->unit, td->tag, td->num_bytes);
   dart_handle_t handle;
   dart_send_handle(td->src.addr_or_offs.addr, td->num_bytes, DART_TYPE_BYTE,
                    td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
@@ -218,7 +246,7 @@ dart_tasking_copyin_send_taskfn(void *data)
     dart_test_local(&handle, &flag);
   }
 
-  //printf("Send to unit %d completed (tag %d)\n", td->unit, td->tag);
+  DART_LOG_TRACE("Send to unit %d completed (tag %d)", td->unit, td->tag);
 }
 
 static void
@@ -227,8 +255,8 @@ dart_tasking_copyin_recv_taskfn(void *data)
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
   if (DART_GPTR_ISNULL(td->src)) {
-    //printf("Posting recv from unit %d (tag %d, size %zu)\n",
-    //       td->unit, td->tag, td->num_bytes);
+    DART_LOG_TRACE("Posting recv from unit %d (tag %d, size %zu)",
+                   td->unit, td->tag, td->num_bytes);
 
     dart_handle_t handle;
     dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
@@ -242,10 +270,11 @@ dart_tasking_copyin_recv_taskfn(void *data)
       dart_task_yield(-1);
       dart_test_local(&handle, &flag);
     }
-    //printf("Recv from unit %d completed (tag %d)\n", td->unit, td->tag);
+    DART_LOG_TRACE("Recv from unit %d completed (tag %d)", td->unit, td->tag);
 
   } else {
-    //printf("Local memcpy of size %zu: %p -> %p\n", td->num_bytes, td->src, td->dst);
+    DART_LOG_TRACE("Local memcpy of size %zu: %p -> %p",
+                   td->num_bytes, td->src.addr_or_offs.addr, td->dst);
     memcpy(td->dst, td->src.addr_or_offs.addr, td->num_bytes);
   }
 
@@ -257,9 +286,12 @@ dart_tasking_copyin_get_taskfn(void *data)
 {
   struct copyin_taskdata *td = (struct copyin_taskdata*) data;
 
+  DART_LOG_TRACE("Posting GET from unit %d (size %zu)",
+                 td->unit, td->num_bytes);
   int flag = 0;
   dart_handle_t handle;
-  dart_get_handle(td->dst, td->src, td->num_bytes, DART_TYPE_BYTE, &handle);
+  dart_get_handle(td->dst, td->src, td->num_bytes,
+                  DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
   dart_test_local(&handle, &flag);
   // lower task priority to better overlap communication/computation
   dart_task_t *task = dart__tasking__current_task();

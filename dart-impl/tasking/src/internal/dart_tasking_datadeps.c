@@ -291,6 +291,11 @@ dart_tasking_datadeps_handle_defered_remote()
   dart_dephash_elem_t *rdep;
   DART_LOG_DEBUG("Handling previously unhandled remote dependencies: %p",
                  unhandled_remote_deps);
+
+  // create tasks requested by remote units to handle copyin deps
+  // TODO: do not buffer the dependencies from this task
+  dart_tasking_copyin_create_delayed_tasks();
+
   dart_task_t *current_task = dart__tasking__current_task();
   DART_ASSERT(dart__tasking__is_root_task(current_task));
   dart_dephash_elem_t **local_deps = current_task->local_deps;
@@ -386,6 +391,22 @@ dart_tasking_datadeps_handle_defered_remote()
       }
     }
 
+    if (candidate != NULL) {
+      // we have a local task to satisfy the remote task
+      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
+                     "task %p from origin %i",
+                     candidate, rdep->task.remote, origin.id);
+      DART_STACK_PUSH(candidate->remote_successor, rdep);
+      dart__base__mutex_unlock(&(candidate->mutex));
+    } else {
+      // the remote dependency cannot be served --> send release
+      DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
+                     "which could not be handled in phase %i",
+                     rdep->task.remote, origin.id,
+                     rdep->taskdep.phase);
+      dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
+    }
+
     if (direct_dep_candidate != NULL) {
       // this task has to wait for the remote task to finish because it will
       // overwrite the input of the remote task
@@ -410,20 +431,8 @@ dart_tasking_datadeps_handle_defered_remote()
       }
     }
 
-    if (candidate != NULL) {
-      // we have a local task to satisfy the remote task
-      DART_LOG_DEBUG("Found local task %p to satisfy remote dependency of "
-                     "task %p from origin %i",
-                     candidate, rdep->task.remote, origin.id);
-      DART_STACK_PUSH(candidate->remote_successor, rdep);
-      dart__base__mutex_unlock(&(candidate->mutex));
-    } else {
-      // the remote dependency cannot be served --> send release
-      DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
-                     "which could not be handled in phase %i",
-                     rdep->task.remote, origin.id,
-                     rdep->taskdep.phase);
-      dart_tasking_remote_release(origin, rdep->task, &rdep->taskdep);
+    if (candidate == NULL) {
+      // release the dependency object
       dephash_recycle_elem(rdep);
     }
   }
@@ -635,9 +644,6 @@ dart_tasking_datadeps_match_delayed_local_datadep(
   int slot;
   slot = hash_gptr(dep->gptr);
 
-  // decrement dependecy counter used to prevent premature running
-  DART_FETCH_AND_DEC32(&task->unresolved_deps);
-
   // shortcut if no dependencies to match, yet
   if (task->parent->local_deps == NULL) return DART_OK;
 
@@ -719,7 +725,8 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           }
           dart__base__mutex_unlock(&(task->parent->mutex));
         }
-        return DART_OK;
+        // we're done here
+        break;
       }
     }
   }
@@ -728,8 +735,8 @@ dart_tasking_datadeps_match_delayed_local_datadep(
     DART_LOG_TRACE("No matching output dependency found for local input "
         "dependency %p of task %p in phase %i",
         DEP_ADDR(*dep), task, task->phase);
-    printf("Couldn't find an active task to match delayed input dependency!\n");
   }
+
   return DART_OK;
 }
 
@@ -807,21 +814,11 @@ dart_ret_t dart_tasking_datadeps_handle_task(
       if (dep.type == DART_DEP_DELAYED_IN) {
         /**
          * delayed input dependencies should be treated as remote dependencies.
-         * we further delay their processing to make sure we know all relevant
-         * local tasks before trying to insert them into the dependency graph
-         *
-         * the dependency will be handled in
-         * dart_tasking_datadeps_handle_defered_remote
+         * the creation of the task using this dependency has been delayed until
+         * the matching step so we can process it here.
          */
-        taskref tr;
-        tr.local = task;
-        dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, tr, guid);
-        // increase the dependency counter here to prevent the task from running
-        // before the matching has been done
-        DART_FETCH_AND_INC32(&task->unresolved_deps);
-        dart__base__mutex_lock(&unhandled_remote_mutex);
-        DART_STACK_PUSH(unhandled_remote_deps, rs);
-        dart__base__mutex_unlock(&unhandled_remote_mutex);
+        dart_tasking_datadeps_match_delayed_local_datadep(&dep, task);
+
       } else {
         dart_tasking_datadeps_match_local_datadep(&dep, task);
 
