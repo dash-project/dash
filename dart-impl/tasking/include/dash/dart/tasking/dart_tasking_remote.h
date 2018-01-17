@@ -42,6 +42,17 @@ dart_ret_t dart_tasking_remote_release(
   const dart_task_dep_t *dep) DART_INTERNAL;
 
 /**
+ * Send a request to the remote unit to create a task that will send us data
+ * as part of a pre-fetch copyin.
+ */
+dart_ret_t dart_tasking_remote_sendrequest(
+  dart_global_unit_t     unit,
+  dart_gptr_t            src_gptr,
+  size_t                 num_bytes,
+  int                    tag,
+  dart_taskphase_t       phase) DART_INTERNAL;
+
+/**
  * Broadcast the request to cancel execution of remaining tasks.
  */
 dart_ret_t dart_tasking_remote_bcast_cancel(dart_team_t team) DART_INTERNAL;
