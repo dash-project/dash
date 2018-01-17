@@ -105,8 +105,7 @@ public:
   // Special case for the last iteration in finding partition borders
   std::vector<bool> is_last_iter;
 
-  std::vector<std::pair<dash::team_unit_t, dash::team_unit_t> >
-      bounding_units;
+  std::vector<std::pair<dash::team_unit_t, dash::team_unit_t>> bounding_units;
 
   PartitionBorder(size_t nsplitter, T _lower_bound, T _upper_bound)
     : is_stable(nsplitter, false)
@@ -153,32 +152,41 @@ inline void psort__calc_boundaries(
   DASH_LOG_TRACE("psort__calc_boundaries >");
 }
 
-template <typename ElementType, typename SizeType>
-inline std::pair<std::vector<SizeType>, std::vector<SizeType> >
+template <typename ElementType, typename MappedType, typename SortMapping>
+inline std::pair<std::vector<std::size_t>, std::vector<std::size_t>>
 psort__local_histogram(
-    std::vector<ElementType> const&     partitions,
-    std::vector<size_t> const&          valid_partitions,
-    PartitionBorder<ElementType> const& p_borders,
-    ElementType const*                  lbegin,
-    ElementType const*                  lend)
+    std::vector<MappedType> const&     partitions,
+    std::vector<size_t> const&         valid_partitions,
+    PartitionBorder<MappedType> const& p_borders,
+    ElementType const*                 lbegin,
+    ElementType const*                 lend,
+    SortMapping&&                      mapping_fn)
 {
-  DASH_LOG_TRACE("< psort__local_histogram ");
+  DASH_LOG_TRACE("< psort__local_histogram");
   auto const nborders = partitions.size();
   // The first element is 0 and the last element is the total number of local
   // elements in this unit
   auto const sz = partitions.size() + 2;
   // Number of elements less than P
-  std::vector<SizeType> n_lt(sz, 0);
+  std::vector<std::size_t> n_lt(sz, 0);
   // Number of elements less than equals P
-  std::vector<SizeType> n_le(sz, 0);
+  std::vector<std::size_t> n_le(sz, 0);
+
+  auto comp_lower = [&mapping_fn](const ElementType& a, const MappedType& b) {
+    return mapping_fn(const_cast<ElementType&>(a)) < b;
+  };
+
+  auto comp_upper = [&mapping_fn](const MappedType& b, const ElementType& a) {
+    return b < mapping_fn(const_cast<ElementType&>(a));
+  };
 
   auto const n_l_elem = std::distance(lbegin, lend);
 
   if (n_l_elem == 0) return std::make_pair(n_lt, n_le);
 
   for (auto const& idx : valid_partitions) {
-    auto lb_it = std::lower_bound(lbegin, lend, partitions[idx]);
-    auto ub_it = std::upper_bound(lbegin, lend, partitions[idx]);
+    auto lb_it = std::lower_bound(lbegin, lend, partitions[idx], comp_lower);
+    auto ub_it = std::upper_bound(lbegin, lend, partitions[idx], comp_upper);
 
     auto const left_u = p_borders.bounding_units[idx].first;
     DASH_ASSERT_NE(left_u, dash::team_unit_t{}, "invalid bounding unit");
@@ -269,7 +277,7 @@ inline bool psort__validate_partitions(
   std::vector<value_t> l_nlt_nle(NLT_NLE_BLOCK * nunits, 0);
   auto                 l_nlt_nle_data = l_nlt_nle.data();
 
-  std::vector<dash::Future<value_t*> > futures;
+  std::vector<dash::Future<value_t*>> futures;
 
   std::transform(
       p_unit_info.contributing_remote_units.begin(),
@@ -486,7 +494,6 @@ inline UnitInfo psort__setup_unit_info(
     GlobIterT const                         begin,
     GlobIterT const                         end)
 {
-  using size_type = typename GlobIterT::pattern_type::size_type;
   DASH_LOG_TRACE("< psort__setup_unit_info");
 
   auto const nunits = pattern.team().size();
@@ -508,7 +515,7 @@ inline UnitInfo psort__setup_unit_info(
     auto const u_extents = pattern.local_extents(unit);
     auto const u_size    = std::accumulate(
         std::begin(u_extents), std::end(u_extents), 1,
-        std::multiplies<size_type>());
+        std::multiplies<std::size_t>());
     // first linear global index of unit
     auto const u_gidx_begin =
         (unit == myid) ? pattern.lbegin() : pattern.global_index(unit, {});
@@ -556,12 +563,10 @@ inline UnitInfo psort__setup_unit_info(
 }
 
 template <typename T>
-inline detail::PartitionBorder<T> psort__setup_partition_borders(
-    UnitInfo& unit_info, T min, T max)
+inline void psort__setup_partition_borders(
+    UnitInfo& unit_info, detail::PartitionBorder<T>& p_borders)
 {
   DASH_LOG_TRACE("< psort__setup_partition_borders");
-  auto const                 nunits = unit_info.nunits;
-  detail::PartitionBorder<T> p_borders(nunits - 1, min, max);
 
   auto const& acc_unit_count = unit_info.acc_unit_count;
 
@@ -572,7 +577,7 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
 
   if (left == last) {
     std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
-    return p_borders;
+    return;
   }
 
   // find next unit with a non-zero local portion to obtain first partition
@@ -581,7 +586,7 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
 
   if (right == last) {
     std::fill(p_borders.is_skipped.begin(), p_borders.is_skipped.end(), true);
-    return p_borders;
+    return;
   }
 
   auto const get_border_idx = [](std::size_t const& idx) {
@@ -602,9 +607,6 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
       dash::team_unit_t{static_cast<dart_unit_t>(left_u)},
       dash::team_unit_t{static_cast<dart_unit_t>(right_u)});
 
-  // unit_info.border_peer[left_u] = right_u;
-  // unit_info.border[left_u]      = border_idx;
-
   // find subsequent partitions
   left = right;
 
@@ -622,8 +624,6 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
         std::next(p_borders.is_skipped.begin(), last_border_idx + 1),
         dist - 1, true);
 
-    // unit_info.border_peer[left_u] = right_u;
-    // unit_info.border[left_u]      = border_idx;
     p_borders.bounding_units[border_idx] = std::make_pair(
         dash::team_unit_t{static_cast<dart_unit_t>(left_u)},
         dash::team_unit_t{static_cast<dart_unit_t>(right_u)});
@@ -641,21 +641,59 @@ inline detail::PartitionBorder<T> psort__setup_partition_borders(
       p_borders.is_stable.begin());
 
   DASH_LOG_TRACE("psort__setup_partition_borders >");
-  return p_borders;
 }
+
+template <typename T>
+struct identity_t : std::unary_function<T, T> {
+  constexpr T&& operator()(T&& t) const noexcept
+  {
+    // A perfect forwarding identity function
+    return std::forward<T>(t);
+  }
+};
+
+template <typename T>
+struct closure_traits : closure_traits<decltype(&T::operator())> {
+};
+
+#define REM_CTOR(...) __VA_ARGS__
+#define SPEC(cv, var, is_var)                                                 \
+  template <typename C, typename R, typename... Args>                         \
+  struct closure_traits<R (C::*)(Args... REM_CTOR var) cv> {                  \
+    using arity       = std::integral_constant<std::size_t, sizeof...(Args)>; \
+    using is_variadic = std::integral_constant<bool, is_var>;                 \
+    using is_const    = std::is_const<int cv>;                                \
+                                                                              \
+    using result_type = R;                                                    \
+                                                                              \
+    template <std::size_t i>                                                  \
+    using arg = typename std::tuple_element<i, std::tuple<Args...>>::type;    \
+  };
+
+SPEC(const, (, ...), 1)
+SPEC(const, (), 0)
+SPEC(, (, ...), 1)
+SPEC(, (), 0)
 
 }  // namespace detail
 
-template <class GlobRandomIt>
-void sort(GlobRandomIt begin, GlobRandomIt end)
+template <
+    class GlobRandomIt,
+    class SortMapping =
+        detail::identity_t<typename GlobRandomIt::value_type&>>
+void sort(
+    GlobRandomIt begin,
+    GlobRandomIt end,
+    SortMapping  mapping_fn = SortMapping())
 {
   using iter_type    = GlobRandomIt;
   using pattern_type = typename iter_type::pattern_type;
-  using size_type    = typename pattern_type::size_type;
   using value_type   = typename iter_type::value_type;
+  using mapped_type  = typename std::decay<
+      typename detail::closure_traits<SortMapping>::result_type>::type;
 
   static_assert(
-      std::is_arithmetic<value_type>::value,
+      std::is_arithmetic<mapped_type>::value,
       "Only arithmetic types are supported");
 
   auto pattern = begin.pattern();
@@ -669,10 +707,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     std::sort(begin.local(), end.local());
     return;
   }
-
-  // TODO: instead of std::sort we may accept a user-defined local sort
-  // function. Alterantively, we may use a parallel sort algorithm for the
-  // local portion
 
   if (begin >= end) {
     DASH_LOG_TRACE("dash::sort", "empty range");
@@ -698,24 +732,21 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   // initial local sort
   std::sort(lbegin, lend);
-
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
-  auto const lmin =
-      (n_l_elem > 0) ? *lbegin : std::numeric_limits<value_type>::max();
-  auto const lmax =
-      (n_l_elem > 0) ? *(lend - 1) : std::numeric_limits<value_type>::min();
+  auto const lmin = (n_l_elem > 0) ? mapping_fn(*lbegin)
+                                   : std::numeric_limits<mapped_type>::max();
+  auto const lmax = (n_l_elem > 0) ? mapping_fn(*(lend - 1))
+                                   : std::numeric_limits<mapped_type>::min();
 
-  dash::Shared<dash::Atomic<value_type> > g_min(dash::team_unit_t{0}, team);
-  dash::Shared<dash::Atomic<value_type> > g_max(dash::team_unit_t{0}, team);
+  dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
+  dash::Shared<dash::Atomic<mapped_type>> g_max(dash::team_unit_t{0}, team);
 
-  g_min.get().op(dash::min<value_type>(), lmin);
-  g_max.get().op(dash::max<value_type>(), lmax);
-  // No subsequent barriers are needed for Shared due to container
-  // constructors...
+  g_min.get().op(dash::min<mapped_type>(), lmin);
+  g_max.get().op(dash::max<mapped_type>(), lmax);
 
-  using array_t = dash::Array<size_type>;
+  using array_t = dash::Array<std::size_t>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
@@ -727,17 +758,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       g_partition_data.size(), nunits * 2 * 2,
       "array size is not large enough");
 
-  auto const min = static_cast<value_type>(g_min.get());
-  auto const max = static_cast<value_type>(g_max.get());
+  auto const min = static_cast<mapped_type>(g_min.get());
+  auto const max = static_cast<mapped_type>(g_max.get());
 
   auto p_unit_info = detail::psort__setup_unit_info(pattern, begin, end);
+
   auto const& l_acc_unit_count = p_unit_info.acc_unit_count;
 
-  auto const              nboundaries = nunits - 1;
-  std::vector<value_type> partitions(nboundaries, 0);
+  auto const               nboundaries = nunits - 1;
+  std::vector<mapped_type> partitions(nboundaries, mapped_type{});
 
-  auto p_borders =
-      detail::psort__setup_partition_borders(p_unit_info, min, max);
+  detail::PartitionBorder<mapped_type> p_borders(nboundaries, min, max);
+
+  detail::psort__setup_partition_borders(p_unit_info, p_borders);
 
   DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
   DASH_SORT_LOG_TRACE_RANGE(
@@ -776,9 +809,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
 
-    auto const histograms =
-        detail::psort__local_histogram<value_type, size_type>(
-            partitions, valid_partitions, p_borders, lbegin, lend);
+    auto const histograms = detail::psort__local_histogram(
+        partitions, valid_partitions, p_borders, lbegin, lend, mapping_fn);
 
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
@@ -805,8 +837,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
   } while (!done);
 
-  auto histograms = detail::psort__local_histogram<value_type, size_type>(
-      partitions, valid_partitions, p_borders, lbegin, lend);
+  auto histograms = detail::psort__local_histogram(
+      partitions, valid_partitions, p_borders, lbegin, lend, mapping_fn);
 
   /* How many elements are less than P
    * or less than equals P */
@@ -908,7 +940,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "final target count", g_partition_data.lbegin() + OFF_SUPP(nunits),
       g_partition_data.lbegin() + OFF_SUPP(nunits) + nunits);
 
-  std::vector<size_type> l_send_displs(nunits, 0);
+  std::vector<std::size_t> l_send_displs(nunits, 0);
 
   if (n_l_elem > 0) {
     // auto const& bounding_units   = p_borders.bounding_units;
@@ -938,7 +970,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
       "target displs", &(g_partition_data.local[OFF_DISP(nunits)]),
       &(g_partition_data.local[OFF_DISP(nunits)]) + nunits);
 
-  std::vector<dash::Future<iter_type> > async_copies{};
+  std::vector<dash::Future<iter_type>> async_copies{};
   async_copies.reserve(p_unit_info.contributing_remote_units.size());
 
   DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
@@ -953,7 +985,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
     return std::make_tuple(send_count, send_disp, target_disp);
   };
 
-  size_type send_count, send_disp, target_disp;
+  std::size_t send_count, send_disp, target_disp;
 
   for (auto const& unit : p_unit_info.contributing_remote_units) {
     std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
@@ -997,6 +1029,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end)
 
 #endif  // DOXYGEN
 
-}  // namespace detail
+}  // namespace dash
 
 #endif

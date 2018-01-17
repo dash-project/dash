@@ -233,6 +233,37 @@ TEST_F(SortTest, MatrixBlockedRow)
   perform_test(mat.begin(), mat.end());
 }
 
+TEST_F(SortTest, ArrayOfPoints)
+{
+  typedef Point                  Element_t;
+  typedef dash::Array<Element_t> Array_t;
+
+  LOG_MESSAGE("SortTest.ArrayOfPoints: allocate array");
+  // Initialize global array:
+  Array_t array(num_local_elem * dash::size());
+
+  static std::uniform_int_distribution<int32_t> distribution(-1000, 1000);
+  static std::random_device                     rd;
+  static std::mt19937 generator(rd() + array.team().myid());
+
+  dash::generate(array.begin(), array.end(), []() {
+    return Point{distribution(generator), distribution(generator)};
+  });
+
+  array.barrier();
+
+  dash::sort(array.begin(), array.end(), [](const Point& p) { return p.x; });
+
+  if (dash::myid() == 0) {
+    for (auto it = array.begin() + 1; it < array.end(); ++it) {
+      auto const a = static_cast<const Element_t>(*(it - 1));
+      auto const b = static_cast<const Element_t>(*it);
+
+      EXPECT_FALSE_U(b < a);
+    }
+  }
+}
+
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end)
 {
@@ -251,7 +282,7 @@ static void perform_test(GlobIter begin, GlobIter end)
       auto const a = static_cast<const Element_t>(*(it - 1));
       auto const b = static_cast<const Element_t>(*it);
 
-      EXPECT_GE_U(b, a);
+      EXPECT_FALSE_U(b < a);
     }
   }
 }

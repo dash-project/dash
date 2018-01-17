@@ -18,4 +18,21 @@ protected:
   {
   }
 };
+
+struct Point {
+  int32_t x;
+  int32_t y;
+};
+
+constexpr bool operator<(const Point& lhs, const Point& rhs) noexcept
+{
+  return lhs.x < rhs.x;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Point& p)
+{
+  stream << "{" << p.x << ", " << p.y << "}";
+  return stream;
+}
+
 #endif  // DASH__TEST__SORT_TEST_H_
