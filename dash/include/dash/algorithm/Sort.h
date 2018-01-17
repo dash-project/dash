@@ -652,6 +652,11 @@ struct identity_t : std::unary_function<T, T> {
   }
 };
 
+/*
+ * Obtaining parameter types and return type from a lambda:
+ * see http://coliru.stacked-crooked.com/a/6a87fadcf44c6a0f
+ */
+
 template <typename T>
 struct closure_traits : closure_traits<decltype(&T::operator())> {
 };
