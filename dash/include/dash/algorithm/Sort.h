@@ -302,9 +302,9 @@ inline bool psort__validate_partitions(
   auto    lbegin    = cpy_begin.local();
   std::copy(lbegin, lbegin + NLT_NLE_BLOCK, l_nlt_nle_data + lidx);
 
-  for (auto& fut : futures) {
-    fut.wait();
-  }
+  std::for_each(
+      std::begin(futures), std::end(futures),
+      [](dash::Future<value_t*>& fut) { fut.wait(); });
 
   auto const& acc_unit_count = p_unit_info.acc_unit_count;
 
@@ -1020,9 +1020,9 @@ void sort(
         lbegin + target_disp);
   }
 
-  for (auto& fut : async_copies) {
-    fut.wait();
-  }
+  std::for_each(
+      std::begin(async_copies), std::end(async_copies),
+      [](dash::Future<iter_type>& fut) { fut.wait(); });
 
   team.barrier();
 
