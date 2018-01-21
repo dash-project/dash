@@ -27,6 +27,8 @@ namespace dash {
  * Sorts the elements in the range, defined by \c [begin, end) in ascending
  * order. The order of equal elements is not guaranteed to be preserved.
  *
+ * Elements are sorted using operator<.
+ *
  * In terms of data distribution, source and destination ranges passed to
  * \c dash::sort must be global (\c GlobIter<ValueType>).
  *
@@ -35,6 +37,8 @@ namespace dash {
  * Example:
  *
  * \code
+ *       dash::Array<int> arr(100);
+ *       dash::generate(arr.begin(), arr.end());
  *       dash::sort(array.begin(),
  *                  array.end();
  * \endcode
@@ -43,6 +47,38 @@ namespace dash {
  */
 template <class GlobRandomIt>
 void sort(GlobRandomIt begin, GlobRandomIt end);
+
+/**
+ * Sorts the elements in the range, defined by \c [begin, end) in ascending
+ * order. The order of equal elements is not guaranteed to be preserved.
+ *
+ * Elements are sorted by using a user-defined hash function. This hash
+ * function is required to be sortable by operator<.
+ *
+ * This variant may be appropriate if the underlying container does not hold
+ * arithmetic values (e.g. structs).
+ *
+ * In terms of data distribution, source and destination ranges passed to
+ * \c dash::sort must be global (\c GlobIter<ValueType>).
+ *
+ * The operation is collective among the team of the owning dash container.
+ *
+ * Example:
+ *
+ * \code
+ *       struct pair { int x; int y; };
+ *       dash::Array<pair> arr(100);
+ *       dash::generate(arr.begin(), arr.end(), random());
+ *       dash::sort(array.begin(),
+ *                  array.end(),
+ *                  [](pair const & p){return p.x % 13; }
+ *                 );
+ * \endcode
+ *
+ * \ingroup  DashAlgorithms
+ */
+template <class GlobRandomIt, class SortableHash>
+void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 
 #else
 
