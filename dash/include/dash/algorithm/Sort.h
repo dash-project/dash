@@ -771,8 +771,13 @@ void sort(
   auto lbegin = l_mem_begin + l_range.begin;
   auto lend   = l_mem_begin + l_range.end;
 
+  auto const sort_comp = [&mapping_fn](
+                             const value_type& a, const value_type& b) {
+    return mapping_fn(const_cast<value_type&>(a)) < mapping_fn(const_cast<value_type&>(b));
+  };
+
   // initial local sort
-  std::sort(lbegin, lend);
+  std::sort(lbegin, lend, sort_comp);
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
@@ -1062,7 +1067,7 @@ void sort(
 
   team.barrier();
 
-  std::sort(lbegin, lend);
+  std::sort(lbegin, lend, sort_comp);
   DASH_SORT_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
   team.barrier();
