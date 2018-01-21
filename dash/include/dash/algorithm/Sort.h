@@ -188,7 +188,7 @@ inline void psort__calc_boundaries(
   DASH_LOG_TRACE("psort__calc_boundaries >");
 }
 
-template <typename ElementType, typename MappedType, typename SortMapping>
+template <typename ElementType, typename MappedType, typename SortableHash>
 inline std::pair<std::vector<std::size_t>, std::vector<std::size_t>>
 psort__local_histogram(
     std::vector<MappedType> const&     partitions,
@@ -196,7 +196,7 @@ psort__local_histogram(
     PartitionBorder<MappedType> const& p_borders,
     ElementType const*                 lbegin,
     ElementType const*                 lend,
-    SortMapping&&                      mapping_fn)
+    SortableHash&&                     sortable_hash)
 {
   DASH_LOG_TRACE("< psort__local_histogram");
   auto const nborders = partitions.size();
@@ -208,12 +208,14 @@ psort__local_histogram(
   // Number of elements less than equals P
   std::vector<std::size_t> n_le(sz, 0);
 
-  auto comp_lower = [&mapping_fn](const ElementType& a, const MappedType& b) {
-    return mapping_fn(const_cast<ElementType&>(a)) < b;
+  auto comp_lower = [&sortable_hash](
+                        const ElementType& a, const MappedType& b) {
+    return sortable_hash(const_cast<ElementType&>(a)) < b;
   };
 
-  auto comp_upper = [&mapping_fn](const MappedType& b, const ElementType& a) {
-    return b < mapping_fn(const_cast<ElementType&>(a));
+  auto comp_upper = [&sortable_hash](
+                        const MappedType& b, const ElementType& a) {
+    return b < sortable_hash(const_cast<ElementType&>(a));
   };
 
   auto const n_l_elem = std::distance(lbegin, lend);
@@ -720,18 +722,18 @@ SPEC(, (), 0)
 
 template <
     class GlobRandomIt,
-    class SortMapping =
+    class SortableHash =
         detail::identity_t<typename GlobRandomIt::value_type&>>
 void sort(
     GlobRandomIt begin,
     GlobRandomIt end,
-    SortMapping  mapping_fn = SortMapping())
+    SortableHash sortable_hash = SortableHash())
 {
   using iter_type    = GlobRandomIt;
   using pattern_type = typename iter_type::pattern_type;
   using value_type   = typename iter_type::value_type;
   using mapped_type  = typename std::decay<
-      typename detail::closure_traits<SortMapping>::result_type>::type;
+      typename detail::closure_traits<SortableHash>::result_type>::type;
 
   static_assert(
       std::is_arithmetic<mapped_type>::value,
@@ -771,9 +773,10 @@ void sort(
   auto lbegin = l_mem_begin + l_range.begin;
   auto lend   = l_mem_begin + l_range.end;
 
-  auto const sort_comp = [&mapping_fn](
+  auto const sort_comp = [&sortable_hash](
                              const value_type& a, const value_type& b) {
-    return mapping_fn(const_cast<value_type&>(a)) < mapping_fn(const_cast<value_type&>(b));
+    return sortable_hash(const_cast<value_type&>(a)) <
+           sortable_hash(const_cast<value_type&>(b));
   };
 
   // initial local sort
@@ -781,9 +784,9 @@ void sort(
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
-  auto const lmin = (n_l_elem > 0) ? mapping_fn(*lbegin)
+  auto const lmin = (n_l_elem > 0) ? sortable_hash(*lbegin)
                                    : std::numeric_limits<mapped_type>::max();
-  auto const lmax = (n_l_elem > 0) ? mapping_fn(*(lend - 1))
+  auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
   dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
@@ -856,7 +859,7 @@ void sort(
     detail::psort__calc_boundaries(p_borders, partitions);
 
     auto const histograms = detail::psort__local_histogram(
-        partitions, valid_partitions, p_borders, lbegin, lend, mapping_fn);
+        partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
 
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
@@ -884,7 +887,7 @@ void sort(
   } while (!done);
 
   auto histograms = detail::psort__local_histogram(
-      partitions, valid_partitions, p_borders, lbegin, lend, mapping_fn);
+      partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
 
   /* How many elements are less than P
    * or less than equals P */
