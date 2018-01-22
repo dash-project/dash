@@ -22,26 +22,30 @@ if (BUILD_TESTS)
     set(GTEST_INCLUDES "${GTEST_INCLUDE_PATH}")
     set(GTEST_LIBRARY  "${GTEST_LIBRARY_PATH}/${LIBPREFIX}gtest${LIBSUFFIX}")
     set(GTEST_MAINLIB  "${GTEST_LIBRARY_PATH}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
-    message(STATUS "Using existing installation of GTest")
+    message(STATUS "Attempting to use existing installation of GTest")
     message(STATUS "gtest      include path: " ${GTEST_INCLUDES})
     message(STATUS "gtest      library path: " ${GTEST_LIBRARY})
     message(STATUS "gtest_main library path: " ${GTEST_MAINLIB})
 
-    add_library(GTest IMPORTED STATIC GLOBAL)
-    set_target_properties(
-      GTest
-      PROPERTIES
-      IMPORTED_LOCATION                 "${GTEST_LIBRARY}"
-      IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}")
-    add_library(GTestMain IMPORTED STATIC GLOBAL)
-    set_target_properties(
-      GTestMain
-      PROPERTIES
-      IMPORTED_LOCATION                 "${GTEST_MAINLIB}"
-      IMPORTED_LINK_INTERFACE_LIBRARIES "${GTEST_LIBRARY};${CMAKE_THREAD_LIBS_INIT}")
-
-    set (GTEST_FOUND 1)
-    set (GTEST_FOUND 1 PARENT_SCOPE)
+    find_path(GTEST_HEADER "gtest.h" ${GTEST_INCLUDE_PATH}/gtest)
+    if (NOT GTEST_HEADER OR NOT (EXISTS ${GTEST_LIBRARY} AND EXISTS ${GTEST_MAINLIB})) 
+      message(WARNING "Cannot use user-supplied GoogleTest directory")
+    else ()
+      set (GTEST_FOUND 1)
+      set (GTEST_FOUND 1 PARENT_SCOPE)
+      add_library(GTest IMPORTED STATIC GLOBAL)
+      set_target_properties(
+        GTest
+        PROPERTIES
+        IMPORTED_LOCATION                 "${GTEST_LIBRARY}"
+        IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}")
+      add_library(GTestMain IMPORTED STATIC GLOBAL)
+      set_target_properties(
+        GTestMain
+        PROPERTIES
+        IMPORTED_LOCATION                 "${GTEST_MAINLIB}"
+        IMPORTED_LINK_INTERFACE_LIBRARIES "${GTEST_LIBRARY};${CMAKE_THREAD_LIBS_INIT}")
+     endif()
 
   else()
     # Download gtest from official github repository:
