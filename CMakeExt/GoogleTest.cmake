@@ -40,6 +40,9 @@ if (BUILD_TESTS)
       IMPORTED_LOCATION                 "${GTEST_MAINLIB}"
       IMPORTED_LINK_INTERFACE_LIBRARIES "${GTEST_LIBRARY};${CMAKE_THREAD_LIBS_INIT}")
 
+    set (GTEST_FOUND 1)
+    set (GTEST_FOUND 1 PARENT_SCOPE)
+
   else()
     # Download gtest from official github repository:
     message(STATUS "GoogleTest: using GTest from official repository")
