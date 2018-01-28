@@ -413,7 +413,7 @@ private:
    */
   void set_attributes(properties_type & prop, local_vertex_iterator it) {
     _vertex.properties = prop;
-    typename iterator_type::pointer ptr = _iterator;
+    auto ptr = _iterator;
     *ptr = _vertex;
   }
 
