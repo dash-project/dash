@@ -514,7 +514,7 @@ dart_tasking_datadeps_handle_copyin(
             in_dep.phase = dep->phase;
             dephash_add_local(&in_dep, task);
 
-            DART_LOG_TRACE("Copyin: task %p waits for task %p to copy", task, elem_task);
+            DART_LOG_TRACE("Copyin: task %p waits for copyin task %p", task, elem_task);
 
             // we're done
             return DART_OK;
@@ -675,7 +675,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
       if (IS_OUT_DEP(elem->taskdep)) {
         // lock the task here to avoid race condition
         dart__base__mutex_lock(&(elem_task->mutex));
-        if (IS_ACTIVE_TASK(elem_task)){
+        if (IS_ACTIVE_TASK(elem_task)) {
           int32_t unresolved_deps = DART_INC_AND_FETCH32(
                                         &task->unresolved_deps);
           DART_LOG_TRACE("Making task %p a local successor of task %p using delayed dependency "
@@ -726,7 +726,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
           dart__base__mutex_unlock(&(task->parent->mutex));
         }
         // we're done here
-        break;
+        return DART_OK;
       }
     }
   }
