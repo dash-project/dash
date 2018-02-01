@@ -577,7 +577,7 @@ private:
         if (offset == 0) {
           break;
         }
-        auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
+        auto & unit_bkt_sizes     = (*_bucket_cumul_sizes)[_idx_unit_id];
         auto unit_bkt_sizes_total = unit_bkt_sizes.back();
         auto unit_num_bkts        = unit_bkt_sizes.size();
         DASH_LOG_TRACE("GlobPtr.increment",
