@@ -43,8 +43,9 @@
 #define DART_ASSERT(...) do { } while (0)
 #define DART_ASSERT_MSG(...) do { } while (0)
 #define DART_ASSERT_RETURNS(expr, exp_value) do { \
-          (expr); \
+          __typeof__(exp_value) ret = (expr); \
           dart__unused(exp_value); \
+          dart__unused(ret); \
         } while(0)
 
 #endif /* DART_ENABLE_ASSERTIONS */

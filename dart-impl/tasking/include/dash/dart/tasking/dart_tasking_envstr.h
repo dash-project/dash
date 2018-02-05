@@ -25,6 +25,14 @@
 #define DART_THREAD_AFFINITY_ENVSTR    "DART_BIND_THREADS"
 
 /**
+ * Name of the environment variable specifying whether or not to print the
+ * thread-binding.
+ *
+ * Type: Boolean value.
+ */
+#define DART_THREAD_AFFINITY_VERBOSE_ENVSTR  "DART_BIND_THREADS_VERBOSE"
+
+/**
  * Name of the environment variable specifying the number of phases after which
  * to perform a dependency matching.
  *
@@ -39,6 +47,5 @@
  * Type: string value, one of GET[_IMP] (default) or SENDRECV[_IMPL]
  */
 #define DART_COPYIN_IMPL_ENVSTR        "DART_TASK_COPYIN_IMPL"
-
 
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
