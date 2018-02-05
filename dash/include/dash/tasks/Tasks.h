@@ -124,6 +124,11 @@ namespace internal {
   }
 } // namespace internal
 
+
+  using DependencyVector = std::vector<dart_task_dep_t>;
+  using DependencyVectorInserter = std::insert_iterator<DependencyVector>;
+  using DependencyGenerator = std::function<void(DependencyVectorInserter)>;
+
   /**
    * Class representing a task created through \ref dash::tasks::async_handle.
    *
@@ -678,6 +683,25 @@ namespace internal {
     async(f, prio, deps);
   }
 
+
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc>
+  void
+  async(
+    TaskFunc                f,
+    dart_task_prio_t        prio,
+    DependencyGenerator     dependency_generator)
+  {
+    DependencyVector deps;
+    dependency_generator(std::inserter(deps, deps.begin()));
+    async(f, prio, deps);
+  }
+
   /**
    * Create an asynchronous task that will execute \c f with normal priority
    * after all dependencies specified in \c deps have been satisfied.
@@ -774,6 +798,24 @@ namespace internal {
     Args&&... args) -> TaskHandle<decltype(f())>
   {
     return async_handle(f, DART_PRIO_LOW, std::forward<Args>(args)...);
+  }
+
+  /**
+   * Return a handle to an asynchronous task that will execute \c f with normal
+   * priority after all specified dependencies have been satisfied.
+   *
+   * \sa TaskHandle
+   */
+  template<class TaskFunc, typename DepGeneratorFunc>
+  auto
+  async_handle(
+    TaskFunc             f,
+    DependencyGenerator  dependency_generator,
+    dart_task_prio_t     prio = DART_PRIO_LOW) -> TaskHandle<decltype(f())>
+  {
+    DependencyVector deps;
+    dependency_generator(std::inserter(deps, deps.begin()));
+    return async_handle(f, prio, deps);
   }
 
   /**
