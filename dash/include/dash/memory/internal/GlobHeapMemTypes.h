@@ -15,6 +15,15 @@ struct glob_dynamic_mem_bucket_type
   bool          attached;
 };
 
+template<
+  typename SizeType,
+  typename ElementType >
+struct glob_dynamic_contiguous_mem_bucket_type
+{
+  SizeType      size;
+  ElementType * lptr;
+};
+
 } // namespace internal
 } // namespace dash
 

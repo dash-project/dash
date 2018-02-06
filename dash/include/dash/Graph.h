@@ -755,7 +755,8 @@ private:
   }
 
   team_unit_t vertex_owner(vertex_size_type v, vertex_size_type n_vertices) {
-    team_unit_t owner { v / (n_vertices / _team->size()) };
+    int owner_id = static_cast<double>(v) / (static_cast<double>(n_vertices) / _team->size());
+    team_unit_t owner { owner_id };
     return owner;
   }
 

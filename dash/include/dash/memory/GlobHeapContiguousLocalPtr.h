@@ -61,7 +61,7 @@ public:
   typedef ElementType *                                             pointer;
   typedef ElementType &                                           reference;
 
-  typedef internal::glob_dynamic_mem_bucket_type<size_type, value_type>
+  typedef internal::glob_dynamic_contiguous_mem_bucket_type<size_type, value_type>
     bucket_type;
 
   typedef typename std::vector<bucket_type>

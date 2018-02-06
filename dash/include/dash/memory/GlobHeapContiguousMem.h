@@ -66,9 +66,7 @@ public:
   typedef typename local_iterator::bucket_type         bucket_type;
   // must be List because of GlobHeapLocalPtr
   typedef typename std::vector<bucket_type>            bucket_list_type;
-  typedef typename std::list<bucket_type *>            bucket_ptr_list;
-  typedef typename bucket_ptr_list::difference_type    bucket_index_type;
-  typedef typename bucket_list_type::difference_type   local_bucket_index_type;
+  typedef typename container_list_type::difference_type    bucket_index_type;
   typedef local_iterator                               local_pointer;
   typedef local_iterator                               const_local_pointer;
   typedef std::vector<std::vector<size_type>>          bucket_cumul_sizes_map;
@@ -86,7 +84,6 @@ public:
    */
   GlobHeapContiguousMem(Team & team = dash::Team::All())
     : _buckets(),
-      _global_buckets(),
       _team(&team),
       _teamid(team.dart_id()),
       _nunits(team.size()),
@@ -104,26 +101,21 @@ public:
     // create bucket data and add to bucket list
     bucket_type cont_bucket { 
       0, 
-      nullptr, 
-      DART_GPTR_NULL,
-      false
+      nullptr
     };
     bucket_type unattached_cont_bucket {
       0,
-      nullptr,
-      DART_GPTR_NULL,
-      false
+      nullptr
     };
     _buckets.push_back(cont_bucket);
     // for global iteration, only _container's bucket is needed
-    _global_buckets.push_back(&(_buckets.back()));
 
     _unattached_containers.emplace_back(_buckets.size() - 1);
     auto & unattached_container = _unattached_containers.back().container;
     unattached_container.reserve(n_elements);
 
     _buckets.push_back(unattached_cont_bucket);
-    return _global_buckets.size() - 1;
+    return _unattached_containers.size() - 1;
   }
 
   /**
@@ -444,8 +436,6 @@ private:
 
   /** List of buckets for GlobHeapLocalPtr */
   bucket_list_type                        _buckets;
-  /** list of buckets available for global iteration */
-  bucket_ptr_list                         _global_buckets;
   /** Container holding globally visible data */
   std::unique_ptr<container_type>         _container;
   /** List of containers holding locally visible data of each bucket */
