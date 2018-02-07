@@ -123,10 +123,7 @@ GlobIter find_if(
   auto l_last      = index_range.end;
 
   auto l_result = std::find_if(l_first, l_last, predicate);
-  auto l_offset = std::distance(l_first, l_result);
-  if (l_result == l_last) {
-    l_offset = -1;
-  }
+  auto l_offset = l_result == l_last ? -1 : std::distance(l_first, l_result);
 
   dash::Array<index_t> l_results(team.size(), team);
 
