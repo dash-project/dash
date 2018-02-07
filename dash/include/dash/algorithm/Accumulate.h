@@ -33,7 +33,7 @@ ValueType accumulate(
   GlobInputIt     in_last,
   ValueType       init)
 {
-  typedef typename GlobInputIt::index_type index_t;
+  typedef typename dash::iterator_traits<GlobInputIt>::index_type index_t;
 
   auto & team      = in_first.team();
   auto myid        = team.myid();
@@ -83,7 +83,7 @@ ValueType accumulate(
   ValueType       init,
   BinaryOperation binary_op = dash::plus<ValueType>())
 {
-  typedef typename GlobInputIt::index_type index_t;
+  typedef typename dash::iterator_traits<GlobInputIt>::index_type index_t;
 
   auto & team      = in_first.team();
   auto myid        = team.myid();

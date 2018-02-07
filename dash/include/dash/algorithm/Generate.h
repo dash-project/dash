@@ -1,14 +1,13 @@
 #ifndef DASH__ALGORITHM__GENERATE_H__
 #define DASH__ALGORITHM__GENERATE_H__
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <dash/dart/if/dart_communication.h>
 
 #include <algorithm>
-
 
 namespace dash {
 
@@ -29,17 +28,19 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template <
-    typename ElementType,
-    class    PatternType,
-    class    UnaryFunction >
-void generate (
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
-  /// Generator function
-  UnaryFunction                      gen) {
+template <typename GlobInputIt, class UnaryFunction>
+void generate(
+    /// Iterator to the initial position in the sequence
+    GlobInputIt first,
+    /// Iterator to the final position in the sequence
+    GlobInputIt last,
+    /// Generator function
+    UnaryFunction gen)
+{
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
   /// Global iterators to local range:
   auto lrange = dash::local_range(first, last);
   auto lfirst = lrange.begin;
@@ -66,17 +67,19 @@ void generate (
  *
  * \ingroup     DashAlgorithms
  */
-template <
-    typename ElementType,
-    class    PatternType,
-    class    UnaryFunction >
+template <typename GlobInputIt, class UnaryFunction>
 void generate_with_index(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
-  /// Generator function
-  UnaryFunction                      gen) {
+    /// Iterator to the initial position in the sequence
+    GlobInputIt first,
+    /// Iterator to the final position in the sequence
+    GlobInputIt last,
+    /// Generator function
+    UnaryFunction gen)
+{
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;
@@ -84,19 +87,17 @@ void generate_with_index(
 
   if (lbegin_index != lend_index) {
     // Pattern from global begin iterator:
-    auto & pattern    = first.pattern();
-    auto first_offset = first.pos();
+    auto& pattern      = first.pattern();
+    auto  first_offset = first.pos();
     // Iterate local index range:
-    for (auto lindex = lbegin_index;
-         lindex != lend_index;
-         ++lindex) {
+    for (auto lindex = lbegin_index; lindex != lend_index; ++lindex) {
       auto gindex     = pattern.global(lindex);
       auto element_it = first + (gindex - first_offset);
-      *element_it = gen(gindex);
+      *element_it     = gen(gindex);
     }
   }
 }
 
-} // namespace dash
+}  // namespace dash
 
-#endif // DASH__ALGORITHM__GENERATE_H__
+#endif  // DASH__ALGORITHM__GENERATE_H__
