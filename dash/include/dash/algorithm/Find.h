@@ -24,7 +24,7 @@ GlobIter find(
   GlobIter   first,
   /// Iterator to the final position in the sequence
   GlobIter   last,
-  /// Value which will be assigned to the elements in range [first, last)
+  /// Value which is searched for using operator==
   const ElementType                  & value)
 {
 

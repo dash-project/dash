@@ -37,6 +37,10 @@ void for_each(
     /// Function to invoke on every index in the range
     UnaryFunction func)
 {
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;
@@ -81,6 +85,11 @@ void for_each_with_index(
     /// Function to invoke on every index in the range
     UnaryFunctionWithIndex func)
 {
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
+
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;
