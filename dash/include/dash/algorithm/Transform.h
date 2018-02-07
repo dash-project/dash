@@ -21,6 +21,103 @@
 
 namespace dash {
 
+#ifdef DOXYGEN
+
+/**
+ * Apply a given function to elements in a range and store the result in
+ * another range, beginning at \c out_first.
+ * Corresponding to \c MPI_Accumulate, the unary operation is executed
+ * atomically on single elements.
+ *
+ * Precondition: All elements in the input range are contained in a single
+ * block so that
+ *
+ * <tt>
+ *   g_out_last == g_out_first + (l_in_last - l_in_first)
+ * </tt>
+ *
+ * Semantics:
+ *
+ * <tt>
+ *   unary_op(in_first[0]), unary_op(in_first[1]), ..., unary_op(in_first[n])
+ * </tt>
+ *
+ * \returns  Output iterator to the element past the last element transformed.
+ *
+ * \ingroup  DashAlgorithms
+ */
+template<
+  typename ValueType,
+  class InputIt,
+  class OutputIt,
+  class UnaryOperation >
+OutputIt transform(
+  InputIt        in_first,
+  InputIt        in_last,
+  OutputIt       out_first,
+  UnaryOperation unary_op);
+
+/**
+ * Apply a given function to pairs of elements from two ranges and store the
+ * result in another range, beginning at \c out_first.
+ *
+ * Corresponding to \c MPI_Accumulate, the binary operation is executed
+ * atomically on single elements.
+ *
+ * Precondition: All elements in the input range are contained in a single
+ * block so that
+ *
+ *   g_out_last == g_out_first + (l_in_last - l_in_first)
+ *
+ * Semantics:
+ *
+ *   binary_op(in_a[0], in_b[0]),
+ *   binary_op(in_a[1], in_b[1]),
+ *   ...,
+ *   binary_op(in_a[n], in_b[n])
+ *
+ * Example:
+ * \code
+ *   gptr_diff_t num_transformed_elements =
+ *                 dash::distance(
+ *                   dash::transform(in.begin(), in.end(),  // A
+ *                                   out.begin(),           // B
+ *                                   out.begin(),           // C = op(A, B)
+ *                                   dash::plus<int>()),    // op
+ *                   out.end());
+ *
+ * \endcode
+ *
+ * \returns  Output iterator to the element past the last element transformed.
+ * \see      dash::accumulate
+ * \see      DashReduceOperations
+ *
+ * \tparam   InputIt         Iterator on first (local) input range
+ * \tparam   GlobInputIt     Iterator on second (global) input range
+ * \tparam   GlobOutputIt    Iterator on global result range
+ * \tparam   BinaryOperation Reduce operation type
+ *
+ * \ingroup  DashAlgorithms
+ */
+template<
+  class InputIt1,
+  class GlobInputIt,
+  class GlobOutputIt,
+  class BinaryOperation >
+GlobOutputIt transform(
+  /// Iterator on begin of first local range
+  InputIt1         in_a_first,
+  /// Iterator after last element of local range
+  InputIt1         in_a_last,
+  /// Iterator on begin of second local range
+  GlobInputIt     in_b_first,
+  /// Iterator on first element of global output range
+  GlobOutputIt    out_first,
+  /// Reduce operation
+  BinaryOperation binary_op);
+
+#else
+
 namespace internal {
 
 /**
@@ -337,104 +434,8 @@ GlobOutputIt transform(
 
 } // namespace internal
 
-/**
- * Apply a given function to elements in a range and store the result in
- * another range, beginning at \c out_first.
- * Corresponding to \c MPI_Accumulate, the unary operation is executed
- * atomically on single elements.
- *
- * Precondition: All elements in the input range are contained in a single
- * block so that
- *
- * <tt>
- *   g_out_last == g_out_first + (l_in_last - l_in_first)
- * </tt>
- *
- * Semantics:
- *
- * <tt>
- *   unary_op(in_first[0]), unary_op(in_first[1]), ..., unary_op(in_first[n])
- * </tt>
- *
- * \returns  Output iterator to the element past the last element transformed.
- *
- * \ingroup  DashAlgorithms
- */
-template<
-  typename ValueType,
-  class InputIt,
-  class OutputIt,
-  class UnaryOperation >
-OutputIt transform(
-  InputIt        in_first,
-  InputIt        in_last,
-  OutputIt       out_first,
-  UnaryOperation unary_op);
-
-/**
- * Apply a given function to pairs of elements from two ranges and store the
- * result in another range, beginning at \c out_first.
- *
- * Corresponding to \c MPI_Accumulate, the binary operation is executed
- * atomically on single elements.
- *
- * Precondition: All elements in the input range are contained in a single
- * block so that
- *
- *   g_out_last == g_out_first + (l_in_last - l_in_first)
- *
- * Semantics:
- *
- *   binary_op(in_a[0], in_b[0]),
- *   binary_op(in_a[1], in_b[1]),
- *   ...,
- *   binary_op(in_a[n], in_b[n])
- *
- * Example:
- * \code
- *   gptr_diff_t num_transformed_elements =
- *                 dash::distance(
- *                   dash::transform(in.begin(), in.end(),  // A
- *                                   out.begin(),           // B
- *                                   out.begin(),           // C = op(A, B)
- *                                   dash::plus<int>()),    // op
- *                   out.end());
- *
- * \endcode
- *
- * \returns  Output iterator to the element past the last element transformed.
- * \see      dash::accumulate
- * \see      DashReduceOperations
- *
- * \tparam   InputIt         Iterator on first (local) input range
- * \tparam   GlobInputIt     Iterator on second (global) input range
- * \tparam   GlobOutputIt    Iterator on global result range
- * \tparam   BinaryOperation Reduce operation type
- *
- * \ingroup  DashAlgorithms
- */
-template<
-  class InputIt1,
-  class GlobInputIt,
-  class GlobOutputIt,
-  class BinaryOperation >
-GlobOutputIt transform(
-  /// Iterator on begin of first local range
-  InputIt1         in_a_first,
-  /// Iterator after last element of local range
-  InputIt1         in_a_last,
-  /// Iterator on begin of second local range
-  GlobInputIt     in_b_first,
-  /// Iterator on first element of global output range
-  GlobOutputIt    out_first,
-  /// Reduce operation
-  BinaryOperation binary_op);
 
 
-/**
- * Local lhs input ranges on global output range.
- *
- */
 template <
     class InputIt,
     class GlobInputIt,
@@ -499,6 +500,8 @@ GlobAsyncRef<ValueType> transform(
     dash::exception::NotImplemented,
     "Async variant of dash::transform is not implemented");
 }
+
+#endif
 
 } // namespace dash
 
