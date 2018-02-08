@@ -1,5 +1,5 @@
-#ifndef COEVENT_H_INCLUDED
-#define COEVENT_H_INCLUDED
+#ifndef DASH__COEVENT_H__INCLUDED
+#define DASH__COEVENT_H__INCLUDED
 
 #include <dash/Exception.h>
 #include <dash/Team.h>
@@ -156,4 +156,4 @@ private:
 
 } // namespace dash
 
-#endif /* COEVENT_H_INCLUDED */
+#endif /* DASH__COEVENT_H__INCLUDED */

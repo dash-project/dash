@@ -278,7 +278,7 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
-message(INFO "MPI dynamic windows:      (ENABLE_SHARED_WINDOWS)          "
+message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "
         ${ENABLE_DYNAMIC_WINDOWS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})

@@ -155,21 +155,23 @@ const ElementType * min_element(
  * \ingroup     DashAlgorithms
  */
 template <
-  class GlobIter,
-  class Compare = std::less<const typename GlobIter::value_type  &> >
-GlobIter min_element(
-  /// Iterator to the initial position in the sequence
-  const GlobIter & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter & last,
-  /// Element comparison function, defaults to std::less
-  Compare                                    compare
-    = Compare())
+    typename GlobInputIt,
+    class Compare = std::less<
+        const typename dash::iterator_traits<GlobInputIt>::value_type &> >
+GlobInputIt min_element(
+    /// Iterator to the initial position in the sequence
+    const typename std::enable_if<
+        dash::iterator_traits<GlobInputIt>::is_global_iterator::value,
+        GlobInputIt>::type &first,
+    /// Iterator to the final position in the sequence
+    const GlobInputIt &last,
+    /// Element comparison function, defaults to std::less
+    Compare compare = Compare())
 {
-  typedef GlobIter                                                 globiter_t;
-  typedef typename GlobIter::pattern_type                          pattern_t;
-  typedef typename pattern_t::index_type                           index_t;
-  typedef typename std::decay<typename GlobIter::value_type>::type value_t;
+  typedef typename GlobInputIt::pattern_type     pattern_t;
+  typedef typename pattern_t::index_type         index_t;
+  typedef typename std::decay<
+      typename dash::iterator_traits<GlobInputIt>::value_type>::type value_t;
 
   // return last for empty array
   if (first == last) {
@@ -299,7 +301,7 @@ GlobIter min_element(
   // iterator 'first' is relative to start of input range, convert to start
   // of its referenced container (= container.begin()), then apply global
   // offset of minimum element:
-  globiter_t minimum = (first - first.gpos()) + gi_minimum;
+  auto minimum = (first - first.gpos()) + gi_minimum;
   DASH_LOG_DEBUG("dash::min_element >", minimum,
                  "=", static_cast<value_t>(*minimum));
 

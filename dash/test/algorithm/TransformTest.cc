@@ -28,7 +28,7 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   dash::barrier();
 
   // Identical start offsets in all ranges (begin() = 0):
-  dash::transform<int>(
+  dash::transform(
       array_in.begin(), array_in.end(), // A
       array_dest.begin(),               // B
       array_dest.begin(),               // C = op(A,B)
@@ -81,7 +81,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   for (size_t block_idx = 0; block_idx < dash::size(); ++block_idx) {
     auto block_offset  = block_idx * num_elem_local;
     auto transform_end =
-      dash::transform<int>(&(*local.begin()), &(*local.end()), // A
+      dash::transform(&(*local.begin()), &(*local.end()), // A
                            array_dest.begin() + block_offset,  // B
                            array_dest.begin() + block_offset,  // B = op(B,A)
                            dash::plus<int>());                 // op
@@ -138,7 +138,7 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
   dash::barrier();
 
   // Accumulate local range to every block in the array:
-  dash::transform<int>(array_values.begin(), array_values.end(), // A
+  dash::transform(array_values.begin(), array_values.end(), // A
                        array_dest.begin(),                       // B
                        array_dest.begin(),                       // B = B op A
                        dash::plus<int>());                       // op
