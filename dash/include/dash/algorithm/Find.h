@@ -28,6 +28,7 @@ GlobIter find(
   const ElementType & value)
 {
 
+  //use iterator traits
   using iterator_traits = dash::iterator_traits<GlobIter>;
 
   using p_index_t = typename iterator_traits::index_type;
