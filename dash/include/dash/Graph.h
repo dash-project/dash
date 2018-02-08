@@ -195,9 +195,10 @@ public:
     std::unordered_set<vertex_size_type> remote_vertices_set;
     std::vector<std::vector<vertex_size_type>> remote_vertices(_team->size());
     for(auto it = begin; it != end; ++it) {
-      auto v = it->first;
+      auto item = *it;
+      auto v = edgelist_source(item);
       if(vertex_owner(v, n_vertices) == _myid) {
-        auto u = it->second;
+        auto u = edgelist_target(item);
 
         if(lvertices.find(v) == lvertices.end()) {
           // add dummy first, more vertices are added later and they have
@@ -304,22 +305,35 @@ public:
     // finally add edges with the vertex iterators gained from the previous
     // steps
     for(auto it = begin; it != end; ++it) {
-      auto v = it->first;
+      auto item = *it;
+      auto v = edgelist_source(item);
       if(vertex_owner(v, n_vertices) == _myid) {
-        auto v_it = lvertices[it->first];
-        auto u = it->second;
+        auto v_it = lvertices[v];
+        auto u = edgelist_target(item);
 
         if(vertex_owner(u, n_vertices) == _myid) {
           auto u_it = lvertices[u];
-          add_edge(v_it, u_it);
+          edgelist_add_edge(v_it, u_it, item);
         } else {
           auto u_it = gvertices[u];
-          add_edge(v_it, u_it);
+          edgelist_add_edge(v_it, u_it, item);
         }
       }
     }
     // commit edges
     commit();
+  }
+
+  template<typename SourceIterator, typename TargetIterator>
+  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
+      std::pair<int, int>) {
+    add_edge(s, t);
+  }
+
+  template<typename SourceIterator, typename TargetIterator>
+  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
+      std::pair<std::pair<int, int>, int>) {
+    add_edge(s, t);
   }
 
   /** Destructs the graph.
@@ -774,6 +788,22 @@ private:
     int owner_id = static_cast<double>(v) / (static_cast<double>(n_vertices) / _team->size());
     team_unit_t owner { owner_id };
     return owner;
+  }
+
+  vertex_size_type edgelist_source(std::pair<int, int> e) {
+    return e.first;
+  }
+
+  vertex_size_type edgelist_source(std::pair<std::pair<int, int>, int> e) {
+    return e.first.first;
+  }
+
+  vertex_size_type edgelist_target(std::pair<int, int> e) {
+    return e.second;
+  }
+
+  vertex_size_type edgelist_target(std::pair<std::pair<int, int>, int> e) {
+    return e.first.second;
   }
 
 private:
