@@ -1915,7 +1915,7 @@ dart_ret_t dart_alltoall(
   dart_datatype_t   dtype,
   dart_team_t       teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
   MPI_Comm     comm;
   DART_LOG_TRACE("dart_alltoall() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
@@ -1970,7 +1970,7 @@ dart_ret_t dart_alltoallv(
   const size_t    * recvdispls,
   dart_team_t       teamid)
 {
-  MPI_Datatype mpi_dtype = dart__mpi__datatype(dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
   MPI_Comm     comm;
   int          comm_size;
   DART_LOG_TRACE("dart_alltoallv() team:%d nsendelem:%"PRIu64"",
