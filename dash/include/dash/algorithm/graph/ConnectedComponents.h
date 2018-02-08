@@ -64,7 +64,7 @@ std::vector<int> cc_get_data(
   int index = 0;
   for(int i = 0; i < permutations.size(); ++i) {
     for(int j = 0; j < permutations[i].size(); ++j) {
-      output[index] = indices_send[permutations[i][j]];
+      output[permutations[i][j]] = indices_send[index];
       ++index;
     }
   }
