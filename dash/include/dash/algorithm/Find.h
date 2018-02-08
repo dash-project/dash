@@ -25,16 +25,12 @@ GlobIter find(
   /// Iterator to the final position in the sequence
   GlobIter   last,
   /// Value which is searched for using operator==
-  const ElementType                  & value)
+  const ElementType & value)
 {
 
   using iterator_traits = dash::iterator_traits<GlobIter>;
 
   using p_index_t = typename iterator_traits::index_type;
-
-  static_assert(
-      std::is_same<typename iterator_traits::value_type, ElementType>::value,
-      "element types do not match");
 
   if(first >= last) {
     return last;
