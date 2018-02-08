@@ -110,10 +110,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class ElementT>
+  template<class ElementT, class MemSpaceT>
   explicit GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    const GlobConstPtr<ElementT> & gptr)
+    const GlobConstPtr<ElementT, MemSpaceT> & gptr)
   : GlobAsyncRef(gptr.dart_gptr())
   { }
 

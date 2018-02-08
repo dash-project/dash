@@ -16,18 +16,17 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType>
-GlobIter<ElementType, PatternType> find(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
-  /// Value which will be assigned to the elements in range [first, last)
-  const ElementType                  & value)
+template <typename GlobIter>
+GlobIter find(
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Value which will be assigned to the elements in range [first, last)
+    const typename GlobIter::value_type& value)
 {
-  using p_index_t = typename PatternType::index_type;
+  using p_index_t = typename GlobIter::pattern_type::index_type;
+  using value_t   = typename GlobIter::value_type;
 
   if(first >= last) {
     return last;
@@ -46,17 +45,17 @@ GlobIter<ElementType, PatternType> find(
    auto g_begin_index = pattern.global(l_begin_index);
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin();
-    // Pointers to first / final element in local range:
-    const ElementType * l_range_begin = lbegin + l_begin_index;
-    const ElementType * l_range_end   = lbegin + l_end_index;
+   const auto lbegin = first.globmem().lbegin();
+   // Pointers to first / final element in local range:
+   const auto l_range_begin = lbegin + l_begin_index;
+   const auto l_range_end   = lbegin + l_end_index;
 
-    DASH_LOG_DEBUG("local index range", l_begin_index, l_end_index);
+   DASH_LOG_DEBUG("local index range", l_begin_index, l_end_index);
 
-    auto l_result = std::find(l_range_begin, l_range_end, value);
-    if(l_result == l_range_end){
-      DASH_LOG_DEBUG("Not found in local range");
-      g_index = std::numeric_limits<p_index_t>::max();
+   auto l_result = std::find(l_range_begin, l_range_end, value);
+   if (l_result == l_range_end) {
+     DASH_LOG_DEBUG("Not found in local range");
+     g_index = std::numeric_limits<p_index_t>::max();
     } else {
       auto l_hit_index = l_result - lbegin;
       g_index = pattern.global(l_hit_index);
@@ -96,18 +95,17 @@ GlobIter<ElementType, PatternType> find(
  * \ingroup     DashAlgorithms
  */
 template<
-  typename ElementType,
-  class    PatternType,
+  typename GlobIter,
   class    UnaryPredicate >
-GlobIter<ElementType, PatternType> find_if(
+GlobIter find_if(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
+  GlobIter   first,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
+  GlobIter   last,
   /// Predicate which will be applied to the elements in range [first, last)
   UnaryPredicate                       predicate)
 {
-  typedef typename PatternType::index_type index_t;
+  typedef typename GlobIter::pattern_type::index_type index_t;
 
   auto & team        = first.pattern().team();
   auto myid          = team.myid();
@@ -156,17 +154,14 @@ GlobIter<ElementType, PatternType> find_if(
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType,
-	class    UnaryPredicate>
-GlobIter<ElementType, PatternType> find_if_not(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
-  /// Predicate which will be applied to the elements in range [first, last)
-	UnaryPredicate                       predicate)
+template <class GlobIter, class UnaryPredicate>
+GlobIter find_if_not(
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Predicate which will be applied to the elements in range [first, last)
+    UnaryPredicate predicate)
 {
   return find_if(first, last, std::not1(predicate));
 }

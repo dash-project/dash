@@ -63,10 +63,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<typename GlobMemT>
   explicit GlobRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<atomic_t, PatternT> & gptr)
+    GlobPtr<atomic_t, GlobMemT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -74,10 +74,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<typename PatternT>
+  template<typename GlobMemT>
   GlobRef(
     /// Pointer to referenced object in global memory
-    const GlobPtr<atomic_t, PatternT> & gptr)
+    const GlobPtr<atomic_t, GlobMemT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -106,11 +106,13 @@ public:
     return load();
   }
 
+#if 0
   operator GlobPtr<T>() const {
     DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     return GlobPtr<atomic_t>(_gptr);
   }
+#endif
 
   dart_gptr_t dart_gptr() const {
     return _gptr;
@@ -121,7 +123,9 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    return GlobPtr<T>(_gptr).is_local();
+    dart_team_unit_t luid;
+    dart_team_myid(_gptr.teamid, &luid);
+    return _gptr.unitid == luid.id;
   }
 
   /// atomically assigns value

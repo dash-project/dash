@@ -38,7 +38,8 @@ template <typename T,
           class    AllocT>             class GlobStaticMem;
 template <typename T,
           class    AllocT>             class GlobHeapMem;
-template <typename T>                  class GlobConstPtr;
+
+template <typename T, class MemSpaceT> class GlobConstPtr;
 
 template <typename T, class MemSpaceT> class GlobPtr;
 
@@ -59,22 +60,18 @@ dash::gptrdiff_t distance(
  */
 template<
   typename ElementType,
-  class    MemorySpace  = GlobStaticMem<
-                            typename std::remove_const<ElementType>::type,
-                            dash::allocator::SymmetricAllocator<
-                              typename std::remove_const<ElementType>::type
-                            > >
+  class    GlobMemT
 >
 class GlobPtr
 {
 private:
-  typedef GlobPtr<ElementType, MemorySpace>                self_t;
+  typedef GlobPtr<ElementType, GlobMemT>                self_t;
 
 public:
   typedef ElementType                                  value_type;
-  typedef GlobPtr<const ElementType, MemorySpace>      const_type;
-  typedef typename MemorySpace::index_type             index_type;
-  typedef typename MemorySpace::size_type               size_type;
+  typedef GlobPtr<const ElementType, GlobMemT>      const_type;
+  typedef typename GlobMemT::index_type             index_type;
+  typedef typename GlobMemT::size_type               size_type;
 
   typedef index_type                                   gptrdiff_t;
 
@@ -97,7 +94,7 @@ public:
 
 public:
   /// Convert GlobPtr<T> to GlobPtr<U>.
-  template<typename U, class MSp = MemorySpace>
+  template<typename U, class MSp = GlobMemT>
   struct rebind {
     typedef GlobPtr<U, MSp> other;
   };
@@ -106,7 +103,7 @@ private:
   // Raw global pointer used to initialize this pointer instance
   dart_gptr_t         _rbegin_gptr = DART_GPTR_NULL;
   // Memory space refernced by this global pointer
-  const MemorySpace * _mem_space   = nullptr;
+  const GlobMemT * _mem_space   = nullptr;
   // Size of the local section at the current position of this pointer
   size_type           _lsize       = 0;
   // Unit id of last unit in referenced global memory space
@@ -119,7 +116,7 @@ protected:
    * space reference.
    */
   GlobPtr(
-    const MemorySpace * mem_space,
+    const GlobMemT * mem_space,
     dart_gptr_t         gptr,
     index_type          rindex = 0)
   : _rbegin_gptr(gptr)
@@ -147,7 +144,7 @@ public:
    * Constructor, specifies underlying global address.
    */
   GlobPtr(
-    const MemorySpace & mem_space,
+    const GlobMemT & mem_space,
     dart_gptr_t         gptr)
   : _rbegin_gptr(gptr)
   , _mem_space(&mem_space)
@@ -159,7 +156,7 @@ public:
    * Constructor, specifies underlying global address.
    */
   GlobPtr(
-    MemorySpace && mem_space,
+    GlobMemT && mem_space,
     dart_gptr_t    gptr)
   : _rbegin_gptr(gptr)
   , _mem_space(nullptr)
@@ -188,21 +185,23 @@ public:
    */
   constexpr GlobPtr(const self_t & other)      = default;
 
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & rhs)       = default;
+
+  //TODO: we allow this only if both memory compares equal
   /**
    * Copy constructor.
    */
   template <typename T, class MemSpaceT>
   constexpr GlobPtr(const GlobPtr<T, MemSpaceT> & other)
   : _rbegin_gptr(other._rbegin_gptr)
-  , _mem_space(reinterpret_cast<const MemorySpace *>(other._mem_space))
+  , _mem_space(reinterpret_cast<const GlobMemT *>(other._mem_space))
   , _lsize(other._lsize)
   , _unit_end(other._unit_end)
   { }
-
-  /**
-   * Assignment operator.
-   */
-  self_t & operator=(const self_t & rhs)       = default;
 
   /**
    * Assignment operator.
@@ -211,7 +210,7 @@ public:
   self_t & operator=(const GlobPtr<T, MemSpaceT> & other)
   {
     _rbegin_gptr = other._rbegin_gptr;
-    _mem_space   = reinterpret_cast<const MemorySpace *>(other._mem_space);
+    _mem_space   = reinterpret_cast<const GlobMemT *>(other._mem_space);
     _lsize       = other._lsize;
     _unit_end    = other._unit_end;
     return *this;
@@ -258,9 +257,9 @@ public:
   /**
    * Converts global pointer to global const pointer.
    */
-  explicit constexpr operator GlobConstPtr<value_type>() const noexcept
+  explicit constexpr operator GlobConstPtr<value_type, GlobMemT>() const noexcept
   {
-    return GlobConstPtr<value_type>(_rbegin_gptr);
+    return GlobConstPtr<value_type, GlobMemT>(_rbegin_gptr);
   }
 
   /**
@@ -580,22 +579,22 @@ std::ostream & operator<<(
  *       memory space tagged as unit-scope address space
  *       (see GlobUnitMem).
  */
-template<typename T>
+template<typename T, class MemSpaceT>
 class GlobConstPtr
-: GlobPtr<T> // NOTE: non-public subclassing
+: GlobPtr<T, MemSpaceT> // NOTE: non-public subclassing
 {
-  typedef GlobConstPtr<T> self_t;
-  typedef GlobPtr<T>      base_t;
+  typedef GlobConstPtr<T, MemSpaceT> self_t;
+  typedef GlobPtr<T, MemSpaceT>      base_t;
  public:
   typedef T                                            value_type;
   typedef typename base_t::const_type                  const_type;
   typedef typename base_t::index_type                  index_type;
   typedef typename base_t::gptrdiff_t                  gptrdiff_t;
 
-  template <typename T_>
+  template <typename T_, class _MemSpaceT>
   friend std::ostream & operator<<(
     std::ostream           & os,
-    const GlobConstPtr<T_> & gptr);
+    const GlobConstPtr<T_, _MemSpaceT> & gptr);
 
  public:
   /**
@@ -757,10 +756,10 @@ class GlobConstPtr
   }
 };
 
-template<typename T>
+template<typename T, class MemSpaceT>
 std::ostream & operator<<(
   std::ostream          & os,
-  const GlobConstPtr<T> & gptr)
+  const GlobConstPtr<T, MemSpaceT> & gptr)
 {
   std::ostringstream ss;
   char buf[100];

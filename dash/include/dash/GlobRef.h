@@ -1,7 +1,6 @@
 #ifndef DASH__GLOBREF_H_
 #define DASH__GLOBREF_H_
 
-#include <dash/memory/GlobStaticMem.h>
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
@@ -11,20 +10,7 @@
 namespace dash {
 
 // Forward declarations
-template<typename T, class A> class GlobStaticMem;
 template<typename T, class MemSpaceT> class GlobPtr;
-
-template<typename T>
-struct has_subscript_operator
-{
-  typedef char (& yes)[1];
-  typedef char (& no)[2];
-
-  template <typename C> static yes check(decltype(&C::operator[]));
-  template <typename>   static no  check(...);
-
-  static bool const value = sizeof(check<T>(0)) == sizeof(yes);
-};
 
 template<typename T>
 class GlobRef
@@ -35,7 +21,7 @@ class GlobRef
     const GlobRef<U> & gref);
 
   template <
-    typename ElementT >
+    typename T_>
   friend class GlobRef;
 
   typedef typename std::remove_const<T>::type
@@ -78,10 +64,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class ElementT>
+  template<class ElementT, class MemSpaceT>
   explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
-    GlobConstPtr<ElementT> & gptr)
+    GlobConstPtr<ElementT, MemSpaceT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -100,10 +86,10 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class ElementT>
+  template<class ElementT, class MemSpaceT>
   explicit constexpr GlobRef(
     /// Pointer to referenced object in global memory
-    const GlobConstPtr<ElementT> & gptr)
+    const GlobConstPtr<ElementT, MemSpaceT> & gptr)
   : GlobRef(gptr.dart_gptr())
   { }
 
@@ -315,19 +301,6 @@ public:
   constexpr dart_gptr_t dart_gptr() const noexcept {
     return _gptr;
   }
-
-#if 0
-  template<
-    typename X=T,
-    typename std::enable_if<has_subscript_operator<X>::value, int>::type
-      * ptr = nullptr>
-  auto operator[](size_t pos) ->
-    typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
-  {
-    nonconst_value_type val = operator nonconst_value_type();
-    return val[pos];
-  }
-#endif
 
   /**
    * Checks whether the globally referenced element is in

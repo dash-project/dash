@@ -11,7 +11,7 @@ namespace dash {
 
 enum class StencilViewScope : std::uint8_t { INNER, BOUNDARY, ALL };
 
-template <typename ElementT, typename PatternT, typename StencilSpecT,
+template <typename ElementT, typename PatternT, typename GlobMemT, typename StencilSpecT,
           StencilViewScope Scope>
 class HaloMatrixIterator {
 private:
@@ -19,7 +19,7 @@ private:
   static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
   static constexpr auto MemoryArrange    = PatternT::memory_order();
 
-  using Self_t = HaloMatrixIterator<ElementT, PatternT, StencilSpecT, Scope>;
+  using Self_t = HaloMatrixIterator<ElementT, PatternT, GlobMemT, StencilSpecT, Scope>;
   using ViewSpec_t            = typename PatternT::viewspec_type;
   using pattern_size_t        = typename PatternT::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
@@ -32,7 +32,7 @@ public:
   using pointer           = ElementT*;
   using reference         = ElementT&;
 
-  using HaloBlock_t     = HaloBlock<ElementT, PatternT>;
+  using HaloBlock_t     = HaloBlock<ElementT, PatternT, GlobMemT>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using pattern_index_t = typename PatternT::index_type;
   using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;

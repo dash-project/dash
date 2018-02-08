@@ -18,13 +18,13 @@ template<typename T, class MemSpaceT> class GlobPtr;
 
 template<
   typename T,
-  typename GlobalPointerType = GlobPtr<T> >
+  typename GlobalPointerType>
 class GlobSharedRef
 {
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
-    const GlobSharedRef<U> & gref);
+    const GlobSharedRef<U, GlobalPointerType> & gref);
 
 private:
   typedef GlobSharedRef<T, GlobalPointerType>
@@ -237,7 +237,7 @@ public:
     return *this;
   }
 
-  GlobSharedRef<T> & operator+=(const T& ref)
+  GlobSharedRef<T, GlobalPointerType> & operator+=(const T& ref)
   {
 #if 0
     T add_val = ref;
@@ -340,10 +340,10 @@ public:
 
 };
 
-template<typename T>
+template<typename T, typename P>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobSharedRef<T> & gref) {
+  const GlobSharedRef<T, P> & gref) {
   char buf[100];
   sprintf(buf,
           "(%06X|%02X|%04X|%04X|%016lX)",

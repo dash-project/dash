@@ -135,23 +135,24 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
-                       std::pair<const Key, Mapped> > >
+  typename LocalMemType = HostSpace >
 class UnorderedMap
 {
 public:
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>             self_type;
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LocalMemType>             self_type;
 
   typedef Key                                                       key_type;
   typedef Mapped                                                 mapped_type;
   typedef Hash                                                        hasher;
   typedef Pred                                                     key_equal;
-  typedef Alloc                                               allocator_type;
 
   typedef dash::default_index_t                                   index_type;
   typedef dash::default_index_t                              difference_type;
   typedef dash::default_size_t                                     size_type;
   typedef std::pair<const key_type, mapped_type>                  value_type;
+
+  typedef dash::allocator::EpochSynchronizedAllocator<value_type>
+      allocator_type;
 
   typedef typename dash::container_traits<self_type>::local_type  local_type;
 
@@ -187,16 +188,16 @@ public:
   typedef typename glob_mem_type::const_local_iterator
     const_local_node_pointer;
 
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     iterator;
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     const_iterator;
   typedef typename std::reverse_iterator<iterator>
     reverse_iterator;
   typedef typename std::reverse_iterator<const_iterator>
     const_reverse_iterator;
 
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     local_pointer;
   typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     const_local_pointer;

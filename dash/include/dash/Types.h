@@ -4,6 +4,8 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/internal/Unit.h>
 
+#include <cpp17/cstddef.h>
+
 #include <array>
 #include <cstddef>
 #include <type_traits>
@@ -344,6 +346,8 @@ typedef
   typename std::max_align_t
 #endif
   max_align_t;
+
+using cpp17::byte;
 
 } // namespace dash
 

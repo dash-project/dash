@@ -73,14 +73,15 @@ const ElementType * min_element(
 
     DASH_LOG_TRACE("dash::min_element", "sizeof(min_pos):", sizeof(min_pos));
 
-    dash::allocator::LocalSpaceAllocator<uint8_t> alloc{};
+    dash::HostSpace hostSpace;
 
     int       align_bytes         = uloc.cache_line_size(0);
     int       single_element_sz   = ROUNDUP(sizeof(min_pos), align_bytes);
 
     size_t    min_vals_t_bytes    = single_element_sz * n_threads;
 
-    uint8_t * min_vals_t_raw      = alloc.allocate(min_vals_t_bytes, align_bytes);
+    uint8_t *min_vals_t_raw = reinterpret_cast<uint8_t *>(
+        hostSpace.allocate(min_vals_t_bytes, align_bytes));
 
     DASH_LOG_TRACE("dash::min_element", "min * alloc:",   min_vals_t_raw);
     //DASH_LOG_TRACE("dash::min_element", "min * aligned:", min_vals_t);
@@ -129,7 +130,7 @@ const ElementType * min_element(
       }
     }
 
-    alloc.deallocate(min_vals_t_raw, min_vals_t_bytes);
+    hostSpace.deallocate(min_vals_t_raw, min_vals_t_bytes, align_bytes);
 
     return (l_range_begin + min_pos_l.idx);
   }
@@ -154,22 +155,21 @@ const ElementType * min_element(
  * \ingroup     DashAlgorithms
  */
 template <
-  class ElementType,
-  class PatternType,
-  class Compare = std::less<const ElementType &> >
-GlobIter<ElementType, PatternType> min_element(
+  class GlobIter,
+  class Compare = std::less<const typename GlobIter::value_type  &> >
+GlobIter min_element(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
+  const GlobIter & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
+  const GlobIter & last,
   /// Element comparison function, defaults to std::less
   Compare                                    compare
-    = std::less<const ElementType &>())
+    = Compare())
 {
-  typedef dash::GlobIter<ElementType, PatternType> globiter_t;
-  typedef PatternType                               pattern_t;
-  typedef typename pattern_t::index_type              index_t;
-  typedef typename std::decay<ElementType>::type      value_t;
+  typedef GlobIter                                                 globiter_t;
+  typedef typename GlobIter::pattern_type                          pattern_t;
+  typedef typename pattern_t::index_type                           index_t;
+  typedef typename std::decay<typename GlobIter::value_type>::type value_t;
 
   // return last for empty array
   if (first == last) {
@@ -190,7 +190,7 @@ GlobIter<ElementType, PatternType> min_element(
   // Get local address range between global iterators:
   auto    local_idx_range    = dash::local_index_range(first, last);
   // Pointer to local minimum element:
-  const   ElementType * lmin = nullptr;
+  const   value_t * lmin = nullptr;
   // Local offset of local minimum element, or -1 if no element found:
   index_t l_idx_lmin         = -1;
   if (local_idx_range.begin == local_idx_range.end) {
@@ -200,10 +200,10 @@ GlobIter<ElementType, PatternType> min_element(
     trace.enter_state("local");
 
     // Pointer to first element in local memory:
-    const ElementType * lbegin        = first.globmem().lbegin();
+    const value_t * lbegin        = first.globmem().lbegin();
     // Pointers to first / final element in local range:
-    const ElementType * l_range_begin = lbegin + local_idx_range.begin;
-    const ElementType * l_range_end   = lbegin + local_idx_range.end;
+    const value_t * l_range_begin = lbegin + local_idx_range.begin;
+    const value_t * l_range_end   = lbegin + local_idx_range.end;
 
     lmin = dash::min_element(l_range_begin, l_range_end, compare);
 
@@ -235,7 +235,7 @@ GlobIter<ElementType, PatternType> min_element(
   // found:
   local_min_t local_min;
   local_min.value   = l_idx_lmin < 0
-                      ? ElementType()
+                      ? value_t()
                       : *lmin;
   local_min.g_index = l_idx_lmin < 0
                       ? -1
@@ -301,7 +301,7 @@ GlobIter<ElementType, PatternType> min_element(
   // offset of minimum element:
   globiter_t minimum = (first - first.gpos()) + gi_minimum;
   DASH_LOG_DEBUG("dash::min_element >", minimum,
-                 "=", static_cast<ElementType>(*minimum));
+                 "=", static_cast<value_t>(*minimum));
 
   return minimum;
 }
@@ -323,17 +323,16 @@ GlobIter<ElementType, PatternType> min_element(
  * \ingroup     DashAlgorithms
  */
 template <
-  class ElementType,
-  class PatternType,
-  class Compare = std::greater<const ElementType &> >
-GlobIter<ElementType, PatternType> max_element(
+  class GlobIter,
+  class Compare = std::greater<const typename GlobIter::value_type &> >
+GlobIter max_element(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
+  const GlobIter & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
+  const GlobIter & last,
   /// Element comparison function, defaults to std::less
   Compare                                    compare
-    = std::greater<const ElementType &>())
+    = Compare())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);
@@ -366,7 +365,7 @@ const ElementType * max_element(
   const ElementType * last,
   /// Element comparison function, defaults to std::less
   Compare             compare
-    = std::greater<ElementType &>())
+    = Compare())
 {
   // Same as min_element with different compare function
   return dash::min_element(first, last, compare);

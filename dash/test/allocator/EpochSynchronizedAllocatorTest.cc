@@ -1,7 +1,9 @@
 #include "EpochSynchronizedAllocatorTest.h"
 #include <dash/memory/HostSpace.h>
+#include <dash/memory/HBWSpace.h>
 #include <dash/allocator/EpochSynchronizedAllocator.h>
 #include <dash/memory/SimpleMemoryPool.h>
+#include <cpp17/polymorphic_allocator.h>
 
 
 TEST_F(EpochSynchronizedAllocatorTest, AllocDealloc) {
@@ -55,5 +57,42 @@ TEST_F(EpochSynchronizedAllocatorTest, SimplePoolAlloc) {
   OtherDynAllocTraits::allocator_type otherDynAlloc{dash::Team::All()};
   OtherDynAllocTraits::pointer gp2 = OtherDynAllocTraits::allocate(otherDynAlloc, n);
   OtherDynAllocTraits::deallocate(otherDynAlloc, gp2, n);
+}
+
+//C++17 polymorphic_allocator
+template <typename T>
+using PMA = cpp17::pmr::polymorphic_allocator<T>;
+
+// C++17 string that uses a polymorphic allocator
+template <class charT, class traits = std::char_traits<charT>>
+using basic_string = std::basic_string<charT, traits,
+                                       PMA<charT>>;
+using string  = basic_string<char>;
+using wstring = basic_string<wchar_t>;
+
+
+TEST_F(EpochSynchronizedAllocatorTest, PolyAlloc) {
+
+  dash::HBWSpace hbwSpace{};
+  std::vector<size_t, PMA<size_t>> vec {10, 0, &hbwSpace};
+
+  std::iota(std::begin(vec), std::end(vec), 0);
+
+  for (std::size_t idx = 0; idx < 10; ++idx) {
+    ASSERT_EQ_U(vec[idx], idx);
+  }
+
+  std::vector<string, PMA<string>> strvec{&hbwSpace};
+
+  for (std::size_t idx = 0; idx < 10; ++idx) {
+    std::stringstream ss;
+    ss << "Element: " << idx;
+
+    strvec.push_back(string{ss.str().c_str()});
+  }
+  for (std::size_t idx = 0; idx < 10; ++idx) {
+    DASH_LOG_DEBUG("Value", idx, strvec[idx]);
+  }
+
 }
 

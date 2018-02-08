@@ -25,19 +25,19 @@ private:
 public:
   using Element_t = typename MatrixT::value_type;
 
-  using iterator       = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
+  using iterator       = HaloMatrixIterator<Element_t, Pattern_t, typename MatrixT::GlobMem_t, StencilSpecT,
                                       StencilViewScope::ALL>;
   using const_iterator = const iterator;
-  using iterator_inner = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
+  using iterator_inner = HaloMatrixIterator<Element_t, Pattern_t, typename MatrixT::GlobMem_t, StencilSpecT,
                                             StencilViewScope::INNER>;
   using const_iterator_inner = const iterator_inner;
-  using iterator_bnd = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
+  using iterator_bnd = HaloMatrixIterator<Element_t, Pattern_t, typename MatrixT::GlobMem_t, StencilSpecT,
                                           StencilViewScope::BOUNDARY>;
   using const_iterator_bnd = const iterator_bnd;
 
   using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
   using CycleSpec_t     = CycleSpec<NumDimensions>;
-  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
+  using HaloBlock_t     = HaloBlock<Element_t, Pattern_t, typename MatrixT::GlobMem_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
   using region_index_t  = typename RegionCoords<NumDimensions>::region_index_t;
@@ -47,7 +47,7 @@ private:
 
   using pattern_size_t = typename Pattern_t::size_type;
   using HaloSpec_t     = HaloSpec<NumDimensions>;
-  using Region_t       = Region<Element_t, Pattern_t, NumDimensions>;
+  using Region_t       = Region<Element_t, Pattern_t, typename MatrixT::GlobMem_t, NumDimensions>;
 
 public:
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,

@@ -35,9 +35,7 @@ class GlobIter;
 template<
   typename ElementType,
   class    PatternType,
-  class    GlobMemType   = GlobStaticMem<
-                             typename std::decay<ElementType>::type
-                           >,
+  class    GlobMemType,
   class    PointerType   = typename GlobMemType::pointer,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter

@@ -29,17 +29,15 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template <
-    typename ElementType,
-    class    PatternType,
-    class    UnaryFunction >
-void generate (
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
-  /// Generator function
-  UnaryFunction                      gen) {
+template <class GlobIter, class UnaryFunction>
+void generate(
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Generator function
+    UnaryFunction gen)
+{
   /// Global iterators to local range:
   auto lrange = dash::local_range(first, last);
   auto lfirst = lrange.begin;
@@ -66,17 +64,15 @@ void generate (
  *
  * \ingroup     DashAlgorithms
  */
-template <
-    typename ElementType,
-    class    PatternType,
-    class    UnaryFunction >
+template <class GlobIter, class UnaryFunction>
 void generate_with_index(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
-  /// Generator function
-  UnaryFunction                      gen) {
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Generator function
+    UnaryFunction gen)
+{
   /// Global iterators to local index range:
   auto index_range  = dash::local_index_range(first, last);
   auto lbegin_index = index_range.begin;

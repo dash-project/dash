@@ -6,13 +6,17 @@
 #include <dash/Team.h>
 #include <dash/coarray/CoEventRef.h>
 
+#include <dash/memory/MemorySpace.h>
+
 namespace dash {
 namespace coarray {
 
 class CoEventIter {
 private:
   using self_t = CoEventIter;
-  using gptr_t = GlobPtr<int>;
+  using globmem_t = dash::GlobStaticMem<int, HostSpace>;
+  using gptr_t = GlobPtr<int, globmem_t>;
+
 public:
   using difference_type   = typename gptr_t::gptrdiff_t;
   using value_type        = CoEventRef;
@@ -103,4 +107,3 @@ private:
 
 
 #endif /* DASH__COARRAY__COEVENTITER_H */
-

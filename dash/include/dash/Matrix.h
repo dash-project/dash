@@ -96,7 +96,7 @@ template <
   dim_t NumDimensions,
   typename IndexT,
   class PatternT,
-  typename MSpaceCategory>
+  typename LocalMemSpaceT>
 class Matrix;
 /// Forward-declaration
 template <
@@ -104,7 +104,7 @@ template <
   dim_t NumDimensions,
   dim_t CUR,
   class PatternT,
-  typename MSpaceCategory>
+  typename LocalMemSpaceT>
 class MatrixRef;
 /// Forward-declaration
 template <
@@ -112,7 +112,7 @@ template <
   dim_t NumDimensions,
   dim_t CUR,
   class Pattern,
-  typename MSpaceCategory>
+  typename LocalMemSpaceT>
 class LocalMatrixRef;
 
 /**
@@ -136,7 +136,7 @@ template<
   dim_t    NumDimensions,
   typename IndexT         = dash::default_index_t,
   class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT>,
-  typename MSpaceCategory = dash::memory_space_host_tag>
+  typename LocalMemSpaceT = HostSpace>
 class Matrix
 {
   static_assert(
@@ -147,20 +147,20 @@ class Matrix
     "Index type IndexT must be the same for Matrix and specified pattern");
 
 private:
-  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT, MSpaceCategory>
+  typedef Matrix<ElementT, NumDimensions, IndexT, PatternT, LocalMemSpaceT>
     self_t;
   typedef typename std::make_unsigned<IndexT>::type
     SizeType;
-  typedef MatrixRefView<ElementT, NumDimensions, PatternT, MSpaceCategory>
+  typedef MatrixRefView<ElementT, NumDimensions, PatternT, LocalMemSpaceT>
     MatrixRefView_t;
-  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
+  typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     LocalRef_t;
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
+            const ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     LocalRef_const_t;
   typedef PatternT
     Pattern_t;
-  typedef GlobStaticMem<ElementT, dash::allocator::SymmetricAllocator<ElementT, MSpaceCategory>>
+  typedef GlobStaticMem<ElementT, LocalMemSpaceT>
     GlobMem_t;
 
 public:
@@ -178,6 +178,11 @@ public:
     class PatternT_,
     typename MSpaceC>
   friend class LocalMatrixRef;
+
+  template<
+    class MatrixT_,
+    typename StencilSpec_t>
+  friend class HaloMatrixWrapper;
 
 public:
   typedef ElementT                                              value_type;
@@ -215,12 +220,12 @@ public:
 public:
   /// Type specifying the view on local matrix elements.
   typedef LocalMatrixRef<
-            ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
+            ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     local_type;
 
   /// Type specifying the view on const local matrix elements.
   typedef LocalMatrixRef<
-            const ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory>
+            const ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT>
     const_local_type;
 
   /// The type of the pattern specifying linear iteration order and how
@@ -231,13 +236,13 @@ public:
   /// column vectors.
   template <dim_t NumViewDim>
     using view_type =
-          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, MSpaceCategory>;
+          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT, LocalMemSpaceT>;
 
   /// Type of views on matrix elements such as sub-matrices, row- and
   /// column vectors.
   template <dim_t NumViewDim>
     using const_view_type =
-          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT, MSpaceCategory>;
+          MatrixRef<const ElementT, NumDimensions, NumViewDim, PatternT, LocalMemSpaceT>;
 
 // public types exposed in Matrix interface
 public:
@@ -748,7 +753,7 @@ public:
    * Conversion operator to type \ref MatrixRef.
    */
   operator
-    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, MSpaceCategory> ();
+    MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT, LocalMemSpaceT> ();
 
 };
 
@@ -763,8 +768,8 @@ template <
   dim_t    NumDimensions,
   typename IndexT   = dash::default_index_t,
   class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT>,
-  typename MSpaceCategory = dash::memory_space_host_tag>
-using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
+  typename LocalMemSpaceT = HostSpace>
+using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT, LocalMemSpaceT>;
 
 }  // namespace dash
 

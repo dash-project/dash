@@ -9,6 +9,8 @@
 #include <dash/Team.h>
 #include <dash/Onesided.h>
 
+#include <dash/memory/MemorySpace.h>
+
 #include <dash/internal/Logging.h>
 
 namespace dash {
@@ -64,7 +66,6 @@ namespace dash {
  * \}
  */
 
-
 /**
  * Global memory with address space of static size.
  *
@@ -78,19 +79,21 @@ namespace dash {
 template<
   /// Type of elements maintained in the global memory space
   typename ElementType,
-  /// Type implementing the DASH allocator concept used to allocate and
-  /// deallocate physical memory
-  class    AllocatorType =
-             dash::allocator::SymmetricAllocator<ElementType> >
+  typename LocalMemorySpace
+   >
 class GlobStaticMem
 {
 private:
-  typedef GlobStaticMem<ElementType, AllocatorType>
+  typedef GlobStaticMem<ElementType, LocalMemorySpace>
     self_t;
 
+  using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
+
 public:
-  typedef AllocatorType                                    allocator_type;
-  typedef typename std::decay<ElementType>::type               value_type;
+  using value_type = typename std::decay<ElementType>::type;
+
+  using allocator_type =
+      dash::SymmetricAllocator<value_type, LocalMemorySpace>;
 
   typedef typename allocator_type::size_type                    size_type;
   typedef typename allocator_type::difference_type        difference_type;
@@ -103,6 +106,8 @@ public:
 
   typedef       value_type *                                local_pointer;
   typedef const value_type *                          const_local_pointer;
+
+  typedef LocalMemorySpace                           local_memory_space_t;
 
 private:
   allocator_type          _allocator;

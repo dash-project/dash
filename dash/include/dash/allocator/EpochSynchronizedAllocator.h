@@ -69,8 +69,6 @@ class EpochSynchronizedAllocator {
       EpochSynchronizedAllocator<ElementType, MSpaceCategory, LocalAllocator>;
   using block_t             = dash::allocator::memory_block;
   using internal_value_type = std::pair<block_t, pointer>;
-  using memory_space =
-      dash::MemorySpace<MSpaceCategory>;
 
  public:
   /// Convert EpochSynchronizedAllocator<T> to EpochSynchronizedAllocator<U>.

@@ -20,7 +20,7 @@ namespace dash {
 template<
   typename ElementType,
   class    GlobMemType,
-  class    PointerType   = GlobPtr<ElementType>,
+  class    PointerType   = GlobPtr<ElementType, GlobMemType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobListIter
 : public std::iterator<

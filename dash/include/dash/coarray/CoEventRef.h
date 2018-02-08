@@ -5,6 +5,8 @@
 #include <dash/GlobPtr.h>
 #include <dash/Atomic.h>
 
+#include <dash/memory/MemorySpace.h>
+
 namespace dash {
 namespace coarray {
 
@@ -12,7 +14,8 @@ class CoEventRef {
 private:
   using self_t      = CoEventRef;
   using event_ctr_t = dash::Atomic<int>;
-  using gptr_t      = GlobPtr<event_ctr_t>;
+  using globmem_t   = dash::GlobStaticMem<event_ctr_t, HostSpace>;
+  using gptr_t      = GlobPtr<event_ctr_t, globmem_t>;
 
 public:
   explicit CoEventRef(

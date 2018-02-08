@@ -12,6 +12,8 @@
 #include <dash/coarray/CoEventIter.h>
 #include <dash/coarray/CoEventRef.h>
 
+#include <dash/memory/MemorySpace.h>
+
 namespace dash {
 
 /**
@@ -40,7 +42,8 @@ namespace dash {
 class Coevent {
 private:
   using event_cnt_t    = dash::Atomic<int>;
-  using gptr_t         = GlobPtr<event_cnt_t>;
+  using globmem_t      = dash::GlobStaticMem<event_cnt_t, dash::HostSpace>;
+  using gptr_t         = GlobPtr<event_cnt_t, globmem_t>;
 public:
   // Types
   using iterator       = coarray::CoEventIter;

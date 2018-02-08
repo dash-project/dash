@@ -16,14 +16,13 @@ namespace dash {
  * \ingroup     DashAlgorithms
  */
 template <
-  typename ElementType,
-  class    PatternType >
+  typename GlobIter >
 bool equal(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first_1,
+  GlobIter   first_1,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last_1,
-  GlobIter<ElementType, PatternType>   first_2)
+  GlobIter   last_1,
+  GlobIter   first_2)
 {
   auto & team        = first_1.team();
   auto myid          = team.myid();
@@ -58,15 +57,14 @@ bool equal(
  * \ingroup     DashAlgorithms
  */
 template <
-  typename ElementType,
-  class    PatternType,
+  class    GlobIter,
   class    BinaryPredicate >
 bool equal(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first_1,
+  GlobIter   first_1,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last_1,
-  GlobIter<ElementType, PatternType>   first_2,
+  GlobIter   last_1,
+  GlobIter   first_2,
   BinaryPredicate                      pred)
 {
   auto & team        = first_1.team();

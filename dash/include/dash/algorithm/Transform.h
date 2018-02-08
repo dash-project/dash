@@ -162,7 +162,7 @@ GlobOutputIt transform(
   InputIt         in_a_last,
   /// Iterator on begin of second local range
   GlobInputIt     in_b_first,
-  /// Iterator on first element of global output range 
+  /// Iterator on first element of global output range
   GlobOutputIt    out_first,
   /// Reduce operation
   BinaryOperation binary_op);
@@ -326,20 +326,30 @@ GlobOutputIt transform(
 /**
  * Specialization of \c dash::transform for global lhs input range.
  */
-template<
-  typename ValueType,
-  class PatternType,
-  class GlobInputIt,
-  class GlobOutputIt,
-  class BinaryOperation >
+template <
+    class GlobInputIt1,
+    class GlobInputIt2,
+    class GlobOutputIt,
+    class BinaryOperation>
 GlobOutputIt transform(
-  GlobIter<ValueType, PatternType> in_a_first,
-  GlobIter<ValueType, PatternType> in_a_last,
-  GlobInputIt                      in_b_first,
-  GlobOutputIt                     out_first,
-  BinaryOperation                  binary_op = dash::plus<ValueType>())
+    GlobInputIt1    in_a_first,
+    GlobInputIt1    in_a_last,
+    GlobInputIt2    in_b_first,
+    GlobOutputIt    out_first,
+    BinaryOperation binary_op = dash::plus<typename GlobInputIt1::value_type>())
 {
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
+  using value_type_a = typename GlobInputIt1::value_type;
+  using value_type_b = typename GlobInputIt2::value_type;
+  using value_type_c = typename GlobOutputIt::value_type;
+
+  static_assert(
+      std::is_same<value_type_a, value_type_b>::value,
+      "Input Iterators must match");
+  static_assert(
+      std::is_same<value_type_b, value_type_c>::value,
+      "Input and Output Iterators must match");
+
   auto in_first = in_a_first;
   auto in_last  = in_a_last;
 
@@ -409,7 +419,7 @@ GlobOutputIt transform(
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = (out_first + global_offset).dart_gptr();
   // Native pointer to local sub-range:
-  ValueType * l_values          = (in_a_first + global_offset).local();
+  auto l_values          = (in_a_first + global_offset).local();
   // Send accumulate message:
   trace.enter_state("transform_blocking");
   dash::internal::transform_blocking_impl(

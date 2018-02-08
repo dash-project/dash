@@ -6,108 +6,14 @@
 #include <cstddef>
 #include <memory>
 
+#include <cpp17/polymorphic_allocator.h>
+#include <dash/Meta.h>
 #include <dash/Types.h>
 
 namespace dash {
 
 template <typename ElementType, class MemorySpace>
 class GlobPtr;
-
-/**
- * Pointer types depend on a memory space.
- * For example, an allocator could be used for global and native memory.
- * The concrete MemorySpace types define pointer types for their
- * their address space, like `GlobPtr<T>` or `T*`.
- *
- * Note that these are provided as incomplete types via member alias
- * templates. Memory spaces are not concerned with value semantics, they
- * only respect the address concept.
- * Value types `T` are specified by allocators.
- *
- */
-template <class Pointer>
-struct pointer_traits : public std::pointer_traits<Pointer> {
-  /*
-   * Something similar to allocator::rebind unless a more elegant
-   * solution comes up:
-   *
-   * template <class U>
-   * pointer_type = memory_space_traits<
-   *                  typename memory_space::template pointer_type<U> >::type
-   *
-   * Example:
-   *
-   *    template <class T>
-   *    class GlobMem {
-   *    public:
-   *      template <class U>
-   *      struct pointer_type {
-   *        typedef dash::GlobPtr<U> type;
-   *      };
-   *      // ...
-   *    }
-   *
-   * Usage, for example in Allocator type:
-   *
-   *    template <class T, class MemorySpace>
-   *    class MyAllocator {
-   *    public:
-   *      // would resolve to T* or GlobPtr<T> etc.:
-   *      typedef typename
-   *        dash::memory_space_traits<MemorySpace>::pointer_type<T>::type
-   *      pointer;
-   *
-   *      typedef typename
-   *        dash::pointer_traits<pointer>::const_pointer<T>::type
-   *      const_pointer;
-   *
-   *      // ...
-   *    };
-   *
-   */
-};
-
-struct memory_space_global_domain_tag {
-};
-struct memory_space_local_domain_tag {
-};
-
-struct memory_space_host_tag {
-};
-struct memory_space_hbw_tag {
-};
-struct memory_space_pmem_tag {
-};
-
-template <class MemSpace>
-struct memory_space_traits {
-  using memory_space_type_category =
-      typename MemSpace::memory_space_type_category;
-
-  using is_global = std::integral_constant<bool, 0>;
-#if 0
-  using memory_space_domain_category =
-      typename MemSpace::memory_space_domain_category;
-  /**
-   * Whether the memory space type is specified for global address space.
-   */
-  using is_global = std::integral_constant<
-      bool, std::is_same<memory_space_domain_category,
-                         memory_space_global_domain_tag>::value>;
-  /**
-   * Whether the memory space type is specified for local address space.
-   * As arbitrary address space domains can be defined, this trait is not
-   * equivalent to `!is_global`.
-   */
-  using is_local = std::integral_constant<
-      bool, std::is_same<memory_space_domain_category,
-                         memory_space_local_domain_tag>::value>;
-#endif
-
-  using void_pointer =
-      typename std::conditional<is_global::value,
-                                dash::GlobPtr<void, MemSpace>, void*>::type;
-};
 
 /**
  * The \c MemorySpace concept follows the STL \c std::pmr::memory_resource.
@@ -148,34 +54,159 @@ struct memory_space_traits {
  * interface, only DART_TYPE_BYTE instead of the actual value type
  * is available. This would therefore harm stability and performance.
  */
-template <class MemSpaceTypeCategory>
-class MemorySpace {
-  using self_t = MemorySpace;
 
- public:
-  // using index_type = dash::default_index_t;
-  // using size_type  = dash::default_size_t;
-  using index_type = std::size_t;
-  using size_type  = std::size_t;
+struct memory_space_global_domain_tag {
+};
+struct memory_space_local_domain_tag {
+};
 
-  using memory_space_type_category = MemSpaceTypeCategory;
+struct memory_space_host_tag {
+};
+struct memory_space_hbw_tag {
+};
+struct memory_space_pmem_tag {
+};
 
-  // Resolve void pointer type for this MemorySpace, typically
-  // `GlobPtr<void>` for global and `void *` for local memory.
-  // Allocators use rebind to obtain a fully specified type like
-  // `GlobPtr<double>` and can then cast the `void_pointer`
-  // returned from a memory space to their value type.
+///////////////////////////////////////////////////////////////////////////////
+// MEMORY SPACE TRAITS
+///////////////////////////////////////////////////////////////////////////////
+//
+class HostSpace;
+class HBWSpace;
+
+namespace details {
+
+template <typename _D>
+using is_local_memory_space = std::integral_constant<
+    bool,
+    std::is_same<_D, memory_space_local_domain_tag>::value>;
+
+template <typename _D>
+using is_global_memory_space = std::integral_constant<
+    bool,
+    std::is_same<_D, memory_space_global_domain_tag>::value>;
+
+template <class _Ms>
+using memspace_traits_is_global =
+    is_global_memory_space<typename _Ms::memory_space_domain_category>;
+
+template <class _Ms>
+using memspace_traits_is_local =
+    is_local_memory_space<typename _Ms::memory_space_domain_category>;
+
+DASH__META__DEFINE_TRAIT__HAS_TYPE(void_pointer);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_void_pointer);
+
+template <class _Ms, bool = has_type_void_pointer<_Ms>::value>
+struct memspace_traits_void_pointer_type {
+  typedef typename _Ms::void_pointer type;
+};
+
+template <class _Ms>
+struct memspace_traits_void_pointer_type<_Ms, false> {
+  typedef typename std::conditional<
+      memspace_traits_is_global<_Ms>::value,
+      dash::GlobPtr<void, _Ms>,
+      void*>::type type;
+};
+
+template <class _Ms, bool = has_type_const_void_pointer<_Ms>::value>
+struct memspace_traits_const_void_pointer_type {
+  typedef typename _Ms::const_void_pointer type;
+};
+
+template <class _Ms>
+struct memspace_traits_const_void_pointer_type<_Ms, false> {
+  typedef typename std::conditional<
+      memspace_traits_is_global<_Ms>::value,
+      dash::GlobPtr<const void, _Ms>,
+      const void*>::type type;
+};
+
+}  // namespace details
+
+template <class MemSpace>
+struct memory_space_traits {
+  /**
+   * The underlying memory type (Host, CUDA, HBW, etc.)
+   */
+  using memory_space_type_category =
+      typename MemSpace::memory_space_type_category;
+
+  /**
+   * The underlying memory domain (local, global, etc.)
+   */
+  using memory_space_domain_category =
+      typename MemSpace::memory_space_domain_category;
+
+  /**
+   * Whether the memory space type is specified for global address space.
+   */
+  using is_global = typename details::memspace_traits_is_global<MemSpace>;
+
+  /**
+   * Whether the memory space type is specified for local address space.
+   * As arbitrary address space domains can be defined, this trait is not
+   * equivalent to `!is_global`.
+   */
+  using is_local = typename details::memspace_traits_is_local<MemSpace>;
+
   using void_pointer =
-      typename dash::memory_space_traits<self_t>::void_pointer;
+      typename details::memspace_traits_void_pointer_type<MemSpace>::type;
 
- protected:
-  virtual ~MemorySpace();
+  using const_void_pointer =
+      typename details::memspace_traits_const_void_pointer_type<
+          MemSpace>::type;
+};
 
-  virtual void_pointer do_allocate(std::size_t bytes,
-                                   std::size_t alignment) = 0;
+///////////////////////////////////////////////////////////////////////////////
+// MEMORY SPACE CONCEPT
+///////////////////////////////////////////////////////////////////////////////
 
-  virtual void do_deallocate(void_pointer p, std::size_t bytes,
-                             std::size_t alignment) = 0;
+namespace details {
+
+template <class>
+struct empty_base {
+  empty_base() = default;
+
+  template <class... Args>
+  constexpr empty_base(Args&&...)
+  {
+  }
+};
+
+template <bool Condition, class T>
+using conditional_base =
+    typename std::conditional<Condition, T, empty_base<T>>::type;
+
+}  // namespace details
+
+template <class ElementType>
+class LocalMemorySpace : public cpp17::pmr::memory_resource {
+  // We may add something here in figure
+};
+
+template <typename T>
+class GlobalMemorySpace {
+private:
+  static constexpr size_t max_align = alignof(dash::max_align_t);
+
+  using self_t = GlobalMemorySpace;
+
+  using pointer = dash::GlobPtr<T, self_t>;
+  using const_pointer = dash::GlobPtr<const T, self_t>;
+
+public:
+  virtual ~GlobalMemorySpace();
+
+  pointer allocate(size_t bytes, size_t alignment = max_align)
+  {
+    return do_allocate(bytes, alignment);
+  }
+  void deallocate(pointer p, size_t bytes, size_t alignment = max_align)
+  {
+    return do_deallocate(p, bytes, alignment);
+  }
 
   /**
    * \note
@@ -188,90 +219,106 @@ class MemorySpace {
    * STL Reference:
    * http://cppreference.com/w/cpp/experimental/memory_resource/do_is_equal
    */
-  // virtual bool         do_is_equal(
-  //                      const MemorySpace & other) const noexcept = 0;
+  bool is_equal(const GlobalMemorySpace& other) const noexcept
+  {
+    return do_is_equal(other);
+  }
 
- public:
-  void_pointer allocate(std::size_t bytes,
-                        std::size_t alignment = alignof(dash::max_align_t));
+#if 0
+  size_t size() const noexcept;
 
-  void deallocate(void_pointer p, std::size_t bytes,
-                  std::size_t alignment = alignof(dash::max_align_t));
+  size_t capacity() const noexcept;
+#endif
 
-  /**
-   * Two memory spaces compare equal if and only if memory allocated
-   * from one memory_resource can be deallocated from the other and
-   * vice versa.
-   */
-  bool is_equal(const MemorySpace& other) const noexcept;
+protected:
+  virtual pointer do_allocate(size_t bytes, size_t alignment) = 0;
 
-  size_type size() const;
+  virtual void do_deallocate(
+      pointer p, size_t bytes, size_t alignment) = 0;
 
-  /*
-   * \todo
-   *
-   * Clarify: This method makes only sense in case of a global adresse space.
-   */
-  // size_type local_size(dash::team_unit_t unit) const;
+  virtual bool do_is_equal(const GlobalMemorySpace& other) const noexcept = 0;
 };
 
-template <class MemSpaceTypeCategory>
-inline MemorySpace<MemSpaceTypeCategory>::~MemorySpace()
-{
-}
+template <typename ElementType, typename MSpaceDomainCategory>
+class MemorySpace
+  : public details::conditional_base<
+        details::is_local_memory_space<MSpaceDomainCategory>::value,
+        LocalMemorySpace<ElementType>>,
+    public details::conditional_base<
+        details::is_global_memory_space<MSpaceDomainCategory>::value,
+        GlobalMemorySpace<ElementType>> {
+  // A memory space can be either local or global
+  // We may change this in future...
+  static_assert(
+      details::is_local_memory_space<MSpaceDomainCategory>::value ^
+          details::is_global_memory_space<MSpaceDomainCategory>::value,
+      "memory space must be either local or global");
 
-template <class MemSpaceTypeCategory>
-inline typename MemorySpace<MemSpaceTypeCategory>::void_pointer
-MemorySpace<MemSpaceTypeCategory>::allocate(std::size_t bytes,
-                                            std::size_t alignment)
-{
-  return do_allocate(bytes, alignment);
-}
+public:
+  using memory_space_domain_category = memory_space_local_domain_tag;
+};
 
-template <class MemSpaceTypeCategory>
-inline void MemorySpace<MemSpaceTypeCategory>::deallocate(
-    typename MemorySpace<MemSpaceTypeCategory>::void_pointer p,
-    std::size_t bytes, std::size_t alignment)
-{
-  return do_deallocate(p, bytes, alignment);
-}
-
-template <class MemSpaceTypeCategory>
-inline bool operator==(MemorySpace<MemSpaceTypeCategory> const& lhs,
-                       MemorySpace<MemSpaceTypeCategory> const& rhs)
+template <typename ElementType, typename MSpaceDomainCategory>
+inline bool operator==(
+    MemorySpace<ElementType, MSpaceDomainCategory> const& lhs,
+    MemorySpace<ElementType, MSpaceDomainCategory> const& rhs)
 {
   return &lhs == &rhs || lhs.is_equal(rhs);
 }
 
-// Default Memory Space is HostSpace
-// TODO rko: maybe there is a better solution to solve this??
+template <typename ElementType, typename MSpaceDomainCategory>
+inline bool operator!=(
+    MemorySpace<ElementType, MSpaceDomainCategory> const& lhs,
+    MemorySpace<ElementType, MSpaceDomainCategory> const& rhs)
+{
+  return !(lhs == rhs);
+}
 
-MemorySpace<memory_space_host_tag>*
-get_default_host_space();
+///////////////////////////////////////////////////////////////////////////////
+// HELPER FUNCTIONS
+///////////////////////////////////////////////////////////////////////////////
+//
 
-MemorySpace<memory_space_hbw_tag>*
-get_default_hbw_space();
+//TODO: this is very ugly and we should prefer to create a factory
 
-template <typename MemSpaceTypeCategory>
-inline MemorySpace<MemSpaceTypeCategory>* get_default_memory_space()
+template <
+    class ElementType,
+    class MSpaceDomainCategory,
+    class MSpaceTypeCategory>
+inline MemorySpace<ElementType, MSpaceDomainCategory>*
+get_default_memory_space()
 {
   // Current we have only a default host space
   return nullptr;
 }
 
+MemorySpace<void, memory_space_local_domain_tag>* get_default_host_space();
+
+MemorySpace<void, memory_space_local_domain_tag>* get_default_hbw_space();
+
 template <>
-inline MemorySpace<memory_space_host_tag>*
-get_default_memory_space<memory_space_host_tag>()
+inline MemorySpace<void, memory_space_local_domain_tag>*
+get_default_memory_space<
+    void,
+    memory_space_local_domain_tag,
+    memory_space_host_tag>()
 {
   return get_default_host_space();
 }
+
 template <>
-inline MemorySpace<memory_space_hbw_tag>*
-get_default_memory_space<memory_space_hbw_tag>()
+inline MemorySpace<void, memory_space_local_domain_tag>*
+get_default_memory_space<
+    void,
+    memory_space_local_domain_tag,
+    memory_space_hbw_tag>()
 {
   return get_default_hbw_space();
 }
 
 }  // namespace dash
+
+#include <dash/memory/HostSpace.h>
+#include <dash/memory/HBWSpace.h>
 
 #endif  // DASH__MEMORY__MEMORY_SPACE_H__INCLUDED

@@ -53,6 +53,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     // Initialize arrays
     LOG_MESSAGE("Initialize arr1");
     dash::Array<value_t> arr1(array_size);
+
     LOG_MESSAGE("Initialize arr2");
     dash::Array<value_t> arr2(array_size,
                               dash::BLOCKED);
