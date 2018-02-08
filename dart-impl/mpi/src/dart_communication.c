@@ -1891,9 +1891,6 @@ dart_ret_t dart_alltoallv(
                    "dart_adapt_teamlist_convert failed", teamid);
     return DART_ERR_INVAL;
   }
-  if (sendbuf == recvbuf) {
-    sendbuf = MPI_IN_PLACE;
-  }
   comm = team_data->comm;
 
   // convert nrecvcounts and recvdispls
