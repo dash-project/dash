@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <map>
 #include <dash/graph/VertexIterator.h>
 #include <dash/graph/EdgeIterator.h>
 #include <dash/graph/InEdgeIterator.h>
@@ -188,30 +189,36 @@ public:
     //       per vertex
     allocate(n_vertices, 0);
 
-    std::unordered_map<vertex_size_type, local_vertex_iterator> lvertices;
-    std::unordered_map<vertex_size_type, global_vertex_iterator> gvertices;
+    std::map<vertex_size_type, local_vertex_iterator> lvertices;
+    std::map<vertex_size_type, global_vertex_iterator> gvertices;
     // TODO: find method that uses less memory
     std::unordered_set<vertex_size_type> remote_vertices_set;
     std::vector<std::vector<vertex_size_type>> remote_vertices(_team->size());
     for(auto it = begin; it != end; ++it) {
       auto v = it->first;
-      auto u = it->second;
+      if(vertex_owner(v, n_vertices) == _myid) {
+        auto u = it->second;
 
-      if(lvertices.find(v) == lvertices.end()) {
-        lvertices[v] = add_vertex();
-      }
-      auto target_owner = vertex_owner(u, n_vertices);
-      if(target_owner == _myid) {
-        if(lvertices.find(u) == lvertices.end()) {
-          lvertices[u] = add_vertex();
+        if(lvertices.find(v) == lvertices.end()) {
+          // add dummy first, more vertices are added later and they have
+          // to be in order
+          lvertices[v] = local_vertex_iterator();
         }
-      } else {
-        // collect vertices for remote nodes and prevent adding vertices more
-        // than once
-        bool inserted;
-        std::tie(std::ignore, inserted) = remote_vertices_set.insert(u);
-        if(inserted) {
-          remote_vertices[target_owner].push_back(u);
+        auto target_owner = vertex_owner(u, n_vertices);
+        if(target_owner == _myid) {
+          if(lvertices.find(u) == lvertices.end()) {
+            // add dummy first, more vertices are added later and they have
+            // to be in order
+            lvertices[u] = local_vertex_iterator();
+          }
+        } else {
+          // collect vertices for remote nodes and prevent adding vertices more
+          // than once
+          bool inserted;
+          std::tie(std::ignore, inserted) = remote_vertices_set.insert(u);
+          if(inserted) {
+            remote_vertices[target_owner].push_back(u);
+          }
         }
       }
     }
@@ -253,10 +260,16 @@ public:
 
       // exchange data
       for(auto & index : remote_vertices_recv) {
-        if(lvertices.find(index) == lvertices.end()) {
-          auto v = add_vertex();
-          index = v.pos();
-        } else {
+          lvertices[index] = local_vertex_iterator();
+      }
+      // add vertices in order
+      for(auto & lvertex : lvertices) {
+        lvertex.second = add_vertex();
+      }
+      // send local position of added vertices that are referenced by edges 
+      // on other units
+      for(auto & index : remote_vertices_recv) {
+        if(lvertices.find(index) != lvertices.end()) {
           index = lvertices[index].pos();
         }
       }
@@ -291,15 +304,18 @@ public:
     // finally add edges with the vertex iterators gained from the previous
     // steps
     for(auto it = begin; it != end; ++it) {
-      auto v_it = lvertices[it->first];
-      auto u = it->second;
+      auto v = it->first;
+      if(vertex_owner(v, n_vertices) == _myid) {
+        auto v_it = lvertices[it->first];
+        auto u = it->second;
 
-      if(vertex_owner(u, n_vertices) == _myid) {
-        auto u_it = lvertices[u];
-        add_edge(v_it, u_it);
-      } else {
-        auto u_it = gvertices[u];
-        add_edge(v_it, u_it);
+        if(vertex_owner(u, n_vertices) == _myid) {
+          auto u_it = lvertices[u];
+          add_edge(v_it, u_it);
+        } else {
+          auto u_it = gvertices[u];
+          add_edge(v_it, u_it);
+        }
       }
     }
     // commit edges
