@@ -42,6 +42,15 @@ dart_ret_t dart_tasking_remote_release(
   const dart_task_dep_t *dep) DART_INTERNAL;
 
 /**
+ * Send a release for the remote task \c remote_task at \c unit together with
+ * a reference to the local dummy task \c local_task.
+ */
+dart_ret_t dart_tasking_remote_release_outdep(
+  dart_global_unit_t   unit,
+  dart_task_t        * local_task,
+  taskref              remote_task) DART_INTERNAL;
+
+/**
  * Send a request to the remote unit to create a task that will send us data
  * as part of a pre-fetch copyin.
  */

@@ -20,6 +20,7 @@ typedef enum {
   DART_TASK_FINISHED =  0, // comparison with 0
   DART_TASK_NASCENT,
   DART_TASK_CREATED,
+  DART_TASK_DUMMY,         // the task is a dummy for a remote task
   DART_TASK_RUNNING,
   DART_TASK_SUSPENDED,
   DART_TASK_DESTROYED,
@@ -29,14 +30,25 @@ typedef enum {
 #define IS_ACTIVE_TASK(task) \
   ((task)->state == DART_TASK_RUNNING || \
    (task)->state == DART_TASK_CREATED || \
-   (task)->state == DART_TASK_SUSPENDED)
+   (task)->state == DART_TASK_SUSPENDED || \
+   (task)->state == DART_TASK_DUMMY)
 
 
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
-  dart_task_action_t         fn;              // the action to be invoked
-  void                      *data;            // the data to be passed to the action
+  union {
+    // used for dummy tasks
+    struct {
+      void*                  remote_task;     // the remote task (do not deref!)
+      dart_global_unit_t     origin;          // the remote unit
+    };
+    // used for regular tasks
+    struct {
+      dart_task_action_t     fn;              // the action to be invoked
+      void                  *data;            // the data to be passed to the action
+    };
+  };
   size_t                     data_size;       // the size of the data; data will be freed if data_size > 0
   int32_t                    unresolved_deps; // the number of unresolved task dependencies
   int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
