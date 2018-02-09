@@ -225,7 +225,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
         dash::tasks::copyin(data_old.at(local_beg_gidx[0]-1, 0), gext_y, up_row),
         dash::tasks::in(data_old.local.row(1).lbegin()),
         dash::tasks::in(data_old.local.row(0).lbegin()),
-        dash::tasks::out(data_old.local.row(0).lbegin())
+        dash::tasks::out(data_new.local.row(0).lbegin())
       );
     }
 
