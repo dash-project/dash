@@ -6,6 +6,7 @@
 
 #include <dash/tasks/Tasks.h>
 #include <dash/Array.h>
+#include <dash/Matrix.h>
 
 #define TASK_CANCEL_CUTOFF 5
 
@@ -677,4 +678,80 @@ TEST_F(DARTTaskingTest, Abort)
   dash::tasks::complete();
 
   ASSERT_EQ_U(1, value);
+}
+
+TEST_F(DARTTaskingTest, SimpleRemoteOutDep)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  dash::Array<int> array(dash::size());
+  array.local[0] = 0;
+  dash::barrier();
+
+  // round-robin: everyone gets to write to process 0 followed by a read by everyone
+  for (int i = 0; i < dash::size(); i++)  {
+    if (dash::myid() == i) {
+      // write to process 0
+      dash::tasks::async([&array](){ array[0] = dash::myid(); },
+                         dash::tasks::out(array[0]));
+    }
+    dash::tasks::async_barrier();
+    // everyone reads
+    dash::tasks::async(
+      [&array, i](){
+        ASSERT_EQ_U(i, (int)array[0]);
+      },
+      dash::tasks::in(array[0]));
+    dash::tasks::async_barrier();
+  }
+
+  dash::tasks::complete();
+
+}
+
+
+TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  constexpr int num_iter = 100;
+  dash::NArray<int, 2> matrix(dash::size(), 2, dash::BLOCKED, dash::NONE);
+
+  auto lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  auto rneighbor = (dash::myid() + 1) % dash::size();
+  for (int i = 0; i < num_iter; i++) {
+
+    // write into our neighbors cells
+    dash::tasks::async(
+      [=, &matrix](){
+        int value = dash::myid() * 10000 + i;
+        matrix(lneighbor, 1) = value;
+        matrix(rneighbor, 0) = value;
+      },
+      dash::tasks::out(matrix(lneighbor, 1)),
+      dash::tasks::out(matrix(rneighbor, 0))
+    );
+
+    dash::tasks::async_barrier();
+
+    // check our values
+    dash::tasks::async(
+      [=, &matrix](){
+        ASSERT_EQ_U(lneighbor*10000 + i, (int)matrix.local(0, 0));
+        ASSERT_EQ_U(rneighbor*10000 + i, (int)matrix.local(0, 1));
+      },
+      dash::tasks::in(&matrix.local(0, 0)),
+      dash::tasks::in(&matrix.local(0, 1))
+    );
+    dash::tasks::async_barrier();
+  }
+
+  dash::tasks::complete();
+
+  ASSERT_EQ_U(lneighbor*10000 + num_iter-1, (int)matrix.local(0, 0));
+  ASSERT_EQ_U(rneighbor*10000 + num_iter-1, (int)matrix.local(0, 1));
 }
