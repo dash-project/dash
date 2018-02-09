@@ -393,11 +393,18 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
             // dependencies if it is in an earlier phase
             if (direct_dep_candidate == NULL ||
                 direct_dep_candidate->phase > local->taskdep.phase) {
-              direct_dep_candidate = local_task;
-              DART_LOG_TRACE("Making local task %p a direct dependency candidate "
-                            "for remote task %p",
-                            direct_dep_candidate,
-                            rdep->task.remote);
+              if (local_task->state != DART_TASK_RUNNING) {
+                DART_LOG_WARN("Task %p has potential direct dependency to task "
+                      "%p on unit %d but is already running, "
+                      "cowardly dropping this dependency!",
+                      local_task, rdep->task.remote, rdep->origin.id);
+              } else {
+                direct_dep_candidate = local_task;
+                DART_LOG_TRACE("Making local task %p a direct dependency candidate "
+                               "for remote task %p",
+                               direct_dep_candidate,
+                               rdep->task.remote);
+              }
             }
           }
           else {
