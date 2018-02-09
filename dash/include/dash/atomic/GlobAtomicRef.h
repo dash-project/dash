@@ -106,12 +106,6 @@ public:
     return load();
   }
 
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    return GlobPtr<atomic_t>(_gptr);
-  }
-
   dart_gptr_t dart_gptr() const {
     return _gptr;
   }
