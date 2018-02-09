@@ -466,7 +466,7 @@ static
 void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
   thread->thread_id = threadnum;
-  thread->current_task = NULL;
+  thread->current_task = &root_task;
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
@@ -765,7 +765,8 @@ dart__tasking__task_complete()
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
-  if (thread->current_task == &(root_task)) {
+  if (thread->current_task == &(root_task) &&
+      dart__tasking__phase_current() > DART_PHASE_FIRST) {
     dart__tasking__perform_matching(thread, DART_PHASE_ANY);
     // enable worker threads to poll for remote messages
     worker_poll_remote = true;
