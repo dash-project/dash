@@ -92,15 +92,16 @@ dart_tasking_taskqueue_pop(dart_taskqueue_t *tq)
 dart_task_t *
 dart_tasking_taskqueue_pop_unsafe(dart_taskqueue_t *tq)
 {
-  if (0 == tq->num_elem--){
+  if (0 == tq->num_elem){
     // another thread stole the task
-    tq->num_elem = 0;
     return NULL;
   }
+  --(tq->num_elem);
   dart_task_t *task = task_deque_pop(&tq->highprio);
   if (task == NULL) {
     task = task_deque_pop(&tq->lowprio);
   }
+  DART_ASSERT(task != NULL);
   return task;
 }
 
@@ -130,7 +131,7 @@ dart_tasking_taskqueue_pushback_unsafe(
   } else {
     task_deque_pushback(&tq->lowprio, task);
   }
-  ++tq->num_elem;
+  ++(tq->num_elem);
 }
 
 void
@@ -160,7 +161,7 @@ dart_tasking_taskqueue_insert_unsafe(
   } else {
     task_deque_insert(&tq->lowprio, task, pos);
   }
-  ++tq->num_elem;
+  ++(tq->num_elem);
 }
 
 dart_task_t *
@@ -176,16 +177,16 @@ dart_tasking_taskqueue_popback(dart_taskqueue_t *tq)
 dart_task_t *
 dart_tasking_taskqueue_popback_unsafe(dart_taskqueue_t *tq)
 {
-  if (0 == tq->num_elem--){
+  if (0 == tq->num_elem){
     // another thread stole the task
-    tq->num_elem = 0;
     return NULL;
   }
+  --(tq->num_elem);
   dart_task_t * task = task_deque_popback(&tq->highprio);
   if (task == NULL) {
     task = task_deque_popback(&tq->lowprio);
   }
-
+  DART_ASSERT(task != NULL);
   return task;
 }
 
@@ -224,7 +225,7 @@ dart_tasking_taskqueue_remove_unsafe(dart_taskqueue_t *tq, dart_task_t *task)
     } else if (task == tq->lowprio.tail) {
       tq->lowprio.tail = prev;
     }
-    --tq->num_elem;
+    --(tq->num_elem);
   }
 }
 
@@ -271,7 +272,7 @@ dart_task_t *task_deque_pop(struct task_deque *deque)
     if (deque->head == deque->tail) {
       DART_LOG_TRACE(
           "dart_tasking_taskqueue_pop: taking last element from queue "
-          "tq:%p tq->head:%p", deque, deque->head);
+          "tq:%p tq->head:%p tq->tail:%p", deque, deque->head, deque->tail);
       deque->head = deque->tail = NULL;
     } else {
       DART_LOG_TRACE(

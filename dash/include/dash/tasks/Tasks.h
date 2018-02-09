@@ -441,9 +441,13 @@ namespace internal {
    */
   template<typename T>
   constexpr
-  TaskDependency
-  in(T* lptr, int32_t phase = DART_PHASE_TASK) {
-    return dash::tasks::in(const_cast<const T*>(lptr), phase);
+  auto
+  in(T& lref, int32_t phase = DART_PHASE_TASK)
+    // exclude range types covered above
+    -> typename std::enable_if<!std::is_function<decltype(T::begin)>::value,
+                               TaskDependency>::type
+  {
+    return dash::tasks::in(const_cast<const T*>(&lref), phase);
   }
 
   /**
@@ -557,9 +561,12 @@ namespace internal {
    */
   template<typename T>
   constexpr
-  TaskDependency
-  out(T* lptr, int32_t phase = DART_PHASE_TASK) {
-    return dash::tasks::out(const_cast<const T*>(lptr), phase);
+  auto
+  out(T& lref, int32_t phase = DART_PHASE_TASK)
+    // exclude range types covered above
+    -> typename std::enable_if<!std::is_function<decltype(T::begin)>::value,
+                               TaskDependency>::type {
+    return dash::tasks::out(const_cast<const T*>(&lref), phase);
   }
 
 
