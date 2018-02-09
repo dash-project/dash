@@ -393,7 +393,7 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
             // dependencies if it is in an earlier phase
             if (direct_dep_candidate == NULL ||
                 direct_dep_candidate->phase > local->taskdep.phase) {
-              if (local_task->state != DART_TASK_RUNNING) {
+              if (local_task->state == DART_TASK_RUNNING) {
                 DART_LOG_WARN("Task %p has potential direct dependency to task "
                       "%p on unit %d but is already running, "
                       "cowardly dropping this dependency!",
