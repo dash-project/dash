@@ -406,7 +406,7 @@ public:
    */
   constexpr bool is_local() const
   {
-    return (dash::Team::All().myid() == lpos().unit);
+    return (_globmem->team().myid() == lpos().unit);
   }
 
   /**
@@ -442,7 +442,7 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
-    if (dash::Team::All().myid() != local_pos.unit) {
+    if (_globmem->team().myid() != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
     }
