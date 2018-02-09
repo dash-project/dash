@@ -572,7 +572,8 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
     }
 
     if (dummy_task->unresolved_deps == 0) {
-      DART_LOG_WARN("Found remote output dependency that is immediately runnable!");
+      DART_LOG_TRACE("Dummy task %p is immediately runnable in phase %d!",
+                     dummy_task, phase);
       dart_tasking_datadeps_release_dummy_task(dummy_task);
     }
   }
