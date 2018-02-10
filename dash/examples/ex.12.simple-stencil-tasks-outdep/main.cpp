@@ -217,7 +217,6 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
       // copy upper boundary into neighbor's lower halo
       dash::tasks::async(
         [=, &data_new, &halo_new]() {
-          std::cout << "Copying out upper row" << std::endl;
           copy_out(
             halo_new(dash::myid() - 1, 1, 0).dart_gptr(),
             data_new.lbegin(),
@@ -234,7 +233,6 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
       // copy lower boundary into neighbor's upper halo
       dash::tasks::async(
         [=, &data_new, &halo_new]() {
-          std::cout << "Copying out lower row" << std::endl;
           copy_out(
             halo_new(dash::myid() + 1, 0, 0).dart_gptr(),
             data_new[local_end_gidx[0]].begin().local(),

@@ -254,8 +254,12 @@ int main(int argc, char* argv[])
   }
 
 
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
-
+#pragma omp parallel
+#pragma omp single
+{
+  if (dash::myid() == 0)
+    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+}
   // Prepare grid
   dash::TeamSpec<2> ts;
   dash::SizeSpec<2> ss(sizex, sizey);

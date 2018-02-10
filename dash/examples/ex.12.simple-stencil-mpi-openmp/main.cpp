@@ -223,7 +223,6 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
       const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
       const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
             element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
-      std::cout << "Computing bottom row in iter " << iter << std::endl;
       // copy line
       for( auto y=1; y<gext_y-1; ++y){
         out_row[y] =
