@@ -36,9 +36,6 @@ namespace tasks{
     }
   }
 
-  using DependencyVector = std::vector<dart_task_dep_t>;
-  using DependencyVectorInserter = std::insert_iterator<DependencyVector>;
-
   template<class InputIter, typename RangeFunc, typename DepGeneratorFunc>
   void
   parallel_for(

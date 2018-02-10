@@ -466,7 +466,7 @@ static
 void dart_thread_init(dart_thread_t *thread, int threadnum)
 {
   thread->thread_id = threadnum;
-  thread->current_task = NULL;
+  thread->current_task = &root_task;
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
@@ -515,13 +515,15 @@ void* thread_main(void *data)
     // check whether cancellation has been activated
     dart__tasking__check_cancellation(thread);
 
-    // look for incoming remote tasks and responses
-    // NOTE: only the last thread does the polling
-    if (worker_poll_remote && threadid == num_threads-1)
-      dart_tasking_remote_progress();
     // process the next task
     dart_task_t *task = next_task(thread);
     handle_task(task, thread);
+
+    // look for incoming remote tasks and responses
+    // NOTE: only the last thread does the polling
+    //       if polling is enabled or we have no runnable tasks anymore
+    if ((task == NULL || worker_poll_remote) && threadid == num_threads-1)
+      dart_tasking_remote_progress();
   }
 
   DART_ASSERT_MSG(
@@ -734,8 +736,6 @@ dart__tasking__create_task_handle(
 void
 dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
 {
-  // prevent worker threads from polling for remote messages
-  worker_poll_remote = false;
   // make sure all incoming requests are served
   dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
   // release unhandled remote dependencies
@@ -747,8 +747,6 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
   dart__tasking__phase_set_runnable(phase);
   // release the deferred queue
   dart_tasking_datadeps_handle_defered_local(thread);
-  // enable worker threads to poll for remote messages
-  worker_poll_remote = true;
 }
 
 
@@ -767,8 +765,11 @@ dart__tasking__task_complete()
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
-  if (thread->current_task == &(root_task)) {
+  if (thread->current_task == &(root_task) &&
+      dart__tasking__phase_current() > DART_PHASE_FIRST) {
     dart__tasking__perform_matching(thread, DART_PHASE_ANY);
+    // enable worker threads to poll for remote messages
+    worker_poll_remote = true;
   }
 
   // 1) wake up all threads (might later be done earlier)

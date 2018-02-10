@@ -62,18 +62,26 @@ dart__base__log_message(
 // Always log error messages and warnings:
 //
 #define DART_LOG_ERROR(...) \
-  dart__base__log_message(   \
+  dart__base__log_message(  \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_ERROR,    \
     __VA_ARGS__);
 
-#define DART_LOG_WARN(...)   \
-  dart__base__log_message(   \
+#define DART_LOG_WARN(...)  \
+  dart__base__log_message(  \
     __FILE__,               \
     __LINE__,               \
     DART_LOGLEVEL_WARN,     \
     __VA_ARGS__);
+
+#define DART_LOG_INFO_ALWAYS(...)    \
+  dart__base__log_message(    \
+      __FILE__,               \
+      __LINE__,               \
+      DART_LOGLEVEL_INFO,     \
+      __VA_ARGS__             \
+    );
 
 //
 // Debug, Info, and Trace log messages:
@@ -95,7 +103,7 @@ dart__base__log_message(
     __VA_ARGS__);
 
 #define DART_LOG_INFO(...)    \
-  dart__base__log_message(   \
+  dart__base__log_message(    \
       __FILE__,               \
       __LINE__,               \
       DART_LOGLEVEL_INFO,     \
