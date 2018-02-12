@@ -511,7 +511,7 @@ void* thread_main(void *data)
 
   set_current_task(&root_task);
 
-  DART_LOG_INFO("Thread %d starting to process tasks", tid->threadid);
+  DART_LOG_INFO("Thread %d starting to process tasks", threadid);
   // enter work loop
   while (parallel) {
 
