@@ -489,6 +489,8 @@ void* thread_main(void *data)
   DART_ASSERT(data != NULL);
   struct thread_init_data* tid = (struct thread_init_data*)data;
 
+  DART_LOG_INFO("Thread %d starting up", tid->threadid);
+
   if (bind_threads) {
     set_thread_affinity(tid->pthread, tid->threadid);
   }
@@ -509,6 +511,7 @@ void* thread_main(void *data)
 
   set_current_task(&root_task);
 
+  DART_LOG_INFO("Thread %d starting to process tasks", tid->threadid);
   // enter work loop
   while (parallel) {
 
@@ -550,6 +553,7 @@ static void
 start_threads(int num_threads)
 {
   DART_ASSERT(!threads_running);
+  DART_LOG_INFO("Starting %d threads", num_threads);
   // start-up all worker threads
   for (int i = 1; i < num_threads; i++)
   {
