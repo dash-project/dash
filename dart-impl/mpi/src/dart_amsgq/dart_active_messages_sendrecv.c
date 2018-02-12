@@ -200,7 +200,9 @@ dart_amsg_sendrecv_trysend(
   memcpy(sendbuf, &header, sizeof(header));
   memcpy(sendbuf + sizeof(header), data, data_size);
 
-  int ret = MPI_Issend(
+  // TODO: Issend seems broken on IMPI :(
+  //int ret = MPI_Issend(
+  int ret = MPI_Isend(
               sendbuf, amsgq->msg_size,
               MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
               &amsgq->send_reqs[idx]);
@@ -224,6 +226,8 @@ amsg_process_sendrecv_internal(
   bool                         blocking)
 {
   uint64_t num_msg;
+
+  DART_ASSERT(amsgq != NULL);
 
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
@@ -327,7 +331,8 @@ dart_amsg_sendrevc_process_blocking(
   } while (!barrier_flag);
   amsg_process_sendrecv_internal(amsgq, true);
   // final synchronization
-  MPI_Barrier(team_data->comm);
+  // TODO: I don't think this is needed here!
+  //MPI_Barrier(team_data->comm);
   return DART_OK;
 }
 
