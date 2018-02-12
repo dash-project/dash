@@ -324,18 +324,6 @@ public:
     commit();
   }
 
-  template<typename SourceIterator, typename TargetIterator>
-  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
-      std::pair<int, int>) {
-    add_edge(s, t);
-  }
-
-  template<typename SourceIterator, typename TargetIterator>
-  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
-      std::pair<std::pair<int, int>, int>) {
-    add_edge(s, t);
-  }
-
   /** Destructs the graph.
    */
   ~Graph() {
@@ -790,6 +778,8 @@ private:
     return owner;
   }
 
+  // TODO: Generalize following methods for other edge attributes than { int }
+
   vertex_size_type edgelist_source(std::pair<int, int> e) {
     return e.first;
   }
@@ -805,6 +795,20 @@ private:
   vertex_size_type edgelist_target(std::pair<std::pair<int, int>, int> e) {
     return e.first.second;
   }
+
+  template<typename SourceIterator, typename TargetIterator>
+  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
+      std::pair<int, int>) {
+    add_edge(s, t);
+  }
+
+  template<typename SourceIterator, typename TargetIterator>
+  void edgelist_add_edge(SourceIterator s, TargetIterator t, 
+      std::pair<std::pair<int, int>, int> item) {
+    edge_properties_type prop { item.second };
+    add_edge(s, t, prop);
+  }
+
 
 private:
 

@@ -571,8 +571,8 @@ public:
   void set_attributes(properties_type & prop) {
     lazy_load();
     _edge.properties = prop;
-    auto ref = *_iterator;
-    ref = _edge;
+    auto ptr = _iterator;
+    *ptr = _edge;
   }
 
 private:

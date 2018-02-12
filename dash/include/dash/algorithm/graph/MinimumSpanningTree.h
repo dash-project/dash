@@ -8,8 +8,9 @@ namespace dash {
 
 typedef std::vector<std::vector<int>>                     matrix_t;
 typedef std::vector<std::vector<std::pair<int, int>>>     matrix_pair_t;
-// (supervertex, new component, vertex src, vertex trg, weight)
-typedef std::tuple<int, int, int, int, int>               tuple_t;
+// (supervertex, new component, vertex src, vertex trg, weight, owner, 
+// local offset)
+typedef std::tuple<int, int, int, int, int, int, int>     tuple_t;
 typedef std::vector<std::vector<tuple_t>>                 matrix_min_pairs_t;
 
 namespace internal {
@@ -122,6 +123,12 @@ void mst_set_data_min(matrix_min_pairs_t & data_pairs, GraphType & graph) {
     typename GraphType::vertex_properties_type prop { std::get<1>(pair.second) };
     graph[graph.vertices().begin() + pair.first].set_attributes(prop);
     // save edges here (src = get<2>(pair.second), trg = get<3>(pair.second)
+    if(dash::myid() == get<5>(pair.second)) {
+      auto it = graph.out_edges().lbegin() + get<6>(pair.second);
+      typename GraphType::edge_properties_type eprop { -1 };
+      graph[it].set_attributes(eprop);
+      auto it2 = graph.out_edges().lbegin() + get<6>(pair.second);
+    }
   }
 }
 
@@ -150,20 +157,6 @@ void minimum_spanning_tree(GraphType & g) {
     }
     ++i;
   }
-
-  /*
-  // set random edge weight
-  std::uniform_int_distribution<int> dist(0, 10);
-  std::minstd_rand rng((std::random_device())());
-  i = 0;
-  for(auto it = g.out_edges().begin(); it != g.out_edges().end(); ++it) {
-    if(it.is_local()) {
-      typename GraphType::edge_properties_type prop { dist(rng) };
-      g[it].set_attributes(prop);
-    }
-    ++i;
-  }
-  */
 
   dash::barrier();
 
@@ -198,15 +191,19 @@ void minimum_spanning_tree(GraphType & g) {
         int min_weight = std::numeric_limits<int>::max();
         int trg_comp_min = -1;
         int trg_min = -1;
+        int ledgepos = 0;
+        int unit = 0;
         for(auto e_it = v.out_edges().lbegin(); e_it != v.out_edges().lend(); 
             ++e_it) {
           auto e = g[e_it];
           auto e_weight = e.attributes().weight;
           auto trg_comp = data[i];
-          if(src_comp != trg_comp && min_weight > e_weight) {
+          if(src_comp != trg_comp && e_weight >= 0 && min_weight > e_weight) {
             min_weight = e_weight;
             trg_comp_min = trg_comp;
             trg_min = e.target().pos();
+            ledgepos = e_it.pos();
+            unit = dash::myid();
           }
           ++i;
         }
@@ -216,10 +213,10 @@ void minimum_spanning_tree(GraphType & g) {
           auto trg_comp_it = g.vertices().begin() + trg_comp_min;
           data_pairs[src_comp_it.lpos().unit].push_back(
               std::make_tuple(src_comp_it.pos(), trg_comp_min, src, trg_min, 
-              min_weight));
+              min_weight, unit, ledgepos));
           data_pairs[trg_comp_it.lpos().unit].push_back(
               std::make_tuple(trg_comp_it.pos(), src_comp, src, trg_min, 
-              min_weight));
+              min_weight, unit, ledgepos));
           gr = 1;
         }
       }
