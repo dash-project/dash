@@ -926,7 +926,7 @@ dart_ret_t dart_put_handle(
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_put_handle > handle(%p) dest:%d",
-                 (void*)(handle), handle->dest);
+                 (void*)(handle), team_unit_id.id);
 
   return ret;
 }
