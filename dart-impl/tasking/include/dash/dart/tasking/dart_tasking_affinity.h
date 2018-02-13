@@ -6,8 +6,8 @@
 #include <dash/dart/base/env.h>
 
 static hwloc_topology_t topology;
-static volatile bool print_binding = false;
-static hwloc_cpuset_t ccpuset;
+static bool             print_binding = false;
+static hwloc_cpuset_t   ccpuset;
 
 static void
 init_thread_affinity()
@@ -32,13 +32,13 @@ init_thread_affinity()
     unsigned int entry = hwloc_bitmap_first(ccpuset);
     size_t pos = snprintf(buf, len, "%d", entry);
     for (entry  = hwloc_bitmap_next(ccpuset, entry);
-        entry <= hwloc_bitmap_last(ccpuset);
-        entry  = hwloc_bitmap_next(ccpuset, entry))
+         entry <= hwloc_bitmap_last(ccpuset);
+         entry  = hwloc_bitmap_next(ccpuset, entry))
     {
       pos += snprintf(buf+pos, len - pos, ", %d", entry);
       if (pos >= len) break;
     }
-    DART_LOG_TRACE("Allocated CPU set (size %d): {%s}", num_cpus, buf);
+    DART_LOG_INFO_ALWAYS("Allocated CPU set (size %d): {%s}", num_cpus, buf);
     free(buf);
   }
 }
@@ -56,10 +56,10 @@ set_thread_affinity(pthread_t pthread, int dart_thread_id)
   hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
   int cnt = 0;
   // iterate over bitmap, round-robin thread-binding
-  unsigned int entry;
+  int entry;
   do {
     for (entry  = hwloc_bitmap_first(ccpuset);
-         entry <= hwloc_bitmap_last(ccpuset);
+         entry != hwloc_bitmap_last(ccpuset);
          entry  = hwloc_bitmap_next(ccpuset, entry))
     {
       if (cnt == dart_thread_id) break;
