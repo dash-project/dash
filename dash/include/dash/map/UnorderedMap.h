@@ -37,7 +37,7 @@ template<
   typename Mapped,
   typename Hash    = dash::HashLocal<Key>,
   typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::EpochSynchronizedAllocator<
+  typename Alloc   = dash::EpochSynchronizedAllocator<
                        std::pair<const Key, Mapped> > >
 class UnorderedMap
 {

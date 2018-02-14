@@ -165,7 +165,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAlloc) {
 TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
   using elem_t = int;
-  using allocator_t = dash::allocator::EpochSynchronizedAllocator<elem_t>;
+  using allocator_t = dash::EpochSynchronizedAllocator<elem_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");

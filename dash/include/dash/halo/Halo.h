@@ -363,7 +363,7 @@ template <typename ElementT, typename PatternT, typename GlobMemT,
           typename ReferenceT = GlobRef<ElementT>>
 class RegionIter {
 private:
-  using Self_t = RegionIter<ElementT, PatternT, PointerT, ReferenceT>;
+  using Self_t = RegionIter<ElementT, PatternT, GlobMemT, PointerT, ReferenceT>;
 
   static const auto NumDimensions = PatternT::ndim();
 

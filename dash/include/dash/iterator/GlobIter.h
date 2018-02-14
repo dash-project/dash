@@ -84,6 +84,8 @@ public:
   typedef          PatternType                       pattern_type;
   typedef typename PatternType::index_type             index_type;
 
+  typedef GlobConstPtr<value_type, GlobMemType>    glob_const_ptr;
+
 private:
   typedef GlobIter<
             const ElementType,
@@ -149,29 +151,29 @@ public:
    * Default constructor.
    */
   constexpr GlobIter()
-  : _globmem(nullptr),
-    _pattern(nullptr),
-    _idx(0),
-    _max_idx(0),
-    _myid(dash::Team::All().myid()),
-    _lbegin(nullptr)
-  { }
+    : _globmem(nullptr)
+    , _pattern(nullptr)
+    , _idx(0)
+    , _max_idx(0)
+    , _myid(dash::Team::All().myid())
+    , _lbegin(nullptr)
+  {
+  }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern.
    */
   constexpr GlobIter(
-    GlobMemType       * gmem,
-	  const PatternType & pat,
-	  index_type          position = 0)
-  : _globmem(gmem),
-    _pattern(&pat),
-    _idx(position),
-    _max_idx(pat.size() - 1),
-    _myid(pat.team().myid()),
-    _lbegin(_globmem->lbegin())
-  { }
+      GlobMemType* gmem, const PatternType& pat, index_type position = 0)
+    : _globmem(gmem)
+    , _pattern(&pat)
+    , _idx(position)
+    , _max_idx(pat.size() - 1)
+    , _myid(pat.team().myid())
+    , _lbegin(_globmem->lbegin())
+  {
+  }
 
   /**
    * Copy constructor.

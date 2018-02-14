@@ -105,11 +105,12 @@ GlobIter find_if(
     GlobIter first,
     /// Iterator to the final position in the sequence
     GlobIter last,
+    /// Predicate which will be applied to the elements in range [first, last)
+    UnaryPredicate predicate)
 {
   using iterator_traits = dash::iterator_traits<GlobIter>;
 
   using index_t = typename iterator_traits::index_type;
->>>>>>> origin/feat-iterator-traits
 
   auto& team = first.pattern().team();
   auto  myid = team.myid();

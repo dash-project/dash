@@ -304,7 +304,7 @@ TEST_F(ArrayTest, ElementCompare){
 TEST_F(ArrayTest, HBWSpace){
   using index_t = dash::default_index_t;
   using pattern_t = dash::BlockPattern<1, dash::ROW_MAJOR, index_t>;
-  using array_t = dash::Array<int, index_t, pattern_t, dash::memory_space_hbw_tag>;
+  using array_t = dash::Array<int, index_t, pattern_t, dash::HBWSpace>;
 
   array_t array{static_cast<pattern_t::size_type>(dash::size()) * 100};
 

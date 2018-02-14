@@ -34,10 +34,6 @@ namespace internal {
 
 // Forward-declarations
 template <typename T>                  class GlobRef;
-template <typename T,
-          class    AllocT>             class GlobStaticMem;
-template <typename T,
-          class    AllocT>             class GlobHeapMem;
 
 template <typename T, class MemSpaceT> class GlobConstPtr;
 
@@ -68,10 +64,10 @@ private:
   typedef GlobPtr<ElementType, GlobMemT>                self_t;
 
 public:
-  typedef ElementType                                  value_type;
+  typedef ElementType                               value_type;
   typedef GlobPtr<const ElementType, GlobMemT>      const_type;
   typedef typename GlobMemT::index_type             index_type;
-  typedef typename GlobMemT::size_type               size_type;
+  typedef typename GlobMemT::size_type              size_type;
 
   typedef index_type                                   gptrdiff_t;
 

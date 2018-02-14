@@ -200,7 +200,7 @@ template<
   /// Type of allocator implementation used to allocate and deallocate
   /// global memory
   class    AllocatorType =
-             dash::allocator::EpochSynchronizedAllocator<ElementType> >
+             dash::EpochSynchronizedAllocator<ElementType> >
 class GlobHeapMem
 {
 private:

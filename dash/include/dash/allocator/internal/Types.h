@@ -1,54 +1,81 @@
 #ifndef DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
 #define DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
+#include <dash/dart/if/dart_globmem.h>
 #include <cstddef>
 #include <ostream>
 
 namespace dash {
 namespace allocator {
 
-
-struct memory_block {
+template <typename LPtr, typename GPtr = dart_gptr_t>
+struct allocation_rec {
   // Default Constructor
-  memory_block() noexcept
-    : ptr(nullptr)
-    , length(0)
+  constexpr allocation_rec() noexcept
+    : _data(std::make_tuple(LPtr{}, 0, DART_GPTR_NULL))
   {
   }
 
-  memory_block(void *ptr, size_t length) noexcept
-    : ptr(ptr)
-    , length(length)
+  constexpr allocation_rec(LPtr ptr, size_t length) noexcept
+    : _data(std::make_tuple(ptr, length, DART_GPTR_NULL))
+  {
+  }
+
+  constexpr allocation_rec(LPtr ptr, size_t length, GPtr gptr) noexcept
+    : _data(std::make_tuple(ptr, length, gptr))
   {
   }
 
   // Move Constructor
-  memory_block(memory_block &&x) noexcept { *this = std::move(x); }
+  allocation_rec(allocation_rec &&x) noexcept
+    : _data(x)
+  {
+    x.reset();
+  }
+
   // Copy Constructor
-  memory_block(const memory_block &x) noexcept = default;
+  allocation_rec(const allocation_rec &x) noexcept = default;
 
   // Move Assignment
-  memory_block &operator=(memory_block &&x) noexcept
+  allocation_rec &operator=(allocation_rec &&x) noexcept
   {
-    ptr = x.ptr;
-    length = x.length;
+    std::get<0>(_data) = std::move(std::get<0>(x));
+    std::get<1>(_data) = std::move(std::get<1>(x));
+    std::get<2>(_data) = std::move(std::get<2>(x));
     x.reset();
     return *this;
   }
 
   // Copy Assignment
-  memory_block &operator=(const memory_block &x) noexcept = default;
+  allocation_rec &operator=(const allocation_rec &x) noexcept = default;
 
   /**
-  * The Memory Block is not freed
-  */
-  ~memory_block() {}
+   * The Memory Block is not freed
+   */
+  ~allocation_rec()
+  {
+  }
   /**
    * Clear the memory block
    */
   void reset() noexcept
   {
-    ptr = nullptr;
-    length = 0;
+    std::get<0>(_data) = LPtr{};
+    std::get<1>(_data) = 0;
+    std::get<2>(_data) = DART_GPTR_NULL;
+  }
+
+  LPtr &lptr() const noexcept
+  {
+    return std::get<0>(_data);
+  }
+  std::size_t &length() const noexcept
+  {
+    return std::get<1>(_data);
+  }
+
+  GPtr &gptr() const noexcept
+  {
+    return std::get<2>(_data);
   }
 
   /**
@@ -56,16 +83,39 @@ struct memory_block {
    */
   explicit operator bool() const noexcept
   {
-    return length != 0 && ptr != nullptr;
+    return (length() > 0 && lptr() != LPtr{nullptr}) ||
+           !DART_GPTR_ISNULL(gptr());
   }
 
-  void *ptr;
-  std::size_t length;
+private:
+  std::tuple<LPtr, std::size_t, GPtr> _data;
 };
 
-bool operator==(const memory_block & lhs, const memory_block &rhs);
-bool operator!=(const memory_block & lhs, const memory_block &rhs);
-std::ostream & operator<<(std::ostream &stream, const memory_block & block);
+template <typename LPtr, typename GPtr = dart_gptr_t>
+bool operator==(
+    const allocation_rec<LPtr, GPtr> &lhs,
+    const allocation_rec<LPtr, GPtr> &rhs)
+{
+  return lhs._data == rhs._data;
+}
+
+template <typename LPtr, typename GPtr = dart_gptr_t>
+bool operator!=(
+    const allocation_rec<LPtr, GPtr> &lhs,
+    const allocation_rec<LPtr, GPtr> &rhs)
+{
+  return !(lhs == rhs);
+}
+
+template <typename LPtr, typename GPtr = dart_gptr_t>
+std::ostream &operator<<(
+    std::ostream &stream, const allocation_rec<LPtr, GPtr> &block)
+{
+  stream << "{lptr: " << block.ptr() << ", length: " << block.length()
+         << ", gptr: " << block.gptr() << "}";
+  return stream;
+}
+
 }  // namespace allocator
 }  // namespace dash
 #endif

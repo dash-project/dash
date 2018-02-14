@@ -16,6 +16,9 @@ TEST_F(FindTest, TestSimpleFind)
 
   // Initialize global array and fill it with init_fill:
   Array_t array(_num_elem);
+
+  using iter_t = Array_t::iterator;
+
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {
       LOG_MESSAGE("Setting array[%zu] with init_fill %d", i, init_fill);

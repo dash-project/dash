@@ -167,7 +167,7 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    AllocatorType = dash::allocator::EpochSynchronizedAllocator<ElementType> >
+  class    AllocatorType = dash::EpochSynchronizedAllocator<ElementType> >
 class List
 {
   static_assert(

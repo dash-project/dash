@@ -1,14 +1,15 @@
 
 #include "LocalAllocatorTest.h"
 
-#include <dash/allocator/LocalAllocator.h>
 #include <dash/GlobPtr.h>
 #include <dash/Pattern.h>
+#include <dash/allocator/LocalAllocator.h>
 
 TEST_F(LocalAllocatorTest, Constructor)
 {
-  auto target           = dash::allocator::LocalAllocator<int>();
-  if(dash::myid().id == 0){
+  auto const& team   = dash::Team::All();
+  auto        target = local_allocator_t<int>(team);
+  if (dash::myid().id == 0) {
     // must not hang, as no synchronisation is allowed
     dart_gptr_t requested = target.allocate(sizeof(int) * 10);
     ASSERT_EQ(0, requested.unitid);
@@ -35,25 +36,25 @@ TEST_F(LocalAllocatorTest, MemAlloc)
 
 TEST_F(LocalAllocatorTest, MoveAssignment)
 {
-  using GlobPtr_t = dash::GlobConstPtr<int>;
-  using Alloc_t   = dash::allocator::LocalAllocator<int>;
+  using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t<int>>;
+  using Alloc_t   = local_allocator_t<int>;
   GlobPtr_t gptr;
-  Alloc_t target_new;
+  Alloc_t   target_new(dash::Team::All());
 
   {
-    auto target_old       = Alloc_t(dash::Team::All());
-    dart_gptr_t requested = target_old.allocate(sizeof(int) * 10);
-    gptr = GlobPtr_t(requested);
+    auto        target_old = Alloc_t(dash::Team::All());
+    dart_gptr_t requested  = target_old.allocate(sizeof(int) * 10);
+    gptr                   = GlobPtr_t(requested);
 
-    if(dash::myid().id == 0){
+    if (dash::myid().id == 0) {
       // assign value
       int value = 10;
-      (*gptr) = value;
+      (*gptr)   = value;
     }
     dash::barrier();
 
-    target_new       = Alloc_t(); 
-    target_new       = std::move(target_old);
+    target_new = Alloc_t(dash::Team::All());
+    target_new = std::move(target_old);
   }
   // target_old has left scope
 
@@ -67,24 +68,24 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
 
 TEST_F(LocalAllocatorTest, MoveCtor)
 {
-  using GlobPtr_t = dash::GlobConstPtr<int>;
-  using Alloc_t   = dash::allocator::LocalAllocator<int>;
+  using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t<int>>;
+  using Alloc_t   = local_allocator_t<int>;
   GlobPtr_t gptr;
-  Alloc_t target_new;
+  Alloc_t   target_new(dash::Team::All());
 
   {
-    auto target_old       = Alloc_t(dash::Team::All());
-    dart_gptr_t requested = target_old.allocate(sizeof(int) * 5);
-    gptr = GlobPtr_t(requested);
+    auto        target_old = Alloc_t(dash::Team::All());
+    dart_gptr_t requested  = target_old.allocate(sizeof(int) * 5);
+    gptr                   = GlobPtr_t(requested);
 
-    if(dash::myid().id == 0){
+    if (dash::myid().id == 0) {
       // assign value
       int value = 10;
-      (*gptr) = value;
+      (*gptr)   = value;
     }
     dash::barrier();
 
-    target_new       = Alloc_t(std::move(target_old)); 
+    target_new = Alloc_t(std::move(target_old));
   }
   // target_old has left scope
 

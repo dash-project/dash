@@ -5,6 +5,7 @@
 #include <dash/memory/SimpleMemoryPool.h>
 #include <cpp17/polymorphic_allocator.h>
 
+#if 0
 
 TEST_F(EpochSynchronizedAllocatorTest, AllocDealloc) {
   using Alloc = dash::allocator::EpochSynchronizedAllocator<int>;
@@ -95,4 +96,5 @@ TEST_F(EpochSynchronizedAllocatorTest, PolyAlloc) {
   }
 
 }
+#endif
 

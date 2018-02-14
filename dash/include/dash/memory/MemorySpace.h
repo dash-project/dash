@@ -181,8 +181,10 @@ using conditional_base =
 
 }  // namespace details
 
+using memory_resource = cpp17::pmr::memory_resource;
+
 template <class ElementType>
-class LocalMemorySpace : public cpp17::pmr::memory_resource {
+class LocalMemorySpace : public memory_resource {
   // We may add something here in figure
 };
 

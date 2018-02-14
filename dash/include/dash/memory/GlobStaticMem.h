@@ -76,15 +76,15 @@ namespace dash {
  *
  * \concept{DashMemorySpaceConcept}
  */
-template<
-  /// Type of elements maintained in the global memory space
-  typename ElementType,
-  typename LocalMemorySpace
-   >
-class GlobStaticMem
-{
+template <
+    /// Type of elements maintained in the global memory space
+    typename ElementType,
+    typename LocalMemorySpace,
+    global_allocation_policy AllocationPolicy =
+        global_allocation_policy::symmetric>
+class GlobStaticMem {
 private:
-  typedef GlobStaticMem<ElementType, LocalMemorySpace>
+  typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
     self_t;
 
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
@@ -92,8 +92,11 @@ private:
 public:
   using value_type = typename std::decay<ElementType>::type;
 
-  using allocator_type =
-      dash::SymmetricAllocator<value_type, LocalMemorySpace>;
+  using allocator_type = dash::SymmetricAllocator<
+      value_type,
+      AllocationPolicy,
+      LocalMemorySpace,
+      allocator::DefaultAllocator>;
 
   typedef typename allocator_type::size_type                    size_type;
   typedef typename allocator_type::difference_type        difference_type;

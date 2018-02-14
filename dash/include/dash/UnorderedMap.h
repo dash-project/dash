@@ -151,7 +151,7 @@ public:
   typedef dash::default_size_t                                     size_type;
   typedef std::pair<const key_type, mapped_type>                  value_type;
 
-  typedef dash::allocator::EpochSynchronizedAllocator<value_type>
+  typedef dash::EpochSynchronizedAllocator<value_type>
       allocator_type;
 
   typedef typename dash::container_traits<self_type>::local_type  local_type;

@@ -198,7 +198,7 @@ GlobOutputIt transform_local(
     InputAIt        in_a_first,
     InputAIt        in_a_last,
     InputBIt        in_b_first,
-    GlobOutputIt        out_first,
+    GlobOutputIt    out_first,
     BinaryOperation binary_op)
 {
   DASH_LOG_DEBUG("dash::transform_local()");
@@ -255,78 +255,12 @@ GlobOutputIt transform_local(
   return out_first + num_gvalues;
 }
 
-template <
-    class InputIt,
-    class GlobInputIt,
-    class GlobOutputIt,
-    class BinaryOperation>
-GlobOutputIt transform(
-<<<<<<< HEAD
-  InputIt         in_a_first,
-  InputIt         in_a_last,
-  GlobInputIt     in_b_first,
-  GlobOutputIt    out_first,
-  BinaryOperation binary_op)
-{
-  DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
-  // Outut range different from rhs input range is not supported yet
-  auto in_first = in_a_first;
-  auto in_last  = in_a_last;
-  std::vector<ValueType> in_range;
-  if (in_b_first == out_first) {
-    // Output range is rhs input range: C += A
-    // Input is (in_a_first, in_a_last).
-  } else {
-    // Output range different from rhs input range: C = A+B
-    // Input is (in_a_first, in_a_last) + (in_b_first, in_b_last):
-    std::transform(
-      in_a_first, in_a_last,
-      in_b_first,
-      std::back_inserter(in_range),
-      binary_op);
-    in_first = in_range.data();
-    in_last  = in_first + in_range.size();
-  }
-
-  dash::util::Trace trace("transform");
-
-  // Resolve local range from global range:
-  // Number of elements in local range:
-  size_t num_local_elements     = std::distance(in_first, in_last);
-  // Global iterator to dart_gptr_t:
-  dart_gptr_t dest_gptr         = out_first.dart_gptr();
-  // Send accumulate message:
-  trace.enter_state("transform_blocking");
-  dash::internal::transform_blocking_impl(
-      dest_gptr,
-      in_first,
-      num_local_elements,
-      binary_op.dart_operation());
-  trace.exit_state("transform_blocking");
-  // The position past the last element transformed in global element space
-  // cannot be resolved from the size of the local range if the local range
-  // spans over more than one block. Otherwise, the difference of two global
-  // iterators is not well-defined. The corresponding invariant is:
-  //   g_out_last == g_out_first + (l_in_last - l_in_first)
-  // Example:
-  //   unit:            0       1       0
-  //   local offset:  | 0 1 2 | 0 1 2 | 3 4 5 | ...
-  //   global offset: | 0 1 2   3 4 5   6 7 8   ...
-  //   range:          [- - -           - -]
-  // When iterating in local memory range [0,5[ of unit 0, the position of the
-  // global iterator to return is 8 != 5
-  // For ranges over block borders, we would have to resolve the global
-  // position past the last element transformed from the iterator's pattern
-  // (see dash::PatternIterator).
-  return out_first + num_local_elements;
-}
-
 /**
  * Specialization of \c dash::transform for global lhs input range.
  */
 template <
-    class GlobInputIt1,
-    class GlobInputIt2,
+    class InputIt,
+    class GlobInputIt,
     class GlobOutputIt,
     class BinaryOperation>
 GlobOutputIt transform(
@@ -434,17 +368,12 @@ template <
     class GlobOutputIt,
     class BinaryOperation>
 GlobOutputIt transform(
-    /// Iterator on begin of first local range
-    InputIt in_a_first,
-    /// Iterator after last element of local range
-    InputIt in_a_last,
-    /// Iterator on begin of second local range
-    GlobInputIt in_b_first,
-    /// Iterator on first element of global output range
-    GlobOutputIt out_first,
-    /// Reduce operation
-    BinaryOperation binary_op,
-    transform_impl_local_input_it)
+  InputIt         in_a_first,
+  InputIt         in_a_last,
+  GlobInputIt     in_b_first,
+  GlobOutputIt    out_first,
+  BinaryOperation binary_op,
+  transform_impl_local_input_it)
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
   // Outut range different from rhs input range is not supported yet
@@ -502,8 +431,6 @@ GlobOutputIt transform(
 }
 
 } // namespace internal
-
-
 
 template <
     class InputIt,

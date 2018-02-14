@@ -575,6 +575,8 @@ TEST_F(MatrixTest, ViewIteration)
 {
   typedef int                                   element_t;
   typedef dash::TilePattern<2, dash::ROW_MAJOR> pattern_t;
+  typedef dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t>
+      matrix_t;
 
   int    myid        = dash::myid().id;
   size_t num_units   = dash::Team::All().size();
@@ -585,7 +587,7 @@ TEST_F(MatrixTest, ViewIteration)
 
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
+  matrix_t matrix(
                  dash::SizeSpec<2>(
                    nrows,
                    ncols),
@@ -660,7 +662,7 @@ TEST_F(MatrixTest, ViewIteration)
 
       using glob_it_t   = decltype(matrix.begin());
       using glob_ptr_t  = typename glob_it_t::pointer;
-      using glob_cptr_t = dash::GlobConstPtr<int>;
+      using glob_cptr_t = typename glob_it_t::glob_const_ptr;
 
       // Apply view projection by converting to GlobPtr:
       glob_ptr_t  block_elem_gptr = static_cast<glob_ptr_t>(b_it);

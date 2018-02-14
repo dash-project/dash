@@ -40,9 +40,10 @@ public:
 
 private:
   typedef dash::GlobStaticMem<
-            value_type,
-            dash::allocator::LocalAllocator<value_type> >
-          GlobMem_t;
+      value_type,
+      dash::HostSpace,
+      dash::global_allocation_policy::local>
+      GlobMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
