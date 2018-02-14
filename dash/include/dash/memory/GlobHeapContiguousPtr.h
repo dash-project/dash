@@ -83,14 +83,16 @@ public:
   */
 
 private:
-  typedef std::vector<std::vector<size_type> >
-    bucket_cumul_sizes_map;
+  typedef std::vector<std::vector<size_type>>   bucket_cumul_sizes_map;
+  typedef std::vector<size_type>                unit_cumul_sizes_map;
 
 private:
   /// Global memory used to dereference iterated values.
   const globmem_type           * _globmem            = nullptr;
   /// Mapping unit id to buckets in the unit's attached local storage.
   const bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
+  /// Mapping unit id element count
+  const unit_cumul_sizes_map *   _unit_cumul_sizes = nullptr;
   /// Pointer to first element in local data space.
   local_pointer                  _lbegin;
   /// Current position of the pointer in global canonical index space.
@@ -115,6 +117,7 @@ public:
   GlobPtr()
   : _globmem(nullptr),
     _bucket_cumul_sizes(nullptr),
+    _unit_cumul_sizes(nullptr),
     _idx(0),
     _max_idx(0),
     _myid(dash::Team::GlobalUnitID()),
@@ -137,6 +140,7 @@ public:
 	  index_type           position = 0)
   : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
+    _unit_cumul_sizes(&_globmem->_unit_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(position),
     _max_idx(gmem->size() - 1),
@@ -191,6 +195,7 @@ public:
 	  index_type           local_index)
   : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
+    _unit_cumul_sizes(&_globmem->_unit_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(0),
     _max_idx(gmem->size() - 1),
@@ -203,15 +208,15 @@ public:
     DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
                    "unit:", unit,
                    "lidx:", local_index);
-    if(unit > _bucket_cumul_sizes->size()) {
-      std::cout << std::endl;
-    }
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
 
+    /*
     for (size_type unit = 0; unit < _idx_unit_id; ++unit) {
       auto prec_unit_local_size = (*_bucket_cumul_sizes)[unit].back();
       _idx += prec_unit_local_size;
     }
+    */
+    _idx += (*_unit_cumul_sizes)[unit];
     increment(local_index);
     DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx) >",
                    "gidx:",   _idx,
@@ -234,6 +239,7 @@ public:
 	  index_type           local_index)
   : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
+    _unit_cumul_sizes(&_globmem->_unit_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(0),
     _max_idx(gmem->size() - 1),
@@ -248,10 +254,13 @@ public:
                    "lidx:", local_index);
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
 
+    /*
     for (size_type unit = 0; unit < _idx_unit_id; ++unit) {
       auto prec_unit_local_size = (*_bucket_cumul_sizes)[unit].back();
       _idx += prec_unit_local_size;
     }
+    */
+    _idx += (*_unit_cumul_sizes)[unit];
     if(bucket_index > 0) {
       local_index += (*_bucket_cumul_sizes)[_idx_unit_id.id][bucket_index - 1];
     }
@@ -280,6 +289,7 @@ public:
     const GlobPtr<E_, M_> & other)
   : _globmem(other._globmem),
     _bucket_cumul_sizes(other._bucket_cumul_sizes),
+    _unit_cumul_sizes(&_globmem->_unit_cumul_sizes),
     _lbegin(other._lbegin),
     _idx(other._idx),
     _max_idx(other._max_idx),
@@ -298,6 +308,7 @@ public:
   {
     _globmem            = other._globmem;
     _bucket_cumul_sizes = other._bucket_cumul_sizes;
+    _unit_cumul_sizes   = other._unit_cumul_sizes;
     _lbegin             = other._lbegin;
     _idx                = other._idx;
     _max_idx            = other._max_idx;
@@ -574,7 +585,7 @@ private:
       // iterate units:
       auto unit_id_max = _bucket_cumul_sizes->size() - 1;
       for (; _idx_unit_id <= unit_id_max; ++_idx_unit_id) {
-        if (offset == 0) {
+        if(offset == 0) {
           break;
         }
         auto & unit_bkt_sizes     = (*_bucket_cumul_sizes)[_idx_unit_id];

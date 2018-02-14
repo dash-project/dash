@@ -69,6 +69,7 @@ public:
   typedef typename container_list_type::difference_type    bucket_index_type;
   typedef local_iterator                               local_pointer;
   typedef local_iterator                               const_local_pointer;
+  typedef std::vector<size_type>                       unit_cumul_sizes_map;
   typedef std::vector<std::vector<size_type>>          bucket_cumul_sizes_map;
   
   template<typename T_, class GMem_>
@@ -88,7 +89,8 @@ public:
       _teamid(team.dart_id()),
       _nunits(team.size()),
       _myid(team.myid()),
-      _bucket_cumul_sizes(team.size())
+      _bucket_cumul_sizes(team.size()),
+      _unit_cumul_sizes(team.size())
   { }
 
   /**
@@ -261,6 +263,15 @@ public:
       std::copy(begin, end, _bucket_cumul_sizes[i].begin());
       begin = end;
       _size += *(end - 1);
+    }
+
+    for(int i = 0; i < _team->size(); ++i) {
+      if(i == 0) {
+        _unit_cumul_sizes[i] = 0;
+      } else {
+        _unit_cumul_sizes[i] = _unit_cumul_sizes[i - 1] + 
+          _bucket_cumul_sizes[i - 1].back();
+      }
     }
 
     // update local iterators
@@ -460,6 +471,8 @@ private:
   local_iterator                          _lend;
   /** Accumulated sizes of the buckets of each unit. See GlobHeapMem */
   bucket_cumul_sizes_map                  _bucket_cumul_sizes;
+  /** Accumulated sizes of elements per unit */
+  unit_cumul_sizes_map                    _unit_cumul_sizes;
   /** Global size of the memory space */
   size_type                               _size = 0;
   /** Local size of the memory space */
