@@ -232,7 +232,7 @@ GlobOutputIt copy_impl(
   DASH_LOG_TRACE("dash::copy_impl()",
                  "l_in_first:",  in_first,
                  "l_in_last:",   in_last,
-                 "g_out_first:", out_first.pos());
+                 "g_out_first:", out_first);
 
   auto num_elements = std::distance(in_first, in_last);
   dart_handle_t handle;
