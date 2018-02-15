@@ -156,6 +156,9 @@ public:
    */
   self_t& operator=(self_t&& other) noexcept;
 
+  /**
+   * Swap two Symmetric Allocators
+   */
   void swap(self_t& other) noexcept;
 
   /**
@@ -163,42 +166,6 @@ public:
    * Frees all global memory regions allocated by this allocator instance.
    */
   ~SymmetricAllocator() noexcept;
-
-#if 0
-  /**
-   * Whether storage allocated by this allocator can be deallocated
-   * through the given allocator instance.
-   * Establishes reflexive, symmetric, and transitive relationship.
-   * Does not throw exceptions.
-   *
-   * \returns  true if the storage allocated by this allocator can be
-   *           deallocated through the given allocator instance.
-   *
-   * \see DashAllocatorConcept
-   */
-  bool operator==(const self_t& rhs) const noexcept
-  {
-    return (_team_id == rhs._team_id && _alloc == rhs._alloc);
-  }
-
-  /**
-   * Whether storage allocated by this allocator cannot be deallocated
-   * through the given allocator instance.
-   * Establishes reflexive, symmetric, and transitive relationship.
-   * Does not throw exceptions.
-   * Same as \c !(operator==(rhs)).
-   *
-   * \returns  true if the storage allocated by this allocator cannot be
-   *           deallocated through the given allocator instance.
-   *
-   * \see DashAllocatorConcept
-   */
-  bool operator!=(const self_t& rhs) const noexcept
-  {
-    return !(*this == rhs);
-  }
-
-#endif
 
   /**
    * Allocates \c num_local_elem local elements at every unit in global
@@ -279,11 +246,8 @@ SymmetricAllocator<
     allocation_policy,
     LocalMemorySpace,
     LocalAlloc>::SymmetricAllocator(self_t const& other) noexcept
-  : _team_id(other.team)
-  , _alloc(other._alloc)
-  , _policy(other._policy)
 {
-  _segments.reserve(1);
+  operator=(other);
 }
 
 template <
@@ -297,11 +261,10 @@ SymmetricAllocator<
     LocalMemorySpace,
     LocalAlloc>::SymmetricAllocator(self_t&& other) noexcept
   : _team_id(other._team_id)
-  , _alloc(other._alloc)
-  , _segments(other._segments)
+  , _alloc(std::move(other._alloc))
+  , _segments(std::move(other._segments))
   , _policy(other._policy)
 {
-  other._segments.clear();
 }
 
 template <
@@ -326,13 +289,15 @@ typename SymmetricAllocator<
 
   _alloc = other._alloc;
 
-  // The team cannot be changed or copied
+  // TODO: Should we really copy the team, or keep the originally team passed
+  // to the constructor
   _team_id = other._team_id;
 
-  // Never copy the segments of the other allocator
-  _segments.resize(other._segments.size());
+  _segments.reserve(1);
 
   _policy = other._policy;
+
+  return *this;
 }
 
 template <
@@ -360,6 +325,8 @@ typename SymmetricAllocator<
   else {
     operator=(other);  // Copy Assignment
   }
+
+  return *this;
 }
 
 template <
@@ -545,7 +512,9 @@ bool operator==(
     const SymmetricAllocator<U, allocation_policy, LocalMemSpace, LocalAlloc>&
         rhs)
 {
-  return (sizeof(T) == sizeof(U) && lhs._team_id == rhs._team_id);
+  return (
+      sizeof(T) == sizeof(U) && lhs._team_id == rhs._team_id &&
+      lhs._alloc == rhs._alloc);
 }
 
 template <

@@ -284,9 +284,12 @@ bool SymmetricAllocationPolicy<LocalAlloc>::do_global_deallocate(
       seg_nelem,
       seg_gptr);
 
-  auto ret = dart_team_memfree(seg_gptr) == DART_OK;
-
+  // We have to wait for the other since dart_team_memfree is non-collective
+  // This is required for symmetric allocation policy as the memory may be
+  // detached while other units are still operting on the unit's global memory
   DASH_ASSERT_RETURNS(dart_barrier(seg_gptr.teamid), DART_OK);
+
+  auto ret = dart_team_memfree(seg_gptr) == DART_OK;
 
   return ret;
 }
