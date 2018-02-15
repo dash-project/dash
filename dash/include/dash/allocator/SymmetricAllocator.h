@@ -423,7 +423,7 @@ SymmetricAllocator<
   auto& lp   = std::get<0>(rec);
   auto& gptr = std::get<2>(rec);
 
-  if (lp == nullptr || DART_GPTR_ISNULL(gptr)) {
+  if (lp == nullptr && DART_GPTR_ISNULL(gptr)) {
     return DART_GPTR_NULL;
   }
 
