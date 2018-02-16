@@ -210,10 +210,10 @@ private:
 
 private:
   // Private Members
-  dart_team_t                                       _team_id;
-  local_allocator_type                                    _alloc;
+  dart_team_t                                         _team_id;
+  local_allocator_type                                _alloc;
   std::vector<typename policy_type::allocation_rec_t> _segments;
-  policy_type                                       _policy;
+  policy_type                                         _policy;
 };  // class SymmetricAllocator
 
 ///////////// Implementation ///////////////////
@@ -320,11 +320,13 @@ typename SymmetricAllocator<
   if (&other == this) return *this;
 
   if (_alloc == other._alloc) {
+    //If the local allocators equal each other we can move everything
     clear();
     swap(other);
   }
   else {
-    operator=(other);  // Copy Assignment
+    //otherwise we do not touch any data and copy assign it
+    operator=(other);
   }
 
   return *this;

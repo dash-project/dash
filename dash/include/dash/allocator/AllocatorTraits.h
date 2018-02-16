@@ -97,10 +97,13 @@ struct allocator_traits {
   typedef typename Alloc::allocation_policy    allocation_policy;
   typedef typename Alloc::local_allocator_type local_allocator;
 
+  //Optional Definitions
   typedef typename detail::allocator_traits_difference_type<Alloc>::type
       difference_type;
   typedef typename detail::allocator_traits_size_type<Alloc>::type
       size_type;
+
+  //Local Allocator Traits
   typedef typename detail::allocator_traits_local_pointer<Alloc>::type
       local_pointer;
   typedef typename detail::allocator_traits_const_local_pointer<Alloc>::type
