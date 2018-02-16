@@ -233,9 +233,7 @@ public:
       // Wait for initialization of local values at all units.
       // Barrier synchronization is okay here as multiple units are
       // involved in initialization of values in global memory:
-      //
-      // TODO: Should depend on allocator trait
-      //         dash::allocator_traits<Alloc>::is_collective()
+
       DASH_LOG_DEBUG("GlobStaticMem(lvals,team)", "barrier");
       barrier();
     }
