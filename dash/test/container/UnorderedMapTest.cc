@@ -8,7 +8,6 @@
 #include <vector>
 #include <algorithm>
 
-#if 0
 TEST_F(UnorderedMapTest, Initialization)
 {
   typedef int                                  key_t;
@@ -543,5 +542,4 @@ TEST_F(UnorderedMapTest, MappedAtomics)
     }
   }
 }
-#endif
 

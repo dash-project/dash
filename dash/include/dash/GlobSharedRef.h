@@ -17,10 +17,10 @@ template<
   typename GlobalPointerType>
 class GlobSharedRef
 {
-  template<typename U>
+  template<typename U, typename P>
   friend std::ostream & operator<<(
     std::ostream & os,
-    const GlobSharedRef<U, GlobalPointerType> & gref);
+    const GlobSharedRef<U, P> & gref);
 
 private:
   typedef GlobSharedRef<T, GlobalPointerType>
