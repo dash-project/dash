@@ -17,7 +17,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -213,7 +212,7 @@ private:
   // Private Members
   dart_team_t                                       _team_id;
   local_allocator_type                                    _alloc;
-  std::vector<typename policy_type::allocation_rec> _segments;
+  std::vector<typename policy_type::allocation_rec_t> _segments;
   policy_type                                       _policy;
 };  // class SymmetricAllocator
 
@@ -389,24 +388,21 @@ SymmetricAllocator<
   auto const rec =
       _policy.do_global_allocate(_team_id, _alloc, num_local_elem);
 
-  auto& lp   = std::get<0>(rec);
-  auto& gptr = std::get<2>(rec);
-
-  if (lp == nullptr && DART_GPTR_ISNULL(gptr)) {
+  if (!rec) {
     return DART_GPTR_NULL;
   }
 
   DASH_LOG_TRACE(
       "SymmetricAllocator.allocate(nlocal)",
       "allocated memory global segment (lp, nelem, gptr)",
-      lp,
-      num_local_elem,
-      gptr);
+      rec.lptr(),
+      rec.length(),
+      rec.gptr());
 
   _segments.push_back(rec);
 
-  DASH_LOG_DEBUG_VAR("SymmetricAllocator.allocate >", gptr);
-  return gptr;
+  DASH_LOG_DEBUG_VAR("SymmetricAllocator.allocate >", rec.gptr());
+  return rec.gptr();
 }
 
 template <
@@ -461,22 +457,18 @@ void SymmetricAllocator<
     return;
   }
 
-  auto& tuple = *_segments.begin();
+  auto& rec = *_segments.begin();
 
-  auto& seg_lptr  = std::get<0>(tuple);
-  auto& seg_nelem = std::get<1>(tuple);
-  auto& seg_gptr  = std::get<2>(tuple);
-
-  DASH_ASSERT(DART_GPTR_EQUAL(gptr, seg_gptr));
+  DASH_ASSERT(DART_GPTR_EQUAL(gptr, rec.gptr()));
 
   DASH_LOG_TRACE(
       "SymmetricAllocator.deallocate",
       "deallocating memory segment (lptr, nelem, gptr)",
-      seg_lptr,
-      seg_nelem,
-      seg_gptr);
+      rec.lptr(),
+      rec.length(),
+      rec.gptr());
 
-  auto const ret = _policy.do_global_deallocate(_alloc, tuple);
+  auto const ret = _policy.do_global_deallocate(_alloc, rec);
 
   if (!keep_reference) {
     _segments.erase(_segments.begin());
@@ -497,7 +489,7 @@ void SymmetricAllocator<
     LocalAlloc>::clear() noexcept
 {
   for (auto& tuple : _segments) {
-    do_deallocate(std::get<2>(tuple), true);
+    do_deallocate(tuple.gptr(), true);
   }
   _segments.clear();
 }

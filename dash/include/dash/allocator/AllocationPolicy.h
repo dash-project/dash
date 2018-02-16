@@ -5,6 +5,7 @@
 
 #include <dash/Exception.h>
 #include <dash/Types.h>
+#include <dash/allocator/internal/Types.h>
 #include <dash/memory/MemorySpace.h>
 
 namespace dash {
@@ -80,15 +81,16 @@ class CollectiveAllocationPolicy
 
 public:
   // tuple to hold the local pointer
-  using allocation_rec = std::tuple<local_pointer, size_t, dart_gptr_t>;
+  using allocation_rec_t =
+      allocator::allocation_rec<local_pointer, dart_gptr_t>;
 
 public:
-  inline allocation_rec do_global_allocate(
+  inline allocation_rec_t do_global_allocate(
       dart_team_t teamid, LocalAlloc& a, std::size_t nels)
   {
     return this->do_global_allocate(teamid, a, nels, is_default_ram_space{});
   }
-  inline bool do_global_deallocate(LocalAlloc& a, allocation_rec& rec)
+  inline bool do_global_deallocate(LocalAlloc& a, allocation_rec_t& rec)
   {
     return this->do_global_deallocate(a, rec, is_default_ram_space{});
   }
@@ -98,24 +100,24 @@ private:
   /// allocate in the default Host Space. In this we have to allocate locally
   /// and subsequently attach the locally allocated memory to the global DART
   /// memory.
-  allocation_rec do_global_allocate(
+  allocation_rec_t do_global_allocate(
       dart_team_t teamid, LocalAlloc& a, std::size_t nels, std::false_type);
 
   /// Variant to allocate symmetrically in global memory space if we
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
-  allocation_rec do_global_allocate(
+  allocation_rec_t do_global_allocate(
       dart_team_t teamid, LocalAlloc& a, std::size_t nels, std::true_type);
 
   /// Similar to the first case above this variant detaches from global memory
   /// and subsequently releases the local memory.
   bool do_global_deallocate(
-      LocalAlloc& a, allocation_rec& rec, std::false_type);
+      LocalAlloc& a, allocation_rec_t& rec, std::false_type);
 
   /// Similar to the second variant memory is deallocated symmetrically in
   /// DART.
   bool do_global_deallocate(
-      LocalAlloc& a, allocation_rec& rec, std::true_type);
+      LocalAlloc& a, allocation_rec_t& rec, std::true_type);
 };
 
 /**
@@ -123,11 +125,10 @@ private:
  * independent of the other units. This local memory portion is allocated from
  * a memory pool which is already attached to global memory. This variant is a
  * good fit in cases where only one units needs to allocate memory while the
- * other units do not contribute any local portion. It is used for example used
- * to implement dash::Shared.
- * Note: Both allocation and deallocation are non-collective. The user has to
- * ensure that the owning unit does not release the memory while other units
- * are still operating on it.
+ * other units do not contribute any local portion. It is used for example
+ * used to implement dash::Shared. Note: Both allocation and deallocation are
+ * non-collective. The user has to ensure that the owning unit does not
+ * release the memory while other units are still operating on it.
  */
 template <class LocalAlloc>
 class LocalAllocationPolicy {
@@ -146,14 +147,14 @@ class LocalAllocationPolicy {
   using value_type       = typename allocator_traits::value_type;
 
 public:
-  using allocation_rec = std::tuple<local_pointer, size_t, dart_gptr_t>;
+  using allocation_rec_t = allocator::allocation_rec<local_pointer, dart_gptr_t>;
 
 public:
-  inline allocation_rec do_global_allocate(
+  inline allocation_rec_t do_global_allocate(
       dart_team_t teamid, LocalAlloc& a, std::size_t nels) const
   {
-    dart_gptr_t   gptr = DART_GPTR_NULL;
-    local_pointer addr = nullptr;
+    dart_gptr_t   gptr;
+    local_pointer addr;
 
     if (nels > 0) {
       dash::dart_storage<value_type> ds(nels);
@@ -163,8 +164,7 @@ public:
             "LocalAllocationPolicy.do_global_allocate",
             "cannot allocate local memory",
             ret);
-        gptr = DART_GPTR_NULL;
-        return std::make_tuple(addr, nels, gptr);
+        return allocation_rec_t{};
       }
       dart_gptr_getaddr(
           gptr,
@@ -172,31 +172,28 @@ public:
       DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
     }
 
-    return std::make_tuple(addr, nels, gptr);
+    return allocation_rec_t{addr, nels, gptr};
   };
 
-  inline bool do_global_deallocate(LocalAlloc& a, allocation_rec& rec) const
+  inline bool do_global_deallocate(LocalAlloc& a, allocation_rec_t& rec) const
   {
-    auto& gptr = std::get<2>(rec);
-    DASH_LOG_DEBUG_VAR("LocalAllocationPolicy.do_global_deallocate", gptr);
-    auto const ret = dart_memfree(gptr) == DART_OK;
-    gptr           = DART_GPTR_NULL;
+    DASH_LOG_DEBUG_VAR(
+        "LocalAllocationPolicy.do_global_deallocate", rec.gptr());
+    auto const ret = dart_memfree(rec.gptr()) == DART_OK;
+    rec.gptr()     = DART_GPTR_NULL;
     return ret;
   };
 };
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // INLINE AND TEMPLATE FUNCTION IMPLEMENTATIONS
 ///////////////////////////////////////////////////////////////////////////////
 
 template <class LocalAlloc>
-typename CollectiveAllocationPolicy<LocalAlloc>::allocation_rec
+typename CollectiveAllocationPolicy<LocalAlloc>::allocation_rec_t
 CollectiveAllocationPolicy<LocalAlloc>::do_global_allocate(
     dart_team_t teamid, LocalAlloc& a, std::size_t nels, std::false_type)
 {
-  auto ret = std::make_tuple(nullptr, nels, DART_GPTR_NULL);
-
   auto lp = allocator_traits::allocate(a, nels);
 
   if (!lp && nels > 0) {
@@ -204,21 +201,21 @@ CollectiveAllocationPolicy<LocalAlloc>::do_global_allocate(
         "CollectiveAllocationPolicy.global_allocate",
         "cannot allocate local memory segment",
         nels);
-    return ret;
+    return allocation_rec_t{};
   }
 
   auto gptr = base_t::do_global_attach(teamid, lp, nels);
 
   if (DART_GPTR_ISNULL(gptr)) {
     allocator_traits::deallocate(a, lp, nels);
-    return ret;
+    return allocation_rec_t{};
   }
 
-  return std::make_tuple(lp, nels, gptr);
+  return allocation_rec_t(lp, nels, gptr);
 }
 
 template <class LocalAlloc>
-typename CollectiveAllocationPolicy<LocalAlloc>::allocation_rec
+typename CollectiveAllocationPolicy<LocalAlloc>::allocation_rec_t
 CollectiveAllocationPolicy<LocalAlloc>::do_global_allocate(
     dart_team_t teamid, LocalAlloc& a, std::size_t nels, std::true_type)
 {
@@ -243,55 +240,48 @@ CollectiveAllocationPolicy<LocalAlloc>::do_global_allocate(
   dart_gptr_getaddr(
       gptr,
       reinterpret_cast<typename allocator_traits::void_pointer*>(&addr));
-  return std::make_tuple(addr, nels, gptr);
+  return allocation_rec_t(addr, nels, gptr);
 }
 
 template <class LocalAlloc>
 bool CollectiveAllocationPolicy<LocalAlloc>::do_global_deallocate(
-    LocalAlloc& a, allocation_rec& rec, std::false_type)
+    LocalAlloc& a, allocation_rec_t& rec, std::false_type)
 {
-  auto& seg_lptr  = std::get<0>(rec);
-  auto& seg_nelem = std::get<1>(rec);
-  auto& seg_gptr  = std::get<2>(rec);
 
   DASH_LOG_TRACE(
       "SymmatricAllocationPolicy.deallocate",
       "deallocating memory segment (lptr, nelem, gptr)",
-      seg_lptr,
-      seg_nelem,
-      seg_gptr);
+      rec.lptr(),
+      rec.length(),
+      rec.gptr());
 
-  auto ret = base_t::do_global_detach(seg_gptr);
+  auto ret = base_t::do_global_detach(rec.gptr());
 
   DASH_LOG_DEBUG("SymmatricAllocationPolicy.deallocate", "_segments.erase");
-  allocator_traits::deallocate(a, seg_lptr, seg_nelem);
+  allocator_traits::deallocate(a, rec.lptr(), rec.length());
 
-  DASH_ASSERT_RETURNS(dart_barrier(seg_gptr.teamid), DART_OK);
+  DASH_ASSERT_RETURNS(dart_barrier(rec.gptr().teamid), DART_OK);
 
   return ret;
 }
 
 template <class LocalAlloc>
 bool CollectiveAllocationPolicy<LocalAlloc>::do_global_deallocate(
-    LocalAlloc& a, allocation_rec& rec, std::true_type)
+    LocalAlloc& a, allocation_rec_t& rec, std::true_type)
 {
-  auto& seg_lptr  = std::get<0>(rec);
-  auto& seg_nelem = std::get<1>(rec);
-  auto& seg_gptr  = std::get<2>(rec);
-
   DASH_LOG_TRACE(
       "SymmatricAllocationPolicy.deallocate",
       "deallocating memory segment (lptr, nelem, gptr)",
-      seg_lptr,
-      seg_nelem,
-      seg_gptr);
+      rec.lptr(),
+      rec.length(),
+      rec.gptr());
 
   // We have to wait for the other since dart_team_memfree is non-collective
   // This is required for symmetric allocation policy as the memory may be
   // detached while other units are still operting on the unit's global memory
-  DASH_ASSERT_RETURNS(dart_barrier(seg_gptr.teamid), DART_OK);
+  DASH_ASSERT_RETURNS(dart_barrier(rec.gptr().teamid), DART_OK);
 
-  auto ret = dart_team_memfree(seg_gptr) == DART_OK;
+  auto ret = dart_team_memfree(rec.gptr()) == DART_OK;
 
   return ret;
 }

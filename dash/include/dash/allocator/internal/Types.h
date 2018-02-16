@@ -2,6 +2,7 @@
 #define DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
 #include <dash/dart/if/dart_globmem.h>
 #include <cstddef>
+#include <tuple>
 #include <ostream>
 
 namespace dash {
@@ -27,7 +28,7 @@ struct allocation_rec {
 
   // Move Constructor
   allocation_rec(allocation_rec &&x) noexcept
-    : _data(x)
+    : _data(std::move(x._data))
   {
     x.reset();
   }
@@ -38,9 +39,7 @@ struct allocation_rec {
   // Move Assignment
   allocation_rec &operator=(allocation_rec &&x) noexcept
   {
-    std::get<0>(_data) = std::move(std::get<0>(x));
-    std::get<1>(_data) = std::move(std::get<1>(x));
-    std::get<2>(_data) = std::move(std::get<2>(x));
+    std::swap(_data, x._data);
     x.reset();
     return *this;
   }
@@ -64,20 +63,35 @@ struct allocation_rec {
     std::get<2>(_data) = DART_GPTR_NULL;
   }
 
-  LPtr &lptr() const noexcept
+  LPtr &lptr() noexcept
   {
     return std::get<0>(_data);
   }
-  std::size_t &length() const noexcept
+
+  LPtr const &lptr() const noexcept
+  {
+    return std::get<0>(_data);
+  }
+
+  std::size_t &length() noexcept
   {
     return std::get<1>(_data);
   }
 
-  GPtr &gptr() const noexcept
+  std::size_t const &length() const noexcept
+  {
+    return std::get<1>(_data);
+  }
+
+  GPtr &gptr() noexcept
   {
     return std::get<2>(_data);
   }
 
+  GPtr const &gptr() const noexcept
+  {
+    return std::get<2>(_data);
+  }
   /**
    * Bool operator to make the Allocator code better readable
    */
