@@ -89,26 +89,28 @@ private:
 
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
 
-public:
-  using value_type = typename std::decay<ElementType>::type;
-
   using allocator_type = dash::SymmetricAllocator<
-      value_type,
+      ElementType,
       AllocationPolicy,
       LocalMemorySpace,
       allocator::DefaultAllocator>;
 
-  typedef typename allocator_type::size_type                    size_type;
-  typedef typename allocator_type::difference_type        difference_type;
-  typedef typename allocator_type::difference_type             index_type;
+  using allocator_traits = dash::allocator_traits<allocator_type>;
+
+public:
+  using value_type = typename std::decay<ElementType>::type;
+
+  typedef typename allocator_traits::size_type       size_type;
+  typedef typename allocator_traits::difference_type difference_type;
+  typedef typename allocator_traits::difference_type index_type;
 
   typedef GlobPtr<      value_type, self_t>                       pointer;
   typedef GlobPtr<const value_type, self_t>                 const_pointer;
   typedef GlobPtr<      void,       self_t>                  void_pointer;
   typedef GlobPtr<const void,       self_t>            const_void_pointer;
 
-  typedef       value_type *                                local_pointer;
-  typedef const value_type *                          const_local_pointer;
+  typedef typename allocator_traits::local_pointer       local_pointer;
+  typedef typename allocator_traits::const_local_pointer const_local_pointer;
 
   typedef LocalMemorySpace                           local_memory_space_t;
 
@@ -225,7 +227,9 @@ public:
     DASH_ASSERT_EQ(_lend, copy_end,
                    "Initialization of specified local values failed");
 
-    if (_nunits > 1) {
+    constexpr auto const policy =
+        allocator_traits::allocation_policy::value;
+    if (policy == global_allocation_policy::collective) {
       // Wait for initialization of local values at all units.
       // Barrier synchronization is okay here as multiple units are
       // involved in initialization of values in global memory:

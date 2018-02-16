@@ -37,7 +37,7 @@ namespace dash {
 template <
     /// The Element Type
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     /// The Local Memory Space (e.g., HostSpace)
     typename LocalMemorySpace = dash::HostSpace,
     /// The Allocator Strategy to allocate from the local memory space
@@ -48,12 +48,12 @@ class SymmetricAllocator {
   friend bool operator==(
       const SymmetricAllocator<
           T,
-          allocation_policy,
+          AllocationPolicy,
           LocalMemorySpace,
           LocalAlloc>& lhs,
       const SymmetricAllocator<
           U,
-          allocation_policy,
+          AllocationPolicy,
           LocalMemorySpace,
           LocalAlloc>& rhs);
 
@@ -61,12 +61,12 @@ class SymmetricAllocator {
   friend bool operator!=(
       const SymmetricAllocator<
           T,
-          allocation_policy,
+          AllocationPolicy,
           LocalMemorySpace,
           LocalAlloc>& lhs,
       const SymmetricAllocator<
           U,
-          allocation_policy,
+          AllocationPolicy,
           LocalMemorySpace,
           LocalAlloc>& rhs);
 
@@ -79,28 +79,27 @@ class SymmetricAllocator {
       "Local Memory Space must be a polymorphic memory resource");
 
   static_assert(
-      allocation_policy == global_allocation_policy::collective ||
-          allocation_policy == global_allocation_policy::non_collective,
+      AllocationPolicy == global_allocation_policy::collective ||
+          AllocationPolicy == global_allocation_policy::non_collective,
       "only collective or non-collective allocation policies supported");
 
   using self_t = SymmetricAllocator<
       ElementType,
-      allocation_policy,
+      AllocationPolicy,
       LocalMemorySpace,
       LocalAlloc>;
 
-  using allocator_type = LocalAlloc<ElementType, LocalMemorySpace>;
-
-  using allocator_traits = std::allocator_traits<allocator_type>;
+  using allocator_traits = std::allocator_traits<LocalAlloc<ElementType, LocalMemorySpace>>;
 
   using policy_type = typename std::conditional<
-      allocation_policy == global_allocation_policy::collective,
+      AllocationPolicy == global_allocation_policy::collective,
       allocator::CollectiveAllocationPolicy<
           LocalAlloc<ElementType, LocalMemorySpace>>,
       allocator::LocalAllocationPolicy<
           LocalAlloc<ElementType, LocalMemorySpace>>>::type;
 
 public:
+  using local_allocator_type = LocalAlloc<ElementType, LocalMemorySpace>;
   /// Allocator Traits
   using value_type      = ElementType;
   using size_type       = dash::default_size_t;
@@ -117,8 +116,8 @@ public:
   using const_local_void_pointer = typename allocator_traits::const_void_pointer;
 
   // Dash allocator traits...
-  using allocator_policy =
-      std::integral_constant<global_allocation_policy, allocation_policy>;
+  using allocation_policy =
+      std::integral_constant<global_allocation_policy, AllocationPolicy>;
 
 public:
   /**
@@ -127,7 +126,7 @@ public:
    */
   explicit SymmetricAllocator(
       Team const&    team,
-      allocator_type a = {static_cast<LocalMemorySpace*>(
+      local_allocator_type a = {static_cast<LocalMemorySpace*>(
           get_default_memory_space<
               void,
               memory_space_local_domain_tag,
@@ -213,7 +212,7 @@ private:
 private:
   // Private Members
   dart_team_t                                       _team_id;
-  allocator_type                                    _alloc;
+  local_allocator_type                                    _alloc;
   std::vector<typename policy_type::allocation_rec> _segments;
   policy_type                                       _policy;
 };  // class SymmetricAllocator
@@ -222,15 +221,15 @@ private:
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::
-    SymmetricAllocator(Team const& team, allocator_type a) noexcept
+    SymmetricAllocator(Team const& team, local_allocator_type a) noexcept
   : _team_id(team.dart_id())
   , _alloc(a)
   , _policy{}
@@ -241,12 +240,12 @@ SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::SymmetricAllocator(self_t const& other) noexcept
 {
@@ -255,12 +254,12 @@ SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::SymmetricAllocator(self_t&& other) noexcept
   : _team_id(other._team_id)
@@ -272,17 +271,17 @@ SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::self_t&
                  SymmetricAllocator<
                      ElementType,
-                     allocation_policy,
+                     AllocationPolicy,
                      LocalMemorySpace,
                      LocalAlloc>::operator=(self_t const& other) noexcept
 {
@@ -305,17 +304,17 @@ typename SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::self_t&
                  SymmetricAllocator<
                      ElementType,
-                     allocation_policy,
+                     AllocationPolicy,
                      LocalMemorySpace,
                      LocalAlloc>::operator=(self_t&& other) noexcept
 {
@@ -334,12 +333,12 @@ typename SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::~SymmetricAllocator() noexcept
 {
@@ -348,12 +347,12 @@ SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::swap(self_t& other) noexcept
 {
@@ -365,17 +364,17 @@ void SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::pointer
 SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::allocate(size_type num_local_elem)
 {
@@ -412,12 +411,12 @@ SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::deallocate(pointer gptr)
 {
@@ -426,12 +425,12 @@ void SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::
     do_deallocate(
@@ -488,12 +487,12 @@ void SymmetricAllocator<
 
 template <
     typename ElementType,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     typename LocalMemorySpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
-    allocation_policy,
+    AllocationPolicy,
     LocalMemorySpace,
     LocalAlloc>::clear() noexcept
 {
@@ -506,13 +505,13 @@ void SymmetricAllocator<
 template <
     class T,
     class U,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     class LocalMemSpace,
     template <class, class> class LocalAlloc>
 bool operator==(
-    const SymmetricAllocator<T, allocation_policy, LocalMemSpace, LocalAlloc>&
+    const SymmetricAllocator<T, AllocationPolicy, LocalMemSpace, LocalAlloc>&
         lhs,
-    const SymmetricAllocator<U, allocation_policy, LocalMemSpace, LocalAlloc>&
+    const SymmetricAllocator<U, AllocationPolicy, LocalMemSpace, LocalAlloc>&
         rhs)
 {
   return (
@@ -523,13 +522,13 @@ bool operator==(
 template <
     class T,
     class U,
-    global_allocation_policy allocation_policy,
+    global_allocation_policy AllocationPolicy,
     class LocalMemSpace,
     template <class, class> class LocalAlloc>
 bool operator!=(
-    const SymmetricAllocator<T, allocation_policy, LocalMemSpace, LocalAlloc>&
+    const SymmetricAllocator<T, AllocationPolicy, LocalMemSpace, LocalAlloc>&
         lhs,
-    const SymmetricAllocator<U, allocation_policy, LocalMemSpace, LocalAlloc>&
+    const SymmetricAllocator<U, AllocationPolicy, LocalMemSpace, LocalAlloc>&
         rhs)
 {
   return !(lhs == rhs);
