@@ -24,7 +24,7 @@ template<
   /// Type implementing the DASH allocator concept used to allocate and
   /// deallocate physical memory
   class    AllocatorType =
-             dash::allocator::LocalAllocator<ElementType> >
+             dash::SymmetricAllocator<ElementType, dash::global_allocation_policy::non_collective> >
 class GlobUnitMem
 {
 private:

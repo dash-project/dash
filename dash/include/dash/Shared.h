@@ -42,7 +42,7 @@ private:
   typedef dash::GlobStaticMem<
       value_type,
       dash::HostSpace,
-      dash::global_allocation_policy::local>
+      dash::global_allocation_policy::non_collective>
       GlobMem_t;
 
   template<typename T_>

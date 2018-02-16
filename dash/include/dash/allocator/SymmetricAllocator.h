@@ -79,9 +79,9 @@ class SymmetricAllocator {
       "Local Memory Space must be a polymorphic memory resource");
 
   static_assert(
-      allocation_policy == global_allocation_policy::symmetric ||
-          allocation_policy == global_allocation_policy::local,
-      "only symmetric or local allocation policy supported");
+      allocation_policy == global_allocation_policy::collective ||
+          allocation_policy == global_allocation_policy::non_collective,
+      "only collective or non-collective allocation policies supported");
 
   using self_t = SymmetricAllocator<
       ElementType,
@@ -94,8 +94,8 @@ class SymmetricAllocator {
   using allocator_traits = std::allocator_traits<allocator_type>;
 
   using policy_type = typename std::conditional<
-      allocation_policy == global_allocation_policy::symmetric,
-      allocator::SymmetricAllocationPolicy<
+      allocation_policy == global_allocation_policy::collective,
+      allocator::CollectiveAllocationPolicy<
           LocalAlloc<ElementType, LocalMemorySpace>>,
       allocator::LocalAllocationPolicy<
           LocalAlloc<ElementType, LocalMemorySpace>>>::type;
@@ -111,13 +111,14 @@ public:
   using void_pointer       = dart_gptr_t;
   using const_void_pointer = dart_gptr_t const;
 
-  using local_pointer            = value_type*;
-  using const_local_pointer      = value_type const*;
-  using local_void_pointer       = void*;
-  using const_local_void_pointer = void const*;
+  using local_pointer            = typename allocator_traits::pointer;
+  using const_local_pointer      = typename allocator_traits::const_pointer;
+  using local_void_pointer       = typename allocator_traits::void_pointer;
+  using const_local_void_pointer = typename allocator_traits::const_void_pointer;
 
   // Dash allocator traits...
-  using allocator_category = dash::collective_allocator_tag;
+  using allocator_policy =
+      std::integral_constant<global_allocation_policy, allocation_policy>;
 
 public:
   /**
@@ -126,10 +127,12 @@ public:
    */
   explicit SymmetricAllocator(
       Team const&    team,
-      allocator_type a = {get_default_memory_space<
-          void,
-          memory_space_local_domain_tag,
-          typename memory_traits::memory_space_type_category>()}) noexcept;
+      allocator_type a = {static_cast<LocalMemorySpace*>(
+          get_default_memory_space<
+              void,
+              memory_space_local_domain_tag,
+              typename memory_traits::
+                  memory_space_type_category>())}) noexcept;
 
   /**
    * Copy constructor.
@@ -157,7 +160,7 @@ public:
   self_t& operator=(self_t&& other) noexcept;
 
   /**
-   * Swap two Symmetric Allocators
+   * Swap two collective Allocators
    */
   void swap(self_t& other) noexcept;
 
@@ -171,7 +174,7 @@ public:
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
    *
-   * \note As allocation is symmetric, each unit has to allocate
+   * \note As allocation is collective, each unit has to allocate
    *       an equal number of local elements.
    *
    * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL

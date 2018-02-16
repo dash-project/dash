@@ -1,6 +1,7 @@
 #ifndef DASH__TEST__LOCALALLOC_TEST_H_
 #define DASH__TEST__LOCALALLOC_TEST_H_
 
+#include <dash/Allocator.h>
 #include "../TestBase.h"
 
 /**
@@ -12,11 +13,7 @@ protected:
   using glob_mem_t = dash::GlobStaticMem<
       T,
       dash::HostSpace,
-      dash::global_allocation_policy::local>;
-
-  template <typename T>
-  using local_allocator_t =
-      dash::SymmetricAllocator<T, dash::global_allocation_policy::local>;
+      dash::global_allocation_policy::non_collective>;
 
 protected:
   LocalAllocatorTest()

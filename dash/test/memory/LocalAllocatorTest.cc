@@ -3,12 +3,11 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/Pattern.h>
-#include <dash/allocator/LocalAllocator.h>
 
 TEST_F(LocalAllocatorTest, Constructor)
 {
   auto const& team   = dash::Team::All();
-  auto        target = local_allocator_t<int>(team);
+  auto        target = dash::LocalAllocator<int>(team);
   if (dash::myid().id == 0) {
     // must not hang, as no synchronisation is allowed
     dart_gptr_t requested = target.allocate(sizeof(int) * 10);
@@ -37,7 +36,7 @@ TEST_F(LocalAllocatorTest, MemAlloc)
 TEST_F(LocalAllocatorTest, MoveAssignment)
 {
   using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t<int>>;
-  using Alloc_t   = local_allocator_t<int>;
+  using Alloc_t   = dash::LocalAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t   target_new(dash::Team::All());
 
@@ -69,7 +68,7 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
 TEST_F(LocalAllocatorTest, MoveCtor)
 {
   using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t<int>>;
-  using Alloc_t   = local_allocator_t<int>;
+  using Alloc_t   = dash::LocalAllocator<int>;
   GlobPtr_t gptr;
   Alloc_t   target_new(dash::Team::All());
 

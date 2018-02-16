@@ -10,7 +10,7 @@ TEST_F(SymmetricAllocatorTest, Constructor)
 {
   using allocator_type = dash::SymmetricAllocator<
       int,
-      dash::global_allocation_policy::symmetric,
+      dash::global_allocation_policy::collective,
       dash::HostSpace>;
 
   allocator_type target{dash::Team::All()};
@@ -29,7 +29,7 @@ TEST_F(SymmetricAllocatorTest, TeamAlloc)
 
   dash::SymmetricAllocator<
       int,
-      dash::global_allocation_policy::symmetric,
+      dash::global_allocation_policy::collective,
       dash::HostSpace>
               target(subteam);
   dart_gptr_t requested = target.allocate(10);
@@ -45,11 +45,11 @@ TEST_F(SymmetricAllocatorTest, MoveAssignment)
   using glob_mem_t = dash::GlobStaticMem<
       int,
       dash::HostSpace,
-      dash::global_allocation_policy::symmetric>;
+      dash::global_allocation_policy::collective>;
   using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t>;
   using Alloc_t   = dash::SymmetricAllocator<
       int,
-      dash::global_allocation_policy::symmetric,
+      dash::global_allocation_policy::collective,
       dash::HostSpace>;
   GlobPtr_t gptr;
   Alloc_t   target_new(dash::Team::All());
@@ -84,13 +84,13 @@ TEST_F(SymmetricAllocatorTest, MoveCtor)
   using glob_mem_t = dash::GlobStaticMem<
       int,
       dash::HostSpace,
-      dash::global_allocation_policy::symmetric>;
+      dash::global_allocation_policy::collective>;
 
   using GlobPtr_t = dash::GlobConstPtr<int, glob_mem_t>;
 
   using Alloc_t = dash::SymmetricAllocator<
       int,
-      dash::global_allocation_policy::symmetric,
+      dash::global_allocation_policy::collective,
       dash::HostSpace>;
 
   GlobPtr_t gptr;

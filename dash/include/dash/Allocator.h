@@ -3,10 +3,10 @@
 
 #include <dash/allocator/AllocatorTraits.h>
 
-#include <dash/allocator/LocalAllocator.h>
 #include <dash/allocator/SymmetricAllocator.h>
 #include <dash/allocator/EpochSynchronizedAllocator.h>
 
+#include <dash/memory/MemorySpace.h>
 
 #include <dash/memory/SimpleMemoryPool.h>
 
@@ -31,6 +31,16 @@ inline void * align(
   space      = new_space;
   return ptr = reinterpret_cast<void *>(aligned);
 }
+
+template <
+    typename T,
+    typename MS                              = dash::HostSpace,
+    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
+using LocalAllocator = dash::SymmetricAllocator<
+    T,
+    dash::global_allocation_policy::non_collective,
+    MS,
+    LocalAlloc>;
 
 } // namespace dash
 

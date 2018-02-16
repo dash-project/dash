@@ -81,7 +81,7 @@ template <
     typename ElementType,
     typename LocalMemorySpace,
     global_allocation_policy AllocationPolicy =
-        global_allocation_policy::symmetric>
+        global_allocation_policy::collective>
 class GlobStaticMem {
 private:
   typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
