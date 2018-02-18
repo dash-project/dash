@@ -7,7 +7,7 @@
 namespace dash {
 
 typedef std::vector<std::vector<int>>                     matrix_t;
-typedef std::vector<std::vector<std::pair<int, int>>>     matrix_pair_t;
+typedef std::vector<std::vector<std::pair<int, int>>>     pair_t;
 // (supervertex, new component, vertex src, vertex trg, weight, owner, 
 // local offset)
 typedef std::tuple<int, int, int, int, int, int, int>     tuple_t;

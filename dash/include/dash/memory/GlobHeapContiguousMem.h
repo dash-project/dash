@@ -405,6 +405,18 @@ public:
     return dart_gptr;
   }
 
+  value_type & get(index_type index) {
+    return (*_container)[index];
+  }
+
+  size_type local_size() {
+    return _local_size;
+  }
+
+  void set(index_type index, value_type value) {
+    (*_container)[index] = value;
+  }
+
 private:
 
   /**

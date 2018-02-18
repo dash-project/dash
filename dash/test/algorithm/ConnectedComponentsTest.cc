@@ -4,6 +4,8 @@
 
 struct vprop {
   int comp;
+  int unit;
+  int index;
 };
 
 typedef dash::Graph<dash::UndirectedGraph, vprop>       graph_t;

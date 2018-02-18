@@ -739,6 +739,19 @@ public:
     return global_vertex_iterator(_glob_mem_vertex, _myid, it.pos());
   }
 
+  vertex_properties_type & vertex_attributes(vertex_size_type local_vertex) {
+    return _glob_mem_vertex->get(local_vertex).properties;
+  }
+
+  void set_vertex_attributes(vertex_size_type local_vertex, 
+      vertex_properties_type prop) {
+    return _glob_mem_vertex->set(local_vertex, vertex_type(prop));
+  }
+
+  vertex_size_type local_vertex_size() {
+    return _glob_mem_vertex->local_size();
+  }
+
 private:
 
   /**
@@ -808,7 +821,6 @@ private:
     edge_properties_type prop { item.second };
     add_edge(s, t, prop);
   }
-
 
 private:
 
