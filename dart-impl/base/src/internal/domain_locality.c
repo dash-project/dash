@@ -294,7 +294,8 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
       domain->unit_ids    = malloc(sizeof(dart_global_unit_t));
       domain->unit_ids[0] = unit_id;
     } else {
-      domain->unit_ids    = malloc(sizeof(dart_global_unit_t) * domain->num_units);
+      domain->unit_ids    = malloc(sizeof(dart_global_unit_t)
+                                     * domain->num_units);
       int domain_unit_idx = 0;
       for (int sd = 0; sd < domain->num_domains; sd++) {
         dart_domain_locality_t * subdomain = domain->children[sd];
@@ -1101,7 +1102,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
 
     if (subdomain->num_units > 0) {
       subdomain->unit_ids = realloc(subdomain->unit_ids,
-                            subdomain->num_units * sizeof(dart_global_unit_t));
+                                    subdomain->num_units
+                                      * sizeof(dart_global_unit_t));
       DART_ASSERT(NULL != subdomain->unit_ids);
     } else {
       free(subdomain->unit_ids);
