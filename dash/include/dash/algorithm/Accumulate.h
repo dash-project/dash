@@ -35,7 +35,7 @@ ValueType accumulate(
 {
   struct local_result {
     ValueType l_result;
-    bool      l_valid = false;
+    bool      l_valid;
   };
 
   auto & team      = in_first.team();
@@ -95,7 +95,7 @@ ValueType accumulate(
 {
   struct local_result {
     ValueType l_result;
-    bool      l_valid = false;
+    bool      l_valid;
   };
 
   auto & team      = in_first.team();
