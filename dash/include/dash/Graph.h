@@ -146,6 +146,7 @@ public:
   friend global_inout_edge_proxy_type;
   friend local_edge_proxy_type;
   friend global_edge_proxy_type;
+  friend vertex_type;
 
 public:
 
@@ -670,6 +671,14 @@ public:
       _glob_mem_in_edge->commit();
     }
     _glob_mem_edge->commit();
+
+    for(auto it = vertices().lbegin(); it != vertices().lend(); ++it) {
+      auto & v = *it;
+      v.in_edge_list.index = _glob_mem_in_edge->container_begin(it.pos());
+      v.in_edge_list.size = _glob_mem_in_edge->container_size(it.pos());
+      v.out_edge_list.index = _glob_mem_out_edge->container_begin(it.pos());
+      v.out_edge_list.size = _glob_mem_out_edge->container_size(it.pos());
+    }
   }
 
   /**

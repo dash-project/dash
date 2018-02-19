@@ -46,8 +46,14 @@ template<typename GraphType>
 class Vertex {
 
   typedef typename GraphType::vertex_properties_type   properties_type;
+  typedef typename GraphType::glob_mem_vert_type       gmem_type;
+  typedef typename gmem_type::index_type               index_type;
 
-  friend GraphType;
+  template<typename IndexType>
+  struct EdgeListIndex {
+    IndexType index;
+    IndexType size;
+  };
 
 public:
 
@@ -68,7 +74,9 @@ public:
 public:
 
   /** Properties of this vertex */
-  properties_type       properties;
+  properties_type              properties;
+  EdgeListIndex<index_type>    in_edge_list;
+  EdgeListIndex<index_type>    out_edge_list;
 
 };
 
@@ -99,6 +107,7 @@ class VertexProxy {
     typedef typename glob_mem_type::index_type          index_type;
     typedef typename glob_mem_type::global_iterator     global_iterator;
     typedef typename glob_mem_type::local_iterator      local_iterator;
+    typedef typename parent_type::vertex_type           vertex_type;
     typedef typename parent_type::graph_type::local_vertex_iterator
       local_vertex_iterator;
     typedef typename parent_type::graph_type::glob_mem_edge_comb_type
@@ -109,9 +118,11 @@ class VertexProxy {
       /*
        * Constructs the range handler object.
        */
-      edge_range(parent_type & p, glob_mem_type * gmem) 
+      edge_range(parent_type & p, glob_mem_type * gmem, 
+          bool is_in_edge_list = false) 
         : _parent(p),
-          _glob_mem(gmem)
+          _glob_mem(gmem),
+          _is_in_edge_list(is_in_edge_list)
       { }
 
       /**
@@ -145,13 +156,13 @@ class VertexProxy {
        */
       template<typename VertexIteratorType>
       global_iterator begin(VertexIteratorType it) {
+        _parent.lazy_load();
         auto lpos = _parent._iterator.lpos();
-        auto index = it_position(_glob_mem, lpos.index);
+        auto index = g_it_position(_glob_mem, _parent._vertex);
         return global_iterator(
             _glob_mem,
             lpos.unit,
-            index,
-            0
+            index
         );
       }
 
@@ -159,12 +170,12 @@ class VertexProxy {
        * Begin iterator for local vertex iterators.
        */
       global_iterator begin(local_vertex_iterator it) {
-        auto index = it_position(_glob_mem, it.pos());
+        _parent.lazy_load();
+        auto index = g_it_position(_glob_mem, _parent._vertex);
         return global_iterator(
             _glob_mem,
             _parent._graph->_myid,
-            index,
-            0
+            index
         );
       }
       
@@ -173,13 +184,14 @@ class VertexProxy {
        */
       template<typename VertexIteratorType>
       global_iterator end(VertexIteratorType it) {
+        _parent.lazy_load();
         auto lpos = _parent._iterator.lpos();
-        auto index = it_position(_glob_mem, lpos.index);
+        auto index = g_it_position(_glob_mem, _parent._vertex);
+        auto size = g_it_size(_glob_mem, _parent._vertex);
         return global_iterator(
             _glob_mem,
             lpos.unit,
-            index,
-            _glob_mem->container_size(lpos.unit, index)
+            index + size
         );
       }
 
@@ -187,44 +199,24 @@ class VertexProxy {
        * End iterator for local vertex iterators.
        */
       global_iterator end(local_vertex_iterator it) {
-        auto index = it_position(_glob_mem, it.pos());
+        _parent.lazy_load();
+        auto index = g_it_position(_glob_mem, _parent._vertex);
+        auto size = g_it_size(_glob_mem, _parent._vertex);
         return global_iterator(
             _glob_mem,
             _parent._graph->_myid,
-            index,
-            _glob_mem->container_size(_parent._graph->_myid, index)
+            index + size
         );
       }
 
       /**
        * Local begin iterator for global vertex iterators.
+       * Not implemented because a VertexProxy referencing a remote vertex 
+       * does not have any local data.
        */
       template<typename VertexIteratorType>
       local_iterator lbegin(VertexIteratorType it) {
-        auto lpos = _parent._iterator.lpos();
-        auto index = it_position(_glob_mem, lpos.index);
-        auto lindex = index * 2;
-        auto bucket_it = _glob_mem->_buckets.begin();
-        std::advance(bucket_it, lindex);
-        // if bucket empty, advance to end iterator
-        if(bucket_it->size == 0) {
-          std::advance(bucket_it, 2);
-        }
-        auto position = 0;
-        // TODO: position WRONG, if there are uncommitted changes
-        //       save cumulated sizes of unattached containers somewhere
-        if(index > 0) {
-          position = 
-            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
-        }
-        // use lightweight constructor to avoid costly increment operations
-        return local_iterator(
-            _glob_mem->_buckets.begin(),
-            _glob_mem->_buckets.end(),
-            position,
-            bucket_it,
-            0
-        );
+        //TODO: Show "not implemented" message
       }
 
       /**
@@ -243,8 +235,7 @@ class VertexProxy {
         // TODO: position WRONG, if there are uncommitted changes
         //       save cumulated sizes of unattached containers somewhere
         if(index > 0) {
-          position = 
-            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+          position = _glob_mem->_local_bucket_cumul_sizes[index - 1];
         }
         // use lightweight constructor to avoid costly increment operations
         return local_iterator(
@@ -258,29 +249,12 @@ class VertexProxy {
       
       /**
        * Local end iterator for global vertex iterators.
+       * Not implemented because a VertexProxy referencing a remote vertex 
+       * does not have any local data.
        */
       template<typename VertexIteratorType>
       local_iterator lend(VertexIteratorType it) {
-        auto lpos = _parent._iterator.lpos();
-        auto index = it_position(_glob_mem, lpos.index) + 1;
-        auto lindex = index * 2;
-        auto bucket_it = _glob_mem->_buckets.begin();
-        //std::advance(bucket_it, lindex);
-        auto position = 0;
-        // TODO: position WRONG, if there are uncommitted changes
-        //       save cumulated sizes of unattached containers somewhere
-        if(index > 0) {
-          position = 
-            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
-        }
-        // use lightweight constructor to avoid costly increment operations
-        return local_iterator(
-            _glob_mem->_buckets.begin(),
-            _glob_mem->_buckets.end(),
-            position,
-            bucket_it,
-            0
-        );
+        //TODO: Show "not implemented" message
       }
 
       /**
@@ -295,8 +269,7 @@ class VertexProxy {
         // TODO: position WRONG, if there are uncommitted changes
         //       save cumulated sizes of unattached containers somewhere
         if(index > 0) {
-          position = 
-            _glob_mem->_bucket_cumul_sizes[_parent._graph->_myid][index - 1];
+          position = _glob_mem->_local_bucket_cumul_sizes[index - 1];
         }
         // use lightweight constructor to avoid costly increment operations
         return local_iterator(
@@ -325,12 +298,51 @@ class VertexProxy {
         return pos * 2;
       }
 
+      /**
+       * Determines the position of the edge-list for inbound and outbound
+       * edge memory spaces.
+       */
+      template<typename _GMem>
+      index_type g_it_position(_GMem * gmem, vertex_type v) {
+        //indices for in- and out-edge lists are the same
+        return v.out_edge_list.index;
+      }
+
+      /**
+       * Determines the position of the edge-list for the combined edge memory 
+       * space.
+       */
+      index_type g_it_position(glob_mem_edge_comb_type * gmem, vertex_type v) {
+        return v.out_edge_list.index * 2;
+      }
+
+      /**
+       * Determines the position of the edge-list for inbound and outbound
+       * edge memory spaces.
+       */
+      template<typename _GMem>
+      index_type g_it_size(_GMem * gmem, vertex_type v) {
+        if(_is_in_edge_list) {
+          return v.in_edge_list.size;
+        }
+        return v.out_edge_list.size;
+      }
+
+      /**
+       * Determines the position of the edge-list for the combined edge memory 
+       * space.
+       */
+      index_type g_it_size(glob_mem_edge_comb_type * gmem, vertex_type v) {
+        return v.out_edge_list.size + v.in_edge_list.size;
+      }
+
     private:
 
       /** Reference to the corresponding VertexProxy object */
       parent_type &    _parent;
       /** Reference to the GlobMem object of the targeted memory space */
       glob_mem_type *  _glob_mem;
+      bool             _is_in_edge_list;
 
   };
 
@@ -353,7 +365,7 @@ public:
     : _iterator(it),
       _graph(g),
       _out_edges(*this, g->_glob_mem_out_edge),
-      _in_edges(*this, g->_glob_mem_in_edge),
+      _in_edges(*this, g->_glob_mem_in_edge, true),
       _edges(*this, g->_glob_mem_edge)
   { }
 
@@ -382,11 +394,7 @@ public:
    * Returns the properties of the referenced vertex. Data is loaded lazily.
    */
   properties_type & attributes() {
-    // load properties lazily
-    if(!_vertex_loaded) {
-      _vertex = *_iterator;
-      _vertex_loaded = true;
-    }
+    lazy_load();
     return _vertex.properties;
   }
 
@@ -398,6 +406,16 @@ public:
   }
 
 private:
+  
+  /**
+   * Loads vertex data lazily.
+   */
+  void lazy_load() {
+    if(!_vertex_loaded) {
+      _vertex = *_iterator;
+      _vertex_loaded = true;
+    }
+  }
 
   /**
    * Overload of set_aatributes for global pointers.

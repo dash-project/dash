@@ -71,6 +71,8 @@ public:
   typedef local_iterator                               const_local_pointer;
   typedef std::vector<size_type>                       unit_cumul_sizes_map;
   typedef std::vector<std::vector<size_type>>          bucket_cumul_sizes_map;
+  typedef std::vector<size_type>                       
+    local_bucket_cumul_sizes_type;
   
   template<typename T_, class GMem_>
   friend class dash::GlobPtr;
@@ -91,15 +93,19 @@ public:
       _myid(team.myid()),
       _bucket_cumul_sizes(team.size()),
       _unit_cumul_sizes(team.size())
-  { }
+  {
+    // set 1 bucket for every unit
+    for(auto & unit_bkt : _bucket_cumul_sizes) {
+      unit_bkt.resize(1);
+    }
+  }
+
 
   /**
    * Adds a new bucket into memory space.
    */
   bucket_index_type add_container(size_type n_elements) {
-    // TODO: set capacity
-    increment_bucket_sizes();
-   
+    _local_bucket_cumul_sizes.resize(_local_bucket_cumul_sizes.size() + 1);
     // create bucket data and add to bucket list
     bucket_type cont_bucket { 
       0, 
@@ -207,21 +213,16 @@ public:
         }
         // update cumulated bucket sizes
         bucket_cumul += last_bucket->size;
-        _bucket_cumul_sizes[_myid][bucket_num] = bucket_cumul;
+        _local_bucket_cumul_sizes[bucket_num] = bucket_cumul;
         ++bucket_num;
       }
       ++count;
     }
+    _bucket_cumul_sizes[_myid][0] = _local_size; 
     // 2 local buckets per global bucket
     count /= 2;
     for(int i = count; i < *max_buckets; ++i) {
       add_container(0);
-      if(count > 0) {
-        _bucket_cumul_sizes[_myid][count] = 
-          _bucket_cumul_sizes[_myid][count - 1]; 
-      } else {
-        _bucket_cumul_sizes[_myid][count] = 0; 
-      }
     }
 
     //  detach old container location from global memory space, if it has
@@ -247,6 +248,7 @@ public:
       DART_OK
     );
 
+    // TODO: can now be simplified
     // distribute bucket sizes between all units
     auto bucket_amount = _bucket_cumul_sizes[_myid].size();
     std::vector<size_type> bucket_sizes(bucket_amount * _team->size());
@@ -340,12 +342,19 @@ public:
   /**
    * Returns the global size of a given bucket.
    */
-  size_type container_size(team_unit_t unit, size_type index) const {
+  size_type container_size(index_type index) const {
     if(index <= 0) {
-      return _bucket_cumul_sizes[unit][index];
+      return _local_bucket_cumul_sizes[index];
     }
-    return _bucket_cumul_sizes[unit][index] - 
-      _bucket_cumul_sizes[unit][index - 1];
+    return _local_bucket_cumul_sizes[index] - 
+      _local_bucket_cumul_sizes[index - 1];
+  }
+
+  index_type container_begin(index_type index) const {
+    if(index <= 0) {
+      return 0;
+    }
+    return _local_bucket_cumul_sizes[index - 1];
   }
 
   /**
@@ -444,17 +453,6 @@ private:
     _lend = unit_lend;
   }
 
-  /**
-   * Increments the bucket count of each unit by one.
-   */
-  void increment_bucket_sizes() {
-    for(auto it = _bucket_cumul_sizes.begin(); 
-        it != _bucket_cumul_sizes.end(); ++it) {
-      // gets initiliazed with 0 automatically
-      it->resize(it->size() + 1);
-    }
-  }
-
 private:
 
   /** List of buckets for GlobHeapLocalPtr */
@@ -483,6 +481,7 @@ private:
   local_iterator                          _lend;
   /** Accumulated sizes of the buckets of each unit. See GlobHeapMem */
   bucket_cumul_sizes_map                  _bucket_cumul_sizes;
+  local_bucket_cumul_sizes_type           _local_bucket_cumul_sizes;
   /** Accumulated sizes of elements per unit */
   unit_cumul_sizes_map                    _unit_cumul_sizes;
   /** Global size of the memory space */

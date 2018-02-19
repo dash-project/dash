@@ -228,60 +228,6 @@ public:
   }
 
   /**
-   * Constructor, creates a global pointer on global memory from unit, bucket 
-   * index and local offset in logical storage order.
-   */
-  template<typename MemSpaceT>
-  GlobPtr(
-    const MemSpaceT    * gmem,
-    team_unit_t          unit,
-    index_type           bucket_index,
-	  index_type           local_index)
-  : _globmem(reinterpret_cast<const globmem_type *>(gmem)),
-    _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
-    _unit_cumul_sizes(&_globmem->_unit_cumul_sizes),
-    _lbegin(_globmem->lbegin()),
-    _idx(0),
-    _max_idx(gmem->size() - 1),
-    _myid(gmem->team().myid()),
-    _idx_unit_id(unit),
-    _idx_local_idx(0),
-    _idx_bucket_idx(bucket_index),
-    _idx_bucket_phase(local_index)
-  {
-    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx)",
-                   "unit:", unit,
-                   "lidx:", local_index);
-    DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
-
-    /*
-    for (size_type unit = 0; unit < _idx_unit_id; ++unit) {
-      auto prec_unit_local_size = (*_bucket_cumul_sizes)[unit].back();
-      _idx += prec_unit_local_size;
-    }
-    */
-    _idx += (*_unit_cumul_sizes)[unit];
-    if(bucket_index > 0) {
-      local_index += (*_bucket_cumul_sizes)[_idx_unit_id.id][bucket_index - 1];
-    }
-    _idx_local_idx += local_index;
-    _idx += local_index;
-    /*
-    if(bucket_index > 0) {
-      local_index += (*_bucket_cumul_sizes)[_idx_unit_id.id][bucket_index - 1];
-    }
-    increment(local_index);
-    */
-    DASH_LOG_TRACE("GlobPtr(gmem,unit,lidx) >",
-                   "gidx:",   _idx,
-                   "maxidx:", _max_idx,
-                   "unit:",   _idx_unit_id,
-                   "lidx:",   _idx_local_idx,
-                   "bucket:", _idx_bucket_idx,
-                   "phase:",  _idx_bucket_phase);
-  }
-
-  /**
    * Copy constructor.
    */
   template<typename E_, typename M_>
