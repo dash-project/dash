@@ -14,6 +14,66 @@
 
 namespace dash {
 
+/**
+ * As known from classic stencil algorithms, *boundaries* are the outermost
+ * elements within a block that are requested by neighoring units.
+ * *Halos* represent additional outer regions of a block that contain ghost
+ * cells with values copied from adjacent units' boundary regions.
+ *
+ * The \c HaloMatrixWrapper acts as a wrapper of the local blocks of the NArray
+ * and extends these by boundary and halo regions. This wrapper provides
+ * \ref HaloMatrixIterator for the inner block, the boundary elements and
+ * both.
+ *
+ * The inner block iterator ensures that no stencil point accesses halo or not
+ * existing elements. The stencil points of the boundary iterator point at least
+ * to one halo element.
+ *
+ * Example for an outer block boundary iteration space (halo regions):
+ *
+ *            .--halo region 0   .-- halo region 1
+ *           /                  /
+ *       .-------..-------------------------. -.
+ *       |  0  1 ||  0  1  2  3  4  5  6  7 |  |
+ *       |  2  3 ||  8  9 10 11 12 13 14 15 |  |-- halo width in dimension 0
+ *       '-------''-------------------------' -'
+ *       .-------..-------------------------..-------.
+ *       |  0  1 ||                         ||  0  1 |
+ *       :  ...  ::       local block       ::  ...  : --- halo region 5
+ *       |  6  7 ||                         ||  6  7 |
+ *       '-------''-------------------------''-------'
+ *           :    .-------------------------.:       :
+ *           |    |  0  1  2  3  4  5  6  7 |'---.---'
+ *           |    |  8  9 10 11 12 13 14 15 |    :
+ *           |    `-------------------------'    '- halo width in dimension 1
+ *           '                  \
+ *     halo region 3             '- halo region 7
+ *
+ *
+ * Example for an inner block boundary iteration space:
+ *
+ *                          boundary region 1
+ *                                 :
+ *                   .-------------'------------.
+ *                   |                          |
+ *           .-------.-------------------------.-------.
+ *           |  0  1 |  2  3  4  5  6  7  8  9 | 10 11 |
+ *           | 12 13 | 14 15 16 17 18 19 20 21 | 22 23 |
+ *        .--:-------+-------------------------+-------:--.
+ *        |  | 24 23 |                         | 34 35 |  |
+ *      .-:  :  ...  :   inner block region    :  ...  :  :- boundary
+ *      | |  | 60 62 |                         | 70 71 |  |  region 3
+ *      | '--:-------+-------------------------+-------:--:
+ *      |    | 72 73 | 74 75 76 77 78 79 80 81 | 82 83 |  :- boundary
+ *      |    | 84 85 | 86 87 88 89 90 91 92 93 | 94 95 |  |  region 8
+ *      |    `-------'-------------------------'-------'--'
+ *      |            |                         |
+ *      |            `------------.------------+
+ *      :                         :
+ *      boundary region 3   boundary region 8
+ *
+ */
+
 template <typename MatrixT, typename StencilSpecT>
 class HaloMatrixWrapper {
 private:
@@ -230,67 +290,112 @@ public:
     _dart_types.clear();
   }
 
+  /// returns the begin iterator for all relevant elements (inner + boundary)
   iterator begin() noexcept { return _begin; }
 
+  /// returns the begin const iterator for all relevant elements
+  /// (inner + boundary)
   const_iterator begin() const noexcept { return _begin; }
 
+  /// returns the end iterator for all relevant elements (inner + boundary)
   iterator end() noexcept { return _end; }
 
+  /// returns the end const iterator for all relevant elements (inner + boundary)
   const_iterator end() const noexcept { return _end; }
 
+  /// returns the begin iterator for all inner elements
   iterator_inner ibegin() noexcept { return _ibegin; }
 
+  /// returns the begin const iterator for all inner elements
   const_iterator_inner ibegin() const noexcept { return _ibegin; }
 
+  /// returns the end iterator for all inner elements
   iterator_inner iend() noexcept { return _iend; }
 
+  /// returns the end const iterator for all inner elements
   const_iterator_inner iend() const noexcept { return _iend; }
 
+  /// returns the begin iterator for all boundary elements
   iterator_bnd bbegin() noexcept { return _bbegin; }
 
+  /// returns the begin const iterator for all boundary elements
   const_iterator_bnd bbegin() const noexcept { return _bbegin; }
 
+  /// returns the end iterator for all boundary elements
   iterator_bnd bend() noexcept { return _bend; }
 
+  /// returns the end const iterator for all boundary elements
   const_iterator_bnd bend() const noexcept { return _bend; }
 
+  /// returns the underlying \ref HaloBlock
   const HaloBlock_t& halo_block() { return _haloblock; }
 
+  /// Updates all halo elements (blocking)
   void update() {
     for(auto& region : _region_data)
       update_halo_intern(region.second, false);
   }
 
+  /// updates only halo elements of a given region
   void update_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
       update_halo_intern(it_find->second, false);
   }
 
+  /// updates all halo elements asychronously
   void update_async() {
     for(auto& region : _region_data)
       update_halo_intern(region.second, true);
   }
 
+  /// updates all halo elements asychronously for a given region
   void update_async_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
       update_halo_intern(it_find->second, true);
   }
 
+  /// waits until all started halo updates are finished
   void wait() {
     for(auto& region : _region_data)
       dart_wait_local(&region.second.halo_data.handle);
   }
 
+  /// returns view for the local elements
   const ViewSpec_t& view_local() const { return _view_local; }
 
+  /// returns the \ref StencilSpec
   const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 
+  /// returns the local halo memory
   const HaloMemory_t& halo_memory() const { return _halomemory; }
 
+  /// returns the underlying NArray
   MatrixT& matrix() { return _matrix; }
 
+  /**
+   * Sets all global border halo elements. set_fixed_halos calls FuntionT with
+   * all global coordinates of type:
+   * std::array<dash::default_index_t,Number Dimensions>.
+   *
+   * Every unit is called only with the related global coordinates.
+   * E.g.:
+   *
+   *     .............
+   *     : Border    | <- coordinates for example:
+   *     : Unit 0    |    (-1,-1),(0,-1), (-2,5)
+   *     :  .--------..--------.
+   *     :  |        ||        |
+   *     :  | Unit 0 || Unit 1 |
+   *     :  |        ||        |
+   *     '- :--------::--------:
+   *        |        ||        |
+   *        | Unit 2 || Unit 3 |
+   *        |        ||        |
+   *        '--------''--------'
+   *
+   */
   template <typename FunctionT>
   void set_fixed_halos(FunctionT f) {
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
@@ -322,6 +427,8 @@ public:
     }
   }
 
+  /// returns the halo value for a given coordinate or nullptr if no halo
+  /// elements available
   Element_t* halo_element_at(ElementCoords_t coords) {
     const auto& offsets = _view_global.offsets();
     for(auto d = 0; d < NumDimensions; ++d) {
