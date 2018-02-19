@@ -17,17 +17,21 @@ namespace dash {
  * \ingroup     DashAlgorithms
  */
 template<
-  typename ElementType,
-  class    PatternType>
-GlobIter<ElementType, PatternType> find(
+  typename GlobIter,
+  typename ElementType>
+GlobIter find(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
+  GlobIter   first,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
-  /// Value which will be assigned to the elements in range [first, last)
-  const ElementType                  & value)
+  GlobIter   last,
+  /// Value which is searched for using operator==
+  const ElementType & value)
 {
-  using p_index_t = typename PatternType::index_type;
+
+  //use iterator traits
+  using iterator_traits = dash::iterator_traits<GlobIter>;
+
+  using p_index_t = typename iterator_traits::index_type;
 
   if(first >= last) {
     return last;
@@ -95,32 +99,28 @@ GlobIter<ElementType, PatternType> find(
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType,
-  class    UnaryPredicate >
-GlobIter<ElementType, PatternType> find_if(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
-  /// Predicate which will be applied to the elements in range [first, last)
-  UnaryPredicate                       predicate)
+template <typename GlobIter, typename UnaryPredicate>
+GlobIter find_if(
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Predicate which will be applied to the elements in range [first, last)
+    UnaryPredicate predicate)
 {
-  typedef typename PatternType::index_type index_t;
+  using iterator_traits = dash::iterator_traits<GlobIter>;
 
-  auto & team        = first.pattern().team();
-  auto myid          = team.myid();
+  using index_t = typename iterator_traits::index_type;
+
+  auto& team = first.pattern().team();
+  auto  myid = team.myid();
   /// Global iterators to local range:
-  auto index_range   = dash::local_range(first, last);
-  auto l_first       = index_range.begin;
-  auto l_last        = index_range.end;
+  auto index_range = dash::local_range(first, last);
+  auto l_first     = index_range.begin;
+  auto l_last      = index_range.end;
 
-  auto l_result      = std::find_if(l_first, l_last, predicate);
-  auto l_offset      = std::distance(l_first, l_result);
-  if (l_result == l_last) {
-    l_offset = -1;
-  }
+  auto l_result = std::find_if(l_first, l_last, predicate);
+  auto l_offset = l_result == l_last ? -1 : std::distance(l_first, l_result);
 
   dash::Array<index_t> l_results(team.size(), team);
 
@@ -133,11 +133,8 @@ GlobIter<ElementType, PatternType> find_if(
 
   for (auto u = 0; u < team.size(); u++) {
     if (l_results[u] >= 0) {
-      auto g_offset = first.pattern()
-                           .global_index(
-                              u,
-                              { l_results[u] });
-      result = first + g_offset - first.pos();
+      auto g_offset = first.pattern().global_index(u, {l_results[u]});
+      result        = first + g_offset - first.pos();
       break;
     }
   }
@@ -156,17 +153,16 @@ GlobIter<ElementType, PatternType> find_if(
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class    PatternType,
-	class    UnaryPredicate>
-GlobIter<ElementType, PatternType> find_if_not(
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType>   first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>   last,
-  /// Predicate which will be applied to the elements in range [first, last)
-	UnaryPredicate                       predicate)
+template <
+    typename GlobIter,
+    class UnaryPredicate>
+GlobIter find_if_not(
+    /// Iterator to the initial position in the sequence
+    GlobIter first,
+    /// Iterator to the final position in the sequence
+    GlobIter last,
+    /// Predicate which will be applied to the elements in range [first, last)
+    UnaryPredicate predicate)
 {
   return find_if(first, last, std::not1(predicate));
 }
