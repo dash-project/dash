@@ -90,7 +90,8 @@ Docker Containers
 -----------------
 
 [![](https://images.microbadger.com/badges/version/dashproject/dash:mpich.svg)](https://microbadger.com/images/dashproject/dash:mpich "DASH Docker Container (MPICH backend)")
-[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi.svg)](https://microbadger.com/images/dashproject/dash:openmpi "DASH Docker Container (OpenMPI backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi2.svg)](https://microbadger.com/images/dashproject/dash:openmpi2 "DASH Docker Container (OpenMPI 2.x backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi3.svg)](https://microbadger.com/images/dashproject/dash:openmpi3 "DASH Docker Container (OpenMPI 3.x backend)")
 
 For pre-build Docker container images, see the
 [DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
@@ -99,7 +100,7 @@ For pre-build Docker container images, see the
 Building from Source
 --------------------
 
-DASH is build using CMake.
+DASH is built using CMake.
 
 Build scripts are provided for typical DASH configurations and can serve
 as starting points for custom builds:
@@ -127,6 +128,18 @@ Optional third-party libraries directly supported by DASH:
 - LIKWID
 - HDF5
 
+### Getting the sources 
+
+DASH is hosted on Github at https://github.com/dash-project/dash and makes
+use of git submodules to include third-party software (mainly the GoogleTest 
+framework required for building the tests). The build environment will take 
+care of cloning the submodules upon  first invocation. However, there might 
+be cases where recursive cloning is  required, e.g., if there is no internet 
+access available during the configuration step.
+
+In that case, please use a recursive clone: 
+
+    (dash/)$ git clone --recursive https://github.com/dash-project/dash.git
 
 ### Building DASH from Source
 
@@ -231,6 +244,35 @@ Or manually using make:
 
 Running DASH Applications
 -------------------------
+
+### Building a DASH application
+
+DASH provides wrapper scripts that ensure correct include 
+paths as well as linking for all required DASH, DART, and 
+third-party libraries.
+
+The wrappers are named as `dash-<variant>c++`, depending on the 
+DASH variant activated at build time, e.g., for the MPI variant the 
+wrapper will be called `dash-mpic++` (and its aliases `dash-mpiCC`
+and `dash-mpicxx`).
+
+To build a DASH (MPI) application, replace the call to the MPI C++ compiler
+with a call to `dash-mpicxx` (or its alias `dash-mpiCC` and `dash-mpic++`):
+
+    $ CXX=dash-mpicxx make
+
+The compiler wrapper currently provides two options: 
+  - `--dash:verbose` will cause all invocations of the underlying compiler to 
+    be printed to the console.
+  - `--dash:nocppflags` disables passing DASH-related precompiler flags to 
+    the underlying compiler, including flags that control DASH verbosity (if enabled during DASH build) and assertions. 
+
+All other parameters will be passed to the underlying compiler, allowing you to control
+optimization flags and pass precompiler options.
+
+Note that the compiler wrappers also set the language standard to C++11.
+
+### Running a DASH application
 
 With the MPI variant, applications are spawn by MPI:
 

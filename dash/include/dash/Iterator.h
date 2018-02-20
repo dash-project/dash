@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/Dimensional.h>
+#include <dash/iterator/IteratorTraits.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
 
@@ -48,15 +49,6 @@
 
 namespace dash {
 
-namespace detail {
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(iterator);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_iterator);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(reference);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(pointer);
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer);
-}
 
 /**
  *

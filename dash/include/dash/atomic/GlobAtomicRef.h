@@ -16,7 +16,7 @@ template<typename T>
 class Shared;
 
 /**
- * Specialization for atomic values. All atomic operations are 
+ * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
  */
 template<typename T>
@@ -102,27 +102,8 @@ public:
 
   self_t & operator=(const self_t & other) = delete;
 
-  inline bool operator==(const self_t & other) const noexcept
-  {
-    return _gptr == other._gptr;
-  }
-
-  inline bool operator!=(const self_t & other) const noexcept
-  {
-    return !(*this == other);
-  }
-
-  inline bool operator==(const T & value) const = delete;
-  inline bool operator!=(const T & value) const = delete;
-
   operator T() const {
     return load();
-  }
-
-  operator GlobPtr<T>() const {
-    DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
-    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
-    return GlobPtr<atomic_t>(_gptr);
   }
 
   dart_gptr_t dart_gptr() const {
@@ -256,9 +237,9 @@ public:
   /**
    * Atomically compares the value with the value of expected and if thosei
    * are bitwise-equal, replaces the former with desired.
-   * 
+   *
    * \return  True if value is exchanged
-   * 
+   *
    * \see \c dash::atomic::compare_exchange
    */
   bool compare_exchange(const T & expected, const T & desired) const {
