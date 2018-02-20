@@ -369,7 +369,7 @@ public:
   const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 
   /// returns the local halo memory
-  const HaloMemory_t& halo_memory() const { return _halomemory; }
+  HaloMemory_t& halo_memory() { return _halomemory; }
 
   /// returns the underlying NArray
   MatrixT& matrix() { return _matrix; }
@@ -401,8 +401,9 @@ public:
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
       auto rel_dim = region.spec().relevant_dim() - 1;
-      if(region.is_border_region() && region.border_dim(rel_dim)
-         && _cycle_spec[rel_dim] == Cycle::FIXED) {
+      //if(region.is_border_region() //&& region.border_dim(rel_dim)
+      //   && _cycle_spec[rel_dim] == Cycle::FIXED) {
+      if(region.is_fixed_region()) {
         auto*       pos_ptr = _halomemory.pos_at(region.index());
         const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
@@ -469,10 +470,11 @@ private:
 
   void update_halo_intern(Data& data, bool async) {
     auto rel_dim = data.region.spec().relevant_dim() - 1;
-    if(data.region.is_border_region() && data.region.border_dim(rel_dim)
-       && _cycle_spec[rel_dim] == Cycle::FIXED) {
+    //if(region.is_border_region() //&& region.border_dim(rel_dim)
+    //   && _cycle_spec[rel_dim] == Cycle::FIXED) {
+    if(data.region.is_fixed_region())
       return;
-    }
+
     data.get_halos(data.halo_data);
 
     if(!async)

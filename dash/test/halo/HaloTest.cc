@@ -572,8 +572,8 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
         matrix_check[i][j] = new long[ext_per_dim_check];
         for(auto k = 0; k < ext_per_dim_check; ++k) {
           if(i == 0 || i == ext_per_dim_check - 1 || j == 0 || j == ext_per_dim_check - 1 ||
-             k == 0 || k == ext_per_dim_check -1) {
-            matrix_check[i][j][k] = 10;
+             k == 0 || k == ext_per_dim_check - 1) {
+            matrix_check[i][j][k] = 20;
             continue;
           }
           if(i == 1 || i == ext_per_dim_check - 2 || j == 1 || j == ext_per_dim_check - 2 ||
@@ -622,8 +622,9 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
 
   halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
-      return 10;
+      return 20;
   });
+
   auto sum_halo = calc_sum_halo(halo_wrapper);
 
   if(myid == 0)
@@ -738,6 +739,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
+
   auto sum_halo = calc_sum_halo(halo_wrapper);
 
   if(myid == 0)

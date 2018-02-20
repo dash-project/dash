@@ -291,7 +291,7 @@ private:
   // TODO put init_rel_dim and level together
   dim_t init_rel_dim() {
     dim_t dim = 1;
-    for(auto d = 0; d < NumDimensions; ++d) {
+    for(auto d = 1; d < NumDimensions; ++d) {
       if(_coords[d] != 1)
         dim = d + 1;
     }
@@ -744,11 +744,13 @@ public:
 
 public:
   Region(const RegionSpec_t& region_spec, const ViewSpec_t& region,
-         GlobMem_t& globmem, const PatternT& pattern, const Border_t& border)
+         GlobMem_t& globmem, const PatternT& pattern, const Border_t& border,
+         bool fixed_region)
   : _region_spec(region_spec), _region(region), _border(border),
     _border_region(
       std::any_of(border.begin(), border.end(),
                   [](bool border_dim) { return border_dim == true; })),
+    _fixed_region(fixed_region),
     _beg(globmem, pattern, _region, 0, _region.size()),
     _end(globmem, pattern, _region, _region.size(), _region.size()) {}
 
@@ -764,6 +766,8 @@ public:
 
   bool is_border_region() const { return _border_region; };
 
+  bool is_fixed_region() const { return _fixed_region; };
+
   constexpr bool border_dim(dim_t dim) const { return _border[dim]; }
 
   iterator begin() const { return _beg; }
@@ -775,6 +779,7 @@ private:
   const ViewSpec_t   _region;
   Border_t           _border;
   bool               _border_region;
+  bool               _fixed_region;
   iterator           _beg;
   iterator           _end;
 };  // Region
@@ -830,6 +835,7 @@ public:
         continue;
 
       std::array<bool, NumDimensions> border{};
+      bool fixed_region = false;
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -849,12 +855,15 @@ public:
           if(view_offset < _halo_extents_max[d].first) {
             border[d] = true;
 
+
             if(cycle_spec[d] == Cycle::NONE) {
               halo_region_offsets[d] = 0;
               halo_region_extents[d] = 0;
               bnd_region_offsets[d]  = 0;
               bnd_region_extents[d]  = 0;
             } else {
+              if(cycle_spec[d] == Cycle::FIXED)
+                fixed_region = true;
               halo_region_offsets[d] = _pattern.extent(d) - halo_extent;
               halo_region_extents[d] = halo_extent;
               bnd_region_extents[d]  = halo_extent;
@@ -879,6 +888,8 @@ public:
               bnd_region_offsets[d]  = 0;
               bnd_region_extents[d]  = 0;
             } else {
+              if(cycle_spec[d] == Cycle::FIXED)
+                fixed_region = true;
               halo_region_offsets[d] = 0;
               halo_region_extents[d] = halo_extent;
               bnd_region_offsets[d] += view_extent - halo_extent;
@@ -895,13 +906,13 @@ public:
       auto index = spec.index();
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
-                 _globmem, _pattern, border));
+                 _globmem, _pattern, border, fixed_region));
       auto& region_tmp = _halo_regions.back();
       _size_halo_elems += region_tmp.size();
       _halo_reg_mapping[index] = &region_tmp;
       _boundary_regions.push_back(
         Region_t(spec, ViewSpec_t(bnd_region_offsets, bnd_region_extents),
-                 _globmem, _pattern, border));
+                 _globmem, _pattern, border, fixed_region));
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
