@@ -13,108 +13,108 @@ template<typename T>
 class Atomic;
 
 /**
- * Specialization for atomic values. All atomic operations are
- * \c const as the \c GlobRef does not own the atomic values.
- */
+* Specialization for atomic values. All atomic operations are
+* \c const as the \c GlobRef does not own the atomic values.
+*/
 template<typename T>
 class GlobRef<dash::Atomic<T>>
 {
-  /* Notes on type compatibility:
-   *
-   * - The general support of atomic operations on values of type T is
-   *   checked in `dash::Atomic` and is not verified here.
-   * - Whether arithmetic operations (like `fetch_add`) are supported
-   *   for values of type T is implicitly tested in the DASH operation
-   *   types (like `dash::plus<T>`) and is not verified here.
-   *
-   */
+/* Notes on type compatibility:
+*
+* - The general support of atomic operations on values of type T is
+*   checked in `dash::Atomic` and is not verified here.
+* - Whether arithmetic operations (like `fetch_add`) are supported
+*   for values of type T is implicitly tested in the DASH operation
+*   types (like `dash::plus<T>`) and is not verified here.
+*
+*/
 
-  template<typename U>
-  friend std::ostream & operator<<(
-    std::ostream & os,
-    const GlobRef<U> & gref);
+template<typename U>
+friend std::ostream & operator<<(
+std::ostream & os,
+const GlobRef<U> & gref);
 
 public:
-  using value_type          = T;
-  using const_value_type    = typename std::add_const<T>::type;
-  using nonconst_value_type = typename std::remove_const<T>::type;
-  using atomic_t            = dash::Atomic<T>;
-  using const_atomic_t      = typename dash::Atomic<const_value_type>;
-  using nonconst_atomic_t   = typename dash::Atomic<nonconst_value_type>;
-  using self_t              = GlobRef<atomic_t>;
-  using const_type          = GlobRef<const_atomic_t>;
-  using nonconst_type       = GlobRef<dash::Atomic<nonconst_value_type>>;
+using value_type          = T;
+using const_value_type    = typename std::add_const<T>::type;
+using nonconst_value_type = typename std::remove_const<T>::type;
+using atomic_t            = dash::Atomic<T>;
+using const_atomic_t      = typename dash::Atomic<const_value_type>;
+using nonconst_atomic_t   = typename dash::Atomic<nonconst_value_type>;
+using self_t              = GlobRef<atomic_t>;
+using const_type          = GlobRef<const_atomic_t>;
+using nonconst_type       = GlobRef<dash::Atomic<nonconst_value_type>>;
 
 private:
-  dart_gptr_t _gptr;
+dart_gptr_t _gptr;
 
 public:
-  /**
-   * Reference semantics forbid declaration without definition.
-   */
-  GlobRef() = delete;
+/**
+* Reference semantics forbid declaration without definition.
+*/
+GlobRef() = delete;
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<typename PatternT>
-  explicit GlobRef(
-    /// Pointer to referenced object in global memory
-    GlobPtr<atomic_t, PatternT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
+/**
+* Constructor, creates an GlobRef object referencing an element in global
+* memory.
+*/
+template<typename PatternT>
+explicit GlobRef(
+/// Pointer to referenced object in global memory
+GlobPtr<atomic_t, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  template<typename PatternT>
-  GlobRef(
-    /// Pointer to referenced object in global memory
-    const GlobPtr<const_atomic_t, PatternT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  {
-    static_assert(std::is_same<value_type, const_value_type>::value,
-            "Cannot create GlobRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
-  }
+/**
+* Constructor, creates an GlobRef object referencing an element in global
+* memory.
+*/
+template<typename PatternT>
+GlobRef(
+/// Pointer to referenced object in global memory
+const GlobPtr<const_atomic_t, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{
+static_assert(std::is_same<value_type, const_value_type>::value,
+        "Cannot create GlobRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
+}
 
-  template<typename PatternT>
-  GlobRef(
-    /// Pointer to referenced object in global memory
-    const GlobPtr<nonconst_atomic_t, PatternT> & gptr)
-  : GlobRef(gptr.dart_gptr())
-  { }
+template<typename PatternT>
+GlobRef(
+/// Pointer to referenced object in global memory
+const GlobPtr<nonconst_atomic_t, PatternT> & gptr)
+: GlobRef(gptr.dart_gptr())
+{ }
 
 
-  /**
-   * Constructor, creates an GlobRef object referencing an element in global
-   * memory.
-   */
-  explicit GlobRef(dart_gptr_t dart_gptr)
-  : _gptr(dart_gptr)
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
-  }
+/**
+* Constructor, creates an GlobRef object referencing an element in global
+* memory.
+*/
+explicit GlobRef(dart_gptr_t dart_gptr)
+: _gptr(dart_gptr)
+{
+DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
+}
 
-  /**
-   * Like native references, global reference types cannot be copied.
-   *
-   * Default definition of copy constructor would conflict with semantics
-   * of \c operator=(const self_t &).
-   */
-  GlobRef(const self_t & other) = delete;
+/**
+* Like native references, global reference types cannot be copied.
+*
+* Default definition of copy constructor would conflict with semantics
+* of \c operator=(const self_t &).
+*/
+GlobRef(const self_t & other) = delete;
 
-  /**
-   * Unlike native reference types, global reference types are moveable.
-   */
-  GlobRef(self_t && other)      = default;
+/**
+* Unlike native reference types, global reference types are moveable.
+*/
+GlobRef(self_t && other)      = default;
 
-  self_t & operator=(const self_t & other) = delete;
+self_t & operator=(const self_t & other) = delete;
 
-  operator T() const {
-    return load();
-  }
+operator T() const {
+return load();
+}
 
   /**
    * Implicit conversion to const type.
@@ -124,7 +124,7 @@ public:
   }
 
   /**
-   * Implicit conversion to const type.
+   * Explicit conversion to non-const type.
    */
   explicit
   operator nonconst_type() const {

@@ -16,14 +16,17 @@ template<typename ResultT>
 class Future
 {
 private:
-  typedef Future<ResultT>               self_t;
-  typedef std::function<ResultT (void)> func_t;
+  typedef Future<ResultT>                self_t;
+  typedef std::function<ResultT (void)>  get_func_t;
+  typedef std::function<bool (ResultT*)> test_func_t;
+  typedef std::function<void (void)>     destroy_func_t;
 
 private:
-  func_t    _func;
-  ResultT   _value;
-  bool      _ready     = false;
-  bool      _has_func  = false;
+  get_func_t     _get_func;
+  test_func_t    _test_func;
+  destroy_func_t _destroy_func;
+  ResultT        _value;
+  bool           _ready = false;
 
 public:
   // For ostream output
@@ -33,35 +36,48 @@ public:
       const Future<ResultT_> & future);
 
 public:
+
   Future()
-  : _ready(false),
-    _has_func(false)
+  : _ready(false)
   { }
 
-  Future(const func_t & func)
-  : _func(func),
-    _ready(false),
-    _has_func(true)
+  Future(ResultT & result)
+  : _value(result),
+    _ready(true)
+  { }
+
+  Future(const get_func_t & func)
+  : _get_func(func)
   { }
 
   Future(
-    const self_t & other)
-  : _func(other._func),
-    _value(other._value),
-    _ready(other._ready),
-    _has_func(other._has_func)
+    const get_func_t     & get_func,
+    const test_func_t    & test_func)
+  : _get_func(get_func),
+    _test_func(test_func)
   { }
 
-  Future<ResultT> & operator=(const self_t & other)
-  {
-    if (this != &other) {
-      _func      = other._func;
-      _value     = other._value;
-      _ready     = other._ready;
-      _has_func  = other._has_func;
+  Future(
+    const get_func_t     & get_func,
+    const test_func_t    & test_func,
+    const destroy_func_t & destroy_func)
+  : _get_func(get_func),
+    _test_func(test_func),
+    _destroy_func(destroy_func)
+  { }
+
+  Future(const self_t& other) = delete;
+  Future(self_t&& other)      = default;
+
+  ~Future() {
+    if (_destroy_func) {
+      _destroy_func();
     }
-    return *this;
   }
+
+  /// copy-assignment is not permitted
+  Future<ResultT> & operator=(const self_t& other) = delete;
+  Future<ResultT> & operator=(self_t&& other)      = default;
 
   void wait()
   {
@@ -69,19 +85,22 @@ public:
     if (_ready) {
       return;
     }
-    if (!_has_func) {
+    if (!_get_func) {
       DASH_LOG_ERROR("Future.wait()", "No function");
       DASH_THROW(
         dash::exception::RuntimeError,
         "Future not initialized with function");
     }
-    _value = _func();
+    _value = _get_func();
     _ready = true;
     DASH_LOG_TRACE_VAR("Future.wait >", _ready);
   }
 
-  bool test() const
+  bool test()
   {
+    if (!_ready && _test_func) {
+      _ready = _test_func(&_value);
+    }
     return _ready;
   }
 
