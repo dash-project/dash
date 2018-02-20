@@ -754,7 +754,8 @@ public:
 
   void set_vertex_attributes(vertex_size_type local_vertex, 
       vertex_properties_type prop) {
-    return _glob_mem_vertex->set(local_vertex, vertex_type(prop));
+    auto & v = _glob_mem_vertex->get(local_vertex);
+    v.properties = prop;
   }
 
   vertex_size_type local_vertex_size() {

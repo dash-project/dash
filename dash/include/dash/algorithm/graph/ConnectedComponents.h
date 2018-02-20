@@ -97,11 +97,13 @@ auto cc_get_data(
 
 
 template<typename GraphType>
-std::vector<int> cc_get_components(
+auto cc_get_components(
     GraphType & graph,
     dash::util::Trace & trace
-) {
-  std::size_t size = graph.local_vertex_size();
+) -> std::vector<typename GraphType::vertex_properties_type> {
+  typedef typename GraphType::vertex_properties_type      vprop_t;
+  std::size_t size = graph.local_vertex_size() * sizeof(vprop_t);
+  std::size_t size_n = graph.local_vertex_size();
   std::vector<std::size_t> sizes_recv(graph.team().size());
   std::vector<std::size_t> displs_recv(graph.team().size());
   int total_recv = 0;
@@ -113,14 +115,14 @@ std::vector<int> cc_get_components(
     total_recv += sizes_recv[i];
   }
 
-  std::vector<int> components_send;
-  components_send.reserve(size);
-  for(int i = 0; i < size; ++i) {
-    components_send.push_back(graph.vertex_attributes(i).comp);
+  std::vector<vprop_t> components_send;
+  components_send.reserve(size_n);
+  for(int i = 0; i < size_n; ++i) {
+    components_send.push_back(graph.vertex_attributes(i));
   }
 
-  std::vector<int> components_recv(total_recv);
-  dart_allgatherv(components_send.data(), size, DART_TYPE_INT, 
+  std::vector<vprop_t> components_recv(total_recv / sizeof(vprop_t));
+  dart_allgatherv(components_send.data(), size, DART_TYPE_BYTE, 
     components_recv.data(), sizes_recv.data(), displs_recv.data(), 
     graph.team().dart_id());
 
@@ -130,6 +132,7 @@ std::vector<int> cc_get_components(
 template<typename GraphType>
 void cc_set_data(
     matrix_pair_t<typename GraphType::vertex_properties_type> & data_pairs, 
+    int start,
     GraphType & graph, 
     dash::util::Trace & trace
 ) {
@@ -167,7 +170,7 @@ void cc_set_data(
   trace.exit_state("send pairs");
   trace.enter_state("set components");
   for(auto & pair : pairs_recv) {
-    graph.set_vertex_attributes(pair.first, pair.second);
+    graph.set_vertex_attributes(pair.first - start, pair.second);
   }
   trace.exit_state("set components");
 }
@@ -179,6 +182,7 @@ void cc_set_data(
  * Computes connected components on a graph.
  * Requires the graph's vertices to store the following attributes:
  * - (int) comp
+ * - (int) unit
  * Requires the graph's edges to store the following attributep:
  * none
  * 
@@ -199,7 +203,7 @@ void connected_components(GraphType & g) {
   for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
     auto index = it.pos(); 
     auto gindex = index + start;
-    vprop_t prop { gindex, myid, index };
+    vprop_t prop { gindex, myid };
     g.set_vertex_attributes(index, prop);
     ++i;
   }
@@ -211,25 +215,25 @@ void connected_components(GraphType & g) {
 
   while(1) {
     int gr = 0;
-    std::vector<vprop_t> data;
     {
-      trace.enter_state("compute indices");
-      matrix_t indices(g.team().size());
-      matrix_t permutations(g.team().size());
-      int i = 0;
-      for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
-        auto trg = g[it].target();
-        auto lpos = trg.lpos();
-        // TODO: use more sophsticated sorting mechanism
-        indices[lpos.unit].push_back(lpos.index);
-        permutations[lpos.unit].push_back(i);
-        ++i;
+      std::vector<vprop_t> data;
+      {
+        trace.enter_state("compute indices");
+        matrix_t indices(g.team().size());
+        matrix_t permutations(g.team().size());
+        int i = 0;
+        for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
+          auto trg = g[it].target();
+          auto lpos = trg.lpos();
+          // TODO: use more sophsticated sorting mechanism
+          indices[lpos.unit].push_back(lpos.index);
+          permutations[lpos.unit].push_back(i);
+          ++i;
+        }
+        trace.exit_state("compute indices");
+        data = internal::cc_get_data(indices, permutations, g, trace);
       }
-      trace.exit_state("compute indices");
-      data = internal::cc_get_data(indices, permutations, g, trace);
-    }
 
-    {
       trace.enter_state("compute pairs");
       matrix_pair_t<vprop_t> data_pairs(g.team().size());
       int i = 0;
@@ -241,7 +245,7 @@ void connected_components(GraphType & g) {
           auto trg_comp = data[i];
           if(src_comp.comp < trg_comp.comp) {
              data_pairs[trg_comp.unit].push_back(
-                 std::make_pair(trg_comp.index, src_comp)
+                 std::make_pair(trg_comp.comp, src_comp)
             );
             gr = 1;
           }
@@ -249,7 +253,7 @@ void connected_components(GraphType & g) {
         ++i;
       }
       trace.exit_state("compute pairs");
-      internal::cc_set_data(data_pairs, g, trace);
+      internal::cc_set_data(data_pairs, start, g, trace);
     }
     int gr_all = 0;
     trace.enter_state("allreduce data");
@@ -259,7 +263,7 @@ void connected_components(GraphType & g) {
     if(gr_all == 0) break; 
     while(1) {
       int pj = 0;
-      std::vector<int> components = internal::cc_get_components(g, trace);
+      std::vector<vprop_t> components = internal::cc_get_components(g, trace);
 
       trace.enter_state("set data (pj)");
       int i = 0;
@@ -268,10 +272,8 @@ void connected_components(GraphType & g) {
         auto comp = v.attributes().comp;
         if(comp != 0) {
           auto comp_next = components[comp];
-          if(comp != comp_next) {
-            auto prop = v.attributes();
-            prop.comp = comp_next;
-            v.set_attributes(prop);
+          if(comp != comp_next.comp) {
+            v.set_attributes(comp_next);
             pj = 1;
           }
           ++i;
