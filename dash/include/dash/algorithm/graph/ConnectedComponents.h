@@ -54,11 +54,9 @@ auto cc_get_data(
     total_recv += sizes_recv[i];
   }
   std::vector<int> indices_recv(total_recv);
-  if(total_send > 0 || total_recv > 0) {
     dart_alltoallv(indices_send.data(), sizes_send.data(), displs_send.data(),
         DART_TYPE_INT, indices_recv.data(), sizes_recv.data(), 
         displs_recv.data(), graph.team().dart_id());
-  }
 
   std::vector<vprop_t> data_send;
   data_send.reserve(total_recv);
@@ -72,17 +70,14 @@ auto cc_get_data(
   }
   trace.exit_state("get components");
   trace.enter_state("send components");
-  if(total_send > 0 || total_recv > 0) {
     dart_alltoallv(data_send.data(), sizes_send_data.data(), 
         displs_send_data.data(), DART_TYPE_BYTE, data_recv.data(), 
         sizes_recv_data.data(), displs_recv_data.data(), 
         graph.team().dart_id());
-  }
   trace.exit_state("send components");
 
   trace.enter_state("restore order");
   // restore original order
-  // TODO: use more sophisticated ordering mechanism
   std::vector<vprop_t> output(data_recv.size());
   int index = 0;
   for(int i = 0; i < permutations.size(); ++i) {
@@ -101,6 +96,7 @@ auto cc_get_components(
     GraphType & graph,
     dash::util::Trace & trace
 ) -> std::vector<typename GraphType::vertex_properties_type> {
+  trace.enter_state("send components");
   typedef typename GraphType::vertex_properties_type      vprop_t;
   std::size_t size = graph.local_vertex_size() * sizeof(vprop_t);
   std::size_t size_n = graph.local_vertex_size();
@@ -126,6 +122,7 @@ auto cc_get_components(
     components_recv.data(), sizes_recv.data(), displs_recv.data(), 
     graph.team().dart_id());
 
+  trace.exit_state("send components");
   return components_recv;
 }
 
@@ -155,21 +152,20 @@ void cc_set_data(
   std::vector<std::size_t> displs_recv(data_pairs.size());
   dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
       DART_TYPE_BYTE, graph.team().dart_id());
-  int total_recv = 0;
+  std::size_t total_recv = 0;
   for(int i = 0; i < sizes_recv.size(); ++i) {
     displs_recv[i] = total_recv;
     total_recv += sizes_recv[i];
   }
   std::vector<std::pair<int, vprop_t>> pairs_recv(total_recv / 
       sizeof(std::pair<int, vprop_t>));
-  if(total_send > 0 || total_recv > 0) {
   dart_alltoallv(pairs_send.data(), sizes_send.data(), displs_send.data(),
       DART_TYPE_BYTE, pairs_recv.data(), sizes_recv.data(), 
       displs_recv.data(), graph.team().dart_id());
-  }
   trace.exit_state("send pairs");
   trace.enter_state("set components");
   for(auto & pair : pairs_recv) {
+    int ind = pair.first - start;
     graph.set_vertex_attributes(pair.first - start, pair.second);
   }
   trace.exit_state("set components");
@@ -233,24 +229,30 @@ void connected_components(GraphType & g) {
         trace.exit_state("compute indices");
         data = internal::cc_get_data(indices, permutations, g, trace);
       }
-
       trace.enter_state("compute pairs");
       matrix_pair_t<vprop_t> data_pairs(g.team().size());
-      int i = 0;
-      for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
-        if(data[i].comp != 0) {
-          auto e = g[it];
-          auto src = g[e.source()];
-          auto src_comp = src.attributes();
-          auto trg_comp = data[i];
-          if(src_comp.comp < trg_comp.comp) {
-             data_pairs[trg_comp.unit].push_back(
-                 std::make_pair(trg_comp.comp, src_comp)
-            );
-            gr = 1;
+      {
+        std::vector<std::unordered_set<int>> pair_set(g.team().size());
+        int i = 0;
+        for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
+          if(data[i].comp != 0) {
+            auto e = g[it];
+            auto src = g[e.source()];
+            auto src_comp = src.attributes();
+            auto trg_comp = data[i];
+            if(src_comp.comp < trg_comp.comp) {
+              auto pair_it = pair_set[trg_comp.unit].find(trg_comp.comp);
+              if(pair_it == pair_set[trg_comp.unit].end()) {
+                data_pairs[trg_comp.unit].push_back(
+                     std::make_pair(trg_comp.comp, src_comp)
+                );
+                pair_set[trg_comp.unit].insert(trg_comp.comp);
+              }
+              gr = 1;
+            }
           }
+          ++i;
         }
-        ++i;
       }
       trace.exit_state("compute pairs");
       internal::cc_set_data(data_pairs, start, g, trace);
@@ -266,7 +268,6 @@ void connected_components(GraphType & g) {
       std::vector<vprop_t> components = internal::cc_get_components(g, trace);
 
       trace.enter_state("set data (pj)");
-      int i = 0;
       for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
         auto v = g[it];
         auto comp = v.attributes().comp;
@@ -276,7 +277,6 @@ void connected_components(GraphType & g) {
             v.set_attributes(comp_next);
             pj = 1;
           }
-          ++i;
         }
       }
       trace.exit_state("set data (pj)");
@@ -294,3 +294,4 @@ void connected_components(GraphType & g) {
 } // namespace dash
 
 #endif // DASH__ALGORITHM____GRAPH__CONNECTED_COMPONENTS_H__
+

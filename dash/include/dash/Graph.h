@@ -758,6 +758,16 @@ public:
     v.properties = prop;
   }
 
+  edge_properties_type & out_edge_attributes(edge_size_type local_edge) {
+    return _glob_mem_out_edge->get(local_edge).properties;
+  }
+
+  void set_out_edge_attributes(edge_size_type local_edge, 
+      edge_properties_type prop) {
+    auto & e = _glob_mem_out_edge->get(local_edge);
+    e.properties = prop;
+  }
+
   vertex_size_type local_vertex_size() {
     return _glob_mem_vertex->local_size();
   }
@@ -796,7 +806,8 @@ private:
   }
 
   team_unit_t vertex_owner(vertex_size_type v, vertex_size_type n_vertices) {
-    int owner_id = static_cast<double>(v) / (static_cast<double>(n_vertices) / _team->size());
+    int owner_id = static_cast<double>(v) / (static_cast<double>(n_vertices) / 
+        _team->size());
     team_unit_t owner { owner_id };
     return owner;
   }
