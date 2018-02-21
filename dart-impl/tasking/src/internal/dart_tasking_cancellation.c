@@ -12,6 +12,11 @@
  * Cancellation related functionality.
  */
 
+#ifndef USE_THREADLOCAL_Q
+// forward declaration
+extern dart_taskqueue_t task_queue DART_INTERNAL;
+#endif
+
 // true if dart_task_canceled has been cancelled
 static volatile bool cancel_requested = false;
 // counter to spin on while waiting for all threads to finish cancelling
@@ -36,7 +41,12 @@ static void
 cancel_thread_tasks(dart_thread_t *thread)
 {
   dart_task_t* task;
-  while ((task = dart_tasking_taskqueue_pop(&thread->queue)) != NULL) {
+#ifdef USE_THREADLOCAL_Q
+  dart_taskqueue_t *target_queue = &thread->queue;
+#else
+  dart_taskqueue_t *target_queue = &task_queue;
+#endif
+  while ((task = dart_tasking_taskqueue_pop(target_queue)) != NULL) {
     dart__tasking__cancel_task(task);
   }
 }
