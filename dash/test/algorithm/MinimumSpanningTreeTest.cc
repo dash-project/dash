@@ -4,6 +4,7 @@
 
 struct vprop {
   int comp;
+  short unit;
 };
 
 struct eprop {
