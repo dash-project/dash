@@ -55,6 +55,12 @@ dart_taskqueue_t            local_deferred_tasks; // visible outside this CU
 
 static dart_global_unit_t myguid;
 
+#ifndef USE_THREADLOCAL_Q
+// forward declaration
+extern dart_taskqueue_t task_queue DART_INTERNAL;
+#endif
+
+
 static dart_ret_t
 release_remote_dependencies(dart_task_t *task);
 
@@ -277,7 +283,12 @@ dart_tasking_datadeps_handle_defered_local(
 
   // also lock the thread's queue for the time we're processing to reduce
   // overhead
-  dart_tasking_taskqueue_lock(&thread->queue);
+#ifdef USE_THREADLOCAL_Q
+  dart_taskqueue_t *target_queue = &thread->queue;
+#else
+  dart_taskqueue_t *target_queue = &task_queue;
+#endif
+  dart_tasking_taskqueue_lock(target_queue);
 
   DART_LOG_TRACE("Releasing %zu deferred local tasks", local_deferred_tasks.num_elem);
 
@@ -287,16 +298,14 @@ dart_tasking_datadeps_handle_defered_local(
   {
     // enqueue the task if if has gained no additional remote dependecies
     // since it's deferrement
-    // Note: only check remote deps here because we know that local dependenices
-    //       have been resolved if the task ended up in this queue.
-    // Note: if the task has gained remote dependencies we drop the reference
-    //       here because it will be released through a remote dep release later.
+    // Note: if the task has gained dependencies we drop the reference
+    //       here because it will be released through a dependency release later.
     if (dart_tasking_datadeps_is_runnable(task)){
-      dart_tasking_taskqueue_push_unsafe(&thread->queue, task);
+      dart_tasking_taskqueue_push_unsafe(target_queue, task);
     }
   }
 
-  dart_tasking_taskqueue_unlock(&thread->queue);
+  dart_tasking_taskqueue_unlock(target_queue);
   dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   return DART_OK;
 }

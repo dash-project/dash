@@ -15,6 +15,9 @@
 struct dart_dephash_elem;
 struct task_list;
 
+// whether to use thread-local task queues or a single queue
+#define USE_THREADLOCAL_Q
+
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0
@@ -101,7 +104,9 @@ typedef struct dart_taskqueue {
 
 typedef struct {
   dart_task_t           * current_task;
+#ifdef USE_THREADLOCAL_Q
   struct dart_taskqueue   queue;
+#endif // USE_THREADLOCAL_Q
   uint64_t                taskcntr;
   pthread_t               pthread;
   context_t               retctx;            // the thread-specific context to return to eventually
