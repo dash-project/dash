@@ -525,7 +525,7 @@ void* thread_main(void *data)
     // look for incoming remote tasks and responses
     // NOTE: only the last thread does the polling
     //       if polling is enabled or we have no runnable tasks anymore
-    if ((task == NULL || worker_poll_remote) && threadid == num_threads-1)
+    if ((task == NULL || worker_poll_remote) && threadid == 1)
       dart_tasking_remote_progress();
   }
 
