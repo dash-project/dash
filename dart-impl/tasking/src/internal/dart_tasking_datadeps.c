@@ -36,9 +36,10 @@ typedef struct dart_dephash_elem {
   dart_global_unit_t        origin;  // the unit this dependency originated from
 } dart_dephash_elem_t;
 
-
+#ifdef USE_FREELIST
 static dart_dephash_elem_t *freelist_head            = NULL;
 static dart_mutex_t         local_deps_mutex         = DART_MUTEX_INITIALIZER;
+#endif
 
 // list of incoming remote dependency requests defered to matching step
 static dart_dephash_elem_t *unhandled_remote_indeps  = NULL;
@@ -166,6 +167,7 @@ dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 dart_ret_t dart_tasking_datadeps_fini()
 {
   dart_tasking_datadeps_reset(dart__tasking__current_task());
+#ifdef USE_FREELIST
   dart_dephash_elem_t *elem = freelist_head;
   while (elem != NULL) {
     dart_dephash_elem_t *tmp = elem->next;
@@ -173,6 +175,7 @@ dart_ret_t dart_tasking_datadeps_fini()
     elem = tmp;
   }
   freelist_head = NULL;
+#endif // USE_FREELIST
   dart_tasking_taskqueue_finalize(&local_deferred_tasks);
   return dart_tasking_remote_fini();
 }
@@ -196,6 +199,7 @@ dephash_allocate_elem(
 {
   // take an element from the free list if possible
   dart_dephash_elem_t *elem = NULL;
+#ifdef USE_FREELIST
   if (freelist_head != NULL) {
     dart__base__mutex_lock(&local_deps_mutex);
     if (freelist_head != NULL) {
@@ -203,6 +207,7 @@ dephash_allocate_elem(
     }
     dart__base__mutex_unlock(&local_deps_mutex);
   }
+#endif // USE_FREELIST
 
   if (elem == NULL){
     elem = calloc(1, sizeof(dart_dephash_elem_t));
@@ -224,10 +229,15 @@ dephash_allocate_elem(
 static void dephash_recycle_elem(dart_dephash_elem_t *elem)
 {
   if (elem != NULL) {
-    memset(elem, 0, sizeof(*elem));
+    //memset(elem, 0, sizeof(*elem));
+#ifdef USE_FREELIST
+    elem->next = NULL;
     dart__base__mutex_lock(&local_deps_mutex);
     DART_STACK_PUSH(freelist_head, elem);
     dart__base__mutex_unlock(&local_deps_mutex);
+#else
+    free(elem);
+#endif // USE_FREELIST
   }
 }
 
