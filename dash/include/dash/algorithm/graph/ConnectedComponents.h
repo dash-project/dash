@@ -284,26 +284,27 @@ void connected_components(GraphType & g) {
   dash::barrier();
   trace.exit_state("barrier");
 
+  matrix_t indices(g.team().size());
+  matrix_t permutations(g.team().size());
+  {
+    trace.enter_state("compute indices");
+    int i = 0;
+    for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
+      auto trg = g[it].target();
+      auto lpos = trg.lpos();
+      // TODO: use more sophsticated sorting mechanism
+      indices[lpos.unit].push_back(lpos.index);
+      permutations[lpos.unit].push_back(i);
+      ++i;
+    }
+    trace.exit_state("compute indices");
+  }
+
   while(1) {
     int gr = 0;
     {
-      std::vector<vprop_t> data;
-      {
-        trace.enter_state("compute indices");
-        matrix_t indices(g.team().size());
-        matrix_t permutations(g.team().size());
-        int i = 0;
-        for(auto it = g.out_edges().lbegin(); it != g.out_edges().lend(); ++it) {
-          auto trg = g[it].target();
-          auto lpos = trg.lpos();
-          // TODO: use more sophsticated sorting mechanism
-          indices[lpos.unit].push_back(lpos.index);
-          permutations[lpos.unit].push_back(i);
-          ++i;
-        }
-        trace.exit_state("compute indices");
-        data = internal::cc_get_data(indices, permutations, g, trace);
-      }
+      std::vector<vprop_t> data = internal::cc_get_data(indices, permutations, 
+          g, trace);
       trace.enter_state("compute pairs");
       matrix_pair_t<vprop_t> data_pairs(g.team().size());
       {
@@ -316,12 +317,10 @@ void connected_components(GraphType & g) {
             auto src_comp = src.attributes();
             auto trg_comp = data[i];
             if(src_comp.comp < trg_comp.comp) {
-              auto pair_it = pair_set[trg_comp.unit].find(trg_comp.comp);
-              if(pair_it == pair_set[trg_comp.unit].end()) {
-                data_pairs[trg_comp.unit].push_back(
-                     std::make_pair(trg_comp.comp, src_comp)
-                );
-                pair_set[trg_comp.unit].insert(trg_comp.comp);
+              auto & set = pair_set[trg_comp.unit];
+              if(set.find(trg_comp.comp) == set.end()) {
+                data_pairs[trg_comp.unit].emplace_back(trg_comp.comp, src_comp);
+                set.insert(trg_comp.comp);
               }
               gr = 1;
             }
