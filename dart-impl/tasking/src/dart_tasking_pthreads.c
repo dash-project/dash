@@ -24,6 +24,8 @@
 #include <errno.h>
 #include <setjmp.h>
 
+#define IDLE_TASKS_SLEEP
+
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
 // true if the tasking subsystem has been initialized
@@ -253,11 +255,33 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 
 static void wait_for_work()
 {
+#ifdef IDLE_TASKS_SLEEP
+  DART_LOG_TRACE("Thread %d going to sleep waiting for work",
+                 get_current_thread()->thread_id);
   pthread_mutex_lock(&thread_pool_mutex);
   if (parallel) {
     pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
   }
   pthread_mutex_unlock(&thread_pool_mutex);
+  DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
+#else // IDLE_TASKS_SLEEP
+  // put the thread to sleep for 1ms
+  usleep(1000);
+#endif // IDLE_TASKS_SLEEP
+}
+
+static void wakeup_thread_single()
+{
+#ifdef IDLE_TASKS_SLEEP
+  pthread_cond_signal(&task_avail_cond);
+#endif // IDLE_TASKS_SLEEP
+}
+
+static void wakeup_thread_all()
+{
+#ifdef IDLE_TASKS_SLEEP
+  pthread_cond_broadcast(&task_avail_cond);
+#endif // IDLE_TASKS_SLEEP
 }
 
 static int determine_num_threads()
@@ -535,10 +559,14 @@ void* thread_main(void *data)
     handle_task(task, thread);
 
     // look for incoming remote tasks and responses
-    // NOTE: only the last thread does the polling
+    // NOTE: only the first worker thread does the polling
     //       if polling is enabled or we have no runnable tasks anymore
-    if ((task == NULL || worker_poll_remote) && threadid == 1)
+
+    if ((task == NULL || worker_poll_remote) && threadid == 1) {
       dart_tasking_remote_progress();
+    } else if (task == NULL) {
+      wait_for_work();
+    }
   }
 
   DART_ASSERT_MSG(
@@ -682,6 +710,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_taskqueue_t *q = &task_queue;
 #endif // USE_THREADLOCAL_Q
     dart_tasking_taskqueue_push(q, task);
+    // wakeup a thread to execute this task
+    wakeup_thread_single();
   }
 }
 
@@ -774,6 +804,8 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
   dart__tasking__phase_set_runnable(phase);
   // release the deferred queue
   dart_tasking_datadeps_handle_defered_local(thread);
+  // wakeup all thread to execute potentially available tasks
+  wakeup_thread_all();
 }
 
 
@@ -971,6 +1003,9 @@ stop_threads()
   pthread_mutex_lock(&thread_pool_mutex);
   parallel = false;
   pthread_mutex_unlock(&thread_pool_mutex);
+
+  // wake up all threads to finish
+  wakeup_thread_all();
 
   // wake up all threads waiting for work
   pthread_cond_broadcast(&task_avail_cond);
