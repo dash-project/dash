@@ -556,6 +556,8 @@ void* thread_main(void *data)
 
   struct timespec begin_idle_ts;
   bool in_idle = false;
+  // sleep-time: 100us
+  const struct timespec sleeptime = {0, 100000};
   // enter work loop
   while (parallel) {
 
@@ -578,9 +580,6 @@ void* thread_main(void *data)
         // start idle time
         clock_gettime(CLOCK_MONOTONIC, &begin_idle_ts);
         in_idle = true;
-        // wait for
-        const struct timespec sleeptime = {0, 100000}; // sleep for 100us
-        nanosleep(&sleeptime, NULL);
       } else {
         // check whether we should go to idle
         clock_gettime(CLOCK_MONOTONIC, &curr_ts);
@@ -591,6 +590,8 @@ void* thread_main(void *data)
           in_idle = false;
         }
       }
+      // wait for 100us to reduce pressure on master thread
+      nanosleep(&sleeptime, NULL);
     } else {
       in_idle = false;
     }
