@@ -100,40 +100,78 @@ auto mst_get_data(
   return output;
 }
 
-
 template<typename GraphType>
 auto mst_get_components(
+    matrix_t & indices, 
+    int start,
     GraphType & graph,
     dash::util::Trace & trace
-) -> std::vector<typename GraphType::vertex_properties_type> {
-  trace.enter_state("send components");
+) -> std::unordered_map<int, typename GraphType::vertex_properties_type> {
   typedef typename GraphType::vertex_properties_type      vprop_t;
-  std::size_t size = graph.local_vertex_size() * sizeof(vprop_t);
-  std::size_t size_n = graph.local_vertex_size();
-  std::vector<std::size_t> sizes_recv(graph.team().size());
-  std::vector<std::size_t> displs_recv(graph.team().size());
-  std::size_t total_recv = 0;
-  dart_allgather(&size, sizes_recv.data(), sizeof(std::size_t), 
+  trace.enter_state("send indices");
+  // exchange indices to get
+  std::vector<std::size_t> sizes_send(indices.size());
+  std::vector<std::size_t> displs_send(indices.size());
+  std::vector<std::size_t> sizes_recv_data(indices.size());
+  std::vector<std::size_t> displs_recv_data(indices.size());
+  std::vector<int> indices_send;
+  int total_send = 0;
+  for(int i = 0; i < indices.size(); ++i) {
+    sizes_send[i] = indices[i].size();
+    displs_send[i] = total_send;
+    sizes_recv_data[i] = indices[i].size() * sizeof(vprop_t);
+    displs_recv_data[i] = total_send * sizeof(vprop_t);
+    total_send += indices[i].size();
+  }
+  indices_send.reserve(total_send);
+  for(auto & index_set : indices) {
+    indices_send.insert(indices_send.end(), index_set.begin(), 
+        index_set.end());
+  }
+  std::vector<std::size_t> sizes_recv(indices.size());
+  std::vector<std::size_t> displs_recv(indices.size());
+  std::vector<std::size_t> sizes_send_data(indices.size());
+  std::vector<std::size_t> displs_send_data(indices.size());
+  dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
       DART_TYPE_BYTE, graph.team().dart_id());
-
+  int total_recv = 0;
   for(int i = 0; i < sizes_recv.size(); ++i) {
+    sizes_send_data[i] = sizes_recv[i] * sizeof(vprop_t);
+    displs_send_data[i] = total_recv * sizeof(vprop_t);
     displs_recv[i] = total_recv;
     total_recv += sizes_recv[i];
   }
+  std::vector<int> indices_recv(total_recv);
+    dart_alltoallv(indices_send.data(), sizes_send.data(), displs_send.data(),
+        DART_TYPE_INT, indices_recv.data(), sizes_recv.data(), 
+        displs_recv.data(), graph.team().dart_id());
 
-  std::vector<vprop_t> components_send;
-  components_send.reserve(size_n);
-  for(int i = 0; i < size_n; ++i) {
-    components_send.push_back(graph.vertex_attributes(i));
+  std::vector<vprop_t> data_send;
+  data_send.reserve(total_recv);
+  std::vector<vprop_t> data_recv(total_send);
+
+  trace.exit_state("send indices");
+  // exchange data
+  trace.enter_state("get components");
+  for(auto & index : indices_recv) {
+    data_send.push_back(graph.vertex_attributes(index - start));
   }
-
-  std::vector<vprop_t> components_recv(total_recv / sizeof(vprop_t));
-  dart_allgatherv(components_send.data(), size, DART_TYPE_BYTE, 
-    components_recv.data(), sizes_recv.data(), displs_recv.data(), 
-    graph.team().dart_id());
-
+  trace.exit_state("get components");
+  trace.enter_state("send components");
+    dart_alltoallv(data_send.data(), sizes_send_data.data(), 
+        displs_send_data.data(), DART_TYPE_BYTE, data_recv.data(), 
+        sizes_recv_data.data(), displs_recv_data.data(), 
+        graph.team().dart_id());
   trace.exit_state("send components");
-  return components_recv;
+
+  trace.enter_state("create map");
+  std::unordered_map<int, vprop_t> output;
+  output.reserve(total_send);
+  for(int i = 0; i < data_recv.size(); ++i) {
+    output[indices_send[i]] = data_recv[i];
+  }
+  trace.exit_state("create map");
+  return output;
 }
 
 template<typename GraphType>
@@ -233,30 +271,30 @@ void minimum_spanning_tree(GraphType & g) {
   dash::barrier();
   trace.exit_state("barrier");
 
+  matrix_t indices(g.team().size());
+  matrix_t permutations(g.team().size());
+  {
+    trace.enter_state("compute indices");
+    int i = 0;
+    for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
+      auto v = g[it];
+      for(auto e_it = v.out_edges().lbegin(); e_it != v.out_edges().lend(); 
+          ++e_it) {
+        auto trg = g[e_it].target();
+        auto lpos = trg.lpos();
+        indices[lpos.unit].push_back(lpos.index);
+        permutations[lpos.unit].push_back(i);
+        ++i;
+      }
+    }
+    trace.exit_state("compute indices");
+  }
+
   while(1) {
     int gr = 0;
     {
-      std::vector<vprop_t> data;
-      {
-        trace.enter_state("compute indices");
-        matrix_t indices(g.team().size());
-        matrix_t permutations(g.team().size());
-        int i = 0;
-        for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
-          auto v = g[it];
-          for(auto e_it = v.out_edges().lbegin(); e_it != v.out_edges().lend(); 
-              ++e_it) {
-            auto trg = g[e_it].target();
-            auto lpos = trg.lpos();
-            indices[lpos.unit].push_back(lpos.index);
-            permutations[lpos.unit].push_back(i);
-            ++i;
-          }
-        }
-        trace.exit_state("compute indices");
-        data = internal::mst_get_data(indices, permutations, g, trace);
-      }
-
+      std::vector<vprop_t> data = internal::mst_get_data(indices, permutations, 
+          g, trace);
       trace.enter_state("compute pairs");
       matrix_min_pairs_t<vprop_t> data_pairs(g.team().size());
       std::vector<std::unordered_set<int>> pair_set(g.team().size());
@@ -287,15 +325,11 @@ void minimum_spanning_tree(GraphType & g) {
                 std::make_tuple(src_comp.comp, trg_comp_min, min_weight, myid, 
                   ledgepos)
             );
-            set.insert(src_comp.comp);
-          }
-          set = pair_set[trg_comp_min.unit];
-          if(set.find(trg_comp_min.comp) == set.end()) {
             data_pairs[trg_comp_min.unit].push_back(
                 std::make_tuple(trg_comp_min.comp, src_comp, min_weight, myid, 
                   ledgepos)
             );
-            set.insert(trg_comp_min.comp);
+            set.insert(src_comp.comp);
           }
           gr = 1;
         }
@@ -312,7 +346,19 @@ void minimum_spanning_tree(GraphType & g) {
     if(gr_all == 0) break; 
     while(1) {
       int pj = 0;
-      std::vector<vprop_t> components = internal::mst_get_components(g, trace);
+      matrix_t indices(g.team().size());
+      {
+        std::vector<std::unordered_set<int>> comp_set(g.team().size());
+        for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
+          auto c = g[it].attributes();
+          auto & set = comp_set[c.unit];
+          if(set.find(c.comp) == set.end()) {
+            indices[c.unit].push_back(c.comp);
+            set.insert(c.comp);
+          }
+        }
+      }
+      auto components = internal::mst_get_components(indices, start, g, trace);
 
       trace.enter_state("set data (pj)");
       for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
