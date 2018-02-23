@@ -90,7 +90,81 @@ auto cc_get_data(
   return output;
 }
 
+template<typename GraphType>
+auto cc_get_components(
+    matrix_t & indices, 
+    int start,
+    GraphType & graph,
+    dash::util::Trace & trace
+) -> std::unordered_map<int, typename GraphType::vertex_properties_type> {
+  typedef typename GraphType::vertex_properties_type      vprop_t;
+  trace.enter_state("send indices");
+  // exchange indices to get
+  std::vector<std::size_t> sizes_send(indices.size());
+  std::vector<std::size_t> displs_send(indices.size());
+  std::vector<std::size_t> sizes_recv_data(indices.size());
+  std::vector<std::size_t> displs_recv_data(indices.size());
+  std::vector<int> indices_send;
+  int total_send = 0;
+  for(int i = 0; i < indices.size(); ++i) {
+    sizes_send[i] = indices[i].size();
+    displs_send[i] = total_send;
+    sizes_recv_data[i] = indices[i].size() * sizeof(vprop_t);
+    displs_recv_data[i] = total_send * sizeof(vprop_t);
+    total_send += indices[i].size();
+  }
+  indices_send.reserve(total_send);
+  for(auto & index_set : indices) {
+    indices_send.insert(indices_send.end(), index_set.begin(), 
+        index_set.end());
+  }
+  std::vector<std::size_t> sizes_recv(indices.size());
+  std::vector<std::size_t> displs_recv(indices.size());
+  std::vector<std::size_t> sizes_send_data(indices.size());
+  std::vector<std::size_t> displs_send_data(indices.size());
+  dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
+      DART_TYPE_BYTE, graph.team().dart_id());
+  int total_recv = 0;
+  for(int i = 0; i < sizes_recv.size(); ++i) {
+    sizes_send_data[i] = sizes_recv[i] * sizeof(vprop_t);
+    displs_send_data[i] = total_recv * sizeof(vprop_t);
+    displs_recv[i] = total_recv;
+    total_recv += sizes_recv[i];
+  }
+  std::vector<int> indices_recv(total_recv);
+    dart_alltoallv(indices_send.data(), sizes_send.data(), displs_send.data(),
+        DART_TYPE_INT, indices_recv.data(), sizes_recv.data(), 
+        displs_recv.data(), graph.team().dart_id());
 
+  std::vector<vprop_t> data_send;
+  data_send.reserve(total_recv);
+  std::vector<vprop_t> data_recv(total_send);
+
+  trace.exit_state("send indices");
+  // exchange data
+  trace.enter_state("get components");
+  for(auto & index : indices_recv) {
+    data_send.push_back(graph.vertex_attributes(index - start));
+  }
+  trace.exit_state("get components");
+  trace.enter_state("send components");
+    dart_alltoallv(data_send.data(), sizes_send_data.data(), 
+        displs_send_data.data(), DART_TYPE_BYTE, data_recv.data(), 
+        sizes_recv_data.data(), displs_recv_data.data(), 
+        graph.team().dart_id());
+  trace.exit_state("send components");
+
+  trace.enter_state("create map");
+  std::unordered_map<int, vprop_t> output;
+  output.reserve(total_send);
+  for(int i = 0; i < data_recv.size(); ++i) {
+    output[indices_send[i]] = data_recv[i];
+  }
+  trace.exit_state("create map");
+  return output;
+}
+
+/*
 template<typename GraphType>
 auto cc_get_components(
     GraphType & graph,
@@ -125,6 +199,7 @@ auto cc_get_components(
   trace.exit_state("send components");
   return components_recv;
 }
+*/
 
 template<typename GraphType>
 void cc_set_data(
@@ -265,7 +340,19 @@ void connected_components(GraphType & g) {
     if(gr_all == 0) break; 
     while(1) {
       int pj = 0;
-      std::vector<vprop_t> components = internal::cc_get_components(g, trace);
+      matrix_t indices(g.team().size());
+      {
+        std::vector<std::unordered_set<int>> comp_set(g.team().size());
+        for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
+          auto c = g[it].attributes();
+          auto & set = comp_set[c.unit];
+          if(set.find(c.comp) == set.end()) {
+            indices[c.unit].push_back(c.comp);
+            set.insert(c.comp);
+          }
+        }
+      }
+      auto components = internal::cc_get_components(indices, start, g, trace);
 
       trace.enter_state("set data (pj)");
       for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
