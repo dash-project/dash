@@ -19,10 +19,15 @@ dart__tasking__phase_advance()
                           DART_MATCHING_FREQUENCY_ENVSTR, -1);
     if (matching_interval > 0) {
       phases_remaining = matching_interval;
+      DART_LOG_TRACE("Intermediate task matching enabled: interval %d",
+                     matching_interval);
+    } else {
+      DART_LOG_TRACE("Intermediate task matching disabled");
     }
   }
 //  if (matching_interval > 0 && creation_phase > 0 && creation_phase % matching_interval == 0) {
   if (--phases_remaining == 0) {
+    DART_LOG_TRACE("Performing intermediate matching");
     dart__tasking__perform_matching(dart__tasking__current_thread(),
                                     creation_phase);
     phases_remaining = matching_interval;
