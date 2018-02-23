@@ -23,8 +23,12 @@
 #include <time.h>
 #include <errno.h>
 #include <setjmp.h>
+#include <time.h>
 
 #define IDLE_TASKS_SLEEP
+#define CLOCK_DIFF_USEC(start, end)  \
+  (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
+#define TASK_IDLETIME_USEC 1000
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -266,7 +270,8 @@ static void wait_for_work()
   DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
 #else // IDLE_TASKS_SLEEP
   // put the thread to sleep for 1ms
-  usleep(1000);
+  const struct timespec sleeptime = {0, 1000000};
+  nanosleep(&sleeptime, NULL);
 #endif // IDLE_TASKS_SLEEP
 }
 
@@ -548,6 +553,9 @@ void* thread_main(void *data)
   set_current_task(&root_task);
 
   DART_LOG_INFO("Thread %d starting to process tasks", threadid);
+
+  struct timespec begin_idle_ts;
+  bool in_idle = false;
   // enter work loop
   while (parallel) {
 
@@ -565,7 +573,26 @@ void* thread_main(void *data)
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       dart_tasking_remote_progress();
     } else if (task == NULL) {
-      wait_for_work();
+      struct timespec curr_ts;
+      if (!in_idle) {
+        // start idle time
+        clock_gettime(CLOCK_MONOTONIC, &begin_idle_ts);
+        in_idle = true;
+        // wait for
+        const struct timespec sleeptime = {0, 100000}; // sleep for 100us
+        nanosleep(&sleeptime, NULL);
+      } else {
+        // check whether we should go to idle
+        clock_gettime(CLOCK_MONOTONIC, &curr_ts);
+        uint64_t idle_time = CLOCK_DIFF_USEC(begin_idle_ts, curr_ts);
+        // go to sleep if we exceeded the max idle time
+        if (idle_time > TASK_IDLETIME_USEC) {
+          wait_for_work();
+          in_idle = false;
+        }
+      }
+    } else {
+      in_idle = false;
     }
   }
 
@@ -1007,15 +1034,14 @@ stop_threads()
   // wake up all threads to finish
   wakeup_thread_all();
 
-  // wake up all threads waiting for work
-  pthread_cond_broadcast(&task_avail_cond);
-
   // use a volatile pointer to wait for threads to set their data
   dart_thread_t* volatile *thread_pool_v = (dart_thread_t* volatile *)thread_pool;
 
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
     // wait for the thread to populate it's thread data
+    // just make sure all threads are awake
+    wakeup_thread_all();
     while (thread_pool_v[i] == NULL) {}
     pthread_join(thread_pool_v[i]->pthread, NULL);
   }
