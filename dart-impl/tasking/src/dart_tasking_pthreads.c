@@ -278,14 +278,18 @@ static void wait_for_work()
 static void wakeup_thread_single()
 {
 #ifdef IDLE_TASKS_SLEEP
+  pthread_mutex_lock(&thread_pool_mutex);
   pthread_cond_signal(&task_avail_cond);
+  pthread_mutex_unlock(&thread_pool_mutex);
 #endif // IDLE_TASKS_SLEEP
 }
 
 static void wakeup_thread_all()
 {
 #ifdef IDLE_TASKS_SLEEP
+  pthread_mutex_lock(&thread_pool_mutex);
   pthread_cond_broadcast(&task_avail_cond);
+  pthread_mutex_unlock(&thread_pool_mutex);
 #endif // IDLE_TASKS_SLEEP
 }
 
