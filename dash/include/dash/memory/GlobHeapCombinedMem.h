@@ -156,6 +156,18 @@ public:
     return bucket_size;
   }
 
+  size_type lsize() {
+    return _local_size;
+  }
+
+  size_type size(team_unit_t unit) {
+    return _bucket_cumul_sizes[unit][1];
+  }
+
+  size_type size() {
+    return _size;
+  }
+
 private:
 
   /**

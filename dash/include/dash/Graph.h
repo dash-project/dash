@@ -704,6 +704,11 @@ public:
     _glob_mem_edge->add_globmem(*_glob_mem_in_edge);
     // Register deallocator at the respective team instance
     _team->register_deallocator(this, std::bind(&Graph::deallocate, this));
+
+    _vertices = vertex_it_wrapper(this);
+    _in_edges = in_edge_it_wrapper(this);
+    _out_edges = out_edge_it_wrapper(this);
+    _edges = edge_it_wrapper(this);
     return true;
   }
 
@@ -742,34 +747,6 @@ public:
    */
   Team & team() const {
     return *_team;
-  }
-
-  global_vertex_iterator vertex_gptr(local_vertex_iterator it) {
-    return global_vertex_iterator(_glob_mem_vertex, _myid, it.pos());
-  }
-
-  vertex_properties_type & vertex_attributes(vertex_size_type local_vertex) {
-    return _glob_mem_vertex->get(local_vertex).properties;
-  }
-
-  void set_vertex_attributes(vertex_size_type local_vertex, 
-      vertex_properties_type prop) {
-    auto & v = _glob_mem_vertex->get(local_vertex);
-    v.properties = prop;
-  }
-
-  edge_properties_type & out_edge_attributes(edge_size_type local_edge) {
-    return _glob_mem_out_edge->get(local_edge).properties;
-  }
-
-  void set_out_edge_attributes(edge_size_type local_edge, 
-      edge_properties_type prop) {
-    auto & e = _glob_mem_out_edge->get(local_edge);
-    e.properties = prop;
-  }
-
-  vertex_size_type vertex_size(team_unit_t unit) {
-    return _glob_mem_vertex->global_size(unit);
   }
 
 private:
@@ -864,13 +841,13 @@ private:
   /** Edges that have to be added to vertices on another unit in next commit */
   edge_list_type              _remote_edges;
   /** wrapper for vertex iterator ranges */
-  vertex_it_wrapper           _vertices = vertex_it_wrapper(this);
+  vertex_it_wrapper           _vertices;
   /** wrapper for edge iterator ranges */
-  edge_it_wrapper             _edges = edge_it_wrapper(this);
+  edge_it_wrapper             _edges;
   /** wrapper for in-edge iterator ranges */
-  in_edge_it_wrapper          _in_edges = in_edge_it_wrapper(this);
+  in_edge_it_wrapper          _in_edges;
   /** wrapper for out-edge iterator ranges */
-  out_edge_it_wrapper         _out_edges = out_edge_it_wrapper(this);
+  out_edge_it_wrapper         _out_edges;
 
 };
 

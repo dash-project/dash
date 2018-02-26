@@ -418,16 +418,20 @@ public:
     return (*_container)[index];
   }
 
-  size_type local_size() {
-    return _local_size;
-  }
-
   void set(index_type index, value_type value) {
     (*_container)[index] = value;
   }
 
-  size_type global_size(team_unit_t unit) {
+  size_type lsize() {
+    return _local_size;
+  }
+
+  size_type size(team_unit_t unit) {
     return _bucket_cumul_sizes[unit][0];
+  }
+
+  size_type size() {
+    return _size;
   }
 
 private:
