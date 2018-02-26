@@ -77,7 +77,7 @@ auto mst_get_data(
   // exchange data
   trace.enter_state("get components");
   for(auto & index : indices_recv) {
-    data_send.push_back(graph.vertex_attributes(index));
+    data_send.push_back(graph.vertices().attributes(index));
   }
   trace.exit_state("get components");
   trace.enter_state("send components");
@@ -115,13 +115,13 @@ auto mst_get_components(
   typedef typename GraphType::vertex_properties_type      vprop_t;
   trace.enter_state("send indices");
   auto myid = graph.team().myid();
-  std::size_t lsize = graph.vertex_size(myid);
+  std::size_t lsize = graph.vertices().size(myid);
   std::vector<int> thresholds(indices.size());
   for(int i = 0; i < thresholds.size(); ++i) {
     team_unit_t unit { i };
     // TODO: find a threshold that provides an optimal tradeoff for any 
     //       amount of units
-    thresholds[i] = graph.vertex_size(unit) * 20;
+    thresholds[i] = graph.vertices().size(unit) * 20;
   }
 
   std::vector<long long> total_sizes(indices.size());
@@ -144,7 +144,7 @@ auto mst_get_components(
     if(total_sizes[i] > thresholds[i]) {
       sizes_send[i] = 0;
       team_unit_t unit { i };
-      sizes_recv_data[i] = graph.vertex_size(unit) * sizeof(vprop_t);
+      sizes_recv_data[i] = graph.vertices().size(unit) * sizeof(vprop_t);
       indices[i].clear();
     } else {
       sizes_send[i] = indices[i].size();
@@ -193,12 +193,12 @@ auto mst_get_components(
   if(total_sizes[myid] > thresholds[myid]) {
     data_send.reserve(lsize);
     for(int i = 0; i < lsize; ++i) {
-      data_send.push_back(graph.vertex_attributes(i));
+      data_send.push_back(graph.vertices().attributes(i));
     }
   } else {
     data_send.reserve(total_recv);
     for(auto & index : indices_recv) {
-      data_send.push_back(graph.vertex_attributes(index - start));
+      data_send.push_back(graph.vertices().attributes(index - start));
     }
   }
   trace.exit_state("get components");
@@ -280,10 +280,10 @@ void mst_set_data_min(
   trace.exit_state("send pairs");
   trace.enter_state("set components");
   for(auto & pair : mapping) {
-    graph.set_vertex_attributes(pair.first - start, std::get<1>(pair.second));
+    graph.vertices().set_attributes(pair.first - start, std::get<1>(pair.second));
     if(dash::myid() == get<3>(pair.second)) {
       typename GraphType::edge_properties_type eprop { -1 };
-      graph.set_out_edge_attributes(std::get<4>(pair.second), eprop);
+      graph.out_edges().set_attributes(std::get<4>(pair.second), eprop);
     }
   }
   trace.exit_state("set components");
@@ -311,13 +311,20 @@ void minimum_spanning_tree(GraphType & g) {
   trace.enter_state("vertex setup");
   int i = 0;
   auto myid = dash::myid();
-  auto git = g.vertex_gptr(g.vertices().lbegin());
-  auto start = git.pos();
+  std::vector<int> unit_sizes(g.team().size());
+  std::size_t total_size = 0;
+  for(int i = 0; i < g.team().size(); ++i) {
+    unit_sizes[i] = total_size;
+    team_unit_t unit { i };
+    total_size += g.vertices().size(unit);
+  }
+
+  auto start = unit_sizes[myid];
   for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
     auto index = it.pos(); 
     auto gindex = index + start;
     vprop_t prop { gindex, myid };
-    g.set_vertex_attributes(index, prop);
+    g.vertices().set_attributes(index, prop);
     ++i;
   }
   trace.exit_state("vertex setup");
@@ -325,14 +332,6 @@ void minimum_spanning_tree(GraphType & g) {
   trace.enter_state("barrier");
   dash::barrier();
   trace.exit_state("barrier");
-
-  std::vector<int> unit_sizes(g.team().size());
-  std::size_t total_size = 0;
-  for(int i = 0; i < g.team().size(); ++i) {
-    unit_sizes[i] = total_size;
-    team_unit_t unit { i };
-    total_size += g.vertex_size(unit);
-  }
 
   matrix_t indices(g.team().size());
   matrix_t permutations(g.team().size());
