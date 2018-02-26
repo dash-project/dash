@@ -23,6 +23,12 @@
 #include <time.h>
 #include <errno.h>
 #include <setjmp.h>
+#include <time.h>
+
+#define IDLE_TASKS_SLEEP
+#define CLOCK_DIFF_USEC(start, end)  \
+  (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
+#define TASK_IDLETIME_USEC 1000
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -50,6 +56,10 @@ static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
 static dart_thread_t **thread_pool;
 
 static bool bind_threads = false;
+
+#ifndef USE_THREADLOCAL_Q
+dart_taskqueue_t task_queue DART_INTERNAL;
+#endif
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -105,7 +115,11 @@ static
 void requeue_task(dart_task_t *task)
 {
   dart_thread_t *thread = get_current_thread();
+#ifdef USE_THREADLOCAL_Q
   dart_taskqueue_t *q = &thread->queue;
+#else
+  dart_taskqueue_t *q = &task_queue;
+#endif
   int delay = task->delay;
   if (delay == 0) {
     dart_tasking_taskqueue_push(q, task);
@@ -245,11 +259,38 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 
 static void wait_for_work()
 {
+#ifdef IDLE_TASKS_SLEEP
+  DART_LOG_TRACE("Thread %d going to sleep waiting for work",
+                 get_current_thread()->thread_id);
   pthread_mutex_lock(&thread_pool_mutex);
   if (parallel) {
     pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
   }
   pthread_mutex_unlock(&thread_pool_mutex);
+  DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
+#else // IDLE_TASKS_SLEEP
+  // put the thread to sleep for 1ms
+  const struct timespec sleeptime = {0, 1000000};
+  nanosleep(&sleeptime, NULL);
+#endif // IDLE_TASKS_SLEEP
+}
+
+static void wakeup_thread_single()
+{
+#ifdef IDLE_TASKS_SLEEP
+  pthread_mutex_lock(&thread_pool_mutex);
+  pthread_cond_signal(&task_avail_cond);
+  pthread_mutex_unlock(&thread_pool_mutex);
+#endif // IDLE_TASKS_SLEEP
+}
+
+static void wakeup_thread_all()
+{
+#ifdef IDLE_TASKS_SLEEP
+  pthread_mutex_lock(&thread_pool_mutex);
+  pthread_cond_broadcast(&task_avail_cond);
+  pthread_mutex_unlock(&thread_pool_mutex);
+#endif // IDLE_TASKS_SLEEP
 }
 
 static int determine_num_threads()
@@ -299,7 +340,7 @@ dart_task_t * next_task(dart_thread_t *thread)
 {
   // stop processing tasks if they are cancelled
   if (dart__tasking__cancellation_requested()) return NULL;
-
+#ifdef USE_THREADLOCAL_Q
   dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
   if (task == NULL) {
     // try to steal from another thread, round-robbing starting at the last
@@ -308,7 +349,6 @@ dart_task_t * next_task(dart_thread_t *thread)
     for (int i = 0; i < num_threads; ++i) {
       dart_thread_t *target_thread = thread_pool[target];
       if (dart__likely(target_thread != NULL)) {
-        //task = dart_tasking_taskqueue_popback(&target_thread->queue);
         task = dart_tasking_taskqueue_pop(&target_thread->queue);
         if (task != NULL) {
           DART_LOG_DEBUG("Stole task %p from thread %i", task, target);
@@ -319,6 +359,9 @@ dart_task_t * next_task(dart_thread_t *thread)
       target = (target + 1) % num_threads;
     }
   }
+#else
+  dart_task_t *task = dart_tasking_taskqueue_pop(&task_queue);
+#endif // USE_THREADLOCAL_Q
   return task;
 }
 
@@ -470,9 +513,11 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
+#ifdef USE_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
     threadnum, thread, &thread->queue);
+#endif // USE_THREADLOCAL_Q
 
   if (threadnum == 0)
     DART_LOG_INFO("sizeof(dart_task_t) = %zu", sizeof(dart_task_t));
@@ -488,6 +533,8 @@ void* thread_main(void *data)
 {
   DART_ASSERT(data != NULL);
   struct thread_init_data* tid = (struct thread_init_data*)data;
+
+  DART_LOG_INFO("Thread %d starting up", tid->threadid);
 
   if (bind_threads) {
     set_thread_affinity(tid->pthread, tid->threadid);
@@ -509,6 +556,12 @@ void* thread_main(void *data)
 
   set_current_task(&root_task);
 
+  DART_LOG_INFO("Thread %d starting to process tasks", threadid);
+
+  struct timespec begin_idle_ts;
+  bool in_idle = false;
+  // sleep-time: 100us
+  const struct timespec sleeptime = {0, 100000};
   // enter work loop
   while (parallel) {
 
@@ -520,10 +573,32 @@ void* thread_main(void *data)
     handle_task(task, thread);
 
     // look for incoming remote tasks and responses
-    // NOTE: only the last thread does the polling
+    // NOTE: only the first worker thread does the polling
     //       if polling is enabled or we have no runnable tasks anymore
-    if ((task == NULL || worker_poll_remote) && threadid == num_threads-1)
+
+    if ((task == NULL || worker_poll_remote) && threadid == 1) {
       dart_tasking_remote_progress();
+    } else if (task == NULL) {
+      struct timespec curr_ts;
+      if (!in_idle) {
+        // start idle time
+        clock_gettime(CLOCK_MONOTONIC, &begin_idle_ts);
+        in_idle = true;
+      } else {
+        // check whether we should go to idle
+        clock_gettime(CLOCK_MONOTONIC, &curr_ts);
+        uint64_t idle_time = CLOCK_DIFF_USEC(begin_idle_ts, curr_ts);
+        // go to sleep if we exceeded the max idle time
+        if (idle_time > TASK_IDLETIME_USEC) {
+          wait_for_work();
+          in_idle = false;
+        }
+      }
+      // wait for 100us to reduce pressure on master thread
+      nanosleep(&sleeptime, NULL);
+    } else {
+      in_idle = false;
+    }
   }
 
   DART_ASSERT_MSG(
@@ -543,13 +618,17 @@ void dart_thread_finalize(dart_thread_t *thread)
   thread->thread_id = -1;
   thread->current_task = NULL;
   thread->ctxlist = NULL;
+
+#ifdef USE_THREADLOCAL_Q
   dart_tasking_taskqueue_finalize(&thread->queue);
+#endif // USE_THREADLOCAL_Q
 }
 
 static void
 start_threads(int num_threads)
 {
   DART_ASSERT(!threads_running);
+  DART_LOG_INFO("Starting %d threads", num_threads);
   // start-up all worker threads
   for (int i = 1; i < num_threads; i++)
   {
@@ -591,6 +670,10 @@ dart__tasking__init()
   DART_LOG_INFO("Using %i threads", num_threads);
 
   dart__tasking__context_init();
+
+#ifndef USE_THREADLOCAL_Q
+  dart_tasking_taskqueue_init(&task_queue);
+#endif
 
   // keep threads running
   parallel = true;
@@ -645,16 +728,23 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   if (!dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
-      DART_LOG_TRACE("Deferring release of task %p", task);
+      DART_LOG_TRACE("Deferring release of task %p in phase %d",
+                     task, task->phase);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
       enqueued = true;
     }
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
   if (!enqueued){
+#ifdef USE_THREADLOCAL_Q
     dart_thread_t *thread = get_current_thread();
     dart_taskqueue_t *q = &thread->queue;
+#else
+    dart_taskqueue_t *q = &task_queue;
+#endif // USE_THREADLOCAL_Q
     dart_tasking_taskqueue_push(q, task);
+    // wakeup a thread to execute this task
+    wakeup_thread_single();
   }
 }
 
@@ -674,7 +764,7 @@ dart__tasking__create_task(
   }
 
   // start threads upon first task creation
-  if (!threads_running) {
+  if (dart__likely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -710,7 +800,7 @@ dart__tasking__create_task_handle(
   }
 
   // start threads upon first task creation
-  if (!threads_running) {
+  if (dart__likely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -747,6 +837,8 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
   dart__tasking__phase_set_runnable(phase);
   // release the deferred queue
   dart_tasking_datadeps_handle_defered_local(thread);
+  // wakeup all thread to execute potentially available tasks
+  wakeup_thread_all();
 }
 
 
@@ -814,6 +906,8 @@ dart__tasking__task_complete()
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // disable remote polling of worker threads
     worker_poll_remote = false;
+    // reset the phase counter
+    dart__tasking__phase_reset();
   }
   dart_tasking_datadeps_reset(thread->current_task);
 
@@ -945,8 +1039,8 @@ stop_threads()
   parallel = false;
   pthread_mutex_unlock(&thread_pool_mutex);
 
-  // wake up all threads waiting for work
-  pthread_cond_broadcast(&task_avail_cond);
+  // wake up all threads to finish
+  wakeup_thread_all();
 
   // use a volatile pointer to wait for threads to set their data
   dart_thread_t* volatile *thread_pool_v = (dart_thread_t* volatile *)thread_pool;
@@ -954,6 +1048,8 @@ stop_threads()
   // wait for all threads to finish
   for (int i = 1; i < num_threads; i++) {
     // wait for the thread to populate it's thread data
+    // just make sure all threads are awake
+    wakeup_thread_all();
     while (thread_pool_v[i] == NULL) {}
     pthread_join(thread_pool_v[i]->pthread, NULL);
   }
@@ -1022,6 +1118,10 @@ dart__tasking__fini()
   dart_tasking_datadeps_fini();
   dart__tasking__context_cleanup();
   destroy_threadpool(true);
+
+#ifndef USE_THREADLOCAL_Q
+  dart_tasking_taskqueue_finalize(&task_queue);
+#endif
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");

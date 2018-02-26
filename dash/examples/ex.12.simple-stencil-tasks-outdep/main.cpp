@@ -22,6 +22,7 @@
 #include <dash/Types.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
 #include <dash/util/Timer.h>
 #include <dash/tasks/Tasks.h>
@@ -45,6 +46,7 @@
 using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
+using Halo_t  = dash::NArray<element_t, 3>;
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){
@@ -125,23 +127,29 @@ void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
   }
 }
 
-static element_t *__restrict down_row = NULL;
-static element_t *__restrict   up_row = NULL;
+static void
+copy_out(dart_gptr_t dst, element_t *src, size_t nelem)
+{
+  dart_handle_t handle;
+  dash::dart_storage<element_t> ds(nelem);
+  dart_put_handle(dst, src, ds.nelem, ds.dtype, ds.dtype, &handle);
 
-void smooth(Array_t & data_old, Array_t & data_new){
+  int flag;
+  dart_test_local(&handle, &flag);
+  while (!flag) {
+    dash::tasks::yield();
+    dart_test_local(&handle, &flag);
+  }
+  // we need a flush at the end
+  dart_flush(dst);
+}
+
+void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
   // Todo: use stencil iterator
   const auto& pattern = data_old.pattern();
 
   auto gext_x = data_old.extent(0);
   auto gext_y = data_old.extent(1);
-
-  if (up_row == NULL) {
-    up_row = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
-  }
-
-  if (down_row == NULL) {
-    down_row = static_cast<element_t*>(std::malloc(sizeof(element_t) * gext_y));
-  }
 
   auto lext_x = pattern.local_extent(0);
   auto lext_y = pattern.local_extent(1);
@@ -151,6 +159,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
 
     auto local_beg_gidx = pattern.coords(pattern.global(0));
     auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
+
     int rows_per_task = lext_x / (dart_task_num_threads() *2);
     if (rows_per_task == 0) rows_per_task = 1;
 //    std::cout << "rows_per_task: " << rows_per_task << std::endl;
@@ -204,13 +213,48 @@ void smooth(Array_t & data_old, Array_t & data_new){
     bool is_top    =(pattern.local_size() > 0 && local_beg_gidx[0] == 0) ? true : false;
     bool is_bottom =(pattern.local_size() > 0 && local_end_gidx[0] == (gext_x-1)) ? true : false;
 
+    if (!is_top) {
+      // copy upper boundary into neighbor's lower halo
+      dash::tasks::async(
+        [=, &data_new, &halo_new]() {
+          copy_out(
+            halo_new(dash::myid() - 1, 1, 0).dart_gptr(),
+            data_new.lbegin(),
+            gext_y);
+        },
+        DART_PRIO_HIGH,
+        //dash::tasks::in(data_old.local.row(0).lbegin()),
+        dash::tasks::in(data_new.local.row(0).lbegin()),
+        dash::tasks::out(halo_new(dash::myid() - 1, 1, 0))
+      );
+    }
+
+    if(!is_bottom) {
+      // copy lower boundary into neighbor's upper halo
+      dash::tasks::async(
+        [=, &data_new, &halo_new]() {
+          copy_out(
+            halo_new(dash::myid() + 1, 0, 0).dart_gptr(),
+            data_new[local_end_gidx[0]].begin().local(),
+            gext_y);
+        },
+        DART_PRIO_HIGH,
+        //dash::tasks::in(data_new[local_end_gidx[0]].begin().local()),
+        dash::tasks::in(data_new.at(local_end_gidx[0], 0)),
+        dash::tasks::out(halo_new(dash::myid()+1, 0, 0)) // skip second local row
+      );
+    }
+
+    dash::tasks::async_barrier();
+
     if(!is_top){
       // top row
       dash::tasks::async(
-        [=, &data_old, &data_new] {
+        [=, &data_old, &data_new, &halo_new] {
           const element_t *__restrict down_row = data_old.local.row(1).lbegin();
           const element_t *__restrict curr_row = data_old.local.row(0).lbegin();
-              element_t *__restrict  out_row = data_new.lbegin();
+                element_t *__restrict  out_row = data_new.lbegin();
+                element_t *__restrict   up_row = &halo_new.local(0,0,0);
 
           for( auto y=1; y<gext_y-1; ++y){
             out_row[y] =
@@ -222,20 +266,22 @@ void smooth(Array_t & data_old, Array_t & data_new){
           }
         },
         DART_PRIO_HIGH,
-        dash::tasks::copyin(data_old.at(local_beg_gidx[0]-1, 0), gext_y, up_row),
+        dash::tasks::in(halo_new(dash::myid(), 0, 0)),
         dash::tasks::in(data_old.local.row(1).lbegin()),
         dash::tasks::in(data_old.local.row(0).lbegin()),
         dash::tasks::out(data_new.local.row(0).lbegin())
       );
+
     }
 
     if(!is_bottom){
       // bottom row
       dash::tasks::async(
-        [=, &data_old, &data_new] {
+        [=, &data_old, &data_new, &halo_new] {
           const element_t *__restrict   up_row = data_old[local_end_gidx[0] - 1].begin().local();
           const element_t *__restrict curr_row = data_old[local_end_gidx[0]].begin().local();
                 element_t *__restrict  out_row = data_new[local_end_gidx[0]].begin().local();
+                element_t *__restrict down_row = &halo_new.local(0,1,0);
 
           for( auto y=1; y<gext_y-1; ++y){
             out_row[y] =
@@ -247,11 +293,12 @@ void smooth(Array_t & data_old, Array_t & data_new){
           }
         },
         DART_PRIO_HIGH,
+        dash::tasks::in(halo_new(dash::myid(), 1, 0)),
         dash::tasks::in(data_old.at(local_end_gidx[0] - 1,   0)),
-        dash::tasks::copyin(data_old.at(local_end_gidx[0] + 1, 0), gext_y, down_row),
         dash::tasks::in(data_old.at(local_end_gidx[0],       0)),
         dash::tasks::out(data_new.at(local_end_gidx[0],      0))
       );
+
     }
   }
 }
@@ -298,6 +345,10 @@ int main(int argc, char* argv[])
 
   Array_t data_old(pattern);
   Array_t data_new(pattern);
+  Halo_t  halo_old(dash::size(), 2, sizey, dash::BLOCKED, dash::NONE, dash::NONE);
+  Halo_t  halo_new(dash::size(), 2, sizey, dash::BLOCKED, dash::NONE, dash::NONE);
+  dash::fill(halo_old.begin(), halo_old.end(), 0.0);
+  dash::fill(halo_new.begin(), halo_new.end(), 0.0);
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
@@ -348,7 +399,7 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   if (sizex <= 1000)
-    write_pgm("testimg_input_task_copyin.pgm", data_old);
+    write_pgm("testimg_input_task_outdep.pgm", data_old);
 
   Timer timer;
 
@@ -356,8 +407,10 @@ int main(int argc, char* argv[])
     // switch references
     auto & data_prev = i%2 ? data_new : data_old;
     auto & data_next = i%2 ? data_old : data_new;
+    auto & halo_prev = i%2 ? halo_new : halo_old;
+    auto & halo_next = i%2 ? halo_old : halo_new;
 
-    smooth(data_prev, data_next);
+    smooth(data_prev, data_next, halo_next);
 
     dash::tasks::async_barrier();
   }
@@ -367,10 +420,7 @@ int main(int argc, char* argv[])
     std::cout << "Done computing (" << timer.Elapsed() / 1E6 << "s)" << std::endl;
   }
 
-  std::free(up_row);
-  std::free(down_row);
-
   if (sizex <= 1000)
-    write_pgm("testimg_output_task_copyin.pgm", data_new);
+    write_pgm("testimg_output_task_outdep.pgm", data_new);
   dash::finalize();
 }

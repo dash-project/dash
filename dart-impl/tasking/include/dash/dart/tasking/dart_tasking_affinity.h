@@ -6,13 +6,17 @@
 #include <dash/dart/base/env.h>
 
 static hwloc_topology_t topology;
-static bool print_binding = false;
+static bool             print_binding = false;
+static hwloc_cpuset_t   ccpuset;
 
 static void
 init_thread_affinity()
 {
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
+  ccpuset = hwloc_bitmap_alloc();
+  hwloc_get_cpubind(topology, ccpuset, HWLOC_CPUBIND_PROCESS);
+
 #ifdef DART_ENABLE_LOGGING
   // force printing of binding if logging is enabled
   print_binding = true;
@@ -20,6 +24,23 @@ init_thread_affinity()
   print_binding = dart__base__env__bool(
                     DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
 #endif // DART_ENABLE_LOGGING
+
+  if (print_binding) {
+    int num_cpus = hwloc_bitmap_weight(ccpuset);
+    size_t len = num_cpus * 8;
+    char* buf = malloc(sizeof(char) * len);
+    unsigned int entry = hwloc_bitmap_first(ccpuset);
+    size_t pos = snprintf(buf, len, "%d", entry);
+    for (entry  = hwloc_bitmap_next(ccpuset, entry);
+         entry <= hwloc_bitmap_last(ccpuset);
+         entry  = hwloc_bitmap_next(ccpuset, entry))
+    {
+      pos += snprintf(buf+pos, len - pos, ", %d", entry);
+      if (pos >= len) break;
+    }
+    DART_LOG_INFO_ALWAYS("Allocated CPU set (size %d): {%s}", num_cpus, buf);
+    free(buf);
+  }
 }
 
 static void
@@ -32,8 +53,6 @@ static void
 set_thread_affinity(pthread_t pthread, int dart_thread_id)
 {
   //hwloc_const_cpuset_t ccpuset = hwloc_topology_get_allowed_cpuset(topology);
-  hwloc_cpuset_t ccpuset = hwloc_bitmap_alloc();
-  hwloc_get_cpubind(topology, ccpuset, HWLOC_CPUBIND_PROCESS);
   hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
   int cnt = 0;
   // iterate over bitmap, round-robin thread-binding
