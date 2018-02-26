@@ -30,6 +30,11 @@ typedef enum {
   DART_TASK_CANCELLED
 } dart_task_state_t;
 
+typedef enum {
+  DART_YIELD_TARGET_ROOT  = 0,  // upon yield, return to the root_task
+  DART_YIELD_TARGET_YIELD = 1, // upon yield, yield to another task
+} dart_yield_target_t;
+
 #define IS_ACTIVE_TASK(task) \
   ((task)->state == DART_TASK_RUNNING || \
    (task)->state == DART_TASK_CREATED || \
@@ -113,6 +118,8 @@ typedef struct {
   context_list_t        * ctxlist;
   int                     thread_id;
   int                     last_steal_thread;
+  dart_yield_target_t     yield_target;
+
 } dart_thread_t;
 
 dart_ret_t

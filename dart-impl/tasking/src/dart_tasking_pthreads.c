@@ -179,7 +179,11 @@ dart__tasking__yield(int delay)
     return DART_OK;
   }
 
+  bool left_task = false;
+
   dart_thread_t *thread = get_current_thread();
+  // save the current task
+  dart_task_t *current_task = dart_task_current_task();
 
   // progress
   dart_tasking_remote_progress();
@@ -187,36 +191,70 @@ dart__tasking__yield(int delay)
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
 
-  // first get a replacement task
-  dart_task_t *next = next_task(thread);
+  if (thread->yield_target == DART_YIELD_TARGET_ROOT &&
+      current_task != &root_task) {
+    DART_ASSERT(thread->thread_id == 0);
+    // we came into this task through a yield from the root_task
+    // so we just jump back into the root_task (only happens on the master thread)
 
-  if (next) {
-    // save the current task
-    dart_task_t *current_task = dart_task_current_task();
-    current_task->delay = delay;
-    // mark task as suspended to avoid invoke_task to update the retctx
-    // the next task should return to where the current task would have
-    // returned
-    current_task->state = DART_TASK_SUSPENDED;
-    // set new task to running state, protected to prevent race conditions
-    // with dependency handling code
-    dart__base__mutex_lock(&(next->mutex));
-    next->state = DART_TASK_RUNNING;
-    dart__base__mutex_unlock(&(next->mutex));
-    // here we leave this task
-    invoke_task(next, thread);
+    // upon return into this task we may have to requeue the previous task
+    left_task = true;
+    // store current tasks's context and jump back into the master thread
+    DART_LOG_TRACE("Yield: jumping back into master thread from task %p",
+                   current_task);
+    thread->yield_target = DART_YIELD_TARGET_YIELD;
+    current_task->state  = DART_TASK_SUSPENDED;
+    dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
+  } else {
 
+    // first get a replacement task
+    dart_task_t *next = next_task(thread);
+
+    if (next) {
+      current_task->delay = delay;
+
+      if (current_task == &root_task && thread->thread_id == 0) {
+        // the master thread should return to the root_task on the next yield
+        thread->yield_target = DART_YIELD_TARGET_ROOT;
+        // NOTE: the root task is not suspended and requeued, the master thread
+        //       will jump back into it (see above)
+      } else {
+        // mark task as suspended to avoid invoke_task to update the retctx
+        // the next task should return to where the current task would have
+        // returned
+        current_task->state  = DART_TASK_SUSPENDED;
+        thread->yield_target = DART_YIELD_TARGET_YIELD;
+      }
+      // set new task to running state, protected to prevent race conditions
+      // with dependency handling code
+      dart__base__mutex_lock(&(next->mutex));
+      next->state = DART_TASK_RUNNING;
+      dart__base__mutex_unlock(&(next->mutex));
+      left_task = true;
+      // here we leave this task
+      DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
+                     current_task, next);
+      invoke_task(next, thread);
+    }
+  }
+
+  if (left_task) {
+    // we're coming back into this task here
     // requeue the previous task if necessary
     dart_task_t *prev_task = dart_task_current_task();
     if (prev_task->state == DART_TASK_SUSPENDED) {
+      DART_LOG_TRACE("Yield: requeueing task %p from task %p",
+                     prev_task, current_task);
       requeue_task(prev_task);
     }
-    // resume this task
-    current_task->state = DART_TASK_RUNNING;
+
+    if (current_task != &root_task) {
+      // resume this task
+      current_task->state = DART_TASK_RUNNING;
+    }
     // reset to the resumed task and continue processing it
     set_current_task(current_task);
   }
-
   return DART_OK;
 }
 
@@ -514,6 +552,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->taskcntr  = 0;
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
+  thread->yield_target = DART_YIELD_TARGET_YIELD;
 #ifdef USE_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",

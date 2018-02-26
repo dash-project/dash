@@ -209,6 +209,9 @@ TEST_F(DARTTaskingTest, Yield)
     );
   }
 
+  // yield here to test yielding from the master thread
+  dart_task_yield(-1);
+
   dart_task_complete();
 
   ASSERT_EQ(2*i, val);
