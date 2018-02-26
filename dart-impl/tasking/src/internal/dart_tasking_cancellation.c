@@ -133,7 +133,7 @@ dart__tasking__should_abort()
   // the current task should abort if cancellation was requested and
   // it's an actual task, not the root task (which cannot abort)
   return cancel_requested &&
-              dart__tasking__is_root_task(dart__tasking__current_task());
+              !dart__tasking__is_root_task(dart__tasking__current_task());
 }
 
 void
@@ -147,7 +147,7 @@ dart__tasking__cancel_start()
 void
 dart__tasking__check_cancellation(dart_thread_t *thread) {
   if (cancel_requested) {
-    if (dart__tasking__is_root_task(dart__tasking__current_task())) {
+    if (!dart__tasking__is_root_task(dart__tasking__current_task())) {
       // abort task
       DART_LOG_DEBUG("Thread %d aborting task %p\n",
                      thread->thread_id, thread->current_task);
