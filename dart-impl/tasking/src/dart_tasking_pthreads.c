@@ -16,6 +16,7 @@
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_affinity.h>
+#include <dash/dart/tasking/dart_tasking_envstr.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -537,7 +538,7 @@ void* thread_main(void *data)
   DART_LOG_INFO("Thread %d starting up", tid->threadid);
 
   if (bind_threads) {
-    set_thread_affinity(tid->pthread, tid->threadid);
+    dart__tasking__affinity_set(tid->pthread, tid->threadid);
   }
 
   dart_thread_t *thread = malloc(sizeof(dart_thread_t));
@@ -647,9 +648,10 @@ start_threads(int num_threads)
 static void
 init_threadpool(int num_threads)
 {
-  init_thread_affinity();
+  dart__tasking__affinity_init();
+  // bind the master thread before allocating meta-data objects
   if (bind_threads) {
-    set_thread_affinity(pthread_self(), 0);
+    dart__tasking__affinity_set(pthread_self(), 0);
   }
   thread_pool = calloc(num_threads, sizeof(dart_thread_t*));
   dart_thread_t *master_thread = malloc(sizeof(dart_thread_t));
@@ -1081,7 +1083,7 @@ destroy_threadpool(bool print_stats)
 
   free(thread_pool);
   thread_pool = NULL;
-  destroy_thread_affinity();
+  dart__tasking__affinity_fini();
 }
 
 static void
