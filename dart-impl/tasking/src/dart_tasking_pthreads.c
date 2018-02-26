@@ -906,6 +906,8 @@ dart__tasking__task_complete()
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // disable remote polling of worker threads
     worker_poll_remote = false;
+    // reset the phase counter
+    dart__tasking__phase_reset();
   }
   dart_tasking_datadeps_reset(thread->current_task);
 

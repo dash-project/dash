@@ -19,6 +19,9 @@ dart__tasking__phase_set_runnable(dart_taskphase_t phase);
 dart_taskphase_t
 dart__tasking__phase_runnable();
 
+void
+dart__tasking__phase_reset();
+
 dart_ret_t
 dart__tasking__phase_resync(dart_team_t team);
 

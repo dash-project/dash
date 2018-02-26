@@ -66,6 +66,13 @@ dart__tasking__phase_runnable()
   return runnable_phase;
 }
 
+void
+dart__tasking__phase_reset()
+{
+  creation_phase = DART_PHASE_FIRST;
+  runnable_phase = DART_PHASE_FIRST;
+}
+
 dart_ret_t
 dart__tasking__phase_resync(dart_team_t team)
 {
