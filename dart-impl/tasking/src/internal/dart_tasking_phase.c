@@ -44,7 +44,9 @@ dart__tasking__phase_current()
 bool
 dart__tasking__phase_is_runnable(dart_taskphase_t phase)
 {
-  return (runnable_phase == DART_PHASE_ANY || phase <= runnable_phase);
+  return (DART_PHASE_ANY == phase ||
+          DART_PHASE_ANY == runnable_phase ||
+          phase <= runnable_phase);
 }
 
 void

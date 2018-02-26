@@ -26,8 +26,8 @@ static void testfn_assign(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
   ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   *valptr = td->assign;
 }
 
@@ -35,22 +35,21 @@ static void testfn_inc(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
 //  ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
 }
 
 static void testfn_inc_yield(void *data) {
   testdata_t *td = (testdata_t*)data;
   volatile int *valptr = td->valptr;
-//  ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: pre-yield increment of valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: pre-yield increment of valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
   // the last 20 tasks will be re-enqueued at the end
   dart_task_yield(20);
-  LOG_MESSAGE("[Task %p] testfn: post-yield increment of valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: post-yield increment of valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
 }
 
@@ -68,9 +67,11 @@ static void testfn_nested_deps(void *data) {
     dart_task_dep_t dep[2];
     dep[0].type = DART_DEP_INOUT;
     dep[0].gptr = DART_GPTR_NULL;
+    dep[0].phase = DART_PHASE_TASK;
     dep[0].gptr.unitid = dash::myid();
     dep[0].gptr.teamid = dash::Team::All().dart_id();
     dep[0].gptr.addr_or_offs.addr = valptr;
+    dep[0].gptr.segid  = -1;
     ASSERT_EQ(
       DART_OK,
       dart_task_create(

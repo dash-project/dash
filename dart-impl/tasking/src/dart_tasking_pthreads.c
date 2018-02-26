@@ -728,7 +728,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
   if (!dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
-      DART_LOG_TRACE("Deferring release of task %p", task);
+      DART_LOG_TRACE("Deferring release of task %p in phase %d",
+                     task, task->phase);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
       enqueued = true;
     }
@@ -763,7 +764,7 @@ dart__tasking__create_task(
   }
 
   // start threads upon first task creation
-  if (!threads_running) {
+  if (dart__likely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -799,7 +800,7 @@ dart__tasking__create_task_handle(
   }
 
   // start threads upon first task creation
-  if (!threads_running) {
+  if (dart__likely(!threads_running)) {
     start_threads(num_threads);
   }
 
