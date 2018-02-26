@@ -59,7 +59,7 @@ dart_amsg_init()
   dart_ret_t res;
 
   int impl = dart__base__env__str2int(DART_AMSGQ_IMPL_ENVSTR,
-                                      env_vals, DART_AMSGQ_NOLOCK);
+                                      env_vals, DART_AMSGQ_SINGLEWIN);
 
   switch(impl) {
     case DART_AMSGQ_TWOWIN:
