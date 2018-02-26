@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <dash/dart/if/dart_active_messages.h>
+#include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/macro.h>
@@ -18,6 +19,10 @@ struct task_list;
 // whether to use thread-local task queues or a single queue
 #define USE_THREADLOCAL_Q
 
+#ifdef USE_UCONTEXT
+#define HAVE_RESCHEDULING_YIELD 1
+#endif // USE_UCONTEXT
+
 typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0
@@ -25,7 +30,8 @@ typedef enum {
   DART_TASK_CREATED,
   DART_TASK_DUMMY,         // the task is a dummy for a remote task
   DART_TASK_RUNNING,
-  DART_TASK_SUSPENDED,
+  DART_TASK_SUSPENDED,     // the task is suspended but runnable
+  DART_TASK_BLOCKED,       // the task is blocked waiting for a handle
   DART_TASK_DESTROYED,
   DART_TASK_CANCELLED
 } dart_task_state_t;
@@ -36,10 +42,15 @@ typedef enum {
 } dart_yield_target_t;
 
 #define IS_ACTIVE_TASK(task) \
-  ((task)->state == DART_TASK_RUNNING || \
-   (task)->state == DART_TASK_CREATED || \
+  ((task)->state == DART_TASK_RUNNING   || \
+   (task)->state == DART_TASK_CREATED   || \
    (task)->state == DART_TASK_SUSPENDED || \
+   (task)->state == DART_TASK_BLOCKED   || \
    (task)->state == DART_TASK_DUMMY)
+
+
+typedef
+struct dart_wait_handle_s dart_wait_handle_t;
 
 
 struct dart_task_data {
@@ -71,6 +82,7 @@ struct dart_task_data {
   int                        delay;           // delay in case this task yields
   int                        num_children;
   dart_task_prio_t           prio;
+  dart_wait_handle_t        *wait_handle;
   bool                       has_ref;
 };
 
@@ -121,6 +133,11 @@ typedef struct {
   dart_yield_target_t     yield_target;
 
 } dart_thread_t;
+
+struct dart_wait_handle_s {
+  size_t              num_handle;
+  dart_handle_t       handle[];
+};
 
 dart_ret_t
 dart__tasking__init() DART_INTERNAL;

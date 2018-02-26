@@ -7,6 +7,7 @@
 #include <dash/tasks/Tasks.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/Algorithm.h>
 
 #define TASK_CANCEL_CUTOFF 5
 
@@ -758,4 +759,34 @@ TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
 
   ASSERT_EQ_U(lneighbor*10000 + num_iter-1, (int)matrix.local(0, 0));
   ASSERT_EQ_U(rneighbor*10000 + num_iter-1, (int)matrix.local(0, 1));
+}
+
+TEST_F(DARTTaskingTest, WaitForHandle)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  constexpr size_t elem_per_unit = 1000;
+  dash::Array<int> arr(dash::size()*elem_per_unit);
+
+  dash::fill(arr.begin(), arr.end(), dash::myid());
+  dash::barrier();
+
+  for (int i = 0; i < dash::size(); i++) {
+    if (i == dash::myid()) continue;
+    dash::tasks::async(
+      [=, &arr](){
+        int *buf = new int[elem_per_unit];
+        dart_handle_t handle;
+        dart_get_handle(buf, arr[i*elem_per_unit].dart_gptr(), elem_per_unit,
+                        DART_TYPE_INT, DART_TYPE_INT, &handle);
+        dart_task_wait_handle(&handle, 1);
+        // upon return, the transfer should be completed
+        ASSERT_EQ_U(i, buf[0]);
+        ASSERT_EQ_U(i, buf[elem_per_unit-1]);
+    });
+  }
+
+  dash::tasks::complete();
 }

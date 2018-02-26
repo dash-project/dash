@@ -17,6 +17,7 @@
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -139,6 +140,8 @@ void wrap_task(dart_task_t *task)
   dart_task_t *prev_task = get_current_task();
   if (prev_task->state == DART_TASK_SUSPENDED) {
     requeue_task(prev_task);
+  } else if (prev_task->state == DART_TASK_BLOCKED) {
+    dart__task__wait_enqueue(prev_task);
   }
   // update current task
   set_current_task(task);
@@ -161,7 +164,8 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
                       (context_func_t*)&wrap_task, task);
   }
 
-  if (current_task->state == DART_TASK_SUSPENDED) {
+  if (current_task->state == DART_TASK_SUSPENDED ||
+      current_task->state == DART_TASK_BLOCKED) {
     // store current task's state and jump into new task
     dart__tasking__context_swap(current_task->taskctx, task->taskctx);
   } else {
@@ -193,9 +197,9 @@ dart__tasking__yield(int delay)
 
   if (thread->yield_target == DART_YIELD_TARGET_ROOT &&
       current_task != &root_task) {
-    DART_ASSERT(thread->thread_id == 0);
     // we came into this task through a yield from the root_task
     // so we just jump back into the root_task (only happens on the master thread)
+    DART_ASSERT(thread->thread_id == 0);
 
     // upon return into this task we may have to requeue the previous task
     left_task = true;
@@ -203,7 +207,9 @@ dart__tasking__yield(int delay)
     DART_LOG_TRACE("Yield: jumping back into master thread from task %p",
                    current_task);
     thread->yield_target = DART_YIELD_TARGET_YIELD;
-    current_task->state  = DART_TASK_SUSPENDED;
+    if (current_task->wait_handle == NULL) {
+      current_task->state  = DART_TASK_SUSPENDED;
+    }
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
   } else {
 
@@ -222,7 +228,9 @@ dart__tasking__yield(int delay)
         // mark task as suspended to avoid invoke_task to update the retctx
         // the next task should return to where the current task would have
         // returned
-        current_task->state  = DART_TASK_SUSPENDED;
+        if (current_task->wait_handle == NULL) {
+          current_task->state  = DART_TASK_SUSPENDED;
+        }
         thread->yield_target = DART_YIELD_TARGET_YIELD;
       }
       // set new task to running state, protected to prevent race conditions
@@ -246,6 +254,8 @@ dart__tasking__yield(int delay)
       DART_LOG_TRACE("Yield: requeueing task %p from task %p",
                      prev_task, current_task);
       requeue_task(prev_task);
+    } else if (prev_task->state == DART_TASK_BLOCKED) {
+      dart__task__wait_enqueue(prev_task);
     }
 
     if (current_task != &root_task) {
@@ -455,6 +465,7 @@ dart_task_t * create_task(
   task->taskctx      = NULL;
   task->unresolved_deps = 0;
   task->unresolved_remote_deps = 0;
+  task->wait_handle  = NULL;
 
   return task;
 }
@@ -618,6 +629,7 @@ void* thread_main(void *data)
 
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       dart_tasking_remote_progress();
+      dart__task__wait_progress();
     } else if (task == NULL) {
       struct timespec curr_ts;
       if (!in_idle) {
@@ -710,6 +722,8 @@ dart__tasking__init()
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
 
+  DART_LOG_TRACE("root_task: %p", &root_task);
+
   dart__tasking__context_init();
 
 #ifndef USE_THREADLOCAL_Q
@@ -737,6 +751,8 @@ dart__tasking__init()
 #ifdef DART_ENABLE_AYUDAME
   dart__tasking__ayudame_init();
 #endif // DART_ENABLE_AYUDAME
+
+  dart__task__wait_init();
 
   initialized = true;
 
@@ -917,12 +933,15 @@ dart__tasking__task_complete()
   // save context
   context_t tmpctx  = thread->retctx;
 
+  // main task processing routine
   while (DART_FETCH32(&(task->num_children)) > 0) {
     // a) look for incoming remote tasks and responses
     dart_tasking_remote_progress();
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
-    // c) process our tasks
+    // c) check whether blocked tasks are ready
+    dart__task__wait_progress();
+    // d) process our tasks
     dart_task_t *next = next_task(thread);
     handle_task(next, thread);
   }
@@ -1163,6 +1182,8 @@ dart__tasking__fini()
 #ifndef USE_THREADLOCAL_Q
   dart_tasking_taskqueue_finalize(&task_queue);
 #endif
+
+  dart__task__wait_fini();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
