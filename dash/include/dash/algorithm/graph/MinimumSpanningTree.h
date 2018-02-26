@@ -20,6 +20,8 @@ template<typename T>
 using matrix_pair_t = std::vector<std::vector<std::pair<int, T>>>;
 
 namespace internal {
+// TODO: merge overlapping code of the following functions with the functions
+//       provided in ConnectedComponents.h
 
 template<typename GraphType>
 auto mst_get_data(
@@ -106,23 +108,55 @@ auto mst_get_components(
     int start,
     GraphType & graph,
     dash::util::Trace & trace
-) -> std::unordered_map<int, typename GraphType::vertex_properties_type> {
+) -> std::pair<
+       std::unordered_map<int, typename GraphType::vertex_properties_type>, 
+       std::vector<std::vector<typename GraphType::vertex_properties_type>>> 
+{
   typedef typename GraphType::vertex_properties_type      vprop_t;
   trace.enter_state("send indices");
-  // exchange indices to get
+  auto myid = graph.team().myid();
+  std::size_t lsize = graph.vertex_size(myid);
+  std::vector<int> thresholds(indices.size());
+  for(int i = 0; i < thresholds.size(); ++i) {
+    team_unit_t unit { i };
+    // TODO: find a threshold that provides an optimal tradeoff for any 
+    //       amount of units
+    thresholds[i] = graph.vertex_size(unit) * 20;
+  }
+
+  std::vector<long long> total_sizes(indices.size());
   std::vector<std::size_t> sizes_send(indices.size());
+  std::vector<long long> sizes_send_longdt(indices.size());
   std::vector<std::size_t> displs_send(indices.size());
   std::vector<std::size_t> sizes_recv_data(indices.size());
+  std::vector<std::size_t> cumul_sizes_recv_data(indices.size());
   std::vector<std::size_t> displs_recv_data(indices.size());
-  std::vector<int> indices_send;
-  int total_send = 0;
   for(int i = 0; i < indices.size(); ++i) {
     sizes_send[i] = indices[i].size();
-    displs_send[i] = total_send;
+    sizes_send_longdt[i] = indices[i].size();
     sizes_recv_data[i] = indices[i].size() * sizeof(vprop_t);
-    displs_recv_data[i] = total_send * sizeof(vprop_t);
-    total_send += indices[i].size();
   }
+  dart_allreduce(sizes_send_longdt.data(), total_sizes.data(), indices.size(), 
+      DART_TYPE_LONGLONG, DART_OP_SUM, graph.team().dart_id());
+  int total_send = 0;
+  int total_recv_data = 0;
+  for(int i = 0; i < indices.size(); ++i) {
+    if(total_sizes[i] > thresholds[i]) {
+      sizes_send[i] = 0;
+      team_unit_t unit { i };
+      sizes_recv_data[i] = graph.vertex_size(unit) * sizeof(vprop_t);
+      indices[i].clear();
+    } else {
+      sizes_send[i] = indices[i].size();
+      sizes_recv_data[i] = indices[i].size() * sizeof(vprop_t);
+    }
+    displs_send[i] = total_send;
+    displs_recv_data[i] = total_recv_data;
+    total_send += sizes_send[i];
+    total_recv_data += sizes_recv_data[i];
+    cumul_sizes_recv_data[i] = total_recv_data / sizeof(vprop_t); 
+  }
+  std::vector<int> indices_send;
   indices_send.reserve(total_send);
   for(auto & index_set : indices) {
     indices_send.insert(indices_send.end(), index_set.begin(), 
@@ -135,43 +169,64 @@ auto mst_get_components(
   dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
       DART_TYPE_BYTE, graph.team().dart_id());
   int total_recv = 0;
+  int total_send_data = 0;
   for(int i = 0; i < sizes_recv.size(); ++i) {
-    sizes_send_data[i] = sizes_recv[i] * sizeof(vprop_t);
-    displs_send_data[i] = total_recv * sizeof(vprop_t);
-    displs_recv[i] = total_recv;
+    if(total_sizes[myid] > thresholds[myid]) {
+      sizes_send_data[i] = lsize * sizeof(vprop_t);
+      displs_send_data[i] = 0;
+    } else {
+      sizes_send_data[i] = sizes_recv[i] * sizeof(vprop_t);
+      displs_send_data[i] = total_send_data;
+      displs_recv[i] = total_recv;
+    }
     total_recv += sizes_recv[i];
+    total_send_data += sizes_send_data[i];
   }
   std::vector<int> indices_recv(total_recv);
-    dart_alltoallv(indices_send.data(), sizes_send.data(), displs_send.data(),
-        DART_TYPE_INT, indices_recv.data(), sizes_recv.data(), 
-        displs_recv.data(), graph.team().dart_id());
-
-  std::vector<vprop_t> data_send;
-  data_send.reserve(total_recv);
-  std::vector<vprop_t> data_recv(total_send);
-
+  dart_alltoallv(indices_send.data(), sizes_send.data(), displs_send.data(),
+      DART_TYPE_INT, indices_recv.data(), sizes_recv.data(), 
+      displs_recv.data(), graph.team().dart_id());
   trace.exit_state("send indices");
-  // exchange data
   trace.enter_state("get components");
-  for(auto & index : indices_recv) {
-    data_send.push_back(graph.vertex_attributes(index - start));
+  std::vector<vprop_t> data_send;
+  std::vector<vprop_t> data_recv(total_recv_data / sizeof(vprop_t));
+  if(total_sizes[myid] > thresholds[myid]) {
+    data_send.reserve(lsize);
+    for(int i = 0; i < lsize; ++i) {
+      data_send.push_back(graph.vertex_attributes(i));
+    }
+  } else {
+    data_send.reserve(total_recv);
+    for(auto & index : indices_recv) {
+      data_send.push_back(graph.vertex_attributes(index - start));
+    }
   }
   trace.exit_state("get components");
   trace.enter_state("send components");
-    dart_alltoallv(data_send.data(), sizes_send_data.data(), 
-        displs_send_data.data(), DART_TYPE_BYTE, data_recv.data(), 
-        sizes_recv_data.data(), displs_recv_data.data(), 
-        graph.team().dart_id());
+  dart_alltoallv(data_send.data(), sizes_send_data.data(), 
+      displs_send_data.data(), DART_TYPE_BYTE, data_recv.data(), 
+      sizes_recv_data.data(), displs_recv_data.data(), 
+      graph.team().dart_id());
   trace.exit_state("send components");
-
   trace.enter_state("create map");
-  std::unordered_map<int, vprop_t> output;
-  output.reserve(total_send);
+  std::unordered_map<int, vprop_t>  output_regular;
+  std::vector<std::vector<vprop_t>> output_contiguous(indices.size());
+  output_regular.reserve(total_send);
+  int current_unit = 0;
+  int j = 0;
   for(int i = 0; i < data_recv.size(); ++i) {
-    output[indices_send[i]] = data_recv[i];
+    if(i >= cumul_sizes_recv_data[current_unit]) {
+      ++current_unit;
+    }
+    if(total_sizes[current_unit] > thresholds[current_unit]) {
+      output_contiguous[current_unit].push_back(data_recv[i]);
+    } else {
+      output_regular[indices_send[j]] = data_recv[i];
+      ++j;
+    }
   }
   trace.exit_state("create map");
-  return output;
+  return std::make_pair(output_regular, output_contiguous);
 }
 
 template<typename GraphType>
@@ -271,6 +326,14 @@ void minimum_spanning_tree(GraphType & g) {
   dash::barrier();
   trace.exit_state("barrier");
 
+  std::vector<int> unit_sizes(g.team().size());
+  std::size_t total_size = 0;
+  for(int i = 0; i < g.team().size(); ++i) {
+    unit_sizes[i] = total_size;
+    team_unit_t unit { i };
+    total_size += g.vertex_size(unit);
+  }
+
   matrix_t indices(g.team().size());
   matrix_t permutations(g.team().size());
   {
@@ -363,10 +426,16 @@ void minimum_spanning_tree(GraphType & g) {
       trace.enter_state("set data (pj)");
       for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
         auto v = g[it];
-        auto comp = v.attributes().comp;
-        if(comp != 0) {
-          auto comp_next = components[comp];
-          if(comp > comp_next.comp) {
+        auto comp = v.attributes();
+        if(comp.comp != 0) {
+          vprop_t comp_next;
+          if(components.second[comp.unit].size() > 0) {
+            comp_next = 
+              components.second[comp.unit][comp.comp - unit_sizes[comp.unit]];
+          } else {
+            comp_next = components.first[comp.comp];
+          }
+          if(comp.comp > comp_next.comp) {
             v.set_attributes(comp_next);
             pj = 1;
           }

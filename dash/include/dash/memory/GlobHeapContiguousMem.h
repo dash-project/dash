@@ -426,6 +426,10 @@ public:
     (*_container)[index] = value;
   }
 
+  size_type global_size(team_unit_t unit) {
+    return _bucket_cumul_sizes[unit][0];
+  }
+
 private:
 
   /**

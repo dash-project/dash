@@ -768,8 +768,8 @@ public:
     e.properties = prop;
   }
 
-  vertex_size_type local_vertex_size() {
-    return _glob_mem_vertex->local_size();
+  vertex_size_type vertex_size(team_unit_t unit) {
+    return _glob_mem_vertex->global_size(unit);
   }
 
 private:
