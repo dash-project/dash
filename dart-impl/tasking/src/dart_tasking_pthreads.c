@@ -682,6 +682,9 @@ void* thread_main(void *data)
 
   DART_LOG_INFO("Thread %i exiting", dart__tasking__thread_num());
 
+  // unset thread-private data
+  pthread_setspecific(tpd_key, NULL);
+
   return NULL;
 }
 
@@ -1154,6 +1157,9 @@ destroy_threadpool(bool print_stats)
     DART_LOG_INFO("######################");
   }
 #endif // DART_ENABLE_LOGGING
+
+  // unset thread-private data
+  pthread_setspecific(tpd_key, NULL);
 
   for (int i = 0; i < num_threads; ++i) {
     free(thread_pool[i]);
