@@ -63,6 +63,7 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
   dart_task_t *current_task = dart_task_current_task();
   if (dart__tasking__is_root_task(current_task)) {
     // we cannot requeue the root task so we test-and-yield
+    current_task->wait_handle = NULL;
     test_yield(handles, num_handle);
   } else {
     dart_wait_handle_t *waithandle = malloc(sizeof(*waithandle) +
@@ -78,9 +79,10 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
     if (current_task->wait_handle != NULL) {
       DART_LOG_DEBUG("wait_handle: yield did not block task %p until completion, "
                      "falling back to test-yield!", current_task);
-      test_yield(handles, num_handle);
       free(current_task->wait_handle);
       current_task->wait_handle = NULL;
+      current_task->state = DART_TASK_SUSPENDED;
+      test_yield(handles, num_handle);
     }
     // TODO: check wait_handle field and fall back to yield-test cycles
     DART_LOG_TRACE("wait_handle: Resuming task %p (%p)",

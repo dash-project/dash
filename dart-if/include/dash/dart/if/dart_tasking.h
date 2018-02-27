@@ -220,7 +220,8 @@ dart_task_yield(int delay) __attribute__((weak));
 
 
 /**
- * Yield the execution thread to execute another task.
+ * Yield the execution thread until all \c num_handle operations in \c handle
+ * have completed.
  */
 dart_ret_t
 dart_task_wait_handle(dart_handle_t *handle, size_t num_handle);

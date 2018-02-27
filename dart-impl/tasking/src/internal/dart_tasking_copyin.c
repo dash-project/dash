@@ -5,6 +5,9 @@
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
+
+#define USE_BLOCKING_WAIT 1
 
 enum dart_copyin_t {
   COPYIN_GET,
@@ -70,6 +73,9 @@ dart_tasking_copyin_send_taskfn(void *data);
  */
 static void
 dart_tasking_copyin_get_taskfn(void *data);
+
+static void
+wait_for_handle(dart_handle_t *handle);
 
 
 
@@ -236,17 +242,7 @@ dart_tasking_copyin_send_taskfn(void *data)
   dart_handle_t handle;
   dart_send_handle(td->src.addr_or_offs.addr, td->num_bytes, DART_TYPE_BYTE,
                    td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
-  int32_t flag = 0;
-  dart_test_local(&handle, &flag);
-  // lower task priority to better overlap communication/computation
-  dart_task_t *task = dart__tasking__current_task();
-  task->prio = DART_PRIO_LOW;
-  while (!flag) {
-    dart_task_yield(-1);
-    DART_LOG_TRACE("Testing send to unit %d (tag %d)", td->unit, td->tag);
-    dart_test_local(&handle, &flag);
-  }
-  DART_LOG_TRACE("Send to unit %d completed (tag %d)", td->unit, td->tag);
+  wait_for_handle(&handle);
 
   DART_LOG_TRACE("Copyin: Send to unit %d completed (tag %d)", td->unit, td->tag);
 }
@@ -263,16 +259,7 @@ dart_tasking_copyin_recv_taskfn(void *data)
     dart_handle_t handle;
     dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
                     td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
-    // lower task priority to better overlap communication/computation
-    dart_task_t *task = dart__tasking__current_task();
-    task->prio = DART_PRIO_LOW;
-    while (1) {
-      int32_t flag;
-      DART_LOG_TRACE("Testing recv from unit %d (tag %d)", td->unit, td->tag);
-      dart_test_local(&handle, &flag);
-      if (flag) break;
-      dart_task_yield(-1);
-    }
+    wait_for_handle(&handle);
     DART_LOG_TRACE("Copyin: Recv from unit %d completed (tag %d)",
                    td->unit, td->tag);
 
@@ -295,6 +282,18 @@ dart_tasking_copyin_get_taskfn(void *data)
   dart_handle_t handle;
   dart_get_handle(td->dst, td->src, td->num_bytes,
                   DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
+  wait_for_handle(&handle);
+  DART_LOG_TRACE("Copyin: GET from unit %d completed (size %zu)",
+                  td->unit, td->num_bytes);
+}
+
+
+static void
+wait_for_handle(dart_handle_t *handle)
+{
+#if USE_BLOCKING_WAIT
+  dart__task__wait_handle(handle, 1);
+#else
   // lower task priority to better overlap communication/computation
   dart_task_t *task = dart__tasking__current_task();
   task->prio = DART_PRIO_LOW;
@@ -304,6 +303,6 @@ dart_tasking_copyin_get_taskfn(void *data)
     if (flag) break;
     dart_task_yield(-1);
   }
-  DART_LOG_TRACE("Copyin: GET from unit %d completed (size %zu)",
-                  td->unit, td->num_bytes);
+  task->prio = DART_PRIO_HIGH;
+#endif // USE_BLOCKING_WAIT
 }
