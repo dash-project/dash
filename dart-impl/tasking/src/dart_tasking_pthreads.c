@@ -183,11 +183,13 @@ dart__tasking__yield(int delay)
     return DART_OK;
   }
 
-  bool left_task = false;
+  bool check_requeue = false;
 
   dart_thread_t *thread = get_current_thread();
   // save the current task
   dart_task_t *current_task = dart_task_current_task();
+
+  dart_task_t *next = NULL;
 
   // progress
   dart_tasking_remote_progress();
@@ -195,58 +197,67 @@ dart__tasking__yield(int delay)
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
 
-  if (thread->yield_target == DART_YIELD_TARGET_ROOT &&
-      current_task != &root_task) {
-    // we came into this task through a yield from the root_task
+  if ( // check whether we got into this task from the root task
+      (thread->yield_target == DART_YIELD_TARGET_ROOT &&
+       current_task != &root_task) ||
+       // check whether the current task is blocked
+       // and jump back into the root-task if there is no replacement
+      ((next = next_task(thread)) == NULL &&
+        current_task->state == DART_TASK_BLOCKED)) {
+    // we came into this task through a yield from the root_task or the
+    // current task is blocked and there is no replacement task to yield to
     // so we just jump back into the root_task (only happens on the master thread)
-    DART_ASSERT(thread->thread_id == 0);
+    DART_ASSERT(thread->thread_id   == 0 ||
+                current_task->state == DART_TASK_BLOCKED);
 
-    // upon return into this task we may have to requeue the previous task
-    left_task = true;
     // store current tasks's context and jump back into the master thread
     DART_LOG_TRACE("Yield: jumping back into master thread from task %p",
                    current_task);
     thread->yield_target = DART_YIELD_TARGET_YIELD;
     if (current_task->wait_handle == NULL) {
       current_task->state  = DART_TASK_SUSPENDED;
+    } else {
+      current_task->state  = DART_TASK_BLOCKED;
     }
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
-  } else {
-
-    // first get a replacement task
-    dart_task_t *next = next_task(thread);
-
-    if (next) {
-      current_task->delay = delay;
-
-      if (current_task == &root_task && thread->thread_id == 0) {
-        // the master thread should return to the root_task on the next yield
-        thread->yield_target = DART_YIELD_TARGET_ROOT;
-        // NOTE: the root task is not suspended and requeued, the master thread
-        //       will jump back into it (see above)
-      } else {
-        // mark task as suspended to avoid invoke_task to update the retctx
-        // the next task should return to where the current task would have
-        // returned
-        if (current_task->wait_handle == NULL) {
-          current_task->state  = DART_TASK_SUSPENDED;
-        }
-        thread->yield_target = DART_YIELD_TARGET_YIELD;
-      }
-      // set new task to running state, protected to prevent race conditions
-      // with dependency handling code
-      dart__base__mutex_lock(&(next->mutex));
-      next->state = DART_TASK_RUNNING;
-      dart__base__mutex_unlock(&(next->mutex));
-      left_task = true;
-      // here we leave this task
-      DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
-                     current_task, next);
-      invoke_task(next, thread);
-    }
+    // upon return into this task we may have to requeue the previous task
+    check_requeue = true;
   }
 
-  if (left_task) {
+  if (next) {
+    current_task->delay = delay;
+
+    if (current_task == &root_task && thread->thread_id == 0) {
+      // the master thread should return to the root_task on the next yield
+      thread->yield_target = DART_YIELD_TARGET_ROOT;
+      // NOTE: the root task is not suspended and requeued, the master thread
+      //       will jump back into it (see above)
+    } else {
+      // mark task as suspended to avoid invoke_task to update the retctx
+      // the next task should return to where the current task would have
+      // returned
+      if (current_task->wait_handle == NULL) {
+        current_task->state  = DART_TASK_SUSPENDED;
+      }
+      thread->yield_target = DART_YIELD_TARGET_YIELD;
+    }
+    // set new task to running state, protected to prevent race conditions
+    // with dependency handling code
+    dart__base__mutex_lock(&(next->mutex));
+    next->state = DART_TASK_RUNNING;
+    dart__base__mutex_unlock(&(next->mutex));
+    // here we leave this task
+    DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
+                    current_task, next);
+    invoke_task(next, thread);
+    // upon return into this task we may have to requeue the previous task
+    check_requeue = true;
+  } else {
+    DART_LOG_TRACE("Yield: no task to yield to from task %p",
+                    current_task);
+  }
+
+  if (check_requeue) {
     // we're coming back into this task here
     // requeue the previous task if necessary
     dart_task_t *prev_task = dart_task_current_task();
@@ -515,40 +526,50 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     // start execution, change to another task in between
     invoke_task(task, thread);
 
-    if (!dart__tasking__cancellation_requested()) {
-      // Implicit wait for child tasks
-      dart__tasking__task_complete();
+    // we're coming back into this task here
+    dart_task_t *prev_task = dart_task_current_task();
+    if (prev_task->state == DART_TASK_BLOCKED) {
+      // we came back here because there were no other tasks to yield from
+      // the blocked task so we have to make sure this task is enqueued as
+      // blocked (see dart__tasking__yield)
+      dart__task__wait_enqueue(prev_task);
+    } else {
+      DART_ASSERT(prev_task->state == DART_TASK_RUNNING);
+      if (!dart__tasking__cancellation_requested()) {
+        // Implicit wait for child tasks
+        dart__tasking__task_complete();
+      }
+
+      // the task may have changed once we get back here
+      task = get_current_task();
+
+      // we need to lock the task shortly here before releasing datadeps
+      // to allow for atomic check and update
+      // of remote successors in dart_tasking_datadeps_handle_remote_task
+      dart__base__mutex_lock(&(task->mutex));
+      task->state = DART_TASK_FINISHED;
+      dart__base__mutex_unlock(&(task->mutex));
+
+      dart_tasking_datadeps_release_local_task(task);
+
+      // let the parent know that we are done
+      int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
+      DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
+
+      // release the context
+      dart__tasking__context_release(task->taskctx);
+      task->taskctx = NULL;
+
+      bool has_ref = task->has_ref;
+
+      // clean up
+      if (!has_ref){
+        // only destroy the task if there are no references outside
+        // referenced tasks will be destroyed in task_wait/task_freeref
+        dart__tasking__destroy_task(task);
+      }
+
     }
-
-    // the task may have changed once we get back here
-    task = get_current_task();
-
-    // we need to lock the task shortly here before releasing datadeps
-    // to allow for atomic check and update
-    // of remote successors in dart_tasking_datadeps_handle_remote_task
-    dart__base__mutex_lock(&(task->mutex));
-    task->state = DART_TASK_FINISHED;
-    dart__base__mutex_unlock(&(task->mutex));
-
-    dart_tasking_datadeps_release_local_task(task);
-
-    // let the parent know that we are done
-    int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
-    DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
-
-    // release the context
-    dart__tasking__context_release(task->taskctx);
-    task->taskctx = NULL;
-
-    bool has_ref = task->has_ref;
-
-    // clean up
-    if (!has_ref){
-      // only destroy the task if there are no references outside
-      // referenced tasks will be destroyed in task_wait/task_freeref
-      dart__tasking__destroy_task(task);
-    }
-
     // return to previous task
     set_current_task(current_task);
     ++(thread->taskcntr);
