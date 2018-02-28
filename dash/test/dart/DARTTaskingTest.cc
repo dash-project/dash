@@ -9,6 +9,8 @@
 #include <dash/Matrix.h>
 #include <dash/Algorithm.h>
 
+#ifdef DASH_TEST_TASKSUPPORT
+
 #define TASK_CANCEL_CUTOFF 5
 
 typedef struct testdata {
@@ -790,3 +792,5 @@ TEST_F(DARTTaskingTest, WaitForHandle)
 
   dash::tasks::complete();
 }
+
+#endif // DASH_TEST_TASKSUPPORT

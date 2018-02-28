@@ -61,7 +61,7 @@ option(ENABLE_COMPTIME_RED
        "Specify whether opts to reduce the build time should be used"
        ${DEFAULT_COMPTIME_RED})
 option(ENABLE_THREADSUPPORT
-       "Specify whether support for multithreading should be compiled" off)
+       "Specify whether support for multithreading should be compiled" on)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING

@@ -449,15 +449,17 @@ if (BUILD_TESTS)
       include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
     endif()
 
+    if (ENABLE_THREADSUPPORT)
+      set(DASH_TASK_LIBRARY "dart-tasking")
+      set(VARIANT_ADDITIONAL_COMPILE_FLAGS
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDASH_TEST_TASKSUPPORT")
+    else ()
+      set(DASH_TASK_LIBRARY "")
+    endif()
     foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       set(DASH_LIBRARY "dash-${dart_variant}")
       set(DART_LIBRARY "dart-${dart_variant}")
       set(DASH_TEST "dash-test-${dart_variant}")
-      if (ENABLE_THREADSUPPORT)
-        set(DASH_TASK_LIBRARY "dart-tasking")
-      else ()
-        set(DASH_TASK_LIBRARY "")
-      endif()
       include_directories(
         ${GTEST_INCLUDES}
         ${CMAKE_SOURCE_DIR}/dash/include
