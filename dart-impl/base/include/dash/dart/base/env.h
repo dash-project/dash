@@ -9,6 +9,7 @@
 
 #include <unistd.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <dash/dart/base/macro.h>
 
 struct dart_env_str2int{
@@ -28,7 +29,7 @@ dart__base__env__str2int(
   int                             fallback);
 
 /**
- * Returns the number provided in the environment variable or -1
+ * Returns the number provided in the environment variable or \c fallback
  * if the environment variable is not set or does not represent a number.
  */
 int
@@ -39,10 +40,18 @@ dart__base__env__number(const char *env, int fallback);
  * The size value can be postfixed by 'K', 'M', 'G' for kilo-, mega-, and
  * gigabyte as well as 'B' for byte.
  *
- * \return The parsed value or -1 on error.
+ * \return The parsed value or \c fallback on error.
  */
 ssize_t dart__base__env__size(const char *env, ssize_t fallback);
 
+/**
+ * Parse a time in microseconds from the provided environment variable.
+ * The time value can be postfixed by 'u'/'us' or 'm'/'ms for micro- and
+ * milli-seconds as well as 's' for seconds.
+ *
+ * \return The parsed value or \c fallback on error.
+ */
+uint64_t dart__base__env__us(const char *env, uint64_t fallback);
 
 /**
  * Returns a Boolean value parsed from the environment variable.
