@@ -48,4 +48,13 @@
  */
 #define DART_COPYIN_IMPL_ENVSTR        "DART_TASK_COPYIN_IMPL"
 
+/**
+ * Name of the environment variable specifying the way the scheduler should wait
+ * for a copyin operation to complete.
+ *
+ * Type: string value, one of YIELD (test-yield cycles, default) or
+ *                            BLOCK (using \ref dart_task_wait_handle)
+ */
+#define DART_COPYIN_WAIT_ENVSTR        "DART_TASK_COPYIN_WAIT"
+
 #endif // DART__BASE__INTERNAL__TASKING_ENVSTR_H__
