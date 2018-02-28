@@ -299,7 +299,7 @@ wait_for_handle(dart_handle_t *handle)
   task->prio = DART_PRIO_LOW;
   while (1) {
     int32_t flag;
-    dart_test_local(&handle, &flag);
+    dart_test_local(handle, &flag);
     if (flag) break;
     dart_task_yield(-1);
   }
