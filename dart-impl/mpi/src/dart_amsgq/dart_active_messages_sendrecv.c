@@ -23,6 +23,11 @@
 
 static int amsgq_mpi_tag = 10001;
 
+// on MPICH and it's derivatives ISSEND seems broken
+#ifdef MPICH
+#define IS_ISSEND_BROKEN 1
+#endif // MPICH
+
 
 struct dart_amsgq_impl_data {
   MPI_Request *recv_reqs;
@@ -201,8 +206,11 @@ dart_amsg_sendrecv_trysend(
   memcpy(sendbuf + sizeof(header), data, data_size);
 
   // TODO: Issend seems broken on IMPI :(
-  //int ret = MPI_Issend(
+#ifndef IS_ISSEND_BROKEN
+  int ret = MPI_Issend(
+#else
   int ret = MPI_Isend(
+#endif // IS_ISSEND_BROKEN
               sendbuf, amsgq->msg_size,
               MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
               &amsgq->send_reqs[idx]);
@@ -329,7 +337,10 @@ dart_amsg_sendrevc_process_blocking(
       }
     }
   } while (!barrier_flag && !send_flag);
+#ifdef IS_ISSEND_BROKEN
+  // if Issend is broken we need another round of synchronization
   MPI_Barrier(team_data->comm);
+#endif
   amsg_process_sendrecv_internal(amsgq, true);
   // final synchronization
   // TODO: I don't think this is needed here!
