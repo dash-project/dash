@@ -24,12 +24,18 @@ dart__base__env__str2int(
     int i = 0;
     const char *envstr = getenv(env);
     if (envstr != NULL) {
+      bool found = false;
       const struct dart_env_str2int *val;
       while ((val = &values[i++])->envstr != NULL) {
         if (strcasecmp(envstr, val->envstr) == 0) {
           res = val->value;
+          found = true;
           break;
         }
+      }
+      if (!found) {
+        DART_LOG_WARN("Unknown value %s found in environment variable %s",
+                      envstr, env);
       }
     }
   }
