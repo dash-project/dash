@@ -25,14 +25,14 @@ int
 dart__base__env__str2int(
   const char                    * env,
   const struct dart_env_str2int * values,
-  int                             fallback) DART_INTERNAL;
+  int                             fallback);
 
 /**
  * Returns the number provided in the environment variable or -1
  * if the environment variable is not set or does not represent a number.
  */
 int
-dart__base__env__number(const char *env, int fallback) DART_INTERNAL;
+dart__base__env__number(const char *env, int fallback);
 
 /**
  * Parse a size from the provided environment variable.
@@ -41,7 +41,7 @@ dart__base__env__number(const char *env, int fallback) DART_INTERNAL;
  *
  * \return The parsed value or -1 on error.
  */
-ssize_t dart__base__env__size(const char *env, ssize_t fallback) DART_INTERNAL;
+ssize_t dart__base__env__size(const char *env, ssize_t fallback);
 
 
 /**
@@ -51,11 +51,11 @@ ssize_t dart__base__env__size(const char *env, ssize_t fallback) DART_INTERNAL;
  *
  * \return The parsed value (false on error).
  */
-bool dart__base__env__bool(const char *env, bool fallback) DART_INTERNAL;
+bool dart__base__env__bool(const char *env, bool fallback);
 
 /**
  * Returns the string value of the environment variable or NULL if not set.
  */
-const char* dart__base__env__string(const char *env) DART_INTERNAL;
+const char* dart__base__env__string(const char *env);
 
 #endif /* DASH_DART_BASE_ENV_H_ */
