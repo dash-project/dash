@@ -13,10 +13,10 @@ void
 dart__tasking__phase_advance()
 {
   static dart_taskphase_t matching_interval = INT_MIN;
-  static dart_taskphase_t phases_remaining = INT_MAX;
+  static dart_taskphase_t phases_remaining  = INT_MAX;
   if (matching_interval == INT_MIN) {
     matching_interval = dart__base__env__number(
-                          DART_MATCHING_FREQUENCY_ENVSTR, -1);
+                          DART_MATCHING_INTERVAL_ENVSTR, -1);
     if (matching_interval > 0) {
       phases_remaining = matching_interval;
       DART_LOG_TRACE("Intermediate task matching enabled: interval %d",

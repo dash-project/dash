@@ -38,7 +38,7 @@
  *
  * Type: Integral positive value.
  */
-#define DART_MATCHING_FREQUENCY_ENVSTR "DART_TASK_MATCHING_FREQ"
+#define DART_MATCHING_INTERVAL_ENVSTR "DART_TASK_MATCHING_INTERVAL"
 
 /**
  * Name of the environment variable specifying the number of phases after which
