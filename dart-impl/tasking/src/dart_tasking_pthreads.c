@@ -27,7 +27,6 @@
 #include <setjmp.h>
 #include <time.h>
 
-#define IDLE_THREAD_SLEEP
 #define CLOCK_DIFF_USEC(start, end)  \
   (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
 // the grace period after which idle thread go to sleep
@@ -35,7 +34,7 @@
 // the amount of usec idle threads should sleep within the grace period
 #define IDLE_THREAD_GRACE_SLEEP_USEC 100
 // the number of us a thread should sleep if IDLE_THREAD_SLEEP is not defined
-#define IDLE_THREAD_USLEEP 1000
+#define IDLE_THREAD_DEFAULT_USLEEP 1000
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -69,6 +68,21 @@ static bool bind_threads = false;
 #ifndef DART_TASK_THREADLOCAL_Q
 dart_taskqueue_t task_queue DART_INTERNAL;
 #endif // DART_TASK_THREADLOCAL_Q
+
+enum dart_thread_idle_t {
+  DART_THREAD_IDLE_POLL,
+  DART_THREAD_IDLE_USLEEP,
+  DART_THREAD_IDLE_WAIT
+};
+
+static struct dart_env_str2int thread_idle_env[] = {
+  {"POLL",   DART_THREAD_IDLE_POLL},
+  {"USLEEP", DART_THREAD_IDLE_POLL},
+  {"WAIT",   DART_THREAD_IDLE_POLL},
+};
+static enum dart_thread_idle_t thread_idle_method;
+
+static struct timespec thread_idle_sleeptime;
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -324,40 +338,38 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 #endif // USE_UCONTEXT
 
 
-static void wait_for_work()
+static void wait_for_work(enum dart_thread_idle_t method)
 {
-#if defined(IDLE_THREAD_SLEEP)
-  DART_LOG_TRACE("Thread %d going to sleep waiting for work",
-                 get_current_thread()->thread_id);
-  pthread_mutex_lock(&thread_pool_mutex);
-  if (parallel) {
-    pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+  if (method == DART_THREAD_IDLE_WAIT) {
+    DART_LOG_TRACE("Thread %d going to sleep waiting for work",
+                  get_current_thread()->thread_id);
+    pthread_mutex_lock(&thread_pool_mutex);
+    if (parallel) {
+      pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+    }
+    pthread_mutex_unlock(&thread_pool_mutex);
+    DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
+  } else if (method == DART_THREAD_IDLE_USLEEP) {
+    nanosleep(&thread_idle_sleeptime, NULL);
   }
-  pthread_mutex_unlock(&thread_pool_mutex);
-  DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
-#elif defined(IDLE_THREAD_USLEEP)
-  // put the thread to sleep for 1ms
-  const struct timespec sleeptime = {0, IDLE_THREAD_USLEEP*1000};
-  nanosleep(&sleeptime, NULL);
-#endif // IDLE_THREAD_SLEEP
 }
 
 static void wakeup_thread_single()
 {
-#ifdef IDLE_THREAD_SLEEP
-  pthread_mutex_lock(&thread_pool_mutex);
-  pthread_cond_signal(&task_avail_cond);
-  pthread_mutex_unlock(&thread_pool_mutex);
-#endif // IDLE_THREAD_SLEEP
+  if (thread_idle_method == DART_THREAD_IDLE_WAIT) {
+    pthread_mutex_lock(&thread_pool_mutex);
+    pthread_cond_signal(&task_avail_cond);
+    pthread_mutex_unlock(&thread_pool_mutex);
+  }
 }
 
 static void wakeup_thread_all()
 {
-#ifdef IDLE_THREAD_SLEEP
-  pthread_mutex_lock(&thread_pool_mutex);
-  pthread_cond_broadcast(&task_avail_cond);
-  pthread_mutex_unlock(&thread_pool_mutex);
-#endif // IDLE_THREAD_SLEEP
+  if (thread_idle_method == DART_THREAD_IDLE_WAIT) {
+    pthread_mutex_lock(&thread_pool_mutex);
+    pthread_cond_broadcast(&task_avail_cond);
+    pthread_mutex_unlock(&thread_pool_mutex);
+  }
 }
 
 static int determine_num_threads()
@@ -635,6 +647,9 @@ void* thread_main(void *data)
 
   set_current_task(&root_task);
 
+  // cache the idle_method here to reduce NUMA effects
+  enum dart_thread_idle_t idle_method = thread_idle_method;
+
   DART_LOG_INFO("Thread %d starting to process tasks", threadid);
 
   struct timespec begin_idle_ts;
@@ -674,7 +689,7 @@ void* thread_main(void *data)
         uint64_t idle_time = CLOCK_DIFF_USEC(begin_idle_ts, curr_ts);
         // go to sleep if we exceeded the max idle time
         if (idle_time > IDLE_THREAD_GRACE_USEC) {
-          wait_for_work();
+          wait_for_work(idle_method);
           in_idle = false;
         }
       }
@@ -716,6 +731,22 @@ start_threads(int num_threads)
 {
   DART_ASSERT(!threads_running);
   DART_LOG_INFO("Starting %d threads", num_threads);
+
+  // determine thread idle method
+  uint64_t thread_idle_sleeptime_us =
+                      dart__base__env__us(DART_THREAD_IDLE_SLEEP_ENVSTR,
+                                          IDLE_THREAD_DEFAULT_USLEEP);
+  if (thread_idle_method == DART_THREAD_IDLE_USLEEP) {
+    thread_idle_sleeptime.tv_sec  = thread_idle_sleeptime_us / (1000*1000);
+    thread_idle_sleeptime.tv_nsec =
+        (thread_idle_sleeptime_us-(thread_idle_sleeptime.tv_sec*1000*1000))*1000;
+    DART_LOG_INFO("Using idle thread method SLEEP with %lu sleep time",
+                  thread_idle_sleeptime_us);
+  } else {
+    DART_LOG_INFO("Using idle thread method %s",
+                  thread_idle_method == DART_THREAD_IDLE_POLL ? "POLL" : "WAIT");
+  }
+
   // start-up all worker threads
   for (int i = 1; i < num_threads; i++)
   {
@@ -753,6 +784,10 @@ dart__tasking__init()
     DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
     return DART_ERR_INVAL;
   }
+
+  thread_idle_method = dart__base__env__str2int(DART_THREAD_IDLE_ENVSTR,
+                                                thread_idle_env,
+                                                DART_THREAD_IDLE_USLEEP);
 
   num_threads = determine_num_threads();
   DART_LOG_INFO("Using %i threads", num_threads);
