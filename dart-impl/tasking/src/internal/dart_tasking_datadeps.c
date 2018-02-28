@@ -56,10 +56,10 @@ dart_taskqueue_t            local_deferred_tasks; // visible outside this CU
 
 static dart_global_unit_t myguid;
 
-#ifndef USE_THREADLOCAL_Q
+#ifndef DART_TASK_THREADLOCAL_Q
 // forward declaration
 extern dart_taskqueue_t task_queue DART_INTERNAL;
-#endif
+#endif // DART_TASK_THREADLOCAL_Q
 
 
 static dart_ret_t
@@ -293,11 +293,11 @@ dart_tasking_datadeps_handle_defered_local(
 
   // also lock the thread's queue for the time we're processing to reduce
   // overhead
-#ifdef USE_THREADLOCAL_Q
+#ifdef DART_TASK_THREADLOCAL_Q
   dart_taskqueue_t *target_queue = &thread->queue;
 #else
   dart_taskqueue_t *target_queue = &task_queue;
-#endif
+#endif // DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_lock(target_queue);
 
   DART_LOG_TRACE("Releasing %zu deferred local tasks", local_deferred_tasks.num_elem);

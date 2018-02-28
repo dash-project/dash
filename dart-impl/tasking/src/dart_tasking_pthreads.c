@@ -59,9 +59,9 @@ static dart_thread_t **thread_pool;
 
 static bool bind_threads = false;
 
-#ifndef USE_THREADLOCAL_Q
+#ifndef DART_TASK_THREADLOCAL_Q
 dart_taskqueue_t task_queue DART_INTERNAL;
-#endif
+#endif // DART_TASK_THREADLOCAL_Q
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
@@ -116,12 +116,12 @@ invoke_taskfn(dart_task_t *task)
 static
 void requeue_task(dart_task_t *task)
 {
+#ifdef DART_TASK_THREADLOCAL_Q
   dart_thread_t *thread = get_current_thread();
-#ifdef USE_THREADLOCAL_Q
   dart_taskqueue_t *q = &thread->queue;
 #else
   dart_taskqueue_t *q = &task_queue;
-#endif
+#endif // DART_TASK_THREADLOCAL_Q
   int delay = task->delay;
   if (delay == 0) {
     dart_tasking_taskqueue_push(q, task);
@@ -400,7 +400,7 @@ dart_task_t * next_task(dart_thread_t *thread)
 {
   // stop processing tasks if they are cancelled
   if (dart__tasking__cancellation_requested()) return NULL;
-#ifdef USE_THREADLOCAL_Q
+#ifdef DART_TASK_THREADLOCAL_Q
   dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
   if (task == NULL) {
     // try to steal from another thread, round-robbing starting at the last
@@ -421,7 +421,7 @@ dart_task_t * next_task(dart_thread_t *thread)
   }
 #else
   dart_task_t *task = dart_tasking_taskqueue_pop(&task_queue);
-#endif // USE_THREADLOCAL_Q
+#endif // DART_TASK_THREADLOCAL_Q
   return task;
 }
 
@@ -585,11 +585,11 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
   thread->yield_target = DART_YIELD_TARGET_YIELD;
-#ifdef USE_THREADLOCAL_Q
+#ifdef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
     threadnum, thread, &thread->queue);
-#endif // USE_THREADLOCAL_Q
+#endif // DART_TASK_THREADLOCAL_Q
 
   if (threadnum == 0)
     DART_LOG_INFO("sizeof(dart_task_t) = %zu", sizeof(dart_task_t));
@@ -695,9 +695,9 @@ void dart_thread_finalize(dart_thread_t *thread)
   thread->current_task = NULL;
   thread->ctxlist = NULL;
 
-#ifdef USE_THREADLOCAL_Q
+#ifdef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_finalize(&thread->queue);
-#endif // USE_THREADLOCAL_Q
+#endif // DART_TASK_THREADLOCAL_Q
 }
 
 static void
@@ -750,9 +750,9 @@ dart__tasking__init()
 
   dart__tasking__context_init();
 
-#ifndef USE_THREADLOCAL_Q
+#ifndef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&task_queue);
-#endif
+#endif // DART_TASK_THREADLOCAL_Q
 
   // keep threads running
   parallel = true;
@@ -817,12 +817,12 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
   if (!enqueued){
-#ifdef USE_THREADLOCAL_Q
+#ifdef DART_TASK_THREADLOCAL_Q
     dart_thread_t *thread = get_current_thread();
     dart_taskqueue_t *q = &thread->queue;
 #else
     dart_taskqueue_t *q = &task_queue;
-#endif // USE_THREADLOCAL_Q
+#endif // DART_TASK_THREADLOCAL_Q
     dart_tasking_taskqueue_push(q, task);
     // wakeup a thread to execute this task
     wakeup_thread_single();
@@ -1206,7 +1206,7 @@ dart__tasking__fini()
   dart__tasking__context_cleanup();
   destroy_threadpool(true);
 
-#ifndef USE_THREADLOCAL_Q
+#ifndef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_finalize(&task_queue);
 #endif
 
