@@ -29,9 +29,7 @@ enum dart_copyin_wait_t {
 
 static const struct dart_env_str2int copyin_env_vals[] = {
   {"GET",             COPYIN_IMPL_GET},
-  {"COPYIN_GET",      COPYIN_IMPL_GET},
   {"SENDRECV",        COPYIN_IMPL_SENDRECV},
-  {"COPYIN_SENDRECV", COPYIN_IMPL_SENDRECV},
   {NULL, 0}
 };
 

@@ -44,7 +44,7 @@
  * Name of the environment variable specifying the number of phases after which
  * to perform a dependency matching.
  *
- * Type: string value, one of GET[_IMP] (default) or SENDRECV[_IMPL]
+ * Type: string value, one of \c GET (default) or \c SENDRECV
  */
 #define DART_COPYIN_IMPL_ENVSTR        "DART_TASK_COPYIN_IMPL"
 
