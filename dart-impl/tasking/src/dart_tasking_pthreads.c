@@ -27,10 +27,15 @@
 #include <setjmp.h>
 #include <time.h>
 
-#define IDLE_TASKS_SLEEP
+#define IDLE_THREAD_SLEEP
 #define CLOCK_DIFF_USEC(start, end)  \
   (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
-#define TASK_IDLETIME_USEC 1000
+// the grace period after which idle thread go to sleep
+#define IDLE_THREAD_GRACE_USEC 1000
+// the amount of usec idle threads should sleep within the grace period
+#define IDLE_THREAD_GRACE_SLEEP_USEC 100
+// the number of us a thread should sleep if IDLE_THREAD_SLEEP is not defined
+#define IDLE_THREAD_USLEEP 1000
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -319,7 +324,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
 
 static void wait_for_work()
 {
-#ifdef IDLE_TASKS_SLEEP
+#if defined(IDLE_THREAD_SLEEP)
   DART_LOG_TRACE("Thread %d going to sleep waiting for work",
                  get_current_thread()->thread_id);
   pthread_mutex_lock(&thread_pool_mutex);
@@ -328,29 +333,29 @@ static void wait_for_work()
   }
   pthread_mutex_unlock(&thread_pool_mutex);
   DART_LOG_TRACE("Thread %d waking up", get_current_thread()->thread_id);
-#else // IDLE_TASKS_SLEEP
+#elif defined(IDLE_THREAD_USLEEP)
   // put the thread to sleep for 1ms
-  const struct timespec sleeptime = {0, 1000000};
+  const struct timespec sleeptime = {0, IDLE_THREAD_USLEEP*1000};
   nanosleep(&sleeptime, NULL);
-#endif // IDLE_TASKS_SLEEP
+#endif // IDLE_THREAD_SLEEP
 }
 
 static void wakeup_thread_single()
 {
-#ifdef IDLE_TASKS_SLEEP
+#ifdef IDLE_THREAD_SLEEP
   pthread_mutex_lock(&thread_pool_mutex);
   pthread_cond_signal(&task_avail_cond);
   pthread_mutex_unlock(&thread_pool_mutex);
-#endif // IDLE_TASKS_SLEEP
+#endif // IDLE_THREAD_SLEEP
 }
 
 static void wakeup_thread_all()
 {
-#ifdef IDLE_TASKS_SLEEP
+#ifdef IDLE_THREAD_SLEEP
   pthread_mutex_lock(&thread_pool_mutex);
   pthread_cond_broadcast(&task_avail_cond);
   pthread_mutex_unlock(&thread_pool_mutex);
-#endif // IDLE_TASKS_SLEEP
+#endif // IDLE_THREAD_SLEEP
 }
 
 static int determine_num_threads()
@@ -633,7 +638,7 @@ void* thread_main(void *data)
   struct timespec begin_idle_ts;
   bool in_idle = false;
   // sleep-time: 100us
-  const struct timespec sleeptime = {0, 100000};
+  const struct timespec sleeptime = {0, IDLE_THREAD_GRACE_SLEEP_USEC*1000};
   // enter work loop
   while (parallel) {
 
@@ -651,6 +656,10 @@ void* thread_main(void *data)
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
       dart_tasking_remote_progress();
       dart__task__wait_progress();
+      // wait for 100us to reduce pressure on master thread
+      if (task == NULL) {
+        nanosleep(&sleeptime, NULL);
+      }
     } else if (task == NULL) {
       struct timespec curr_ts;
       if (!in_idle) {
@@ -662,7 +671,7 @@ void* thread_main(void *data)
         clock_gettime(CLOCK_MONOTONIC, &curr_ts);
         uint64_t idle_time = CLOCK_DIFF_USEC(begin_idle_ts, curr_ts);
         // go to sleep if we exceeded the max idle time
-        if (idle_time > TASK_IDLETIME_USEC) {
+        if (idle_time > IDLE_THREAD_GRACE_USEC) {
           wait_for_work();
           in_idle = false;
         }
