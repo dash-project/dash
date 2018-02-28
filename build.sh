@@ -86,6 +86,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         -DENABLE_VALGRIND=OFF \
+                        -DENABLE_TCMALLOC=ON \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \

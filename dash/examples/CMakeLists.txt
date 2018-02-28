@@ -52,6 +52,11 @@ else()
        rt)
 endif()
 
+if (TCMALLOC_FOUND AND ENABLE_TCMALLOC)
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${TCMALLOC_LIBRARIES})
+endif()
+
 if (DART_IMPLEMENTATION_MPI_ENABLED)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 endif()

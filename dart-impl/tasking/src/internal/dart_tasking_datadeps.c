@@ -13,6 +13,11 @@
 
 #define DART_DEPHASH_SIZE 1023
 
+// if we have support for TCmalloc we don't have to manage memory on our own
+#if !defined(DART_ENABLE_TCMALLOC)
+#define USE_FREELIST
+#endif // DART_ENABLE_TCMALLOC
+
 /**
  * Management of task data dependencies using a hash map that maps pointers to tasks.
  * The hash map implementation is taken from dart_segment.

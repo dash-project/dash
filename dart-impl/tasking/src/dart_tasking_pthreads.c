@@ -53,9 +53,11 @@ static int num_threads;
 // thread-private data
 static pthread_key_t tpd_key;
 
+// mutex and conditional variable to wait for tasks to get ready
 static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// task life-cycle lists
 static dart_task_t *task_recycle_list     = NULL;
 static dart_task_t *task_free_list        = NULL;
 static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;

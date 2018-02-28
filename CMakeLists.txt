@@ -108,6 +108,8 @@ option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 option(ENABLE_VALGRIND
        "Specify whether the valgrind should be supported" off)
+option(ENABLE_TCMALLOC
+       "Specify whether linking tcmalloc is enabled" on)
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -144,6 +146,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Ayudame.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Valgrind.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Tcmalloc.cmake)
 if (ENABLE_MKL)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 endif()
@@ -309,10 +312,12 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
-message(INFO "Ayudame support:          (ENABLE_AYUDAME)               "
+message(INFO "Ayudame support:          (ENABLE_AYUDAME)                 "
         ${ENABLE_AYUDAME})
-message(INFO "Valgrind support:         (ENABLE_VALGRIND)               "
+message(INFO "Valgrind support:         (ENABLE_VALGRIND)                "
         ${ENABLE_VALGRIND})
+message(INFO "TCmalloc support:         (ENABLE_TCMALLOC)                "
+        ${ENABLE_TCMALLOC})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -433,6 +438,15 @@ if (ENABLE_VALGRIND)
   endif()
 else()
     message(INFO "Valgrind                  disabled")
+endif()
+if (ENABLE_TCMALLOC)
+  if (TCMALLOC_FOUND)
+    message(INFO "tcmalloc                  enabled")
+  else()
+    message(NOTE "tcmalloc                  not found")
+  endif()
+else()
+  message(NOTE "tcmalloc                    disabled")
 endif()
 if (BUILD_TESTS)
   if (GTEST_FOUND)
