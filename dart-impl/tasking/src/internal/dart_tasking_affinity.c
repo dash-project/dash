@@ -1,3 +1,5 @@
+#include <dash/dart/tasking/dart_tasking_affinity.h>
+
 #ifdef DART_ENABLE_HWLOC
 #include <hwloc.h>
 #include <dash/dart/base/env.h>
