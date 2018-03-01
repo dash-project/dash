@@ -13,6 +13,92 @@ enum GraphDirection {
 };
 
 /**
+ * Maps vertices to units with equal block sizes.
+ */
+template<typename GraphType>
+class BlockedVertexMapper {
+
+public:
+
+  typedef GraphType                                graph_type;
+  typedef typename graph_type::vertex_size_type    vertex_size_type;
+
+  /**
+   * Returns the unit a vertex is mapped to.
+   */
+  dash::team_unit_t operator()(vertex_size_type v, vertex_size_type n_vertices, 
+      std::size_t n_units, dash::team_unit_t myid) {
+    int owner = static_cast<double>(v) / (static_cast<double>(n_vertices) / 
+        n_units);
+    dash::team_unit_t unit { owner };
+    return unit;
+  }
+
+};
+
+/**
+ * Maps vertices to units using a logarithmic function. 
+ */
+template<typename GraphType>
+class LogarithmicVertexMapper {
+
+public:
+
+  typedef GraphType                                graph_type;
+  typedef typename graph_type::vertex_size_type    vertex_size_type;
+
+  /**
+   * Constructs the logarithmic vertex mapper.
+   * Factors are calculated with the following formula:
+   * 
+   *   factor[unit] = log10((unit + start) * scale)
+   */
+  LogarithmicVertexMapper(vertex_size_type n_vertices, std::size_t n_units, 
+      double start = 2, double scale = 1) 
+   : _blocks(n_units)
+  {
+    double factor_sum = 0;
+    std::vector<double> factors(n_units);
+    for(double i = 0; i < n_units; ++i) {
+      factors[i] = log10((i + start) * scale);
+      factor_sum += factors[i];
+    }
+    int total_vertices = 0;
+    for(int i = 0; i < n_units; ++i) {
+      if(i == n_units - 1) {
+        // avoid double errors
+        _blocks[i] = n_vertices - total_vertices;
+      } else {
+        _blocks[i] = n_vertices * (factors[i] / factor_sum);
+        total_vertices += _blocks[i];
+      }
+    }
+  }
+
+  /**
+   * Returns the unit a vertex is mapped to.
+   */
+  dash::team_unit_t operator()(vertex_size_type v, vertex_size_type n_vertices, 
+      std::size_t n_units, dash::team_unit_t myid) {
+    int owner = n_units - 1;
+    // TODO: can this be done in O(c)?
+    for(int i = 0; i < n_units; ++i) {
+      if(v < _blocks[i]) {
+        owner = i;
+        break;
+      }
+    }
+    dash::team_unit_t unit { owner };
+    return unit;
+  }
+
+private:
+
+  std::vector<int> _blocks;
+
+};
+
+/**
  * Index type for vertices.
  */
 template <typename IndexType>

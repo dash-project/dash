@@ -160,6 +160,7 @@ public:
   ) 
     : _team(&team),
       _myid(team.myid()),
+      _size(team.size()),
       _remote_edges(team.size())
   {
     allocate(n_vertices, n_vertex_edges);
@@ -175,20 +176,26 @@ public:
    * 
    * /todo Add 
    */
-  template<typename ForwardIterator>
+  template<
+    typename ForwardIterator, 
+    typename VertexMapFunction = BlockedVertexMapper<self_t>
+  >
   Graph(
       ForwardIterator begin, 
       ForwardIterator end, 
       vertex_size_type n_vertices, 
-      Team & team = dash::Team::All()
+      Team & team = dash::Team::All(),
+      VertexMapFunction vertex_owner = BlockedVertexMapper<self_t>()
   )
     : _team(&team),
       _myid(team.myid()),
+      _size(team.size()),
       _remote_edges(team.size())
   {
     // TODO: find heuristic to allocate a reasonable amount of edge memory 
     //       per vertex
     allocate(n_vertices, 0);
+    //VertexMapFunction vertex_owner;
 
     std::map<vertex_size_type, local_vertex_iterator> lvertices;
     std::map<vertex_size_type, global_vertex_iterator> gvertices;
@@ -198,7 +205,7 @@ public:
     for(auto it = begin; it != end; ++it) {
       auto item = *it;
       auto v = edgelist_source(item);
-      if(vertex_owner(v, n_vertices) == _myid) {
+      if(vertex_owner(v, n_vertices, _size, _myid) == _myid) {
         auto u = edgelist_target(item);
 
         if(lvertices.find(v) == lvertices.end()) {
@@ -206,7 +213,7 @@ public:
           // to be in order
           lvertices[v] = local_vertex_iterator();
         }
-        auto target_owner = vertex_owner(u, n_vertices);
+        auto target_owner = vertex_owner(u, n_vertices, _size, _myid);
         if(target_owner == _myid) {
           if(lvertices.find(u) == lvertices.end()) {
             // add dummy first, more vertices are added later and they have
@@ -308,11 +315,11 @@ public:
     for(auto it = begin; it != end; ++it) {
       auto item = *it;
       auto v = edgelist_source(item);
-      if(vertex_owner(v, n_vertices) == _myid) {
+      if(vertex_owner(v, n_vertices, _size, _myid) == _myid) {
         auto v_it = lvertices[v];
         auto u = edgelist_target(item);
 
-        if(vertex_owner(u, n_vertices) == _myid) {
+        if(vertex_owner(u, n_vertices, _size, _myid) == _myid) {
           auto u_it = lvertices[u];
           edgelist_add_edge(v_it, u_it, item);
         } else {
@@ -782,12 +789,17 @@ private:
     return glob_mem_edge->push_back(source.offset, edge);
   }
 
+  /*
   team_unit_t vertex_owner(vertex_size_type v, vertex_size_type n_vertices) {
     int owner_id = static_cast<double>(v) / (static_cast<double>(n_vertices) / 
         _team->size());
+    int size = _team->size();
+    int owner_id = static_cast<double>(v) / (n_vertices
+         * ((static_cast<double>(_myid) + 1) / (size * (size + 1) / 2)));
     team_unit_t owner { owner_id };
     return owner;
   }
+  */
 
   // TODO: Generalize following methods for other edge attributes than { int }
 
@@ -834,6 +846,8 @@ private:
   glob_mem_edge_comb_type *   _glob_mem_edge = nullptr;
   /** Unit ID of the current unit */
   team_unit_t                 _myid{DART_UNDEFINED_UNIT_ID};
+  /** Amount of units in the team */
+  std::size_t                 _size;
   /** Index of the vertex container in _glob_mem_vertex */ 
   vertex_cont_ref_type        _vertex_container_ref;
   /** Amount of edge elements to be pre-allocated for every vertex */
