@@ -1,6 +1,7 @@
 #ifndef DART_TASKING_AFFINITY_H_
 #define DART_TASKING_AFFINITY_H_
 
+#include <dash/dart/base/macro.h>
 #include <pthread.h>
 
 /**

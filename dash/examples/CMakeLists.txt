@@ -64,7 +64,11 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
-  set(DART_TASK_LIBRARY "dart-tasking")
+  if (ENABLE_THREADSUPPORT)
+    set(DART_TASK_LIBRARY "dart-tasking")
+  else()
+    set(DART_TASK_LIBRARY "")
+  endif()
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS
       "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
   set(VARIANT_ADDITIONAL_COMPILE_FLAGS

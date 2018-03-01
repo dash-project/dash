@@ -33,6 +33,8 @@
 #include <vector>
 #include <cstdlib>
 
+#ifdef DASH_EXAMPLES_TASKSUPPORT
+
 // required for tasking abstraction
 #include <functional>
 #include <array>
@@ -374,3 +376,19 @@ int main(int argc, char* argv[])
     write_pgm("testimg_output_task_copyin.pgm", data_new);
   dash::finalize();
 }
+
+
+#else
+
+int main(int argc, char* argv[])
+{
+  dash::init(&argc, &argv);
+
+  std::cout << "Skipping example due to missing task support" << std::endl;
+
+  dash::finalize();
+
+  return 0;
+}
+
+#endif // DASH_EXAMPLES_TASKSUPPORT

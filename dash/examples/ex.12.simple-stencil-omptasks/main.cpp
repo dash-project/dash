@@ -41,6 +41,8 @@ using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
+static int num_threads;
+
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){
@@ -140,14 +142,14 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     auto olptr = data_old.lbegin();
     auto nlptr = data_new.lbegin();
 
-    int rows_per_task = lext_x / (dart_task_num_threads() *2);
+    int rows_per_task = lext_x / (num_threads *2);
     if (rows_per_task == 0) rows_per_task = 1;
 #pragma omp parallel
     {
 #pragma omp master
     {
     // Inner rows
-    int rows_per_task = lext_x / (dart_task_num_threads() *2);
+    int rows_per_task = lext_x / (num_threads *2);
     if (rows_per_task == 0) rows_per_task = 1;
   #pragma omp taskloop grainsize(rows_per_task)
     for( index_t x=1; x<lext_x-1; x++ ) {
@@ -281,6 +283,7 @@ int main(int argc, char* argv[])
 #pragma omp master
 {
     std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+    num_threads = omp_get_num_threads();
 }}
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
