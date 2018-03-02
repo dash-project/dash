@@ -529,3 +529,41 @@ TEST_F(AtomicTest, ElementCompare){
   // OK
   ASSERT_EQ_U(array[0].get(), array[dash::myid()]);
 }
+
+
+TEST_F(AtomicTest, LongDouble){
+  using value_t = long double;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+  dash::fill(array.begin(), array.end(), 0);
+  dash::barrier();
+
+  array[0].fetch_add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  dash::barrier();
+  array[0].exchange(dash::myid()*1.0);
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    ASSERT_LT_U(static_cast<size_t>(array[0]), dash::size());
+    ASSERT_GT_U(static_cast<size_t>(array[0]), 0);
+    array[0].set(0.0);
+  }
+
+  dash::barrier();
+  array[0].add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  // atomic compare_exchange not allowed for floats
+  // array[0].compare_exchange(dash::size()*1.0, dash::myid()*1.0);
+
+}
