@@ -552,7 +552,7 @@ TEST_F(AtomicTest, LongDouble){
 
   if (dash::myid() == 0) {
     ASSERT_LT_U(static_cast<size_t>(array[0]), dash::size());
-    ASSERT_GT_U(static_cast<size_t>(array[0]), 0);
+    ASSERT_GE_U(static_cast<size_t>(array[0]), 0);
     array[0].set(0.0);
   }
 
