@@ -193,6 +193,9 @@ public:
     static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
                   "Basic type or type smaller than 64bit required for "
                   "atomic operation!");
+    static_assert(dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED ||
+                  binary_op.op_kind() != dash::internal::OpKind::ARITHMETIC,
+                  "Atomic arithmetic operations only valid on basic types");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
     value_type acc = value;
@@ -223,6 +226,9 @@ public:
     static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
                   "Basic type or type smaller than 64bit required for "
                   "atomic fetch_op!");
+    static_assert(dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED ||
+                  binary_op.op_kind() != dash::internal::OpKind::ARITHMETIC,
+                  "Atomic arithmetic operations only valid on basic types!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
