@@ -129,6 +129,9 @@ public:
    */
   void set(const T & value) const
   {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic set!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store",   _gptr);
     dart_ret_t ret = dart_accumulate(
@@ -152,6 +155,9 @@ public:
   /// atomically fetches value
   T get() const
   {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic get!");
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
     value_type nothing;
@@ -184,6 +190,9 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic operation!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op",   _gptr);
     value_type acc = value;
@@ -211,6 +220,9 @@ public:
     /// Value to be added to global atomic variable.
     const T & value) const
   {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic fetch_op!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op",   typeid(value).name());
@@ -243,6 +255,11 @@ public:
    * \see \c dash::atomic::compare_exchange
    */
   bool compare_exchange(const T & expected, const T & desired) const {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Integral type or type smaller than 64bit required for "
+                  "compare_exchange!");
+    static_assert(!std::is_floating_point<T>::value,
+                  "compare_exchange not available for floating point!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange",   expected);
