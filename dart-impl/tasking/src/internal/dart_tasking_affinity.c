@@ -1,10 +1,13 @@
+#include <dash/dart/base/logging.h>
+
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 
 #ifdef DART_ENABLE_HWLOC
 #include <hwloc.h>
 #include <dash/dart/base/env.h>
-#include <dash/dart/base/logging.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
+
+#include <stdio.h>
 
 static hwloc_topology_t topology;
 static bool             print_binding = false;
