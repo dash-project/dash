@@ -269,6 +269,29 @@ TEST_F(SortTest, ArrayOfPoints)
   }
 }
 
+template <
+    class ValueType,
+    typename std::enable_if<std::is_floating_point<ValueType>::value>::type* =
+        nullptr>
+static void expect_equals(ValueType const e, ValueType const a)
+{
+  if (std::is_same<decltype(e), double>::value) {
+    EXPECT_DOUBLE_EQ(e, a) << "Unit " << dash::myid().id;
+  }
+  else if (std::is_same<decltype(e), float>::value) {
+    EXPECT_FLOAT_EQ(e, a) << "Unit " << dash::myid().id;
+  }
+}
+
+template <
+    class ValueType,
+    typename std::enable_if<!std::is_floating_point<ValueType>::value>::type* =
+        nullptr>
+static void expect_equals(ValueType const e, ValueType const a)
+{
+  EXPECT_EQ_U(e, a);
+}
+
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end)
 {
@@ -290,11 +313,7 @@ static void perform_test(GlobIter begin, GlobIter end)
       actual_sum += static_cast<Element_t>(*it);
     }
 
-    //This approach is needed for doubles
-    EXPECT_LE_U(
-        std::numeric_limits<Element_t>::epsilon(),
-        std::abs(actual_sum - true_sum)
-        );
+    expect_equals(true_sum, actual_sum);
 
     for (auto it = begin + 1; it < end; ++it) {
       auto const a = static_cast<const Element_t>(*(it - 1));
