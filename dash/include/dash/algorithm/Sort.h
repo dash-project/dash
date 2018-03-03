@@ -353,7 +353,7 @@ bool psort__validate_partitions(
 
   dash::Future<value_t*> fut_result(
       // wait
-      [out_last, &handles]() mutable {
+      [out_last, &handles]() {
         // Wait for all get requests to complete:
         auto _out = out_last;
         DASH_LOG_TRACE(
