@@ -138,8 +138,10 @@ TEST_F(SortTest, ArrayUnderfilled)
   }
 
   LOG_MESSAGE(
-      "Units: %d, block size: %d, elements: %d", static_cast<int>(num_units),
-      block_size, static_cast<int>(num_elem));
+      "Units: %d, block size: %d, elements: %d",
+      static_cast<int>(num_units),
+      block_size,
+      static_cast<int>(num_elem));
 
   // Initialize global array:
   Array_t array(num_elem, dash::BLOCKCYCLIC(block_size));
@@ -215,14 +217,17 @@ TEST_F(SortTest, MatrixBlockedRow)
   size_t block_size_y = dash::math::div_ceil(extent_y, team_size);
 
   LOG_MESSAGE(
-      "ex: %d, ey: %d, bsx: %d, bsy: %d", static_cast<int>(extent_y),
-      static_cast<int>(extent_x), static_cast<int>(block_size_y),
+      "ex: %d, ey: %d, bsx: %d, bsy: %d",
+      static_cast<int>(extent_y),
+      static_cast<int>(extent_x),
+      static_cast<int>(block_size_y),
       static_cast<int>(block_size_x));
 
   block_pat_t pat_blocked_row{
       dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
-      dash::TeamSpec<2>(dash::Team::All()), dash::Team::All()};
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All()};
 
   narray_t mat{pat_blocked_row};
 
@@ -267,16 +272,29 @@ TEST_F(SortTest, ArrayOfPoints)
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end)
 {
-  using Element_t = typename decltype(begin)::value_type;
+  using Element_t    = typename decltype(begin)::value_type;
+  Element_t true_sum = 0, actual_sum = 0;
 
-  auto const true_sum = dash::accumulate(begin, end, 0);
+  begin.pattern().team().barrier();
+
+  if (dash::myid() == 0) {
+    for (auto it = begin; it < end; ++it) {
+      true_sum += static_cast<Element_t>(*it);
+    }
+  }
 
   dash::sort(begin, end);
 
-  auto const actual_sum = dash::accumulate(begin, end, 0);
-
   if (dash::myid() == 0) {
-    EXPECT_EQ_U(true_sum, actual_sum);
+    for (auto it = begin; it < end; ++it) {
+      actual_sum += static_cast<Element_t>(*it);
+    }
+
+    //This approach is needed for doubles
+    EXPECT_LE_U(
+        std::numeric_limits<Element_t>::epsilon(),
+        std::abs(actual_sum - true_sum)
+        );
 
     for (auto it = begin + 1; it < end; ++it) {
       auto const a = static_cast<const Element_t>(*(it - 1));
