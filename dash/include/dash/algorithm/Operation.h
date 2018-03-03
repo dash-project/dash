@@ -23,7 +23,7 @@ namespace internal {
 
 enum class OpKind {
   ARITHMETIC,
-  BINARY,
+  BITWISE,
   NOOP
 };
 
@@ -180,7 +180,7 @@ struct second
 template< typename ValueType >
 struct bit_and
 : public internal::ReduceOperation< ValueType, DART_OP_BAND,
-                                    dash::internal::OpKind::BINARY, true > {
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -198,7 +198,7 @@ struct bit_and
 template< typename ValueType >
 struct bit_or
 : public internal::ReduceOperation< ValueType, DART_OP_BOR,
-                                    dash::internal::OpKind::BINARY, true > {
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
@@ -216,7 +216,7 @@ struct bit_or
 template< typename ValueType >
 struct bit_xor
 : public internal::ReduceOperation< ValueType, DART_OP_BXOR,
-                                    dash::internal::OpKind::BINARY, true > {
+                                    dash::internal::OpKind::BITWISE, true > {
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
