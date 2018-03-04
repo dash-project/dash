@@ -320,9 +320,12 @@ bool psort__validate_partitions(
   std::vector<value_t> l_nlt_nle(NLT_NLE_BLOCK * nunits, 0);
   auto                 l_nlt_nle_data = l_nlt_nle.data();
 
-  auto       it_valid_p = std::begin(p_unit_info.valid_remote_partitions);
-  auto const last_p     = std::end(p_unit_info.valid_remote_partitions);
-
+  // TODO: dash::copy does not work with BLOCKCYCLIC patterns.
+  // TODO: add unit test and create issue
+  //
+  // For this reason we explicitly use handles instead of dash::copy_async.
+  // Moreover it is faster since dash::copy makes a lot of pattern stuff and
+  // we definitely know what we are doing here.
   std::vector<dart_handle_t> handles{};
 
   std::transform(
@@ -340,7 +343,8 @@ bool psort__validate_partitions(
             l_nlt_nle_data + lidx,
             NLT_NLE_BLOCK,
             &handle);
-        //DASH_ASSERT_NE(handle, DART_HANDLE_NULL, "handle must not be NULL");
+        // DASH_ASSERT_NE(handle, DART_HANDLE_NULL, "handle must not be
+        // NULL");
         return handle;
       });
 
@@ -349,7 +353,8 @@ bool psort__validate_partitions(
       p_unit_info.valid_remote_partitions.size(),
       "invalid size of handles vector");
 
-  auto out_last = l_nlt_nle_data + *last_p * NLT_NLE_BLOCK;
+  auto const last_p   = p_unit_info.valid_remote_partitions.back();
+  auto       out_last = l_nlt_nle_data + last_p * NLT_NLE_BLOCK;
 
   dash::Future<value_t*> fut_result(
       // wait
