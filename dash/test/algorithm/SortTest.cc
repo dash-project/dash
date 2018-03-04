@@ -306,6 +306,8 @@ static void perform_test(GlobIter begin, GlobIter end)
     }
   }
 
+  begin.pattern().team().barrier();
+
   dash::sort(begin, end);
 
   if (dash::myid() == 0) {
@@ -322,6 +324,8 @@ static void perform_test(GlobIter begin, GlobIter end)
       EXPECT_FALSE_U(b < a);
     }
   }
+
+  begin.pattern().team().barrier();
 }
 
 // TODO: add additional unit tests with various pattern types and containers

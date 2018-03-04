@@ -340,7 +340,7 @@ bool psort__validate_partitions(
             l_nlt_nle_data + lidx,
             NLT_NLE_BLOCK,
             &handle);
-        DASH_ASSERT_NE(handle, DART_HANDLE_NULL, "handle must not be NULL");
+        //DASH_ASSERT_NE(handle, DART_HANDLE_NULL, "handle must not be NULL");
         return handle;
       });
 
