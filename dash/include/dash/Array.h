@@ -902,7 +902,29 @@ public:
    * The pattern has to be movable or copyable
    * The underlying memory does not have to be movable (it might).
    */
-  Array(self_t && other)      = default;
+  Array(self_t && other)
+  : local(this),
+    async(this),
+    m_team(other.m_team),
+    m_myid(other.m_myid),
+    m_pattern(std::move(other.m_pattern)),
+    m_globmem(std::move(other.m_globmem)),
+    m_begin(other.m_begin),
+    m_end(other.m_end),
+    m_size(other.m_size),
+    m_lsize(other.m_lsize),
+    m_lcapacity(other.m_lcapacity),
+    m_lbegin(other.m_lbegin),
+    m_lend(other.m_lend) {
+
+    other.m_globmem = nullptr;
+    other.m_lbegin  = nullptr;
+    other.m_lend    = nullptr;
+    // Register deallocator of this array instance at the team
+    // instance that has been used to initialized it:
+    m_team->register_deallocator(
+      this, std::bind(&Array::deallocate, this));
+  }
 
   /**
    * Assignment operator is deleted to prevent unintentional copies of
@@ -931,7 +953,34 @@ public:
    * The pattern has to be movable or copyable
    * The underlying memory does not have to be movable (it might).
    */
-  self_t & operator=(self_t && other)    = default;
+  self_t & operator=(self_t && other) {
+
+    if (this->m_globmem != nullptr)
+      deallocate();
+
+    this->m_begin     = other.m_begin;
+    this->m_end       = other.m_end;
+    this->m_globmem   = std::move(other.m_globmem);
+    this->m_lbegin    = other.m_lbegin;
+    this->m_lcapacity = other.m_lcapacity;
+    this->m_lend      = other.m_lend;
+    this->m_lsize     = other.m_lsize;
+    this->m_myid      = other.m_myid;
+    this->m_pattern   = std::move(other.m_pattern);
+    this->m_size      = other.m_size;
+    this->m_team      = other.m_team;
+
+    other.m_globmem = nullptr;
+    other.m_lbegin  = nullptr;
+    other.m_lend    = nullptr;
+
+    // Re-register deallocator of this array instance at the team
+    // instance that has been used to initialized it:
+    if (this->m_globmem != nullptr) {
+      m_team->register_deallocator(
+        this, std::bind(&Array::deallocate, this));
+    }
+  }
 
   /**
    * Destructor, deallocates array elements.
