@@ -197,32 +197,18 @@ public:
   constexpr GlobPtr(const self_t & other)      = default;
 
   /**
-   * Copy constructor.
-   */
-  template <typename T, class MemSpaceT>
-  constexpr GlobPtr(const GlobPtr<T, MemSpaceT> & other)
-  : _rbegin_gptr(other._rbegin_gptr)
-  , _mem_space(reinterpret_cast<const MemorySpace *>(other._mem_space))
-  , _lsize(other._lsize)
-  , _unit_end(other._unit_end)
-  { }
-
-  /**
    * Assignment operator.
    */
   self_t & operator=(const self_t & rhs)       = default;
 
   /**
-   * Assignment operator.
+   * Cast operator.
    */
   template <typename T, class MemSpaceT>
-  self_t & operator=(const GlobPtr<T, MemSpaceT> & other)
-  {
-    _rbegin_gptr = other._rbegin_gptr;
-    _mem_space   = reinterpret_cast<const MemorySpace *>(other._mem_space);
-    _lsize       = other._lsize;
-    _unit_end    = other._unit_end;
-    return *this;
+  explicit
+  operator GlobPtr<T, MemSpaceT>() {
+    return GlobPtr<T, MemSpaceT>(
+      reinterpret_cast<const MemSpaceT *>(_mem_space), _rbegin_gptr);
   }
 
   /**
