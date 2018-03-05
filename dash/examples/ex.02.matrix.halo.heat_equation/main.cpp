@@ -12,9 +12,8 @@ using matrix_t     = dash::Matrix<
                        typename pattern_t::index_type,
                        pattern_t>;
 using StencilSpecT = dash::StencilSpec<2,4>;
-using StencilT = dash::Stencil<2>;
-using CycleSpecT = dash::CycleSpec<2>;
-using Cycle     = dash::Cycle;
+using StencilT     = dash::StencilPoint<2>;
+using GlobBoundSpecT   = dash::GlobalBoundarySpec<2>;
 using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t, StencilSpecT>;
 
 using array_t      = dash::Array<double>;
@@ -88,10 +87,10 @@ int main(int argc, char *argv[])
 
   StencilSpecT stencil_spec({ StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1)});
 
-  CycleSpecT cycle{Cycle::CYCLIC, Cycle::CYCLIC};
+  GlobBoundSpecT bound_spec{BoundaryProp::CYCLIC, BoundaryProp::CYCLIC};
 
-  HaloMatrixWrapperT halomat(matrix, stencil_spec, cycle);
-  HaloMatrixWrapperT halomat2(matrix2, stencil_spec, cycle);
+  HaloMatrixWrapperT halomat(matrix, stencil_spec, bound_spec);
+  HaloMatrixWrapperT halomat2(matrix2, stencil_spec, bound_spec);
 
   HaloMatrixWrapperT* current_halo = &halomat;
   HaloMatrixWrapperT* new_halo = &halomat2;

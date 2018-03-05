@@ -43,7 +43,7 @@ public:
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using LocalLayout_t =
     CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
-  using Stencil_t       = Stencil<NumDimensions>;
+  using StencilP_t       = StencilPoint<NumDimensions>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
 
 public:
@@ -138,79 +138,23 @@ public:
 
     return false;
   }
-/*
-  std::vector<ElementT> halo_values() {
-    // TODO: is the given offset in halospec range?
-    std::vector<ElementT> halos;
-    if(Scope == StencilViewScope::INNER)
-      return halos;
 
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      auto        halo_coords =  _coords ;
-      const auto& stencil     = _stencil_spec[i];
-      bool        halo        = false;
-      for(auto d = 0; d < NumDimensions; ++d) {
-        halo_coords[d] += stencil[d];
-        if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
-          halo = true;
-      }
-      // TODO check wether region is nullptr or not
-      // TODO implement as method in RegionSpec
-      if(halo)
-        halos.push_back(*value_halo_at(halo_coords));
-    }
-    return halos;
-  }
-*/
   /// returns the value of a given stencil point index (index postion in
   /// \ref StencilSpec)
   ElementT value_at(const region_index_t index_stencil) {
 
     return *(_stencil_mem_ptr[index_stencil]);
   }
-/*
-  ElementT value_at(const region_index_t index_stencil) {
 
-    if(Scope == StencilViewScope::INNER)
-      return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
-
-    auto        halo_coords =  _coords ;
-    const auto& stencil     = _stencil_spec[index_stencil];
-    bool        halo        = false;
-    for(auto d = 0; d < NumDimensions; ++d) {
-      halo_coords[d] += stencil[d];
-      if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
-        halo = true;
-    }
-    // TODO check wether region is nullptr or not
-    // TODO implement as method in RegionSpec
-    if(halo)
-      return value_halo_at(halo_coords);
-
-    return *(_current_lmemory_addr + _stencil_offsets[index_stencil]);
-  }
-*/
   /// returns the value of a given stencil point (not as efficient as
   /// stencil point index )
-  ElementT value_at(const Stencil_t& stencil) {
+  ElementT value_at(const StencilP_t& stencil) {
+    auto index_stencil = _stencil_spec.index(stencil);
 
-    if(Scope == StencilViewScope::INNER) {
-      return *halo_pos(stencil);
-    } else {
-      auto halo_coords  = _coords ;
-      bool halo         = false;
-      for(auto d = 0; d < NumDimensions; ++d) {
-        halo_coords[d] += stencil[d];
-        if(halo_coords[d] < 0 || halo_coords[d] >= _haloblock.view().extent(d))
-          halo = true;
-      }
-      // TODO check wether region is nullptr or not
-      // TODO implement as method in RegionSpec
-      if(halo)
-        return *value_halo_at(halo_coords);
+    DASH_ASSERT_MSG(index_stencil.second,
+        "No valid region index for given stencil point found");
 
-      return *halo_pos(stencil);
-    }
+    return value_at(index_stencil.first);
   }
 
   /**
@@ -282,18 +226,6 @@ public:
 
     return res;
   }
-
-  /*pattern_index_t operator+(
-    const Self_t & other) const
-  {
-    return _idx + other._idx;
-  }
-
-  pattern_index_t operator-(
-    const Self_t & other) const
-  {
-    return _idx - other._idx;
-  }*/
 
   bool operator<(const Self_t& other) const {
     return compare(other, std::less<pattern_index_t>());
@@ -415,13 +347,6 @@ private:
           _stencil_mem_ptr[i] = _current_lmemory_addr + _stencil_offsets[i];
     } else
       set_coords();
-    /*if(dash::myid() == 0) {
-      std::cout << "Halo (" << _coords[0] << "," << _coords[1] << "," << _coords[2] << ") -> "
-          << *_current_lmemory_addr << ": ";
-      for(auto it = _stencil_mem_ptr.begin(); it != _stencil_mem_ptr.end(); ++it)
-        std::cout << **it << ",";
-      std::cout << std::endl;
-    }*/
   }
 
   void set_coords() {
@@ -476,36 +401,7 @@ private:
       for(auto i = 0; i < NumStencilPoints; ++i)
         _stencil_mem_ptr[i] = _current_lmemory_addr + _stencil_offsets[i];
     } else {
-/*    using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
-      const auto& extent = _local_layout.extents();
-      for(auto i = 0; i < NumStencilPoints; ++i) {
-        region_index_t index = 0;
-        auto halo_coords = _coords;
-        bool is_halo = false;
-        for(auto d = 0; d < NumDimensions; ++d) {
-          halo_coords[d] += _stencil_spec[i][d];
-          if(halo_coords[d] < 0) {
-            index *= RegionCoords_t::REGION_INDEX_BASE;
-            is_halo = true;
-            continue;
-          }
-
-          if(halo_coords[d] < static_cast<signed_extent_t>(extent[d])) {
-            index = 1 + index * RegionCoords_t::REGION_INDEX_BASE;
-            continue;
-          }
-
-          index = 2 + index * RegionCoords_t::REGION_INDEX_BASE;
-          is_halo = true;
-        }
-        if(is_halo) {
-          _stencil_mem_ptr[i] = value_halo_at(index, halo_coords);
-        }
-        else
-          _stencil_mem_ptr[i] = _current_lmemory_addr + _stencil_offsets[i];
-      }
-    }
-*/    using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
+      using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
       std::array<ElementCoords_t,NumStencilPoints> halo_coords{};
       std::array<bool, NumStencilPoints>           is_halo{};
       std::array<region_index_t, NumStencilPoints> indexes{};
@@ -567,21 +463,6 @@ private:
 
     return _halomemory.pos_at(region_index)
              + _halomemory.value_at(region_index, halo_coords);
-  }
-
-  ElementT* halo_pos(const Stencil_t& stencil) {
-    ElementT* halo_pos = _current_lmemory_addr;
-    if(MemoryArrange == ROW_MAJOR) {
-      halo_pos += stencil[NumDimensions - 1];
-      for(auto d = NumDimensions - 2; d >= 0; --d)
-        halo_pos += stencil[d] * _local_layout.extent(d);
-    } else {
-      halo_pos += stencil[0];
-      for(auto d = 1; d < NumDimensions; ++d)
-        halo_pos += stencil[d] * _local_layout.extent(d);
-    }
-
-    return halo_pos;
   }
 
   void set_stencil_offsets(const StencilSpecT& stencil_spec) {

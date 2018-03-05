@@ -77,8 +77,8 @@ namespace dash {
 template <typename MatrixT, typename StencilSpecT>
 class HaloMatrixWrapper {
 private:
-  using Pattern_t       = typename MatrixT::pattern_type;
-  using pattern_index_t = typename Pattern_t::index_type;
+  using Pattern_t             = typename MatrixT::pattern_type;
+  using pattern_index_t       = typename Pattern_t::index_type;
 
   static constexpr auto NumDimensions = Pattern_t::ndim();
 
@@ -96,7 +96,7 @@ public:
   using const_iterator_bnd = const iterator_bnd;
 
   using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
-  using CycleSpec_t     = CycleSpec<NumDimensions>;
+  using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
@@ -104,14 +104,16 @@ public:
 
 private:
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
+  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
 
   using pattern_size_t = typename Pattern_t::size_type;
+  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using HaloSpec_t     = HaloSpec<NumDimensions>;
   using Region_t       = Region<Element_t, Pattern_t, NumDimensions>;
 
 public:
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,
-                    const CycleSpec_t& cycle_spec = CycleSpec_t())
+                    const GlobBoundSpec_t& cycle_spec = GlobBoundSpec_t())
   : _matrix(matrix), _stencil_spec(stencil_spec), _cycle_spec(cycle_spec),
     _halo_reg_spec(stencil_spec), _view_local(matrix.local.extents()),
     _view_global(ViewSpec_t(matrix.local.offsets(), matrix.local.extents())),
@@ -125,6 +127,7 @@ public:
           _haloblock.view_inner().size()),
     _bbegin(_haloblock, _halomemory, _stencil_spec, 0),
     _bend(_haloblock, _halomemory, _stencil_spec, _haloblock.boundary_size()) {
+
     for(const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
         continue;
@@ -281,6 +284,7 @@ public:
         num_elems_block = region.region().extent(0);
       }
     }
+    set_stencil_offsets();
   }
 
   ~HaloMatrixWrapper() {
@@ -330,48 +334,70 @@ public:
   /// returns the underlying \ref HaloBlock
   const HaloBlock_t& halo_block() { return _haloblock; }
 
-  /// Updates all halo elements (blocking)
+  /**
+   * Initiates a blocking halo region update for all halo elements.
+   */
   void update() {
     for(auto& region : _region_data)
       update_halo_intern(region.second, false);
   }
 
-  /// updates only halo elements of a given region
+  /**
+   * Initiates a blocking halo region update for all halo elements within the
+   * the given region.
+   */
   void update_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
       update_halo_intern(it_find->second, false);
   }
 
-  /// updates all halo elements asychronously
+  /**
+   * Initiates an asychronous halo region update for all halo elements.
+   */
   void update_async() {
     for(auto& region : _region_data)
       update_halo_intern(region.second, true);
   }
 
-  /// updates all halo elements asychronously for a given region
+  /**
+   * Initiates an asychronous halo region update for all halo elements within the
+   * given region.
+   */
   void update_async_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
       update_halo_intern(it_find->second, true);
   }
 
-  /// waits until all started halo updates are finished
+  /**
+   * Waits until all halo updates are finished. Only useful for asyncronous
+   * halo updates.
+   */
   void wait() {
     for(auto& region : _region_data)
       dart_wait_local(&region.second.halo_data.handle);
   }
 
-  /// returns view for the local elements
+  /**
+   * Returns the local \ref ViewSpec
+   *
+   */
   const ViewSpec_t& view_local() const { return _view_local; }
 
-  /// returns the \ref StencilSpec
+  /**
+   * Returns the stencil specification \ref StencilSpec
+   */
   const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 
-  /// returns the local halo memory
+  /**
+   * Returns the halo memory management object \ref HaloMemory
+   */
   HaloMemory_t& halo_memory() { return _halomemory; }
 
-  /// returns the underlying NArray
+  /**
+   * Returns the underlying NArray
+   */
   MatrixT& matrix() { return _matrix; }
 
   /**
@@ -401,8 +427,6 @@ public:
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
       auto rel_dim = region.spec().relevant_dim() - 1;
-      //if(region.is_border_region() //&& region.border_dim(rel_dim)
-      //   && _cycle_spec[rel_dim] == Cycle::FIXED) {
       if(region.is_fixed_region()) {
         auto*       pos_ptr = _halomemory.pos_at(region.index());
         const auto& spec    = region.spec();
@@ -428,15 +452,18 @@ public:
     }
   }
 
-  /// returns the halo value for a given coordinate or nullptr if no halo
-  /// elements available
-  Element_t* halo_element_at(ElementCoords_t coords) {
+  /**
+   * Returns the halo value for a given global coordinate or nullptr if no halo
+   * element exists. This also means that only a unit connected to the given
+   * coordinate will return a halo value. All others will return nullptr.
+   */
+  Element_t* halo_element_at_global(ElementCoords_t coords) {
     const auto& offsets = _view_global.offsets();
     for(auto d = 0; d < NumDimensions; ++d) {
       coords[d] -= offsets[d];
     }
     auto index       = _haloblock.index_at(_view_local, coords);
-    auto spec        = _halo_reg_spec.spec(index);
+    const auto& spec = _halo_reg_spec.spec(index);
     auto halomem_pos = _halomemory.pos_at(index);
     if(spec.level() == 0 || halomem_pos == nullptr)
       return nullptr;
@@ -445,6 +472,83 @@ public:
       return nullptr;
 
     return _halomemory.pos_at(index) + _halomemory.value_at(index, coords);
+  }
+
+  /**
+   * Returns the halo value for a given local coordinate or nullptr if no halo
+   * element exists.
+   */
+  Element_t* halo_element_at_local(ElementCoords_t coords) {
+    auto index       = _haloblock.index_at(_view_local, coords);
+    const auto& spec = _halo_reg_spec.spec(index);
+    auto halomem_pos = _halomemory.pos_at(index);
+    if(spec.level() == 0 || halomem_pos == nullptr)
+      return nullptr;
+
+    if(!_halomemory.to_halo_mem_coords_check(index, coords))
+      return nullptr;
+
+    return _halomemory.pos_at(index) + _halomemory.value_at(index, coords);
+  }
+
+  void set_value_at_inner_local(const ElementCoords_t& coords, Element_t value,
+      Element_t coefficient_center,
+      std::function<Element_t(const Element_t&, const Element_t&)> op =
+        [](const Element_t& lhs , const Element_t& rhs) {return rhs;}) {
+    auto* center = _matrix.lbegin();
+    pattern_index_t offset = 0;
+
+    if(MemoryArrange == ROW_MAJOR) {
+      offset = coords[0];
+      for(auto d = 1; d < NumDimensions; ++d)
+        offset = offset * _view_local.extent(d) + coords[d];
+    } else {
+      offset = coords[NumDimensions - 1];
+      for(auto d = NumDimensions - 2; d >= 0; --d)
+        offset = offset * _view_local.extent(d) + coords[d];
+    }
+    center += offset;
+    *center = op(*center, coefficient_center * value);
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      auto& stencil_point_value = center[_stencil_offsets[i]];
+      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
+    }
+  }
+
+  void set_value_at_boundary_local(const ElementCoords_t& coords, Element_t value,
+      Element_t coefficient_center,
+      std::function<Element_t(const Element_t&, const Element_t&)> op =
+        [](const Element_t& lhs , const Element_t& rhs) {return rhs;}) {
+    auto* center = _matrix.lbegin();
+    pattern_index_t offset = 0;
+
+    if(MemoryArrange == ROW_MAJOR) {
+      offset = coords[0];
+      for(auto d = 1; d < NumDimensions; ++d)
+        offset = offset * _view_local.extent(d) + coords[d];
+    } else {
+      offset = coords[NumDimensions - 1];
+      for(auto d = NumDimensions - 2; d >= 0; --d)
+        offset = offset * _view_local.extent(d) + coords[d];
+    }
+    center += offset;
+    *center = op(*center, coefficient_center * value);
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      bool halo = false;
+      for(auto d = 0; d < NumDimensions; ++d) {
+        auto coord_value = coords[d] + _stencil_spec[i][d];
+        if(coord_value < 0 || coord_value >= _view_local.extent(d)) {
+          halo = true;
+          break;
+        }
+      }
+      if(halo)
+        continue;
+      auto& stencil_point_value = center[_stencil_offsets[i]];
+     // if(dash::myid() == 1)
+     //   std::cout << dash::myid() << " : " << coords[0] + _stencil_spec[i][0] << "," << coords[1] + _stencil_spec[i][1] << "," << coords[2] + _stencil_spec[i][2] << " -> " << _stencil_spec[i].coefficient()*value << std::endl;
+      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
+    }
   }
 
   template <typename IteratorT, typename FunctionT>
@@ -470,8 +574,6 @@ private:
 
   void update_halo_intern(Data& data, bool async) {
     auto rel_dim = data.region.spec().relevant_dim() - 1;
-    //if(region.is_border_region() //&& region.border_dim(rel_dim)
-    //   && _cycle_spec[rel_dim] == Cycle::FIXED) {
     if(data.region.is_fixed_region())
       return;
 
@@ -481,10 +583,26 @@ private:
       dart_wait_local(&data.halo_data.handle);
   }
 
+  void set_stencil_offsets() {
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      signed_pattern_size_t offset = 0;
+      if(MemoryArrange == ROW_MAJOR) {
+        offset = _stencil_spec[i][0];
+        for(auto d = 1; d < NumDimensions; ++d)
+          offset = _stencil_spec[i][d] + offset * _view_local.extent(d);
+      } else {
+        offset = _stencil_spec[i][NumDimensions - 1];
+        for(auto d = NumDimensions - 2; d >= 0; --d)
+          offset = _stencil_spec[i][d] + offset * _view_local.extent(d);
+      }
+      _stencil_offsets[i] = offset;
+    }
+  }
+
 private:
   MatrixT&                       _matrix;
   const StencilSpecT&            _stencil_spec;
-  const CycleSpec_t              _cycle_spec;
+  const GlobBoundSpec_t          _cycle_spec;
   const HaloSpec_t               _halo_reg_spec;
   const ViewSpec_t               _view_local;
   const ViewSpec_t               _view_global;
@@ -492,6 +610,7 @@ private:
   HaloMemory_t                   _halomemory;
   std::map<region_index_t, Data> _region_data;
   std::vector<dart_datatype_t>   _dart_types;
+  std::array<signed_pattern_size_t, NumStencilPoints> _stencil_offsets;
 
   iterator       _begin;
   iterator       _end;

@@ -9,19 +9,19 @@
 
 using namespace dash;
 
-TEST_F(HaloTest, CycleSpec)
+TEST_F(HaloTest, GlobalBoundarySpec)
 {
-  using CycleSpecT = CycleSpec<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
 
-  CycleSpecT cycle_spec_1;
-  EXPECT_EQ(cycle_spec_1[0], Cycle::NONE);
-  EXPECT_EQ(cycle_spec_1[1], Cycle::NONE);
-  EXPECT_EQ(cycle_spec_1[2], Cycle::NONE);
+  GlobBoundSpecT cycle_spec_1;
+  EXPECT_EQ(cycle_spec_1[0], BoundaryProp::NONE);
+  EXPECT_EQ(cycle_spec_1[1], BoundaryProp::NONE);
+  EXPECT_EQ(cycle_spec_1[2], BoundaryProp::NONE);
 
-  CycleSpecT cycle_spec_2(Cycle::CYCLIC, Cycle::NONE, Cycle::FIXED);
-  EXPECT_EQ(cycle_spec_2[0], Cycle::CYCLIC);
-  EXPECT_EQ(cycle_spec_2[1], Cycle::NONE);
-  EXPECT_EQ(cycle_spec_2[2], Cycle::FIXED);
+  GlobBoundSpecT cycle_spec_2(BoundaryProp::CYCLIC, BoundaryProp::NONE, BoundaryProp::CUSTOM);
+  EXPECT_EQ(cycle_spec_2[0], BoundaryProp::CYCLIC);
+  EXPECT_EQ(cycle_spec_2[1], BoundaryProp::NONE);
+  EXPECT_EQ(cycle_spec_2[2], BoundaryProp::CUSTOM);
 }
 
 TEST_F(HaloTest, CoordsToIndex)
@@ -70,15 +70,19 @@ TEST_F(HaloTest, HaloSpecStencils)
   using HaloRegSpecT =RegionSpec<3>;
   using HaloSpecT = HaloSpec<3>;
   using RCoordsT = RegionCoords<3>;
-  using StencilT = Stencil<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 6>;
 
   {
     StencilSpecT stencil_spec({
-        StencilT(-1,  0,  0), StencilT(1, 0, 0),
+       StencilT(0.2d, -1,  0,  0), StencilT(0.4d, 1, 0, 0),
        StencilT( 0, -1,  0), StencilT(0, 2, 0),
        StencilT( 0,  0, -1), StencilT(0, 0, 3)});
     HaloSpecT halo_spec(stencil_spec);
+
+    EXPECT_EQ(stencil_spec[0].coefficient(), 0.2);
+    EXPECT_EQ(stencil_spec[1].coefficient(), 0.4);
+    EXPECT_EQ(stencil_spec[2].coefficient(), 1.0);
 
     EXPECT_EQ(halo_spec.spec(4).coords(), RCoordsT({0,1,1}));
     EXPECT_EQ(halo_spec.spec(22).coords(), RCoordsT({2,1,1}));
@@ -179,8 +183,8 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   using DistSpecT = dash::DistributionSpec<2>;
   using TeamSpecT = dash::TeamSpec<2>;
   using SizeSpecT = dash::SizeSpec<2>;
-  using CycleSpecT = CycleSpec<2>;
-  using StencilT = Stencil<2>;
+  using GlobBoundSpecT = GlobalBoundarySpec<2>;
+  using StencilT = StencilPoint<2>;
   using StencilSpecT = StencilSpec<2, 8>;
 
   auto myid(dash::myid());
@@ -230,7 +234,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   matrix_halo.barrier();
 
-  CycleSpecT cycle_spec;
+  GlobBoundSpecT cycle_spec;
   StencilSpecT stencil_spec({
       StencilT(-1,-1), StencilT(-1, 0), StencilT(-1, 1),
       StencilT( 0,-1),                  StencilT( 0, 1),
@@ -338,6 +342,45 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper) {
   return sum;
 }
 
+template<typename HaloWrapperT>
+unsigned long calc_sum_halo_via_stencil(HaloWrapperT& halo_wrapper) {
+  auto& stencil_spec = halo_wrapper.stencil_spec();
+  halo_wrapper.update_async();
+
+  dash::Array<long> sum_halo(dash::size());
+  dash::fill(sum_halo.begin(), sum_halo.end(),0);
+
+  auto* sum_local = sum_halo.lbegin();
+  auto it_iend = halo_wrapper.iend();
+  for(auto it = halo_wrapper.ibegin(); it != it_iend; ++it) {
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(stencil_spec[i]);
+
+    *sum_local += *it;
+  }
+
+  halo_wrapper.wait();
+
+  auto it_bend = halo_wrapper.bend();
+  for(auto it = halo_wrapper.bbegin(); it != it_bend; ++it) {
+    for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
+      *sum_local += it.value_at(stencil_spec[i]);
+
+    *sum_local += *it;
+  }
+
+  sum_halo.barrier();
+
+  unsigned long sum = 0;
+  if(dash::myid() == 0) {
+    for(const auto& elem : sum_halo)
+      sum += elem;
+
+  }
+
+  return sum;
+}
+
 TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 {
   using PatternT = dash::Pattern<3>;
@@ -346,8 +389,8 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
   using DistSpecT = dash::DistributionSpec<3>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
-  using CycleSpecT = CycleSpec<3>;
-  using StencilT = Stencil<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 26>;
 
   auto myid(dash::myid());
@@ -411,7 +454,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
       StencilT( 1, 1,-1), StencilT( 1, 1, 0), StencilT( 1, 1, 1)
   });
 
-  CycleSpecT cycle_spec;
+  GlobBoundSpecT cycle_spec;
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec);
   auto sum_halo = calc_sum_halo(halo_wrapper);
   if(myid == 0) {
@@ -433,8 +476,8 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   using MatrixColT = dash::Matrix<long, 3, index_type, PatternColT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
-  using CycleSpecT = CycleSpec<3>;
-  using StencilT = Stencil<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 26>;
 
   auto myid(dash::myid());
@@ -513,7 +556,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
       StencilT( 1, 0,-1), StencilT( 1, 0, 0), StencilT( 1, 0, 1),
       StencilT( 1, 1,-1), StencilT( 1, 1, 0), StencilT( 1, 1, 1)
   });
-  CycleSpecT cycle_spec(Cycle::CYCLIC, Cycle::CYCLIC, Cycle::CYCLIC);
+  GlobBoundSpecT cycle_spec(BoundaryProp::CYCLIC, BoundaryProp::CYCLIC, BoundaryProp::CYCLIC);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
   HaloMatrixWrapper<MatrixColT,StencilSpecT> halo_wrapper_col(matrix_halo_col, stencil_spec, cycle_spec);
 
@@ -542,8 +585,8 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
   using MatrixT = dash::Matrix<long, 3, index_type, PatternT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
-  using CycleSpecT = CycleSpec<3>;
-  using StencilT = Stencil<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 26>;
 
   auto myid(dash::myid());
@@ -618,7 +661,7 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
       StencilT( 1, 0,-1), StencilT( 1, 0, 0), StencilT( 1, 0, 1),
       StencilT( 1, 1,-1), StencilT( 1, 1, 0), StencilT( 1, 1, 1)
   });
-  CycleSpecT cycle_spec(Cycle::FIXED, Cycle::FIXED, Cycle::FIXED);
+  GlobBoundSpecT cycle_spec(BoundaryProp::CUSTOM, BoundaryProp::CUSTOM, BoundaryProp::CUSTOM);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
 
   halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
@@ -641,8 +684,8 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   using MatrixT = dash::Matrix<long, 3, index_type, PatternT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
-  using CycleSpecT = CycleSpec<3>;
-  using StencilT = Stencil<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 26>;
 
   auto myid(dash::myid());
@@ -733,7 +776,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
       StencilT( 1, 0,-1), StencilT( 1, 0, 0), StencilT( 1, 0, 1),
       StencilT( 1, 1,-1), StencilT( 1, 1, 0), StencilT( 1, 1, 1)
   });
-  CycleSpecT cycle_spec(Cycle::NONE, Cycle::CYCLIC, Cycle::FIXED);
+  GlobBoundSpecT cycle_spec(BoundaryProp::NONE, BoundaryProp::CYCLIC, BoundaryProp::CUSTOM);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
 
   halo_wrapper.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
@@ -758,8 +801,8 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   using MatrixColT = dash::Matrix<long, 3, index_type, PatternColT>;
   using TeamSpecT = dash::TeamSpec<3>;
   using SizeSpecT = dash::SizeSpec<3>;
-  using CycleSpecT = CycleSpec<3>;
-  using StencilT = Stencil<3>;
+  using GlobBoundSpecT = GlobalBoundarySpec<3>;
+  using StencilT = StencilPoint<3>;
   using StencilSpecT = StencilSpec<3, 26>;
 
   auto myid(dash::myid());
@@ -867,7 +910,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
       StencilT( 3, 3,-3), StencilT( 2, 2,-2), StencilT( 1, 1,-1),
       StencilT( 3, 3, 3), StencilT( 2, 2, 2), StencilT( 1, 1, 1)
   });
-  CycleSpecT cycle_spec(Cycle::NONE, Cycle::CYCLIC, Cycle::FIXED);
+  GlobBoundSpecT cycle_spec(BoundaryProp::NONE, BoundaryProp::CYCLIC, BoundaryProp::CUSTOM);
   HaloMatrixWrapper<MatrixT,StencilSpecT> halo_wrapper(matrix_halo, stencil_spec, cycle_spec);
   HaloMatrixWrapper<MatrixColT,StencilSpecT> halo_wrapper_col(matrix_halo_col, stencil_spec, cycle_spec);
 
@@ -877,6 +920,8 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   auto sum_halo = calc_sum_halo(halo_wrapper);
 
+  auto sum_halo_via_stencil = calc_sum_halo_via_stencil(halo_wrapper);
+
   halo_wrapper_col.set_fixed_halos([](const std::array<dash::default_index_t,3>& coords) {
       return 20;
   });
@@ -884,6 +929,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   if(myid == 0) {
     EXPECT_EQ(sum_check, sum_halo);
+    EXPECT_EQ(sum_check, sum_halo_via_stencil);
     EXPECT_EQ(sum_check, sum_halo_col);
   }
   dash::Team::All().barrier();
