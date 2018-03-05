@@ -955,6 +955,8 @@ public:
    */
   self_t & operator=(self_t && other) {
 
+    if (this == &other) return *this;
+
     if (this->m_globmem != nullptr)
       deallocate();
 
@@ -980,6 +982,8 @@ public:
       m_team->register_deallocator(
         this, std::bind(&Array::deallocate, this));
     }
+
+    return *this;
   }
 
   /**
