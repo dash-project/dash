@@ -6,6 +6,8 @@ set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
 set(DASH_DART_BASE_LIBRARY dart-base)
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+
 if (MPI_NOTFOUND)
   message(FATAL_ERROR, "No MPI implementation found for dart-mpi")
 endif()
