@@ -197,9 +197,32 @@ public:
   constexpr GlobPtr(const self_t & other)      = default;
 
   /**
+   * Copy constructor (memory space conversion).
+   */
+  template <class MemSpaceT>
+  constexpr GlobPtr(const GlobPtr<ElementType, MemSpaceT> & other)
+  : _rbegin_gptr(other._rbegin_gptr)
+  , _mem_space(reinterpret_cast<const MemorySpace *>(other._mem_space))
+  , _lsize(other._lsize)
+  , _unit_end(other._unit_end)
+  { }
+
+  /**
    * Assignment operator.
    */
   self_t & operator=(const self_t & rhs)       = default;
+
+  /**
+   * Assignment operator (memory space conversion).
+   */
+  template<class MemSpaceT>
+  self_t & operator=(const GlobPtr<ElementType, MemSpaceT>& other) {
+    _rbegin_gptr = other._rbegin_gptr;
+    _mem_space   = reinterpret_cast<const MemorySpace *>(other._mem_space);
+    _lsize       = other._lsize;
+    _unit_end    = other._unit_end;
+    return *this;
+  }
 
   /**
    * Cast operator.
