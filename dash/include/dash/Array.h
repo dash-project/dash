@@ -718,8 +718,6 @@ public:
 private:
   /// Team containing all units interacting with the array
   dash::Team         * m_team      = nullptr;
-  /// DART id of the unit that created the array
-  team_unit_t          m_myid;
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
@@ -738,18 +736,10 @@ private:
   ElementType        * m_lbegin    = nullptr;
   /// Native pointer past last local element in the array
   ElementType        * m_lend      = nullptr;
-
-public:
-/*
-   Check requirements on element type
-   is_trivially_copyable is not implemented presently, and is_trivial
-   is too strict (e.g. fails on std::pair).
-
-   static_assert(std::is_trivially_copyable<ElementType>::value,
-     "Element type must be trivially copyable");
-   static_assert(std::is_trivial<ElementType>::value,
-     "Element type must be trivially copyable");
-*/
+  /// DART id of the unit that created the array
+  team_unit_t          m_myid;
+  /// Whether or not the array was actually allocated
+  bool                 m_registered = false;
 
 public:
   /**
@@ -924,6 +914,7 @@ public:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
+    m_registered = true;
   }
 
   /**
@@ -957,8 +948,7 @@ public:
 
     if (this == &other) return *this;
 
-    if (this->m_globmem != nullptr)
-      deallocate();
+    deallocate();
 
     this->m_begin     = other.m_begin;
     this->m_end       = other.m_end;
@@ -981,6 +971,7 @@ public:
     if (this->m_globmem != nullptr) {
       m_team->register_deallocator(
         this, std::bind(&Array::deallocate, this));
+      m_registered = true;
     }
 
     return *this;
@@ -1383,8 +1374,10 @@ public:
     }
     // Remove this function from team deallocator list to avoid
     // double-free:
-    m_team->unregister_deallocator(
-      this, std::bind(&Array::deallocate, this));
+    if (m_registered) {
+      m_team->unregister_deallocator(
+        this, std::bind(&Array::deallocate, this));
+    }
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
     if (m_globmem != nullptr) {
@@ -1434,6 +1427,7 @@ public:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
+    m_registered = true;
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
     // completed at all units:
@@ -1484,6 +1478,7 @@ private:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
+    m_registered = true;
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
     // completed at all units:
