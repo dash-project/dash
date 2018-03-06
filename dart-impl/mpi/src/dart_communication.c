@@ -589,16 +589,13 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op)
 {
-  MPI_Datatype mpi_dtype;
-  MPI_Op       mpi_op;
   dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t    offset = gptr.addr_or_offs.offset;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
   CHECK_IS_BASICTYPE(dtype);
-  mpi_dtype          = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
-  mpi_op             = dart__mpi__op(op);
+  MPI_Op      mpi_op = dart__mpi__op(op);
 
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -651,23 +648,117 @@ dart_ret_t dart_accumulate(
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
                    src_ptr, remainder);
 
-  CHECK_MPI_RET(
-    MPI_Accumulate(
-          src_ptr,
-          remainder,
-          mpi_dtype,
-          team_unit_id.id,
-          offset,
-          remainder,
-          mpi_dtype,
-          mpi_op,
-          win),
-    "MPI_Accumulate");
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    CHECK_MPI_RET(
+      MPI_Accumulate(
+            src_ptr,
+            remainder,
+            mpi_dtype,
+            team_unit_id.id,
+            offset,
+            remainder,
+            mpi_dtype,
+            mpi_op,
+            win),
+      "MPI_Accumulate");
   }
 
   DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
 }
+
+
+dart_ret_t dart_accumulate_blocking_local(
+  dart_gptr_t      gptr,
+  const void     * values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op)
+{
+  dart_team_unit_t  team_unit_id = DART_TEAM_UNIT_ID(gptr.unitid);
+  uint64_t    offset = gptr.addr_or_offs.offset;
+  int16_t     seg_id = gptr.segid;
+  dart_team_t teamid = gptr.teamid;
+
+  CHECK_IS_BASICTYPE(dtype);
+  MPI_Op      mpi_op = dart__mpi__op(op);
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_accumulate ! failed: Unknown team %i!", teamid);
+    return DART_ERR_INVAL;
+  }
+
+  CHECK_UNITID_RANGE(team_unit_id, team_data);
+
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%ld op:%d unit:%d",
+                 nelem, dtype, op, team_unit_id.id);
+
+  dart_segment_info_t *seginfo = dart_segment_get_info(
+                                    &(team_data->segdata), seg_id);
+  if (dart__unlikely(seginfo == NULL)) {
+    DART_LOG_ERROR("dart_accumulate ! "
+                   "Unknown segment %i on team %i", seg_id, teamid);
+    return DART_ERR_INVAL;
+  }
+
+  MPI_Win win = seginfo->win;
+  offset     += dart_segment_disp(seginfo, team_unit_id);
+
+  // chunk up the put
+  const size_t nchunks   = nelem / MAX_CONTIG_ELEMENTS;
+  const size_t remainder = nelem % MAX_CONTIG_ELEMENTS;
+  const char * src_ptr   = (const char*) values;
+
+  MPI_Request reqs[2];
+  int num_reqs = 0;
+
+  if (nchunks > 0) {
+    DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
+                   src_ptr, nchunks * MAX_CONTIG_ELEMENTS);
+    CHECK_MPI_RET(
+      MPI_Raccumulate(
+          src_ptr,
+          nchunks,
+          dart__mpi__datatype_maxtype(dtype),
+          team_unit_id.id,
+          offset,
+          nchunks,
+          dart__mpi__datatype_maxtype(dtype),
+          mpi_op,
+          win,
+          &reqs[num_reqs++]),
+      "MPI_Accumulate");
+    offset  += nchunks * MAX_CONTIG_ELEMENTS;
+    src_ptr += nchunks * MAX_CONTIG_ELEMENTS;
+  }
+
+  if (remainder > 0) {
+    DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
+                   src_ptr, remainder);
+
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    CHECK_MPI_RET(
+      MPI_Raccumulate(
+            src_ptr,
+            remainder,
+            mpi_dtype,
+            team_unit_id.id,
+            offset,
+            remainder,
+            mpi_dtype,
+            mpi_op,
+            win,
+            &reqs[num_reqs++]),
+      "MPI_Accumulate");
+  }
+
+  MPI_Waitall(num_reqs, reqs, MPI_STATUSES_IGNORE);
+
+  DART_LOG_DEBUG("dart_accumulate > finished");
+  return DART_OK;
+}
+
 
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,

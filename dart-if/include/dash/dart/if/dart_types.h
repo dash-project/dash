@@ -101,42 +101,10 @@ typedef enum
  *
  * \ingroup DartTypes
  */
-/**
-typedef enum
-{
-    DART_TYPE_UNDEFINED = 0,
-    /// integral data types
-    DART_TYPE_BYTE,
-    DART_TYPE_SHORT,
-    DART_TYPE_INT,
-    DART_TYPE_UINT,
-    DART_TYPE_LONG,
-    DART_TYPE_ULONG,
-    DART_TYPE_LONGLONG,
-    /// floating point data types
-    DART_TYPE_FLOAT,
-    DART_TYPE_DOUBLE,
-    /// Reserved, do not use!
-    DART_TYPE_COUNT
-} dart_datatype_t;
-**/
-
 typedef intptr_t dart_datatype_t;
-#if 0
-extern struct dart_datatype_struct __dart_type_undefined_t;
-extern struct dart_datatype_struct __dart_type_byte_t;
-extern struct dart_datatype_struct __dart_type_short_t;
-extern struct dart_datatype_struct __dart_type_int_t;
-extern struct dart_datatype_struct __dart_type_uint_t;
-extern struct dart_datatype_struct __dart_type_long_t;
-extern struct dart_datatype_struct __dart_type_ulong_t;
-extern struct dart_datatype_struct __dart_type_longlong_t;
-extern struct dart_datatype_struct __dart_type_float_t;
-extern struct dart_datatype_struct __dart_type_double_t;
-#endif
-
 
 #define DART_TYPE_UNDEFINED (dart_datatype_t)(0)
+/// integral data types
 #define DART_TYPE_BYTE      (dart_datatype_t)(1)
 #define DART_TYPE_SHORT     (dart_datatype_t)(2)
 #define DART_TYPE_INT       (dart_datatype_t)(3)
@@ -144,16 +112,19 @@ extern struct dart_datatype_struct __dart_type_double_t;
 #define DART_TYPE_LONG      (dart_datatype_t)(5)
 #define DART_TYPE_ULONG     (dart_datatype_t)(6)
 #define DART_TYPE_LONGLONG  (dart_datatype_t)(7)
-#define DART_TYPE_FLOAT     (dart_datatype_t)(8)
-#define DART_TYPE_DOUBLE    (dart_datatype_t)(9)
-#define DART_TYPE_LAST      (dart_datatype_t)(10)
+#define DART_TYPE_ULONGLONG (dart_datatype_t)(8)
+/// floating point data types
+#define DART_TYPE_FLOAT     (dart_datatype_t)(9)
+#define DART_TYPE_DOUBLE    (dart_datatype_t)(10)
+/// Reserved, do not use!
+#define DART_TYPE_LAST      (dart_datatype_t)(11)
 
 
 /** size for integral \c size_t */
 #if (UINT32_MAX == SIZE_MAX)
-#  define DART_TYPE_SIZET DART_TYPE_UINT
+#  define DART_TYPE_SIZET DART_TYPE_ULONG
 #elif (UINT64_MAX == SIZE_MAX)
-#  define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#  define DART_TYPE_SIZET DART_TYPE_ULONGLONG
 #else
 #  error "Cannot determine DART type for size_t!"
 #endif
