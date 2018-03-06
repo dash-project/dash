@@ -4,6 +4,7 @@ set(DART_IMPLEMENTATIONS_LIST ${DART_IMPLEMENTATIONS_LIST}
 set(ENABLE_THREADSUPPORT ${ENABLE_THREADSUPPORT}
     PARENT_SCOPE)
 
+
 if (ENABLE_THREADSUPPORT)
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} -DDART_ENABLE_THREADSUPPORT")
@@ -28,6 +29,9 @@ add_subdirectory(base)
 
 # DART implementation of every enabled DART variant:
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
+  if(NOT MPI_IS_DART_COMPATIBLE)
+    message(FATAL_ERROR "Detected MPI library does not support MPI-3.")
+  endif()
   set(DART_IMPLEMENTATION_MPI_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(mpi)

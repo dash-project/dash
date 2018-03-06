@@ -30,7 +30,7 @@ namespace dash {
  *       dash::atomic::load(array.lbegin())   // not allowed
  *       \endcode
  * \endnote
- * 
+ *
  * \code
  *   dash::Array<dash::Atomic<int>> array(100);
  *   // supported as Atomic<value_t>(value_t T) is available
@@ -115,6 +115,7 @@ std::ostream & operator<<(
 
 #include <dash/atomic/Type_traits.h>
 #include <dash/atomic/GlobAtomicRef.h>
+#include <dash/atomic/GlobAtomicAsyncRef.h>
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED
