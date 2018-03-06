@@ -476,7 +476,7 @@ constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<const T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT>::const_reference>::type
 constexpr Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos) const
 {
   return _ref.at(pos);
@@ -495,7 +495,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT>::reference>::type
 Matrix<T, NumDim, IndexT, PatternT>::operator[](size_type pos)
 {
   return _ref.at(pos);

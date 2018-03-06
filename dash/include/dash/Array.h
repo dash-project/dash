@@ -286,8 +286,8 @@ public:
   typedef       T *                                             pointer;
   typedef const T *                                       const_pointer;
 
-  typedef GlobAsyncRef<      T>                         async_reference;
-  typedef GlobAsyncRef<const T>                   const_async_reference;
+  typedef          GlobAsyncRef<T>                      async_reference;
+  typedef typename GlobAsyncRef<T>::const_type    const_async_reference;
 
 public:
   typedef std::integral_constant<dim_t, 1>
@@ -363,7 +363,7 @@ public:
    * Subscript operator, access to local array element at given position.
    */
   constexpr const_async_reference operator[](const size_type n) const  {
-    return async_reference(
+    return const_async_reference(
              (*(_array->begin() + n)).dart_gptr());
   }
 
@@ -660,8 +660,8 @@ public:
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
-  typedef GlobRef<      value_type>                                reference;
-  typedef GlobRef<const value_type>                          const_reference;
+  typedef          GlobRef<value_type>                             reference;
+  typedef typename GlobRef<value_type>::const_type           const_reference;
 
   typedef GlobIter<      value_type, PatternType>                    pointer;
   typedef GlobIter<const value_type, PatternType>              const_pointer;
