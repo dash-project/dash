@@ -119,6 +119,8 @@ return load();
   /**
    * Implicit conversion to const type.
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, nonconst_value_type>::value,void>>
   operator const_type() const {
     return const_type(_gptr);
   }
@@ -126,6 +128,8 @@ return load();
   /**
    * Explicit conversion to non-const type.
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, const_value_type>::value,void>>
   explicit
   operator nonconst_type() const {
     return nonconst_type(_gptr);
