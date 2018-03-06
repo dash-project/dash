@@ -222,8 +222,8 @@ dart_amsg_sendrecv_trysend(
     return DART_ERR_AGAIN;
   }
 
-  DART_LOG_INFO("Sent message of size %zu with payload %zu to unit %i",
-                    msg_size, data_size, target.id);
+  DART_LOG_INFO("Sent message of size %zu with data size %zu to unit %i",
+                    amsgq->msg_size, data_size, target.id);
 
   return DART_OK;
 }
