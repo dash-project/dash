@@ -118,15 +118,10 @@ _mark_parent(struct dart_buddy * self, int index) {
 
 size_t
 dart_buddy_alloc(struct dart_buddy * self, size_t s) {
-  int size;
   // honor the alignment
-  s >>= DART_MEM_ALIGN_BITS;
-	if (s == 0) {
-		size = 1;
-	}
-	else {
-		size = (int)next_pow_of_2(s);
-	}
+  int size = (s >> DART_MEM_ALIGN_BITS);
+  if ((size<<DART_MEM_ALIGN_BITS) < s) ++size;
+  size = (int)next_pow_of_2(size);
 	int length = 1 << self->level;
 
 	if (size > length)
