@@ -23,8 +23,9 @@
 namespace dash {
 
 /**
- * Encapsulates a memory allocation and deallocation strategy of local
- * memory regions within a single dash::unit.
+ * Encapsulates global segment allocation and deallocation. An instance of this
+ * allocator can allocate 1 global segment at most and fits both the
+ * symmetric and local allocation policies
  *
  * Satisfied STL concepts:
  *
@@ -38,7 +39,7 @@ template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
     /// The Local Memory Space (e.g., HostSpace)
-    typename LocalMemorySpace = dash::HostSpace,
+    typename LMemSpace = dash::HostSpace,
     /// The Allocator Strategy to allocate from the local memory space
     template <class T, class MemSpace> class LocalAlloc =
         allocator::DefaultAllocator>
@@ -48,12 +49,12 @@ class SymmetricAllocator {
       const SymmetricAllocator<
           T,
           AllocationPolicy,
-          LocalMemorySpace,
+          LMemSpace,
           LocalAlloc>& lhs,
       const SymmetricAllocator<
           U,
           AllocationPolicy,
-          LocalMemorySpace,
+          LMemSpace,
           LocalAlloc>& rhs);
 
   template <class T, class U>
@@ -61,21 +62,17 @@ class SymmetricAllocator {
       const SymmetricAllocator<
           T,
           AllocationPolicy,
-          LocalMemorySpace,
+          LMemSpace,
           LocalAlloc>& lhs,
       const SymmetricAllocator<
           U,
           AllocationPolicy,
-          LocalMemorySpace,
+          LMemSpace,
           LocalAlloc>& rhs);
 
-  using memory_traits = typename dash::memory_space_traits<LocalMemorySpace>;
+  using memory_traits = typename dash::memory_space_traits<LMemSpace>;
 
   static_assert(memory_traits::is_local::value, "memory space must be local");
-
-  static_assert(
-      std::is_base_of<cpp17::pmr::memory_resource, LocalMemorySpace>::value,
-      "Local Memory Space must be a polymorphic memory resource");
 
   static_assert(
       AllocationPolicy == global_allocation_policy::collective ||
@@ -85,20 +82,20 @@ class SymmetricAllocator {
   using self_t = SymmetricAllocator<
       ElementType,
       AllocationPolicy,
-      LocalMemorySpace,
+      LMemSpace,
       LocalAlloc>;
 
-  using allocator_traits = std::allocator_traits<LocalAlloc<ElementType, LocalMemorySpace>>;
+  using allocator_traits = std::allocator_traits<LocalAlloc<ElementType, LMemSpace>>;
 
   using policy_type = typename std::conditional<
       AllocationPolicy == global_allocation_policy::collective,
       allocator::CollectiveAllocationPolicy<
-          LocalAlloc<ElementType, LocalMemorySpace>>,
+          LocalAlloc<ElementType, LMemSpace>>,
       allocator::LocalAllocationPolicy<
-          LocalAlloc<ElementType, LocalMemorySpace>>>::type;
+          LocalAlloc<ElementType, LMemSpace>>>::type;
 
 public:
-  using local_allocator_type = LocalAlloc<ElementType, LocalMemorySpace>;
+  using local_allocator_type = LocalAlloc<ElementType, LMemSpace>;
   /// Allocator Traits
   using value_type      = ElementType;
   using size_type       = dash::default_size_t;
@@ -125,7 +122,7 @@ public:
    */
   explicit SymmetricAllocator(
       Team const&    team,
-      local_allocator_type a = {static_cast<LocalMemorySpace*>(
+      local_allocator_type a = {static_cast<LMemSpace*>(
           get_default_memory_space<
               void,
               memory_space_local_domain_tag,
@@ -221,12 +218,12 @@ private:
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::
     SymmetricAllocator(Team const& team, local_allocator_type a) noexcept
   : _team_id(team.dart_id())
@@ -240,12 +237,12 @@ SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::SymmetricAllocator(self_t const& other) noexcept
 {
   operator=(other);
@@ -254,34 +251,35 @@ SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::SymmetricAllocator(self_t&& other) noexcept
   : _team_id(other._team_id)
   , _alloc(std::move(other._alloc))
   , _segments(std::move(other._segments))
   , _policy(other._policy)
 {
+  other.clear();
 }
 
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::self_t&
                  SymmetricAllocator<
                      ElementType,
                      AllocationPolicy,
-                     LocalMemorySpace,
+                     LMemSpace,
                      LocalAlloc>::operator=(self_t const& other) noexcept
 {
   if (&other == this) return *this;
@@ -304,17 +302,17 @@ typename SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::self_t&
                  SymmetricAllocator<
                      ElementType,
                      AllocationPolicy,
-                     LocalMemorySpace,
+                     LMemSpace,
                      LocalAlloc>::operator=(self_t&& other) noexcept
 {
   if (&other == this) return *this;
@@ -335,12 +333,12 @@ typename SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::~SymmetricAllocator() noexcept
 {
   clear();
@@ -349,12 +347,12 @@ SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::swap(self_t& other) noexcept
 {
   std::swap(_team_id, other._team_id);
@@ -366,17 +364,17 @@ void SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 typename SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::pointer
 SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::allocate(size_type num_local_elem)
 {
   DASH_LOG_DEBUG(
@@ -410,12 +408,12 @@ SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::deallocate(pointer gptr)
 {
   do_deallocate(gptr, false);
@@ -424,12 +422,12 @@ void SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::
     do_deallocate(
         /// gptr to be deallocated
@@ -459,7 +457,7 @@ void SymmetricAllocator<
     return;
   }
 
-  auto& rec = *_segments.begin();
+  auto& rec = _segments.front();
 
   DASH_ASSERT(DART_GPTR_EQUAL(gptr, rec.gptr()));
 
@@ -473,7 +471,7 @@ void SymmetricAllocator<
   auto const ret = _policy.do_global_deallocate(_alloc, rec);
 
   if (!keep_reference) {
-    _segments.erase(_segments.begin());
+    _segments.pop_back();
   }
 
   DASH_LOG_DEBUG("SymmetricAllocator.deallocate >");
@@ -482,12 +480,12 @@ void SymmetricAllocator<
 template <
     typename ElementType,
     global_allocation_policy AllocationPolicy,
-    typename LocalMemorySpace,
+    typename LMemSpace,
     template <class, class> class LocalAlloc>
 void SymmetricAllocator<
     ElementType,
     AllocationPolicy,
-    LocalMemorySpace,
+    LMemSpace,
     LocalAlloc>::clear() noexcept
 {
   for (auto& tuple : _segments) {

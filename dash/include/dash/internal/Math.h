@@ -11,6 +11,7 @@
 #include <numeric>
 #include <set>
 #include <utility>
+#include <climits> //For CHAR_BITS
 
 namespace dash {
 namespace math {
