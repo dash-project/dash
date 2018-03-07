@@ -118,6 +118,7 @@ std::ostream & operator<<(
 
 #include <dash/atomic/Type_traits.h>
 #include <dash/atomic/GlobAtomicRef.h>
+#include <dash/atomic/GlobAtomicAsyncRef.h>
 #include <dash/atomic/Operation.h>
 
 #endif // DASH__ATOMIC_H__INCLUDED

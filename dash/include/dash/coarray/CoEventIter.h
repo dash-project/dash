@@ -4,6 +4,7 @@
 #include <iterator>
 
 #include <dash/Team.h>
+#include <dash/Atomic.h>
 #include <dash/coarray/CoEventRef.h>
 
 #include <dash/memory/MemorySpace.h>
@@ -14,8 +15,8 @@ namespace coarray {
 class CoEventIter {
 private:
   using self_t = CoEventIter;
-  using globmem_t = dash::GlobStaticMem<int, HostSpace>;
-  using gptr_t = GlobPtr<int, globmem_t>;
+  using globmem_t = dash::GlobStaticMem<dash::Atomic<int>, HostSpace>;
+  using gptr_t = GlobPtr<dash::Atomic<int>, globmem_t>;
 
 public:
   using difference_type   = typename gptr_t::gptrdiff_t;
@@ -40,7 +41,7 @@ public:
   }
 
   inline value_type operator* () const {
-    return CoEventRef(_gptr, _team);
+    return value_type(_gptr, _team);
   }
   /*
    * Comparison operators
@@ -80,7 +81,7 @@ public:
   }
   inline self_t operator ++(int) noexcept {
     auto oldptr = _gptr++;
-    return CoEventIter(oldptr);
+    return self_t(oldptr);
   }
   inline self_t & operator --() noexcept{
     --_gptr;
@@ -88,7 +89,7 @@ public:
   }
   inline self_t operator --(int) noexcept {
     auto oldptr = _gptr--;
-    return CoEventIter(oldptr);
+    return self_t(oldptr);
   }
   inline self_t operator +(int i) const noexcept {
     return self_t(_gptr + i);

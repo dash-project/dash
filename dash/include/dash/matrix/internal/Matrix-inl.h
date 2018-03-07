@@ -92,11 +92,15 @@ inline Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _lend(other._lend),
   _ref(other._ref)
 {
-    // do not free other globmem
-    other._glob_mem = nullptr;
-    other._lbegin   = nullptr;
-    other._lend     = nullptr;
-    DASH_LOG_TRACE("Matrix()", "Move-Constructed");
+  // do not free other globmem
+  other._glob_mem = nullptr;
+  other._lbegin   = nullptr;
+  other._lend     = nullptr;
+
+  // Register team deallocator:
+  _team->register_deallocator(
+    this, std::bind(&Matrix::deallocate, this));
+  DASH_LOG_TRACE("Matrix()", "Move-Constructed");
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
@@ -113,7 +117,9 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 ::operator= (
   Matrix<T, NumDim, IndexT, PatternT, LocalMemT> && other)
 {
-  deallocate();
+  if (_glob_mem != nullptr)
+    deallocate();
+
   _team      = other._team;
   _size      = other._size;
   _lcapacity = other._lcapacity;
@@ -123,6 +129,12 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
   _lbegin    = other._lbegin;
   _lend      = other._lend;
   _ref       = other._ref;
+
+  // Re-register team deallocator:
+  if (_glob_mem != nullptr) {
+    _team->register_deallocator(
+      this, std::bind(&Matrix::deallocate, this));
+  }
 
   // do not free other globmem
   other._glob_mem = nullptr;
@@ -467,7 +479,7 @@ constexpr Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::operator[](size_type p
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<const T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::const_reference>::type
 constexpr Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::operator[](size_type pos) const
 {
   return _ref.at(pos);
@@ -486,7 +498,7 @@ Matrix<T, NumDim, IndexT, PatternT, LocalMemT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT, typename LocalMemT>
 template<dim_t __NumViewDim>
   typename std::enable_if<(__NumViewDim == 0),
-  GlobRef<T>>::type
+    typename Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::reference>::type
 Matrix<T, NumDim, IndexT, PatternT, LocalMemT>::operator[](size_type pos)
 {
   return _ref.at(pos);

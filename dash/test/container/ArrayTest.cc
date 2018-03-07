@@ -18,6 +18,11 @@ dash::Array<int> array_global;
 
 TEST_F(ArrayTest, Declaration)
 {
+  dash::Array<int> arr;
+}
+
+TEST_F(ArrayTest, Initialization)
+{
   dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);
 }
 

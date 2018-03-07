@@ -295,6 +295,7 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
   return MatrixRef<T, NumDim, __NumViewDim, PatternT, LocalMemT>(*this, pos);
 }
 
+
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT, typename LocalMemT>
 template<dim_t __NumViewDim>
 typename std::enable_if<(__NumViewDim != 0),
@@ -306,7 +307,8 @@ constexpr MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT, typename LocalMemT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim == 0), GlobRef<T> >::type
+typename std::enable_if<(__NumViewDim == 0),
+          typename MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>::reference >::type
 MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::operator[](size_type pos)
 {
@@ -317,7 +319,8 @@ MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT, typename LocalMemT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim == 0), GlobRef<const T> >::type
+typename std::enable_if<(__NumViewDim == 0),
+          typename MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>::const_reference >::type
 MatrixRef<T, NumDim, CUR, PatternT, LocalMemT>
 ::operator[](size_type pos) const
 {

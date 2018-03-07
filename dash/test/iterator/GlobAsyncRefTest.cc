@@ -154,3 +154,45 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
   }
 
 }
+
+
+TEST_F(GlobAsyncRefTest, ConstTest)
+{
+
+  dash::Array<int> array(dash::size());
+  const dash::Array<int>& carr = array;
+  array[dash::myid()].set(0);
+  dash::barrier();
+
+  // conversion non-const -> const
+  dash::GlobRef<const int> gref1 = array[0];
+  // assignment const -> const
+  dash::GlobRef<const int> gref2 = carr[0];
+  // explicit conversion const->non-const
+  dash::GlobRef<int> gref3 = static_cast<dash::GlobRef<int>>(carr[0]);
+
+  // should fail!
+  //gref1.set(0);
+
+  // works
+  ASSERT_EQ_U(0, gref1.get());
+
+  /**
+   * GlobAsyncRef
+   */
+
+  // conversion non-const -> const
+  dash::GlobAsyncRef<const int> agref1 = array.async[0];
+  // assignment const -> const
+  dash::GlobAsyncRef<const int> agref2 = carr.async[0];
+  // explicit conversion const->non-const
+  dash::GlobAsyncRef<int> agref3 =
+                            static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
+
+  // should fail!
+  //agref1.set(0);
+
+  // works
+  ASSERT_EQ_U(0, agref1.get());
+
+}
