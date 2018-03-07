@@ -136,15 +136,16 @@ if (ENABLE_DEV_COMPILER_WARNINGS)
   endif()
 endif()
 
+
+set (CXX_GDB_FLAG "-g"
+     CACHE STRING "C++ compiler (clang++) debug symbols flag")
+set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_GDB_FLAG "-g"
-       CACHE STRING "C++ compiler (clang++) debug symbols flag")
-  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
 
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
     message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
@@ -154,10 +155,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
-       CACHE STRING "C++ compiler GDB debug symbols flag")
-  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
+  set (CXX_GDB_FLAG "-ggdb3 -rdynamic")
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
@@ -170,8 +168,6 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_REQUIRED}"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
-  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-ipo")
   endif()
@@ -191,19 +187,20 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
           "eligible for building DART.")
 endif()
 
+set (CC_GDB_FLAG "-g"
+     CACHE STRING "C compiler (clang) debug symbols flag")
+set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
+
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
-  set (CC_GDB_FLAG "-g"
-       CACHE STRING "C compiler (clang) debug symbols flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
        CACHE STRING "C compiler std flag")
-  set (CC_GDB_FLAG "-ggdb3"
-       CACHE STRING "C compiler GDB debug symbols flag")
+  set (CC_GDB_FLAG "-ggdb3")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CC_STD_FLAG "-std=c${DART_C_STD_REQUIRED}"
@@ -214,82 +211,68 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
        CACHE STRING "C compiler std flag")
 endif()
 
-if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+if(${CMAKE_VERSION} VERSION_LESS 3.0.0 )
   # clear STD flags as set using CXX_STANDARD
-  set(CXX_STD_FLAG "")
-  set(CC_STD_FLAG  "")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG}")
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} ${CC_STD_FLAG}")
 endif()
 
-set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_ENV_SETUP_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_ENV_SETUP_FLAGS}")
-set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_ENV_SETUP_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_ENV_SETUP_FLAGS}")
-
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+    "${CMAKE_C_FLAGS} ${CC_ENV_SETUP_FLAGS}")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} ${CXX_ENV_SETUP_FLAGS}")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} ${CC_OMP_FLAG}")
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} ${CC_REPORT_FLAG} ${CC_WARN_FLAG}")
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CC_GDB_FLAG}")
-
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG}")
-set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
-
-
-set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} ${CC_STD_FLAG} ${CC_OMP_FLAG}")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO
+    "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${CC_GDB_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_C_FLAGS_RELEASE} ${CXX_LTO_FLAG}")
 set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_C_FLAGS_RELEASE} -Ofast -DDASH_RELEASE")
 
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG} ${CXX_OMP_FLAG}")
+    "${CMAKE_CXX_FLAGS} ${CXX_OMP_FLAG}")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} ${CC_REPORT_FLAG} ${CXX_WARN_FLAG}")
+set(CMAKE_CXX_FLAGS_DEBUG
+    "${CMAKE_CXX_FLAGS_DEBUG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${CXX_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG} ${CC_REPORT_FLAG}")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_LTO_FLAG}")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:
-  set(CMAKE_C_FLAGS_DEBUG
-      "${CMAKE_C_FLAGS_DEBUG} --coverage -fprofile-arcs -ftest-coverage")
-  set(CMAKE_CXX_FLAGS_DEBUG
-      "${CMAKE_CXX_FLAGS_DEBUG} --coverage -fprofile-arcs -ftest-coverage")
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
 endif()
 
 if (ENABLE_ASSERTIONS)
-  set(CMAKE_C_FLAGS_DEBUG
-      "${CMAKE_C_FLAGS_DEBUG} -DDASH_ENABLE_ASSERTIONS")
-  set(CMAKE_C_FLAGS_DEBUG
-      "${CMAKE_C_FLAGS_DEBUG} -DDART_ENABLE_ASSERTIONS")
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -DDASH_ENABLE_ASSERTIONS")
+  set(CMAKE_C_FLAGS
+      "${CMAKE_C_FLAGS} -DDART_ENABLE_ASSERTIONS")
 
-  set(CMAKE_CXX_FLAGS_DEBUG
-      "${CMAKE_CXX_FLAGS_DEBUG} -DDASH_ENABLE_ASSERTIONS")
-  set(CMAKE_CXX_FLAGS_DEBUG
-      "${CMAKE_CXX_FLAGS_DEBUG} -DDART_ENABLE_ASSERTIONS")
-
-  set(CMAKE_C_FLAGS_RELEASE
-      "${CMAKE_C_FLAGS_RELEASE} -DDASH_ENABLE_ASSERTIONS")
-  set(CMAKE_C_FLAGS_RELEASE
-      "${CMAKE_C_FLAGS_RELEASE} -DDART_ENABLE_ASSERTIONS")
-
-  set(CMAKE_CXX_FLAGS_RELEASE
-      "${CMAKE_CXX_FLAGS_RELEASE} -DDASH_ENABLE_ASSERTIONS")
-  set(CMAKE_CXX_FLAGS_RELEASE
-      "${CMAKE_CXX_FLAGS_RELEASE} -DDART_ENABLE_ASSERTIONS")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -DDASH_ENABLE_ASSERTIONS")
+  set(CMAKE_CXX_FLAGS
+      "${CMAKE_CXX_FLAGS} -DDART_ENABLE_ASSERTIONS")
 endif()
 
-message(STATUS "CC  flags (Debug):   ${CMAKE_C_FLAGS_DEBUG}")
-message(STATUS "CXX flags (Debug):   ${CMAKE_CXX_FLAGS_DEBUG}")
+message(STATUS "CC  flags          : ${CMAKE_C_FLAGS}")
+message(STATUS "CXX flags          : ${CMAKE_CXX_FLAGS}")
+message(STATUS "CC  flags (Debug)  : ${CMAKE_C_FLAGS_DEBUG}")
+message(STATUS "CXX flags (Debug)  : ${CMAKE_CXX_FLAGS_DEBUG}")
+message(STATUS "CC  flags (RelWDeb): ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+message(STATUS "CXX flags (RelWDeb): ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 message(STATUS "CC  flags (Release): ${CMAKE_C_FLAGS_RELEASE}")
 message(STATUS "CXX flags (Release): ${CMAKE_CXX_FLAGS_RELEASE}")
 

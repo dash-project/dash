@@ -6,6 +6,10 @@
 
 #include <dash/tasks/Tasks.h>
 #include <dash/Array.h>
+#include <dash/Matrix.h>
+#include <dash/Algorithm.h>
+
+#ifdef DASH_TEST_TASKSUPPORT
 
 #define TASK_CANCEL_CUTOFF 5
 
@@ -25,8 +29,8 @@ static void testfn_assign(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
   ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   *valptr = td->assign;
 }
 
@@ -34,22 +38,21 @@ static void testfn_inc(void *data) {
   testdata_t *td = (testdata_t*)data;
   int *valptr = td->valptr;
 //  ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: incrementing valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
 }
 
 static void testfn_inc_yield(void *data) {
   testdata_t *td = (testdata_t*)data;
   volatile int *valptr = td->valptr;
-//  ASSERT_EQ(td->expected, *valptr);
-  LOG_MESSAGE("[Task %p] testfn: pre-yield increment of valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: pre-yield increment of valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
   // the last 20 tasks will be re-enqueued at the end
   dart_task_yield(20);
-  LOG_MESSAGE("[Task %p] testfn: post-yield increment of valptr %p from %i",
-    dart_task_current_task(), valptr, *valptr);
+  //LOG_MESSAGE("[Task %p] testfn: post-yield increment of valptr %p from %i",
+  //  dart_task_current_task(), valptr, *valptr);
   __sync_add_and_fetch(valptr, 1);
 }
 
@@ -67,9 +70,11 @@ static void testfn_nested_deps(void *data) {
     dart_task_dep_t dep[2];
     dep[0].type = DART_DEP_INOUT;
     dep[0].gptr = DART_GPTR_NULL;
+    dep[0].phase = DART_PHASE_TASK;
     dep[0].gptr.unitid = dash::myid();
     dep[0].gptr.teamid = dash::Team::All().dart_id();
     dep[0].gptr.addr_or_offs.addr = valptr;
+    dep[0].gptr.segid  = -1;
     ASSERT_EQ(
       DART_OK,
       dart_task_create(
@@ -206,6 +211,9 @@ TEST_F(DARTTaskingTest, Yield)
         DART_PRIO_LOW)
     );
   }
+
+  // yield here to test yielding from the master thread
+  dart_task_yield(-1);
 
   dart_task_complete();
 
@@ -678,3 +686,111 @@ TEST_F(DARTTaskingTest, Abort)
 
   ASSERT_EQ_U(1, value);
 }
+
+TEST_F(DARTTaskingTest, SimpleRemoteOutDep)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  dash::Array<int> array(dash::size());
+  array.local[0] = 0;
+  dash::barrier();
+
+  // round-robin: everyone gets to write to process 0 followed by a read by everyone
+  for (int i = 0; i < dash::size(); i++)  {
+    if (dash::myid() == i) {
+      // write to process 0
+      dash::tasks::async([&array](){ array[0] = dash::myid(); },
+                         dash::tasks::out(array[0]));
+    }
+    dash::tasks::async_barrier();
+    // everyone reads
+    dash::tasks::async(
+      [&array, i](){
+        ASSERT_EQ_U(i, (int)array[0]);
+      },
+      dash::tasks::in(array[0]));
+    dash::tasks::async_barrier();
+  }
+
+  dash::tasks::complete();
+
+}
+
+
+TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  constexpr int num_iter = 100;
+  dash::NArray<int, 2> matrix(dash::size(), 2, dash::BLOCKED, dash::NONE);
+
+  auto lneighbor = (dash::myid() + dash::size() - 1) % dash::size();
+  auto rneighbor = (dash::myid() + 1) % dash::size();
+  for (int i = 0; i < num_iter; i++) {
+
+    // write into our neighbors cells
+    dash::tasks::async(
+      [=, &matrix](){
+        int value = dash::myid() * 10000 + i;
+        matrix(lneighbor, 1) = value;
+        matrix(rneighbor, 0) = value;
+      },
+      dash::tasks::out(matrix(lneighbor, 1)),
+      dash::tasks::out(matrix(rneighbor, 0))
+    );
+
+    dash::tasks::async_barrier();
+
+    // check our values
+    dash::tasks::async(
+      [=, &matrix](){
+        ASSERT_EQ_U(lneighbor*10000 + i, (int)matrix.local(0, 0));
+        ASSERT_EQ_U(rneighbor*10000 + i, (int)matrix.local(0, 1));
+      },
+      dash::tasks::in(&matrix.local(0, 0)),
+      dash::tasks::in(&matrix.local(0, 1))
+    );
+    dash::tasks::async_barrier();
+  }
+
+  dash::tasks::complete();
+
+  ASSERT_EQ_U(lneighbor*10000 + num_iter-1, (int)matrix.local(0, 0));
+  ASSERT_EQ_U(rneighbor*10000 + num_iter-1, (int)matrix.local(0, 1));
+}
+
+TEST_F(DARTTaskingTest, WaitForHandle)
+{
+  if (!dash::is_multithreaded()) {
+    SKIP_TEST_MSG("Thread-support required");
+  }
+
+  constexpr size_t elem_per_unit = 1000;
+  dash::Array<int> arr(dash::size()*elem_per_unit);
+
+  dash::fill(arr.begin(), arr.end(), dash::myid());
+  dash::barrier();
+
+  for (int i = 0; i < dash::size(); i++) {
+    if (i == dash::myid()) continue;
+    dash::tasks::async(
+      [=, &arr](){
+        int *buf = new int[elem_per_unit];
+        dart_handle_t handle;
+        dart_get_handle(buf, arr[i*elem_per_unit].dart_gptr(), elem_per_unit,
+                        DART_TYPE_INT, DART_TYPE_INT, &handle);
+        dart_task_wait_handle(&handle, 1);
+        // upon return, the transfer should be completed
+        ASSERT_EQ_U(i, buf[0]);
+        ASSERT_EQ_U(i, buf[elem_per_unit-1]);
+    });
+  }
+
+  dash::tasks::complete();
+}
+
+#endif // DASH_TEST_TASKSUPPORT

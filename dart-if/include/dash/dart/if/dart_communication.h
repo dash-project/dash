@@ -249,6 +249,34 @@ dart_ret_t dart_accumulate(
   dart_datatype_t  dtype,
   dart_operation_t op) DART_NOTHROW;
 
+
+/**
+ * Perform an element-wise atomic update on the values pointed to by \c gptr
+ * by applying the operation \c op with the corresponding value in \c value
+ * on them.
+ *
+ * DART Equivalent to MPI_Accumulate. In contrast to \ref dart_accumulate, this
+ * function blocks until the local buffer can be reused.
+ *
+ * \param gptr    A global pointer determining the target of the accumulate
+ *                operation.
+ * \param values  The local buffer holding the elements to accumulate.
+ * \param nelem   The number of local elements to accumulate per unit.
+ * \param dtype   The data type to use in the accumulate operation \c op.
+ * \param op      The accumulation operation to perform.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_accumulate_blocking_local(
+  dart_gptr_t      gptr,
+  const void     * values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op) DART_NOTHROW;
+
 /**
  * Perform an element-wise atomic update on the value of type \c dtype pointed
  * to by \c gptr by applying the operation \c op with \c value on it and
@@ -599,6 +627,23 @@ dart_ret_t dart_test_local(
   int32_t       * result) DART_NOTHROW;
 
 /**
+ * Test for the completion of an operation and ensure remote completion.
+ * If the transfer completed, the handle is invalidated and may not be used
+ * in another \c dart_wait or \c dart_test operation.
+ *
+ * \param handle The handle of an operation to test for completion.
+ * \param[out] result \c True if the operation has completed.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_test(
+  dart_handle_t * handleptr,
+  int32_t       * is_finished);
+
+/**
  * Test for the local completion of operations.
  * If the transfers completed, the handles are invalidated and may not be
  * used in another \c dart_wait or \c dart_test operation.
@@ -616,6 +661,36 @@ dart_ret_t dart_testall_local(
   dart_handle_t   handles[],
   size_t          n,
   int32_t       * result) DART_NOTHROW;
+
+/**
+ * Test for the completion of operations and ensure remote completion.
+ * If the transfers completed, the handles are invalidated and may not be
+ * used in another \c dart_wait or \c dart_test operation.
+ *
+ * \param handles Array of handles of operations to test for completion.
+ * \param n Number of \c handles to test for completion.
+ * \param[out] result \c True if all operations have completed.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_testall(
+  dart_handle_t   handles[],
+  size_t          n,
+  int32_t       * is_finished);
+
+/**
+ * Free the handle without testing or waiting for completion of the operation.
+ *
+ * \param handle Pointer to the handle to free.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ */
+dart_ret_t dart_handle_free(
+  dart_handle_t * handle) DART_NOTHROW;
 
 /** \} */
 

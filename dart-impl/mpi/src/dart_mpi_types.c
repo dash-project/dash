@@ -27,6 +27,7 @@ static const char* __dart_base_type_names[DART_TYPE_LAST+1] = {
   "LONG",
   "UNSIGNED LONG",
   "LONG LONG",
+  "UNSIGNED LONG LONG",
   "FLOAT",
   "DOUBLE",
   "INVALID"
@@ -96,6 +97,7 @@ dart__mpi__datatype_init()
   init_basic_datatype(DART_TYPE_LONG, MPI_LONG);
   init_basic_datatype(DART_TYPE_ULONG, MPI_UNSIGNED_LONG);
   init_basic_datatype(DART_TYPE_LONGLONG, MPI_LONG_LONG);
+  init_basic_datatype(DART_TYPE_ULONGLONG, MPI_UNSIGNED_LONG_LONG);
   init_basic_datatype(DART_TYPE_FLOAT, MPI_FLOAT);
   init_basic_datatype(DART_TYPE_DOUBLE, MPI_DOUBLE);
 

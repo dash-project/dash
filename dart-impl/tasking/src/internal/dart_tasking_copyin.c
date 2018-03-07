@@ -5,18 +5,38 @@
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_datadeps.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
+
+#define DART_TASK_BLOCKING_WAIT
+
+#ifdef DART_TASK_BLOCKING_WAIT
+#define DEFAULT_WAIT_TYPE COPYIN_WAIT_BLOCK
+#else
+#define DEFAULT_WAIT_TYPE COPYIN_WAIT_YIELD
+#endif
 
 enum dart_copyin_t {
-  COPYIN_GET,
-  COPYIN_SENDRECV,
-  COPYIN_UNDEFINED
+  COPYIN_IMPL_UNDEFINED,
+  COPYIN_IMPL_GET,
+  COPYIN_IMPL_SENDRECV
 };
 
-static const struct dart_env_str2int env_vals[] = {
-  {"GET",             COPYIN_GET},
-  {"COPYIN_GET",      COPYIN_GET},
-  {"SENDRECV",        COPYIN_SENDRECV},
-  {"COPYIN_SENDRECV", COPYIN_SENDRECV},
+enum dart_copyin_wait_t {
+  COPYIN_WAIT_UNDEFINED,
+  COPYIN_WAIT_BLOCK,      // block the task
+  COPYIN_WAIT_YIELD       // test-yield cycle
+};
+
+static const struct dart_env_str2int copyin_env_vals[] = {
+  {"GET",             COPYIN_IMPL_GET},
+  {"SENDRECV",        COPYIN_IMPL_SENDRECV},
+  {NULL, 0}
+};
+
+static const struct dart_env_str2int wait_env_vals[] = {
+  {"BLOCK",           COPYIN_WAIT_BLOCK},
+  {"YIELD",           COPYIN_WAIT_YIELD},
+  {"TESTYIELD",       COPYIN_WAIT_YIELD},
   {NULL, 0}
 };
 
@@ -70,6 +90,9 @@ dart_tasking_copyin_send_taskfn(void *data);
  */
 static void
 dart_tasking_copyin_get_taskfn(void *data);
+
+static void
+wait_for_handle(dart_handle_t *handle);
 
 
 
@@ -161,21 +184,23 @@ dart_tasking_copyin_create_task(
         dart_gptr_t      dest_gptr,
         taskref          local_task)
 {
-  static enum dart_copyin_t impl = COPYIN_UNDEFINED;
-  if (impl == COPYIN_UNDEFINED) {
-    impl = dart__base__env__str2int(DART_COPYIN_IMPL_ENVSTR, env_vals, COPYIN_GET);
+  static enum dart_copyin_t impl = COPYIN_IMPL_UNDEFINED;
+  if (impl == COPYIN_IMPL_UNDEFINED) {
+    // no locking needed here, copyin will be used only by master thread
+    impl = dart__base__env__str2int(DART_COPYIN_IMPL_ENVSTR,
+                                    copyin_env_vals, COPYIN_IMPL_GET);
     DART_LOG_INFO("Using copyin implementation %s",
-                  impl == COPYIN_GET ? "GET" : "SENDRECV");
+                  impl == COPYIN_IMPL_GET ? "GET" : "SENDRECV");
   }
 
   dart_ret_t ret;
-  if (impl == COPYIN_SENDRECV) {
+  if (impl == COPYIN_IMPL_SENDRECV) {
     ret =  dart_tasking_copyin_create_task_sendrecv(dep, dest_gptr, local_task);
-  } else if (impl == COPYIN_GET) {
+  } else if (impl == COPYIN_IMPL_GET) {
     ret =  dart_tasking_copyin_create_task_get(dep, dest_gptr, local_task);
   } else {
     // just in case...
-    DART_ASSERT(impl == COPYIN_GET || impl == COPYIN_SENDRECV);
+    DART_ASSERT(impl == COPYIN_IMPL_GET || impl == COPYIN_IMPL_SENDRECV);
     DART_LOG_ERROR("Unknown copyin type: %d", impl);
     ret = DART_ERR_INVAL;
   }
@@ -236,15 +261,7 @@ dart_tasking_copyin_send_taskfn(void *data)
   dart_handle_t handle;
   dart_send_handle(td->src.addr_or_offs.addr, td->num_bytes, DART_TYPE_BYTE,
                    td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
-  int32_t flag = 0;
-  dart_test_local(&handle, &flag);
-  // lower task priority to better overlap communication/computation
-  dart_task_t *task = dart__tasking__current_task();
-  task->prio = DART_PRIO_LOW;
-  while (!flag) {
-    dart_task_yield(-1);
-    dart_test_local(&handle, &flag);
-  }
+  wait_for_handle(&handle);
 
   DART_LOG_TRACE("Copyin: Send to unit %d completed (tag %d)", td->unit, td->tag);
 }
@@ -261,15 +278,7 @@ dart_tasking_copyin_recv_taskfn(void *data)
     dart_handle_t handle;
     dart_recv_handle(td->dst, td->num_bytes, DART_TYPE_BYTE,
                     td->tag, DART_GLOBAL_UNIT_ID(td->unit), &handle);
-    // lower task priority to better overlap communication/computation
-    dart_task_t *task = dart__tasking__current_task();
-    task->prio = DART_PRIO_LOW;
-    while (1) {
-      int32_t flag;
-      dart_test_local(&handle, &flag);
-      if (flag) break;
-      dart_task_yield(-1);
-    }
+    wait_for_handle(&handle);
     DART_LOG_TRACE("Copyin: Recv from unit %d completed (tag %d)",
                    td->unit, td->tag);
 
@@ -292,15 +301,32 @@ dart_tasking_copyin_get_taskfn(void *data)
   dart_handle_t handle;
   dart_get_handle(td->dst, td->src, td->num_bytes,
                   DART_TYPE_BYTE, DART_TYPE_BYTE, &handle);
-  // lower task priority to better overlap communication/computation
-  dart_task_t *task = dart__tasking__current_task();
-  task->prio = DART_PRIO_LOW;
-  while (1) {
-    int32_t flag;
-    dart_test_local(&handle, &flag);
-    if (flag) break;
-    dart_task_yield(-1);
-  }
+  wait_for_handle(&handle);
   DART_LOG_TRACE("Copyin: GET from unit %d completed (size %zu)",
                   td->unit, td->num_bytes);
+}
+
+
+static void
+wait_for_handle(dart_handle_t *handle)
+{
+  static enum dart_copyin_wait_t wait_type = COPYIN_WAIT_UNDEFINED;
+  if (wait_type == COPYIN_WAIT_UNDEFINED) {
+    wait_type = dart__base__env__str2int(DART_COPYIN_WAIT_ENVSTR, wait_env_vals,
+                                         DEFAULT_WAIT_TYPE);
+  }
+  if (wait_type == COPYIN_WAIT_BLOCK) {
+    dart__task__wait_handle(handle, 1);
+  } else {
+    // lower task priority to better overlap communication/computation
+    dart_task_t *task = dart__tasking__current_task();
+    task->prio = DART_PRIO_LOW;
+    while (1) {
+      int32_t flag;
+      dart_test_local(handle, &flag);
+      if (flag) break;
+      dart_task_yield(-1);
+    }
+    task->prio = DART_PRIO_HIGH;
+  }
 }

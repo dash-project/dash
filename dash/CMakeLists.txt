@@ -114,6 +114,11 @@ if (HWLOC_FOUND AND ENABLE_HWLOC)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${HWLOC_LIBRARIES})
 endif()
+if (TCMALLOC_FOUND AND ENABLE_TCMALLOC)
+  set (CONF_AVAIL_TCMALLOC "true")
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${TCMALLOC_LIBRARIES})
+endif()
 if (LIKWID_FOUND AND ENABLE_LIKWID)
   set (CONF_AVAIL_LIKWID "true")
   set (ADDITIONAL_COMPILE_FLAGS
@@ -180,10 +185,8 @@ else()
          ${BLAS_LIBRARIES})
     set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
          ${BLAS95_LIBRARIES})
-    set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+    set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
          ${BLAS_LINKER_FLAGS})
-#   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-#        cblas)
   endif()
 
   if (ENABLE_LAPACK AND LAPACK_FOUND)
@@ -212,6 +215,15 @@ if (ENABLE_SCALAPACK)
     set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
          ${SCALAPACK_LIBRARIES})
   endif()
+endif()
+
+if (HAVE_STD_TRIVIALLY_COPYABLE)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_HAVE_STD_TRIVIALLY_COPYABLE)
+endif()
+if (HAVE_TRIVIAL_COPY_INTRINSIC)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_HAVE_TRIVIAL_COPY_INTRINSIC)
 endif()
 
 # enable algorithms which are supported by current build config
@@ -257,8 +269,14 @@ set(DASH_ADDITIONAL_COMPILE_FLAGS  ${ADDITIONAL_COMPILE_FLAGS} PARENT_SCOPE)
 foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (DART_LIBRARY "dart-${dart_variant}")
   set (DASH_LIBRARY "dash-${dart_variant}")
-  set (DART_TASKING_LIBRARY "dart-tasking")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR})
+  if (ENABLE_THREADSUPPORT)
+    set (DART_TASKING_LIBRARY "dart-tasking")
+    set(VARIANT_ADDITIONAL_COMPILE_FLAGS
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDASH_EXAMPLES_TASKSUPPORT")
+  else ()
+    set (DART_TASKING_LIBRARY "")
+  endif()
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} ${CXX_OMP_FLAG}")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
@@ -293,6 +311,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
+
+  set_target_properties(
+    ${DASH_LIBRARY}
+    PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+  )
+
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
       ${MPI_INCLUDE_PATH})
@@ -324,7 +348,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # cmake packaging
   if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  include(CMakePackageConfigHelpers)
-	
+
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
@@ -337,10 +361,10 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           DESTINATION lib
           EXPORT "${DASH_LIBRARY}-targets")
 
-  # exports
+  # Exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION cmake)
+    DESTINATION share/cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
   	configure_package_config_file(
@@ -350,7 +374,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   	# install custom config
   	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 	endif()
 
   # Examples
@@ -424,79 +448,84 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
-  if (BUILD_COVERAGE_TESTS)
-    include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
-  endif()
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
 
- foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
-    set(DASH_LIBRARY "dash-${dart_variant}")
-    set(DART_LIBRARY "dart-${dart_variant}")
-    set(DASH_TEST "dash-test-${dart_variant}")
+  if (GTEST_FOUND)
+    if (BUILD_COVERAGE_TESTS)
+      include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+    endif()
+
     if (ENABLE_THREADSUPPORT)
       set(DASH_TASK_LIBRARY "dart-tasking")
+      set(VARIANT_ADDITIONAL_COMPILE_FLAGS
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDASH_TEST_TASKSUPPORT")
     else ()
       set(DASH_TASK_LIBRARY "")
     endif()
-    include_directories(
-      ${GTEST_INCLUDES}
-      ${CMAKE_SOURCE_DIR}/dash/include
-      ${ADDITIONAL_INCLUDES}
-    )
-    add_executable(
-      ${DASH_TEST}
-      ${DASH_TEST_SOURCES}
-    )
-    target_link_libraries(
-      ${DASH_TEST}
-      GTest
-      ${DASH_LIBRARY}
-      ${DASH_TASK_LIBRARY}
-      ${DART_LIBRARY}
-      ${ADDITIONAL_LIBRARIES}
-    )
-    if (${dart_variant} STREQUAL "mpi")
-      if (IPM_FOUND)
-        include_directories(
-          ${IPM_INCLUDE_DIRS})
-        target_link_libraries(
-          ${exampletarget}
-          ${IPM_LIBRARIES})
-      endif()
-    endif()
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS
-      "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
-    )
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-      CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
-    )
-
-    if(ENABLE_COMPTIME_RED)
-      cotire(${DASH_TEST})
-    endif()
-
-    # Installation
-    DeployBinary(${DASH_TEST})
-    install(
-      TARGETS ${DASH_TEST}
-      DESTINATION bin/dash/test/${dart_variant})
-
-    # Code Coverage
-    if (BUILD_COVERAGE_TESTS)
+    foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+      set(DASH_LIBRARY "dash-${dart_variant}")
+      set(DART_LIBRARY "dart-${dart_variant}")
+      set(DASH_TEST "dash-test-${dart_variant}")
+      include_directories(
+        ${GTEST_INCLUDES}
+        ${CMAKE_SOURCE_DIR}/dash/include
+        ${ADDITIONAL_INCLUDES}
+      )
+      add_executable(
+        ${DASH_TEST}
+        ${DASH_TEST_SOURCES}
+      )
+      target_link_libraries(
+        ${DASH_TEST}
+        GTest
+        ${DASH_LIBRARY}
+        ${DASH_TASK_LIBRARY}
+        ${DART_LIBRARY}
+        ${ADDITIONAL_LIBRARIES}
+      )
       if (${dart_variant} STREQUAL "mpi")
-        setup_target_for_coverage(
-          coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
-      else()
-        setup_target_for_coverage(
-          coverage "${DASH_TEST}" coverage)
+        if (IPM_FOUND)
+          include_directories(
+            ${IPM_INCLUDE_DIRS})
+          target_link_libraries(
+            ${exampletarget}
+            ${IPM_LIBRARIES})
+        endif()
       endif()
-    endif()
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        COMPILE_FLAGS
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
+      )
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        CXX_STANDARD ${DASH_CXX_STD_PREFERED}
+        CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+      )
 
-  endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+      if(ENABLE_COMPTIME_RED)
+        cotire(${DASH_TEST})
+      endif()
+
+      # Installation
+      DeployBinary(${DASH_TEST})
+      install(
+        TARGETS ${DASH_TEST}
+        DESTINATION bin/dash/test/${dart_variant})
+
+      # Code Coverage
+      if (BUILD_COVERAGE_TESTS)
+        if (${dart_variant} STREQUAL "mpi")
+          setup_target_for_coverage(
+            coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
+        else()
+          setup_target_for_coverage(
+            coverage "${DASH_TEST}" coverage)
+        endif()
+      endif()
+
+    endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+  endif(GTEST_FOUND)
 endif()
 
 ## Installation

@@ -3,6 +3,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
+#include <dash/dart/tasking/dart_tasking_wait.h>
 
 
 /**
@@ -185,6 +186,15 @@ dart_task_yield(int delay)
   return dart__tasking__yield(delay);
 }
 
+/**
+ * Yield the execution thread until all \c num_handle operations in \c handle
+ * have completed.
+ */
+dart_ret_t
+dart_task_wait_handle(dart_handle_t *handle, size_t num_handle)
+{
+  return dart__task__wait_handle(handle, num_handle);
+}
 
 void
 dart_task_phase_advance()

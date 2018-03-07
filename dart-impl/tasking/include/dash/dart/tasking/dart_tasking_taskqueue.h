@@ -161,6 +161,8 @@ dart_tasking_taskqueue_move_unsafe(
  * Lock the task queue to perform larger operations atomically.
  *
  * Use in combination with the \c *_unsafe variants of the taskqueue operations.
+ *
+ * \sa dart__base__mutex_lock
  */
 DART_INLINE
 dart_ret_t
@@ -170,7 +172,23 @@ dart_tasking_taskqueue_lock(dart_taskqueue_t *tq)
 }
 
 /**
+ * Try to lock the task queue to perform larger operations atomically.
+ *
+ * Use in combination with the \c *_unsafe variants of the taskqueue operations.
+ *
+ * \sa dart__base__mutex_trylock
+ */
+DART_INLINE
+dart_ret_t
+dart_tasking_taskqueue_trylock(dart_taskqueue_t *tq)
+{
+  return dart__base__mutex_trylock(&tq->mutex);
+}
+
+/**
  * Unlock the task queue.
+ *
+ * \sa dart__base__mutex_unlock
  */
 DART_INLINE
 dart_ret_t

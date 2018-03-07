@@ -23,6 +23,11 @@
 
 static int amsgq_mpi_tag = 10001;
 
+// on MPICH and it's derivatives ISSEND seems broken
+#ifdef MPICH
+#define IS_ISSEND_BROKEN 1
+#endif // MPICH
+
 
 struct dart_amsgq_impl_data {
   MPI_Request *recv_reqs;
@@ -129,7 +134,7 @@ dart_amsg_sendrecv_openq(
   res->recv_reqs   = malloc(msg_count*sizeof(*res->recv_reqs));
   res->recv_outidx = malloc(msg_count*sizeof(*res->recv_outidx));
   res->send_outidx = malloc(msg_count*sizeof(*res->send_outidx));
-//  MPI_Comm_dup(team_data->comm, &res->comm);
+  MPI_Comm_dup(team_data->comm, &res->comm);
   MPI_Comm_rank(res->comm, &res->my_rank);
 
   res->tag = amsgq_mpi_tag++;
@@ -200,7 +205,12 @@ dart_amsg_sendrecv_trysend(
   memcpy(sendbuf, &header, sizeof(header));
   memcpy(sendbuf + sizeof(header), data, data_size);
 
+  // TODO: Issend seems broken on IMPI :(
+#ifndef IS_ISSEND_BROKEN
   int ret = MPI_Issend(
+#else
+  int ret = MPI_Isend(
+#endif // IS_ISSEND_BROKEN
               sendbuf, amsgq->msg_size,
               MPI_BYTE, target.id, amsgq->tag, amsgq->comm,
               &amsgq->send_reqs[idx]);
@@ -212,8 +222,8 @@ dart_amsg_sendrecv_trysend(
     return DART_ERR_AGAIN;
   }
 
-  DART_LOG_INFO("Sent message of size %zu with payload %zu to unit %i",
-                    msg_size, data_size, target.id);
+  DART_LOG_INFO("Sent message of size %zu with data size %zu to unit %i",
+                    amsgq->msg_size, data_size, target.id);
 
   return DART_OK;
 }
@@ -224,6 +234,8 @@ amsg_process_sendrecv_internal(
   bool                         blocking)
 {
   uint64_t num_msg;
+
+  DART_ASSERT(amsgq != NULL);
 
   if (!blocking) {
     dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
@@ -324,10 +336,15 @@ dart_amsg_sendrevc_process_blocking(
         MPI_Ibarrier(team_data->comm, &req);
       }
     }
-  } while (!barrier_flag);
+  } while (!barrier_flag && !send_flag);
+#ifdef IS_ISSEND_BROKEN
+  // if Issend is broken we need another round of synchronization
+  MPI_Barrier(team_data->comm);
+#endif
   amsg_process_sendrecv_internal(amsgq, true);
   // final synchronization
-  MPI_Barrier(team_data->comm);
+  // TODO: I don't think this is needed here!
+  //MPI_Barrier(team_data->comm);
   return DART_OK;
 }
 
@@ -336,7 +353,7 @@ dart_ret_t
 dart_amsg_sendrecv_closeq(struct dart_amsgq_impl_data* amsgq)
 {
 
-//  MPI_Comm_free(&amsgq->comm);
+  MPI_Comm_free(&amsgq->comm);
 
   if (amsgq->send_tailpos > 0) {
     DART_LOG_INFO("Waiting for %d active messages to complete",

@@ -16,6 +16,7 @@
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_communication.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -216,6 +217,14 @@ dart_task_should_abort();
  */
 dart_ret_t
 dart_task_yield(int delay) __attribute__((weak));
+
+
+/**
+ * Yield the execution thread until all \c num_handle operations in \c handle
+ * have completed.
+ */
+dart_ret_t
+dart_task_wait_handle(dart_handle_t *handle, size_t num_handle);
 
 /**
  * Advance to the next task execution phase.

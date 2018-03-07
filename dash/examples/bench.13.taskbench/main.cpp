@@ -9,6 +9,8 @@
 #include <libdash.h>
 #include <dash/dart/if/dart.h>
 
+#ifdef DASH_EXAMPLES_TASKSUPPORT
+
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
@@ -147,3 +149,17 @@ benchmark_params parse_args(int argc, char * argv[])
   return params;
 }
 
+#else
+
+int main(int argc, char* argv[])
+{
+  dash::init(&argc, &argv);
+
+  std::cout << "Skipping example due to missing task support" << std::endl;
+
+  dash::finalize();
+
+  return 0;
+}
+
+#endif // DASH_EXAMPLES_TASKSUPPORT

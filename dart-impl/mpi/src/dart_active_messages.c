@@ -59,7 +59,7 @@ dart_amsg_init()
   dart_ret_t res;
 
   int impl = dart__base__env__str2int(DART_AMSGQ_IMPL_ENVSTR,
-                                      env_vals, DART_AMSGQ_NOLOCK);
+                                      env_vals, DART_AMSGQ_SINGLEWIN);
 
   switch(impl) {
     case DART_AMSGQ_TWOWIN:
@@ -197,6 +197,12 @@ dart_amsg_process(dart_amsgq_t amsgq)
 dart_ret_t
 dart_amsg_process_blocking(dart_amsgq_t amsgq, dart_team_t team)
 {
+  size_t size;
+  dart_team_size(team, &size);
+  if (size == 1) {
+    // nothing to be done here
+    return DART_OK;
+  }
   return amsgq_impl.process_blocking(amsgq->impl, team);
 }
 

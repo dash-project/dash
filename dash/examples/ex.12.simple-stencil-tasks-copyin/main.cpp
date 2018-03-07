@@ -33,6 +33,8 @@
 #include <vector>
 #include <cstdlib>
 
+#ifdef DASH_EXAMPLES_TASKSUPPORT
+
 // required for tasking abstraction
 #include <functional>
 #include <array>
@@ -225,7 +227,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
         dash::tasks::copyin(data_old.at(local_beg_gidx[0]-1, 0), gext_y, up_row),
         dash::tasks::in(data_old.local.row(1).lbegin()),
         dash::tasks::in(data_old.local.row(0).lbegin()),
-        dash::tasks::out(data_old.local.row(0).lbegin())
+        dash::tasks::out(data_new.local.row(0).lbegin())
       );
     }
 
@@ -374,3 +376,19 @@ int main(int argc, char* argv[])
     write_pgm("testimg_output_task_copyin.pgm", data_new);
   dash::finalize();
 }
+
+
+#else
+
+int main(int argc, char* argv[])
+{
+  dash::init(&argc, &argv);
+
+  std::cout << "Skipping example due to missing task support" << std::endl;
+
+  dash::finalize();
+
+  return 0;
+}
+
+#endif // DASH_EXAMPLES_TASKSUPPORT

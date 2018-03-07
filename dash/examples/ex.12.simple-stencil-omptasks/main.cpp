@@ -41,6 +41,8 @@ using element_t = double;
 using Array_t   = dash::NArray<element_t, 2>;
 using index_t = typename Array_t::index_type;
 
+static int num_threads;
+
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){
@@ -140,12 +142,16 @@ void smooth(Array_t & data_old, Array_t & data_new, int32_t iter){
     auto olptr = data_old.lbegin();
     auto nlptr = data_new.lbegin();
 
+    int rows_per_task = lext_x / (num_threads *2);
+    if (rows_per_task == 0) rows_per_task = 1;
 #pragma omp parallel
     {
 #pragma omp master
     {
     // Inner rows
-  #pragma omp taskloop grainsize(1)
+    int rows_per_task = lext_x / (num_threads *2);
+    if (rows_per_task == 0) rows_per_task = 1;
+  #pragma omp taskloop grainsize(rows_per_task)
     for( index_t x=1; x<lext_x-1; x++ ) {
       const element_t *__restrict curr_row = data_old.local.row(x).lbegin();
       const element_t *__restrict   up_row = data_old.local.row(x-1).lbegin();
@@ -252,8 +258,12 @@ int main(int argc, char* argv[])
   }
 
 
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
-
+#pragma omp parallel
+#pragma omp single
+{
+  if (dash::myid() == 0)
+    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+}
   // Prepare grid
   dash::TeamSpec<2> ts;
   dash::SizeSpec<2> ss(sizex, sizey);
@@ -268,6 +278,13 @@ int main(int argc, char* argv[])
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
   if (dash::myid() == 0) {
+#pragma omp parallel
+{
+#pragma omp master
+{
+    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+    num_threads = omp_get_num_threads();
+}}
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }

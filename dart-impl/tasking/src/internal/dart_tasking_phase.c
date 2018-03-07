@@ -13,15 +13,26 @@ void
 dart__tasking__phase_advance()
 {
   static dart_taskphase_t matching_interval = INT_MIN;
+  static dart_taskphase_t phases_remaining  = INT_MAX;
   if (matching_interval == INT_MIN) {
     matching_interval = dart__base__env__number(
-                          DART_MATCHING_FREQUENCY_ENVSTR, -1);
+                          DART_MATCHING_INTERVAL_ENVSTR, -1);
+    if (matching_interval > 0) {
+      phases_remaining = matching_interval;
+      DART_LOG_TRACE("Intermediate task matching enabled: interval %d",
+                     matching_interval);
+    } else {
+      DART_LOG_TRACE("Intermediate task matching disabled");
+    }
   }
-  ++creation_phase;
-  if (matching_interval > 0 && creation_phase % matching_interval == 0) {
+//  if (matching_interval > 0 && creation_phase > 0 && creation_phase % matching_interval == 0) {
+  if (--phases_remaining == 0) {
+    DART_LOG_TRACE("Performing intermediate matching");
     dart__tasking__perform_matching(dart__tasking__current_thread(),
                                     creation_phase);
+    phases_remaining = matching_interval;
   }
+  ++creation_phase;
 }
 
 dart_taskphase_t
@@ -33,7 +44,9 @@ dart__tasking__phase_current()
 bool
 dart__tasking__phase_is_runnable(dart_taskphase_t phase)
 {
-  return (runnable_phase == DART_PHASE_ANY || phase <= runnable_phase);
+  return (DART_PHASE_ANY == phase ||
+          DART_PHASE_ANY == runnable_phase ||
+          phase <= runnable_phase);
 }
 
 void
@@ -51,6 +64,13 @@ dart_taskphase_t
 dart__tasking__phase_runnable()
 {
   return runnable_phase;
+}
+
+void
+dart__tasking__phase_reset()
+{
+  creation_phase = DART_PHASE_FIRST;
+  runnable_phase = DART_PHASE_FIRST;
 }
 
 dart_ret_t

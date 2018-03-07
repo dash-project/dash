@@ -5,6 +5,8 @@
 #include <dash/Matrix.h>
 #include <dash/algorithm/Fill.h>
 
+#ifdef DASH_TEST_TASKSUPPORT
+
 TEST_F(TaskingTest, SimpleTasks)
 {
   // simple test without dependencies
@@ -184,7 +186,6 @@ TEST_F(TaskingTest, RemoteDepsSweep)
   }
 }
 
-
 TEST_F(TaskingTest, RemoteDepsDoubleBufferStencil)
 {
   int num_iter = 10;
@@ -250,3 +251,5 @@ TEST_F(TaskingTest, RemoteDepsDoubleBufferStencil)
     ASSERT_EQ_U(num_iter+myid, matrix2.local(0, i));
   }
 }
+
+#endif // DASH_TEST_TASKSUPPORT
