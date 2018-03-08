@@ -690,7 +690,7 @@ TEST_F(AtomicTest, LongDouble){
   using array_t = dash::Array<atom_t>;
 
   array_t array(dash::size());
-  dash::fill(array.begin(), array.end(), 0);
+  array[dash::myid()] = 0.0;
   dash::barrier();
 
   array[0].fetch_add(1.0);
