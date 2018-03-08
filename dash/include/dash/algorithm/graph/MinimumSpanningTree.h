@@ -232,12 +232,14 @@ auto mst_get_components(
 template<typename GraphType>
 void mst_set_data_min(
     matrix_min_pairs_t<typename GraphType::vertex_properties_type> & data_pairs, 
+    std::vector<std::vector<int>> & remote_edges,
     int start,
     GraphType & graph,
     dash::util::Trace & trace
 ) {
   trace.enter_state("send pairs");
   typedef typename GraphType::vertex_properties_type      vprop_t;
+  auto myid = graph.team().myid();
   std::vector<std::size_t> sizes_send(data_pairs.size());
   std::vector<std::size_t> displs_send(data_pairs.size());
   std::vector<tuple_t<vprop_t>> pairs_send;
@@ -265,7 +267,7 @@ void mst_set_data_min(
   dart_alltoallv(pairs_send.data(), sizes_send.data(), displs_send.data(),
       DART_TYPE_BYTE, pairs_recv.data(), sizes_recv.data(), 
       displs_recv.data(), graph.team().dart_id());
-  std::unordered_map<int, tuple_t<vprop_t>> mapping;
+  std::unordered_map<std::size_t, tuple_t<vprop_t>> mapping;
   for(auto & pair : pairs_recv) {
     auto it = mapping.find(std::get<0>(pair));
     if(it != mapping.end()) {
@@ -280,13 +282,81 @@ void mst_set_data_min(
   trace.exit_state("send pairs");
   trace.enter_state("set components");
   for(auto & pair : mapping) {
-    graph.vertices().set_attributes(pair.first - start, std::get<1>(pair.second));
-    if(dash::myid() == get<3>(pair.second)) {
-      typename GraphType::edge_properties_type eprop { -1 };
-      graph.out_edges().set_attributes(std::get<4>(pair.second), eprop);
+    auto trg_comp = std::get<1>(pair.second);
+    graph.vertices().set_attributes(pair.first - start, trg_comp);
+    //std::cout << ">" << pair.first << ":" << trg_comp.comp << std::endl;
+    /*
+    if(trg_comp.unit == myid) {
+      auto it = mapping.find(trg_comp.comp);
+      vprop_t src_comp { pair.first, myid };
+
+      if(it != mapping.end()) {
+        auto weight = std::get<2>(it->second);
+        if(weight > std::get<2>(pair.second)) {
+          graph.vertices().set_attributes(trg_comp.comp - start, src_comp);
+      std::cout << "> " << trg_comp.comp << ":" << src_comp.comp << " *" << std::endl;
+        }
+      } else {
+        graph.vertices().set_attributes(trg_comp.comp - start, src_comp);
+      std::cout << "> " << trg_comp.comp << ":" << src_comp.comp << " *" << std::endl;
+      }
+    }
+    */
+    if(myid == get<3>(pair.second)) {
+      auto edge = std::get<4>(pair.second);
+      auto prop = graph.out_edges().attributes(edge);
+      prop.is_min = true;
+      graph.out_edges().set_attributes(edge, prop);
+    } else if(std::get<3>(pair.second) != std::get<1>(pair.second).unit) {
+      // if the edge belongs to a unit that does not hold any of the component
+      // vertices
+      remote_edges[std::get<3>(pair.second)].push_back(
+          std::get<4>(pair.second));
     }
   }
   trace.exit_state("set components");
+}
+
+template<typename GraphType>
+void mst_set_edges(
+    std::vector<std::vector<int>> remote_edges, 
+    GraphType & graph, 
+    dash::util::Trace & trace
+) {
+  typedef typename GraphType::edge_properties_type      eprop_t;
+  trace.enter_state("send edges");
+  std::vector<std::size_t> sizes_send(remote_edges.size());
+  std::vector<std::size_t> displs_send(remote_edges.size());
+  std::vector<int> send;
+  std::size_t total_send = 0;
+  for(int i = 0; i < remote_edges.size(); ++i) {
+    sizes_send[i] = remote_edges[i].size() * sizeof(std::size_t);
+    displs_send[i] = total_send;
+    total_send += sizes_send[i];
+  }
+  send.reserve(total_send / sizeof(std::size_t));
+  for(auto & set : remote_edges) {
+    send.insert(send.end(), set.begin(), set.end());
+  }
+  std::vector<std::size_t> sizes_recv(remote_edges.size());
+  std::vector<std::size_t> displs_recv(remote_edges.size());
+  dart_alltoall(sizes_send.data(), sizes_recv.data(), 1, 
+      DART_TYPE_INT, graph.team().dart_id());
+  std::size_t total_recv = 0;
+  for(int i = 0; i < sizes_recv.size(); ++i) {
+    displs_recv[i] = total_recv;
+    total_recv += sizes_recv[i];
+  }
+  std::vector<int> recv(total_recv / sizeof(std::size_t));
+  dart_alltoallv(send.data(), sizes_send.data(), displs_send.data(),
+      DART_TYPE_BYTE, recv.data(), sizes_recv.data(), 
+      displs_recv.data(), graph.team().dart_id());
+  for(auto & edge : recv) {
+    auto prop = graph.out_edges().attributes(edge);
+    prop.is_min = true;
+    graph.out_edges().set_attributes(edge, prop);
+  }
+  trace.exit_state("send edges");
 }
 
 } // namespace internal
@@ -298,6 +368,7 @@ void mst_set_data_min(
  * - (int) comp
  * Requires the graph's edges to store the following attributep:
  * - (int) weight
+ * - (bool) is_min
  * 
  * Output:
  * TODO: store the tree information in the edges OR in a separate data 
@@ -352,6 +423,7 @@ void minimum_spanning_tree(GraphType & g) {
     trace.exit_state("compute indices");
   }
 
+  std::vector<std::vector<int>> remote_edges(g.team().size());
   while(1) {
     int gr = 0;
     {
@@ -359,7 +431,8 @@ void minimum_spanning_tree(GraphType & g) {
           g, trace);
       trace.enter_state("compute pairs");
       matrix_min_pairs_t<vprop_t> data_pairs(g.team().size());
-      std::vector<std::unordered_set<int>> pair_set(g.team().size());
+      std::vector<std::unordered_map<int, std::tuple<vprop_t, vprop_t, int, 
+        int>>> pair_map(g.team().size());
       int i = 0;
       for(auto it = g.vertices().lbegin(); it != g.vertices().lend(); ++it) {
         auto v = g[it];
@@ -367,6 +440,8 @@ void minimum_spanning_tree(GraphType & g) {
         int min_weight = std::numeric_limits<int>::max();
         vprop_t trg_comp_min;
         int ledgepos = -1;
+        int src = 0;
+        int trg = 0;
         for(auto e_it = v.out_edges().lbegin(); e_it != v.out_edges().lend(); 
             ++e_it) {
           auto e = g[e_it];
@@ -377,27 +452,48 @@ void minimum_spanning_tree(GraphType & g) {
             min_weight = e_weight;
             trg_comp_min = trg_comp;
             ledgepos = e_it.pos();
+            src = e.source().pos();
+            trg = e.target().pos();
           }
           ++i;
         }
         if(ledgepos >= 0) {
-          auto & set = pair_set[src_comp.unit];
-          if(set.find(src_comp.comp) == set.end()) {
-            data_pairs[src_comp.unit].push_back(
-                std::make_tuple(src_comp.comp, trg_comp_min, min_weight, myid, 
-                  ledgepos)
-            );
-            data_pairs[trg_comp_min.unit].push_back(
-                std::make_tuple(trg_comp_min.comp, src_comp, min_weight, myid, 
-                  ledgepos)
-            );
-            set.insert(src_comp.comp);
+          auto & map = pair_map[src_comp.unit];
+          auto m_it = map.find(src_comp.comp);
+          if(m_it == map.end()) {
+            map[src_comp.comp] = std::make_tuple(src_comp, trg_comp_min, 
+                min_weight, ledgepos);
+          } else {
+            if(std::get<2>(m_it->second) > min_weight) {
+              m_it->second = std::make_tuple(src_comp, trg_comp_min, min_weight, 
+                  ledgepos);
+            }
           }
           gr = 1;
         }
       }
+      for(int i = 0; i < pair_map.size(); ++i) {
+        for(auto & pair : pair_map[i]) {
+          data_pairs[i].emplace_back(std::get<0>(pair.second).comp, 
+              std::get<1>(pair.second), std::get<2>(pair.second), myid, 
+              std::get<3>(pair.second));
+            //std::cout << i << ":" << std::get<0>(pair.second).comp << "-" << std::get<1>(pair.second).comp << std::endl;
+          auto trg_unit = std::get<1>(pair.second).unit;
+          if(std::get<0>(pair.second).unit != trg_unit) {
+            data_pairs[trg_unit].emplace_back(std::get<1>(pair.second).comp, 
+                std::get<0>(pair.second), std::get<2>(pair.second), myid, 
+                std::get<3>(pair.second));
+          }
+          /*
+            std::cout << trg_unit << ":" << std::get<1>(pair.second).comp << "-" << std::get<0>(pair.second).comp << " *" << std::endl;
+          } else {
+            std::cout << trg_unit << ":" << std::get<1>(pair.second).comp << "-" << std::get<0>(pair.second).comp << std::endl;
+          }
+          */
+        }
+      }
       trace.exit_state("compute pairs");
-      internal::mst_set_data_min(data_pairs, start, g, trace);
+      internal::mst_set_data_min(data_pairs, remote_edges, start, g, trace);
     }
 
     int gr_all = 0;
@@ -449,6 +545,7 @@ void minimum_spanning_tree(GraphType & g) {
       if(pj_all == 0) break; 
     }
   }
+  internal::mst_set_edges(remote_edges, g, trace);
 
   dash::barrier();
 
