@@ -1247,7 +1247,9 @@ dart__tasking__fini()
   task_recycle_list = NULL;
   free_tasklist(task_free_list);
   task_free_list = NULL;
-  stop_threads();
+  if (threads_running) {
+    stop_threads();
+  }
   dart_tasking_datadeps_fini();
   dart__tasking__context_cleanup();
   destroy_threadpool(true);
