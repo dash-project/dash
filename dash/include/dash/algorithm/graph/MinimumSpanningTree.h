@@ -284,24 +284,6 @@ void mst_set_data_min(
   for(auto & pair : mapping) {
     auto trg_comp = std::get<1>(pair.second);
     graph.vertices().set_attributes(pair.first - start, trg_comp);
-    //std::cout << ">" << pair.first << ":" << trg_comp.comp << std::endl;
-    /*
-    if(trg_comp.unit == myid) {
-      auto it = mapping.find(trg_comp.comp);
-      vprop_t src_comp { pair.first, myid };
-
-      if(it != mapping.end()) {
-        auto weight = std::get<2>(it->second);
-        if(weight > std::get<2>(pair.second)) {
-          graph.vertices().set_attributes(trg_comp.comp - start, src_comp);
-      std::cout << "> " << trg_comp.comp << ":" << src_comp.comp << " *" << std::endl;
-        }
-      } else {
-        graph.vertices().set_attributes(trg_comp.comp - start, src_comp);
-      std::cout << "> " << trg_comp.comp << ":" << src_comp.comp << " *" << std::endl;
-      }
-    }
-    */
     if(myid == get<3>(pair.second)) {
       auto edge = std::get<4>(pair.second);
       auto prop = graph.out_edges().attributes(edge);
@@ -330,26 +312,26 @@ void mst_set_edges(
   std::vector<int> send;
   std::size_t total_send = 0;
   for(int i = 0; i < remote_edges.size(); ++i) {
-    sizes_send[i] = remote_edges[i].size() * sizeof(std::size_t);
+    sizes_send[i] = remote_edges[i].size();
     displs_send[i] = total_send;
     total_send += sizes_send[i];
   }
-  send.reserve(total_send / sizeof(std::size_t));
+  send.reserve(total_send);
   for(auto & set : remote_edges) {
     send.insert(send.end(), set.begin(), set.end());
   }
   std::vector<std::size_t> sizes_recv(remote_edges.size());
   std::vector<std::size_t> displs_recv(remote_edges.size());
-  dart_alltoall(sizes_send.data(), sizes_recv.data(), 1, 
-      DART_TYPE_INT, graph.team().dart_id());
+  dart_alltoall(sizes_send.data(), sizes_recv.data(), sizeof(std::size_t), 
+      DART_TYPE_BYTE, graph.team().dart_id());
   std::size_t total_recv = 0;
   for(int i = 0; i < sizes_recv.size(); ++i) {
     displs_recv[i] = total_recv;
     total_recv += sizes_recv[i];
   }
-  std::vector<int> recv(total_recv / sizeof(std::size_t));
+  std::vector<int> recv(total_recv);
   dart_alltoallv(send.data(), sizes_send.data(), displs_send.data(),
-      DART_TYPE_BYTE, recv.data(), sizes_recv.data(), 
+      DART_TYPE_INT, recv.data(), sizes_recv.data(), 
       displs_recv.data(), graph.team().dart_id());
   for(auto & edge : recv) {
     auto prop = graph.out_edges().attributes(edge);
@@ -477,19 +459,12 @@ void minimum_spanning_tree(GraphType & g) {
           data_pairs[i].emplace_back(std::get<0>(pair.second).comp, 
               std::get<1>(pair.second), std::get<2>(pair.second), myid, 
               std::get<3>(pair.second));
-            //std::cout << i << ":" << std::get<0>(pair.second).comp << "-" << std::get<1>(pair.second).comp << std::endl;
           auto trg_unit = std::get<1>(pair.second).unit;
           if(std::get<0>(pair.second).unit != trg_unit) {
             data_pairs[trg_unit].emplace_back(std::get<1>(pair.second).comp, 
                 std::get<0>(pair.second), std::get<2>(pair.second), myid, 
                 std::get<3>(pair.second));
           }
-          /*
-            std::cout << trg_unit << ":" << std::get<1>(pair.second).comp << "-" << std::get<0>(pair.second).comp << " *" << std::endl;
-          } else {
-            std::cout << trg_unit << ":" << std::get<1>(pair.second).comp << "-" << std::get<0>(pair.second).comp << std::endl;
-          }
-          */
         }
       }
       trace.exit_state("compute pairs");
