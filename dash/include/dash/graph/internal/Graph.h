@@ -67,10 +67,10 @@ public:
     for(int i = 0; i < n_units; ++i) {
       if(i == n_units - 1) {
         // avoid double errors
-        _blocks[i] = n_vertices - total_vertices;
+        _blocks[i] = n_vertices;
       } else {
-        _blocks[i] = n_vertices * (factors[i] / factor_sum);
-        total_vertices += _blocks[i];
+        total_vertices += n_vertices * (factors[i] / factor_sum);
+        _blocks[i] = total_vertices;
       }
     }
   }
@@ -94,7 +94,7 @@ public:
 
 private:
 
-  std::vector<int> _blocks;
+  std::vector<std::size_t> _blocks;
 
 };
 
