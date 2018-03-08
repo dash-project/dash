@@ -634,18 +634,6 @@ TEST_F(ConnectedComponentsTest, AlgorithmRun)
     {371, 431}, {431, 564}, {564, 779}, {779, 835}, {835, 877}, {877, 986}
   };
 
-  DASH_LOG_DEBUG("ConnectedComponentsTest.AlgorithmRun", 
-      "construction started");
-  graph_t g(edge_list.begin(), edge_list.end(), 1000);
-  DASH_LOG_DEBUG("ConnectedComponentsTest.AlgorithmRun", 
-      "construction finished");
-
-  dash::barrier();
-
-  DASH_LOG_DEBUG("ConnectedComponentsTest.AlgorithmRun", "algorithm started");
-  dash::connected_components(g);
-  DASH_LOG_DEBUG("ConnectedComponentsTest.AlgorithmRun", "algorithm finished");
-
   std::vector<int> results = { 
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -690,6 +678,20 @@ TEST_F(ConnectedComponentsTest, AlgorithmRun)
     0, 0, 0
   };
 
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Blocked.AlgorithmRun", 
+      "construction started");
+  graph_t g(edge_list.begin(), edge_list.end(), 1000);
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Blocked.AlgorithmRun", 
+      "construction finished");
+
+  dash::barrier();
+
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Blocked.AlgorithmRun", 
+      "algorithm started");
+  dash::connected_components(g);
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Blocked.AlgorithmRun", 
+      "algorithm finished");
+
   int wrong_components = 0;
   if(dash::myid() == 0) {
     int index = 0;
@@ -705,7 +707,42 @@ TEST_F(ConnectedComponentsTest, AlgorithmRun)
     // each component set according to results array
     EXPECT_EQ_U(0, wrong_components);
   }
-    
+
+  auto & team = dash::Team::All();
+  dash::LogarithmicVertexMapper<graph_t> mapper(1000, team.size());
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Logarithmic.AlgorithmRun", 
+      "construction started");
+  // TODO: creating 2 graphs in their own scopes results in a segfault
+  //       probably a problem with the destructor
+  //       happens only in GTest though
+  graph_t g2(edge_list.begin(), edge_list.end(), 1000, team, mapper);
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Logarithmic.AlgorithmRun", 
+      "construction finished");
+
   dash::barrier();
+
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Logarithmic.AlgorithmRun", 
+      "algorithm started");
+  dash::connected_components(g2);
+  DASH_LOG_DEBUG("ConnectedComponentsTest.Logarithmic.AlgorithmRun", 
+      "algorithm finished");
+
+  wrong_components = 0;
+  if(dash::myid() == 0) {
+    int index = 0;
+    for(auto it = g2.vertices().begin(); it != g2.vertices().end(); ++it) {
+      auto v = g2[it];
+      if(v.attributes().comp != results[index]) {
+        ++wrong_components;
+        break;
+      }
+      ++index;
+    }
+    
+    // each component set according to results array
+    EXPECT_EQ_U(0, wrong_components);
+  }
+  dash::barrier();
+    
 }
 

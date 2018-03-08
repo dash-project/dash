@@ -9,6 +9,7 @@ struct vprop {
 
 struct eprop {
   int weight;
+  bool is_min;
 };
 
 typedef dash::Graph<dash::UndirectedGraph, vprop, eprop>       graph_t;
@@ -34,45 +35,73 @@ TEST_F(MinimumSpanningTreeTest, AlgorithmRun)
     10}, {{15, 5}, 7}, {{15, 10}, 8}
   };
 
-  DASH_LOG_DEBUG("MinimumSpanningTreeTest.AlgorithmRun", 
+  std::size_t TREE_SIZE = 39;
+
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Blocked.AlgorithmRun", 
       "construction started");
   graph_t g(edge_list.begin(), edge_list.end(), 20);
-  DASH_LOG_DEBUG("MinimumSpanningTreeTest.AlgorithmRun", 
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Blocked.AlgorithmRun", 
       "construction finished");
 
-  DASH_LOG_DEBUG("MinimumSpanningTreeTest.AlgorithmRun", "algorithm started");
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Blocked.AlgorithmRun", 
+      "algorithm started");
   dash::minimum_spanning_tree(g);
-  DASH_LOG_DEBUG("MinimumSpanningTreeTest.AlgorithmRun", "algorithm finished");
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Blocked.AlgorithmRun", 
+      "algorithm finished");
 
-  std::vector<std::pair<int, int>> results = { 
-    {0, 10}, {0, 15}, {1, 17}, {1, 13}, {1, 10}, {2, 10}, {2, 3}, {4, 3}, 
-    {5, 0}, {6, 12}, {7, 5}, {8, 0}, {9, 2}, {11,13}, {12, 1}, {14, 13}, 
-    {15, 19}, {16, 13}, {18, 8}
-  };
-
-  int wrong_edges = 0;
+  std::unordered_set<std::size_t> results;
+  std::size_t total_weight = 0;
   if(dash::myid() == 0) {
-    int i = 0;
     for(auto it = g.out_edges().begin(); it != g.out_edges().end(); ++it) {
       auto e = g[it];
-      if(e.attributes().weight == -1) {
-        bool found = false;
-        for(auto & result : results ) {
-          // undirected graph: check edges in both directions
-          if((result.first == e.source().pos() 
-              && result.second == e.target().pos()) 
-              || (result.first == e.target().pos() 
-              && result.second == e.source().pos())) {
-            found = true;
-          }
-        }
-        if(!found) {
-          ++wrong_edges;
+      if(e.attributes().is_min) {
+        auto u = e.source().pos();
+        auto v = e.target().pos();
+        if(v < u) std::swap(u, v);
+        auto hash = std::hash<int>()(u) ^ std::hash<int>()(v); 
+        if(results.find(hash) == results.end()) {
+          results.insert(hash);
+          total_weight += e.attributes().weight;
         }
       }
-      ++i;
     }
-    EXPECT_EQ_U(0, wrong_edges);
+    EXPECT_EQ_U(TREE_SIZE, total_weight);
+  }
+
+  auto & team = dash::Team::All();
+  dash::LogarithmicVertexMapper<graph_t> mapper(20, team.size());
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Logarithmic.AlgorithmRun", 
+      "construction started");
+  // TODO: creating 2 graphs in their own scopes results in a segfault
+  //       probably a problem with the destructor
+  //       happens only in GTest though
+  graph_t g2(edge_list.begin(), edge_list.end(), 20, team, mapper);
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Logarithmic.AlgorithmRun", 
+      "construction finished");
+
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Logarithmic.AlgorithmRun", 
+      "algorithm started");
+  dash::minimum_spanning_tree(g2);
+  DASH_LOG_DEBUG("MinimumSpanningTreeTest.Logarithmic.AlgorithmRun", 
+      "algorithm finished");
+
+  results.clear();
+  total_weight = 0;
+  if(dash::myid() == 0) {
+    for(auto it = g2.out_edges().begin(); it != g2.out_edges().end(); ++it) {
+      auto e = g2[it];
+      if(e.attributes().is_min) {
+        auto u = e.source().pos();
+        auto v = e.target().pos();
+        if(v < u) std::swap(u, v);
+        auto hash = std::hash<int>()(u) ^ std::hash<int>()(v); 
+        if(results.find(hash) == results.end()) {
+          results.insert(hash);
+          total_weight += e.attributes().weight;
+        }
+      }
+    }
+    EXPECT_EQ_U(TREE_SIZE, total_weight);
   }
     
   dash::barrier();
