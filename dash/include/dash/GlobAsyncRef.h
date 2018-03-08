@@ -142,6 +142,8 @@ public:
   /**
    * Implicit conversion to const.
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, nonconst_value_type>::value,void>>
   operator GlobAsyncRef<const_value_type>() {
     return GlobAsyncRef<const_value_type>(_gptr);
   }
@@ -149,6 +151,8 @@ public:
   /**
    * Excpliti conversion to non-const.
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, const_value_type>::value,void>>
   explicit
   operator GlobAsyncRef<nonconst_value_type>() {
     return GlobAsyncRef<nonconst_value_type>(_gptr);
