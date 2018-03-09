@@ -54,7 +54,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::team() const noexcept
 {
   return *(_refview._mat->_team);
-} 
+}
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
@@ -62,8 +62,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::size() const noexcept
 {
   return _refview._viewspec.size();
-} 
- 
+}
+
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 constexpr MatrixRef<T, NumDim, CUR, PatternT>
@@ -286,7 +286,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim != 0), 
+typename std::enable_if<(__NumViewDim != 0),
   MatrixRef<T, NumDim, __NumViewDim, PatternT>>::type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
@@ -297,7 +297,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim != 0), 
+typename std::enable_if<(__NumViewDim != 0),
   MatrixRef<const T, NumDim, __NumViewDim, PatternT>>::type
 constexpr MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](size_type pos) const {
@@ -306,7 +306,8 @@ constexpr MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim == 0), GlobRef<T> >::type
+typename std::enable_if<(__NumViewDim == 0),
+          typename MatrixRef<T, NumDim, CUR, PatternT>::reference >::type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](size_type pos)
 {
@@ -317,7 +318,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t __NumViewDim>
-typename std::enable_if<(__NumViewDim == 0), GlobRef<const T> >::type
+typename std::enable_if<(__NumViewDim == 0),
+          typename MatrixRef<T, NumDim, CUR, PatternT>::const_reference >::type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](size_type pos) const
 {
@@ -337,7 +339,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
            MatrixRef<T, NumDim, CUR, PatternT> *
          >(this)->sub<SubDimension>(offset);
 }
- 
+
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
