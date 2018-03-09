@@ -16,13 +16,8 @@ protected:
   static constexpr long boundary_width = 5;
   static constexpr long ext_diff = ext_per_dim - boundary_width;
 
-
-
   template<typename MatrixT>
   void init_matrix3D(MatrixT& matrix);
-
-  template<typename MatrixRowT, typename MatrixColT>
-  void init_matrix3D(MatrixRowT& matrix_row, MatrixColT& matrix_col);
 };
 
 #endif // DASH__TEST__HALO_TEST_H_
