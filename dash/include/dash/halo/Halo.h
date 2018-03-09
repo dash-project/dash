@@ -1199,6 +1199,7 @@ public:
 
   /**
    * Returns the index belonging to the given coordinates and \ref ViewSpec
+   */
   region_index_t index_at(const ViewSpec_t&      view,
                           const ElementCoords_t& coords) const {
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
