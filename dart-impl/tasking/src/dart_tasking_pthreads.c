@@ -1015,8 +1015,10 @@ dart__tasking__task_complete()
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
+  dart_taskphase_t entry_phase = dart__tasking__phase_current();
+
   if (thread->current_task == &(root_task) &&
-      dart__tasking__phase_current() > DART_PHASE_FIRST) {
+      entry_phase > DART_PHASE_FIRST) {
     dart__tasking__perform_matching(thread, DART_PHASE_ANY);
     // enable worker threads to poll for remote messages
     worker_poll_remote = true;
@@ -1054,6 +1056,10 @@ dart__tasking__task_complete()
 
   // 3) clean up if this was the root task and thus no other tasks are running
   if (thread->current_task == &(root_task)) {
+    if (entry_phase > DART_PHASE_FIRST) {
+      // wait for all units to finish their tasks
+      dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+    }
     // recycled tasks can now be used again
     pthread_mutex_lock(&task_recycle_mutex);
     if (task_free_list == NULL) {
