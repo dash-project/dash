@@ -24,6 +24,18 @@ public:
   typedef typename graph_type::vertex_size_type    vertex_size_type;
 
   /**
+   * Default constructor.
+   */
+  BlockedVertexMapper() = default;
+
+  /**
+   * Constructs the blocked vertex mapper.
+   */
+  BlockedVertexMapper(vertex_size_type n_vertices, std::size_t n_units)
+    : _blocksize(n_vertices / n_units)
+  { }
+
+  /**
    * Returns the unit a vertex is mapped to.
    */
   dash::team_unit_t operator()(vertex_size_type v, vertex_size_type n_vertices, 
@@ -33,6 +45,17 @@ public:
     dash::team_unit_t unit { owner };
     return unit;
   }
+
+  /**
+   * Returns the blocksize of a given unit.
+   */
+  std::size_t size(team_unit_t unit) {
+    return _blocksize;
+  }
+
+private:
+
+  std::size_t _blocksize;
 
 };
 
@@ -72,6 +95,7 @@ public:
         total_vertices += n_vertices * (factors[i] / factor_sum);
         _blocks[i] = total_vertices;
       }
+      if(dash::myid() == 0) std::cout << n_vertices * (factors[i] / factor_sum) << std::endl;
     }
   }
 
@@ -90,6 +114,16 @@ public:
     }
     dash::team_unit_t unit { owner };
     return unit;
+  }
+
+  /**
+   * Returns the blocksize of a given unit.
+   */
+  std::size_t size(team_unit_t unit) {
+    if(unit == 0) {
+      return _blocks[0];
+    }
+    return _blocks[unit] - _blocks[unit - 1];
   }
 
 private:
