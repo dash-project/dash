@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <libdash.h>
 #include <dash/dart/if/dart.h>
+#include <dash/tasks/Tasks.h>
 
 #ifdef DASH_EXAMPLES_TASKSUPPORT
 
@@ -47,9 +48,11 @@ benchmark_task_creation(size_t num_tasks)
 {
   Timer t;
   for (size_t i = 0; i < num_tasks; ++i) {
-    dart_task_create(&empty_task, NULL, 0, NULL, 0, DART_PRIO_LOW);
+    //dart_task_create(&empty_task, NULL, 0, NULL, 0, DART_PRIO_LOW);
+    dash::tasks::async([](){});
   }
-  dart_task_complete();
+  //dart_task_complete();
+  dash::tasks::complete();
   dash::barrier();
   if (PrintOutput && dash::myid() == 0) {
     std::cout << "avg task creation/execution: " << t.Elapsed() / num_tasks / 2
@@ -57,6 +60,7 @@ benchmark_task_creation(size_t num_tasks)
   }
 }
 
+#if 0
 void
 benchmark_task_remotedep_creation(size_t num_tasks)
 {
@@ -83,6 +87,43 @@ benchmark_task_remotedep_creation(size_t num_tasks)
               << "us" << std::endl;
   }
 }
+#endif
+
+void
+benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
+{
+  dash::Array<int> array(dash::size()*num_deps);
+  int target = (dash::myid() + 1) % dash::size();
+
+  Timer t;
+
+  dash::tasks::async_barrier();
+
+  //for (size_t i = 1; i <= num_tasks; ++i) {
+    dash::tasks::parallel_for(0UL, num_tasks, 1,
+      [](int from, int to){
+        // nothing to do
+        //std::cout << "task " << from << std::endl;
+      },
+      [=, &array](
+        int from,
+        int to,
+        dash::tasks::DependencyVectorInserter inserter) {
+        for (int d = 0; d < num_deps; d++) {
+          *inserter = dash::tasks::in(array[target*num_deps + d]);
+        }
+      }
+    );
+  //}
+
+  dash::tasks::complete();
+  if (dash::myid() == 0) {
+    std::cout << "avg task creation/execution with " << num_deps
+              << " dependencies: "
+              << t.Elapsed() / num_tasks
+              << "us" << std::endl;
+  }
+}
 
 void
 benchmark_task_yield(size_t num_yields)
@@ -93,7 +134,7 @@ benchmark_task_yield(size_t num_yields)
   dart_task_complete();
   dash::barrier();
   if (dash::myid() == 0) {
-    std::cout << "avg task creation/execution: " << t.Elapsed() / num_yields
+    std::cout << "avg task yield: " << t.Elapsed() / num_yields
               << "us" << std::endl;
   }
 }
@@ -124,7 +165,9 @@ int main(int argc, char** argv)
   benchmark_task_yield(params.num_yield_tasks);
 
   if (dash::size() > 1) {
-    benchmark_task_remotedep_creation(params.num_create_tasks);
+    for (int i = 1; i <= 8; i*=2) {
+      benchmark_task_remotedep_creation(params.num_create_tasks, i);
+    }
   }
 
   dash::finalize();

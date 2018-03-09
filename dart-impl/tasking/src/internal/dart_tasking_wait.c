@@ -14,7 +14,7 @@ static dart_taskqueue_t handle_list;
 static dart_taskqueue_t handle_list_tmp;
 
 
-dart_ret_t
+void
 dart__task__wait_init()
 {
 #if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
@@ -23,7 +23,7 @@ dart__task__wait_init()
 #endif // HAVE_RESCHEDULING_YIELD
 }
 
-dart_ret_t
+void
 dart__task__wait_fini()
 {
 #if defined(HAVE_RESCHEDULING_YIELD) && HAVE_RESCHEDULING_YIELD
@@ -95,7 +95,7 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
 #endif // HAVE_RESCHEDULING_YIELD
 }
 
-dart_ret_t
+void
 dart__task__wait_progress()
 {
   if (dart_tasking_taskqueue_trylock(&handle_list_tmp) == DART_OK) {
@@ -127,7 +127,7 @@ dart__task__wait_progress()
   }
 }
 
-dart_ret_t
+void
 dart__task__wait_enqueue(dart_task_t *task)
 {
   DART_LOG_TRACE("Enqueueing blocked task %p \n", task);
