@@ -194,8 +194,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -208,8 +206,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   long sum_check = 0;
   if(myid == 0) {
-    index_type ext_diff = ext_per_dim - boundary_width;
-
     long** matrix_check = new long*[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
       matrix_check[i] = new long[ext_per_dim];
@@ -237,6 +233,15 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
     delete[] matrix_check;
   }
 
+  for(auto i = 0; i < ext_per_dim; ++i) {
+    for(auto j = 0; j < ext_per_dim; ++j) {
+      if(i >= boundary_width  && i < ext_diff && j >= boundary_width && j < ext_diff) {
+        auto tmp = matrix_halo[i][j];
+        if(tmp.is_local())
+          tmp = 5;
+      }
+    }
+  }
   matrix_halo.barrier();
 
   GlobBoundSpec_t bound_spec;
@@ -392,6 +397,56 @@ unsigned long calc_sum_halo_via_stencil(HaloWrapperT& halo_wrapper, StencilOpT s
   return sum;
 }
 
+template<typename MatrixT>
+void HaloTest::init_matrix3D(MatrixT& matrix) {
+  for(auto i = 0; i < ext_per_dim; ++i) {
+    for(auto j = 0; j < ext_per_dim; ++j) {
+      for(auto k = 0; k < ext_per_dim; ++k) {
+        if(i == 0 || i == ext_per_dim - 1 || j == 0 || j == ext_per_dim - 1 ||
+           k == 0 || k == ext_per_dim - 1) {
+            auto tmp = matrix[i][j][k];
+            if(tmp.is_local())
+              tmp = 10;
+          continue;
+        }
+        if(i >= boundary_width  && i < ext_diff && j >= boundary_width && j < ext_diff &&
+           k >= boundary_width && k < ext_diff) {
+          auto tmp = matrix[i][j][k];
+          if(tmp.is_local())
+            tmp = 5;
+          continue;
+        }
+      }
+    }
+  }
+}
+
+template<typename MatrixRowT, typename MatrixColT>
+void HaloTest::init_matrix3D(MatrixRowT& matrix_row, MatrixColT& matrix_col) {
+  for(auto i = 0; i < ext_per_dim; ++i) {
+    for(auto j = 0; j < ext_per_dim; ++j) {
+      for(auto k = 0; k < ext_per_dim; ++k) {
+        if(i == 0 || i == ext_per_dim - 1 || j == 0 || j == ext_per_dim - 1 ||
+           k == 0 || k == ext_per_dim - 1) {
+            auto tmp = matrix_row[i][j][k];
+            if(tmp.is_local())
+              tmp = 10;
+            matrix_col[i][j][k] = 10;
+          continue;
+        }
+        if(i >= boundary_width  && i < ext_diff && j >= boundary_width && j < ext_diff &&
+           k >= boundary_width && k < ext_diff) {
+          auto tmp = matrix_row[i][j][k];
+          if(tmp.is_local())
+            tmp = 5;
+          matrix_col[i][j][k] = 5;
+          continue;
+        }
+      }
+    }
+  }
+}
+
 TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 {
   using Pattern_t = dash::Pattern<3>;
@@ -407,8 +462,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -420,7 +473,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 
   matrix_halo.barrier();
 
-  index_type ext_diff = ext_per_dim - boundary_width;
   unsigned long sum_check = 0;
 
   if(myid == 0) {
@@ -452,6 +504,18 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
     delete[] matrix_check;
   }
 
+  for(auto i = 0; i < ext_per_dim; ++i) {
+    for(auto j = 0; j < ext_per_dim; ++j) {
+      for(auto k = 0; k < ext_per_dim; ++k) {
+        if(i >= boundary_width  && i < ext_diff && j >= boundary_width && j < ext_diff &&
+           k >= boundary_width && k < ext_diff) {
+          auto tmp = matrix_halo[i][j][k];
+          if(tmp.is_local())
+            tmp = 5;
+        }
+      }
+    }
+  }
   matrix_halo.barrier();
 
   StencilSpec_t stencil_spec(
@@ -495,8 +559,6 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -513,7 +575,6 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
 
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
@@ -528,15 +589,11 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
           }
           if(i == 1 || i == ext_per_dim_check - 2 || j == 1 || j == ext_per_dim_check - 2 ||
              k == 1 || k == ext_per_dim_check -2) {
-            matrix_halo[i-1][j-1][k-1] = 10;
-            matrix_halo_col[i-1][j-1][k-1] = 10;
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i > boundary_width  && i <= ext_diff && j > boundary_width && j <= ext_diff &&
              k > boundary_width && k <= ext_diff) {
-            matrix_halo[i-1][j-1][k-1] = 5;
-            matrix_halo_col[i-1][j-1][k-1] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -555,6 +612,8 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
     }
     delete[] matrix_check;
   }
+
+  init_matrix3D(matrix_halo, matrix_halo_col);
 
   dash::Team::All().barrier();
 
@@ -608,8 +667,6 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -623,7 +680,6 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
 
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim_check];
     for(auto i = 0; i < ext_per_dim_check; ++i) {
@@ -638,13 +694,11 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
           }
           if(i == 1 || i == ext_per_dim_check - 2 || j == 1 || j == ext_per_dim_check - 2 ||
              k == 1 || k == ext_per_dim_check -2) {
-            matrix_halo[i-1][j-1][k-1] = 10;
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i > boundary_width  && i <= ext_diff && j > boundary_width && j <= ext_diff &&
              k > boundary_width && k <= ext_diff) {
-            matrix_halo[i-1][j-1][k-1] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -664,6 +718,7 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
     delete[] matrix_check;
   }
 
+  init_matrix3D(matrix_halo);
 
   matrix_halo.barrier();
 
@@ -708,8 +763,6 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -723,7 +776,6 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
 
   auto ext_per_dim_check = ext_per_dim + 2;
   unsigned long sum_check = 0;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
@@ -741,13 +793,11 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
           }
           if(i == 0 || i == ext_per_dim - 1 || j == 1 || j == ext_per_dim_check - 2 ||
              k == 1 || k == ext_per_dim_check -2) {
-            matrix_halo[i][j-1][k-1] = 10;
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i >= boundary_width  && i < ext_diff && j > boundary_width && j <= ext_diff &&
              k > boundary_width && k <= ext_diff) {
-            matrix_halo[i][j-1][k-1] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -780,6 +830,8 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
     }
     delete[] matrix_check;
   }
+
+  init_matrix3D(matrix_halo);
 
   matrix_halo.barrier();
 
@@ -826,8 +878,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -844,7 +894,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   auto ext_per_dim_check = ext_per_dim + 6;
   unsigned long sum_check = 0;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
@@ -869,17 +918,11 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
           }
           if(i == 0 || i == ext_per_dim - 1 || j == 3 || j == ext_per_dim_check - 4 ||
              k == 3 || k == ext_per_dim_check - 4) {
-            if(j >= 3 && k >= 3 && j < ext_per_dim_check - 3 && k < ext_per_dim_check - 3) {
-              matrix_halo[i][j-3][k-3] = 10;
-              matrix_halo_col[i][j-3][k-3] = 10;
-            }
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i >= boundary_width  && i < ext_diff && j >= boundary_width + 3 && j < ext_diff + 3 &&
              k >= boundary_width + 3 && k < ext_diff + 3) {
-            matrix_halo[i][j-3][k-3] = 5;
-            matrix_halo_col[i][j-3][k-3] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -915,6 +958,8 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
     delete[] matrix_check;
 
   }
+
+  init_matrix3D(matrix_halo, matrix_halo_col);
 
   dash::Team::All().barrier();
 
@@ -969,8 +1014,6 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -987,7 +1030,6 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
   unsigned long sum_check_spec_3 = 0;
 
   auto ext_per_dim_check = ext_per_dim + 2;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
@@ -1005,13 +1047,11 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
           }
           if(i == 0 || i == ext_per_dim - 1 || j == 1 || j == ext_per_dim_check - 2 ||
              k == 1 || k == ext_per_dim_check -2) {
-            matrix_halo[i][j-1][k-1] = 10;
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i >= boundary_width  && i < ext_diff && j > boundary_width && j <= ext_diff &&
              k > boundary_width && k <= ext_diff) {
-            matrix_halo[i][j-1][k-1] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -1053,6 +1093,8 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
     }
     delete[] matrix_check;
   }
+
+  init_matrix3D(matrix_halo);
 
   matrix_halo.barrier();
 
@@ -1115,8 +1157,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
 
   auto myid(dash::myid());
 
-  auto boundary_width = 5;
-
   DistSpec_t dist_spec(dash::BLOCKED, dash::BLOCKED, dash::BLOCKED);
   TeamSpec_t team_spec{};
   team_spec.balance_extents();
@@ -1133,7 +1173,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
   unsigned long sum_check_spec_3 = 0;
 
   auto ext_per_dim_check = ext_per_dim + 6;
-  index_type ext_diff = ext_per_dim - boundary_width;
   if(myid == 0) {
     long*** matrix_check = new long**[ext_per_dim];
     for(auto i = 0; i < ext_per_dim; ++i) {
@@ -1158,15 +1197,11 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
           }
           if(i == 0 || i == ext_per_dim - 1 || j == 3 || j == ext_per_dim_check - 4 ||
              k == 3 || k == ext_per_dim_check - 4) {
-            if(j >= 3 && k >= 3 && j < ext_per_dim_check - 3 && k < ext_per_dim_check - 3) {
-              matrix_halo[i][j-3][k-3] = 10;
-            }
             matrix_check[i][j][k] = 10;
             continue;
           }
           if(i >= boundary_width  && i < ext_diff && j >= boundary_width + 3 && j < ext_diff + 3 &&
              k >= boundary_width + 3 && k < ext_diff + 3) {
-            matrix_halo[i][j-3][k-3] = 5;
             matrix_check[i][j][k] = 5;
             continue;
           }
@@ -1210,6 +1245,8 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
     delete[] matrix_check;
 
   }
+
+  init_matrix3D(matrix_halo);
 
   dash::Team::All().barrier();
 
