@@ -27,6 +27,9 @@
 #include <setjmp.h>
 #include <time.h>
 
+#define CLOCK_TIME_USEC(ts) \
+  ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
+
 #define CLOCK_DIFF_USEC(start, end)  \
   (uint64_t)((((end).tv_sec - (start).tv_sec)*1E6 + ((end).tv_nsec - (start).tv_nsec)/1E3))
 // the grace period after which idle thread go to sleep
@@ -35,6 +38,8 @@
 #define IDLE_THREAD_GRACE_SLEEP_USEC 100
 // the number of us a thread should sleep if IDLE_THREAD_SLEEP is not defined
 #define IDLE_THREAD_DEFAULT_USLEEP 1000
+// the number of tasks to wait until remote progress is triggered (10ms)
+#define REMOTE_PROGRESS_INTERVAL_USEC  1E4
 
 // true if threads should process tasks. Set to false to quit parallel processing
 static volatile bool parallel         = false;
@@ -116,6 +121,16 @@ dart_task_t * next_task(dart_thread_t *thread);
 
 static
 void handle_task(dart_task_t *task, dart_thread_t *thread);
+
+static
+void remote_progress(dart_thread_t *thread, bool force);
+
+static inline
+double current_time_us() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return CLOCK_TIME_USEC(ts);
+}
 
 static void
 invoke_taskfn(dart_task_t *task)
@@ -212,13 +227,11 @@ dart__tasking__yield(int delay)
 
   dart_task_t *next = NULL;
 
-  // progress
-  dart_tasking_remote_progress();
-
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
 
   if ( // check whether we got into this task from the root task
+       // if so we jump back into the root_task
       (thread->yield_target == DART_YIELD_TARGET_ROOT &&
        current_task != &root_task) ||
        // check whether the current task is blocked
@@ -243,6 +256,13 @@ dart__tasking__yield(int delay)
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
+  }
+
+  // progress
+  remote_progress(thread, (next == NULL));
+  if (next == NULL) {
+    // try again
+    next = next_task(thread);
   }
 
   if (next) {
@@ -313,7 +333,7 @@ dart__tasking__yield(int delay)
   // we do not execute another task to prevent serialization
   DART_LOG_INFO("Skipping dart__task__yield");
   // progress
-  dart_tasking_remote_progress();
+  remote_progress(get_current_thread(), false);
   // check for abort
   if (dart__tasking__cancellation_requested())
     dart__tasking__abort_current_task(thread);
@@ -500,6 +520,17 @@ dart_task_t * create_task(
   return task;
 }
 
+
+void remote_progress(dart_thread_t *thread, bool force)
+{
+  if (force ||
+      thread->last_progress_ts + REMOTE_PROGRESS_INTERVAL_USEC >= current_time_us())
+  {
+    dart_tasking_remote_progress();
+    thread->last_progress_ts = current_time_us();
+  }
+}
+
 void dart__tasking__destroy_task(dart_task_t *task)
 {
   if (task->data_size) {
@@ -671,7 +702,7 @@ void* thread_main(void *data)
     //       if polling is enabled or we have no runnable tasks anymore
 
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
-      dart_tasking_remote_progress();
+      remote_progress(thread, (task == NULL));
       dart__task__wait_progress();
       // wait for 100us to reduce pressure on master thread
       if (task == NULL) {
@@ -1005,14 +1036,14 @@ dart__tasking__task_complete()
 
   // main task processing routine
   while (DART_FETCH32(&(task->num_children)) > 0) {
+    dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
-    dart_tasking_remote_progress();
+    remote_progress(thread, (next == NULL));
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // c) check whether blocked tasks are ready
     dart__task__wait_progress();
     // d) process our tasks
-    dart_task_t *next = next_task(thread);
     handle_task(next, thread);
   }
 

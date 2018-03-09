@@ -132,7 +132,7 @@ typedef struct {
   int                     thread_id;
   int                     last_steal_thread;
   dart_yield_target_t     yield_target;
-
+  double                  last_progress_ts;  // the timestamp of the last remote progress call
 } dart_thread_t;
 
 struct dart_wait_handle_s {
