@@ -17,9 +17,9 @@ typedef void (context_func_t) (void*);
 #ifdef USE_UCONTEXT
 #include <ucontext.h>
 typedef struct context_struct {
-  ucontext_t      ctx;
   context_func_t *fn;
   void           *arg;
+  ucontext_t      ctx;
   jmp_buf         cancel_return;   // where to longjmp upon task cancellation
 } context_t;
 #else

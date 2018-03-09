@@ -39,7 +39,6 @@
 
 struct context_list_s {
   struct context_list_s *next;
-  context_t              ctx;
   char                  *stack;
   int                    length;
 #if defined(USE_MMAP)
@@ -48,6 +47,7 @@ struct context_list_s {
 #if defined(DART_ENABLE_VALGRIND)
   unsigned               vg_stack_id;
 #endif
+  context_t              ctx;
 };
 
 
