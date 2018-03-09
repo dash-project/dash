@@ -6,8 +6,7 @@
 #include <dash/Matrix.h>
 #include <dash/Pattern.h>
 #include <dash/memory/GlobStaticMem.h>
-
-#include <dash/halo/iterator/HaloMatrixIterator.h>
+#include <dash/halo/HaloStencilOperator.h>
 
 #include <type_traits>
 #include <vector>
@@ -21,13 +20,8 @@ namespace dash {
  * cells with values copied from adjacent units' boundary regions.
  *
  * The \c HaloMatrixWrapper acts as a wrapper of the local blocks of the NArray
- * and extends these by boundary and halo regions. This wrapper provides
- * \ref HaloMatrixIterator for the inner block, the boundary elements and
- * both.
- *
- * The inner block iterator ensures that no stencil point accesses halo or not
- * existing elements. The stencil points of the boundary iterator point at least
- * to one halo element.
+ * and extends these by boundary and halo regions. The HaloMatrixWrapper also
+ * provides a function to create a \ref HaloStencilOperator.
  *
  * Example for an outer block boundary iteration space (halo regions):
  *
@@ -48,33 +42,9 @@ namespace dash {
  *           |    `-------------------------'    '- halo width in dimension 1
  *           '                  \
  *     halo region 3             '- halo region 7
- *
- *
- * Example for an inner block boundary iteration space:
- *
- *                          boundary region 1
- *                                 :
- *                   .-------------'------------.
- *                   |                          |
- *           .-------.-------------------------.-------.
- *           |  0  1 |  2  3  4  5  6  7  8  9 | 10 11 |
- *           | 12 13 | 14 15 16 17 18 19 20 21 | 22 23 |
- *        .--:-------+-------------------------+-------:--.
- *        |  | 24 23 |                         | 34 35 |  |
- *      .-:  :  ...  :   inner block region    :  ...  :  :- boundary
- *      | |  | 60 62 |                         | 70 71 |  |  region 3
- *      | '--:-------+-------------------------+-------:--:
- *      |    | 72 73 | 74 75 76 77 78 79 80 81 | 82 83 |  :- boundary
- *      |    | 84 85 | 86 87 88 89 90 91 92 93 | 94 95 |  |  region 8
- *      |    `-------'-------------------------'-------'--'
- *      |            |                         |
- *      |            `------------.------------+
- *      :                         :
- *      boundary region 3   boundary region 8
- *
  */
 
-template <typename MatrixT, typename StencilSpecT>
+template <typename MatrixT>
 class HaloMatrixWrapper {
 private:
   using Pattern_t             = typename MatrixT::pattern_type;
@@ -85,16 +55,6 @@ private:
 public:
   using Element_t = typename MatrixT::value_type;
 
-  using iterator       = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
-                                      StencilViewScope::ALL>;
-  using const_iterator = const iterator;
-  using iterator_inner = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
-                                            StencilViewScope::INNER>;
-  using const_iterator_inner = const iterator_inner;
-  using iterator_bnd = HaloMatrixIterator<Element_t, Pattern_t, StencilSpecT,
-                                          StencilViewScope::BOUNDARY>;
-  using const_iterator_bnd = const iterator_bnd;
-
   using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
   using GlobBoundSpec_t = GlobalBoundarySpec<NumDimensions>;
   using HaloBlock_t     = HaloBlock<Element_t, Pattern_t>;
@@ -104,7 +64,6 @@ public:
 
 private:
   static constexpr auto MemoryArrange = Pattern_t::memory_order();
-  static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
 
   using pattern_size_t = typename Pattern_t::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
@@ -112,22 +71,19 @@ private:
   using Region_t       = Region<Element_t, Pattern_t, NumDimensions>;
 
 public:
-  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT& stencil_spec,
-                    const GlobBoundSpec_t& cycle_spec = GlobBoundSpec_t())
-  : _matrix(matrix), _stencil_spec(stencil_spec), _cycle_spec(cycle_spec),
-    _halo_reg_spec(stencil_spec), _view_local(matrix.local.extents()),
+  /**
+   * Constructor that takes \ref Matrix, a \ref GlobalBoundarySpec and a user
+   * defined number of stencil specifications (\ref StencilSpec)
+   */
+  template<typename... StencilSpecT>
+  HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec,
+      const StencilSpecT&... stencil_spec)
+  : _matrix(matrix), _cycle_spec(cycle_spec),
+    _halo_spec(stencil_spec...), _view_local(matrix.local.extents()),
     _view_global(ViewSpec_t(matrix.local.offsets(), matrix.local.extents())),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
-               _halo_reg_spec, cycle_spec),
-    _halomemory(_haloblock), _begin(_haloblock, _halomemory, _stencil_spec, 0),
-    _end(_haloblock, _halomemory, _stencil_spec,
-         _haloblock.view_inner_with_boundaries().size()),
-    _ibegin(_haloblock, _halomemory, _stencil_spec, 0),
-    _iend(_haloblock, _halomemory, _stencil_spec,
-          _haloblock.view_inner().size()),
-    _bbegin(_haloblock, _halomemory, _stencil_spec, 0),
-    _bend(_haloblock, _halomemory, _stencil_spec, _haloblock.boundary_size()) {
-
+               _halo_spec, cycle_spec),
+    _halomemory(_haloblock) {
     for(const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
         continue;
@@ -284,8 +240,19 @@ public:
         num_elems_block = region.region().extent(0);
       }
     }
-    set_stencil_offsets();
   }
+
+  /**
+   * Constructor that takes \ref Matrix and a user
+   * defined number of stencil specifications (\ref StencilSpec).
+   * The \ref GlobalBoundarySpec is set to default.
+   */
+
+  template<typename... StencilSpecT>
+  HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
+  : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
+
+  HaloMatrixWrapper() = delete;
 
   ~HaloMatrixWrapper() {
     for(auto& dart_type : _dart_types) {
@@ -293,43 +260,6 @@ public:
     }
     _dart_types.clear();
   }
-
-  /// returns the begin iterator for all relevant elements (inner + boundary)
-  iterator begin() noexcept { return _begin; }
-
-  /// returns the begin const iterator for all relevant elements
-  /// (inner + boundary)
-  const_iterator begin() const noexcept { return _begin; }
-
-  /// returns the end iterator for all relevant elements (inner + boundary)
-  iterator end() noexcept { return _end; }
-
-  /// returns the end const iterator for all relevant elements (inner + boundary)
-  const_iterator end() const noexcept { return _end; }
-
-  /// returns the begin iterator for all inner elements
-  iterator_inner ibegin() noexcept { return _ibegin; }
-
-  /// returns the begin const iterator for all inner elements
-  const_iterator_inner ibegin() const noexcept { return _ibegin; }
-
-  /// returns the end iterator for all inner elements
-  iterator_inner iend() noexcept { return _iend; }
-
-  /// returns the end const iterator for all inner elements
-  const_iterator_inner iend() const noexcept { return _iend; }
-
-  /// returns the begin iterator for all boundary elements
-  iterator_bnd bbegin() noexcept { return _bbegin; }
-
-  /// returns the begin const iterator for all boundary elements
-  const_iterator_bnd bbegin() const noexcept { return _bbegin; }
-
-  /// returns the end iterator for all boundary elements
-  iterator_bnd bend() noexcept { return _bend; }
-
-  /// returns the end const iterator for all boundary elements
-  const_iterator_bnd bend() const noexcept { return _bend; }
 
   /// returns the underlying \ref HaloBlock
   const HaloBlock_t& halo_block() { return _haloblock; }
@@ -384,11 +314,6 @@ public:
    *
    */
   const ViewSpec_t& view_local() const { return _view_local; }
-
-  /**
-   * Returns the stencil specification \ref StencilSpec
-   */
-  const StencilSpecT& stencil_spec() const { return _stencil_spec; }
 
   /**
    * Returns the halo memory management object \ref HaloMemory
@@ -463,7 +388,7 @@ public:
       coords[d] -= offsets[d];
     }
     auto index       = _haloblock.index_at(_view_local, coords);
-    const auto& spec = _halo_reg_spec.spec(index);
+    const auto& spec = _halo_spec.spec(index);
     auto halomem_pos = _halomemory.pos_at(index);
     if(spec.level() == 0 || halomem_pos == nullptr)
       return nullptr;
@@ -471,7 +396,7 @@ public:
     if(!_halomemory.to_halo_mem_coords_check(index, coords))
       return nullptr;
 
-    return _halomemory.pos_at(index) + _halomemory.value_at(index, coords);
+    return _halomemory.pos_at(index) + _halomemory.offset(index, coords);
   }
 
   /**
@@ -480,7 +405,7 @@ public:
    */
   Element_t* halo_element_at_local(ElementCoords_t coords) {
     auto index       = _haloblock.index_at(_view_local, coords);
-    const auto& spec = _halo_reg_spec.spec(index);
+    const auto& spec = _halo_spec.spec(index);
     auto halomem_pos = _halomemory.pos_at(index);
     if(spec.level() == 0 || halomem_pos == nullptr)
       return nullptr;
@@ -488,77 +413,21 @@ public:
     if(!_halomemory.to_halo_mem_coords_check(index, coords))
       return nullptr;
 
-    return _halomemory.pos_at(index) + _halomemory.value_at(index, coords);
+    return _halomemory.pos_at(index) + _halomemory.offset(index, coords);
   }
 
-  void set_value_at_inner_local(const ElementCoords_t& coords, Element_t value,
-      Element_t coefficient_center,
-      std::function<Element_t(const Element_t&, const Element_t&)> op =
-        [](const Element_t& lhs , const Element_t& rhs) {return rhs;}) {
-    auto* center = _matrix.lbegin();
-    pattern_index_t offset = 0;
+  /**
+   * Crates \ref HaloStencilOperator for a given \ref StencilSpec.
+   * Asserts whether the StencilSpec fits in the provided halo regions.
+   */
+  template<typename StencilSpecT>
+  HaloStencilOperator<Element_t,Pattern_t,StencilSpecT> stencil_operator(const StencilSpecT& stencil_spec) {
+    for(const auto& stencil : stencil_spec.specs()) {
+      assert(stencil.max() <=
+          _halo_spec.extent(RegionSpec<NumDimensions>::index(stencil)));
+    }
 
-    if(MemoryArrange == ROW_MAJOR) {
-      offset = coords[0];
-      for(auto d = 1; d < NumDimensions; ++d)
-        offset = offset * _view_local.extent(d) + coords[d];
-    } else {
-      offset = coords[NumDimensions - 1];
-      for(auto d = NumDimensions - 2; d >= 0; --d)
-        offset = offset * _view_local.extent(d) + coords[d];
-    }
-    center += offset;
-    *center = op(*center, coefficient_center * value);
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      auto& stencil_point_value = center[_stencil_offsets[i]];
-      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
-    }
-  }
-
-  void set_value_at_boundary_local(const ElementCoords_t& coords, Element_t value,
-      Element_t coefficient_center,
-      std::function<Element_t(const Element_t&, const Element_t&)> op =
-        [](const Element_t& lhs , const Element_t& rhs) {return rhs;}) {
-    auto* center = _matrix.lbegin();
-    pattern_index_t offset = 0;
-
-    if(MemoryArrange == ROW_MAJOR) {
-      offset = coords[0];
-      for(auto d = 1; d < NumDimensions; ++d)
-        offset = offset * _view_local.extent(d) + coords[d];
-    } else {
-      offset = coords[NumDimensions - 1];
-      for(auto d = NumDimensions - 2; d >= 0; --d)
-        offset = offset * _view_local.extent(d) + coords[d];
-    }
-    center += offset;
-    *center = op(*center, coefficient_center * value);
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      bool halo = false;
-      for(auto d = 0; d < NumDimensions; ++d) {
-        auto coord_value = coords[d] + _stencil_spec[i][d];
-        if(coord_value < 0 || coord_value >= _view_local.extent(d)) {
-          halo = true;
-          break;
-        }
-      }
-      if(halo)
-        continue;
-      auto& stencil_point_value = center[_stencil_offsets[i]];
-     // if(dash::myid() == 1)
-     //   std::cout << dash::myid() << " : " << coords[0] + _stencil_spec[i][0] << "," << coords[1] + _stencil_spec[i][1] << "," << coords[2] + _stencil_spec[i][2] << " -> " << _stencil_spec[i].coefficient()*value << std::endl;
-      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
-    }
-  }
-
-  template <typename IteratorT, typename FunctionT>
-  void compute(IteratorT inputBegin, IteratorT inputEnd, IteratorT outputBegin,
-               FunctionT func) {
-    while(inputBegin != inputEnd) {
-      *outputBegin = func(inputBegin);
-      ++inputBegin;
-      ++outputBegin;
-    }
+    return HaloStencilOperator<Element_t, Pattern_t, StencilSpecT>(_haloblock, _halomemory, stencil_spec, _view_local);
   }
 
 private:
@@ -582,42 +451,16 @@ private:
     if(!async)
       dart_wait_local(&data.halo_data.handle);
   }
-
-  void set_stencil_offsets() {
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      signed_pattern_size_t offset = 0;
-      if(MemoryArrange == ROW_MAJOR) {
-        offset = _stencil_spec[i][0];
-        for(auto d = 1; d < NumDimensions; ++d)
-          offset = _stencil_spec[i][d] + offset * _view_local.extent(d);
-      } else {
-        offset = _stencil_spec[i][NumDimensions - 1];
-        for(auto d = NumDimensions - 2; d >= 0; --d)
-          offset = _stencil_spec[i][d] + offset * _view_local.extent(d);
-      }
-      _stencil_offsets[i] = offset;
-    }
-  }
-
 private:
   MatrixT&                       _matrix;
-  const StencilSpecT&            _stencil_spec;
   const GlobBoundSpec_t          _cycle_spec;
-  const HaloSpec_t               _halo_reg_spec;
+  const HaloSpec_t               _halo_spec;
   const ViewSpec_t               _view_local;
   const ViewSpec_t               _view_global;
   const HaloBlock_t              _haloblock;
   HaloMemory_t                   _halomemory;
   std::map<region_index_t, Data> _region_data;
   std::vector<dart_datatype_t>   _dart_types;
-  std::array<signed_pattern_size_t, NumStencilPoints> _stencil_offsets;
-
-  iterator       _begin;
-  iterator       _end;
-  iterator_inner _ibegin;
-  iterator_inner _iend;
-  iterator_bnd   _bbegin;
-  iterator_bnd   _bend;
 };
 
 }  // namespace dash
