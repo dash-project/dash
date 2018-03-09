@@ -59,19 +59,12 @@ void fill(
   auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::fill", "thread capacity:",  n_threads);
   #pragma omp parallel num_threads(n_threads)
-  for (index_t lt = 0; lt < nlocal; lt += 2) {
+  for (index_t lt = 0; lt < nlocal; ++lt) {
     lfirst[lt] = value;
   }
 
-  #pragma omp parallel num_threads(n_threads)
-  for (index_t lt = 1; lt < nlocal; lt += 2) {
-    lfirst[lt] = value;
-  }
 #else
-  for (index_t lt = 0; lt < nlocal; lt += 2) {
-    lfirst[lt] = value;
-  }
-  for (index_t lt = 1; lt < nlocal; lt += 2) {
+  for (index_t lt = 0; lt < nlocal; ++lt) {
     lfirst[lt] = value;
   }
 #endif
