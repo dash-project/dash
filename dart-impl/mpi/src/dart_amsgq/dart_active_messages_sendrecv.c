@@ -336,7 +336,7 @@ dart_amsg_sendrevc_process_blocking(
         MPI_Ibarrier(team_data->comm, &req);
       }
     }
-  } while (!barrier_flag && !send_flag);
+  } while (!(barrier_flag && send_flag));
 #ifdef IS_ISSEND_BROKEN
   // if Issend is broken we need another round of synchronization
   MPI_Barrier(team_data->comm);
