@@ -11,10 +11,10 @@ using matrix_t     = dash::Matrix<
                        double, 2,
                        typename pattern_t::index_type,
                        pattern_t>;
-using StencilSpecT = dash::StencilSpec<2,4>;
 using StencilT     = dash::StencilPoint<2>;
+using StencilSpecT = dash::StencilSpec<StencilT,2,4>;
 using GlobBoundSpecT   = dash::GlobalBoundarySpec<2>;
-using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t, StencilSpecT>;
+using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t>;
 
 using array_t      = dash::Array<double>;
 
@@ -85,15 +85,23 @@ int main(int argc, char *argv[])
     print_matrix(matrix);
 #endif
 
-  StencilSpecT stencil_spec({ StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1)});
+  StencilSpecT stencil_spec( StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1));
 
-  GlobBoundSpecT bound_spec{BoundaryProp::CYCLIC, BoundaryProp::CYCLIC};
+  GlobBoundSpecT bound_spec(dash::BoundaryProp::CYCLIC, dash::BoundaryProp::CYCLIC);
 
-  HaloMatrixWrapperT halomat(matrix, stencil_spec, bound_spec);
-  HaloMatrixWrapperT halomat2(matrix2, stencil_spec, bound_spec);
+  HaloMatrixWrapperT halomat(matrix, bound_spec, stencil_spec);
+  HaloMatrixWrapperT halomat2(matrix2, bound_spec, stencil_spec);
+
+  auto stencil_op = halomat.stencil_operator(stencil_spec);
+  auto stencil_op2 = halomat2.stencil_operator(stencil_spec);
+
+  decltype(stencil_op)* current_op = &stencil_op;
+  decltype(stencil_op2)* new_op = &stencil_op2;
 
   HaloMatrixWrapperT* current_halo = &halomat;
   HaloMatrixWrapperT* new_halo = &halomat2;
+
+
 
   double dx{ 1.0 };
   double dy{ 1.0 };
@@ -138,8 +146,8 @@ int main(int argc, char *argv[])
     }
 #endif
     // slow version
-    auto it_end = current_halo->iend();
-    for(auto it = current_halo->ibegin(); it != it_end; ++it)
+    auto it_end = current_op->iend();
+    for(auto it = current_op->ibegin(); it != it_end; ++it)
     {
       auto core = *it;
       auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
@@ -151,8 +159,8 @@ int main(int argc, char *argv[])
     current_halo->wait();
 
     // Calculation of boundary Halo elements
-    auto it_bend = current_halo->bend();
-    for (auto it = current_halo->bbegin(); it != it_bend; ++it) {
+    auto it_bend = current_op->bend();
+    for (auto it = current_op->bbegin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
           (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
@@ -162,6 +170,7 @@ int main(int argc, char *argv[])
 
     // swap current matrix and current halo matrix
     std::swap(current_halo, new_halo);
+    std::swap(current_op, new_op);
     current_matrix.barrier();
   }
   // final total energy

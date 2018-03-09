@@ -40,8 +40,8 @@ template <typename ElementT, typename PatternT, typename StencilSpecT>
 class HaloStencilOperator {
 private:
   static constexpr auto NumStencilPoints = StencilSpecT::num_stencil_points();
-  static constexpr auto NumDimensions = PatternT::ndim();
-  static constexpr auto MemoryArrange = PatternT::memory_order();
+  static constexpr auto NumDimensions    = PatternT::ndim();
+  static constexpr auto MemoryArrange    = PatternT::memory_order();
 
   using pattern_size_t        = typename PatternT::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
@@ -49,21 +49,20 @@ private:
 
 public:
   using iterator       = HaloStencilIterator<ElementT, PatternT, StencilSpecT,
-                                      StencilViewScope::ALL>;
+                                       StencilViewScope::ALL>;
   using const_iterator = const iterator;
   using iterator_inner = HaloStencilIterator<ElementT, PatternT, StencilSpecT,
-                                            StencilViewScope::INNER>;
+                                             StencilViewScope::INNER>;
   using const_iterator_inner = const iterator_inner;
   using iterator_bnd = HaloStencilIterator<ElementT, PatternT, StencilSpecT,
-                                          StencilViewScope::BOUNDARY>;
+                                           StencilViewScope::BOUNDARY>;
   using const_iterator_bnd = const iterator_bnd;
 
   using StencilOffsets_t = typename iterator::StencilOffsets_t;
-  using HaloBlock_t     = HaloBlock<ElementT, PatternT>;
-  using HaloMemory_t    = HaloMemory<HaloBlock_t>;
-  using ViewSpec_t      = ViewSpec<NumDimensions, pattern_index_t>;
-  using ElementCoords_t = std::array<pattern_index_t, NumDimensions>;
-
+  using HaloBlock_t      = HaloBlock<ElementT, PatternT>;
+  using HaloMemory_t     = HaloMemory<HaloBlock_t>;
+  using ViewSpec_t       = ViewSpec<NumDimensions, pattern_index_t>;
+  using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
 
 public:
   /**
@@ -72,7 +71,7 @@ public:
    */
   HaloStencilOperator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory,
                       const StencilSpecT& stencil_spec,
-                      const ViewSpec_t& view_local)
+                      const ViewSpec_t&   view_local)
   : _halo_block(haloblock), _halo_memory(halomemory),
     _stencil_spec(stencil_spec), _view_local(view_local),
     _stencil_offsets(set_stencil_offsets()),
@@ -85,8 +84,7 @@ public:
           _halo_block.view_inner().size()),
     _bbegin(_halo_block, _halo_memory, _stencil_spec, _stencil_offsets, 0),
     _bend(_halo_block, _halo_memory, _stencil_spec, _stencil_offsets,
-        _halo_block.boundary_size()) {
-    }
+          _halo_block.boundary_size()) {}
 
   HaloStencilOperator() = delete;
 
@@ -100,7 +98,8 @@ public:
   /// returns the end iterator for all relevant elements (inner + boundary)
   iterator end() noexcept { return _end; }
 
-  /// returns the end const iterator for all relevant elements (inner + boundary)
+  /// returns the end const iterator for all relevant elements (inner +
+  /// boundary)
   const_iterator end() const noexcept { return _end; }
 
   /// returns the begin iterator for all inner elements
@@ -145,19 +144,20 @@ public:
   /**
    * Modifies all stencil point elements and the center within the inner view.
    * The stencil points are multiplied with their coefficent (\ref StencilPoint)
-   * and the center is  multiplied with the given center coefficient. The results
-   * then modifies the center/stencil point elements via the given operation.
+   * and the center is  multiplied with the given center coefficient. The
+   * results then modifies the center/stencil point elements via the given
+   * operation.
    *
    * \param coords center coordinate
    * \param value base value for all points
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  void set_value_at_inner_local(const ElementCoords_t& coords, ElementT value,
-      ElementT coefficient_center,
-      std::function<ElementT(const ElementT&, const ElementT&)> op =
-        [](const ElementT& lhs , const ElementT& rhs) {return rhs;}) {
-    auto* center = _local_memory;
+  void set_value_at_inner_local(
+    const ElementCoords_t& coords, ElementT value, ElementT coefficient_center,
+    std::function<ElementT(const ElementT&, const ElementT&)> op =
+      [](const ElementT& lhs, const ElementT& rhs) { return rhs; }) {
+    auto*           center = _local_memory;
     pattern_index_t offset = 0;
 
     if(MemoryArrange == ROW_MAJOR) {
@@ -173,7 +173,8 @@ public:
     *center = op(*center, coefficient_center * value);
     for(auto i = 0; i < NumStencilPoints; ++i) {
       auto& stencil_point_value = center[_stencil_offsets[i]];
-      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
+      stencil_point_value =
+        op(stencil_point_value, _stencil_spec[i].coefficient() * value);
     }
   }
 
@@ -182,19 +183,20 @@ public:
    * If a stencil point points to a halo element or a non existing element
    * no operation is performed for this one.
    * The stencil points are multiplied with their coefficent (\ref StencilPoint)
-   * and the center is  multiplied with the given center coefficient. The results
-   * then modifies the center/stencil point elements via the given operation.
+   * and the center is  multiplied with the given center coefficient. The
+   * results then modifies the center/stencil point elements via the given
+   * operation.
    *
    * \param coords center coordinate
    * \param value base value for all points
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  void set_value_at_boundary_local(const ElementCoords_t& coords, ElementT value,
-      ElementT coefficient_center,
-      std::function<ElementT(const ElementT&, const ElementT&)> op =
-        [](const ElementT& lhs , const ElementT& rhs) {return rhs;}) {
-    auto* center = _local_memory;
+  void set_value_at_boundary_local(
+    const ElementCoords_t& coords, ElementT value, ElementT coefficient_center,
+    std::function<ElementT(const ElementT&, const ElementT&)> op =
+      [](const ElementT& lhs, const ElementT& rhs) { return rhs; }) {
+    auto*           center = _local_memory;
     pattern_index_t offset = 0;
 
     if(MemoryArrange == ROW_MAJOR) {
@@ -220,7 +222,8 @@ public:
       if(halo)
         continue;
       auto& stencil_point_value = center[_stencil_offsets[i]];
-      stencil_point_value = op(stencil_point_value, _stencil_spec[i].coefficient() * value);
+      stencil_point_value =
+        op(stencil_point_value, _stencil_spec[i].coefficient() * value);
     }
   }
 
@@ -260,5 +263,5 @@ private:
   iterator_bnd   _bend;
 };
 
-}
-#endif // DASH__HALO_HALOSTENCILOPERATOR_H
+}  // namespace dash
+#endif  // DASH__HALO_HALOSTENCILOPERATOR_H
