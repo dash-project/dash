@@ -1,7 +1,7 @@
 #ifndef DASH__HALO_HALOSTENCILOPERATOR_H
 #define DASH__HALO_HALOSTENCILOPERATOR_H
 
-#include <dash/halo/iterator/HaloMatrixIterator.h>
+#include <dash/halo/iterator/HaloStencilIterator.h>
 
 namespace dash {
 /**
