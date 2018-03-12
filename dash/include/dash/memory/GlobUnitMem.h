@@ -186,7 +186,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobUnitMem.~GlobUnitMem()", _begptr);
     if (_owns_mem) {
-      _allocator.deallocate(_begptr);
+      _allocator.deallocate(_begptr, _nlelem);
     }
     DASH_LOG_TRACE("GlobUnitMem.~GlobUnitMem >");
   }

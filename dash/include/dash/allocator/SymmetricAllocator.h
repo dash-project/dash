@@ -15,6 +15,8 @@
 #include <dash/allocator/AllocatorTraits.h>
 #include <dash/allocator/internal/Types.h>
 
+#include <dash/Exception.h>
+
 #include <algorithm>
 #include <cassert>
 #include <utility>
@@ -121,11 +123,9 @@ public:
    * Creates a new instance of \c dash::SymmetricAllocator for a given team.
    */
   explicit SymmetricAllocator(
-      Team const&    team,
+      Team const&          team,
       local_allocator_type a = {static_cast<LMemSpace*>(
-          get_default_memory_space<
-              void,
-              memory_space_local_domain_tag,
+          get_default_local_memory_space<
               typename memory_traits::
                   memory_space_type_category>())}) noexcept;
 
@@ -187,7 +187,12 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  void deallocate(pointer gptr);
+  void deallocate(pointer gptr, size_type num_local_elem);
+
+  /**
+   * Returns a copy of the local allocator object associated with the vector.
+   */
+  inline local_allocator_type get_local_allocator() const noexcept;
 
 private:
   /**
@@ -414,8 +419,10 @@ void SymmetricAllocator<
     ElementType,
     AllocationPolicy,
     LMemSpace,
-    LocalAlloc>::deallocate(pointer gptr)
+    LocalAlloc>::deallocate(pointer gptr, size_type nelem)
 {
+  DASH_ASSERT_EQ(1, _segments.size(), "invalid number of segments");
+  DASH_ASSERT_EQ(nelem, _segments.front().length(), "invalid size argument");
   do_deallocate(gptr, false);
 }
 
@@ -475,6 +482,26 @@ void SymmetricAllocator<
   }
 
   DASH_LOG_DEBUG("SymmetricAllocator.deallocate >");
+}
+
+template <
+    typename ElementType,
+    global_allocation_policy AllocationPolicy,
+    typename LMemSpace,
+    template <class, class> class LocalAlloc>
+typename SymmetricAllocator<
+    ElementType,
+    AllocationPolicy,
+    LMemSpace,
+    LocalAlloc>::local_allocator_type
+SymmetricAllocator<
+    ElementType,
+    AllocationPolicy,
+    LMemSpace,
+    LocalAlloc>::
+    get_local_allocator() const noexcept
+{
+  return this->_alloc;
 }
 
 template <

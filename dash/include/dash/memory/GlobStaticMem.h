@@ -96,6 +96,8 @@ private:
       allocator::DefaultAllocator>;
 
   using allocator_traits = dash::allocator_traits<allocator_type>;
+  using local_allocator_traits =
+      std::allocator_traits<typename allocator_traits::local_allocator>;
 
 public:
   using value_type = typename std::decay<ElementType>::type;
@@ -127,33 +129,6 @@ private:
 
 public:
   /**
-   * Constructor, creates instance of GlobStaticMem with pre-allocated
-   * memory space.
-   */
-  GlobStaticMem(
-    dart_gptr_t gbegin,
-    /// Number of local elements to allocate in global memory space
-    size_type   n_local_elem,
-    /// Team containing all units operating on the global memory region
-    Team      & team = dash::Team::All())
-  : _allocator(team),
-    _begptr(gbegin),
-    _team(&team),
-    _teamid(team.dart_id()),
-    _nunits(team.size()),
-    _myid(team.myid()),
-    _nlelem(n_local_elem)
-  {
-    DASH_LOG_TRACE("GlobStaticMem(gbegin,nlocal,team)",
-                   "preallocated at:",        _begptr,
-                   "number of local values:", _nlelem,
-                   "team size:",              team.size());
-    update_lbegin();
-    update_lend();
-    DASH_LOG_TRACE("GlobStaticMem(gbegin,nlocal,team) >");
-  }
-
-  /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
    *
@@ -177,7 +152,7 @@ public:
     DASH_LOG_TRACE("GlobStaticMem(nlocal,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
-    _begptr = _allocator.allocate(_nlelem);
+    _begptr = allocator_traits::allocate(_allocator, _nlelem);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
@@ -210,6 +185,9 @@ public:
     DASH_LOG_DEBUG("GlobStaticMem(lvals,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
+    //We always have to allocate even if initializer list is empty.
+    //The reason is that allocation might be collective and it may be by design
+    //that some units do not contribute any local memory
     _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
@@ -220,15 +198,21 @@ public:
                    "Capacity of local memory range differs from number "
                    "of specified local elements");
 
+
+
     // Initialize allocated local elements with specified values:
-    auto copy_end = std::copy(local_elements.begin(),
-                              local_elements.end(),
-                              _lbegin);
-    DASH_ASSERT_EQ(_lend, copy_end,
-                   "Initialization of specified local values failed");
+    auto local_alloc = _allocator.get_local_allocator();
+    auto begin       = lbegin();
+
+    // Construct these values instead of copy them
+    for (auto it = std::begin(local_elements); it < std::end(local_elements);
+         ++it, ++begin) {
+      local_allocator_traits::construct(local_alloc, begin, *it);
+    }
 
     constexpr auto const policy =
         allocator_traits::allocation_policy::value;
+
     if (policy == global_allocation_policy::collective) {
       // Wait for initialization of local values at all units.
       // Barrier synchronization is okay here as multiple units are
@@ -250,7 +234,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobStaticMem.~GlobStaticMem()", _begptr);
     // check if has been moved away
     if(!DART_GPTR_ISNULL(_begptr)){
-      _allocator.deallocate(_begptr);
+      allocator_traits::deallocate(
+          _allocator, _begptr, _nlelem);
       _begptr = DART_GPTR_NULL;
     }
     DASH_LOG_TRACE("GlobStaticMem.~GlobStaticMem >");
@@ -300,7 +285,7 @@ public:
   self_t & operator=(self_t && other) {
     // deallocate old memory
     if(!DART_GPTR_ISNULL(_begptr)){
-      _allocator.deallocate(_begptr);
+      allocator_traits::deallocate(_allocator, _begptr, _nlelem);
     }
 
     _allocator = std::move(other._allocator);

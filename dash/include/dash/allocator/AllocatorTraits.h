@@ -64,6 +64,54 @@ struct allocator_traits_const_local_void_pointer<_Alloc, false> {
       typename _Alloc::local_allocator_type>::const_void_pointer type;
 };
 
+DASH__META__DEFINE_TRAIT__HAS_TYPE(pointer)
+
+template <class _Alloc, bool = has_type_pointer<_Alloc>::value>
+struct allocator_traits_pointer {
+  typedef typename _Alloc::pointer type;
+};
+
+template <class _Alloc>
+struct allocator_traits_pointer<_Alloc, false> {
+  typedef dart_gptr_t type;
+};
+
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer)
+
+template <class _Alloc, bool = has_type_const_pointer<_Alloc>::value>
+struct allocator_traits_const_pointer {
+  typedef typename _Alloc::const_pointer type;
+};
+
+template <class _Alloc>
+struct allocator_traits_const_pointer<_Alloc, false> {
+  typedef const dart_gptr_t type;
+};
+
+DASH__META__DEFINE_TRAIT__HAS_TYPE(void_pointer)
+
+template <class _Alloc, bool = has_type_void_pointer<_Alloc>::value>
+struct allocator_traits_void_pointer {
+  typedef typename _Alloc::void_pointer type;
+};
+
+template <class _Alloc>
+struct allocator_traits_void_pointer<_Alloc, false> {
+  typedef dart_gptr_t type;
+};
+
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_void_pointer)
+
+template <class _Alloc, bool = has_type_const_void_pointer<_Alloc>::value>
+struct allocator_traits_const_void_pointer {
+  typedef typename _Alloc::const_void_pointer type;
+};
+
+template <class _Alloc>
+struct allocator_traits_const_void_pointer<_Alloc, false> {
+  typedef const dart_gptr_t type;
+};
+
 DASH__META__DEFINE_TRAIT__HAS_TYPE(difference_type)
 
 template <class _Alloc, bool = has_type_difference_type<_Alloc>::value>
@@ -97,13 +145,21 @@ struct allocator_traits {
   typedef typename Alloc::allocation_policy    allocation_policy;
   typedef typename Alloc::local_allocator_type local_allocator;
 
-  //Optional Definitions
+  // Optional Definitions
   typedef typename detail::allocator_traits_difference_type<Alloc>::type
-      difference_type;
-  typedef typename detail::allocator_traits_size_type<Alloc>::type
-      size_type;
+                                                                   difference_type;
+  typedef typename detail::allocator_traits_size_type<Alloc>::type size_type;
 
-  //Local Allocator Traits
+  // Global Allocator Traits
+  typedef typename detail::allocator_traits_pointer<Alloc>::type pointer;
+  typedef typename detail::allocator_traits_const_pointer<Alloc>::type
+      const_pointer;
+  typedef typename detail::allocator_traits_void_pointer<Alloc>::type
+      void_pointer;
+  typedef typename detail::allocator_traits_const_void_pointer<Alloc>::type
+      const_void_pointer;
+
+  // Local Allocator Traits
   typedef typename detail::allocator_traits_local_pointer<Alloc>::type
       local_pointer;
   typedef typename detail::allocator_traits_const_local_pointer<Alloc>::type
@@ -140,7 +196,6 @@ struct allocator_traits {
   using rebind_traits = dash::allocator_traits<rebind_alloc<U>>;
   */
 
-  /*
   static pointer allocate(allocator_type& a, size_type n)
   {
     return a.allocate(n);
@@ -150,7 +205,6 @@ struct allocator_traits {
   {
     a.deallocate(p, n);
   }
-  */
 };
 
 }  // namespace dash

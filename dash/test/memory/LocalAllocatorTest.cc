@@ -42,7 +42,7 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
 
   {
     auto        target_old = Alloc_t(dash::Team::All());
-    dart_gptr_t requested  = target_old.allocate(sizeof(int) * 10);
+    dart_gptr_t requested  = target_old.allocate(10);
     gptr                   = GlobPtr_t(requested);
 
     if (dash::myid().id == 0) {
@@ -62,7 +62,7 @@ TEST_F(LocalAllocatorTest, MoveAssignment)
 
   dash::barrier();
 
-  target_new.deallocate(gptr.dart_gptr());
+  target_new.deallocate(gptr.dart_gptr(), 10);
 }
 
 TEST_F(LocalAllocatorTest, MoveCtor)
@@ -74,7 +74,7 @@ TEST_F(LocalAllocatorTest, MoveCtor)
 
   {
     auto        target_old = Alloc_t(dash::Team::All());
-    dart_gptr_t requested  = target_old.allocate(sizeof(int) * 5);
+    dart_gptr_t requested  = target_old.allocate(5);
     gptr                   = GlobPtr_t(requested);
 
     if (dash::myid().id == 0) {
@@ -93,5 +93,5 @@ TEST_F(LocalAllocatorTest, MoveCtor)
 
   dash::barrier();
 
-  target_new.deallocate(gptr.dart_gptr());
+  target_new.deallocate(gptr.dart_gptr(), 5);
 }

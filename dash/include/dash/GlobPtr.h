@@ -64,12 +64,17 @@ private:
   typedef GlobPtr<ElementType, GlobMemT>                self_t;
 
 public:
-  typedef ElementType                               value_type;
-  typedef GlobPtr<const ElementType, GlobMemT>      const_type;
-  typedef typename GlobMemT::index_type             index_type;
-  typedef typename GlobMemT::size_type              size_type;
+  typedef ElementType                          value_type;
+  typedef GlobPtr<const ElementType, GlobMemT> const_type;
+  typedef typename GlobMemT::index_type        index_type;
+  typedef typename GlobMemT::size_type         size_type;
+  typedef index_type                           gptrdiff_t;
 
-  typedef index_type                                   gptrdiff_t;
+  /**
+   * Rebind to a different type of pointer
+   */
+  template<typename T>
+  using rebind = dash::GlobPtr<T, GlobMemT>;
 
 public:
   template <typename T, class MemSpaceT>
@@ -87,13 +92,6 @@ public:
   friend dash::gptrdiff_t dash::distance(
     const GlobPtr<T1, MemSpaceT1> & gptr_begin,
     const GlobPtr<T2, MemSpaceT2> & gptr_end);
-
-public:
-  /// Convert GlobPtr<T> to GlobPtr<U>.
-  template<typename U, class MSp = GlobMemT>
-  struct rebind {
-    typedef GlobPtr<U, MSp> other;
-  };
 
 private:
   // Raw global pointer used to initialize this pointer instance

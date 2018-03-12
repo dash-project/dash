@@ -195,7 +195,7 @@ private:
 
   using self_t = GlobalMemorySpace;
 
-  using pointer = dash::GlobPtr<T, self_t>;
+  using pointer       = dash::GlobPtr<T, self_t>;
   using const_pointer = dash::GlobPtr<const T, self_t>;
 
 public:
@@ -235,8 +235,7 @@ public:
 protected:
   virtual pointer do_allocate(size_t bytes, size_t alignment) = 0;
 
-  virtual void do_deallocate(
-      pointer p, size_t bytes, size_t alignment) = 0;
+  virtual void do_deallocate(pointer p, size_t bytes, size_t alignment) = 0;
 
   virtual bool do_is_equal(const GlobalMemorySpace& other) const noexcept = 0;
 };
@@ -281,7 +280,7 @@ inline bool operator!=(
 ///////////////////////////////////////////////////////////////////////////////
 //
 
-//TODO: this is very ugly and we should prefer to create a factory
+// TODO: this is very ugly and we should prefer to create a factory
 
 template <
     class ElementType,
@@ -318,9 +317,18 @@ get_default_memory_space<
   return get_default_hbw_space();
 }
 
+template <class MSpaceTypeCategory>
+inline MemorySpace<void, memory_space_local_domain_tag>*
+get_default_local_memory_space()
+{
+  return get_default_memory_space<
+      void,
+      memory_space_local_domain_tag,
+      MSpaceTypeCategory>();
+}
 }  // namespace dash
 
-#include <dash/memory/HostSpace.h>
 #include <dash/memory/HBWSpace.h>
+#include <dash/memory/HostSpace.h>
 
 #endif  // DASH__MEMORY__MEMORY_SPACE_H__INCLUDED
