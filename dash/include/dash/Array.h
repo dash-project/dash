@@ -679,6 +679,8 @@ public:
   typedef GlobIter<      value_type, PatternType, glob_mem_type>         pointer;
   typedef GlobIter<const value_type, PatternType, glob_mem_type>   const_pointer;
 
+  typedef ElementType *                                            local_pointer;
+  typedef ElementType const *                                const_local_pointer;
 
   typedef DistributionSpec<1>                                  distribution_spec;
 
@@ -722,6 +724,12 @@ private:
     SizeSpec_t;
   typedef std::unique_ptr<glob_mem_type>
     PtrGlobMemType_t;
+
+  using allocator_traits =
+      dash::allocator_traits<typename glob_mem_type::allocator_type>;
+
+  using local_allocator_traits =
+      std::allocator_traits<typename allocator_traits::local_allocator>;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -1394,7 +1402,10 @@ public:
     }
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
+
+
     if (m_globmem != nullptr) {
+      destruct_at_end(m_lbegin);
       m_globmem.reset();
     }
     m_size = 0;
@@ -1433,7 +1444,10 @@ public:
     m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
-    m_lend      = m_lbegin + m_lsize;
+    m_lend      = m_lbegin;
+
+    construct_at_end(m_lsize);
+
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_size);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
@@ -1455,6 +1469,48 @@ public:
   }
 
 private:
+  template <typename _Iter>
+  void construct_at_end(_Iter begin, _Iter end) noexcept
+  {
+    if (m_lsize == 0) return;
+
+    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+
+    DASH_ASSERT_EQ(
+        std::distance(begin, end), m_lsize, "Invalid size of local range");
+
+    for (auto it = begin; it < end; ++it, ++m_lend) {
+      local_allocator_traits::construct(local_alloc, m_lend, *it);
+    }
+  }
+
+  void construct_at_end(size_type nl) noexcept
+  {
+    if (m_lsize == 0) return;
+
+    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+
+    do {
+      local_allocator_traits::construct(local_alloc, this->m_lend);
+      ++this->m_lend;
+      --nl;
+    } while (nl > 0);
+  }
+
+  void destruct_at_end(local_pointer new_last) noexcept
+  {
+    if (0 == m_lsize) return;
+
+    local_pointer soon_to_be_end = m_lend;
+
+    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+
+    while (new_last != soon_to_be_end) {
+      local_allocator_traits::destroy(local_alloc, --soon_to_be_end);
+    }
+    m_lend = new_last;
+  }
+
   bool allocate(
     const PatternType                 & pattern,
     std::initializer_list<value_type>   local_elements)
@@ -1476,7 +1532,9 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = PtrGlobMemType_t(new glob_mem_type(local_elements, *m_team));
+    m_globmem   = PtrGlobMemType_t(new glob_mem_type(local_elements.size(), *m_team));
+
+
     // Global iterators:
     m_begin     = iterator(m_globmem.get(), pattern);
     m_end       = iterator(m_begin) + m_size;
@@ -1484,7 +1542,11 @@ private:
     m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
-    m_lend      = m_lbegin + pattern.local_size();
+    m_lend      = m_lbegin;
+
+    //construct all elements and properly set m_lend
+    construct_at_end(std::begin(local_elements), std::end(local_elements));
+
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_size);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);

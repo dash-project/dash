@@ -3,6 +3,7 @@
 
 #include <dash/memory/GlobStaticMem.h>
 
+#if 0
 
 TEST_F(GlobStaticMemTest, ConstructorInitializerList)
 {
@@ -28,10 +29,19 @@ TEST_F(GlobStaticMemTest, ConstructorInitializerList)
   }
 }
 
+#endif
+
 TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 {
   auto globmem_local_elements = { 1, 2, 3 };
-  auto globmem = dash::GlobStaticMem<int, dash::HostSpace>(globmem_local_elements);
+  auto globmem = dash::GlobStaticMem<int, dash::HostSpace>(globmem_local_elements.size());
+
+  std::copy(
+      std::begin(globmem_local_elements),
+      std::end(globmem_local_elements),
+      globmem.lbegin());
+
+  globmem.barrier();
 
   DASH_LOG_DEBUG_VAR("GlobStaticMemTest", globmem.size());
   EXPECT_EQ_U(globmem.size(), 3 * dash::size());
@@ -107,7 +117,14 @@ TEST_F(GlobStaticMemTest, LocalBegin)
                     ? dash::Team::All()
                     : dash::Team::All().split(2);
 
-  auto   target = dash::GlobStaticMem<int, dash::HostSpace>(target_local_elements, sub_team);
+  auto   target = dash::GlobStaticMem<int, dash::HostSpace>(target_local_elements.size(), sub_team);
+
+  std::copy(
+      std::begin(target_local_elements),
+      std::end(target_local_elements),
+      target.lbegin());
+
+  target.barrier();
 
   for (int l = 0; l < target_local_elements.size(); l++) {
     EXPECT_EQ_U(*(target_local_elements.begin() + l), target.lbegin()[l]);

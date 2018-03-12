@@ -89,18 +89,19 @@ private:
 
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
 
-  using allocator_type = dash::SymmetricAllocator<
+  using allocator_traits = dash::allocator_traits<dash::SymmetricAllocator<
       ElementType,
       AllocationPolicy,
       LocalMemorySpace,
-      allocator::DefaultAllocator>;
+      allocator::DefaultAllocator>>;
 
-  using allocator_traits = dash::allocator_traits<allocator_type>;
   using local_allocator_traits =
       std::allocator_traits<typename allocator_traits::local_allocator>;
 
 public:
   using value_type = typename std::decay<ElementType>::type;
+
+  using allocator_type = typename allocator_traits::allocator_type;
 
   typedef typename allocator_traits::size_type       size_type;
   typedef typename allocator_traits::difference_type difference_type;
@@ -161,6 +162,7 @@ public:
     DASH_LOG_TRACE("GlobStaticMem(nlocal,team) >");
   }
 
+#if 0
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
@@ -225,6 +227,7 @@ public:
     DASH_LOG_DEBUG("GlobStaticMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);
   }
+#endif
 
   /**
    * Destructor, collectively frees underlying global memory.
@@ -233,6 +236,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobStaticMem.~GlobStaticMem()", _begptr);
     // check if has been moved away
+    // NOTE: We do not need an explicit barrier here as the synchronization
+    // policy of the underlying allocator handles this
     if(!DART_GPTR_ISNULL(_begptr)){
       allocator_traits::deallocate(
           _allocator, _begptr, _nlelem);
@@ -524,6 +529,10 @@ public:
     res_gptr += local_index;
     DASH_LOG_DEBUG("GlobStaticMem.at (+g_unit) >", res_gptr);
     return res_gptr;
+  }
+
+  allocator_type get_allocator() const noexcept {
+    return this->_allocator;
   }
 
 private:

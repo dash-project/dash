@@ -520,6 +520,7 @@ public:
     return false;
   }
 
+
   /**
    * The instance of \c GlobStaticMem used by this iterator to resolve addresses
    * in global memory.

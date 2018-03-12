@@ -1,8 +1,8 @@
 
 #include <gtest/gtest.h>
 
-#include "AccumulateTest.h"
 #include "../TestBase.h"
+#include "AccumulateTest.h"
 
 #include <dash/Array.h>
 #include <dash/algorithm/Accumulate.h>
@@ -10,11 +10,11 @@
 
 #include <array>
 
-
-TEST_F(AccumulateTest, SimpleStart) {
+TEST_F(AccumulateTest, SimpleStart)
+{
   const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
-  auto value = 2, start = 10;
+  size_t       num_elem_total = _dash_size * num_elem_local;
+  auto         value = 2, start = 10;
 
   dash::Array<int> target(num_elem_total, dash::BLOCKED);
 
@@ -22,20 +22,21 @@ TEST_F(AccumulateTest, SimpleStart) {
 
   dash::barrier();
 
-  int result = dash::accumulate(target.begin(),
-				target.end(),
-				start); //start value
+  int result = dash::accumulate(
+      target.begin(),
+      target.end(),
+      start);  // start value
 
-  if(dash::myid() == 0) {
+  if (dash::myid() == 0) {
     ASSERT_EQ_U(num_elem_total * value + start, result);
   }
 }
 
-
-TEST_F(AccumulateTest, OpMult) {
+TEST_F(AccumulateTest, OpMult)
+{
   const size_t num_elem_local = 1;
-  using value_t = uint64_t;
-  size_t num_elem_total       = std::max(static_cast<ssize_t>(32), dash::size());
+  using value_t               = uint64_t;
+  size_t  num_elem_total = std::max(static_cast<ssize_t>(32), dash::size());
   value_t value = 2, start = 10;
 
   dash::Array<uint64_t> target(num_elem_total, dash::BLOCKED);
@@ -44,41 +45,50 @@ TEST_F(AccumulateTest, OpMult) {
 
   dash::barrier();
 
-  auto result = dash::accumulate(target.begin(),
-                                 target.end(),
-                                 start, //start value
-                                 dash::multiply<value_t>());
+  auto result = dash::accumulate(
+      target.begin(),
+      target.end(),
+      start,  // start value
+      dash::multiply<value_t>());
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U((1ULL << num_elem_total) * start, result);
   }
 }
 
-
-TEST_F(AccumulateTest, SimpleStruct) {
+TEST_F(AccumulateTest, SimpleStruct)
+{
   struct value_struct {
     int x, y;
-    value_struct() : x(0), y(0)
-    { }
-    value_struct(int x, int y) : x(x), y(y)
-    { }
-    value_struct operator+(const value_struct& rhs) const {
+    value_struct()
+      : x(0)
+      , y(0)
+    {
+    }
+    value_struct(int x, int y)
+      : x(x)
+      , y(y)
+    {
+    }
+    value_struct operator+(const value_struct& rhs) const
+    {
       value_struct result(x, y);
       result.x += rhs.x;
       result.y += rhs.y;
       return result;
     }
-    value_struct& operator+=(const value_struct& rhs) {
+    value_struct& operator+=(const value_struct& rhs)
+    {
       this->x += rhs.x;
       this->y += rhs.y;
       return *this;
     }
   };
 
-  const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
+  const size_t  num_elem_local = 100;
+  size_t        num_elem_total = _dash_size * num_elem_local;
   constexpr int x = 1, y = 2;
-  value_struct value(x, y);
+  value_struct  value(x, y);
 
   dash::Array<value_struct> target(num_elem_total, dash::BLOCKED);
 
@@ -87,29 +97,31 @@ TEST_F(AccumulateTest, SimpleStruct) {
   dash::barrier();
 
   // full-range reduce
-  auto result = dash::accumulate(target.begin(), target.end(),
-                                 value_struct(10, 20));
+  auto result =
+      dash::accumulate(target.begin(), target.end(), value_struct(10, 20));
 
-  if(dash::myid() == 0) {
+  if (dash::myid() == 0) {
     ASSERT_EQ_U(num_elem_total * x + 10, result.x);
     ASSERT_EQ_U(num_elem_total * y + 20, result.y);
   }
 
   // half-range reduce
-  result = dash::accumulate(target.begin(), target.begin() + num_elem_total/2,
-                            value_struct(10, 20));
+  result = dash::accumulate(
+      target.begin(),
+      target.begin() + num_elem_total / 2,
+      value_struct(10, 20));
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
-    ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(num_elem_total / 2 * x + 10, result.x);
+    ASSERT_EQ_U(num_elem_total / 2 * y + 20, result.y);
   }
 }
 
-
-TEST_F(AccumulateTest, StringConcatOperaton) {
+TEST_F(AccumulateTest, StringConcatOperaton)
+{
   const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
-  auto value = 2;
+  size_t       num_elem_total = _dash_size * num_elem_local;
+  auto         value          = 2;
 
   // Create a vector
   dash::Array<int> target(4);
@@ -121,15 +133,12 @@ TEST_F(AccumulateTest, StringConcatOperaton) {
   dash::barrier();
 
   std::string result = std::accumulate(
-				       std::next(target.begin()),
-				       target.end(),
-				       std::to_string(target[0]), // start element
-                                    [](std::string x1, int x2) {
-                                        return x1 + '-' + std::to_string(x2);
-                                    });
+      std::next(target.begin()),
+      target.end(),
+      std::to_string(target[0]),  // start element
+      [](std::string x1, int x2) { return x1 + '-' + std::to_string(x2); });
 
-  if(dash::myid() == 0) {
+  if (dash::myid() == 0) {
     ASSERT_STREQ("1-2-3-4", result.c_str());
   }
 }
-
