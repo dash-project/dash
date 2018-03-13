@@ -11,7 +11,7 @@ namespace dash {
 
 enum class StencilViewScope : std::uint8_t { INNER, BOUNDARY, ALL };
 /*
- * Iterator with stencil points and halo access \see HaloStencilOperator
+ * Iterator with stencil points and halo access \see HaloStencilOperator.
  */
 template <typename ElementT, typename PatternT, typename StencilSpecT,
           StencilViewScope Scope>
@@ -50,6 +50,11 @@ public:
 public:
   /**
    * Constructor
+   *
+   * \param haloblock \ref HaloBlock instance to use
+   * \param stencil_spec \ref StencilSpec to use
+   * \param stencil_offsets stencil offsets for every stencil point
+   * \param idx position of the iterator
    */
   HaloStencilIterator(const HaloBlock_t& haloblock, HaloMemory_t& halomemory,
                       const StencilSpecT&     stencil_spec,
@@ -183,7 +188,7 @@ public:
   Self_t operator++(int) {
     Self_t result = *this;
     ++_idx;
-    set_coords();
+    next_element();
 
     return result;
   }

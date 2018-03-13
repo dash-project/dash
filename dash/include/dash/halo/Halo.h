@@ -93,7 +93,7 @@ private:
 public:
   using stencil_size_t  = std::size_t;
   using stencil_index_t = std::size_t;
-  using Specs_t         = std::array<StencilPointT, NumStencilPoints>;
+  using StencilArray_t  = std::array<StencilPointT, NumStencilPoints>;
 
 public:
   /**
@@ -101,7 +101,7 @@ public:
    *
    * Takes a list of \ref StencilPoint
    */
-  constexpr StencilSpec(const Specs_t& specs) : _specs(specs) {}
+  constexpr StencilSpec(const StencilArray_t& specs) : _specs(specs) {}
 
   /**
    * Constructor
@@ -125,7 +125,7 @@ public:
   /**
    * \return container storing all stencil points
    */
-  constexpr const Specs_t& specs() const { return _specs; }
+  constexpr const StencilArray_t& specs() const { return _specs; }
 
   /**
    * \return number of stencil points
@@ -159,7 +159,7 @@ public:
   }
 
 private:
-  Specs_t _specs{};
+  StencilArray_t _specs{};
 };  // StencilSpec
 
 /**
@@ -414,8 +414,10 @@ public:
    */
   dim_t relevant_dim() const { return _rel_dim; }
 
-  /// returns the number of coordinates unequal the center (1) for all
-  /// dimensions
+  /**
+   * returns the number of coordinates unequal the center (1) for all
+   * dimensions
+   */
   dim_t level() const { return _level; }
 
 private:
@@ -477,27 +479,13 @@ public:
 
   template <typename StencilSpecT>
   HaloSpec(const StencilSpecT& stencil_spec) {
-    for(const auto& stencil : stencil_spec.specs()) {
-      auto stencil_combination = stencil;
-
-      set_region_spec(stencil_combination);
-      while(next_region(stencil, stencil_combination)) {
-        set_region_spec(stencil_combination);
-      }
-    }
+    read_stencil_points(stencil_spec);
   }
 
   template <typename StencilSpecT, typename... Args>
   HaloSpec(const StencilSpecT& stencil_spec, const Args&... stencil_specs)
   : HaloSpec(stencil_specs...) {
-    for(const auto& stencil : stencil_spec.specs()) {
-      auto stencil_combination = stencil;
-
-      set_region_spec(stencil_combination);
-      while(next_region(stencil, stencil_combination)) {
-        set_region_spec(stencil_combination);
-      }
-    }
+    read_stencil_points(stencil_spec);
   }
 
   template <typename... ARGS>
@@ -511,23 +499,50 @@ public:
 
   HaloSpec(const Self_t& other) { _specs = other._specs; }
 
-  /// returns \ref RegionSpec for given index
+  /**
+   * Matching \ref RegionSpec for a given region index
+   */
   constexpr RegionSpec_t spec(const region_index_t index) const {
     return _specs[index];
   }
 
-  /// returns the extent for the given region
+  /**
+   * Extent for a given region index
+   */
   constexpr region_extent_t extent(const region_index_t index) const {
     return _specs[index].extent();
   }
 
-  /// returns number of contained regions
+  /**
+   * Number of specified regions
+   */
   constexpr region_size_t num_regions() const { return _num_regions; }
 
-  /// returns all contained \ref RegionSpec
+  /**
+   * Used \ref RegionSpec instance
+   */
   const Specs_t& specs() const { return _specs; }
 
 private:
+  /*
+   * Reads all stencil points of the given stencil spec and sets the region
+   * specification.
+   */
+  template <typename StencilSpecT>
+  void read_stencil_points(const StencilSpecT& stencil_spec) {
+    for(const auto& stencil : stencil_spec.specs()) {
+      auto stencil_combination = stencil;
+
+      set_region_spec(stencil_combination);
+      while(next_region(stencil, stencil_combination)) {
+        set_region_spec(stencil_combination);
+      }
+    }
+  }
+
+  /*
+   * Sets the region extent dependent on the given stencil point
+   */
   template <typename StencilPointT>
   void set_region_spec(const StencilPointT& stencil) {
     auto index = RegionSpec_t::index(stencil);
@@ -935,7 +950,7 @@ private:
 };  // Region
 
 /**
- * Takes the local part of the NArray and builds all specified halo and
+ * Takes the local part of the NArray and builds halo and
  * boundary regions.
  */
 template <typename ElementT, typename PatternT>
@@ -1139,23 +1154,33 @@ public:
    */
   const GlobMem_t& globmem() const { return _globmem; }
 
-  /// Returns a specific halo region
+  /**
+   * Returns a specific halo region
+   */
   const Region_t* halo_region(const region_index_t index) const {
     return _halo_reg_mapping[index];
   }
 
-  /// Returns all halo regions
+  /**
+   * Returns all halo regions
+   */
   const RegionVector_t& halo_regions() const { return _halo_regions; }
 
-  /// Returns the maximal extension for a  specific dimension
+  /**
+   * Returns the maximal extension for a  specific dimension
+   */
   const HaloExtsMaxPair_t& halo_extension_max(dim_t dim) const {
     return _halo_extents_max[dim];
   }
 
-  /// Returns the maximal halo extension for every dimension
+  /**
+   * Returns the maximal halo extension for every dimension
+   */
   const HaloExtsMax_t& halo_extension_max() const { return _halo_extents_max; }
 
-  /// Returns a specific region
+  /**
+   * Returns a specific region
+   */
   const Region_t* boundary_region(const region_index_t index) const {
     return _boundary_reg_mapping[index];
   }
@@ -1166,10 +1191,14 @@ public:
    */
   const RegionVector_t& boundary_regions() const { return _boundary_regions; }
 
-  /// Returns the initial \ref ViewSpec
+  /**
+   * Returns the initial \ref ViewSpec
+   */
   const ViewSpec_t& view() const { return _view; }
 
-  /// Returns a \ref ViewSpec that combines the boundary and inner view
+  /**
+   * Returns a \ref ViewSpec that combines the boundary and inner view
+   */
   const ViewSpec_t& view_inner_with_boundaries() const {
     return _view_inner_with_boundaries;
   }
@@ -1187,10 +1216,14 @@ public:
     return _boundary_elements;
   }
 
-  /// Number of halo elements
+  /**
+   * Number of halo elements
+   */
   pattern_size_t halo_size() const { return _size_halo_elems; }
 
-  /// Number of boundary elements (no duplicates)
+  /**
+   * Number of boundary elements (no duplicates)
+   */
   pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
   /**

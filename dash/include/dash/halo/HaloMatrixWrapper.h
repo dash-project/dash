@@ -245,7 +245,6 @@ public:
    * defined number of stencil specifications (\ref StencilSpec).
    * The \ref GlobalBoundarySpec is set to default.
    */
-
   template <typename... StencilSpecT>
   HaloMatrixWrapper(MatrixT& matrix, const StencilSpecT&... stencil_spec)
   : HaloMatrixWrapper(matrix, GlobBoundSpec_t(), stencil_spec...) {}
@@ -259,7 +258,9 @@ public:
     _dart_types.clear();
   }
 
-  /// returns the underlying \ref HaloBlock
+  /**
+   * Returns the underlying \ref HaloBlock
+   */
   const HaloBlock_t& halo_block() { return _haloblock; }
 
   /**
@@ -299,12 +300,22 @@ public:
   }
 
   /**
-   * Waits until all halo updates are finished. Only useful for asyncronous
+   * Waits until all halo updates are finished. Only useful for asynchronous
    * halo updates.
    */
   void wait() {
     for(auto& region : _region_data)
       dart_wait_local(&region.second.halo_data.handle);
+  }
+
+  /**
+   * Waits until the halo updates for the given halo region is finished.
+   * Only useful for asynchronous halo updates.
+   */
+  void wait(region_index_t index) {
+    auto it_find = _region_data.find(index);
+    if(it_find != _region_data.end())
+      dart_wait_local(it_find->second.halo_data.handle);
   }
 
   /**
@@ -319,10 +330,20 @@ public:
   HaloMemory_t& halo_memory() { return _halomemory; }
 
   /**
+   * Returns the halo memory management object \ref HaloMemory
+   */
+  const HaloMemory_t& halo_memory() const { return _halomemory; }
+
+  /**
    * Returns the underlying NArray
    */
   MatrixT& matrix() { return _matrix; }
 
+  /**
+   * Returns the underlying NArray
+   */
+
+  const MatrixT& matrix() const { return _matrix; }
   /**
    * Sets all global border halo elements. set_fixed_halos calls FuntionT with
    * all global coordinates of type:
@@ -422,8 +443,9 @@ public:
   HaloStencilOperator<Element_t, Pattern_t, StencilSpecT> stencil_operator(
     const StencilSpecT& stencil_spec) {
     for(const auto& stencil : stencil_spec.specs()) {
-      assert(stencil.max()
-             <= _halo_spec.extent(RegionSpec<NumDimensions>::index(stencil)));
+      DASH_ASSERT_MSG(stencil.max()
+             <= _halo_spec.extent(RegionSpec<NumDimensions>::index(stencil)),
+             "Stencil point extent higher than halo region extent.");
     }
 
     return HaloStencilOperator<Element_t, Pattern_t, StencilSpecT>(
