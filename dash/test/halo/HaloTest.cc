@@ -73,7 +73,7 @@ TEST_F(HaloTest, HaloSpecStencils)
   using StencilP_t    = StencilPoint<3>;
 
   {
-    using StencilSpec_t = StencilSpec<StencilP_t, 3, 6>;
+    using StencilSpec_t = StencilSpec<StencilP_t, 6>;
     StencilSpec_t stencil_spec(
        StencilP_t(0.2d, -1,  0,  0), StencilP_t(0.4d, 1, 0, 0),
        StencilP_t( 0, -1,  0), StencilP_t(0, 2, 0),
@@ -98,7 +98,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     EXPECT_EQ((uint32_t)halo_spec.extent(14), 3);
   }
   {
-    using StencilSpec_t = StencilSpec<StencilP_t, 3, 1>;
+    using StencilSpec_t = StencilSpec<StencilP_t, 1>;
 
     StencilSpec_t stencil_spec( StencilP_t(0, 2, 0));
     HaloSpec_t halo_spec(stencil_spec);
@@ -111,7 +111,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     }
   }
   {
-    using StencilSpec_t = StencilSpec<StencilP_t, 3, 1>;
+    using StencilSpec_t = StencilSpec<StencilP_t, 1>;
 
     StencilSpec_t stencil_spec(StencilP_t(-2, 0, -1));
     HaloSpec_t halo_spec(stencil_spec);
@@ -128,7 +128,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     }
   }
   {
-    using StencilSpec_t = StencilSpec<StencilP_t, 3, 1>;
+    using StencilSpec_t = StencilSpec<StencilP_t, 1>;
 
     StencilSpec_t stencil_spec(StencilP_t(-3, -2, -1));
     HaloSpec_t halo_spec(stencil_spec);
@@ -153,7 +153,7 @@ TEST_F(HaloTest, HaloSpecStencils)
     }
   }
   {
-    using StencilSpec_t = StencilSpec<StencilP_t, 3, 1>;
+    using StencilSpec_t = StencilSpec<StencilP_t, 1>;
 
     StencilSpec_t stencil_spec(StencilP_t(3, 3, 3));
     HaloSpec_t halo_spec(stencil_spec);
@@ -190,7 +190,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
 
   using GlobBoundSpec_t = GlobalBoundarySpec<2>;
   using StencilP_t      = StencilPoint<2>;
-  using StencilSpec_t   = StencilSpec<StencilP_t, 2, 8>;
+  using StencilSpec_t   = StencilSpec<StencilP_t, 8>;
 
   auto myid(dash::myid());
 
@@ -431,7 +431,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
 
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
   using StencilP_t = StencilPoint<3>;
-  using StencilSpec_t = StencilSpec<StencilP_t, 3, 26>;
+  using StencilSpec_t = StencilSpec<StencilP_t, 26>;
 
   auto myid(dash::myid());
 
@@ -527,7 +527,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCyclic3D)
   using SizeSpec_t = dash::SizeSpec<3>;
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
   using StencilP_t = StencilPoint<3>;
-  using StencilSpec_t = StencilSpec<StencilP_t, 3, 26>;
+  using StencilSpec_t = StencilSpec<StencilP_t, 26>;
 
   auto myid(dash::myid());
 
@@ -629,7 +629,7 @@ TEST_F(HaloTest, HaloMatrixWrapperFixed3D)
   using SizeSpec_t = dash::SizeSpec<3>;
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
   using StencilP_t = StencilPoint<3>;
-  using StencilSpec_t = StencilSpec<StencilP_t, 3, 26>;
+  using StencilSpec_t = StencilSpec<StencilP_t, 26>;
 
   auto myid(dash::myid());
 
@@ -725,7 +725,7 @@ TEST_F(HaloTest, HaloMatrixWrapperMix3D)
   using SizeSpec_t = dash::SizeSpec<3>;
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
   using StencilP_t = StencilPoint<3>;
-  using StencilSpec_t = StencilSpec<StencilP_t, 3, 26>;
+  using StencilSpec_t = StencilSpec<StencilP_t, 26>;
 
   auto myid(dash::myid());
 
@@ -840,7 +840,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
   using SizeSpec_t = dash::SizeSpec<3>;
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
   using StencilP_t = StencilPoint<3>;
-  using StencilSpec_t = StencilSpec<StencilP_t, 3, 26>;
+  using StencilSpec_t = StencilSpec<StencilP_t, 26>;
 
   auto myid(dash::myid());
 
@@ -1065,18 +1065,18 @@ TEST_F(HaloTest, HaloMatrixWrapperMultiStencil3D)
 
   matrix_halo.barrier();
 
-  StencilSpec<StencilP_t, 3, 6> stencil_spec_1(
+  StencilSpec<StencilP_t, 6> stencil_spec_1(
       StencilP_t(-1, 0, 0), StencilP_t( 1, 0, 0),
       StencilP_t( 0,-1, 0), StencilP_t( 0, 1, 0),
       StencilP_t( 0, 0,-1), StencilP_t( 0, 0, 1)
   );
-  StencilSpec<StencilP_t, 3, 8> stencil_spec_2(
+  StencilSpec<StencilP_t, 8> stencil_spec_2(
       StencilP_t(-1,-1,-1), StencilP_t(-1,-1, 1),
       StencilP_t(-1, 1,-1), StencilP_t(-1, 1, 1),
       StencilP_t( 1,-1,-1), StencilP_t( 1,-1, 1),
       StencilP_t( 1, 1,-1), StencilP_t( 1, 1, 1)
   );
-  StencilSpec<StencilP_t, 3, 26> stencil_spec_3(
+  StencilSpec<StencilP_t, 26> stencil_spec_3(
       StencilP_t(-1,-1,-1), StencilP_t(-1,-1, 0), StencilP_t(-1,-1, 1),
       StencilP_t(-1, 0,-1), StencilP_t(-1, 0, 0), StencilP_t(-1, 0, 1),
       StencilP_t(-1, 1,-1), StencilP_t(-1, 1, 0), StencilP_t(-1, 1, 1),
@@ -1217,18 +1217,18 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
 
   dash::Team::All().barrier();
 
-  StencilSpec<StencilP_t, 3, 6> stencil_spec_1(
+  StencilSpec<StencilP_t, 6> stencil_spec_1(
       StencilP_t(-2, 0, 0), StencilP_t( 2, 0, 0),
       StencilP_t( 0,-2, 0), StencilP_t( 0, 2, 0),
       StencilP_t( 0, 0,-2), StencilP_t( 0, 0, 2)
   );
-  StencilSpec<StencilP_t, 3, 8> stencil_spec_2(
+  StencilSpec<StencilP_t, 8> stencil_spec_2(
       StencilP_t(-1,-1,-1), StencilP_t(-1,-1, 1),
       StencilP_t(-1, 1,-1), StencilP_t(-1, 1, 1),
       StencilP_t( 1,-1,-1), StencilP_t( 1,-1, 1),
       StencilP_t( 1, 1,-1), StencilP_t( 1, 1, 1)
   );
-  StencilSpec<StencilP_t, 3, 26> stencil_spec_3(
+  StencilSpec<StencilP_t, 26> stencil_spec_3(
       StencilP_t(-3,-3,-3), StencilP_t(-2,-2,-2), StencilP_t(-1,-1,-1),
       StencilP_t(-3,-3, 3), StencilP_t(-2,-2, 2), StencilP_t(-1,-1, 1),
       StencilP_t(-3, 3,-3), StencilP_t(-2, 2,-2), StencilP_t(-1, 1,-1),

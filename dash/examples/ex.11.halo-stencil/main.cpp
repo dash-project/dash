@@ -37,7 +37,7 @@ using Pattern_t     = dash::Pattern<2>;
 using index_t       = typename Pattern_t::index_type;
 using Array_t       = dash::NArray<element_t, 2, index_t, Pattern_t>;
 using StencilP_t    = dash::StencilPoint<2>;
-using StencilSpec_t = dash::StencilSpec<StencilP_t,2,4>;
+using StencilSpec_t = dash::StencilSpec<StencilP_t,4>;
 using HaloWrapper_t = dash::HaloMatrixWrapper<Array_t>;
 
 void write_pgm(const std::string & filename, const Array_t & data){

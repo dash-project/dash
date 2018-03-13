@@ -84,11 +84,10 @@ private:
  * e.g. StencilSpec<dash::StencilPoint<2>, 2,2>({StencilPoint<2>(-1,0),
  * StencilPoint<2>(1,0)}) -> north and south
  */
-template <typename StencilPointT, dim_t NumDimensions,
-          std::size_t NumStencilPoints>
+template <typename StencilPointT, std::size_t NumStencilPoints>
 class StencilSpec {
 private:
-  using Self_t = StencilSpec<StencilPointT, NumDimensions, NumStencilPoints>;
+  using Self_t = StencilSpec<StencilPointT, NumStencilPoints>;
 
 public:
   using stencil_size_t  = std::size_t;

@@ -12,7 +12,7 @@ using matrix_t     = dash::Matrix<
                        typename pattern_t::index_type,
                        pattern_t>;
 using StencilT     = dash::StencilPoint<2>;
-using StencilSpecT = dash::StencilSpec<StencilT,2,4>;
+using StencilSpecT = dash::StencilSpec<StencilT,4>;
 using GlobBoundSpecT   = dash::GlobalBoundarySpec<2>;
 using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t>;
 
