@@ -169,7 +169,7 @@ enum class BoundaryProp : uint8_t {
   NONE,
   /// Global boundary Halos with values from the opposite boundary
   CYCLIC,
-  /// Global boundary Halos with predefined fixed values
+  /// Global boundary Halos with predefined custom values
   CUSTOM
 };
 
@@ -909,12 +909,12 @@ public:
 public:
   Region(const RegionSpec_t& region_spec, const ViewSpec_t& region,
          GlobMem_t& globmem, const PatternT& pattern, const Border_t& border,
-         bool fixed_region)
+         bool custom_region)
   : _region_spec(region_spec), _region(region), _border(border),
     _border_region(
       std::any_of(border.begin(), border.end(),
                   [](bool border_dim) { return border_dim == true; })),
-    _fixed_region(fixed_region),
+    _custom_region(custom_region),
     _beg(globmem, pattern, _region, 0, _region.size()),
     _end(globmem, pattern, _region, _region.size(), _region.size()) {}
 
@@ -930,7 +930,7 @@ public:
 
   bool is_border_region() const { return _border_region; };
 
-  bool is_fixed_region() const { return _fixed_region; };
+  bool is_custom_region() const { return _custom_region; };
 
   constexpr bool border_dim(dim_t dim) const { return _border[dim]; }
 
@@ -943,7 +943,7 @@ private:
   const ViewSpec_t   _region;
   Border_t           _border;
   bool               _border_region;
-  bool               _fixed_region;
+  bool               _custom_region;
   iterator           _beg;
   iterator           _end;
 };  // Region
@@ -995,13 +995,17 @@ public:
     // TODO put functionallity to HaloSpec
     _halo_regions.reserve(_halo_reg_spec.num_regions());
     _boundary_regions.reserve(_halo_reg_spec.num_regions());
+    /*
+     * Setup for all halo and boundary regions and properties like:
+     * is the region a global boundary region and is the region custom or not
+     */
     for(const auto& spec : _halo_reg_spec.specs()) {
       auto halo_extent = spec.extent();
       if(!halo_extent)
         continue;
 
       std::array<bool, NumDimensions> border{};
-      bool                            fixed_region = false;
+      bool                            custom_region = false;
 
       auto halo_region_offsets = view.offsets();
       auto halo_region_extents = view.extents();
@@ -1028,7 +1032,7 @@ public:
               bnd_region_extents[d]  = 0;
             } else {
               if(bound_spec[d] == BoundaryProp::CUSTOM)
-                fixed_region = true;
+                custom_region = true;
               halo_region_offsets[d] = _pattern.extent(d) - halo_extent;
               halo_region_extents[d] = halo_extent;
               bnd_region_extents[d]  = halo_extent;
@@ -1054,7 +1058,7 @@ public:
               bnd_region_extents[d]  = 0;
             } else {
               if(bound_spec[d] == BoundaryProp::CUSTOM)
-                fixed_region = true;
+                custom_region = true;
               halo_region_offsets[d] = 0;
               halo_region_extents[d] = halo_extent;
               bnd_region_offsets[d] += view_extent - halo_extent;
@@ -1068,16 +1072,20 @@ public:
           }
         }
       }
+      /*
+       * Setup for the non duplicate boundary elements and the views: inner,
+       * boundary and inner + boundary
+       */
       auto index = spec.index();
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
-                 _globmem, _pattern, border, fixed_region));
+                 _globmem, _pattern, border, custom_region));
       auto& region_tmp = _halo_regions.back();
       _size_halo_elems += region_tmp.size();
       _halo_reg_mapping[index] = &region_tmp;
       _boundary_regions.push_back(
         Region_t(spec, ViewSpec_t(bnd_region_offsets, bnd_region_extents),
-                 _globmem, _pattern, border, fixed_region));
+                 _globmem, _pattern, border, custom_region));
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 

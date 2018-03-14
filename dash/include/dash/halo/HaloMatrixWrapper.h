@@ -345,7 +345,7 @@ public:
 
   const MatrixT& matrix() const { return _matrix; }
   /**
-   * Sets all global border halo elements. set_fixed_halos calls FuntionT with
+   * Sets all global border halo elements. set_custom_halos calls FuntionT with
    * all global coordinates of type:
    * std::array<dash::default_index_t,Number Dimensions>.
    *
@@ -367,11 +367,10 @@ public:
    *
    */
   template <typename FunctionT>
-  void set_fixed_halos(FunctionT f) {
+  void set_custom_halos(FunctionT f) {
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
-      auto rel_dim = region.spec().relevant_dim() - 1;
-      if(region.is_fixed_region()) {
+      if(region.is_custom_region()) {
         auto*       pos_ptr = _halomemory.pos_at(region.index());
         const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
@@ -464,8 +463,7 @@ private:
   };
 
   void update_halo_intern(Data& data, bool async) {
-    auto rel_dim = data.region.spec().relevant_dim() - 1;
-    if(data.region.is_fixed_region())
+    if(data.region.is_custom_region())
       return;
 
     data.get_halos(data.halo_data);
