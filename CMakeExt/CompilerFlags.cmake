@@ -139,7 +139,9 @@ endif()
 
 set (CXX_GDB_FLAG "-g"
      CACHE STRING "C++ compiler (clang++) debug symbols flag")
-set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+if(OPENMP_FOUND)
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+endif()
 
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
@@ -189,7 +191,9 @@ endif()
 
 set (CC_GDB_FLAG "-g"
      CACHE STRING "C compiler (clang) debug symbols flag")
-set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
+if(OPENMP_FOUND)
+  set (CC_OMP_FLAG  ${OpenMP_C_FLAGS})
+endif()
 
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
