@@ -4,7 +4,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/Types.h>
-#include <dash/GlobPtr.h>
+#include <dash/memory/GlobHeapPtr.h>
 #include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
@@ -29,7 +29,7 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename GlobMemType >
+  typename LMemSpace >
 class UnorderedMap;
 
 template <
@@ -43,48 +43,41 @@ class UnorderedMapGlobIter
         std::random_access_iterator_tag,
         std::pair<const Key, Mapped>,
         dash::default_index_t,
-        dash::GlobPtr<std::pair<const Key, Mapped>, GlobMemType>,
-        dash::GlobSharedRef<
-            std::pair<const Key, Mapped>,
-            dash::GlobPtr<std::pair<const Key, Mapped>, GlobMemType> > > {
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+        GlobHeapPtr<std::pair<const Key, Mapped>, GlobMemType>,
+        GlobSharedRef<std::pair<const Key, Mapped>, GlobMemType>> {
+  template<typename K_, typename M_, typename H_, typename P_, typename G_>
   friend class UnorderedMapGlobIter;
 
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  template<typename K_, typename M_, typename H_, typename P_, typename G_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::UnorderedMapGlobIter<K_, M_, H_, P_, A_> & it);
+    const dash::UnorderedMapGlobIter<K_, M_, H_, P_, G_> & it);
 
 private:
   typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, GlobMemType>
     self_t;
 
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, GlobMemType>
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, typename GlobMemType::local_memory_space>
     map_t;
 
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, GlobMemType>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, typename GlobMemType::local_memory_space>
     local_iterator;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, GlobMemType>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, typename GlobMemType::local_memory_space>
     const_local_iterator;
 
 public:
-  typedef typename map_t::value_type                              value_type;
-#if 0
-  typedef typename map_t::index_type                              index_type;
-  typedef typename map_t::size_type                                size_type;
-#else
-  typedef dash::default_index_t                                   index_type;
-  typedef dash::default_size_t                                     size_type;
-#endif
+  typedef typename map_t::value_type value_type;
+  typedef dash::default_index_t      index_type;
+  typedef dash::default_size_t       size_type;
 
-  typedef dash::GlobPtr<value_type, GlobMemType>       pointer;
-  typedef dash::GlobPtr<const value_type, GlobMemType> const_pointer;
-  typedef dash::GlobSharedRef<value_type, pointer>     reference;
-  typedef dash::GlobSharedRef<const value_type, const_pointer>
-      const_reference;
+  typedef typename map_t::pointer       pointer;
+  typedef typename map_t::const_pointer const_pointer;
 
-  typedef       value_type *                                     raw_pointer;
-  typedef const value_type *                               const_raw_pointer;
+  typedef typename map_t::reference reference;
+  typedef typename map_t::const_reference const_reference;
+
+  typedef value_type*       raw_pointer;
+  typedef const value_type* const_raw_pointer;
 
   typedef typename
     std::conditional<

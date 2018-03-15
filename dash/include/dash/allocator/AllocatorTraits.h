@@ -189,12 +189,13 @@ struct allocator_traits {
       typename dash::pointer_traits<pointer>::difference_type difference_type;
   typedef typename std::make_unsigned<difference_type>::type size_type;
 
+  */
+
   template <class U>
-  using rebind_alloc = typename allocator_type::template rebind<U>::other;
+  using rebind_alloc = typename allocator_type::template rebind<U>;
 
   template <class U>
   using rebind_traits = dash::allocator_traits<rebind_alloc<U>>;
-  */
 
   static pointer allocate(allocator_type& a, size_type n)
   {

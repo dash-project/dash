@@ -81,7 +81,8 @@ template <
     typename ElementType,
     typename LocalMemorySpace,
     global_allocation_policy AllocationPolicy =
-        global_allocation_policy::collective>
+        global_allocation_policy::collective,
+    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
 class GlobStaticMem {
 private:
   typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
@@ -90,10 +91,10 @@ private:
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
 
   using allocator_traits = dash::allocator_traits<dash::SymmetricAllocator<
-      ElementType,
+      typename std::remove_const<ElementType>::type,
       AllocationPolicy,
       LocalMemorySpace,
-      allocator::DefaultAllocator>>;
+      LocalAlloc>>;
 
   using local_allocator_traits =
       std::allocator_traits<typename allocator_traits::local_allocator>;

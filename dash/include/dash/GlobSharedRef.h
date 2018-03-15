@@ -42,7 +42,7 @@ public:
     typedef GlobSharedRef<
               U,
               // recursively rebind depending global pointer type:
-              typename GlobalPointerType::template rebind<U>::other
+              typename GlobalPointerType::template rebind<U>
             > other;
   };
 

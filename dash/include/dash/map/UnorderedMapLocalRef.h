@@ -1,6 +1,8 @@
 #ifndef DASH__MAP__UNORDERED_MAP_LOCAL_REF_H__INCLUDED
 #define DASH__MAP__UNORDERED_MAP_LOCAL_REF_H__INCLUDED
 
+#include <dash/Team.h>
+
 namespace dash {
 
 #ifdef DOXYGEN
@@ -19,7 +21,7 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 class UnorderedMapLocalRef;
 
 #else // ifdef DOXYGEN
@@ -30,7 +32,7 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 class UnorderedMap;
 
 template<
@@ -38,14 +40,14 @@ template<
   typename Mapped,
   typename Hash,
   typename Pred,
-  typename Alloc >
+  typename LMemSpace >
 class UnorderedMapLocalRef
 {
 private:
-  typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, LMemSpace>
     self_t;
 
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LMemSpace>
     map_type;
 
 public:
@@ -53,7 +55,6 @@ public:
   typedef Mapped                                                 mapped_type;
   typedef Hash                                                        hasher;
   typedef Pred                                                     key_equal;
-  typedef Alloc                                               allocator_type;
 
   typedef typename map_type::index_type                           index_type;
   typedef typename map_type::difference_type                 difference_type;
@@ -453,7 +454,7 @@ private:
    * Using `std::declval()` instead (to generate a compile-time
    * pseudo-instance for member resolution) only works if Key and Mapped
    * are default-constructible.
-   * 
+   *
    * Finally, the distance obtained from
    *
    *   &(lptr_value->second) - lptr_value

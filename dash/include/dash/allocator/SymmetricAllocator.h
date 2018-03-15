@@ -113,9 +113,14 @@ public:
   using local_void_pointer       = typename allocator_traits::void_pointer;
   using const_local_void_pointer = typename allocator_traits::const_void_pointer;
 
-  // Dash allocator traits...
   using allocation_policy =
       std::integral_constant<global_allocation_policy, AllocationPolicy>;
+
+
+  /// Convert SymmetricAllocator<T> to SymmetricAllocator<U>.
+  template <class U>
+  using rebind = dash::
+      SymmetricAllocator<U, AllocationPolicy, LMemSpace, LocalAlloc>;
 
 public:
   /**
@@ -193,6 +198,14 @@ public:
    * Returns a copy of the local allocator object associated with the vector.
    */
   inline local_allocator_type get_local_allocator() const noexcept;
+
+  /**
+   * Estimate the largest supported size
+   */
+  inline size_type max_size() const noexcept
+  {
+    return size_type(-1) / sizeof(ElementType);
+  }
 
 private:
   /**
@@ -288,8 +301,6 @@ typename SymmetricAllocator<
                      LocalAlloc>::operator=(self_t const& other) noexcept
 {
   if (&other == this) return *this;
-
-  clear();
 
   _alloc = other._alloc;
 

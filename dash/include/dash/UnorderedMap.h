@@ -138,28 +138,36 @@ template<
   typename LocalMemType = HostSpace >
 class UnorderedMap
 {
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LocalMemType> self_type;
+
+  using glob_mem_type = dash::GlobHeapMem<
+      std::pair<const Key, Mapped>,
+      LocalMemorySpace,
+      dash::global_allocation_policy::epoch_synchronized,
+      dash::allocator::DefaultAllocator>;
+
 public:
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, LocalMemType>             self_type;
 
-  typedef Key                                                       key_type;
-  typedef Mapped                                                 mapped_type;
-  typedef Hash                                                        hasher;
-  typedef Pred                                                     key_equal;
+  typedef Key    key_type;
+  typedef Mapped mapped_type;
+  typedef Hash   hasher;
+  typedef Pred   key_equal;
 
-  typedef dash::default_index_t                                   index_type;
-  typedef dash::default_index_t                              difference_type;
-  typedef dash::default_size_t                                     size_type;
-  typedef std::pair<const key_type, mapped_type>                  value_type;
+  typedef dash::default_index_t                  index_type;
+  typedef dash::default_index_t                  difference_type;
+  typedef dash::default_size_t                   size_type;
+  typedef std::pair<const key_type, mapped_type> value_type;
 
-  typedef dash::EpochSynchronizedAllocator<value_type>
-      allocator_type;
+  typedef typename dash::container_traits<self_type>::local_type local_type;
 
-  typedef typename dash::container_traits<self_type>::local_type  local_type;
+  typedef GlobHeapPtr<value_type, glob_mem_type>       pointer;
+  typedef GlobHeapPtr<const value_type, glob_mem_type> const_pointer;
 
-  typedef dash::GlobHeapMem<value_type, allocator_type>     glob_mem_type;
+  typedef GlobSharedRef<value_type, GlobHeapPtr<value_type, glob_mem_type>>
+      reference;
 
-  typedef typename glob_mem_type::reference                        reference;
-  typedef typename glob_mem_type::const_reference            const_reference;
+  typedef GlobSharedRef<value_type const, GlobHeapPtr<value_type, glob_mem_type>>
+      const_reference;
 
   typedef typename reference::template rebind<mapped_type>::other
     mapped_type_reference;
@@ -199,11 +207,11 @@ public:
 
   typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     const_local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     local_iterator;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemType>
     const_local_iterator;
   typedef typename std::reverse_iterator<local_iterator>
     reverse_local_iterator;

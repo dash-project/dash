@@ -1,6 +1,8 @@
 #ifndef DASH__MAP__UNORDERED_MAP_H__INCLUDED
 #define DASH__MAP__UNORDERED_MAP_H__INCLUDED
 
+
+
 #include <dash/Types.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
@@ -32,15 +34,13 @@ namespace dash {
 
 #ifndef DOXYGEN
 
-template<
-  typename Key,
-  typename Mapped,
-  typename Hash    = dash::HashLocal<Key>,
-  typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::EpochSynchronizedAllocator<
-                       std::pair<const Key, Mapped> > >
-class UnorderedMap
-{
+template <
+    typename Key,
+    typename Mapped,
+    typename Hash         = dash::HashLocal<Key>,
+    typename Pred         = std::equal_to<Key>,
+    typename LocalMemorySpace = HostSpace>
+class UnorderedMap {
   static_assert(
     dash::is_container_compatible<Key>::value &&
     dash::is_container_compatible<Mapped>::value,
@@ -56,40 +56,48 @@ class UnorderedMap
   friend class UnorderedMapLocalIter;
 
 private:
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, LocalMemorySpace>
     self_t;
 
+  using glob_mem_type = dash::GlobHeapMem<
+      std::pair<const Key, Mapped>,
+      LocalMemorySpace,
+      dash::global_allocation_policy::epoch_synchronized,
+      dash::allocator::DefaultAllocator>;
+
 public:
-  typedef Key                                                                  key_type;
-  typedef Mapped                                                            mapped_type;
-  typedef Hash                                                                   hasher;
-  typedef Pred                                                                key_equal;
-  typedef std::pair<const key_type, mapped_type>                             value_type;
-  //typedef dash::detail::HashNode<std::pair<const key_type, mapped_type>>     value_type;
+  typedef Key                                    key_type;
+  typedef Mapped                                 mapped_type;
+  typedef Hash                                   hasher;
+  typedef Pred                                   key_equal;
+  typedef std::pair<const key_type, mapped_type> value_type;
 
-  typedef Alloc                                                            allocator_type;
-  //typedef typename std::allocator_traits<Alloc>::template rebind_alloc<value_type> allocator_type;
+  typedef dash::default_index_t index_type;
+  typedef dash::default_index_t difference_type;
+  typedef dash::default_size_t  size_type;
 
-  typedef dash::default_index_t                                              index_type;
-  typedef dash::default_index_t                                         difference_type;
-  typedef dash::default_size_t                                                size_type;
+  typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, LocalMemorySpace>
+      local_type;
 
-  typedef UnorderedMapLocalRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
+  typedef GlobSharedRef<value_type, GlobHeapPtr<value_type, glob_mem_type>>
+      reference;
 
-  typedef dash::GlobHeapMem<value_type, allocator_type>        glob_mem_type;
-
-  typedef typename glob_mem_type::reference                        reference;
-  typedef typename glob_mem_type::const_reference            const_reference;
+  typedef GlobSharedRef<
+      value_type const,
+      GlobHeapPtr<value_type, glob_mem_type>>
+      const_reference;
 
   typedef typename reference::template rebind<mapped_type>::other
-    mapped_type_reference;
+      mapped_type_reference;
   typedef typename const_reference::template rebind<mapped_type>::other
-    const_mapped_type_reference;
+      const_mapped_type_reference;
 
-  typedef typename glob_mem_type::pointer
-    node_iterator;
-  typedef typename glob_mem_type::const_pointer
-    const_node_iterator;
+  typedef GlobHeapPtr<value_type, glob_mem_type>       pointer;
+  typedef GlobHeapPtr<const value_type, glob_mem_type> const_pointer;
+
+  typedef pointer       node_iterator;
+  typedef const_pointer const_node_iterator;
+
   typedef typename glob_mem_type::local_pointer
     local_node_iterator;
   typedef typename glob_mem_type::const_local_pointer
@@ -100,22 +108,22 @@ public:
   typedef typename glob_mem_type::const_pointer
     const_local_node_pointer;
 
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     iterator;
-  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, glob_mem_type>
     const_iterator;
   typedef typename std::reverse_iterator<iterator>
     reverse_iterator;
   typedef typename std::reverse_iterator<const_iterator>
     const_reverse_iterator;
 
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemorySpace>
     local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemorySpace>
     const_local_pointer;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemorySpace>
     local_iterator;
-  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, LocalMemorySpace>
     const_local_iterator;
   typedef typename std::reverse_iterator<local_iterator>
     reverse_local_iterator;
@@ -879,5 +887,6 @@ private:
 #endif // ifndef DOXYGEN
 
 } // namespace dash
+
 
 #endif // DASH__MAP__UNORDERED_MAP_H__INCLUDED

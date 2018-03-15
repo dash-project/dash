@@ -8,7 +8,7 @@
 
 #include <dash/memory/MemorySpace.h>
 
-#include <dash/memory/SimpleMemoryPool.h>
+#include <dash/memory/SimpleMemoryPoolResource.h>
 
 namespace dash {
 

@@ -32,34 +32,30 @@ class List;
  */
 template<
   typename T,
-  class    AllocatorType >
+  class    LMemSpace >
 class LocalListRef
 {
-  template <typename T_, typename A_>
+  template <typename T_, typename LM_>
   friend class LocalListRef;
 
-private:
   static const dim_t NumDimensions = 1;
+
+private:
+  typedef LocalListRef<T, LMemSpace>
+    self_t;
+  typedef List<T, LMemSpace>
+    list_type;
+  typedef ViewSpec<NumDimensions, dash::default_index_t>
+    ViewSpec_t;
+
+  typedef typename list_type::node_type ListNode_t;
+
+  typedef typename list_type::glob_mem_type
+    glob_mem_type;
 
 /// Type definitions required for dash::List concept:
 public:
   typedef dash::default_index_t                                   index_type;
-  typedef LocalListRef<T, index_type>                              view_type;
-  typedef AllocatorType                                       allocator_type;
-
-private:
-  typedef LocalListRef<T, AllocatorType>
-    self_t;
-  typedef List<T, AllocatorType>
-    list_type;
-  typedef ViewSpec<NumDimensions, index_type>
-    ViewSpec_t;
-  typedef internal::ListNode<T>
-    ListNode_t;
-  typedef typename allocator_type::template rebind<ListNode_t>::other
-    node_allocator_type;
-  typedef typename list_type::glob_mem_type
-    glob_mem_type;
 
 /// Type definitions required for std::list concept:
 public:
@@ -78,8 +74,6 @@ public:
 
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
-
-  typedef ListNode_t *                                          node_pointer;
 
 public:
   /**

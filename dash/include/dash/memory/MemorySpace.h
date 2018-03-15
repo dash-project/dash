@@ -128,6 +128,10 @@ struct memspace_traits_const_void_pointer_type<_Ms, false> {
 template <class MemSpace>
 struct memory_space_traits {
   /**
+   * The Memory Space Type
+   */
+  using memory_space_type = MemSpace;
+  /**
    * The underlying memory type (Host, CUDA, HBW, etc.)
    */
   using memory_space_type_category =

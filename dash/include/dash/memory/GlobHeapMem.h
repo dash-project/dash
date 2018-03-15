@@ -29,7 +29,7 @@
 namespace dash {
 
 // Forward declarations
-template<typename T, class MemSpaceT> class GlobPtr;
+template<typename T, class MemSpaceT> class GlobHeapPtr;
 
 /**
  * \defgroup  DashDynamicMemorySpaceConcept  Global Dynamic Memory Concept
@@ -194,42 +194,63 @@ template<typename T, class MemSpaceT> class GlobPtr;
  * \concept{DashMemorySpaceConcept}
  * \concept{DashDynamicMemorySpaceConcept}
  */
-template<
-  /// Type of values allocated in the global memory space
-  typename ElementType,
-  /// Type of allocator implementation used to allocate and deallocate
-  /// global memory
-  class    AllocatorType =
-             dash::EpochSynchronizedAllocator<ElementType> >
-class GlobHeapMem
-{
+template <
+    /// Type of values allocated in the global memory space
+    typename ElementType,
+    class LocalMemorySpace                   = dash::HostSpace,
+    global_allocation_policy AllocationPolicy =
+        global_allocation_policy::epoch_synchronized,
+    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
+class GlobHeapMem {
 private:
-  typedef GlobHeapMem<ElementType, AllocatorType>
-    self_t;
+  typedef GlobHeapMem self_t;
+
+  using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
+
+  using allocator_traits = dash::allocator_traits<dash::EpochSynchronizedAllocator<
+      typename std::remove_const<ElementType>::type,
+      LocalMemorySpace,
+      AllocationPolicy,
+      LocalAlloc>>;
+
+  using local_allocator_traits =
+      std::allocator_traits<typename allocator_traits::local_allocator>;
 
 public:
-  typedef AllocatorType                                      allocator_type;
-  typedef typename std::decay<ElementType>::type                 value_type;
+  using value_type = typename allocator_traits::value_type;
 
-  typedef typename AllocatorType::size_type                       size_type;
-  typedef typename AllocatorType::difference_type           difference_type;
-  typedef typename AllocatorType::difference_type                index_type;
+  using allocator_type = typename allocator_traits::allocator_type;
 
-  typedef typename AllocatorType::pointer                       raw_pointer;
+  using local_memory_space = typename memory_traits::memory_space_type;
 
-  typedef GlobHeapLocalPtr<value_type, index_type>            local_pointer;
-  typedef GlobHeapLocalPtr<value_type, index_type>      const_local_pointer;
+  typedef typename allocator_type::size_type       size_type;
+  typedef typename allocator_type::difference_type difference_type;
+  typedef typename allocator_type::difference_type index_type;
 
-  typedef GlobPtr<      value_type,       self_t>                   pointer;
-  typedef GlobPtr<const value_type,       self_t>             const_pointer;
+  typedef typename allocator_type::pointer raw_pointer;
+
+  typedef GlobHeapLocalPtr<value_type, index_type> local_pointer;
+  typedef GlobHeapLocalPtr<value_type, index_type> const_local_pointer;
+
+  typedef GlobHeapPtr<value_type, GlobHeapMem>       pointer;
+  typedef GlobHeapPtr<const value_type, GlobHeapMem> const_pointer;
+
+#if 0
 
   typedef GlobSharedRef<      value_type,       pointer>          reference;
   typedef GlobSharedRef<const value_type, const_pointer>    const_reference;
 
+#endif
+
   typedef       value_type &                                local_reference;
   typedef const value_type &                          const_local_reference;
 
+
   typedef typename local_pointer::bucket_type                   bucket_type;
+
+  template <typename U>
+  using rebind =
+      GlobHeapMem<U, LocalMemorySpace, AllocationPolicy, LocalAlloc>;
 
 private:
   typedef typename std::list<bucket_type>                       bucket_list;
@@ -242,7 +263,7 @@ private:
   typedef std::vector<std::vector<size_type> >       bucket_cumul_sizes_map;
 
   template<typename T_, class GMem_>
-  friend class dash::GlobPtr;
+  friend class dash::GlobHeapPtr;
 
 private:
   allocator_type             _allocator;
