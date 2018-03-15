@@ -235,16 +235,8 @@ public:
   typedef GlobHeapPtr<value_type, GlobHeapMem>       pointer;
   typedef GlobHeapPtr<const value_type, GlobHeapMem> const_pointer;
 
-#if 0
-
-  typedef GlobSharedRef<      value_type,       pointer>          reference;
-  typedef GlobSharedRef<const value_type, const_pointer>    const_reference;
-
-#endif
-
   typedef       value_type &                                local_reference;
   typedef const value_type &                          const_local_reference;
-
 
   typedef typename local_pointer::bucket_type                   bucket_type;
 
@@ -306,17 +298,53 @@ private:
 public:
   /**
    * Constructor, collectively allocates the given number of elements in
+   * local memory of every unit in dash::Team::All().
+   *
+   * \concept{DashDynamicMemorySpaceConcept}
+   * \concept{DashMemorySpaceConcept}
+   */
+  GlobHeapMem(
+      /// Initial number of local elements to allocate in global memory space
+      size_type n_local_elem = 0)
+    : GlobHeapMem(n_local_elem, nullptr)
+  {
+  }
+
+  /**
+   * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
    *
    * \concept{DashDynamicMemorySpaceConcept}
    * \concept{DashMemorySpaceConcept}
    */
-  explicit GlobHeapMem(
-    /// Initial number of local elements to allocate in global memory space
-    size_type   n_local_elem = 0,
-    /// Team containing all units operating on the global memory region
-    Team      & team         = dash::Team::All())
-  : _allocator(team),
+  GlobHeapMem(
+      /// Initial number of local elements to allocate in global memory space
+      size_type n_local_elem,
+      /// The specified team
+      dash::Team & team)
+    : GlobHeapMem(n_local_elem, nullptr, team)
+  {
+  }
+
+  /**
+   * Constructor, collectively allocates the given number of elements in
+   * local memory of every unit in dash::Team::All(). The underlying memory
+   * space is specified by the resource which is passed in
+   *
+   * \concept{DashDynamicMemorySpaceConcept}
+   * \concept{DashMemorySpaceConcept}
+   */
+  GlobHeapMem(
+      /// Initial number of local elements to allocate in global memory space
+      size_type n_local_elem,
+      /// The underlying local memory space
+      LocalMemorySpace* r)
+    : GlobHeapMem(n_local_elem, r, dash::Team::All())
+  {
+  }
+
+  GlobHeapMem(size_type n_local_elem, LocalMemorySpace* r, Team& team)
+  : _allocator(team, r),
     _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
@@ -341,6 +369,7 @@ public:
     commit();
 
     DASH_LOG_TRACE("GlobHeapMem.GlobHeapMem >");
+
   }
 
   /**

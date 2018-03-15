@@ -128,11 +128,7 @@ public:
    * given team.
    */
   explicit EpochSynchronizedAllocator(
-      Team const &         team,
-      local_allocator_type a = {static_cast<LMemSpace *>(
-          get_default_local_memory_space<
-              typename memory_traits::
-                  memory_space_type_category>())}) noexcept;
+      Team const &team, LMemSpace *r = nullptr) noexcept;
 
   /**
    * Copy constructor.
@@ -246,239 +242,6 @@ public:
     return _alloc;
   }
 
-#if 0
-  /**
-   * Register pre-allocated local memory segment of \c num_local_elem
-   * elements in global memory space.
-   *
-   * Collective operation.
-   * The number of allocated elements may differ between units.
-   *
-   * \see DashEpochSynchronizedAllocatorConcept
-   */
-  pointer attach(local_pointer lptr, size_type num_local_elem)
-  {
-    DASH_LOG_DEBUG(
-        "EpochSynchronizedAllocator.attach(nlocal)",
-        "number of local values:",
-        num_local_elem,
-        "pointer: ",
-        lptr);
-
-    if (!lptr && num_local_elem == 0) {
-      // PASS through without any allocation
-      pointer gptr = do_attach(lptr, 0);
-      _segments.push_back(std::make_tuple(lptr, num_local_elem, gptr));
-      return gptr;
-    }
-
-    // Search for corresponding memory block
-    auto const end   = std::end(_segments);
-    auto const found = std::find_if(
-        std::begin(_segments), end, [&lptr](allocation_rec const &val) {
-          return std::get<0>(val) == lptr;
-        });
-
-    if (found == end) {
-      // memory block not found
-      DASH_THROW(dash::exception::InvalidArgument, "attach invalid pointer");
-      return DART_GPTR_NULL;
-    }
-    auto &gptr = std::get<2>(*found);
-    if (!DART_GPTR_ISNULL(gptr)) {
-      // memory block is already attached
-      DASH_LOG_ERROR("local memory alread attached to global memory", gptr);
-
-      DASH_THROW(
-          dash::exception::InvalidArgument,
-          "cannot repeatedly attach local pointer");
-    }
-
-    gptr = do_attach(lptr, num_local_elem);
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", gptr);
-    return gptr;
-  }
-
-  /**
-   * Unregister local memory segment from global memory space.
-   * Does not deallocate local memory.
-   *
-   * Collective operation.
-   *
-   * \see DashEpochSynchronizedAllocatorConcept
-   */
-  void detach(pointer gptr, size_type num_local_elem)
-  {
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach()", "gptr:", gptr);
-    if (!dash::is_initialized()) {
-      // If a DASH container is deleted after dash::finalize(), global
-      // memory has already been freed by dart_exit() and must not be
-      // deallocated again.
-      DASH_LOG_DEBUG(
-          "EpochSynchronizedAllocator.detach >",
-          "DASH not initialized, abort");
-      return;
-    }
-
-    auto const end = std::end(_segments);
-    // Look up if we can
-    auto const found = std::find_if(
-        std::begin(_segments),
-        end,
-        [gptr, num_local_elem](allocation_rec const &val) {
-          return DART_GPTR_EQUAL(std::get<2>(val), gptr) &&
-                 std::get<1>(val) == num_local_elem;
-        });
-
-    if (found == end) {
-      DASH_LOG_ERROR(
-          "EpochSynchronizedAllocator.detach >",
-          "cannot detach untracked pointer",
-          gptr);
-      return;
-    }
-
-    do_detach(gptr);
-
-    std::get<2>(*found) = pointer(DART_GPTR_NULL);
-
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.detach >");
-  }
-
-  /**
-   * Allocates \c num_local_elem local elements in the active unit's local
-   * memory.
-   *
-   * Local operation.
-   *
-   * \see DashEpochSynchronizedAllocatorConcept
-   */
-  local_pointer allocate_local(size_type num_local_elem)
-  {
-    local_pointer lp = allocator_traits::allocate(_alloc, num_local_elem);
-
-    if (!lp) {
-      if (num_local_elem > 0) {
-        std::stringstream ss;
-        ss << "Allocating local segment (nelem: " << num_local_elem
-           << ") failed!";
-        DASH_LOG_ERROR("EpochSynchronizedAllocator.allocate_local", ss.str());
-        DASH_THROW(dash::exception::RuntimeError, ss.str());
-      }
-      return nullptr;
-    }
-
-    _segments.push_back(
-        std::make_tuple(lp, num_local_elem, pointer(DART_GPTR_NULL)));
-
-    DASH_LOG_TRACE(
-        "EpochSynchronizedAllocator.allocate_local",
-        "allocated local pointer",
-        lp);
-
-    return lp;
-  }
-
-
-  /**
-   * Deallocates memory segment in the active unit's local memory.
-   *
-   * Local operation.
-   *
-   * \see DashEpochSynchronizedAllocatorConcept
-   */
-  void deallocate_local(local_pointer lptr, size_type num_local_elem)
-  {
-    auto const end   = std::end(_segments);
-    auto const found = std::find_if(
-        std::begin(_segments), end, [lptr](allocation_rec const &val) {
-          return std::get<0>(val) == lptr;
-        });
-
-    if (found == end) return;
-
-    auto &     gptr     = std::get<2>(*found);
-    bool const attached = !(DART_GPTR_ISNULL(gptr));
-    if (attached) {
-      DASH_LOG_ERROR(
-          "EpochSynchronizedAllocator.deallocate_local",
-          "deallocating local pointer which is still attached",
-          gptr);
-    }
-
-    // Maybe we should first call the destructor
-    allocator_traits::deallocate(_alloc, lptr, num_local_elem);
-
-    if (!attached) _segments.erase(found);
-  }
-
-  /**
-   * Allocates \c num_local_elem local elements at active unit and attaches
-   * the local memory segment in global memory space.
-   *
-   * Collective operation.
-   * The number of allocated elements may differ between units.
-   *
-   * \see DashAllocatorConcept
-   */
-  pointer allocate(size_type num_local_elem)
-  {
-    local_pointer lp = allocate_local(num_local_elem);
-    pointer       gp = attach(lp, num_local_elem);
-    if (DART_GPTR_ISNULL(gp)) {
-      // Attach failed, free requested local memory:
-      deallocate_local(lp, num_local_elem);
-    }
-    return gp;
-  }
-
-  /**
-   * Detaches memory segment from global memory space and deallocates the
-   * associated local memory region.
-   *
-   * Collective operation.
-   *
-   * \see DashAllocatorConcept
-   */
-  void deallocate(pointer gptr, size_type num_local_elem)
-  {
-    DASH_LOG_DEBUG(
-        "EpochSynchronizedAllocator.deallocate", "deallocate local memory");
-    auto const end   = std::end(_segments);
-    auto const found = std::find_if(
-        std::begin(_segments),
-        end,
-        [gptr, num_local_elem](allocation_rec &val) {
-          return DART_GPTR_EQUAL(std::get<2>(val), gptr) &&
-                 std::get<1>(val) == num_local_elem;
-        });
-    if (found != end) {
-      // Unregister from global memory space, removes gptr from _segments:
-      do_detach(gptr);
-      // Free local memory:
-      allocator_traits::deallocate(
-          _alloc, std::get<0>(*found), num_local_elem);
-
-      // erase from locally tracked blocks
-      _segments.erase(found);
-    }
-    else {
-      DASH_LOG_ERROR(
-          "EpochSynchronizedAllocator.deallocate",
-          "cannot deallocate gptr",
-          gptr);
-    }
-
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.deallocate >");
-  }
-
-  allocator_type allocator()
-  {
-    return _alloc;
-  }
-
-#endif
-
 private:
   /**
    * Frees and detaches all global memory regions allocated by this allocator
@@ -490,47 +253,11 @@ private:
 
     auto &     alloc_capture = _alloc;
     auto const teamId        = _team->dart_id();
-    std::for_each(
-        std::begin(_segments),
-        std::end(_segments),
-        [](allocation_rec_t const &block) {
-
-        });
+    for (auto & segment : _segments) {
+      deallocate(segment.gptr(), segment.length());
+    }
     _segments.clear();
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear >");
-  }
-
-  pointer do_attach(local_pointer ptr, size_type num_local_elem)
-  {
-    // Attach the block
-    dash::dart_storage<value_type> ds(num_local_elem);
-    dart_gptr_t                    dgptr;
-    if (dart_team_memregister(
-            _team->dart_id(), ds.nelem, ds.dtype, ptr, &dgptr) != DART_OK) {
-      // reset to DART_GPTR_NULL
-      // found->second = pointer(DART_GPTR_NULL);
-      DASH_LOG_ERROR(
-          "EpochSynchronizedAllocator.attach",
-          "cannot attach local memory",
-          ptr);
-    }
-    else {
-      // found->second = pointer(dgptr);
-    }
-    DASH_LOG_DEBUG("EpochSynchronizedAllocator.attach > ", dgptr);
-    return dgptr;
-  }
-
-  void do_detach(pointer gptr)
-  {
-    if (dart_team_memderegister(gptr) != DART_OK) {
-      DASH_LOG_ERROR(
-          "EpochSynchronizedAllocator.do_detach >",
-          "cannot detach global pointer",
-          gptr);
-      DASH_THROW(
-          dash::exception::RuntimeError, "Cannot detach global pointer");
-    }
   }
 
   template <class ForwardIt, class Compare>
@@ -565,13 +292,16 @@ EpochSynchronizedAllocator<
     LMemSpace,
     AllocationPolicy,
     LocalAlloc>::
-    EpochSynchronizedAllocator(
-        Team const &team, local_allocator_type a) noexcept
+    EpochSynchronizedAllocator(Team const &team, LMemSpace *r) noexcept
   : _team(&team)
-  , _alloc(a)
+  , _alloc(
+        r ? r
+          : static_cast<LMemSpace *>(
+                get_default_local_memory_space<
+                    typename memory_traits::memory_space_type_category>()))
   , _policy{}
 {
-  DASH_LOG_DEBUG("SymmatricAllocator.SymmetricAllocator(team, alloc) >");
+  DASH_LOG_DEBUG("EpochSynchronizedAllocator.SymmetricAllocator(team, alloc) >");
   _segments.reserve(1);
 }
 
@@ -900,6 +630,8 @@ void EpochSynchronizedAllocator<
 {
   DASH_LOG_DEBUG(
       "EpochSynchronizedAllocator.deallocate", "deallocate local memory");
+
+  if (DART_GPTR_ISNULL(gptr)) return;
 
   auto pos = std::find_if(
       std::begin(_segments),
