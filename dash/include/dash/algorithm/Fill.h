@@ -47,16 +47,11 @@ void fill(
   auto      index_range = dash::local_range(first, last);
   value_t * lfirst      = index_range.begin;
   value_t * llast       = index_range.end;
-  auto      nlocal      = llast - lfirst;
 
-#if 0
-  for (index_t lt = 0; lt < nlocal; lt++) {
-    lfirst[lt] = value;
-  }
-#else
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
+  auto nlocal    = llast - lfirst;
   DASH_LOG_DEBUG("dash::fill", "thread capacity:",  n_threads);
   #pragma omp parallel for num_threads(n_threads)
   for (index_t lt = 0; lt < nlocal; ++lt) {
@@ -64,10 +59,7 @@ void fill(
   }
 
 #else
-  for (index_t lt = 0; lt < nlocal; ++lt) {
-    lfirst[lt] = value;
-  }
-#endif
+  std::fill(lfirst, llast, value);
 #endif
 }
 
