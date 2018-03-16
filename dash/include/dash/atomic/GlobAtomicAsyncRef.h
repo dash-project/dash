@@ -119,11 +119,15 @@ public:
   inline bool operator==(const T & value) const = delete;
   inline bool operator!=(const T & value) const = delete;
 
+  template<class = std::enable_if<
+                     std::is_same<value_type, nonconst_value_type>::value,void>>
   operator GlobAsyncRef<const_atomic_t>()
   {
     return GlobAsyncRef<const_atomic_t>(_gptr);
   }
 
+  template<class = std::enable_if<
+                     std::is_same<value_type, const_value_type>::value,void>>
   explicit
   operator GlobAsyncRef<nonconst_atomic_t>()
   {

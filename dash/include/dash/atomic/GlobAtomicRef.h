@@ -119,16 +119,19 @@ public:
    * Implicit conversion to const type.
    * memory.
    */
-  operator const_type() const
-  {
+  template<class = std::enable_if<
+                     std::is_same<value_type, nonconst_value_type>::value,void>>
+  operator const_type() const {
     return const_type(_gptr);
   }
 
   /**
    * Explicit conversion to non-const type.
    */
-  explicit operator nonconst_type() const
-  {
+  template<class = std::enable_if<
+                     std::is_same<value_type, const_value_type>::value,void>>
+  explicit
+  operator nonconst_type() const {
     return nonconst_type(_gptr);
   }
 

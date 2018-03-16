@@ -6,27 +6,37 @@
 
 TEST_F(DARTMemAllocTest, SmallLocalAlloc)
 {
-
   typedef int value_t;
   dart_gptr_t gptr1;
   ASSERT_EQ_U(
     DART_OK,
-    dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr1));
-  ASSERT_FALSE_U(
-    DART_GPTR_ISNULL(gptr1));
-  value_t *baseptr;
-  ASSERT_EQ_U(
-    DART_OK,
-    dart_gptr_getaddr(gptr1, (void**)&baseptr));
+    dart_memalloc(3, DART_TYPE_INT, &gptr1));
+  ASSERT_NE_U(
+    DART_GPTR_NULL,
+    gptr1);
 
-
-  // check that different allocation receives a different pointer
   dart_gptr_t gptr2;
   ASSERT_EQ_U(
     DART_OK,
-    dart_memalloc(sizeof(value_t), DART_TYPE_LONG, &gptr2));
+    dart_memalloc(1, DART_TYPE_INT, &gptr2));
+  ASSERT_NE_U(
+    DART_GPTR_NULL,
+    gptr2);
 
-  ASSERT_FALSE_U(DART_GPTR_EQUAL(gptr1, gptr2));
+
+  // check that different allocation receives a different pointer
+  ASSERT_NE(gptr1, gptr2);
+
+  // test for overlap of small allocations
+  value_t *baseptr1;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_gptr_getaddr(gptr1, (void**)&baseptr1));
+  value_t *baseptr2;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_gptr_getaddr(gptr2, (void**)&baseptr2));
+  ASSERT_LE(baseptr1+4, baseptr2);
 
   ASSERT_EQ_U(
     DART_OK,
@@ -44,9 +54,10 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   dart_gptr_t gptr;
   ASSERT_EQ_U(
     DART_OK,
-    dart_memalloc(block_size * sizeof(value_t), DART_TYPE_LONG, &gptr));
-  ASSERT_FALSE_U(
-    DART_GPTR_ISNULL(gptr));
+    dart_memalloc(block_size, DART_TYPE_INT, &gptr));
+  ASSERT_NE_U(
+    DART_GPTR_NULL,
+    gptr);
   value_t *baseptr;
   ASSERT_EQ_U(
     DART_OK,
@@ -57,9 +68,8 @@ TEST_F(DARTMemAllocTest, LocalAlloc)
   dart_gptr_t gptr2;
   ASSERT_EQ_U(
     DART_OK,
-    dart_memalloc(block_size * sizeof(value_t), DART_TYPE_LONG, &gptr2));
-
-  ASSERT_FALSE_U(DART_GPTR_EQUAL(gptr, gptr2));
+    dart_memalloc(block_size, DART_TYPE_INT, &gptr2));
+  ASSERT_NE(gptr, gptr2);
 
   ASSERT_EQ_U(
     DART_OK,
