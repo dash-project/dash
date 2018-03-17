@@ -85,7 +85,7 @@ run_suite()
   # Number of failed tests in this run
   THIS_FAIL_COUNT=$(($NEW_FAIL_COUNT-$TOTAL_FAIL_COUNT))
   TOTAL_FAIL_COUNT=$NEW_FAIL_COUNT
-  if [ "$THIS_FAIL_COUNT" = "0" ]; then
+  if [ $TEST_RET -a "$THIS_FAIL_COUNT" = "0" ]; then
     echo "[[     OK ]] Tests passed, returned ${TEST_RET}" | \
       tee -a $LOGFILE
   else
