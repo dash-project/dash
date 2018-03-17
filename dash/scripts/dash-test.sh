@@ -46,7 +46,7 @@ elif [ $DART_IMPL = "mpi" ]; then
 #   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
 #  fi
   RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
-  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/mpi/dash-test-mpi"
+  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash-test-mpi"
 else
   usage
 fi

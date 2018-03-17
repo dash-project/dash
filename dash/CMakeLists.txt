@@ -480,6 +480,13 @@ if (BUILD_TESTS)
         cotire(${DASH_TEST})
       endif()
 
+      if(INSTALL_TESTS)
+        DeployBinary(${DASH_TEST})
+        install(
+          TARGETS ${DASH_TEST}
+          DESTINATION bin/)
+      endif()
+
       # Code Coverage
       if (BUILD_COVERAGE_TESTS)
         if (${dart_variant} STREQUAL "mpi")
