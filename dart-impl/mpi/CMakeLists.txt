@@ -227,13 +227,6 @@ set_target_properties(
 
 DeployLibrary(${DASH_DART_IMPL_MPI_LIBRARY})
 
-# Headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
-# Generated headers, if any
-# install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/dash
-#         DESTINATION include FILES_MATCHING PATTERN "*.h")
-
 if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	include(CMakePackageConfigHelpers)
 	target_include_directories("${DASH_DART_IMPL_MPI_LIBRARY}" INTERFACE
