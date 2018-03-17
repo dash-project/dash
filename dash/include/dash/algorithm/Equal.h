@@ -27,29 +27,20 @@ bool equal(
       dash::iterator_traits<GlobIter>::is_global_iterator::value,
       "invalid iterator: Need to be a global iterator");
 
-  auto& team = first_1.team();
-  auto  myid = team.myid();
+  auto & team        = first_1.team();
+  auto myid          = team.myid();
   // Global iterators to local range:
-  auto index_range = dash::local_range(first_1, last_1);
-  auto l_first_1   = index_range.begin;
-  auto l_last_1    = index_range.end;
-  auto l_result    = std::equal(l_first_1, l_last_1, first_2);
+  auto index_range   = dash::local_range(first_1, last_1);
+  auto l_first_1     = index_range.begin;
+  auto l_last_1      = index_range.end;
+  char l_result      = static_cast<char>(std::equal(l_first_1, l_last_1, first_2));
+  char r_result      = 0;
 
-  dash::Array<bool> l_results(team.size(), team);
-
-  l_results.local[0] = l_result;
-  bool return_result = true;
-
-  // wait for all units to contribute their data
-  team.barrier();
-
-  // All local offsets stored in l_results
-  if (myid == 0) {
-    for (int u = 0; u < team.size(); u++) {
-      return_result &= l_results.local[u];
-    }
-  }
-  return return_result;
+  DASH_ASSERT_RETURNS(
+    dart_allreduce(&l_result, &r_result, 1,
+      DART_TYPE_BYTE, DART_OP_BAND, team.dart_id()),
+    DART_OK);
+  return r_result;
 }
 
 /**
@@ -78,23 +69,14 @@ bool equal(
   auto index_range   = dash::local_range(first_1, last_1);
   auto l_first_1     = index_range.begin;
   auto l_last_1      = index_range.end;
-  auto l_result      = std::equal(l_first_1, l_last_1, first_2, pred);
+  char l_result      = static_cast<char>(std::equal(l_first_1, l_last_1, first_2, pred));
+  char r_result      = 0;
 
-  dash::Array<bool> l_results(team.size(), team);
-
-  l_results.local[0] = l_result;
-
-  bool return_result = true;
-
-  team.barrier();
-
-  // All local offsets stored in l_results
-  if (myid == 0) {
-    for (int u = 0; u < team.size(); u++) {
-      return_result &= l_results.local[u];
-    }
-  }
-  return return_result;
+  DASH_ASSERT_RETURNS(
+    dart_allreduce(&l_result, &r_result, 1,
+      DART_TYPE_BYTE, DART_OP_BAND, team.dart_id()),
+    DART_OK);
+  return r_result;
 }
 
 } // namespace dash
