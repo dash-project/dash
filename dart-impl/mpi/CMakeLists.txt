@@ -242,7 +242,7 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	configure_package_config_file(
       "dart-config.cmake.in"
       "${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
-      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 endif()
 
 # Library
