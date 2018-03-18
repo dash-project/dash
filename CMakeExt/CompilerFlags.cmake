@@ -19,10 +19,18 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-set (DART_C_STD_REQUIRED "99")
 set (DART_C_STD_PREFERED "99")
-set (DASH_CXX_STD_REQUIRED "11")
-set (DASH_CXX_STD_PREFERED "14")
+set (DASH_CXX_STD_PREFERED "11")
+
+# Check if compiler provides c++14
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+  include(CheckCXXCompilerFlag)
+  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+  if(COMPILER_SUPPORTS_CXX14)
+    set (DASH_CXX_STD_PREFERED "14")
+    message(STATUS "Compile with CXX 14")
+  endif()
+endif()
 
 if (ENABLE_DEV_COMPILER_WARNINGS
   OR ENABLE_EXT_COMPILER_WARNINGS
@@ -146,7 +154,7 @@ endif()
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
+  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
 
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
@@ -155,7 +163,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_REQUIRED}"
+  set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic")
   if(ENABLE_LT_OPTIMIZATION)
@@ -168,7 +176,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_REQUIRED}"
+  set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-ipo")
@@ -198,30 +206,30 @@ endif()
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
+  set (CC_STD_FLAG "--std=c${DART_C_STD_PREFERED}"
        CACHE STRING "C compiler std flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CC_STD_FLAG "--std=c${DART_C_STD_REQUIRED}"
+  set (CC_STD_FLAG "--std=c${DART_C_STD_PREFERED}"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-ggdb3")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CC_STD_FLAG "-std=c${DART_C_STD_REQUIRED}"
+  set (CC_STD_FLAG "-std=c${DART_C_STD_PREFERED}"
        CACHE STRING "C compiler std flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
   # using Cray
-  set (CC_STD_FLAG "-h c${DART_C_STD_REQUIRED}"
+  set (CC_STD_FLAG "-h c${DART_C_STD_PREFERED}"
        CACHE STRING "C compiler std flag")
 endif()
 
-if(${CMAKE_VERSION} VERSION_LESS 3.0.0 )
-  # clear STD flags as set using CXX_STANDARD
+#if(${CMAKE_VERSION} VERSION_LESS 3.0.0 )
+# CMake does not add compiler flags correctly, so use this workaround
   set(CMAKE_CXX_FLAGS
       "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG}")
   set(CMAKE_C_FLAGS
       "${CMAKE_C_FLAGS} ${CC_STD_FLAG}")
-endif()
+#endif()
 
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} ${CC_ENV_SETUP_FLAGS}")
