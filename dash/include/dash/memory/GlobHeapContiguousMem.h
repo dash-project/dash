@@ -219,11 +219,6 @@ public:
       ++count;
     }
     _bucket_cumul_sizes[_myid][0] = _local_size; 
-    // 2 local buckets per global bucket
-    count /= 2;
-    for(int i = count; i < *max_buckets; ++i) {
-      add_container(0);
-    }
 
     //  detach old container location from global memory space, if it has
     //  been attached before

@@ -95,7 +95,6 @@ public:
         total_vertices += n_vertices * (factors[i] / factor_sum);
         _blocks[i] = total_vertices;
       }
-      if(dash::myid() == 0) std::cout << n_vertices * (factors[i] / factor_sum) << std::endl;
     }
   }
 
