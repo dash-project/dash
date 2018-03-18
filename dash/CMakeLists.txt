@@ -320,7 +320,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-    CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+    CXX_STANDARD_REQUIRED ON
   )
 
   if(ENABLE_COMPTIME_RED)
@@ -419,7 +419,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         set_target_properties(
           ${exampletarget} PROPERTIES
           CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-          CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+          CXX_STANDARD_REQUIRED ON
         )
 
         # Installation
@@ -479,7 +479,7 @@ if (BUILD_TESTS)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
         CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-        CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+        CXX_STANDARD_REQUIRED ON
       )
 
       if(ENABLE_COMPTIME_RED)

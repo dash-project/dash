@@ -90,14 +90,8 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set_target_properties(
     ${DASH_TEST} PROPERTIES
     COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
-  )
-  set_target_properties(
-    ${DASH_TEST} PROPERTIES
     CXX_STANDARD 11
-  )
-  set_target_properties(
-    ${DASH_TEST} PROPERTIES
-    CXX_STANDARD_REQUIRED 11
+    CXX_STANDARD_REQUIRED ON 
   )
   # Installation
   DeployBinary(${DASH_TEST})
