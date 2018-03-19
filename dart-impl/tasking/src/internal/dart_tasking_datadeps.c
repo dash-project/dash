@@ -219,7 +219,6 @@ dephash_allocate_elem(
   }
 
   DART_ASSERT(task.local != NULL);
-  DART_ASSERT(elem->task.local == NULL);
   elem->task    = task;
   elem->taskdep = *dep;
   elem->origin  = origin;
