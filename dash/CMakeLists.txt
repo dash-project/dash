@@ -358,11 +358,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   	configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
-      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 
   	# install custom config
   	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-            DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 	endif()
 
   # Examples
@@ -421,12 +421,6 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           CXX_STANDARD ${DASH_CXX_STD_PREFERED}
           CXX_STANDARD_REQUIRED ON
         )
-
-        # Installation
-        DeployBinary(${exampletarget})
-        install(
-          TARGETS ${exampletarget}
-          DESTINATION bin/dash/examples/${dart_variant})
       endif()
     endforeach(examplename ${DASH_TEST_DIRECTORIES})
   endif()
@@ -486,11 +480,12 @@ if (BUILD_TESTS)
         cotire(${DASH_TEST})
       endif()
 
-      # Installation
-      DeployBinary(${DASH_TEST})
-      install(
-        TARGETS ${DASH_TEST}
-        DESTINATION bin/dash/test/${dart_variant})
+      if(INSTALL_TESTS)
+        DeployBinary(${DASH_TEST})
+        install(
+          TARGETS ${DASH_TEST}
+          DESTINATION bin/)
+      endif()
 
       # Code Coverage
       if (BUILD_COVERAGE_TESTS)

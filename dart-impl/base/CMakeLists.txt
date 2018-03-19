@@ -127,10 +127,6 @@ set_target_properties(
 
 DeployLibrary(${DASH_DART_BASE_LIBRARY})
 
-# Install headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
-
 # Install library
 install(TARGETS ${DASH_DART_BASE_LIBRARY}
         DESTINATION lib
