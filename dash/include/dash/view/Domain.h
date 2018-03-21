@@ -10,19 +10,14 @@
 namespace dash {
 
 namespace detail {
-  /**
-   * Definition of type trait \c dash::detail::has_type_domain_iterator<T>
-   * with static member \c value indicating whether type \c T provides
-   * dependent type \c domain_iterator.
-   */
-//DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_iterator);
 
   /**
    * Definition of type trait \c dash::detail::has_type_domain_type<T>
    * with static member \c value indicating whether type \c T provides
    * dependent type \c domain_type.
    */
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type)
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type);
+
 }
 
 // -----------------------------------------------------------------------

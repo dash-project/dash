@@ -57,28 +57,7 @@ namespace detail {
   DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
   DASH__META__DEFINE_TRAIT__HAS_TYPE(pointer);
   DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer);
-
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_iterator);
 }
-
-
-template <class Iterator>
-struct iterator_traits
-: public std::iterator_traits<Iterator> {
-  using is_local
-          = typename std::integral_constant<bool,
-                       !dash::has_type_pattern_type<Iterator>::value
-                     >;
-  using is_view_iterator
-          = typename dash::detail::has_type_domain_iterator<Iterator>;
-};
-
-template <class Iterator>
-struct iterator_traits<Iterator *>
-: public std::iterator_traits<Iterator *> {
-  using is_local         = typename std::integral_constant<bool, true>;
-  using is_view_iterator = std::integral_constant<bool, false>;
-};
 
 
 /**
