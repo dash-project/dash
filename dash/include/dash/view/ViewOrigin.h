@@ -48,8 +48,9 @@ public:
   self_t & operator=(self_t &&)         = default;
   self_t & operator=(const self_t &)    = default;
 
+  template <std::size_t N>
   constexpr explicit ViewOrigin(
-      std::initializer_list<index_type> extents)
+      std::array<dim_t, N> extents)
   : _extents(extents)
   , _index_set(*this)
   { }
@@ -65,7 +66,7 @@ public:
   constexpr bool operator==(const self_t & rhs) const {
     return (this == &rhs);
   }
-  
+
   constexpr bool operator!=(const self_t & rhs) const {
     return !(*this == rhs);
   }
@@ -101,7 +102,7 @@ public:
   }
 
   // ---- size ------------------------------------------------------------
-  
+
   template <dim_t SizeDim = 0>
   constexpr index_type size() const {
     return extent<SizeDim>() *

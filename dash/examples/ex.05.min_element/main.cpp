@@ -70,7 +70,7 @@ int main(int argc, char * argv[])
   // the following shows the usage of min_element with a composite
   // datatype (test_t). We're passing a comparator function as a
   // lambda expression
-  auto min = dash::min_element<test_t>(
+  auto min = dash::min_element(
                arr2.begin(),
                arr2.end(),
                [](const test_t & t1, const test_t & t2) -> bool {

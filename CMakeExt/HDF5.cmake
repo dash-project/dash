@@ -63,7 +63,7 @@ if(HDF5_FOUND)
   check_symbol_exists(H5_HAVE_PARALLEL "H5pubconf.h" HAVE_H5_PARALLEL)
   cmake_pop_check_state()
 
-  if(NOT HAVE_H5_PARALLEL)
+  if(NOT HAVE_H5_PARALLEL OR "${MPI_IMPL_ID}" STREQUAL "")
     message(STATUS "HDF5 provides only serial version")
     set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
     unset(HDF5_LIBRARIES)
