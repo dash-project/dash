@@ -5,6 +5,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Distribution.h>
+#include <dash/View.h>
 
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>

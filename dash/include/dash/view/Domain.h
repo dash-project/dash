@@ -25,7 +25,6 @@ namespace detail {
   DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type)
 }
 
-
 // -----------------------------------------------------------------------
 // Forward-declarations
 
