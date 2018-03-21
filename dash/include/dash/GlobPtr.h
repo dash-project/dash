@@ -29,6 +29,17 @@ bool operator!=(
 
 namespace dash {
 
+namespace internal {
+  static bool is_local(dart_gptr_t gptr) {
+    dart_team_unit_t luid;
+    DASH_ASSERT_RETURNS(
+      dart_team_myid(gptr.teamid, &luid),
+      DART_OK);
+    return gptr.unitid == luid.id;
+  }
+}
+
+
 // Forward-declarations
 template <typename T>                  class GlobRef;
 template <typename T,
@@ -526,11 +537,7 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    dart_team_unit_t luid;
-    DASH_ASSERT_RETURNS(
-      dart_team_myid(_rbegin_gptr.teamid, &luid),
-      DART_OK);
-    return _rbegin_gptr.unitid == luid.id;
+    return dash::internal::is_local(_rbegin_gptr);
   }
 
 private:
@@ -602,7 +609,7 @@ std::ostream & operator<<(
 
 /**
  * Internal type.
- * 
+ *
  * Specialization of \c dash::GlobPtr, wraps underlying global address
  * as global const pointer (not pointer to const).
  *
@@ -821,7 +828,7 @@ std::ostream & operator<<(
  * \complexity  O(1)
  *
  * \ingroup     Algorithms
- * 
+ *
  * \concept{DashMemorySpaceConcept}
  */
 template<typename ElementType, class MemSpaceT>

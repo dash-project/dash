@@ -155,6 +155,12 @@ struct dart_datatype
            >::type > {
 };
 
+template<typename T>
+struct dart_datatype<const T> : dart_datatype<T> { };
+
+template<typename T>
+struct dart_datatype<volatile T> : dart_datatype<T> { };
+
 namespace internal {
 
 template <std::size_t Size>

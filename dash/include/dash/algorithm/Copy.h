@@ -182,14 +182,10 @@ ValueType * copy_block(
                      "left:",           total_elem_left);
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
-      dash::dart_storage<ValueType> ds(num_copy_elem);
-      DASH_ASSERT_RETURNS(
-        dart_get_blocking(
-          cur_out_first,
-          cur_in_first.dart_gptr(),
-          ds.nelem,
-          ds.dtype),
-        DART_OK);
+      dash::internal::get_blocking(
+        cur_in_first.dart_gptr(),
+        cur_out_first,
+        num_copy_elem);
       num_elem_copied += num_copy_elem;
     }
   } else {
@@ -333,16 +329,12 @@ dash::Future<ValueType *> copy_block_async(
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
       dart_handle_t  get_handle;
-      dash::dart_storage<ValueType> ds(num_copy_elem);
-      DASH_ASSERT_RETURNS(
-        dart_get_handle(
-          cur_out_first,
-          cur_in_first.dart_gptr(),
-          ds.nelem,
-          ds.dtype,
-          &get_handle),
-        DART_OK);
-      if (get_handle != NULL) {
+      dash::internal::get_handle(
+        cur_in_first.dart_gptr(),
+        cur_out_first,
+        num_copy_elem,
+        &get_handle);
+      if (get_handle != DART_HANDLE_NULL) {
         req_handles.push_back(get_handle);
       }
       num_elem_copied += num_copy_elem;
@@ -393,16 +385,12 @@ dash::Future<ValueType *> copy_block_async(
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
       dart_handle_t  get_handle;
-      dash::dart_storage<ValueType> ds(num_copy_elem);
-      DASH_ASSERT_RETURNS(
-        dart_get_handle(
-          dest_ptr,
-          src_gptr,
-          ds.nelem,
-          ds.dtype,
-          &get_handle),
-        DART_OK);
-      if (get_handle != NULL) {
+      dash::internal::get_handle(
+        src_gptr,
+        dest_ptr,
+        num_copy_elem,
+        &get_handle);
+      if (get_handle != DART_HANDLE_NULL) {
         req_handles.push_back(get_handle);
       }
       num_elem_copied += num_copy_elem;
@@ -471,14 +459,10 @@ GlobOutputIt copy_block(
                  "g_out_first:", out_first, out_first.dart_gptr());
 
   auto num_elements = std::distance(in_first, in_last);
-  dash::dart_storage<ValueType> ds(num_elements);
-  DASH_ASSERT_RETURNS(
-    dart_put_blocking(
-      out_first.dart_gptr(),
-      in_first,
-      ds.nelem,
-      ds.dtype),
-    DART_OK);
+  dash::internal::put_blocking(
+    out_first.dart_gptr(),
+    in_first,
+    num_elements);
 
   auto out_last = out_first + num_elements;
   DASH_LOG_TRACE("dash::copy_block >",
@@ -516,11 +500,9 @@ dash::Future<GlobOutputIt> copy_block_async(
     dart_put_handle(
         dest_gptr,
         src_ptr,
-        ds.nelem,
-        ds.dtype,
-        &put_handle),
-    DART_OK);
-  if (put_handle != NULL) {
+        num_copy_elem
+        &put_handle);
+  if (put_handle != DART_HANDLE_NULL) {
     req_handles.push_back(put_handle);
   }
 

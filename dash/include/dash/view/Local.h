@@ -15,7 +15,7 @@ namespace detail {
    * with static member \c value indicating whether type \c T provides
    * dependent type \c local_type.
    */
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(local_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(local_type)
 }
 
 /**
