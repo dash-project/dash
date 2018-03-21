@@ -39,6 +39,8 @@ set(DASH_CXX_STANDARD "14"
 
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(INSTALL_TESTS
+       "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
         Implies BUILD_TESTS. Requires GCC." off)
@@ -121,6 +123,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/StdLib.cmake)
 
 # Load build modules to locate libraries after environment setup
 # has been loaded:
@@ -259,6 +262,9 @@ if (MPI_FOUND)
   message(EMPH "MPI implementation:       " ${MPI_IMPL_ID})
 endif()
 
+message(INFO "Build tests:              (BUILD_TESTS)                    "
+        ${BUILD_TESTS})
+
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
@@ -283,7 +289,7 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
-message(INFO "MPI dynamic windows:      (ENABLE_SHARED_WINDOWS)          "
+message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "
         ${ENABLE_DYNAMIC_WINDOWS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})
@@ -311,6 +317,14 @@ message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
+
+
+message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
+message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
+if (DEFINED MPI_IMPL_ID)
+  message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
+endif()
+
 
 if (ENABLE_PAPI)
   if (PAPI_FOUND)
@@ -407,4 +421,12 @@ endif()
 if (ENABLE_NASTYMPI)
     message(INFO "NastyMPI                  enabled")
 endif()
-
+if (BUILD_TESTS)
+  if (GTEST_FOUND)
+    message(INFO "googletest                enabled")
+  else()
+    message(NOTE "googletest                not found")
+  endif()
+else()
+  message(NOTE "googletest                disabled")
+endif()

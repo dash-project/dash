@@ -213,6 +213,11 @@ target_link_libraries(
   ${ADDITIONAL_LIBRARIES}
 )
 
+set_target_properties(
+  ${DASH_DART_IMPL_MPI_LIBRARY}
+  PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+)
+
 if(MPI_LINK_FLAGS)
   set_target_properties(
     ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
@@ -223,18 +228,13 @@ endif()
 set_target_properties(
   ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
   COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS_STR}
+  C_STANDARD ${DART_C_STD_PREFERED}
+  C_STANDARD_REQUIRED ON
 )
 
 ## Installation
 
 DeployLibrary(${DASH_DART_IMPL_MPI_LIBRARY})
-
-# Headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
-# Generated headers, if any
-# install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/dash
-#         DESTINATION include FILES_MATCHING PATTERN "*.h")
 
 if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	include(CMakePackageConfigHelpers)
@@ -244,7 +244,7 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	configure_package_config_file(
       "dart-config.cmake.in"
       "${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
-      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 endif()
 
 # Library
@@ -255,9 +255,9 @@ install(TARGETS ${DASH_DART_IMPL_MPI_LIBRARY}
 if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	# exports
 	install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets"
-	        DESTINATION cmake)
+	        DESTINATION share/cmake)
 
   # install custom config
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
-        DESTINATION cmake)
+          DESTINATION share/cmake)
 endif()

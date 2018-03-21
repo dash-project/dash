@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/Dimensional.h>
+#include <dash/iterator/IteratorTraits.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/iterator/GlobViewIter.h>
 

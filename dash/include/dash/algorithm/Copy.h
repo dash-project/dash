@@ -233,6 +233,7 @@ ValueType * copy_block(
                      "left:",           total_elem_left);
       auto dest_ptr = out_first + num_elem_copied;
       auto src_gptr = cur_in_first.dart_gptr();
+<<<<<<< HEAD
       dash::dart_storage<ValueType> ds(num_copy_elem);
       if (dart_get_blocking(
             dest_ptr,
@@ -244,6 +245,9 @@ ValueType * copy_block(
         DASH_THROW(
           dash::exception::RuntimeError, "dart_get failed");
       }
+=======
+      dash::internal::get_blocking(src_gptr, dest_ptr, num_copy_elem);
+>>>>>>> db6cbb6f9f3b5ee1a21ae9fc7bbc549503c75b21
       num_elem_copied += num_copy_elem;
     }
   }
@@ -328,6 +332,16 @@ dash::Future<ValueType *> copy_block_async(
                      "left:",           total_elem_left);
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
+<<<<<<< HEAD
+=======
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+      dash::internal::get(
+        cur_in_first.dart_gptr(),
+        cur_out_first,
+        num_copy_elem);
+      req_handles.push_back(in_first.dart_gptr());
+#else
+>>>>>>> db6cbb6f9f3b5ee1a21ae9fc7bbc549503c75b21
       dart_handle_t  get_handle;
       dash::internal::get_handle(
         cur_in_first.dart_gptr(),
@@ -384,6 +398,16 @@ dash::Future<ValueType *> copy_block_async(
                      "left:",           total_elem_left);
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
+<<<<<<< HEAD
+=======
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+      dash::internal::get(
+            src_gptr,
+            dest_ptr,
+            num_copy_elem);
+      req_handles.push_back(src_gptr);
+#else
+>>>>>>> db6cbb6f9f3b5ee1a21ae9fc7bbc549503c75b21
       dart_handle_t  get_handle;
       dash::internal::get_handle(
         src_gptr,
@@ -494,10 +518,22 @@ dash::Future<GlobOutputIt> copy_block_async(
   auto num_copy_elem = std::distance(in_first, in_last);
   auto src_ptr       = in_first;
   auto dest_gptr     = out_first.dart_gptr();
+<<<<<<< HEAD
   dart_handle_t put_handle;
   dash::dart_storage<ValueType> ds(num_copy_elem);
   DASH_ASSERT_RETURNS(
     dart_put_handle(
+=======
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+  dash::internal::put(
+        dest_gptr,
+        src_ptr,
+        num_copy_elem);
+  req_handles.push_back(dest_gptr);
+#else
+  dart_handle_t  put_handle;
+  dash::internal::put_handle(
+>>>>>>> db6cbb6f9f3b5ee1a21ae9fc7bbc549503c75b21
         dest_gptr,
         src_ptr,
         num_copy_elem
@@ -863,9 +899,15 @@ auto copy(
   bool use_memcpy      = ((in_last - in_first) * sizeof(ValueType))
                          <= l2_line_size;
 
+<<<<<<< HEAD
   // Instead of testing in_first.local() and in_last.local(), this test
   // for a local-only range only requires one call to in_first.local()
   // which increases throughput by ~10% for local ranges.
+=======
+  // Instead of testing in_first.local() and in_last.local(), this test for
+  // a local-only range only requires one call to in_first.local() which
+  // increases throughput by ~10% for local ranges.
+>>>>>>> db6cbb6f9f3b5ee1a21ae9fc7bbc549503c75b21
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy:range", "entire input range is local");
