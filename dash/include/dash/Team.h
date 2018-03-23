@@ -236,6 +236,14 @@ public:
   }
 
   /**
+   * Initialize the global team.
+   */
+  static void initialize()
+  {
+    Team::All().init_team();
+  }
+
+  /**
    * Finalize all teams.
    * Frees global memory allocated by \c dash::Team::All().
    */
@@ -255,6 +263,7 @@ public:
     }
 
     Team::All().free();
+    Team::All().reset_team();
   }
 
   /**
@@ -466,13 +475,6 @@ public:
 
   inline team_unit_t myid() const
   {
-    if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
-      DASH_ASSERT_RETURNS(
-        dart_team_myid(_dartid, &_myid),
-        DART_OK);
-    } else if (!dash::is_initialized()) {
-      _myid = -1;
-    }
     return _myid;
   }
 
@@ -483,13 +485,6 @@ public:
    */
   inline size_t size() const
   {
-    if (_size == 0 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
-      DASH_ASSERT_RETURNS(
-        dart_team_size(_dartid, &_size),
-        DART_OK);
-    } else if (!dash::is_initialized()) {
-      _size = 0;
-    }
     return _size;
   }
 
@@ -579,6 +574,23 @@ private:
       dash::Team::_teams.erase(
         team->_dartid);
     }
+  }
+
+  void init_team()
+  {
+    DASH_ASSERT_RETURNS(
+      dart_team_size(_dartid, &_size),
+      DART_OK);
+
+    DASH_ASSERT_RETURNS(
+      dart_team_myid(_dartid, &_myid),
+      DART_OK);
+  }
+
+  void reset_team()
+  {
+    _myid = UNDEFINED_TEAM_UNIT_ID;
+    _size = 0;
   }
 
 private:
