@@ -35,7 +35,7 @@ TEST_F(AccumulateTest, SimpleStart) {
 TEST_F(AccumulateTest, OpMult) {
   const size_t num_elem_local = 1;
   using value_t = uint64_t;
-  size_t num_elem_total       = std::max(static_cast<ssize_t>(32), dash::size());
+  size_t num_elem_total       = std::max(static_cast<size_t>(32), dash::size());
   value_t value = 2, start = 10;
 
   dash::Array<uint64_t> target(num_elem_total, dash::BLOCKED);

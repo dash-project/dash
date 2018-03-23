@@ -118,7 +118,7 @@ dash::global_unit_t dash::myid()
   return dash::Team::GlobalUnitID();
 }
 
-ssize_t dash::size()
+size_t dash::size()
 {
   return dash::Team::All().size();
 }
