@@ -108,12 +108,11 @@ private:
 
   bool get_group() const
   {
-    if (dash::is_initialized() && !_has_group) {
+    if (dash::is_initialized() && _group != DART_GROUP_NULL) {
       DASH_LOG_DEBUG("Team.get_group()");
       dart_team_get_group(_dartid, &_group);
-      _has_group = true;
     }
-    return _has_group;
+    return _group != DART_GROUP_NULL;
   }
 
 protected:
@@ -138,7 +137,6 @@ public:
       // Take ownership of data from source
       _deallocs = std::move(t._deallocs);
       std::swap(_parent,    t._parent);
-      std::swap(_has_group, t._has_group);
       std::swap(_group,     t._group);
       std::swap(_dartid,    t._dartid);
       _position     = t._position;
@@ -159,7 +157,6 @@ public:
       // Take ownership of data from source
       _deallocs = std::move(t._deallocs);
       std::swap(_parent,    t._parent);
-      std::swap(_has_group, t._has_group);
       std::swap(_group,     t._group);
       std::swap(_dartid,    t._dartid);
       _position     = t._position;
@@ -184,7 +181,7 @@ public:
       Team::unregister_team(this);
     }
 
-    if (_has_group)
+    if (_group != DART_GROUP_NULL)
       dart_group_destroy(&_group);
 
     if (_child) {
@@ -593,7 +590,6 @@ private:
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
   mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
-  mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = DART_GROUP_NULL;
 
   /// Deallocation list for freeing memory acquired via
