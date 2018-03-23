@@ -181,8 +181,10 @@ public:
       Team::unregister_team(this);
     }
 
-    if (_group != DART_GROUP_NULL)
+    if (_group != DART_GROUP_NULL) {
       dart_group_destroy(&_group);
+      _group = DART_GROUP_NULL;
+    }
 
     if (_child) {
       delete(_child);
