@@ -103,21 +103,22 @@ typedef enum
  */
 typedef intptr_t dart_datatype_t;
 
-#define DART_TYPE_UNDEFINED (dart_datatype_t)(0)
+#define DART_TYPE_UNDEFINED    (dart_datatype_t)(0)
 /// integral data types
-#define DART_TYPE_BYTE      (dart_datatype_t)(1)
-#define DART_TYPE_SHORT     (dart_datatype_t)(2)
-#define DART_TYPE_INT       (dart_datatype_t)(3)
-#define DART_TYPE_UINT      (dart_datatype_t)(4)
-#define DART_TYPE_LONG      (dart_datatype_t)(5)
-#define DART_TYPE_ULONG     (dart_datatype_t)(6)
-#define DART_TYPE_LONGLONG  (dart_datatype_t)(7)
-#define DART_TYPE_ULONGLONG (dart_datatype_t)(8)
+#define DART_TYPE_BYTE         (dart_datatype_t)(1)
+#define DART_TYPE_SHORT        (dart_datatype_t)(2)
+#define DART_TYPE_INT          (dart_datatype_t)(3)
+#define DART_TYPE_UINT         (dart_datatype_t)(4)
+#define DART_TYPE_LONG         (dart_datatype_t)(5)
+#define DART_TYPE_ULONG        (dart_datatype_t)(6)
+#define DART_TYPE_LONGLONG     (dart_datatype_t)(7)
+#define DART_TYPE_ULONGLONG    (dart_datatype_t)(8)
 /// floating point data types
-#define DART_TYPE_FLOAT     (dart_datatype_t)(9)
-#define DART_TYPE_DOUBLE    (dart_datatype_t)(10)
+#define DART_TYPE_FLOAT        (dart_datatype_t)(9)
+#define DART_TYPE_DOUBLE       (dart_datatype_t)(10)
+#define DART_TYPE_LONG_DOUBLE  (dart_datatype_t)(11)
 /// Reserved, do not use!
-#define DART_TYPE_LAST      (dart_datatype_t)(11)
+#define DART_TYPE_LAST         (dart_datatype_t)(12)
 
 
 /** size for integral \c size_t */
