@@ -110,6 +110,10 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_CRAY_MPI)
       set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
       set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
+      set(MPI_C_LIBRARIES
+          "${MPI_C_LIBRARIES} -Wl,--whole-archive,-ldmapp,-no-whole-archive")
+      set(MPI_CXX_LIBRARIES
+          "${MPI_CXX_LIBRARIES} -Wl,--whole-archive,-ldmapp,-no-whole-archive")
     endif ()
   endif ()
 
