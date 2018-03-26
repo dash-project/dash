@@ -18,7 +18,7 @@ using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t>;
 
 using array_t      = dash::Array<double>;
 
-#define DEBUG
+//#define DEBUG
 
 void print_matrix(const matrix_t& matrix) {
   auto rows = matrix.extent(0);
@@ -261,11 +261,10 @@ int main(int argc, char *argv[])
 #pragma omp task shared(halo_block)
 {
     // we need to transfer halo region 1  here
-    dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
-    //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(0));
-    handle[1] = update_halo_async(*current_halo, halo_block.halo_region(1));
-    //handle[2] = update_halo_async(*current_halo, halo_block.halo_region(2));
-    wait_yield(handle, 3);
+    //dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
+    //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(1));
+    //wait_yield(handle, 1);
+    current_halo->update_at(1);
     compute_boundary_range(up_it, up_it_bend, new_begin, dx, dy, dt, k);
 }
 
@@ -275,11 +274,10 @@ int main(int argc, char *argv[])
 #pragma omp task shared(halo_block)
 {
     // we need to transfer halo region 7 here
-    dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
-    //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(6));
-    handle[1] = update_halo_async(*current_halo, halo_block.halo_region(7));
-    //handle[2] = update_halo_async(*current_halo, halo_block.halo_region(8));
-    wait_yield(handle, 3);
+    //dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
+    //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(7));
+    //wait_yield(handle, 1);
+    current_halo->update_at(7);
     compute_boundary_range(down_it, down_it_bend, new_begin, dx, dy, dt, k);
 }
 
@@ -289,9 +287,11 @@ int main(int argc, char *argv[])
 #pragma omp task shared(halo_block, current_halo)
 {
     // TODO: we need to transfer halo region 3 here
-    dart_handle_t handle;
-    handle = update_halo_async(*current_halo, halo_block.halo_region(3));
-    wait_yield(&handle, 1);
+    //dart_handle_t handle;
+    //handle = update_halo_async(*current_halo, halo_block.halo_region(3));
+    //wait_yield(&handle, 1);
+
+    current_halo->update_at(3);
     compute_boundary_range(left_it, left_it_bend, new_begin, dx, dy, dt, k);
 }
 
@@ -301,9 +301,11 @@ int main(int argc, char *argv[])
 #pragma omp task shared(halo_block)
 {
     // TODO: we need to transfer halo region 5 here
-    dart_handle_t handle;
-    handle = update_halo_async(*current_halo, halo_block.halo_region(5));
-    wait_yield(&handle, 1);
+    //dart_handle_t handle;
+    //handle = update_halo_async(*current_halo, halo_block.halo_region(5));
+    //wait_yield(&handle, 1);
+
+    current_halo->update_at(5);
     compute_boundary_range(right_it, right_it_bend, new_begin, dx, dy, dt, k);
 }
 

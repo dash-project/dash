@@ -1,7 +1,7 @@
 #include <iostream>
 #include <libdash.h>
 
-#define DEBUG
+//#define DEBUG
 
 using namespace std;
 
