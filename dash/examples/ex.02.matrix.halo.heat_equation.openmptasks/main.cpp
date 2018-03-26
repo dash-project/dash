@@ -262,9 +262,9 @@ int main(int argc, char *argv[])
 {
     // we need to transfer halo region 1  here
     dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
-    handle[0] = update_halo_async(*current_halo, halo_block.halo_region(0));
+    //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(0));
     handle[1] = update_halo_async(*current_halo, halo_block.halo_region(1));
-    handle[2] = update_halo_async(*current_halo, halo_block.halo_region(2));
+    //handle[2] = update_halo_async(*current_halo, halo_block.halo_region(2));
     wait_yield(handle, 3);
     compute_boundary_range(up_it, up_it_bend, new_begin, dx, dy, dt, k);
 }
