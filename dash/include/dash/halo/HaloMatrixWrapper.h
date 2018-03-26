@@ -267,8 +267,13 @@ public:
    * Initiates a blocking halo region update for all halo elements.
    */
   void update() {
-    for(auto& region : _region_data)
-      update_halo_intern(region.second, false);
+    for(auto& region : _region_data) {
+      update_halo_intern(region.second, true);
+    }
+
+    for(auto& region : _region_data) {
+      dart_wait_local(&region.second.halo_data.handle);
+    }
   }
 
   /**
@@ -277,8 +282,9 @@ public:
    */
   void update_at(region_index_t index) {
     auto it_find = _region_data.find(index);
-    if(it_find != _region_data.end())
+    if(it_find != _region_data.end()) {
       update_halo_intern(it_find->second, false);
+    }
   }
 
   /**
@@ -317,6 +323,20 @@ public:
     if(it_find != _region_data.end())
       dart_wait_local(it_find->second.halo_data.handle);
   }
+
+  /**
+   * Waits until the halo updates for the given halo region is finished.
+   * Only useful for asynchronous halo updates.
+   */
+  bool test(region_index_t index) {
+    int32_t flag = 1;
+    auto it_find = _region_data.find(index);
+    if(it_find != _region_data.end())
+      dart_test_local(&it_find->second.halo_data.handle, &flag);
+
+    return !(flag == 0);
+  }
+
 
   /**
    * Returns the local \ref ViewSpec
