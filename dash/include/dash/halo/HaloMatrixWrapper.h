@@ -5,13 +5,15 @@
 
 #include <dash/Matrix.h>
 #include <dash/Pattern.h>
-#include <dash/halo/HaloStencilOperator.h>
+#include <dash/halo/StencilOperator.h>
 #include <dash/memory/GlobStaticMem.h>
 
 #include <type_traits>
 #include <vector>
 
 namespace dash {
+
+namespace halo {
 
 /**
  * As known from classic stencil algorithms, *boundaries* are the outermost
@@ -21,7 +23,7 @@ namespace dash {
  *
  * The \c HaloMatrixWrapper acts as a wrapper of the local blocks of the NArray
  * and extends these by boundary and halo regions. The HaloMatrixWrapper also
- * provides a function to create a \ref HaloStencilOperator.
+ * provides a function to create a \ref StencilOperator.
  *
  * Example for an outer block boundary iteration space (halo regions):
  *
@@ -80,7 +82,7 @@ public:
                     const StencilSpecT&... stencil_spec)
   : _matrix(matrix), _cycle_spec(cycle_spec), _halo_spec(stencil_spec...),
     _view_local(matrix.local.extents()),
-    _view_global(ViewSpec_t(matrix.local.offsets(), matrix.local.extents())),
+    _view_global(matrix.local.offsets(), matrix.local.extents()),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_spec, cycle_spec),
     _halomemory(_haloblock) {
@@ -92,7 +94,7 @@ public:
       pattern_size_t num_elems_block = 1;
       auto           rel_dim         = region.spec().relevant_dim();
       auto           level           = region.spec().level();
-      auto*          off             = _halomemory.pos_at(region.index());
+      auto*          off             = _halomemory.first_element_at(region.index());
       auto           it              = region.begin();
 
       if(MemoryArrange == ROW_MAJOR) {
@@ -108,7 +110,6 @@ public:
             (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
                              : 1;
           auto            ds_stride = dart_storage<Element_t>(stride);
-          HaloData        halo_data;
           dart_datatype_t stride_type;
           dart_type_create_strided(ds_num_elems_block.dtype, ds_stride.nelem,
                                    ds_num_elems_block.nelem, &stride_type);
@@ -117,13 +118,13 @@ public:
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
                                   [off, it, region_size, ds_num_elems_block,
-                                   stride_type](HaloData& data) {
+                                   stride_type](dart_handle_t& handle) {
                                     dart_get_handle(off, it.dart_gptr(),
                                                     region_size, stride_type,
                                                     ds_num_elems_block.dtype,
-                                                    &data.handle);
+                                                    &handle);
                                   },
-                                  std::move(halo_data) }));
+                                  DART_HANDLE_NULL }));
 
         }
         // TODO more optimizations
@@ -133,7 +134,6 @@ public:
           auto   ds_num_elems_block  = dart_storage<Element_t>(num_elems_block);
           num_blocks                 = region_size / num_elems_block;
           auto                it_tmp = it;
-          HaloData            halo_data;
           auto                start_index = it.lpos().index;
           std::vector<size_t> block_sizes(num_blocks);
           std::vector<size_t> block_offsets(num_blocks);
@@ -155,13 +155,13 @@ public:
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
                                   [off, it, ds_num_elems_block, region_size,
-                                   index_type](HaloData& data) {
+                                   index_type](dart_handle_t& handle) {
                                     dart_get_handle(off, it.dart_gptr(),
                                                     region_size, index_type,
                                                     ds_num_elems_block.dtype,
-                                                    &data.handle);
+                                                    &handle);
                                   },
-                                  std::move(halo_data) }));
+                                  DART_HANDLE_NULL }));
         }
       } else {
         if(level == 1) {  //|| (level == 2 &&
@@ -177,7 +177,6 @@ public:
             (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
                              : 1;
           auto     ds_stride = dart_storage<Element_t>(stride);
-          HaloData halo_data;
 
           dart_datatype_t stride_type;
           dart_type_create_strided(ds_num_elems_block.dtype, ds_stride.nelem,
@@ -187,13 +186,13 @@ public:
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
                                   [off, it, region_size, ds_num_elems_block,
-                                   stride_type](HaloData& data) {
+                                   stride_type](dart_handle_t& handle) {
                                     dart_get_handle(off, it.dart_gptr(),
                                                     region_size, stride_type,
                                                     ds_num_elems_block.dtype,
-                                                    &data.handle);
+                                                    &handle);
                                   },
-                                  std::move(halo_data) }));
+                                  DART_HANDLE_NULL }));
         }
         // TODO more optimizations
         else {
@@ -202,7 +201,6 @@ public:
           auto   ds_num_elems_block  = dart_storage<Element_t>(num_elems_block);
           num_blocks                 = region_size / num_elems_block;
           auto                it_tmp = it;
-          HaloData            halo_data;
           std::vector<size_t> block_sizes(num_blocks);
           std::vector<size_t> block_offsets(num_blocks);
           std::fill(block_sizes.begin(), block_sizes.end(),
@@ -226,13 +224,13 @@ public:
           _region_data.insert(std::make_pair(
             region.index(), Data{ region,
                                   [off, it, index_type, region_size,
-                                   ds_num_elems_block](HaloData& data) {
+                                   ds_num_elems_block](dart_handle_t& handle) {
                                     dart_get_handle(off, it.dart_gptr(),
                                                     region_size, index_type,
                                                     ds_num_elems_block.dtype,
-                                                    &data.handle);
+                                                    &handle);
                                   },
-                                  std::move(halo_data) }));
+                                  DART_HANDLE_NULL }));
         }
 
         num_elems_block = region.region().extent(0);
@@ -267,8 +265,10 @@ public:
    * Initiates a blocking halo region update for all halo elements.
    */
   void update() {
-    for(auto& region : _region_data)
-      update_halo_intern(region.second, false);
+    for(auto& region : _region_data) {
+      update_halo_intern(region.second);
+      dart_wait_local(&region.second.handle);
+    }
   }
 
   /**
@@ -277,8 +277,10 @@ public:
    */
   void update_at(region_index_t index) {
     auto it_find = _region_data.find(index);
-    if(it_find != _region_data.end())
-      update_halo_intern(it_find->second, false);
+    if(it_find != _region_data.end()) {
+      update_halo_intern(it_find->second);
+      dart_wait_local(&it_find->second.handle);
+    }
   }
 
   /**
@@ -286,7 +288,7 @@ public:
    */
   void update_async() {
     for(auto& region : _region_data)
-      update_halo_intern(region.second, true);
+      update_halo_intern(region.second);
   }
 
   /**
@@ -296,7 +298,7 @@ public:
   void update_async_at(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
-      update_halo_intern(it_find->second, true);
+      update_halo_intern(it_find->second);
   }
 
   /**
@@ -305,7 +307,7 @@ public:
    */
   void wait() {
     for(auto& region : _region_data)
-      dart_wait_local(&region.second.halo_data.handle);
+      dart_wait_local(&region.second.handle);
   }
 
   /**
@@ -315,7 +317,7 @@ public:
   void wait(region_index_t index) {
     auto it_find = _region_data.find(index);
     if(it_find != _region_data.end())
-      dart_wait_local(it_find->second.halo_data.handle);
+      dart_wait_local(it_find->second.handle);
   }
 
   /**
@@ -342,8 +344,8 @@ public:
   /**
    * Returns the underlying NArray
    */
-
   const MatrixT& matrix() const { return _matrix; }
+
   /**
    * Sets all global border halo elements. set_custom_halos calls FuntionT with
    * all global coordinates of type:
@@ -371,7 +373,7 @@ public:
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
       if(region.is_custom_region()) {
-        auto*       pos_ptr = _halomemory.pos_at(region.index());
+        auto*       pos_ptr = _halomemory.first_element_at(region.index());
         const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
         const auto& reg_ext = region.region().extents();
@@ -407,14 +409,14 @@ public:
     }
     auto        index       = _haloblock.index_at(_view_local, coords);
     const auto& spec        = _halo_spec.spec(index);
-    auto        halomem_pos = _halomemory.pos_at(index);
+    auto*       halomem_pos = _halomemory.first_element_at(index);
     if(spec.level() == 0 || halomem_pos == nullptr)
       return nullptr;
 
     if(!_halomemory.to_halo_mem_coords_check(index, coords))
       return nullptr;
 
-    return _halomemory.pos_at(index) + _halomemory.offset(index, coords);
+    return halomem_pos + _halomemory.offset(index, coords);
   }
 
   /**
@@ -424,22 +426,22 @@ public:
   Element_t* halo_element_at_local(ElementCoords_t coords) {
     auto        index       = _haloblock.index_at(_view_local, coords);
     const auto& spec        = _halo_spec.spec(index);
-    auto        halomem_pos = _halomemory.pos_at(index);
+    auto*       halomem_pos = _halomemory.first_element_at(index);
     if(spec.level() == 0 || halomem_pos == nullptr)
       return nullptr;
 
     if(!_halomemory.to_halo_mem_coords_check(index, coords))
       return nullptr;
 
-    return _halomemory.pos_at(index) + _halomemory.offset(index, coords);
+    return halomem_pos + _halomemory.offset(index, coords);
   }
 
   /**
-   * Crates \ref HaloStencilOperator for a given \ref StencilSpec.
+   * Crates \ref StencilOperator for a given \ref StencilSpec.
    * Asserts whether the StencilSpec fits in the provided halo regions.
    */
   template <typename StencilSpecT>
-  HaloStencilOperator<Element_t, Pattern_t, StencilSpecT> stencil_operator(
+  StencilOperator<Element_t, Pattern_t, StencilSpecT> stencil_operator(
     const StencilSpecT& stencil_spec) {
     for(const auto& stencil : stencil_spec.specs()) {
       DASH_ASSERT_MSG(stencil.max()
@@ -447,29 +449,22 @@ public:
              "Stencil point extent higher than halo region extent.");
     }
 
-    return HaloStencilOperator<Element_t, Pattern_t, StencilSpecT>(
-      _haloblock, _halomemory, stencil_spec, _view_local);
+    return StencilOperator<Element_t, Pattern_t, StencilSpecT>(
+      &_haloblock, &_halomemory, stencil_spec, &_view_local);
   }
 
 private:
-  struct HaloData {
-    dart_handle_t handle = DART_HANDLE_NULL;
-  };
-
   struct Data {
     const Region_t&                region;
-    std::function<void(HaloData&)> get_halos;
-    HaloData                       halo_data;
+    std::function<void(dart_handle_t&)> get_halos;
+    dart_handle_t                  handle = DART_HANDLE_NULL;
   };
 
-  void update_halo_intern(Data& data, bool async) {
+  void update_halo_intern(Data& data) {
     if(data.region.is_custom_region())
       return;
 
-    data.get_halos(data.halo_data);
-
-    if(!async)
-      dart_wait_local(&data.halo_data.handle);
+    data.get_halos(data.handle);
   }
 
 private:
@@ -483,6 +478,8 @@ private:
   std::map<region_index_t, Data> _region_data;
   std::vector<dart_datatype_t>   _dart_types;
 };
+
+}  // namespace halo
 
 }  // namespace dash
 

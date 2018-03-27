@@ -9,6 +9,8 @@
 
 using namespace dash;
 
+using namespace dash::halo;
+
 TEST_F(HaloTest, GlobalBoundarySpec)
 {
   using GlobBoundSpec_t = GlobalBoundarySpec<3>;
@@ -255,8 +257,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
   auto* sum_local = sum_halo.lbegin();
 
-  halo_wrapper.update_async();
-
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
 
   auto it_iend = stencil_op.iend();
@@ -267,8 +267,7 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
     *sum_local += *it;
   }
 
-  halo_wrapper.wait();
-
+  halo_wrapper.update();
   auto it_bend = stencil_op.bend();
   for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
     for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
@@ -1177,19 +1176,21 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
         }
       }
     }
-    for(auto i = 3; i < ext_per_dim - 3; ++i) {
-      for(auto j = 3; j < ext_per_dim_check - 3; ++j) {
-        for(auto k = 3; k < ext_per_dim_check - 3; ++k) {
+    for(auto j = 3; j < ext_per_dim_check - 3; ++j) {
+      for(auto k = 3; k < ext_per_dim_check - 3; ++k) {
+        for(auto i = 2; i < ext_per_dim - 2; ++i)
           sum_check_spec_1 += matrix_check[i][j][k] +
             matrix_check[i-2][j][k] + matrix_check[i+2][j][k] +
             matrix_check[i][j-2][k] + matrix_check[i][j+2][k] +
             matrix_check[i][j][k-2] + matrix_check[i][j][k+2];
+        for(auto i = 1; i < ext_per_dim - 1; ++i)
           sum_check_spec_2 +=
             matrix_check[i-1][j-1][k-1] + matrix_check[i-1][j-1][k+1] +
             matrix_check[i-1][j+1][k-1] + matrix_check[i-1][j+1][k+1] +
             matrix_check[i][j][k] +
             matrix_check[i+1][j-1][k-1] + matrix_check[i+1][j-1][k+1] +
             matrix_check[i+1][j+1][k-1] + matrix_check[i+1][j+1][k+1];
+        for(auto i = 3; i < ext_per_dim - 3; ++i)
           sum_check_spec_3 +=
             matrix_check[i-3][j-3][k-3] + matrix_check[i-2][j-2][k-2] + matrix_check[i-1][j-1][k-1] +
             matrix_check[i-3][j-3][k+3] + matrix_check[i-2][j-2][k+2] + matrix_check[i-1][j-1][k+1] +
@@ -1200,7 +1201,6 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
             matrix_check[i+3][j-3][k+3] + matrix_check[i+2][j-2][k+2] + matrix_check[i+1][j-1][k+1] +
             matrix_check[i+3][j+3][k-3] + matrix_check[i+2][j+2][k-2] + matrix_check[i+1][j+1][k-1] +
             matrix_check[i+3][j+3][k+3] + matrix_check[i+2][j+2][k+2] + matrix_check[i+1][j+1][k+1];
-        }
       }
     }
 

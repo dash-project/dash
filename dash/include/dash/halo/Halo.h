@@ -11,14 +11,20 @@
 
 namespace dash {
 
+namespace halo {
+
 /**
  * Stencil point with raletive coordinates for N dimensions
  * e.g. StencilPoint<2>(-1,-1) -> north west
  */
 template <dim_t NumDimensions, typename CoeffT = double>
 class StencilPoint : public Dimensional<int16_t, NumDimensions> {
+public:
+  using point_value_t = int16_t;
+  using coefficient_t = CoeffT;
+
 private:
-  using Base_t = Dimensional<int16_t, NumDimensions>;
+  using Base_t = Dimensional<point_value_t, NumDimensions>;
 
 public:
   // TODO constexpr
@@ -42,9 +48,9 @@ public:
   template <typename... Values>
   constexpr StencilPoint(
     typename std::enable_if<sizeof...(Values) == NumDimensions - 1,
-                            int16_t>::type value,
+                            point_value_t>::type value,
     Values... values)
-  : Base_t::Dimensional(value, (int16_t) values...) {}
+  : Base_t::Dimensional(value, (point_value_t) values...) {}
 
   /**
    * Constructor
@@ -55,8 +61,8 @@ public:
   constexpr StencilPoint(
     typename std::enable_if<sizeof...(Values) == NumDimensions - 1,
                             CoeffT>::type coefficient,
-    int16_t                               value, Values... values)
-  : Base_t::Dimensional(value, (int16_t) values...), _coefficient(coefficient) {
+                            point_value_t value, Values... values)
+  : Base_t::Dimensional(value, (point_value_t) values...), _coefficient(coefficient) {
   }
 
   // TODO as constexpr
@@ -64,9 +70,9 @@ public:
    * Returns maximum distance to center over all dimensions
    */
   int max() const {
-    int16_t max = 0;
+    int max = 0;
     for(dim_t i(0); i < NumDimensions; ++i)
-      max = std::max((int) max, (int) std::abs(this->_values[i]));
+      max = std::max( max, (int) std::abs(this->_values[i]));
     return max;
   }
 
@@ -88,11 +94,16 @@ template <typename StencilPointT, std::size_t NumStencilPoints>
 class StencilSpec {
 private:
   using Self_t = StencilSpec<StencilPointT, NumStencilPoints>;
+  static constexpr auto NumDimensions = StencilPointT::ndim();
 
 public:
   using stencil_size_t  = std::size_t;
   using stencil_index_t = std::size_t;
   using StencilArray_t  = std::array<StencilPointT, NumStencilPoints>;
+  using StencilPoint_t  = StencilPointT;
+  using point_value_t   = typename StencilPoint_t::point_value_t;
+  using MaxDistanceDim_t = std::pair<point_value_t, point_value_t>;
+  using MaxDistanceAll_t = std::array<MaxDistanceDim_t, NumDimensions>;
 
 public:
   /**
@@ -134,7 +145,7 @@ public:
   }
 
   /**
-   * Finds the stencil point index for a given \ref StencilPoint
+   * Returns the stencil point index for a given \ref StencilPoint
    *
    * \return The index and true if the given stecil point was found,
    *         else the index 0 and false.
@@ -150,6 +161,35 @@ public:
     return std::make_pair(0, false);
   }
 
+  MaxDistanceAll_t minmax_distances() const {
+    MaxDistanceAll_t max_dist{};
+    for(const auto& stencil_point : _specs) {
+      for(auto d = 0; d < NumDimensions; ++d) {
+        if(stencil_point[d] < max_dist[d].first) {
+          max_dist[d].first = stencil_point[d];
+          continue;
+        }
+        if(stencil_point[d] > max_dist[d].second)
+          max_dist[d].second = stencil_point[d];
+      }
+    }
+
+    return max_dist;
+  }
+
+  MaxDistanceDim_t minmax_distances(dim_t dim) const {
+    MaxDistanceDim_t max_dist{};
+    for(const auto& stencil_point : _specs) {
+      if(stencil_point[dim] < max_dist.first) {
+        max_dist.first = stencil_point[dim];
+        continue;
+      }
+      if(stencil_point[dim] > max_dist.second)
+        max_dist.second = stencil_point[dim];
+    }
+
+    return max_dist;
+  }
   /**
    * \return stencil point for a given index
    */
@@ -612,12 +652,12 @@ public:
   /**
    * Constructor, creates a region iterator.
    */
-  RegionIter(GlobMem_t& globmem, const PatternT& pattern,
+  RegionIter(GlobMem_t* globmem, const PatternT* pattern,
              const ViewSpec_t& _region_view, pattern_index_t pos,
              pattern_size_t size)
   : _globmem(globmem), _pattern(pattern), _region_view(_region_view), _idx(pos),
-    _max_idx(size - 1), _myid(pattern.team().myid()),
-    _lbegin(globmem.lbegin()) {}
+    _max_idx(size - 1), _myid(pattern->team().myid()),
+    _lbegin(globmem->lbegin()) {}
 
   /**
    * Copy constructor.
@@ -663,9 +703,9 @@ public:
    */
   reference operator[](pattern_index_t n) const {
     auto coords    = glob_coords(_idx + n);
-    auto local_pos = _pattern.local_index(coords);
+    auto local_pos = _pattern->local_index(coords);
 
-    return reference(_globmem.at(local_pos.unit, local_pos.index));
+    return reference(_globmem->at(local_pos.unit, local_pos.index));
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }
@@ -678,7 +718,7 @@ public:
 
   GlobIter<ElementT, PatternT> global() const {
     auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT>(&_globmem, _pattern, g_idx);
+    return GlobIter<ElementT, PatternT>(_globmem, &_pattern, g_idx);
   }
 
   ElementT* local() const {
@@ -713,7 +753,7 @@ public:
    * \see DashGlobalIteratorConcept
    */
   pattern_index_t gpos() const {
-    return _pattern.memory_layout().at(glob_coords(_idx));
+    return _pattern->memory_layout().at(glob_coords(_idx));
   }
 
   std::array<pattern_index_t, NumDimensions> gcoords() const {
@@ -721,7 +761,7 @@ public:
   }
 
   typename PatternT::local_index_t lpos() const {
-    return _pattern.local_index(glob_coords(_idx));
+    return _pattern->local_index(glob_coords(_idx));
   }
 
   const ViewSpec_t viewspec() const { return _region_view; }
@@ -734,7 +774,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  const GlobMem_t& globmem() const { return _globmem; }
+  const GlobMem_t& globmem() const { return *_globmem; }
 
   /**
    * Prefix increment operator.
@@ -818,7 +858,7 @@ public:
     return compare(other, std::not_equal_to<pattern_index_t>());
   }
 
-  const PatternT& pattern() const { return _pattern; }
+  const PatternT& pattern() const { return *_pattern; }
 
 private:
   /**
@@ -844,14 +884,14 @@ private:
 
   std::array<pattern_index_t, NumDimensions> glob_coords(
     pattern_index_t idx) const {
-    return _pattern.memory_layout().coords(idx, _region_view);
+    return _pattern->memory_layout().coords(idx, _region_view);
   }
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem_t& _globmem;
+  GlobMem_t* _globmem;
   /// Pattern that created the encapsulated block.
-  const PatternT& _pattern;
+  const PatternT* _pattern;
 
   const ViewSpec_t _region_view;
   /// Iterator's position relative to the block border's iteration space.
@@ -915,8 +955,8 @@ public:
       std::any_of(border.begin(), border.end(),
                   [](bool border_dim) { return border_dim == true; })),
     _custom_region(custom_region),
-    _beg(globmem, pattern, _region, 0, _region.size()),
-    _end(globmem, pattern, _region, _region.size(), _region.size()) {}
+    _beg(&globmem, &pattern, _region, 0, _region.size()),
+    _end(&globmem, &pattern, _region, _region.size(), _region.size()) {}
 
   const region_index_t index() const { return _region_spec.index(); }
 
@@ -1072,10 +1112,6 @@ public:
           }
         }
       }
-      /*
-       * Setup for the non duplicate boundary elements and the views: inner,
-       * boundary and inner + boundary
-       */
       auto index = spec.index();
       _halo_regions.push_back(
         Region_t(spec, ViewSpec_t(halo_region_offsets, halo_region_extents),
@@ -1089,6 +1125,10 @@ public:
       _boundary_reg_mapping[index] = &_boundary_regions.back();
     }
 
+    /*
+     * Setup for the non duplicate boundary elements and the views: inner,
+     * boundary and inner + boundary
+     */
     for(auto d = 0; d < NumDimensions; ++d) {
       const auto view_offset = view.offset(d);
       const auto view_extent = view.extent(d);
@@ -1211,8 +1251,8 @@ public:
   }
 
   /**
-   * Returns the inner view. Depends on the used \ref HaloSpec when the
-   * HaloBlock was build.
+   * Returns the inner view with global offsets depending on the used
+   * \ref HaloSpec.
    */
   const ViewSpec_t& view_inner() const { return _view_inner; }
 
@@ -1360,14 +1400,14 @@ public:
    * \return Pointer to the first halo element or nullptr if the
    *         region doesn't exist
    */
-  Element_t* pos_at(region_index_t index) { return _halo_offsets[index]; }
+  Element_t* first_element_at(region_index_t index) { return _halo_offsets[index]; }
 
   /**
    * Pointer to the first halo element
    *
    * \return Pointer to the first halo element
    */
-  Element_t* pos_begin() { return _halobuffer.data(); }
+  Element_t* first_element() { return _halobuffer.data(); }
 
   /**
    * Container storing all halo elements
@@ -1382,7 +1422,7 @@ public:
    * false if not.
    */
   bool to_halo_mem_coords_check(const region_index_t region_index,
-                                ElementCoords_t&     coords) {
+                                ElementCoords_t&     coords) const {
     const auto& extents =
       _haloblock.halo_region(region_index)->region().extents();
     for(auto d = 0; d < NumDimensions; ++d) {
@@ -1402,7 +1442,7 @@ public:
    * Converts coordinates to halo memory coordinates for a given region index.
    */
   void to_halo_mem_coords(const region_index_t region_index,
-                          ElementCoords_t&     coords) {
+                          ElementCoords_t&     coords) const {
     const auto& extents =
       _haloblock.halo_region(region_index)->region().extents();
     for(auto d = 0; d < NumDimensions; ++d) {
@@ -1421,18 +1461,20 @@ public:
    * region.
    */
   pattern_size_t offset(const region_index_t   region_index,
-                        const ElementCoords_t& coords) {
+                        const ElementCoords_t& coords) const {
     const auto& extents =
       _haloblock.halo_region(region_index)->region().extents();
     pattern_size_t off = 0;
     if(MemoryArrange == ROW_MAJOR) {
       off = coords[0];
-      for(auto d = 1; d < NumDimensions; ++d)
+      for(dim_t d = 1; d < NumDimensions; ++d)
         off = off * extents[d] + coords[d];
     } else {
       off = coords[NumDimensions - 1];
-      for(auto d = NumDimensions - 2; d >= 0; --d)
+      for(dim_t d = NumDimensions - 1; d > 0; ) {
+        --d;
         off = off * extents[d] + coords[d];
+      }
     }
 
     return off;
@@ -1443,6 +1485,8 @@ private:
   std::vector<Element_t>           _halobuffer;
   std::array<Element_t*, MaxIndex> _halo_offsets{};
 };  // class HaloMemory
+
+}  // namespace halo
 
 }  // namespace dash
 

@@ -11,10 +11,10 @@ using matrix_t     = dash::Matrix<
                        double, 2,
                        typename pattern_t::index_type,
                        pattern_t>;
-using StencilT     = dash::StencilPoint<2>;
-using StencilSpecT = dash::StencilSpec<StencilT,4>;
-using GlobBoundSpecT   = dash::GlobalBoundarySpec<2>;
-using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t>;
+using StencilT     = dash::halo::StencilPoint<2>;
+using StencilSpecT = dash::halo::StencilSpec<StencilT,4>;
+using GlobBoundSpecT   = dash::halo::GlobalBoundarySpec<2>;
+using HaloMatrixWrapperT = dash::halo::HaloMatrixWrapper<matrix_t>;
 
 using array_t      = dash::Array<double>;
 
@@ -48,9 +48,6 @@ int main(int argc, char *argv[])
     cerr << "Not enough arguments ./<prog> matrix_ext iterations" << endl;
     return 1;
   }
-  using HaloBlockT = dash::HaloBlock<double,pattern_t>;
-  using HaloMemT = dash::HaloMemory<HaloBlockT>;
-
   auto matrix_ext = std::atoi(argv[1]);
   auto iterations = std::atoi(argv[2]);
 
@@ -87,7 +84,7 @@ int main(int argc, char *argv[])
 
   StencilSpecT stencil_spec( StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1));
 
-  GlobBoundSpecT bound_spec(dash::BoundaryProp::CYCLIC, dash::BoundaryProp::CYCLIC);
+  GlobBoundSpecT bound_spec(dash::halo::BoundaryProp::CYCLIC, dash::halo::BoundaryProp::CYCLIC);
 
   HaloMatrixWrapperT halomat(matrix, bound_spec, stencil_spec);
   HaloMatrixWrapperT halomat2(matrix2, bound_spec, stencil_spec);
@@ -95,8 +92,8 @@ int main(int argc, char *argv[])
   auto stencil_op = halomat.stencil_operator(stencil_spec);
   auto stencil_op2 = halomat2.stencil_operator(stencil_spec);
 
-  decltype(stencil_op)* current_op = &stencil_op;
-  decltype(stencil_op2)* new_op = &stencil_op2;
+  auto* current_op = &stencil_op;
+  auto* new_op = &stencil_op2;
 
   HaloMatrixWrapperT* current_halo = &halomat;
   HaloMatrixWrapperT* new_halo = &halomat2;
