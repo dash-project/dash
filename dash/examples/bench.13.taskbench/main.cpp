@@ -100,7 +100,7 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_barrier();
 
   //for (size_t i = 1; i <= num_tasks; ++i) {
-    dash::tasks::parallel_for(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, 1,
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
