@@ -72,7 +72,7 @@ namespace dash {
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
-#include <dash/tasks/ParallelFor.h>
+#include <dash/tasks/Taskloop.h>
 #include <dash/tasks/Tasks.h>
 
 #include <dash/tools/PatternVisualizer.h>
