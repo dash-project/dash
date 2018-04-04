@@ -6,6 +6,10 @@
 
 #include <algorithm>
 
+#include <experimental/execution>
+
+namespace execution = std::experimental::execution;
+
 
 namespace dash {
 
@@ -53,6 +57,37 @@ void for_each(
     auto lrange_begin = (first + pattern.global(lbegin_index)).local();
     auto lrange_end   = lrange_begin + lend_index;
     std::for_each(lrange_begin, lrange_end, func);
+  }
+  team.barrier();
+}
+
+template <typename ExecutionPolicy, typename GlobInputIt, class UnaryFunction>
+void for_each(
+    ExecutionPolicy && policy,
+    /// Iterator to the initial position in the sequence
+    const GlobInputIt &first,
+
+    /// Iterator to the final position in the sequence
+    const GlobInputIt &last,
+    /// Function to invoke on every index in the range
+    UnaryFunction func) {
+  using iterator_traits = dash::iterator_traits<GlobInputIt>;
+  static_assert(
+      iterator_traits::is_global_iterator::value,
+      "must be a global iterator");
+  /// Global iterators to local index range:
+  auto index_range  = dash::local_index_range(first, last);
+  auto lbegin_index = index_range.begin;
+  auto lend_index   = index_range.end;
+  auto & team       = first.pattern().team();
+  if (lbegin_index != lend_index) {
+    // Pattern from global begin iterator:
+    auto & pattern    = first.pattern();
+    // Local range to native pointers:
+    auto lrange_begin = (first + pattern.global(lbegin_index)).local();
+    auto lrange_end   = lrange_begin + lend_index;
+    auto twoway_exec  = execution::require(policy.executor(), execution::twoway);
+    std::for_each(policy, lrange_begin, lrange_end, func);
   }
   team.barrier();
 }

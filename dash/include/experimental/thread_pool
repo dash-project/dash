@@ -1,0 +1,18 @@
+#ifndef STD_EXPERIMENTAL_THREAD_POOL
+#define STD_EXPERIMENTAL_THREAD_POOL
+
+#include <experimental/execution>
+
+namespace std {
+namespace experimental {
+inline namespace executors_v1 {
+
+class static_thread_pool;
+
+} // inline namespace executors_v1
+} // namespace experimental
+} // namespace std
+
+#include <experimental/bits/static_thread_pool.h>
+
+#endif // STD_EXPERIMENTAL_THREAD_POOL

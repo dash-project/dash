@@ -1,0 +1,138 @@
+#ifndef STD_EXPERIMENTAL_EXECUTION
+#define STD_EXPERIMENTAL_EXECUTION
+
+#include <experimental/bits/require.h>
+#include <experimental/bits/prefer.h>
+#include <experimental/bits/query.h>
+
+namespace std {
+namespace experimental {
+inline namespace executors_v1 {
+namespace execution {
+
+namespace
+{
+  // Require customization point.
+  constexpr const auto& require = require_impl::customization_point<>;
+
+  // Prefer customization point.
+  constexpr const auto& prefer = prefer_impl::customization_point<>;
+
+  // Query customization point.
+  constexpr const auto& query = query_impl::customization_point<>;
+}
+
+// Type trait to determine whether the require customization point is valid for the specified arguments.
+template<class Executor, class... Properties> struct can_require;
+
+template<class Executor, class... Properties>
+  constexpr bool can_require_v = can_require<Executor, Properties...>::value;
+
+// Type trait to determine whether the prefer customization point is valid for the specified arguments.
+template<class Executor, class... Properties> struct can_prefer;
+
+template<class Executor, class... Properties>
+  constexpr bool can_prefer_v = can_prefer<Executor, Properties...>::value;
+
+// Type trait to determine whether the query customization point is valid for the specified arguments.
+template<class Executor, class Property> struct can_query;
+
+template<class Executor, class Property>
+  constexpr bool can_query_v = can_query<Executor, Property>::value;
+
+// Associated execution context.
+struct context_t;
+
+// Directionality.
+struct oneway_t;
+struct twoway_t;
+
+// Cardinality.
+struct single_t;
+struct bulk_t;
+
+// Blocking behaviour.
+struct never_blocking_t;
+struct possibly_blocking_t;
+struct always_blocking_t;
+
+// Allow adaptation of blocking and directionality (e.g. twoway in terms of oneway).
+struct adaptable_blocking_t;
+struct not_adaptable_blocking_t;
+
+// Whether submitted tasks represent a continuation.
+struct continuation_t;
+struct not_continuation_t;
+
+// Whether there is outstanding work, i.e. an indication of likely task submission in the future.
+struct outstanding_work_t;
+struct not_outstanding_work_t;
+
+// Properties for bulk execution forward progress guarantees.
+struct bulk_sequenced_execution_t;
+struct bulk_parallel_execution_t;
+struct bulk_unsequenced_execution_t;
+
+// Properties for mapping of execution on to threads.
+struct thread_execution_mapping_t;
+struct new_thread_execution_mapping_t;
+
+// Memory allocations.
+template<class ProtoAllocator> struct allocator_t;
+
+// Type traits to determine conformance to executor type requirements.
+template<class Executor> struct is_oneway_executor;
+template<class Executor> struct is_twoway_executor;
+template<class Executor> struct is_bulk_oneway_executor;
+template<class Executor> struct is_bulk_twoway_executor;
+
+template<class Executor> constexpr bool is_oneway_executor_v = is_oneway_executor<Executor>::value;
+template<class Executor> constexpr bool is_twoway_executor_v = is_twoway_executor<Executor>::value;
+template<class Executor> constexpr bool is_bulk_oneway_executor_v = is_bulk_oneway_executor<Executor>::value;
+template<class Executor> constexpr bool is_bulk_twoway_executor_v = is_bulk_twoway_executor<Executor>::value;
+
+// Type trait to obtain a two way executor's future type.
+template<class Executor, class T> struct executor_future;
+
+template<class Executor, class T> using executor_future_t = typename executor_future<Executor, T>::type;
+
+// Type traits to obtain a bulk executor's shape and index types.
+template<class Executor> struct executor_shape;
+template<class Executor> struct executor_index;
+
+template<class Executor> using executor_shape_t = typename executor_shape<Executor>::type;
+template<class Executor> using executor_index_t = typename executor_index<Executor>::type;
+
+// Polymorphic wrappers.
+class bad_executor;
+template<class... SupportableProperties> class executor;
+template<class InnerProperty> struct prefer_only;
+
+} // namespace execution
+} // inline namespace executors_v1
+} // namespace experimental
+} // namespace std
+
+#include <experimental/bits/can_require.h>
+#include <experimental/bits/can_prefer.h>
+#include <experimental/bits/can_query.h>
+#include <experimental/bits/is_oneway_executor.h>
+#include <experimental/bits/is_twoway_executor.h>
+#include <experimental/bits/is_bulk_oneway_executor.h>
+#include <experimental/bits/is_bulk_twoway_executor.h>
+#include <experimental/bits/context.h>
+#include <experimental/bits/directionality.h>
+#include <experimental/bits/cardinality.h>
+#include <experimental/bits/continuation.h>
+#include <experimental/bits/blocking.h>
+#include <experimental/bits/outstanding_work.h>
+#include <experimental/bits/bulk_execution.h>
+#include <experimental/bits/thread_execution.h>
+#include <experimental/bits/allocator.h>
+#include <experimental/bits/executor_future.h>
+#include <experimental/bits/executor_shape.h>
+#include <experimental/bits/executor_index.h>
+#include <experimental/bits/executor.h>
+#include <experimental/bits/prefer_only.h>
+
+#endif // STD_EXPERIMENTAL_EXECUTION

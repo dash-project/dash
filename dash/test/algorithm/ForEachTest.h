@@ -4,8 +4,11 @@
 #include "../TestBase.h"
 
 #include <dash/Array.h>
+#include <experimental/execution>
 
 #include <vector>
+
+namespace execution = std::experimental::execution;
 
 
 /**
@@ -32,6 +35,40 @@ protected:
 public:
   void count_invoke(index_t index) {
     _invoked_indices.push_back(index);
+  }
+};
+
+
+struct SimpleExecutor {
+  bool operator==(const SimpleExecutor&) const noexcept {
+    return true;
+  }
+
+  bool operator!=(const SimpleExecutor&) const noexcept {
+    return false;
+  }
+
+  // Context could return something useful when the Executor is more
+  // complicated.
+  const SimpleExecutor &context() {
+    return *this;
+  }
+
+  template <class Property>
+  SimpleExecutor require(const Property &) const noexcept {
+    // This executor satisfies all problems
+    return *this;
+  }
+
+  template <class Function>
+  void execute(Function &f) const noexcept {
+    std::forward<Function>(f)();
+  }
+};
+
+struct SimplePolicy {
+  SimpleExecutor executor() {
+    return SimpleExecutor();
   }
 };
 
