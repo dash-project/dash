@@ -1001,8 +1001,7 @@ public:
 
   constexpr SizeType local_size() const noexcept
   {
-    return unit == UNDEFINED_TEAM_UNIT_ID ?
-      _local_sizes[_team->myid()] : _local_sizes[unit];
+    return _local_size;
   }
 
   constexpr SizeType local_size(team_unit_t unit) const noexcept
