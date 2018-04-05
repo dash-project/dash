@@ -15,6 +15,12 @@
 #include <dash/dart/if/dart_util.h>
 #include <dash/dart/if/dart_types.h>
 
+// make sure dynamic windows are enabled if shared windows are not disabled
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS) && \
+    !defined(DART_MPI_ENABLE_DYNAMIC_WINDOWS)
+#define DART_MPI_ENABLE_DYNAMIC_WINDOWS
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

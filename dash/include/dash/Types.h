@@ -169,6 +169,11 @@ struct dart_datatype<double> {
   static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
+template<>
+struct dart_datatype<long double> {
+  static constexpr const dart_datatype_t value = DART_TYPE_LONG_DOUBLE;
+};
+
 template<typename T>
 struct dart_datatype<const    T> : public dart_datatype<T> { };
 
@@ -242,11 +247,7 @@ struct is_container_compatible :
  */
 template <typename T>
 struct is_atomic_compatible
-: public std::integral_constant<
-           bool,
-              dash::is_container_compatible<T>::value
-           && sizeof(T) <= sizeof(std::size_t)
-         >
+: public std::integral_constant<bool, std::is_arithmetic<T>::value>
 { };
 
 /**
