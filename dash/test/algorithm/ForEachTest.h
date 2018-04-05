@@ -55,7 +55,7 @@ struct SimpleExecutor {
   }
 
   template <class Property>
-  SimpleExecutor require(const Property &) const noexcept {
+    SimpleExecutor require(const Property &) const noexcept {
     // This executor satisfies all problems
     return *this;
   }
@@ -63,6 +63,14 @@ struct SimpleExecutor {
   template <class Function>
   void execute(Function &f) const noexcept {
     std::forward<Function>(f)();
+  }
+
+  template <class Function, class SharedFactory>
+  void bulk_execute(Function f, std::size_t n, SharedFactory sf) const noexcept {
+    auto shared_state(sf());
+    for(std::size_t i = 0; i < n; ++i) {
+      f(i, shared_state);
+    }
   }
 };
 

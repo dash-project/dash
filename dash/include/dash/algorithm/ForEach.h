@@ -61,16 +61,39 @@ void for_each(
   team.barrier();
 }
 
+template <class ExecutionPolicy, class ElementType, class UnaryFunction>
+void for_each(
+    ExecutionPolicy&& policy,
+    const ElementType*      l_range_begin,
+    const ElementType*      l_range_end,
+    UnaryFunction           func)
+{
+  auto executor = policy.executor();
+  auto blocking_ex =
+      execution::require(executor, execution::bulk);
+
+  auto nlocal = std::distance(l_range_begin, l_range_end);
+
+  blocking_ex.bulk_execute(
+      [=](size_t idx, std::tuple<>) { func(l_range_begin[idx]); },
+      nlocal,
+      // for_each has no shared state
+      [] { return std::tuple<>(); });
+}
+
 template <typename ExecutionPolicy, typename GlobInputIt, class UnaryFunction>
 void for_each(
-    ExecutionPolicy && policy,
+    ExecutionPolicy&& policy,
     /// Iterator to the initial position in the sequence
-    const GlobInputIt &first,
+    const typename std::enable_if<
+        dash::iterator_traits<GlobInputIt>::is_global_iterator::value,
+        GlobInputIt>::type& first,
 
     /// Iterator to the final position in the sequence
-    const GlobInputIt &last,
+    const GlobInputIt& last,
     /// Function to invoke on every index in the range
-    UnaryFunction func) {
+    UnaryFunction func)
+{
   using iterator_traits = dash::iterator_traits<GlobInputIt>;
   static_assert(
       iterator_traits::is_global_iterator::value,
@@ -86,11 +109,12 @@ void for_each(
     // Local range to native pointers:
     auto lrange_begin = (first + pattern.global(lbegin_index)).local();
     auto lrange_end   = lrange_begin + lend_index;
-    auto twoway_exec  = execution::require(policy.executor(), execution::twoway);
-    std::for_each(policy, lrange_begin, lrange_end, func);
+
+    dash::for_each(policy, lrange_begin, lrange_end, func);
   }
   team.barrier();
 }
+
 
 /**
  * Invoke a function on every element in a range distributed by a pattern.
