@@ -2,6 +2,7 @@
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Generate.h>
 #include <dash/algorithm/Sort.h>
 
@@ -269,6 +270,7 @@ TEST_F(SortTest, ArrayOfPoints)
   }
 }
 
+
 template <
     class ValueType,
     typename std::enable_if<std::is_floating_point<ValueType>::value>::type* =
@@ -285,8 +287,8 @@ static void expect_equals(ValueType const e, ValueType const a)
 
 template <
     class ValueType,
-    typename std::enable_if<!std::is_floating_point<ValueType>::value>::type* =
-        nullptr>
+    typename std::enable_if<
+        !std::is_floating_point<ValueType>::value>::type* = nullptr>
 static void expect_equals(ValueType const e, ValueType const a)
 {
   EXPECT_EQ_U(e, a);
@@ -326,6 +328,77 @@ static void perform_test(GlobIter begin, GlobIter end)
   }
 
   begin.pattern().team().barrier();
+}
+
+TEST_F(SortTest, PlausibilityWithStdSort)
+{
+  auto const ThisTask = dash::myid();
+  auto const NTask    = dash::size();
+  size_t     i;
+
+  using value_t = int64_t;
+
+  dash::Array<value_t> array(num_local_elem * NTask);
+  std::vector<value_t> vec(num_local_elem * NTask);
+
+  EXPECT_EQ_U(num_local_elem * NTask, array.size());
+  EXPECT_EQ_U(num_local_elem * NTask, vec.size());
+
+  value_t mysum, realsum, truesum;
+
+  static_assert(
+      std::is_same<int64_t, long>::value,
+      "Type Check to ensure the correct MPI Datatype");
+
+  rand_range(array.begin(), array.end());
+
+  array.barrier();
+
+  dash::copy(array.begin(), array.end(), &(vec[0]));
+
+  mysum = std::accumulate(
+      &(array.local[0]),
+      &(array.local[num_local_elem]),
+      static_cast<value_t>(0));
+
+  MPI_Allreduce(&mysum, &truesum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+
+  dash::sort(array.begin(), array.end());
+
+  mysum = std::accumulate(
+      &(array.local[0]),
+      &(array.local[num_local_elem]),
+      static_cast<value_t>(0));
+
+  MPI_Allreduce(&mysum, &realsum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+
+  auto const diff = realsum - truesum;
+
+  EXPECT_EQ_U(0, diff);
+
+  for (i = 1; i < num_local_elem; i++) {
+    EXPECT_LE_U(array.local[i - 1], array.local[i]);
+  }
+
+  auto const gidx0 = array.pattern().global(0);
+
+  if (gidx0 > 0) {
+    auto const prev = static_cast<value_t>(array[gidx0 - 1]);
+
+    EXPECT_LE_U(prev, array.local[0]);
+  }
+
+  std::sort(vec.begin(), vec.end());
+
+  if (ThisTask == 0) {
+    LOG_MESSAGE("Validate Correctness wth std::sort");
+    for (i = 0; i < array.size(); ++i) {
+      auto const val = static_cast<value_t>(array[i]);
+      ASSERT_EQ_U(vec[i], val);
+    }
+  }
+
+  array.barrier();
 }
 
 // TODO: add additional unit tests with various pattern types and containers
