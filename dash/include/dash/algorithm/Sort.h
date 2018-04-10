@@ -19,6 +19,9 @@
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Transform.h>
 
+#include <dash/internal/Logging.h>
+#include <dash/util/Trace.h>
+
 namespace dash {
 
 #ifdef DOXYGEN
@@ -52,8 +55,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end);
  * Sorts the elements in the range, defined by \c [begin, end) in ascending
  * order. The order of equal elements is not guaranteed to be preserved.
  *
- * Elements are sorted by using a user-defined hash function. This hash
- * function is required to be sortable by operator<.
+ * Elements are sorted by using a user-defined hash function. Resulting values
+ * of the hash function are required to be sortable by operator<.
  *
  * This variant may be appropriate if the underlying container does not hold
  * arithmetic values (e.g. structs).
@@ -82,35 +85,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 
 #else
 
-#ifdef DASH_ENABLE_TRACE_LOGGING
-#define MAX_ELEMS_LOGGING 25
-#define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end)                         \
-  do {                                                                      \
-    using value_t =                                                         \
-        typename std::iterator_traits<decltype(begin)>::value_type;         \
-    using difference_t =                                                    \
-        typename std::iterator_traits<decltype(begin)>::difference_type;    \
-    auto const nelems = std::distance(begin, end);                          \
-    auto const max_elems =                                                  \
-        std::min<difference_t>(nelems, MAX_ELEMS_LOGGING);                  \
-    std::ostringstream os;                                                  \
-    std::copy(                                                              \
-        begin, begin + max_elems, std::ostream_iterator<value_t>(os, " ")); \
-    if (nelems > MAX_ELEMS_LOGGING) os << "...";                            \
-    DASH_LOG_TRACE(desc, os.str());                                         \
-  } while (0)
-#else
-#define DASH_SORT_LOG_TRACE_RANGE(desc, begin, end) \
-  do {                                              \
-  } while (0)
-#endif
+#define IDX_DIST(nunits) ((nunits)*0)
+#define IDX_SUPP(nunits) ((nunits)*1)
+#define IDX_TARGET_DISP(nunits) ((nunits)*2)
 
-#define IND_DIST(nunits) (nunits * 0)
-#define IND_SUPP(nunits) (nunits * 1)
-#define IND_TARGET_DISP(nunits) (nunits * 2)
-
-#define IND_SEND_COUNT(nunits) IND_DIST(nunits)
-#define IND_TARGET_COUNT(nunits) IND_SUPP(nunits)
+#define IDX_SEND_COUNT(nunits) IDX_DIST(nunits)
+#define IDX_TARGET_COUNT(nunits) IDX_SUPP(nunits)
 
 #define NLT_NLE_BLOCK 2
 
@@ -448,11 +428,11 @@ inline void psort__calc_final_partition_dist(
 
   auto const myid       = l_partition_dist.pattern().team().myid();
   auto const nunits     = l_partition_dist.pattern().team().size();
-  auto       dist_begin = l_partition_dist.begin() + IND_DIST(nunits);
-  auto       supp_begin = l_partition_dist.begin() + IND_SUPP(nunits);
+  auto const supp_begin = l_partition_dist.begin() + IDX_SUPP(nunits);
+  auto       dist_begin = l_partition_dist.begin() + IDX_DIST(nunits);
 
-  auto const n_my_elements =
-      std::accumulate(dist_begin, dist_begin + nunits, 0);
+  auto const n_my_elements = std::accumulate(
+      dist_begin, dist_begin + nunits, static_cast<size_t>(0));
 
   // Calculate the deficit
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
@@ -481,10 +461,9 @@ inline void psort__calc_final_partition_dist(
 
 template <typename LocalArrayT, typename ElementType>
 inline void psort__calc_send_count(
-    PartitionBorder<ElementType> const&            p_borders,
-    std::vector<size_t> const&                     valid_partitions,
-    LocalArrayT&                                   partition_dist,
-    std::vector<typename LocalArrayT::value_type>& l_send_displs)
+    PartitionBorder<ElementType> const& p_borders,
+    std::vector<size_t> const&          valid_partitions,
+    LocalArrayT&                        partition_dist)
 {
   using value_t = typename LocalArrayT::value_type;
   DASH_LOG_TRACE("< psort__calc_send_count");
@@ -494,8 +473,8 @@ inline void psort__calc_send_count(
 
   tmp_target_count[0] = 0;
 
-  auto l_target_count = &(partition_dist[IND_TARGET_COUNT(nunits)]);
-  auto l_send_count   = &(partition_dist[IND_SEND_COUNT(nunits)]);
+  auto l_target_count = &(partition_dist[IDX_TARGET_COUNT(nunits)]);
+  auto l_send_count   = &(partition_dist[IDX_SEND_COUNT(nunits)]);
 
   auto const last_skipped = p_borders.is_skipped.cend();
   auto       it_skipped =
@@ -532,16 +511,6 @@ inline void psort__calc_send_count(
       l_send_count,
       std::minus<value_t>());
 
-  DASH_ASSERT_EQ(l_send_displs.size(), nunits, "invalid vector size");
-
-  l_send_displs[0] = 0;
-
-  std::transform(
-      l_send_count,
-      l_send_count + nunits - 1,
-      l_send_displs.begin(),
-      l_send_displs.begin() + 1,
-      std::plus<value_t>());
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
@@ -552,7 +521,7 @@ inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
   auto const nunits = g_partition_data.team().size();
   auto const myid   = g_partition_data.team().myid();
 
-  auto l_target_displs = &(g_partition_data.local[IND_TARGET_DISP(nunits)]);
+  auto l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
 
   if (0 == myid) {
     // Unit 0 always writes to target offset 0
@@ -565,27 +534,25 @@ inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
   team_unit_t const last(nunits);
 
   auto const u_blocksize = g_partition_data.lsize();
-  auto const target_displs_lbegin =
-      myid * u_blocksize + IND_TARGET_DISP(nunits);
-  auto const target_displs_lend = target_displs_lbegin + nunits;
 
   for (; unit < last; ++unit) {
     auto const     prev_u = unit - 1;
     SizeType const val =
         (prev_u == myid)
-            ? g_partition_data.local[prev_u + IND_SEND_COUNT(nunits)]
+            ? g_partition_data.local[prev_u + IDX_SEND_COUNT(nunits)]
             : g_partition_data
-                  [prev_u * u_blocksize + myid + IND_SEND_COUNT(nunits)];
+                  [prev_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
     target_displs[unit] = val + target_displs[prev_u];
-    auto const target_offset =
-        unit * u_blocksize + myid + IND_TARGET_DISP(nunits);
-    if (target_displs_lbegin <= target_offset &&
-        target_offset < target_displs_lend) {
-      g_partition_data
-          .local[(target_offset % nunits) + IND_TARGET_DISP(nunits)] =
+
+    if (unit == myid) {
+      // we are local
+      g_partition_data.local[IDX_TARGET_DISP(nunits) + myid] =
           target_displs[unit];
     }
     else {
+      auto const target_offset =
+          unit * u_blocksize + myid + IDX_TARGET_DISP(nunits);
+
       g_partition_data.async[target_offset].set(&(target_displs[unit]));
     }
   }
@@ -819,19 +786,25 @@ void sort(
 
   auto pattern = begin.pattern();
 
+  dash::util::Trace trace("Sort");
+
   if (pattern.team() == dash::Team::Null()) {
     DASH_LOG_TRACE("dash::sort", "Sorting on dash::Team::Null()");
     return;
   }
   else if (pattern.team().size() == 1) {
     DASH_LOG_TRACE("dash::sort", "Sorting on a team with only 1 unit");
+    trace.enter_state("final_local_sort");
     std::sort(begin.local(), end.local());
+    trace.exit_state("final_local_sort");
     return;
   }
 
   if (begin >= end) {
     DASH_LOG_TRACE("dash::sort", "empty range");
+    trace.enter_state("final_barrier");
     pattern.team().barrier();
+    trace.exit_state("final_barrier");
     return;
   }
 
@@ -857,8 +830,10 @@ void sort(
            sortable_hash(const_cast<value_type&>(b));
   };
 
-  // initial local sort
+  // initial local_sort
+  trace.enter_state("initial_local_sort");
   std::sort(lbegin, lend, sort_comp);
+  trace.exit_state("initial_local_sort");
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
@@ -899,10 +874,12 @@ void sort(
 
   detail::PartitionBorder<mapped_type> p_borders(nboundaries, min, max);
 
+  trace.enter_state("init_partition_borders");
   detail::psort__init_partition_borders(p_unit_info, p_borders);
+  trace.exit_state("init_partition_borders");
 
-  DASH_SORT_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
-  DASH_SORT_LOG_TRACE_RANGE(
+  DASH_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
+  DASH_LOG_TRACE_RANGE(
       "skipped partitions",
       p_borders.is_skipped.cbegin(),
       p_borders.is_skipped.cend());
@@ -937,6 +914,8 @@ void sort(
     return;
   }
 
+  trace.enter_state("find_global_partition_borders");
+
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
 
@@ -946,15 +925,13 @@ void sort(
     auto const& l_nlt = histograms.first;
     auto const& l_nle = histograms.second;
 
-    DASH_SORT_LOG_TRACE_RANGE(
-        "local histogram nlt", l_nlt.begin(), l_nlt.end());
+    DASH_LOG_TRACE_RANGE("local histogram nlt", l_nlt.begin(), l_nlt.end());
 
-    DASH_SORT_LOG_TRACE_RANGE(
-        "local histogram nle", l_nle.begin(), l_nle.end());
+    DASH_LOG_TRACE_RANGE("local histogram nle", l_nle.begin(), l_nle.end());
 
     detail::psort__global_histogram(l_nlt, l_nle, valid_partitions, cur);
 
-    DASH_SORT_LOG_TRACE_RANGE(
+    DASH_LOG_TRACE_RANGE(
         "global histogram",
         (cur + (myid * NLT_NLE_BLOCK)).local(),
         (cur + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
@@ -969,8 +946,12 @@ void sort(
 
   } while (!done);
 
+  trace.exit_state("find_global_partition_borders");
+
+  trace.enter_state("final_local_histogram");
   auto histograms = detail::psort__local_histogram(
       partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
+  trace.exit_state("final_local_histogram");
 
   /* How many elements are less than P
    * or less than equals P */
@@ -982,15 +963,14 @@ void sort(
       histograms.second.size(),
       "length of histogram arrays does not match");
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  DASH_LOG_TRACE_RANGE(
       "final partition borders", partitions.begin(), partitions.end());
-  DASH_SORT_LOG_TRACE_RANGE(
-      "final histograms: l_nlt", l_nlt.begin(), l_nlt.end());
-  DASH_SORT_LOG_TRACE_RANGE(
-      "final histograms: l_nle", l_nle.begin(), l_nle.end());
+  DASH_LOG_TRACE_RANGE("final histograms: l_nlt", l_nlt.begin(), l_nlt.end());
+  DASH_LOG_TRACE_RANGE("final histograms: l_nle", l_nle.begin(), l_nle.end());
 
+  trace.enter_state("transpose_local_histograms (all-to-all)");
   if (n_l_elem > 0) {
-    // TODO; minimize communication to copy only until the last valid border
+    // TODO: minimize communication to copy only until the last valid border
     /*
      * Transpose (Shuffle) the final histograms to communicate
      * the partition distribution
@@ -1002,124 +982,191 @@ void sort(
         auto const offset = transposed_unit * g_partition_data.lsize() + myid;
         // We communicate only non-zero values
         if (l_nlt[idx] > 0)
-          g_partition_data.async[offset + IND_DIST(nunits)].set(
+          g_partition_data.async[offset + IDX_DIST(nunits)].set(
               &(l_nlt[idx]));
 
         if (l_nle[idx] > 0)
-          g_partition_data.async[offset + IND_SUPP(nunits)].set(
+          g_partition_data.async[offset + IDX_SUPP(nunits)].set(
               &(l_nle[idx]));
       }
       else {
-        g_partition_data.local[myid + IND_DIST(nunits)] = l_nlt[idx];
-        g_partition_data.local[myid + IND_SUPP(nunits)] = l_nle[idx];
+        g_partition_data.local[myid + IDX_DIST(nunits)] = l_nlt[idx];
+        g_partition_data.local[myid + IDX_SUPP(nunits)] = l_nle[idx];
       }
     }
     // complete outstanding requests...
     g_partition_data.async.flush();
   }
+  trace.exit_state("transpose_local_histograms (all-to-all)");
 
+  trace.enter_state("barrier");
   team.barrier();
+  trace.exit_state("barrier");
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  DASH_LOG_TRACE_RANGE(
       "initial partition distribution:",
-      g_partition_data.lbegin() + IND_DIST(nunits),
-      g_partition_data.lbegin() + IND_DIST(nunits) + nunits);
+      g_partition_data.lbegin() + IDX_DIST(nunits),
+      g_partition_data.lbegin() + IDX_DIST(nunits) + nunits);
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  DASH_LOG_TRACE_RANGE(
       "partition supply",
-      g_partition_data.lbegin() + IND_SUPP(nunits),
-      g_partition_data.lbegin() + IND_SUPP(nunits) + nunits);
+      g_partition_data.lbegin() + IDX_SUPP(nunits),
+      g_partition_data.lbegin() + IDX_SUPP(nunits) + nunits);
 
   /* Calculate final distribution per partition. Each unit calculates their
    * local distribution independently.
    * All accesses are only to local memory
    */
+
+  trace.enter_state("calc_final_partition_dist");
+
   detail::psort__calc_final_partition_dist(
       acc_partition_count, g_partition_data.local);
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  DASH_LOG_TRACE_RANGE(
       "final partition distribution",
-      g_partition_data.lbegin() + IND_DIST(nunits),
-      g_partition_data.lbegin() + IND_DIST(nunits) + nunits);
+      g_partition_data.lbegin() + IDX_DIST(nunits),
+      g_partition_data.lbegin() + IDX_DIST(nunits) + nunits);
 
+  // Reset local elements to 0 since the following matrix transpose
+  // communicates only non-zero values and writes to exactly these offsets.
+  std::fill(
+      &(g_partition_data.local[IDX_TARGET_COUNT(nunits)]),
+      &(g_partition_data.local[IDX_TARGET_COUNT(nunits) + nunits]),
+      0);
+
+  trace.exit_state("calc_final_partition_dist");
+
+  trace.enter_state("barrier");
   team.barrier();
+  trace.exit_state("barrier");
 
+  trace.enter_state("transpose_final_partition_dist (all-to-all)");
   /*
    * Transpose the final distribution again to obtain the end offsets
    */
-
   dash::team_unit_t unit{0};
   auto const        last = static_cast<dash::team_unit_t>(nunits);
 
   for (; unit < last; ++unit) {
-    if (g_partition_data.local[IND_DIST(nunits) + unit] == 0) continue;
+    if (g_partition_data.local[IDX_DIST(nunits) + unit] == 0) continue;
 
     if (unit != myid) {
       // We communicate only non-zero values
       auto const offset = unit * g_partition_data.lsize() + myid;
-      g_partition_data.async[offset + IND_SUPP(nunits)].set(
-          &(g_partition_data.local[IND_DIST(nunits) + unit]));
+      g_partition_data.async[offset + IDX_TARGET_COUNT(nunits)].set(
+          &(g_partition_data.local[IDX_DIST(nunits) + unit]));
     }
     else {
-      g_partition_data.local[IND_SUPP(nunits) + myid] =
-          g_partition_data.local[IND_DIST(nunits) + unit];
+      g_partition_data.local[IDX_TARGET_COUNT(nunits) + myid] =
+          g_partition_data.local[IDX_DIST(nunits) + unit];
     }
   }
 
   g_partition_data.async.flush();
 
-  team.barrier();
+  trace.exit_state("transpose_final_partition_dist (all-to-all)");
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  trace.enter_state("barrier");
+  team.barrier();
+  trace.exit_state("barrier");
+
+  DASH_LOG_TRACE_RANGE(
       "final target count",
-      g_partition_data.lbegin() + IND_SUPP(nunits),
-      g_partition_data.lbegin() + IND_SUPP(nunits) + nunits);
+      g_partition_data.lbegin() + IDX_TARGET_COUNT(nunits),
+      g_partition_data.lbegin() + IDX_TARGET_COUNT(nunits) + nunits);
+
+  trace.enter_state("calc_final_send_count");
 
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
   if (n_l_elem > 0) {
-    // auto const& bounding_units   = p_borders.bounding_units;
     detail::psort__calc_send_count(
-        p_borders, valid_partitions, g_partition_data.local, l_send_displs);
+        p_borders, valid_partitions, g_partition_data.local);
+
+    auto l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
+    std::copy(l_send_count, l_send_count + nunits, std::begin(l_send_displs));
+
+    std::partial_sum(
+        std::begin(l_send_displs),
+        std::end(l_send_displs),
+        std::begin(l_send_displs),
+        std::plus<size_t>());
+
+    l_send_displs.insert(std::begin(l_send_displs), 0);
+    l_send_displs.pop_back();
   }
   else {
     std::fill(
-        g_partition_data.lbegin() + IND_SEND_COUNT(nunits),
-        g_partition_data.lbegin() + IND_SEND_COUNT(nunits) + nunits,
+        g_partition_data.lbegin() + IDX_SEND_COUNT(nunits),
+        g_partition_data.lbegin() + IDX_SEND_COUNT(nunits) + nunits,
         0);
   }
 
-  DASH_SORT_LOG_TRACE_RANGE(
-      "send count",
-      g_partition_data.lbegin() + IND_DIST(nunits),
-      g_partition_data.lbegin() + IND_DIST(nunits) + nunits);
+#if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
+  {
+    std::vector<size_t> chksum(nunits, 0);
 
-  DASH_SORT_LOG_TRACE_RANGE(
+    DASH_ASSERT_RETURNS(
+        dart_allreduce(
+            g_partition_data.lbegin() + IDX_SEND_COUNT(nunits),
+            chksum.data(),
+            nunits,
+            dart_datatype<size_t>::value,
+            DART_OP_SUM,
+            team.dart_id()),
+        DART_OK);
+
+    DASH_ASSERT_EQ(
+        chksum[myid.id],
+        n_l_elem,
+        "send count must match the capacity of the unit");
+  }
+#endif
+
+  DASH_LOG_TRACE_RANGE(
+      "send count",
+      g_partition_data.lbegin() + IDX_DIST(nunits),
+      g_partition_data.lbegin() + IDX_DIST(nunits) + nunits);
+
+  DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
+  trace.exit_state("calc_final_send_count");
+
+  trace.enter_state("barrier");
   team.barrier();
+  trace.exit_state("barrier");
+
+  trace.enter_state("calc_final_target_displs");
 
   detail::psort__calc_target_displs(g_partition_data);
 
-  team.barrier();
+  trace.exit_state("calc_final_target_displs");
 
-  DASH_SORT_LOG_TRACE_RANGE(
+  trace.enter_state("barrier");
+  team.barrier();
+  trace.exit_state("barrier");
+
+  DASH_LOG_TRACE_RANGE(
       "target displs",
-      &(g_partition_data.local[IND_TARGET_DISP(nunits)]),
-      &(g_partition_data.local[IND_TARGET_DISP(nunits)]) + nunits);
+      &(g_partition_data.local[IDX_TARGET_DISP(nunits)]),
+      &(g_partition_data.local[IDX_TARGET_DISP(nunits)]) + nunits);
+
+  trace.enter_state("exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type>> async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
 
-  DASH_SORT_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
+  DASH_LOG_TRACE_RANGE("before final sort round", lbegin, lend);
 
   auto const l_partition_data = g_partition_data.local;
 
   auto const get_send_info = [l_partition_data, &l_send_displs, nunits](
                                  dash::default_index_t const p_idx) {
-    auto const send_count = l_partition_data[p_idx + IND_SEND_COUNT(nunits)];
+    auto const send_count = l_partition_data[p_idx + IDX_SEND_COUNT(nunits)];
     auto const target_disp =
-        l_partition_data[p_idx + IND_TARGET_DISP(nunits)];
+        l_partition_data[p_idx + IDX_TARGET_DISP(nunits)];
     auto const send_disp = l_send_displs[p_idx];
     return std::make_tuple(send_count, send_disp, target_disp);
   };
@@ -1162,12 +1209,20 @@ void sort(
       std::end(async_copies),
       [](dash::Future<iter_type>& fut) { fut.wait(); });
 
-  team.barrier();
+  trace.exit_state("exchange_data (all-to-all)");
 
+  trace.enter_state("barrier");
+  team.barrier();
+  trace.exit_state("barrier");
+
+  trace.enter_state("final_local_sort");
   std::sort(lbegin, lend, sort_comp);
-  DASH_SORT_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
+  trace.exit_state("final_local_sort");
+  DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
+  trace.enter_state("final_barrier");
   team.barrier();
+  trace.exit_state("final_barrier");
 }
 
 #endif  // DOXYGEN

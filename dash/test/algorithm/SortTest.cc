@@ -19,7 +19,7 @@ template <
 static void rand_range(GlobIter begin, GlobIter end)
 {
   static std::uniform_int_distribution<typename GlobIter::value_type>
-                            distribution(-1000, 1000);
+                            distribution(-1E6, 1E6);
   static std::random_device rd;
   static std::mt19937       generator(rd() + begin.team().myid());
 
