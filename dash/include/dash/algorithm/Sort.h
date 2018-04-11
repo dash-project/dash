@@ -943,7 +943,6 @@ void sort(
     // iteration ahead and modify shared data while the others are still not
     // done
     std::swap(cur, tmp);
-
   } while (!done);
 
   trace.exit_state("find_global_partition_borders");
@@ -1084,6 +1083,8 @@ void sort(
     detail::psort__calc_send_count(
         p_borders, valid_partitions, g_partition_data.local);
 
+    //Obtain the final send displs which is just an exclusive scan based on
+    //the send count
     auto l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
     std::copy(l_send_count, l_send_count + nunits, std::begin(l_send_displs));
 
@@ -1093,6 +1094,8 @@ void sort(
         std::begin(l_send_displs),
         std::plus<size_t>());
 
+    //Shift by 1 and fill leading element with 0 to obtain the exclusive scan
+    //character
     l_send_displs.insert(std::begin(l_send_displs), 0);
     l_send_displs.pop_back();
   }
