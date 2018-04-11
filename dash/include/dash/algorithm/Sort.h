@@ -30,7 +30,8 @@ namespace dash {
  * Sorts the elements in the range, defined by \c [begin, end) in ascending
  * order. The order of equal elements is not guaranteed to be preserved.
  *
- * Elements are sorted using operator<.
+ * Elements are sorted using operator<. Additionally, the elements must be
+ * arithmetic, i.e. std::is_arithmetic<T> must be satisfied.
  *
  * In terms of data distribution, source and destination ranges passed to
  * \c dash::sort must be global (\c GlobIter<ValueType>).
@@ -185,6 +186,7 @@ psort__local_histogram(
     SortableHash&&                     sortable_hash)
 {
   DASH_LOG_TRACE("< psort__local_histogram");
+
   auto const nborders = partitions.size();
   // The first element is 0 and the last element is the total number of local
   // elements in this unit
@@ -193,6 +195,10 @@ psort__local_histogram(
   std::vector<std::size_t> n_lt(sz, 0);
   // Number of elements less than equals P
   std::vector<std::size_t> n_le(sz, 0);
+
+  auto const n_l_elem = std::distance(lbegin, lend);
+
+  if (n_l_elem == 0) return std::make_pair(n_lt, n_le);
 
   auto comp_lower = [&sortable_hash](
                         const ElementType& a, const MappedType& b) {
@@ -203,10 +209,6 @@ psort__local_histogram(
                         const MappedType& b, const ElementType& a) {
     return b < sortable_hash(const_cast<ElementType&>(a));
   };
-
-  auto const n_l_elem = std::distance(lbegin, lend);
-
-  if (n_l_elem == 0) return std::make_pair(n_lt, n_le);
 
   for (auto const& idx : valid_partitions) {
     auto lb_it = std::lower_bound(lbegin, lend, partitions[idx], comp_lower);
@@ -229,7 +231,7 @@ psort__local_histogram(
       std::next(std::begin(n_le), p_left + 2), std::end(n_le), n_l_elem);
 
   DASH_LOG_TRACE("psort__local_histogram >");
-  return std::make_pair(n_lt, n_le);
+  return std::make_pair(std::move(n_lt), std::move(n_le));
 }
 
 template <typename SizeType, typename GlobIter>
@@ -334,43 +336,6 @@ bool psort__validate_partitions(
   auto const last_p   = p_unit_info.valid_remote_partitions.back();
   auto       out_last = l_nlt_nle_data + last_p * NLT_NLE_BLOCK;
 
-  dash::Future<value_t*> fut_result(
-      // wait
-      [out_last, &handles]() {
-        // Wait for all get requests to complete:
-        auto _out = out_last;
-        DASH_LOG_TRACE(
-            "dash::detail::psort_validate_partitions [Future]()",
-            "  wait for",
-            handles.size(),
-            "async get request");
-        DASH_LOG_TRACE(
-            "dash::detail::psort_validate_partitions [Future]",
-            "  _out:",
-            _out);
-        if (handles.size() > 0) {
-          if (dart_waitall_local(handles.data(), handles.size()) != DART_OK) {
-            DASH_LOG_ERROR(
-                "dash::detail::psort_validate_partitions [Future]",
-                "  dart_waitall_local failed");
-            DASH_THROW(
-                dash::exception::RuntimeError,
-                "dash::detail::psort_validate_partitions [Future]: "
-                "dart_waitall_local failed");
-          }
-        }
-        else {
-          DASH_LOG_TRACE(
-              "dash::detail::psort_validate_partitions [Future]",
-              "  No pending handles");
-        }
-        DASH_LOG_TRACE(
-            "dash::detail::psort_validate_partitions [Future] >",
-            "  async requests completed, _out:",
-            _out);
-        return _out;
-      });
-
   // copy local portion
   index_t lidx      = myid * NLT_NLE_BLOCK;
   auto    cpy_begin = it_g_nlt_nle + lidx;
@@ -378,7 +343,17 @@ bool psort__validate_partitions(
   std::copy(lbegin, lbegin + NLT_NLE_BLOCK, l_nlt_nle_data + lidx);
 
   // wait for all copies
-  fut_result.wait();
+  if (handles.size() > 0) {
+    if (dart_waitall_local(handles.data(), handles.size()) != DART_OK) {
+      DASH_LOG_ERROR(
+          "dash::detail::psort_validate_partitions [Future]",
+          "  dart_waitall_local failed");
+      DASH_THROW(
+          dash::exception::RuntimeError,
+          "dash::detail::psort_validate_partitions [Future]: "
+          "dart_waitall_local failed");
+    }
+  }
 
   auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
@@ -400,9 +375,6 @@ bool psort__validate_partitions(
         p_borders.lower_bound[border_idx] = partitions[border_idx];
       }
     }
-  }
-  for (auto& handle : handles) {
-    DASH_ASSERT_RETURNS(DART_OK, dart_handle_free(&handle));
   }
 
   // Exit condition: is there any non-stable partition
@@ -437,11 +409,8 @@ inline void psort__calc_final_partition_dist(
   // Calculate the deficit
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
 
-  dash::team_unit_t       unit(0);
-  dash::team_unit_t const last(nunits);
-
   // If there is a deficit, look how much unit j can supply
-  for (; unit < last && my_deficit > 0; ++unit) {
+  for (auto unit = team_unit_t{0}; unit < nunits && my_deficit > 0; ++unit) {
     auto const supply_unit = *(supp_begin + unit) - *(dist_begin + unit);
 
     DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
@@ -530,12 +499,9 @@ inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
 
   std::vector<SizeType> target_displs(nunits, 0);
 
-  team_unit_t       unit(1);
-  team_unit_t const last(nunits);
-
   auto const u_blocksize = g_partition_data.lsize();
 
-  for (; unit < last; ++unit) {
+  for (auto unit = team_unit_t{1}; unit < nunits; ++unit) {
     auto const     prev_u = unit - 1;
     SizeType const val =
         (prev_u == myid)
@@ -856,10 +822,6 @@ void sort(
 
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
-  DASH_ASSERT_GT(
-      g_partition_data.size(),
-      nunits * 2 * 2,
-      "array size is not large enough");
 
   auto const min = static_cast<mapped_type>(g_min.get());
   auto const max = static_cast<mapped_type>(g_max.get());
@@ -1083,8 +1045,8 @@ void sort(
     detail::psort__calc_send_count(
         p_borders, valid_partitions, g_partition_data.local);
 
-    //Obtain the final send displs which is just an exclusive scan based on
-    //the send count
+    // Obtain the final send displs which is just an exclusive scan based on
+    // the send count
     auto l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
     std::copy(l_send_count, l_send_count + nunits, std::begin(l_send_displs));
 
@@ -1094,8 +1056,8 @@ void sort(
         std::begin(l_send_displs),
         std::plus<size_t>());
 
-    //Shift by 1 and fill leading element with 0 to obtain the exclusive scan
-    //character
+    // Shift by 1 and fill leading element with 0 to obtain the exclusive scan
+    // character
     l_send_displs.insert(std::begin(l_send_displs), 0);
     l_send_displs.pop_back();
   }
