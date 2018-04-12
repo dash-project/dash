@@ -261,8 +261,8 @@ inline void psort__global_histogram(
   // We have to add 2
   // --> +1 because we start at idx 1
   // --> +1 to get the last idx
-  std::vector<dart_gptr_t> async_gptrs;
-  async_gptrs.reserve(valid_partitions.size());
+
+  bool has_pending_op = false;
 
   for (std::size_t idx = 1; idx < last_valid_border + 2; ++idx) {
     // we communicate only non-zero values
@@ -271,12 +271,10 @@ inline void psort__global_histogram(
     std::array<SizeType, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
     auto const                          g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
 
-    auto const async_gptr = (it_nlt_nle + g_idx_nlt).dart_gptr();
-
     DASH_ASSERT_RETURNS(
         dart_accumulate(
             // dart pointer to first element in target range
-            async_gptr,
+            (it_nlt_nle + g_idx_nlt).dart_gptr(),
             // values
             &*(std::begin(vals)),
             // nvalues
@@ -287,15 +285,13 @@ inline void psort__global_histogram(
             dash::plus<SizeType>().dart_operation()),
         DART_OK);
 
-    async_gptrs.emplace_back(std::move(async_gptr));
+    has_pending_op = true;
   }
 
-  std::for_each(
-      std::begin(async_gptrs),
-      std::end(async_gptrs),
-      [](const dart_gptr_t& gptr) {
-        DASH_ASSERT_RETURNS(dart_flush(gptr), DART_OK);
-      });
+  // flush all outstanding dart_accumulate operations...
+  if (has_pending_op) {
+    DASH_ASSERT_RETURNS(dart_flush_all(it_nlt_nle.dart_gptr()), DART_OK);
+  }
 
   team.barrier();
   DASH_LOG_TRACE("psort__global_histogram >");
