@@ -73,6 +73,7 @@
 #include<dash/Coarray.h>
 
 // Dynamic containers:
+#include<dash/Vector.h>
 #include<dash/List.h>
 #include<dash/UnorderedMap.h>
 

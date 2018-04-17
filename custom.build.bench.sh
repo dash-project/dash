@@ -50,7 +50,7 @@ mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/lib/dash/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=OFF \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -77,7 +77,6 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_SCALAPACK=OFF \
                         -DENABLE_PLASMA=OFF \
                         -DENABLE_HDF5=OFF \
-                        -DENABLE_MEMKIND=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=OFF \

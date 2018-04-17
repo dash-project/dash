@@ -123,8 +123,10 @@ dart_ret_t dart_hwinfo(
     hw.max_shmem_mbps = 1235;
   }
 
-  if(gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE) != 0) {
-    hw.host[DART_LOCALITY_HOST_MAX_SIZE-1] = '\0';
+  gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE);
+  for(int i = 0; i < DART_LOCALITY_HOST_MAX_SIZE; ++i) {
+    if(hw.host[i] == '.')
+      hw.host[i] = '\0';
   }
 
 #ifdef DART_ENABLE_LIKWID
