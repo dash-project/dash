@@ -7,6 +7,7 @@ namespace dash {
 
 namespace halo {
 
+
 /**
  * The StencilOperator provides stencil specific iterator and functions for
  * a given \ref HaloBlock and HaloMemory.
@@ -69,6 +70,8 @@ public:
 
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t,StencilSpecT>;
 
+  using region_index_t  = typename RegionSpec<NumDimensions>::region_index_t;
+
 public:
   /**
    * Constructor that takes a \ref HaloBlock, a \ref HaloMemory,
@@ -82,14 +85,17 @@ public:
     _stencil_offsets(set_stencil_offsets()),
     _local_memory((ElementT*) _halo_block->globmem().lbegin()),
     _spec_views(*_halo_block, _stencil_spec, _view_local),
-    _begin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views, 0),
-    _end(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views,
-         _spec_views.inner_with_boundaries().size()),
-    _ibegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views, 0),
-    _iend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views,
-          _spec_views.inner().size()),
-    _bbegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views, 0),
-    _bend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, &_spec_views,
+    _begin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
+        _spec_views.inner_with_boundaries(), *_view_local, 0),
+    _end(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
+        _spec_views.inner_with_boundaries(), *_view_local,
+        _spec_views.inner_with_boundaries().size()),
+    _ibegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
+        _spec_views.inner(), *_view_local,  0),
+    _iend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
+        _spec_views.inner(), *_view_local, _spec_views.inner().size()),
+    _bbegin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, *_view_local, _spec_views.boundary_views(), 0),
+    _bend(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, *_view_local, _spec_views.boundary_views(),
           _spec_views.boundary_size()) {}
 
   StencilOperator() = delete;
@@ -131,6 +137,40 @@ public:
 
   /// returns the end const iterator for all boundary elements
   const_iterator_bnd bend() const noexcept { return _bend; }
+
+  std::pair<iterator_bnd, iterator_bnd> boundary_iterator_at(dim_t dim, RegionPos pos) {
+    DASH_ASSERT_LT(dim, NumDimensions, "Given dimension to great");
+    const auto& bnd_views = _spec_views.boundary_views();
+    pattern_size_t offset = 0;
+    auto it_views = std::begin(bnd_views);
+    for(dim_t d = 0; d < dim; ++d, ++it_views)
+      offset += it_views->size() + (++it_views)->size();
+
+    if(pos == RegionPos::POST) {
+      offset += it_views->size();
+      ++it_views;
+    }
+
+    //iterator_bnd it_begin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, *_view_local, _spec_views.boundary_views(), offset);
+    //iterator_bnd it_end(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets, *_view_local, _spec_views.boundary_views(), offset + it_views->size());
+    auto it_begin = _bbegin + offset;
+
+    return std::make_pair(it_begin, it_begin + it_views->size());
+  }
+
+  /*
+  /// returns the begin iterator for all boundary elements
+  iterator_bnd bbegin() noexcept { return _bbegin; }
+
+  /// returns the begin const iterator for all boundary elements
+  const_iterator_bnd bbegin() const noexcept { return _bbegin; }
+
+  /// returns the end iterator for all boundary elements
+  iterator_bnd bend() noexcept { return _bend; }
+
+  /// returns the end const iterator for all boundary elements
+  const_iterator_bnd bend() const noexcept { return _bend; }
+*/
 
   /**
    * Returns the \ref HaloBlock
@@ -317,7 +357,7 @@ private:
 private:
   const HaloBlock_t*  _halo_block;
   HaloMemory_t*       _halo_memory;
-  const StencilSpecT _stencil_spec;
+  const StencilSpecT  _stencil_spec;
   const ViewSpec_t*   _view_local;
   StencilOffsets_t    _stencil_offsets;
   ElementT*           _local_memory;

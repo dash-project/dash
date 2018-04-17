@@ -70,7 +70,7 @@ private:
   using pattern_size_t        = typename Pattern_t::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using HaloSpec_t            = HaloSpec<NumDimensions>;
-  using Region_t              = Region<Element_t, Pattern_t, NumDimensions>;
+  using Region_t              = Region<Element_t, Pattern_t>;
 
 public:
   /**
@@ -81,10 +81,10 @@ public:
   HaloMatrixWrapper(MatrixT& matrix, const GlobBoundSpec_t& cycle_spec,
                     const StencilSpecT&... stencil_spec)
   : _matrix(matrix), _cycle_spec(cycle_spec), _halo_spec(stencil_spec...),
-    _view_local(matrix.local.extents()),
     _view_global(matrix.local.offsets(), matrix.local.extents()),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_spec, cycle_spec),
+    _view_local(_haloblock.view_local()),
     _halomemory(_haloblock) {
     for(const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
@@ -100,7 +100,7 @@ public:
       if(MemoryArrange == ROW_MAJOR) {
         if(level == 1) {  //|| (level == 2 && region.regionSpec()[0] != 1)) {
           for(auto i = rel_dim - 1; i < NumDimensions; ++i)
-            num_elems_block *= region.region().extent(i);
+            num_elems_block *= region.view().extent(i);
 
           size_t region_size        = region.size();
           auto   ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
@@ -129,7 +129,7 @@ public:
         }
         // TODO more optimizations
         else {
-          num_elems_block *= region.region().extent(NumDimensions - 1);
+          num_elems_block *= region.view().extent(NumDimensions - 1);
           size_t region_size         = region.size();
           auto   ds_num_elems_block  = dart_storage<Element_t>(num_elems_block);
           num_blocks                 = region_size / num_elems_block;
@@ -167,7 +167,7 @@ public:
         if(level == 1) {  //|| (level == 2 &&
                           // region.regionSpec()[NumDimensions - 1] != 1)) {
           for(auto i = 0; i < rel_dim; ++i)
-            num_elems_block *= region.region().extent(i);
+            num_elems_block *= region.view().extent(i);
 
           size_t region_size        = region.size();
           auto   ds_num_elems_block = dart_storage<Element_t>(num_elems_block);
@@ -196,7 +196,7 @@ public:
         }
         // TODO more optimizations
         else {
-          num_elems_block *= region.region().extent(0);
+          num_elems_block *= region.view().extent(0);
           size_t region_size         = region.size();
           auto   ds_num_elems_block  = dart_storage<Element_t>(num_elems_block);
           num_blocks                 = region_size / num_elems_block;
@@ -233,7 +233,7 @@ public:
                                   DART_HANDLE_NULL }));
         }
 
-        num_elems_block = region.region().extent(0);
+        num_elems_block = region.view().extent(0);
       }
     }
   }
@@ -376,7 +376,7 @@ public:
         auto*       pos_ptr = _halomemory.first_element_at(region.index());
         const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
-        const auto& reg_ext = region.region().extents();
+        const auto& reg_ext = region.view().extents();
         for(auto d = 0; d < NumDimensions; ++d) {
           if(spec[d] == 0) {
             coords_offset[d] -= reg_ext[d];
@@ -471,9 +471,9 @@ private:
   MatrixT&                       _matrix;
   const GlobBoundSpec_t          _cycle_spec;
   const HaloSpec_t               _halo_spec;
-  const ViewSpec_t               _view_local;
   const ViewSpec_t               _view_global;
   const HaloBlock_t              _haloblock;
+  const ViewSpec_t&              _view_local;
   HaloMemory_t                   _halomemory;
   std::map<region_index_t, Data> _region_data;
   std::vector<dart_datatype_t>   _dart_types;

@@ -258,7 +258,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   auto* sum_local = sum_halo.lbegin();
 
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
-
   auto it_iend = stencil_op.iend();
   for(auto it = stencil_op.ibegin(); it != it_iend; ++it) {
     for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
@@ -314,7 +313,7 @@ long calc_sum_check(long*** matrix, T begin, T end) {
 }
 
 template<typename HaloWrapperT, typename StencilOpT>
-unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op) {
+unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, bool region_wise = false) {
   auto& stencil_spec = stencil_op.stencil_spec();
   auto num_stencil_points = stencil_spec.num_stencil_points();
 
@@ -334,14 +333,32 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op) {
 
   halo_wrapper.wait();
 
-  auto it_bend = stencil_op.bend();
-  for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
-    for(auto i = 0; i < num_stencil_points; ++i)
-      *sum_local += it.value_at(i);
+  if(region_wise) {
+    for( auto d = 0; d < 3; ++d) {
+      auto it_bnd = stencil_op.boundary_iterator_at(d, RegionPos::PRE);
+      for(auto it = it_bnd.first; it != it_bnd.second; ++it) {
+        for(auto i = 0; i < num_stencil_points; ++i)
+          *sum_local += it.value_at(i);
 
-    *sum_local += *it;
+        *sum_local += *it;
+      }
+      auto it_bnd_2 = stencil_op.boundary_iterator_at(d, RegionPos::POST);
+      for(auto it = it_bnd_2.first; it != it_bnd_2.second; ++it) {
+        for(auto i = 0; i < num_stencil_points; ++i)
+          *sum_local += it.value_at(i);
+
+        *sum_local += *it;
+      }
+    }
+  } else {
+    auto it_bend = stencil_op.bend();
+    for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
+      for(auto i = 0; i < num_stencil_points; ++i)
+        *sum_local += it.value_at(i);
+
+      *sum_local += *it;
+    }
   }
-
   sum_halo.barrier();
 
   unsigned long sum = 0;
@@ -501,7 +518,6 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic3D)
       StencilP_t( 1, 1,-1), StencilP_t( 1, 1, 0), StencilP_t( 1, 1, 1)
   );
 
-  GlobBoundSpec_t bound_spec;
   HaloMatrixWrapper<Matrix_t> halo_wrapper(matrix_halo, stencil_spec);
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
   auto sum_halo = calc_sum_halo(halo_wrapper, stencil_op);
@@ -698,6 +714,7 @@ TEST_F(HaloTest, HaloMatrixWrapperCustom3D)
       StencilP_t( 1, 0,-1), StencilP_t( 1, 0, 0), StencilP_t( 1, 0, 1),
       StencilP_t( 1, 1,-1), StencilP_t( 1, 1, 0), StencilP_t( 1, 1, 1)
   );
+
   GlobBoundSpec_t bound_spec(BoundaryProp::CUSTOM, BoundaryProp::CUSTOM, BoundaryProp::CUSTOM);
   HaloMatrixWrapper<Matrix_t> halo_wrapper(matrix_halo, bound_spec, stencil_spec);
 
@@ -950,6 +967,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
   auto sum_halo = calc_sum_halo(halo_wrapper, stencil_op);
+  auto sum_halo_region = calc_sum_halo(halo_wrapper, stencil_op, true);
   auto sum_halo_via_stencil = calc_sum_halo_via_stencil(halo_wrapper, stencil_op);
 
   halo_wrapper_col.set_custom_halos([](const std::array<dash::default_index_t,3>& coords) {
@@ -961,6 +979,7 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMix3D)
 
   if(myid == 0) {
     EXPECT_EQ(sum_check, sum_halo);
+    EXPECT_EQ(sum_check, sum_halo_region);
     EXPECT_EQ(sum_check, sum_halo_via_stencil);
     EXPECT_EQ(sum_check, sum_halo_col);
   }
@@ -1253,10 +1272,16 @@ TEST_F(HaloTest, HaloMatrixWrapperBigMultiStencil)
   auto sum_halo_spec_2 = calc_sum_halo(halo_wrapper, stencil_op_2);
   auto sum_halo_spec_3 = calc_sum_halo(halo_wrapper, stencil_op_3);
 
+  auto sum_halo_spec_1_region = calc_sum_halo(halo_wrapper, stencil_op_1, true);
+  auto sum_halo_spec_2_region = calc_sum_halo(halo_wrapper, stencil_op_2, true);
+  auto sum_halo_spec_3_region = calc_sum_halo(halo_wrapper, stencil_op_3, true);
   if(myid == 0) {
     EXPECT_EQ(sum_check_spec_1, sum_halo_spec_1);
     EXPECT_EQ(sum_check_spec_2, sum_halo_spec_2);
     EXPECT_EQ(sum_check_spec_3, sum_halo_spec_3);
+    EXPECT_EQ(sum_check_spec_1, sum_halo_spec_1_region);
+    EXPECT_EQ(sum_check_spec_2, sum_halo_spec_2_region);
+    EXPECT_EQ(sum_check_spec_3, sum_halo_spec_3_region);
   }
 
   dash::Team::All().barrier();

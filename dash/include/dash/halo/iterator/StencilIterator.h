@@ -20,7 +20,8 @@ private:
 
   using Pattern_t = typename HaloBlockT::Pattern_t;
 public:
-  using ViewSpec_t = typename HaloBlockT::ViewSpec_t;
+  using ViewSpec_t      = typename HaloBlockT::ViewSpec_t;
+  using BoundaryViews_t = typename HaloBlockT::BoundaryViews_t;
   using pattern_size_t  = typename Pattern_t::size_type;
 
 public:
@@ -28,7 +29,6 @@ public:
       const StencilSpecT& stencil_spec,
       const ViewSpec_t*   view_local)
   : _view_local(view_local) {
-    auto& off_glob = haloblock.view().offsets();
     auto minmax_dist = stencil_spec.minmax_distances();
     for(auto& dist : minmax_dist)
       dist.first = std::abs(dist.first);
@@ -38,8 +38,6 @@ public:
     auto inner_bound_off = haloblock.view_inner_with_boundaries().offsets();
     auto inner_bound_ext = haloblock.view_inner_with_boundaries().extents();
     for(auto d = 0; d < NumDimensions; ++d) {
-      inner_off[d] -= off_glob[d];
-      inner_bound_off[d] -= off_glob[d];
       resize_offset(inner_off[d], inner_ext[d], minmax_dist[d].first);
       resize_extent(inner_off[d], inner_ext[d],_view_local->extent(d), minmax_dist[d].second);
       resize_offset(inner_bound_off[d], inner_bound_ext[d], minmax_dist[d].first);
@@ -48,32 +46,31 @@ public:
     _view_inner = ViewSpec_t(inner_off, inner_ext);
     _view_inner_with_boundaries = ViewSpec_t(inner_bound_off, inner_bound_ext);
 
-    const auto& bnd_elems = haloblock.boundary_elements();
+    using RegionCoords_t = RegionCoords<NumDimensions>;
+    using region_index_t = typename RegionCoords_t::region_index_t;
+
+    const auto& bnd_elems = haloblock.boundary_views();
     const auto& halo_ext_max = haloblock.halo_extension_max();
-    _boundary_elements.reserve(bnd_elems.size());
-    for(auto& view : bnd_elems) {
+    _boundary_views.reserve(NumDimensions * 2);
+    auto it_views = std::begin(bnd_elems);
 
-      auto view_off = view.offsets();
-      auto view_ext = view.extents();
-      for(auto d = 0; d < NumDimensions; ++d) {
-        view_off[d] -= off_glob[d];
-        if(view_off[d] < halo_ext_max[d].first && view_ext[d] == halo_ext_max[d].first) {
-          view_ext[d] = minmax_dist[d].first;
-          continue;
-        }
-        else if(view_ext[d] == halo_ext_max[d].second) {
-          view_ext[d] = minmax_dist[d].second;
-          view_off[d] += halo_ext_max[d].second - minmax_dist[d].second;
-        }
-        else {
-          resize_offset(view_off[d], view_ext[d], minmax_dist[d].first);
-          resize_extent(view_off[d], view_ext[d], _view_local->extent(d), minmax_dist[d].second);
-        }
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+     region_index_t index = RegionCoords_t::index(d, RegionPos::PRE);
+      auto* region = haloblock.boundary_region(index);
+      if(region == nullptr || (region != nullptr && region->size() == 0))
+        _boundary_views.push_back(ViewSpec_t());
+      else {
+        push_boundary_views(*it_views, halo_ext_max, minmax_dist);
+        ++it_views;
       }
-      ViewSpec_t tmp(view_off, view_ext);
-
-      _size_bnd_elems += tmp.size();
-      _boundary_elements.push_back(std::move(tmp));
+      index = RegionCoords_t::index(d, RegionPos::POST);
+      region = haloblock.boundary_region(index);
+      if(region == nullptr || (region != nullptr && region->size() == 0))
+        _boundary_views.push_back(ViewSpec_t());
+      else {
+        push_boundary_views(*it_views, halo_ext_max, minmax_dist);
+        ++it_views;
+      }
     }
   }
 
@@ -85,13 +82,33 @@ public:
     return _view_inner_with_boundaries;
   }
 
-  const std::vector<ViewSpec_t>& boundary_elements() const {
-    return _boundary_elements;
+  const BoundaryViews_t& boundary_views() const {
+    return _boundary_views;
   }
 
   pattern_size_t boundary_size() const { return _size_bnd_elems;}
 
 private:
+  template<typename MaxExtT, typename MaxDistT>
+  void push_boundary_views(const ViewSpec_t& view, const MaxExtT& max_ext, const MaxDistT& max_dist) {
+    auto view_off = view.offsets();
+    auto view_ext = view.extents();
+    for(auto d = 0; d < NumDimensions; ++d) {
+      if(view_off[d] < max_ext[d].first && view_ext[d] == max_ext[d].first) {
+        view_ext[d] = max_dist[d].first;
+      } else if(view_ext[d] == max_ext[d].second) {
+        view_ext[d] = max_dist[d].second;
+        view_off[d] += max_ext[d].second - max_dist[d].second;
+      } else {
+        resize_offset(view_off[d], view_ext[d], max_dist[d].first);
+        resize_extent(view_off[d], view_ext[d], _view_local->extent(d), max_dist[d].second);
+      }
+    }
+    ViewSpec_t tmp(view_off, view_ext);
+    _size_bnd_elems += tmp.size();
+    _boundary_views.push_back(std::move(tmp));
+  }
+
   template<typename OffT, typename ExtT, typename MaxT>
   void resize_offset(OffT& offset, ExtT& extent, MaxT max) {
     if(offset > max) {
@@ -111,10 +128,26 @@ private:
   const ViewSpec_t*       _view_local;
   ViewSpec_t              _view_inner;
   ViewSpec_t              _view_inner_with_boundaries;
-  std::vector<ViewSpec_t> _boundary_elements;
+  BoundaryViews_t         _boundary_views;
   pattern_size_t          _size_bnd_elems = 0;
 };
 
+template <typename HaloBlockT, typename StencilSpecT>
+std::ostream& operator<<(
+    std::ostream & os,
+    const StencilSpecificViews<HaloBlockT, StencilSpecT> & stencil_views)
+{
+  std::ostringstream ss;
+  ss << "dash::StencilSpecificViews"
+     << "(local: " << stencil_views.local()
+     << "; inner: " << stencil_views.inner()
+     << "; inner_bound: " << stencil_views.inner_with_boundaries()
+     << "; boundary_views: " << stencil_views.boundary_views()
+     << "; boundary elems: " << stencil_views.boundary_size()
+     << ")";
+
+  return operator<<(os, ss.str());
+}
 
 /*
  * Iterator with stencil points and halo access \see HaloStencilOperator.
@@ -134,6 +167,7 @@ private:
   using pattern_size_t        = typename PatternT::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using RegionCoords_t        = RegionCoords<NumDimensions>;
+  using HaloBlock_t           = HaloBlock<ElementT, PatternT>;
 
 public:
   // Iterator traits
@@ -143,7 +177,6 @@ public:
   using pointer           = ElementT*;
   using reference         = ElementT&;
 
-  using HaloBlock_t     = HaloBlock<ElementT, PatternT>;
   using HaloMemory_t    = HaloMemory<HaloBlock_t>;
   using pattern_index_t = typename PatternT::index_type;
   using region_index_t  = typename RegionCoords_t::region_index_t;
@@ -153,6 +186,7 @@ public:
   using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
   using StencilOffsets_t = std::array<signed_pattern_size_t, NumStencilPoints>;
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t,StencilSpecT>;
+  using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
 
 public:
   /**
@@ -168,38 +202,51 @@ public:
   StencilIterator(ElementT* local_memory, HaloMemory_t* halomemory,
                       const StencilSpecT*     stencil_spec,
                       const StencilOffsets_t* stencil_offsets,
-                      const StencilSpecViews_t* spec_views,
+                      const ViewSpec_t&       view,
+                      const ViewSpec_t&       view_local,
                       pattern_index_t         idx)
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
-    _stencil_offsets(stencil_offsets), _spec_views(spec_views),
+    _stencil_offsets(stencil_offsets), _view(view),
     _local_memory(local_memory), _idx(idx),
-    _local_layout(spec_views->local().extents()) {
-    if(Scope == StencilViewScope::INNER)
-      _view_local = ViewSpec_t(spec_views->inner());
-    else if(Scope == StencilViewScope::ALL)
-      _view_local = ViewSpec_t(spec_views->inner_with_boundaries());
-    else
-      _view_local = ViewSpec_t(spec_views->local());
+    _local_layout(view_local.extents()) {
 
-    pattern_index_t _size = 0;
-    if(Scope == StencilViewScope::BOUNDARY)
-      _size = spec_views->boundary_size();
-    else
-      _size = _view_local.size();
-
-    if(_idx < _size)
+    if(_idx < _view.size())
       set_coords();
 
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
     if(Scope == StencilViewScope::INNER) {
       _ext_dim_reduced = std::make_pair(
-        _view_local.offset(FastestDimension),
+        _view.offset(FastestDimension),
         _local_layout.extent(FastestDimension) - ext_max.second - 1);
     } else {
       _ext_dim_reduced =
-        std::make_pair(std::abs(ext_max.first), _view_local.extent(FastestDimension)
+        std::make_pair(std::abs(ext_max.first), _view.extent(FastestDimension)
                                         - ext_max.second - 1);
     }
+  }
+
+  StencilIterator(ElementT* local_memory, HaloMemory_t* halomemory,
+                      const StencilSpecT*       stencil_spec,
+                      const StencilOffsets_t*   stencil_offsets,
+                      const ViewSpec_t&         view_local,
+                      const BoundaryViews_t&    boundary_views,
+                      pattern_index_t           idx)
+  : _halomemory(halomemory), _stencil_spec(stencil_spec),
+    _stencil_offsets(stencil_offsets), _boundary_views(boundary_views),
+    _view(view_local.extents()), _local_memory(local_memory), _idx(idx),
+    _local_layout(view_local.extents()) {
+
+    pattern_index_t size = 0;
+    for(const auto& view : boundary_views)
+      size += view.size();
+    if(_idx < size)
+      set_coords();
+
+    const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
+
+    _ext_dim_reduced =
+      std::make_pair(std::abs(ext_max.first), _view.extent(FastestDimension)
+          - ext_max.second - 1);
   }
 
   /**
@@ -253,7 +300,7 @@ public:
     const auto& stencil     = (*_stencil_spec)[index_stencil];
     for(auto d = 0; d < NumDimensions; ++d) {
       halo_coords[d] += stencil[d];
-      if(halo_coords[d] < 0 || halo_coords[d] >= _spec_views->local().extent(d))
+      if(halo_coords[d] < 0 || halo_coords[d] >= _local_layout.extent(d))
         return true;
     }
 
@@ -392,15 +439,15 @@ private:
       return true;
     }
 #endif
-    if(&_view_local == &(other._view_local)
-       || _view_local == other._view_local) {
+    if(&_view == &(other._view)
+       || _view == other._view) {
       return gidx_cmp(_idx, other._idx);
     }
     // TODO not the best solution
     return false;
   }
 
-  /*void set_view_local(const ViewSpec_t& view_tmp) {
+  /*void set_view(const ViewSpec_t& view_tmp) {
     if(Scope == StencilViewScope::BOUNDARY) {
       const auto& bnd_elems = _haloblock.boundary_elements();
       _bnd_elements.reserve(bnd_elems.size());
@@ -413,14 +460,14 @@ private:
         _bnd_elements.push_back(ViewSpec_t(off, region.extents()));
       }
 
-      _view_local = ViewSpec_t(view_tmp.extents());
+      _view = ViewSpec_t(view_tmp.extents());
     } else {
       const auto& view_offsets = _haloblock.view().offsets();
       auto        off          = view_tmp.offsets();
       for(int d = 0; d < NumDimensions; ++d)
         off[d] -= view_offsets[d];
 
-      _view_local = ViewSpec_t(off, view_tmp.extents());
+      _view = ViewSpec_t(off, view_tmp.extents());
     }
   }*/
 
@@ -444,19 +491,19 @@ private:
       if(MemoryArrange == ROW_MAJOR) {
         for(dim_t d = NumDimensions; d > 0;) {
           --d;
-          if(_coords[d] < _view_local.extent(d) + _view_local.offset(d) - 1) {
+          if(_coords[d] < _view.extent(d) + _view.offset(d) - 1) {
             ++_coords[d];
             break;
           } else
-            _coords[d] = _view_local.offset(d);
+            _coords[d] = _view.offset(d);
         }
       } else {
         for(dim_t d = 0; d < NumDimensions; ++d) {
-          if(_coords[d] < _view_local.extent(d) + _view_local.offset(d) - 1) {
+          if(_coords[d] < _view.extent(d) + _view.offset(d) - 1) {
             ++_coords[d];
             break;
           } else
-            _coords[d] = _view_local.offset(d);
+            _coords[d] = _view.offset(d);
         }
       }
       if(MemoryArrange == ROW_MAJOR) {
@@ -482,9 +529,8 @@ private:
       if(_region_bound == 0) {
         _coords = set_coords(_idx);
       } else {
-        const auto& bnd_elements = _spec_views->boundary_elements();
         if(_idx < _region_bound) {
-          const auto& region = bnd_elements[_region_number];
+          const auto& region = _boundary_views[_region_number];
 
           if(MemoryArrange == ROW_MAJOR) {
             for(dim_t d = NumDimensions; d > 0;) {
@@ -492,30 +538,36 @@ private:
               if(_coords[d] < region.extent(d) + region.offset(d) - 1) {
                 ++_coords[d];
                 break;
-              } else
+              } else {
                 _coords[d] = region.offset(d);
+              }
             }
           } else {
             for(dim_t d = 0; d < NumDimensions; ++d) {
               if(_coords[d] < region.extent(d) + region.offset(d) - 1) {
                 ++_coords[d];
                 break;
-              } else
+              } else {
                 _coords[d] = region.offset(d);
+              }
             }
           }
         } else {
-          ++_region_number;
-          if(_region_number < bnd_elements.size()) {
-            _region_bound += bnd_elements[_region_number].size();
-            _coords = _local_layout.coords(0, bnd_elements[_region_number]);
-          }
+          do {
+            ++_region_number;
+            if(_region_number >= _boundary_views.size())
+              return;
+
+            _region_bound += _boundary_views[_region_number].size();
+          } while (_idx >= _region_bound);
+          _coords = _local_layout.coords(0, _boundary_views[_region_number]);
         }
       }
     } else {
       _coords = set_coords(_idx);
     }
 
+    // setup center point offset
     if(MemoryArrange == ROW_MAJOR) {
       _offset = _coords[0];
       for(dim_t d = 1; d < NumDimensions; ++d)
@@ -528,6 +580,8 @@ private:
       }
     }
     _current_lmemory_addr = _local_memory + _offset;
+
+    //setup stencil point offsets
     if(Scope == StencilViewScope::INNER) {
       for(auto i = 0; i < NumStencilPoints; ++i)
         _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];
@@ -537,7 +591,7 @@ private:
       std::array<bool, NumStencilPoints>            is_halo{};
       std::array<region_index_t, NumStencilPoints>  indexes{};
       for(auto d = 0; d < NumDimensions; ++d) {
-        auto extent = _spec_views->local().extent(d);
+        auto extent = _local_layout.extent(d);
 
         for(auto i = 0; i < NumStencilPoints; ++i) {
           auto& halo_coord = halo_coords[i][d];
@@ -557,6 +611,7 @@ private:
           is_halo[i] = true;
         }
       }
+
       for(auto i = 0; i < NumStencilPoints; ++i) {
         if(is_halo[i])
           _stencil_mem_ptr[i] = value_halo_at(indexes[i], halo_coords[i]);
@@ -566,10 +621,10 @@ private:
     }
   }
 
-  std::array<pattern_index_t, NumDimensions> set_coords(pattern_index_t idx) {
+  ElementCoords_t set_coords(pattern_index_t idx) {
     if(Scope == StencilViewScope::BOUNDARY) {
       auto local_idx = idx;
-      for(const auto& region : _spec_views->boundary_elements()) {
+      for(const auto& region : _boundary_views) {
         _region_bound += region.size();
         if(local_idx < region.size()) {
           return _local_layout.coords(local_idx, region);
@@ -580,10 +635,10 @@ private:
       DASH_ASSERT("idx >= size not implemented yet");
       return std::array<pattern_index_t, NumDimensions>{};
     } else {
-      if(_view_local.size() == 0)
+      if(_view.size() == 0)
         return std::array<pattern_index_t, NumDimensions>{};
       else
-        return _local_layout.coords(idx, _view_local);
+        return _local_layout.coords(idx, _view);
     }
   }
 
@@ -617,9 +672,9 @@ private:
   HaloMemory_t*                           _halomemory;
   const StencilSpecT*                     _stencil_spec;
   const StencilOffsets_t*                 _stencil_offsets;
-  const StencilSpecViews_t*               _spec_views;
+  const ViewSpec_t                        _view;
+  const BoundaryViews_t                   _boundary_views{};
   ElementT*                               _local_memory;
-  ViewSpec_t                              _view_local;
   std::array<ElementT*, NumStencilPoints> _stencil_mem_ptr;
   const LocalLayout_t                     _local_layout;
   pattern_index_t                         _idx{ 0 };
