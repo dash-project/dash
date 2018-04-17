@@ -79,8 +79,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
-                        -DBUILD_TESTS=OFF \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_TESTS=ON \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
