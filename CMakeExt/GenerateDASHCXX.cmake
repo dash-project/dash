@@ -35,7 +35,11 @@ endif()
 
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
-  set(DASHCC ${MPI_CXX_COMPILER})
+  foreach (MPI_C_LIB ${MPI_C_LIBRARIES})
+    set(ADDITIONAL_LIBRARIES_WRAP
+        "${ADDITIONAL_LIBRARIES_WRAP} ${MPI_C_LIB}")
+  endforeach()
+  set(DASHCC ${CMAKE_CXX_COMPILER})
   set(DART_IMPLEMENTATION "mpi")
   configure_file(
     ${CMAKE_SOURCE_DIR}/dash/scripts/dashcc/dashcxx.in
