@@ -18,6 +18,8 @@ jobs:
           when: always
       - store_artifacts:
           path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
 
   gnu_openmpi2:
     docker:
@@ -37,6 +39,8 @@ jobs:
           when: always
       - store_artifacts:
           path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
 
   clang_mpich:
     docker:
@@ -56,7 +60,8 @@ jobs:
           when: always
       - store_artifacts:
           path: /tmp/build-logs
-
+      - store_test_results:
+          path: /tmp/build-tests
 
 workflows:
   version: 2
