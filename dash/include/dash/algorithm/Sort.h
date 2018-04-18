@@ -814,16 +814,17 @@ void sort(
   };
 
   // initial local_sort
-  trace.enter_state("initial_local_sort");
+  trace.enter_state("1: initial_local_sort");
   std::sort(lbegin, lend, sort_comp);
-  trace.exit_state("initial_local_sort");
-  // Temporary local buffer (sorted);
-  std::vector<value_type> const lcopy(lbegin, lend);
+  trace.exit_state("1: initial_local_sort");
+
+  trace.enter_state("2: init_temporary_global_data");
 
   auto const lmin = (n_l_elem > 0) ? sortable_hash(*lbegin)
                                    : std::numeric_limits<mapped_type>::max();
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
+
 
   dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
   dash::Shared<dash::Atomic<mapped_type>> g_max(dash::team_unit_t{0}, team);
@@ -843,6 +844,10 @@ void sort(
   auto const min = static_cast<mapped_type>(g_min.get());
   auto const max = static_cast<mapped_type>(g_max.get());
 
+  trace.exit_state("2: init_temporary_global_data");
+
+  trace.enter_state("3: init_temporary_local_data");
+
   auto const p_unit_info =
       detail::psort__find_partition_borders(pattern, begin, end);
 
@@ -853,9 +858,8 @@ void sort(
 
   detail::PartitionBorder<mapped_type> p_borders(nboundaries, min, max);
 
-  trace.enter_state("init_partition_borders");
   detail::psort__init_partition_borders(p_unit_info, p_borders);
-  trace.exit_state("init_partition_borders");
+
 
   DASH_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
   DASH_LOG_TRACE_RANGE(
@@ -893,7 +897,12 @@ void sort(
     return;
   }
 
-  trace.enter_state("find_global_partition_borders");
+  // Temporary local buffer (sorted);
+  std::vector<value_type> const lcopy(lbegin, lend);
+
+  trace.exit_state("3: init_temporary_local_data");
+
+  trace.enter_state("4: find_global_partition_borders");
 
   do {
     detail::psort__calc_boundaries(p_borders, partitions);
@@ -924,12 +933,12 @@ void sort(
     std::swap(cur, tmp);
   } while (!done);
 
-  trace.exit_state("find_global_partition_borders");
+  trace.exit_state("4: find_global_partition_borders");
 
-  trace.enter_state("final_local_histogram");
+  trace.enter_state("5: final_local_histogram");
   auto histograms = detail::psort__local_histogram(
       partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
-  trace.exit_state("final_local_histogram");
+  trace.exit_state("5: final_local_histogram");
 
   /* How many elements are less than P
    * or less than equals P */
@@ -946,7 +955,7 @@ void sort(
   DASH_LOG_TRACE_RANGE("final histograms: l_nlt", l_nlt.begin(), l_nlt.end());
   DASH_LOG_TRACE_RANGE("final histograms: l_nle", l_nle.begin(), l_nle.end());
 
-  trace.enter_state("transpose_local_histograms (all-to-all)");
+  trace.enter_state("6: transpose_local_histograms (all-to-all)");
   if (n_l_elem > 0) {
     // TODO: minimize communication to copy only until the last valid border
     /*
@@ -975,11 +984,11 @@ void sort(
     // complete outstanding requests...
     g_partition_data.async.flush();
   }
-  trace.exit_state("transpose_local_histograms (all-to-all)");
+  trace.exit_state("6: transpose_local_histograms (all-to-all)");
 
-  trace.enter_state("barrier");
+  trace.enter_state("7: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("7: barrier");
 
   DASH_LOG_TRACE_RANGE(
       "initial partition distribution:",
@@ -996,7 +1005,7 @@ void sort(
    * All accesses are only to local memory
    */
 
-  trace.enter_state("calc_final_partition_dist");
+  trace.enter_state("8: calc_final_partition_dist");
 
   detail::psort__calc_final_partition_dist(
       acc_partition_count, g_partition_data.local);
@@ -1013,13 +1022,13 @@ void sort(
       &(g_partition_data.local[IDX_TARGET_COUNT(nunits) + nunits]),
       0);
 
-  trace.exit_state("calc_final_partition_dist");
+  trace.exit_state("8: calc_final_partition_dist");
 
-  trace.enter_state("barrier");
+  trace.enter_state("9: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("9: barrier");
 
-  trace.enter_state("transpose_final_partition_dist (all-to-all)");
+  trace.enter_state("10: transpose_final_partition_dist (all-to-all)");
   /*
    * Transpose the final distribution again to obtain the end offsets
    */
@@ -1043,18 +1052,18 @@ void sort(
 
   g_partition_data.async.flush();
 
-  trace.exit_state("transpose_final_partition_dist (all-to-all)");
+  trace.exit_state("10: transpose_final_partition_dist (all-to-all)");
 
-  trace.enter_state("barrier");
+  trace.enter_state("11: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("11: barrier");
 
   DASH_LOG_TRACE_RANGE(
       "final target count",
       g_partition_data.lbegin() + IDX_TARGET_COUNT(nunits),
       g_partition_data.lbegin() + IDX_TARGET_COUNT(nunits) + nunits);
 
-  trace.enter_state("calc_final_send_count");
+  trace.enter_state("12: calc_final_send_count");
 
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
@@ -1114,28 +1123,28 @@ void sort(
   DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
-  trace.exit_state("calc_final_send_count");
+  trace.exit_state("12: calc_final_send_count");
 
-  trace.enter_state("barrier");
+  trace.enter_state("13: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("13: barrier");
 
-  trace.enter_state("calc_final_target_displs");
+  trace.enter_state("14: calc_final_target_displs");
 
   detail::psort__calc_target_displs(g_partition_data);
 
-  trace.exit_state("calc_final_target_displs");
+  trace.exit_state("14: calc_final_target_displs");
 
-  trace.enter_state("barrier");
+  trace.enter_state("15: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("15: barrier");
 
   DASH_LOG_TRACE_RANGE(
       "target displs",
       &(g_partition_data.local[IDX_TARGET_DISP(nunits)]),
       &(g_partition_data.local[IDX_TARGET_DISP(nunits)]) + nunits);
 
-  trace.enter_state("exchange_data (all-to-all)");
+  trace.enter_state("16: exchange_data (all-to-all)");
 
   std::vector<dash::Future<iter_type>> async_copies{};
   async_copies.reserve(p_unit_info.valid_remote_partitions.size());
@@ -1191,20 +1200,20 @@ void sort(
       std::end(async_copies),
       [](dash::Future<iter_type>& fut) { fut.wait(); });
 
-  trace.exit_state("exchange_data (all-to-all)");
+  trace.exit_state("16: exchange_data (all-to-all)");
 
-  trace.enter_state("barrier");
+  trace.enter_state("17: barrier");
   team.barrier();
-  trace.exit_state("barrier");
+  trace.exit_state("17: barrier");
 
-  trace.enter_state("final_local_sort");
+  trace.enter_state("18: final_local_sort");
   std::sort(lbegin, lend, sort_comp);
-  trace.exit_state("final_local_sort");
+  trace.exit_state("18: final_local_sort");
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
-  trace.enter_state("final_barrier");
+  trace.enter_state("19: final_barrier");
   team.barrier();
-  trace.exit_state("final_barrier");
+  trace.exit_state("19: final_barrier");
 }
 
 #endif  // DOXYGEN
