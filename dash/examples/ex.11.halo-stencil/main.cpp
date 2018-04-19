@@ -151,8 +151,8 @@ void smooth(HaloWrapper_t & halo_old, HaloWrapper_t & halo_new,
   halo_old.wait();
 
   // Calculation of boundary Halo elements
-  auto bend = op_old.bend();
-  for(auto it = op_old.bbegin(); it != bend; ++it)
+  auto bend = op_old.boundary.end();
+  for(auto it = op_old.boundary.begin(); it != bend; ++it)
   {
     auto core = *it;
     *(nlptr+it.lpos()) = (0.40 * core) +

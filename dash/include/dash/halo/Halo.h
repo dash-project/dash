@@ -61,9 +61,9 @@ public:
   constexpr StencilPoint(
     typename std::enable_if<sizeof...(Values) == NumDimensions - 1,
                             CoeffT>::type coefficient,
-                            point_value_t value, Values... values)
-  : Base_t::Dimensional(value, (point_value_t) values...), _coefficient(coefficient) {
-  }
+    point_value_t                         value, Values... values)
+  : Base_t::Dimensional(value, (point_value_t) values...),
+    _coefficient(coefficient) {}
 
   // TODO as constexpr
   /**
@@ -72,7 +72,7 @@ public:
   int max() const {
     int max = 0;
     for(dim_t i(0); i < NumDimensions; ++i)
-      max = std::max( max, (int) std::abs(this->_values[i]));
+      max = std::max(max, (int) std::abs(this->_values[i]));
     return max;
   }
 
@@ -86,12 +86,12 @@ private:
 };  // StencilPoint
 
 template <dim_t NumDimensions, typename CoeffT>
-std::ostream& operator<<( std::ostream & os,
-    const StencilPoint<NumDimensions, CoeffT>& stencil_point) {
+std::ostream& operator<<(
+  std::ostream& os, const StencilPoint<NumDimensions, CoeffT>& stencil_point) {
   os << "dash::halo::StencilPoint<" << NumDimensions << ">"
      << "(coefficient = " << stencil_point.coefficient << " - points: ";
-  for (auto d = 0; d < NumDimensions; ++d) {
-    if (d > 0) {
+  for(auto d = 0; d < NumDimensions; ++d) {
+    if(d > 0) {
       os << ",";
     }
     os << stencil_point[d];
@@ -113,11 +113,11 @@ private:
   static constexpr auto NumDimensions = StencilPointT::ndim();
 
 public:
-  using stencil_size_t  = std::size_t;
-  using stencil_index_t = std::size_t;
-  using StencilArray_t  = std::array<StencilPointT, NumStencilPoints>;
-  using StencilPoint_t  = StencilPointT;
-  using point_value_t   = typename StencilPoint_t::point_value_t;
+  using stencil_size_t   = std::size_t;
+  using stencil_index_t  = std::size_t;
+  using StencilArray_t   = std::array<StencilPointT, NumStencilPoints>;
+  using StencilPoint_t   = StencilPointT;
+  using point_value_t    = typename StencilPoint_t::point_value_t;
   using MaxDistanceDim_t = std::pair<point_value_t, point_value_t>;
   using MaxDistanceAll_t = std::array<MaxDistanceDim_t, NumDimensions>;
 
@@ -177,6 +177,10 @@ public:
     return std::make_pair(0, false);
   }
 
+  /**
+   * Returns the minimal and maximal distances of all stencil points for all
+   * dimensions.
+   */
   MaxDistanceAll_t minmax_distances() const {
     MaxDistanceAll_t max_dist{};
     for(const auto& stencil_point : _specs) {
@@ -193,6 +197,10 @@ public:
     return max_dist;
   }
 
+  /**
+   * Returns the minimal and maximal distances of all stencil points for the
+   * given dimension.
+   */
   MaxDistanceDim_t minmax_distances(dim_t dim) const {
     MaxDistanceDim_t max_dist{};
     for(const auto& stencil_point : _specs) {
@@ -218,12 +226,12 @@ private:
 };  // StencilSpec
 
 template <typename StencilPointT, std::size_t NumStencilPoints>
-std::ostream& operator<<(std::ostream & os,
-    const StencilSpec<StencilPointT, NumStencilPoints> & specs) {
+std::ostream& operator<<(
+  std::ostream& os, const StencilSpec<StencilPointT, NumStencilPoints>& specs) {
   os << "dash::halo::StencilSpec<" << NumStencilPoints << ">"
      << "(";
-  for (auto i = 0; i < NumStencilPoints; ++i) {
-    if (i > 0) {
+  for(auto i = 0; i < NumStencilPoints; ++i) {
+    if(i > 0) {
       os << ",";
     }
     os << specs[i];
@@ -245,7 +253,7 @@ enum class BoundaryProp : uint8_t {
   CUSTOM
 };
 
-static std::ostream& operator<<( std::ostream & os, const BoundaryProp& prop) {
+static std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
   if(prop == BoundaryProp::NONE)
     os << "NONE";
   else if(prop == BoundaryProp::CYCLIC)
@@ -285,12 +293,12 @@ public:
 };  // GlobalBoundarySpec
 
 template <dim_t NumDimensions>
-std::ostream& operator<<( std::ostream & os,
-    const GlobalBoundarySpec<NumDimensions>& spec) {
+std::ostream& operator<<(std::ostream&                            os,
+                         const GlobalBoundarySpec<NumDimensions>& spec) {
   os << "dash::halo::GlobalBoundarySpec<" << NumDimensions << ">"
      << "(";
-  for (auto d = 0; d < NumDimensions; ++d) {
-    if (d > 0) {
+  for(auto d = 0; d < NumDimensions; ++d) {
+    if(d > 0) {
       os << ",";
     }
     os << spec[d];
@@ -304,11 +312,13 @@ std::ostream& operator<<( std::ostream & os,
  * Position of a \ref Region in one dimension relating to the center
  */
 enum class RegionPos : bool {
+  /// Region before center
   PRE,
+  /// Region behind center
   POST
 };
 
-static std::ostream& operator<<( std::ostream & os, const RegionPos& pos) {
+static std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
   if(pos == RegionPos::PRE)
     os << "PRE";
   else
@@ -403,7 +413,7 @@ public:
       if(dim == d)
         index = coord + index * REGION_INDEX_BASE;
       else
-        index= 1 + index * REGION_INDEX_BASE;
+        index = 1 + index * REGION_INDEX_BASE;
 
     return index;
   }
@@ -577,7 +587,7 @@ private:
 template <dim_t NumDimensions>
 std::ostream& operator<<(std::ostream&                    os,
                          const RegionSpec<NumDimensions>& rs) {
-  os << "dash::RegionSpec<" << NumDimensions << ">(" << (uint32_t) rs[0];
+  os << "dash::halo::RegionSpec<" << NumDimensions << ">(" << (uint32_t) rs[0];
   for(auto i = 1; i < NumDimensions; ++i)
     os << "," << (uint32_t) rs[i];
   os << "), Extent:" << rs.extent();
@@ -678,7 +688,7 @@ private:
     if(_specs[index].extent() == 0)
       ++_num_regions;
 
-    auto max   = stencil.max();
+    auto max = stencil.max();
     if(max > _specs[index].extent())
       _specs[index] = RegionSpec_t(index, max);
   }
@@ -709,25 +719,23 @@ private:
 };  // HaloSpec
 
 template <dim_t NumDimensions>
-std::ostream& operator<<( std::ostream & os, const HaloSpec<NumDimensions>& hs)
-{
-  std::ostringstream ss;
-  ss << "dash::halo::HaloSpec<" << NumDimensions << ">(";
+std::ostream& operator<<(std::ostream& os, const HaloSpec<NumDimensions>& hs) {
+  os << "dash::halo::HaloSpec<" << NumDimensions << ">(";
   bool begin = true;
   for(const auto& region_spec : hs.specs()) {
     if(region_spec.extent() > 0) {
       if(begin) {
-        ss << region_spec;
+        os << region_spec;
         begin = false;
       } else {
-        ss << "," << region_spec;
+        os << "," << region_spec;
       }
     }
   }
-  ss << "; number region: " << hs.num_regions();
-  ss << ")";
+  os << "; number region: " << hs.num_regions();
+  os << ")";
 
-  return operator<<(os, ss.str());
+  return os;
 }
 
 /**
@@ -875,7 +883,7 @@ public:
     return _pattern->local_index(glob_coords(_idx));
   }
 
-  const ViewSpec_t viewspec() const { return _region_view; }
+  const ViewSpec_t view() const { return _region_view; }
 
   inline bool is_relative() const noexcept { return true; }
 
@@ -1020,13 +1028,11 @@ template <typename ElementT, typename PatternT, typename PointerT,
           typename ReferenceT>
 std::ostream& operator<<(
   std::ostream&                                               os,
-  const RegionIter<ElementT, PatternT, PointerT, ReferenceT>& i) {
-  std::ostringstream                ss;
-  dash::GlobPtr<ElementT, PatternT> ptr(i);
-  ss << "dash::HaloBlockIter<" << typeid(ElementT).name() << ">("
-     << "idx:" << i._idx << ", "
-     << "gptr:" << ptr << ")";
-  return operator<<(os, ss.str());
+  const RegionIter<ElementT, PatternT, PointerT, ReferenceT>& it) {
+  os << "dash::halo::RegionIter<" << typeid(ElementT).name() << ">("
+     << "; idx: " << it.rpos() << "; view: " << it.view() << ")";
+
+  return os;
 }
 
 template <typename ElementT, typename PatternT, typename PointerT,
@@ -1103,23 +1109,26 @@ private:
 };  // Region
 
 template <typename ElementT, typename PatternT>
-std::ostream& operator<<(
-    std::ostream & os,
-    const Region<ElementT, PatternT> & region) {
-  std::ostringstream ss;
-  ss << "dash::halo::Region<" << typeid(ElementT).name() << ">"
-     //<< "( view: " << region.view()
-     //<< "; region spec: " << region.spec()
-     //<< "; global borders: " << region.border()
-     //<< "; border region: " << region.is_border_region()
-     //<< "; custom region: " << region.is_custom_region()
-     //<< "; begin iterator: " << region.begin()
-     //<< "; end iterator: " << region.begin()
-     << ")";
+std::ostream& operator<<(std::ostream&                     os,
+                         const Region<ElementT, PatternT>& region) {
+  os << "dash::halo::Region<" << typeid(ElementT).name() << ">"
+     << "( view: " << region.view() << "; region spec: " << region.spec()
+     << "; border regions: {";
+  const auto& border = region.border();
+  for(auto d = 0; d < border.size(); ++d) {
+    if(d == 0)
+      os << border[d];
+    else
+      os << "," << border[d];
+  }
+  os << "}"
+     << "; is border: " << region.is_border_region()
+     << "; is custom: " << region.is_custom_region()
+     << "; begin iterator: " << region.begin()
+     << "; end iterator: " << region.begin() << ")";
 
-  return operator<<(os, ss.str());
+  return os;
 }
-
 
 /**
  * Takes the local part of the NArray and builds halo and
@@ -1163,7 +1172,6 @@ public:
             const GlobBoundSpec_t& bound_spec = GlobBoundSpec_t{})
   : _globmem(globmem), _pattern(pattern), _view(view),
     _halo_reg_spec(halo_reg_spec), _view_local(_view.extents()) {
-
     // setup local views
     _view_inner                 = _view_local;
     _view_inner_with_boundaries = _view_local;
@@ -1267,13 +1275,14 @@ public:
      */
     for(dim_t d = 0; d < NumDimensions; ++d) {
       const auto global_offset = view.offset(d);
-      const auto view_extent = _view_local.extent(d);
+      const auto view_extent   = _view_local.extent(d);
 
       auto bnd_elem_offsets = _view.offsets();
       auto bnd_elem_extents = _view_local.extents();
       bnd_elem_extents[d]   = _halo_extents_max[d].first;
       for(auto d_tmp = 0; d_tmp < d; ++d_tmp) {
-        bnd_elem_offsets[d_tmp] -= _view.offset(d_tmp) - _halo_extents_max[d_tmp].first;
+        bnd_elem_offsets[d_tmp] -=
+          _view.offset(d_tmp) - _halo_extents_max[d_tmp].first;
         bnd_elem_extents[d_tmp] -=
           _halo_extents_max[d_tmp].first + _halo_extents_max[d_tmp].second;
       }
@@ -1281,10 +1290,10 @@ public:
       _view_inner.resize_dim(
         d, _halo_extents_max[d].first,
         view_extent - _halo_extents_max[d].first - _halo_extents_max[d].second);
-      if(bound_spec[d] == BoundaryProp::NONE ) {
+      if(bound_spec[d] == BoundaryProp::NONE) {
         auto safe_offset = global_offset;
         auto safe_extent = view_extent;
-        if(global_offset < _halo_extents_max[d].first)  {
+        if(global_offset < _halo_extents_max[d].first) {
           safe_offset = _halo_extents_max[d].first;
           safe_extent -= _halo_extents_max[d].first - global_offset;
         } else {
@@ -1292,7 +1301,8 @@ public:
           push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
                          _halo_extents_max, bound_spec);
         }
-        auto check_extent = global_offset + view_extent + _halo_extents_max[d].second;
+        auto check_extent =
+          global_offset + view_extent + _halo_extents_max[d].second;
         if(check_extent > _pattern.extent(d)) {
           safe_extent -= check_extent - _pattern.extent(d);
         } else {
@@ -1301,7 +1311,8 @@ public:
           push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents,
                          _halo_extents_max, bound_spec);
         }
-        _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset, safe_extent);
+        _view_inner_with_boundaries.resize_dim(d, safe_offset - global_offset,
+                                               safe_extent);
       } else {
         bnd_elem_offsets[d] -= global_offset;
         push_bnd_elems(d, bnd_elem_offsets, bnd_elem_extents, _halo_extents_max,
@@ -1406,9 +1417,7 @@ public:
    * Returns a set of local views that contains all boundary elements.
    * No duplicates of elements included.
    */
-  const BoundaryViews_t& boundary_views() const {
-    return _boundary_views;
-  }
+  const BoundaryViews_t& boundary_views() const { return _boundary_views; }
 
   /**
    * Number of halo elements
@@ -1458,7 +1467,7 @@ private:
       if(bound_spec[d_tmp] == BoundaryProp::NONE) {
         if(offsets[d_tmp] < halo_exts_max[d_tmp].first) {
           offsets[d_tmp] = halo_exts_max[d_tmp].first;
-          tmp[d_tmp] = halo_exts_max[d_tmp].first;
+          tmp[d_tmp]     = halo_exts_max[d_tmp].first;
           extents[d_tmp] -= halo_exts_max[d_tmp].first;
         }
         auto check_extent_tmp =
@@ -1508,13 +1517,10 @@ private:
 };  // class HaloBlock
 
 template <typename ElementT, typename PatternT>
-std::ostream& operator<<(
-    std::ostream & os,
-    const HaloBlock<ElementT, PatternT>& haloblock)
-{
-  std::ostringstream ss;
+std::ostream& operator<<(std::ostream&                        os,
+                         const HaloBlock<ElementT, PatternT>& haloblock) {
   bool begin = true;
-  ss << "dash::halo::HaloBlock<" << typeid(ElementT).name() << ">("
+  os << "dash::halo::HaloBlock<" << typeid(ElementT).name() << ">("
      << "view global: " << haloblock.view()
      << "; halo spec: " << haloblock.halo_spec()
      << "; view local: " << haloblock.view_local()
@@ -1523,31 +1529,28 @@ std::ostream& operator<<(
      << "; halo regions { ";
   for(const auto& region : haloblock.halo_regions()) {
     if(begin) {
-      ss << region;
+      os << region;
       begin = false;
     } else {
-      ss << "," << region;
+      os << "," << region;
     }
   }
-  ss << " } "
-     << "; halo elems: " << haloblock.halo_size()
-     << "; boundary regions: { ";
+  os << " } "
+     << "; halo elems: " << haloblock.halo_size() << "; boundary regions: { ";
   for(const auto& region : haloblock.boundary_regions()) {
     if(begin) {
-      ss << region;
+      os << region;
       begin = false;
     } else {
-      ss << "," << region;
+      os << "," << region;
     }
   }
-  ss << " } "
+  os << " } "
      << "; boundary views: " << haloblock.boundary_views()
-     << "; boundary elems: " << haloblock.boundary_size()
-     << ")";
+     << "; boundary elems: " << haloblock.boundary_size() << ")";
 
-  return operator<<(os, ss.str());
+  return os;
 }
-
 
 /**
  * Mangages the memory for all halo regions provided by the given
@@ -1591,7 +1594,9 @@ public:
    * \return Pointer to the first halo element or nullptr if the
    *         region doesn't exist
    */
-  Element_t* first_element_at(region_index_t index) { return _halo_offsets[index]; }
+  Element_t* first_element_at(region_index_t index) {
+    return _halo_offsets[index];
+  }
 
   /**
    * Pointer to the first halo element
@@ -1662,7 +1667,7 @@ public:
         off = off * extents[d] + coords[d];
     } else {
       off = coords[NumDimensions - 1];
-      for(dim_t d = NumDimensions - 1; d > 0; ) {
+      for(dim_t d = NumDimensions - 1; d > 0;) {
         --d;
         off = off * extents[d] + coords[d];
       }

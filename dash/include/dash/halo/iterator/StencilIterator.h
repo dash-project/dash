@@ -11,59 +11,88 @@ namespace dash {
 
 namespace halo {
 
-enum class StencilViewScope : std::uint8_t { INNER, BOUNDARY, ALL };
+/**
+ * View property of the StencilIterator
+ */
+enum class StencilViewScope : std::uint8_t {
+  /// inner elements only
+  INNER,
+  /// Boundary elements only
+  BOUNDARY,
+  /// Inner and boundary elements
+  ALL
+};
 
+static std::ostream& operator<<(std::ostream&           os,
+                                const StencilViewScope& scope) {
+  if(scope == StencilViewScope::INNER)
+    os << "INNER";
+  else if(scope == StencilViewScope::BOUNDARY)
+    os << "BOUNDARY";
+  else
+    os << "ALL";
+
+  return os;
+}
+
+/**
+ * Adapts all views \ref HaloBlock provides to the given \ref StencilSpec.
+ */
 template <typename HaloBlockT, typename StencilSpecT>
 class StencilSpecificViews {
 private:
   static constexpr auto NumDimensions = HaloBlockT::ndim();
 
   using Pattern_t = typename HaloBlockT::Pattern_t;
+
 public:
   using ViewSpec_t      = typename HaloBlockT::ViewSpec_t;
   using BoundaryViews_t = typename HaloBlockT::BoundaryViews_t;
   using pattern_size_t  = typename Pattern_t::size_type;
 
 public:
-  StencilSpecificViews(const HaloBlockT& haloblock,
-      const StencilSpecT& stencil_spec,
-      const ViewSpec_t*   view_local)
+  StencilSpecificViews(const HaloBlockT&   haloblock,
+                       const StencilSpecT& stencil_spec,
+                       const ViewSpec_t*   view_local)
   : _view_local(view_local) {
     auto minmax_dist = stencil_spec.minmax_distances();
     for(auto& dist : minmax_dist)
       dist.first = std::abs(dist.first);
 
-    auto inner_off = haloblock.view_inner().offsets();
-    auto inner_ext = haloblock.view_inner().extents();
+    auto inner_off       = haloblock.view_inner().offsets();
+    auto inner_ext       = haloblock.view_inner().extents();
     auto inner_bound_off = haloblock.view_inner_with_boundaries().offsets();
     auto inner_bound_ext = haloblock.view_inner_with_boundaries().extents();
     for(auto d = 0; d < NumDimensions; ++d) {
       resize_offset(inner_off[d], inner_ext[d], minmax_dist[d].first);
-      resize_extent(inner_off[d], inner_ext[d],_view_local->extent(d), minmax_dist[d].second);
-      resize_offset(inner_bound_off[d], inner_bound_ext[d], minmax_dist[d].first);
-      resize_extent(inner_bound_off[d], inner_bound_ext[d],_view_local->extent(d), minmax_dist[d].second);
+      resize_extent(inner_off[d], inner_ext[d], _view_local->extent(d),
+                    minmax_dist[d].second);
+      resize_offset(inner_bound_off[d], inner_bound_ext[d],
+                    minmax_dist[d].first);
+      resize_extent(inner_bound_off[d], inner_bound_ext[d],
+                    _view_local->extent(d), minmax_dist[d].second);
     }
-    _view_inner = ViewSpec_t(inner_off, inner_ext);
+    _view_inner                 = ViewSpec_t(inner_off, inner_ext);
     _view_inner_with_boundaries = ViewSpec_t(inner_bound_off, inner_bound_ext);
 
     using RegionCoords_t = RegionCoords<NumDimensions>;
     using region_index_t = typename RegionCoords_t::region_index_t;
 
-    const auto& bnd_elems = haloblock.boundary_views();
+    const auto& bnd_elems    = haloblock.boundary_views();
     const auto& halo_ext_max = haloblock.halo_extension_max();
     _boundary_views.reserve(NumDimensions * 2);
     auto it_views = std::begin(bnd_elems);
 
     for(dim_t d = 0; d < NumDimensions; ++d) {
-     region_index_t index = RegionCoords_t::index(d, RegionPos::PRE);
-      auto* region = haloblock.boundary_region(index);
+      region_index_t index  = RegionCoords_t::index(d, RegionPos::PRE);
+      auto*          region = haloblock.boundary_region(index);
       if(region == nullptr || (region != nullptr && region->size() == 0))
         _boundary_views.push_back(ViewSpec_t());
       else {
         push_boundary_views(*it_views, halo_ext_max, minmax_dist);
         ++it_views;
       }
-      index = RegionCoords_t::index(d, RegionPos::POST);
+      index  = RegionCoords_t::index(d, RegionPos::POST);
       region = haloblock.boundary_region(index);
       if(region == nullptr || (region != nullptr && region->size() == 0))
         _boundary_views.push_back(ViewSpec_t());
@@ -74,23 +103,37 @@ public:
     }
   }
 
-  const ViewSpec_t& local() const { return *_view_local; }
+  /**
+   * Returns \ref ViewSpec including all elements (locally)
+   */
+  const ViewSpec_t& view() const { return *_view_local; }
 
+  /**
+   * Returns \ref ViewSpec including all inner elements
+   */
   const ViewSpec_t& inner() const { return _view_inner; }
 
+  /**
+   * Returns \ref ViewSpec including all inner and boundary elements
+   */
   const ViewSpec_t& inner_with_boundaries() const {
     return _view_inner_with_boundaries;
   }
 
-  const BoundaryViews_t& boundary_views() const {
-    return _boundary_views;
-  }
+  /**
+   * Returns all boundary views including all boundary elements (no dublicates)
+   */
+  const BoundaryViews_t& boundary_views() const { return _boundary_views; }
 
-  pattern_size_t boundary_size() const { return _size_bnd_elems;}
+  /**
+   * Returns the number of all boundary elements (no dublicates)
+   */
+  pattern_size_t boundary_size() const { return _size_bnd_elems; }
 
 private:
-  template<typename MaxExtT, typename MaxDistT>
-  void push_boundary_views(const ViewSpec_t& view, const MaxExtT& max_ext, const MaxDistT& max_dist) {
+  template <typename MaxExtT, typename MaxDistT>
+  void push_boundary_views(const ViewSpec_t& view, const MaxExtT& max_ext,
+                           const MaxDistT& max_dist) {
     auto view_off = view.offsets();
     auto view_ext = view.extents();
     for(auto d = 0; d < NumDimensions; ++d) {
@@ -101,7 +144,8 @@ private:
         view_off[d] += max_ext[d].second - max_dist[d].second;
       } else {
         resize_offset(view_off[d], view_ext[d], max_dist[d].first);
-        resize_extent(view_off[d], view_ext[d], _view_local->extent(d), max_dist[d].second);
+        resize_extent(view_off[d], view_ext[d], _view_local->extent(d),
+                      max_dist[d].second);
       }
     }
     ViewSpec_t tmp(view_off, view_ext);
@@ -109,7 +153,7 @@ private:
     _boundary_views.push_back(std::move(tmp));
   }
 
-  template<typename OffT, typename ExtT, typename MaxT>
+  template <typename OffT, typename ExtT, typename MaxT>
   void resize_offset(OffT& offset, ExtT& extent, MaxT max) {
     if(offset > max) {
       extent += offset - max;
@@ -117,7 +161,7 @@ private:
     }
   }
 
-  template<typename OffT, typename ExtT, typename MinT>
+  template <typename OffT, typename ExtT, typename MinT>
   void resize_extent(OffT& offset, ExtT& extent, ExtT extent_local, MinT max) {
     auto diff_ext = extent_local - offset - extent;
     if(diff_ext > max)
@@ -125,32 +169,32 @@ private:
   }
 
 private:
-  const ViewSpec_t*       _view_local;
-  ViewSpec_t              _view_inner;
-  ViewSpec_t              _view_inner_with_boundaries;
-  BoundaryViews_t         _boundary_views;
-  pattern_size_t          _size_bnd_elems = 0;
+  const ViewSpec_t* _view_local;
+  ViewSpec_t        _view_inner;
+  ViewSpec_t        _view_inner_with_boundaries;
+  BoundaryViews_t   _boundary_views;
+  pattern_size_t    _size_bnd_elems = 0;
 };
 
 template <typename HaloBlockT, typename StencilSpecT>
 std::ostream& operator<<(
-    std::ostream & os,
-    const StencilSpecificViews<HaloBlockT, StencilSpecT> & stencil_views)
-{
+  std::ostream&                                         os,
+  const StencilSpecificViews<HaloBlockT, StencilSpecT>& stencil_views) {
   std::ostringstream ss;
-  ss << "dash::StencilSpecificViews"
+  ss << "dash::halo::StencilSpecificViews"
      << "(local: " << stencil_views.local()
      << "; inner: " << stencil_views.inner()
      << "; inner_bound: " << stencil_views.inner_with_boundaries()
      << "; boundary_views: " << stencil_views.boundary_views()
-     << "; boundary elems: " << stencil_views.boundary_size()
-     << ")";
+     << "; boundary elems: " << stencil_views.boundary_size() << ")";
 
   return operator<<(os, ss.str());
 }
 
 /*
- * Iterator with stencil points and halo access \see HaloStencilOperator.
+ * Stencil specific iterator to iterate over a given scope of elements.
+ * The iterator provides element access via stencil points and for boundary
+ * elements halo element access.
  */
 template <typename ElementT, typename PatternT, typename StencilSpecT,
           StencilViewScope Scope>
@@ -162,8 +206,8 @@ private:
   static constexpr auto FastestDimension =
     MemoryArrange == ROW_MAJOR ? NumDimensions - 1 : 0;
 
-  using Self_t = StencilIterator<ElementT, PatternT, StencilSpecT, Scope>;
-  using ViewSpec_t            = typename PatternT::viewspec_type;
+  using Self_t     = StencilIterator<ElementT, PatternT, StencilSpecT, Scope>;
+  using ViewSpec_t = typename PatternT::viewspec_type;
   using pattern_size_t        = typename PatternT::size_type;
   using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using RegionCoords_t        = RegionCoords<NumDimensions>;
@@ -185,8 +229,8 @@ public:
   using StencilP_t       = StencilPoint<NumDimensions>;
   using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
   using StencilOffsets_t = std::array<signed_pattern_size_t, NumStencilPoints>;
-  using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t,StencilSpecT>;
-  using BoundaryViews_t = typename StencilSpecViews_t::BoundaryViews_t;
+  using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
+  using BoundaryViews_t    = typename StencilSpecViews_t::BoundaryViews_t;
 
 public:
   /**
@@ -196,20 +240,19 @@ public:
    * \param halomemory \ref HaloMemory instance for loacl halo memory
    * \param stencil_spec \ref StencilSpec to use
    * \param stencil_offsets stencil offsets for every stencil point
-   * \param spec_views stencil specific views \ref StencilSpecViews
+   * \param view_local local \ref SpecView including all local elements
+   * \param view_scope \ref ViewSpec to use
    * \param idx position of the iterator
    */
   StencilIterator(ElementT* local_memory, HaloMemory_t* halomemory,
-                      const StencilSpecT*     stencil_spec,
-                      const StencilOffsets_t* stencil_offsets,
-                      const ViewSpec_t&       view,
-                      const ViewSpec_t&       view_local,
-                      pattern_index_t         idx)
+                  const StencilSpecT*     stencil_spec,
+                  const StencilOffsets_t* stencil_offsets,
+                  const ViewSpec_t& view_local, const ViewSpec_t& view_scope,
+                  pattern_index_t idx)
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
-    _stencil_offsets(stencil_offsets), _view(view),
+    _stencil_offsets(stencil_offsets), _view(view_scope),
     _local_memory(local_memory), _idx(idx),
     _local_layout(view_local.extents()) {
-
     if(_idx < _view.size())
       set_coords();
 
@@ -220,22 +263,31 @@ public:
         _local_layout.extent(FastestDimension) - ext_max.second - 1);
     } else {
       _ext_dim_reduced =
-        std::make_pair(std::abs(ext_max.first), _view.extent(FastestDimension)
-                                        - ext_max.second - 1);
+        std::make_pair(std::abs(ext_max.first),
+                       _view.extent(FastestDimension) - ext_max.second - 1);
     }
   }
 
+  /**
+   * Constructor
+   *
+   * \param local_memory Pointer to the begining of the local NArray memory
+   * \param halomemory \ref HaloMemory instance for halo memory elements
+   * \param stencil_spec \ref StencilSpec to use
+   * \param stencil_offsets stencil offsets for every stencil point
+   * \param view_local local \ref SpecView including all local elements
+   * \param boundary_views all relevant boundary views
+   * \param idx position of the iterator
+   */
   StencilIterator(ElementT* local_memory, HaloMemory_t* halomemory,
-                      const StencilSpecT*       stencil_spec,
-                      const StencilOffsets_t*   stencil_offsets,
-                      const ViewSpec_t&         view_local,
-                      const BoundaryViews_t&    boundary_views,
-                      pattern_index_t           idx)
+                  const StencilSpecT*     stencil_spec,
+                  const StencilOffsets_t* stencil_offsets,
+                  const ViewSpec_t&       view_local,
+                  const BoundaryViews_t& boundary_views, pattern_index_t idx)
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
     _stencil_offsets(stencil_offsets), _boundary_views(boundary_views),
     _view(view_local.extents()), _local_memory(local_memory), _idx(idx),
     _local_layout(view_local.extents()) {
-
     pattern_index_t size = 0;
     for(const auto& view : boundary_views)
       size += view.size();
@@ -245,8 +297,8 @@ public:
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
 
     _ext_dim_reduced =
-      std::make_pair(std::abs(ext_max.first), _view.extent(FastestDimension)
-          - ext_max.second - 1);
+      std::make_pair(std::abs(ext_max.first),
+                     _view.extent(FastestDimension) - ext_max.second - 1);
   }
 
   /**
@@ -397,9 +449,7 @@ public:
     return res;
   }
 
-  difference_type operator-(Self_t& other) const {
-    return _idx - other._idx;
-  }
+  difference_type operator-(Self_t& other) const { return _idx - other._idx; }
 
   bool operator<(const Self_t& other) const {
     return compare(other, std::less<pattern_index_t>());
@@ -439,8 +489,7 @@ private:
       return true;
     }
 #endif
-    if(&_view == &(other._view)
-       || _view == other._view) {
+    if(&_view == &(other._view) || _view == other._view) {
       return gidx_cmp(_idx, other._idx);
     }
     // TODO not the best solution
@@ -559,7 +608,7 @@ private:
               return;
 
             _region_bound += _boundary_views[_region_number].size();
-          } while (_idx >= _region_bound);
+          } while(_idx >= _region_bound);
           _coords = _local_layout.coords(0, _boundary_views[_region_number]);
         }
       }
@@ -581,7 +630,7 @@ private:
     }
     _current_lmemory_addr = _local_memory + _offset;
 
-    //setup stencil point offsets
+    // setup stencil point offsets
     if(Scope == StencilViewScope::INNER) {
       for(auto i = 0; i < NumStencilPoints; ++i)
         _stencil_mem_ptr[i] = _current_lmemory_addr + (*_stencil_offsets)[i];

@@ -256,10 +256,10 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   dash::Array<long> sum_halo(dash::size());
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
   auto* sum_local = sum_halo.lbegin();
-
   auto stencil_op = halo_wrapper.stencil_operator(stencil_spec);
-  auto it_iend = stencil_op.iend();
-  for(auto it = stencil_op.ibegin(); it != it_iend; ++it) {
+
+  auto it_iend = stencil_op.inner.end();
+  for(auto it = stencil_op.inner.begin(); it != it_iend; ++it) {
     for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
       *sum_local += it.value_at(i);
 
@@ -267,8 +267,8 @@ TEST_F(HaloTest, HaloMatrixWrapperNonCyclic2D)
   }
 
   halo_wrapper.update();
-  auto it_bend = stencil_op.bend();
-  for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
+  auto it_bend = stencil_op.boundary.end();
+  for(auto it = stencil_op.boundary.begin(); it != it_bend; ++it) {
     for(auto i = 0; i < stencil_spec.num_stencil_points(); ++i)
       *sum_local += it.value_at(i);
 
@@ -323,8 +323,8 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
 
   auto* sum_local = sum_halo.lbegin();
-  auto it_iend = stencil_op.iend();
-  for(auto it = stencil_op.ibegin(); it != it_iend; ++it) {
+  auto it_iend = stencil_op.inner.end();
+  for(auto it = stencil_op.inner.begin(); it != it_iend; ++it) {
     for(auto i = 0; i < num_stencil_points; ++i)
       *sum_local += it.value_at(i);
 
@@ -335,14 +335,14 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
 
   if(region_wise) {
     for( auto d = 0; d < 3; ++d) {
-      auto it_bnd = stencil_op.boundary_iterator_at(d, RegionPos::PRE);
+      auto it_bnd = stencil_op.boundary.iterator_at(d, RegionPos::PRE);
       for(auto it = it_bnd.first; it != it_bnd.second; ++it) {
         for(auto i = 0; i < num_stencil_points; ++i)
           *sum_local += it.value_at(i);
 
         *sum_local += *it;
       }
-      auto it_bnd_2 = stencil_op.boundary_iterator_at(d, RegionPos::POST);
+      auto it_bnd_2 = stencil_op.boundary.iterator_at(d, RegionPos::POST);
       for(auto it = it_bnd_2.first; it != it_bnd_2.second; ++it) {
         for(auto i = 0; i < num_stencil_points; ++i)
           *sum_local += it.value_at(i);
@@ -351,8 +351,8 @@ unsigned long calc_sum_halo(HaloWrapperT& halo_wrapper, StencilOpT stencil_op, b
       }
     }
   } else {
-    auto it_bend = stencil_op.bend();
-    for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
+    auto it_bend = stencil_op.boundary.end();
+    for(auto it = stencil_op.boundary.begin(); it != it_bend; ++it) {
       for(auto i = 0; i < num_stencil_points; ++i)
         *sum_local += it.value_at(i);
 
@@ -382,8 +382,8 @@ unsigned long calc_sum_halo_via_stencil(HaloWrapperT& halo_wrapper, StencilOpT s
   dash::fill(sum_halo.begin(), sum_halo.end(),0);
 
   auto* sum_local = sum_halo.lbegin();
-  auto it_iend = stencil_op.iend();
-  for(auto it = stencil_op.ibegin(); it != it_iend; ++it) {
+  auto it_iend = stencil_op.inner.end();
+  for(auto it = stencil_op.inner.begin(); it != it_iend; ++it) {
     for(auto i = 0; i < num_stencil_points; ++i)
       *sum_local += it.value_at(stencil_spec[i]);
 
@@ -392,8 +392,8 @@ unsigned long calc_sum_halo_via_stencil(HaloWrapperT& halo_wrapper, StencilOpT s
 
   halo_wrapper.wait();
 
-  auto it_bend = stencil_op.bend();
-  for(auto it = stencil_op.bbegin(); it != it_bend; ++it) {
+  auto it_bend = stencil_op.boundary.end();
+  for(auto it = stencil_op.boundary.begin(); it != it_bend; ++it) {
     for(auto i = 0; i < num_stencil_points; ++i)
       *sum_local += it.value_at(stencil_spec[i]);
 

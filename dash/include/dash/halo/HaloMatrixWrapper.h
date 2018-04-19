@@ -84,8 +84,7 @@ public:
     _view_global(matrix.local.offsets(), matrix.local.extents()),
     _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global,
                _halo_spec, cycle_spec),
-    _view_local(_haloblock.view_local()),
-    _halomemory(_haloblock) {
+    _view_local(_haloblock.view_local()), _halomemory(_haloblock) {
     for(const auto& region : _haloblock.halo_regions()) {
       if(region.size() == 0)
         continue;
@@ -94,8 +93,8 @@ public:
       pattern_size_t num_elems_block = 1;
       auto           rel_dim         = region.spec().relevant_dim();
       auto           level           = region.spec().level();
-      auto*          off             = _halomemory.first_element_at(region.index());
-      auto           it              = region.begin();
+      auto*          off = _halomemory.first_element_at(region.index());
+      auto           it  = region.begin();
 
       if(MemoryArrange == ROW_MAJOR) {
         if(level == 1) {  //|| (level == 2 && region.regionSpec()[0] != 1)) {
@@ -176,7 +175,7 @@ public:
           pattern_size_t stride =
             (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
                              : 1;
-          auto     ds_stride = dart_storage<Element_t>(stride);
+          auto ds_stride = dart_storage<Element_t>(stride);
 
           dart_datatype_t stride_type;
           dart_type_create_strided(ds_num_elems_block.dtype, ds_stride.nelem,
@@ -444,9 +443,10 @@ public:
   StencilOperator<Element_t, Pattern_t, StencilSpecT> stencil_operator(
     const StencilSpecT& stencil_spec) {
     for(const auto& stencil : stencil_spec.specs()) {
-      DASH_ASSERT_MSG(stencil.max()
-             <= _halo_spec.extent(RegionSpec<NumDimensions>::index(stencil)),
-             "Stencil point extent higher than halo region extent.");
+      DASH_ASSERT_MSG(
+        stencil.max()
+          <= _halo_spec.extent(RegionSpec<NumDimensions>::index(stencil)),
+        "Stencil point extent higher than halo region extent.");
     }
 
     return StencilOperator<Element_t, Pattern_t, StencilSpecT>(
@@ -455,9 +455,9 @@ public:
 
 private:
   struct Data {
-    const Region_t&                region;
+    const Region_t&                     region;
     std::function<void(dart_handle_t&)> get_halos;
-    dart_handle_t                  handle = DART_HANDLE_NULL;
+    dart_handle_t                       handle = DART_HANDLE_NULL;
   };
 
   void update_halo_intern(Data& data) {

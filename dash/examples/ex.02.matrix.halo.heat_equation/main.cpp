@@ -143,8 +143,8 @@ int main(int argc, char *argv[])
     }
 #endif
     // slow version
-    auto it_end = current_op->iend();
-    for(auto it = current_op->ibegin(); it != it_end; ++it)
+    auto it_end = current_op->inner.end();
+    for(auto it = current_op->inner.begin(); it != it_end; ++it)
     {
       auto core = *it;
       auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
@@ -156,8 +156,8 @@ int main(int argc, char *argv[])
     current_halo->wait();
 
     // Calculation of boundary Halo elements
-    auto it_bend = current_op->bend();
-    for (auto it = current_op->bbegin(); it != it_bend; ++it) {
+    auto it_bend = current_op->boundary.end();
+    for (auto it = current_op->boundary.begin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
           (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
