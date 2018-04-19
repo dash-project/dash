@@ -156,6 +156,7 @@ if (NOT DEFINED MPI_IMPL_ID)
   set (MPI_C_LIBRARIES  ${MPI_C_LIBRARIES}  CACHE STRING "MPI C libraries")
   set (MPI_LINK_FLAGS   ${MPI_LINK_FLAGS}   CACHE STRING "MPI link flags")
 
+  message(STATUS "Detected MPI library: ${MPI_IMPL_ID}")
 else (NOT DEFINED MPI_IMPL_ID)
 
   message(STATUS "Using previously detected MPI library: ${MPI_IMPL_ID}")
