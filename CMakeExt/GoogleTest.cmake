@@ -1,6 +1,6 @@
 find_package(Threads REQUIRED)
 
-set (GTEST_GIT_TAG "be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0")
+set (GTEST_GIT_TAG "HEAD")
 
 if (BUILD_TESTS)
 
