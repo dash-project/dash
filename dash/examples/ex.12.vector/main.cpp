@@ -13,27 +13,40 @@
 using std::cout;
 using std::endl;
 
+void print_vector(dash::Vector<int>& vec, unsigned int id) {
+	vec.barrier();
+	if (dash::myid() == id) {
+		cout << "{ ";
+		for (auto el: vec) {
+		cout << static_cast<int>(el) << " ";
+		}
+		cout << "}" << endl;
+	}
+	vec.barrier();
+}
+
 int main(int argc, char* argv[])
 {
-  dash::init(&argc, &argv);
+	dash::init(&argc, &argv);
 
-  auto myid = dash::myid();
-  auto size = dash::size();
+	auto myid = dash::myid();
+	auto size = dash::size();
 
-  dash::Vector<int> vec(5);
+	auto& team = dash::Team::All();
 
-  if (myid == 0) {
-    for (size_t i = 0; i < vec.size(); ++i) {
-      vec[i] = i;
-    }
-  }
-  vec.barrier();
-  if (myid == (size-1)) {
-    for (auto el: vec) {
-      cout << static_cast<int>(el) << " ";
-    }
-    cout << endl;
-  }
+	std::cout << "I am "  << team.myid() << "\n";
+	dash::Vector<int> vec(1);
+	*(vec.lbegin()) = myid;
+	print_vector(vec, size -1);
+
+	vec.reserve(4);
+	print_vector(vec, size -1);
+
+	vec.lpush_back(42);
+	print_vector(vec, size -1);
+
+	vec.lpush_back(1337);
+	print_vector(vec, size -1);
 
   dash::finalize();
 }
