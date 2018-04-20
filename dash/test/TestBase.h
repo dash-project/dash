@@ -162,8 +162,7 @@ extern void ColoredPrintf(
   const char * filebase = strrchr(filepath, '/'); \
   const char * filename = (filebase != 0) ? filebase + 1 : filepath; \
   sprintf(buffer, __VA_ARGS__); \
-  testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_YELLOW, \
+  printf( \
     "[= %*d LOG =] %*s :%*d | %s \n", \
     2, dash::myid().id, 24, filename, 4, __LINE__, \
     buffer); \
