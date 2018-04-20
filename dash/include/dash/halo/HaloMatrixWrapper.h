@@ -286,8 +286,9 @@ public:
    * Initiates an asychronous halo region update for all halo elements.
    */
   void update_async() {
-    for(auto& region : _region_data)
+    for(auto& region : _region_data) {
       update_halo_intern(region.second);
+    }
   }
 
   /**
