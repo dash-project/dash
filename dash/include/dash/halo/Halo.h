@@ -405,6 +405,9 @@ public:
    */
   constexpr region_index_t index() const { return _index; }
 
+  /**
+   * Returns a region index for a given dimension and \ref RegionPos
+   */
   static region_index_t index(dim_t dim, RegionPos pos) {
     region_coord_t coord = (pos == RegionPos::PRE) ? 0 : 2;
 
@@ -837,7 +840,7 @@ public:
 
   GlobIter<ElementT, PatternT> global() const {
     auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT>(_globmem, &_pattern, g_idx);
+    return GlobIter<ElementT, PatternT>(_globmem, *_pattern, g_idx);
   }
 
   ElementT* local() const {
@@ -1571,8 +1574,14 @@ public:
   using Element_t = typename HaloBlockT::Element_t;
   using ElementCoords_t =
     std::array<typename Pattern_t::index_type, NumDimensions>;
+  using HaloBuffer_t = std::vector<Element_t>;
   using region_index_t = typename RegionCoords_t::region_index_t;
   using pattern_size_t = typename Pattern_t::size_type;
+
+  using iterator = typename HaloBuffer_t::iterator;
+  using const_iterator = const iterator;
+
+  using MemRange_t = std::pair<iterator,iterator>;
 
 public:
   /**
@@ -1580,37 +1589,69 @@ public:
    */
   HaloMemory(const HaloBlockT& haloblock) : _haloblock(haloblock) {
     _halobuffer.resize(haloblock.halo_size());
-    auto* offset = _halobuffer.data();
+    auto it = _halobuffer.begin();
 
     for(const auto& region : haloblock.halo_regions()) {
-      _halo_offsets[region.index()] = offset;
-      offset += region.size();
+      _halo_offsets[region.index()] = it;
+      it += region.size();
     }
   }
 
   /**
-   * Pointer to the first halo element for the given region index
+   * Iterator to the first halo element for the given region index
    * \param index halo region index
-   * \return Pointer to the first halo element or nullptr if the
-   *         region doesn't exist
+   * \return Iterator to the first halo element. If no region exists the
+   *         end iterator will be returned.
    */
-  Element_t* first_element_at(region_index_t index) {
+  iterator first_element_at(region_index_t index) {
     return _halo_offsets[index];
   }
 
   /**
-   * Pointer to the first halo element
-   *
-   * \return Pointer to the first halo element
+   * iReturns the range of all halo elements for the given region index.
+   * \param index halo region index
+   * \return Pair of iterator. First points ot the beginning and second to the
+   *         end.
    */
-  Element_t* first_element() { return _halobuffer.data(); }
+  MemRange_t range_at(region_index_t index) {
+    auto it = _halo_offsets[index];
+    if(it == _halobuffer.end())
+      return std::make_pair(it,it);
+
+    auto* region = _haloblock.halo_region(index);
+
+    DASH_ASSERT_MSG(region != nullptr,
+        "HaloMemory manages memory for a region that seemed to be empty.");
+
+    return std::make_pair(it, it + region->size());
+  }
+
+  /**
+   * Returns an iterator to the first halo element
+   */
+  iterator begin() { return _halobuffer.begin(); }
+
+  /**
+   * Returns a const iterator to the first halo element
+   */
+  const_iterator begin() const { return _halobuffer.begin(); }
+
+  /**
+   * Returns an iterator to the end of the halo elements
+   */
+  iterator end() { return _halobuffer.end(); }
+
+  /**
+   * Returns a const iterator to the end of the halo elements
+   */
+  const_iterator end() const { return _halobuffer.end(); }
 
   /**
    * Container storing all halo elements
    *
    * \return Reference to the container storing all halo elements
    */
-  const std::vector<Element_t>& buffer() const { return _halobuffer; }
+  const HaloBuffer_t& buffer() const { return _halobuffer; }
 
   /**
    * Converts coordinates to halo memory coordinates for a given
@@ -1677,9 +1718,9 @@ public:
   }
 
 private:
-  const HaloBlockT&                _haloblock;
-  std::vector<Element_t>           _halobuffer;
-  std::array<Element_t*, MaxIndex> _halo_offsets{};
+  const HaloBlockT&      _haloblock;
+  HaloBuffer_t           _halobuffer;
+  std::array<iterator, MaxIndex> _halo_offsets{};
 };  // class HaloMemory
 
 }  // namespace halo

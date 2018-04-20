@@ -695,8 +695,8 @@ private:
                           ElementCoords_t& halo_coords) {
     _halomemory->to_halo_mem_coords(region_index, halo_coords);
 
-    return _halomemory->first_element_at(region_index)
-           + _halomemory->offset(region_index, halo_coords);
+    return &*(_halomemory->first_element_at(region_index)
+           + _halomemory->offset(region_index, halo_coords));
   }
 
   void set_stencil_offsets(const StencilSpecT& stencil_spec) {

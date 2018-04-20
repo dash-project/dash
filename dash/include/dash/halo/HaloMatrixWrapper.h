@@ -93,7 +93,7 @@ public:
       pattern_size_t num_elems_block = 1;
       auto           rel_dim         = region.spec().relevant_dim();
       auto           level           = region.spec().level();
-      auto*          off = _halomemory.first_element_at(region.index());
+      auto*          off = &*(_halomemory.first_element_at(region.index()));
       auto           it  = region.begin();
 
       if(MemoryArrange == ROW_MAJOR) {
@@ -266,8 +266,8 @@ public:
   void update() {
     for(auto& region : _region_data) {
       update_halo_intern(region.second);
-      dart_wait_local(&region.second.handle);
     }
+    wait();
   }
 
   /**
@@ -296,8 +296,9 @@ public:
    */
   void update_async_at(region_index_t index) {
     auto it_find = _region_data.find(index);
-    if(it_find != _region_data.end())
+    if(it_find != _region_data.end()) {
       update_halo_intern(it_find->second);
+    }
   }
 
   /**
@@ -305,8 +306,9 @@ public:
    * halo updates.
    */
   void wait() {
-    for(auto& region : _region_data)
+    for(auto& region : _region_data) {
       dart_wait_local(&region.second.handle);
+    }
   }
 
   /**
@@ -372,7 +374,6 @@ public:
     using signed_extent_t = typename std::make_signed<pattern_size_t>::type;
     for(const auto& region : _haloblock.boundary_regions()) {
       if(region.is_custom_region()) {
-        auto*       pos_ptr = _halomemory.first_element_at(region.index());
         const auto& spec    = region.spec();
         std::array<signed_extent_t, NumDimensions> coords_offset{};
         const auto& reg_ext = region.view().extents();
@@ -385,12 +386,20 @@ public:
             coords_offset[d] = reg_ext[d];
         }
 
-        auto it_reg_end = region.end();
-        for(auto it = region.begin(); it != it_reg_end; ++it) {
+        auto range_mem = _halomemory.range_at(region.index());
+        auto it_mem = range_mem.first;
+        auto it_reg_end  = region.end();
+        DASH_ASSERT_MSG(
+            std::distance(range_mem.first, range_mem.second) == region.size(),
+            "Range distance of the HaloMemory is unequal region size");
+
+        for(auto it = region.begin(); it != it_reg_end; ++it, ++it_mem) {
           auto coords = it.gcoords();
-          for(auto d = 0; d < NumDimensions; ++d)
+          for(auto d = 0; d < NumDimensions; ++d) {
             coords[d] += coords_offset[d];
-          *(pos_ptr + it.rpos()) = f(coords);
+          }
+
+          *it_mem = f(coords);
         }
       }
     }
@@ -401,21 +410,13 @@ public:
    * element exists. This also means that only a unit connected to the given
    * coordinate will return a halo value. All others will return nullptr.
    */
-  Element_t* halo_element_at_global(ElementCoords_t coords) {
+  Element_t* halo_element_at_global(const ElementCoords_t coords) {
     const auto& offsets = _view_global.offsets();
     for(auto d = 0; d < NumDimensions; ++d) {
       coords[d] -= offsets[d];
     }
-    auto        index       = _haloblock.index_at(_view_local, coords);
-    const auto& spec        = _halo_spec.spec(index);
-    auto*       halomem_pos = _halomemory.first_element_at(index);
-    if(spec.level() == 0 || halomem_pos == nullptr)
-      return nullptr;
 
-    if(!_halomemory.to_halo_mem_coords_check(index, coords))
-      return nullptr;
-
-    return halomem_pos + _halomemory.offset(index, coords);
+    return halo_element_at(coords);
   }
 
   /**
@@ -423,16 +424,7 @@ public:
    * element exists.
    */
   Element_t* halo_element_at_local(ElementCoords_t coords) {
-    auto        index       = _haloblock.index_at(_view_local, coords);
-    const auto& spec        = _halo_spec.spec(index);
-    auto*       halomem_pos = _halomemory.first_element_at(index);
-    if(spec.level() == 0 || halomem_pos == nullptr)
-      return nullptr;
-
-    if(!_halomemory.to_halo_mem_coords_check(index, coords))
-      return nullptr;
-
-    return halomem_pos + _halomemory.offset(index, coords);
+    return halo_element_at(coords);
   }
 
   /**
@@ -465,6 +457,19 @@ private:
       return;
 
     data.get_halos(data.handle);
+  }
+
+  Element_t* halo_element_at(ElementCoords_t& coords) {
+    auto        index     = _haloblock.index_at(_view_local, coords);
+    const auto& spec      = _halo_spec.spec(index);
+    auto        range_mem = _halomemory.range_at(index);
+    if(spec.level() == 0 || range_mem.first == range_mem.second)
+      return nullptr;
+
+    if(!_halomemory.to_halo_mem_coords_check(index, coords))
+      return nullptr;
+
+    return &*(range_mem.first + _halomemory.offset(index, coords));
   }
 
 private:
