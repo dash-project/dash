@@ -77,7 +77,7 @@ namespace dash
    *
    * \ingroup DashLib
    */
-  ssize_t size();
+  size_t size();
 
   /**
    * A global barrier involving all units.

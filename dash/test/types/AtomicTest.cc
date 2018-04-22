@@ -398,7 +398,7 @@ TEST_F(AtomicTest, AtomicInterface){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
-  size_t num_elem = std::max(static_cast<ssize_t>(10), dash::size());
+  size_t num_elem = std::max(static_cast<size_t>(10), dash::size());
 
   array_t array(num_elem);
 
