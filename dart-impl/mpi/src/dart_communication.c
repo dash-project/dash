@@ -944,7 +944,7 @@ dart_ret_t dart_get_handle(
   *handleptr = handle;
 
   DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d",
-                 (void*)(handle), handle->dest);
+                 (void*)(handle), team_unit_id.id);
   return ret;
 }
 
@@ -1341,11 +1341,14 @@ dart_ret_t dart_wait_local(
   DART_LOG_DEBUG("dart_wait_local() handle:%p", (void*)(handleptr));
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
+    DART_LOG_TRACE("dart_wait_local:     handle: %p",
+                   handle);
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
                    (void*)(unsigned long)(handle->win));
     if (handle->num_reqs > 0) {
+      DART_LOG_DEBUG("dart_wait_local:     -- MPI_Wait");
       int ret = MPI_Waitall(handle->num_reqs, handle->reqs, MPI_STATUS_IGNORE);
       if (ret != MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_wait_local ! MPI_Wait failed");
@@ -1367,9 +1370,11 @@ dart_ret_t dart_wait(
   DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handleptr));
   if (handleptr != NULL && *handleptr != DART_HANDLE_NULL) {
     dart_handle_t handle = *handleptr;
-    DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
+    DART_LOG_TRACE("dart_wait:     handle: %p",
+                   handle);
+    DART_LOG_TRACE("dart_wait:     handle->dest: %d",
                    handle->dest);
-    DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
+    DART_LOG_TRACE("dart_wait:     handle->win:  %"PRIu64"",
                    (unsigned long)handle->win);
     if (handle->num_reqs > 0) {
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");

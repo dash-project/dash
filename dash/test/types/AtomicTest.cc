@@ -398,7 +398,7 @@ TEST_F(AtomicTest, AtomicInterface){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
-  size_t num_elem = std::max(static_cast<ssize_t>(10), dash::size());
+  size_t num_elem = std::max(static_cast<size_t>(10), dash::size());
 
   array_t array(num_elem);
 
@@ -519,6 +519,7 @@ TEST_F(AtomicTest, AtomicSignal){
 
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
+  array.barrier();
 
   if (dash::myid() != 0) {
     // send the signal
@@ -684,3 +685,39 @@ TEST_F(AtomicTest, AsyncAtomic){
   ASSERT_EQ_U(array[0].get(), array[dash::myid()]);
 }
 
+TEST_F(AtomicTest, LongDouble){
+  using value_t = long double;
+  using atom_t  = dash::Atomic<value_t>;
+  using array_t = dash::Array<atom_t>;
+
+  array_t array(dash::size());
+  array[dash::myid()] = 0.0;
+  dash::barrier();
+
+  array[0].fetch_add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  dash::barrier();
+  array[0].exchange(dash::myid()*1.0);
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    ASSERT_LT_U(static_cast<size_t>(array[0]), dash::size());
+    ASSERT_GE_U(static_cast<size_t>(array[0]), 0);
+    array[0].set(0.0);
+  }
+
+  dash::barrier();
+  array[0].add(1.0);
+  dash::barrier();
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(static_cast<size_t>(array[0]), dash::size());
+  }
+
+  // atomic compare_exchange not allowed for floats
+  // array[0].compare_exchange(dash::size()*1.0, dash::myid()*1.0);
+
+}
