@@ -4,11 +4,8 @@
 #include "../TestBase.h"
 
 #include <dash/Array.h>
-#include <experimental/execution>
 
 #include <vector>
-
-namespace execution = std::experimental::execution;
 
 
 /**
@@ -65,11 +62,15 @@ struct SimpleExecutor {
     std::forward<Function>(f)();
   }
 
-  template <class Function, class SharedFactory>
-  void bulk_execute(Function f, std::size_t n, SharedFactory sf) const noexcept {
+  template <class Function, class Shape, class SharedFactory>
+  void bulk_execute(Function f, Shape shape, SharedFactory sf) const noexcept {
     auto shared_state(sf());
-    for(std::size_t i = 0; i < n; ++i) {
-      f(i, shared_state);
+    auto local_range = std::get<1>(shape);
+    auto local_index = std::get<2>(shape);
+
+    auto nelems = local_index.end - local_index.begin;
+    for(std::size_t i = 0; i < nelems; ++i) {
+      f(local_range.begin, i, shared_state);
     }
   }
 };
@@ -79,5 +80,6 @@ struct SimplePolicy {
     return SimpleExecutor();
   }
 };
+
 
 #endif // DASH__TEST__FOR_EACH_TEST_H_
