@@ -519,6 +519,7 @@ TEST_F(AtomicTest, AtomicSignal){
 
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
+  array.barrier();
 
   if (dash::myid() != 0) {
     // send the signal
