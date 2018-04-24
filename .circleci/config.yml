@@ -1,0 +1,101 @@
+version: 2
+jobs:
+  gnu_mpich:
+    docker:
+      - image: dashproject/ci:mpich
+    environment:
+      GTEST_FILTER: "-TeamLocalityTest*"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
+      DASH_BUILDEX: OFF
+      CC: gcc
+      CXX: g++
+    steps:
+      - checkout
+      - run: bash dash/scripts/dash-ci.sh Release
+      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
+      - store_artifacts:
+          path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
+
+  gnu_openmpi2:
+    docker:
+      - image: dashproject/ci:openmpi2
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest*"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
+      DASH_BUILDEX: OFF
+      CC: gcc
+      CXX: g++
+    steps:
+      - checkout
+      - run: bash dash/scripts/dash-ci.sh Release
+      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
+      - store_artifacts:
+          path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
+
+  gnu_openmpi3:
+    docker:
+      - image: dashproject/ci:openmpi3
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest*"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
+      DASH_BUILDEX: OFF
+      CC: gcc
+      CXX: g++
+    steps:
+      - checkout
+      - run: bash dash/scripts/dash-ci.sh Release
+      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
+      - store_artifacts:
+          path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
+
+  clang_mpich:
+    docker:
+      - image: dashproject/ci:mpich
+    environment:
+      GTEST_FILTER: "-TeamLocalityTest*"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
+      DASH_BUILDEX: OFF
+      CC: clang-3.8
+      CXX: clang++-3.8
+    steps:
+      - checkout
+      - run: bash dash/scripts/dash-ci.sh Release
+      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
+      - store_artifacts:
+          path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - gnu_mpich
+      - gnu_openmpi2
+      - gnu_openmpi3
+      - clang_mpich
+
