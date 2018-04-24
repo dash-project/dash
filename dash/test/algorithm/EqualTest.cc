@@ -15,7 +15,7 @@ TEST_F(EqualTest, EqualDistribution){
   size_t num_local_elem = 513;
 
   array_type A(num_local_elem, dash::BLOCKED);
-  array_type B(num_local_elem, dash::CYCLIC);
+  array_type B(num_local_elem, dash::BLOCKED);
 
   auto beg_a = A.begin() + 10;
   auto end_a = A.begin() + 501;
@@ -35,7 +35,7 @@ TEST_F(EqualTest, EqualDistribution){
   EXPECT_EQ_U(ab1_result, true);
   // mismatch
   EXPECT_EQ_U(ab2_result, false);
-} 
+}
 
 TEST_F(EqualTest, OverlappingRanges)
 {
