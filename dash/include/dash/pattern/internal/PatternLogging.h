@@ -3,6 +3,7 @@
 
 #include <dash/util/PatternMetrics.h>
 #include <dash/internal/Logging.h>
+#include <dash/internal/StreamConversion.h>
 
 #include <iostream>
 #include <iomanip>

@@ -19,9 +19,12 @@
 #include <dash/util/PatternMetrics.h>
 
 #include <dash/pattern/internal/PatternLogging.h>
+#include <dash/internal/StreamConversion.h>
 
 // needed for basename()
 #include <libgen.h>
+
+#include "../util.h"
 
 
 using std::cout;
@@ -66,6 +69,7 @@ void print_usage(char **argv);
 
 static
 cli_params parse_args(int argc, char * argv[]);
+
 static
 void print_params(const cli_params & params);
 
@@ -214,9 +218,10 @@ int main(int argc, char* argv[])
   dash::init(&argc, &argv);
 
   auto params = parse_args(argc, argv);
-  print_params(params);
 
   if (dash::myid() == 0) {
+    print_params(params);
+
     try {
       dash::SizeSpec<2, extent_t> sizespec(params.size_y,  params.size_x);
       dash::TeamSpec<2, index_t>  teamspec(params.units_y, params.units_x);
@@ -360,41 +365,6 @@ void print_params(const cli_params & params)
        << endl;
 }
 
-/**
- * Create string describing of pattern instance.
- */
-template<typename PatternType>
-static
-std::string pattern_to_string(
-  const PatternType & pattern)
-{
-  typedef typename PatternType::index_type index_t;
-
-  dim_t ndim = pattern.ndim();
-
-  std::string storage_order = pattern.memory_order() == ROW_MAJOR
-                              ? "ROW_MAJOR"
-                              : "COL_MAJOR";
-
-  std::array<index_t, 2> blocksize;
-  blocksize[0] = pattern.blocksize(0);
-  blocksize[1] = pattern.blocksize(1);
-
-  std::ostringstream ss;
-  ss << "dash::"
-     << PatternType::PatternName
-     << "<"
-     << ndim << ","
-     << storage_order << ","
-     << typeid(index_t).name()
-     << ">(" << endl
-     << "        SizeSpec:  " << pattern.sizespec().extents()  << "," << endl
-     << "        TeamSpec:  " << pattern.teamspec().extents()  << "," << endl
-     << "        BlockSpec: " << pattern.blockspec().extents() << "," << endl
-     << "        BlockSize: " << blocksize << " )";
-
-  return ss.str();
-}
 
 /**
  * Create filename describing of pattern instance.

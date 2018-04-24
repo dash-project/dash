@@ -25,7 +25,7 @@ class ViewIterator
       typename DomainIterator::difference_type, // difference type
       typename DomainIterator::pointer,         // pointer
       typename DomainIterator::reference        // reference
-> {
+    > {
   typedef ViewIterator<DomainIterator, IndexSetType>       self_t;
   typedef dash::internal::IndexIteratorBase<
             ViewIterator<DomainIterator, IndexSetType>,
@@ -42,11 +42,25 @@ public:
   typedef typename base_t::reference                    reference;
   typedef typename base_t::value_type                  value_type;
   typedef typename IndexSetType::index_type            index_type;
+  typedef typename DomainIterator::pattern_type      pattern_type;
+  typedef typename DomainIterator::local_type          local_type;
+
+  typedef std::integral_constant<bool, false>            has_view;
+
+  typedef IndexSetType                             index_set_type;
+
+  typedef DomainIterator                          domain_iterator;
 private:
   DomainIterator  _domain_it;
   IndexSetType    _index_set;
 public:
-  constexpr ViewIterator() = delete;
+  constexpr ViewIterator()                 = delete;
+
+  ViewIterator(self_t && other)            = default;
+  self_t & operator=(self_t && other)      = default;
+
+  ViewIterator(const self_t & other)       = default;
+  self_t & operator=(const self_t & other) = default;
 
   template <class DomainItType>
   ViewIterator(
@@ -84,12 +98,16 @@ public:
     return (_index_set)[this->pos()];
   }
 
-  constexpr const value_type * local() const {
+  constexpr bool is_local() const {
+    return (_domain_it + (_index_set[this->pos()])).is_local();
+  }
+
+  constexpr local_type local() const {
     return (_domain_it + (_index_set[this->pos()])).local();
   }
 
-  inline value_type * local() {
-    return (_domain_it + (_index_set[this->pos()])).local();
+  constexpr const self_t & global() const {
+    return *this;
   }
 
   constexpr dart_gptr_t dart_gptr() const {
@@ -100,8 +118,28 @@ public:
     return dart_gptr();
   }
 
-  constexpr explicit operator DomainIterator() const {
+  constexpr const dash::Team & team() const {
+    return _domain_it.team();
+  }
+
+  constexpr explicit operator domain_iterator() const {
     return (_domain_it + _index_set[this->pos()]);
+  }
+
+  explicit operator domain_iterator() {
+    return (_domain_it + _index_set[this->pos()]);
+  }
+
+  constexpr domain_iterator domain() const {
+    return (_domain_it + _index_set[this->pos()]);
+  }
+
+  constexpr const pattern_type & pattern() const {
+    return _domain_it.pattern();
+  }
+
+  constexpr const index_set_type & index_set() const {
+    return _index_set;
   }
 };
 
@@ -116,7 +154,7 @@ class ViewIterator<DomainIterator *, IndexSetType>
       DomainIterator *,
       DomainIterator & >
 {
-  typedef ViewIterator<DomainIterator, IndexSetType>       self_t;
+  typedef ViewIterator<DomainIterator *, IndexSetType>     self_t;
   typedef dash::internal::IndexIteratorBase<
             ViewIterator<DomainIterator *, IndexSetType>,
             DomainIterator,
@@ -132,24 +170,60 @@ public:
   typedef DomainIterator &                              reference;
   typedef DomainIterator                               value_type;
   typedef std::ptrdiff_t                               index_type;
+  typedef self_t                                       local_type;
 private:
   DomainIterator * _domain_it;
   IndexSetType     _index_set;
 public:
-  constexpr ViewIterator() = delete;
+  constexpr ViewIterator()            = delete;
 
-  template <class DomainItType>
+  ViewIterator(const self_t & other)
+  : base_t(other.pos())
+  , _domain_it(other._domain_it)
+  , _index_set(other._index_set)
+  { }
+
+  ViewIterator(self_t && other)
+  : base_t(other.pos())
+  , _domain_it(other._domain_it)
+  , _index_set(other._index_set)
+  { }
+
+  self_t & operator=(const self_t & other) {
+    base_t::operator=(other);
+    _domain_it = other._domain_it;
+    _index_set = other._index_set;
+  }
+
+  self_t & operator=(self_t && other) {
+    base_t::operator=(other);
+    _domain_it = other._domain_it;
+    _index_set = other._index_set;
+  }
+
+  template <class DomainItType, class IndexSetO>
   ViewIterator(
     DomainItType         * domain_it, 
-    const IndexSetType   & index_set,
+    const IndexSetO      & index_set,
     index_type             position)
   : base_t(position)
   , _domain_it(domain_it)
   , _index_set(index_set)
   { }
 
+  template <class IndexSetO>
   ViewIterator(
     const self_t         & other, 
+    const IndexSetO      & index_set,
+    index_type             position)
+  : base_t(position)
+  , _domain_it(other._domain_it)
+  , _index_set(index_set)
+  { }
+
+  template <class ViewIteratorO>
+  ViewIterator(
+    const ViewIteratorO  & other, 
     index_type             position)
   : base_t(position)
   , _domain_it(other._domain_it)
@@ -170,6 +244,18 @@ public:
 
   inline value_type * local() {
     return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  constexpr explicit operator const value_type *() const {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  explicit operator value_type *() {
+    return (_domain_it + (_index_set[this->pos()])).local();
+  }
+
+  constexpr explicit operator DomainIterator() const {
+    return (_domain_it + _index_set[this->pos()]);
   }
 };
 

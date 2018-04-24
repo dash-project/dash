@@ -11,12 +11,21 @@
 
 #include <dash/Types.h>
 #include <dash/Init.h>
+
 #include <dash/view/IndexSet.h>
+#include <dash/view/ViewMod.h>
+#include <dash/view/Sub.h>
+
 #include <dash/Team.h>
 
 #include "TestGlobals.h"
 #include "TestPrinter.h"
 #include "TestLogHelpers.h"
+
+#include <sstream>
+#include <iomanip>
+#include <string>
+
 
 
 namespace testing {
@@ -220,6 +229,51 @@ static std::string range_str(
   return ss.str();
 }
 
+template <class NViewType>
+std::string nview_str(
+  const NViewType   & nview) {
+  using value_t   = typename NViewType::value_type;
+  auto view_nrows = nview.extents()[0];
+  auto view_ncols = nview.extents()[1];
+  auto nindex     = dash::index(nview);
+  std::ostringstream ss;
+  for (int r = 0; r < view_nrows; ++r) {
+    for (int c = 0; c < view_ncols; ++c) {
+      int offset = r * view_ncols + c;
+      ss << std::fixed << std::setw(3)
+         << nindex[offset]
+         << ":"
+         << std::fixed << std::setprecision(5)
+         << static_cast<const value_t>(nview[offset])
+         << " ";
+    }
+    ss << '\n';
+  }
+  return ss.str();
+}
+
+template <class NViewType>
+std::string nrange_str(
+  const NViewType   & nview) {
+  using value_t   = typename NViewType::value_type;
+  auto view_nrows = nview.extents()[0];
+  auto view_ncols = nview.extents()[1];
+  std::ostringstream ss;
+  for (int r = 0; r < view_nrows; ++r) {
+    auto row_view = dash::sub<0>(r, r+1, nview);
+    for (int c = 0; c < row_view.size(); ++c) {
+      int offset = r * view_ncols + c;
+      ss << std::fixed << std::setw(3)
+         << offset << ":"
+         << std::fixed << std::setprecision(5)
+         << static_cast<const value_t &>(row_view[c])
+         << " ";
+    }
+    ss << '\n';
+  }
+  return ss.str();
+}
+
 template <class ValueT, class RangeA, class RangeB>
 static bool expect_range_values_equal(
   const RangeA & rng_a,
@@ -230,6 +284,30 @@ static bool expect_range_values_equal(
   auto       it_b  = dash::begin(rng_b);
   const auto end_a = dash::end(rng_a);
   const auto end_b = dash::end(rng_b);
+  for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
+    if (static_cast<ValueT>(*it_a) !=
+        static_cast<ValueT>(*it_b)) {
+      return false;
+    }
+  }
+  return (end_a == it_a) && (end_b == it_b);
+}
+
+template <class ValueT, class IteratorA, class SentinelA, class IteratorB>
+static bool expect_range_values_equal(
+  const IteratorA & rng_a_begin,
+  const SentinelA & rng_a_end,
+  const IteratorB & rng_b_begin) {
+  auto       it_a  = rng_a_begin;
+  auto       it_b  = rng_b_begin;
+  const auto end_a = rng_a_end;
+  const auto end_b = rng_b_begin + dash::distance(it_a, end_a);
+
+  const auto rng_a = dash::make_range(it_a, end_a);
+  const auto rng_b = dash::make_range(it_b, end_b);
+
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_a);
+  DASH_LOG_TRACE_VAR("TestBase.expect_range_values_equal", rng_b);
   for (; it_a != end_a && it_b != end_b; ++it_a, ++it_b) {
     if (static_cast<ValueT>(*it_a) !=
         static_cast<ValueT>(*it_b)) {

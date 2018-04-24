@@ -11,19 +11,6 @@ namespace internal {
 }
 
 /**
- * Returns string containing the type name of the given object.
- *
- * Similar to the `typeid` operator but ensures human-readable, demangled
- * format.
- */
-template <class T>
-std::string typestr(const T & obj) {
-  return dash::internal::demangle(
-           typeid(obj).name()
-         );
-}
-
-/**
  * Returns string containing the name of the specified type.
  *
  * Similar to the `typeid` operator but ensures human-readable, demangled
@@ -31,9 +18,28 @@ std::string typestr(const T & obj) {
  */
 template <class T>
 std::string typestr() {
-  return dash::internal::demangle(
-           typeid(T).name()
-         );
+  typedef typename std::remove_reference<T>::type TR;
+  std::string r = dash::internal::demangle(typeid(TR).name());
+  if (std::is_const<TR>::value)
+      r = "const " + r;
+  if (std::is_volatile<TR>::value)
+      r = "volatile " + r;
+  if (std::is_lvalue_reference<T>::value)
+      r += "&";
+  else if (std::is_rvalue_reference<T>::value)
+      r += "&&";
+  return r;
+}
+
+/**
+ * Returns string containing the type name of the given object.
+ *
+ * Similar to the `typeid` operator but ensures human-readable, demangled
+ * format.
+ */
+template <class T>
+std::string typestr(T && val) {
+  return typestr<decltype(std::forward<T>(val))>();
 }
 
 } // namespace dash

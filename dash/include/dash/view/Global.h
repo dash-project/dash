@@ -1,6 +1,7 @@
 #ifndef DASH__VIEW__GLOBAL_H__INCLUDED
 #define DASH__VIEW__GLOBAL_H__INCLUDED
 
+#include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
 
 
@@ -32,6 +33,13 @@ typename std::enable_if<
 >::type
 global(ContainerType & c) {
   return c;
+}
+
+static inline auto global() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return global(std::forward<decltype(x)>(x));
+           });
 }
 
 } // namespace dash

@@ -6,26 +6,57 @@
 
 #include <dash/view/ViewTraits.h>
 #include <dash/view/ViewMod.h>
+#include <dash/view/ViewBlocksMod.h>
 
 
 namespace dash {
 
-#if 0
 /**
  *
  * \concept{DashViewConcept}
  */
 template <
-  class ViewT,
-  class BlockIndexT >
-constexpr typename std::enable_if<
-  dash::view_traits<ViewT>::is_view::value,
-  dash::ViewBlockMod<ViewT>
->::type
+  class    ViewT,
+  class    BlockIndexT,
+  dim_t    NDim
+             = dash::view_traits<ViewT>::rank::value,
+  typename std::enable_if<
+             dash::view_traits<ViewT>::is_view::value,
+             int >::type = 0
+>
+constexpr auto
 block(BlockIndexT block_index, const ViewT & view) {
-  return ViewBlockMod<ViewT>(view, block_index);
+  return ViewBlockMod<ViewT, NDim>(view, block_index);
 }
-#endif
+
+template <
+  class    ViewT,
+  class    BlockIndexT,
+  dim_t    NDim
+             = dash::view_traits<ViewT>::rank::value,
+  typename std::enable_if<
+             !dash::view_traits<ViewT>::is_view::value,
+             int >::type = 0
+>
+constexpr auto
+block(BlockIndexT block_index, const ViewT & view) {
+  return dash::blocks(view)[block_index];
+}
+
+template <
+  class    BlockIndexT,
+  typename std::enable_if<
+             std::is_integral<
+               typename std::decay<BlockIndexT>::type
+             >::value,
+             int
+           >::type = 0 >
+static inline auto block(BlockIndexT b) {
+  return dash::make_pipeable(
+           [=](auto && x) {
+             return block(b, std::forward<decltype(x)>(x));
+           });
+}
 
 }
 
