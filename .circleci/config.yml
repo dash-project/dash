@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: dashproject/ci:mpich
     environment:
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-*Locality*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -27,7 +27,7 @@ jobs:
       - image: dashproject/ci:openmpi2
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-*Locality*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -50,7 +50,7 @@ jobs:
       - image: dashproject/ci:openmpi3
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-*Locality*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -72,7 +72,7 @@ jobs:
     docker:
       - image: dashproject/ci:mpich
     environment:
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-*Locality*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
