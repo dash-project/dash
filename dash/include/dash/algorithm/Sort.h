@@ -500,8 +500,11 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
-template <typename SizeType>
-inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
+template <typename SizeType, typename ElementType>
+inline void psort__calc_target_displs(
+    PartitionBorder<ElementType> const& p_borders,
+    std::vector<size_t> const&          valid_partitions,
+    dash::Array<SizeType>&              g_partition_data)
 {
   DASH_LOG_TRACE("< psort__calc_target_displs");
   auto const nunits = g_partition_data.team().size();
@@ -518,25 +521,27 @@ inline void psort__calc_target_displs(dash::Array<SizeType>& g_partition_data)
 
   auto const u_blocksize = g_partition_data.lsize();
 
-  for (auto unit = team_unit_t{1}; unit < nunits; ++unit) {
-    auto const     prev_u = unit - 1;
+  for (size_t idx = 0; idx < valid_partitions.size(); ++idx) {
+    auto const     border_idx = valid_partitions[idx];
+    auto const     left_u     = p_borders.left_partition[border_idx];
+    auto const     right_u    = border_idx + 1;
     SizeType const val =
-        (prev_u == myid)
-            ? g_partition_data.local[prev_u + IDX_SEND_COUNT(nunits)]
+        (left_u == myid)
+            ? g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
             : g_partition_data
-                  [prev_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
-    target_displs[unit] = val + target_displs[prev_u];
+                  [left_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
+    target_displs[right_u] = val + target_displs[left_u];
 
-    if (unit == myid) {
+    if (right_u == myid) {
       // we are local
       g_partition_data.local[IDX_TARGET_DISP(nunits) + myid] =
-          target_displs[unit];
+          target_displs[right_u];
     }
     else {
       auto const target_offset =
-          unit * u_blocksize + myid + IDX_TARGET_DISP(nunits);
+          right_u * u_blocksize + myid + IDX_TARGET_DISP(nunits);
 
-      g_partition_data.async[target_offset].set(&(target_displs[unit]));
+      g_partition_data.async[target_offset].set(&(target_displs[right_u]));
     }
   }
 
@@ -825,7 +830,6 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
-
   dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
   dash::Shared<dash::Atomic<mapped_type>> g_max(dash::team_unit_t{0}, team);
 
@@ -859,7 +863,6 @@ void sort(
   detail::PartitionBorder<mapped_type> p_borders(nboundaries, min, max);
 
   detail::psort__init_partition_borders(p_unit_info, p_borders);
-
 
   DASH_LOG_TRACE_RANGE("locally sorted array", lbegin, lend);
   DASH_LOG_TRACE_RANGE(
@@ -1131,7 +1134,10 @@ void sort(
 
   trace.enter_state("14:calc_final_target_displs");
 
-  detail::psort__calc_target_displs(g_partition_data);
+  if (n_l_elem > 0) {
+    detail::psort__calc_target_displs(
+        p_borders, valid_partitions, g_partition_data);
+  }
 
   trace.exit_state("14:calc_final_target_displs");
 
