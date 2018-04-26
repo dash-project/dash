@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 
   dash::Team::All().barrier();
 
-  std::fill(matrix.lbegin(), matrix.lend(), myid);
+  dash::fill(matrix.begin(), matrix.end(), 10);
 
   matrix[2][2 + myid] = 42;
 
