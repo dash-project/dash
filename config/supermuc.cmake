@@ -6,7 +6,7 @@
 #   export CC=`which icc`
 #   export CXX=`which icc`
 #
-set(ENV{CXX} mpiicc)
+set(ENV{CXX} mpiicpc)
 set(ENV{CC} mpiicc)
 
 set(DASH_ENV_HOST_SYSTEM_ID "supermuc" CACHE STRING

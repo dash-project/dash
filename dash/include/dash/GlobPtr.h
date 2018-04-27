@@ -50,14 +50,6 @@ template <typename T>                  class GlobConstPtr;
 
 template <typename T, class MemSpaceT> class GlobPtr;
 
-template <typename T1,
-          typename T2,
-          class    MemSpaceT1,
-          class    MemSpaceT2 >
-dash::gptrdiff_t distance(
-  const GlobPtr<T1, MemSpaceT1> & gbegin,
-  const GlobPtr<T2, MemSpaceT2> & gend);
-
 /**
  * Pointer in global memory space with random access arithmetics.
  *
@@ -84,7 +76,11 @@ public:
   typedef typename MemorySpace::index_type             index_type;
   typedef typename MemorySpace::size_type               size_type;
 
+  typedef value_type *                                 local_type;
+  typedef self_t                                      global_type;
+
   typedef index_type                                   gptrdiff_t;
+  typedef index_type                              difference_type;
 
 public:
   template <typename T, class MemSpaceT>
@@ -94,14 +90,6 @@ public:
   friend std::ostream & operator<<(
     std::ostream                & os,
     const GlobPtr<T, MemSpaceT> & gptr);
-
-  template <typename T1,
-            typename T2,
-            class    MemSpaceT1,
-            class    MemSpaceT2 >
-  friend dash::gptrdiff_t dash::distance(
-    const GlobPtr<T1, MemSpaceT1> & gptr_begin,
-    const GlobPtr<T2, MemSpaceT2> & gptr_end);
 
 public:
   /// Convert GlobPtr<T> to GlobPtr<U>.
@@ -281,10 +269,57 @@ public:
 
   /**
    * Pointer offset difference operator.
+   *
+   * Defined with independent value types allow calculation
+   * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
+   * Refernced value types must have identical size.
+   *
+   * \todo
+   * Validate compatibility of memory space types using memory space traits
+   * once they are available.
+   *
+   * \return  Global pointer distance between the first and second
+   *          global pointer, corresponds to pointer distance
+   *          \c (gend - gbegin)
+   *
+   * \concept{DashMemorySpaceConcept}
    */
-  constexpr index_type operator-(const self_t & rhs) const noexcept
+  template <typename TO, class MemSpaceTO >
+  difference_type operator-(
+    const GlobPtr<TO, MemSpaceTO> & rhs) const noexcept
   {
-    return dash::distance(rhs, *this);
+    using val_type_b = typename std::decay<decltype(rhs)>::type::value_type;
+    using val_type_e = value_type;
+
+    static_assert(
+      sizeof(val_type_b) == sizeof(val_type_e),
+      "value types of global pointers are not compatible for dash::distance");
+
+    // Both pointers in same unit space:
+    if (rhs._rbegin_gptr.unitid == _rbegin_gptr.unitid ||
+        rhs._mem_space == nullptr) {
+      return ( _rbegin_gptr.addr_or_offs.offset -
+               rhs._rbegin_gptr.addr_or_offs.offset )
+             / sizeof(value_type);
+    }
+    // If unit of begin pointer is after unit of end pointer,
+    // return negative distance with swapped argument order:
+    if (rhs._rbegin_gptr.unitid > _rbegin_gptr.unitid) {
+      return -(rhs - *this);
+    }
+    // Pointers span multiple unit spaces, accumulate sizes of
+    // local unit memory ranges in the pointer range:
+    index_type dist =   rhs._mem_space->local_size(
+                          dart_team_unit_t { rhs.dart_gptr().unitid })
+                      - (rhs.dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type))
+                      + (dart_gptr().addr_or_offs.offset
+                          / sizeof(value_type));
+    for (int u = rhs.dart_gptr().unitid+1;
+             u < dart_gptr().unitid; ++u) {
+      dist += _mem_space->local_size(dart_team_unit_t { u });
+    }
+    return dist;
   }
 
   /**
@@ -597,6 +632,9 @@ class GlobConstPtr
   typedef typename base_t::index_type                  index_type;
   typedef typename base_t::gptrdiff_t                  gptrdiff_t;
 
+  typedef value_type *                                 local_type;
+  typedef self_t                                      global_type;
+
   template <typename T_>
   friend std::ostream & operator<<(
     std::ostream           & os,
@@ -782,70 +820,6 @@ std::ostream & operator<<(
 
 #endif // DOXYGEN
 
-/**
- * Specialization of \c dash::distance for \c dash::GlobPtr as default
- * definition of pointer distance in global memory spaces.
- *
- * Equivalent to \c (gend - gbegin).
- *
- * \note
- * Defined with independent value types T1 and T2 to allow calculation
- * of distance between \c GlobPtr<T> and \c GlobPtr<const T>.
- * The pointer value types must have identical size.
- *
- * \todo
- * Validate compatibility of memory space types using memory space traits
- * once they are available.
- *
- * \return  Number of elements in the range between the first and second
- *          global pointer
- *
- * \concept{DashMemorySpaceConcept}
- */
-template <typename T1,
-          typename T2,
-          class    MemSpaceT1,
-          class    MemSpaceT2 >
-dash::gptrdiff_t distance(
-  // First global pointer in range
-  const GlobPtr<T1, MemSpaceT1> & gbegin,
-  // Final global pointer in range
-  const GlobPtr<T2, MemSpaceT2> & gend) {
-  using index_type = dash::gptrdiff_t;
-  using val_type_b = typename std::decay<decltype(gbegin)>::type::value_type;
-  using val_type_e = typename std::decay<decltype(gend)>::type::value_type;
-  using value_type = val_type_b;
-
-  static_assert(
-    sizeof(val_type_b) == sizeof(val_type_e),
-    "value types of global pointers are not compatible for dash::distance");
-
-  // Both pointers in same unit space:
-  if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
-      gbegin._mem_space == nullptr) {
-    return ( gend._rbegin_gptr.addr_or_offs.offset -
-             gbegin._rbegin_gptr.addr_or_offs.offset )
-           / sizeof(value_type);
-  }
-  // If unit of begin pointer is after unit of end pointer,
-  // return negative distance with swapped argument order:
-  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
-    return -(dash::distance(gend, gbegin));
-  }
-  // Pointers span multiple unit spaces, accumulate sizes of
-  // local unit memory ranges in the pointer range:
-  index_type dist = gbegin._mem_space->local_size(
-                      dart_team_unit_t { gbegin.dart_gptr().unitid })
-                    - (gbegin.dart_gptr().addr_or_offs.offset
-                        / sizeof(value_type))
-                    + (gend.dart_gptr().addr_or_offs.offset
-                        / sizeof(value_type));
-  for (int u = gbegin.dart_gptr().unitid+1;
-           u < gend.dart_gptr().unitid; ++u) {
-    dist += gend._mem_space->local_size(dart_team_unit_t { u });
-  }
-  return dist;
-}
 
 /**
  * Resolve the number of elements between two global pointers.

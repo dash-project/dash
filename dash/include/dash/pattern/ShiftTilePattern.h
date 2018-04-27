@@ -1154,9 +1154,24 @@ public:
     /// Global coordinates of element
     const std::array<index_type, NumDimensions> & g_coords) const
   {
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "ShiftTilePattern.local_block_at is not implemented");
+    local_index_t l_pos;
+    l_pos.unit = 0;
+
+    std::array<IndexType, NumDimensions> l_block_coords;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      auto nunits_d      = _teamspec.extent(d);
+      auto blocksize_d   = _blocksize_spec.extent(d);
+      auto block_coord_d = g_coords[d] / blocksize_d;
+      l_block_coords[d]  = block_coord_d / nunits_d;
+      l_pos.unit         = (l_pos.unit + block_coord_d) % _teamspec.size();
+    }
+    l_pos.index = _local_blockspec.at(l_block_coords);
+
+    DASH_LOG_TRACE("ShiftTilePattern.local_block_at >",
+                   "coords",             g_coords,
+                   "unit:",              l_pos.unit,
+                   "local block index:", l_pos.index);
+    return l_pos;
   }
 
   /**

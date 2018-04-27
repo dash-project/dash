@@ -6,6 +6,8 @@
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
 
+#include <dash/view/ViewSpec.h>
+
 #include <array>
 #include <algorithm>
 #include <sstream>
@@ -251,16 +253,16 @@ public:
   typedef SizeType                            size_type;
   typedef std::array<SizeType, NumDimensions> extents_type;
 
-  template<dim_t NDim_>
+  template<dim_t NDim_, MemArrange MA_, typename Ix_>
   friend std::ostream & operator<<(
-    std::ostream                     & os,
-    const CartesianIndexSpace<NDim_> & cartesian_space);
+    std::ostream                               & os,
+    const CartesianIndexSpace<NDim_, MA_, Ix_> & cartesian_space);
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
   SizeType     _size             = 0;
   /// Number of dimensions in the cartesian space.
-  SizeType     _rank             = NumDimensions;
+  SizeType     _rank             = 0;
   /// Extents of the cartesian space by dimension.
   extents_type _extents          = {  };
   /// Cumulative index offsets of the index space by dimension respective
@@ -348,12 +350,10 @@ public:
    */
   template<typename... Args>
   void resize(SizeType arg, Args... args) {
-    static_assert(
-      sizeof...(Args) == NumDimensions-1,
-      "Invalid number of arguments");
-    std::array<SizeType, NumDimensions> extents =
-      {{ arg, (SizeType)(args)... }};
-    resize(extents);
+    resize(
+      std::array<SizeType, NumDimensions> {{
+        arg, (SizeType)(args)...
+      }} );
   }
 
   /**
@@ -363,9 +363,18 @@ public:
   void resize(const std::array<SizeType_, NumDimensions> & extents) {
     // Update size:
     _size = 1;
+    _rank = 0;
     for(auto i = 0; i < NumDimensions; i++ ) {
       _extents[i] = static_cast<SizeType>(extents[i]);
       _size      *= _extents[i];
+      if (_extents[i] > 1) {
+        ++_rank;
+      }
+    }
+    if (_size == 0) {
+      _rank = 0;
+    } else if (_rank == 0) {
+      _rank = 1;
     }
     // Update offsets:
     _offset_row_major[NumDimensions-1] = 1;
@@ -467,6 +476,7 @@ public:
     return offs;
   }
 
+
   /**
    * Convert the given cartesian point to a linear index, respective to
    * the offsets specified in the given ViewSpec.
@@ -485,6 +495,28 @@ public:
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec.offset(d);
+    }
+    return at(coords);
+  }
+
+  /**
+   * Convert the given cartesian point to a linear index, respective to
+   * the specified offsets.
+   *
+   * \param  point     An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  offsets   Offsets to apply on point coordinates
+   *                   before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point,
+    const std::array<OffsetType, NumDimensions> & offsets) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = point[d] + offsets[d];
     }
     return at(coords);
   }
@@ -767,6 +799,33 @@ public:
   }
 
   /**
+   * Convert the given cartesian point to a linear index, respective to
+   * the specified offsets.
+   *
+   * \param  point     An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  offsets   Offsets to apply on point coordinates
+   *                   before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point,
+    const std::array<OffsetType, NumDimensions> & offsets) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = point[d] + offsets[d];
+    }
+    if (!_distspec.is_tiled()) {
+      // Default case, no tiles
+      return parent_t::at(coords);
+    }
+    // Tiles in at least one dimension
+    return at(coords);
+  }
+
+  /**
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
    */
@@ -805,17 +864,16 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
-template <
-  dash::dim_t NumDimensions >
+template<dim_t NDim_, MemArrange MA_, typename Ix_>
 std::ostream & operator<<(
-  std::ostream & os,
-  const dash::CartesianIndexSpace<NumDimensions> & cartesian_space)
+    std::ostream                               & os,
+    const CartesianIndexSpace<NDim_, MA_, Ix_> & cartesian_space)
 {
   std::ostringstream ss;
   ss << dash::typestr(cartesian_space)
      << ": "
      << "extents(";
-  for (auto dim = 0; dim < NumDimensions; ++dim) {
+  for (auto dim = 0; dim < NDim_; ++dim) {
     if (dim > 0) {
       ss << ",";
     }

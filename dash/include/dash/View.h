@@ -18,12 +18,13 @@
  * \see DashDimensionalConcept
  * \see DashRangeConcept
  * \see DashIteratorConcept
+ * \see DashIndexSetConcept
  * \see \c dash::view_traits
  *
  * \par Terminology
  *
- * A \b View is a mapping between two index sets, from a \b Domain space to
- * an \b Image space in the view's codomain.
+ * A \b View is a mapping from a \b Domain space to an \b Image space in the
+ * view's codomain defined by their underlying index sets.
  * Views can be chained such that the image obtained from the application of
  * a view expression can again act as the domain of other views.
  * In effect, a view expression can be understood as a composite function on
@@ -34,20 +35,37 @@
  *
  * \par Expressions
  *
- * View Specifier            | Synopsis
- * ------------------------- | --------------------------------------------------
- * <tt>dash::sub</tt>        | Subrange of domain in a specified dimension
- * <tt>dash::intersect</tt>  | View from intersection of two domains
- * <tt>dash::difference</tt> | View from difference of two domains
- * <tt>dash::combine</tt>    | Composite view of two possibply unconnected domains
- * <tt>dash::local</tt>      | Local subspace of domain
- * <tt>dash::global</tt>     | Maps subspace to elements in global domain
- * <tt>dash::apply</tt>      | Obtain image of domain view (inverse of \c domain)
- * <tt>dash::domain</tt>     | Obtain domain of view image (inverse of \c apply)
- * <tt>dash::origin</tt>     | Obtain the view origin (root domain)
- * <tt>dash::blocks</tt>     | Decompose domain into blocks
- * <tt>dash::block</tt>      | Subspace of decomposed domain in a specific block
- * <tt>dash::index</tt>      | Returns a view's index set
+ * View Specifier               | Synopsis
+ * ---------------------------- | --------------------------------------------------
+ * <tt>dash::sub</tt>           | Subrange of domain in a specified dimension
+ * <tt>dash::intersect(v)</tt>  | View from intersection of two domains, result \
+ *                                remains regular rectangle for regular operands
+ * <tt>dash::difference</tt>    | View from difference of two domains
+ * <tt>dash::expand(ob,oe)</tt> | Resize Cartesian view by specified begin-\
+ *                              | and end offset
+ *
+ * <tt>dash::combine(v)</tt>    | Composite possibly unconnected domain into \
+ *                                view
+ * <tt>dash::group</tt>         | Group domains in view, group members are not\
+ *                                combined
+ *
+ * <tt>dash::local</tt>         | Local subspace of domain
+ * <tt>dash::remote</tt>        | Non-local subspace of domain
+ * <tt>dash::global</tt>        | Maps subspace to elements in global domain
+ *
+ * <tt>dash::domain</tt>        | Obtain domain of view image (inverse of \c apply)
+ * <tt>dash::origin</tt>        | Obtain the view origin (local or global root\
+ *                                domain)
+ * <tt>dash::global_origin</tt> | Obtain the view origin (global root domain)
+ *
+ * <tt>dash::blocks</tt>        | Decompose domain into blocks in data distribution
+ * <tt>dash::block</tt>         | Subspace of decomposed domain in a specific block
+ * <tt>dash::chunks</tt>        | Decompose domain into single contiguous ranges
+ * <tt>dash::strides</tt>       | Decompose domain into ranges with specified size
+ *
+ * <tt>dash::index</tt>         | Returns a view's index set
+ * <tt>dash::owner</tt>         | Maps elements in view to unit id of its memory \
+ *                                space
  *
  * \par Examples
  *
@@ -65,15 +83,16 @@
  * for (auto elem : matrix_rect) {
  *   // ...
  * }
- *
  * \endcode
  *
  * \}
  */
 
-#include <dash/view/Apply.h>
+#include <dash/view/Utility.h>
+
+#include <dash/view/ViewSpec.h>
 #include <dash/view/Block.h>
-#include <dash/view/Chunked.h>
+#include <dash/view/Chunks.h>
 #include <dash/view/Domain.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Global.h>
@@ -81,9 +100,11 @@
 #include <dash/view/Remote.h>
 #include <dash/view/Apply.h>
 #include <dash/view/Sub.h>
+#include <dash/view/Expand.h>
 
 #include <dash/view/SetUnion.h>
-#include <dash/view/SetIntersect.h>
+#include <dash/view/Intersect.h>
+#include <dash/view/SetDifference.h>
 
 #include <dash/view/IndexSet.h>
 #include <dash/view/IndexRange.h>
@@ -96,89 +117,6 @@
 
 #include <dash/view/ViewMod.h>
 #include <dash/view/ViewBlocksMod.h>
-
-#include <dash/Range.h>
-
-
-namespace dash {
-
-template <
-  class Iterator,
-  class Sentinel >
-class IteratorViewOrigin;
-
-template <
-  class Iterator,
-  class Sentinel >
-struct view_traits<IteratorViewOrigin<Iterator, Sentinel> > {
-  typedef IteratorViewOrigin<Iterator, Sentinel>               domain_type;
-  typedef IteratorViewOrigin<Iterator, Sentinel>               origin_type;
-  typedef IteratorViewOrigin<Iterator, Sentinel>                image_type;
-
-  // Uses container::local_type directly, e.g. dash::LocalArrayRef:
-  // typedef typename dash::view_traits<domain_type>::local_type local_type;
-  // Uses ViewLocalMod wrapper on domain, e.g. ViewLocalMod<dash::Array>:
-  typedef ViewLocalMod<domain_type>                             local_type;
-  typedef ViewGlobalMod<domain_type>                           global_type;
-
-  typedef typename Iterator::index_type                         index_type;
-  typedef dash::IndexSetIdentity< 
-            IteratorViewOrigin<Iterator, Sentinel> >        index_set_type;
-
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, true>                 is_origin;
-  typedef std::integral_constant<bool, false>                is_local;
-};
-
-template <
-  class Iterator,
-  class Sentinel
->
-class IteratorViewOrigin
-: public dash::IteratorRange<Iterator, Sentinel>
-{
-public:
-  typedef typename Iterator::index_type                         index_type;
-private:
-  typedef IteratorViewOrigin<Iterator, Sentinel>  self_t;
-  typedef IteratorRange<Iterator, Sentinel>       base_t;
-public:
-  typedef self_t                                               domain_type;
-  typedef self_t                                               origin_type;
-  typedef self_t                                                image_type;
-  // Alternative: IteratorLocalView<self_t, Iterator, Sentinel>
-  typedef typename view_traits<domain_type>::local_type         local_type;
-  typedef typename view_traits<domain_type>::global_type       global_type;
-
-  typedef typename Iterator::pattern_type                     pattern_type;
-public:
-  constexpr IteratorViewOrigin(Iterator begin, Iterator end)
-  : base_t(std::move(begin), std::move(end)) {
-  }
-
-  constexpr const pattern_type & pattern() const {
-    return this->begin().pattern();
-  }
-
-  constexpr local_type local() const {
-    // for local_type: IteratorLocalView<self_t, Iterator, Sentinel>
-    // return local_type(this->begin(), this->end());
-    return local_type(*this);
-  }
-
-};
-
-
-template <class Iterator, class Sentinel>
-constexpr dash::IteratorViewOrigin<Iterator, Sentinel>
-make_view(Iterator begin, Sentinel end) {
-  return dash::IteratorViewOrigin<Iterator, Sentinel>(
-           std::move(begin),
-           std::move(end));
-}
-
-} // namespace dash
-
+#include <dash/view/ViewChunksMod.h>
 
 #endif // DASH__VIEW_H__INCLUDED

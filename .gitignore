@@ -7,6 +7,9 @@ build.mic*
 build.min*
 build.nasty*
 build.cov*
+build.gcc*
+build.clang*
+build.icc*
 build.analyze*
 build-ci*
 compile_commands.json
@@ -21,7 +24,7 @@ dash/include/dash/util/StaticConfig.h
 *.log
 *.out
 ipm/*/GEN.*
-my.*.sh
+my.*
 .syntastic*
 .clang*
 tags

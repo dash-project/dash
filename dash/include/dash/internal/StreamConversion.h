@@ -4,10 +4,9 @@
 #include <dash/internal/Macro.h>
 
 #include <dash/meta/TypeInfo.h>
+#include <dash/Range.h>
 
 #include <dash/dart/if/dart_types.h>
-
-#include <dash/Range.h>
 
 #include <array>
 #include <vector>
@@ -17,7 +16,9 @@
 #include <sstream>
 #include <iterator>
 #include <cstring>
+#include <memory>
 #include <type_traits>
+#include <iostream>
 
 
 namespace dash {
@@ -30,6 +31,30 @@ std::ostream & operator<<(
   std::ostream & o,
   dart_team_unit_t uid);
 
+
+/**
+ * Write \c std::shared_ptr to output stream.
+ */
+template <class T>
+std::ostream & operator<<(
+  std::ostream              & os,
+  const std::shared_ptr<T> & p) {
+  os << dash::typestr(p)
+     << "(" << p.get() << ")";
+  return os;
+}
+
+/**
+ * Write \c std::unique_ptr to output stream.
+ */
+template <class T>
+std::ostream & operator<<(
+  std::ostream              & os,
+  const std::unique_ptr<T> & p) {
+  os << dash::typestr(p)
+     << "(" << p.get() << ")";
+  return os;
+}
 
 /**
  * Write \c std::pair to output stream.
@@ -137,8 +162,7 @@ auto operator<<(
  */
 template <
   class Range,
-  class RangeDType = typename std::decay<Range>::type
->
+  class RangeDType = typename std::decay<Range>::type >
 auto operator<<(
   std::ostream  & o,
   Range        && range)
@@ -162,7 +186,9 @@ auto operator<<(
        std::ostream &
     >::type
 {
-  typedef typename std::iterator_traits<decltype(range.begin())>::value_type
+  typedef typename std::iterator_traits<
+                     decltype(range.begin())
+                   >::value_type
     value_t;
 
   auto && rng = std::forward<Range>(range);
@@ -176,6 +202,7 @@ auto operator<<(
   ss << "}";
   return operator<<(o, ss.str());
 }
+
 
 } // namespace dash
 

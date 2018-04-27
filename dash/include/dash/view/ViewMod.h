@@ -2,8 +2,8 @@
 #define DASH__VIEW__VIEW_MOD_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Range.h>
 #include <dash/Iterator.h>
+#include <dash/Range.h>
 
 #include <dash/util/UniversalMember.h>
 #include <dash/util/ArrayExpr.h>
@@ -146,8 +146,6 @@ class ViewGlobalMod;
 
 #endif // DOXYGEN
 
-
-
 // ------------------------------------------------------------------------
 // ViewModBase
 // ------------------------------------------------------------------------
@@ -159,29 +157,23 @@ template <
 class ViewModBase
 {
   typedef ViewModBase<ViewModType, DomainType, NDim> self_t;
-public:
-  typedef DomainType                                           domain_type;
+ public:
+  typedef DomainType                                          domain_type;
 
-  typedef typename std::conditional<
-                     view_traits<domain_type>::is_origin::value,
+  // TODO: Clarify if origins should always be considered const
+  //
+  typedef typename std::conditional<(
+                        view_traits<domain_type>::is_origin::value &&
+                       !view_traits<domain_type>::is_view::value   &&
+                       !std::is_copy_constructible<domain_type>::value
+                     ),
                      const domain_type &,
                      domain_type
                    >::type
     domain_member_type;
 
-  // TODO: BUG!
-  //       For example, assume
-  //         domain = sub(local(array))
-  //       then view_traits<domain>::is_local resolves to `true`
-  //       and domain_type is defined as ViewSub<ViewLocal<Array>>
-  //       instead of ViewLocal<Array> or Array::local_type.
-  //
-  //       Note that the origin of ViewLocalMod is the global origin
-  //       while the origin of and view on ViewLocalMod is the local
-  //       origin.
   typedef typename std::conditional<
             view_traits<domain_type>::is_local::value,
-         // domain_type,
             typename view_traits<
               typename view_traits<domain_type>::origin_type
             >::local_type,
@@ -225,8 +217,14 @@ public:
 
   static constexpr dim_t ndim() { return NDim; }
 
-protected:
+ protected:
   domain_member_type _domain;
+
+  // TODO: Index set should be member of ViewModBase as all models of the
+  //       view concept depend on an index set type.
+  //       As constructors of index set classes depend on the concrete view
+  //       type, index sets should be instantiated in derived view subclass
+  //       and passed to ViewModBase base constructor.
 
   ViewModType & derived() {
     return static_cast<ViewModType &>(*this);
@@ -239,7 +237,7 @@ protected:
    * Constructor, creates a view on a given domain.
    */
   constexpr explicit ViewModBase(domain_type && domain)
-  : _domain(std::forward<domain_type>(domain))
+  : _domain(std::move(domain))
   { }
 
   /**
@@ -252,17 +250,17 @@ protected:
   constexpr ViewModBase()               = delete;
   ~ViewModBase()                        = default;
 
-public:
+ public:
   constexpr ViewModBase(const self_t &) = default;
   constexpr ViewModBase(self_t &&)      = default;
   self_t & operator=(const self_t &)    = default;
   self_t & operator=(self_t &&)         = default;
 
-  constexpr const domain_type & domain() const & {
+  constexpr domain_type domain() const && {
     return _domain;
   }
 
-  constexpr domain_type domain() const && {
+  constexpr const domain_type & domain() const & {
     return _domain;
   }
 
@@ -274,8 +272,9 @@ public:
     return !(derived() == rhs);
   }
 
-  constexpr bool is_local() const {
-    return view_traits<ViewModType>::is_local::value;
+  constexpr bool is_local_at(dash::team_unit_t uid) const noexcept {
+    return view_traits<ViewModType>::is_local::value
+           && uid == dash::index(*this).pattern().team().myid();
   }
 
   // ---- extents ---------------------------------------------------------
@@ -313,6 +312,28 @@ public:
   constexpr index_type size() const {
     return dash::index(derived()).size();
   }
+
+  constexpr bool empty() const noexcept {
+    return size() == 0;
+  }
+
+  constexpr bool operator!() const noexcept {
+    return empty();
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !empty();
+  }
+
+  // ---- access ----------------------------------------------------------
+
+  template <typename IdxT>
+  constexpr const_reference operator[](
+              const std::array<
+                      IdxT, self_t::rank::value
+                    > & coords) const {
+    return derived()[ dash::linearize(derived(), coords) ];
+  }
 };
 
 
@@ -326,19 +347,20 @@ template <
 struct view_traits<ViewLocalMod<DomainType, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
-  typedef typename domain_type::local_type                      image_type;
-  typedef ViewLocalMod<DomainType, NDim>                       local_type;
+  typedef typename view_traits<domain_type>::local_type         image_type;
+  typedef ViewLocalMod<DomainType, NDim>                        local_type;
   typedef domain_type                                          global_type;
 
   typedef typename view_traits<domain_type>::index_type         index_type;
   typedef typename view_traits<domain_type>::size_type           size_type;
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
 
-  typedef std::integral_constant<bool, false>                is_projection;
-  typedef std::integral_constant<bool, true>                 is_view;
-  typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool, true>                 is_local;
+  typedef std::integral_constant<bool, false> is_projection;
+  typedef std::integral_constant<bool, true > is_view;
+  typedef std::integral_constant<bool, false> is_origin;
+  typedef std::integral_constant<bool, true > is_local;
+
+  typedef typename view_traits<DomainType>::is_contiguous is_contiguous;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
@@ -351,17 +373,17 @@ class ViewLocalMod
            ViewLocalMod<DomainType, NDim>,
            DomainType,
            NDim > {
-public:
+ public:
   typedef DomainType                                           domain_type;
   typedef typename view_traits<DomainType>::origin_type        origin_type;
   typedef typename domain_type::local_type                      image_type;
   typedef typename view_traits<DomainType>::index_type          index_type;
   typedef typename view_traits<DomainType>::size_type            size_type;
-private:
-  typedef ViewLocalMod<DomainType, NDim>                           self_t;
+ private:
+  typedef ViewLocalMod<DomainType, NDim>                            self_t;
   typedef ViewModBase<
-            ViewLocalMod<DomainType, NDim>, DomainType, NDim >     base_t;
-public:
+            ViewLocalMod<DomainType, NDim>, DomainType, NDim >      base_t;
+ public:
   typedef dash::IndexSetLocal<DomainType>                   index_set_type;
   typedef self_t                                                local_type;
   typedef typename domain_type::global_type                    global_type;
@@ -373,17 +395,26 @@ public:
       dash::begin(
         dash::local(dash::origin(
           std::declval<
-            typename std::add_lvalue_reference<domain_type>::type >()
+            typename std::add_lvalue_reference<
+              domain_type>::type >()
       ))))
-    iterator;
+    origin_iterator;
 
   typedef
     decltype(
       dash::begin(
         dash::local(dash::origin(
           std::declval<
-            typename std::add_lvalue_reference<const domain_type>::type >()
+            typename std::add_lvalue_reference<
+              const domain_type>::type >()
       ))))
+    const_origin_iterator;
+
+  typedef ViewIterator<
+            origin_iterator, index_set_type >
+    iterator;
+  typedef ViewIterator<
+            const_origin_iterator, index_set_type >
     const_iterator;
 
   typedef
@@ -391,7 +422,8 @@ public:
       *(dash::begin(
           dash::local(dash::origin(
             std::declval<
-              typename std::add_lvalue_reference<domain_type>::type >()
+              typename std::add_lvalue_reference<
+                domain_type>::type >()
           )))))
     reference;
 
@@ -400,13 +432,14 @@ public:
       *(dash::begin(
           dash::local(dash::origin(
             std::declval<
-              typename std::add_lvalue_reference<const domain_type>::type >()
+              typename std::add_lvalue_reference<
+                const domain_type>::type >()
           )))))
     const_reference;
 
-private:
+ private:
   index_set_type  _index_set;
-public:
+ public:
   constexpr ViewLocalMod()               = delete;
   constexpr ViewLocalMod(self_t &&)      = default;
   constexpr ViewLocalMod(const self_t &) = default;
@@ -419,7 +452,7 @@ public:
    */
   constexpr explicit ViewLocalMod(
     domain_type && domain)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain())
   { }
 
@@ -429,7 +462,7 @@ public:
   constexpr explicit ViewLocalMod(
     const DomainType & domain)
   : base_t(domain)
-  , _index_set(domain)
+  , _index_set(this->domain())
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -450,11 +483,13 @@ public:
 
   template <dim_t ShapeDim>
   constexpr size_type extent() const {
-    return _index_set.template extent<ShapeDim>();
+//  return _index_set.template extent<ShapeDim>();
+    return _index_set.extents()[ShapeDim];
   }
 
   constexpr size_type extent(dim_t shape_dim) const {
-    return _index_set.extent(shape_dim);
+//  return _index_set.extent(shape_dim);
+    return _index_set.extents()[shape_dim];
   }
 
   // ---- offsets ---------------------------------------------------------
@@ -472,48 +507,54 @@ public:
   // ---- access ----------------------------------------------------------
 
   constexpr const_iterator begin() const {
-    return dash::begin(
-             dash::local(
-               dash::origin(*this) ))
-           + _index_set[0];
+    return const_iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(*this) )),
+             _index_set, 0);
   }
 
   iterator begin() {
-    return dash::begin(
-             dash::local(
-               const_cast<origin_type &>(dash::origin(*this))
-             ))
-           + _index_set[0];
+    return iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
+             _index_set, 0);
   }
 
   constexpr const_iterator end() const {
-    return dash::begin(
-             dash::local(
-               dash::origin(*this) ))
-           + _index_set[_index_set.size() - 1] + 1;
+    return const_iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(*this) )),
+             _index_set, _index_set.size());
   }
 
   iterator end() {
-    return dash::begin(
-             dash::local(
-               const_cast<origin_type &>(dash::origin(*this))
-             ))
-           + _index_set[_index_set.size() - 1] + 1;
+    return iterator(
+             dash::begin(
+               dash::local(
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
+             _index_set, _index_set.size());
   }
 
   constexpr const_reference operator[](int offset) const {
-    return *(dash::begin(
+    return *const_iterator(
+             dash::begin(
                dash::local(
-                 dash::origin(*this) ))
-             + _index_set[offset]);
+                 dash::origin(*this) )),
+             _index_set, offset);
   }
 
   reference operator[](int offset) {
-    return *(dash::begin(
+    return *iterator(
+             dash::begin(
                dash::local(
-                 const_cast<origin_type &>(dash::origin(*this))
-               ))
-             + _index_set[offset]);
+                 dash::origin(
+                   const_cast<self_t &>(*this) ))),
+             _index_set, offset);
   }
 
   constexpr const local_type & local() const {
@@ -531,7 +572,7 @@ public:
   constexpr const index_set_type & index_set() const {
     return _index_set;
   }
-};
+}; // ViewLocalMod
 
 
 // ------------------------------------------------------------------------
@@ -545,9 +586,7 @@ template <
 struct view_traits<ViewSubMod<DomainType, SubDim, NDim> > {
   typedef DomainType                                           domain_type;
   typedef typename view_traits<domain_type>::origin_type       origin_type;
-  typedef typename view_traits<domain_type>::pattern_type     pattern_type;
   typedef ViewSubMod<DomainType, SubDim, NDim>                  image_type;
-//typedef ViewSubMod<DomainType, SubDim, NDim>                  local_type;
   typedef ViewLocalMod<
            ViewSubMod<DomainType, SubDim, NDim>, NDim>          local_type;
   typedef ViewSubMod<DomainType, SubDim, NDim>                 global_type;
@@ -559,8 +598,9 @@ struct view_traits<ViewSubMod<DomainType, SubDim, NDim> > {
   typedef std::integral_constant<bool, false>                is_projection;
   typedef std::integral_constant<bool, true>                 is_view;
   typedef std::integral_constant<bool, false>                is_origin;
-  typedef std::integral_constant<bool,
-    view_traits<domain_type>::is_local::value >              is_local;
+  typedef typename view_traits<domain_type>::is_local        is_local;
+
+  typedef std::integral_constant<bool, NDim == 1>            is_contiguous;
 
   typedef std::integral_constant<dim_t, DomainType::rank::value> rank;
 };
@@ -621,7 +661,7 @@ class ViewSubMod
     domain_type && domain,
     index_type     begin,
     index_type     end)
-  : base_t(std::forward<domain_type>(domain))
+  : base_t(std::move(domain))
   , _index_set(this->domain(), begin, end)
   { }
 
@@ -635,7 +675,7 @@ class ViewSubMod
 
   // ---- extents ---------------------------------------------------------
 
-  constexpr std::array<size_type, NDim> extents() const {
+  constexpr decltype(_index_set.extents()) extents() const {
     return _index_set.extents();
   }
 
@@ -655,7 +695,7 @@ class ViewSubMod
     return _index_set.template offset<ExtDim>();
   }
 
-  constexpr std::array<index_type, NDim> offsets() const {
+  constexpr decltype(_index_set.offsets()) offsets() const {
     return _index_set.offsets();
   }
 
@@ -679,8 +719,8 @@ class ViewSubMod
 
   iterator begin() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, 0);
   }
@@ -693,8 +733,8 @@ class ViewSubMod
 
   iterator end() {
     return iterator(
-             const_cast<origin_type &>(
-               dash::origin(*this)
+             dash::origin(
+               const_cast<self_t &>(*this)
              ).begin(),
              _index_set, _index_set.size());
   }
@@ -705,8 +745,8 @@ class ViewSubMod
   }
 
   reference operator[](int offset) {
-    return *(iterator(const_cast<origin_type &>(
-                        dash::origin(*this)
+    return *(iterator(dash::origin(
+                        const_cast<self_t &>(*this)
                       ).begin(),
                       _index_set, offset));
   }

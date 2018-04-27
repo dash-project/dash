@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/meta/TypeInfo.h>
+#include <dash/util/ArrayExpr.h>
 
 #include <type_traits>
 
@@ -13,12 +14,13 @@
   template<typename T> \
   struct has_type_##DepType { \
   private: \
+    typedef typename std::decay<T>::type DT; \
     typedef char                      yes; \
     typedef struct { char array[2]; } no; \
     template<typename C> static yes test(typename C:: DepType *); \
     template<typename C> static no  test(...); \
   public: \
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes); \
+    static constexpr bool value = sizeof(test<DT>(0)) == sizeof(yes); \
   };
 
 #endif // DOXYGEN
@@ -71,6 +73,26 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference)
  */
 DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type)
 
+/**
+ * Definition of type trait \c dash::detail::has_type_pattern_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c pattern_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(pattern_type);
+
+/**
+ * Definition of type trait \c dash::detail::has_type_const_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c const_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(const_type);
+
+/**
+ * Definition of type trait \c dash::detail::has_type_const_type<T>
+ * with static member \c value indicating whether type \c T provides
+ * dependent type \c nonconst_type.
+ */
+DASH__META__DEFINE_TRAIT__HAS_TYPE(nonconst_type);
 
 } // namespace dash
 
@@ -80,6 +102,92 @@ DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type)
 #ifndef DOXYGEN
 
 namespace dash {
+
+// ==========================================================================
+// dash::const_value_cast<T &>::type -> const T &
+// dash::const_value_cast<T *>::type -> const T *
+// dash::const_value_cast<T  >::type -> const T
+// --------------------------------------------------------------------------
+
+template <typename T>
+struct const_value_cast;
+
+template <typename T>
+struct const_value_cast<T *> {
+  typedef const T * type;
+};
+
+template <typename T>
+struct const_value_cast<T &> {
+  typedef const T & type;
+};
+
+template <typename T>
+struct const_value_cast {
+  typedef typename
+    std::conditional<
+      dash::has_type_const_type<T>::value,
+      typename T::const_type,
+      const T
+    >::type
+  type;
+};
+
+
+// ==========================================================================
+// dash::nonconst_value_cast<const T &>::type -> T &
+// dash::nonconst_value_cast<const T *>::type -> T *
+// dash::nonconst_value_cast<const T  >::type -> T
+// --------------------------------------------------------------------------
+
+template <typename T>
+struct nonconst_value_cast;
+
+template <typename T>
+struct nonconst_value_cast<const T *> {
+  typedef T * type;
+};
+
+template <typename T>
+struct nonconst_value_cast<const T &> {
+  typedef T & type;
+};
+
+template <typename T>
+struct nonconst_value_cast {
+  typedef typename
+    std::conditional<
+      dash::has_type_nonconst_type<T>::value,
+      typename T::nonconst_type,
+      typename std::remove_const<T>::type
+    >::type
+  type;
+};
+
+
+// ==========================================================================
+// dash::array_value_cast<T>(std::array<U, N>)::type -> std::array<T, N>
+// --------------------------------------------------------------------------
+
+namespace detail {
+
+template<typename T, typename U, std::size_t I, std::size_t... Is>
+constexpr auto array_value_cast_indexed(
+  const std::array<U, I> &a, dash::ce::index_sequence<Is...>)
+  -> std::array<T, I> {
+  return {{ static_cast<T>(std::get<Is>(a))... }};
+}
+
+} // namespace detail
+
+template<typename T, typename U, std::size_t N>
+constexpr auto array_value_cast(
+  const std::array<U, N> & a) -> std::array<T, N> {
+  // tag dispatch to helper with array indices
+  return detail::array_value_cast_indexed<T>(
+           a, dash::ce::make_index_sequence<N>());
+}
+
 
 /*
  * For reference, see

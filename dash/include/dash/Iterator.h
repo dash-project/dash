@@ -49,6 +49,16 @@
 
 namespace dash {
 
+namespace detail {
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(value_type);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(iterator);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_iterator);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(reference);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_reference);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(pointer);
+  DASH__META__DEFINE_TRAIT__HAS_TYPE(const_pointer);
+}
+
 
 /**
  *

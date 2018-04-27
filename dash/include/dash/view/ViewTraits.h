@@ -30,21 +30,34 @@ domain(const Viewable & v);
 template <class ViewT>
 struct view_traits
 {
-  typedef typename ViewT::domain_type         domain_type;
-  typedef typename ViewT::image_type           image_type;
-  typedef typename ViewT::origin_type         origin_type;
-  typedef typename ViewT::local_type           local_type;
-  typedef typename ViewT::global_type         global_type;
+  typedef typename ViewT::domain_type             domain_type;
+  typedef typename ViewT::image_type               image_type;
+  typedef typename ViewT::origin_type             origin_type;
+  typedef typename ViewT::local_type               local_type;
+  typedef typename ViewT::global_type             global_type;
+
+  typedef typename ViewT::index_set_type       index_set_type;
 
   typedef std::integral_constant<dim_t, value>  rank;
 
   typedef std::integral_constant<bool, value>   is_origin;
   typedef std::integral_constant<bool, value>   is_view;
   typedef std::integral_constant<bool, value>   is_projection;
+
   typedef std::integral_constant<bool, value>   is_local;
+
+  typedef std::integral_constant<bool, value>   is_contiguous;
 };
 
 #else // DOXYGEN
+
+template <class ViewableType>
+struct rank;
+
+template <class ViewableType>
+struct rank
+: std::integral_constant<dim_t, std::decay<ViewableType>::type::rank::value>
+{ };
 
 template <class ViewableType>
 struct view_traits;
@@ -58,7 +71,6 @@ namespace detail {
    * with static member \c value indicating whether type \c T provides
    * dependent type \c domain_type.
    */
-  DASH__META__DEFINE_TRAIT__HAS_TYPE(domain_type)
   DASH__META__DEFINE_TRAIT__HAS_TYPE(index_set_type)
 }
 
@@ -70,6 +82,33 @@ namespace detail {
 template <class ViewableType>
 // struct is_view : dash::detail::has_type_domain_type<ViewableType> { };
 struct is_view : dash::detail::has_type_index_set_type<ViewableType> { };
+
+
+template <class ViewableType>
+struct is_view_region;
+
+template <class ViewableType>
+struct is_view_region
+: std::integral_constant<
+    bool, 
+    dash::is_view<ViewableType>::value>
+{ };
+
+template <class ViewableType>
+struct is_local_view
+: std::integral_constant<
+    bool, 
+    ( dash::is_view<ViewableType>::value &&
+      dash::view_traits<ViewableType>::is_local::value ) >
+{ };
+
+template <class ViewableType>
+struct is_global_view
+: std::integral_constant<
+    bool, 
+    ( dash::is_view<ViewableType>::value &&
+      !dash::view_traits<ViewableType>::is_local::value ) >
+{ };
 
 
 
@@ -95,8 +134,7 @@ namespace detail {
   {
     typedef std::integral_constant<bool, false>                is_projection;
     typedef std::integral_constant<bool, true>                 is_view;
-    /// Whether the view is the origin domain.
-    typedef std::integral_constant<bool, false>                 is_origin;
+    typedef std::integral_constant<bool, false>                is_origin;
 
     typedef typename ViewT::index_type                            index_type;
     typedef typename ViewT::size_type                              size_type;
@@ -111,6 +149,8 @@ namespace detail {
                    dash::is_range<domain_type>::value
                   >::is_local::value >                         is_local;
 
+    typedef std::integral_constant<bool, false>                is_contiguous;
+
     typedef typename ViewT::local_type                            local_type;
     typedef typename ViewT::global_type                          global_type;
     typedef typename std::conditional<is_local::value,
@@ -118,10 +158,7 @@ namespace detail {
                                       global_type >::type         image_type;
     typedef typename dash::view_traits<domain_type>::origin_type origin_type;
 
-    typedef std::integral_constant<dim_t, ViewT::rank::value>           rank;
-
-    typedef typename dash::view_traits<domain_type>::pattern_type
-                                                                pattern_type;
+    typedef dash::rank<ViewT>                                  rank;
   };
 
   /**
@@ -143,8 +180,6 @@ namespace detail {
     typedef typename ContainerT::size_type                         size_type;
     typedef typename dash::IndexSetIdentity<ContainerT>       index_set_type;
 
-    typedef typename ContainerT::pattern_type                   pattern_type;
-
     /// Whether the view type is a projection (has less dimensions than the
     /// view's domain type).
     typedef std::integral_constant<bool, false>                is_projection;
@@ -156,8 +191,10 @@ namespace detail {
     ///       \c local_type
     typedef std::integral_constant<bool, std::is_same<
                                            ContainerT,
-                                           typename ContainerT::local_type
+                                           local_type
                                          >::value >            is_local;
+
+    typedef std::integral_constant<bool, true>                 is_contiguous;
 
     typedef std::integral_constant<dim_t,
                                    ContainerT::rank::value>    rank;
@@ -172,9 +209,9 @@ namespace detail {
 template <class ViewableType>
 struct view_traits
 : detail::_view_traits<
-    ViewableType,
-    dash::is_view<ViewableType>::value,
-    dash::is_range<ViewableType>::value > {
+    typename std::decay<ViewableType>::type,
+    dash::is_view< typename std::decay<ViewableType>::type>::value,
+    dash::is_range<typename std::decay<ViewableType>::type>::value > {
 };
 
 #endif // DOXYGEN
