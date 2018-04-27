@@ -19,7 +19,7 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
-set (DART_C_STD_PREFERED "99")
+set (DART_C_STD_PREFERED "11")
 set (DASH_CXX_STD_PREFERED "11")
 
 # Check if compiler provides c++14
@@ -102,8 +102,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
     set (DASH_DEVELOPER_CC_FLAGS
          "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
   endif()
