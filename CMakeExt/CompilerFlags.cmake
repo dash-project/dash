@@ -90,7 +90,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wstrict-overflow=2")
     # some good hints, but too style-related to be used in general
     set (DASH_DEVELOPER_CXX_FLAGS
-         "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++")
+      "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++ -Wno-error=effc++")
   endif()
 
   set (DASH_DEVELOPER_CXX_FLAGS
