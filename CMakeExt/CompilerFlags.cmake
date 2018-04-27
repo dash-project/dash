@@ -22,8 +22,13 @@ find_package(OpenMP)
 set (DART_C_STD_PREFERED "99")
 set (DASH_CXX_STD_PREFERED "11")
 
+# Used in CI Scripts to force a particular CXX version
+if("$ENV{DASH_FORCE_CXX_STD}")
+  message(INFO "Force C++ STD $ENV{DASH_FORCE_CXX_STD}")
+  set(DASH_CXX_STD_PREFERED "$ENV{DASH_FORCE_CXX_STD}")
+
 # Check if compiler provides c++14
-if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
   include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
   if(COMPILER_SUPPORTS_CXX14)
