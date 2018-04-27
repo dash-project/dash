@@ -5,6 +5,7 @@
 #include <dash/GlobPtr.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/GlobAsyncRef.h>
+#include <dash/GlobRef.h>
 
 
 namespace dash {
@@ -81,6 +82,28 @@ public:
         "Cannot create GlobAsyncRef<Atomic<T>> from GlobPtr<Atomic<const T>>!");
   }
 
+
+  template <class...> struct null_v : std::integral_constant<int, 0> {};
+
+  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<nonconst_value_type>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+//#if 0
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<_T, value_type>::value>
+  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  template<typename _T,
+           long = internal::enable_explicit_copy_ctor<_T, value_type>::value>
+  explicit
+  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+//#endif
+
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
@@ -90,14 +113,6 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>(dart_gptr_t)", dart_gptr);
   }
-
-  /**
-   * Like native references, global reference types cannot be copied.
-   *
-   * Default definition of copy constructor would conflict with semantics
-   * of \c operator=(const self_t &).
-   */
-  GlobAsyncRef(const self_t & other) = delete;
 
   /**
    * Unlike native reference types, global reference types are moveable.
@@ -118,21 +133,6 @@ public:
 
   inline bool operator==(const T & value) const = delete;
   inline bool operator!=(const T & value) const = delete;
-
-  template<class = std::enable_if<
-                     std::is_same<value_type, nonconst_value_type>::value,void>>
-  operator GlobAsyncRef<const_atomic_t>()
-  {
-    return GlobAsyncRef<const_atomic_t>(_gptr);
-  }
-
-  template<class = std::enable_if<
-                     std::is_same<value_type, const_value_type>::value,void>>
-  explicit
-  operator GlobAsyncRef<nonconst_atomic_t>()
-  {
-    return GlobAsyncRef<nonconst_atomic_t>(_gptr);
-  }
 
   dart_gptr_t dart_gptr() const {
     return _gptr;

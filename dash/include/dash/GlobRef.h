@@ -5,26 +5,52 @@
 #include <dash/Init.h>
 #include <dash/Meta.h>
 
-#include <dash/GlobAsyncRef.h>
-
-
 namespace dash {
+
+// forward declaration
+template<typename T>
+class GlobAsyncRef;
 
 // Forward declarations
 template<typename T, class A> class GlobStaticMem;
 template<typename T, class MemSpaceT> class GlobPtr;
 
-template<typename T>
-struct has_subscript_operator
+namespace internal {
+
+template<typename ReferenceT, typename TargetT>
+struct add_const_from_type
 {
-  typedef char (& yes)[1];
-  typedef char (& no)[2];
-
-  template <typename C> static yes check(decltype(&C::operator[]));
-  template <typename>   static no  check(...);
-
-  static bool const value = sizeof(check<T>(0)) == sizeof(yes);
+  using type = TargetT;
 };
+
+template<typename ReferenceT, typename TargetT>
+struct add_const_from_type<const ReferenceT, TargetT>
+{
+  using type = typename std::add_const<TargetT>::type;
+};
+
+template <class...> struct null_v : std::integral_constant<int, 0> {};
+template<class A, class B>
+using
+enable_implicit_copy_ctor = null_v<typename std::enable_if<
+                                              std::is_same<
+                                                typename std::remove_cv<A>::type,
+                                                typename std::remove_cv<B>::type
+                                              >::value &&
+                                              std::is_const<A>::value &&
+                                              std::is_const<B>::value, A>::type>;
+
+template<class A, class B>
+using
+enable_explicit_copy_ctor = null_v<typename std::enable_if<
+                                              std::is_same<
+                                                typename std::remove_cv<A>::type,
+                                                typename std::remove_cv<B>::type
+                                              >::value &&
+                                              std::is_const<A>::value &&
+                                             !std::is_const<B>::value, A>::type>;
+} // namespace internal
+
 
 template<typename T>
 class GlobRef
@@ -54,6 +80,29 @@ public:
    * Reference semantics forbid declaration without definition.
    */
   GlobRef() = delete;
+
+  GlobRef(const GlobRef<nonconst_value_type>& gref) : GlobRef(gref.dart_gptr())
+  { }
+
+  /**
+   * Copy constructor, implicit if value_type and argument are const.
+   */
+  template<typename _T,
+           long = internal::enable_implicit_copy_ctor<_T, value_type>::value>
+  GlobRef(const GlobRef<_T>& gref)
+  : GlobRef(gref.dart_gptr())
+  { }
+
+  /**
+   * Copy constructor, explicit if value_type is non-const and argument is const.
+   */
+  template<typename _T,
+           int = internal::enable_explicit_copy_ctor<_T, value_type>::value>
+  explicit
+  GlobRef(const GlobRef<_T>& gref)
+  : GlobRef(gref.dart_gptr())
+  { }
+//#endif
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -117,14 +166,6 @@ public:
   { }
 
   /**
-   * Like native references, global reference types cannot be copied.
-   *
-   * Default definition of copy constructor would conflict with semantics
-   * of \c operator=(const self_t &).
-   */
-  GlobRef(const self_t & other) = delete;
-
-  /**
    * Unlike native reference types, global reference types are moveable.
    */
   GlobRef(self_t && other)      = default;
@@ -143,16 +184,6 @@ public:
   const self_t & operator=(const self_t & other) const
   {
     set(static_cast<T>(other));
-    return *this;
-  }
-
-  /**
-   * Assignment operator.
-   */
-  template <typename GlobRefOrElementT>
-  const self_t & operator=(GlobRefOrElementT && other) const
-  {
-    set(std::forward<GlobRefOrElementT>(other));
     return *this;
   }
 
@@ -186,25 +217,6 @@ public:
   constexpr bool operator!=(const ValueT& value) const
   {
     return !(*this == value);
-  }
-
-  /**
-   * Implicit cast to const.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, nonconst_value_type>::value,void>>
-  operator GlobRef<const_value_type> () const {
-    return GlobRef<const_value_type>(_gptr);
-  }
-
-  /**
-   * Explicit cast to non-const
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, const_value_type>::value,void>>
-  explicit
-  operator GlobRef<nonconst_value_type> () const {
-    return GlobRef<nonconst_value_type>(_gptr);
   }
 
   void
@@ -364,19 +376,6 @@ public:
     return _gptr;
   }
 
-#if 0
-  template<
-    typename X=T,
-    typename std::enable_if<has_subscript_operator<X>::value, int>::type
-      * ptr = nullptr>
-  auto operator[](size_t pos) ->
-    typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
-  {
-    nonconst_value_type val = operator nonconst_value_type();
-    return val[pos];
-  }
-#endif
-
   /**
    * Checks whether the globally referenced element is in
    * the calling unit's local memory.
@@ -392,25 +391,25 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(size_t offs) const {
     dart_gptr_t dartptr = _gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
-    return GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>(dartptr);
+    return GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>(dartptr);
   }
 
   /**
    * Get the member via pointer to member
    */
   template<class MEMTYPE, class P=T>
-  GlobRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
     // TODO: Thaaaat ... looks hacky.
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
-    return member<typename dash::add_const_from_type<T, MEMTYPE>::type>(offs);
+    return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
   /**
