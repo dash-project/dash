@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <random>
+#include <cmath>
 
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end);
@@ -209,20 +210,13 @@ TEST_F(SortTest, MatrixBlockedRow)
       dash::NArray<value_t, 2, dash::default_index_t, block_pat_t>;
 
   size_t team_size = dash::Team::All().size();
-  size_t extent_x  = 17;
-  size_t extent_y  = 5 + team_size * 3;
-  size_t size      = extent_x * extent_y;
-
-  // Ceil division
-  size_t block_size_x = extent_x;
-  size_t block_size_y = dash::math::div_ceil(extent_y, team_size);
+  size_t extent_x  = std::sqrt(num_local_elem) * dash::size();
+  size_t extent_y  = extent_x;
 
   LOG_MESSAGE(
-      "ex: %d, ey: %d, bsx: %d, bsy: %d",
+      "ex: %d, ey: %d",
       static_cast<int>(extent_y),
-      static_cast<int>(extent_x),
-      static_cast<int>(block_size_y),
-      static_cast<int>(block_size_x));
+      static_cast<int>(extent_x));
 
   block_pat_t pat_blocked_row{
       dash::SizeSpec<2>(extent_y, extent_x),
