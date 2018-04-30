@@ -152,5 +152,13 @@ if (NOT DEFINED MPI_IMPL_ID)
   endif()
 
   set (CMAKE_C_COMPILER ${CMAKE_C_COMPILER_SAFE})
+  set (MPI_INCLUDE_PATH ${MPI_INCLUDE_PATH} CACHE STRING "MPI include path")
+  set (MPI_C_LIBRARIES  ${MPI_C_LIBRARIES}  CACHE STRING "MPI C libraries")
+  set (MPI_LINK_FLAGS   ${MPI_LINK_FLAGS}   CACHE STRING "MPI link flags")
+
+  message(STATUS "Detected MPI library: ${MPI_IMPL_ID}")
+else (NOT DEFINED MPI_IMPL_ID)
+
+  message(STATUS "Using previously detected MPI library: ${MPI_IMPL_ID}")
 
 endif(NOT DEFINED MPI_IMPL_ID)

@@ -3,18 +3,14 @@
 
 #include <dash/Array.h>
 #include <dash/pattern/CSRPattern.h>
+#include <dash/algorithm/Copy.h>
 
 TEST_F(CSRPatternTest, InitArray) {
   using pattern_t = dash::CSRPattern<1>;
   using extent_t  = pattern_t::size_type;
   using index_t   = pattern_t::index_type;
 
-#if 0
-  // alignment of array.lbegin != sizeof(value_t)
-  typedef size_t value_t;
-#else
   typedef int value_t;
-#endif
 
   auto   myid   = dash::myid();
   auto & team   = dash::Team::All();
@@ -60,11 +56,6 @@ TEST_F(CSRPatternTest, InitArray) {
 
   DASH_LOG_DEBUG("CSRPatternTest.InitArray", "init local values (*lp)");
   for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
-    // If this log message is omitted, segfaults for GCC + OpenMPI.
-    //
-    // Apparently due to automatic loop parallelization:
-    // Alignment is 4 bytes and using `int` instead of `size_t` works.
-//  DASH_LOG_DEBUG("CSRPatternTest.InitArray", "initialize", i);
     *i = myid.id;
   }
 
@@ -72,4 +63,57 @@ TEST_F(CSRPatternTest, InitArray) {
   for (value_t *i = array.lbegin(); i != array.lend(); ++i) {
     EXPECT_EQ_U(*i, myid.id);
   }
+}
+
+TEST_F(CSRPatternTest, CopyGlobalToLocal) {
+
+  using pattern_t = dash::CSRPattern<1>;
+  using extent_t  = pattern_t::size_type;
+  using index_t   = pattern_t::index_type;
+
+  typedef int value_t;
+
+  auto   myid   = dash::myid();
+  auto & team   = dash::Team::All();
+  auto   nunits = team.size();
+
+  std::vector<extent_t> local_sizes;
+
+  extent_t tmp;
+  extent_t sum = 0;
+
+  for (size_t unit_idx = 0; unit_idx < nunits; ++unit_idx) {
+    tmp = (unit_idx + 2) * 4;
+    local_sizes.push_back(tmp);
+    sum += tmp;
+  }
+  auto max_local_size = local_sizes.back();
+
+  DASH_LOG_DEBUG_VAR("CSRPatternTest.InitArray", local_sizes);
+
+  pattern_t pattern(local_sizes);
+  dash::Array<value_t, index_t, pattern_t> array(pattern);
+
+  value_t cnt = 0;
+  for (auto it = array.lbegin(); it != array.lend(); ++it) {
+    *it = dash::myid()*1000 + cnt++;
+  }
+
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    value_t *buf = new value_t[sum];
+    dash::copy(array.begin(), array.end(), buf);
+
+    size_t idx = 0;
+    for (auto uid = 0; uid < dash::size(); ++uid) {
+      for (auto pos = 0; pos < local_sizes[uid]; ++pos) {
+        ASSERT_EQ_U(uid*1000+pos, buf[idx]);
+        ++idx;
+      }
+    }
+
+    delete[] buf;
+  }
+  dash::barrier();
 }

@@ -75,7 +75,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   }
 
   dash::Team & team = dash::Team::All();
-  int num_split     = std::min(dash::size(), ssize_t(3));
+  int num_split     = std::min(dash::size(), size_t(3));
 
   dash::util::TeamLocality tloc(team);
 
@@ -333,14 +333,14 @@ TEST_F(TeamLocalityTest, SplitGroups)
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
     //  EXPECT_EQ_U(group_1_units, group_1.units());
-  } 
+  }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
     const auto & group_2 = tloc.group(group_2_tags);
     DASH_LOG_DEBUG_VAR("TeamLocalityTest.SplitGroups", group_2);
 
     EXPECT_EQ_U(group_2_units, group_2.units());
-  } 
+  }
 
   tloc.split_groups();
 

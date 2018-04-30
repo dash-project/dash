@@ -170,9 +170,11 @@ public:
    */
   void set(const T &value) const
   {
-    static_assert(
-        std::is_same<value_type, nonconst_value_type>::value,
-        "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic set!");
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.store()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.store", _gptr);
     dart_ret_t ret = dart_accumulate(
@@ -197,6 +199,9 @@ public:
   /// atomically fetches value
   T get() const
   {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic get!");
     DASH_LOG_DEBUG("GlobRef<Atomic>.load()");
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.load", _gptr);
     nonconst_value_type nothing;
@@ -226,14 +231,19 @@ public:
    */
   template <typename BinaryOp>
   void op(
-      /// Binary operation to be performed on global atomic variable
-      BinaryOp binary_op,
-      /// Value to be used in binary op on global atomic variable.
-      const T &value) const
+    /// Binary operation to be performed on global atomic variable
+    BinaryOp  binary_op,
+    /// Value to be used in binary op on global atomic variable.
+    const T & value) const
   {
-    static_assert(
-        std::is_same<value_type, nonconst_value_type>::value,
-        "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic operation!");
+    static_assert(dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED ||
+                  binary_op.op_kind() != dash::internal::OpKind::ARITHMETIC,
+                  "Atomic arithmetic operations only valid on basic types");
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.op", _gptr);
     nonconst_value_type acc = value;
@@ -257,13 +267,18 @@ public:
    */
   template <typename BinaryOp>
   T fetch_op(
-      BinaryOp binary_op,
-      /// Value to be added to global atomic variable.
-      const T &value) const
+    BinaryOp  binary_op,
+    /// Value to be added to global atomic variable.
+    const T & value) const
   {
-    static_assert(
-        std::is_same<value_type, nonconst_value_type>::value,
-        "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Basic type or type smaller than 64bit required for "
+                  "atomic fetch_op!");
+    static_assert(dash::dart_datatype<T>::value != DART_TYPE_UNDEFINED ||
+                  binary_op.op_kind() != dash::internal::OpKind::ARITHMETIC,
+                  "Atomic arithmetic operations only valid on basic types!");
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<Atomic<const T>>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.fetch_op()", value);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op", _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.fetch_op", typeid(value).name());
@@ -296,11 +311,14 @@ public:
    *
    * \see \c dash::atomic::compare_exchange
    */
-  bool compare_exchange(const T &expected, const T &desired) const
-  {
-    static_assert(
-        std::is_same<value_type, nonconst_value_type>::value,
-        "Cannot modify value referenced by GlobRef<const T>!");
+  bool compare_exchange(const T & expected, const T & desired) const {
+    static_assert(dash::dart_punned_datatype<T>::value != DART_TYPE_UNDEFINED,
+                  "Integral type or type smaller than 64bit required for "
+                  "compare_exchange!");
+    static_assert(!std::is_floating_point<T>::value,
+                  "compare_exchange not available for floating point!");
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     DASH_LOG_DEBUG_VAR("GlobRef<Atomic>.compare_exchange()", desired);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange", _gptr);
     DASH_LOG_TRACE_VAR("GlobRef<Atomic>.compare_exchange", expected);

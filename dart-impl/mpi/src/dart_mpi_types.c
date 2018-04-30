@@ -30,6 +30,7 @@ static const char* __dart_base_type_names[DART_TYPE_LAST+1] = {
   "UNSIGNED LONG LONG",
   "FLOAT",
   "DOUBLE",
+  "LONG DOUBLE",
   "INVALID"
 };
 
@@ -89,17 +90,18 @@ init_basic_datatype(
 dart_ret_t
 dart__mpi__datatype_init()
 {
-  init_basic_datatype(DART_TYPE_UNDEFINED, MPI_DATATYPE_NULL);
-  init_basic_datatype(DART_TYPE_BYTE, MPI_BYTE);
-  init_basic_datatype(DART_TYPE_SHORT, MPI_SHORT);
-  init_basic_datatype(DART_TYPE_INT, MPI_INT);
-  init_basic_datatype(DART_TYPE_UINT, MPI_UNSIGNED);
-  init_basic_datatype(DART_TYPE_LONG, MPI_LONG);
-  init_basic_datatype(DART_TYPE_ULONG, MPI_UNSIGNED_LONG);
-  init_basic_datatype(DART_TYPE_LONGLONG, MPI_LONG_LONG);
-  init_basic_datatype(DART_TYPE_ULONGLONG, MPI_UNSIGNED_LONG_LONG);
-  init_basic_datatype(DART_TYPE_FLOAT, MPI_FLOAT);
-  init_basic_datatype(DART_TYPE_DOUBLE, MPI_DOUBLE);
+  init_basic_datatype(DART_TYPE_UNDEFINED,    MPI_DATATYPE_NULL);
+  init_basic_datatype(DART_TYPE_BYTE,         MPI_BYTE);
+  init_basic_datatype(DART_TYPE_SHORT,        MPI_SHORT);
+  init_basic_datatype(DART_TYPE_INT,          MPI_INT);
+  init_basic_datatype(DART_TYPE_UINT,         MPI_UNSIGNED);
+  init_basic_datatype(DART_TYPE_LONG,         MPI_LONG);
+  init_basic_datatype(DART_TYPE_ULONG,        MPI_UNSIGNED_LONG);
+  init_basic_datatype(DART_TYPE_LONGLONG,     MPI_LONG_LONG);
+  init_basic_datatype(DART_TYPE_ULONGLONG,    MPI_UNSIGNED_LONG_LONG);
+  init_basic_datatype(DART_TYPE_FLOAT,        MPI_FLOAT);
+  init_basic_datatype(DART_TYPE_DOUBLE,       MPI_DOUBLE);
+  init_basic_datatype(DART_TYPE_LONG_DOUBLE,  MPI_LONG_DOUBLE);
 
   return DART_OK;
 }
@@ -321,8 +323,10 @@ dart__mpi__datatype_fini()
   destroy_basic_type(DART_TYPE_LONG);
   destroy_basic_type(DART_TYPE_ULONG);
   destroy_basic_type(DART_TYPE_LONGLONG);
+  destroy_basic_type(DART_TYPE_ULONGLONG);
   destroy_basic_type(DART_TYPE_FLOAT);
   destroy_basic_type(DART_TYPE_DOUBLE);
+  destroy_basic_type(DART_TYPE_LONG_DOUBLE);
 
   return DART_OK;
 }

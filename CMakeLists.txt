@@ -36,6 +36,8 @@ endif()
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(INSTALL_TESTS
+       "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
         Implies BUILD_TESTS. Requires GCC." off)

@@ -11,11 +11,10 @@ using matrix_t     = dash::Matrix<
                        double, 2,
                        typename pattern_t::index_type,
                        pattern_t>;
-using StencilSpecT = dash::StencilSpec<2,4>;
-using StencilT = dash::Stencil<2>;
-using CycleSpecT = dash::CycleSpec<2>;
-using Cycle     = dash::Cycle;
-using HaloMatrixWrapperT = dash::HaloMatrixWrapper<matrix_t, StencilSpecT>;
+using StencilT     = dash::halo::StencilPoint<2>;
+using StencilSpecT = dash::halo::StencilSpec<StencilT,4>;
+using GlobBoundSpecT   = dash::halo::GlobalBoundarySpec<2>;
+using HaloMatrixWrapperT = dash::halo::HaloMatrixWrapper<matrix_t>;
 
 using array_t      = dash::Array<double>;
 
@@ -49,9 +48,6 @@ int main(int argc, char *argv[])
     cerr << "Not enough arguments ./<prog> matrix_ext iterations" << endl;
     return 1;
   }
-  using HaloBlockT = dash::HaloBlock<double,pattern_t>;
-  using HaloMemT = dash::HaloMemory<HaloBlockT>;
-
   auto matrix_ext = std::atoi(argv[1]);
   auto iterations = std::atoi(argv[2]);
 
@@ -86,15 +82,23 @@ int main(int argc, char *argv[])
     print_matrix(matrix);
 #endif
 
-  StencilSpecT stencil_spec({ StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1)});
+  StencilSpecT stencil_spec( StencilT(-1, 0), StencilT(1, 0), StencilT( 0, -1), StencilT(0, 1));
 
-  CycleSpecT cycle{Cycle::CYCLIC, Cycle::CYCLIC};
+  GlobBoundSpecT bound_spec(dash::halo::BoundaryProp::CYCLIC, dash::halo::BoundaryProp::CYCLIC);
 
-  HaloMatrixWrapperT halomat(matrix, stencil_spec, cycle);
-  HaloMatrixWrapperT halomat2(matrix2, stencil_spec, cycle);
+  HaloMatrixWrapperT halomat(matrix, bound_spec, stencil_spec);
+  HaloMatrixWrapperT halomat2(matrix2, bound_spec, stencil_spec);
+
+  auto stencil_op = halomat.stencil_operator(stencil_spec);
+  auto stencil_op2 = halomat2.stencil_operator(stencil_spec);
+
+  auto* current_op = &stencil_op;
+  auto* new_op = &stencil_op2;
 
   HaloMatrixWrapperT* current_halo = &halomat;
   HaloMatrixWrapperT* new_halo = &halomat2;
+
+
 
   double dx{ 1.0 };
   double dy{ 1.0 };
@@ -139,8 +143,8 @@ int main(int argc, char *argv[])
     }
 #endif
     // slow version
-    auto it_end = current_halo->iend();
-    for(auto it = current_halo->ibegin(); it != it_end; ++it)
+    auto it_end = current_op->inner.end();
+    for(auto it = current_op->inner.begin(); it != it_end; ++it)
     {
       auto core = *it;
       auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
@@ -152,8 +156,8 @@ int main(int argc, char *argv[])
     current_halo->wait();
 
     // Calculation of boundary Halo elements
-    auto it_bend = current_halo->bend();
-    for (auto it = current_halo->bbegin(); it != it_bend; ++it) {
+    auto it_bend = current_op->boundary.end();
+    for (auto it = current_op->boundary.begin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
           (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
@@ -163,6 +167,7 @@ int main(int argc, char *argv[])
 
     // swap current matrix and current halo matrix
     std::swap(current_halo, new_halo);
+    std::swap(current_op, new_op);
     current_matrix.barrier();
   }
   // final total energy
