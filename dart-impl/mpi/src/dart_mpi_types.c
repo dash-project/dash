@@ -323,8 +323,10 @@ dart__mpi__datatype_fini()
   destroy_basic_type(DART_TYPE_LONG);
   destroy_basic_type(DART_TYPE_ULONG);
   destroy_basic_type(DART_TYPE_LONGLONG);
+  destroy_basic_type(DART_TYPE_ULONGLONG);
   destroy_basic_type(DART_TYPE_FLOAT);
   destroy_basic_type(DART_TYPE_DOUBLE);
+  destroy_basic_type(DART_TYPE_LONG_DOUBLE);
 
   return DART_OK;
 }
