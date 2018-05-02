@@ -128,6 +128,7 @@ public:
 
   /**
    * Copy Assignment operator.
+   * It does not copy allocated memory segments.
    *
    * \see DashAllocatorConcept
    */
@@ -400,6 +401,10 @@ void SymmetricAllocator<
     LMemSpace,
     LocalAlloc>::deallocate(pointer gptr, size_type nelem)
 {
+  if (DART_GPTR_ISNULL(gptr)) {
+    return;
+  }
+
   DASH_ASSERT_EQ(1, _segments.size(), "invalid number of segments");
   DASH_ASSERT_EQ(nelem, _segments.front().length(), "invalid size argument");
   do_deallocate(gptr, false);

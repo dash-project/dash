@@ -739,30 +739,27 @@ public:
 
 private:
   /// Team containing all units interacting with the array
-  dash::Team         * m_team      = nullptr;
+  dash::Team *m_team = nullptr;
   /// Element distribution pattern
-  PatternType          m_pattern;
+  PatternType m_pattern;
   /// Global memory allocation and -access
-  PtrGlobMemType_t     m_globmem;
+  PtrGlobMemType_t m_globmem;
   /// Iterator to initial element in the array
-  iterator             m_begin;
+  iterator m_begin;
   /// Iterator to final element in the array
-  iterator             m_end;
+  iterator m_end;
   /// Total number of elements in the array
-  size_type            m_size;
+  size_type m_size;
   /// Number of local elements in the array
-  size_type            m_lsize;
+  size_type m_lsize;
   /// Number allocated local elements in the array
-  size_type            m_lcapacity;
+  size_type m_lcapacity;
   /// Native pointer to first local element in the array
-  ElementType        * m_lbegin    = nullptr;
+  ElementType * m_lbegin;
   /// Native pointer past last local element in the array
-  ElementType        * m_lend      = nullptr;
+  ElementType * m_lend;
   /// DART id of the unit that created the array
-  team_unit_t          m_myid;
-  /// Whether or not the array was actually allocated
-  bool                 m_registered = false;
-
+  team_unit_t m_myid;
 public:
   /**
    * Default constructor, for delayed allocation.
@@ -770,22 +767,20 @@ public:
    * Sets the associated team to DART_TEAM_NULL for global array instances
    * that are declared before \c dash::Init().
    */
-  explicit
-  Array(
-    Team & team = dash::Team::Null())
-  : local(this),
-    async(this),
-    m_team(&team),
-    m_pattern(
-      SizeSpec_t(0),
-      distribution_spec(dash::BLOCKED),
-      team),
-    m_globmem(nullptr),
-    m_size(0),
-    m_lsize(0),
-    m_lcapacity(0),
-    m_lbegin(nullptr),
-    m_lend(nullptr)
+  explicit Array(Team &team = dash::Team::Null())
+    : local(this)
+    , async(this)
+    , m_team(&team)
+    , m_pattern(SizeSpec_t(0), distribution_spec(dash::BLOCKED), team)
+    , m_globmem(nullptr)
+    , m_begin()
+    , m_end()
+    , m_size(0)
+    , m_lsize(0)
+    , m_lcapacity(0)
+    , m_lbegin(nullptr)
+    , m_lend(nullptr)
+    , m_myid()
   {
     DASH_LOG_TRACE("Array() >", "finished default constructor");
   }
@@ -936,7 +931,6 @@ public:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
-    m_registered = true;
   }
 
   /**
@@ -993,7 +987,6 @@ public:
     if (this->m_globmem != nullptr) {
       m_team->register_deallocator(
         this, std::bind(&Array::deallocate, this));
-      m_registered = true;
     }
 
     return *this;
@@ -1394,20 +1387,19 @@ public:
     if (dash::is_initialized()) {
       barrier();
     }
-    // Remove this function from team deallocator list to avoid
-    // double-free:
-    if (m_registered) {
-      m_team->unregister_deallocator(
-        this, std::bind(&Array::deallocate, this));
-    }
+
+    m_team->unregister_deallocator(
+      this, std::bind(&Array::deallocate, this));
+
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
 
+    //Destroy all elements
+    destruct_at_end(m_lbegin);
+    //Reset global memory
+    m_globmem.reset();
 
-    if (m_globmem != nullptr) {
-      destruct_at_end(m_lbegin);
-      m_globmem.reset();
-    }
+    m_lsize = 0;
     m_size = 0;
     DASH_LOG_TRACE_VAR("Array.deallocate >", this);
   }
@@ -1455,7 +1447,6 @@ public:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
-    m_registered = true;
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
     // completed at all units:
@@ -1486,7 +1477,7 @@ private:
 
   void construct_at_end(size_type nl) noexcept
   {
-    if (m_lsize == 0) return;
+    if (nl == 0) return;
 
     auto local_alloc = this->globmem().get_allocator().get_local_allocator();
 
@@ -1554,7 +1545,6 @@ private:
     // instance that has been used to initialized it:
     m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
-    m_registered = true;
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
     // completed at all units:
