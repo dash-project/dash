@@ -34,7 +34,7 @@ struct allocation_rec {
   }
 
   // Copy Constructor
-  allocation_rec(const allocation_rec &x) noexcept = default;
+  allocation_rec(const allocation_rec &x) = default;
 
   // Move Assignment
   allocation_rec &operator=(allocation_rec &&x) noexcept
@@ -45,7 +45,7 @@ struct allocation_rec {
   }
 
   // Copy Assignment
-  allocation_rec &operator=(const allocation_rec &x) noexcept = default;
+  allocation_rec &operator=(const allocation_rec &x) = default;
 
   /**
    * The Memory Block is not freed
