@@ -673,11 +673,11 @@ public:
   typedef std::reverse_iterator<      iterator>                 reverse_iterator;
   typedef std::reverse_iterator<const_iterator>           const_reverse_iterator;
 
-  typedef          GlobRef<value_type>                             reference;
-  typedef typename GlobRef<value_type>::const_type           const_reference;
+  typedef          GlobRef<value_type>                                 reference;
+  typedef typename GlobRef<value_type>::const_type               const_reference;
 
-  typedef GlobIter<      value_type, PatternType, glob_mem_type>         pointer;
-  typedef GlobIter<const value_type, PatternType, glob_mem_type>   const_pointer;
+  typedef typename glob_mem_type::pointer                                pointer;
+  typedef typename glob_mem_type::const_pointer                    const_pointer;
 
   typedef ElementType *                                            local_pointer;
   typedef ElementType const *                                const_local_pointer;
@@ -924,9 +924,11 @@ public:
     m_lbegin(other.m_lbegin),
     m_lend(other.m_lend) {
 
-    other.m_globmem = nullptr;
-    other.m_lbegin  = nullptr;
-    other.m_lend    = nullptr;
+    other.m_globmem.reset();
+
+    other.m_lbegin = nullptr;
+    other.m_lend   = nullptr;
+
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
     m_team->register_deallocator(
@@ -981,6 +983,8 @@ public:
     other.m_globmem = nullptr;
     other.m_lbegin  = nullptr;
     other.m_lend    = nullptr;
+    other.m_lsize   = 0;
+    other.m_size    = 0;
 
     // Re-register deallocator of this array instance at the team
     // instance that has been used to initialized it:
@@ -1395,7 +1399,9 @@ public:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem.get());
 
     //Destroy all elements
-    destruct_at_end(m_lbegin);
+    if (m_globmem) {
+      destruct_at_end(m_lbegin);
+    }
     //Reset global memory
     m_globmem.reset();
 
@@ -1490,7 +1496,7 @@ private:
 
   void destruct_at_end(local_pointer new_last) noexcept
   {
-    if (0 == m_lsize) return;
+    if (0 == m_lsize || m_lend == nullptr) return;
 
     local_pointer soon_to_be_end = m_lend;
 

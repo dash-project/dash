@@ -21,7 +21,7 @@ struct node_t {
   int elim_step;
   int adj_sz;
   /// neighbors of this node
-  dash::GlobPtr<int> adj;
+  dash::GlobPtr<int, dash::GlobStaticMem<int, dash::HostSpace>> adj;
 };
 
 bool operator<(const node_t & x, const node_t & y)

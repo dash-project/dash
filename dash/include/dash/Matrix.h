@@ -202,8 +202,8 @@ public:
   typedef          GlobRef<value_type>                           reference;
   typedef typename GlobRef<value_type>::const_type         const_reference;
 
-  typedef GlobIter<      value_type, Pattern_t, GlobMem_t>         pointer;
-  typedef GlobIter<const value_type, Pattern_t, GlobMem_t>   const_pointer;
+  typedef typename GlobMem_t::pointer         pointer;
+  typedef typename GlobMem_t::const_pointer   const_pointer;
 
   typedef       ElementT *                                   local_pointer;
   typedef const ElementT *                             const_local_pointer;
@@ -273,7 +273,7 @@ private:
   /// Number allocated local elements in the array
   size_type                    _lcapacity;
   /// Global pointer to initial element in the array
-  pointer                      _begin;
+  iterator                      _begin;
   /// The matrix elements' distribution pattern
   Pattern_t                    _pattern;
   /// Global memory allocation and -access

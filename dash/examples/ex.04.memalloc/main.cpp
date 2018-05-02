@@ -1,6 +1,6 @@
 /**
  * \example ex.04.memalloc/main.cpp
- * Example demonstrating non-collective 
+ * Example demonstrating non-collective
  * global memory allocation.
  */
 
@@ -19,12 +19,14 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array< dash::GlobPtr<int> > arr(size);
+  using pointer_t = typename dash::Array<int>::pointer;
+
+  dash::Array< pointer_t > arr(size);
 
   arr[myid] = dash::memalloc<int>(arr.globmem(), SIZE);
 
   for (int i = 0; i < SIZE; i++) {
-    dash::GlobPtr<int> ptr = arr[myid];
+    pointer_t ptr = arr[myid];
     ptr[i] = myid;
   }
 
@@ -32,7 +34,7 @@ int main(int argc, char* argv[])
 
   cout << myid << ": ";
   for (int i = 0; i < SIZE; i++) {
-    dash::GlobPtr<int> ptr = arr[(myid+1) % size];
+    pointer_t ptr = arr[(myid+1) % size];
     cout << (int)ptr[i] << " ";
   }
   cout << endl;
