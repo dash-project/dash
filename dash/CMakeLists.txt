@@ -523,5 +523,8 @@ endif()
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
         DESTINATION include FILES_MATCHING PATTERN "*.h")
 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/cpp17
+        DESTINATION include FILES_MATCHING PATTERN "*.h")
+
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/libdash.h
         DESTINATION include)
