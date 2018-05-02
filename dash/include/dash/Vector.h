@@ -8,6 +8,7 @@
 #include <cmath>
 
 #include <dash/Types.h>
+#include <dash/dart/if/dart.h>
 #include "allocator/SymmetricAllocator.h"
 
 namespace dash {
@@ -20,7 +21,7 @@ namespace dash {
 * 	Copy constructible
 */
 
-template <class T, class allocator = dash::allocator::SymmetricAllocator<T>>
+template <class T, template<class> class allocator = dash::allocator::SymmetricAllocator>
 class Vector;
 
 template <class Vector>
@@ -109,23 +110,22 @@ bool operator!=(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector
 }
 
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 class Vector {
 public:
 
 	using self_type = Vector<T, allocator>;
 	using value_type = T;
 
-	using allocator_type = allocator;
+	using allocator_type = allocator<value_type>;
 	using size_type = dash::default_size_t;
 	using index_type = dash::default_index_t;
 // 	using difference_type = ptrdiff_t;
 	using reference = dash::GlobRef<T>;
 	using const_reference = const T&;
 
-	using glob_mem_type = dash::GlobStaticMem<T, allocator>;
-//  	using shared_head_mem_type = dash::GlobStaticMem<size_type, allocator>;
- 	using shared_head_mem_type = dash::GlobStaticMem<unsigned int, allocator>;
+	using glob_mem_type = dash::GlobStaticMem<T, allocator<T>>;
+ 	using shared_head_mem_type = dash::GlobStaticMem<dash::Atomic<size_type>, allocator<dash::Atomic<size_type>>>;
 
 	friend Vector_iterator<self_type>;
 	using iterator = Vector_iterator<self_type>;
@@ -159,9 +159,9 @@ public:
 	reference operator[](size_type pos);
 // 	const_reference operator[](size_type pos) const;
 //
-// 	reference front();
+ 	reference front();
 // 	const_reference front() const;
-// 	reference back();
+ 	reference back();
 // 	const_reference back() const;
 //
 //
@@ -180,14 +180,14 @@ public:
 //
 //
 // 	bool empty() const;
-	size_type lsize() const;
-	size_type size() const;
+	size_type lsize(); //const
+	size_type size(); //const
 // 	size_type max_size() const;
 //
  	void reserve(size_type cap_per_node);
 	size_type lcapacity() const;
 	size_type capacity() const;
-// // 	void shrink_to_fit();
+// 	void shrink_to_fit();
 // 	void clear();
 // 	void resize(size_type count, const_reference value = value_type());
 //
@@ -208,7 +208,7 @@ public:
 // 	iterator erase(const_iterator first, const_iterator last);
 //
 	void lpush_back(const T& value);
-// 	void push_back(const T& value);
+	void push_back(const T& value);
 // 	void push_back(const T&& value);
 //
 // 	template <class... Args>
@@ -228,7 +228,7 @@ private:
 }; // End of class Vector
 
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 Vector<T,allocator>::Vector(
 	size_type local_elements,
 	const_reference default_value,
@@ -240,83 +240,77 @@ Vector<T,allocator>::Vector(
 	_head(1, team),
 	_team(team)
 {
-// 	*(_head.lbegin()) = local_elements;
-// 	for(int i = 0; i < _team.size(); i++) {
-// 		if(_team.myid() == i) {
-// // 			_head.put_value(local_elements, i);
-	*(_head.lbegin()) = local_elements;
-// 		}
-	_head.barrier();
-// 	}
-// 	for(int i = 0; i < _team.size(); i++) {
-// 		if(_team.myid() == i) {
-// 			std::cout << "head " << _team.myid() << " { ";
-// 			for(auto it = _head.begin(); it != _head.begin()+_head.size(); it++) {
-// 				std::cout << static_cast<size_type>(*it) << " ";
-// 			}
-// 			std::cout << "}" << std::endl;
-// 		}
-// 	}
-// 	std::cout << "local_elements = " << static_cast<size_type>(_head.begin()[team.myid()]) << " == " << local_elements << "[" << _team.myid()  << "]\n";
-// 	std::cout << std::flush;
-// 	std::cout << "size = " << size() << "[" << _team.myid() << "]" << std::endl;
-
-
+	dash::atomic::store(*(_head.begin()+_team.myid()), local_elements);
+	_team.barrier();
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T,allocator>::reference Vector<T,allocator>::operator[](size_type pos) {
 	return begin()[pos];
 }
 
+template <class T, template<class> class allocator>
+typename Vector<T,allocator>::reference Vector<T,allocator>::front() {
+	return *begin();
+}
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
+typename Vector<T,allocator>::reference Vector<T,allocator>::back() {
+	return *(begin()+(size()-1));
+}
+
+
+template <class T, template<class> class allocator>
 typename Vector<T,allocator>::iterator Vector<T,allocator>::begin() {
 	return iterator(*this, 0);
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T,allocator>::iterator Vector<T,allocator>::end() {
 	return  iterator(*this, size());
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T,allocator>::local_pointer Vector<T,allocator>::lbegin() {
 	return _data.lbegin();
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T,allocator>::local_pointer Vector<T,allocator>::lend() {
 	return _data.lend();
 
 }
 
-template <class T, class allocator>
-typename Vector<T, allocator>::size_type Vector<T, allocator>::lsize() const {
-	return *(_head.lbegin());
+template <class T, template<class> class allocator>
+typename Vector<T, allocator>::size_type Vector<T, allocator>::lsize() {
+	return dash::atomic::load(*(_head.begin()+_team.myid()));
 }
 
-template <class T, class allocator>
-typename Vector<T, allocator>::size_type Vector<T, allocator>::size() const {
-	return std::accumulate(_head.begin(), _head.begin() + _head.size(), 0);
+template <class T, template<class> class allocator>
+typename Vector<T, allocator>::size_type Vector<T, allocator>::size() {
+	size_t size = 0;
+	for(auto s =_head.begin(); s != _head.begin()+_head.size(); s++) {
+		size += static_cast<size_type>(*s);
+	}
+	return size;
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 void Vector<T, allocator>::barrier() {
 	_team.barrier();
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T, allocator>::size_type Vector<T, allocator>::lcapacity() const {
 	return _data.size() / _team.size();
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 typename Vector<T, allocator>::size_type Vector<T, allocator>::capacity() const {
 	return _data.size();
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 void Vector<T, allocator>::reserve(size_type new_cap) {
 
 	const auto old_cap = capacity() / _team.size();
@@ -332,12 +326,23 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 
 }
 
-template <class T, class allocator>
+template <class T, template<class> class allocator>
 void Vector<T, allocator>::lpush_back(const T& value) {
 	if(lsize() < lcapacity()) {
 		*(_data.lbegin() + lsize()) = value;
-		*(_head.lbegin()) = lsize()+1;
+		dash::atomic::store(*(_head.begin()+_team.myid()), lsize()+1);
 	} else {
+		throw(std::runtime_error("not implemented"));
+	}
+}
+
+template <class T, template<class> class allocator>
+void Vector<T, allocator>::push_back(const T& value) {
+	const auto lastSize = dash::atomic::fetch_add(*(_head.begin()+(_head.size()-1)), static_cast<size_type>(1));
+	if(lastSize < lcapacity()) {
+		*(_data.begin() + lcapacity()*(_team.size()-1) + lastSize) = value;
+	} else {
+		dash::atomic::sub(*(_head.begin()+(_head.size()-1)), static_cast<size_type>(1));
 		throw(std::runtime_error("not implemented"));
 	}
 }

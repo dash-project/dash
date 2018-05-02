@@ -48,5 +48,24 @@ int main(int argc, char* argv[])
 	vec.lpush_back(1337);
 	print_vector(vec, size -1);
 
+	dash::Vector<int> vec2;
+	vec2.reserve(team.size());
+	vec2.push_back(myid);
+	print_vector(vec2, 0);
+
+	team.barrier();
+	dash::Vector<char> vec3;
+	vec3.reserve(2);
+	if(myid == 0) {
+		vec3.push_back('f');
+		vec3.push_back('b');
+	}
+	if(myid == size-1) {
+		std::cout << "front: " << static_cast<char>(vec3.front()) << std::endl;
+		std::cout << "back: " << static_cast<char>(vec3.back()) << std::endl;
+
+	}
+	team.barrier();
+
   dash::finalize();
 }
