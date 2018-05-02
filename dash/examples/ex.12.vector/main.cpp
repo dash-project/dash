@@ -55,11 +55,12 @@ int main(int argc, char* argv[])
 
 	team.barrier();
 	dash::Vector<char> vec3;
-	vec3.reserve(2);
+	vec3.reserve(4);
 	if(myid == 0) {
 		vec3.push_back('f');
 		vec3.push_back('b');
 	}
+	team.barrier();
 	if(myid == size-1) {
 		std::cout << "front: " << static_cast<char>(vec3.front()) << std::endl;
 		std::cout << "back: " << static_cast<char>(vec3.back()) << std::endl;

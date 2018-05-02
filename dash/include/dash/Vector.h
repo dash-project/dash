@@ -251,7 +251,7 @@ typename Vector<T,allocator>::reference Vector<T,allocator>::operator[](size_typ
 
 template <class T, template<class> class allocator>
 typename Vector<T,allocator>::reference Vector<T,allocator>::front() {
-	return *begin();
+	return *(begin());
 }
 
 template <class T, template<class> class allocator>
