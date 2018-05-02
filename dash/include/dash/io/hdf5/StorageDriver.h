@@ -760,10 +760,16 @@ class StoreHDF {
                                            const hid_t& h5dset,
                                            const hid_t& internal_type);
 
-  template <typename ElementT, typename PatternT, dim_t NDim, dim_t NViewDim>
+  template <
+      typename ElementT,
+      typename PatternT,
+      dim_t NDim,
+      dim_t NViewDim,
+      typename LocalMemT>
   static void _write_dataset_impl_nd_block(
-      dash::MatrixRef<ElementT, NDim, NViewDim, PatternT>& container,
-      const hid_t& h5dset, const hid_t& internal_type);
+      dash::MatrixRef<ElementT, NDim, NViewDim, PatternT, LocalMemT>& container,
+      const hid_t& h5dset,
+      const hid_t& internal_type);
 
   // --------------------------------------------------------------------------
   // --------------------- READ specializations -------------------------------
