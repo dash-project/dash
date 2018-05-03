@@ -89,10 +89,10 @@ void dash::util::TraceStore::write(std::ostream & out)
       auto   end      = state_timespan.end;
       auto   state    = state_timespan.state;
       os << "-- [TRACE] "
-         << std::setw(15) << std::fixed << context  << ","
-         << std::setw(5)  << std::fixed << unit     << ","
-         << std::setw(15) << std::fixed << start    << ","
-         << std::setw(15) << std::fixed << end      << ","
+         << std::setw(15) << std::fixed << context  << ", "
+         << std::setw(5)  << std::fixed << unit     << ", "
+         << std::setw(15) << std::fixed << start    << ", "
+         << std::setw(15) << std::fixed << end      << ", "
          << std::setw(12) << std::fixed << state
          << std::endl;
     }
