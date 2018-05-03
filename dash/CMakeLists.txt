@@ -491,10 +491,11 @@ if (BUILD_TESTS)
       if (BUILD_COVERAGE_TESTS)
         # exclude stdlib
         set(COVERAGE_EXCLUDES '/usr/*')
+        separate_arguments(EXEC_FLAGS UNIX_COMMAND $ENV{MPI_EXEC_FLAGS})
         if (${dart_variant} STREQUAL "mpi")
           setup_target_for_coverage_cobertura(
             NAME coverage
-            EXECUTABLE mpirun -n 4 $ENV{MPI_EXEC_FLAGS} ${CMAKE_BINARY_DIR}/dash/${DASH_TEST}
+            EXECUTABLE mpirun -n 4 ${EXEC_FLAGS} ${CMAKE_BINARY_DIR}/dash/${DASH_TEST}
             DEPENDENCIES coverage)
         else()
           setup_target_for_coverage_cobertura(

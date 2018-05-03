@@ -89,6 +89,22 @@ jobs:
           path: /tmp/build-logs
       - store_test_results:
           path: /tmp/build-tests
+  coverage:
+    docker:
+      - image: dashproject/ci:openmpi2
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
+      CC: gcc
+      CXX: g++
+    steps:
+      - run: apt update && apt install lcov gcovr -y
+      - checkout
+      - run: bash build.cov.sh -f
+      - run: cd build.cov && make coverage | grep -v "LOG"
+      - run: bash <(curl -s https://codecov.io/bash)
+      - store_artifacts:
+          path: build.cov/dash/coverage.xml
 
 workflows:
   version: 2
@@ -98,4 +114,5 @@ workflows:
       - gnu_openmpi2
       - gnu_openmpi3
       - clang_mpich
+      - coverage
 
