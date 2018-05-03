@@ -157,8 +157,8 @@ public:
   }
 };
 
-#define ASSERT_EQ_U(_e, _a)                     \
-  do {                                          \
+#define ASSERT_EQ_U(_e, _a)                                                \
+  do {                                                                     \
     ::testing::internal::EQAsserter<decltype(_e), decltype(_a)>{}(_e, _a); \
   } while (0)
 
