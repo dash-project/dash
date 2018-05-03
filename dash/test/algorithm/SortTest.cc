@@ -4,11 +4,12 @@
 #include <dash/Matrix.h>
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Generate.h>
+#include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Sort.h>
 
 #include <algorithm>
-#include <random>
 #include <cmath>
+#include <random>
 
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end);
@@ -264,54 +265,54 @@ TEST_F(SortTest, ArrayOfPoints)
   }
 }
 
-
-template <
-    class ValueType,
-    typename std::enable_if<std::is_floating_point<ValueType>::value>::type* =
-        nullptr>
-static void expect_equals(ValueType const e, ValueType const a)
-{
-  if (std::is_same<decltype(e), double>::value) {
-    EXPECT_DOUBLE_EQ(e, a) << "Unit " << dash::myid().id;
-  }
-  else if (std::is_same<decltype(e), float>::value) {
-    EXPECT_FLOAT_EQ(e, a) << "Unit " << dash::myid().id;
-  }
-}
-
-template <
-    class ValueType,
-    typename std::enable_if<
-        !std::is_floating_point<ValueType>::value>::type* = nullptr>
-static void expect_equals(ValueType const e, ValueType const a)
-{
-  EXPECT_EQ_U(e, a);
-}
-
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end)
 {
   using Element_t    = typename decltype(begin)::value_type;
-  Element_t true_sum = 0, actual_sum = 0;
+  Element_t true_sum = 0, actual_sum = 0, mysum;
 
   begin.pattern().team().barrier();
 
-  if (dash::myid() == 0) {
-    for (auto it = begin; it < end; ++it) {
-      true_sum += static_cast<Element_t>(*it);
-    }
-  }
+  auto const l_range = dash::local_index_range(begin, end);
+
+  auto l_mem_begin = begin.globmem().lbegin();
+
+  auto const n_l_elem = l_range.end - l_range.begin;
+
+  auto const lbegin = l_mem_begin + l_range.begin;
+  auto const lend   = l_mem_begin + l_range.end;
+
+  mysum = std::accumulate(lbegin, lend, 0);
+
+  dart_reduce(
+      &mysum,
+      &true_sum,
+      1,
+      dash::dart_datatype<Element_t>::value,
+      DART_OP_SUM,
+      0,
+      begin.pattern().team().dart_id());
 
   begin.pattern().team().barrier();
 
   dash::sort(begin, end);
 
-  if (dash::myid() == 0) {
-    for (auto it = begin; it < end; ++it) {
-      actual_sum += static_cast<Element_t>(*it);
-    }
+  mysum = std::accumulate(lbegin, lend, 0);
 
-    expect_equals(true_sum, actual_sum);
+  dart_reduce(
+      &mysum,
+      &actual_sum,
+      1,
+      dash::dart_datatype<Element_t>::value,
+      DART_OP_SUM,
+      0,
+      begin.pattern().team().dart_id());
+
+  begin.pattern().team().barrier();
+
+  if (dash::myid() == 0) {
+
+    EXPECT_EQ_U(true_sum, actual_sum);
 
     for (auto it = begin + 1; it < end; ++it) {
       auto const a = static_cast<const Element_t>(*(it - 1));

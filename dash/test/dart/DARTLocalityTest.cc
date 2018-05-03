@@ -137,7 +137,7 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
     DART_ERR_NOTFOUND,
     dart_domain_find(loc_team_all_copy, ul->domain_tag, &no_domain));
   EXPECT_EQ_U(
-    NULL, no_domain);
+    nullptr, no_domain);
 
   dart_domain_destroy(loc_team_all_copy);
 }
