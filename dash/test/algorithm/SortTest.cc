@@ -293,8 +293,6 @@ static void perform_test(GlobIter begin, GlobIter end)
       0,
       begin.pattern().team().dart_id());
 
-  begin.pattern().team().barrier();
-
   dash::sort(begin, end);
 
   mysum = std::accumulate(lbegin, lend, 0);
@@ -307,8 +305,6 @@ static void perform_test(GlobIter begin, GlobIter end)
       DART_OP_SUM,
       0,
       begin.pattern().team().dart_id());
-
-  begin.pattern().team().barrier();
 
   if (dash::myid() == 0) {
 
@@ -341,10 +337,6 @@ TEST_F(SortTest, PlausibilityWithStdSort)
 
   value_t mysum, realsum, truesum;
 
-  static_assert(
-      std::is_same<int64_t, long>::value,
-      "Type Check to ensure the correct MPI Datatype");
-
   rand_range(array.begin(), array.end());
 
   array.barrier();
@@ -356,7 +348,13 @@ TEST_F(SortTest, PlausibilityWithStdSort)
       &(array.local[num_local_elem]),
       static_cast<value_t>(0));
 
-  MPI_Allreduce(&mysum, &truesum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+  dart_allreduce(
+      &mysum,
+      &truesum,
+      1,
+      dash::dart_datatype<value_t>::value,
+      DART_OP_SUM,
+      array.team().dart_id());
 
   dash::sort(array.begin(), array.end());
 
@@ -365,7 +363,13 @@ TEST_F(SortTest, PlausibilityWithStdSort)
       &(array.local[num_local_elem]),
       static_cast<value_t>(0));
 
-  MPI_Allreduce(&mysum, &realsum, 1, MPI_LONG, MPI_SUM, MPI_COMM_WORLD);
+  dart_allreduce(
+      &mysum,
+      &realsum,
+      1,
+      dash::dart_datatype<value_t>::value,
+      DART_OP_SUM,
+      array.team().dart_id());
 
   auto const diff = realsum - truesum;
 
