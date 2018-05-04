@@ -12,15 +12,13 @@ RUN           apt-get update -y    \
                   uuid-runtime     \
                   libhwloc-plugins \
                   libhwloc-dev     \
-                  clang-3.8
+                  clang-5.0
 
 WORKDIR       /tmp
 ENV           CC=gcc
 ENV           CXX=g++
 
-# Compiler error when compiling with -pedantic for papi >= 5.5
- ADD         http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
-#ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.3.tar.gz papi.tgz
+ADD         http://icl.utk.edu/projects/papi/downloads/papi-5.6.0.tar.gz papi.tgz
 RUN           tar -xf papi.tgz
 RUN           cd papi*/src/                     \
               && ./configure --prefix=/opt/papi \
@@ -29,7 +27,7 @@ RUN           cd papi*/src/                     \
 ENV           PAPI_BASE=/opt/papi
 
 # MPICH 3.2
-ADD           http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz mpich.tgz
+ADD           http://www.mpich.org/static/downloads/3.2.1/mpich-3.2.1.tar.gz mpich.tgz
 RUN           tar -xf mpich.tgz
 RUN           cd mpich*                           \
            && ./configure --prefix=/opt/mpich     \
@@ -40,7 +38,7 @@ RUN           cd mpich*                           \
 ENV           PATH=${PATH}:/opt/mpich/bin
 
 # PHDF5 1.10
-ADD           https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.gz phdf5.tgz
+ADD           https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz phdf5.tgz
 RUN           tar -xf phdf5.tgz
 RUN           cd hdf5*                        \
            && CC=/opt/mpich/bin/mpicc         \
