@@ -61,15 +61,13 @@ if (ENABLE_DEV_COMPILER_WARNINGS
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
-  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND OPENMP_FOUND)
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   endif()
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
-  set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -84,11 +82,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
-
-  if (OPENMP_FOUND)
-    set (DASH_DEVELOPER_CCXX_FLAGS
-         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
-  endif()
 
   # C++-only warning flags
 
