@@ -4,7 +4,7 @@ jobs:
     docker:
       - image: dashproject/ci:mpich
     environment:
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -27,7 +27,7 @@ jobs:
       - image: dashproject/ci:openmpi2
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -50,7 +50,7 @@ jobs:
       - image: dashproject/ci:openmpi3
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -72,7 +72,7 @@ jobs:
     docker:
       - image: dashproject/ci:mpich
     environment:
-      GTEST_FILTER: "-TeamLocalityTest*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
@@ -89,11 +89,31 @@ jobs:
           path: /tmp/build-logs
       - store_test_results:
           path: /tmp/build-tests
+  coverage:
+    docker:
+      - image: dashproject/ci:openmpi2
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
+      GTEST_OUTPUT: "xml:test-results.xml"
+      CC: gcc
+      CXX: g++
+    steps:
+      - run: apt update && apt install lcov gcovr curl -y
+      - checkout
+      - run: bash build.cov.sh -f
+      - run: cd build.cov && make coverage | grep -v "LOG"
+      - run: bash <(curl -s https://codecov.io/bash)
+      - store_test_results:
+          path: build.cov/dash/test-results.xml
+      - store_artifacts:
+          path: build.cov/dash/coverage.xml
 
 workflows:
   version: 2
   build_and_test:
     jobs:
+      - coverage
       - gnu_mpich
       - gnu_openmpi2
       - gnu_openmpi3
