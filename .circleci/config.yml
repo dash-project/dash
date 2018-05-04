@@ -94,7 +94,7 @@ jobs:
       - image: dashproject/ci:openmpi2
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal"
       GTEST_OUTPUT: "xml:test-results.xml"
       CC: gcc
       CXX: g++
