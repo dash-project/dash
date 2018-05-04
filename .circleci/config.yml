@@ -95,6 +95,7 @@ jobs:
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:HaloTest.HaloMatrixWrapper*:ThreadsafetyTest.ConcurrentAlgorithm"
+      GTEST_OUTPUT: "xml:test-results.xml"
       CC: gcc
       CXX: g++
     steps:
@@ -103,6 +104,8 @@ jobs:
       - run: bash build.cov.sh -f
       - run: cd build.cov && make coverage | grep -v "LOG"
       - run: bash <(curl -s https://codecov.io/bash)
+      - store_test_results:
+          path: build.cov/dash/test-results.xml
       - store_artifacts:
           path: build.cov/dash/coverage.xml
 
