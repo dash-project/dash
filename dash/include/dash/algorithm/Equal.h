@@ -36,6 +36,8 @@ namespace internal {
     auto offset      = git_beg_idx - first_1.gpos();
     auto glfirst_1   = first_1+offset;  // globIt to first pos
 
+    // TODO: This should work for one-local-block ranges, but does not
+    // KNOWN ISSUE
     return std::equal(glfirst_1, glfirst_1+dist, first_2+offset);
   }
 }
@@ -114,11 +116,15 @@ bool equal(
   auto l_last_1         = index_range_in.end;
   auto dist             = std::distance(l_first_1, l_last_1);
   auto index_range_out  = dash::local_range(first_2, first_2 + dist);
+  auto common_dist      = std::min(std::distance(index_range_out.begin, index_range_out.end),dist);
   char l_result         = 1;
 
   // check if local ranges are corresponding
   if(std::distance(index_range_out.begin, index_range_out.end) == dist){
     l_result = ::dash::internal::equal_loc_impl(l_first_1, l_last_1, first_2.local());
+  } else if(common_dist > 0) {
+    l_result = ::dash::internal::equal_overlapping_impl(
+        first_1, last_1, first_2);
   }
 
   char r_result      = 0;
