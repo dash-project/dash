@@ -76,8 +76,8 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
-      CC: clang-3.8
-      CXX: clang++-3.8
+      CC: clang-5.0
+      CXX: clang++-5.0
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
