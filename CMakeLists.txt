@@ -36,6 +36,8 @@ endif()
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(INSTALL_TESTS
+       "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
         Implies BUILD_TESTS. Requires GCC." off)
@@ -106,6 +108,10 @@ option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+  # This has to be done globally as otherwise linking might fail
+  append_coverage_compiler_flags()
+
   set(BUILD_TESTS TRUE CACHE BOOLEAN
       "Whether tests are built with code coverage (lcov) support.
        Implies BUILD_TESTS. Requires GCC." on)
@@ -275,7 +281,7 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
-message(INFO "MPI dynamic windows:      (ENABLE_SHARED_WINDOWS)          "
+message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "
         ${ENABLE_DYNAMIC_WINDOWS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})
@@ -305,7 +311,7 @@ message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
-if (MPI_FOUND)
+if (DEFINED MPI_IMPL_ID)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
 endif()
 

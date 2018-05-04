@@ -4,6 +4,7 @@
  */
 #include "../bench.h"
 #include <libdash.h>
+#include <dash/Coarray.h>
 
 #include <array>
 #include <vector>
@@ -33,6 +34,8 @@ typedef dash::Array<
   PatternType
 > ArrayType;
 
+typedef dash::Coarray<TYPE[]> CoarrType;
+
 template<typename Iter>
 void init_values(Iter begin, Iter end, unsigned);
 void init_values(ArrayType & a, unsigned);
@@ -46,6 +49,9 @@ double test_dash_local_global_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_subscript(ArrayType & a, unsigned, unsigned);
 double test_dash_local_pointer(ArrayType & a, unsigned, unsigned);
+
+double test_dash_coarr_l_subscript(CoarrType & a, unsigned, unsigned);
+
 double test_stl_vector(unsigned, unsigned);
 double test_stl_deque(unsigned, unsigned);
 double test_raw_array(unsigned, unsigned);
@@ -71,12 +77,12 @@ int main(int argc, char * argv[])
 {
   dash::init(&argc, &argv);
 
-  Timer::Calibrate(0);
+  dash::util::BenchmarkParams bench_params("bench.01.igups");
+  bench_params.set_output_width(72);
+  bench_params.print_header();
+  bench_params.print_pinning();
 
-  if (dash::myid() == 0) {
-    std::cout << "pattern type: " << PatternType::PatternName
-              << std::endl;
-  }
+  Timer::Calibrate(0);
 
   std::deque<std::pair<int, int>> tests;
 
@@ -91,6 +97,8 @@ int main(int argc, char * argv[])
   tests.push_back({16 * 4096  ,    100});
   tests.push_back({64 * 4096  ,     50});
   tests.push_back({128 * 4096 ,     20});
+  tests.push_back({256 * 4096 ,     10});
+  tests.push_back({512 * 4096 ,     10});
 
   for (auto test : tests) {
     perform_test(test.first, test.second);
@@ -120,6 +128,7 @@ void perform_test(
       cout << "," << std::setw(11) << "stl vector";
       cout << "," << std::setw(11) << "stl deque";
       cout << "," << std::setw(11) << "raw array";
+      cout << "," << std::setw(11) << "coarr l[]";
       cout << endl;
     }
     return;
@@ -130,21 +139,54 @@ void perform_test(
     local_sizes.push_back(ELEM_PER_UNIT);
   }
 
+  double t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
+
   PatternType pat(local_sizes);
-  ArrayType arr(
-    pat
-  );
 
-  double t0 = test_dash_pattern(arr, ELEM_PER_UNIT, REPEAT);
-  double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t2 = test_dash_local_global_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t3 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t4 = test_dash_local_subscript(arr, ELEM_PER_UNIT, REPEAT);
-  double t5 = test_dash_local_pointer(arr, ELEM_PER_UNIT, REPEAT);
-  double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
-  double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
-  double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
-
+  {
+    ArrayType arr0(pat);
+    test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
+    t0 = test_dash_pattern(arr0, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr1(pat);
+    test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
+    t1 = test_dash_global_iter(arr1, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr2(pat);
+    test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
+    t2 = test_dash_local_global_iter(arr2, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr3(pat);
+    test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
+    t3 = test_dash_local_iter(arr3, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr4(pat);
+    test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
+    t4 = test_dash_local_subscript(arr4, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    ArrayType arr5(pat);
+    test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
+    t5 = test_dash_local_pointer(arr5, ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
+  }
+  {
+    CoarrType coarr(ELEM_PER_UNIT);
+    test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
+    t9 = test_dash_coarr_l_subscript(coarr, ELEM_PER_UNIT, REPEAT);
+  }
   dash::barrier();
 
   if (dash::myid() == 0) {
@@ -157,6 +199,7 @@ void perform_test(
     double gups6 = gups(num_units, t6, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(num_units, t7, ELEM_PER_UNIT, REPEAT);
     double gups8 = gups(num_units, t8, ELEM_PER_UNIT, REPEAT);
+    double gups9 = gups(num_units, t9, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10) << ELEM_PER_UNIT;
     cout << "," << std::setw(10) << REPEAT;
@@ -169,6 +212,7 @@ void perform_test(
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups6;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups7;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups8;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups9;
     cout << endl;
   }
 }
@@ -302,7 +346,7 @@ double test_dash_local_global_iter(
   // Global offset of first local element:
   auto l_begin_gidx = a.pattern().lbegin();
 
-  dash::GlobIter<value_t, pattern_t> l_git  = a.begin() + l_begin_gidx;
+  dash::GlobIter<value_t, pattern_t>       l_git  = a.begin() + l_begin_gidx;
   const dash::GlobIter<value_t, pattern_t> l_gend = l_git + ELEM_PER_UNIT;
 
   // Iterate over local elements but use global iterator to dereference
@@ -331,7 +375,7 @@ double test_dash_local_iter(
   init_values(a, ELEM_PER_UNIT);
 
   Timer timer;
-  auto lend = a.lend();
+  const auto & lend = a.lend();
   for (unsigned i = 0; i < REPEAT; ++i) {
     for (auto it = a.lbegin(); it != lend; ++it) {
       ++(*it);
@@ -377,14 +421,34 @@ double test_dash_local_pointer(
   auto lend   = a.lend();
 
   for (unsigned i = 0; i < REPEAT; ++i) {
-    for (auto j = lbegin; j != lend; ++j) {
-      ++(*j);
+    for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
+      ++lbegin[j];
     }
   }
   auto time_elapsed = timer.Elapsed();
 
   validate(
     a, ELEM_PER_UNIT, REPEAT);
+  return time_elapsed;
+}
+
+double test_dash_coarr_l_subscript(
+  CoarrType & a,
+  unsigned ELEM_PER_UNIT,
+  unsigned REPEAT)
+{
+  init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
+
+  Timer timer;
+  for (unsigned i = 0; i < REPEAT; ++i) {
+    for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
+      ++a[j]; // local coarr access
+    }
+  }
+  auto time_elapsed = timer.Elapsed();
+
+  validate(
+    a.lbegin(), a.lend(), ELEM_PER_UNIT, REPEAT);
   return time_elapsed;
 }
 
@@ -398,7 +462,7 @@ double test_stl_vector(
   Timer timer;
   for (unsigned i = 0; i < REPEAT; ++i) {
     for (unsigned j = 0; j < ELEM_PER_UNIT; ++j) {
-      arr[j]++;
+      ++arr[j];
     }
   }
   auto time_elapsed = timer.Elapsed();

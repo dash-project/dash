@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_config.h>
@@ -90,6 +91,15 @@ const char * dart_base_logging_basename(const char *path) {
     return base ? base+1 : path;
 }
 
+static inline
+double dart_base_logging_timestamp_ms()
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ((ts.tv_sec * 1E3)
+            + (ts.tv_nsec / 1E6));
+}
+
 void
 dart__base__log_message(
   const char *filename,
@@ -107,7 +117,6 @@ dart__base__log_message(
   va_start(argp, format);
   const int maxlen = MAX_MESSAGE_LENGTH;
   char      msg_buf[maxlen];
-  pid_t     pid = getpid();
   vsnprintf(msg_buf, maxlen, format, argp);
 //  if (sn_ret < 0 || sn_ret >= maxlen) {
 //    break;
@@ -117,10 +126,10 @@ dart__base__log_message(
   // avoid inter-thread log interference
   dart__base__mutex_lock(&logmutex);
   fprintf(DART_LOG_OUTPUT_TARGET,
-    "[ %*d %.5s ] [ %*d ] %-*s:%-*d %.3s DART: %s\n",
+    "[ %*d %.5s ] [ %.3f ] %-*s:%-*d %.3s DART: %s\n",
     UNIT_WIDTH, unit_id.id,
     loglevel_names[level],
-    PROC_WIDTH, pid,
+    dart_base_logging_timestamp_ms(),
     FILE_WIDTH, dart_base_logging_basename(filename),
     LINE_WIDTH, line,
     (level < DART_LOGLEVEL_INFO) ? "!!!" : "",

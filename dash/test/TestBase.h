@@ -120,21 +120,47 @@ struct float_type_helper<float, float> {
   using type = float;
 };
 
-#define ASSERT_EQ_U(_e,_a)                                          \
-  do {                                                              \
-    if (std::is_floating_point<decltype(_e)>::value                 \
-     || std::is_floating_point<decltype(_a)>::value) {              \
-      using value_type =                                            \
-              typename ::testing::internal::float_type_helper<      \
-                                decltype(_e), decltype(_a)>::type;  \
-      EXPECT_PRED_FORMAT2(                                          \
-        ::testing::internal::assert_float_eq<value_type>,(_e),(_a)) \
-            << "Unit " << dash::myid().id;                          \
-    }                                                               \
-    else {                                                          \
-      EXPECT_EQ(_e,_a)        << "Unit " << dash::myid().id;        \
-    }                                                               \
-  } while(0)
+template <
+    class T,
+    class S,
+    bool isAnyFP =
+        std::is_floating_point<T>::value || std::is_floating_point<S>::value>
+class EQAsserter {
+  using lhs_t = typename std::remove_cv<T>::type;
+  using rhs_t = typename std::remove_cv<S>::type;
+
+public:
+  void operator()(lhs_t const & _e, rhs_t const & _a)
+  {
+    EXPECT_EQ(_e, _a) << "Unit " << dash::myid().id;
+  }
+};
+
+template <class T, class S>
+class EQAsserter<T, S, true> {
+  using value_t = typename ::testing::internal::float_type_helper<
+      typename std::remove_cv<T>::type,
+      typename std::remove_cv<S>::type>::type;
+
+  using lhs_t = typename std::remove_cv<T>::type;
+  using rhs_t = typename std::remove_cv<S>::type;
+
+public:
+  void operator()(lhs_t const& _e, rhs_t const& _a)
+  {
+    if (std::is_same<value_t, double>::value) {
+      EXPECT_DOUBLE_EQ(_e, _a) << "Unit " << dash::myid().id;
+    }
+    else if (std::is_same<value_t, float>::value) {
+      EXPECT_FLOAT_EQ(_e, _a) << "Unit " << dash::myid().id;
+    }
+  }
+};
+
+#define ASSERT_EQ_U(_e, _a)                                                \
+  do {                                                                     \
+    ::testing::internal::EQAsserter<decltype(_e), decltype(_a)>{}(_e, _a); \
+  } while (0)
 
 #define EXPECT_EQ_U(e,a) ASSERT_EQ_U(e,a)
 
@@ -162,8 +188,7 @@ extern void ColoredPrintf(
   const char * filebase = strrchr(filepath, '/'); \
   const char * filename = (filebase != 0) ? filebase + 1 : filepath; \
   sprintf(buffer, __VA_ARGS__); \
-  testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_YELLOW, \
+  printf( \
     "[= %*d LOG =] %*s :%*d | %s \n", \
     2, dash::myid().id, 24, filename, 4, __LINE__, \
     buffer); \
@@ -250,7 +275,7 @@ class TestBase : public ::testing::Test {
     LOG_MESSAGE("===> Running test case %s.%s ...",
                 test_info->test_case_name(), test_info->name());
     dash::init(&TESTENV::argc, &TESTENV::argv);
-    
+
     LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
     dash::barrier();
   }

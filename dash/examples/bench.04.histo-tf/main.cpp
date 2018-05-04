@@ -19,10 +19,10 @@ typedef dash::util::Timer<
 //   https://www.nas.nasa.gov/assets/pdf/techreports/1994/rnr-94-007.pdf
 
 // NOTE:
-//   In the NBP reference implementation, keys are first sorted to buckets 
+//   In the NBP reference implementation, keys are first sorted to buckets
 //   to determine their coarse distribution.
 //   For example, for key range (0, 2^23) and buckset size s_b = 2^10, a
-//   histogram with n_b = 2^(23-10) = 2^13 bins of size 2^10 = 1024 is 
+//   histogram with n_b = 2^(23-10) = 2^13 bins of size 2^10 = 1024 is
 //   created so that bucket[b] holds the number of keys with values
 //   between (b * s_b) and ((b+1) * s_b).
 
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 
   if (dash::myid() != 0) {
     // Add local histogram values to result histogram at unit 0:
-    dash::transform<int>(key_histo.lbegin(), // A begin
+    dash::transform(key_histo.lbegin(), // A begin
                          key_histo.lend(),   // A end
                          key_histo.begin(),  // B
                          key_histo.begin(),  // C = plus(A,B)
