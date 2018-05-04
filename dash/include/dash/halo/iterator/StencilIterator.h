@@ -23,7 +23,7 @@ enum class StencilViewScope : std::uint8_t {
   ALL
 };
 
-static std::ostream& operator<<(std::ostream&           os,
+inline std::ostream& operator<<(std::ostream&           os,
                                 const StencilViewScope& scope) {
   if(scope == StencilViewScope::INNER)
     os << "INNER";
