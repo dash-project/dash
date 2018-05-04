@@ -91,10 +91,10 @@ jobs:
           path: /tmp/build-tests
   coverage:
     docker:
-      - image: dashproject/ci:openmpi2
+      - image: dashproject/ci:openmpi3
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:GlobRefTest.Member"
       GTEST_OUTPUT: "xml:test-results.xml"
       CC: gcc
       CXX: g++
