@@ -160,6 +160,16 @@ public:
   );
 
   /**
+   * Constructor, creates a local view reference to a Matrix view at the
+   * specified global coordinates.
+   */
+  template <class T_>
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+    Matrix<T_, NumDimensions, index_type, PatternT> * mat,
+    std::array<index_type, NumDimensions> global_coords
+  );
+
+  /**
    * View at local block at given local block coordinates.
    */
   LocalMatrixRef<T, NumDimensions, CUR, PatternT> block(
