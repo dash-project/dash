@@ -89,21 +89,6 @@ public:
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
-//#if 0
-  template<typename _T,
-           int = internal::enable_implicit_copy_ctor<_T, value_type>::value>
-  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
-  : GlobAsyncRef(gref.dart_gptr())
-  { }
-
-  template<typename _T,
-           long = internal::enable_explicit_copy_ctor<_T, value_type>::value>
-  explicit
-  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
-  : GlobAsyncRef(gref.dart_gptr())
-  { }
-//#endif
-
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
