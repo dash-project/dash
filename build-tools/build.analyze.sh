@@ -1,28 +1,22 @@
 #!/bin/sh
 
-BUILD_DIR=./build.cov
+if ! [ -z ${SOURCING+x} ]; then
 
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
+# This script runs scan-build to perform a static code analysis
+# https://clang-analyzer.llvm.org/scan-build.html
+#
+# The actual compilers have to be set in the CCC prefix env. variables. e.g:
+# export CCC_CC=clang-3.8
+# export CCC_CXX=clang++3.8
 
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To run code coverage measurement, run make coverage in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
+## !! NOTE !!
+#
+#  See documentation of scan-build for details on recommended build
+#  configuration:
+#
+#  https://clang-analyzer.llvm.org/scan-build.html#recommended_debug
+#
+##
 
 # To specify a build configuration for a specific system, use:
 #
@@ -51,22 +45,47 @@ fi
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# Configure with default release build settings:
-mkdir -p $BUILD_DIR
-rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
+
+BUILD_DIR=build.analyze
+REPORT_DIR=report            # relative to BUILD_DIR
+BUILD_WRAPPER="${SCANBUILD_BIN}";
+
+# try to find build wrapper
+if [ "$BUILD_WRAPPER" = "" ]; then
+  BUILD_WRAPPER="scan-build"
+fi
+if [ "$SCANBUILD_OPTS" = "" ]; then
+  SCANBUILD_OPTS="-analyze-headers -plist-html"
+fi
+SCANBUILD_OPTS="-o $REPORT_DIR ${SCANBUILD_OPTS}"
+SCANBUILD_OPTS="--force-analyze-debug-code -v ${SCANBUILD_OPTS}"
+
+which $BUILD_WRAPPER ||
+  (echo "This build requires $BUILD_WRAPPER. Set env. var SCANBUILD_BIN" \
+   & exit 1);
+
+# custom cmake command
+CMAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS cmake3"
+
+# default release build settings:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Debug \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
+                        -DENABLE_COMPTIME_RED=OFF \
+                        \
+                        -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=OFF \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
-                        -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
+                        -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
                         -DENABLE_LOGGING=OFF \
@@ -77,7 +96,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LIKWID=OFF \
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
-                        -DENABLE_MKL=ON \
+                        -DENABLE_MKL=OFF \
                         -DENABLE_BLAS=ON \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
@@ -85,12 +104,27 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=OFF \
-                        -DBUILD_COVERAGE_TESTS=ON \
+                        -DBUILD_TESTS=OFF \
                         -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
-                        ../ && \
- await_confirm && \
- make -j 4) && \
-exit_message
+                        \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+# the make command used
+MAKE_COMMAND="$BUILD_WRAPPER $SCANBUILD_OPTS make"
+
+# the install command used
+# use a noop command if the built version is not useful to install
+INSTALL_COMMAND=":"
+
+# a custom exit message, empty for the default message
+EXIT_MESSAGE="Done. See the result in $BUILD_DIR."
+
+else
+
+  $(dirname $0)/build.sh $(echo $0 | sed "s/.*build.\(.*\).sh/\1/") $@
+
+fi
+

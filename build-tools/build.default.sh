@@ -1,28 +1,6 @@
 #!/bin/sh
 
-BUILD_DIR=./build.nasty
-
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
-
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
+if ! [ -z ${SOURCING+x} ]; then
 
 # To specify a build configuration for a specific system, use:
 #
@@ -51,19 +29,18 @@ fi
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# To use the NastyMPI proxy for debugging and testing, use:
-#
-#                    -DENABLE_NASTYMPI=ON \
-#                    -DNASTYMPI_LIBRARY_PATH=<path/to/nasty/lib \
-#
-# !!!!!!!!!!!!!!!!!!!!! DO NOT ENABLE IN PRODUCTION !!!!!!!!!!!!!!!!!!!!!!!!
+# relative to $ROOTDIR of dash
+BUILD_DIR=build
 
-# Configure with default release build settings:
-mkdir -p $BUILD_DIR
-rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+# custom cmake command
+CMAKE_COMMAND="cmake"
+
+# default release build settings:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
@@ -71,8 +48,8 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
-                        -DENABLE_SHARED_WINDOWS=OFF \
-                        -DENABLE_DYNAMIC_WINDOWS=OFF \
+                        -DENABLE_SHARED_WINDOWS=ON \
+                        -DENABLE_DYNAMIC_WINDOWS=ON \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
@@ -91,18 +68,28 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DENABLE_NASTYMPI=ON \
-                        \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
-                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        ../ && \
- await_confirm && \
- make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
-exit_message
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+# the make command used
+MAKE_COMMAND="make -j 4"
+
+# the install command used
+# use a noop command if the built version is not useful to install
+INSTALL_COMMAND="make install"
+
+# a custom exit message, empty for the default message
+EXIT_MESSAGE=
+
+else
+
+  $(dirname $0)/build.sh $(echo $0 | sed "s/.*build.\(.*\).sh/\1/") $@
+
+fi
 
