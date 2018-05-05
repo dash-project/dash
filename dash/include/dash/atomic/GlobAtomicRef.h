@@ -3,6 +3,7 @@
 
 #include <dash/Types.h>
 #include <dash/GlobPtr.h>
+#include <dash/GlobRef.h>
 #include <dash/algorithm/Operation.h>
 
 
@@ -97,42 +98,36 @@ explicit GlobRef(dart_gptr_t dart_gptr)
 DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
 }
 
-/**
-* Like native references, global reference types cannot be copied.
-*
-* Default definition of copy constructor would conflict with semantics
-* of \c operator=(const self_t &).
-*/
-GlobRef(const self_t & other) = delete;
 
-/**
-* Unlike native reference types, global reference types are moveable.
-*/
-GlobRef(self_t && other)      = default;
+  template <class...> struct null_v : std::integral_constant<int, 0> {};
 
-self_t & operator=(const self_t & other) = delete;
+  GlobRef(const GlobRef<dash::Atomic<nonconst_value_type>>& gref)
+  : GlobRef(gref.dart_gptr())
+  { }
 
-operator T() const {
-return load();
-}
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<_T, value_type>::value>
+  GlobRef(const GlobRef<dash::Atomic<_T>>& gref)
+  : GlobRef(gref.dart_gptr())
+  { }
 
-  /**
-   * Implicit conversion to const type.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, nonconst_value_type>::value,void>>
-  operator const_type() const {
-    return const_type(_gptr);
-  }
-
-  /**
-   * Explicit conversion to non-const type.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, const_value_type>::value,void>>
+  template<typename _T,
+           long = internal::enable_explicit_copy_ctor<_T, value_type>::value>
   explicit
-  operator nonconst_type() const {
-    return nonconst_type(_gptr);
+  GlobRef(const GlobRef<dash::Atomic<_T>>& gref)
+  : GlobRef(gref.dart_gptr())
+  { }
+
+
+  /**
+  * Unlike native reference types, global reference types are moveable.
+  */
+  GlobRef(self_t && other)      = default;
+
+  self_t & operator=(const self_t & other) = delete;
+
+  operator T() const {
+  return load();
   }
 
 

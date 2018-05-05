@@ -253,7 +253,7 @@ enum class BoundaryProp : uint8_t {
   CUSTOM
 };
 
-static std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
+inline std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
   if(prop == BoundaryProp::NONE)
     os << "NONE";
   else if(prop == BoundaryProp::CYCLIC)
@@ -318,7 +318,7 @@ enum class RegionPos : bool {
   POST
 };
 
-static std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
+inline std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
   if(pos == RegionPos::PRE)
     os << "PRE";
   else

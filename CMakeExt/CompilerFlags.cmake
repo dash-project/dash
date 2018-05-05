@@ -118,8 +118,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
     set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
-    set (DASH_DEVELOPER_CC_FLAGS
          "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
   endif()
 

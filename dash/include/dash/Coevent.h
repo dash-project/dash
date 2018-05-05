@@ -116,7 +116,7 @@ public:
    * initializes the Coevent. If it was already initialized in the Ctor,
    * the second initialization is skipped.
    */
-  inline void initialize(Team & team = dash::Team::All()) noexcept {
+  inline void initialize(Team & team = dash::Team::All()) {
     if(!_is_initialized){
       _team = &team;
       _event_counts.allocate(_team->size());
@@ -133,7 +133,7 @@ public:
   /**
    * Operator to select event at given unit.
    */
-  inline reference operator()(const int & unit) noexcept {
+  inline reference operator()(const int & unit) DASH_ASSERT_NOEXCEPT {
     DASH_ASSERT_MSG(dash::is_initialized(), "DASH is not initialized");
     auto ptr = static_cast<gptr_t>(_event_counts.begin() + unit);
     return reference(ptr);
@@ -142,7 +142,7 @@ public:
   /**
    * Operator to select event at given unit.
    */
-  inline reference operator()(const team_unit_t & unit) noexcept {
+  inline reference operator()(const team_unit_t & unit) DASH_ASSERT_NOEXCEPT {
     return this->operator()(static_cast<int>(unit));
   }
 

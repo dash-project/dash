@@ -2,26 +2,13 @@
 #define DASH__GLOB_ASYNC_REF_H__
 
 #include <dash/GlobPtr.h>
+#include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 #include <dash/memory/GlobStaticMem.h>
 
 #include <iostream>
 
 namespace dash {
-
-
-template<typename ReferenceT, typename TargetT>
-struct add_const_from_type
-{
-  using type = TargetT;
-};
-
-template<typename ReferenceT, typename TargetT>
-struct add_const_from_type<const ReferenceT, TargetT>
-{
-  using type = typename std::add_const<TargetT>::type;
-};
-
 
 /**
  * Global value reference for asynchronous / non-blocking operations.
@@ -126,6 +113,23 @@ public:
   : GlobAsyncRef(gref.dart_gptr())
   { }
 
+  GlobAsyncRef(const GlobAsyncRef<nonconst_value_type>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<_T, value_type>::value>
+  GlobAsyncRef(const GlobAsyncRef<_T>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  template<typename _T,
+           long = internal::enable_explicit_copy_ctor<_T, value_type>::value>
+  explicit
+  GlobAsyncRef(const GlobAsyncRef<_T>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
@@ -138,33 +142,6 @@ public:
     static_assert(std::is_same<value_type, const_value_type>::value,
                   "Cannot create GlobAsyncRef<T> from GlobRef<const T>!");
   }
-
-  /**
-   * Implicit conversion to const.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, nonconst_value_type>::value,void>>
-  operator GlobAsyncRef<const_value_type>() {
-    return GlobAsyncRef<const_value_type>(_gptr);
-  }
-
-  /**
-   * Excpliti conversion to non-const.
-   */
-  template<class = std::enable_if<
-                     std::is_same<value_type, const_value_type>::value,void>>
-  explicit
-  operator GlobAsyncRef<nonconst_value_type>() {
-    return GlobAsyncRef<nonconst_value_type>(_gptr);
-  }
-
-  /**
-   * Like native references, global reference types cannot be copied.
-   *
-   * Default definition of copy constructor would conflict with semantics
-   * of \c operator=(const self_t &).
-   */
-  GlobAsyncRef(const self_t & other) = delete;
 
   ~GlobAsyncRef() {
     if (_handle != DART_HANDLE_NULL) {
@@ -190,20 +167,20 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(size_t offs) const {
-    return GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
+    return GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>(*this, offs);
   }
 
   /**
    * Get the member via pointer to member
    */
   template<class MEMTYPE, class P=T>
-  GlobAsyncRef<typename dash::add_const_from_type<T, MEMTYPE>::type>
+  GlobAsyncRef<typename internal::add_const_from_type<T, MEMTYPE>::type>
   member(
     const MEMTYPE P::*mem) const {
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
-    return member<typename dash::add_const_from_type<T, MEMTYPE>::type>(offs);
+    return member<typename internal::add_const_from_type<T, MEMTYPE>::type>(offs);
   }
 
   /**
