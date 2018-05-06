@@ -5,8 +5,8 @@
 
 #include <gtest/gtest.h>
 
-#include <list>
 #include <iostream>
+#include <list>
 
 #include <mpi.h>
 
@@ -31,8 +31,8 @@ using ::testing::TestResult;
 
 class TestPrinter : public EmptyTestEventListener {
   private:
-  int  _myid;
-  int  _size;
+  int  _myid{};
+  int  _size{};
   bool _testcase_passed = true;
   std::list<std::string> _failed_tests;
 
@@ -44,7 +44,7 @@ class TestPrinter : public EmptyTestEventListener {
 
   private:
   // Called before any test activity starts.
-  virtual void OnTestProgramStart(const UnitTest& unit_test) {
+  void OnTestProgramStart(const UnitTest& unit_test) override {
     if(_myid == 0){
       std::cout << TEST_NEUTRAL
               << unit_test.total_test_case_count()
@@ -53,7 +53,7 @@ class TestPrinter : public EmptyTestEventListener {
     }
   }
 
-  virtual void OnTestCaseStart(const TestCase& test_case){
+  void OnTestCaseStart(const TestCase& test_case) override{
     if(_myid == 0){
       std::cout << TEST_NEUTRAL
               << "run "
@@ -67,7 +67,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after a failed assertion or a SUCCEED() invocation.
-  virtual void OnTestPartResult(const TestPartResult& test_part_result) {
+  void OnTestPartResult(const TestPartResult& test_part_result) override {
     if(test_part_result.failed()){
       std::cout << TEST_ERROR 
                 << "[UNIT " << _myid << "]" << " in "
@@ -79,7 +79,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after all test activities have ended.
-  virtual void OnTestProgramEnd(const UnitTest& unit_test) {
+  void OnTestProgramEnd(const UnitTest& unit_test) override {
     MPI_Barrier(MPI_COMM_WORLD);
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
@@ -103,7 +103,7 @@ class TestPrinter : public EmptyTestEventListener {
                 << unit_test.failed_test_count()
                 << " tests, listed below"
                 << std::endl;
-        for(auto el : _failed_tests){
+        for(const auto& el : _failed_tests){
           std::cout << el << std::endl;
         }
       }
@@ -111,7 +111,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called before a test starts.
-  virtual void OnTestStart(const TestInfo& test_info) {
+  void OnTestStart(const TestInfo& test_info) override {
     if(_myid == 0){
       std::cout << TEST_RUN
                 << test_info.test_case_name() << "."
@@ -120,7 +120,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after a test ends.
-  virtual void OnTestEnd(const TestInfo& test_info) {
+  void OnTestEnd(const TestInfo& test_info) override {
     int success_units = 0;
     bool passed       = test_info.result()->Passed();
     int unit_passed   = passed ? 1 : 0; 

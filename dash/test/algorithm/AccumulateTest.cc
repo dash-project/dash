@@ -1,8 +1,8 @@
 
 #include <gtest/gtest.h>
 
-#include "AccumulateTest.h"
 #include "../TestBase.h"
+#include "AccumulateTest.h"
 
 #include <dash/Array.h>
 #include <dash/algorithm/Accumulate.h>
@@ -57,10 +57,9 @@ TEST_F(AccumulateTest, OpMult) {
 
 TEST_F(AccumulateTest, SimpleStruct) {
   struct value_struct {
-    int x, y;
-    value_struct() : x(0), y(0)
-    { }
-    value_struct(int x, int y) : x(x), y(y)
+    int x{0}, y{0};
+    value_struct() = default;
+    value_struct(int _x, int _y) : x(_x), y(_y)
     { }
     value_struct operator+(const value_struct& rhs) const {
       value_struct result(x, y);

@@ -9,14 +9,14 @@
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
 
-#include <dash/Types.h>
 #include <dash/Init.h>
-#include <dash/view/IndexSet.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
+#include <dash/view/IndexSet.h>
 
 #include "TestGlobals.h"
-#include "TestPrinter.h"
 #include "TestLogHelpers.h"
+#include "TestPrinter.h"
 
 
 namespace testing {
@@ -59,10 +59,10 @@ typename std::enable_if<
            ::testing::AssertionResult
          >::type
 assert_float_eq(
-  const char *exp_e,
-  const char *exp_a,
-  const T& val_e,
-  const S& val_a)
+  const char * /*exp_e*/,
+  const char * /*exp_a*/,
+  const T&  /*val_e*/,
+  const S&  /*val_a*/)
 {
   // return success for types other than floats
   return ::testing::AssertionFailure() << "Wrong type for assert_float_eq()";
@@ -207,7 +207,7 @@ extern void ColoredPrintf(
 } while(0)
 
 #define SCOPED_TRACE_MSG(msg) do { \
-  SCOPED_TRACE(::testing::Message() << msg); \
+  SCOPED_TRACE(::testing::Message() << (msg)); \
 } while(0)
 
 #define SKIP_TEST()\
@@ -219,7 +219,7 @@ extern void ColoredPrintf(
 
 #define SKIP_TEST_MSG(msg)\
     if(dash::myid() == 0) {\
-      std::cout << TEST_SKIPPED << "Warning: test skipped: " << msg \
+      std::cout << TEST_SKIPPED << "Warning: test skipped: " << (msg) \
                 << std::endl;\
     }\
     return
@@ -269,7 +269,7 @@ class TestBase : public ::testing::Test {
 
  protected:
 
-  virtual void SetUp() {
+  void SetUp() override {
     const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
     LOG_MESSAGE("===> Running test case %s.%s ...",
@@ -280,7 +280,7 @@ class TestBase : public ::testing::Test {
     dash::barrier();
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     auto myid = dash::myid();
     size_t size = dash::size();
     const ::testing::TestInfo* const test_info =

@@ -1,10 +1,10 @@
 
 #include "MinElementTest.h"
 
-#include <dash/algorithm/MinMax.h>
-#include <dash/algorithm/Generate.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/algorithm/Generate.h>
+#include <dash/algorithm/MinMax.h>
 
 #include <limits>
 

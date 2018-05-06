@@ -19,11 +19,9 @@ protected:
   /// Using a prime to cause inconvenient strides
   const size_t _num_elem = 251;
 
-  MinElementTest() {
-  }
+  MinElementTest() = default;
 
-  virtual ~MinElementTest() {
-  }
+  ~MinElementTest() override = default;
 };
 
 #endif // DASH__TEST__MIN_ELEMENT_TEST_H_

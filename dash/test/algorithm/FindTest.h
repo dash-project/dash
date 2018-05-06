@@ -19,11 +19,9 @@ protected:
 
   size_t _num_elem = 251;
 
-  FindTest() {
-  }
+  FindTest() = default;
 
-  virtual ~FindTest() {
-  }
+  ~FindTest() override = default;
 };
 
 #endif // DASH__TEST__FIND_TEST_H_

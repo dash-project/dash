@@ -9,10 +9,8 @@
 class FillTest : public dash::test::TestBase {
 protected:
 
-  FillTest() {
-  }
+  FillTest() = default;
 
-  virtual ~FillTest() {
-  }
+  ~FillTest() override = default;
 };
 #endif // DASH__TEST__FILL_TEST_H_

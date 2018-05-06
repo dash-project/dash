@@ -20,10 +20,8 @@ protected:
   /// Using a prime to cause inconvenient strides
   size_t _num_elem = 251;
 
-  GenerateTest() {
-  }
+  GenerateTest() = default;
 
-  virtual ~GenerateTest() {
-  }
+  ~GenerateTest() override = default;
 };
 #endif // DASH__TEST__GENERATE_TEST_H_

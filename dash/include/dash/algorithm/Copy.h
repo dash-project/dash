@@ -9,9 +9,9 @@
 #include <dash/dart/if/dart_communication.h>
 
 #include <algorithm>
-#include <vector>
-#include <memory>
 #include <future>
+#include <memory>
+#include <vector>
 
 namespace dash {
 
@@ -456,7 +456,7 @@ dash::Future<ValueType *> copy_async(
     out_last = out_first + total_copy_elem;
   }
   DASH_LOG_TRACE("dash::copy_async", "preparing future");
-  if (handles->size() == 0) {
+  if (handles->empty()) {
     DASH_LOG_TRACE("dash::copy_async >", "finished (no pending handles), ",
                    "out_last:", out_last);
     return dash::Future<ValueType *>(out_last);
@@ -469,7 +469,7 @@ dash::Future<ValueType *> copy_async(
       DASH_LOG_TRACE("dash::copy_async_impl [Future]()",
                     "  wait for", handles->size(), "async get request");
       DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
-      if (handles->size() > 0) {
+      if (!handles->empty()) {
         if (dart_waitall_local(handles->data(), handles->size())
             != DART_OK) {
           DASH_LOG_ERROR("dash::copy_async_impl [Future]",
@@ -698,7 +698,7 @@ ValueType * copy(
                                          handles);
   }
 
-  if (handles.size() > 0) {
+  if (!handles.empty()) {
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
                   "num_handles: ", handles.size());
     dart_waitall_local(handles.data(), handles.size());
@@ -733,7 +733,7 @@ dash::Future<GlobOutputIt> copy_async(
                                             out_first,
                                             *handles);
 
-  if (handles->size() == 0) {
+  if (handles->empty()) {
     return dash::Future<GlobOutputIt>(out_last);
   }
   dash::Future<GlobOutputIt> fut_result(
@@ -744,7 +744,7 @@ dash::Future<GlobOutputIt> copy_async(
       DASH_LOG_TRACE("dash::copy_async [Future]()",
                     "  wait for", handles->size(), "async put request");
       DASH_LOG_TRACE("dash::copy_async [Future]", "  _out:", _out);
-      if (handles->size() > 0) {
+      if (!handles->empty()) {
         if (dart_waitall(handles->data(), handles->size())
             != DART_OK) {
           DASH_LOG_ERROR("dash::copy_async [Future]",
@@ -821,7 +821,7 @@ GlobOutputIt copy(
   if (num_local_elem > 0) {
     // Part of the output range is local
     // Copy local input subrange to local output range directly:
-    auto pattern            = out_first.pattern();
+    const auto& pattern            = out_first.pattern();
     DASH_LOG_TRACE("dash::copy", "resolving local subrange");
     DASH_LOG_TRACE_VAR("dash::copy", num_local_elem);
     // Local index range to global output index range:
@@ -878,7 +878,7 @@ GlobOutputIt copy(
                  handles);
   }
 
-  if (handles.size() > 0) {
+  if (!handles.empty()) {
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
                   "num_handles: ", handles.size());
     dart_waitall_local(handles.data(), handles.size());
@@ -948,9 +948,9 @@ template <
   class GlobInputIt,
   class GlobOutputIt >
 GlobOutputIt copy(
-  GlobInputIt   in_first,
-  GlobInputIt   in_last,
-  GlobOutputIt  out_first)
+  GlobInputIt    /*in_first*/,
+  GlobInputIt    /*in_last*/,
+  GlobOutputIt   /*out_first*/)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 

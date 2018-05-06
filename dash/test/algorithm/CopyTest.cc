@@ -5,9 +5,9 @@
 #include <dash/Matrix.h>
 
 #include <dash/algorithm/Copy.h>
+#include <dash/pattern/BlockPattern1D.h>
 #include <dash/pattern/ShiftTilePattern1D.h>
 #include <dash/pattern/TilePattern1D.h>
-#include <dash/pattern/BlockPattern1D.h>
 
 #include "../TestBase.h"
 #include "../TestLogHelpers.h"
@@ -31,7 +31,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
   array.barrier();
 
   // Local range to store copy:
-  int * local_copy = new int[num_elem_per_unit];
+  auto * local_copy = new int[num_elem_per_unit];
 
   // Copy values from global range to local memory.
   // All units copy first block, so unit 0 tests local-to-local copying.
@@ -151,7 +151,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   matrix.barrier();
 
   // Array to store local copy:
-  value_t * local_copy = new value_t[num_elem_per_unit];
+  auto * local_copy = new value_t[num_elem_per_unit];
   // Pointer to first value in next copy destination range:
   value_t * copy_dest_begin = local_copy;
   value_t * copy_dest_last  = local_copy;
@@ -210,7 +210,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       local_block_values.push_back(row);
     }
   }
-  for (auto row : local_block_values) {
+  for (const auto& row : local_block_values) {
     DASH_LOG_DEBUG_VAR("CopyTest.Blocking2Dim", row);
   }
 
@@ -289,7 +289,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
   array.barrier();
 
   // Local range to store copy:
-  int * local_copy = new int[num_copy_elem];
+  auto * local_copy = new int[num_copy_elem];
   int * dest_first = local_copy;
   int * dest_last  = local_copy;
   if (dash::myid().id == 0) {
@@ -559,8 +559,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
   // Copy all elements contained in a single, continuous block,
   // starting from an index unequal 0.
 
-  if(_dash_size < 2)
+  if(_dash_size < 2) {
     return;
+}
 
   const size_t num_elems_per_unit = 20;
   const size_t num_elems_total    = _dash_size * num_elems_per_unit;
@@ -618,7 +619,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
   array.barrier();
 
   // Local range to store copy:
-  int * local_array = new int[num_elems_copy];
+  auto * local_array = new int[num_elems_copy];
 
   // Copy values from global range to local memory.
   // All units copy a part of the first block, so unit 0 tests

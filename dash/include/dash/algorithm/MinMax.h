@@ -11,8 +11,8 @@
 #include <dash/util/Trace.h>
 #include <dash/util/UnitLocality.h>
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <algorithm>
 #include <memory>

@@ -23,11 +23,9 @@ protected:
   /// Stores indices passed to count_invoke
   std::vector<index_t> _invoked_indices;
 
-  ForEachTest() {
-  }
+  ForEachTest() = default;
 
-  virtual ~ForEachTest() {
-  }
+  ~ForEachTest() override = default;
 
 public:
   void count_invoke(index_t index) {

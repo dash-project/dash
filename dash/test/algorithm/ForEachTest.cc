@@ -3,9 +3,9 @@
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
-#include <dash/algorithm/ForEach.h>
-#include <dash/algorithm/Fill.h>
 #include <dash/SharedCounter.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/ForEach.h>
 
 #include <functional>
 

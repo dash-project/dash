@@ -1,8 +1,8 @@
 #ifndef DASH__TEST__TEST_LOG_HELPERS_H__
 #define DASH__TEST__TEST_LOG_HELPERS_H__
 
-#include <iomanip>
 #include <functional>
+#include <iomanip>
 #include <string>
 
 namespace dash {
@@ -74,7 +74,8 @@ print_matrix(
   // and log messages:
   std::vector< std::vector<value_t> > values;
   std::vector<value_t> col_header;
-  for (auto col = 0; col < matrix.extent(1); ++col) {
+  col_header.reserve(matrix.extent(1));
+for (auto col = 0; col < matrix.extent(1); ++col) {
     col_header.push_back(col);
   }
   values.push_back(col_header);
@@ -184,23 +185,23 @@ print_pattern_mapping(
   std::string name_prefix = name_ss.str();
 
   std::vector<std::string> entries;
-  entries.push_back("[");
+  entries.emplace_back("[");
   dash::team_unit_t last_unit = pattern.unit_at(0);
   for (index_t i = 0; i < pattern.extent(0); ++i) {
     std::ostringstream ss;
     dash::team_unit_t entry_unit = pattern.unit_at(i);
     if (entry_unit != last_unit) {
-      entries.push_back("| ");
+      entries.emplace_back("| ");
       last_unit = entry_unit;
     }
     ss << std::setw(field_width) << callback(pattern, i) << " ";
     entries.push_back(ss.str());
   }
-  entries.push_back("]");
+  entries.emplace_back("]");
 
   DASH_LOG_DEBUG("print_pattern_mapping", name_prefix, pattern_name);
   std::ostringstream ss;
-  for (auto entry : entries) {
+  for (const auto& entry : entries) {
     ss << entry;
   }
   DASH_LOG_DEBUG("print_pattern_mapping", name_prefix, ss.str());
@@ -239,12 +240,12 @@ print_pattern_mapping(
                        (n_blocks_col * 2) - 1;
   std::string block_row_separator(row_char_w, '-');
   std::vector<std::string> block_row_separator_entry;
-  block_row_separator_entry.push_back(" ");
+  block_row_separator_entry.emplace_back(" ");
   block_row_separator_entry.push_back(block_row_separator);
   units.push_back(block_row_separator_entry);
   for (auto row = 0; row < pattern.extent(0); ++row) {
     std::vector<std::string> row_units;
-    row_units.push_back("|");
+    row_units.emplace_back("|");
     for (auto col = 0; col < pattern.extent(1); ++col) {
       std::ostringstream ss;
       ss << std::setw(field_width + 1) << callback(pattern, row, col);
@@ -261,7 +262,7 @@ print_pattern_mapping(
   DASH_LOG_DEBUG("print_pattern_mapping", name);
   for (auto row_fmt : units) {
     std::ostringstream ss;
-    for (auto entry : row_fmt) {
+    for (const auto& entry : row_fmt) {
       ss << entry;
     }
     DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
