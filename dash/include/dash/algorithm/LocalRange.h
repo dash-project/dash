@@ -109,12 +109,12 @@ local_index_range(
   typedef typename GlobInputIter::pattern_type pattern_t;
   typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
-  auto begin_gindex  = static_cast<idx_t>(first.pos());
-  auto end_gindex    = static_cast<idx_t>(last.pos());
+  auto begin_gindex = static_cast<idx_t>(first.pos());
+  auto end_gindex   = static_cast<idx_t>(last.pos());
   DASH_LOG_TRACE("local_index_range(GlobIt,GlobIt)",
                  begin_gindex, end_gindex);
   // Get pattern from global iterators, O(1):
-  const auto& pattern        = first.pattern();
+  const auto& pattern = first.pattern();
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());
   if (pattern.local_size() == 0) {
     // Local index range is empty
@@ -194,8 +194,8 @@ local_index_range(
   typedef typename GlobInputIter::pattern_type pattern_t;
   typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
-  auto begin_gindex  = static_cast<idx_t>(first.pos());
-  auto end_gindex    = static_cast<idx_t>(last.pos());
+  auto begin_gindex = static_cast<idx_t>(first.pos());
+  auto end_gindex   = static_cast<idx_t>(last.pos());
   DASH_LOG_TRACE("local_index_range(ViewIt,ViewIt)",
                  begin_gindex, end_gindex);
   DASH_ASSERT_GT(begin_gindex+1, 0,
@@ -216,19 +216,17 @@ local_index_range(
         auto l_first_idx = l_first.index;
         DASH_LOG_TRACE("local_index_range >", l_first_idx, l_last_idx);
         return LocalIndexRange<idx_t> { l_first_idx, l_last_idx };
-      } 
-        DASH_LOG_TRACE("local_index_range >", "not local -> (0,0)");
-        return LocalIndexRange<idx_t> { 0, 0 };
-      
-    } 
-      DASH_THROW(
+      }
+      DASH_LOG_TRACE("local_index_range >", "not local -> (0,0)");
+      return LocalIndexRange<idx_t>{0, 0};
+    }
+    DASH_THROW(
         dash::exception::InvalidArgument,
         "dash::local_index_range: views of first and last iterators "
         "differ");
-    
   }
   // Get pattern from global iterators, O(1):
-  const auto& pattern        = first.pattern();
+  const auto& pattern = first.pattern();
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());
   if (pattern.local_size() == 0) {
     // Local index range is empty

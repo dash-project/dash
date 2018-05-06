@@ -8,7 +8,6 @@
 #include <iomanip>
 #include <sstream>
 
-
 #define SKIP_TEST_IF_NO_SUMMA()           \
   auto conf = dash::util::DashConfig;     \
   if (!conf.avail_algo_summa) {           \

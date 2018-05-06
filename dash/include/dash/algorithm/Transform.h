@@ -271,7 +271,7 @@ GlobOutputIt transform(
     GlobOutputIt out_first,
     /// Reduce operation
     BinaryOperation binary_op,
-    ///Specialization for a global input iterator
+    /// Specialization for a global input iterator
     transform_impl_glob_input_it /*unused*/)
 {
   using iterator_traits = dash::iterator_traits<InputIt>;
@@ -485,17 +485,18 @@ GlobOutputIt transform(
  * \tparam   GlobOutputIt    Iterator on global result range
  * \tparam   BinaryOperation Reduce operation type
  */
-template<
-  typename ValueType,
-  class InputIt,
-  class GlobInputIt,
-  class BinaryOperation >
+template <
+    typename ValueType,
+    class InputIt,
+    class GlobInputIt,
+    class BinaryOperation>
 GlobAsyncRef<ValueType> transform(
-  InputIt                  /*in_a_first*/,
-  InputIt                  /*in_a_last*/,
-  GlobInputIt              /*in_b_first*/,
-  GlobAsyncRef<ValueType>  /*out_first*/,
-  BinaryOperation          /*binary_op*/  = dash::plus<ValueType>()) {
+    InputIt /*in_a_first*/,
+    InputIt /*in_a_last*/,
+    GlobInputIt /*in_b_first*/,
+    GlobAsyncRef<ValueType> /*out_first*/,
+    BinaryOperation /*binary_op*/ = dash::plus<ValueType>())
+{
   DASH_THROW(
     dash::exception::NotImplemented,
     "Async variant of dash::transform is not implemented");

@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-
 TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
   typedef dash::Pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;

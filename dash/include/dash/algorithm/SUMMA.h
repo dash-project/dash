@@ -307,10 +307,10 @@ void summa(
   value_type * buf_block_b_comp   = (value_type *)(mkl_malloc(
                                       sizeof(value_type) * block_b_size, 64));
 #else
-  auto * buf_block_a_get    = new value_type[block_a_size];
-  auto * buf_block_b_get    = new value_type[block_b_size];
-  auto * buf_block_a_comp   = new value_type[block_a_size];
-  auto * buf_block_b_comp   = new value_type[block_b_size];
+  auto *buf_block_a_get  = new value_type[block_a_size];
+  auto *buf_block_b_get  = new value_type[block_b_size];
+  auto *buf_block_a_comp = new value_type[block_a_size];
+  auto *buf_block_b_comp = new value_type[block_b_size];
 #endif
   // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
   // to crash:

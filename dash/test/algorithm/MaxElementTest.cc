@@ -4,7 +4,6 @@
 #include <dash/Array.h>
 #include <dash/algorithm/MinMax.h>
 
-
 TEST_F(MaxElementTest, TestFindArrayDefault)
 {
   // Initialize global array:

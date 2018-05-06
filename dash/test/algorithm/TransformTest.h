@@ -13,7 +13,8 @@ protected:
     LOG_MESSAGE(">>> Test suite: TransformTest");
   }
 
-  ~TransformTest() override {
+  ~TransformTest() override
+  {
     LOG_MESSAGE("<<< Closing test suite: TransformTest");
   }
 };

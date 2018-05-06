@@ -821,7 +821,7 @@ GlobOutputIt copy(
   if (num_local_elem > 0) {
     // Part of the output range is local
     // Copy local input subrange to local output range directly:
-    const auto& pattern            = out_first.pattern();
+    const auto &pattern = out_first.pattern();
     DASH_LOG_TRACE("dash::copy", "resolving local subrange");
     DASH_LOG_TRACE_VAR("dash::copy", num_local_elem);
     // Local index range to global output index range:
@@ -943,14 +943,11 @@ copy_async(
  *
  * \ingroup  DashAlgorithms
  */
-template <
-  typename ValueType,
-  class GlobInputIt,
-  class GlobOutputIt >
+template <typename ValueType, class GlobInputIt, class GlobOutputIt>
 GlobOutputIt copy(
-  GlobInputIt    /*in_first*/,
-  GlobInputIt    /*in_last*/,
-  GlobOutputIt   /*out_first*/)
+    GlobInputIt /*in_first*/,
+    GlobInputIt /*in_last*/,
+    GlobOutputIt /*out_first*/)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
 

@@ -59,7 +59,9 @@ TEST_F(AccumulateTest, SimpleStruct) {
   struct value_struct {
     int x{0}, y{0};
     value_struct() = default;
-    value_struct(int _x, int _y) : x(_x), y(_y)
+    value_struct(int _x, int _y)
+      : x(_x)
+      , y(_y)
     { }
     value_struct operator+(const value_struct& rhs) const {
       value_struct result(x, y);

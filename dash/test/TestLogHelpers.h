@@ -75,7 +75,7 @@ print_matrix(
   std::vector< std::vector<value_t> > values;
   std::vector<value_t> col_header;
   col_header.reserve(matrix.extent(1));
-for (auto col = 0; col < matrix.extent(1); ++col) {
+  for (auto col = 0; col < matrix.extent(1); ++col) {
     col_header.push_back(col);
   }
   values.push_back(col_header);

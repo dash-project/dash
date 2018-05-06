@@ -8,7 +8,6 @@
  */
 class FillTest : public dash::test::TestBase {
 protected:
-
   FillTest() = default;
 
   ~FillTest() override = default;

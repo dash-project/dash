@@ -13,7 +13,8 @@ protected:
     LOG_MESSAGE(">>> Test suite: SUMMATest");
   }
 
-  ~SUMMATest() override {
+  ~SUMMATest() override
+  {
     LOG_MESSAGE("<<< Closing test suite: SUMMATest");
   }
 };

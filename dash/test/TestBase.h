@@ -18,7 +18,6 @@
 #include "TestLogHelpers.h"
 #include "TestPrinter.h"
 
-
 namespace testing {
 namespace internal {
 
@@ -53,16 +52,15 @@ namespace internal {
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wconversion-null"
 #endif // defined(__GNUC__)
-template<typename T, typename S>
+template <typename T, typename S>
 typename std::enable_if<
-           !std::is_floating_point<T>::value,
-           ::testing::AssertionResult
-         >::type
+    !std::is_floating_point<T>::value,
+    ::testing::AssertionResult>::type
 assert_float_eq(
-  const char * /*exp_e*/,
-  const char * /*exp_a*/,
-  const T&  /*val_e*/,
-  const S&  /*val_a*/)
+    const char* /*exp_e*/,
+    const char* /*exp_a*/,
+    const T& /*val_e*/,
+    const S& /*val_a*/)
 {
   // return success for types other than floats
   return ::testing::AssertionFailure() << "Wrong type for assert_float_eq()";
@@ -206,9 +204,10 @@ extern void ColoredPrintf(
   } \
 } while(0)
 
-#define SCOPED_TRACE_MSG(msg) do { \
-  SCOPED_TRACE(::testing::Message() << (msg)); \
-} while(0)
+#define SCOPED_TRACE_MSG(msg)                    \
+  do {                                           \
+    SCOPED_TRACE(::testing::Message() << (msg)); \
+  } while (0)
 
 #define SKIP_TEST()\
     if(dash::myid() == 0) {\
@@ -217,13 +216,12 @@ extern void ColoredPrintf(
     }\
     return
 
-#define SKIP_TEST_MSG(msg)\
-    if(dash::myid() == 0) {\
-      std::cout << TEST_SKIPPED << "Warning: test skipped: " << (msg) \
-                << std::endl;\
-    }\
-    return
-
+#define SKIP_TEST_MSG(msg)                                          \
+  if (dash::myid() == 0) {                                          \
+    std::cout << TEST_SKIPPED << "Warning: test skipped: " << (msg) \
+              << std::endl;                                         \
+  }                                                                 \
+  return
 
 namespace dash {
 namespace test {
@@ -268,19 +266,22 @@ static bool expect_range_values_equal(
 class TestBase : public ::testing::Test {
 
  protected:
+   void SetUp() override
+   {
+     const ::testing::TestInfo* const test_info =
+         ::testing::UnitTest::GetInstance()->current_test_info();
+     LOG_MESSAGE(
+         "===> Running test case %s.%s ...",
+         test_info->test_case_name(),
+         test_info->name());
+     dash::init(&TESTENV::argc, &TESTENV::argv);
 
-  void SetUp() override {
-    const ::testing::TestInfo* const test_info =
-      ::testing::UnitTest::GetInstance()->current_test_info();
-    LOG_MESSAGE("===> Running test case %s.%s ...",
-                test_info->test_case_name(), test_info->name());
-    dash::init(&TESTENV::argc, &TESTENV::argv);
-
-    LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
-    dash::barrier();
+     LOG_MESSAGE("-==- DASH initialized with %lu units", dash::size());
+     dash::barrier();
   }
 
-  void TearDown() override {
+  void TearDown() override
+  {
     auto myid = dash::myid();
     size_t size = dash::size();
     const ::testing::TestInfo* const test_info =

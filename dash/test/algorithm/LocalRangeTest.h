@@ -13,7 +13,8 @@ protected:
     LOG_MESSAGE(">>> Test suite: LocalRangeTest");
   }
 
-  ~LocalRangeTest() override {
+  ~LocalRangeTest() override
+  {
     LOG_MESSAGE("<<< Closing test suite: LocalRangeTest");
   }
 };
