@@ -1084,7 +1084,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::begin(l_send_displs),
         std::end(l_send_displs),
         std::begin(l_send_displs),
-        std::plus<>());
+        std::plus<size_t>());
 
     // Shift by 1 and fill leading element with 0 to obtain the exclusive scan
     // character
