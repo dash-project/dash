@@ -1616,3 +1616,52 @@ TEST_F(MatrixTest, MoveSemantics){
     ASSERT_EQ_U(*(matrix_b.lbegin()), 1);
   }
 }
+
+// test for issue 532
+TEST_F(MatrixTest, LocalDiagonal){
+  dash::TeamSpec<2> ts(dash::size(), 1);
+  ts.balance_extents();
+
+  auto ext_per_unit = 5;
+  auto tilesize     = 4;
+  auto tile         = dash::TILE(tilesize);
+  auto global_ext   = ext_per_unit*tilesize;
+
+  dash::NArray<int, 2, dash::default_index_t, dash::TilePattern<2>> mat(global_ext, global_ext, tile, tile, ts);
+
+  // fill with neutral value -1
+  dash::fill(mat.begin(), mat.end(), -1);
+
+  // set the diagonal
+  for (size_t i = 0; i < mat.extent(0); ++i) {
+    if (mat(i, i).is_local()) mat(i, i) = dash::myid();
+  }
+
+  // check that local range only contains zero or unitid
+  bool only_neutral = true;
+  auto local_size   = mat.local_size();
+  if(local_size > 0){
+    LOG_MESSAGE("Validate local memory");
+    for(int i=0; i<local_size; ++i){
+      int  value    = *(mat.lbegin()+i);
+      bool valid    = (value == -1) || (value == dash::myid().id);
+      only_neutral &= (value == -1);
+      ASSERT_EQ_U(valid, true);
+    }
+    ASSERT_EQ_U(only_neutral, false);
+  } else {
+    LOG_MESSAGE("No local elements");
+  }
+  // check global diagonal
+  LOG_MESSAGE("Validate global diagonal");
+  const auto & pattern = mat.pattern();
+  for(int i=0; i<mat.extent(0); ++i){
+    int value_fort = mat(i,i);  // fortran style
+    int value_sub  = mat[i][i]; // c-array style
+    ASSERT_EQ_U(value_fort, value_sub);
+    // check if diag value equals owner-unit-id
+    int unit = pattern.local({i,i}).unit;
+    ASSERT_EQ_U(value_sub, unit);
+  }
+}
+
