@@ -106,6 +106,9 @@ if (BUILD_TESTS)
     if (git_res EQUAL 0)
       # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
       add_subdirectory(../vendor/googletest/googletest ${PROJECT_BINARY_DIR}/testing)
+      # Gtest infects the build with Werr flag
+      remove_definitions(-Werror)
+
       set (GTEST_FOUND 1)
       set (GTEST_FOUND 1 PARENT_SCOPE)
     else ()

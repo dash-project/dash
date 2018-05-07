@@ -13,7 +13,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DASH_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -36,7 +36,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DASH_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -59,7 +59,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DASH_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -76,12 +76,12 @@ jobs:
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
       DASH_BUILDEX: OFF
-      CC: clang-3.8
-      CXX: clang++-3.8
+      CC: clang-5.0
+      CXX: clang++-5.0
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DASH_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -91,10 +91,10 @@ jobs:
           path: /tmp/build-tests
   coverage:
     docker:
-      - image: dashproject/ci:openmpi2
+      - image: dashproject/ci:openmpi3
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:GlobRefTest.Member"
       GTEST_OUTPUT: "xml:test-results.xml"
       CC: gcc
       CXX: g++
