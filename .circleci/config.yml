@@ -102,12 +102,14 @@ jobs:
       - run: apt update && apt install lcov gcovr curl -y
       - checkout
       - run: bash build.cov.sh -f
-      - run: cd build.cov && make coverage | grep -v "LOG"
+      - run: cd build.cov && make coverage 2>dash/test-debug.log | grep -v "LOG" 
       - run: bash <(curl -s https://codecov.io/bash) -f build.cov/dash/coverage.xml
       - store_test_results:
           path: build.cov/dash/test-results.xml
       - store_artifacts:
           path: build.cov/dash/coverage.xml
+      - store_artifacts:
+          path: build.cov/dash/test-output.log
 
 workflows:
   version: 2
