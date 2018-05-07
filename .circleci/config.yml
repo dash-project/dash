@@ -103,7 +103,7 @@ jobs:
       - checkout
       - run: bash build.cov.sh -f
       - run: cd build.cov && make coverage | grep -v "LOG"
-      - run: bash <(curl -s https://codecov.io/bash)
+      - run: bash <(curl -s https://codecov.io/bash) -f build.cov/dash/coverage.xml
       - store_test_results:
           path: build.cov/dash/test-results.xml
       - store_artifacts:
@@ -114,8 +114,8 @@ workflows:
   build_and_test:
     jobs:
       - coverage
-      - gnu_mpich
-      - gnu_openmpi2
-      - gnu_openmpi3
-      - clang_mpich
+        #      - gnu_mpich
+        #      - gnu_openmpi2
+        #      - gnu_openmpi3
+        #      - clang_mpich
 
