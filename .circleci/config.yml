@@ -7,7 +7,7 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
+      DASH_BUILDEX: ON
       CC: gcc
       CXX: g++
     steps:
@@ -75,7 +75,7 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
+      DASH_BUILDEX: ON
       CC: clang-5.0
       CXX: clang++-5.0
     steps:
@@ -116,8 +116,8 @@ workflows:
   build_and_test:
     jobs:
       - coverage
-        #      - gnu_mpich
-        #      - gnu_openmpi2
-        #      - gnu_openmpi3
-        #      - clang_mpich
+      - gnu_mpich
+      - gnu_openmpi2
+      - gnu_openmpi3
+      - clang_mpich
 
