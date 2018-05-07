@@ -24,16 +24,16 @@ set (DART_C_STD_PREFERED "99")
 set (DASH_CXX_STD_PREFERED "11")
 
 # Used in CI Scripts to force a particular CXX version
-if("$ENV{DASH_FORCE_C_STD}")
-  message(INFO "Force C STD $ENV{DASH_FORCE_C_STD}")
-  set(DASH_CXX_STD_PREFERED "$ENV{DASH_FORCE_C_STD}")
+if("$ENV{DART_FORCE_C_STD}")
+  message(INFO "Force C STD $ENV{DART_FORCE_C_STD}")
+  set(DART_C_STD_PREFERED "$ENV{DART_FORCE_C_STD}")
 
 # Check if compiler provides c11
 elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
   include(CheckCCompilerFlag)
   CHECK_C_COMPILER_FLAG("-std=c11" COMPILER_SUPPORTS_C11)
   if(COMPILER_SUPPORTS_C11)
-    set (DASH_C_STD_PREFERED "11")
+    set (DART_C_STD_PREFERED "11")
     message(STATUS "Compile with C 11")
   endif()
 endif()
