@@ -1631,11 +1631,16 @@ TEST_F(MatrixTest, LocalDiagonal){
 
   // fill with neutral value -1
   dash::fill(mat.begin(), mat.end(), -1);
+  mat.barrier();
 
   // set the diagonal
   for (size_t i = 0; i < mat.extent(0); ++i) {
-    if (mat(i, i).is_local()) mat(i, i) = dash::myid();
+    if (mat(i, i).is_local()){
+      DASH_LOG_DEBUG("Element is local (i,i)", i, i);
+      mat(i, i) = dash::myid();
+    }
   }
+  mat.barrier();
 
   // check that local range only contains zero or unitid
   auto local_size   = mat.local_size();
