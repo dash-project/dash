@@ -1638,17 +1638,14 @@ TEST_F(MatrixTest, LocalDiagonal){
   }
 
   // check that local range only contains zero or unitid
-  bool only_neutral = true;
   auto local_size   = mat.local_size();
   if(local_size > 0){
     LOG_MESSAGE("Validate local memory");
     for(int i=0; i<local_size; ++i){
       int  value    = *(mat.lbegin()+i);
       bool valid    = (value == -1) || (value == dash::myid().id);
-      only_neutral &= (value == -1);
       ASSERT_EQ_U(valid, true);
     }
-    ASSERT_EQ_U(only_neutral, false);
   } else {
     LOG_MESSAGE("No local elements");
   }
@@ -1661,6 +1658,7 @@ TEST_F(MatrixTest, LocalDiagonal){
     ASSERT_EQ_U(value_fort, value_sub);
     // check if diag value equals owner-unit-id
     int unit = pattern.local({i,i}).unit;
+    DASH_LOG_DEBUG("Owning Unit (i,i,unit)", i, i, unit);
     ASSERT_EQ_U(value_sub, unit);
   }
 }
