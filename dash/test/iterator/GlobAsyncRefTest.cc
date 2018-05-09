@@ -3,6 +3,7 @@
 
 #include <dash/GlobAsyncRef.h>
 #include <dash/Array.h>
+#include <type_traits>
 
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
@@ -155,6 +156,24 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
 
 }
 
+#if 0
+template <class LHS, class RHS>
+using explicit_enable = std::integral_constant<
+    bool,
+    std::is_same<
+        typename std::remove_cv<LHS>::type,
+        typename std::remove_cv<RHS>::type>::value &&
+        !std::is_const<LHS>::value && std::is_const<RHS>::value>;
+
+template <class LHS, class RHS>
+using implicit_enable = std::integral_constant<
+    bool,
+    !explicit_enable<LHS, RHS>::value &&
+    std::is_same<
+        typename std::remove_cv<LHS>::type,
+        typename std::remove_cv<RHS>::type>::value &&
+        std::is_const<LHS>::value>;
+#endif
 
 TEST_F(GlobAsyncRefTest, ConstTest)
 {
@@ -163,6 +182,13 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   const dash::Array<int>& carr = array;
   array[dash::myid()].set(0);
   dash::barrier();
+
+#if 0
+  static_assert(!std::is_const<typename tt::value_type>::value, "must be non-const");
+
+  static_assert(!explicit_enable<const int, int>::value, "must be false");
+  static_assert(implicit_enable<const int, int>::value, "must be false");
+#endif
 
   // conversion non-const -> const
   dash::GlobRef<const int> gref1 = array[0];
@@ -189,6 +215,8 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   dash::GlobAsyncRef<int> agref3 =
                             static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
 
+  dash::GlobAsyncRef<const int> agref4 = gref1;
+  dash::GlobAsyncRef<const int> agref5{gref1};
   // should fail!
   //agref1.set(0);
 

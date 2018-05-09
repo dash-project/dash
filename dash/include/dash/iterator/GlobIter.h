@@ -4,6 +4,7 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <functional>
 #include <sstream>
@@ -44,22 +45,18 @@ class GlobViewIter;
  *
  * \concept{DashGlobalIteratorConcept}
  */
-template<
-  typename ElementType,
-  class    PatternType,
-  class    GlobMemType   = GlobStaticMem<
-                             typename std::decay<ElementType>::type
-                           >,
-  class    PointerType   = typename GlobMemType::pointer,
-  class    ReferenceType = GlobRef<ElementType> >
-class GlobIter
-: public std::iterator<
-           std::random_access_iterator_tag,
-           ElementType,
-           typename PatternType::index_type,
-           PointerType,
-           ReferenceType >
-{
+template <
+    typename ElementType,
+    class PatternType,
+    class GlobMemType = GlobStaticMem<typename std::decay<ElementType>::type>,
+    class PointerType = typename GlobMemType::pointer,
+    class ReferenceType = GlobRef<ElementType> >
+class GlobIter : public std::iterator<
+                     std::random_access_iterator_tag,
+                     ElementType,
+                     typename PatternType::index_type,
+                     PointerType,
+                     ReferenceType> {
 private:
   typedef GlobIter<
             ElementType,
