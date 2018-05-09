@@ -161,13 +161,12 @@ public:
   {
   }
 
-  ~GlobAsyncRef() {
-  }
+  ~GlobAsyncRef() = default;
 
   /**
    * Unlike native reference types, global reference types are moveable.
    */
-  GlobAsyncRef(self_t && other)      = default;
+  GlobAsyncRef(self_t&& other) = default;
 
   /**
    * Unlike native reference types, global reference types are moveable.
