@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>
+#include <chrono>
 
 #include <libdash.h>
 
@@ -34,20 +35,55 @@ int main(int argc, char* argv[])
 
 	auto& team = dash::Team::All();
 
-	std::cout << "I am "  << team.myid() << "\n";
-	dash::Vector<int> vec(1);
-	*(vec.lbegin()) = myid;
-	print_vector(vec, size -1);
+	if(myid == 0) {
+		std::cout << "dash::vector test with enough capacity" << std::endl;
+	}
+	{
+		dash::Vector<int> vec(1);
+		*(vec.lbegin()) = myid;
+		print_vector(vec, size -1);
+		vec.reserve(4);
 
-	vec.reserve(4);
-	print_vector(vec, size -1);
+		vec.lpush_back(42);
+		print_vector(vec, size -1);
 
-	vec.lpush_back(42);
-	print_vector(vec, size -1);
+		vec.lpush_back(1337);
+		print_vector(vec, size -1);
+	}
+		if(myid == 0) {
+		std::cout << "dash::vector test with no capacity" << std::endl;
+	}
+	{
+		dash::Vector<int> vec(1);
+		*(vec.lbegin()) = myid;
+		print_vector(vec, size -1);
 
-	vec.lpush_back(1337);
-	print_vector(vec, size -1);
+		vec.lpush_back(42);
+		print_vector(vec, size -1);
 
+		vec.lpush_back(1337);
+
+		print_vector(vec, size -1);
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(int i = 1; i < 1000000; i *= 10) {
+			dash::Vector<int> vec(1);
+			auto begin = std::chrono::high_resolution_clock::now();
+			for(int ii = 0; ii < i; ii++) {
+				if(myid == 0) {
+					vec.lpush_back(ii);
+				}
+			}
+			vec.barrier();
+			auto end = std::chrono::high_resolution_clock::now();
+			if(myid == 0) {
+				std::cout << "push_backs " << i << "; time " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "us" << std::endl;
+			}
+		}
+	}
+	/*
 	dash::Vector<int> vec2;
 	vec2.reserve(team.size());
 	vec2.push_back(myid);
@@ -65,7 +101,7 @@ int main(int argc, char* argv[])
 		std::cout << "front: " << static_cast<char>(vec3.front()) << std::endl;
 		std::cout << "back: " << static_cast<char>(vec3.back()) << std::endl;
 
-	}
+	}*/
 	team.barrier();
 
   dash::finalize();

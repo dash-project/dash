@@ -215,8 +215,9 @@ public:
 // 	void emplace_back(Args&&... args);
 // 	void pop_back();
 
-
+	void commit();
 	void barrier();
+
 private:
 
 	allocator_type _allocator;
@@ -225,6 +226,9 @@ private:
 	glob_mem_type _data;
 	shared_head_mem_type _head;
 	team_type& _team;
+	std::vector<value_type> local_queue;
+	std::vector<value_type> global_queue;
+	shared_head_mem_type outstanding_writes;
 }; // End of class Vector
 
 
@@ -238,7 +242,8 @@ Vector<T,allocator>::Vector(
 	_allocator(alloc),
 	_data(local_elements, team),
 	_head(1, team),
-	_team(team)
+	_team(team),
+	outstanding_writes(1,team)
 {
 	dash::atomic::store(*(_head.begin()+_team.myid()), local_elements);
 	_team.barrier();
@@ -296,8 +301,45 @@ typename Vector<T, allocator>::size_type Vector<T, allocator>::size() {
 }
 
 template <class T, template<class> class allocator>
-void Vector<T, allocator>::barrier() {
+void Vector<T, allocator>::commit() {
 	_team.barrier();
+	size_type owrites = 0;
+	for(auto it = outstanding_writes.begin(); it != outstanding_writes.begin()+outstanding_writes.size(); it++) {
+		owrites = std::max(dash::atomic::load(*it), owrites);
+	}
+	if(owrites != 0) {
+		const auto node_cap = capacity() / _team.size();
+		const auto old_cap = node_cap;
+		const auto new_cap =
+			node_cap * 2 << static_cast<size_type>(
+				std::ceil(
+					std::log2(
+						static_cast<double>(node_cap+owrites) / static_cast<double>(node_cap)
+					)
+				)
+			);
+
+
+		glob_mem_type tmp(new_cap, _team);
+
+		const auto i = _team.myid();
+		//copy flushed values
+		std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
+		//copy unflushed values
+		auto lend = dash::atomic::load(*(_head.begin() + i));
+		std::copy(local_queue.begin(), local_queue.end(), tmp.begin() + i*new_cap + lend);
+		dash::atomic::add(*(_head.begin() + i), static_cast<size_type>(local_queue.size()));
+		dash::atomic::store(*(outstanding_writes.begin()+i), static_cast<size_type>(0));
+		local_queue.clear();
+		_data = std::move(tmp);
+	}
+}
+
+
+template <class T, template<class> class allocator>
+void Vector<T, allocator>::barrier() {
+	commit();
+// 	_team.barrier();
 }
 
 template <class T, template<class> class allocator>
@@ -317,9 +359,8 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 
 	if(new_cap > old_cap) {
 		glob_mem_type tmp(new_cap, _team);
-		for(auto i = 0; i < _team.size(); i++) {
-			std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
-		}
+		const auto i = _team.myid();
+		std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
 
 		_data = std::move(tmp);
 	}
@@ -328,11 +369,13 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::lpush_back(const T& value) {
-	if(lsize() < lcapacity()) {
-		*(_data.lbegin() + lsize()) = value;
-		dash::atomic::store(*(_head.begin()+_team.myid()), lsize()+1);
+	const auto lastSize = dash::atomic::fetch_add(*(_head.begin()+_team.myid()), static_cast<size_type>(1));
+	if(lastSize < lcapacity()) {
+		*(_data.lbegin() + lastSize) = value;
 	} else {
-		throw(std::runtime_error("not implemented"));
+		dash::atomic::sub(*(_head.begin()+_team.myid()), static_cast<size_type>(1));
+		local_queue.push_back(value);
+		dash::atomic::add(*(outstanding_writes.begin()+_team.myid()), static_cast<size_type>(1));
 	}
 }
 
@@ -343,7 +386,8 @@ void Vector<T, allocator>::push_back(const T& value) {
 		*(_data.begin() + lcapacity()*(_team.size()-1) + lastSize) = value;
 	} else {
 		dash::atomic::sub(*(_head.begin()+(_head.size()-1)), static_cast<size_type>(1));
-		throw(std::runtime_error("not implemented"));
+		global_queue.push_back(value);
+		dash::atomic::add(outstanding_writes.begin()+(_team.size() - 1), static_cast<size_type>(1));
 	}
 }
 
