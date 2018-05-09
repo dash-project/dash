@@ -71,7 +71,7 @@ static dart_thread_t **thread_pool;
 static bool bind_threads = false;
 
 #ifndef DART_TASK_THREADLOCAL_Q
-dart_taskqueue_t task_queue DART_INTERNAL;
+dart_taskqueue_t task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
 
 enum dart_thread_idle_t {
@@ -256,46 +256,47 @@ dart__tasking__yield(int delay)
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
-  }
-
-  // progress
-  remote_progress(thread, (next == NULL));
-  if (next == NULL) {
-    // try again
-    next = next_task(thread);
-  }
-
-  if (next) {
-    current_task->delay = delay;
-
-    if (current_task == &root_task && thread->thread_id == 0) {
-      // the master thread should return to the root_task on the next yield
-      thread->yield_target = DART_YIELD_TARGET_ROOT;
-      // NOTE: the root task is not suspended and requeued, the master thread
-      //       will jump back into it (see above)
-    } else {
-      // mark task as suspended to avoid invoke_task to update the retctx
-      // the next task should return to where the current task would have
-      // returned
-      if (current_task->wait_handle == NULL) {
-        current_task->state  = DART_TASK_SUSPENDED;
-      }
-      thread->yield_target = DART_YIELD_TARGET_YIELD;
-    }
-    // set new task to running state, protected to prevent race conditions
-    // with dependency handling code
-    dart__base__mutex_lock(&(next->mutex));
-    next->state = DART_TASK_RUNNING;
-    dart__base__mutex_unlock(&(next->mutex));
-    // here we leave this task
-    DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
-                    current_task, next);
-    invoke_task(next, thread);
-    // upon return into this task we may have to requeue the previous task
-    check_requeue = true;
   } else {
-    DART_LOG_TRACE("Yield: no task to yield to from task %p",
-                    current_task);
+
+    // progress
+    remote_progress(thread, (next == NULL));
+    if (next == NULL) {
+      // try again
+      next = next_task(thread);
+    }
+
+    if (next) {
+      current_task->delay = delay;
+
+      if (current_task == &root_task && thread->thread_id == 0) {
+        // the master thread should return to the root_task on the next yield
+        thread->yield_target = DART_YIELD_TARGET_ROOT;
+        // NOTE: the root task is not suspended and requeued, the master thread
+        //       will jump back into it (see above)
+      } else {
+        // mark task as suspended to avoid invoke_task to update the retctx
+        // the next task should return to where the current task would have
+        // returned
+        if (current_task->wait_handle == NULL) {
+          current_task->state  = DART_TASK_SUSPENDED;
+        }
+        thread->yield_target = DART_YIELD_TARGET_YIELD;
+      }
+      // set new task to running state, protected to prevent race conditions
+      // with dependency handling code
+      dart__base__mutex_lock(&(next->mutex));
+      next->state = DART_TASK_RUNNING;
+      dart__base__mutex_unlock(&(next->mutex));
+      // here we leave this task
+      DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
+                      current_task, next);
+      invoke_task(next, thread);
+      // upon return into this task we may have to requeue the previous task
+      check_requeue = true;
+    } else {
+      DART_LOG_TRACE("Yield: no task to yield to from task %p",
+                      current_task);
+    }
   }
 
   if (check_requeue) {
