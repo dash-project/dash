@@ -71,7 +71,7 @@ static dart_thread_t **thread_pool;
 static bool bind_threads = false;
 
 #ifndef DART_TASK_THREADLOCAL_Q
-dart_taskqueue_t task_queue DART_INTERNAL;
+dart_taskqueue_t task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
 
 enum dart_thread_idle_t {
