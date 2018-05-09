@@ -80,40 +80,6 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlockTeam)
   }
 }
 
-TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
-{
-  typedef int value_t;
-  const size_t block_size    = 10;
-  const size_t num_elem_copy = 2 * block_size;
-  size_t num_elem_total      = dash::size() * block_size;
-  dash::Array<value_t> array(num_elem_total, dash::BLOCKED);
-  if (dash::size() < 2) {
-    return;
-  }
-  // Array to store local copy:
-  int local_array[num_elem_copy];
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (size_t l = 0; l < block_size; ++l) {
-    array.local[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-  // Copy values from first two blocks:
-  dash::dart_storage<value_t> ds(num_elem_copy);
-  LOG_MESSAGE("DART storage: dtype:%ld nelem:%zu", ds.dtype, ds.nelem);
-  dart_get_blocking(
-    local_array,                      // lptr dest
-    array.begin().dart_gptr(),        // gptr start
-    ds.nelem,                         // number of elements
-    ds.dtype,                         // src data type
-    ds.dtype                          // dst data type
-  );
-  // Fails for elements in second block, i.e. for l < num_elem_copy:
-  for (size_t l = 0; l < block_size; ++l) {
-    value_t expected = array[l];
-    ASSERT_EQ_U(expected, local_array[l]);
-  }
-}
-
 TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 {
   typedef int value_t;

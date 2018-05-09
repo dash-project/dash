@@ -277,14 +277,14 @@ int main(int argc, char* argv[])
 
   auto gextents =  data_old.pattern().extents();
   auto lextents =  data_old.pattern().local_extents();
-  if (dash::myid() == 0) {
 #pragma omp parallel
 {
 #pragma omp master
 {
-    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
     num_threads = omp_get_num_threads();
 }}
+  if (dash::myid() == 0) {
+    std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
     std::cout << "Global extents: " << gextents[0] << "," << gextents[1] << std::endl;
     std::cout << "Local extents: "  << lextents[0] << "," << lextents[1] << std::endl;
   }

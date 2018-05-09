@@ -191,6 +191,8 @@ public:
   /**
    * Implicit cast to const.
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, nonconst_value_type>::value,void>>
   operator GlobRef<const_value_type> () const {
     return GlobRef<const_value_type>(_gptr);
   }
@@ -198,6 +200,8 @@ public:
   /**
    * Explicit cast to non-const
    */
+  template<class = std::enable_if<
+                     std::is_same<value_type, const_value_type>::value,void>>
   explicit
   operator GlobRef<nonconst_value_type> () const {
     return GlobRef<nonconst_value_type>(_gptr);

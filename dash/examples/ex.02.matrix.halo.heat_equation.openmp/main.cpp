@@ -1,6 +1,8 @@
 #include <iostream>
 #include <libdash.h>
 
+//#define DEBUG
+
 using namespace std;
 
 using pattern_t    = dash::Pattern<2>;
@@ -41,6 +43,68 @@ double calcEnergy(const matrix_t& m, array_t &a) {
     return 0.0;
 }
 
+template<typename BoundaryIterator, typename ValueT>
+static void compute_boundary_range(
+  BoundaryIterator begin,
+  BoundaryIterator end,
+  ValueT          *new_begin,
+  ValueT           dx,
+  ValueT           dy,
+  ValueT           dt,
+  ValueT           k)
+{
+  for (auto it = begin; it != end; ++it) {
+    auto core = *it;
+    double dtheta =
+        (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
+        (it.value_at(2) + it.value_at(3) - 2 * core) / (dy * dy);
+    new_begin[it.lpos()] = core + k * dtheta * dt;
+  }
+}
+
+template<typename HaloT, typename HaloRegionT>
+static dart_handle_t update_halo_async(HaloT& current_halo, HaloRegionT& region)
+{
+  typedef typename HaloT::Element_t value_t;
+  auto& halo_memory = current_halo.halo_memory();
+  auto& halo_block  = current_halo.halo_block();
+  // number of contiguous elements
+  size_t num_elems_block         = 1;
+  auto           rel_dim         = region.spec().relevant_dim();
+  auto           level           = region.spec().level();
+  auto*          off             = halo_memory.pos_at(region.index());
+  auto           it              = region.begin();
+
+  for(auto i = rel_dim - 1; i < 2; ++i)
+    num_elems_block *= region.region().extent(i);
+
+  size_t region_size        = region.size();
+  auto   ds_num_elems_block = dash::dart_storage<value_t>(num_elems_block);
+  size_t num_blocks         = region_size / num_elems_block;
+  auto   it_dist            = it + num_elems_block;
+  size_t stride =
+    (num_blocks > 1) ? std::abs(it_dist.lpos().index - it.lpos().index)
+                      : 1;
+  dart_datatype_t dart_type = ds_num_elems_block.dtype;
+
+  if (stride > 1) {
+    auto            ds_stride = dash::dart_storage<value_t>(stride);
+    dart_type_create_strided(ds_num_elems_block.dtype, ds_stride.nelem,
+                              ds_num_elems_block.nelem, &dart_type);
+  }
+  dart_handle_t handle;
+  dart_get_handle(off, it.dart_gptr(),
+                  region_size, dart_type,
+                  ds_num_elems_block.dtype,
+                  &handle);
+
+  if (stride > 1) {
+    dart_type_destroy(&dart_type);
+  }
+
+  return handle;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -58,6 +122,12 @@ int main(int argc, char *argv[])
 
   auto myid = dash::myid();
   auto ranks = dash::size();
+
+  typedef dash::util::Timer<
+    dash::util::TimeMeasure::Clock
+  > Timer;
+
+  Timer::Calibrate(0);
 
   dist_spec_t dist(dash::BLOCKED, dash::BLOCKED);
   team_spec_t tspec(ranks,1);
@@ -119,13 +189,28 @@ int main(int argc, char *argv[])
 
   current_halo->matrix().barrier();
 
+  Timer timer;
+
   for (auto d = 0; d < iterations; ++d) {
 
     auto& current_matrix = current_halo->matrix();
     auto& new_matrix = new_halo->matrix();
 
     // Update Halos asynchroniously
-    current_halo->update_async();
+    //current_halo->update_async();
+
+    // manually start transfers of halos
+    // halo region coordinate run from (0,0) at top left to (2,2) at bottom right
+    // we need (0, 1), (1, 0), (1, 2), (2, 1) [top, left, right, bottom]
+    auto& halo_memory = current_halo->halo_memory();
+    auto& halo_block  = current_halo->halo_block();
+    std::vector<dart_handle_t> handles;
+    for(const auto& region : halo_block.halo_regions()) {
+      if (region.size() > 0) {
+        dart_handle_t handle = update_halo_async(*current_halo, region);
+        handles.push_back(handle);
+      }
+    }
 
     // optimized calculation of inner matrix elements
     auto* current_begin = current_matrix.lbegin();
@@ -147,32 +232,71 @@ int main(int argc, char *argv[])
 #endif
     // slow version
     auto it_end = current_op->iend();
-    for(auto it = current_op->ibegin(); it != it_end; ++it)
+    //for(auto it = current_op->ibegin(); it != it_end; ++it)
+    auto& inner_view = halo_block.view_inner();
+#pragma omp parallel for default(shared)
+    for (auto row = inner_view.offset(0); row < inner_view.extent(0); row++)
     {
-      auto core = *it;
-      auto dtheta = (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
-                    (it.value_at(2) + it.value_at(3) - 2 * core) /(dy * dy);
-      new_begin[it.lpos()] = core + k * dtheta * dt;
+      auto* up_lbegin   = current_matrix.local[row-1].lbegin();
+      auto* down_lbegin = current_matrix.local[row+1].lbegin();
+      auto* cur_lbegin  = current_matrix.local[row].lbegin();
+      auto* new_lbegin  = new_matrix.local[row].lbegin();
+      for (auto col = inner_view.offset(1); col < inner_view.extent(1); col++)
+      {
+        auto core   = cur_lbegin[col];
+        auto dtheta = (up_lbegin[col] + down_lbegin[col] - 2 * core) / (dx * dx) +
+                      (cur_lbegin[col-1] + cur_lbegin[col+1] - 2 * core) /(dy * dy);
+        new_lbegin[col] = core + k * dtheta * dt;
+      }
     }
 
     // Wait until all Halo updates ready
-    current_halo->wait();
+    //current_halo->wait();
+    dart_waitall(handles.data(), handles.size());
 
     // Calculation of boundary Halo elements
-    auto it_bend = current_op->bend();
+
+    const auto& bnd_elems = halo_block.boundary_elements();
+
+    /*
     for (auto it = current_op->bbegin(); it != it_bend; ++it) {
       auto core = *it;
       double dtheta =
           (it.value_at(0) + it.value_at(1) - 2 * core) / (dx * dx) +
           (it.value_at(2) + it.value_at(3) - 2 * core) / (dy * dy);
       new_begin[it.lpos()] = core + k * dtheta * dt;
-    }
+    }*/
+
+    // TODO: fix this as soon as HaloMatrixIterator is copy-assignable
+    // upper boundary
+    auto up_it      = current_op->bbegin();
+    auto up_it_bend = up_it + bnd_elems[0].size();
+    compute_boundary_range(up_it, up_it_bend, new_begin, dx, dy, dt, k);
+
+    // lower boundary (follows upper boundary iteration)
+    auto down_it      = up_it_bend;
+    auto down_it_bend = down_it + bnd_elems[1].size();
+    compute_boundary_range(down_it, down_it_bend, new_begin, dx, dy, dt, k);
+
+    // left boundary (follows lower boundary iteration)
+    auto left_it      = down_it_bend;
+    auto left_it_bend = left_it + bnd_elems[2].size();
+    compute_boundary_range(left_it, left_it_bend, new_begin, dx, dy, dt, k);
+
+    // right boundary (follows left boundary iteration)
+    auto right_it      = left_it_bend;
+    auto right_it_bend = right_it + bnd_elems[3].size();
+    compute_boundary_range(right_it, right_it_bend, new_begin, dx, dy, dt, k);
+
 
     // swap current matrix and current halo matrix
     std::swap(current_halo, new_halo);
     std::swap(current_op, new_op);
     current_matrix.barrier();
   }
+
+  dash::barrier();
+  auto elapsed = timer.Elapsed();
   // final total energy
   double endEnergy = calcEnergy(current_halo->matrix(), energy);
 
@@ -190,6 +314,7 @@ int main(int argc, char *argv[])
     cout << "DiffEnergy=" << endEnergy - initEnergy << endl;
     cout << "Matrixspec: " << matrix_ext << " x " << matrix_ext << endl;
     cout << "Iterations: " << iterations << endl;
+    cout << "Time: " << timer.Elapsed() / 1E6 << " s" << endl;
     cout.flush();
   }
 
