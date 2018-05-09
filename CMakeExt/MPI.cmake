@@ -110,6 +110,8 @@ if (NOT DEFINED MPI_IMPL_ID)
     if (HAVE_CRAY_MPI)
       set(MPI_IMPL_IS_CRAY TRUE CACHE BOOL "CrayMPI detected")
       set(MPI_IMPL_ID "craympi" CACHE STRING "MPI implementation identifier")
+      set(MPI_C_LIBRARIES
+          "${MPI_C_LIBRARIES} -Wl,--whole-archive,-ldmapp,-no-whole-archive")
     endif ()
   endif ()
 
@@ -135,6 +137,7 @@ if (NOT DEFINED MPI_IMPL_ID)
 
   message(STATUS "Detected MPI implementation: ${MPI_IMPL_ID}")
   message(STATUS "Detected MPI C compiler: ${MPI_C_COMPILER}")
+  message(STATUS "Detected MPI C libraries: ${MPI_C_LIBRARIES}")
 
   check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_support.c HAVE_MPI3)
 
