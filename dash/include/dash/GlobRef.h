@@ -92,7 +92,6 @@ public:
   explicit constexpr GlobRef(dart_gptr_t dart_gptr)
   : _gptr(dart_gptr)
   {
-    DASH_LOG_TRACE("GlobRef.GlobRef(dart_gptr_t)", _gptr);
   }
 
   /**
@@ -109,7 +108,6 @@ public:
   constexpr GlobRef(const GlobRef<_T>& gref)
     : GlobRef(gref.dart_gptr())
   {
-    DASH_LOG_TRACE("GlobRef.GlobRef", _gptr);
   }
 
   /**
@@ -124,7 +122,6 @@ public:
   explicit constexpr GlobRef(const GlobRef<_T>& gref)
     : GlobRef(gref.dart_gptr())
   {
-    DASH_LOG_TRACE("explicit GlobRef.GlobRef", _gptr);
   }
 
   /**
@@ -137,7 +134,6 @@ public:
   constexpr GlobRef(const GlobAsyncRef<_T>& gref)
     : _gptr(gref.dart_gptr())
   {
-    DASH_LOG_TRACE("GlobRef.GlobRef(GlobAsyncRef)", _gptr);
   }
 
   template <
@@ -146,7 +142,6 @@ public:
   explicit constexpr GlobRef(const GlobAsyncRef<_T>& gref)
     : GlobRef(gref.dart_gptr())
   {
-    DASH_LOG_TRACE("explicit GlobRef.GlobRef(GlobAsyncRef)", _gptr);
   }
 
   /**
