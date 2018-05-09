@@ -86,21 +86,21 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 
 #else // DART_ENABLE_HWLOC
 
-static void
-init_thread_affinity()
+void
+dart__tasking__affinity_init()
 {
 
 }
 
-static void
-destroy_thread_affinity()
+void
+dart__tasking__affinity_fini()
 {
 
 }
 
 
-static void
-set_thread_affinity(pthread_t pthread, int dart_thread_id)
+void
+dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
   if (dart_thread_id == 0) {
     DART_LOG_INFO("Not pinning threads due to missing hwloc support!");
