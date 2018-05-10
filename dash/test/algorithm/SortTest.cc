@@ -406,4 +406,30 @@ TEST_F(SortTest, PlausibilityWithStdSort)
   array.barrier();
 }
 
+TEST_F(SortTest, ExtremValues) {
+  dash::Array<int> arr(25*dash::size());
+
+  for( int i=0; i<arr.local.size(); i++ ){
+    arr.local[i] = i;
+  }
+  arr.barrier();
+
+  std::fill(arr.local.begin()+10, arr.local.end(), std::numeric_limits<int>::max());
+  arr.barrier();
+
+  // test might hang, add timeout
+  std::atomic<bool> kill{true};
+  std::async([&kill](){
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+      if(kill){
+        ADD_FAILURE() << "Timeout";
+        exit(1);
+      }});
+
+  dash::sort(arr.begin(), arr.end());
+  kill = false;
+
+  perform_test(arr.begin(), arr.end());
+}
+
 // TODO: add additional unit tests with various pattern types and containers
