@@ -425,17 +425,16 @@ TEST_F(SortTest, ExtremValues) {
 
   // test might hang, add timeout
   std::atomic<bool> kill{true};
-  std::async([&kill](){
+  std::thread t([&kill](){
       std::this_thread::sleep_for(std::chrono::seconds(10));
       if(kill){
         ADD_FAILURE() << "Timeout";
         exit(1);
       }});
 
-  dash::sort(arr.begin(), arr.end());
-  kill = false;
-
   perform_test(arr.begin(), arr.end());
+  kill = false;
+  t.join();
 }
 
 // TODO: add additional unit tests with various pattern types and containers
