@@ -7,7 +7,7 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
+      DASH_BUILDEX: ON
       CC: gcc
       CXX: g++
     steps:
@@ -75,7 +75,7 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
+      DASH_BUILDEX: ON
       CC: clang-5.0
       CXX: clang++-5.0
     steps:
@@ -99,15 +99,17 @@ jobs:
       CC: gcc
       CXX: g++
     steps:
-      - run: apt update && apt install lcov gcovr curl -y
+      - run: apt update && apt install lcov gcovr curl libatlas-base-dev -y
       - checkout
       - run: bash build.cov.sh -f
-      - run: cd build.cov && make coverage | grep -v "LOG"
+      - run: cd build.cov && make coverage 2>dash/test-debug.log | grep -v "LOG" 
       - run: bash <(curl -s https://codecov.io/bash)
       - store_test_results:
           path: build.cov/dash/test-results.xml
       - store_artifacts:
           path: build.cov/dash/coverage.xml
+      - store_artifacts:
+          path: build.cov/dash/test-debug.log
 
 workflows:
   version: 2
