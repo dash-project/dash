@@ -11,6 +11,18 @@
 #include <cmath>
 #include <random>
 
+#ifndef DEBUG
+using random_dev_t = std::random_device;
+#else
+using random_dev_t = sense_of_life_dev;
+#endif
+
+class sense_of_life_dev {
+  unsigned int operator()() const {
+    return 42;
+  }
+};
+
 template <typename GlobIter>
 static void perform_test(GlobIter begin, GlobIter end);
 
@@ -22,7 +34,7 @@ static void rand_range(GlobIter begin, GlobIter end)
 {
   static std::uniform_int_distribution<typename GlobIter::value_type>
                             distribution(-1E6, 1E6);
-  static std::random_device rd;
+  static random_dev_t rd;
   static std::mt19937       generator(rd() + begin.team().myid());
 
   dash::generate(begin, end, []() { return distribution(generator); });
@@ -36,14 +48,8 @@ static void rand_range(GlobIter begin, GlobIter end)
 {
   static std::uniform_real_distribution<typename GlobIter::value_type>
                             distribution(-1.0, 1.0);
-  static std::random_device rd;
-#ifndef DEBUG
-  unsigned int seed = rd();
-#else
-  // to avoid non-deterministic code-coverage changes
-  unsigned int seed = 42;
-#endif
-  static std::mt19937 generator(seed + begin.team().myid());
+  static random_dev_t rd;
+  static std::mt19937 generator(rd() + begin.team().myid());
 
   dash::generate(begin, end, []() { return distribution(generator); });
 }
@@ -250,7 +256,7 @@ TEST_F(SortTest, ArrayOfPoints)
   Array_t array(num_local_elem * dash::size());
 
   static std::uniform_int_distribution<int32_t> distribution(-1000, 1000);
-  static std::random_device                     rd;
+  static random_dev_t                           rd;
   static std::mt19937 generator(rd() + array.team().myid());
 
   dash::generate(array.begin(), array.end(), []() {
