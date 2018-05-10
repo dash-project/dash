@@ -37,7 +37,13 @@ static void rand_range(GlobIter begin, GlobIter end)
   static std::uniform_real_distribution<typename GlobIter::value_type>
                             distribution(-1.0, 1.0);
   static std::random_device rd;
-  static std::mt19937       generator(rd() + begin.team().myid());
+#ifndef DEBUG
+  unsigned int seed = rd();
+#else
+  // to avoid non-deterministic code-coverage changes
+  unsigned int seed = 42;
+#endif
+  static std::mt19937 generator(seed + begin.team().myid());
 
   dash::generate(begin, end, []() { return distribution(generator); });
 }
