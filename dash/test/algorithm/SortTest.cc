@@ -428,6 +428,7 @@ TEST_F(SortTest, ExtremValues)
       std::numeric_limits<int>::max());
   arr.barrier();
 
+#if 0
   // test might hang, add timeout
   std::atomic<bool> kill{true};
   std::thread       t([&kill, teamsz]() {
@@ -437,10 +438,13 @@ TEST_F(SortTest, ExtremValues)
       exit(1);
     }
   });
+#endif
 
   perform_test(arr.begin(), arr.end());
+#if 0
   kill = false;
   t.join();
+#endif
 }
 
 // TODO: add additional unit tests with various pattern types and containers
