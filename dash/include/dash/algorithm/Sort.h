@@ -150,8 +150,10 @@ inline void psort__calc_boundaries(
       p_borders.is_stable.size(),
       partitions.size(),
       "invalid number of partition borders");
+
   // recalculate partition boundaries
   for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
+    DASH_ASSERT(p_borders.lower_bound[idx] <= p_borders.upper_bound[idx]);
     // case A: partition is already stable or skipped
     if (p_borders.is_stable[idx]) continue;
     // case B: we have the last iteration
@@ -162,8 +164,10 @@ inline void psort__calc_boundaries(
     }
     else {
       // case C: ordinary iteration
+
       partitions[idx] =
-          (p_borders.lower_bound[idx] + p_borders.upper_bound[idx]) / 2;
+          p_borders.lower_bound[idx] +
+          ((p_borders.upper_bound[idx] - p_borders.lower_bound[idx]) / 2);
 
       if (partitions[idx] == p_borders.lower_bound[idx]) {
         // if we cannot move the partition to the left

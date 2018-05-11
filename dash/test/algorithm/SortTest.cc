@@ -412,25 +412,31 @@ TEST_F(SortTest, PlausibilityWithStdSort)
   array.barrier();
 }
 
-TEST_F(SortTest, ExtremValues) {
-  dash::Array<int> arr(25*dash::size());
+TEST_F(SortTest, ExtremValues)
+{
+  dash::Array<int> arr(25 * dash::size());
 
-  for( int i=0; i<arr.local.size(); i++ ){
+  for (int i = 0; i < arr.local.size(); i++) {
     arr.local[i] = i;
   }
   arr.barrier();
+  auto const teamsz = arr.team().size();
 
-  std::fill(arr.local.begin()+10, arr.local.end(), std::numeric_limits<int>::max());
+  std::fill(
+      arr.local.begin() + 10,
+      arr.local.end(),
+      std::numeric_limits<int>::max());
   arr.barrier();
 
   // test might hang, add timeout
   std::atomic<bool> kill{true};
-  std::thread t([&kill](){
-      std::this_thread::sleep_for(std::chrono::seconds(10));
-      if(kill){
-        ADD_FAILURE() << "Timeout";
-        exit(1);
-      }});
+  std::thread       t([&kill, teamsz]() {
+    std::this_thread::sleep_for(std::chrono::seconds(teamsz));
+    if (kill) {
+      ADD_FAILURE() << "Timeout";
+      exit(1);
+    }
+  });
 
   perform_test(arr.begin(), arr.end());
   kill = false;
