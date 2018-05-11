@@ -11,6 +11,10 @@
 
 namespace dash {
 
+// Forward declarations
+template <class T>
+class GlobRef;
+
 /**
  * Global value reference for asynchronous / non-blocking operations.
  *
@@ -163,15 +167,17 @@ public:
 
   ~GlobAsyncRef() = default;
 
-  /**
-   * Unlike native reference types, global reference types are moveable.
-   */
   GlobAsyncRef(self_t&& other) = default;
 
   /**
-   * Unlike native reference types, global reference types are moveable.
+   * MOVE Assignment
    */
   self_t& operator=(self_t&& other) = default;
+
+  /**
+   * Copy Assignment
+   */
+  self_t& operator=(const self_t& other) = delete;
 
   /**
    * Whether the referenced element is located in local memory.

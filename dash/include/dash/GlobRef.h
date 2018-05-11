@@ -425,7 +425,7 @@ std::ostream & operator<<(
   std::ostream     & os,
   const GlobRef<T> & gref)
 {
-  char buf[100];
+  char buf[100]; //
   sprintf(buf,
           "(%06X|%02X|%04X|%04X|%016lX)",
           gref._gptr.unitid,
