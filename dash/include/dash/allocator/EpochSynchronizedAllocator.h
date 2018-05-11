@@ -350,7 +350,7 @@ private:
    * Frees and detaches all global memory regions allocated by this allocator
    * instance.
    */
-  void clear() noexcept
+  void clear() DASH_ASSERT_NOEXCEPT
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear()");
     for (auto & e : _allocated) {
@@ -364,9 +364,8 @@ private:
       if (!DART_GPTR_ISNULL(e.second)) {
         DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear",
                        "detach global memory:", e.second);
-        // Cannot use DASH_ASSERT due to noexcept qualifier:
-        dart_ret_t ret = dart_team_memderegister(e.second);
-        assert(ret == DART_OK);
+        DASH_ASSERT_RETURNS(dart_team_memderegister(e.second),
+                            DART_OK);
       }
     }
     _allocated.clear();

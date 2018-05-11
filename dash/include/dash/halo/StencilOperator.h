@@ -304,7 +304,7 @@ public:
   : inner(this), boundary(this), _halo_block(haloblock),
     _halo_memory(halomemory), _stencil_spec(stencil_spec),
     _view_local(view_local), _stencil_offsets(set_stencil_offsets()),
-    _local_memory((ElementT*) _halo_block->globmem().lbegin()),
+    _local_memory(const_cast<ElementT*>(_halo_block->globmem().lbegin())),
     _spec_views(*_halo_block, _stencil_spec, _view_local),
     _begin(_local_memory, _halo_memory, &_stencil_spec, &_stencil_offsets,
            *_view_local, _spec_views.inner_with_boundaries(), 0),
