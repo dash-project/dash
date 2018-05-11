@@ -3,6 +3,7 @@
 
 #include <dash/GlobAsyncRef.h>
 #include <dash/Array.h>
+#include <type_traits>
 
 
 TEST_F(GlobAsyncRefTest, IsLocal) {
@@ -155,7 +156,6 @@ TEST_F(GlobAsyncRefTest, RefOfStruct)
 
 }
 
-
 TEST_F(GlobAsyncRefTest, ConstTest)
 {
 
@@ -169,7 +169,7 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   // assignment const -> const
   dash::GlobRef<const int> gref2 = carr[0];
   // explicit conversion const->non-const
-  dash::GlobRef<int> gref3 = static_cast<dash::GlobRef<int>>(carr[0]);
+  dash::GlobRef<int> gref3(carr[0]);
 
   // should fail!
   //gref1.set(0);
@@ -189,6 +189,8 @@ TEST_F(GlobAsyncRefTest, ConstTest)
   dash::GlobAsyncRef<int> agref3 =
                             static_cast<dash::GlobAsyncRef<int>>(carr.async[0]);
 
+  dash::GlobAsyncRef<const int> agref4 = gref1;
+  dash::GlobAsyncRef<const int> agref5{gref1};
   // should fail!
   //agref1.set(0);
 

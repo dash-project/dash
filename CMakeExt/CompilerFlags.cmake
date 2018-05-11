@@ -24,16 +24,16 @@ set (DART_C_STD_PREFERED "99")
 set (DASH_CXX_STD_PREFERED "11")
 
 # Used in CI Scripts to force a particular CXX version
-if("$ENV{DASH_FORCE_C_STD}")
-  message(INFO "Force C STD $ENV{DASH_FORCE_C_STD}")
-  set(DASH_CXX_STD_PREFERED "$ENV{DASH_FORCE_C_STD}")
+if("$ENV{DART_FORCE_C_STD}")
+  message(INFO "Force C STD $ENV{DART_FORCE_C_STD}")
+  set(DART_C_STD_PREFERED "$ENV{DART_FORCE_C_STD}")
 
 # Check if compiler provides c11
 elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
   include(CheckCCompilerFlag)
   CHECK_C_COMPILER_FLAG("-std=c11" COMPILER_SUPPORTS_C11)
   if(COMPILER_SUPPORTS_C11)
-    set (DASH_C_STD_PREFERED "11")
+    set (DART_C_STD_PREFERED "11")
     message(STATUS "Compile with C 11")
   endif()
 endif()
@@ -61,15 +61,13 @@ if (ENABLE_DEV_COMPILER_WARNINGS
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
-  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND OPENMP_FOUND)
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   endif()
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
-  set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -84,11 +82,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
-
-  if (OPENMP_FOUND)
-    set (DASH_DEVELOPER_CCXX_FLAGS
-         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
-  endif()
 
   # C++-only warning flags
 
@@ -124,8 +117,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
     set (DASH_DEVELOPER_CC_FLAGS
          "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
   endif()

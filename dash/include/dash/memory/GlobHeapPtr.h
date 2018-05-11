@@ -37,7 +37,9 @@ class GlobPtr<
           AllocatorType >
       >
 {
-  typedef GlobHeapMem<ElementType, AllocatorType> GlobHeapMemType;
+  typedef GlobHeapMem<
+            typename std::remove_const<ElementType>::type,
+            AllocatorType> GlobHeapMemType;
   typedef GlobPtr<ElementType, GlobHeapMemType>   self_t;
 
   template<
