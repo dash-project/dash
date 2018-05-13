@@ -1034,7 +1034,7 @@ void sort(
 
   trace.enter_state("8:calc_final_partition_dist");
 
-  auto first_partition = partitions[0];
+  auto const first_partition = partitions[0];
 
   bool all_partitions_equal = std::all_of(
       std::next(std::begin(partitions)),
