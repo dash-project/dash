@@ -856,6 +856,13 @@ void sort(
   auto const min = static_cast<mapped_type>(g_min.get());
   auto const max = static_cast<mapped_type>(g_max.get());
 
+  if (min == max) {
+    //all values are equal, so nothing to sort globally.
+
+    pattern.team().barrier();
+    return;
+  }
+
   trace.exit_state("2:init_temporary_global_data");
 
   trace.enter_state("3:init_temporary_local_data");
