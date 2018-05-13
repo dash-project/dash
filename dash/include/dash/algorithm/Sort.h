@@ -1034,7 +1034,8 @@ void sort(
       });
 
   if (all_partitions_equal) {
-    // reset the correct to point to the last global histogram
+    // reset iterator to point to the global histogram of the last iteration
+    // in the partition algorithm.
     std::swap(it_global_histo, tmp_global_histo);
 
     // In this case all partition borders have the same value which causes an
