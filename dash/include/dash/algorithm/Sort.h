@@ -427,9 +427,12 @@ inline void psort__calc_final_partition_dist(
   auto const n_my_elements = std::accumulate(
       dist_begin, dist_begin + nunits, static_cast<size_t>(0));
 
-  auto const lcap = acc_partition_count[myid + 1] - acc_partition_count[myid];
+  // NOTE: (acc_partition_count[myid + 1] - acc_partition_count[myid]) is the
+  // local capacity of this unit
 
-  DASH_ASSERT(n_my_elements <= lcap);
+  DASH_ASSERT(
+      n_my_elements <=
+      (acc_partition_count[myid + 1] - acc_partition_count[myid]));
 
   // Calculate the deficit
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
@@ -857,7 +860,7 @@ void sort(
   auto const max = static_cast<mapped_type>(g_max.get());
 
   if (min == max) {
-    //all values are equal, so nothing to sort globally.
+    // all values are equal, so nothing to sort globally.
 
     pattern.team().barrier();
     return;
