@@ -407,10 +407,10 @@ bool psort__validate_partitions(
   return nonstable_it == p_borders.is_stable.cend();
 }
 
-template <typename LocalArrayT>
+template <class LocalArrayT>
 inline void psort__calc_final_partition_dist(
-    std::vector<typename LocalArrayT::value_type> const& acc_partition_count,
-    LocalArrayT&                                         l_partition_dist)
+    std::vector<size_t> const& acc_partition_count,
+    LocalArrayT&               l_partition_dist)
 {
   /* Calculate number of elements to receive for each partition:
    * We first assume that we we receive exactly the number of elements which
@@ -426,6 +426,10 @@ inline void psort__calc_final_partition_dist(
 
   auto const n_my_elements = std::accumulate(
       dist_begin, dist_begin + nunits, static_cast<size_t>(0));
+
+  auto const lcap = acc_partition_count[myid + 1] - acc_partition_count[myid];
+
+  DASH_ASSERT(n_my_elements <= lcap);
 
   // Calculate the deficit
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
@@ -876,8 +880,8 @@ void sort(
 
   bool done = false;
 
-  auto cur = g_nlt_nle.begin();
-  auto tmp = cur + NLT_NLE_BLOCK * nunits;
+  auto it_global_histo  = g_nlt_nle.begin();
+  auto tmp_global_histo = it_global_histo + NLT_NLE_BLOCK * nunits;
 
   // collect all valid partitions in a temporary vector
   std::vector<size_t> valid_partitions;
@@ -924,20 +928,26 @@ void sort(
 
     DASH_LOG_TRACE_RANGE("local histogram nle", l_nle.begin(), l_nle.end());
 
-    detail::psort__global_histogram(l_nlt, l_nle, valid_partitions, cur);
+    detail::psort__global_histogram(
+        l_nlt, l_nle, valid_partitions, it_global_histo);
 
     DASH_LOG_TRACE_RANGE(
         "global histogram",
-        (cur + (myid * NLT_NLE_BLOCK)).local(),
-        (cur + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
+        (it_global_histo + (myid * NLT_NLE_BLOCK)).local(),
+        (it_global_histo + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
 
     done = detail::psort__validate_partitions(
-        p_unit_info, partitions, valid_partitions, p_borders, cur);
+        p_unit_info,
+        partitions,
+        valid_partitions,
+        p_borders,
+        it_global_histo);
 
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
-    std::swap(cur, tmp);
+    std::swap(it_global_histo, tmp_global_histo);
+
   } while (!done);
 
   trace.exit_state("4:find_global_partition_borders");
@@ -1014,8 +1024,40 @@ void sort(
 
   trace.enter_state("8:calc_final_partition_dist");
 
-  detail::psort__calc_final_partition_dist(
-      acc_partition_count, g_partition_data.local);
+  auto first_partition = partitions[0];
+
+  bool all_partitions_equal = std::all_of(
+      std::next(std::begin(partitions)),
+      std::end(partitions),
+      [first_partition](mapped_type const& val) {
+        return val == first_partition;
+      });
+
+  if (all_partitions_equal) {
+    // reset the correct to point to the last global histogram
+    std::swap(it_global_histo, tmp_global_histo);
+
+    // In this case all partition borders have the same value which causes an
+    // integer overflow in the original implementation (else case).
+    //
+    // TODO rko: This has to be fixed.
+    //
+    // It is clear that the above partitioning algorithm is not deterministic.
+    // Different interleavings due to asynchronous communication lead to
+    // different results.
+    // Idea to solve the problem: We have the global histogram from the last
+    // iteration. Thus, we know how many elements are less than ( i.e., < )
+    // the partition value and how many are less than equal ( i.e., <= ). So
+    // we simply fill from the front based on the global histogram and the
+    // capacities of each unit (starting from the begin iterator).
+    DASH_THROW(
+        dash::exception::NotImplemented,
+        "Edge case: All Partition Borders are equal");
+  }
+  else {
+    detail::psort__calc_final_partition_dist(
+        acc_partition_count, g_partition_data.local);
+  }
 
   DASH_LOG_TRACE_RANGE(
       "final partition distribution",
@@ -1101,7 +1143,7 @@ void sort(
         0);
   }
 
-#if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
+#if defined(DASH_ENABLE_ASSERTIONS)
   {
     std::vector<size_t> chksum(nunits, 0);
 
