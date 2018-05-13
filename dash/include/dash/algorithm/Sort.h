@@ -1154,7 +1154,7 @@ void sort(
         0);
   }
 
-#if defined(DASH_ENABLE_ASSERTIONS)
+#if defined(DASH_ENABLE_ASSERTIONS) && defined(DASH_ENABLE_TRACE_LOGGING)
   {
     std::vector<size_t> chksum(nunits, 0);
 
