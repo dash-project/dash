@@ -231,8 +231,7 @@ TEST_F(SharedTest, AtomicMinMax)
   g_min.get().fetch_op(dash::min<value_t>(), 0);
   g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
 
-  g_min.barrier();
-  g_max.barrier();
+  team.barrier();
 
   auto const min = static_cast<value_t>(g_min.get());
   auto const max = static_cast<value_t>(g_max.get());
