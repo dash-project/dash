@@ -92,7 +92,7 @@ public:
 
   /**
    * Constructor, allocates shared value at single unit in specified team.
-   * The element is initilized with the given value.
+   * The element is initialized with the given value.
    */
   Shared(
     /// The value to initialize the element with
