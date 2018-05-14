@@ -76,10 +76,10 @@ TEST_F(SharedTest, SpecifyOwner)
 
   value_t get_a_init = static_cast<value_t>(shared_at_a.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
-                 "shared value at unit", owner_a, " (a):", get_a);
+                 "shared value at unit", owner_a, " (a):", get_a_init);
   value_t get_b_init = static_cast<value_t>(shared_at_b.get());
   DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
-                 "shared value at unit", owner_b, " (b):", get_b);
+                 "shared value at unit", owner_b, " (b):", get_b_init);
   EXPECT_EQ_U(value_a_init, get_a_init);
   EXPECT_EQ_U(value_b_init, get_b_init);
 
