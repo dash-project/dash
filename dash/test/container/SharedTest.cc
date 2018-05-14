@@ -225,8 +225,8 @@ TEST_F(SharedTest, AtomicMinMax)
   using shared_t = dash::Shared<dash::Atomic<value_t>>;
 
   auto&    team = dash::Team::All();
-  shared_t g_min{dash::team_unit_t{0}, team};
-  shared_t g_max(dash::team_unit_t{0}, team);
+  shared_t g_min(std::numeric_limits<value_t>::max(), dash::team_unit_t{0}, team);
+  shared_t g_max(std::numeric_limits<value_t>::min(), dash::team_unit_t{0}, team);
 
   auto const start_min = static_cast<value_t>(g_min.get());
   auto const start_max = static_cast<value_t>(g_max.get());
