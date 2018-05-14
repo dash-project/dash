@@ -427,13 +427,6 @@ inline void psort__calc_final_partition_dist(
   auto const n_my_elements = std::accumulate(
       dist_begin, dist_begin + nunits, static_cast<size_t>(0));
 
-  // NOTE: (acc_partition_count[myid + 1] - acc_partition_count[myid]) is the
-  // local capacity of this unit
-
-  DASH_ASSERT(
-      n_my_elements <=
-      (acc_partition_count[myid + 1] - acc_partition_count[myid]));
-
   // Calculate the deficit
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
 
