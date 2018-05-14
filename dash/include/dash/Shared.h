@@ -73,6 +73,10 @@ public:
                      "allocating shared value in local memory");
       _globmem   = std::make_shared<GlobMem_t>(1, team);
       _dart_gptr = _globmem->begin().dart_gptr();
+      auto lbegin = _globmem->lbegin();
+      auto const lend = _globmem->lend();
+
+      std::uninitialized_fill(lbegin, lend, value_type{});
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);
