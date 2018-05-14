@@ -242,8 +242,8 @@ template <typename GlobIter>
 inline void psort__global_histogram(
     std::vector<size_t> const& l_nlt,
     std::vector<size_t> const& l_nle,
-    std::vector<size_t> const&   valid_partitions,
-    GlobIter                     it_nlt_nle)
+    std::vector<size_t> const& valid_partitions,
+    GlobIter                   it_nlt_nle)
 {
   DASH_LOG_TRACE("< psort__global_histogram ");
   DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
@@ -273,7 +273,7 @@ inline void psort__global_histogram(
     if (l_nlt[idx] == 0 && l_nle[idx] == 0) continue;
 
     std::array<size_t, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
-    auto const                          g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
+    auto const                        g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
 
     DASH_ASSERT_RETURNS(
         dart_accumulate(
@@ -508,7 +508,7 @@ template <typename ElementType>
 inline void psort__calc_target_displs(
     PartitionBorder<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
-    dash::Array<size_t>&              g_partition_data)
+    dash::Array<size_t>&                g_partition_data)
 {
   DASH_LOG_TRACE("< psort__calc_target_displs");
   auto const nunits = g_partition_data.team().size();
@@ -526,9 +526,9 @@ inline void psort__calc_target_displs(
   auto const u_blocksize = g_partition_data.lsize();
 
   for (size_t idx = 0; idx < valid_partitions.size(); ++idx) {
-    auto const     border_idx = valid_partitions[idx];
-    auto const     left_u     = p_borders.left_partition[border_idx];
-    auto const     right_u    = border_idx + 1;
+    auto const   border_idx = valid_partitions[idx];
+    auto const   left_u     = p_borders.left_partition[border_idx];
+    auto const   right_u    = border_idx + 1;
     size_t const val =
         (left_u == myid)
             ? g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
@@ -834,42 +834,39 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
+  dash::team_unit_t const                 owner{0};
+  dash::Shared<dash::Atomic<mapped_type>> g_min(owner, team);
+  dash::Shared<dash::Atomic<mapped_type>> g_max(owner, team);
+
+  if (myid == owner) {
+    // set the initial value
+    g_min.get().set(lmin);
+    g_max.get().set(lmax);
+  }
+
   using array_t = dash::Array<std::size_t>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
+  // implicit barrier...
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
+  if (myid != owner) {
+    // the other units appy min / max reductions
+    g_min.get().op(dash::min<mapped_type>(), lmin);
+    g_max.get().op(dash::max<mapped_type>(), lmax);
+  }
+
+  // another implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
 
-  mapped_type min, max;
-
-  // TODO rko: replace with dash::Shared min /max reduction if issue
-  // https://github.com/dash-project/dash/issues/544 is fixed.
-  DASH_ASSERT_RETURNS(
-      dart_allreduce(
-          &lmin,
-          &min,
-          1,
-          dart_datatype<mapped_type>::value,
-          DART_OP_MIN,
-          team.dart_id()),
-      DART_OK);
-
-  DASH_ASSERT_RETURNS(
-      dart_allreduce(
-          &lmax,
-          &max,
-          1,
-          dart_datatype<mapped_type>::value,
-          DART_OP_MAX,
-          team.dart_id()),
-      DART_OK);
+  // we can fetch our min / max values...
+  auto const min = static_cast<mapped_type>(g_min.get());
+  auto const max = static_cast<mapped_type>(g_max.get());
 
   if (min == max) {
     // all values are equal, so nothing to sort globally.
-
     pattern.team().barrier();
     return;
   }
