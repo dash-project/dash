@@ -74,7 +74,7 @@ public:
    */
   Shared(
     /// The value to initialize the element with
-    value_type    val,
+    const value_type & val,
     /// Unit id of the shared value's owner.
     team_unit_t   owner = team_unit_t(0),
     /// Team containing all units accessing the element in shared memory
@@ -104,7 +104,6 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-    team.barrier();
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
   }
 
@@ -141,7 +140,7 @@ public:
   /**
    * Set the value of the shared element.
    */
-  void set(value_type val)
+  void set(const value_type & val)
   {
     DASH_LOG_DEBUG_VAR("Shared.set()", val);
     DASH_LOG_DEBUG_VAR("Shared.set",   _owner);
