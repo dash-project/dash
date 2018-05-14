@@ -238,10 +238,10 @@ psort__local_histogram(
   return std::make_pair(std::move(n_lt), std::move(n_le));
 }
 
-template <typename SizeType, typename GlobIter>
+template <typename GlobIter>
 inline void psort__global_histogram(
-    std::vector<SizeType> const& l_nlt,
-    std::vector<SizeType> const& l_nle,
+    std::vector<size_t> const& l_nlt,
+    std::vector<size_t> const& l_nle,
     std::vector<size_t> const&   valid_partitions,
     GlobIter                     it_nlt_nle)
 {
@@ -272,7 +272,7 @@ inline void psort__global_histogram(
     // we communicate only non-zero values
     if (l_nlt[idx] == 0 && l_nle[idx] == 0) continue;
 
-    std::array<SizeType, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
+    std::array<size_t, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
     auto const                          g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
 
     DASH_ASSERT_RETURNS(
@@ -284,9 +284,9 @@ inline void psort__global_histogram(
             // nvalues
             NLT_NLE_BLOCK,
             // dart type
-            dash::dart_datatype<SizeType>::value,
+            dash::dart_datatype<size_t>::value,
             // dart op
-            dash::plus<SizeType>().dart_operation()),
+            dash::plus<size_t>().dart_operation()),
         DART_OK);
 
     has_pending_op = true;
@@ -504,11 +504,11 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
-template <typename SizeType, typename ElementType>
+template <typename ElementType>
 inline void psort__calc_target_displs(
     PartitionBorder<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
-    dash::Array<SizeType>&              g_partition_data)
+    dash::Array<size_t>&              g_partition_data)
 {
   DASH_LOG_TRACE("< psort__calc_target_displs");
   auto const nunits = g_partition_data.team().size();
@@ -521,7 +521,7 @@ inline void psort__calc_target_displs(
     std::fill(l_target_displs, l_target_displs + nunits, 0);
   }
 
-  std::vector<SizeType> target_displs(nunits, 0);
+  std::vector<size_t> target_displs(nunits, 0);
 
   auto const u_blocksize = g_partition_data.lsize();
 
@@ -529,7 +529,7 @@ inline void psort__calc_target_displs(
     auto const     border_idx = valid_partitions[idx];
     auto const     left_u     = p_borders.left_partition[border_idx];
     auto const     right_u    = border_idx + 1;
-    SizeType const val =
+    size_t const val =
         (left_u == myid)
             ? g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
             : g_partition_data
