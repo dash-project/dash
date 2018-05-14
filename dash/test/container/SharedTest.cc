@@ -219,3 +219,24 @@ TEST_F(SharedTest, AtomicAdd)
   shared.barrier();
 }
 
+TEST_F(SharedTest, AtomicMinMax)
+{
+  using value_t  = int32_t;
+  using shared_t = dash::Shared<dash::Atomic<value_t>>;
+
+  auto&    team = dash::Team::All();
+  shared_t g_min{dash::team_unit_t{0}, team};
+  shared_t g_max(dash::team_unit_t{0}, team);
+
+  g_min.get().fetch_op(dash::min<value_t>(), 0);
+  g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
+
+  g_min.barrier();
+  g_max.barrier();
+
+  auto const min = static_cast<value_t>(g_min.get());
+  auto const max = static_cast<value_t>(g_max.get());
+
+  EXPECT_EQ_U(0, min);
+  EXPECT_EQ_U(std::numeric_limits<value_t>::max(), max);
+}
