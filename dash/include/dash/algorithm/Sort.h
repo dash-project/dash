@@ -841,12 +841,6 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
-  dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
-  dash::Shared<dash::Atomic<mapped_type>> g_max(dash::team_unit_t{0}, team);
-
-  g_min.get().op(dash::min<mapped_type>(), lmin);
-  g_max.get().op(dash::max<mapped_type>(), lmax);
-
   using array_t = dash::Array<std::size_t>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
@@ -856,8 +850,27 @@ void sort(
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
 
-  auto const min = static_cast<mapped_type>(g_min.get());
-  auto const max = static_cast<mapped_type>(g_max.get());
+  mapped_type min, max;
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmin,
+          &min,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MIN,
+          team.dart_id()),
+      DART_OK);
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmax,
+          &max,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MAX,
+          team.dart_id()),
+      DART_OK);
 
   if (min == max) {
     // all values are equal, so nothing to sort globally.
@@ -925,8 +938,17 @@ void sort(
 
   trace.enter_state("4:find_global_partition_borders");
 
+  size_t iter = 0;
+
   do {
+    ++iter;
+
     detail::psort__calc_boundaries(p_borders, partitions);
+
+    DASH_LOG_TRACE("dash::sort", "finding partition borders", "iter", iter);
+
+    DASH_LOG_TRACE_RANGE(
+        "partition borders", std::begin(partitions), std::end(partitions));
 
     auto const histograms = detail::psort__local_histogram(
         partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
@@ -961,6 +983,8 @@ void sort(
   } while (!done);
 
   trace.exit_state("4:find_global_partition_borders");
+
+  DASH_LOG_TRACE("dash::sort", "partition borders found", "iter", iter);
 
   trace.enter_state("5:final_local_histogram");
   auto histograms = detail::psort__local_histogram(
@@ -1034,41 +1058,8 @@ void sort(
 
   trace.enter_state("8:calc_final_partition_dist");
 
-  auto const first_partition = partitions[0];
-
-  bool all_partitions_equal = std::all_of(
-      std::next(std::begin(partitions)),
-      std::end(partitions),
-      [first_partition](mapped_type const& val) {
-        return val == first_partition;
-      });
-
-  if (all_partitions_equal) {
-    // reset iterator to point to the global histogram of the last iteration
-    // in the partition algorithm.
-    std::swap(it_global_histo, tmp_global_histo);
-
-    // In this case all partition borders have the same value which causes an
-    // integer overflow in the original implementation (else case).
-    //
-    // TODO rko: This has to be fixed.
-    //
-    // It is clear that the above partitioning algorithm is not deterministic.
-    // Different interleavings due to asynchronous communication lead to
-    // different results.
-    // Idea to solve the problem: We have the global histogram from the last
-    // iteration. Thus, we know how many elements are less than ( i.e., < )
-    // the partition value and how many are less than equal ( i.e., <= ). So
-    // we simply fill from the front based on the global histogram and the
-    // capacities of each unit (starting from the begin iterator).
-    DASH_THROW(
-        dash::exception::NotImplemented,
-        "Edge case: All Partition Borders are equal");
-  }
-  else {
-    detail::psort__calc_final_partition_dist(
-        acc_partition_count, g_partition_data.local);
-  }
+  detail::psort__calc_final_partition_dist(
+      acc_partition_count, g_partition_data.local);
 
   DASH_LOG_TRACE_RANGE(
       "final partition distribution",

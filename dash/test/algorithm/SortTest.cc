@@ -414,7 +414,6 @@ TEST_F(SortTest, PlausibilityWithStdSort)
 
 TEST_F(SortTest, ExtremValues)
 {
-  SKIP_TEST();
   dash::Array<int> arr(25 * dash::size());
 
   for (int i = 0; i < arr.local.size(); i++) {
