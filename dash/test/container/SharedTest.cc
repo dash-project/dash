@@ -228,6 +228,14 @@ TEST_F(SharedTest, AtomicMinMax)
   shared_t g_min{dash::team_unit_t{0}, team};
   shared_t g_max(dash::team_unit_t{0}, team);
 
+  auto const start_min = static_cast<value_t>(g_min.get());
+  auto const start_max = static_cast<value_t>(g_max.get());
+
+  EXPECT_GE_U(start_min, 0);
+  EXPECT_LE_U(start_max, std::numeric_limits<value_t>::max());
+
+  team.barrier();
+
   g_min.get().fetch_op(dash::min<value_t>(), 0);
   g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
 
