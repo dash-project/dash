@@ -835,14 +835,8 @@ void sort(
                                    : std::numeric_limits<mapped_type>::min();
 
   dash::team_unit_t const                 owner{0};
-  dash::Shared<dash::Atomic<mapped_type>> g_min(owner, team);
-  dash::Shared<dash::Atomic<mapped_type>> g_max(owner, team);
-
-  if (myid == owner) {
-    // set the initial value
-    g_min.get().set(lmin);
-    g_max.get().set(lmax);
-  }
+  dash::Shared<dash::Atomic<mapped_type>> g_min(lmin, owner, team);
+  dash::Shared<dash::Atomic<mapped_type>> g_max(lmax, owner, team);
 
   using array_t = dash::Array<std::size_t>;
 
@@ -852,7 +846,7 @@ void sort(
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
   if (myid != owner) {
-    // the other units appy min / max reductions
+    // the other units apply min / max reductions
     g_min.get().op(dash::min<mapped_type>(), lmin);
     g_max.get().op(dash::max<mapped_type>(), lmax);
   }
@@ -864,6 +858,9 @@ void sort(
   // we can fetch our min / max values...
   auto const min = static_cast<mapped_type>(g_min.get());
   auto const max = static_cast<mapped_type>(g_max.get());
+
+  DASH_LOG_TRACE_VAR("dash::sort", min);
+  DASH_LOG_TRACE_VAR("dash::sort", max);
 
   if (min == max) {
     // all values are equal, so nothing to sort globally.
