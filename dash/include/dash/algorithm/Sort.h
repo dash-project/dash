@@ -852,6 +852,8 @@ void sort(
 
   mapped_type min, max;
 
+  // TODO rko: replace with dash::Shared min /max reduction if issue
+  // https://github.com/dash-project/dash/issues/544 is fixed.
   DASH_ASSERT_RETURNS(
       dart_allreduce(
           &lmin,
