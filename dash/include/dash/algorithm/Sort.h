@@ -834,7 +834,7 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
-  dash::team_unit_t const                 owner{0};
+  dash::team_unit_t const                 owner{unit_at_begin};
   dash::Shared<dash::Atomic<mapped_type>> g_min(lmin, owner, team);
   dash::Shared<dash::Atomic<mapped_type>> g_max(lmax, owner, team);
 
@@ -845,7 +845,7 @@ void sort(
   // implicit barrier...
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
-  if (myid != owner) {
+  if (n_l_elem > 0 && myid != owner) {
     // the other units apply min / max reductions
     g_min.get().op(dash::min<mapped_type>(), lmin);
     g_max.get().op(dash::max<mapped_type>(), lmax);
