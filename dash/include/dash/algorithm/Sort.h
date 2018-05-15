@@ -806,10 +806,6 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
-  dash::team_unit_t const                 owner{unit_at_begin};
-  dash::Shared<dash::Atomic<mapped_type>> g_min(lmin, owner, team);
-  dash::Shared<dash::Atomic<mapped_type>> g_max(lmax, owner, team);
-
   using array_t = dash::Array<std::size_t>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
@@ -817,22 +813,34 @@ void sort(
   // implicit barrier...
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
-  if (n_l_elem > 0 && myid != owner) {
-    // the other units apply min / max reductions
-    g_min.get().op(dash::min<mapped_type>(), lmin);
-    g_max.get().op(dash::max<mapped_type>(), lmax);
-  }
-
   // another implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
 
-  // we can fetch our min / max values...
-  auto const min = static_cast<mapped_type>(g_min.get());
-  auto const max = static_cast<mapped_type>(g_max.get());
+  mapped_type min, max;
 
-  DASH_LOG_TRACE_VAR("dash::sort", min);
-  DASH_LOG_TRACE_VAR("dash::sort", max);
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmin,
+          &min,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MIN,
+          team.dart_id()),
+      DART_OK);
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmax,
+          &max,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MAX,
+          team.dart_id()),
+      DART_OK);
+
+  DASH_LOG_TRACE_VAR("global minimum in range", min);
+  DASH_LOG_TRACE_VAR("global maximum in range", max);
 
   if (min == max) {
     // all values are equal, so nothing to sort globally.
@@ -906,7 +914,7 @@ void sort(
 
     detail::psort__calc_boundaries(p_borders, partitions);
 
-    DASH_LOG_TRACE("dash::sort", "finding partition borders", "iter", iter);
+    DASH_LOG_TRACE_VAR("finding partition borders", iter);
 
     DASH_LOG_TRACE_RANGE(
         "partition borders", std::begin(partitions), std::end(partitions));
@@ -945,7 +953,7 @@ void sort(
 
   trace.exit_state("4:find_global_partition_borders");
 
-  DASH_LOG_TRACE("dash::sort", "partition borders found", "iter", iter);
+  DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
   trace.enter_state("5:final_local_histogram");
   auto histograms = detail::psort__local_histogram(
