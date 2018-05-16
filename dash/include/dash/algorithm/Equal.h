@@ -2,10 +2,10 @@
 #define DASH__ALGORITHM__EQUAL_H__
 
 #include <dash/Array.h>
-#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/iterator/GlobIter.h>
 
 namespace dash {
 namespace internal {
@@ -40,41 +40,43 @@ namespace internal {
     // KNOWN ISSUE
     return std::equal(glfirst_1, glfirst_1+dist, first_2+offset);
   }
-}
+  }  // namespace internal
 
-/**
- * Returns true if the range \c [first1, last1) is equal to the range
- * \c [first2, first2 + (last1 - first1)), and false otherwise.
- *
- * \ingroup     DashAlgorithms
- */
-template <typename GlobIter>
-bool equal(
-    /// Iterator to the initial position in the sequence
-    GlobIter first_1,
-    /// Iterator to the final position in the sequence
-    GlobIter last_1,
-    GlobIter first_2)
-{
-  static_assert(
-      dash::iterator_traits<GlobIter>::is_global_iterator::value,
-      "invalid iterator: Need to be a global iterator");
+  /**
+   * Returns true if the range \c [first1, last1) is equal to the range
+   * \c [first2, first2 + (last1 - first1)), and false otherwise.
+   *
+   * \ingroup     DashAlgorithms
+   */
+  template <typename GlobIter>
+  bool equal(
+      /// Iterator to the initial position in the sequence
+      GlobIter first_1,
+      /// Iterator to the final position in the sequence
+      GlobIter last_1,
+      GlobIter first_2)
+  {
+    static_assert(
+        dash::iterator_traits<GlobIter>::is_global_iterator::value,
+        "invalid iterator: Need to be a global iterator");
 
-  auto & team        = first_1.team();
-  auto myid          = team.myid();
-  // Global iterators to local range:
-  auto index_range_in   = dash::local_range(first_1, last_1);
-  auto l_first_1        = index_range_in.begin;
-  auto l_last_1         = index_range_in.end;
-  auto dist             = std::distance(l_first_1, l_last_1);
-  auto index_range_out  = dash::local_range(first_2, first_2 + dist);
-  auto common_dist      = std::min(std::distance(index_range_out.begin, index_range_out.end),dist);
-  char l_result         = 1;
+    auto& team = first_1.team();
+    auto  myid = team.myid();
+    // Global iterators to local range:
+    auto index_range_in  = dash::local_range(first_1, last_1);
+    auto l_first_1       = index_range_in.begin;
+    auto l_last_1        = index_range_in.end;
+    auto dist            = std::distance(l_first_1, l_last_1);
+    auto index_range_out = dash::local_range(first_2, first_2 + dist);
+    auto common_dist     = std::min(
+        std::distance(index_range_out.begin, index_range_out.end), dist);
+    char l_result = 1;
 
-  // check if local ranges are corresponding
-  if(common_dist == dist){
-    l_result = ::dash::internal::equal_loc_impl(l_first_1, l_last_1, first_2.local());
-  } else if(common_dist > 0) {
+    // check if local ranges are corresponding
+    if (common_dist == dist) {
+      l_result = ::dash::internal::equal_loc_impl(
+          l_first_1, l_last_1, first_2.local());
+    } else if(common_dist > 0) {
     l_result = ::dash::internal::equal_overlapping_impl(
         first_1, last_1, first_2);
   }
@@ -98,11 +100,11 @@ bool equal(
 template <typename GlobIter, class BinaryPredicate>
 bool equal(
     /// Iterator to the initial position in the sequence
-    GlobIter        first_1,
+    GlobIter first_1,
     /// Iterator to the final position in the sequence
-    GlobIter        last_1,
-    GlobIter        first_2,
-    BinaryPredicate pred)
+    GlobIter last_1,
+    GlobIter first_2,
+    BinaryPredicate /*pred*/)
 {
   static_assert(
       dash::iterator_traits<GlobIter>::is_global_iterator::value,

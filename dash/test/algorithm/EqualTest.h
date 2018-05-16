@@ -8,11 +8,8 @@
  */
 class EqualTest : public dash::test::TestBase {
 protected:
+  EqualTest() = default;
 
-  EqualTest() {
-  }
-
-  virtual ~EqualTest() {
-  }
+  ~EqualTest() override = default;
 };
 #endif // DASH__TEST__EQUAL_TEST_H_

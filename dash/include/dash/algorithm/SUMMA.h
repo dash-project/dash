@@ -52,18 +52,18 @@ void mmult_local(
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where MKL is not available.
  */
-template<typename ValueType>
+template <typename ValueType>
 void mmult_local(
-  /// Matrix to multiply, extents n x m
-  const ValueType * A,
-  /// Matrix to multiply, extents m x p
-  const ValueType * B,
-  /// Matrix to contain the multiplication result, extents n x p
-  ValueType       * C,
-  long long         m,
-  long long         n,
-  long long         p,
-  MemArrange        storage)
+    /// Matrix to multiply, extents n x m
+    const ValueType *A,
+    /// Matrix to multiply, extents m x p
+    const ValueType *B,
+    /// Matrix to contain the multiplication result, extents n x p
+    ValueType *C,
+    long long  m,
+    long long  n,
+    long long  p,
+    MemArrange /*storage*/)
 {
 #ifndef DEBUG
   DASH_THROW(
