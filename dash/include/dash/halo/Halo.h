@@ -253,7 +253,7 @@ enum class BoundaryProp : uint8_t {
   CUSTOM
 };
 
-static std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
+inline std::ostream& operator<<(std::ostream& os, const BoundaryProp& prop) {
   if(prop == BoundaryProp::NONE)
     os << "NONE";
   else if(prop == BoundaryProp::CYCLIC)
@@ -318,7 +318,7 @@ enum class RegionPos : bool {
   POST
 };
 
-static std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
+inline std::ostream& operator<<(std::ostream& os, const RegionPos& pos) {
   if(pos == RegionPos::PRE)
     os << "PRE";
   else
@@ -824,10 +824,8 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    auto coords    = glob_coords(_idx + n);
-    auto local_pos = _pattern->local_index(coords);
-
-    return reference(_globmem->at(local_pos.unit, local_pos.index));
+    //TODO dhinf: verify if this is correct
+    return *GlobIter<ElementT, PatternT, GlobMemT>(_globmem, *_pattern, gpos() + n);
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }

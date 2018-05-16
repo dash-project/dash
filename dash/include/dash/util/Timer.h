@@ -59,9 +59,8 @@ public:
 
 public:
   inline Timer()
-  {
-    timestampStart = Timer::Now();
-  }
+  : timestampStart(Timer::Now())
+  { }
 
   inline Timer(const self_t & other) : timestampStart(other.timestampStart)
   { }
@@ -200,9 +199,8 @@ public:
 
 public:
   inline Timer()
-  {
-    timestampStart = Timer::Now();
-  }
+  : timestampStart(Timer::Now())
+  { }
 
   inline Timer(const self_t & other) : timestampStart(other.timestampStart)
   { }

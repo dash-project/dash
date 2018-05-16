@@ -247,7 +247,7 @@ private:
    * Frees and detaches all global memory regions allocated by this allocator
    * instance.
    */
-  void clear() noexcept
+  void clear() DASH_ASSERT_NOEXCEPT
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear()");
 

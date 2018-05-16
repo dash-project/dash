@@ -23,7 +23,7 @@ enum class StencilViewScope : std::uint8_t {
   ALL
 };
 
-static std::ostream& operator<<(std::ostream&           os,
+inline std::ostream& operator<<(std::ostream&           os,
                                 const StencilViewScope& scope) {
   if(scope == StencilViewScope::INNER)
     os << "INNER";
@@ -251,8 +251,8 @@ public:
                   pattern_index_t idx)
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
     _stencil_offsets(stencil_offsets), _view(view_scope),
-    _local_memory(local_memory), _idx(idx),
-    _local_layout(view_local.extents()) {
+    _local_memory(local_memory),
+    _local_layout(view_local.extents()), _idx(idx) {
     if(_idx < _view.size())
       set_coords();
 
@@ -285,9 +285,11 @@ public:
                   const ViewSpec_t&       view_local,
                   const BoundaryViews_t& boundary_views, pattern_index_t idx)
   : _halomemory(halomemory), _stencil_spec(stencil_spec),
-    _stencil_offsets(stencil_offsets), _boundary_views(boundary_views),
-    _view(view_local.extents()), _local_memory(local_memory), _idx(idx),
-    _local_layout(view_local.extents()) {
+    _stencil_offsets(stencil_offsets),
+    _view(view_local.extents()),
+    _boundary_views(boundary_views),
+    _local_memory(local_memory),
+    _local_layout(view_local.extents()), _idx(idx) {
     pattern_index_t size = 0;
     for(const auto& view : boundary_views)
       size += view.size();

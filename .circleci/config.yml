@@ -7,13 +7,13 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
+      DASH_BUILDEX: ON
       CC: gcc
       CXX: g++
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -36,7 +36,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -59,7 +59,7 @@ jobs:
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -75,13 +75,13 @@ jobs:
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
-      DASH_BUILDEX: OFF
-      CC: clang-3.8
-      CXX: clang++-3.8
+      DASH_BUILDEX: ON
+      CC: clang-5.0
+      CXX: clang++-5.0
     steps:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Release
-      - run: bash dash/scripts/dash-ci.sh Minimal
+      - run: bash -c 'export DASH_FORCE_CXX_STD=11; export DART_FORCE_C_STD=99; dash/scripts/dash-ci.sh Minimal'
       - run:
           command: bash dash/scripts/circleci/collect-artifacts.sh
           when: always
@@ -89,11 +89,33 @@ jobs:
           path: /tmp/build-logs
       - store_test_results:
           path: /tmp/build-tests
+  coverage:
+    docker:
+      - image: dashproject/ci:openmpi3
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:GlobRefTest.Member"
+      GTEST_OUTPUT: "xml:test-results.xml"
+      CC: gcc
+      CXX: g++
+    steps:
+      - run: apt update && apt install lcov gcovr curl libatlas-base-dev -y
+      - checkout
+      - run: bash build.cov.sh -f
+      - run: cd build.cov && make coverage 2>dash/test-debug.log | grep -v "LOG" 
+      - run: bash <(curl -s https://codecov.io/bash)
+      - store_test_results:
+          path: build.cov/dash/test-results.xml
+      - store_artifacts:
+          path: build.cov/dash/coverage.xml
+      - store_artifacts:
+          path: build.cov/dash/test-debug.log
 
 workflows:
   version: 2
   build_and_test:
     jobs:
+      - coverage
       - gnu_mpich
       - gnu_openmpi2
       - gnu_openmpi3

@@ -272,6 +272,7 @@ public:
 
   constexpr size_type local_size(dash::team_unit_t) const noexcept
   {
+    // TODO this only holds if all units allocate the same number of elements
     return _nlelem;
   }
 
@@ -451,9 +452,10 @@ public:
     DASH_LOG_TRACE_VAR("GlobStaticMem.at", lunit);
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, lunit);
+    // increment locally only
+    gptr.addr_or_offs.offset += local_index * sizeof(value_type);
     // Apply local offset to global pointer:
     pointer res_gptr(*this, gptr);
-    res_gptr += local_index;
     DASH_LOG_DEBUG("GlobStaticMem.at (+g_unit) >", res_gptr);
     return res_gptr;
   }

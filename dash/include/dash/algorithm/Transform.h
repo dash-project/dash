@@ -135,7 +135,7 @@ inline dart_ret_t transform_blocking_impl(
 
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<void *>(values),
+                        (values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op);
@@ -158,7 +158,7 @@ dart_ret_t transform_impl(
 
   dart_ret_t result = dart_accumulate(
                         dest,
-                        reinterpret_cast<void *>(values),
+                        (values),
                         nvalues,
                         dash::dart_datatype<ValueType>::value,
                         op);

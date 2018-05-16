@@ -19,11 +19,32 @@ find_package(OpenMP)
 #  | -Weffc++                 | Spurious false positives                  |
 #  '--------------------------'-------------------------------------------'
 
+# set minimum requirements here
 set (DART_C_STD_PREFERED "99")
 set (DASH_CXX_STD_PREFERED "11")
 
+# Used in CI Scripts to force a particular CXX version
+if("$ENV{DART_FORCE_C_STD}")
+  message(INFO "Force C STD $ENV{DART_FORCE_C_STD}")
+  set(DART_C_STD_PREFERED "$ENV{DART_FORCE_C_STD}")
+
+# Check if compiler provides c11
+elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+  include(CheckCCompilerFlag)
+  CHECK_C_COMPILER_FLAG("-std=c11" COMPILER_SUPPORTS_C11)
+  if(COMPILER_SUPPORTS_C11)
+    set (DART_C_STD_PREFERED "11")
+    message(STATUS "Compile with C 11")
+  endif()
+endif()
+
+# Same for C++
+if("$ENV{DASH_FORCE_CXX_STD}")
+  message(INFO "Force C++ STD $ENV{DASH_FORCE_CXX_STD}")
+  set(DASH_CXX_STD_PREFERED "$ENV{DASH_FORCE_CXX_STD}")
+
 # Check if compiler provides c++14
-if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
   include(CheckCXXCompilerFlag)
   CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
   if(COMPILER_SUPPORTS_CXX14)
@@ -32,6 +53,7 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
   endif()
 endif()
 
+# Configure Compiler Warnings
 if (ENABLE_DEV_COMPILER_WARNINGS
   OR ENABLE_EXT_COMPILER_WARNINGS
   AND NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
@@ -39,15 +61,13 @@ if (ENABLE_DEV_COMPILER_WARNINGS
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
 
-  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" AND OPENMP_FOUND)
     set (DASH_DEVELOPER_CCXX_FLAGS
          "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   endif()
 
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-align")
-  set (DASH_DEVELOPER_CCXX_FLAGS
-       "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wcast-qual")
   set (DASH_DEVELOPER_CCXX_FLAGS
@@ -62,11 +82,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
-
-  if (OPENMP_FOUND)
-    set (DASH_DEVELOPER_CCXX_FLAGS
-         "${DASH_DEVELOPER_CCXX_FLAGS} -Wopenmp-simd")
-  endif()
 
   # C++-only warning flags
 
@@ -85,7 +100,7 @@ if (ENABLE_DEV_COMPILER_WARNINGS
          "${DASH_DEVELOPER_CXX_FLAGS} -Wstrict-overflow=2")
     # some good hints, but too style-related to be used in general
     set (DASH_DEVELOPER_CXX_FLAGS
-         "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++")
+      "${DASH_DEVELOPER_CXX_FLAGS} -Weffc++ -Wno-error=effc++")
   endif()
 
   set (DASH_DEVELOPER_CXX_FLAGS
@@ -102,8 +117,6 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CC_FLAGS}  -Wnested-externs")
 
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    set (DASH_DEVELOPER_CC_FLAGS
-         "${DASH_DEVELOPER_CC_FLAGS}  -Wc99-c11-compat")
     set (DASH_DEVELOPER_CC_FLAGS
          "${DASH_DEVELOPER_CC_FLAGS}  -Wmissing-parameter-type")
   endif()

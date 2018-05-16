@@ -65,17 +65,39 @@ public:
     team_unit_t   owner = team_unit_t(0),
     /// Team containing all units accessing the element in shared memory
     Team     &    team  = dash::Team::All())
+    : Shared(value_type{}, owner, team)
+  {
+    DASH_LOG_TRACE("Shared.Shared(team,owner) >",
+                   "finished delegating constructor");
+  }
+
+  /**
+   * Constructor, allocates shared value at single unit in specified team.
+   * The element is initialized with the given value.
+   */
+  Shared(
+    /// The value to initialize the element with
+    const value_type & val,
+    /// Unit id of the shared value's owner.
+    team_unit_t   owner = team_unit_t(0),
+    /// Team containing all units accessing the element in shared memory
+    Team     &    team  = dash::Team::All())
     : _team(&team),
       _owner(owner),
       _dart_gptr(DART_GPTR_NULL)
   {
-    DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner)()", owner);
+    DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
     // Shared value is only allocated at unit 0:
     if (_team->myid() == _owner) {
-      DASH_LOG_DEBUG("Shared.Shared(team,owner)",
+      DASH_LOG_DEBUG("Shared.Shared(value,team,owner)",
                      "allocating shared value in local memory");
       _globmem   = std::make_shared<GlobMem_t>(1, team);
       _dart_gptr = _globmem->begin().dart_gptr();
+      auto lbegin = _globmem->lbegin();
+      auto const lend = _globmem->lend();
+
+      DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
+      std::uninitialized_fill(lbegin, lend, val);
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);
@@ -85,8 +107,7 @@ public:
       ds.dtype,
       _owner,
       _team->dart_id());
-    team.barrier();
-    DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _dart_gptr);
+    DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
   }
 
   /**
@@ -122,7 +143,7 @@ public:
   /**
    * Set the value of the shared element.
    */
-  void set(value_type val)
+  void set(const value_type & val)
   {
     DASH_LOG_DEBUG_VAR("Shared.set()", val);
     DASH_LOG_DEBUG_VAR("Shared.set",   _owner);

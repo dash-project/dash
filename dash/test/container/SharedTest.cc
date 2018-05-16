@@ -57,14 +57,38 @@ TEST_F(SharedTest, SpecifyOwner)
                          : dash::size() / 2);
   dash::global_unit_t owner_b(dash::size() - 1);
 
-  value_t  value_a     = 1000;
-  value_t  value_b     = 2000;
+  value_t  value_a_init =  100;
+  value_t  value_b_init =  200;
+  value_t  value_a      = 1000;
+  value_t  value_b      = 2000;
   dash::team_unit_t l_owner_a(owner_a);
   dash::team_unit_t l_owner_b(owner_b);
-  shared_t shared_at_a(l_owner_a);
-  shared_t shared_at_b(l_owner_b);
 
   // Initialize shared values:
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "initialize shared value at unit", owner_a, "(a)",
+                 "with", value_a_init);
+  shared_t shared_at_a(value_a_init, l_owner_a);
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "initialize shared value at unit", owner_b, "(b)",
+                 "with", value_b_init);
+  shared_t shared_at_b(value_b_init, l_owner_b);
+
+  value_t get_a_init = static_cast<value_t>(shared_at_a.get());
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "shared value at unit", owner_a, " (a):", get_a_init);
+  value_t get_b_init = static_cast<value_t>(shared_at_b.get());
+  DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
+                 "shared value at unit", owner_b, " (b):", get_b_init);
+  EXPECT_EQ_U(value_a_init, get_a_init);
+  EXPECT_EQ_U(value_b_init, get_b_init);
+
+  // Wait for validation of read shared values at all units before setting
+  // new values:
+  shared_at_a.barrier();
+  shared_at_b.barrier();
+
+  // Overwrite shared values local:
   if (dash::myid() == owner_a) {
     DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                    "setting shared value at unit", owner_a, "(a)",
@@ -94,7 +118,7 @@ TEST_F(SharedTest, SpecifyOwner)
   shared_at_a.barrier();
   shared_at_b.barrier();
 
-  // Overwrite shared values:
+  // Overwrite shared values remote:
   if (dash::myid() == owner_a) {
     DASH_LOG_DEBUG("SharedTest.SpecifyOwner",
                    "setting shared value at unit", owner_b, "(b)",
@@ -163,9 +187,12 @@ TEST_F(SharedTest, CompositeValue)
   value_t  exp_val  { 'a', 'b', 'c', 'd',
                       static_cast<short>(dash::size()) };
 
-  if (dash::myid().id == 0) {
-    shared.set(init_val);
-  }
+  shared = shared_t(init_val);
+  shared.barrier();
+
+  value_t shared_init = shared.get();
+  EXPECT_EQ_U(init_val, shared_init);
+
   shared.barrier();
 
   if (dash::myid().id == dash::size() - 1) {
@@ -219,3 +246,31 @@ TEST_F(SharedTest, AtomicAdd)
   shared.barrier();
 }
 
+TEST_F(SharedTest, AtomicMinMax)
+{
+  using value_t  = int32_t;
+  using shared_t = dash::Shared<dash::Atomic<value_t>>;
+
+  auto&    team = dash::Team::All();
+  shared_t g_min(std::numeric_limits<value_t>::max(), dash::team_unit_t{0}, team);
+  shared_t g_max(std::numeric_limits<value_t>::min(), dash::team_unit_t{0}, team);
+
+  auto const start_min = static_cast<value_t>(g_min.get());
+  auto const start_max = static_cast<value_t>(g_max.get());
+
+  EXPECT_GE_U(start_min, 0);
+  EXPECT_LE_U(start_max, std::numeric_limits<value_t>::max());
+
+  team.barrier();
+
+  g_min.get().fetch_op(dash::min<value_t>(), 0);
+  g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
+
+  team.barrier();
+
+  auto const min = static_cast<value_t>(g_min.get());
+  auto const max = static_cast<value_t>(g_max.get());
+
+  EXPECT_EQ_U(0, min);
+  EXPECT_EQ_U(std::numeric_limits<value_t>::max(), max);
+}

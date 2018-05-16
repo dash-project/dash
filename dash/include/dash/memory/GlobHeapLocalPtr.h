@@ -276,14 +276,14 @@ public:
     return *this;
   }
 
-  self_t & operator++(int)
+  self_t operator++(int)
   {
     auto res = *this;
     increment(1);
     return res;
   }
 
-  self_t & operator--(int)
+  self_t operator--(int)
   {
     auto res = *this;
     decrement(1);

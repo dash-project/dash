@@ -130,20 +130,19 @@ public:
    * Move-constructor.
    */
   Team(Team && t)
+  : _dartid(t._dartid),
+    _myid(t._myid),
+    _size(t._size),
+    _parent(t._parent),
+    _child(t._child),
+    _position(t._position),
+    _num_siblings(t._num_siblings),
+    _group(t._group),
+    _deallocs(std::move(t._deallocs))
   {
-    if (this != &t) {
-      // Free existing resources
-      free();
-      // Take ownership of data from source
-      _deallocs = std::move(t._deallocs);
-      std::swap(_parent,    t._parent);
-      std::swap(_group,     t._group);
-      std::swap(_dartid,    t._dartid);
-      _position     = t._position;
-      _num_siblings = t._num_siblings;
-      _myid         = t._myid;
-      _size         = t._size;
-    }
+    t._parent = nullptr;
+    t._group  = nullptr;
+    t._dartid = DART_TEAM_NULL;
   }
 
   /**

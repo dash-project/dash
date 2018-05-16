@@ -833,14 +833,14 @@ public:
   : local(this),
     async(this),
     m_team(&team),
-    m_myid(team.myid()),
     m_pattern(
       SizeSpec_t(nelem),
       distribution,
       team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0)
+    m_lcapacity(0),
+    m_myid(team.myid())
   {
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team)()",
                    "size:",   nelem,
@@ -872,11 +872,11 @@ public:
   : local(this),
     async(this),
     m_team(&pattern.team()),
-    m_myid(m_team->myid()),
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0)
+    m_lcapacity(0),
+    m_myid(m_team->myid())
   {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
@@ -913,7 +913,6 @@ public:
   : local(this),
     async(this),
     m_team(other.m_team),
-    m_myid(other.m_myid),
     m_pattern(std::move(other.m_pattern)),
     m_globmem(std::move(other.m_globmem)),
     m_begin(other.m_begin),
@@ -922,7 +921,8 @@ public:
     m_lsize(other.m_lsize),
     m_lcapacity(other.m_lcapacity),
     m_lbegin(other.m_lbegin),
-    m_lend(other.m_lend) {
+    m_lend(other.m_lend),
+    m_myid(other.m_myid) {
 
     other.m_globmem.reset();
 

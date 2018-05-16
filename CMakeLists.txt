@@ -110,6 +110,10 @@ option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+  # This has to be done globally as otherwise linking might fail
+  append_coverage_compiler_flags()
+
   set(BUILD_TESTS TRUE CACHE BOOLEAN
       "Whether tests are built with code coverage (lcov) support.
        Implies BUILD_TESTS. Requires GCC." on)
