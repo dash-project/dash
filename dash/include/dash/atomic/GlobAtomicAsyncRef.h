@@ -14,6 +14,9 @@ namespace dash {
 template<typename T>
 class Atomic;
 
+template<class T>
+class GlobRef;
+
 /**
  * Specialization for atomic values. All atomic operations are
  * \c const as the \c GlobRef does not own the atomic values.
@@ -51,12 +54,6 @@ public:
 private:
   dart_gptr_t _gptr;
 
-public:
-  /**
-   * Reference semantics forbid declaration without definition.
-   */
-  GlobAsyncRef() = delete;
-
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
@@ -83,24 +80,13 @@ public:
   }
 
 
-  template <class...> struct null_v : std::integral_constant<int, 0> {};
 
-  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<nonconst_value_type>>& gref)
-  : GlobAsyncRef(gref.dart_gptr())
-  { }
+public:
+  /**
+   * Reference semantics forbid declaration without definition.
+   */
+  GlobAsyncRef() = delete;
 
-  template<typename _T,
-           int = internal::enable_implicit_copy_ctor<_T, value_type>::value>
-  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
-  : GlobAsyncRef(gref.dart_gptr())
-  { }
-
-  template<typename _T,
-           long = internal::enable_explicit_copy_ctor<_T, value_type>::value>
-  explicit
-  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
-  : GlobAsyncRef(gref.dart_gptr())
-  { }
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
@@ -113,11 +99,62 @@ public:
   }
 
   /**
-   * Unlike native reference types, global reference types are moveable.
+   * Copy constructor: Implicit if at least one of the following conditions is
+   * satisfied:
+   *    1) value_type and _T are exactly the same types (including const and
+   *    volatile qualifiers
+   *    2) value_type and _T are the same types after removing const and
+   *    volatile qualifiers and value_type itself is const.
+   */
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
+  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  /**
+   * Copy constructor: Explicit if the following conditions are satisfied.
+   *    1) value_type and _T are the same types after excluding const and
+   *    volatile qualifiers
+   *    2) value_type is const and _T is non-const
+   */
+  template<typename _T,
+           long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
+  explicit
+  GlobAsyncRef(const GlobAsyncRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  template<typename _T,
+           int = internal::enable_implicit_copy_ctor<value_type, _T>::value>
+  GlobAsyncRef(const GlobRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  template<typename _T,
+           long = internal::enable_explicit_copy_ctor<value_type, _T>::value>
+  explicit
+  GlobAsyncRef(const GlobRef<dash::Atomic<_T>>& gref)
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
+
+  ~GlobAsyncRef() = default;
+
+  /**
+   * MOVE Constructor: Unlike native reference types, global reference types
+   * are moveable.
    */
   GlobAsyncRef(self_t && other)      = default;
 
+  /**
+   * Copy Assignment
+   */
   self_t & operator=(const self_t & other) = delete;
+
+  /**
+   * Move Assignment
+   */
+  self_t & operator=(self_t && other) = default;
 
   inline bool operator==(const self_t & other) const noexcept
   {
@@ -171,7 +208,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
     dart_ret_t ret = dart_accumulate_blocking_local(
                        _gptr,
-                       reinterpret_cast<const void * const>(&value),
+                       &value,
                        1,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_REPLACE);
@@ -192,7 +229,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.set",   _gptr);
     dart_ret_t ret = dart_accumulate(
                        _gptr,
-                       reinterpret_cast<const void * const>(ptr),
+                       ptr,
                        1,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_REPLACE);
@@ -232,8 +269,8 @@ public:
     nonconst_value_type result;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
-                       reinterpret_cast<void * const>(&nothing),
-                       reinterpret_cast<void * const>(&result),
+                       &nothing,
+                       &result,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_NO_OP);
     dart_flush_local(_gptr);
@@ -256,8 +293,8 @@ public:
     nonconst_value_type nothing;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
-                       reinterpret_cast<void * const>(&nothing),
-                       reinterpret_cast<void * const>(result),
+                       &nothing,
+                       result,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        DART_OP_NO_OP);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
@@ -289,7 +326,7 @@ public:
     DASH_LOG_TRACE("GlobAsyncRef<Atomic>.op", "dart_accumulate");
     dart_ret_t ret = dart_accumulate_blocking_local(
                        _gptr,
-                       reinterpret_cast<const void * const>(&value),
+                       &value,
                        1,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        binary_op.dart_operation());
@@ -316,8 +353,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobAsyncRef<Atomic>.fetch_op",   typeid(value).name());
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,
-                       reinterpret_cast<const void * const>(&value),
-                       reinterpret_cast<void * const>(result),
+                       &value,
+                       result,
                        dash::dart_punned_datatype<nonconst_value_type>::value,
                        binary_op.dart_operation());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_fetch_op failed");
@@ -356,9 +393,9 @@ public:
       "GlobAsyncRef<Atomic>.compare_exchange", typeid(desired).name());
     dart_ret_t ret = dart_compare_and_swap(
                        _gptr,
-                       reinterpret_cast<const void * const>(&desired),
-                       reinterpret_cast<const void * const>(&expected),
-                       reinterpret_cast<void * const>(result),
+                       &desired,
+                       &expected,
+                       result,
                        dash::dart_punned_datatype<nonconst_value_type>::value);
     DASH_ASSERT_EQ(DART_OK, ret, "dart_compare_and_swap failed");
   }
@@ -457,4 +494,3 @@ public:
 } // namespace dash
 
 #endif // DASH__ATOMIC_ASYNC_GLOBREF_H_
-

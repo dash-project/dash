@@ -19,6 +19,7 @@ my @files;
 	  "CHANGELOG.md",
 	  "CMakeLists.txt",
 	  "CMakeExt/*.cmake",
+          "CMakeExt/Code/*.c",
 	  "build.sh",
 	  "build.dev.sh",
 	  "build.minimal.sh",
@@ -90,6 +91,7 @@ my @files;
 	  "dash/src/Makefile",
 	  "dash/make.defs",
 	  "dash/CMakeLists.txt",
+          "dash/dash-config.cmake.in",
 	  #
 	  # DASH examples
 	  #
@@ -117,7 +119,8 @@ my @files;
 	  # DASH scripts
 	  #
 	  "dash/scripts/*.sh",
-	  #
+          "dash/scripts/dashcc/*.in",
+          #
 	  # Documentation
 	  #
 	  "doc/config/*.dox",

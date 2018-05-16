@@ -824,10 +824,8 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    auto coords    = glob_coords(_idx + n);
-    auto local_pos = _pattern->local_index(coords);
-
-    return reference(_globmem->at(local_pos.unit, local_pos.index));
+    //TODO dhinf: verify if this is correct
+    return *GlobIter<ElementT, PatternT>(_globmem, *_pattern, gpos() + n);
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }

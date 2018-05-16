@@ -4,7 +4,7 @@ find_package(BLAS)
 find_package(LAPACK)
 
 if (BLAS_FOUND)
-  check_library_exists(${BLAS_LIBRARIES} "cblas_sgemm" "" BLAS_IS_CBLAS)
+  check_library_exists(${BLAS_LIBRARIES} "cblas_sgemm" BLAS_IS_CBLAS)
   if(${BLAS_IS_CBLAS})
   else()
     message(STATUS "No CBLAS Interface found, try manually")
