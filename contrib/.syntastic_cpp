@@ -3,7 +3,6 @@
 -I./dart-impl/base/include
 -I./dart-if/v3.2/include
 -I/opt/openmpi-1.8/include
--I/home/fuchst/opt/gtest/include
 -std=c++11
 -Wall
 -Wextra
