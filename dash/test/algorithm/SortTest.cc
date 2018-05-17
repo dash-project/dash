@@ -419,7 +419,6 @@ TEST_F(SortTest, ExtremValues)
     arr.local[i] = i;
   }
   arr.barrier();
-  auto const teamsz = arr.team().size();
 
   std::fill(
       arr.local.begin() + 10,
