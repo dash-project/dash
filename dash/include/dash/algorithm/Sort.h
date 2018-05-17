@@ -11,6 +11,7 @@
 #include <dash/Atomic.h>
 #include <dash/Exception.h>
 #include <dash/GlobPtr.h>
+#include <dash/Meta.h>
 #include <dash/dart/if/dart.h>
 
 #include <dash/algorithm/Copy.h>
@@ -150,8 +151,10 @@ inline void psort__calc_boundaries(
       p_borders.is_stable.size(),
       partitions.size(),
       "invalid number of partition borders");
+
   // recalculate partition boundaries
   for (std::size_t idx = 0; idx < partitions.size(); ++idx) {
+    DASH_ASSERT(p_borders.lower_bound[idx] <= p_borders.upper_bound[idx]);
     // case A: partition is already stable or skipped
     if (p_borders.is_stable[idx]) continue;
     // case B: we have the last iteration
@@ -162,8 +165,10 @@ inline void psort__calc_boundaries(
     }
     else {
       // case C: ordinary iteration
+
       partitions[idx] =
-          (p_borders.lower_bound[idx] + p_borders.upper_bound[idx]) / 2;
+          p_borders.lower_bound[idx] +
+          ((p_borders.upper_bound[idx] - p_borders.lower_bound[idx]) / 2);
 
       if (partitions[idx] == p_borders.lower_bound[idx]) {
         // if we cannot move the partition to the left
@@ -234,12 +239,12 @@ psort__local_histogram(
   return std::make_pair(std::move(n_lt), std::move(n_le));
 }
 
-template <typename SizeType, typename GlobIter>
+template <typename GlobIter>
 inline void psort__global_histogram(
-    std::vector<SizeType> const& l_nlt,
-    std::vector<SizeType> const& l_nle,
-    std::vector<size_t> const&   valid_partitions,
-    GlobIter                     it_nlt_nle)
+    std::vector<size_t> const& l_nlt,
+    std::vector<size_t> const& l_nle,
+    std::vector<size_t> const& valid_partitions,
+    GlobIter                   it_nlt_nle)
 {
   DASH_LOG_TRACE("< psort__global_histogram ");
   DASH_ASSERT_EQ(l_nlt.size(), l_nle.size(), "Sizes must match");
@@ -268,8 +273,8 @@ inline void psort__global_histogram(
     // we communicate only non-zero values
     if (l_nlt[idx] == 0 && l_nle[idx] == 0) continue;
 
-    std::array<SizeType, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
-    auto const                          g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
+    std::array<size_t, NLT_NLE_BLOCK> vals{{l_nlt[idx], l_nle[idx]}};
+    auto const                        g_idx_nlt = (idx - 1) * NLT_NLE_BLOCK;
 
     DASH_ASSERT_RETURNS(
         dart_accumulate(
@@ -280,9 +285,9 @@ inline void psort__global_histogram(
             // nvalues
             NLT_NLE_BLOCK,
             // dart type
-            dash::dart_datatype<SizeType>::value,
+            dash::dart_datatype<size_t>::value,
             // dart op
-            dash::plus<SizeType>().dart_operation()),
+            dash::plus<size_t>().dart_operation()),
         DART_OK);
 
     has_pending_op = true;
@@ -403,10 +408,10 @@ bool psort__validate_partitions(
   return nonstable_it == p_borders.is_stable.cend();
 }
 
-template <typename LocalArrayT>
+template <class LocalArrayT>
 inline void psort__calc_final_partition_dist(
-    std::vector<typename LocalArrayT::value_type> const& acc_partition_count,
-    LocalArrayT&                                         l_partition_dist)
+    std::vector<size_t> const& acc_partition_count,
+    LocalArrayT&               l_partition_dist)
 {
   /* Calculate number of elements to receive for each partition:
    * We first assume that we we receive exactly the number of elements which
@@ -500,11 +505,11 @@ inline void psort__calc_send_count(
   DASH_LOG_TRACE("psort__calc_send_count >");
 }
 
-template <typename SizeType, typename ElementType>
+template <typename ElementType>
 inline void psort__calc_target_displs(
     PartitionBorder<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
-    dash::Array<SizeType>&              g_partition_data)
+    dash::Array<size_t>&                g_partition_data)
 {
   DASH_LOG_TRACE("< psort__calc_target_displs");
   auto const nunits = g_partition_data.team().size();
@@ -517,15 +522,15 @@ inline void psort__calc_target_displs(
     std::fill(l_target_displs, l_target_displs + nunits, 0);
   }
 
-  std::vector<SizeType> target_displs(nunits, 0);
+  std::vector<size_t> target_displs(nunits, 0);
 
   auto const u_blocksize = g_partition_data.lsize();
 
   for (size_t idx = 0; idx < valid_partitions.size(); ++idx) {
-    auto const     border_idx = valid_partitions[idx];
-    auto const     left_u     = p_borders.left_partition[border_idx];
-    auto const     right_u    = border_idx + 1;
-    SizeType const val =
+    auto const   border_idx = valid_partitions[idx];
+    auto const   left_u     = p_borders.left_partition[border_idx];
+    auto const   right_u    = border_idx + 1;
+    size_t const val =
         (left_u == myid)
             ? g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
             : g_partition_data
@@ -722,35 +727,6 @@ struct identity_t : std::unary_function<T, T> {
     return std::forward<T>(t);
   }
 };
-
-/*
- * Obtaining parameter types and return type from a lambda:
- * see http://coliru.stacked-crooked.com/a/6a87fadcf44c6a0f
- */
-
-template <typename T>
-struct closure_traits : closure_traits<decltype(&T::operator())> {
-};
-
-#define REM_CTOR(...) __VA_ARGS__
-#define SPEC(cv, var, is_var)                                                 \
-  template <typename C, typename R, typename... Args>                         \
-  struct closure_traits<R (C::*)(Args... REM_CTOR var) cv> {                  \
-    using arity       = std::integral_constant<std::size_t, sizeof...(Args)>; \
-    using is_variadic = std::integral_constant<bool, is_var>;                 \
-    using is_const    = std::is_const<int cv>;                                \
-                                                                              \
-    using result_type = R;                                                    \
-                                                                              \
-    template <std::size_t i>                                                  \
-    using arg = typename std::tuple_element<i, std::tuple<Args...>>::type;    \
-  };
-
-SPEC(const, (, ...), 1)
-SPEC(const, (), 0)
-SPEC(, (, ...), 1)
-SPEC(, (), 0)
-
 }  // namespace detail
 
 template <
@@ -766,7 +742,7 @@ void sort(
   using pattern_type = typename iter_type::pattern_type;
   using value_type   = typename iter_type::value_type;
   using mapped_type  = typename std::decay<
-      typename detail::closure_traits<SortableHash>::result_type>::type;
+      typename dash::functional::closure_traits<SortableHash>::result_type>::type;
 
   static_assert(
       std::is_arithmetic<mapped_type>::value,
@@ -830,23 +806,47 @@ void sort(
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(lend - 1))
                                    : std::numeric_limits<mapped_type>::min();
 
-  dash::Shared<dash::Atomic<mapped_type>> g_min(dash::team_unit_t{0}, team);
-  dash::Shared<dash::Atomic<mapped_type>> g_max(dash::team_unit_t{0}, team);
-
-  g_min.get().op(dash::min<mapped_type>(), lmin);
-  g_max.get().op(dash::max<mapped_type>(), lmax);
-
   using array_t = dash::Array<std::size_t>;
 
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
+  // implicit barrier...
   array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
+  // another implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::fill(g_partition_data.lbegin(), g_partition_data.lend(), 0);
 
-  auto const min = static_cast<mapped_type>(g_min.get());
-  auto const max = static_cast<mapped_type>(g_max.get());
+  mapped_type min, max;
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmin,
+          &min,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MIN,
+          team.dart_id()),
+      DART_OK);
+
+  DASH_ASSERT_RETURNS(
+      dart_allreduce(
+          &lmax,
+          &max,
+          1,
+          dart_datatype<mapped_type>::value,
+          DART_OP_MAX,
+          team.dart_id()),
+      DART_OK);
+
+  DASH_LOG_TRACE_VAR("global minimum in range", min);
+  DASH_LOG_TRACE_VAR("global maximum in range", max);
+
+  if (min == max) {
+    // all values are equal, so nothing to sort globally.
+    pattern.team().barrier();
+    return;
+  }
 
   trace.exit_state("2:init_temporary_global_data");
 
@@ -872,8 +872,8 @@ void sort(
 
   bool done = false;
 
-  auto cur = g_nlt_nle.begin();
-  auto tmp = cur + NLT_NLE_BLOCK * nunits;
+  auto it_global_histo  = g_nlt_nle.begin();
+  auto tmp_global_histo = it_global_histo + NLT_NLE_BLOCK * nunits;
 
   // collect all valid partitions in a temporary vector
   std::vector<size_t> valid_partitions;
@@ -907,8 +907,17 @@ void sort(
 
   trace.enter_state("4:find_global_partition_borders");
 
+  size_t iter = 0;
+
   do {
+    ++iter;
+
     detail::psort__calc_boundaries(p_borders, partitions);
+
+    DASH_LOG_TRACE_VAR("finding partition borders", iter);
+
+    DASH_LOG_TRACE_RANGE(
+        "partition borders", std::begin(partitions), std::end(partitions));
 
     auto const histograms = detail::psort__local_histogram(
         partitions, valid_partitions, p_borders, lbegin, lend, sortable_hash);
@@ -920,23 +929,31 @@ void sort(
 
     DASH_LOG_TRACE_RANGE("local histogram nle", l_nle.begin(), l_nle.end());
 
-    detail::psort__global_histogram(l_nlt, l_nle, valid_partitions, cur);
+    detail::psort__global_histogram(
+        l_nlt, l_nle, valid_partitions, it_global_histo);
 
     DASH_LOG_TRACE_RANGE(
         "global histogram",
-        (cur + (myid * NLT_NLE_BLOCK)).local(),
-        (cur + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
+        (it_global_histo + (myid * NLT_NLE_BLOCK)).local(),
+        (it_global_histo + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
 
     done = detail::psort__validate_partitions(
-        p_unit_info, partitions, valid_partitions, p_borders, cur);
+        p_unit_info,
+        partitions,
+        valid_partitions,
+        p_borders,
+        it_global_histo);
 
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
-    std::swap(cur, tmp);
+    std::swap(it_global_histo, tmp_global_histo);
+
   } while (!done);
 
   trace.exit_state("4:find_global_partition_borders");
+
+  DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
   trace.enter_state("5:final_local_histogram");
   auto histograms = detail::psort__local_histogram(

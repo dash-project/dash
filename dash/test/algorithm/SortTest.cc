@@ -412,4 +412,23 @@ TEST_F(SortTest, PlausibilityWithStdSort)
   array.barrier();
 }
 
+TEST_F(SortTest, ExtremValues)
+{
+  dash::Array<int> arr(25 * dash::size());
+
+  for (int i = 0; i < arr.local.size(); i++) {
+    arr.local[i] = i;
+  }
+  arr.barrier();
+  auto const teamsz = arr.team().size();
+
+  std::fill(
+      arr.local.begin() + 10,
+      arr.local.end(),
+      std::numeric_limits<int>::max());
+  arr.barrier();
+
+  perform_test(arr.begin(), arr.end());
+}
+
 // TODO: add additional unit tests with various pattern types and containers
