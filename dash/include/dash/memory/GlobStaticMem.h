@@ -87,6 +87,12 @@ class GlobStaticMem {
   typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
       self_t;
 
+  static_assert(
+      AllocationPolicy == global_allocation_policy::non_collective ||
+          AllocationPolicy == global_allocation_policy::collective,
+      "GlobStaticMem supports only collective or non_collective allocation "
+      "policies");
+
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
 
   using allocator_traits = dash::allocator_traits<dash::SymmetricAllocator<
@@ -476,12 +482,14 @@ private:
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobStaticMem.update_lbegin",
                        pointer(*this, gptr));
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, _team->myid().id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
+    // TODO rko: Temporary workaround for #549 until this issue is clarified
+    if (AllocationPolicy == global_allocation_policy::collective) {
+
+      DASH_ASSERT_RETURNS(
+          dart_gptr_setunit(&gptr, _team->myid().id), DART_OK);
+    }
+
+    DASH_ASSERT_RETURNS(dart_gptr_getaddr(gptr, &addr), DART_OK);
     DASH_LOG_TRACE_VAR("GlobStaticMem.update_lbegin >", addr);
     _lbegin = static_cast<local_pointer>(addr);
   }
