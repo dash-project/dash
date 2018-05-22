@@ -185,10 +185,8 @@ using conditional_base =
 
 }  // namespace details
 
-using memory_resource = cpp17::pmr::memory_resource;
-
 template <class ElementType>
-class LocalMemorySpace : public memory_resource {
+class LocalMemorySpace : public cpp17::pmr::memory_resource {
   // We may add something here in figure
 };
 
@@ -260,7 +258,7 @@ class MemorySpace
       "memory space must be either local or global");
 
 public:
-  using memory_space_domain_category = memory_space_local_domain_tag;
+  using memory_space_domain_category = MSpaceDomainCategory;
 };
 
 template <typename ElementType, typename MSpaceDomainCategory>

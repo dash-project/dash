@@ -251,9 +251,7 @@ private:
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear()");
 
-    auto &     alloc_capture = _alloc;
-    auto const teamId        = _team->dart_id();
-    for (auto & segment : _segments) {
+    for (auto const & segment : _segments) {
       deallocate(segment.gptr(), segment.length());
     }
     _segments.clear();
@@ -269,6 +267,32 @@ private:
   {
     first = std::lower_bound(first, last, value, comp);
     return first != last && !comp(value, *first) ? first : last;
+  }
+
+  typename std::vector<allocation_rec_t>::iterator do_local_allocate(
+      size_type num_local_elem)
+  {
+    auto lp = allocator_traits::allocate(_alloc, num_local_elem);
+
+    if (!lp && num_local_elem > 0) {
+      DASH_LOG_ERROR(
+          "EpochSynchronizedAllocator.allocate_local",
+          "cannot allocate local memory segment",
+          num_local_elem);
+      throw std::bad_alloc{};
+    }
+    auto const comp = [](const allocation_rec_t &a,
+                         const allocation_rec_t &b) {
+      return reinterpret_cast<const uintptr_t>(a.lptr()) <
+             reinterpret_cast<const uintptr_t>(b.lptr());
+    };
+
+    allocation_rec_t rec{lp, num_local_elem, DART_GPTR_NULL};
+
+    auto pos = std::lower_bound(
+        std::begin(_segments), std::end(_segments), rec, comp);
+
+    return _segments.emplace(pos, std::move(rec));
   }
 
 private:
@@ -447,29 +471,11 @@ EpochSynchronizedAllocator<
       "number of local values:",
       num_local_elem);
 
-  auto lp = allocator_traits::allocate(_alloc, num_local_elem);
+  auto it = do_local_allocate(num_local_elem);
 
-  if (!lp && num_local_elem > 0) {
-    DASH_LOG_ERROR(
-        "EpochSynchronizedAllocator.allocate_local",
-        "cannot allocate local memory segment",
-        num_local_elem);
-    throw std::bad_alloc{};
-  }
+  DASH_ASSERT_MSG(it->lptr() != nullptr, "invalid pointer");
 
-  auto const comp = [](const allocation_rec_t &a, const allocation_rec_t &b) {
-    return reinterpret_cast<const uintptr_t>(a.lptr()) <
-           reinterpret_cast<const uintptr_t>(b.lptr());
-  };
-
-  allocation_rec_t rec{lp, num_local_elem, DART_GPTR_NULL};
-
-  auto pos =
-      std::lower_bound(std::begin(_segments), std::end(_segments), rec, comp);
-
-  _segments.insert(pos, rec);
-
-  return lp;
+  return it->lptr();
 }
 
 template <
@@ -512,7 +518,7 @@ void EpochSynchronizedAllocator<
   if (!DART_GPTR_ISNULL(pos->gptr())) {
     DASH_LOG_ERROR(
         "EpochSynchronizedAllocator.deallocate_local",
-        "local pointer must not be attach to global memory",
+        "local pointer must not be attached to global memory",
         lptr);
     return;
   }
@@ -648,9 +654,11 @@ void EpochSynchronizedAllocator<
 
   DASH_ASSERT_EQ(pos->length(), num_local_elem, "invalid block length");
 
-  detach(gptr, num_local_elem);
+  _policy.do_global_detach(pos->gptr());
 
-  deallocate_local(pos->lptr(), num_local_elem);
+  allocator_traits::deallocate(_alloc, pos->lptr(), pos->length());
+
+  _segments.erase(pos);
 }
 
 template <
@@ -674,9 +682,16 @@ EpochSynchronizedAllocator<
       "num_local_elem",
       num_local_elem);
 
-  local_pointer lptr = allocate_local(num_local_elem);
+  auto it = do_local_allocate(num_local_elem);
 
-  pointer gptr = attach(lptr, num_local_elem);
+  DASH_ASSERT_MSG(it->lptr() != nullptr, "local pointer must not be NULL");
+
+  auto gptr =
+      _policy.do_global_attach(_team->dart_id(), it->lptr(), num_local_elem);
+
+  DASH_ASSERT_MSG(!DART_GPTR_ISNULL(gptr), "gptr must not be null");
+
+  it->gptr() = gptr;
 
   return gptr;
 }
