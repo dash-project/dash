@@ -1,6 +1,7 @@
 #ifndef DART_GLOBMEM_H_INCLUDED
 #define DART_GLOBMEM_H_INCLUDED
 
+
 /**
  * \file dart_globmem.h
  *
@@ -213,14 +214,10 @@ dart_gptr_incaddr(
  * \threadsafe
  * \ingroup DartGlobMem
  */
-DART_INLINE DART_NOTHROW
+DART_NOTHROW
 dart_ret_t dart_gptr_setunit(
   dart_gptr_t      * gptr,
-  dart_team_unit_t   unit)
-{
-  gptr->unitid = unit.id;
-  return DART_OK;
-}
+  dart_team_unit_t   unit);
 
 /**
  * Get the flags field for the segment specified by the global pointer.
