@@ -89,6 +89,29 @@ jobs:
           path: /tmp/build-logs
       - store_test_results:
           path: /tmp/build-tests
+
+  minimal:
+    docker:
+      - image: dashproject/ci:minimal
+    environment:
+      MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
+      DASH_BUILDEX: ON
+      CC: gcc
+      CXX: c++
+    steps:
+      - checkout
+      - run: bash dash/scripts/dash-ci.sh Release
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
+      - store_artifacts:
+          path: /tmp/build-logs
+      - store_test_results:
+          path: /tmp/build-tests
+
   coverage:
     docker:
       - image: dashproject/ci:openmpi3
@@ -116,6 +139,7 @@ workflows:
   build_and_test:
     jobs:
       - coverage
+      - minimal
       - gnu_mpich
       - gnu_openmpi2
       - gnu_openmpi3
