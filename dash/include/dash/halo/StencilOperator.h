@@ -439,7 +439,7 @@ private:
     return stencil_offs;
   }
 
-  pattern_index_t get_offset(const ElementCoords_t& coords) {
+  pattern_index_t get_offset(const ElementCoords_t& coords) const {
     pattern_index_t offset = 0;
 
     if(MemoryArrange == ROW_MAJOR) {
