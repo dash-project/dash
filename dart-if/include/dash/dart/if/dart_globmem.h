@@ -214,10 +214,9 @@ dart_gptr_incaddr(
  * \threadsafe
  * \ingroup DartGlobMem
  */
-DART_NOTHROW
 dart_ret_t dart_gptr_setunit(
   dart_gptr_t      * gptr,
-  dart_team_unit_t   unit);
+  dart_team_unit_t   unit) DART_NOTHROW;
 
 /**
  * Get the flags field for the segment specified by the global pointer.
