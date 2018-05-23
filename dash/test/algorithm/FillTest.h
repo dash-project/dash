@@ -7,9 +7,5 @@
  * Test fixture for class dash::transform
  */
 class FillTest : public dash::test::TestBase {
-protected:
-  FillTest() = default;
-
-  ~FillTest() override = default;
 };
-#endif // DASH__TEST__FILL_TEST_H_
+#endif  // DASH__TEST__FILL_TEST_H_

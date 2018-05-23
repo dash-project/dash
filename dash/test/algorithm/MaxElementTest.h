@@ -18,10 +18,6 @@ protected:
 
   /// Using a prime to cause inconvenient strides
   const size_t _num_elem = 251;
-
-  MaxElementTest() = default;
-
-  ~MaxElementTest() override = default;
 };
 
 #endif // DASH__TEST__MAX_ELEMENT_TEST_H_

@@ -7,21 +7,16 @@
 
 #include <vector>
 
-
 /**
  * Test fixture for algorithm dash::min_element.
  */
 class FindTest : public dash::test::TestBase {
 protected:
-  typedef int                                         Element_t;
-  typedef dash::Array<Element_t>                      Array_t;
-  typedef typename Array_t::pattern_type::index_type  index_t;
+  typedef int                                        Element_t;
+  typedef dash::Array<Element_t>                     Array_t;
+  typedef typename Array_t::pattern_type::index_type index_t;
 
   size_t _num_elem = 251;
-
-  FindTest() = default;
-
-  ~FindTest() override = default;
 };
 
-#endif // DASH__TEST__FIND_TEST_H_
+#endif  // DASH__TEST__FIND_TEST_H_
