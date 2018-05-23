@@ -132,7 +132,7 @@ public:
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
   allocation_rec_t do_global_allocate(
-      dart_team_t teamid, LocalAlloc& a, std::size_t nels)
+      dart_team_t teamid, LocalAlloc& /*a*/, std::size_t nels)
   {
     DASH_LOG_DEBUG(
         "CollectiveAllocationPolicyImpl.do_global_allocate(nlocal)",
@@ -160,7 +160,7 @@ public:
 
   /// Similar to the allocation case above global memory is deallocated
   /// symmetrically in DART.
-  bool do_global_deallocate(LocalAlloc& a, allocation_rec_t& rec)
+  bool do_global_deallocate(LocalAlloc& /*a*/, allocation_rec_t& rec)
   {
     DASH_LOG_TRACE(
         "CollectiveAllocationPolicyImpl.do_global_deallocate",
@@ -228,7 +228,7 @@ public:
 
 public:
   inline allocation_rec_t do_global_allocate(
-      dart_team_t teamid, LocalAlloc& a, std::size_t nels) const
+      dart_team_t /*teamid*/, LocalAlloc& /*a*/, std::size_t nels) const
   {
     dart_gptr_t   gptr;
     local_pointer addr;
@@ -252,7 +252,8 @@ public:
     return allocation_rec_t{addr, nels, gptr};
   };
 
-  inline bool do_global_deallocate(LocalAlloc& a, allocation_rec_t& rec) const
+  inline bool do_global_deallocate(
+      LocalAlloc& /*a*/, allocation_rec_t& rec) const
   {
     DASH_LOG_DEBUG_VAR(
         "LocalAllocationPolicy.do_global_deallocate", rec.gptr());

@@ -1,9 +1,9 @@
 #include "EpochSynchronizedAllocatorTest.h"
-#include <dash/memory/HostSpace.h>
-#include <dash/memory/HBWSpace.h>
-#include <dash/allocator/EpochSynchronizedAllocator.h>
-#include <dash/memory/SimpleMemoryPoolResource.h>
 #include <cpp17/polymorphic_allocator.h>
+#include <dash/allocator/EpochSynchronizedAllocator.h>
+#include <dash/memory/HBWSpace.h>
+#include <dash/memory/HostSpace.h>
+#include <dash/memory/SimpleMemoryPoolResource.h>
 
 TEST_F(EpochSynchronizedAllocatorTest, AllocatorTraits) {
   using Alloc = dash::EpochSynchronizedAllocator<int>;

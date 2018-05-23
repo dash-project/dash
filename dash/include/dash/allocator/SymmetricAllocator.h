@@ -178,7 +178,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  void deallocate(pointer gptr, size_type num_local_elem);
+  void deallocate(pointer gptr, size_type nelem);
 
   /**
    * Returns a copy of the local allocator object associated with the vector.
@@ -211,7 +211,7 @@ private:
 
 private:
   // Private Members
-  dart_team_t                                         _team_id;
+  dart_team_t                                         _team_id{};
   local_allocator_type                                _alloc;
   std::vector<typename policy_type::allocation_rec_t> _segments;
   policy_type                                         _policy;
@@ -278,7 +278,9 @@ typename SymmetricAllocator<
 SymmetricAllocator<ElementType, AllocationPolicy, LMemSpace, LocalAlloc>::
 operator=(self_t const& other) noexcept
 {
-  if (&other == this) return *this;
+  if (&other == this) {
+    return *this;
+  }
 
   _alloc = other._alloc;
 
@@ -306,7 +308,9 @@ typename SymmetricAllocator<
 SymmetricAllocator<ElementType, AllocationPolicy, LMemSpace, LocalAlloc>::
 operator=(self_t&& other) noexcept
 {
-  if (&other == this) return *this;
+  if (&other == this) {
+    return *this;
+  }
 
   if (_alloc == other._alloc) {
     // If the local allocators equal each other we can move everything

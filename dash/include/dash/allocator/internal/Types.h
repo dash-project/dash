@@ -1,9 +1,9 @@
 #ifndef DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
 #define DASH__ALLOCATOR__INTERNAL__TYPES_H__INCLUDED
-#include <dash/dart/if/dart_globmem.h>
 #include <cstddef>
-#include <tuple>
+#include <dash/dart/if/dart_globmem.h>
 #include <ostream>
+#include <tuple>
 
 namespace dash {
 namespace allocator {
@@ -50,9 +50,7 @@ struct allocation_rec {
   /**
    * The Memory Block is not freed
    */
-  ~allocation_rec()
-  {
-  }
+  ~allocation_rec() = default;
   /**
    * Clear the memory block
    */

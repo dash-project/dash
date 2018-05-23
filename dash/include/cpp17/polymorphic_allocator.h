@@ -10,10 +10,10 @@
 #define INCLUDED_POLYMORPHIC_ALLOCATOR_DOT_H
 
 #include <atomic>
+#include <cstddef>  // For max_align_t
 #include <memory>
 #include <new>
 #include <scoped_allocator>
-#include <cstddef>  // For max_align_t
 
 #include <cpp17/cstddef.h>
 
@@ -29,7 +29,7 @@ class memory_resource
 
     static std::atomic<memory_resource *> s_default_resource;
 
-    friend memory_resource *set_default_resource(memory_resource *);
+    friend memory_resource* set_default_resource(memory_resource* /*r*/);
     friend memory_resource *get_default_resource();
 
   public:
@@ -92,10 +92,11 @@ class polymorphic_allocator_imp
     using const_pointer   = Tp const*;
 
     polymorphic_allocator_imp();
-    polymorphic_allocator_imp(memory_resource *r);
+    explicit polymorphic_allocator_imp(memory_resource* r);
 
     template <class U>
-    polymorphic_allocator_imp(const polymorphic_allocator_imp<U>& other);
+    explicit polymorphic_allocator_imp(
+        const polymorphic_allocator_imp<U>& other);
 
     Tp *allocate(size_t n);
     void deallocate(Tp *p, size_t n);
@@ -147,9 +148,12 @@ class resource_adaptor_imp : public memory_resource
     resource_adaptor_imp(const resource_adaptor_imp&) = default;
 
     template <class Allocator2>
-    resource_adaptor_imp(Allocator2&& a2, typename
-                         std::enable_if<std::is_convertible<Allocator2, Allocator>::value,
-                                   int>::type = 0);
+    explicit resource_adaptor_imp(
+        Allocator2&& a2,
+        typename std::enable_if<
+            std::is_convertible<Allocator2, Allocator>::value,
+            int>::type /*unused*/
+        = 0);
 
   protected:
     void *do_allocate(size_t bytes, size_t alignment = 0) override;
@@ -198,15 +202,23 @@ class polymorphic_allocator :
     struct rebind { typedef polymorphic_allocator<U> other; };
 
     polymorphic_allocator() = default;
-    polymorphic_allocator(memory_resource *r) : Base(Imp(r)) { }
+    explicit polymorphic_allocator(memory_resource* r)
+      : Base(Imp(r))
+    {
+    }
 
     template <class U>
-    polymorphic_allocator(const polymorphic_allocator<U>& other)
-        : Base(Imp((other.resource()))) { }
+    explicit polymorphic_allocator(const polymorphic_allocator<U>& other)
+      : Base(Imp((other.resource())))
+    {
+    }
 
     template <class U>
-    polymorphic_allocator(const __details::polymorphic_allocator_imp<U>& other)
-        : Base(other) { }
+    explicit polymorphic_allocator(
+        const __details::polymorphic_allocator_imp<U>& other)
+      : Base(other)
+    {
+    }
 
     // Return a default-constructed allocator
     polymorphic_allocator select_on_container_copy_construction() const
@@ -232,10 +244,7 @@ inline bool operator!=(const polymorphic_allocator<T1>& a,
 // INLINE AND TEMPLATE FUNCTION IMPLEMENTATIONS
 ///////////////////////////////////////////////////////////////////////////////
 
-inline
-pmr::memory_resource::~memory_resource()
-{
-}
+inline pmr::memory_resource::~memory_resource() = default;
 
 inline
 pmr::memory_resource *
@@ -243,8 +252,9 @@ pmr::get_default_resource()
 {
     memory_resource *ret =
         pmr::memory_resource::s_default_resource.load();
-    if (nullptr == ret)
-        ret = new_delete_resource_singleton();
+    if (nullptr == ret) {
+      ret = new_delete_resource_singleton();
+    }
     return ret;
 }
 
@@ -252,22 +262,24 @@ inline
 pmr::memory_resource *
 pmr::set_default_resource(pmr::memory_resource *r)
 {
-    if (nullptr == r)
-        r = new_delete_resource_singleton();
+  if (nullptr == r) {
+    r = new_delete_resource_singleton();
+  }
 
-    // TBD, should use an atomic swap
-    pmr::memory_resource *prev = get_default_resource();
-    pmr::memory_resource::s_default_resource.store(r);
-    return prev;
+  // TBD, should use an atomic swap
+  pmr::memory_resource* prev = get_default_resource();
+  pmr::memory_resource::s_default_resource.store(r);
+  return prev;
 }
 
 template <class Allocator>
-    template <class Allocator2>
-inline
-pmr::__details::resource_adaptor_imp<Allocator>::resource_adaptor_imp(
-    Allocator2&& a2, typename
-    std::enable_if<std::is_convertible<Allocator2, Allocator>::value, int>::type)
-    : m_alloc(std::forward<Allocator2>(a2))
+template <class Allocator2>
+inline pmr::__details::resource_adaptor_imp<Allocator>::resource_adaptor_imp(
+    Allocator2&& a2,
+    typename std::enable_if<
+        std::is_convertible<Allocator2, Allocator>::value,
+        int>::type /*unused*/)
+  : m_alloc(std::forward<Allocator2>(a2))
 {
 }
 
@@ -310,8 +322,9 @@ pmr::__details::resource_adaptor_imp<Allocator>::do_allocate(size_t bytes,
     if (0 == alignment) {
         // Choose natural alignment for `bytes`
         alignment = ((bytes ^ (bytes - 1)) >> 1) + 1;
-        if (alignment > max_natural_alignment)
-            alignment = max_natural_alignment;
+        if (alignment > max_natural_alignment) {
+          alignment = max_natural_alignment;
+        }
     }
 
     switch (alignment) {
@@ -353,8 +366,9 @@ pmr::__details::resource_adaptor_imp<Allocator>::do_deallocate(void  *p,
     if (0 == alignment) {
         // Choose natural alignment for `bytes`
         alignment = ((bytes ^ (bytes - 1)) >> 1) + 1;
-        if (alignment > max_natural_alignment)
-            alignment = max_natural_alignment;
+        if (alignment > max_natural_alignment) {
+          alignment = max_natural_alignment;
+        }
     }
 
     switch (alignment) {
@@ -379,13 +393,14 @@ template <class Allocator>
 bool pmr::__details::resource_adaptor_imp<Allocator>::do_is_equal(
     const memory_resource& other) const noexcept
 {
-    const resource_adaptor_imp *other_p =
-        dynamic_cast<const resource_adaptor_imp*>(&other);
+  const auto* other_p = dynamic_cast<const resource_adaptor_imp*>(&other);
 
-    if (other_p)
-        return this->m_alloc == other_p->m_alloc;
-    else
-        return false;
+  if (other_p) {
+    return this->m_alloc == other_p->m_alloc;
+  }
+  else {
+    return false;
+  }
 }
 
 
@@ -399,10 +414,9 @@ __pmrd::polymorphic_allocator_imp<Tp>::polymorphic_allocator_imp()
 }
 
 template <class Tp>
-inline
-__pmrd::polymorphic_allocator_imp<Tp>::polymorphic_allocator_imp(
-    pmr::memory_resource *r)
-    : m_resource(r ? r : get_default_resource())
+inline __pmrd::polymorphic_allocator_imp<Tp>::polymorphic_allocator_imp(
+    pmr::memory_resource * r)
+  : m_resource(r != nullptr ? r : get_default_resource())
 {
 }
 

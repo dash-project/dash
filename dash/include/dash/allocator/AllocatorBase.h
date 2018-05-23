@@ -2,8 +2,8 @@
 #define DASH__ALLOCATOR__BASE_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/memory/MemorySpace.h>
 #include <dash/allocator/AllocationPolicy.h>
+#include <dash/memory/MemorySpace.h>
 
 namespace dash {
 
@@ -22,7 +22,7 @@ class DefaultAllocator : public polymorphic_allocator<T> {
 
 public:
   DefaultAllocator() = default;
-  DefaultAllocator(MemSpaceT * r)
+  explicit DefaultAllocator(MemSpaceT* r)
     : base_t(r)
   {
   }

@@ -296,7 +296,7 @@ private:
   }
 
 private:
-  dash::Team const *_team;
+  dash::Team const *            _team{};
   std::vector<allocation_rec_t> _segments;
   local_allocator_type          _alloc;
   policy_type                   _policy;
@@ -376,7 +376,9 @@ typename EpochSynchronizedAllocator<
                      AllocationPolicy,
                      LocalAlloc>::operator=(self_t const &other) noexcept
 {
-  if (&other == this) return *this;
+  if (&other == this) {
+    return *this;
+  }
 
   _alloc = other._alloc;
 
@@ -403,7 +405,9 @@ typename EpochSynchronizedAllocator<
                      AllocationPolicy,
                      LocalAlloc>::operator=(self_t &&other) noexcept
 {
-  if (&other == this) return *this;
+  if (&other == this) {
+    return *this;
+  }
 
   if (_alloc == other._alloc) {
     // If the local allocators equal each other we can move everything
@@ -636,7 +640,9 @@ void EpochSynchronizedAllocator<
   DASH_LOG_DEBUG(
       "EpochSynchronizedAllocator.deallocate", "deallocate local memory");
 
-  if (DART_GPTR_ISNULL(gptr)) return;
+  if (DART_GPTR_ISNULL(gptr)) {
+    return;
+  }
 
   auto pos = std::find_if(
       std::begin(_segments),
