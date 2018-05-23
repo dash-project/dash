@@ -23,9 +23,8 @@ std::string common_prefix(
     }
     if (first[i] != second[i]) {
       break;
-    } else {
-      prefix.push_back(first[i]);
     }
+    prefix.push_back(first[i]);
   }
   return prefix;
 }

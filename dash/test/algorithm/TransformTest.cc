@@ -1,8 +1,8 @@
 
 #include "TransformTest.h"
 
-#include <dash/algorithm/Transform.h>
 #include <dash/algorithm/Generate.h>
+#include <dash/algorithm/Transform.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -54,7 +54,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   const size_t num_elem_local = 5;
   size_t num_elem_total = dash::size() * num_elem_local;
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
-  std::array<int, num_elem_local> local;
+  std::array<int, num_elem_local> local{};
 
   EXPECT_EQ_U(num_elem_total, array_dest.size());
   EXPECT_EQ_U(num_elem_local, array_dest.lend() - array_dest.lbegin());
