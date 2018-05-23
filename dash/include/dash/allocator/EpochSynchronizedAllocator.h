@@ -243,6 +243,15 @@ public:
   }
 
 private:
+  struct BinaryCmpLocalPointer {
+    bool operator()(const allocation_rec_t &a, const allocation_rec_t &b)
+    {
+      return reinterpret_cast<const uintptr_t>(a.lptr()) <
+             reinterpret_cast<const uintptr_t>(b.lptr());
+    }
+  };
+
+private:
   /**
    * Frees and detaches all global memory regions allocated by this allocator
    * instance.
@@ -281,18 +290,33 @@ private:
           num_local_elem);
       throw std::bad_alloc{};
     }
-    auto const comp = [](const allocation_rec_t &a,
-                         const allocation_rec_t &b) {
-      return reinterpret_cast<const uintptr_t>(a.lptr()) <
-             reinterpret_cast<const uintptr_t>(b.lptr());
-    };
 
     allocation_rec_t rec{lp, num_local_elem, DART_GPTR_NULL};
 
     auto pos = std::lower_bound(
-        std::begin(_segments), std::end(_segments), rec, comp);
+        std::begin(_segments), std::end(_segments), rec, BinaryCmpLocalPointer{});
 
     return _segments.emplace(pos, std::move(rec));
+  }
+
+  typename std::vector<allocation_rec_t>::iterator lookup_segment_by_lptr(
+      local_pointer lptr)
+  {
+
+    allocation_rec_t rec{lptr, 0, DART_GPTR_NULL};
+
+    return binary_find(std::begin(_segments), std::end(_segments), rec, BinaryCmpLocalPointer{});
+  }
+
+  typename std::vector<allocation_rec_t>::iterator lookup_segment_by_gptr(
+      pointer gptr)
+  {
+    return std::find_if(
+        std::begin(_segments),
+        std::end(_segments),
+        [gptr](const allocation_rec_t &a) {
+          return DART_GPTR_EQUAL(a.gptr(), gptr);
+        });
   }
 
 private:
@@ -500,15 +524,7 @@ void EpochSynchronizedAllocator<
       "length:",
       num_local_elem);
 
-  auto const comp = [](const allocation_rec_t &a, const allocation_rec_t &b) {
-    return reinterpret_cast<const uintptr_t>(a.lptr()) <
-           reinterpret_cast<const uintptr_t>(b.lptr());
-  };
-
-  allocation_rec_t rec{lptr, num_local_elem, DART_GPTR_NULL};
-
-  auto pos =
-      binary_find(std::begin(_segments), std::end(_segments), rec, comp);
+  auto pos = lookup_segment_by_lptr(lptr);
 
   if (pos == std::end(_segments)) {
     DASH_LOG_ERROR(
@@ -518,6 +534,8 @@ void EpochSynchronizedAllocator<
     return;
   }
 
+  DASH_ASSERT_EQ(pos->length(), num_local_elem, "Invalid block length");
+
   if (!DART_GPTR_ISNULL(pos->gptr())) {
     DASH_LOG_ERROR(
         "EpochSynchronizedAllocator.deallocate_local",
@@ -526,7 +544,6 @@ void EpochSynchronizedAllocator<
     return;
   }
 
-  DASH_ASSERT_EQ(pos->length(), num_local_elem, "Invalid block length");
 
   allocator_traits::deallocate(_alloc, pos->lptr(), pos->length());
 
@@ -556,15 +573,7 @@ EpochSynchronizedAllocator<
       "length:",
       num_local_elem);
 
-  auto const comp = [](const allocation_rec_t &a, const allocation_rec_t &b) {
-    return reinterpret_cast<const uintptr_t>(a.lptr()) <
-           reinterpret_cast<const uintptr_t>(b.lptr());
-  };
-
-  allocation_rec_t rec{lptr, num_local_elem, DART_GPTR_NULL};
-
-  auto pos =
-      binary_find(std::begin(_segments), std::end(_segments), rec, comp);
+  auto pos = lookup_segment_by_lptr(lptr);
 
   if (pos == std::end(_segments)) {
     DASH_LOG_ERROR(
@@ -606,12 +615,8 @@ void EpochSynchronizedAllocator<
     return;
   }
 
-  auto pos = std::find_if(
-      std::begin(_segments),
-      std::end(_segments),
-      [&gptr](const allocation_rec_t &a) {
-        return DART_GPTR_EQUAL(a.gptr(), gptr);
-      });
+
+  auto pos = lookup_segment_by_gptr(gptr);
 
   if (pos == std::end(_segments)) {
     DASH_LOG_ERROR(
