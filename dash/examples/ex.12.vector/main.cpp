@@ -106,17 +106,18 @@ int main(int argc, char* argv[])
 
 
 
-	constexpr auto total_runs = 100;
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(int elements = 1; elements < 1000000; elements *= 10) {
+			const auto total_runs = 100000 / elements;
+
 			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
 				dash::Vector<int> vec;
 				auto begin = std::chrono::high_resolution_clock::now();
 				for(int i = 0; i < elements; i++) {
 					if(myid == 0) {
-						vec.lpush_back(i);
+						vec.push_back(i);
 					}
 				}
 				vec.barrier();
@@ -131,13 +132,15 @@ int main(int argc, char* argv[])
 
 	{
 		for(int elements = 1; elements < 1000000; elements *= 10) {
+			const auto total_runs = 100000 / elements;
+
 			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
 				dash::Vector<int> vec;
 				auto begin = std::chrono::high_resolution_clock::now();
 				for(int i = 0; i < elements; i++) {
 					if(myid == 0) {
-						vec.lpush_back(i);
+						vec.push_back(i);
 					}
 				}
 				vec.barrier();
@@ -151,6 +154,51 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	{
+		for(int elements = 1; elements < 1000000; elements *= 10) {
+			const auto total_runs = 100000 / elements;
+
+			std::chrono::microseconds duration(0);
+			for(int runs = 0; runs < total_runs; runs++) {
+				dash::List<int> vec(0);
+				auto begin = std::chrono::high_resolution_clock::now();
+				for(int i = 0; i < elements; i++) {
+					if(myid == 0) {
+						vec.push_back(i);
+					}
+				}
+				vec.barrier();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "push_back on dash::list elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+			}
+		}
+	}
+
+	{
+		if(myid == 0) {
+			for(int elements = 1; elements < 1000000; elements *= 10) {
+				const auto total_runs = 100000 / elements;
+
+				std::chrono::microseconds duration(0);
+				for(int runs = 0; runs < total_runs; runs++) {
+					std::vector<int> vec(0);
+					auto begin = std::chrono::high_resolution_clock::now();
+					for(int i = 0; i < elements; i++) {
+						if(myid == 0) {
+							vec.push_back(i);
+						}
+					}
+					auto end = std::chrono::high_resolution_clock::now();
+					duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+				}
+
+				std::cout << "push_back on std::vector elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+			}
+		}
+	}
 	team.barrier();
 
   dash::finalize();
