@@ -71,7 +71,7 @@ struct Vector_iterator {
 		typename Vector::size_type local_size = 0;
 		do {
 			local_index -= local_size;
-			local_size = *(_vec._head.begin()+i);
+			local_size = *(_vec._local_sizes.begin()+i);
 			i++;
 		} while(local_index >= local_size);
 
@@ -125,7 +125,7 @@ public:
 	using const_reference = const T&;
 
 	using glob_mem_type = dash::GlobStaticMem<T, allocator<T>>;
- 	using shared_head_mem_type = dash::GlobStaticMem<dash::Atomic<size_type>, allocator<dash::Atomic<size_type>>>;
+ 	using shared_local_sizes_mem_type = dash::GlobStaticMem<dash::Atomic<size_type>, allocator<dash::Atomic<size_type>>>;
 
 	friend Vector_iterator<self_type>;
 	using iterator = Vector_iterator<self_type>;
@@ -215,6 +215,7 @@ public:
 // 	void emplace_back(Args&&... args);
 // 	void pop_back();
 
+	void balance();
 	void commit();
 	void barrier();
 
@@ -224,11 +225,10 @@ private:
 // 	size_type _size;
 // 	size_type _capacity;
 	glob_mem_type _data;
-	shared_head_mem_type _head;
+	shared_local_sizes_mem_type _local_sizes;
 	team_type& _team;
 	std::vector<value_type> local_queue;
 	std::vector<value_type> global_queue;
-	shared_head_mem_type outstanding_writes;
 }; // End of class Vector
 
 
@@ -241,11 +241,10 @@ Vector<T,allocator>::Vector(
 ) :
 	_allocator(alloc),
 	_data(local_elements, team),
-	_head(1, team),
-	_team(team),
-	outstanding_writes(1,team)
+	_local_sizes(1, team),
+	_team(team)
 {
-	dash::atomic::store(*(_head.begin()+_team.myid()), local_elements);
+	dash::atomic::store(*(_local_sizes.begin()+_team.myid()), local_elements);
 	_team.barrier();
 }
 
@@ -288,51 +287,80 @@ typename Vector<T,allocator>::local_pointer Vector<T,allocator>::lend() {
 
 template <class T, template<class> class allocator>
 typename Vector<T, allocator>::size_type Vector<T, allocator>::lsize() {
-	return dash::atomic::load(*(_head.begin()+_team.myid()));
+	return dash::atomic::load(*(_local_sizes.begin()+_team.myid()));
 }
 
 template <class T, template<class> class allocator>
 typename Vector<T, allocator>::size_type Vector<T, allocator>::size() {
 	size_t size = 0;
-	for(auto s =_head.begin(); s != _head.begin()+_head.size(); s++) {
+	for(auto s =_local_sizes.begin(); s != _local_sizes.begin()+_local_sizes.size(); s++) {
 		size += static_cast<size_type>(*s);
 	}
 	return size;
 }
 
 template <class T, template<class> class allocator>
+void Vector<T, allocator>::balance() {
+	commit();
+
+	const auto cap = capacity() / _team.size();
+	auto s = size() / _team.size();
+	glob_mem_type tmp(cap, _team);
+	const auto i = _team.myid();
+	std::copy(begin() + s*cap, begin()+(i+1)*s, tmp.begin() + i*cap);
+
+	_data = std::move(tmp);
+
+}
+
+template <class T, template<class> class allocator>
 void Vector<T, allocator>::commit() {
-	_team.barrier();
-	size_type owrites = 0;
-	for(auto it = outstanding_writes.begin(); it != outstanding_writes.begin()+outstanding_writes.size(); it++) {
-		owrites = std::max(dash::atomic::load(*it), owrites);
-	}
-	if(owrites != 0) {
-		const auto node_cap = capacity() / _team.size();
+// 	if(_team.myid() == 0) std::cout << "commit() lsize = "<< lsize() << " lcapacity = " << lcapacity() << std::endl;
+
+	auto outstanding_global_writes = global_queue.size();
+	size_type sum_outstanding_global_writes = 0;
+
+// 		if(_team.myid() == 0) std::cout << "calc outstanding_global_writes" << std::endl;
+	dart_reduce(&outstanding_global_writes, &sum_outstanding_global_writes, 1, DART_TYPE_ULONG, DART_OP_SUM, 0, _team.dart_id());
+
+// 		if(_team.myid() == 0) std::cout << "calc max_outstanding_local_writes" << std::endl;
+	auto outstanding_local_writes = local_queue.size();
+	size_type max_outstanding_local_writes = 0;
+	dart_reduce(&outstanding_local_writes, &max_outstanding_local_writes, 1, DART_TYPE_ULONG, DART_OP_MAX, 0 ,_team.dart_id());
+
+	auto additional_local_size_needed = max_outstanding_local_writes + sum_outstanding_global_writes;
+
+	dart_bcast(&additional_local_size_needed, 1, DART_TYPE_ULONG, 0, _team.dart_id());
+
+// 	if(_team.myid() == 0) std::cout << "additional_local_size_needed =" << additional_local_size_needed << std::endl;
+	if(additional_local_size_needed > 0) {
+		const auto node_cap = std::max(capacity() / _team.size(), static_cast<size_type>(1));
 		const auto old_cap = node_cap;
 		const auto new_cap =
-			node_cap * 2 << static_cast<size_type>(
+			node_cap * 1 << static_cast<size_type>(
 				std::ceil(
 					std::log2(
-						static_cast<double>(node_cap+owrites) / static_cast<double>(node_cap)
+						static_cast<double>(node_cap+additional_local_size_needed) / static_cast<double>(node_cap)
 					)
 				)
 			);
+		_team.barrier();
+// 		if(_team.myid() == 0) std::cout << "new_cap = " << new_cap << " reserve memory..." << std::endl;
+		reserve(new_cap);
 
-
-		glob_mem_type tmp(new_cap, _team);
-
-		const auto i = _team.myid();
-		//copy flushed values
-		std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
-		//copy unflushed values
-		auto lend = dash::atomic::load(*(_head.begin() + i));
-		std::copy(local_queue.begin(), local_queue.end(), tmp.begin() + i*new_cap + lend);
-		dash::atomic::add(*(_head.begin() + i), static_cast<size_type>(local_queue.size()));
-		dash::atomic::store(*(outstanding_writes.begin()+i), static_cast<size_type>(0));
+// 		if(_team.myid() == 0) std::cout << "memory reserved." << std::endl;
+// 		if(_team.myid() == 0) std::cout << "push local_queue elements" << std::endl;
+		for(const auto& e : local_queue) {
+			lpush_back(e);
+		}
+// 		if(_team.myid() == 0) std::cout << "push global_queue elements" << std::endl;
 		local_queue.clear();
-		_data = std::move(tmp);
+		for(const auto& e : global_queue) {
+			push_back(e);
+		}
+		global_queue.clear();
 	}
+// 	if(_team.myid() == 0) std::cout << "finished commit. lsize = "<< lsize() << " lcapacity = " << lcapacity() << std::endl;
 }
 
 
@@ -354,40 +382,47 @@ typename Vector<T, allocator>::size_type Vector<T, allocator>::capacity() const 
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::reserve(size_type new_cap) {
-
+// 	std::cout << "reserve " << new_cap << std::endl;
 	const auto old_cap = capacity() / _team.size();
 
 	if(new_cap > old_cap) {
+// 		if(_team.myid() == 0) std::cout << "alloc shared mem." << std::endl;
 		glob_mem_type tmp(new_cap, _team);
 		const auto i = _team.myid();
+// 		if(_team.myid() == 0) std::cout << "copy data" << std::endl;
 		std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
 
 		_data = std::move(tmp);
 	}
 
+// 	if(_team.myid() == 0) std::cout << "reserved." << std::endl;
 }
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::lpush_back(const T& value) {
-	const auto lastSize = dash::atomic::fetch_add(*(_head.begin()+_team.myid()), static_cast<size_type>(1));
+	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(1));
 	if(lastSize < lcapacity()) {
 		*(_data.lbegin() + lastSize) = value;
 	} else {
-		dash::atomic::sub(*(_head.begin()+_team.myid()), static_cast<size_type>(1));
+		dash::atomic::sub(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(1));
 		local_queue.push_back(value);
-		dash::atomic::add(*(outstanding_writes.begin()+_team.myid()), static_cast<size_type>(1));
 	}
 }
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::push_back(const T& value) {
-	const auto lastSize = dash::atomic::fetch_add(*(_head.begin()+(_head.size()-1)), static_cast<size_type>(1));
+	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+(_local_sizes.size()-1)), static_cast<size_type>(1));
+// 	if(_team.myid() == 0) std::cout << "push_back() lastSize = " << lastSize << " lcapacity = " << lcapacity() << std::endl;
+
 	if(lastSize < lcapacity()) {
+// 		std::cout << "enough space" << std::endl;
 		*(_data.begin() + lcapacity()*(_team.size()-1) + lastSize) = value;
+// 		std::cout << "written" << std::endl;
 	} else {
-		dash::atomic::sub(*(_head.begin()+(_head.size()-1)), static_cast<size_type>(1));
+// 		std::cout << "not enough space" << std::endl;
+		dash::atomic::sub(*(_local_sizes.begin()+(_local_sizes.size()-1)), static_cast<size_type>(1));
 		global_queue.push_back(value);
-		dash::atomic::add(outstanding_writes.begin()+(_team.size() - 1), static_cast<size_type>(1));
+// 		std::cout << "delayed" << std::endl;
 	}
 }
 

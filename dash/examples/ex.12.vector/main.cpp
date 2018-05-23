@@ -1,6 +1,6 @@
 /**
- * \example ex.02.array/main.cpp
- * Example illustrating access to elements in a \c dash::Array by
+ * \example ex.12.vector/main.cpp
+ * Example illustrating access to elements in a \c dash::Vector by
  * global index.
  */
 
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 	auto& team = dash::Team::All();
 
 	if(myid == 0) {
-		std::cout << "dash::vector test with enough capacity" << std::endl;
+		std::cout << "dash::vector lpush_back with enough capacity" << std::endl;
 	}
 	{
 		dash::Vector<int> vec(1);
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 		print_vector(vec, size -1);
 	}
 		if(myid == 0) {
-		std::cout << "dash::vector test with no capacity" << std::endl;
+		std::cout << "dash::vector lpush_back with no capacity" << std::endl;
 	}
 	{
 		dash::Vector<int> vec(1);
@@ -65,6 +65,41 @@ int main(int argc, char* argv[])
 
 		print_vector(vec, size -1);
 	}
+
+	{
+		if(myid == 0) {
+		std::cout << "dash::vector push_back with capacity" << std::endl;
+		}
+		dash::Vector<int> vec;
+		vec.reserve(team.size());
+		vec.push_back(myid);
+		print_vector(vec, 0);
+	}
+
+	{
+		if(myid == 0) {
+		std::cout << "dash::vector push_back with no capacity" << std::endl;
+		}
+		dash::Vector<int> vec;
+		vec.push_back(myid);
+		print_vector(vec, 0);
+	}
+
+	{
+		dash::Vector<char> vec;
+		if(myid == 0) {
+			vec.push_back('f');
+			vec.push_back('b');
+		}
+			vec.commit();
+		if(myid == 0) {
+			std::cout << "front: " << static_cast<char>(vec.front()) << std::endl;
+			std::cout << "back: " << static_cast<char>(vec.back()) << std::endl;
+		}
+		team.barrier();
+	}
+
+
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
@@ -82,6 +117,19 @@ int main(int argc, char* argv[])
 				std::cout << "push_backs " << i << "; time " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "us" << std::endl;
 			}
 		}
+	}
+
+	/*
+	if(myid == 0) std::cout << "balance" << std::endl;
+	{
+		dash::Vector<int> vec(0);
+		for(int i = 0; i < 1000; i++) {
+			vec.push_back(static_cast<int>(myid));
+		}
+		vec.commit();
+		std::cout << "myid=" << myid << " vec.lsize()=" << vec.lsize() << std::endl;
+		vec.balance();
+		std::cout << "myid=" << myid << " vec.lsize()=" << vec.lsize() << std::endl;
 	}
 	/*
 	dash::Vector<int> vec2;
