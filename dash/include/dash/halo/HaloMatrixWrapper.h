@@ -412,7 +412,7 @@ public:
    * element exists. This also means that only a unit connected to the given
    * coordinate will return a halo value. All others will return nullptr.
    */
-  Element_t* halo_element_at_global(const ElementCoords_t coords) {
+  Element_t* halo_element_at_global(ElementCoords_t coords) {
     const auto& offsets = _view_global.offsets();
     for(auto d = 0; d < NumDimensions; ++d) {
       coords[d] -= offsets[d];

@@ -1,12 +1,12 @@
 #ifndef DASH__ALGORITHM__TRANSFORM_H__
 #define DASH__ALGORITHM__TRANSFORM_H__
 
-#include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
+#include <dash/GlobRef.h>
 
+#include <dash/algorithm/Accumulate.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
-#include <dash/algorithm/Accumulate.h>
 
 #include <dash/Iterator.h>
 
@@ -274,8 +274,8 @@ GlobOutputIt transform(
     GlobOutputIt out_first,
     /// Reduce operation
     BinaryOperation binary_op,
-    ///Specialization for a global input iterator
-    transform_impl_glob_input_it)
+    /// Specialization for a global input iterator
+    transform_impl_glob_input_it /*unused*/)
 {
   using iterator_traits = dash::iterator_traits<InputIt>;
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
@@ -301,9 +301,9 @@ GlobOutputIt transform(
   dash::util::Trace trace("transform");
 
   // Pattern of input ranges a and b, and output range:
-  auto pattern_in_a = in_a_first.pattern();
-  auto pattern_in_b = in_b_first.pattern();
-  auto pattern_out  = out_first.pattern();
+  const auto& pattern_in_a = in_a_first.pattern();
+  const auto& pattern_in_b = in_b_first.pattern();
+  const auto& pattern_out  = out_first.pattern();
 
 #if __NON_ATOMIC__
   // Fast path: check if transform operation is local-only:
@@ -368,12 +368,17 @@ template <
     class GlobOutputIt,
     class BinaryOperation>
 GlobOutputIt transform(
-  InputIt         in_a_first,
-  InputIt         in_a_last,
-  GlobInputIt     in_b_first,
-  GlobOutputIt    out_first,
-  BinaryOperation binary_op,
-  transform_impl_local_input_it)
+    /// Iterator on begin of first local range
+    InputIt in_a_first,
+    /// Iterator after last element of local range
+    InputIt in_a_last,
+    /// Iterator on begin of second local range
+    GlobInputIt in_b_first,
+    /// Iterator on first element of global output range
+    GlobOutputIt out_first,
+    /// Reduce operation
+    BinaryOperation binary_op,
+    transform_impl_local_input_it /*unused*/)
 {
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
   // Outut range different from rhs input range is not supported yet
@@ -481,17 +486,18 @@ GlobOutputIt transform(
  * \tparam   GlobOutputIt    Iterator on global result range
  * \tparam   BinaryOperation Reduce operation type
  */
-template<
-  typename ValueType,
-  class InputIt,
-  class GlobInputIt,
-  class BinaryOperation >
+template <
+    typename ValueType,
+    class InputIt,
+    class GlobInputIt,
+    class BinaryOperation>
 GlobAsyncRef<ValueType> transform(
-  InputIt                 in_a_first,
-  InputIt                 in_a_last,
-  GlobInputIt             in_b_first,
-  GlobAsyncRef<ValueType> out_first,
-  BinaryOperation         binary_op  = dash::plus<ValueType>()) {
+    InputIt /*in_a_first*/,
+    InputIt /*in_a_last*/,
+    GlobInputIt /*in_b_first*/,
+    GlobAsyncRef<ValueType> /*out_first*/,
+    BinaryOperation /*binary_op*/ = dash::plus<ValueType>())
+{
   DASH_THROW(
     dash::exception::NotImplemented,
     "Async variant of dash::transform is not implemented");

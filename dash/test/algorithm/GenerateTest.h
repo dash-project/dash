@@ -5,12 +5,10 @@
 
 #include <dash/Array.h>
 
-
 /**
  * Test fixture for class dash::generate
  */
-class GenerateTest : public dash::test::TestBase
-{
+class GenerateTest : public dash::test::TestBase {
 protected:
   typedef double                         Element_t;
   typedef dash::Array<Element_t>         Array_t;
@@ -19,11 +17,5 @@ protected:
 
   /// Using a prime to cause inconvenient strides
   size_t _num_elem = 251;
-
-  GenerateTest() {
-  }
-
-  virtual ~GenerateTest() {
-  }
 };
-#endif // DASH__TEST__GENERATE_TEST_H_
+#endif  // DASH__TEST__GENERATE_TEST_H_

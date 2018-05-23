@@ -2,9 +2,9 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
-#include <dash/Types.h>
-#include <dash/Pattern.h>
 #include <dash/Future.h>
+#include <dash/Pattern.h>
+#include <dash/Types.h>
 #include <dash/algorithm/Copy.h>
 #include <dash/util/Trace.h>
 
@@ -52,18 +52,18 @@ void mmult_local(
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where MKL is not available.
  */
-template<typename ValueType>
+template <typename ValueType>
 void mmult_local(
-  /// Matrix to multiply, extents n x m
-  const ValueType * A,
-  /// Matrix to multiply, extents m x p
-  const ValueType * B,
-  /// Matrix to contain the multiplication result, extents n x p
-  ValueType       * C,
-  long long         m,
-  long long         n,
-  long long         p,
-  MemArrange        storage)
+    /// Matrix to multiply, extents n x m
+    const ValueType *A,
+    /// Matrix to multiply, extents m x p
+    const ValueType *B,
+    /// Matrix to contain the multiplication result, extents n x p
+    ValueType *C,
+    long long  m,
+    long long  n,
+    long long  p,
+    MemArrange /*storage*/)
 {
 #ifndef DEBUG
   DASH_THROW(
@@ -307,10 +307,10 @@ void summa(
   value_type * buf_block_b_comp   = (value_type *)(mkl_malloc(
                                       sizeof(value_type) * block_b_size, 64));
 #else
-  value_type * buf_block_a_get    = new value_type[block_a_size];
-  value_type * buf_block_b_get    = new value_type[block_b_size];
-  value_type * buf_block_a_comp   = new value_type[block_a_size];
-  value_type * buf_block_b_comp   = new value_type[block_b_size];
+  auto *buf_block_a_get  = new value_type[block_a_size];
+  auto *buf_block_b_get  = new value_type[block_b_size];
+  auto *buf_block_a_comp = new value_type[block_a_size];
+  auto *buf_block_b_comp = new value_type[block_b_size];
 #endif
   // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
   // to crash:
@@ -451,7 +451,7 @@ void summa(
                   (block_k == num_blocks_m - 1);
       // Do not prefetch blocks in last iteration:
       if (!last) {
-        index_t block_get_k = static_cast<index_t>(block_k + 1);
+        auto block_get_k = static_cast<index_t>(block_k + 1);
         block_get_k = (block_get_k + unit_ts_coords[0]) % num_blocks_m;
         // Block coordinate of local block in matrix C to prefetch:
         if (block_k == num_blocks_m - 1) {

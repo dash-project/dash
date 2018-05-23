@@ -56,8 +56,8 @@ static void rand_range(GlobIter begin, GlobIter end)
 
 TEST_F(SortTest, ArrayBlockedFullRange)
 {
-  typedef int32_t                Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayBlockedFullRange: allocate array");
   // Initialize global array:
@@ -72,8 +72,8 @@ TEST_F(SortTest, ArrayBlockedFullRange)
 
 TEST_F(SortTest, ArrayBlockedPartialRange)
 {
-  typedef int32_t                Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayBlockedPartialRange: allocate array");
   // Initialize global array:
@@ -96,8 +96,8 @@ TEST_F(SortTest, ArrayEmptyLocalRangeBegin)
     SKIP_TEST_MSG("At least 2 units are required");
   }
 
-  typedef int32_t                Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayEmptyLocalBegin: allocate array");
   // Initialize global array:
@@ -119,8 +119,8 @@ TEST_F(SortTest, ArrayEmptyLocalRangeEnd)
     SKIP_TEST_MSG("At least 2 units are required");
   }
 
-  typedef int32_t                Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayEmptyLocalRangeEnd: allocate array");
   // Initialize global array:
@@ -139,8 +139,8 @@ TEST_F(SortTest, ArrayEmptyLocalRangeEnd)
 
 TEST_F(SortTest, ArrayUnderfilled)
 {
-  typedef int32_t                Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = int32_t;
+  using Array_t   = dash::Array<Element_t>;
   // Choose block size and number of blocks so at least
   // one unit has an empty local range and one unit has an
   // underfilled block.
@@ -185,7 +185,7 @@ TEST_F(SortTest, ArrayEmptyLocalRangeMiddle)
   std::vector<extent_t> local_sizes{};
 
   for (std::size_t u = 0; u < nunits; ++u) {
-    local_sizes.push_back((u % 2) ? 0 : num_local_elem);
+    local_sizes.push_back((u % 2) != 0u ? 0 : num_local_elem);
   }
 
   pattern_t                                pattern(local_sizes);
@@ -200,8 +200,8 @@ TEST_F(SortTest, ArrayEmptyLocalRangeMiddle)
 
 TEST_F(SortTest, ArrayOfDoubles)
 {
-  typedef double                 Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = double;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayOfDoubles: allocate array");
   // Initialize global array:
@@ -248,8 +248,8 @@ TEST_F(SortTest, MatrixBlockedRow)
 
 TEST_F(SortTest, ArrayOfPoints)
 {
-  typedef Point                  Element_t;
-  typedef dash::Array<Element_t> Array_t;
+  using Element_t = Point;
+  using Array_t   = dash::Array<Element_t>;
 
   LOG_MESSAGE("SortTest.ArrayOfPoints: allocate array");
   // Initialize global array:
@@ -319,7 +319,6 @@ static void perform_test(GlobIter begin, GlobIter end)
       begin.pattern().team().dart_id());
 
   if (dash::myid() == 0) {
-
     EXPECT_EQ_U(true_sum, actual_sum);
 
     for (auto it = begin + 1; it < end; ++it) {
@@ -412,4 +411,23 @@ TEST_F(SortTest, PlausibilityWithStdSort)
   array.barrier();
 }
 
+TEST_F(SortTest, ExtremValues)
+{
+  dash::Array<int> arr(25 * dash::size());
+
+  for (int i = 0; i < arr.local.size(); i++) {
+    arr.local[i] = i;
+  }
+  arr.barrier();
+
+  std::fill(
+      arr.local.begin() + 10,
+      arr.local.end(),
+      std::numeric_limits<int>::max());
+  arr.barrier();
+
+  perform_test(arr.begin(), arr.end());
+}
+
 // TODO: add additional unit tests with various pattern types and containers
+//

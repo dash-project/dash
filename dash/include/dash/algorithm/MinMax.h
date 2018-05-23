@@ -11,8 +11,8 @@
 #include <dash/util/Trace.h>
 #include <dash/util/UnitLocality.h>
 
-#include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <algorithm>
 #include <memory>
@@ -80,7 +80,7 @@ const ElementType * min_element(
 
     size_t    min_vals_t_bytes    = single_element_sz * n_threads;
 
-    uint8_t *min_vals_t_raw = reinterpret_cast<uint8_t *>(
+    auto min_vals_t_raw = static_cast<uint8_t *>(
         hostSpace.allocate(min_vals_t_bytes, align_bytes));
 
     DASH_LOG_TRACE("dash::min_element", "min * alloc:",   min_vals_t_raw);

@@ -6,6 +6,15 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
 
+print_env()
+{
+  if [ -z "$CC" ];  then DASH_CC="cc";   else DASH_CC=$CC;   fi
+  if [ -z "$CXX" ]; then DASH_CXX="c++"; else DASH_CXX=$CXX; fi
+  echo -n "[-> ENV    ] " && cmake --version  | head -1
+  echo -n "[-> ENV    ] " && ${DASH_CC} --version  | head -1
+  echo -n "[-> ENV    ] " && ${DASH_CXX} --version | head -1
+}
+
 run_ci()
 {
   BUILD_TYPE=${1}
@@ -84,6 +93,8 @@ run_ci()
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORIG}
   fi
 }
+
+print_env
 
 if [ $# != 0 ]; then
   for buildtype in "$@" ; do
