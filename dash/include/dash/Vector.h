@@ -301,16 +301,18 @@ typename Vector<T, allocator>::size_type Vector<T, allocator>::size() {
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::balance() {
-	commit();
-
+//  	commit();
+	_team.barrier();
 	const auto cap = capacity() / _team.size();
 	auto s = size() / _team.size();
-	glob_mem_type tmp(cap, _team);
 	const auto i = _team.myid();
-	std::copy(begin() + s*cap, begin()+(i+1)*s, tmp.begin() + i*cap);
 
+	glob_mem_type tmp(cap, _team);
+	std::copy(begin() + i*s, begin()+(i+1)*s, tmp.begin() + i*cap);
+	_team.barrier();
+	dash::atomic::store(*(_local_sizes.begin()+i), s);
 	_data = std::move(tmp);
-
+	_team.barrier();
 }
 
 template <class T, template<class> class allocator>
@@ -344,7 +346,6 @@ void Vector<T, allocator>::commit() {
 					)
 				)
 			);
-		_team.barrier();
 // 		if(_team.myid() == 0) std::cout << "new_cap = " << new_cap << " reserve memory..." << std::endl;
 		reserve(new_cap);
 

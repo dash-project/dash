@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
 	{
 		if(myid == 0) {
-		std::cout << "dash::vector push_back with capacity" << std::endl;
+			std::cout << "dash::vector push_back with capacity" << std::endl;
 		}
 		dash::Vector<int> vec;
 		vec.reserve(team.size());
@@ -77,11 +77,15 @@ int main(int argc, char* argv[])
 	}
 
 	{
-		if(myid == 0) {
-		std::cout << "dash::vector push_back with no capacity" << std::endl;
-		}
+		if(myid == 0) std::cout << "dash::vector push_back with no capacity" << std::endl;
 		dash::Vector<int> vec;
 		vec.push_back(myid);
+		print_vector(vec, 0);
+
+		std::cout << "local_size = " << vec.lsize() << std::endl;
+		if(myid == 0) std::cout << "dash::vector::balance()" << std::endl;
+		vec.balance();
+		std::cout << "local_size = " << vec.lsize() << std::endl;
 		print_vector(vec, 0);
 	}
 
