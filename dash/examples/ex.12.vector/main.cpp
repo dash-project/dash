@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
 
 	auto myid = dash::myid();
 	auto size = dash::size();
+	std::cout << "Initialized context with " << size << " ranks." << std::endl;
 
 	auto& team = dash::Team::All();
 
@@ -109,7 +110,7 @@ int main(int argc, char* argv[])
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(int elements = 1; elements < 1000000; elements *= 10) {
-			std::chrono::microseconds duration;
+			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
 				dash::Vector<int> vec;
 				auto begin = std::chrono::high_resolution_clock::now();
@@ -128,37 +129,28 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	/*
-	if(myid == 0) std::cout << "balance" << std::endl;
 	{
-		dash::Vector<int> vec(0);
-		for(int i = 0; i < 1000; i++) {
-			vec.push_back(static_cast<int>(myid));
+		for(int elements = 1; elements < 1000000; elements *= 10) {
+			std::chrono::microseconds duration(0);
+			for(int runs = 0; runs < total_runs; runs++) {
+				dash::Vector<int> vec;
+				auto begin = std::chrono::high_resolution_clock::now();
+				for(int i = 0; i < elements; i++) {
+					if(myid == 0) {
+						vec.lpush_back(i);
+					}
+				}
+				vec.barrier();
+				vec.balance();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "push_back and balance elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+			}
 		}
-		vec.commit();
-		std::cout << "myid=" << myid << " vec.lsize()=" << vec.lsize() << std::endl;
-		vec.balance();
-		std::cout << "myid=" << myid << " vec.lsize()=" << vec.lsize() << std::endl;
 	}
-	/*
-	dash::Vector<int> vec2;
-	vec2.reserve(team.size());
-	vec2.push_back(myid);
-	print_vector(vec2, 0);
 
-	team.barrier();
-	dash::Vector<char> vec3;
-	vec3.reserve(4);
-	if(myid == 0) {
-		vec3.push_back('f');
-		vec3.push_back('b');
-	}
-	team.barrier();
-	if(myid == size-1) {
-		std::cout << "front: " << static_cast<char>(vec3.front()) << std::endl;
-		std::cout << "back: " << static_cast<char>(vec3.back()) << std::endl;
-
-	}*/
 	team.barrier();
 
   dash::finalize();
