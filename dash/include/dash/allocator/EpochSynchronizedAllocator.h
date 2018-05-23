@@ -297,7 +297,6 @@ private:
 
 private:
   dash::Team const *_team;
-  // size_t                        _nunits = 0;
   std::vector<allocation_rec_t> _segments;
   local_allocator_type          _alloc;
   policy_type                   _policy;
