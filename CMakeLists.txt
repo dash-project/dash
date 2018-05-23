@@ -2,15 +2,7 @@ project(project_dash)
 
 cmake_minimum_required (VERSION 2.8)
 
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 OLD)
-endif(POLICY CMP0054)
-if(POLICY CMP0053)
-  cmake_policy(SET CMP0053 OLD)
-endif(POLICY CMP0053)
-if(POLICY CMP0060)
-  cmake_policy(SET CMP0060 OLD)
-endif(POLICY CMP0060)
+# required for Ninja builds
 if(POLICY CMP0058)
   cmake_policy(SET CMP0058 NEW)
 endif()
