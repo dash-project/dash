@@ -204,10 +204,11 @@ dart_gptr_incaddr(
 }
 
 /**
- * Set the unit information for the specified global pointer.
+ * Set the unit information for the specified global pointer. The unit ID
+ * is relative to the team used to create the allocation.
  *
  * \param gptr Global Pointer
- * \param unit The global unit to set in \c gptr
+ * \param unit The unit to set in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -256,13 +257,12 @@ dart_ret_t dart_gptr_setflags(
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
  * address space of the calling unit and returns a global pointer to it.
- * This is *not* a collective function.
+ * This is *not* a collective function. The resulting global pointer contains
+ * global unit IDs, i.e., unit IDs relative to \ref DART_TEAM_ALL.
  *
  * \param nelem The number of elements of type \c dtype to allocate.
  * \param dtype The type to use.
  * \param[out] gptr Global Pointer to hold the allocation
- *
- * \todo Does dart_memalloc really allocate in _global_ memory?
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
