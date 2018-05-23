@@ -105,20 +105,25 @@ int main(int argc, char* argv[])
 
 
 
+	constexpr auto total_runs = 100;
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(int i = 1; i < 1000000; i *= 10) {
-			dash::Vector<int> vec(1);
-			auto begin = std::chrono::high_resolution_clock::now();
-			for(int ii = 0; ii < i; ii++) {
-				if(myid == 0) {
-					vec.lpush_back(ii);
+		for(int elements = 1; elements < 1000000; elements *= 10) {
+			std::chrono::microseconds duration;
+			for(int runs = 0; runs < total_runs; runs++) {
+				dash::Vector<int> vec;
+				auto begin = std::chrono::high_resolution_clock::now();
+				for(int i = 0; i < elements; i++) {
+					if(myid == 0) {
+						vec.lpush_back(i);
+					}
 				}
+				vec.barrier();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
-			vec.barrier();
-			auto end = std::chrono::high_resolution_clock::now();
 			if(myid == 0) {
-				std::cout << "push_backs " << i << "; time " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "us" << std::endl;
+				std::cout << "push_back elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
 			}
 		}
 	}
