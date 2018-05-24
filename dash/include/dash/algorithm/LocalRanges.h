@@ -1,9 +1,9 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGES_H__INCLUDED
 #define DASH__ALGORITHM__LOCAL_RANGES_H__INCLUDED
 
+#include <dash/internal/Logging.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/pattern/PatternProperties.h>
-#include <dash/internal/Logging.h>
 
 #include <dash/algorithm/LocalRange.h>
 

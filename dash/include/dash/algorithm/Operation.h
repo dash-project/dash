@@ -1,8 +1,8 @@
 #ifndef DASH__ALGORITHM__OPERATION_H__
 #define DASH__ALGORITHM__OPERATION_H__
 
-#include <dash/Types.h>
 #include <dash/Meta.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -145,9 +145,8 @@ template< typename ValueType >
 struct first
 : public internal::ReduceOperation< ValueType, DART_OP_NO_OP,
                                     dash::internal::OpKind::NOOP, true > {
-  ValueType operator()(
-    const ValueType & lhs,
-    const ValueType & rhs) const {
+  ValueType operator()(const ValueType& lhs, const ValueType& /*rhs*/) const
+  {
     return lhs;
   }
 };
@@ -163,9 +162,8 @@ template< typename ValueType >
 struct second
 : public internal::ReduceOperation< ValueType, DART_OP_REPLACE,
                                     dash::internal::OpKind::NOOP, true > {
-  ValueType operator()(
-    const ValueType & lhs,
-    const ValueType & rhs) const {
+  ValueType operator()(const ValueType& /*lhs*/, const ValueType& rhs) const
+  {
     return rhs;
   }
 };

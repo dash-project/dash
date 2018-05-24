@@ -34,8 +34,8 @@ ValueType accumulate(
   ValueType       init)
 {
   struct local_result {
-    ValueType l_result;
-    bool      l_valid;
+    ValueType l_result{};
+    bool      l_valid{};
   };
 
   auto & team      = in_first.team();
