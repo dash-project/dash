@@ -35,7 +35,7 @@ inline void * align(
 template <
     typename T,
     typename MS                              = dash::HostSpace,
-    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
+    template <class> class LocalAlloc = allocator::DefaultAllocator>
 using LocalAllocator = dash::SymmetricAllocator<
     T,
     dash::global_allocation_policy::non_collective,

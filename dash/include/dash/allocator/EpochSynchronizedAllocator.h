@@ -40,7 +40,7 @@ template <
     global_allocation_policy AllocationPolicy =
         global_allocation_policy::epoch_synchronized,
     /// The Allocator Strategy to allocate from the local memory space
-    template <class T, class MemSpace> class LocalAlloc =
+    template <class T> class LocalAlloc =
         allocator::DefaultAllocator>
 class EpochSynchronizedAllocator {
   template <class T, class U>
@@ -87,7 +87,7 @@ class EpochSynchronizedAllocator {
   static constexpr size_t const alignment = alignof(ElementType);
 
   using allocator_traits =
-      std::allocator_traits<LocalAlloc<ElementType, LMemSpace>>;
+      std::allocator_traits<LocalAlloc<ElementType>>;
 
   using policy_type = allocator::AttachDetachPolicy<ElementType>;
 
@@ -96,7 +96,7 @@ class EpochSynchronizedAllocator {
       allocator::allocation_rec<typename allocator_traits::pointer>;
 
 public:
-  using local_allocator_type = LocalAlloc<ElementType, LMemSpace>;
+  using local_allocator_type = LocalAlloc<ElementType>;
   /// Allocator Traits
   using value_type      = ElementType;
   using size_type       = dash::default_size_t;
@@ -260,7 +260,7 @@ private:
   {
     DASH_LOG_DEBUG("EpochSynchronizedAllocator.clear()");
 
-    for (auto const & segment : _segments) {
+    for (auto const &segment : _segments) {
       deallocate(segment.gptr(), segment.length());
     }
     _segments.clear();
@@ -294,7 +294,10 @@ private:
     allocation_rec_t rec{lp, num_local_elem, DART_GPTR_NULL};
 
     auto pos = std::lower_bound(
-        std::begin(_segments), std::end(_segments), rec, BinaryCmpLocalPointer{});
+        std::begin(_segments),
+        std::end(_segments),
+        rec,
+        BinaryCmpLocalPointer{});
 
     return _segments.emplace(pos, std::move(rec));
   }
@@ -302,10 +305,13 @@ private:
   typename std::vector<allocation_rec_t>::iterator lookup_segment_by_lptr(
       local_pointer lptr)
   {
-
     allocation_rec_t rec{lptr, 0, DART_GPTR_NULL};
 
-    return binary_find(std::begin(_segments), std::end(_segments), rec, BinaryCmpLocalPointer{});
+    return binary_find(
+        std::begin(_segments),
+        std::end(_segments),
+        rec,
+        BinaryCmpLocalPointer{});
   }
 
   typename std::vector<allocation_rec_t>::iterator lookup_segment_by_gptr(
@@ -333,7 +339,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -344,11 +350,13 @@ EpochSynchronizedAllocator<
   , _alloc(
         r ? r
           : static_cast<LMemSpace *>(
-                get_default_local_memory_space<
+                get_default_memory_space<
+                    memory_domain_local,
                     typename memory_traits::memory_space_type_category>()))
   , _policy{}
 {
-  DASH_LOG_DEBUG("EpochSynchronizedAllocator.SymmetricAllocator(team, alloc) >");
+  DASH_LOG_DEBUG(
+      "EpochSynchronizedAllocator.SymmetricAllocator(team, alloc) >");
   _segments.reserve(1);
 }
 
@@ -356,7 +364,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -370,7 +378,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -388,7 +396,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 typename EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -417,7 +425,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 typename EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -450,7 +458,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -464,7 +472,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 void EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -481,7 +489,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 typename EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -509,7 +517,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 void EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -544,7 +552,6 @@ void EpochSynchronizedAllocator<
     return;
   }
 
-
   allocator_traits::deallocate(_alloc, pos->lptr(), pos->length());
 
   _segments.erase(pos);
@@ -554,7 +561,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 typename EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -597,7 +604,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 void EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -614,7 +621,6 @@ void EpochSynchronizedAllocator<
   if (DART_GPTR_ISNULL(gptr)) {
     return;
   }
-
 
   auto pos = lookup_segment_by_gptr(gptr);
 
@@ -635,7 +641,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 void EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -675,7 +681,7 @@ template <
     typename ElementType,
     typename LMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 typename EpochSynchronizedAllocator<
     ElementType,
     LMemSpace,
@@ -711,7 +717,7 @@ template <
     class U,
     class LocalMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 bool operator==(
     const EpochSynchronizedAllocator<
         T,
@@ -725,7 +731,7 @@ bool operator==(
         LocalAlloc> &rhs)
 {
   return (
-      sizeof(T) == sizeof(U) && lhs._team == rhs._team &&
+      sizeof(T) == sizeof(U) && *(lhs._team) == *(rhs._team) &&
       lhs._alloc == rhs._alloc);
 }
 
@@ -734,7 +740,7 @@ template <
     class U,
     class LocalMemSpace,
     global_allocation_policy AllocationPolicy,
-    template <class, class> class LocalAlloc>
+    template <class> class LocalAlloc>
 bool operator!=(
     const EpochSynchronizedAllocator<
         T,

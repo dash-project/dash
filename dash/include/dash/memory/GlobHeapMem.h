@@ -200,7 +200,7 @@ template <
     class LocalMemorySpace                   = dash::HostSpace,
     global_allocation_policy AllocationPolicy =
         global_allocation_policy::epoch_synchronized,
-    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
+    template <class> class LocalAlloc = allocator::DefaultAllocator>
 class GlobHeapMem {
 private:
   typedef GlobHeapMem self_t;

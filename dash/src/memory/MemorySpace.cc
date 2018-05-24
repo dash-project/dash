@@ -1,18 +1,21 @@
-#include <dash/memory/HostSpace.h>
-#include <dash/memory/HBWSpace.h>
+#include <dash/memory/MemorySpace.h>
 
 namespace dash {
 
-MemorySpace<void, memory_space_local_domain_tag>*
-get_default_host_space() {
+template<>
+MemorySpace<memory_domain_local, memory_space_host_tag>*
+get_default_memory_space<memory_domain_local, memory_space_host_tag>()
+{
   static HostSpace host_space_singleton;
   return &host_space_singleton;
 }
 
-MemorySpace<void, memory_space_local_domain_tag>*
-get_default_hbw_space() {
+template<>
+MemorySpace<memory_domain_local, memory_space_hbw_tag>*
+get_default_memory_space<memory_domain_local, memory_space_hbw_tag>()
+{
   static HBWSpace hbw_space_singleton;
   return &hbw_space_singleton;
 }
 
-} //namespace dash
+}  // namespace dash

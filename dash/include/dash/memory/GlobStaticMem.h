@@ -82,7 +82,7 @@ template <
     typename LocalMemorySpace,
     global_allocation_policy AllocationPolicy =
         global_allocation_policy::collective,
-    template <class, class> class LocalAlloc = allocator::DefaultAllocator>
+    template <class> class LocalAlloc = allocator::DefaultAllocator>
 class GlobStaticMem {
   typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
       self_t;

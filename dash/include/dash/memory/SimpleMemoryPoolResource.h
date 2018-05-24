@@ -54,7 +54,9 @@ struct Header {
 
 template <class LocalMemSpace>
 class SimpleMemoryPoolResource
-  : public dash::MemorySpace<void, memory_space_local_domain_tag> {
+  : public dash::MemorySpace<
+        memory_domain_local,
+        typename LocalMemSpace::memory_space_type_category> {
 private:
   // PRIVATE TYPES
 
@@ -136,7 +138,8 @@ inline SimpleMemoryPoolResource<LocalMemSpace>::SimpleMemoryPoolResource(
   , m_resource(
         r ? r
           : static_cast<LocalMemSpace*>(
-                get_default_local_memory_space<
+                get_default_memory_space<
+                    memory_domain_local,
                     typename memory_traits::memory_space_type_category>()))
 {
 }
@@ -307,4 +310,4 @@ SimpleMemoryPoolResource<LocalMemSpace>::~SimpleMemoryPoolResource() noexcept
 
 }  // namespace dash
 
-#endif //DASH__MEMORY__SIMPLE_MEMORY_POOL_RESOURCE_H_
+#endif  // DASH__MEMORY__SIMPLE_MEMORY_POOL_RESOURCE_H_

@@ -120,7 +120,9 @@ public:
 };
 
 template <class LocalAlloc>
-class CollectiveAllocationPolicyImpl<LocalAlloc, dash::memory_space_host_tag> {
+class CollectiveAllocationPolicyImpl<
+    LocalAlloc,
+    dash::memory_space_host_tag> {
 private:
   using allocator_traits = std::allocator_traits<LocalAlloc>;
 
@@ -150,7 +152,8 @@ public:
           nels);
       gptr = DART_GPTR_NULL;
     }
-    DASH_LOG_DEBUG_VAR("CollectiveAllocationPolicyImpl.do_global_allocate >", gptr);
+    DASH_LOG_DEBUG_VAR(
+        "CollectiveAllocationPolicyImpl.do_global_allocate >", gptr);
     typename allocator_traits::pointer addr;
     dart_gptr_getaddr(
         gptr,
@@ -190,11 +193,11 @@ public:
  * local portion to global memory.
  * Note: All gobal memory allocations and deallocations are collective
  */
-template <class LocalAlloc>
+template <class LocalAlloc, class LMemSpace>
 using CollectiveAllocationPolicy = detail::CollectiveAllocationPolicyImpl<
     LocalAlloc,
     typename dash::memory_space_traits<
-        typename LocalAlloc::memory_space>::memory_space_type_category>;
+        LMemSpace>::memory_space_type_category>;
 
 /**
  * LocalAllocationPolicy: Implements a mechanism to allocate locally,
@@ -206,10 +209,10 @@ using CollectiveAllocationPolicy = detail::CollectiveAllocationPolicyImpl<
  * non-collective. The user has to ensure that the owning unit does not
  * release the memory while other units are still operating on it.
  */
-template <class LocalAlloc>
+template <class LocalAlloc, class LMemSpace>
 class LocalAllocationPolicy {
   using memory_traits =
-      typename dash::memory_space_traits<typename LocalAlloc::memory_space>;
+      typename dash::memory_space_traits<LMemSpace>;
 
   static_assert(
       std::is_same<

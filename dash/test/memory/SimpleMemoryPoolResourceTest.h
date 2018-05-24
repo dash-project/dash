@@ -3,13 +3,18 @@
 
 #include "../TestBase.h"
 
-#include <dash/memory/SimpleMemoryPoolResource.h>
 #include <dash/Exception.h>
+#include <dash/memory/SimpleMemoryPoolResource.h>
+#include <dash/memory/MemorySpace.h>
 
 class SimpleMemoryPoolTest : public dash::test::TestBase {
- protected:
-  SimpleMemoryPoolTest() {}
-  virtual ~SimpleMemoryPoolTest() {}
+protected:
+  SimpleMemoryPoolTest()
+  {
+  }
+  virtual ~SimpleMemoryPoolTest()
+  {
+  }
 };
 
 /**
@@ -18,42 +23,42 @@ class SimpleMemoryPoolTest : public dash::test::TestBase {
 template <typename ValueType, class LocalMemorySpace = dash::HostSpace>
 class Stack {
   struct Node {
-    ValueType d_value;  // payload value
-    Node *d_next_p;     // pointer to the next node
+    ValueType d_value;   // payload value
+    Node *    d_next_p;  // pointer to the next node
   };
 
   using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
 
   using MemoryPool = dash::SimpleMemoryPoolResource<LocalMemorySpace>;
 
-
- private:
+private:
   // DATA
-   Node *                       m_head_p;  // pointer to the first node
-   int                          m_size;    // size of the stack
-   MemoryPool m_pool;    // memory manager for the stack
+  Node *     m_head_p;  // pointer to the first node
+  int        m_size;    // size of the stack
+  MemoryPool m_pool;    // memory manager for the stack
 
- public:
+public:
   // CREATORS
-   Stack(
-       LocalMemorySpace *resource = static_cast<LocalMemorySpace *>(
-           dash::get_default_local_memory_space<
-               typename memory_traits::memory_space_type_category>()));
+  Stack(
+      LocalMemorySpace *resource = static_cast<LocalMemorySpace *>(
+          dash::get_default_memory_space<
+              dash::memory_domain_local,
+              typename memory_traits::memory_space_type_category>()));
 
-   // MANIPULATORS
-   void push(int value);
+  // MANIPULATORS
+  void push(int value);
 
-   void pop();
+  void pop();
 
-   // ACCESSORS
-   int top();
+  // ACCESSORS
+  int top();
 
-   std::size_t size();
+  std::size_t size();
 };
 
 // CREATORS
 template <typename ValueType, class LocalMemorySpace>
-Stack<ValueType, LocalMemorySpace>::Stack(LocalMemorySpace * resource)
+Stack<ValueType, LocalMemorySpace>::Stack(LocalMemorySpace *resource)
   : m_head_p(0)
   , m_size(0)
   , m_pool(resource)
@@ -67,9 +72,9 @@ void Stack<ValueType, LocalMemorySpace>::push(int value)
   Node *newNode =
       static_cast<Node *>(m_pool.allocate(sizeof(Node), alignof(Node)));
   //
-  newNode->d_value = value;
+  newNode->d_value  = value;
   newNode->d_next_p = m_head_p;
-  m_head_p = newNode;
+  m_head_p          = newNode;
   //
   ++m_size;
 }
@@ -79,7 +84,7 @@ void Stack<ValueType, LocalMemorySpace>::pop()
 {
   DASH_ASSERT(0 != size());
   //
-  Node *n = m_head_p;
+  Node *n  = m_head_p;
   m_head_p = m_head_p->d_next_p;
   m_pool.deallocate(n, sizeof(Node), alignof(Node));
   --m_size;

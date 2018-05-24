@@ -1,7 +1,7 @@
 #ifndef DASH__MEMORY__HBW_SPACE_H__INCLUDED
 #define DASH__MEMORY__HBW_SPACE_H__INCLUDED
 
-#include <dash/memory/MemorySpace.h>
+#include <dash/memory/MemorySpaceBase.h>
 
 #ifdef DASH_ENABLE_MEMKIND
 #include <hbwmalloc.h>
@@ -11,7 +11,7 @@
 
 namespace dash {
 
-class HBWSpace : public dash::MemorySpace<void, memory_space_local_domain_tag> {
+class HBWSpace : public dash::MemorySpace<memory_domain_local, memory_space_hbw_tag> {
 
 #ifdef DASH_ENABLE_MEMKIND
   static_assert(alignof(void*) == sizeof(void*), "Required by Memkind");
