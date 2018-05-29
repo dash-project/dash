@@ -3,10 +3,13 @@
 
 #include <dash/dart/if/dart.h>
 
-#include <dash/Exception.h>
 #include <dash/Types.h>
+
 #include <dash/allocator/internal/Types.h>
-#include <dash/memory/MemorySpace.h>
+#include <dash/memory/MemorySpaceBase.h>
+#include <dash/internal/Logging.h>
+
+std::ostream& operator<<(std::ostream& os, const dart_gptr_t& dartptr);
 
 namespace dash {
 
@@ -20,20 +23,18 @@ enum class global_allocation_policy : uint8_t {
   /// all units allocate invdividually in local memory and synchronize in
   /// epochs
   epoch_synchronized,
-
 };
+
 
 namespace allocator {
 
-template <typename T>
 struct AttachDetachPolicy {
   inline dart_gptr_t do_global_attach(
-      dart_team_t teamid, T* ptr, std::size_t nels)
+      dart_team_t teamid, void* ptr, std::size_t nbytes)
   {
-    dart_gptr_t           gptr;
-    dash::dart_storage<T> ds(nels);
+    dart_gptr_t gptr;
 
-    if (dart_team_memregister(teamid, ds.nelem, ds.dtype, ptr, &gptr) !=
+    if (dart_team_memregister(teamid, nbytes, DART_TYPE_BYTE, ptr, &gptr) !=
         DART_OK) {
       gptr = DART_GPTR_NULL;
       DASH_LOG_ERROR(
@@ -55,16 +56,168 @@ struct AttachDetachPolicy {
   }
 };
 
+template <
+    class ElementType,
+    class AllocationPolicy,
+    class SynchronizationPolicy,
+    class LMemSpace>
+class GlobalAllocationPolicy;
+
+template <class ElementType, class LMemSpace>
+class GlobalAllocationPolicy<
+    ElementType,
+    allocation_static,
+    synchronization_collective,
+    LMemSpace> : AttachDetachPolicy {
+public:
+  /// Variant to allocate symmetrically in global memory space if we
+  /// allocate in the default Host Space. In this case DART can allocate
+  /// symmatrically.
+  std::pair<void*, dart_gptr_t> do_global_allocate(
+      dart_team_t                                  teamid,
+      LocalMemorySpaceBase<memory_space_host_tag>* res,
+      std::size_t                                  nels)
+  {
+    DASH_LOG_DEBUG(
+        "GlobalAllocationPolicy.do_global_allocate(nlocal)",
+        "number of local values:",
+        nels);
+
+    auto lp = res->allocate(nels * sizeof(ElementType), alignof(ElementType));
+
+    if (!lp && nels > 0) {
+      throw std::bad_alloc{};
+    }
+
+    DASH_LOG_DEBUG_VAR(
+        "GlobalAllocationPolicy.do_global_allocate(nlocal)", lp);
+
+    auto gptr = AttachDetachPolicy::do_global_attach(
+        teamid, lp, nels * sizeof(ElementType));
+
+    if (DART_GPTR_ISNULL(gptr)) {
+      res->deallocate(lp, nels * sizeof(ElementType), alignof(ElementType));
+      throw std::bad_alloc{};
+    }
+
+    DASH_LOG_DEBUG_VAR(
+        "GlobalAllocationPolicy.do_global_allocate(nlocal)", gptr);
+
+    DASH_LOG_DEBUG("GlobalAllocationPolicy.do_global_allocate(nlocal) >");
+
+    return std::make_pair(lp, gptr);
+  }
+
+  /// Similar to the allocation case above global memory is deallocated
+  /// symmetrically in DART.
+  bool do_global_deallocate(
+      dart_gptr_t                                  gptr,
+      LocalMemorySpaceBase<memory_space_host_tag>* res,
+      void*                                        lptr,
+      size_t                                       nels)
+  {
+    DASH_LOG_DEBUG("< GlobalAllocationPolicy.do_global_deallocate");
+    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", gptr);
+    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", lptr);
+    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", nels);
+
+    DASH_ASSERT_RETURNS(AttachDetachPolicy::do_global_detach(gptr), true);
+
+    res->deallocate(lptr, nels * sizeof(ElementType), alignof(ElementType));
+
+    DASH_ASSERT_RETURNS(dart_barrier(gptr.teamid), DART_OK);
+    DASH_LOG_DEBUG("GlobalAllocationPolicy.do_global_deallocate >");
+    return true;
+  }
+};
+
+template <class ElementType>
+class GlobalAllocationPolicy<
+    ElementType,
+    allocation_static,
+    synchronization_collective,
+    memory_space_host_tag> {
+public:
+  /// Variant to allocate symmetrically in global memory space if we
+  /// allocate in the default Host Space. In this case DART can allocate
+  /// symmatrically.
+  std::pair<void*, dart_gptr_t> do_global_allocate(
+      dart_team_t teamid,
+      LocalMemorySpaceBase<memory_space_host_tag>* /* res */,
+      std::size_t nels)
+  {
+    DASH_LOG_DEBUG(
+        "GlobalAllocationPolicy.do_global_allocate(nlocal)",
+        "number of local values:",
+        nels);
+
+    dart_gptr_t gptr;
+
+    dash::dart_storage<ElementType> ds(nels);
+    if (dart_team_memalloc_aligned(teamid, ds.nelem, ds.dtype, &gptr) !=
+        DART_OK) {
+      DASH_LOG_ERROR(
+          "GlobalAllocationPolicy.do_global_allocate(nlocal)",
+          "cannot allocate global memory segment",
+          nels);
+      gptr = DART_GPTR_NULL;
+    }
+
+    if (DART_GPTR_ISNULL(gptr)) {
+      throw std::bad_alloc{};
+    }
+
+    void* addr;
+
+    dart_team_unit_t myid;
+    dart_team_myid(teamid, &myid);
+
+    auto gptr_tmp = gptr;
+
+    DASH_ASSERT_RETURNS(dart_gptr_setunit(&gptr_tmp, myid), DART_OK);
+
+    DASH_ASSERT_RETURNS(dart_gptr_getaddr(gptr_tmp, &addr), DART_OK);
+
+    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_allocate >", gptr);
+
+    return std::make_pair(addr, gptr);
+  }
+
+  /// Similar to the allocation case above global memory is deallocated
+  /// symmetrically in DART.
+  bool do_global_deallocate(
+      dart_gptr_t gptr,
+      LocalMemorySpaceBase<memory_space_host_tag>* /* unused */,
+      void* /* unused */,
+      size_t /* unused */)
+  {
+    DASH_LOG_TRACE(
+        "GlobalAllocationPolicy.do_global_deallocate",
+        "deallocating memory segment",
+        gptr);
+
+    if (DART_GPTR_ISNULL(gptr)) {
+      return true;
+    }
+
+    // We have to wait for the other since dart_team_memfree is non-collective
+    // This is required for symmetric allocation policy as the memory may be
+    // detached while other units are still operting on the unit's global
+    // memory
+    DASH_ASSERT_RETURNS(dart_barrier(gptr.teamid), DART_OK);
+
+    auto ret = dart_team_memfree(gptr) == DART_OK;
+
+    return ret;
+  }
+};
+
 namespace detail {
 
 template <class LocalAlloc, typename MemSpaceCategory>
-class CollectiveAllocationPolicyImpl
-  : public AttachDetachPolicy<
-        typename std::allocator_traits<LocalAlloc>::value_type> {
+class CollectiveAllocationPolicyImpl : public AttachDetachPolicy {
 private:
   using allocator_traits = std::allocator_traits<LocalAlloc>;
-  using base_t           = AttachDetachPolicy<
-      typename std::allocator_traits<LocalAlloc>::value_type>;
 
 public:
   using allocation_rec_t =
@@ -87,7 +240,8 @@ public:
       return allocation_rec_t{};
     }
 
-    auto gptr = base_t::do_global_attach(teamid, lp, nels);
+    auto gptr = AttachDetachPolicy::do_global_attach(
+        teamid, lp, nels * sizeof(typename allocator_traits::value_type));
 
     if (DART_GPTR_ISNULL(gptr)) {
       allocator_traits::deallocate(a, lp, nels);
@@ -108,7 +262,7 @@ public:
         rec.length(),
         rec.gptr());
 
-    auto ret = base_t::do_global_detach(rec.gptr());
+    auto ret = AttachDetachPolicy::do_global_detach(rec.gptr());
 
     DASH_LOG_DEBUG("SymmatricAllocationPolicy.deallocate", "_segments.erase");
     allocator_traits::deallocate(a, rec.lptr(), rec.length());
@@ -211,8 +365,7 @@ using CollectiveAllocationPolicy = detail::CollectiveAllocationPolicyImpl<
  */
 template <class LocalAlloc, class LMemSpace>
 class LocalAllocationPolicy {
-  using memory_traits =
-      typename dash::memory_space_traits<LMemSpace>;
+  using memory_traits = typename dash::memory_space_traits<LMemSpace>;
 
   static_assert(
       std::is_same<

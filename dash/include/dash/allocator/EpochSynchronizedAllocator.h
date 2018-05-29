@@ -40,8 +40,7 @@ template <
     global_allocation_policy AllocationPolicy =
         global_allocation_policy::epoch_synchronized,
     /// The Allocator Strategy to allocate from the local memory space
-    template <class T> class LocalAlloc =
-        allocator::DefaultAllocator>
+    template <class T> class LocalAlloc = allocator::DefaultAllocator>
 class EpochSynchronizedAllocator {
   template <class T, class U>
   friend bool operator==(
@@ -86,10 +85,9 @@ class EpochSynchronizedAllocator {
 
   static constexpr size_t const alignment = alignof(ElementType);
 
-  using allocator_traits =
-      std::allocator_traits<LocalAlloc<ElementType>>;
+  using allocator_traits = std::allocator_traits<LocalAlloc<ElementType>>;
 
-  using policy_type = allocator::AttachDetachPolicy<ElementType>;
+  using policy_type = allocator::AttachDetachPolicy;
 
   // tuple to hold the local pointer
   using allocation_rec_t =
@@ -590,8 +588,8 @@ EpochSynchronizedAllocator<
 
   DASH_ASSERT_EQ(num_local_elem, pos->length(), "invalid block length");
 
-  auto gptr =
-      _policy.do_global_attach(_team->dart_id(), pos->lptr(), pos->length());
+  auto gptr = _policy.do_global_attach(
+      _team->dart_id(), pos->lptr(), pos->length() * sizeof(ElementType));
 
   DASH_ASSERT_MSG(!DART_GPTR_ISNULL(gptr), "gptr must not be null");
 
@@ -702,8 +700,8 @@ EpochSynchronizedAllocator<
 
   DASH_ASSERT_MSG(it->lptr() != nullptr, "local pointer must not be NULL");
 
-  auto gptr =
-      _policy.do_global_attach(_team->dart_id(), it->lptr(), num_local_elem);
+  auto gptr = _policy.do_global_attach(
+      _team->dart_id(), it->lptr(), num_local_elem * sizeof(ElementType));
 
   DASH_ASSERT_MSG(!DART_GPTR_ISNULL(gptr), "gptr must not be null");
 

@@ -4,12 +4,21 @@
 #include <dash/memory/HBWSpace.h>
 #include <dash/memory/HostSpace.h>
 
+#include <dash/memory/NeoGlobStaticMemory.h>
+
+namespace dash {
+namespace experimental {
+
+template <class ElementType, class LMemSpace>
+using GlobStaticMem =
+    GlobalStaticMemory<ElementType, LMemSpace, synchronization_collective>;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // HELPER FUNCTIONS
 ///////////////////////////////////////////////////////////////////////////////
 //
 
-namespace dash {
 // TODO rko: maybe there is a better way insteaf of all these specializations?
 
 namespace detail {

@@ -170,7 +170,7 @@ struct memory_space_traits {
 ///////////////////////////////////////////////////////////////////////////////
 
 template <class MemoryType>
-class LocalMemorySpace : public cpp17::pmr::memory_resource {
+class LocalMemorySpaceBase : public cpp17::pmr::memory_resource {
   // We may add something here in figure
   using base_t = cpp17::pmr::memory_resource;
 
@@ -178,37 +178,97 @@ public:
   /// Memory Traits
   using memory_space_domain_category = memory_domain_local;
   using memory_space_type_category   = MemoryType;
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBAL MEMORY SPACE
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Allocation Policy
+
+struct allocation_static {
+  // Participating units allocate on construction. Acquired memory is never
+  // reclaimed upon destruction
+  //
+  // Methods:
+  //  - allocate
+  //  - deallocate
+};
+
+struct allocation_dynamic {
+  // Participating units allocate local segments independent and subsequently
+  // attach it to global memory.
+  //
+  // Methods:
+  //  - allocate_local
+  //  - deallocate_local
+  //  - attach
+  //  - detach
+};
+
+/// Synchronization Policy
+
+struct synchronization_collective {
+  // All allocations in memory are collective...
+  //
+  // => Requires that global memory allocation is always collective
+};
+
+struct synchronization_independent {
+  // Units allocate global memory independent from each other. Requires a
+  // synchronization mechanism to agree on a global memory state.
+  // See GlobHeapMem as an example.
+  //
+  // => Should support both point-to-point and collective synchronization
+  // within the team
+};
+
+struct synchronization_single {
+  // Only a single unit participates in global memory memory allocation. It
+  // may then broadcast the global pointer to other units in the team.
+  //
+  // => See dash::Shared as an example.
+};
+
 template <
     /// Value Type to allocate
     class ValueType,
     /// whether memory is static or dynamic
     class AllocationPolicy,
-    /// symmetric, independent or single
+    /// collective, independent or single
     class SynchronizationPolicy,
     /// HostSpace, HBWSpace, DeviceSpace, NVMSpace
     class LMemSpace>
-class GlobalMemorySpace {
+class GlobalMemorySpaceBase {
+  static_assert(
+      memory_space_traits<LMemSpace>::is_local::value,
+      "LMemSpace must be a local memory space");
 
   static_assert(
-      details::is_local_memory_space<LMemSpace>::value,
-      "LMemSpace must be a local memory space");
+      dash::is_container_compatible<ValueType>::value,
+      "ValueType not supported in global memory");
 
 public:
   /// Memory Traits
   using memory_space_domain_category        = memory_domain_global;
   using memory_space_synchronization_policy = SynchronizationPolicy;
   using memory_space_allocation_policy      = AllocationPolicy;
-  using local_memory_space_type             = LMemSpace;
 
+  using local_memory_space_type_category =
+      typename memory_space_traits<LMemSpace>::memory_space_type_category;
+
+  // TODO rko: Clarify how should really obtain the correct element type.
+  // Maybe it is decay, maybe we should also verify that is not an array (i.e.
+  // std::is_array?)
   using value_type       = typename std::remove_cv<ValueType>::type;
   using const_value_type = typename std::add_const<value_type>::type;
+
+  using size_type       = dash::default_size_t;
+  using difference_type = dash::default_index_t;
+  using index_type      = difference_type;
+
+public:
+  virtual ~GlobalMemorySpaceBase();
 
   // TODO rko: implement this and provide it in memory traits
 #if 0
@@ -221,18 +281,36 @@ public:
   // using pointer       = dash::GlobPtr<ValueType, self_t>;
   // using const_pointer = dash::GlobPtr<const ValueType, self_t>;
 
+public:
+  GlobalMemorySpaceBase() = default;
+  GlobalMemorySpaceBase(const GlobalMemorySpaceBase&) = default;
+  GlobalMemorySpaceBase(GlobalMemorySpaceBase&&)      = default;
+  GlobalMemorySpaceBase& operator=(const GlobalMemorySpaceBase&) = default;
+  GlobalMemorySpaceBase& operator=(GlobalMemorySpaceBase&&) = default;
+
 protected:
-  virtual void* do_is_equal(const GlobalMemorySpace& other) = 0;
+  virtual bool do_is_equal(const GlobalMemorySpaceBase& other) const
+      noexcept = 0;
 
 public:
-  bool is_equal(GlobalMemorySpace const& other) const noexcept
+  bool is_equal(GlobalMemorySpaceBase const& other) const noexcept
   {
     return do_is_equal(other);
   }
-
-private:
-  dash::Team const* _team;
 };
+
+template <
+    class ValueType,
+    class AllocationPolicy,
+    class SynchronizationPolicy,
+    class LMemSpace>
+GlobalMemorySpaceBase<
+    ValueType,
+    AllocationPolicy,
+    SynchronizationPolicy,
+    LMemSpace>::~GlobalMemorySpaceBase()
+{
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // MEMORY SPACE
@@ -243,12 +321,31 @@ class MemorySpace;
 
 template <class... Args>
 class MemorySpace<memory_domain_global, Args...>
-  : public GlobalMemorySpace<Args...> {
+  : public GlobalMemorySpaceBase<Args...> {
+protected:
+  using global_memory_space_base_t = GlobalMemorySpaceBase<Args...>;
+
+public:
+  using typename GlobalMemorySpaceBase<Args...>::memory_space_domain_category;
+
+  using
+      typename GlobalMemorySpaceBase<Args...>::memory_space_allocation_policy;
+
+  using typename GlobalMemorySpaceBase<
+      Args...>::memory_space_synchronization_policy;
+
+  using typename GlobalMemorySpaceBase<
+      Args...>::local_memory_space_type_category;
+
+  using typename GlobalMemorySpaceBase<Args...>::value_type;
+  using typename GlobalMemorySpaceBase<Args...>::size_type;
+  using typename GlobalMemorySpaceBase<Args...>::difference_type;
+  using typename GlobalMemorySpaceBase<Args...>::index_type;
 };
 
 template <class... Args>
 class MemorySpace<memory_domain_local, Args...>
-  : public LocalMemorySpace<Args...> {
+  : public LocalMemorySpaceBase<Args...> {
 };
 
 template <class MemoryDomain, class... Args>
@@ -266,7 +363,6 @@ inline bool operator!=(
 {
   return !(lhs == rhs);
 }
-
 
 }  // namespace dash
 
