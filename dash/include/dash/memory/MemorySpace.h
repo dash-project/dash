@@ -38,7 +38,7 @@ get_default_memory_space()
   static_assert(
       detail::dependent_false<MSpaceDomainCategory, MSpaceTypeCategory>::
           value,
-      "No default memory space available");
+      "No default memory space for this configuration available");
   // Current we have only a default host space
   return nullptr;
 }

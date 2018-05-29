@@ -1,6 +1,7 @@
 #ifndef DASH__GLOB_STATIC_MEMORY_H__INCLUDED
 #define DASH__GLOB_STATIC_MEMORY_H__INCLUDED
 
+#include <dash/Exception.h>
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
 
@@ -30,13 +31,6 @@ class MemorySpace<
         allocation_static,
         SynchronizationPolicy,
         LMemSpace> {
-
-  static_assert(
-      std::is_same<SynchronizationPolicy, synchronization_collective>::
-              value ||
-          std::is_same<SynchronizationPolicy, synchronization_single>::value,
-      "MemorySpace can be only used with synchronization_single or "
-      "synchronization_collective");
   using memory_traits = dash::memory_space_traits<LMemSpace>;
 
   using base_t = GlobalMemorySpaceBase<
@@ -44,8 +38,6 @@ class MemorySpace<
       allocation_static,
       SynchronizationPolicy,
       LMemSpace>;
-
-  static constexpr size_t alignment = alignof(ElementType);
 
   // TODO rko: Move this to base class
   using allocation_policy_t = dash::allocator::GlobalAllocationPolicy<
@@ -60,7 +52,8 @@ public:
   using index_type      = typename base_t::index_type;
   using difference_type = typename base_t::difference_type;
 
-  using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
+  // TODO rko: Move this to base class
+  using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
   using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
   using const_pointer = dash::GlobPtr<const value_type, MemorySpace>;
@@ -113,6 +106,89 @@ public:
   void barrier()
   {
     m_team->barrier();
+  }
+
+  allocator_type allocator() const
+  {
+    return m_allocator;
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations to all units.
+   */
+  void flush() noexcept
+  {
+    dart_flush_all(m_begin);
+  }
+
+  /**
+   * Complete all outstanding non-blocking operations to the specified unit.
+   */
+  void flush(dash::team_unit_t target) noexcept
+  {
+    dart_gptr_t gptr = m_begin;
+    gptr.unitid      = target.id;
+    dart_flush(gptr);
+  }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to all units.
+   */
+  void flush_local() noexcept
+  {
+    dart_flush_local_all(m_begin);
+  }
+
+  /**
+   * Locally complete all outstanding non-blocking operations to the specified
+   * unit.
+   */
+  void flush_local(dash::team_unit_t target) noexcept
+  {
+    dart_gptr_t gptr = m_begin;
+    gptr.unitid      = target.id;
+    dart_flush_local(gptr);
+  }
+
+  /**
+   * Resolve the global pointer from an element position in a unit's
+   * local memory.
+   */
+  template <typename IndexType>
+  pointer at(
+      /// The unit id
+      team_unit_t unit,
+      /// The unit's local address offset
+      IndexType local_index) const
+  {
+    DASH_LOG_DEBUG("MemorySpace.at(unit,l_idx)", unit, local_index);
+    if (m_team->size() == 0 || DART_GPTR_ISNULL(m_begin)) {
+      DASH_LOG_DEBUG(
+          "MemorySpace.at(unit,l_idx) >", "global memory not allocated");
+      return pointer(nullptr);
+    }
+    // Initialize with global pointer to start address:
+    dart_gptr_t gptr = m_begin;
+    // Resolve global unit id
+    DASH_LOG_TRACE_VAR("MemorySpace.at (=g_begptr)", gptr);
+    DASH_LOG_TRACE_VAR("MemorySpace.at", gptr.unitid);
+    team_unit_t lunit{gptr.unitid};
+    DASH_ASSERT_EQ(gptr.unitid, 0, "invalid global begin pointer");
+    DASH_ASSERT_RANGE(
+        0, lunit.id, m_team->size() - 1, "invalid global begin pointer");
+    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
+    // lunit = (lunit + unit) % _team->size();
+    lunit = lunit + unit;
+
+    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
+    // Apply global unit to global pointer:
+    dart_gptr_setunit(&gptr, lunit);
+    // increment locally only
+    gptr.addr_or_offs.offset += local_index * sizeof(value_type);
+    // Apply local offset to global pointer:
+    pointer res_gptr(*this, gptr);
+    DASH_LOG_DEBUG("MemorySpace.at (+g_unit) >", res_gptr);
+    return res_gptr;
   }
 
 private:
