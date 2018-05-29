@@ -282,7 +282,7 @@ public:
   // using const_pointer = dash::GlobPtr<const ValueType, self_t>;
 
 public:
-  GlobalMemorySpaceBase() = default;
+  GlobalMemorySpaceBase()                             = default;
   GlobalMemorySpaceBase(const GlobalMemorySpaceBase&) = default;
   GlobalMemorySpaceBase(GlobalMemorySpaceBase&&)      = default;
   GlobalMemorySpaceBase& operator=(const GlobalMemorySpaceBase&) = default;
@@ -319,33 +319,15 @@ GlobalMemorySpaceBase<
 template <class MemoryDomain, class... Args>
 class MemorySpace;
 
-template <class... Args>
-class MemorySpace<memory_domain_global, Args...>
-  : public GlobalMemorySpaceBase<Args...> {
-protected:
-  using global_memory_space_base_t = GlobalMemorySpaceBase<Args...>;
-
-public:
-  using typename GlobalMemorySpaceBase<Args...>::memory_space_domain_category;
-
-  using
-      typename GlobalMemorySpaceBase<Args...>::memory_space_allocation_policy;
-
-  using typename GlobalMemorySpaceBase<
-      Args...>::memory_space_synchronization_policy;
-
-  using typename GlobalMemorySpaceBase<
-      Args...>::local_memory_space_type_category;
-
-  using typename GlobalMemorySpaceBase<Args...>::value_type;
-  using typename GlobalMemorySpaceBase<Args...>::size_type;
-  using typename GlobalMemorySpaceBase<Args...>::difference_type;
-  using typename GlobalMemorySpaceBase<Args...>::index_type;
-};
-
+// Specialization for Local Memory Spaces
 template <class... Args>
 class MemorySpace<memory_domain_local, Args...>
   : public LocalMemorySpaceBase<Args...> {
+};
+
+template <class... Args>
+class MemorySpace<memory_domain_global, Args...>
+  : public GlobalMemorySpaceBase<Args...> {
 };
 
 template <class MemoryDomain, class... Args>

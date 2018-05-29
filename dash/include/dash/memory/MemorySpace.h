@@ -10,8 +10,12 @@ namespace dash {
 namespace experimental {
 
 template <class ElementType, class LMemSpace>
-using GlobStaticMem =
-    GlobalStaticMemory<ElementType, LMemSpace, synchronization_collective>;
+using GlobStaticMem = ::dash::MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    synchronization_collective,
+    LMemSpace>;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

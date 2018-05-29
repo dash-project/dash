@@ -13,24 +13,33 @@ template <class MSpaceDomainCategory, class MSpaceTypeCategory>
 inline MemorySpace<MSpaceDomainCategory, MSpaceTypeCategory>*
 get_default_memory_space();
 
-namespace experimental {
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-class GlobalStaticMemory
-  : public MemorySpace<
-        /// global memory space
-        memory_domain_global,
-        /// Element Type
+class MemorySpace<
+    /// global memory space
+    memory_domain_global,
+    /// Element Type
+    ElementType,
+    /// We are allowed to allocate only once
+    allocation_static,
+    /// All Units participate in global memory allocation
+    SynchronizationPolicy,
+    /// The local memory space
+    LMemSpace>
+  : GlobalMemorySpaceBase<
         ElementType,
-        /// We are allowed to allocate only once
         allocation_static,
-        /// All Units participate in global memory allocation
         SynchronizationPolicy,
-        /// The local memory space
         LMemSpace> {
+
+  static_assert(
+      std::is_same<SynchronizationPolicy, synchronization_collective>::
+              value ||
+          std::is_same<SynchronizationPolicy, synchronization_single>::value,
+      "MemorySpace can be only used with synchronization_single or "
+      "synchronization_collective");
   using memory_traits = dash::memory_space_traits<LMemSpace>;
 
-  using base_t = MemorySpace<
-      memory_domain_global,
+  using base_t = GlobalMemorySpaceBase<
       ElementType,
       allocation_static,
       SynchronizationPolicy,
@@ -53,33 +62,42 @@ public:
 
   using allocator_type = cpp17::pmr::polymorphic_allocator<byte>;
 
-  using pointer =
-      dash::GlobPtr<typename base_t::value_type, GlobalStaticMemory>;
-  using const_pointer = dash::GlobPtr<const value_type, GlobalStaticMemory>;
+  using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
+  using const_pointer = dash::GlobPtr<const value_type, MemorySpace>;
   using local_pointer = typename std::add_pointer<value_type>::type;
 
 public:
-  GlobalStaticMemory() = delete;
+  MemorySpace() = delete;
 
-  explicit GlobalStaticMemory(
+  explicit MemorySpace(
       size_type nels, dash::Team const& team = dash::Team::All());
-  GlobalStaticMemory(size_type nels, LMemSpace* r, dash::Team const& team);
-  ~GlobalStaticMemory() override;
+  MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team);
+  ~MemorySpace() override;
 
-  GlobalStaticMemory(const GlobalStaticMemory&) = delete;
-  GlobalStaticMemory(GlobalStaticMemory&&);
+  MemorySpace(const MemorySpace&) = delete;
+  MemorySpace(MemorySpace&&);
 
-  GlobalStaticMemory& operator=(const GlobalStaticMemory&) = delete;
-  GlobalStaticMemory& operator=(GlobalStaticMemory&&);
+  MemorySpace& operator=(const MemorySpace&) = delete;
+  MemorySpace& operator                      =(MemorySpace&&);
 
-  bool do_is_equal(typename base_t::global_memory_space_base_t const&) const
-      noexcept override;
+  bool do_is_equal(base_t const&) const noexcept override;
 
-  size_type     local_size(dash::team_unit_t) const noexcept;
-  size_type     size() const noexcept;
-  local_pointer lbegin() noexcept;
-  local_pointer lend() const noexcept;
-  pointer       begin() noexcept
+  size_type size() const noexcept;
+
+  size_type local_size(dash::team_unit_t uid) const noexcept
+  {
+    return m_local_sizes.at(uid);
+  }
+
+  local_pointer lbegin() noexcept
+  {
+    return m_lbegin;
+  }
+  local_pointer lend() const noexcept
+  {
+    return m_lend;
+  }
+  pointer begin() noexcept
   {
     return pointer(*this, m_begin);
   }
@@ -92,7 +110,10 @@ public:
     return *m_team;
   }
 
-  void barrier();
+  void barrier()
+  {
+    m_team->barrier();
+  }
 
 private:
   dash::Team const*      m_team{};
@@ -106,31 +127,40 @@ private:
 private:
   void do_allocate(size_type nels);
   void do_deallocate();
-};  // namespace experimental
+};
 
 ///////////// Implementation ///////////////////
 //
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    GlobalStaticMemory(size_type nels, dash::Team const& team)
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::MemorySpace(size_type nels, dash::Team const& team)
   : m_team(&team)
   , m_allocator(get_default_memory_space<
                 memory_domain_local,
                 typename memory_traits::memory_space_type_category>())
   , m_local_sizes(team.size())
 {
-  DASH_LOG_DEBUG("< GlobalStaticMemory.GlobalStaticMemory");
-  DASH_LOG_DEBUG_VAR("GlobalStaticMemory.GlobalStaticMemory", team);
-  DASH_LOG_DEBUG_VAR("GlobalStaticMemory.GlobalStaticMemory", nels);
+  DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
 
   do_allocate(nels);
 
-  DASH_LOG_DEBUG("GlobalStaticMemory.GlobalStaticMemory >");
+  DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    GlobalStaticMemory(size_type nels, LMemSpace* r, dash::Team const& team)
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::
+    MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team)
   : m_team(&team)
   , m_allocator(
         r ? r
@@ -139,19 +169,23 @@ inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
                 typename memory_traits::memory_space_type_category>())
   , m_local_sizes(team.size())
 {
-  DASH_LOG_DEBUG("< GlobalStaticMemory.GlobalStaticMemory");
+  DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
 
-  DASH_LOG_DEBUG_VAR("GlobalStaticMemory.GlobalStaticMemory", nels);
-  DASH_LOG_DEBUG_VAR("GlobalStaticMemory.GlobalStaticMemory", team);
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
 
   do_allocate(nels);
 
-  DASH_LOG_DEBUG("GlobalStaticMemory.GlobalStaticMemory >");
+  DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    GlobalStaticMemory(GlobalStaticMemory&& other)
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::MemorySpace(MemorySpace&& other)
   : m_team(std::move(other.m_team))
   , m_allocator(std::move(other.m_allocator))
   , m_policy(std::move(other.m_policy))
@@ -167,9 +201,18 @@ inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>&
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::operator=(
-    GlobalStaticMemory&& other)
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>&
+                MemorySpace<
+                    memory_domain_global,
+                    ElementType,
+                    allocation_static,
+                    SynchronizationPolicy,
+                    LMemSpace>::operator=(MemorySpace&& other)
 {
   // deallocate own memory
   do_deallocate();
@@ -186,9 +229,12 @@ GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::operator=(
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline void
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    do_allocate(size_type nels)
+inline void MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::do_allocate(size_type nels)
 {
   auto alloc_rec = m_policy.do_global_allocate(
       m_team->dart_id(),
@@ -220,22 +266,29 @@ GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    ~GlobalStaticMemory()
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::~MemorySpace()
 {
-  DASH_LOG_DEBUG("< GlobalStaticMemory.~GlobalStaticMemory");
+  DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
 
   do_deallocate();
 
-  DASH_LOG_DEBUG("GlobalStaticMemory.~GlobalStaticMemory >");
+  DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline void
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    do_deallocate()
+inline void MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::do_deallocate()
 {
-  DASH_LOG_DEBUG("< GlobalStaticMemory.do_deallocate");
+  DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lbegin);
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lend);
@@ -256,45 +309,22 @@ GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
   m_lend   = nullptr;
   m_local_sizes.clear();
 
-  DASH_LOG_DEBUG("GlobalStaticMemory.do_deallocate >");
+  DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline void
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::barrier()
-{
-  m_team->barrier();
-}
-
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename GlobalStaticMemory<
+inline typename MemorySpace<
+    memory_domain_global,
     ElementType,
-    LMemSpace,
-    SynchronizationPolicy>::local_pointer
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    lbegin() noexcept
-{
-  return m_lbegin;
-}
-
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename GlobalStaticMemory<
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::size_type
+MemorySpace<
+    memory_domain_global,
     ElementType,
-    LMemSpace,
-    SynchronizationPolicy>::local_pointer
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::lend()
-    const noexcept
-{
-  return m_lend;
-}
-
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename GlobalStaticMemory<
-    ElementType,
-    LMemSpace,
-    SynchronizationPolicy>::size_type
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::size()
-    const noexcept
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::size() const noexcept
 {
   return std::accumulate(
       std::begin(m_local_sizes),
@@ -304,26 +334,15 @@ GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::size()
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename GlobalStaticMemory<
+inline bool MemorySpace<
+    memory_domain_global,
     ElementType,
-    LMemSpace,
-    SynchronizationPolicy>::size_type
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::local_size(
-    dash::team_unit_t id) const noexcept
-{
-  return m_local_sizes[id];
-}
-
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline bool
-GlobalStaticMemory<ElementType, LMemSpace, SynchronizationPolicy>::
-    do_is_equal(typename base_t::global_memory_space_base_t const& other)
-        const noexcept
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::do_is_equal(base_t const& other) const noexcept
 {
   return true;
 }
-
-}  // namespace experimental
 
 }  // namespace dash
 
