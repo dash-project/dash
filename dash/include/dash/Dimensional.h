@@ -323,7 +323,7 @@ std::ostream & operator<<(
     if (distspec._values[d].type == dash::internal::DIST_TILE) {
       os << "TILE(" << distspec._values[d].blocksz << ")";
     }
-    else if (distspec._values[d].type == dash::internal::DIST_BLOCKED) {
+    else if (distspec._values[d].type == dash::internal::DIST_BLOCKCYCLIC) {
       os << "BLOCKCYCLIC(" << distspec._values[d].blocksz << ")";
     }
     else if (distspec._values[d].type == dash::internal::DIST_CYCLIC) {

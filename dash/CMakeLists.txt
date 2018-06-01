@@ -280,6 +280,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     endif()
     set (VARIANT_ADDITIONAL_COMPILE_FLAGS
          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID='${MPI_IMPL_ID}'")
+    set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} ${MPI_CXX_FLAGS}")
   endif()
   message(STATUS "Building DASH library    " ${DASH_LIBRARY})
 
@@ -299,6 +301,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
+
+  set_target_properties(
+    ${DASH_LIBRARY}
+    PROPERTIES POSITION_INDEPENDENT_CODE TRUE
+  )
+
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
       ${MPI_INCLUDE_PATH})
@@ -314,7 +322,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-    CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+    CXX_STANDARD_REQUIRED ON
   )
 
   if(ENABLE_COMPTIME_RED)
@@ -343,20 +351,20 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           DESTINATION lib
           EXPORT "${DASH_LIBRARY}-targets")
 
-  # exports
+  # Exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION cmake)
+    DESTINATION share/cmake)
 
 	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
   	configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
-      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 
   	# install custom config
   	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake")
 	endif()
 
   # Examples
@@ -413,14 +421,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
         set_target_properties(
           ${exampletarget} PROPERTIES
           CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-          CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+          CXX_STANDARD_REQUIRED ON
         )
-
-        # Installation
-        DeployBinary(${exampletarget})
-        install(
-          TARGETS ${exampletarget}
-          DESTINATION bin/dash/examples/${dart_variant})
       endif()
     endforeach(examplename ${DASH_TEST_DIRECTORIES})
   endif()
@@ -454,7 +456,7 @@ if (BUILD_TESTS)
       )
       target_link_libraries(
         ${DASH_TEST}
-        GTest
+        gtest
         ${DASH_LIBRARY}
         ${DART_LIBRARY}
         ${ADDITIONAL_LIBRARIES}
@@ -476,27 +478,35 @@ if (BUILD_TESTS)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
         CXX_STANDARD ${DASH_CXX_STD_PREFERED}
-        CXX_STANDARD_REQUIRED ${DASH_CXX_STD_REQUIRED}
+        CXX_STANDARD_REQUIRED ON
       )
 
       if(ENABLE_COMPTIME_RED)
         cotire(${DASH_TEST})
       endif()
 
-      # Installation
-      DeployBinary(${DASH_TEST})
-      install(
-        TARGETS ${DASH_TEST}
-        DESTINATION bin/dash/test/${dart_variant})
+      if(INSTALL_TESTS)
+        DeployBinary(${DASH_TEST})
+        install(
+          TARGETS ${DASH_TEST}
+          DESTINATION bin/)
+      endif()
 
       # Code Coverage
       if (BUILD_COVERAGE_TESTS)
+        # exclude stdlib
+        set(COVERAGE_EXCLUDES '/usr/*')
+        separate_arguments(EXEC_FLAGS UNIX_COMMAND $ENV{MPI_EXEC_FLAGS})
         if (${dart_variant} STREQUAL "mpi")
-          setup_target_for_coverage(
-            coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
+          setup_target_for_coverage_cobertura(
+            NAME coverage
+            EXECUTABLE mpirun -n 4 ${EXEC_FLAGS} ${CMAKE_BINARY_DIR}/dash/${DASH_TEST}
+            DEPENDENCIES coverage)
         else()
-          setup_target_for_coverage(
-            coverage "${DASH_TEST}" coverage)
+          setup_target_for_coverage_cobertura(
+            NAME coverage
+            EXECUTABLE "${CMAKE_BINARY_DIR}/dash/${DASH_TEST}"
+            DEPENDENCIES coverage)
         endif()
       endif()
 

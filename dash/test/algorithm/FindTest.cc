@@ -1,8 +1,8 @@
 
 #include "FindTest.h"
 
-#include <dash/Team.h>
 #include <dash/Array.h>
+#include <dash/Team.h>
 #include <dash/algorithm/Find.h>
 
 #include <limits>
@@ -287,7 +287,7 @@ TEST_F(FindTest, LessElementsThanUnits)
 
   Array_t array(num_of_units - 1);
 
-  index_t find_pos = static_cast<index_t>(array.size() / 2);
+  auto find_pos = static_cast<index_t>(array.size() / 2);
 
   if (dash::myid() == 0) {
     for (size_t i = 0; i < array.size(); ++i) {

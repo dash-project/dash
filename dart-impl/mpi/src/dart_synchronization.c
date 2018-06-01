@@ -186,7 +186,6 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock)
   if (predecessor != -1) {
     int32_t    result;
     MPI_Status status;
-    int16_t    seg_id = gptr_list.segid;
 
     dart_segment_info_t *list_seginfo = dart_segment_get_info(
                                       &(team_data->segdata), gptr_list.segid);

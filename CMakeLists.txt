@@ -2,27 +2,7 @@ project(project_dash)
 
 cmake_minimum_required (VERSION 2.8)
 
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 OLD)
-endif(POLICY CMP0054)
-if(POLICY CMP0053)
-  cmake_policy(SET CMP0053 OLD)
-endif(POLICY CMP0053)
-if(POLICY CMP0007)
-  cmake_policy(SET CMP0007 OLD)
-endif(POLICY CMP0007)
-if(POLICY CMP0003)
-  cmake_policy(SET CMP0003 OLD)
-endif(POLICY CMP0003)
-if(POLICY CMP0060)
-  cmake_policy(SET CMP0060 OLD)
-endif(POLICY CMP0060)
-if(POLICY CMP0004)
-  cmake_policy(SET CMP0004 OLD)
-endif(POLICY CMP0004)
-if(POLICY CMP0016)
-  cmake_policy(SET CMP0016 OLD)
-endif(POLICY CMP0016)
+# required for Ninja builds
 if(POLICY CMP0058)
   cmake_policy(SET CMP0058 NEW)
 endif()
@@ -36,6 +16,8 @@ endif()
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(INSTALL_TESTS
+       "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
         Implies BUILD_TESTS. Requires GCC." off)
@@ -106,6 +88,10 @@ option(ENABLE_NASTYMPI
        "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+  # This has to be done globally as otherwise linking might fail
+  append_coverage_compiler_flags()
+
   set(BUILD_TESTS TRUE CACHE BOOLEAN
       "Whether tests are built with code coverage (lcov) support.
        Implies BUILD_TESTS. Requires GCC." on)
@@ -275,7 +261,7 @@ message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
         ${ENABLE_UNIFIED_MEMORY_MODEL})
 message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
         ${ENABLE_SHARED_WINDOWS})
-message(INFO "MPI dynamic windows:      (ENABLE_SHARED_WINDOWS)          "
+message(INFO "MPI dynamic windows:      (ENABLE_DYNAMIC_WINDOWS)         "
         ${ENABLE_DYNAMIC_WINDOWS})
 message(INFO "Enable multithreading:    (ENABLE_THREADSUPPORT)           "
         ${ENABLE_THREADSUPPORT})
@@ -305,7 +291,7 @@ message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
-if (MPI_FOUND)
+if (DEFINED MPI_IMPL_ID)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
 endif()
 

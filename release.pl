@@ -2,7 +2,6 @@
 
 use strict;
 use File::Basename;
-#use File::Slurp;
 
 my $rdir    = "RELEASE";
 my $version = "0.3.0";
@@ -14,13 +13,13 @@ if( -e "$base" ) {
 }
 
 my @files;
-#$license = read_file("LICENSE");
 
 @files = ("LICENSE",
 	  "README.md",
 	  "CHANGELOG.md",
 	  "CMakeLists.txt",
 	  "CMakeExt/*.cmake",
+          "CMakeExt/Code/*.c",
 	  "build.sh",
 	  "build.dev.sh",
 	  "build.minimal.sh",
@@ -28,11 +27,12 @@ my @files;
 	  #
 	  # DART interface specification
 	  #
-	  "dart-if/v3.2/include/dash/dart/if/*.h",
+	  "dart-if/include/dash/dart/if/*.h",
 	  "dart-if/CMakeLists.txt",
 	  #
 	  # DART base implementation
 	  #
+	  "dart-impl/CMakeLists.txt",
 	  "dart-impl/base/include/dash/dart/base/*.h",
 	  "dart-impl/base/include/dash/dart/base/internal/*.h",
 	  "dart-impl/base/src/*.c",
@@ -46,6 +46,7 @@ my @files;
 	  "dart-impl/mpi/src/Makefile",
 	  "dart-impl/mpi/make.defs",
 	  "dart-impl/mpi/CMakeLists.txt",
+	  "dart-impl/mpi/*.in",
 	  #
 	  # DASH source and header files
 	  #
@@ -55,33 +56,42 @@ my @files;
 	  "dash/include/dash/algorithm/internal/*.h",
 	  "dash/include/dash/allocator/*.h",
 	  "dash/include/dash/allocator/internal/*.h",
+	  "dash/include/dash/atomic/*.h",
 	  "dash/include/dash/bindings/*.h",
+	  "dash/include/dash/coarray/*.h",
 	  "dash/include/dash/exception/*.h",
+	  "dash/include/dash/halo/*.h",
+	  "dash/include/dash/halo/iterator/*.h",
 	  "dash/include/dash/internal/*.h",
 	  "dash/include/dash/io/*.h",
 	  "dash/include/dash/io/hdf5/*.h",
 	  "dash/include/dash/io/hdf5/internal/*.h",
 	  "dash/include/dash/iterator/*.h",
+	  "dash/include/dash/iterator/internal/*.h",
 	  "dash/include/dash/list/*.h",
 	  "dash/include/dash/list/internal/*.h",
 	  "dash/include/dash/map/*.h",
 	  "dash/include/dash/matrix/*.h",
 	  "dash/include/dash/matrix/internal/*.h",
+	  "dash/include/dash/memory/*.h",
+	  "dash/include/dash/memory/internal/*.h",
+	  "dash/include/dash/meta/*.h",
 	  "dash/include/dash/pattern/*.h",
 	  "dash/include/dash/pattern/internal/*.h",
 	  "dash/include/dash/tools/*.h",
-	  "dash/include/dash/internal/*.h",
 	  "dash/include/dash/util/*.h",
+	  "dash/include/dash/util/*.h.in",
 	  "dash/include/dash/util/internal/*.h",
+	  "dash/include/dash/view/*.h",
 	  "dash/src/*.cc",
 	  "dash/src/algorithm/*.cc",
 	  "dash/src/exception/*.cc",
 	  "dash/src/io/*.cc",
-	  "dash/src/io/hdf5/*.cc",
 	  "dash/src/util/*.cc",
 	  "dash/src/Makefile",
 	  "dash/make.defs",
 	  "dash/CMakeLists.txt",
+          "dash/dash-config.cmake.in",
 	  #
 	  # DASH examples
 	  #
@@ -96,12 +106,12 @@ my @files;
 	  "dash/examples/bench*/*.h",
 	  "dash/examples/bench*/Makefile",
 	  "dash/examples/Makefile",
-	  "dash/examples/CMakeLists.txt",
+#	  "dash/examples/CMakeLists.txt",
 	  #
 	  # DASH tests
 	  #
 	  "dash/test/Makefile",
-	  "dash/test/CMakeLists.txt",
+#	  "dash/test/CMakeLists.txt",
 	  "dash/test/*.h",
 	  "dash/test/*.cc",
 	  "dash/test/*.cpp",
@@ -109,7 +119,8 @@ my @files;
 	  # DASH scripts
 	  #
 	  "dash/scripts/*.sh",
-	  #
+          "dash/scripts/dashcc/*.in",
+          #
 	  # Documentation
 	  #
 	  "doc/config/*.dox",
@@ -128,7 +139,7 @@ foreach my $path (@files)
 	print "copying '$file'\n";
 
 	# prepend license file for h,c,cc,cpp files
-	if( $file =~ /\.(c|h|cc|cpp)$/ ) {
+	if( $file =~ /\.(c|h|cc|cpp)$/ && -e "LICENSE" ) {
 	    system("cat ./LICENSE $file > $base/$file");
 	} else {
 	    system("cp $file $dirname");
@@ -153,7 +164,7 @@ if( -e "$base.tar.gz" ) {
     my $fsize  = `ls -l $base.tar.gz | cut -d ' ' -f 5`; chomp $fsize;
 
     print "\n";
-    print "DASH $version release built\n";
+    print "DASH $version release built!\n";
     print "------------------------------------------------\n";
     print "archive   : $base.tar.gz\n";
     print "md5sum    : $md5sum\n";
