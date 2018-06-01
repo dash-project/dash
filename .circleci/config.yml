@@ -117,7 +117,7 @@ jobs:
       - image: dashproject/ci:openmpi3
     environment:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
-      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:GlobRefTest.Member"
+      GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*"
       GTEST_OUTPUT: "xml:test-results.xml"
       DASH_MAKE_PROCS: 2
       DASH_MAX_UNITS: 4
