@@ -128,7 +128,10 @@ jobs:
       - checkout
       - run: bash dash/scripts/dash-ci.sh Coverage-Shared
       - run: bash dash/scripts/dash-ci.sh Coverage-NoShared
-      - run: bash <(curl -s https://codecov.io/bash) -s build-ci
+      - run: bash <(curl -s https://codecov.io/bash)
+      - run:
+          command: bash dash/scripts/circleci/collect-artifacts.sh
+          when: always
       - store_test_results:
           path: /tmp/build-logs
       - store_artifacts:
