@@ -119,20 +119,20 @@ jobs:
       MPI_EXEC_FLAGS: "--allow-run-as-root --map-by core"
       GTEST_FILTER: "-TeamLocalityTest.*:DARTLocalityTest.*:GlobRefTest.IsLocal:GlobRefTest.Member"
       GTEST_OUTPUT: "xml:test-results.xml"
+      DASH_MAKE_PROCS: 2
+      DASH_MAX_UNITS: 4
       CC: gcc
       CXX: g++
     steps:
       - run: apt update && apt install lcov gcovr curl libatlas-base-dev -y
       - checkout
-      - run: bash build.cov.sh -f
-      - run: cd build.cov && make coverage 2>dash/test-debug.log | grep -v "LOG" 
-      - run: bash <(curl -s https://codecov.io/bash)
+      - run: bash dash/scripts/dash-ci.sh Coverage-Shared
+      - run: bash dash/scripts/dash-ci.sh Coverage-NoShared
+      - run: bash <(curl -s https://codecov.io/bash) -s build-ci
       - store_test_results:
-          path: build.cov/dash/test-results.xml
+          path: /tmp/build-logs
       - store_artifacts:
-          path: build.cov/dash/coverage.xml
-      - store_artifacts:
-          path: build.cov/dash/test-debug.log
+          path: /tmp/build-tests
 
 workflows:
   version: 2
