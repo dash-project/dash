@@ -881,7 +881,7 @@ GlobOutputIt copy(
   if (!handles.empty()) {
     DASH_LOG_TRACE("dash::copy", "Waiting for remote transfers to complete,",
                   "num_handles: ", handles.size());
-    dart_waitall_local(handles.data(), handles.size());
+    dart_waitall(handles.data(), handles.size());
   }
 
   return out_last;
