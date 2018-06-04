@@ -5,7 +5,7 @@
 #include <dash/GlobPtr.h>
 #include <dash/Atomic.h>
 
-#include <dash/memory/MemorySpace.h>
+#include <dash/memory/GlobStaticMem.h>
 
 namespace dash {
 namespace coarray {

@@ -7,7 +7,7 @@
 #include <dash/Atomic.h>
 #include <dash/coarray/CoEventRef.h>
 
-#include <dash/memory/MemorySpace.h>
+#include <dash/memory/GlobStaticMem.h>
 
 namespace dash {
 namespace coarray {
@@ -15,7 +15,8 @@ namespace coarray {
 class CoEventIter {
 private:
   using self_t = CoEventIter;
-  using globmem_t = dash::GlobStaticMem<dash::Atomic<int>, HostSpace>;
+//using globmem_t = dash::experimental::GlobStaticMem<dash::Atomic<int>, HostSpace>;
+using globmem_t = dash::GlobStaticMem<dash::Atomic<int>, HostSpace>;
   using gptr_t = GlobPtr<dash::Atomic<int>, globmem_t>;
 
 public:
