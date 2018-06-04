@@ -73,7 +73,7 @@ public:
   /// Variant to allocate symmetrically in global memory space if we
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
-  std::pair<void*, dart_gptr_t> do_global_allocate(
+  std::pair<void*, dart_gptr_t> allocate_segment(
       dart_team_t                                  teamid,
       LocalMemorySpaceBase<memory_space_host_tag>* res,
       std::size_t                                  nels)
@@ -110,7 +110,7 @@ public:
 
   /// Similar to the allocation case above global memory is deallocated
   /// symmetrically in DART.
-  bool do_global_deallocate(
+  bool deallocate_segment(
       dart_gptr_t                                  gptr,
       LocalMemorySpaceBase<memory_space_host_tag>* res,
       void*                                        lptr,
@@ -141,7 +141,7 @@ public:
   /// Variant to allocate symmetrically in global memory space if we
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
-  std::pair<void*, dart_gptr_t> do_global_allocate(
+  std::pair<void*, dart_gptr_t> allocate_segment(
       dart_team_t teamid,
       LocalMemorySpaceBase<memory_space_host_tag>* /* res */,
       std::size_t nels)
@@ -185,7 +185,7 @@ public:
 
   /// Similar to the allocation case above global memory is deallocated
   /// symmetrically in DART.
-  bool do_global_deallocate(
+  bool deallocate_segment(
       dart_gptr_t gptr,
       LocalMemorySpaceBase<memory_space_host_tag>* /* unused */,
       void* /* unused */,

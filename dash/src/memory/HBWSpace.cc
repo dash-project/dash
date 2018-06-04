@@ -51,7 +51,9 @@ void* dash::HBWSpace::do_allocate(size_t bytes, size_t alignment)
     ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
   }
 #else
-  DASH_LOG_WARN("hbw_malloc is not available > fall back to ::operator new");
+  DASH_LOG_WARN(
+      "HBWSpace.do_allocate(bytes, alignment)",
+      "hbw_malloc is not available. Falling back to default host space");
 
   ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
 #endif

@@ -1,5 +1,5 @@
-#ifndef DASH__GLOB_STATIC_MEMORY_H__INCLUDED
-#define DASH__GLOB_STATIC_MEMORY_H__INCLUDED
+#ifndef DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
+#define DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
 
 #include <dash/Exception.h>
 #include <dash/allocator/AllocationPolicy.h>
@@ -57,7 +57,8 @@ public:
 
   using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
   using const_pointer = dash::GlobPtr<const value_type, MemorySpace>;
-  using local_pointer = typename std::add_pointer<value_type>::type;
+  using local_pointer = value_type *;
+  using const_local_pointer = value_type const *;
 
 public:
   MemorySpace() = delete;
@@ -86,10 +87,21 @@ public:
   {
     return m_lbegin;
   }
-  local_pointer lend() const noexcept
+  const_local_pointer lbegin() const noexcept
+  {
+    return m_lbegin;
+  }
+
+  local_pointer lend() noexcept
   {
     return m_lend;
   }
+
+  const_local_pointer lend() const noexcept
+  {
+    return m_lend;
+  }
+
   pointer begin() noexcept
   {
     return pointer(*this, m_begin);
@@ -108,7 +120,7 @@ public:
     m_team->barrier();
   }
 
-  allocator_type allocator() const
+  allocator_type get_allocator() const
   {
     // We copy construct an allocator based on the underlying resource of this
     // allocator
@@ -316,7 +328,7 @@ inline void MemorySpace<
     SynchronizationPolicy,
     LMemSpace>::do_allocate(size_type nels)
 {
-  auto alloc_rec = m_policy.do_global_allocate(
+  auto alloc_rec = m_policy.allocate_segment(
       m_team->dart_id(),
       static_cast<LocalMemorySpaceBase<memory_space_host_tag>*>(
           m_allocator.resource()),
@@ -376,7 +388,7 @@ inline void MemorySpace<
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
 
   if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
-    m_policy.do_global_deallocate(
+    m_policy.deallocate_segment(
         m_begin,
         static_cast<LocalMemorySpaceBase<memory_space_host_tag>*>(
             m_allocator.resource()),

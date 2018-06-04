@@ -142,7 +142,9 @@ struct allocator_traits {
   // Mandatory definitions
   typedef Alloc                                allocator_type;
   typedef typename Alloc::value_type           value_type;
+#if 0
   typedef typename Alloc::allocation_policy    allocation_policy;
+#endif
   typedef typename Alloc::local_allocator_type local_allocator;
 
   // Optional Definitions

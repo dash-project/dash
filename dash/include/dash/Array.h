@@ -7,7 +7,6 @@
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
 #include <dash/memory/MemorySpace.h>
-#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 #include <dash/Shared.h>
@@ -665,7 +664,7 @@ public:
   typedef typename std::make_unsigned<IndexType>::type                 size_type;
   typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef dash::GlobStaticMem<value_type, LocalMemSpaceT>          glob_mem_type;
+  typedef dash::experimental::GlobStaticMem<value_type, LocalMemSpaceT>          glob_mem_type;
 
   typedef GlobIter<      value_type, PatternType, glob_mem_type>        iterator;
   typedef GlobIter<const value_type, PatternType, glob_mem_type>  const_iterator;
@@ -726,10 +725,7 @@ private:
     PtrGlobMemType_t;
 
   using allocator_traits =
-      dash::allocator_traits<typename glob_mem_type::allocator_type>;
-
-  using local_allocator_traits =
-      std::allocator_traits<typename allocator_traits::local_allocator>;
+      std::allocator_traits<typename glob_mem_type::allocator_type>;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -1471,13 +1467,13 @@ private:
   {
     if (m_lsize == 0) return;
 
-    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+    auto local_alloc = this->globmem().get_allocator();
 
     DASH_ASSERT_EQ(
         std::distance(begin, end), m_lsize, "Invalid size of local range");
 
     for (auto it = begin; it < end; ++it, ++m_lend) {
-      local_allocator_traits::construct(local_alloc, m_lend, *it);
+      allocator_traits::construct(local_alloc, m_lend, *it);
     }
   }
 
@@ -1485,10 +1481,10 @@ private:
   {
     if (nl == 0) return;
 
-    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+    auto local_alloc = this->globmem().get_allocator();
 
     do {
-      local_allocator_traits::construct(local_alloc, this->m_lend);
+      allocator_traits::construct(local_alloc, this->m_lend);
       ++this->m_lend;
       --nl;
     } while (nl > 0);
@@ -1500,10 +1496,10 @@ private:
 
     local_pointer soon_to_be_end = m_lend;
 
-    auto local_alloc = this->globmem().get_allocator().get_local_allocator();
+    auto local_alloc = this->globmem().get_allocator();
 
     while (new_last != soon_to_be_end) {
-      local_allocator_traits::destroy(local_alloc, --soon_to_be_end);
+      allocator_traits::destroy(local_alloc, --soon_to_be_end);
     }
     m_lend = new_last;
   }

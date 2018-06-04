@@ -42,7 +42,7 @@ namespace dash {
 class Coevent {
 private:
   using event_cnt_t    = dash::Atomic<int>;
-  using globmem_t      = dash::GlobStaticMem<event_cnt_t, dash::HostSpace>;
+  using globmem_t      = dash::experimental::GlobStaticMem<event_cnt_t, dash::HostSpace>;
   using gptr_t         = GlobPtr<event_cnt_t, globmem_t>;
 public:
   // Types
