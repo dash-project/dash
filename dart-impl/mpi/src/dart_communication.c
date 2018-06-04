@@ -967,7 +967,7 @@ dart_ret_t dart_put_handle(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
-    DART_LOG_ERROR("dart_put ! failed: Unknown team %i!", teamid);
+    DART_LOG_ERROR("dart_put_handle ! failed: Unknown team %i!", teamid);
     return DART_ERR_INVAL;
   }
 
