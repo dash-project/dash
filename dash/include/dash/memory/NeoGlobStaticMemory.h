@@ -22,7 +22,7 @@ class MemorySpace<
     ElementType,
     /// We are allowed to allocate only once
     allocation_static,
-    /// All Units participate in global memory allocation
+    /// either collective or single synchronization policy
     SynchronizationPolicy,
     /// The local memory space
     LMemSpace>
@@ -110,7 +110,9 @@ public:
 
   allocator_type allocator() const
   {
-    return m_allocator;
+    // We copy construct an allocator based on the underlying resource of this
+    // allocator
+    return allocator_type{m_allocator.resource()};
   }
 
   /**
@@ -196,7 +198,9 @@ private:
   allocator_type         m_allocator{};
   allocation_policy_t    m_policy{};
   std::vector<size_type> m_local_sizes{};
-  dart_gptr_t            m_begin{DART_GPTR_NULL};
+  // Uniform Initialization does not work in G++ 4.9.x
+  // This is why we have to use copy assignment
+  dart_gptr_t            m_begin = DART_GPTR_NULL;
   local_pointer          m_lbegin{nullptr};
   local_pointer          m_lend{nullptr};
 
