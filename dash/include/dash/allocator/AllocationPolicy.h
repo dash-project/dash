@@ -6,8 +6,8 @@
 #include <dash/Types.h>
 
 #include <dash/allocator/internal/Types.h>
-#include <dash/memory/MemorySpaceBase.h>
 #include <dash/internal/Logging.h>
+#include <dash/memory/MemorySpaceBase.h>
 
 std::ostream& operator<<(std::ostream& os, const dart_gptr_t& dartptr);
 
@@ -24,7 +24,6 @@ enum class global_allocation_policy : uint8_t {
   /// epochs
   epoch_synchronized,
 };
-
 
 namespace allocator {
 
@@ -60,23 +59,25 @@ template <
     class ElementType,
     class AllocationPolicy,
     class SynchronizationPolicy,
-    class LMemSpace>
+    class LMemSpaceTag>
 class GlobalAllocationPolicy;
 
-template <class ElementType, class LMemSpace>
+template <class ElementType, class LMemSpaceTag>
 class GlobalAllocationPolicy<
     ElementType,
     allocation_static,
     synchronization_collective,
-    LMemSpace> : AttachDetachPolicy {
+    LMemSpaceTag> : AttachDetachPolicy {
+  using memory_space_tag = LMemSpaceTag;
+
 public:
   /// Variant to allocate symmetrically in global memory space if we
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
   std::pair<void*, dart_gptr_t> allocate_segment(
-      dart_team_t                                  teamid,
-      LocalMemorySpaceBase<memory_space_host_tag>* res,
-      std::size_t                                  nels)
+      dart_team_t                             teamid,
+      LocalMemorySpaceBase<memory_space_tag>* res,
+      std::size_t                             nels)
   {
     DASH_LOG_DEBUG(
         "GlobalAllocationPolicy.do_global_allocate(nlocal)",
@@ -111,10 +112,10 @@ public:
   /// Similar to the allocation case above global memory is deallocated
   /// symmetrically in DART.
   bool deallocate_segment(
-      dart_gptr_t                                  gptr,
-      LocalMemorySpaceBase<memory_space_host_tag>* res,
-      void*                                        lptr,
-      size_t                                       nels)
+      dart_gptr_t                             gptr,
+      LocalMemorySpaceBase<memory_space_tag>* res,
+      void*                                   lptr,
+      size_t                                  nels)
   {
     DASH_LOG_DEBUG("< GlobalAllocationPolicy.do_global_deallocate");
     DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", gptr);
@@ -137,13 +138,15 @@ class GlobalAllocationPolicy<
     allocation_static,
     synchronization_collective,
     memory_space_host_tag> {
+  using memory_space_tag = memory_space_host_tag;
+
 public:
   /// Variant to allocate symmetrically in global memory space if we
   /// allocate in the default Host Space. In this case DART can allocate
   /// symmatrically.
   std::pair<void*, dart_gptr_t> allocate_segment(
       dart_team_t teamid,
-      LocalMemorySpaceBase<memory_space_host_tag>* /* res */,
+      LocalMemorySpaceBase<memory_space_tag>* /* res */,
       std::size_t nels)
   {
     DASH_LOG_DEBUG(
@@ -187,7 +190,7 @@ public:
   /// symmetrically in DART.
   bool deallocate_segment(
       dart_gptr_t gptr,
-      LocalMemorySpaceBase<memory_space_host_tag>* /* unused */,
+      LocalMemorySpaceBase<memory_space_tag>* /* unused */,
       void* /* unused */,
       size_t /* unused */)
   {
@@ -211,6 +214,54 @@ public:
     return ret;
   }
 };
+
+template <
+    class T,
+    class U,
+    class AllocationPolicy,
+    class SynchronizationPolicy,
+    class LMemSpaceTag>
+constexpr bool operator==(
+    GlobalAllocationPolicy<
+        T,
+        AllocationPolicy,
+        SynchronizationPolicy,
+        LMemSpaceTag> const& lhs,
+    GlobalAllocationPolicy<
+        U,
+        AllocationPolicy,
+        SynchronizationPolicy,
+        LMemSpaceTag> const& rhs)
+{
+  // Two allocation policies are equal if both value types have an equal
+  // length in bytes and the implementatation strategies are equal as well
+  // (enforced by the type information)
+  return sizeof(T) == sizeof(U);
+}
+
+template <
+    class T,
+    class U,
+    class AllocationPolicy,
+    class SynchronizationPolicy,
+    class LMemSpaceTag>
+constexpr bool operator!=(
+    GlobalAllocationPolicy<
+        T,
+        AllocationPolicy,
+        SynchronizationPolicy,
+        LMemSpaceTag> const& lhs,
+    GlobalAllocationPolicy<
+        U,
+        AllocationPolicy,
+        SynchronizationPolicy,
+        LMemSpaceTag> const& rhs)
+{
+  // Two allocation policies are equal if both value types have an equal
+  // length in bytes and the implementatation strategies are equal as well
+  // (enforced by the type information)
+  return !(lhs == rhs);
+}
 
 namespace detail {
 

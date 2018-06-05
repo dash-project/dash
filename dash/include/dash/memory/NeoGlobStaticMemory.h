@@ -40,7 +40,7 @@ class MemorySpace<
       LMemSpace>;
 
   // TODO rko: Move this to base class
-  using allocation_policy_t = dash::allocator::GlobalAllocationPolicy<
+  using global_allocation_strategy = dash::allocator::GlobalAllocationPolicy<
       ElementType,
       typename base_t::memory_space_allocation_policy,
       typename base_t::memory_space_synchronization_policy,
@@ -56,9 +56,9 @@ public:
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
   using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
-  using const_pointer = dash::GlobPtr<const value_type, MemorySpace>;
-  using local_pointer = value_type *;
-  using const_local_pointer = value_type const *;
+  using const_pointer       = dash::GlobPtr<const value_type, MemorySpace>;
+  using local_pointer       = value_type*;
+  using const_local_pointer = value_type const*;
 
 public:
   MemorySpace() = delete;
@@ -73,8 +73,6 @@ public:
 
   MemorySpace& operator=(const MemorySpace&) = delete;
   MemorySpace& operator                      =(MemorySpace&&);
-
-  bool do_is_equal(base_t const&) const noexcept override;
 
   size_type size() const noexcept;
 
@@ -206,15 +204,16 @@ public:
   }
 
 private:
-  dash::Team const*      m_team{};
-  allocator_type         m_allocator{};
-  allocation_policy_t    m_policy{};
-  std::vector<size_type> m_local_sizes{};
+  dash::Team const*          m_team{};
+  allocator_type             m_allocator{};
+  global_allocation_strategy m_allocation_policy{};
+  std::vector<size_type>     m_local_sizes{};
   // Uniform Initialization does not work in G++ 4.9.x
-  // This is why we have to use copy assignment
-  dart_gptr_t            m_begin = DART_GPTR_NULL;
-  local_pointer          m_lbegin{nullptr};
-  local_pointer          m_lend{nullptr};
+  // This is why we have to use C-Style Initializer Initialization
+  dart_gptr_t                m_begin = DART_GPTR_NULL;
+  local_pointer              m_lbegin{nullptr};
+  local_pointer              m_lend{nullptr};
+  mutable size_type          m_size{std::numeric_limits<size_type>::max()};
 
 private:
   void do_allocate(size_type nels);
@@ -280,7 +279,7 @@ inline MemorySpace<
     LMemSpace>::MemorySpace(MemorySpace&& other)
   : m_team(std::move(other.m_team))
   , m_allocator(std::move(other.m_allocator))
-  , m_policy(std::move(other.m_policy))
+  , m_allocation_policy(std::move(other.m_allocation_policy))
   , m_local_sizes(std::move(other.m_local_sizes))
   , m_begin(std::move(other.m_begin))
   , m_lbegin(std::move(other.m_lbegin))
@@ -311,7 +310,7 @@ inline MemorySpace<
   // and swap..
   std::swap(m_team, other.m_team);
   std::swap(m_allocator, other.m_allocator);
-  std::swap(m_policy, other.m_policy);
+  std::swap(m_allocation_policy, other.m_allocation_policy);
   std::swap(m_local_sizes, other.m_local_sizes);
   std::swap(m_begin, other.m_begin);
   std::swap(m_lbegin, other.m_lbegin);
@@ -328,9 +327,10 @@ inline void MemorySpace<
     SynchronizationPolicy,
     LMemSpace>::do_allocate(size_type nels)
 {
-  auto alloc_rec = m_policy.allocate_segment(
+  auto alloc_rec = m_allocation_policy.allocate_segment(
       m_team->dart_id(),
-      static_cast<LocalMemorySpaceBase<memory_space_host_tag>*>(
+      static_cast<LocalMemorySpaceBase<
+          typename memory_traits::memory_space_type_category>*>(
           m_allocator.resource()),
       nels);
 
@@ -388,9 +388,10 @@ inline void MemorySpace<
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
 
   if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
-    m_policy.deallocate_segment(
+    m_allocation_policy.deallocate_segment(
         m_begin,
-        static_cast<LocalMemorySpaceBase<memory_space_host_tag>*>(
+        static_cast<LocalMemorySpaceBase<
+            typename memory_traits::memory_space_type_category>*>(
             m_allocator.resource()),
         m_lbegin,
         m_local_sizes.at(m_team->myid()));
@@ -418,22 +419,39 @@ MemorySpace<
     SynchronizationPolicy,
     LMemSpace>::size() const noexcept
 {
-  return std::accumulate(
-      std::begin(m_local_sizes),
-      std::end(m_local_sizes),
-      0,
-      std::plus<size_type>());
+  if (m_size == std::numeric_limits<size_type>::max()) {
+    m_size = std::accumulate(
+        std::begin(m_local_sizes),
+        std::end(m_local_sizes),
+        0,
+        std::plus<size_type>());
+  }
+  return m_size;
 }
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline bool MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::do_is_equal(base_t const& other) const noexcept
+inline bool operator==(
+    MemorySpace<
+        memory_domain_global,
+        ElementType,
+        allocation_static,
+        SynchronizationPolicy,
+        LMemSpace> const& lhs,
+    MemorySpace<
+        memory_domain_global,
+        ElementType,
+        allocation_static,
+        SynchronizationPolicy,
+        LMemSpace> const& rhs) noexcept
 {
-  return true;
+  // Two global memory spaces are equal if we have equal teams (obvious, DART
+  // requires that), equal allocation policies and equal allocators (as
+  // defined by the cpp17 polymorphic resource concept)
+
+  return &lhs == &rhs ||
+         (*(lhs.m_team) == *(rhs.m_team) &&
+          lhs.m_allocation_policy == rhs.m_allocation_policy &&
+          lhs.m_allocator == rhs.m_allocator);
 }
 
 }  // namespace dash

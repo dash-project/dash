@@ -287,16 +287,6 @@ public:
   GlobalMemorySpaceBase(GlobalMemorySpaceBase&&)      = default;
   GlobalMemorySpaceBase& operator=(const GlobalMemorySpaceBase&) = default;
   GlobalMemorySpaceBase& operator=(GlobalMemorySpaceBase&&) = default;
-
-protected:
-  virtual bool do_is_equal(const GlobalMemorySpaceBase& other) const
-      noexcept = 0;
-
-public:
-  bool is_equal(GlobalMemorySpaceBase const& other) const noexcept
-  {
-    return do_is_equal(other);
-  }
 };
 
 template <
