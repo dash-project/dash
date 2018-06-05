@@ -41,9 +41,11 @@ namespace dash {
  */
 class Coevent {
 private:
-  using event_cnt_t    = dash::Atomic<int>;
-  using globmem_t      = dash::experimental::GlobStaticMem<event_cnt_t, dash::HostSpace>;
-  using gptr_t         = GlobPtr<event_cnt_t, globmem_t>;
+  using event_cnt_t = dash::Atomic<int>;
+  using array_t     = dash::Array<event_cnt_t>;
+  using globmem_t   = typename array_t::glob_mem_type;
+  using gptr_t      = dash::GlobPtr<event_cnt_t, globmem_t>;
+
 public:
   // Types
   using iterator       = coarray::CoEventIter;
@@ -52,7 +54,7 @@ public:
   using size_type      = int;
 
 private:
-  dash::Array<event_cnt_t> _event_counts;
+   array_t _event_counts;
 
 public:
 

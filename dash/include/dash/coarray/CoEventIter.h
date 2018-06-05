@@ -15,8 +15,10 @@ namespace coarray {
 class CoEventIter {
 private:
   using self_t = CoEventIter;
-//using globmem_t = dash::experimental::GlobStaticMem<dash::Atomic<int>, HostSpace>;
-using globmem_t = dash::GlobStaticMem<dash::Atomic<int>, HostSpace>;
+  //TODO rko: fix this hard coded information it is related to Coevent
+  //which uses dash::Array internally
+  using globmem_t =
+      dash::experimental::GlobStaticMem<dash::Atomic<int>, HostSpace>;
   using gptr_t = GlobPtr<dash::Atomic<int>, globmem_t>;
 
 public:
