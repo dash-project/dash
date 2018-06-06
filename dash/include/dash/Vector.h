@@ -207,6 +207,11 @@ public:
 // 	iterator erase(iterator first, iterator last);
 // 	iterator erase(const_iterator first, const_iterator last);
 //
+	template< class InputIt >
+	void linsert(InputIt first, InputIt last);
+	template< class InputIt >
+	void insert(InputIt first, InputIt last);
+
 	void lpush_back(const T& value);
 	void push_back(const T& value);
 // 	void push_back(const T&& value);
@@ -346,19 +351,16 @@ void Vector<T, allocator>::commit() {
 					)
 				)
 			);
-// 		if(_team.myid() == 0) std::cout << "new_cap = " << new_cap << " reserve memory..." << std::endl;
+// 		std::cout << "new_cap = " << new_cap << " reserve memory..." << std::endl;
 		reserve(new_cap);
 
-// 		if(_team.myid() == 0) std::cout << "memory reserved." << std::endl;
+// 		std::cout << "memory reserved." << std::endl;
 // 		if(_team.myid() == 0) std::cout << "push local_queue elements" << std::endl;
-		for(const auto& e : local_queue) {
-			lpush_back(e);
-		}
-// 		if(_team.myid() == 0) std::cout << "push global_queue elements" << std::endl;
+		linsert(local_queue.begin(), local_queue.end());
 		local_queue.clear();
-		for(const auto& e : global_queue) {
-			push_back(e);
-		}
+
+// 		if(_team.myid() == 0) std::cout << "push global_queue elements" << std::endl;
+		insert(global_queue.begin(), global_queue.end());
 		global_queue.clear();
 	}
 // 	if(_team.myid() == 0) std::cout << "finished commit. lsize = "<< lsize() << " lcapacity = " << lcapacity() << std::endl;
@@ -367,8 +369,8 @@ void Vector<T, allocator>::commit() {
 
 template <class T, template<class> class allocator>
 void Vector<T, allocator>::barrier() {
-	commit();
-// 	_team.barrier();
+// 	commit();
+	_team.barrier();
 }
 
 template <class T, template<class> class allocator>
@@ -391,12 +393,59 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 		glob_mem_type tmp(new_cap, _team);
 		const auto i = _team.myid();
 // 		if(_team.myid() == 0) std::cout << "copy data" << std::endl;
-		std::copy(begin() + i*old_cap, begin()+(i+1)*old_cap, tmp.begin() + i*new_cap);
+		std::copy(_data.begin() + i*old_cap, _data.begin()+(i*old_cap+lsize()), tmp.begin() + i*new_cap);
 
 		_data = std::move(tmp);
 	}
 
 // 	if(_team.myid() == 0) std::cout << "reserved." << std::endl;
+}
+
+template <class T, template<class> class allocator>
+template< class InputIt >
+void Vector<T, allocator>::linsert(InputIt first, InputIt last) {
+	const auto distance = std::distance(first,last);
+// 	if(_team.myid() == 0) std::cout << "lcapacity = " << lcapacity() << std::endl;
+
+	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(distance));
+// 	if(_team.myid() == 0) std::cout << "lastSize = " << lastSize << std::endl;
+
+	const auto direct_fill = std::min(static_cast<size_type>(distance), lcapacity() - lastSize);
+// 	if(_team.myid() == 0) std::cout << "direct_fill = " << direct_fill << std::endl;
+
+	const auto direct_fill_end = first + direct_fill;
+	std::copy(first, direct_fill_end, _data.lbegin() + lastSize);
+	if(direct_fill_end != last) {
+		dash::atomic::store(*(_local_sizes.begin()+_team.myid()), lcapacity());
+		local_queue.insert(local_queue.end(), direct_fill_end, last);
+	}
+}
+
+template <class T>
+T clamp(const T value, const T lower, const T higher) {
+	return std::min(std::max(value, lower), higher);
+}
+
+template <class T, template<class> class allocator>
+template< class InputIt >
+void Vector<T, allocator>::insert(InputIt first, InputIt last) {
+	const auto distance = std::distance(first,last);
+// 	if(_team.myid() == 0) std::cout << "distance = " << distance << std::endl;
+// 	if(_team.myid() == 0) std::cout << "lcapacity = " << lcapacity() << std::endl;
+
+	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+(_local_sizes.size()-1)), static_cast<size_type>(distance));
+// 	std::cout << "id("<< _team.myid() << ") "<<  "lastSize = " << lastSize << std::endl;
+
+	const auto direct_fill = clamp(static_cast<decltype(distance)>(lcapacity() - lastSize), static_cast<decltype(distance)>(0), distance);
+// 	std::cout << "id("<< _team.myid() << ") "<< "direct_fill = " << direct_fill << std::endl;
+
+	const auto direct_fill_end = first + direct_fill;
+	std::copy(first, direct_fill_end, _data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+	if(direct_fill_end != last) {
+		dash::atomic::store(*(_local_sizes.begin()+(_team.size()-1)), lcapacity());
+		global_queue.insert(local_queue.end(), direct_fill_end, last);
+	}
+// 	std::cout << "id("<< _team.myid() << ") " << "done" << std::endl;
 }
 
 template <class T, template<class> class allocator>

@@ -15,7 +15,7 @@ using std::cout;
 using std::endl;
 
 void print_vector(dash::Vector<int>& vec, unsigned int id) {
-	vec.barrier();
+	vec.commit();
 	if (dash::myid() == id) {
 		cout << "{ ";
 		for (auto el: vec) {
@@ -36,80 +36,132 @@ int main(int argc, char* argv[])
 
 	auto& team = dash::Team::All();
 
-	if(myid == 0) {
-		std::cout << "dash::vector lpush_back with enough capacity" << std::endl;
-	}
-	{
-		dash::Vector<int> vec(1);
-		*(vec.lbegin()) = myid;
-		print_vector(vec, size -1);
-		vec.reserve(4);
+// 	if(myid == 0) {
+// 		std::cout << "dash::vector lpush_back with enough capacity" << std::endl;
+// 	}
+// 	{
+// 		dash::Vector<int> vec(1);
+// 		*(vec.lbegin()) = myid;
+// 		print_vector(vec, size -1);
+// 		vec.reserve(4);
+//
+// 		vec.lpush_back(42);
+// 		print_vector(vec, size -1);
+//
+// 		vec.lpush_back(1337);
+// 		print_vector(vec, size -1);
+// 	}
+// 		if(myid == 0) {
+// 		std::cout << "dash::vector lpush_back with no capacity" << std::endl;
+// 	}
+// 	{
+// 		dash::Vector<int> vec(1);
+// 		*(vec.lbegin()) = myid;
+// 		print_vector(vec, size -1);
+//
+// 		vec.lpush_back(42);
+// 		print_vector(vec, size -1);
+//
+// 		vec.lpush_back(1337);
+//
+// 		print_vector(vec, size -1);
+// 	}
+//
+// 	{
+// 		if(myid == 0) {
+// 			std::cout << "dash::vector push_back with capacity" << std::endl;
+// 		}
+// 		dash::Vector<int> vec;
+// 		vec.reserve(team.size());
+// 		vec.push_back(myid);
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		if(myid == 0) std::cout << "dash::vector push_back with no capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.push_back(myid);
+// 		print_vector(vec, 0);
+//
+// 		std::cout << "local_size = " << vec.lsize() << std::endl;
+// 		if(myid == 0) std::cout << "dash::vector::balance()" << std::endl;
+// 		vec.balance();
+// 		std::cout << "local_size = " << vec.lsize() << std::endl;
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		dash::Vector<char> vec;
+// 		if(myid == 0) {
+// 			vec.push_back('f');
+// 			vec.push_back('b');
+// 		}
+// 			vec.commit();
+// 		if(myid == 0) {
+// 			std::cout << "front: " << static_cast<char>(vec.front()) << std::endl;
+// 			std::cout << "back: " << static_cast<char>(vec.back()) << std::endl;
+// 		}
+// 		team.barrier();
+// 	}
 
-		vec.lpush_back(42);
-		print_vector(vec, size -1);
 
-		vec.lpush_back(1337);
-		print_vector(vec, size -1);
-	}
-		if(myid == 0) {
-		std::cout << "dash::vector lpush_back with no capacity" << std::endl;
-	}
-	{
-		dash::Vector<int> vec(1);
-		*(vec.lbegin()) = myid;
-		print_vector(vec, size -1);
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector linsert with no capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.linsert(queue.begin(), queue.end());
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector linsert with full capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.reserve(10);
+// 		vec.linsert(queue.begin(), queue.end());
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector linsert with half capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.reserve(2);
+// 		vec.linsert(queue.begin(), queue.end());
+// 		print_vector(vec, 0);
+// 	}
 
-		vec.lpush_back(42);
-		print_vector(vec, size -1);
-
-		vec.lpush_back(1337);
-
-		print_vector(vec, size -1);
-	}
-
-	{
-		if(myid == 0) {
-			std::cout << "dash::vector push_back with capacity" << std::endl;
-		}
-		dash::Vector<int> vec;
-		vec.reserve(team.size());
-		vec.push_back(myid);
-		print_vector(vec, 0);
-	}
-
-	{
-		if(myid == 0) std::cout << "dash::vector push_back with no capacity" << std::endl;
-		dash::Vector<int> vec;
-		vec.push_back(myid);
-		print_vector(vec, 0);
-
-		std::cout << "local_size = " << vec.lsize() << std::endl;
-		if(myid == 0) std::cout << "dash::vector::balance()" << std::endl;
-		vec.balance();
-		std::cout << "local_size = " << vec.lsize() << std::endl;
-		print_vector(vec, 0);
-	}
-
-	{
-		dash::Vector<char> vec;
-		if(myid == 0) {
-			vec.push_back('f');
-			vec.push_back('b');
-		}
-			vec.commit();
-		if(myid == 0) {
-			std::cout << "front: " << static_cast<char>(vec.front()) << std::endl;
-			std::cout << "back: " << static_cast<char>(vec.back()) << std::endl;
-		}
-		team.barrier();
-	}
-
-
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector insert with no capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.insert(queue.begin(), queue.end());
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector insert with full capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.reserve(10*size);
+// 		vec.insert(queue.begin(), queue.end());
+// 		print_vector(vec, 0);
+// 	}
+//
+// 	{
+// 		std::vector<int> queue(5, myid);
+// 		if(myid == 0) std::cout << "dash::vector insert with half capacity" << std::endl;
+// 		dash::Vector<int> vec;
+// 		vec.reserve(2);
+// 		vec.insert(queue.begin(), queue.end());
+// 		vec.commit();
+// 		print_vector(vec, 0);
+// 	}
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(int elements = 1; elements < 1000000; elements *= 10) {
-			const auto total_runs = 100000 / elements;
+		for(int elements = 1000; elements < 10000000; elements *= 10) {
+			const auto total_runs = 10000000 / elements;
 
 			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
@@ -120,7 +172,7 @@ int main(int argc, char* argv[])
 						vec.push_back(i);
 					}
 				}
-				vec.barrier();
+				vec.commit();
 				auto end = std::chrono::high_resolution_clock::now();
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
@@ -130,75 +182,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	{
-		for(int elements = 1; elements < 1000000; elements *= 10) {
-			const auto total_runs = 100000 / elements;
-
-			std::chrono::microseconds duration(0);
-			for(int runs = 0; runs < total_runs; runs++) {
-				dash::Vector<int> vec;
-				auto begin = std::chrono::high_resolution_clock::now();
-				for(int i = 0; i < elements; i++) {
-					if(myid == 0) {
-						vec.push_back(i);
-					}
-				}
-				vec.barrier();
-				vec.balance();
-				auto end = std::chrono::high_resolution_clock::now();
-				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-			}
-			if(myid == 0) {
-				std::cout << "push_back and balance elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
-			}
-		}
-	}
-
-	{
-		for(int elements = 1; elements < 1000000; elements *= 10) {
-			const auto total_runs = 100000 / elements;
-
-			std::chrono::microseconds duration(0);
-			for(int runs = 0; runs < total_runs; runs++) {
-				dash::List<int> vec(0);
-				auto begin = std::chrono::high_resolution_clock::now();
-				for(int i = 0; i < elements; i++) {
-					if(myid == 0) {
-						vec.push_back(i);
-					}
-				}
-				vec.barrier();
-				auto end = std::chrono::high_resolution_clock::now();
-				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-			}
-			if(myid == 0) {
-				std::cout << "push_back on dash::list elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
-			}
-		}
-	}
-
-	{
-		if(myid == 0) {
-			for(int elements = 1; elements < 1000000; elements *= 10) {
-				const auto total_runs = 100000 / elements;
-
-				std::chrono::microseconds duration(0);
-				for(int runs = 0; runs < total_runs; runs++) {
-					std::vector<int> vec(0);
-					auto begin = std::chrono::high_resolution_clock::now();
-					for(int i = 0; i < elements; i++) {
-						if(myid == 0) {
-							vec.push_back(i);
-						}
-					}
-					auto end = std::chrono::high_resolution_clock::now();
-					duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-				}
-
-				std::cout << "push_back on std::vector elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
-			}
-		}
-	}
 	team.barrier();
 
   dash::finalize();
