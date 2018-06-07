@@ -79,7 +79,24 @@ dart__mpi__datatype_init() DART_INTERNAL;
 dart_ret_t
 dart__mpi__datatype_fini() DART_INTERNAL;
 
+
+// TODO: types
+DART_INLINE void dart__min_max_reduce(void *lhs_, void *rhs_, int *len, MPI_Datatype *dptr)
+{
+  float *lhs = (float *)lhs_;
+  float *rhs = (float *)rhs_;
+
+  if (rhs[0] > lhs[0]) {
+    rhs[0] = lhs[0];
+  }
+
+  if (rhs[1] < lhs[1]) {
+    rhs[1] = lhs[1];
+  }
+}
+
 DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op) {
+  MPI_Op user_op;
   switch (dart_op) {
     case DART_OP_MIN     : return MPI_MIN;
     case DART_OP_MAX     : return MPI_MAX;
@@ -93,6 +110,8 @@ DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op) {
     case DART_OP_LXOR    : return MPI_LXOR;
     case DART_OP_REPLACE : return MPI_REPLACE;
     case DART_OP_NO_OP   : return MPI_NO_OP;
+    case DART_OP_MINMAX  : MPI_Op_create(&dart__min_max_reduce, true, &user_op);
+                           return user_op;
     default              : return (MPI_Op)(-1);
   }
 }
