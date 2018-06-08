@@ -79,20 +79,22 @@
          "TRACE", __FILE__, __LINE__, context, #var, (var))
 
 #define MAX_ELEMS_RANGE_LOGGING__ 25
-#define DASH_LOG_TRACE_RANGE(desc, begin, end)                              \
-  do {                                                                      \
-    using value_t =                                                         \
-        typename std::iterator_traits<decltype(begin)>::value_type;         \
-    using difference_t =                                                    \
-        typename std::iterator_traits<decltype(begin)>::difference_type;    \
-    auto const nelems = std::distance(begin, end);                          \
-    auto const max_elems =                                                  \
-        std::min<difference_t>(nelems, MAX_ELEMS_RANGE_LOGGING__);          \
-    std::ostringstream os;                                                  \
-    std::copy(                                                              \
-        begin, begin + max_elems, std::ostream_iterator<value_t>(os, " ")); \
-    if (nelems > MAX_ELEMS_RANGE_LOGGING__) os << "...";                    \
-    DASH_LOG_TRACE(desc, os.str());                                         \
+#define DASH_LOG_TRACE_RANGE(ctx, begin, end)                            \
+  do {                                                                   \
+    using value_t =                                                      \
+        typename std::iterator_traits<decltype(begin)>::value_type;      \
+    using difference_t =                                                 \
+        typename std::iterator_traits<decltype(begin)>::difference_type; \
+    auto const nelems = std::distance(begin, end);                       \
+    auto const max_elems =                                               \
+        std::min<difference_t>(nelems, MAX_ELEMS_RANGE_LOGGING__);       \
+    std::ostringstream os;                                               \
+    std::copy(                                                           \
+        begin,                                                           \
+        std::next(begin, max_elems),                                     \
+        std::ostream_iterator<value_t>(os, " "));                        \
+    if (nelems > MAX_ELEMS_RANGE_LOGGING__) os << "...";                 \
+    DASH_LOG_TRACE(ctx, os.str());                                       \
   } while (0)
 
 #  else  // DASH_ENABLE_TRACE_LOGGING
@@ -100,7 +102,7 @@
 #      define DASH_LOG_TRACE_VAR(context, var) do { \
                 dash__unused(var); \
               } while(0)
-#      define DASH_LOG_TRACE_RANGE(desc, begin, end) \
+#      define DASH_LOG_TRACE_RANGE(ctx, begin, end) \
                 do { } while (0)
 
 #  endif // DASH_ENABLE_TRACE_LOGGING
@@ -115,7 +117,7 @@
 #  define DASH_LOG_DEBUG_VAR(context, var) do { \
             dash__unused(var); \
           } while(0)
-#  define DASH_LOG_TRACE_RANGE(desc, begin, end) \
+#  define DASH_LOG_TRACE_RANGE(ctx, begin, end) \
           do { } while (0)
 
 #endif // DASH_ENABLE_LOGGING

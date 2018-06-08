@@ -14,7 +14,8 @@ protected:
   size_t _dash_id    = 0;
   size_t _dash_size  = 0;
 
-  virtual void SetUp() {
+  void SetUp() override
+  {
     dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
