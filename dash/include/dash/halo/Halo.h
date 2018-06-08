@@ -80,16 +80,13 @@ public:
    * Returns coordinates adjusted by stencil point
    */
   template<typename ElementCoordsT>
-  ElementCoordsT stencil_coords(ElementCoordsT coords) const {
-    for(dim_t d = 0; d < NumDimensions; ++d) {
-      coords[d] += this->_values[d];
-    }
+  ElementCoordsT stencil_coords(ElementCoordsT& coords) const {
 
-    return coords;
+    return StencilPoint<NumDimensions,CoeffT>::stencil_coords(coords, this);
   }
 
   /**
-   * Returns coordinates adjusted by stencil point
+   * Returns coordinates adjusted by a given stencil point
    */
   template<typename ElementCoordsT>
   static ElementCoordsT stencil_coords(ElementCoordsT coords,
@@ -102,7 +99,9 @@ public:
   }
 
   /**
-   * Returns coordinates adjusted by stencil point
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
    */
   template<typename ElementCoordsT, typename ViewSpecT>
   std::pair<ElementCoordsT,bool> stencil_coords_check(
@@ -118,7 +117,12 @@ public:
   }
 
   /**
-   * Returns coordinates adjusted by stencil point
+   * Returns coordinates adjusted by a stencil point and a boolean to indicate
+   * a if the adjusted coordinate points to elements out of the given
+   * \ref ViewSpecpossible (inside: true, else: false).
+   * If one dimension points to an element outside the \ref ViewSpec this method
+   * returns immediately the unfinished adjusted coordinate and true. Otherwise
+   * the adjusted coordinate and false is returned,
    */
   template<typename ElementCoordsT, typename ViewSpecT>
   std::pair<ElementCoordsT,bool> stencil_coords_check_abort(

@@ -7,6 +7,19 @@ namespace dash {
 
 namespace halo {
 
+namespace internal {
+
+// binary operation to replace values
+template<typename T>
+struct replace {
+  constexpr T operator()(const T &lhs, const T &rhs) const
+  {
+    return rhs;
+  }
+};
+
+} // internal
+
 // Forward declaration
 template <typename ElementT, typename PatternT, typename StencilSpecT>
 class StencilOperator;
@@ -69,10 +82,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  void set_values_at(
-    const ElementCoords_t& coords, ElementT value, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-      [](const ElementT& lhs, const ElementT& rhs) { return rhs; }) {
+  template<typename BinaryFunc = internal::replace<ElementT>>
+  void set_values_at( const ElementCoords_t& coords, ElementT value,
+      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
     *center = op(*center, coefficient_center * value);
@@ -96,10 +108,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  ElementT get_value_at(
-    const ElementCoords_t& coords, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-    std::plus<ElementT>()) {
+  template<typename BinaryFunc = std::plus<ElementT>>
+  ElementT get_value_at( const ElementCoords_t& coords,
+      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
     ElementT value = *center * coefficient_center;
 
@@ -191,10 +202,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  void set_values_at(
-    const ElementCoords_t& coords, ElementT value, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-      [](const ElementT& lhs, const ElementT& rhs) { return rhs; }) {
+  template<typename BinaryFunc = internal::replace<ElementT>>
+  void set_values_at( const ElementCoords_t& coords, ElementT value,
+      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
     *center = op(*center, coefficient_center * value);
@@ -256,10 +266,9 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  ElementT get_value_at(
-    const ElementCoords_t& coords, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-    std::plus<ElementT>()) {
+  template<typename BinaryFunc = std::plus<ElementT>>
+  ElementT get_value_at( const ElementCoords_t& coords,
+      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
     ElementT value = *center * coefficient_center;
     auto& stencil_spec = _stencil_op->_stencil_spec;
