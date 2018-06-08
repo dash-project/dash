@@ -254,7 +254,8 @@ public:
     _stencil_offsets(stencil_offsets), _view(view_scope),
     _local_memory(local_memory),
     _local_layout(view_local.extents()), _idx(idx) {
-    if(_idx < _view.size())
+    _size = _view.size();
+    if(_idx < _size)
       set_coords();
 
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
@@ -291,10 +292,10 @@ public:
     _boundary_views(boundary_views),
     _local_memory(local_memory),
     _local_layout(view_local.extents()), _idx(idx) {
-    pattern_index_t size = 0;
+    pattern_index_t _size = 0;
     for(const auto& view : boundary_views)
-      size += view.size();
-    if(_idx < size)
+      _size += view.size();
+    if(_idx < _size)
       set_coords();
 
     const auto ext_max = stencil_spec->minmax_distances(FastestDimension);
@@ -616,7 +617,8 @@ private:
         }
       }
     } else {
-      _coords = set_coords(_idx);
+      if(_idx < _size)
+        _coords = set_coords(_idx);
     }
 
     // setup center point offset
@@ -719,6 +721,7 @@ private:
   size_t                                      _region_number{ 0 };
   ElementCoords_t                             _coords;
   ElementT*                                   _current_lmemory_addr;
+  pattern_index_t                             _size;
 };  // class StencilIterator
 
 }  // namespace halo
