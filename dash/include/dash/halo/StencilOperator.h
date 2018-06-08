@@ -84,6 +84,34 @@ public:
     }
   }
 
+  /**
+   * Returns the result of the given operation done on all stencil point
+   * elements and the center.
+   * The stencil points are multiplied with their coefficent (\ref StencilPoint)
+   * and the center is  multiplied with the given center coefficient.
+   * No test for halo elements. -> useful only for elements with stencil
+   * points pointing to inner elements. (no halo elements)
+   *
+   * \param coords center coordinate
+   * \param coefficient for center
+   * \param op operation to use (e.g. std::plus). default: std::plus
+   */
+  ElementT get_value_at(
+    const ElementCoords_t& coords, ElementT coefficient_center,
+    std::function<ElementT(const ElementT&, const ElementT&)> op =
+    std::plus<ElementT>()) {
+    auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
+    ElementT value = *center * coefficient_center;
+
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      auto& stencil_point_value =
+        center[_stencil_op->_stencil_offsets[i]]; value = op(value,
+          _stencil_op->_stencil_spec[i].coefficient() * stencil_point_value);
+    }
+
+    return value;
+  }
+
 private:
   const StencilOperator_t* _stencil_op;
 };
@@ -150,7 +178,7 @@ public:
   }
 
   /**
-   * Modifies all stencil point elements and the center wth halo check.
+   * Modifies all stencil point elements and the center with halo check.
    * If a stencil point points to a halo element or a non existing element
    * no operation is performed for this one.
    * The stencil points are multiplied with their coefficent (\ref StencilPoint)
@@ -216,6 +244,53 @@ public:
     return std::make_pair(it_begin, it_begin + it_views->size());
   }
 
+  /**
+   * Returns the result of the given operation done on all stencil point
+   * elements and the center.
+   * The stencil points are multiplied with their coefficent (\ref StencilPoint)
+   * and the center is  multiplied with the given center coefficient.
+   * Test and use of halo elements. -> useful only for elements with stencil
+   * points pointing to halo elements. (boundary elements)
+   *
+   * \param coords center coordinate
+   * \param coefficient for center
+   * \param op operation to use (e.g. std::plus). default: std::plus
+   */
+  ElementT get_value_at(
+    const ElementCoords_t& coords, ElementT coefficient_center,
+    std::function<ElementT(const ElementT&, const ElementT&)> op =
+    std::plus<ElementT>()) {
+    auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
+    ElementT value = *center * coefficient_center;
+    auto& stencil_spec = _stencil_op->_stencil_spec;
+    for(auto i = 0; i < NumStencilPoints; ++i) {
+      bool halo = false;
+      auto coords_stencil = coords;
+
+      for(auto d = 0; d < NumDimensions; ++d) {
+        coords_stencil[d] += stencil_spec[i][d];
+        if(coords_stencil[d] < 0 ||
+           coords_stencil[d] >= _stencil_op->_view_local->extent(d))
+          halo = true;
+      }
+
+      if(halo) {
+        auto& halo_memory = *_stencil_op->_halo_memory;
+        auto index = _stencil_op->_halo_block->index_at(*(_stencil_op->_view_local), coords_stencil);
+        auto halomem_pos = halo_memory.first_element_at(index);
+
+        halo_memory.to_halo_mem_coords(index, coords_stencil);
+        auto offset = halo_memory.offset(index,coords_stencil);
+        value = op(value, stencil_spec[i].coefficient() * halomem_pos[offset]);
+      } else {
+        auto stencil_point_value = center[_stencil_op->_stencil_offsets[i]];
+        value = op(value, stencil_spec[i].coefficient() * stencil_point_value);
+      }
+    }
+
+    return value;
+  }
+
 private:
   const StencilOperator_t* _stencil_op;
 };
@@ -260,7 +335,6 @@ private:
   static constexpr auto MemoryArrange    = PatternT::memory_order();
 
   using pattern_size_t        = typename PatternT::size_type;
-  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using pattern_index_t       = typename PatternT::index_type;
 
   template <typename _T, typename _P, typename _S>
@@ -283,6 +357,7 @@ public:
                                        StencilViewScope::BOUNDARY>;
   using const_iterator_bnd   = const iterator;
 
+  using signed_pattern_size_t = typename iterator::signed_pattern_size_t;
   using StencilOffsets_t = typename iterator::StencilOffsets_t;
   using HaloBlock_t      = HaloBlock<ElementT, PatternT>;
   using HaloMemory_t     = HaloMemory<HaloBlock_t>;
@@ -291,8 +366,8 @@ public:
 
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
 
-  using region_index_t = typename RegionSpec<NumDimensions>::region_index_t;
-
+  using region_index_t  = typename RegionSpec<NumDimensions>::region_index_t;
+  using stencil_index_t = typename StencilSpecT::stencil_index_t;
 public:
   /**
    * Constructor that takes a \ref HaloBlock, a \ref HaloMemory,
@@ -368,54 +443,43 @@ public:
    */
   const ViewSpec_t& view() const { return _spec_views.inner_with_boundaries(); }
 
-  /*
-  ElementT get_value_at_inner_local(
-    const ElementCoords_t& coords, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-    std::plus<ElementT>()) {
-    auto* center = _local_memory + get_offset(coords);
-    ElementT value = op(0, *center * coefficient_center);
+  /**
+   * Returns the local \ref SpecView
+   */
+  const ViewSpec_t& view_local() const { return *_view_local; }
 
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      auto& stencil_point_value = center[_stencil_offsets[i]];
-      value = op(value, _stencil_spec[i].coefficient() * stencil_point_value);
-    }
+  /**
+   * Returns the offsets for each stencil point.
+   */
+  const StencilOffsets_t stencil_offsets() const { return _stencil_offsets; }
 
-    return value;
+  /**
+   * Returns the offset for specific stencil point.
+   */
+  const signed_pattern_size_t stencil_offset_at(std::size_t pos) const {
+    return _stencil_offsets[pos];
   }
 
-  ElementT get_value_at_boundary_local(
-    const ElementCoords_t& coords, ElementT coefficient_center,
-    std::function<ElementT(const ElementT&, const ElementT&)> op =
-    std::plus<ElementT>()) {
-    auto* center = _local_memory + get_offset(coords);
-    ElementT value = op(0, *center * coefficient_center);
+  /**
+   * Returns the local memory offset for a given coordinate
+   */
+  pattern_index_t get_offset(const ElementCoords_t& coords) const {
+    pattern_index_t offset = 0;
 
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      bool halo = false;
-      auto coords_stencil = coords;
-      for(auto d = 0; d < NumDimensions; ++d) {
-        coords_stencil[d] += _stencil_spec[i][d];
-        if(coords_stencil[d] < 0 || coords_stencil[d] >= _view_local->extent(d))
-          halo = true;
-      }
-
-      if(halo) {
-        auto index = _halo_block->index_at(*_view_local, coords_stencil);
-        auto* halomem_pos = _halo_memory->first_element_at(index);
-
-        _halo_memory->to_halo_mem_coords(index, coords_stencil);
-
-        value = op(value, *( halomem_pos + _halo_memory->offset(index,
-  coords_stencil))); } else { auto& stencil_point_value =
-  center[_stencil_offsets[i]]; value = op(value, _stencil_spec[i].coefficient()
-  * stencil_point_value);
+    if(MemoryArrange == ROW_MAJOR) {
+      offset = coords[0];
+      for(auto d = 1; d < NumDimensions; ++d)
+        offset = offset * _view_local->extent(d) + coords[d];
+    } else {
+      offset = coords[NumDimensions - 1];
+      for(auto d = NumDimensions - 1; d > 0;) {
+        --d;
+        offset = offset * _view_local->extent(d) + coords[d];
       }
     }
 
-    return value;
+    return offset;
   }
-  */
 
 private:
   StencilOffsets_t set_stencil_offsets() {
@@ -437,24 +501,6 @@ private:
     }
 
     return stencil_offs;
-  }
-
-  pattern_index_t get_offset(const ElementCoords_t& coords) const {
-    pattern_index_t offset = 0;
-
-    if(MemoryArrange == ROW_MAJOR) {
-      offset = coords[0];
-      for(auto d = 1; d < NumDimensions; ++d)
-        offset = offset * _view_local->extent(d) + coords[d];
-    } else {
-      offset = coords[NumDimensions - 1];
-      for(auto d = NumDimensions - 1; d > 0;) {
-        --d;
-        offset = offset * _view_local->extent(d) + coords[d];
-      }
-    }
-
-    return offset;
   }
 
 public:

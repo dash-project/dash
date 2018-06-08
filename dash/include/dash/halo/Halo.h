@@ -77,6 +77,62 @@ public:
   }
 
   /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template<typename ElementCoordsT>
+  ElementCoordsT stencil_coords(ElementCoordsT coords) const {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+    }
+
+    return coords;
+  }
+
+  /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template<typename ElementCoordsT>
+  static ElementCoordsT stencil_coords(ElementCoordsT coords,
+      const StencilPoint<NumDimensions,CoeffT>& stencilp) {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += stencilp[d];
+    }
+
+    return coords;
+  }
+
+  /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template<typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT,bool> stencil_coords_check(
+      ElementCoordsT coords, const ViewSpecT& view) const {
+   bool halo = false;
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        halo = true;
+    }
+
+    return std::make_pair(coords,halo);
+  }
+
+  /**
+   * Returns coordinates adjusted by stencil point
+   */
+  template<typename ElementCoordsT, typename ViewSpecT>
+  std::pair<ElementCoordsT,bool> stencil_coords_check_abort(
+      ElementCoordsT coords, const ViewSpecT& view) const {
+    for(dim_t d = 0; d < NumDimensions; ++d) {
+      coords[d] += this->_values[d];
+      if(coords[d] < 0 || coords[d] >= view.extent(d))
+        return std::make_pair(coords,true);
+    }
+
+    return std::make_pair(coords,false);
+  }
+
+  /**
    * Returns the coefficient for this stencil point
    */
   CoeffT coefficient() const { return _coefficient; }
@@ -89,7 +145,7 @@ template <dim_t NumDimensions, typename CoeffT>
 std::ostream& operator<<(
   std::ostream& os, const StencilPoint<NumDimensions, CoeffT>& stencil_point) {
   os << "dash::halo::StencilPoint<" << NumDimensions << ">"
-     << "(coefficient = " << stencil_point.coefficient << " - points: ";
+     << "(coefficient = " << stencil_point.coefficient() << " - points: ";
   for(auto d = 0; d < NumDimensions; ++d) {
     if(d > 0) {
       os << ",";
@@ -824,8 +880,10 @@ public:
    * \see DashGlobalIteratorConcept
    */
   reference operator[](pattern_index_t n) const {
-    //TODO dhinf: verify if this is correct
-    return *GlobIter<ElementT, PatternT>(_globmem, *_pattern, gpos() + n);
+    auto coords    = glob_coords(_idx + n);
+    auto local_pos = _pattern->local_index(coords);
+
+    return reference(_globmem->at(local_pos.unit, local_pos.index).dart_gptr());
   }
 
   dart_gptr_t dart_gptr() const { return operator[](_idx).dart_gptr(); }

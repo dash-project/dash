@@ -209,7 +209,6 @@ private:
   using Self_t     = StencilIterator<ElementT, PatternT, StencilSpecT, Scope>;
   using ViewSpec_t = typename PatternT::viewspec_type;
   using pattern_size_t        = typename PatternT::size_type;
-  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
   using RegionCoords_t        = RegionCoords<NumDimensions>;
   using HaloBlock_t           = HaloBlock<ElementT, PatternT>;
 
@@ -226,11 +225,13 @@ public:
   using region_index_t  = typename RegionCoords_t::region_index_t;
   using LocalLayout_t =
     CartesianIndexSpace<NumDimensions, MemoryArrange, pattern_index_t>;
-  using StencilP_t       = StencilPoint<NumDimensions>;
-  using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
-  using StencilOffsets_t = std::array<signed_pattern_size_t, NumStencilPoints>;
-  using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
-  using BoundaryViews_t    = typename StencilSpecViews_t::BoundaryViews_t;
+  using StencilP_t            = StencilPoint<NumDimensions>;
+  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
+  using signed_pattern_size_t = typename std::make_signed<pattern_size_t>::type;
+  using StencilOffsets_t      =
+    std::array<signed_pattern_size_t, NumStencilPoints>;
+  using StencilSpecViews_t    = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
+  using BoundaryViews_t       = typename StencilSpecViews_t::BoundaryViews_t;
 
 public:
   /**
@@ -699,24 +700,6 @@ private:
 
     return &*(_halomemory->first_element_at(region_index)
            + _halomemory->offset(region_index, halo_coords));
-  }
-
-  void set_stencil_offsets(const StencilSpecT& stencil_spec) {
-    for(auto i = 0; i < NumStencilPoints; ++i) {
-      signed_pattern_size_t offset = 0;
-      if(MemoryArrange == ROW_MAJOR) {
-        offset = stencil_spec[i][0];
-        for(dim_t d = 1; d < NumDimensions; ++d)
-          offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
-      } else {
-        offset = stencil_spec[i][NumDimensions - 1];
-        for(dim_t d = NumDimensions - 1; d > 0;) {
-          --d;
-          offset = stencil_spec[i][d] + offset * _local_layout.extent(d);
-        }
-      }
-      (*_stencil_offsets)[i] = offset;
-    }
   }
 
 private:
