@@ -31,7 +31,8 @@ void* dash::HBWSpace::do_allocate(size_t bytes, size_t alignment)
     if (ret == ENOMEM) {
       DASH_LOG_ERROR(
           "HBWSpace.do_allocate(bytes, alignment) > Cannot allocate memory",
-          bytes, alignment);
+          bytes,
+          alignment);
       throw std::bad_alloc();
     }
     else if (ret == EINVAL) {
@@ -41,19 +42,22 @@ void* dash::HBWSpace::do_allocate(size_t bytes, size_t alignment)
 
     DASH_LOG_TRACE(
         "HBWSpace.do_allocate(bytes, alignment)",
-        "Allocated memory node on HBM (pointer, nbytes, alignment)", ptr,
-        bytes, alignment);
+        "Allocated memory segment on HBM (pointer, nbytes, alignment)",
+        ptr,
+        bytes,
+        alignment);
   }
   else {
     DASH_LOG_WARN(
-        "no HBW memory node available > fall back to ::operator new");
+        "HBWSpace.do_allocate(bytes, alignment)",
+        "hbw_malloc is not available. Falling back to default host space");
 
     ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
   }
 #else
   DASH_LOG_WARN(
       "HBWSpace.do_allocate(bytes, alignment)",
-      "hbw_malloc is not available. Falling back to default host space");
+      "libmemkind is not available. Falling back to default host space");
 
   ptr = cpp17::pmr::get_default_resource()->allocate(bytes, alignment);
 #endif
@@ -85,10 +89,13 @@ bool dash::HBWSpace::do_is_equal(
 
 bool dash::HBWSpace::check_hbw_available(void)
 {
+  static auto const hbw_available = dash::util::DashConfig.avail_memkind &&
+  // clang-format off
 #ifdef DASH_ENABLE_MEMKIND
-  static bool const hbw_available = (0 == hbw_check_available());
-  return hbw_available;
+    (0 == hbw_check_available());
 #else
-  return false;
+    (false);
 #endif
+  // clang-format on
+  return hbw_available;
 }

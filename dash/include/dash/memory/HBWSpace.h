@@ -36,8 +36,8 @@ protected:
   bool  do_is_equal(cpp17::pmr::memory_resource const& other) const
       noexcept override;
 
-private:
-  bool check_hbw_available(void);
+public:
+  static inline bool check_hbw_available(void);
 };
 
 }  // namespace dash
