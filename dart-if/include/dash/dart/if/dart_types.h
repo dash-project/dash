@@ -69,6 +69,8 @@ typedef enum
   DART_OP_MIN,
   /** Maximum */
   DART_OP_MAX,
+  /** Minimum and Maximum */
+  DART_OP_MINMAX,
   /** Summation */
   DART_OP_SUM,
   /** Product */
