@@ -595,7 +595,7 @@ dart_ret_t dart_accumulate(
   dart_team_t teamid = gptr.teamid;
 
   CHECK_IS_BASICTYPE(dtype);
-  MPI_Op      mpi_op = dart__mpi__op(op);
+  MPI_Op      mpi_op = dart__mpi__op(op, dtype);
 
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -681,7 +681,7 @@ dart_ret_t dart_accumulate_blocking_local(
   dart_team_t teamid = gptr.teamid;
 
   CHECK_IS_BASICTYPE(dtype);
-  MPI_Op      mpi_op = dart__mpi__op(op);
+  MPI_Op      mpi_op = dart__mpi__op(op, dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -776,7 +776,7 @@ dart_ret_t dart_fetch_and_op(
 
   CHECK_IS_BASICTYPE(dtype);
   mpi_dtype          = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
-  mpi_op             = dart__mpi__op(op);
+  mpi_op             = dart__mpi__op(op, dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -2164,7 +2164,7 @@ dart_ret_t dart_allreduce(
 
   CHECK_IS_BASICTYPE(dtype);
 
-  MPI_Op       mpi_op    = dart__mpi__op(op);
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
   MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
 
   /*
@@ -2204,7 +2204,7 @@ dart_ret_t dart_reduce(
 {
   MPI_Comm     comm;
   CHECK_IS_BASICTYPE(dtype);
-  MPI_Op       mpi_op    = dart__mpi__op(op);
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
   MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:

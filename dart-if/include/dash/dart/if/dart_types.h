@@ -69,6 +69,8 @@ typedef enum
   DART_OP_MIN,
   /** Maximum */
   DART_OP_MAX,
+  /** Minimum and Maximum */
+  DART_OP_MINMAX,
   /** Summation */
   DART_OP_SUM,
   /** Product */
@@ -88,8 +90,22 @@ typedef enum
   /** Replace Value */
   DART_OP_REPLACE,
   /** No operation */
-  DART_OP_NO_OP
+  DART_OP_NO_OP,
+  /** Number of operations defined, not an actual operation! */
+  DART_OP_LAST
 } dart_operation_t;
+
+/**
+ * Position of the minimum element in MINMAX tuple
+ * \ingroup DartTypes
+ */
+#define DART_OP_MINMAX_MIN 0
+
+/**
+ * Position of the maximum element in MINMAX tuple
+ * \ingroup DartTypes
+ */
+#define DART_OP_MINMAX_MAX 1
 
 /**
  * Raw data types supported by the DART interface.
