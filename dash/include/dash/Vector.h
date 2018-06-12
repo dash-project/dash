@@ -82,6 +82,12 @@ struct Vector_iterator {
 	Vector& _vec;
 };
 
+enum struct vector_strategy_t {
+	CACHE,
+	HYBRID,
+	WRITE_THROUGH
+};
+
 template <class Vector>
 Vector_iterator<Vector> operator+(const Vector_iterator<Vector>& lhs, typename Vector_iterator<Vector>::index_type rhs) {
 	return Vector_iterator<Vector>(lhs._vec, lhs._index + rhs);
@@ -212,8 +218,8 @@ public:
 	template< class InputIt >
 	void insert(InputIt first, InputIt last);
 
-	void lpush_back(const T& value);
-	void push_back(const T& value);
+	void lpush_back(const T& value, vector_strategy_t strategy = vector_strategy_t::HYBRID);
+	void push_back(const T& value, vector_strategy_t strategy = vector_strategy_t::HYBRID);
 // 	void push_back(const T&& value);
 //
 // 	template <class... Args>
@@ -449,27 +455,39 @@ void Vector<T, allocator>::insert(InputIt first, InputIt last) {
 }
 
 template <class T, template<class> class allocator>
-void Vector<T, allocator>::lpush_back(const T& value) {
+void Vector<T, allocator>::lpush_back(const T& value, vector_strategy_t strategy) {
+	if(strategy == vector_strategy_t::CACHE) {
+		local_queue.push_back(value);
+		return;
+	}
+
 	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(1));
 	if(lastSize < lcapacity()) {
 		*(_data.lbegin() + lastSize) = value;
 	} else {
+		if(strategy == vector_strategy_t::WRITE_THROUGH) throw std::runtime_error("Space not sufficient");
 		dash::atomic::sub(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(1));
 		local_queue.push_back(value);
 	}
 }
 
 template <class T, template<class> class allocator>
-void Vector<T, allocator>::push_back(const T& value) {
+void Vector<T, allocator>::push_back(const T& value,  vector_strategy_t strategy) {
+	if(strategy == vector_strategy_t::CACHE) {
+		global_queue.push_back(value);
+		return;
+	}
+
 	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+(_local_sizes.size()-1)), static_cast<size_type>(1));
 // 	if(_team.myid() == 0) std::cout << "push_back() lastSize = " << lastSize << " lcapacity = " << lcapacity() << std::endl;
-
 	if(lastSize < lcapacity()) {
 // 		std::cout << "enough space" << std::endl;
 		*(_data.begin() + lcapacity()*(_team.size()-1) + lastSize) = value;
 // 		std::cout << "written" << std::endl;
 	} else {
 // 		std::cout << "not enough space" << std::endl;
+		if(strategy == vector_strategy_t::WRITE_THROUGH) throw std::runtime_error("Space not sufficient");
+
 		dash::atomic::sub(*(_local_sizes.begin()+(_local_sizes.size()-1)), static_cast<size_type>(1));
 		global_queue.push_back(value);
 // 		std::cout << "delayed" << std::endl;

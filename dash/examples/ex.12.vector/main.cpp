@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
 				auto begin = std::chrono::high_resolution_clock::now();
 				for(int i = 0; i < elements; i++) {
 					if(myid == 0) {
-						vec.push_back(i);
+						vec.push_back(i, dash::vector_strategy_t::CACHE);
 					}
 				}
 				vec.commit();
@@ -177,7 +177,31 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "push_back elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "push_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+			}
+		}
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(int elements = 1000; elements < 10000000; elements *= 10) {
+			const auto total_runs = 10000000 / elements;
+
+			std::chrono::microseconds duration(0);
+			for(int runs = 0; runs < total_runs; runs++) {
+				dash::Vector<int> vec;
+				auto begin = std::chrono::high_resolution_clock::now();
+				for(int i = 0; i < elements; i++) {
+					if(myid == 0) {
+						vec.push_back(i, dash::vector_strategy_t::HYBRID);
+					}
+				}
+				vec.commit();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "push_back(hybrid) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
 			}
 		}
 	}
