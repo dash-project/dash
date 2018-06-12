@@ -531,8 +531,8 @@ dart_ret_t dart_team_memfree(
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG("dart_team_memfree: collective free, team unit id: %2d "
-                 "offset:%"PRIu64" gptr_unitid:%d across team %d",
-                 unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+                 "offset:%"PRIu64", segid=%d, baseptr=%p, gptr_unitid:%d across team %d",
+                 unitid.id, gptr.addr_or_offs.offset, segid, sub_mem, gptr.unitid, teamid);
   /* Remove the related correspondence relation record from the related
    * translation table. */
   if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {
