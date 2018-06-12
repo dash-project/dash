@@ -7,7 +7,7 @@
 
 typedef void (*dart__mpi_min_max_reduce_t)(void*, void*, int*, MPI_Datatype*);
 
-#define DART_NAME_MINMAX_OP(__name) dart__mpi_min_max_reduce##__name
+#define DART_NAME_MINMAX_OP(__name) dart__mpi_min_max_reduce_##__name
 
 #define DART_DECLARE_MINMAX_OP(__name) \
 DART_INLINE void DART_NAME_MINMAX_OP(__name)(            \
@@ -29,6 +29,7 @@ DART_DECLARE_MINMAX_OP(__name){                             \
 
 DART_DEFINE_MINMAX_OP(byte,             char)
 DART_DEFINE_MINMAX_OP(short,            short int)
+DART_DEFINE_MINMAX_OP(int,              int)
 DART_DEFINE_MINMAX_OP(unsigned,         unsigned int)
 DART_DEFINE_MINMAX_OP(long,             int)
 DART_DEFINE_MINMAX_OP(unsignedlong,     unsigned long)
@@ -70,6 +71,8 @@ dart_ret_t dart__mpi__op_init()
                 &dart__mpi_minmax_reduce_ops[DART_TYPE_BYTE]);
   MPI_Op_create(&DART_NAME_MINMAX_OP(short), true,
                 &dart__mpi_minmax_reduce_ops[DART_TYPE_SHORT]);
+  MPI_Op_create(&DART_NAME_MINMAX_OP(int), true,
+                &dart__mpi_minmax_reduce_ops[DART_TYPE_INT]);
   MPI_Op_create(&DART_NAME_MINMAX_OP(unsigned), true,
                 &dart__mpi_minmax_reduce_ops[DART_TYPE_UINT]);
   MPI_Op_create(&DART_NAME_MINMAX_OP(long), true,
