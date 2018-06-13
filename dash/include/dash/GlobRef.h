@@ -26,21 +26,13 @@ class GlobRef
     typename ElementT >
   friend class GlobRef;
 
-  typedef typename std::remove_const<T>::type
-    nonconst_value_type;
-
-  typedef typename std::add_const<T>::type
-    const_value_type;
 public:
-  typedef T                 value_type;
+  using value_type          = T;
+  using const_value_type    = typename std::add_const<T>::type;
+  using nonconst_value_type = typename std::remove_const<T>::type;
+  using self_t              = GlobRef<T>;
+  using const_type          = GlobRef<const_value_type>;
 
-  typedef GlobRef<const T>  const_type;
-
-private:
-  typedef GlobRef<T>
-    self_t;
-  typedef GlobRef<const T>
-    self_const_t;
 
   template <class _T, class _M>
   friend class GlobPtr;
@@ -164,7 +156,7 @@ public:
   /**
    * Copy Assignment
    */
-  self_t & operator=(const self_t & other)
+  const self_t & operator=(const self_t & other) const
   {
     set(static_cast<T>(other));
     return *this;
@@ -173,10 +165,17 @@ public:
   /**
    * Move Assignment: Redirects to Copy Assignment
    */
-  template <typename GlobRefOrElementT>
-  self_t & operator=(GlobRefOrElementT && other)
-  {
-    set(std::forward<GlobRefOrElementT>(other));
+  self_t& operator=(self_t&& other) {
+    DASH_LOG_TRACE("GlobRef.operator=(GlobRef &&)", _gptr);
+    operator=(other);
+    return *this;
+  }
+
+  /**
+   * Value-assignment operator.
+   */
+  const self_t & operator=(const value_type& val) const {
+    set(val);
     return *this;
   }
 
@@ -246,13 +245,19 @@ public:
     dash::internal::get_blocking(_gptr, &tref, 1);
   }
 
-  void put(const_value_type& tref) {
+  void
+  put(const_value_type& tref) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot assign to GlobRef<const T>!");
     DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dash::internal::put_blocking(_gptr, &tref, 1);
   }
 
-  void put(const_value_type* tptr) {
+  void
+  put(const_value_type* tptr) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     dash::internal::put_blocking(_gptr, tptr, 1);
@@ -274,62 +279,86 @@ public:
                           dash::plus<T>().dart_operation(),
                           dash::Team::All().dart_id());
     dart_flush(_gptr);
-#else
+  #else
     nonconst_value_type val  = operator nonconst_value_type();
     val   += ref;
     operator=(val);
-#endif
+  #endif
     return *this;
   }
 
-  self_t & operator-=(const nonconst_value_type& ref) {
+  const self_t &
+  operator-=(const nonconst_value_type& ref) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val  = operator nonconst_value_type();
     val   -= ref;
     operator=(val);
     return *this;
   }
 
-  self_t & operator++() {
+  const self_t &
+  operator++() const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     operator=(++val);
     return *this;
   }
 
-  nonconst_value_type operator++(int) {
+  nonconst_value_type
+  operator++(int) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     nonconst_value_type res = val++;
     operator=(val);
     return res;
   }
 
-  self_t & operator--() {
+  const self_t &
+  operator--() const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     operator=(--val);
     return *this;
   }
 
-  nonconst_value_type operator--(int) {
+  nonconst_value_type
+  operator--(int) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     nonconst_value_type res = val--;
     operator=(val);
     return res;
   }
 
-  self_t & operator*=(const_value_type& ref) {
+  const self_t &
+  operator*=(const_value_type& ref) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     val   *= ref;
     operator=(val);
     return *this;
   }
 
-  self_t & operator/=(const_value_type& ref) {
+  const self_t &
+  operator/=(const_value_type& ref) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     val   /= ref;
     operator=(val);
     return *this;
   }
 
-  self_t & operator^=(const_value_type& ref) {
+  const self_t &
+  operator^=(const_value_type& ref) const {
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     nonconst_value_type val = operator nonconst_value_type();
     val   ^= ref;
     operator=(val);
@@ -379,7 +408,9 @@ public:
   /**
    * specialization which swappes the values of two global references
    */
-  inline void swap(dash::GlobRef<T> & b){
+  inline void swap(dash::GlobRef<T> & b) const{
+    static_assert(std::is_same<value_type, nonconst_value_type>::value,
+                  "Cannot modify value referenced by GlobRef<const T>!");
     T tmp = static_cast<T>(*this);
     *this = b;
     b = tmp;

@@ -1,0 +1,15 @@
+#ifndef DASH__VIEW__LOCALITY_H__INCLUDED
+#define DASH__VIEW__LOCALITY_H__INCLUDED
+
+
+#include 
+
+
+
+
+
+
+
+
+
+#endif // DASH__VIEW__LOCALITY_H__INCLUDED
