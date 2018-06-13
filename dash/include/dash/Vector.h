@@ -31,6 +31,8 @@ class Vector_iterator;
 
 namespace std {
 
+	// Ugly fix to be able to use std::copy on GlobPtr
+
 	template <class Vector>
 	struct iterator_traits<dash::Vector_iterator<Vector>> {
 		using value_type = typename Vector::value_type;
@@ -320,6 +322,10 @@ void Vector<T, allocator>::balance() {
 
 	glob_mem_type tmp(cap, _team);
 	std::copy(begin() + i*s, begin()+(i+1)*s, tmp.begin() + i*cap);
+// 	auto dest = tmp.begin() + i*cap;
+// 	auto gptr = static_cast<dart_gptr_t>(*(begin() + i*s));
+// 	dart_get_blocking(dest.local(), gptr, s, dart_datatype<T>::value, dart_datatype<T>::value);
+
 	_team.barrier();
 	dash::atomic::store(*(_local_sizes.begin()+i), s);
 	_data = std::move(tmp);
@@ -399,8 +405,10 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 		glob_mem_type tmp(new_cap, _team);
 		const auto i = _team.myid();
 // 		if(_team.myid() == 0) std::cout << "copy data" << std::endl;
-		std::copy(_data.begin() + i*old_cap, _data.begin()+(i*old_cap+lsize()), tmp.begin() + i*new_cap);
-
+// 		std::copy(_data.begin() + i*old_cap, _data.begin()+(i*old_cap+lsize()), tmp.begin() + i*new_cap);
+		auto dest = tmp.begin() + i*new_cap;
+		auto gptr = static_cast<dart_gptr_t>(_data.begin() + i*old_cap);
+		dart_get_blocking(dest.local(), gptr, lsize(), dart_datatype<T>::value, dart_datatype<T>::value);
 		_data = std::move(tmp);
 	}
 
@@ -446,7 +454,23 @@ void Vector<T, allocator>::insert(InputIt first, InputIt last) {
 // 	std::cout << "id("<< _team.myid() << ") "<< "direct_fill = " << direct_fill << std::endl;
 
 	const auto direct_fill_end = first + direct_fill;
-	std::copy(first, direct_fill_end, _data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+// 	std::copy(first, direct_fill_end, _data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+
+	// This is a unneccessary copy to get a void* from a (forward-)iterator. In order to prevent this,
+	// you have to either change the interface of dash::vector::insert() or dart_put_blocking() or
+	// specialise for every iterator type or write a conversion class from iterator to void* using
+	// type traits.
+	std::vector<T> buffer(first, first+direct_fill);
+
+	auto gptr = static_cast<dart_gptr_t>(_data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+	dart_put_blocking(
+		gptr,
+		buffer.data(),
+		direct_fill,
+		dart_datatype<T>::value,
+		dart_datatype<T>::value
+	);
+
 	if(direct_fill_end != last) {
 		dash::atomic::store(*(_local_sizes.begin()+(_team.size()-1)), lcapacity());
 		global_queue.insert(local_queue.end(), direct_fill_end, last);
