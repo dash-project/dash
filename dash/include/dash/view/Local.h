@@ -2,8 +2,8 @@
 #define DASH__VIEW__LOCAL_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Range.h>
 
+#include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
 
 
@@ -35,21 +35,20 @@ local(ViewType & v)
   return v;
 }
 
-#if 0
 template <
-  class    ContainerLocalType,
-  typename ContainerLocalDecayType
-             = typename std::decay<ContainerLocalType>::type >
+  class    ContainerType,
+  typename ContainerDecayType
+             = typename std::decay<ContainerType>::type >
 constexpr
 typename std::enable_if<
-  ( dash::view_traits<ContainerLocalDecayType>::is_origin::value &&
-    dash::view_traits<ContainerLocalDecayType>::is_local::value ),
-  ContainerLocalType &
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
+  const typename ContainerType::local_type &
 >::type
-local(ContainerLocalType & cl) {
-  return cl;
+local(const ContainerType & c) {
+  return c.local;
 }
-#endif
 
 template <
   class    ContainerType,
@@ -57,13 +56,45 @@ template <
              = typename std::decay<ContainerType>::type >
 constexpr
 typename std::enable_if<
-  ( !dash::view_traits<ContainerDecayType>::is_view::value &&
-    !dash::view_traits<ContainerDecayType>::is_local::value &&
-     dash::view_traits<ContainerDecayType>::is_origin::value ),
-  const typename ContainerType::local_type &
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
+  typename ContainerType::local_type &
+>::type
+local(ContainerType & c) {
+  return c.local;
+}
+
+template <
+  class    ContainerType,
+  typename ContainerDecayType
+             = typename std::decay<ContainerType>::type >
+constexpr
+typename std::enable_if<
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !dash::view_traits<ContainerDecayType>::is_view::value &&
+     std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
+  decltype(std::declval<const ContainerType &>().local())
 >::type
 local(const ContainerType & c) {
-  return c.local;
+  return c.local();
+}
+
+template <
+  class    ContainerType,
+  typename ContainerDecayType
+             = typename std::decay<ContainerType>::type >
+constexpr
+typename std::enable_if<
+  ( !dash::view_traits<ContainerDecayType>::is_local::value &&
+    !dash::view_traits<ContainerDecayType>::is_view::value &&
+     std::is_member_function_pointer<
+       decltype(&ContainerDecayType::local)>::value ),
+  decltype(std::declval<ContainerType &>().local())
+>::type
+local(ContainerType & c) {
+  return c.local();
 }
 
 #if 0
@@ -82,20 +113,24 @@ local(const ViewType & v)
   return IndexSetIdentity<const typename ViewType::local_type>(
            v.local());
 }
-#endif
 
 /**
  * \concept{DashViewConcept}
  */
-template <class ViewType>
+template <
+  class    ViewType,
+  typename ViewValueT = typename std::decay<ViewType>::type >
 constexpr auto
 local(const ViewType & v)
 -> typename std::enable_if<
-     dash::view_traits<ViewType>::is_view::value,
+     ( dash::view_traits<ViewValueT>::is_view::value &&
+      !dash::view_traits<ViewValueT>::is_origin::value &&
+      !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(v.local())
    >::type {
   return v.local();
 }
+#endif
 
 template <
   class    ViewType,
@@ -104,10 +139,11 @@ constexpr auto
 local(ViewType && v)
 -> typename std::enable_if<
     ( dash::view_traits<ViewValueT>::is_view::value &&
+     !dash::view_traits<ViewValueT>::is_origin::value &&
      !dash::view_traits<ViewValueT>::is_local::value ),
      decltype(std::forward<ViewType>(v).local())
    >::type {
- return std::forward<ViewType>(v).local();
+  return std::forward<ViewType>(v).local();
 }
 
 #if 0
@@ -145,6 +181,13 @@ constexpr auto local(
   const GlobalIterator & g_it)
 ->  decltype((g_it - g_it.pos()).local()) {
   return g_it.local();
+}
+
+static inline auto local() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return local(std::forward<decltype(x)>(x));
+           });
 }
 
 // =========================================================================

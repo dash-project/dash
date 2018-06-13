@@ -3,6 +3,8 @@
 
 #include <dash/algorithm/Generate.h>
 #include <dash/algorithm/Transform.h>
+#include <dash/algorithm/Fill.h>
+#include <dash/algorithm/ForEach.h>
 
 #include <dash/Array.h>
 #include <dash/Matrix.h>
@@ -221,3 +223,42 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   EXPECT_EQ_U(first_l_block_a_begin,
               first_l_block_a_offsets);
 }
+
+
+TEST_F(TransformTest, LocalIteratorInput)
+{
+  using value_t = int;
+  std::vector<value_t> local_v(100);
+  size_t idx = 0;
+  std::fill(local_v.begin(), local_v.end(), (value_t)dash::myid());
+  for (auto& elem : local_v) {
+    elem = dash::myid() * 1000 + idx;
+    idx++;
+  }
+  dash::Array<value_t> global_v(local_v.size() + 1);
+  dash::fill(global_v.begin(), global_v.end(), 0.0);
+  global_v.barrier();
+  // start from the second element
+  auto it = dash::transform<value_t>(
+    local_v.begin(),
+    local_v.end(),
+    global_v.begin() + 1,
+    global_v.begin() + 1,
+    dash::max<value_t>()
+  );
+
+  global_v.barrier();
+
+  ASSERT_EQ_U(it, global_v.end());
+
+//  size_t idx = 0;
+
+  dash::for_each_with_index(global_v.begin() + 1, global_v.end(),
+    [](value_t val, size_t idx){
+      ASSERT_EQ_U(val, (dash::size() - 1) * 1000 + (idx - 1));
+      ++idx;
+  });
+
+  global_v.barrier();
+}
+

@@ -45,18 +45,22 @@ class GlobViewIter;
  *
  * \concept{DashGlobalIteratorConcept}
  */
-template <
-    typename ElementType,
-    class PatternType,
-    class GlobMemType = GlobStaticMem<typename std::decay<ElementType>::type>,
-    class PointerType = typename GlobMemType::pointer,
-    class ReferenceType = GlobRef<ElementType> >
-class GlobIter : public std::iterator<
-                     std::random_access_iterator_tag,
-                     ElementType,
-                     typename PatternType::index_type,
-                     PointerType,
-                     ReferenceType> {
+template<
+  typename ElementType,
+  class    PatternType,
+  class    GlobMemType   = GlobStaticMem<
+                             typename std::decay<ElementType>::type
+                           >,
+  class    PointerType   = typename GlobMemType::pointer,
+  class    ReferenceType = GlobRef<ElementType> >
+class GlobIter
+// : public std::iterator<
+//            std::random_access_iterator_tag,
+//            ElementType,
+//            typename PatternType::index_type,
+//            PointerType,
+//            ReferenceType >
+{
 private:
   typedef GlobIter<
             ElementType,
@@ -69,19 +73,25 @@ private:
   typedef typename std::remove_const<ElementType>::type
     nonconst_value_type;
 public:
-  typedef          ElementType                         value_type;
+  typedef typename std::random_access_iterator_tag iterator_category;
 
-  typedef          ReferenceType                        reference;
-  typedef typename ReferenceType::const_type      const_reference;
+  typedef typename PatternType::index_type           difference_type;
 
-  typedef          PointerType                            pointer;
-  typedef typename PointerType::const_type          const_pointer;
+  typedef          ElementType                            value_type;
 
-  typedef typename GlobMemType::local_pointer       local_pointer;
-  typedef typename GlobMemType::local_pointer          local_type;
+  typedef          ReferenceType                           reference;
+  typedef typename dash::const_value_cast<ReferenceType>::type
+                                                     const_reference;
 
-  typedef          PatternType                       pattern_type;
-  typedef typename PatternType::index_type             index_type;
+  typedef          PointerType                               pointer;
+  typedef typename dash::const_value_cast<PointerType>::type
+                                                       const_pointer;
+
+  typedef typename GlobMemType::local_pointer          local_pointer;
+  typedef typename GlobMemType::local_pointer             local_type;
+
+  typedef          PatternType                          pattern_type;
+  typedef typename PatternType::index_type                index_type;
 
 private:
   typedef GlobIter<
@@ -93,7 +103,7 @@ private:
     self_const_t;
 
 public:
-  typedef std::integral_constant<bool, false>       has_view;
+  typedef std::integral_constant<bool, false>            has_view;
 
 public:
   // For ostream output
@@ -138,12 +148,23 @@ protected:
   index_type             _idx             = 0;
   /// Maximum position allowed for this iterator.
   index_type             _max_idx         = 0;
+  /// Unit id of the active unit
+  team_unit_t            _myid            = DART_UNDEFINED_TEAM_UNIT_ID;
   /// Pointer to first element in local memory
   local_pointer          _lbegin          = nullptr;
 
 public:
-
-  constexpr GlobIter() = default;
+  /**
+   * Default constructor.
+   */
+  constexpr GlobIter()
+  : _globmem(nullptr),
+    _pattern(nullptr),
+    _idx(0),
+    _max_idx(0),
+    _myid(dash::Team::All().myid()),
+    _lbegin(nullptr)
+  { }
 
   /**
    * Constructor, creates a global iterator on global memory following
@@ -151,59 +172,86 @@ public:
    */
   constexpr GlobIter(
     GlobMemType       * gmem,
-    const PatternType & pat,
-    index_type          position = 0)
+	  const PatternType & pat,
+	  index_type          position = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _idx(position),
     _max_idx(pat.size() - 1),
+    _myid(pat.team().myid()),
     _lbegin(_globmem->lbegin())
   { }
 
   /**
    * Copy constructor.
    */
+  constexpr GlobIter(const self_t & other) = default;
+
+  /**
+   * Templated copy constructor.
+   */
   template <
+    class    T_,
+    class    P_,
+    class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    const GlobIter<nonconst_value_type, PatternType, GlobMemType, Ptr_, Ref_> & other)
+    const GlobIter<T_, P_, GM_, Ptr_, Ref_> & other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
   , _max_idx(other._max_idx)
+  , _myid   (other._myid)
   , _lbegin (other._lbegin)
   { }
 
   /**
    * Move constructor.
    */
+  constexpr GlobIter(self_t && other) = default;
+
+  /**
+   * Templated move constructor.
+   */
   template <
+    class    T_,
+    class    P_,
+    class    GM_,
     class    Ptr_,
     class    Ref_ >
   constexpr GlobIter(
-    GlobIter<nonconst_value_type, PatternType, GlobMemType, Ptr_, Ref_> && other)
+    GlobIter<T_, P_, GM_, Ptr_, Ref_> && other)
   : _globmem(other._globmem)
   , _pattern(other._pattern)
   , _idx    (other._idx)
   , _max_idx(other._max_idx)
+  , _myid   (other._myid)
   , _lbegin (other._lbegin)
   { }
 
   /**
    * Assignment operator.
    */
+  self_t & operator=(const self_t & other) = default;
+
+  /**
+   * Templated assignment operator.
+   */
   template <
     typename T_,
+    class    P_,
+    class    GM_,
     class    Ptr_,
     class    Ref_ >
   self_t & operator=(
-    const GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_ > & other)
+    const GlobIter<T_, P_, GM_, Ptr_, Ref_ > & other)
   {
     _globmem = other._globmem;
     _pattern = other._pattern;
     _idx     = other._idx;
     _max_idx = other._max_idx;
+    _myid    = other._myid;
     _lbegin  = other._lbegin;
     return *this;
   }
@@ -211,17 +259,25 @@ public:
   /**
    * Move-assignment operator.
    */
+  self_t & operator=(self_t && other) = default;
+
+  /**
+   * Templated move-assignment operator.
+   */
   template <
     typename T_,
+    class    P_,
+    class    GM_,
     class    Ptr_,
     class    Ref_ >
   self_t & operator=(
-    GlobIter<T_, PatternType, GlobMemType, Ptr_, Ref_ > && other)
+    GlobIter<T_, P_, GM_, Ptr_, Ref_ > && other)
   {
     _globmem = other._globmem;
     _pattern = other._pattern;
     _idx     = other._idx;
     _max_idx = other._max_idx;
+    _myid    = other._myid;
     _lbegin  = other._lbegin;
     // no ownership to transfer
     return *this;
@@ -326,7 +382,15 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
+#if 0
     const_pointer gptr(
+#else
+    // TODO: Intermediate, should be `const_pointer`.
+    //       Actual issue is `const_pointer` defined as local pointer
+    //       type, should be global pointer for global iterator like
+    //       `GlobIter`:
+    dash::GlobPtr<ElementType> gptr(
+#endif
       _globmem->at(
         team_unit_t(local_pos.unit),
         local_pos.index)
@@ -403,7 +467,7 @@ public:
    */
   constexpr bool is_local() const
   {
-    return (_globmem->team().myid() == lpos().unit);
+    return (_myid == lpos().unit);
   }
 
   /**
@@ -439,7 +503,7 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
-    if (_globmem->team().myid() != local_pos.unit) {
+    if (_myid != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
     }
@@ -685,7 +749,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   dash::GlobPtr<const ElementType, GlobStaticMem> ptr(*it._globmem,
-                                                it.dart_gptr());
+                                                      it.dart_gptr());
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

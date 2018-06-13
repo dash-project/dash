@@ -6,6 +6,8 @@
 #include <dash/View.h>
 #include <dash/Meta.h>
 
+#include <dash/algorithm/Copy.h>
+
 #include <dash/internal/StreamConversion.h>
 
 #include <array>
@@ -539,6 +541,205 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalSub)
   a.barrier();
 }
 
+TEST_F(ViewTest, ArrayCyclicPatternLocalSub)
+{
+  int elem_per_unit    = 7;
+  int elem_additional  = 2;
+  int array_size       = dash::size() * elem_per_unit +
+                          std::min<int>(elem_additional, dash::size());
+  int num_local_elem   = elem_per_unit +
+                         ( dash::myid() < elem_additional
+                         ? 1
+                         : 0 );
+
+  dash::Array<float> a(array_size, dash::CYCLIC);
+  dash::test::initialize_array(a);
+
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                 "array:", range_str(a));
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                 "local(array):", range_str(dash::local(a)));
+
+  // sub(local(array))
+  //
+  {
+    auto s_l_view = dash::sub(
+                      2, a.lsize() - 2,
+                      dash::local(
+                        a));
+    DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternLocalSub",
+                   range_str(s_l_view));
+    DASH_ASSERT(
+      std::equal(a.lbegin() + 2,
+                 a.lbegin() + a.lsize() - 2,
+                 s_l_view.begin()));
+  }
+}
+
+TEST_F(ViewTest, ArrayCyclicPatternCopyLocalToGlobal)
+{
+  int elem_per_unit    = 7;
+  int elem_additional  = 2;
+  int array_size       = dash::size() * elem_per_unit +
+                          std::min<int>(elem_additional, dash::size());
+  int num_local_elem   = elem_per_unit +
+                         ( dash::myid() < elem_additional
+                         ? 1
+                         : 0 );
+
+  dash::Array<float> a(array_size, dash::CYCLIC);
+  dash::test::initialize_array(a);
+
+  dash::Array<float> a_pre(array_size, dash::CYCLIC);
+  dash::test::initialize_array(a_pre);
+
+  auto copy_num_elem       = a.size() / 2;
+  auto copy_dest_begin_idx = a.size() / 4;
+  auto copy_dest_end_idx   = copy_dest_begin_idx + copy_num_elem;
+
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+                 "array:", range_str(a));
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+                 "copy", copy_num_elem,
+                 "[", copy_dest_begin_idx, "...", copy_dest_end_idx, "]");
+
+  std::vector<float> buf(copy_num_elem);
+  std::iota(buf.begin(), buf.end(), 0.9999);
+
+  if (dash::myid() == 0) {
+    auto copy_begin_it = a.begin() + copy_dest_begin_idx;
+    // copy local buffer to global array
+    auto copy_end_it   = dash::copy(
+                           buf.data(),
+                           buf.data() + copy_num_elem,
+                           copy_begin_it);
+    EXPECT_EQ_U(copy_end_it, copy_begin_it + copy_num_elem);
+  }
+  a.barrier();
+
+  DASH_LOG_DEBUG("ViewTest.ArrayCyclicPatternCopyLocalToGlobal",
+                 "array:", range_str(a));
+
+  auto eq_pred =
+    [](float el_a,
+       float el_b) {
+      return static_cast<int>(el_a * 1000000) ==
+             static_cast<int>(el_b * 1000000);
+    };
+
+  // Elements in front of copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin(),
+      a.begin() + copy_dest_begin_idx,
+      a_pre.begin(),
+      eq_pred));
+  // Elements in copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin() + copy_dest_begin_idx,
+      a.begin() + copy_dest_end_idx,
+      buf.begin(),
+      eq_pred));
+  // Elements after copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin() + copy_dest_end_idx,
+      a.end(),
+      a_pre.begin() + copy_dest_end_idx,
+      eq_pred));
+}
+
+TEST_F(ViewTest, ArrayBlockCyclicPatternCopyLocalToGlobal)
+{
+  int elem_per_unit    = 7;
+  int elem_additional  = 2;
+  int array_size       = dash::size() * elem_per_unit +
+                          std::min<int>(elem_additional, dash::size());
+  int num_local_elem   = elem_per_unit +
+                         ( dash::myid() < elem_additional
+                         ? 1
+                         : 0 );
+
+  dash::Array<float> a(array_size, dash::BLOCKCYCLIC(3));
+  dash::test::initialize_array(a);
+
+  dash::Array<float> a_pre(array_size, dash::BLOCKCYCLIC(3));
+  dash::test::initialize_array(a_pre);
+
+  auto copy_num_elem       = a.size() / 2;
+  auto copy_dest_begin_idx = a.size() / 4;
+  auto copy_dest_end_idx   = copy_dest_begin_idx + copy_num_elem;
+
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                 "array:", range_str(a));
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                 "copy", copy_num_elem,
+                 "[", copy_dest_begin_idx, "...", copy_dest_end_idx, "]");
+
+  std::vector<float> buf(copy_num_elem);
+  std::iota(buf.begin(), buf.end(), 0.9999);
+
+  a.barrier();
+
+  if (dash::myid() == 0) {
+    auto copy_begin_it   = a.begin() + copy_dest_begin_idx;
+    auto copy_end_it_exp = copy_begin_it + copy_num_elem;
+    auto dest_range      = dash::make_range(copy_begin_it,
+                                            copy_end_it_exp);
+
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                       copy_begin_it);
+    DASH_LOG_DEBUG_VAR("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                       copy_end_it_exp);
+    auto dest_blocks     = dash::blocks(dest_range);
+    for (const auto & block : dest_blocks) {
+      DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                     "copy dest block:", range_str(block));
+    }
+
+    // copy local buffer to global array
+    auto copy_end_it     = dash::copy(
+                             buf.data(),
+                             buf.data() + copy_num_elem,
+                             copy_begin_it);
+    EXPECT_EQ_U(copy_end_it_exp, copy_end_it);
+  }
+  a.barrier();
+
+  DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternCopyLocalToGlobal",
+                 "array:", range_str(a));
+
+  auto eq_pred =
+    [](float el_a,
+       float el_b) {
+      return static_cast<int>(el_a * 1000000) ==
+             static_cast<int>(el_b * 1000000);
+    };
+
+  // Elements in front of copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin(),
+      a.begin() + copy_dest_begin_idx,
+      a_pre.begin(),
+      eq_pred));
+  // Elements in copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin() + copy_dest_begin_idx,
+      a.begin() + copy_dest_end_idx,
+      buf.begin(),
+      eq_pred));
+  // Elements after copied range:
+  EXPECT_TRUE_U(
+    std::equal(
+      a.begin() + copy_dest_end_idx,
+      a.end(),
+      a_pre.begin() + copy_dest_end_idx,
+      eq_pred));
+}
+
 TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
 {
   int block_size       = 5;
@@ -565,7 +766,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternLocalBlocks)
     int  l_b_idx;
     int  l_idx;
 
-    auto blocks_view   = dash::blocks(a);
+    auto blocks_view = dash::blocks(a);
     if (dash::myid() == 0) {
       for (auto block : blocks_view) {
         DASH_LOG_DEBUG("ViewTest.ArrayBlockCyclicPatternLocalBlocks", "----",
@@ -1066,7 +1267,6 @@ TEST_F(ViewTest, LocalBlocksView1Dim)
     std::vector<index_t> block_indices(block_index.begin(),
                                        block_index.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_indices);
-  //DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block);
 
     std::vector<value_t> block_values(block.begin(), block.end());
     DASH_LOG_DEBUG_VAR("ViewTest.LocalBlocksView1Dim", block_values);

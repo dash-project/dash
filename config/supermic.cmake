@@ -6,7 +6,7 @@
 #   export CC=`which mpiicc`
 #   export CXX=`which mpiicc`
 #
-set(ENV{CXX} mpiicc)
+set(ENV{CXX} mpiicpc)
 set(ENV{CC} mpiicc)
 
 set(DASH_ENV_HOST_SYSTEM_ID "supermic" CACHE STRING
@@ -21,11 +21,13 @@ set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopenmp -mmic -mkl")
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -mt_mpi")
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopt-streaming-stores always")
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopt-prefetch-distance=64,8")
+set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -Wl,-rpath,$ENV{MIC_LD_LIBRARY_PATH}")
 
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -qopenmp -mmic -mkl")
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -mt_mpi")
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -qopt-streaming-stores always")
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -qopt-prefetch-distance=64,8")
+set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -Wl,-rpath,$ENV{MIC_LD_LIBRARY_PATH}")
 
 set(MKLROOT $ENV{MKLROOT})
 

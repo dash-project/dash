@@ -6,38 +6,40 @@
 
 #include <array>
 
+#ifndef DOXYGEN
 
 namespace dash {
 
-// N-dimensional index range
+/**
+ * Multidimensional index range.
+ */
 template <
   dim_t    NDim,
   typename IndexType >
-class IndexRange
-{
+class IndexRange {
   typedef IndexRange<NDim, IndexType> self_t;
 
   // One-dimensional index range in every dimension:
   std::array< IndexRange<1, IndexType>, NDim > _ranges;
 
-public:
+ public:
   template <dim_t SDim>
   constexpr self_t sub(IndexType first, IndexType last) const {
     return self_t(*this); // _ranges[SDim].sub(first, last)
   }
 };
 
-// Specialization for one-dimensional index range
-template <
-  typename IndexType >
-class IndexRange<1, IndexType>
-{
+/**
+ * Specialization for one-dimensional index range
+ */
+template <typename IndexType>
+class IndexRange<1, IndexType> {
   typedef IndexRange<1, IndexType> self_t;
 
   IndexType _first;
   IndexType _last;
 
-public:
+ public:
   constexpr IndexRange(IndexType first, IndexType last)
     : _first(first)
     , _last(last)
@@ -51,5 +53,7 @@ public:
 };
 
 } // namespace dash
+
+#endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_RANGE_H__INCLUDED

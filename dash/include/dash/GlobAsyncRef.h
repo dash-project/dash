@@ -62,18 +62,22 @@ class GlobAsyncRef
   };
 
 public:
-  using value_type          = T;
-  using const_value_type    = typename std::add_const<T>::type;
-  using nonconst_value_type = typename std::remove_const<T>::type;
-  using self_t              = GlobAsyncRef<T>;
-  using const_type          = GlobAsyncRef<const_value_type>;
-  using nonconst_type       = GlobAsyncRef<nonconst_value_type>;
+  typedef GlobAsyncRef<T>
+    self_t;
+
+  typedef T value_type;
+
+  typedef typename std::remove_const<T>::type
+    nonconst_value_type;
+
+  typedef typename std::add_const<T>::type
+    const_value_type;
 
 private:
   /// Pointer to referenced element in global memory
   dart_gptr_t  _gptr;
   /// Temporary value required for non-blocking put
-  mutable nonconst_value_type _value;
+  nonconst_value_type _value;
   /// DART handle for asynchronous transfers
   mutable std::
       unique_ptr<std::remove_pointer<dart_handle_t>::type, ReleaseHandle>
@@ -212,8 +216,6 @@ public:
    * Swap values with synchronous reads and asynchronous writes.
    */
   friend void swap(self_t & a, self_t & b) {
-    static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot swap GlobAsyncRef<const T>!");
     nonconst_value_type temp = a->get();
     a = b->get();
     b = temp;
@@ -256,9 +258,7 @@ public:
    * This operation is guaranteed to be complete after a call to \ref flush
    * and the pointer \c tptr should not be reused before completion.
    */
-  void set(const_value_type* tptr) const {
-    static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot modify value through GlobAsyncRef<const T>!");
+  void set(const_value_type* tptr) {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", *tptr);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
     dash::internal::put(_gptr, tptr, 1);
@@ -270,9 +270,7 @@ public:
    * This operation is guaranteed to be complete after a call to \ref flush,
    * but the value referenced by \c new_value can be re-used immediately.
    */
-  void set(const_value_type& new_value) const {
-    static_assert(std::is_same<value_type, nonconst_value_type>::value,
-                  "Cannot modify value through GlobAsyncRef<const T>!");
+  void set(const_value_type& new_value) {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.set()", _gptr);
 
@@ -289,8 +287,8 @@ public:
    * This operation is guaranteed to be complete after a call to \ref flush,
    * but the value referenced by \c new_value can be re-used immediately.
    */
-  const self_t &
-  operator=(const_value_type & new_value) const
+  self_t &
+  operator=(const_value_type & new_value)
   {
     set(new_value);
     return *this;
@@ -315,7 +313,7 @@ public:
   /**
    * Flush all pending asynchronous operations on this asynchronous reference.
    */
-  void flush() const
+  void flush()
   {
     DASH_ASSERT_RETURNS(
       dart_flush(_gptr),

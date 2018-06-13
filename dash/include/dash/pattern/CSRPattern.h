@@ -586,6 +586,7 @@ public:
   {
     return std::array<SizeType, 1> {{ _local_sizes[_team->myid()] }};
   }
+
   /**
    * The actual number of elements in this pattern that are local to the
    * given unit, by dimension.
@@ -886,6 +887,14 @@ public:
   }
 
   /**
+   * Cartesian arrangement of local pattern blocks.
+   */
+  constexpr const BlockSpec_t local_blockspec() const noexcept
+  {
+    return BlockSpec_t { 1 };
+  }
+
+  /**
    * Index of block at given global coordinates.
    *
    * \see  DashPatternConcept
@@ -895,6 +904,25 @@ public:
     const std::array<index_type, NumDimensions> & g_coords) const
   {
     return static_cast<index_type>(unit_at(g_coords[0]));
+  }
+
+  /**
+   * Unit and local block index at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    local_index_t l_pos;
+
+    auto unit_id      = unit_at(g_coords[0]);
+    // auto block_size   = _local_sizes[unit_id];
+    // index_type offset = _block_offsets[unit_id];
+    l_pos.unit        = _teamspec.at({ unit_id });
+    l_pos.index       = 0;
+    return l_pos;
   }
 
   /**

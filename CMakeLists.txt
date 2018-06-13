@@ -4,8 +4,8 @@ cmake_minimum_required (VERSION 2.8)
 
 # required for Ninja builds
 if(POLICY CMP0058)
-  cmake_policy(SET CMP0058 NEW)
-endif()
+  cmake_policy(SET CMP0058 OLD)
+endif(POLICY CMP0058)
 
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set(DEFAULT_COMPTIME_RED on)
@@ -14,6 +14,9 @@ else()
 endif()
 
 ## Build options
+set(DASH_CXX_STANDARD "14"
+    CACHE STRING "C++ standard version for DASH")
+
 option(BUILD_TESTS
        "Whether tests should be built" on)
 option(INSTALL_TESTS
@@ -105,14 +108,6 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/StdLib.cmake)
 
-if (ENABLE_THREADSUPPORT)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
-endif()
-
-if (ENABLE_COMPTIME_RED)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
-endif()
-
 # Load build modules to locate libraries after environment setup
 # has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
@@ -201,6 +196,14 @@ set(DASH_DART_BASE_INCLUDE_DIR
 ## Set compiler flags (depend on CMake options)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 
+if (ENABLE_THREADSUPPORT)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/Threading.cmake)
+endif()
+
+if (ENABLE_COMPTIME_RED)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+endif()
+
 ## Build results output directories (/bin, /lib, /doc)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -228,10 +231,19 @@ message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
 message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
         ${CMAKE_BUILD_TYPE})
+message(EMPH "C   compiler:             (CMAKE_C_COMPILER)               "
+        ${CMAKE_C_COMPILER_ID})
+message(EMPH "C++ compiler:             (CMAKE_CXX_COMPILER)             "
+        ${CMAKE_CXX_COMPILER_ID})
+message(EMPH "C++ standard version:     (DASH_CXX_STANDARD)              "
+        ${CMAKE_CXX_STANDARD})
 message(EMPH "Generic build:            (BUILD_GENERIC)                  "
         ${BUILD_GENERIC})
 message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
         ${BUILD_SHARED_LIBS})
+if (MPI_FOUND)
+  message(EMPH "MPI implementation:       " ${MPI_IMPL_ID})
+endif()
 
 message(INFO "Build tests:              (BUILD_TESTS)                    "
         ${BUILD_TESTS})
@@ -287,11 +299,14 @@ message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
+
+
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
 if (DEFINED MPI_IMPL_ID)
   message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
 endif()
+
 
 if (ENABLE_PAPI)
   if (PAPI_FOUND)

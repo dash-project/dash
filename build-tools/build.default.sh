@@ -1,28 +1,6 @@
 #!/bin/sh
 
-BUILD_DIR=./build.cov
-
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
-
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To run code coverage measurement, run make coverage in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
+if ! [ -z ${SOURCING+x} ]; then
 
 # To specify a build configuration for a specific system, use:
 #
@@ -51,14 +29,20 @@ fi
 # For likwid support, ensure that the likwid development headers are
 # installed.
 
-# Configure with default release build settings:
-mkdir -p $BUILD_DIR
-rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
+# relative to $ROOTDIR of dash
+BUILD_DIR=build
+
+# custom cmake command
+CMAKE_COMMAND="cmake"
+
+# default release build settings:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
+                        -DBUILD_SHARED_LIBS=OFF \
+                        -DBUILD_GENERIC=OFF \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
-                        -DENABLE_THREADSUPPORT=OFF \
+                        -DENABLE_THREADSUPPORT=ON \
                         -DENABLE_DEV_COMPILER_WARNINGS=OFF \
                         -DENABLE_EXT_COMPILER_WARNINGS=OFF \
                         -DENABLE_LT_OPTIMIZATION=OFF \
@@ -69,7 +53,7 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
-                        -DENABLE_LOGGING=ON \
+                        -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \
                         -DENABLE_DART_LOGGING=OFF \
                         \
@@ -84,13 +68,21 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=OFF \
-                        -DBUILD_COVERAGE_TESTS=ON \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_TESTS=ON \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
-                        ../ && \
- await_confirm && \
- make -j 4) && \
-exit_message
+                        \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+# the make command used
+MAKE_COMMAND="make -j 4"
+
+else
+
+  $(dirname $0)/build.sh $@
+
+fi
+

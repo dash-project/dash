@@ -72,6 +72,8 @@ local_index_range(
 /**
  * Resolves the local index range between global iterators.
  *
+ * Precondition: \c GlobInputIter is a view iterator.
+ *
  * \b Example:
  *
  *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
@@ -94,10 +96,14 @@ local_index_range(
  * \ingroup     DashAlgorithms
  */
 template<class GlobInputIter>
+#ifndef DOXYGEN
 typename std::enable_if<
   !GlobInputIter::has_view::value,
   LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
 >::type
+#else
+  LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
+#endif
 local_index_range(
   /// Iterator to the initial position in the global sequence
   const GlobInputIter & first,

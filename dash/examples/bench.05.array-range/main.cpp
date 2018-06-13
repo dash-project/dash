@@ -20,9 +20,7 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
-#ifndef TYPE
-#define TYPE int
-#endif
+typedef int value_t;
 
 typedef dash::TilePattern<
   1,
@@ -31,12 +29,12 @@ typedef dash::TilePattern<
 > TilePattern_t;
 
 typedef dash::Array<
-  TYPE,
+  value_t,
   int,
   TilePattern_t
 > ArrayTiledDist_t;
 
-typedef dash::Array<TYPE>
+typedef dash::Array<value_t>
 ArrayBlockedDist_t;
 
 template<typename Iter>
@@ -74,15 +72,15 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-  tests.push_back({4          , 1000000});
-  tests.push_back({16         , 100000});
-  tests.push_back({64         , 100000});
-  tests.push_back({256        , 10000});
-  tests.push_back({1024       , 10000});
-  tests.push_back({4096       , 1000});
-  tests.push_back({4*4096     , 5000});
+  tests.push_back({4          , 10000000});
+  tests.push_back({16         , 1000000});
+  tests.push_back({64         , 1000000});
+  tests.push_back({256        , 100000});
+  tests.push_back({1024       , 100000});
+  tests.push_back({4096       , 10000});
+  tests.push_back({4*4096     , 2500});
   tests.push_back({16*4096    , 1000});
-  tests.push_back({64*4096    , 500});
+  tests.push_back({64*4096    , 250});
 
   for (auto test: tests) {
     perform_test(test.first, test.second);
@@ -202,12 +200,12 @@ double test_view_gups(
 
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto lidx = 0; lidx < a.lsize(); ++lidx) {
-      auto lrange       = dash::index(
-                            dash::local(
-                              dash::sub(
+      auto lrange       = a | dash::sub(
                                 lbegin_gidx,
-                                lbegin_gidx + lidx,
-                                a) ) );
+                                lbegin_gidx + lidx)
+                            | dash::local()
+                            | dash::index();
+
       int lrange_begin = *dash::begin(lrange);
       int lrange_end   = *dash::end(lrange);
   
@@ -245,6 +243,7 @@ double test_algo_gups(
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
   auto myid     = pattern.team().myid();
+
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto lidx = 1; lidx < a.lsize(); ++lidx) {
       auto lrange       = dash::local_index_range(

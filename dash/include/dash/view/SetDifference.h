@@ -1,5 +1,5 @@
-#ifndef DASH__VIEW__SET_INTERSECT_H__INCLUDED
-#define DASH__VIEW__SET_INTERSECT_H__INCLUDED
+#ifndef DASH__VIEW__SET_DIFFERENCE_H__INCLUDED
+#define DASH__VIEW__SET_DIFFERENCE_H__INCLUDED
 
 #include <dash/Types.h>
 #include <dash/Range.h>
@@ -16,7 +16,7 @@ template <
   class ViewTypeA,
   class ViewTypeB >
 constexpr auto
-intersect(
+difference(
   const ViewTypeA & va,
   const ViewTypeB & vb)
   -> decltype(dash::sub(0, 0, va))
@@ -40,4 +40,4 @@ intersect(
 
 } // namespace dash
 
-#endif // DASH__VIEW__SET_INTERSECT_H__INCLUDED
+#endif // DASH__VIEW__SET_DIFFERENCE_H__INCLUDED

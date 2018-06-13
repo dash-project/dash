@@ -5,6 +5,8 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
+set(CMAKE_CXX_STANDARD ${DASH_CXX_STANDARD})
+
 
 find_package(OpenMP)
 
@@ -82,6 +84,8 @@ if (ENABLE_DEV_COMPILER_WARNINGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wunused -Wtrigraphs")
   set (DASH_DEVELOPER_CCXX_FLAGS
        "${DASH_DEVELOPER_CCXX_FLAGS} -Wdeprecated -Wno-float-equal")
+  set (DASH_DEVELOPER_CCXX_FLAGS
+       "${DASH_DEVELOPER_CCXX_FLAGS} -ftemplate-backtrace-limit=0")
 
   # C++-only warning flags
 
@@ -167,6 +171,11 @@ endif()
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
+  set (CXX_GDB_FLAG "-g"
+       CACHE STRING "C++ compiler (clang++) debug symbols flag")
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
 
@@ -176,9 +185,14 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
+  set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
+       CACHE STRING "C++ compiler GDB debug symbols flag")
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_GDB_FLAG "-ggdb3 -rdynamic")
+
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
@@ -189,8 +203,12 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
+  set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
+  set (CC_OMP_FLAG  ${OpenMP_CC_FLAGS})
+
   set (CXX_STD_FLAG "-std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
+
   if(ENABLE_LT_OPTIMIZATION)
     set (CXX_LTO_FLAG "-ipo")
   endif()
@@ -198,16 +216,15 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
     set (CC_REPORT_FLAG "-qopt-report=4 -qopt-report-phase ipo")
   endif()
 
-
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
     message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
-  message(FATAL_ERROR,
-          "Cray compiler does not support C++11 features and is only "
-          "eligible for building DART.")
+  message(WARNING,
+    "Cray compiler does not support C++11/14 features and is "
+    "only eligible for building DART.")
 endif()
 
 set (CC_GDB_FLAG "-g"

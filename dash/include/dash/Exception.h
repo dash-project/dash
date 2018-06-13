@@ -1,6 +1,9 @@
 #ifndef DASH__EXCEPTION_H_
 #define DASH__EXCEPTION_H_
 
+#include <dash/internal/Macro.h>
+#include <dash/internal/Logging.h>
+
 #include <dash/exception/RuntimeError.h>
 #include <dash/exception/InvalidArgument.h>
 #include <dash/exception/OutOfRange.h>
@@ -8,10 +11,11 @@
 #include <dash/exception/AssertionFailed.h>
 #include <dash/exception/StackTrace.h>
 
-#include <dash/internal/Macro.h>
-#include <dash/internal/Logging.h>
+#include <dash/Init.h>
 
 #include <sstream>
+#include <iostream>
+
 
 #define DASH_STACK_TRACE() do { \
     dash__print_stacktrace(); \
@@ -22,6 +26,7 @@
     os << "[ Unit " << dash::myid() << " ] "; \
     os << msg_stream; \
     DASH_LOG_ERROR(dash__toxstr(excep_type), os.str()); \
+    DASH_STACK_TRACE(); \
     throw(excep_type(os.str())); \
   } while(0)
 

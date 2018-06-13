@@ -1,6 +1,11 @@
 #ifndef DASH__VIEW__INDEX_SET_H__INCLUDED
 #define DASH__VIEW__INDEX_SET_H__INCLUDED
 
+#include <dash/Iterator.h>
+#include <dash/Range.h>
+#include <dash/Meta.h>
+
+#include <dash/view/Utility.h>
 #include <dash/view/ViewTraits.h>
 #include <dash/view/Origin.h>
 #include <dash/view/Domain.h>
@@ -11,8 +16,6 @@
 
 #include <dash/pattern/PatternProperties.h>
 
-#include <dash/Iterator.h>
-
 #include <dash/util/FunctionalExpr.h>
 #include <dash/util/ArrayExpr.h>
 #include <dash/util/IndexSequence.h>
@@ -21,6 +24,85 @@
 
 #include <memory>
 
+/**
+ * \defgroup  DashIndexSetConcept  Index Set Concept
+ *
+ * \ingroup DashNDimConcepts
+ * \{
+ * \par Description
+ *
+ * An \c IndexSet specifies a injective, non-surjective map from a
+ * random-accessible sequence \f$ I = { i : (0...n) } \f$ to elements in
+ * another index set \$ F \$ (\em family or \em image set).
+ * More general, an index set can be considered an enumeration of elements
+ * in a domain.
+ * Index sets do not provide the inverse mapping, from integer to element.
+ *
+ * In the context of views and ranges, the function \c dash::index returns
+ * the index set of a view expression.
+ * Index sets establish a uniform, canonical interface to domains that do
+ * not exhibit range semantics such as non-contiguous, multi-dimensional
+ * and unordered element spaces.
+ *
+ * \see DashDimensionalConcept
+ * \see DashRangeConcept
+ * \see DashIteratorConcept
+ * \see DashViewConcept
+ * \see \c dash::view_traits
+ *
+ *
+ * \par Terminology
+ *
+ *
+ * \par Types
+ *
+ * \code
+ *    template <
+ *      class IndexSetT,
+ *      class DomainT,
+ *      dim_t NDim = view_traits<DomainT>::rank::value >
+ *    class IndexSetBase;
+ * \endcode
+ *
+ * Generic adapter base class with default implementation for models of the
+ * \c IndexSet concept.
+ *
+ * Type                | Synopsis
+ * ------------------- | --------------------------------------------------
+ * <tt>IndexSetT</tt>  | Specific index set, CRTP type
+ * <tt>DomainT</tt>    | Indexed domain set, model of \c View concept
+ * <tt>NDim</tt>       | Number of dimensions in the index set
+ *
+ *
+ * \par Expressions
+ *
+ * For a index domain \f$ Id \f$, \f$ ia, ib \in Id \f$ mapped by an index
+ * set \f$ I \f$, the following operations and expressions are defined:
+ *
+ * Expression              | Returns     | Synopsis
+ * ----------------------- | ----------- | -----------------------------
+ * <tt>sub(ia,ib, Id)</tt> | <tt>I</tt>  | \f$ I :=  \f$
+ *
+ *
+ * \par Examples
+ *
+ * \code
+ * // containers are view expressions:
+ * dash::Array<int> array;
+ *
+ * a_idx_global  = dash::index(array);
+ * // (0, 1, ..., n)  -> (0, 1, ..., n]
+ *
+ * a_idx_sub     = dash::sub({4, 14}, array);
+ * // (0, 1, ..., 9)  -> (4, 5, ..., 14]
+ *
+ * a_idx_sub_loc = dash::local(a_idx_sub);
+ * // assuming array elements in global index range (7, 13] are not local:
+ * // (0, 1, 2, 3, 4) -> (4, 5, 6, 13, 14)
+ * \endcode
+ *
+ * \}
+ */
 
 #ifndef DOXYGEN
 namespace dash {
@@ -54,7 +136,7 @@ using global_index_t
 
 // Forward-declarations
 
-template <class IndexSetType, class DomainType, std::size_t NDim>
+template <class IndexSetType, class DomainType, dim_t NDim>
 class IndexSetBase;
 
 template <class DomainType>
@@ -66,9 +148,14 @@ class IndexSetLocal;
 template <class DomainType>
 class IndexSetGlobal;
 
-template <class DomainType, std::size_t SubDim>
+template <class DomainType, dim_t SubDim>
 class IndexSetSub;
 
+template <class DomainType>
+class IndexSetBlocks;
+
+template <class DomainType>
+class IndexSetBlock;
 
 
 // -----------------------------------------------------------------------
@@ -82,9 +169,9 @@ constexpr auto
 index(DomainType && v)
   -> typename std::enable_if<
        dash::view_traits<DomainDecayType>::is_view::value,
-       decltype(std::forward<DomainType>(v).index_set())
+       typename std::decay<decltype(v.index_set())>::type
      >::type {
-  return std::forward<DomainType>(v).index_set();
+  return std::move(v).index_set();
 }
 
 template <
@@ -97,6 +184,30 @@ index(const DomainType & v)
        decltype(v.index_set())
      >::type {
   return v.index_set();
+}
+
+template <
+  MemArrange  MemOrder = dash::ROW_MAJOR,
+  class       ViewType,
+  typename    CoordT,
+  dim_t       NDim     = dash::view_traits<
+                           typename dash::view_traits<ViewType>::origin_type
+                         >::rank::value,
+  class       IndexT   = typename dash::view_traits<ViewType>::index_type >
+auto linearize(
+         const ViewType                          & view,
+         const std::array<
+                 CoordT,
+                 static_cast<std::size_t>(NDim)> & coords)
+  -> IndexT {
+  return dash::CartesianIndexSpace< NDim, MemOrder, IndexT >(
+           view.extents()).at(
+             // coords:
+             dash::array_value_cast<IndexT>(coords)
+             // offsets:
+         //  ,
+         //  dash::array_value_cast<IndexT>(view.offsets())
+           );
 }
 
 
@@ -122,8 +233,8 @@ class IndexSetIterator
         BaseStride >,
       index_type, int, std::nullptr_t, index_type >    base_t;
  private:
-  const IndexSetType * const _index_set;
-  index_type                 _stride                 = BaseStride;
+  const IndexSetType * _index_set;
+  index_type           _stride                       = BaseStride;
  public:
   constexpr IndexSetIterator()                       = delete;
   constexpr IndexSetIterator(self_t &&)              = default;
@@ -164,12 +275,26 @@ template <
   class ContainerType,
   class ContainerDecayType = typename std::decay<ContainerType>::type >
 constexpr auto
+index(ContainerType && c)
+-> typename std::enable_if <
+      dash::view_traits<ContainerDecayType>::is_origin::value ||
+     !dash::view_traits<ContainerDecayType>::is_view::value,
+     IndexSetIdentity<ContainerDecayType>
+   >::type {
+  return IndexSetIdentity<ContainerDecayType>(
+           std::forward<ContainerType>(c));
+}
+
+template <
+  class ContainerType >
+constexpr auto
 index(const ContainerType & c)
 -> typename std::enable_if <
-     !dash::view_traits<ContainerDecayType>::is_view::value,
-     const IndexSetIdentity<ContainerDecayType>
+      dash::view_traits<ContainerType>::is_origin::value ||
+     !dash::view_traits<ContainerType>::is_view::value,
+     IndexSetIdentity<ContainerType>
    >::type {
-  return IndexSetIdentity<ContainerDecayType>(c);
+  return IndexSetIdentity<ContainerType>(c);
 }
 
 // -----------------------------------------------------------------------
@@ -191,26 +316,22 @@ index(const ContainerType & c)
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim >
+  dim_t NDim >
 constexpr auto
 local(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
     -> decltype(index_set.local()) {
-//  -> typename view_traits<IndexSetBase<DomainType>>::global_type & {
-//  -> const IndexSetLocal<DomainType> & {
   return index_set.local();
 }
 
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim >
+  dim_t NDim >
 constexpr auto
 global(
   const IndexSetBase<IndexSetType, DomainType, NDim> & index_set)
-     -> decltype(index_set.global()) {
-//   -> typename view_traits<IndexSetSub<DomainType>>::global_type & {
-//   -> const IndexSetGlobal<DomainType> & {
+    -> decltype(index_set.global()) {
   return index_set.global();
 }
 
@@ -220,21 +341,26 @@ namespace detail {
 template <class DomainT>
 struct index_set_domain_bind_t {
   typedef typename
-            std::conditional< dash::is_view<DomainT>::value,
-                              DomainT,
-                              const DomainT & >::type
-    type;
+            std::conditional<
+              dash::view_traits<
+                typename std::decay<DomainT>::type
+              >::is_origin::value &&
+              !std::is_copy_constructible<DomainT>::value,
+              const DomainT &,
+              DomainT
+            >::type
+          type;
 };
 
 } // namespace detail
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <
   class       IndexSetType,
   class       DomainType,
-  std::size_t NDim = DomainType::rank::value >
+  dim_t NDim = DomainType::rank::value >
 class IndexSetBase
 {
   typedef IndexSetBase<IndexSetType, DomainType, NDim> self_t;
@@ -246,15 +372,13 @@ class IndexSetBase
     view_origin_type;
   typedef DomainValueT
     view_domain_type;
-  typedef typename DomainValueT::local_type
+  typedef typename dash::view_traits<DomainValueT>::local_type
     view_local_type;
   typedef typename dash::view_traits<DomainValueT>::global_type
     view_global_type;
 
   typedef typename view_traits<DomainValueT>::index_set_type
     domain_type;
-  typedef typename view_traits<view_origin_type>::pattern_type
-    pattern_type;
   typedef typename dash::view_traits<view_local_type>::index_set_type
     local_type;
   typedef typename dash::view_traits<view_global_type>::index_set_type
@@ -271,17 +395,20 @@ class IndexSetBase
   typedef index_type
     value_type;
 
-  typedef typename detail::index_set_domain_bind_t<DomainType>::type
+  typedef typename detail::index_set_domain_bind_t<view_domain_type>::type
     domain_member_type;
 
-  typedef std::integral_constant<std::size_t, NDim>
+  typedef std::integral_constant<dim_t, NDim>
     rank;
 
-  static constexpr std::size_t ndim() { return NDim; }
+  typedef typename view_origin_type::pattern_type
+    pattern_type;
+
+  static constexpr dim_t ndim() { return NDim; }
 
  protected:
-  domain_member_type      _domain;
-  const pattern_type   * _pattern;
+  domain_member_type   _domain;
+  const pattern_type * _pattern = nullptr;
 
   constexpr const IndexSetType & derived() const {
     return static_cast<const IndexSetType &>(*this);
@@ -289,12 +416,12 @@ class IndexSetBase
   
   constexpr explicit IndexSetBase(const DomainType & domain)
   : _domain(domain)
-  , _pattern(&dash::origin(domain).pattern())
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   constexpr explicit IndexSetBase(DomainType && domain)
-  : _domain(std::forward<DomainType>(domain))
-  , _pattern(&dash::origin(view_domain()).pattern())
+  : _domain(std::move(domain))
+  , _pattern(&dash::origin(_domain).pattern())
   { }
 
   typedef struct {
@@ -310,6 +437,7 @@ class IndexSetBase
              std::min<index_type>(a.end,   b.end)
            };
   }
+
   static constexpr index_type index_range_size(
     const index_range_t & irng) noexcept {
     return irng.end - irng.begin;
@@ -320,8 +448,8 @@ class IndexSetBase
     const PatternT_     & pat,
     const index_range_t & grng) noexcept {
     return index_range_t {
-             pat.local_coords({{ grng.begin }})[0],
-             pat.local_coords({{ grng.end }})[0]
+             pat.local_coords({{ static_cast<int>(grng.begin) }})[0],
+             pat.local_coords({{ static_cast<int>(grng.end)   }})[0]
            };
   }
 
@@ -342,6 +470,10 @@ class IndexSetBase
   constexpr IndexSetBase(const self_t &) = default;
   self_t & operator=(self_t &&)          = default;
   self_t & operator=(const self_t &)     = default;
+
+  constexpr const pattern_type & pattern() const {
+    return *_pattern;
+  }
   
   constexpr const DomainType & view_domain() const & {
     return _domain;
@@ -352,15 +484,13 @@ class IndexSetBase
   }
 
   constexpr auto domain() const
-//  -> decltype(dash::index(
-//                std::declval<const view_domain_type &>()
-//              )) {
-    -> typename view_traits<view_domain_type>::index_set_type {
-    return dash::index(this->view_domain());
-  }
-
-  constexpr const pattern_type & pattern() const {
-    return *_pattern;
+#if DASH_CXX_VERSION < 14
+    -> decltype(dash::index(
+                  std::declval<const view_domain_type &>() ))
+//  -> typename view_traits<view_domain_type>::index_set_type {
+#endif
+  {
+    return dash::index(_domain);
   }
 
   constexpr const local_type local() const {
@@ -375,9 +505,20 @@ class IndexSetBase
     return dash::view_traits<DomainValueT>::is_local::value;
   }
 
+  constexpr bool is_sub() const noexcept {
+    // TODO: must not be defined depending on size as size() might
+    //       use is_sub()  itself
+    return (
+      this->is_local()
+      ? derived().size() < this->pattern().local_size()
+      : derived().size() < this->pattern().size()
+    ) || dash::domain(derived()).is_sub();
+  }
+
   constexpr bool is_strided() const noexcept {
     return (
-      ( this->pattern().blockspec().size() > this->pattern().team().size() )
+      ( this->pattern().blockspec().size() >
+          this->pattern().team().size() )
       ||
       ( this->pattern().ndim() > 1 &&
         this->domain().extent(1) < ( this->domain().is_local()
@@ -386,39 +527,60 @@ class IndexSetBase
     );
   }
 
-  // ---- extents ---------------------------------------------------------
+  constexpr bool is_shifted() const noexcept {
+    typedef typename dash::pattern_mapping_traits<pattern_type>::type
+            pat_mapping_traits;
+    return pat_mapping_traits::shifted ||
+           pat_mapping_traits::diagonal;
+  }
+
+  // ---- extents --------------------------------------------------------
 
   constexpr std::array<size_type, NDim>
   extents() const {
     return pattern().extents();
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr size_type extent() const {
     return derived().extents()[ShapeDim];
   }
 
-  constexpr size_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(dim_t shape_dim) const {
     return derived().extents()[shape_dim];
   }
 
-  // ---- offsets ---------------------------------------------------------
+  // ---- offsets --------------------------------------------------------
 
   constexpr std::array<index_type, NDim>
   offsets() const {
     return std::array<index_type, NDim> { };
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type offset() const {
     return derived().offsets()[ShapeDim];
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return derived().offsets()[shape_dim];
   }
 
-  // ---- access ----------------------------------------------------------
+  // ---- size -----------------------------------------------------------
+
+  constexpr bool empty() const noexcept {
+    return derived().size() == 0;
+  }
+
+  constexpr bool operator!() const noexcept {
+    return derived().empty();
+  }
+
+  constexpr explicit operator bool() const noexcept {
+    return !derived().empty();
+  }
+
+  // ---- access ---------------------------------------------------------
 
   constexpr index_type rel(index_type image_index) const {
     return image_index;
@@ -466,6 +628,7 @@ class IndexSetBase
     );
   }
 };
+
 
 // -----------------------------------------------------------------------
 // IndexSetIdentity
@@ -518,7 +681,7 @@ global(const IndexSetIdentity<DomainType> & index_set)
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetIdentity
@@ -539,12 +702,14 @@ class IndexSetIdentity
   self_t & operator=(const self_t &)         = default;
  public:
   typedef typename DomainType::index_type     index_type;
+
  public:
   constexpr explicit IndexSetIdentity(const DomainType & view)
   : base_t(view)
   { }
+
   constexpr explicit IndexSetIdentity(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   { }
 
   constexpr index_type rel(index_type image_index) const {
@@ -584,7 +749,7 @@ class IndexSetIdentity
 
 template <
   class       DomainType,
-  std::size_t SubDim >
+  dim_t SubDim >
 constexpr auto
 local(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.local()) {
@@ -593,7 +758,7 @@ local(const IndexSetSub<DomainType, SubDim> & index_set)
 
 template <
   class       DomainType,
-  std::size_t SubDim >
+  dim_t SubDim >
 constexpr auto
 global(const IndexSetSub<DomainType, SubDim> & index_set)
   -> decltype(index_set.global()) {
@@ -601,11 +766,11 @@ global(const IndexSetSub<DomainType, SubDim> & index_set)
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <
   class       DomainType,
-  std::size_t SubDim = 0 >
+  dim_t SubDim = 0 >
 class IndexSetSub
 : public IndexSetBase<
            IndexSetSub<DomainType, SubDim>,
@@ -618,7 +783,6 @@ class IndexSetSub
   typedef typename base_t::size_type                         size_type;
   typedef typename base_t::view_origin_type           view_origin_type;
   typedef typename base_t::view_domain_type           view_domain_type;
-  typedef typename base_t::pattern_type                   pattern_type;
   typedef typename base_t::local_type                       local_type;
   typedef typename base_t::global_type                     global_type;
   typedef typename base_t::iterator                           iterator;
@@ -635,7 +799,7 @@ class IndexSetSub
   index_type _domain_begin_idx;
   index_type _domain_end_idx;
 
-  static constexpr std::size_t NDim = base_t::ndim();
+  static constexpr dim_t NDim = base_t::ndim();
  public:
   /**
    * Constructor, creates index set for given view.
@@ -656,14 +820,21 @@ class IndexSetSub
     DomainType      && view,
     index_type         begin_idx,
     index_type         end_idx)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _domain_begin_idx(begin_idx)
   , _domain_end_idx(end_idx)
   { }
 
+#if 0
+  constexpr bool is_sub() const noexcept {
+    return true; // not necessarily true, sub<0, extent> should return
+                 // false despite of index set type
+  }
+#endif
+
   // ---- extents ---------------------------------------------------------
 
-  template <std::size_t ExtDim>
+  template <dim_t ExtDim>
   constexpr size_type extent() const {
     return ( ExtDim == SubDim
              ? _domain_end_idx - _domain_begin_idx
@@ -671,7 +842,7 @@ class IndexSetSub
            );
   }
 
-  constexpr size_type extent(std::size_t shape_dim) const {
+  constexpr size_type extent(dim_t shape_dim) const {
     return ( shape_dim == SubDim
              ? _domain_end_idx - _domain_begin_idx
              : this->domain().extent(shape_dim)
@@ -686,7 +857,7 @@ class IndexSetSub
 
   // ---- offsets ---------------------------------------------------------
 
-  template <std::size_t ExtDim>
+  template <dim_t ExtDim>
   constexpr index_type offset() const {
     return ( ExtDim == SubDim
              ? _domain_begin_idx
@@ -694,7 +865,7 @@ class IndexSetSub
            );
   }
 
-  constexpr index_type offset(std::size_t shape_dim) const {
+  constexpr index_type offset(dim_t shape_dim) const {
     return ( shape_dim == SubDim
              ? _domain_begin_idx
              : this->domain().offset(shape_dim)
@@ -709,7 +880,7 @@ class IndexSetSub
   
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim = 0) const {
+  constexpr size_type size(dim_t sub_dim = 0) const {
     return extent(sub_dim) *
              (sub_dim + 1 < NDim && NDim > 0
                ? size(sub_dim + 1)
@@ -794,16 +965,22 @@ global(IndexSetLocal<DomainType> && index_set) ->
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetLocal
 : public IndexSetBase<
            IndexSetLocal<DomainType>,
-           DomainType >
+           DomainType
+         >
 {
-  typedef IndexSetLocal<DomainType>                             self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef IndexSetLocal<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType
+          >
+    base_t;
 
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
@@ -813,11 +990,6 @@ class IndexSetLocal
 
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<DomainType>                       global_type;
-//typedef decltype(
-//          dash::global(
-//            dash::index(
-//              std::declval<const typename base_t::view_domain_type &>())
-//          ))                                             global_type;
   typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
@@ -849,9 +1021,24 @@ class IndexSetLocal
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetLocal(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _size(calc_size())
   { }
+
+  constexpr bool is_local() const noexcept {
+    return true;
+  }
+
+  constexpr bool is_strided() const noexcept {
+    return (
+      // Local sub range of one-dimensional range is contiguous:
+      this->ndim() == 1
+      ? base_t::is_strided()
+      : // Elements are contiguous within single block, block view
+        // is not strided:
+        this->domain().is_strided()
+    );
+  }
 
   constexpr const local_type & local() const noexcept {
     return *this;
@@ -883,18 +1070,36 @@ class IndexSetLocal
     return this->pattern().local_extents();
   }
 
-  template <std::size_t ShapeDim>
+  template <dim_t ShapeDim>
   constexpr index_type extent() const noexcept {
     return this->pattern().local_extents()[ShapeDim];
   }
 
-  constexpr index_type extent(std::size_t shape_dim) const noexcept {
+  constexpr index_type extent(dim_t shape_dim) const noexcept {
     return this->pattern().local_extents()[shape_dim];
   }
 
+  // ---- offsets ---------------------------------------------------------
+
+#if TODO
+  constexpr std::array<index_type, NDim>
+  offsets() const {
+    return std::array<index_type, NDim> { };
+  }
+
+  template <dim_t ShapeDim>
+  constexpr index_type offset() const {
+    return derived().offsets()[ShapeDim];
+  }
+
+  constexpr index_type offset(dim_t shape_dim) const {
+    return derived().offsets()[shape_dim];
+  }
+#endif
+
   // ---- size ------------------------------------------------------------
 
-  constexpr size_type size(std::size_t sub_dim) const noexcept {
+  constexpr size_type size(dim_t sub_dim) const noexcept {
     return _size;
   }
 
@@ -908,6 +1113,8 @@ class IndexSetLocal
   constexpr index_type calc_size() const noexcept {
     typedef typename dash::pattern_partitioning_traits<pattern_type>::type
             pat_partitioning_traits;
+    typedef typename dash::pattern_mapping_traits<pattern_type>::type
+            pat_mapping_traits;
 
     static_assert(
         pat_partitioning_traits::rectangular,
@@ -923,74 +1130,102 @@ class IndexSetLocal
              );
     */
     return (
-        !this->is_strided()
-       // blocked (not blockcyclic) distribution: single local
-       // element space with contiguous global index range
-        ? this->index_range_size(
-            this->index_range_intersect(
-              // local range in global index space:
-              { this->pattern().lbegin(),
-                this->pattern().lend() - 1 },
-              // domain range in global index space;
-              { this->domain().first(),
-                this->domain().last() }
-            )) + 1
-       // blockcyclic distribution: local element space chunked
-       // in global index range
-        : this->index_range_size(
-            this->index_range_g2l(
-              this->pattern(),
-              // intersection of local range and domain range:
-              this->index_range_intersect(
-                // local range in global index space:
-                {
-                  this->pattern().lbegin(),
-                  ( this->pattern().lend() < this->domain().last()
-                    // domain range contains end of local range:
-                    ? this->pattern().lend() - 1
-                    // domain range ends in local range, determine last
-                    // local index contained in domain from last local
-                    // block contained in domain range:
-                    //
-                    // gbi:     0    1     2    3     4     5
-                    // lbi:     0    0     1    1     2     2
-                    //          :                     :
-                    //       [  |  |xxxx|     |xxxx|  |  |xxxx]
-                    //          '---------------------'
-                    //
-                    // --> domain.end.gbi = 4 ------------.
-                    //     domain.end.lbi = 2 -.          |
-                    //                         |          |
-                    //                         v          |
-                    //     local.lblock(lbi  = 2).gbi = 5 |
-                    //                                  | |
-                    //   ! 5 > domain.end.gbi = 4 <-----'-'
-                    // --> local.lblock(lbi = 1)
-                    //
-                    // Resolve global index past the last element:
-                    //
-                    : ( domain_block_gidx_last() >= local_block_gidx_last()
-                          // Last local block is included in domain:
-                          ? this->pattern().block(
-                              local_block_gidx_last()
-                            ).range(0).end - 1
-                          // Domain ends before last local block:
-                          : local_block_gidx_at_block_lidx(
-                                domain_block_lidx_last())
-                              > domain_block_gidx_last()
-                            ? this->pattern().local_block(
-                                  domain_block_lidx_last() - 1
-                              ).range(0).end - 1
-                            : this->pattern().local_block(
-                                  domain_block_lidx_last()
-                              ).range(0).end - 1 )
-                  )
-                },
-                // domain range in global index space;
-                { this->domain().first(),
-                  this->domain().last()
-                })
-            )) + 1
+        !this->domain().is_sub()
+        // parent domain is not a sub-range, use full local size:
+        ? this->pattern().local_size()
+        // parent domain is sub-space, calculate size from sub-range:
+        : ( !this->is_strided()
+            // blocked (not blockcyclic) distribution: single local
+            // element space with contiguous global index range
+            ? ( this->ndim() == 1
+            // one-dimensional, simple intersect:
+                ? this->index_range_size(
+                    this->index_range_intersect(
+                      // local range in global index space:
+                      { this->pattern().lbegin(),
+                        this->pattern().lend() - 1 },
+                      // domain range in global index space;
+                      { this->domain().first(),
+                        this->domain().last() }
+                    )) + 1
+            // multi-dimensional, size calculation requires view spec:
+                : ( this->pattern().block_at(
+                      this->pattern().coords(this->domain().first())) ==
+                    this->pattern().block_at(
+                      this->pattern().coords(this->domain().last()))
+                    // First and last element are in same block so entire
+                    // range is within single block:
+                    ? ( this->pattern().unit_at(this->domain().first()) ==
+                        this->pattern().team().myid()
+                        ? this->domain().size()
+                        : 0 )
+                    // Range spans multiple blocks:
+                    : 123 )
+              )
+            // strided, e.g. blockcyclic distribution: local element space
+            // chunked in global index range
+            : ( this->ndim() == 1
+              ? this->index_range_size(
+                  this->index_range_g2l(
+                    this->pattern(),
+                    // intersection of local range and domain range:
+                    this->index_range_intersect(
+                      // local range in global index space:
+                      {
+                        this->pattern().lbegin(),
+                        ( this->pattern().lend() < this->domain().last()
+                          // domain range contains end of local range:
+                          ? this->pattern().lend() - 1
+                          // domain range ends in local range, determine last
+                          // local index contained in domain from last local
+                          // block contained in domain range:
+                          //
+                          // gbi:     0    1     2    3     4     5
+                          // lbi:     0    0     1    1     2     2
+                          //          :                     :
+                          //       [  |  |xxxx|     |xxxx|  |  |xxxx]
+                          //          '---------------------'
+                          //
+                          // --> domain.end.gbi = 4 ------------.
+                          //     domain.end.lbi = 2 -.          |
+                          //                         |          |
+                          //                         v          |
+                          //     local.lblock(lbi  = 2).gbi = 5 |
+                          //                                  | |
+                          //   ! 5 > domain.end.gbi = 4 <-----'-'
+                          // --> local.lblock(lbi = 1)
+                          //
+                          // Resolve global index past the last element:
+                          //
+                          : ( domain_block_gidx_last()
+                              >= local_block_gidx_last()
+                                // Last local block is included in domain:
+                                ? this->pattern().block(
+                                    local_block_gidx_last()
+                                  ).range(0).end - 1
+                                // Domain ends before last local block:
+                                : local_block_gidx_at_block_lidx(
+                                      domain_block_lidx_last())
+                                    > domain_block_gidx_last()
+                                  ? this->pattern().local_block(
+                                        domain_block_lidx_last() - 1
+                                    ).range(0).end - 1
+                                  : this->pattern().local_block(
+                                        domain_block_lidx_last()
+                                    ).range(0).end - 1 )
+                        )
+                      },
+                      // domain range in global index space;
+                      { this->domain().first(),
+                        this->domain().last()
+                      })
+                  )) + 1
+             // ndim != 1, multi-dimensional
+             : (
+                 100
+               )
+            )
+          ) // domain.is_sub()
     );
   }
 
@@ -1009,7 +1244,8 @@ class IndexSetLocal
              this->pattern().coords(
                this->pattern().lend() - 1));
   }
-  constexpr index_type local_block_gidx_at_block_lidx(index_type lbi) const {
+  constexpr index_type local_block_gidx_at_block_lidx(
+      index_type lbi) const {
     return this->pattern().block_at(
              this->pattern().coords(
                this->pattern().local_block(lbi).offset(0)));
@@ -1068,7 +1304,7 @@ constexpr auto
 local(IndexSetGlobal<DomainType> && index_set)
     -> decltype(index_set.local()) {
   // Note: Not a universal reference, index_set has partially defined type
-  return index_set.local();
+  return std::move(index_set).local();
 }
 
 template <class DomainType>
@@ -1078,16 +1314,22 @@ global(const IndexSetGlobal<DomainType> & index_set) {
 }
 
 /**
- * \concept{DashRangeConcept}
+ * \concept{DashIndexSetConcept}
  */
 template <class DomainType>
 class IndexSetGlobal
 : public IndexSetBase<
            IndexSetGlobal<DomainType>,
-           DomainType >
+           DomainType
+         >
 {
-  typedef IndexSetGlobal<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef IndexSetGlobal<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType
+          >
+    base_t;
 
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
@@ -1127,7 +1369,7 @@ class IndexSetGlobal
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetGlobal(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   { }
 
   constexpr auto local() const noexcept
@@ -1179,25 +1421,41 @@ class IndexSetBlocks
 : public IndexSetBase<
            IndexSetBlocks<DomainType>,
            DomainType,
-           // Number of dimensions in the domain pattern's block spec:
            dash::pattern_traits<
-             typename dash::view_traits<
-               typename std::decay<DomainType>::type
-             >::pattern_type
+             typename view_traits<DomainType>::origin_type::pattern_type
            >::blockspec_type::ndim::value
          >
 {
-  typedef IndexSetBlocks<DomainType>                            self_t;
-  typedef IndexSetBase<self_t, DomainType>                      base_t;
+  typedef
+    typename dash::pattern_traits<
+               typename view_traits<DomainType>::origin_type::pattern_type
+             >::blockspec_type::ndim
+             blocks_ndim;
+
+  typedef IndexSetBlocks<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType,
+            blocks_ndim::value
+          >
+    base_t;
  public:
-  typedef typename DomainType::index_type                   index_type;
+  typedef typename base_t::index_type                       index_type;
+  typedef typename base_t::size_type                         size_type;
+
+  typedef typename base_t::view_origin_type           view_origin_type;
+  typedef typename base_t::view_domain_type           view_domain_type;
+
+  typedef typename view_traits<DomainType>::origin_type::pattern_type
+                                                          pattern_type;
 
   typedef self_t                                            local_type;
   typedef IndexSetGlobal<DomainType>                       global_type;
-  typedef global_type                                    preimage_type;
 
   typedef typename base_t::iterator                           iterator;
-  typedef typename base_t::pattern_type                   pattern_type;
+
+  typedef global_type                                    preimage_type;
 
   typedef dash::local_index_t<index_type>             local_index_type;
   typedef dash::global_index_t<index_type>           global_index_type;
@@ -1207,8 +1465,9 @@ class IndexSetBlocks
 
   // Rank of blocks index set should depend on blockspec dimensions of
   // the domain's pattern type.
-  static constexpr std::size_t NBlocksDim = base_t::rank::value;
+  static constexpr dim_t NBlocksDim = blocks_ndim::value;
 
+ public:
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
@@ -1232,9 +1491,27 @@ class IndexSetBlocks
    * Constructor, creates index set for given view.
    */
   constexpr explicit IndexSetBlocks(DomainType && view)
-  : base_t(std::forward<DomainType>(view))
+  : base_t(std::move(view))
   , _size(calc_size())
   { }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NBlocksDim>
+  extents() const {
+    return ( this->is_local()
+             ? this->pattern().local_blockspec().extents()
+             : this->pattern().blockspec().extents() );
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  constexpr std::array<index_type, NBlocksDim>
+  offsets() const {
+    return std::array<index_type, NBlocksDim> { };
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr iterator begin() const {
     return iterator(*this, 0);
@@ -1321,39 +1598,57 @@ class IndexSetBlocks
   }
 }; // class IndexSetBlocks
 
+
 // -----------------------------------------------------------------------
 // IndexSetBlock
 // -----------------------------------------------------------------------
-#if 0
-// Currently using IndexSetSub instead
-//
+
 template <class DomainType>
 class IndexSetBlock
 : public IndexSetBase<
            IndexSetBlock<DomainType>,
            DomainType,
-           1 >
+           dash::pattern_traits<
+             typename view_traits<DomainType>::origin_type::pattern_type
+           >::ndim::value
+         >
 {
-  typedef IndexSetBlock<DomainType>                               self_t;
-  typedef IndexSetBase<self_t, DomainType>                        base_t;
+  typedef
+    typename dash::pattern_traits<
+               typename view_traits<DomainType>::origin_type::pattern_type
+             >::ndim
+             pattern_ndim;
+
+  typedef IndexSetBlock<DomainType>
+    self_t;
+  typedef IndexSetBase<
+            self_t,
+            DomainType,
+            dash::pattern_traits<
+              typename view_traits<DomainType>::origin_type::pattern_type
+            >::ndim::value
+          >
+    base_t;
  public:
   typedef typename DomainType::index_type                     index_type;
-   
-  typedef self_t                                            local_type;
-  typedef IndexSetGlobal<DomainType>                         global_type;
-  typedef global_type                                    preimage_type;
+  typedef typename DomainType::size_type                       size_type;
 
-  typedef typename base_t::iterator                           iterator;
-  typedef typename base_t::pattern_type                   pattern_type;
-  
-  typedef dash::local_index_t<index_type>             local_index_type;
-  typedef dash::global_index_t<index_type>           global_index_type;
-  
+  typedef self_t                                              local_type;
+  typedef IndexSetGlobal<DomainType>                         global_type;
+  typedef global_type                                      preimage_type;
+
+  typedef typename base_t::iterator                             iterator;
+  typedef typename base_t::pattern_type                     pattern_type;
+
+  typedef dash::local_index_t<index_type>               local_index_type;
+  typedef dash::global_index_t<index_type>             global_index_type;
+
  private:
   index_type _block_idx;
   index_type _size;
 
-  constexpr static dim_t NDim = 1;
+  constexpr static dim_t NDomainDim = pattern_ndim::value;
+  constexpr static dim_t NBlockDim  = pattern_ndim::value;
   constexpr static bool  view_domain_is_local
     = dash::view_traits<DomainType>::is_local::value;
  public:
@@ -1367,11 +1662,58 @@ class IndexSetBlock
  public:
   constexpr explicit IndexSetBlock(
     const DomainType & view,
-    index_type       block_idx)
+    index_type         block_idx)
   : base_t(view)
   , _block_idx(block_idx)
   , _size(calc_size())
   { }
+
+  constexpr explicit IndexSetBlock(
+    DomainType      && view,
+    index_type         block_idx)
+  : base_t(std::move(view))
+  , _block_idx(block_idx)
+  , _size(calc_size())
+  { }
+
+  constexpr bool is_local() const noexcept {
+    return // Domain is local, block must be local:
+           dash::view_traits<DomainType>::is_local::value ||
+           // First element is local, so block is local:
+           ( this->pattern().unit_at(this->first()) ==
+             this->pattern().team().myid() );
+  }
+
+  constexpr bool is_strided() const noexcept {
+    return (
+      // Elements are contiguous within single block, block view
+      // is not strided:
+      !dash::pattern_layout_traits<pattern_type>::type::blocked ||
+      // Block elements are contiguous but missing columns/rows for
+      // row-major/column-major storage order:
+      ( pattern_type::memory_order() == dash::ROW_MAJOR
+        ? this->extent(1) < this->pattern().blocksize(1) &&
+          this->extent(0) > 1
+        : this->extent(0) < this->pattern().blocksize(0) &&
+          this->extent(1) > 1 )
+    );
+  }
+
+  // ---- extents ---------------------------------------------------------
+
+  constexpr std::array<size_type, NBlockDim>
+  extents() const {
+    return calc_viewspec().extents();
+  }
+
+  // ---- offsets ---------------------------------------------------------
+
+  constexpr std::array<index_type, NBlockDim>
+  offsets() const {
+    return calc_viewspec().offsets();
+  }
+
+  // ---- access ----------------------------------------------------------
 
   constexpr iterator begin() const {
     return iterator(*this, 0);
@@ -1382,31 +1724,65 @@ class IndexSetBlock
   }
 
   constexpr index_type rel(index_type block_phase) const {
-    return block_phase +
-           ( view_domain_is_local
-             ? ( // index of block at last index in domain
-                 this->pattern().local_block_at(
-                   this->pattern().coords(
-                     // local offset to global offset:
-                     this->pattern().global(
-                       *(this->domain().begin())
-                     )
-                   )
-                 ).index )
-             : ( // index of block at first index in domain
-                 this->pattern().block_at(
-                   {{ *(this->domain().begin()) }}
-                 ) )
+    return ( view_domain_is_local
+             ? ( // translate block phase to local index:
+                 dash::CartesianIndexSpace<NDomainDim>(
+                   this->pattern().local_extents()
+                 ).at(
+                   // phase to in-block coords
+                   dash::CartesianIndexSpace<NBlockDim>(
+                     this->extents()
+                   ).coords(
+                     block_phase >= this->pattern()
+                                          .local_block(_block_idx).size()
+                     ? block_phase - 1
+                     : block_phase ),
+                   // block viewspec
+                   this->pattern().local_block_local(_block_idx).intersect(
+                     // domain viewspec
+                     ViewSpec<NDomainDim, index_type>(
+                       this->view_domain().offsets(),
+                       this->view_domain().extents()))
+                 ) + (
+                   block_phase >= this->pattern()
+                                        .local_block(_block_idx).size()
+                   ? 1
+                   : 0)
+               )
+             : ( // translate block phase to global index:
+                 dash::CartesianIndexSpace<NDomainDim>(
+                   this->pattern().extents()
+                 ).at(
+                   // phase to in-block coords
+                   dash::CartesianIndexSpace<NBlockDim>(
+                     this->extents()
+                   ).coords(
+                     block_phase >= this->pattern().block(_block_idx).size()
+                     ? block_phase - 1
+                     : block_phase ),
+                   // block viewspec
+                   this->pattern().block(_block_idx).intersect(
+                     // domain viewspec
+                     ViewSpec<NDomainDim, index_type>(
+                       this->view_domain().offsets(),
+                       this->view_domain().extents()))
+                 ) + (
+                   block_phase >= this->pattern().block(_block_idx).size()
+                   ? 1
+                   : 0)
+               )
            );
   }
 
-  constexpr index_type operator[](index_type block_phase) const noexcept {
+  constexpr index_type operator[](index_type block_phase)
+  const noexcept {
     return rel(block_phase);
   }
 
   template <dim_t NDim>
   constexpr index_type operator[](
-    const std::array<index_type, NDim> & block_phase_coords) const noexcept {
+    const std::array<index_type, NDim> & block_phase_coords)
+  const noexcept {
     return -1;
   }
 
@@ -1416,31 +1792,37 @@ class IndexSetBlock
 
  private:
   constexpr index_type calc_size() const {
+    return calc_viewspec().size();
+  }
+
+  ViewSpec<NDomainDim, index_type> calc_viewspec() const {
     return ( view_domain_is_local
-             ? ( // index of block at last index in domain
-                 this->pattern().local_block_at(
-                   {{ *( this->domain().begin()
-                         + (this->domain().size() - 1) ) }}
-                 ).index -
-                 // index of block at first index in domain
-                 this->pattern().local_block_at(
-                   {{ *( this->domain().begin() ) }}
-                 ).index + 1 )
-             : ( // index of block at last index in domain
-                 this->pattern().block_at(
-                   {{ *( this->domain().begin()
-                         + (this->domain().size() - 1) ) }}
-                 ) -
-                 // index of block at first index in domain
-                 this->pattern().block_at(
-                   {{ *(this->domain().begin()) }}
-                 ) + 1 )
+             ? // local viewspec of local block referenced by this view:
+               this->pattern().local_block_local(_block_idx).intersect(
+                 // viewspec of domain:
+                 ViewSpec<NDomainDim, index_type>(
+                   this->view_domain().offsets(),
+                   this->view_domain().extents()) )
+             : // viewspec of block referenced by this view:
+               this->pattern().block(_block_idx).intersect(
+                 // viewspec of domain:
+                 ViewSpec<NDomainDim, index_type>(
+                   this->view_domain().offsets(),
+                   this->view_domain().extents()) )
            );
   }
+
 }; // class IndexSetBlock
-#endif
+
+static inline auto index() {
+  return dash::make_pipeable(
+           [](auto && x) {
+             return index(std::forward<decltype(x)>(x));
+           });
+}
 
 } // namespace dash
+
 #endif // DOXYGEN
 
 #endif // DASH__VIEW__INDEX_SET_H__INCLUDED

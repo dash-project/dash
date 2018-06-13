@@ -1,28 +1,6 @@
 #!/bin/sh
 
-BUILD_DIR=./build.nasty
-
-FORCE_BUILD=false
-if [ "$1" = "-f" ]; then
-  FORCE_BUILD=true
-fi
-
-await_confirm() {
-  if ! $FORCE_BUILD; then
-    echo ""
-    echo "   To build using these settings, hit ENTER"
-    read confirm
-  fi
-}
-
-exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
-}
-
-if [ "${PAPI_HOME}" = "" ]; then
-  PAPI_HOME=$PAPI_BASE
-fi
+if ! [ -z ${SOURCING+x} ]; then
 
 # To specify a build configuration for a specific system, use:
 #
@@ -58,10 +36,14 @@ fi
 #
 # !!!!!!!!!!!!!!!!!!!!! DO NOT ENABLE IN PRODUCTION !!!!!!!!!!!!!!!!!!!!!!!!
 
-# Configure with default release build settings:
-mkdir -p $BUILD_DIR
-rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+# relative to $ROOTDIR of dash
+BUILD_DIR=build.nasty
+
+# custom cmake command
+CMAKE_COMMAND="cmake"
+
+# default release build settings with nasty mpi:
+CMAKE_OPTIONS="         -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
                         -DDART_IMPLEMENTATIONS=mpi \
@@ -100,9 +82,14 @@ rm -Rf $BUILD_DIR/*
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
-                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-                        ../ && \
- await_confirm && \
- make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
-exit_message
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+# the make command used
+MAKE_COMMAND="make -j 4"
+
+else
+
+  $(dirname $0)/build.sh nasty $@
+
+fi
 
