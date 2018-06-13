@@ -105,6 +105,7 @@ dart_ret_t dart__mpi__op_fini()
 {
   MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_BYTE]);
   MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_SHORT]);
+  MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_INT]);
   MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_UINT]);
   MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_LONG]);
   MPI_Op_free(&dart__mpi_minmax_reduce_ops[DART_TYPE_ULONG]);
