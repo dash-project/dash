@@ -11,15 +11,16 @@ typedef void (*dart__mpi_min_max_reduce_t)(void*, void*, int*, MPI_Datatype*);
 
 #define DART_DECLARE_MINMAX_OP(__name) \
 DART_INLINE void DART_NAME_MINMAX_OP(__name)(            \
-  void *lhs_, void *rhs_, int *len, MPI_Datatype *dptr)
+  void *lhs_, void *rhs_, int *len_, MPI_Datatype *dptr_)
 
 #define DART_DEFINE_MINMAX_OP(__name, __type)               \
 DART_DECLARE_MINMAX_OP(__name){                             \
-  __type *lhs = (__type *)lhs_;                             \
+  const __type *lhs = (__type *)lhs_;                       \
+  int len = *len_;                                          \
   __type *rhs = (__type *)rhs_;                             \
-  DART_ASSERT_MSG((*len%2) == 0,                            \
+  DART_ASSERT_MSG((len%2) == 0,                             \
     "DART_OP_MINMAX requires multiple of two elements");    \
-  for (int i = 0; i < *len; i += 2, rhs += 2, lhs += 2) {   \
+  for (int i = 0; i < len; i += 2, rhs += 2, lhs += 2) {    \
     if (rhs[DART_OP_MINMAX_MIN] > lhs[DART_OP_MINMAX_MIN])  \
       rhs[DART_OP_MINMAX_MIN] = lhs[DART_OP_MINMAX_MIN];    \
     if (rhs[DART_OP_MINMAX_MAX] < lhs[DART_OP_MINMAX_MAX])  \
