@@ -594,9 +594,13 @@ dart_ret_t dart_accumulate(
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in dart_accumulate!");
+    return DART_ERR_INVAL;
+  }
+
   CHECK_IS_BASICTYPE(dtype);
   MPI_Op      mpi_op = dart__mpi__op(op, dtype);
-
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -679,6 +683,12 @@ dart_ret_t dart_accumulate_blocking_local(
   uint64_t    offset = gptr.addr_or_offs.offset;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
+
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in "
+                   "dart_accumulate_blocking_local!");
+    return DART_ERR_INVAL;
+  }
 
   CHECK_IS_BASICTYPE(dtype);
   MPI_Op      mpi_op = dart__mpi__op(op, dtype);
@@ -773,6 +783,11 @@ dart_ret_t dart_fetch_and_op(
   uint64_t    offset = gptr.addr_or_offs.offset;
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
+
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in dart_fetch_and_op!");
+    return DART_ERR_INVAL;
+  }
 
   CHECK_IS_BASICTYPE(dtype);
   mpi_dtype          = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
@@ -2162,10 +2177,10 @@ dart_ret_t dart_allreduce(
   dart_team_t        team)
 {
 
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
   MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -2203,9 +2218,9 @@ dart_ret_t dart_reduce(
   dart_team_t         team)
 {
   MPI_Comm     comm;
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
   MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
