@@ -27,7 +27,16 @@ DART_INTERNAL
 dart_ret_t dart__mpi__op_init();
 
 DART_INTERNAL
-MPI_Op dart__mpi__op_custom(dart_operation_t op, dart_datatype_t type);
+MPI_Op dart__mpi__op_minmax(dart_operation_t op, dart_datatype_t type);
+
+struct dart_operation_struct {
+  MPI_Datatype      mpi_type;
+  MPI_Datatype      mpi_type_op;
+  MPI_Op            mpi_op;
+  dart_operator_t   op;
+  void            * user_data;
+  struct dart_operation_struct *next; // linked list pointer
+};
 
 DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op, dart_datatype_t type)
 {
@@ -44,8 +53,9 @@ DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op, dart_datatype_t type)
     case DART_OP_LXOR    : return MPI_LXOR;
     case DART_OP_REPLACE : return MPI_REPLACE;
     case DART_OP_NO_OP   : return MPI_NO_OP;
-    case DART_OP_MINMAX  : return dart__mpi__op_custom(DART_OP_MINMAX, type);
-    default              : return (MPI_Op)(-1);
+    case DART_OP_MINMAX  : return dart__mpi__op_minmax(DART_OP_MINMAX, type);
+    default              :
+      return ((struct dart_operation_struct*)dart_op)->mpi_op;
   }
 }
 
@@ -251,5 +261,35 @@ char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
       return DART_ERR_INVAL;                                                  \
     }                                                                         \
   } while (0)
+
+
+DART_INLINE MPI_Datatype dart__mpi__op_type(
+  dart_operation_t dart_op,
+  dart_datatype_t  type)
+{
+  switch (dart_op) {
+    case DART_OP_MIN     : /* fall-through */
+    case DART_OP_MAX     : /* fall-through */
+    case DART_OP_SUM     : /* fall-through */
+    case DART_OP_PROD    : /* fall-through */
+    case DART_OP_BAND    : /* fall-through */
+    case DART_OP_LAND    : /* fall-through */
+    case DART_OP_BOR     : /* fall-through */
+    case DART_OP_LOR     : /* fall-through */
+    case DART_OP_BXOR    : /* fall-through */
+    case DART_OP_LXOR    : /* fall-through */
+    case DART_OP_REPLACE : /* fall-through */
+    case DART_OP_NO_OP   : /* fall-through */
+    case DART_OP_MINMAX  :
+      return dart__mpi__datatype_struct(type)->contiguous.mpi_type;
+    default              :
+      DART_ASSERT_MSG(((struct dart_operation_struct*)dart_op)->mpi_type
+                        == dart__mpi__datatype_struct(type)->contiguous.mpi_type,
+                  "Datatype does not match datatype used to create operation!");
+      return ((struct dart_operation_struct*)dart_op)->mpi_type_op;
+  }
+}
+
+
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */
