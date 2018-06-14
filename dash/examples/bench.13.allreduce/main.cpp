@@ -52,9 +52,9 @@ typedef struct {
   float min, max;
 } minmax_t;
 
-static void minmax_fn(void *invec, void *inoutvec, size_t, void *)
+static void minmax_fn(const void *invec, void *inoutvec, size_t, void *)
 {
-  minmax_t* minmax_in = static_cast<minmax_t*>(invec);
+  const minmax_t* minmax_in = static_cast<const minmax_t*>(invec);
   minmax_t* minmax_out = static_cast<minmax_t*>(inoutvec);
 
   if (minmax_in->min < minmax_out->min) {
@@ -67,9 +67,9 @@ static void minmax_fn(void *invec, void *inoutvec, size_t, void *)
 }
 
 template<typename T>
-static void minmax_lambda(void *invec, void *inoutvec, size_t, void *userdata)
+static void minmax_lambda(const void *invec, void *inoutvec, size_t, void *userdata)
 {
-  minmax_t* minmax_in = static_cast<minmax_t*>(invec);
+  const minmax_t* minmax_in = static_cast<const minmax_t*>(invec);
   minmax_t* minmax_out = static_cast<minmax_t*>(inoutvec);
   T& fn = *static_cast<T*>(userdata);
   *minmax_out = fn(*minmax_in, *minmax_out);
