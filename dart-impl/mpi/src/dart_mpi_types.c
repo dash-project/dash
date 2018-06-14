@@ -153,7 +153,7 @@ dart_type_create_strided(
 
   *newtype = DART_TYPE_UNDEFINED;
 
-  if (dart__mpi__datatype_iscontiguous(basetype_id)) {
+  if (!dart__mpi__datatype_iscontiguous(basetype_id)) {
     DART_LOG_ERROR("Only contiguous data types allowed in strided datatypes!");
     return DART_ERR_INVAL;
   }
@@ -219,8 +219,8 @@ dart_type_create_indexed(
 
   *newtype = DART_TYPE_UNDEFINED;
   dart_datatype_struct_t *basetype_struct = dart__mpi__datatype_struct(basetype);
-  if (dart__mpi__datatype_iscontiguous(basetype)) {
-    DART_LOG_ERROR("Only basic data types allowed in indexed datatypes!");
+  if (!dart__mpi__datatype_iscontiguous(basetype)) {
+    DART_LOG_ERROR("Only contiguous data types allowed in indexed datatypes!");
     return DART_ERR_INVAL;
   }
 
