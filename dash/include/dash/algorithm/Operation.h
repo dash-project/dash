@@ -45,16 +45,42 @@ public:
   typedef ValueType value_type;
 
 public:
-  constexpr typename std::enable_if< enabled, dart_operation_t >::type
-  dart_operation() const {
+  static constexpr dart_operation_t
+  dart_operation() {
     return _op;
   }
 
-  constexpr typename std::enable_if< enabled, OpKind >::type
-  op_kind() const {
+  constexpr OpKind
+  op_kind() {
     return _kind;
   }
 };
+
+/**
+ * Base type of all reduce operations, primarily acts as a container of a
+ * \c dart_operation_t.
+ * Overload for types not compatible with predefined DART operations.
+ *
+ * \ingroup  DashReduceOperations
+ */
+template <
+  typename         ValueType,
+  dart_operation_t OP,
+  OpKind           KIND>
+class ReduceOperation<ValueType, OP, KIND, false> {
+  static constexpr const dart_operation_t _op   = OP;
+  static constexpr const OpKind           _kind = KIND;
+public:
+  typedef ValueType value_type;
+
+public:
+
+  constexpr OpKind
+  op_kind() {
+    return _kind;
+  }
+};
+
 
 } // namespace internal
 
