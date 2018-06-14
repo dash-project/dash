@@ -48,6 +48,33 @@ measurement evaluate(
               std::string testcase,
               benchmark_params params);
 
+typedef struct {
+  float min, max;
+} minmax_t;
+
+static void minmax_fn(void *invec, void *inoutvec, size_t, void *)
+{
+  minmax_t* minmax_in = static_cast<minmax_t*>(invec);
+  minmax_t* minmax_out = static_cast<minmax_t*>(inoutvec);
+
+  if (minmax_in->min < minmax_out->min) {
+    minmax_out->min = minmax_in->min;
+  }
+
+  if (minmax_in->max > minmax_out->max) {
+    minmax_out->max = minmax_in->max;
+  }
+}
+
+template<typename T>
+static void minmax_lambda(void *invec, void *inoutvec, size_t, void *userdata)
+{
+  minmax_t* minmax_in = static_cast<minmax_t*>(invec);
+  minmax_t* minmax_out = static_cast<minmax_t*>(inoutvec);
+  T& fn = *static_cast<T*>(userdata);
+  *minmax_out = fn(*minmax_in, *minmax_out);
+}
+
 int main(int argc, char** argv)
 {
   dash::init(&argc, &argv);
@@ -68,10 +95,12 @@ int main(int argc, char** argv)
 
   int     multiplier = 1;
   int          round = 0;
-  std::array<std::string, 3> testcases {{
+  std::array<std::string, 5> testcases {{
                             "dart_allreduce.minmax",
                             "dart_allreduce.min",
-                            "dart_allreduce.shared"
+                            "dart_allreduce.shared",
+                            "dart_allreduce.custom",
+                            "dart_allreduce.lambda"
                             }};
 
   while(round < params.rounds) {
@@ -153,6 +182,52 @@ measurement evaluate(int reps, std::string testcase, benchmark_params params)
       g_max.get().fetch_op(dash::max<value_t>(), std::numeric_limits<value_t>::max());
 
       team.barrier();
+    } else if (testcase == "dart_allreduce.custom") {
+      minmax_t min_max_in{lmin, lmax};
+      minmax_t min_max_out{};
+      dart_datatype_t  new_type;
+      dart_operation_t new_op;
+      dart_type_create_custom(sizeof(minmax_t), &new_type);
+      dart_op_create(
+        &minmax_fn, NULL, true, new_type, &new_op);
+      dart_allreduce(
+          &min_max_in,                        // send buffer
+          &min_max_out,                       // receive buffer
+          1,                                  // buffer size
+          new_type,                           // data type
+          new_op,                             // operation
+          dash::Team::All().dart_id()         // team
+          );
+      dart_type_destroy(&new_type);
+      dart_op_destroy(&new_op);
+    } else if (testcase == "dart_allreduce.lambda") {
+      minmax_t min_max_in{lmin, lmax};
+      minmax_t min_max_out{};
+      dart_datatype_t  new_type;
+      dart_operation_t new_op;
+      dart_type_create_custom(sizeof(minmax_t), &new_type);
+      auto fn = [](const minmax_t &a, const minmax_t &b){
+        minmax_t res = b;
+        if (a.min < res.min) {
+          res.min = a.min;
+        }
+        if (a.max > res.max) {
+          res.max = a.max;
+        }
+        return res;
+      };
+      dart_op_create(
+        &minmax_lambda<decltype(fn)>, &fn, true, new_type, &new_op);
+      dart_allreduce(
+          &min_max_in,                        // send buffer
+          &min_max_out,                       // receive buffer
+          1,                                  // buffer size
+          new_type,                           // data type
+          new_op,                             // operation
+          dash::Team::All().dart_id()         // team
+          );
+      dart_type_destroy(&new_type);
+      dart_op_destroy(&new_op);
     }
   }
 
