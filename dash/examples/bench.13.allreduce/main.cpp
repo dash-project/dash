@@ -218,6 +218,6 @@ void print_params(
 
   bench_cfg.print_section_start("Runtime arguments");
   bench_cfg.print_param("-r",    "repetitions per round", params.reps);
-  bench_cfg.print_param("-n",    "rounds", params.reps);
+  bench_cfg.print_param("-n",    "rounds", params.rounds);
   bench_cfg.print_section_end();
 }
