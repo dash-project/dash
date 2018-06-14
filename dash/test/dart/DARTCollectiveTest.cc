@@ -76,13 +76,13 @@ TEST_F(DARTCollectiveTest, MinMax) {
 
 template<typename T>
 static void reduce_max_fn(
-  void   *invec_,
-  void   *inoutvec_,
-  size_t  len,
-  void   *user_data)
+  const void   *invec_,
+        void   *inoutvec_,
+        size_t  len,
+        void   *user_data)
 {
   const T *cutoff = static_cast<T*>(user_data);
-  const T *invec = static_cast<T*>(invec_);
+  const T *invec = static_cast<const T*>(invec_);
   T *inoutvec    = static_cast<T*>(inoutvec_);
   for (size_t i = 0; i < len; ++i) {
     if (inoutvec[i] > *cutoff) {
@@ -132,13 +132,13 @@ struct value_at{
 
 template<typename T>
 static void max_value_at_fn(
-  void   *invec_,
-  void   *inoutvec_,
-  size_t  len,
-  void   *user_data)
+  const void   *invec_,
+        void   *inoutvec_,
+        size_t  len,
+        void   *)
 {
   using value_at_t = struct value_at<T>;
-  const value_at_t *invec = static_cast<value_at_t*>(invec_);
+  const value_at_t *invec = static_cast<const value_at_t*>(invec_);
   value_at_t *inoutvec    = static_cast<value_at_t*>(inoutvec_);
   ASSERT_EQ_U(1, len);
   if (invec->value > inoutvec->value) {
