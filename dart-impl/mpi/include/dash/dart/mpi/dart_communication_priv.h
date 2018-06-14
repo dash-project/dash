@@ -68,7 +68,8 @@ dart_ret_t dart__mpi__op_fini();
 typedef enum {
   DART_KIND_BASIC = 0,
   DART_KIND_STRIDED,
-  DART_KIND_INDEXED
+  DART_KIND_INDEXED,
+  DART_KIND_CUSTOM
 } dart_type_kind_t;
 
 typedef struct dart_datatype_struct {
@@ -79,7 +80,7 @@ typedef struct dart_datatype_struct {
   /// the overall number of elements in this type
   size_t               num_elem;
   union {
-    /// used for basic types
+    /// used for contiguous (basic & custom) types
     struct {
       /// the size in bytes of this type
       size_t           size;
@@ -87,7 +88,7 @@ typedef struct dart_datatype_struct {
       MPI_Datatype     mpi_type;
       /// the underlying MPI type used to handle large (>2GB) transfers
       MPI_Datatype     max_type;
-    } basic;
+    } contiguous;
     /// used for DART_KIND_STRIDED
     /// NOTE: the underlying MPI strided type is created dynamically based on
     ///       the number of blocks required.
@@ -128,12 +129,6 @@ dart_datatype_struct_t * dart__mpi__datatype_struct(
 }
 
 DART_INLINE
-int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
-  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return (dts->kind == DART_KIND_BASIC) ? dts->basic.size : -1;
-}
-
-DART_INLINE
 dart_datatype_t dart__mpi__datatype_base(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
   return (dts->kind == DART_KIND_BASIC) ? dart_type : dts->base_type;
@@ -142,6 +137,12 @@ dart_datatype_t dart__mpi__datatype_base(dart_datatype_t dart_type) {
 DART_INLINE
 bool dart__mpi__datatype_isbasic(dart_datatype_t dart_type) {
   return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_BASIC);
+}
+
+DART_INLINE
+bool dart__mpi__datatype_iscontiguous(dart_datatype_t dart_type) {
+  return (dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_BASIC ||
+          dart__mpi__datatype_struct(dart_type)->kind == DART_KIND_CUSTOM);
 }
 
 DART_INLINE
@@ -155,6 +156,13 @@ bool dart__mpi__datatype_isindexed(dart_datatype_t dart_type) {
 }
 
 DART_INLINE
+int dart__mpi__datatype_sizeof(dart_datatype_t dart_type) {
+  dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
+  return (dart__mpi__datatype_iscontiguous(dart_type)) ? dts->contiguous.size
+                                                       : -1;
+}
+
+DART_INLINE
 bool dart__mpi__datatype_samebase(
   dart_datatype_t lhs_type,
   dart_datatype_t rhs_type) {
@@ -165,9 +173,9 @@ bool dart__mpi__datatype_samebase(
 DART_INLINE
 MPI_Datatype dart__mpi__datatype_maxtype(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return (dts->kind == DART_KIND_BASIC) ? dts->basic.max_type
-                                        : dart__mpi__datatype_maxtype(
-                                            dts->base_type);
+  return (dart__mpi__datatype_iscontiguous(dart_type)) ? dts->contiguous.max_type
+                                                  : dart__mpi__datatype_maxtype(
+                                                      dts->base_type);
 }
 
 DART_INLINE
@@ -193,9 +201,10 @@ dart__mpi__datatype_convert_mpi(
 {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
   switch(dts->kind) {
-    case DART_KIND_BASIC:
+    case DART_KIND_BASIC:  /* fall-through */
+    case DART_KIND_CUSTOM:
       *mpi_num_elem = dart_num_elem;
-      *mpi_type     = dts->basic.mpi_type;
+      *mpi_type     = dts->contiguous.mpi_type;
       break;
     case DART_KIND_STRIDED:
       *mpi_num_elem = 1;
@@ -231,5 +240,16 @@ char* dart__mpi__datatype_name(dart_datatype_t dart_type) DART_INTERNAL;
     }                                                                         \
   } while (0)
 
+#define CHECK_IS_CONTIGUOUSTYPE(_dtype) \
+  do {                                                                        \
+    if (dart__unlikely(!dart__mpi__datatype_iscontiguous(_dtype))) {               \
+      char *name = dart__mpi__datatype_name(_dtype);                          \
+      DART_LOG_ERROR(                                                         \
+                 "%s ! Only contiguous types allowed in this operation (%s given)",\
+                 __FUNCTION__, name);                                         \
+      free(name);                                                             \
+      return DART_ERR_INVAL;                                                  \
+    }                                                                         \
+  } while (0)
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */
