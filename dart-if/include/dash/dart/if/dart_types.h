@@ -724,6 +724,22 @@ dart_type_create_indexed(
   const size_t      offset[],
   dart_datatype_t * newtype);
 
+
+/**
+ * Create a custom data type of size \c num_bytes bytes.
+ *
+ * \param      num_bytes The size of the custom type in bytes.
+ * \param[out] newtype   The newly created data type.
+ *
+ * \return \ref DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \ingroup DartTypes
+ */
+dart_ret_t
+dart_type_create_custom(
+  size_t            num_bytes,
+  dart_datatype_t * newtype);
+
 /**
  * Destroy a data type that was previously created using
  * \ref dart_type_create_strided or \ref dart_type_create_indexed.
