@@ -782,8 +782,11 @@ typedef void (*dart_operator_t)(
  * \param userdata A pointer to user-defined data that is passed to each
  *                 invocation of \ref op.
  * \param commute  Whether or not the operation is commutative.
- * \param dt       The datatype \ref op operates on. Only contiguous data types
+ * \param dtype    The datatype \ref op operates on. Only contiguous data types
  *                 can be used (basic, custom).
+ * \param dtype_is_tmp Signal that the \c dtype is a temporary DART type that
+ *                     is only used in the context of the newly created
+ *                     operation. This may allow for additional optimizations.
  * \param[out] new_op Pointer to the new operation.
  *
  * \sa dart_op_destroy
@@ -794,7 +797,8 @@ dart_op_create(
   dart_operator_t    op,
   void             * userdata,
   bool               commute,
-  dart_datatype_t    dt,
+  dart_datatype_t    dtype,
+  bool               dtype_is_tmp,
   dart_operation_t * new_op);
 
 /**

@@ -189,7 +189,7 @@ measurement evaluate(int reps, std::string testcase, benchmark_params params)
       dart_operation_t new_op;
       dart_type_create_custom(sizeof(minmax_t), &new_type);
       dart_op_create(
-        &minmax_fn, NULL, true, new_type, &new_op);
+        &minmax_fn, NULL, true, new_type, true, &new_op);
       dart_allreduce(
           &min_max_in,                        // send buffer
           &min_max_out,                       // receive buffer
@@ -217,7 +217,7 @@ measurement evaluate(int reps, std::string testcase, benchmark_params params)
         return res;
       };
       dart_op_create(
-        &minmax_lambda<decltype(fn)>, &fn, true, new_type, &new_op);
+        &minmax_lambda<decltype(fn)>, &fn, true, new_type, true, &new_op);
       dart_allreduce(
           &min_max_in,                        // send buffer
           &min_max_out,                       // receive buffer

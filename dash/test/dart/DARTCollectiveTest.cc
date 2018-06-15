@@ -106,7 +106,7 @@ TEST_F(DARTCollectiveTest, CustomReduction) {
     DART_OK,
     dart_op_create(
       &reduce_max_fn<elem_t>, &cutoff, true,
-      dash::dart_datatype<elem_t>::value, &new_op)
+      dash::dart_datatype<elem_t>::value, false, &new_op)
   );
   ASSERT_NE_U(new_op, DART_OP_UNDEFINED);
   ASSERT_EQ_U(DART_OK,
@@ -160,7 +160,7 @@ TEST_F(DARTCollectiveTest, MaxElementAt) {
   ASSERT_EQ_U(
     DART_OK,
     dart_op_create(
-      &max_value_at_fn<elem_t>, NULL, true, new_type, &new_op)
+      &max_value_at_fn<elem_t>, NULL, true, new_type, false, &new_op)
   );
   value_at_t lmax = {value, dash::myid()};
   value_at_t gmax;
