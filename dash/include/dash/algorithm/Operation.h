@@ -68,7 +68,7 @@ template <
   dart_operation_t OP,
   OpKind           KIND>
 class ReduceOperation<ValueType, OP, KIND, false> {
-  static constexpr const dart_operation_t _op   = OP;
+  static constexpr const dart_operation_t _op   = DART_OP_UNDEFINED;
   static constexpr const OpKind           _kind = KIND;
 public:
   typedef ValueType value_type;
@@ -80,6 +80,20 @@ public:
     return _kind;
   }
 };
+
+template<typename BinaryOpt>
+struct dart_operation
+  : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
+{ };
+
+template<
+  typename         ValueType,
+  dart_operation_t OP,
+  OpKind           KIND>
+struct dart_operation<ReduceOperation<ValueType, OP, KIND>>
+  : public std::integral_constant<dart_operation_t, ReduceOperation<ValueType, OP, KIND>::dart_operation()>
+{ };
+
 
 
 } // namespace internal

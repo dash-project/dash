@@ -134,3 +134,16 @@ TEST_F(AccumulateTest, StringConcatOperaton) {
   }
 }
 
+
+TEST_F(AccumulateTest, LocalPredefined) {
+  const size_t num_elem_local = 100;
+  size_t num_elem_total       = _dash_size * num_elem_local;
+  int value = 2;
+
+  // perform a reduction similar to MPI_Allreduce
+  auto result = dash::accumulate(&value, std::next(&value), 1, dash::plus<int>(), true);
+
+
+  ASSERT_EQ_U(dash::size()*value + 1, result);
+
+}
