@@ -23,12 +23,10 @@ TEST_F(AccumulateTest, SimpleStart) {
   dash::barrier();
 
   int result = dash::accumulate(target.begin(),
-				target.end(),
-				start); //start value
+        target.end(),
+        start); //start value
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * value + start, result);
-  }
+  ASSERT_EQ_U(num_elem_total * value + start, result);
 }
 
 
@@ -49,9 +47,7 @@ TEST_F(AccumulateTest, OpMult) {
                                  start, //start value
                                  dash::multiply<value_t>());
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
-  }
+  ASSERT_EQ_U((1ULL<<num_elem_total) * start, result);
 }
 
 
@@ -91,19 +87,15 @@ TEST_F(AccumulateTest, SimpleStruct) {
   auto result = dash::accumulate(target.begin(), target.end(),
                                  value_struct(10, 20));
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total * x + 10, result.x);
-    ASSERT_EQ_U(num_elem_total * y + 20, result.y);
-  }
+  ASSERT_EQ_U(num_elem_total * x + 10, result.x);
+  ASSERT_EQ_U(num_elem_total * y + 20, result.y);
 
   // half-range reduce
   result = dash::accumulate(target.begin(), target.begin() + num_elem_total/2,
                             value_struct(10, 20));
 
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
-    ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
-  }
+  ASSERT_EQ_U(num_elem_total/2 * x + 10, result.x);
+  ASSERT_EQ_U(num_elem_total/2 * y + 20, result.y);
 }
 
 
