@@ -144,6 +144,7 @@ dart_op_create(
   void             * user_data,
   bool               commute,
   dart_datatype_t    dt,
+  bool               dtype_is_tmp,
   dart_operation_t * new_op)
 {
   MPI_Op mpi_op;
@@ -161,8 +162,11 @@ dart_op_create(
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dt);
   MPI_Datatype mpi_type = dts->contiguous.mpi_type;
 
-  MPI_Datatype dup_mpi_type;
-  MPI_Type_dup(mpi_type, &dup_mpi_type);
+  MPI_Datatype dup_mpi_type = mpi_type;
+  if (!dtype_is_tmp) {
+    MPI_Type_dup(mpi_type, &dup_mpi_type);
+  }
+
   MPI_Op_create(dart__mpi__op_invoke_custom, commute, &mpi_op);
 
   struct dart_operation_struct *dart_op = malloc(sizeof(*dart_op));
@@ -191,7 +195,9 @@ dart_op_destroy(dart_operation_t *op)
   struct dart_operation_struct **op_ptr = (struct dart_operation_struct **)op;
   struct dart_operation_struct *dart_op = *op_ptr;
   deregister_op(dart_op);
-  MPI_Type_free(&dart_op->mpi_type_op);
+  if (dart_op->mpi_type_op != dart_op->mpi_type) {
+    MPI_Type_free(&dart_op->mpi_type_op);
+  }
   MPI_Op_free(&dart_op->mpi_op);
   free(dart_op);
   *op = DART_OP_UNDEFINED;
