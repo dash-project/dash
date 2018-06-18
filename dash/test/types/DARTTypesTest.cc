@@ -1,5 +1,6 @@
 
 #include <dash/Types.h>
+#include <dash/algorithm/Operation.h>
 
 #include "DARTTypesTest.h"
 
@@ -47,3 +48,19 @@ TEST_F(DARTTypesTest, DARTPunnedTypeConversions)
                 "conversion dart_punned_datatype<size8_t> failed");
 }
 
+TEST_F(DARTTypesTest, DARTOperation)
+{
+  typedef struct {
+    int x, y;
+  } point_t;
+  auto lambda = [](int x, int y){ return x+y; };
+  static_assert(
+    dash::dart_reduce_operation<dash::plus<int>>::value == DART_OP_SUM,
+    "dash::plus<int> should yield DART_OP_SUM");
+  static_assert(
+    dash::dart_reduce_operation<dash::plus<point_t>>::value == DART_OP_UNDEFINED,
+    "dash::plus<int> should yield DART_OP_UNDEFINED");
+  static_assert(
+    dash::dart_reduce_operation<decltype(lambda)>::value == DART_OP_UNDEFINED,
+    "dash::plus<decltype(lambda)> should yield DART_OP_UNDEFINED");
+}

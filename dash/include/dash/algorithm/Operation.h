@@ -50,53 +50,65 @@ public:
     return _op;
   }
 
-  constexpr OpKind
+  static constexpr OpKind
   op_kind() {
     return _kind;
   }
 };
 
+} // namespace internal
+
+#ifdef DOXYGEN
 /**
- * Base type of all reduce operations, primarily acts as a container of a
- * \c dart_operation_t.
- * Overload for types not compatible with predefined DART operations.
+ * Query the underlying \ref dart_operation_t for arbitrary binary operations.
+ * Yields \c DART_OP_UNDEFINED for non-DART operations.
+ *
+ * \see      dash::min
+ * \see      dash::max
+ * \see      dash::plus
+ * \see      dash::multiply
+ * \see      dash::first
+ * \see      dash::second
+ * \see      dash::bit_and
+ * \see      dash::bit_or
+ * \see      dash::bit_xor
  *
  * \ingroup  DashReduceOperations
  */
-template <
-  typename         ValueType,
-  dart_operation_t OP,
-  OpKind           KIND>
-class ReduceOperation<ValueType, OP, KIND, false> {
-  static constexpr const dart_operation_t _op   = DART_OP_UNDEFINED;
-  static constexpr const OpKind           _kind = KIND;
-public:
-  typedef ValueType value_type;
-
-public:
-
-  constexpr OpKind
-  op_kind() {
-    return _kind;
-  }
-};
-
-template<typename BinaryOpt>
+template<typename BinaryOperation>
 struct dart_operation
+{
+  dart_operation_t value;
+}
+#else // DOXYGEN
+/**
+ * Query the DART operation for an arbitrary binary operations.
+ * Overload for non-DART operations.
+ */
+template<typename BinaryOperation, typename = void>
+struct dart_reduce_operation
   : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
 { };
 
-template<
-  typename         ValueType,
-  dart_operation_t OP,
-  OpKind           KIND>
-struct dart_operation<ReduceOperation<ValueType, OP, KIND>>
-  : public std::integral_constant<dart_operation_t, ReduceOperation<ValueType, OP, KIND>::dart_operation()>
+/**
+ * Query the DART operation for an arbitrary binary operation.
+ * Overload for DART operations.
+ */
+template<>
+template<typename BinaryOperation>
+struct dart_reduce_operation<BinaryOperation,
+        typename std::enable_if<
+          BinaryOperation::op_kind() != dash::internal::OpKind::NOOP &&
+          std::is_base_of<
+            dash::internal::ReduceOperation<
+              typename BinaryOperation::value_type,
+              BinaryOperation::dart_operation(),
+              BinaryOperation::op_kind(), true>,
+            BinaryOperation>::value>::type>
+  : public std::integral_constant<dart_operation_t,
+                                  BinaryOperation::dart_operation()>
 { };
-
-
-
-} // namespace internal
+#endif // DOXYGEN
 
 /**
  * Reduce operands to their minimum value.
