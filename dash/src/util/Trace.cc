@@ -66,7 +66,6 @@ void dash::util::TraceStore::write(std::ostream & out, bool printHeader)
 
   std::ostringstream os;
   auto unit   = dash::Team::GlobalUnitID();
-  auto nunits = dash::size();
   for (auto context_traces : _traces) {
     std::string      context = context_traces.first;
     trace_events_t & events  = context_traces.second;
@@ -97,9 +96,6 @@ void dash::util::TraceStore::write(std::ostream & out, bool printHeader)
   }
 
   out << os.str();
-
-  // To help synchronization of writes:
-  sleep(1);
 }
 
 void dash::util::TraceStore::write(
