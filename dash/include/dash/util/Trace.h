@@ -72,7 +72,7 @@ public:
   /**
    * Write trace data to given output stream.
    */
-  static void write(std::ostream & out);
+  static void write(std::ostream & out, bool printHeader = true);
 
   /**
    * Write trace data to file.
