@@ -205,7 +205,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
   // The value type of the iterator is not necessarily const, however, the
   // reference should definitely be. If that isn't the case the compiler
   // will complain anyway since our lambda required const qualifiers.
-  using const_reference_t = typename std::iterator_traits<Iter>::reference;
+  using reference = typename std::iterator_traits<Iter>::reference;
 
   if (n_l_elem > 0) {
     for (auto const& idx : valid_partitions) {
@@ -214,7 +214,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
           data_lbegin,
           data_lend,
           splitters[idx],
-          [&sortable_hash](const_reference_t a, const MappedType& b) {
+          [&sortable_hash](reference a, const MappedType& b) {
             return sortable_hash(a) < b;
           });
       // search upper bound by starting from the lower bound
@@ -222,7 +222,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
           lb_it,
           data_lend,
           splitters[idx],
-          [&sortable_hash](const MappedType& b, const_reference_t a) {
+          [&sortable_hash](const MappedType& b, reference a) {
             return b < sortable_hash(a);
           });
 
