@@ -196,7 +196,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
   auto const nborders = splitters.size();
   // The first element is 0 and the last element is the total number of local
   // elements in this unit
-  auto const sz = splitters.size() + 2;
+  auto const sz = splitters.size() + 1;
   // Number of elements less than P
   std::vector<std::size_t> l_nlt_nle(NLT_NLE_BLOCK * sz, 0);
 
@@ -230,7 +230,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
       auto const p_left = p_borders.left_partition[idx];
       DASH_ASSERT_NE(p_left, dash::team_unit_t{}, "invalid bounding unit");
 
-      auto const nlt_idx = (p_left + 1) * NLT_NLE_BLOCK;
+      auto const nlt_idx = (p_left)*NLT_NLE_BLOCK;
 
       l_nlt_nle[nlt_idx]     = std::distance(lbegin, lb_it);
       l_nlt_nle[nlt_idx + 1] = std::distance(lbegin, ub_it);
@@ -239,8 +239,9 @@ inline const std::vector<std::size_t> psort__local_histogram(
     auto const last_valid_border_idx = *std::prev(valid_partitions.cend());
     auto const p_left = p_borders.left_partition[last_valid_border_idx];
 
+    // fill trailing partitions with local capacity
     std::fill(
-        std::next(std::begin(l_nlt_nle), (p_left + 2) * NLT_NLE_BLOCK),
+        std::next(std::begin(l_nlt_nle), (p_left + 1) * NLT_NLE_BLOCK),
         std::end(l_nlt_nle),
         n_l_elem);
   }
@@ -270,15 +271,11 @@ inline void psort__global_histogram(
 
   auto const last_valid_border = *std::prev(valid_partitions.cend());
 
-  // We have to add 2
-  // --> +1 because we start at idx 1
-  // --> +1 to get the last idx
-
   bool has_pending_op = false;
 
-  for (auto const& p : valid_partitions) {
-    auto const g_idx_nlt = p * NLT_NLE_BLOCK;
-    auto const histo_idx = (p + 1) * NLT_NLE_BLOCK;
+  for (std::size_t idx = 0; idx < last_valid_border + 1; ++idx) {
+    auto const g_idx_nlt = idx * NLT_NLE_BLOCK;
+    auto const histo_idx = idx * NLT_NLE_BLOCK;
 
     // we communicate only non-zero values
     if (l_nlt_nle[histo_idx] == 0 && l_nlt_nle[histo_idx + 1] == 0) {
@@ -1057,12 +1054,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
     using strided_iterator_t = detail::
         StridedIterator<typename vector_t::const_iterator, NLT_NLE_BLOCK>;
 
-    strided_iterator_t x1{
-        std::begin(l_nlt_nle), std::begin(l_nlt_nle), std::end(l_nlt_nle)};
+    //;
     strided_iterator_t y1{
         std::begin(l_nlt_nle), std::end(l_nlt_nle), std::end(l_nlt_nle)};
 
-    DASH_LOG_TRACE_RANGE("local histogram: nlt", x1, y1);
+    DASH_LOG_TRACE_RANGE("local histogram: nlt", strided_iterator_t {
+        std::begin(l_nlt_nle), std::begin(l_nlt_nle), std::end(l_nlt_nle)}, y1);
 
     strided_iterator_t x12{std::begin(l_nlt_nle),
                            std::next(std::begin(l_nlt_nle)),
@@ -1147,8 +1144,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
      * Transpose (Shuffle) the final histograms to communicate
      * the partition distribution
      */
-    for (std::size_t idx = 1; idx < splitters.size() + 2; ++idx) {
-      auto const transposed_unit = idx - 1;
+    for (std::size_t idx = 0; idx < splitters.size() + 1; ++idx) {
+      auto const transposed_unit = idx;
 
       if (transposed_unit != myid) {
         auto const offset = transposed_unit * g_partition_data.lsize() + myid;
