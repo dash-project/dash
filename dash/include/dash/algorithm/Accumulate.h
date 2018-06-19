@@ -200,12 +200,15 @@ ValueType accumulate(
 template <
   class GlobInputIt,
   class ValueType,
-  class BinaryOperation >
+  class BinaryOperation = dash::plus<ValueType>,
+  typename = typename std::enable_if<
+              std::is_same<decltype(std::declval<GlobInputIt>().team()),
+                           dash::Team&>::value>::type>
 ValueType accumulate(
         GlobInputIt   in_first,
         GlobInputIt   in_last,
   const ValueType   & init,
-  BinaryOperation     binary_op)
+  BinaryOperation     binary_op = dash::plus<ValueType>())
 {
   auto & team      = in_first.team();
   auto index_range = dash::local_range(in_first, in_last);
