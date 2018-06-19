@@ -75,6 +75,8 @@ dart_ret_t dart__mpi__op_fini();
  */
 #define MAX_CONTIG_ELEMENTS INT_MAX
 
+#define DART_MPI_TYPE_UNDEFINED (MPI_Datatype)MPI_UNDEFINED
+
 typedef enum {
   DART_KIND_BASIC = 0,
   DART_KIND_STRIDED,
@@ -128,6 +130,9 @@ dart__mpi__datatype_init() DART_INTERNAL;
 
 dart_ret_t
 dart__mpi__datatype_fini() DART_INTERNAL;
+
+MPI_Datatype
+dart__mpi__datatype_create_max_datatype(MPI_Datatype mpi_type) DART_INTERNAL;
 
 DART_INLINE
 dart_datatype_struct_t * dart__mpi__datatype_struct(
@@ -183,9 +188,17 @@ bool dart__mpi__datatype_samebase(
 DART_INLINE
 MPI_Datatype dart__mpi__datatype_maxtype(dart_datatype_t dart_type) {
   dart_datatype_struct_t *dts = dart__mpi__datatype_struct(dart_type);
-  return (dart__mpi__datatype_iscontiguous(dart_type)) ? dts->contiguous.max_type
-                                                  : dart__mpi__datatype_maxtype(
-                                                      dts->base_type);
+  MPI_Datatype res;
+  if (dart__mpi__datatype_iscontiguous(dart_type)) {
+    if (dts->contiguous.max_type == DART_MPI_TYPE_UNDEFINED) {
+      dts->contiguous.max_type = dart__mpi__datatype_create_max_datatype(
+                                  dts->contiguous.mpi_type);
+    }
+    res = dts->contiguous.max_type;
+  } else {
+    res = dart__mpi__datatype_maxtype(dts->base_type);
+  }
+  return res;
 }
 
 DART_INLINE
