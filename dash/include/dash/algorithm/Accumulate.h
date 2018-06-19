@@ -59,7 +59,7 @@ namespace internal {
  * \ingroup  DashAlgorithms
  */
 
-  template <
+template <
   class ValueType,
   class BinaryOperation>
 ValueType accumulate(
@@ -145,40 +145,6 @@ ValueType accumulate(
             non_empty,
             team);
 }
-
-
-/**
- * Accumulate values in range \c [first, last) as the sum of all values
- * in the range.
- *
- * Note: For equivalent of semantics of \c MPI_Accumulate, see
- * \c dash::transform.
- *
- * Semantics:
- *
- *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
- *
- * \see      dash::transform
- *
- * \ingroup  DashAlgorithms
- */
-template <
-  class GlobInputIt,
-  class ValueType >
-ValueType accumulate(
-        GlobInputIt in_first,
-        GlobInputIt in_last,
-  const ValueType&  init)
-{
-  auto & team      = in_first.team();
-  auto index_range = dash::local_range(in_first, in_last);
-  auto l_first     = index_range.begin;
-  auto l_last      = index_range.end;
-
-  // TODO: can we figure out whether or not units are empty?
-  return dash::accumulate(l_first, l_last, init, false, team);
-}
-
 
 /**
  * Accumulate values in range \c [first, last) using the given binary
