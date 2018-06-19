@@ -818,29 +818,22 @@ inline auto find_global_min_max(
                                    : std::numeric_limits<mapped_type>::max();
   auto const lmax = (n_l_elem > 0) ? sortable_hash(*(std::prev(lend)))
                                    : std::numeric_limits<mapped_type>::min();
-  mapped_type min, max;
+
+  std::array<mapped_type, 2> min_max_in{lmin, lmax};
+  std::array<mapped_type, 2> min_max_out{};
 
   DASH_ASSERT_RETURNS(
       dart_allreduce(
-          &lmin,
-          &min,
-          1,
-          dart_datatype<mapped_type>::value,
-          DART_OP_MIN,
-          pattern.team().dart_id()),
+          &min_max_in,                              // send buffer
+          &min_max_out,                             // receive buffer
+          2,                                        // buffer size
+          dash::dart_datatype<mapped_type>::value,  // data type
+          DART_OP_MINMAX,                           // operation
+          dash::Team::All().dart_id()               // team
+          ),
       DART_OK);
 
-  DASH_ASSERT_RETURNS(
-      dart_allreduce(
-          &lmax,
-          &max,
-          1,
-          dart_datatype<mapped_type>::value,
-          DART_OP_MAX,
-          pattern.team().dart_id()),
-      DART_OK);
-
-  return std::make_pair(min, max);
+  return std::make_pair(std::get<0>(min_max_out), std::get<1>(min_max_out));
 }
 
 template <
@@ -1170,7 +1163,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     // std::swap(it_global_histo, tmp_global_histo);
   } while (!done);
-
 
   trace.exit_state("5:find_global_partition_borders");
 
