@@ -182,13 +182,13 @@ inline void psort__calc_boundaries(
   DASH_LOG_TRACE("psort__calc_boundaries >");
 }
 
-template <typename ConstIter, typename MappedType, typename SortableHash>
+template <typename Iter, typename MappedType, typename SortableHash>
 inline const std::vector<std::size_t> psort__local_histogram(
     std::vector<MappedType> const&     splitters,
     std::vector<size_t> const&         valid_partitions,
     PartitionBorder<MappedType> const& p_borders,
-    ConstIter                          lbegin,
-    ConstIter                          lend,
+    Iter                               data_lbegin,
+    Iter                               data_lend,
     SortableHash                       sortable_hash)
 {
   DASH_LOG_TRACE("< psort__local_histogram");
@@ -200,20 +200,19 @@ inline const std::vector<std::size_t> psort__local_histogram(
   // Number of elements less than P
   std::vector<std::size_t> l_nlt_nle(NLT_NLE_BLOCK * sz, 0);
 
-  auto const n_l_elem = std::distance(lbegin, lend);
+  auto const n_l_elem = std::distance(data_lbegin, data_lend);
 
   // The value type of the iterator is not necessarily const, however, the
   // reference should definitely be. If that isn't the case the compiler
   // will complain anyway since our lambda required const qualifiers.
-  using const_reference_t =
-      typename std::iterator_traits<ConstIter>::reference;
+  using const_reference_t = typename std::iterator_traits<Iter>::reference;
 
   if (n_l_elem > 0) {
     for (auto const& idx : valid_partitions) {
       // search lower bound of partition value
       auto lb_it = std::lower_bound(
-          lbegin,
-          lend,
+          data_lbegin,
+          data_lend,
           splitters[idx],
           [&sortable_hash](const_reference_t a, const MappedType& b) {
             return sortable_hash(a) < b;
@@ -221,7 +220,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
       // search upper bound by starting from the lower bound
       auto ub_it = std::upper_bound(
           lb_it,
-          lend,
+          data_lend,
           splitters[idx],
           [&sortable_hash](const MappedType& b, const_reference_t a) {
             return b < sortable_hash(a);
@@ -232,8 +231,8 @@ inline const std::vector<std::size_t> psort__local_histogram(
 
       auto const nlt_idx = (p_left)*NLT_NLE_BLOCK;
 
-      l_nlt_nle[nlt_idx]     = std::distance(lbegin, lb_it);
-      l_nlt_nle[nlt_idx + 1] = std::distance(lbegin, ub_it);
+      l_nlt_nle[nlt_idx]     = std::distance(data_lbegin, lb_it);
+      l_nlt_nle[nlt_idx + 1] = std::distance(data_lbegin, ub_it);
     }
 
     auto const last_valid_border_idx = *std::prev(valid_partitions.cend());
@@ -250,11 +249,11 @@ inline const std::vector<std::size_t> psort__local_histogram(
   return l_nlt_nle;
 }
 
-template <typename GlobIter>
+template <class LocalIter, class GlobIter>
 inline void psort__global_histogram(
-    std::vector<size_t> const& l_nlt_nle,
-    std::vector<size_t> const& valid_partitions,
-    GlobIter                   it_nlt_nle)
+    LocalIter local_histo_begin,
+    LocalIter local_histo_end,
+    GlobIter  it_nlt_nle)
 {
   DASH_LOG_TRACE("< psort__global_histogram ");
 
@@ -269,25 +268,21 @@ inline void psort__global_histogram(
 
   team.barrier();
 
-  auto const last_valid_border = *std::prev(valid_partitions.cend());
-
   bool has_pending_op = false;
 
-  for (std::size_t idx = 0; idx < last_valid_border + 1; ++idx) {
-    auto const g_idx_nlt = idx * NLT_NLE_BLOCK;
-    auto const histo_idx = idx * NLT_NLE_BLOCK;
-
+  for (; local_histo_begin != local_histo_end;
+       local_histo_begin += NLT_NLE_BLOCK, it_nlt_nle += NLT_NLE_BLOCK) {
     // we communicate only non-zero values
-    if (l_nlt_nle[histo_idx] == 0 && l_nlt_nle[histo_idx + 1] == 0) {
+    if (*local_histo_begin == 0 && *(std::next(local_histo_begin, 1)) == 0) {
       continue;
     }
 
     DASH_ASSERT_RETURNS(
         dart_accumulate(
             // dart pointer to first element in target range
-            (it_nlt_nle + g_idx_nlt).dart_gptr(),
+            (it_nlt_nle).dart_gptr(),
             // values
-            &(l_nlt_nle[histo_idx]),
+            &(*local_histo_begin),
             // nvalues
             NLT_NLE_BLOCK,
             // dart type
@@ -729,10 +724,11 @@ inline void psort__init_partition_borders(
 
   DASH_LOG_TRACE("psort__init_partition_borders >");
 }
-template <class ConstIter, class PatternT, class SortableHash>
-auto find_global_min_max(
-    ConstIter       lbegin,
-    ConstIter       lend,
+
+template <class Iter, class PatternT, class SortableHash>
+inline auto find_global_min_max(
+    Iter            lbegin,
+    Iter            lend,
     PatternT const& pattern,
     SortableHash    sortable_hash)
     -> std::pair<
@@ -830,7 +826,7 @@ public:
     return tmp;
   }
 
-  reference operator*()
+  reference operator*() const noexcept
   {
     return *m_iter;
   }
@@ -867,6 +863,32 @@ private:
   Iterator m_iter{};
   Iterator m_last{};
 };
+
+inline void trace_local_histo(
+    std::string&& ctx, std::vector<size_t> const& histograms)
+{
+#ifdef DASH_ENABLE_TRACE_LOGGING
+
+  using strided_iterator_t = detail::StridedIterator<
+      typename std::vector<size_t>::const_iterator,
+      NLT_NLE_BLOCK>;
+
+  strided_iterator_t nlt_first{
+      std::begin(histograms), std::begin(histograms), std::end(histograms)};
+  strided_iterator_t nlt_last{
+      std::begin(histograms), std::end(histograms), std::end(histograms)};
+
+  DASH_LOG_TRACE_RANGE(ctx.c_str(), nlt_first, nlt_last);
+
+  strided_iterator_t nle_first{std::begin(histograms),
+                               std::next(std::begin(histograms)),
+                               std::end(histograms)};
+  strided_iterator_t nle_last{
+      std::begin(histograms), std::end(histograms), std::end(histograms)};
+
+  DASH_LOG_TRACE_RANGE(ctx.c_str(), nle_first, nle_last);
+#endif
+}
 
 }  // namespace detail
 
@@ -1050,30 +1072,14 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
         std::end(lcopy),
         sortable_hash);
 
-    using vector_t           = decltype(l_nlt_nle);
-    using strided_iterator_t = detail::
-        StridedIterator<typename vector_t::const_iterator, NLT_NLE_BLOCK>;
-
-    //;
-    strided_iterator_t y1{
-        std::begin(l_nlt_nle), std::end(l_nlt_nle), std::end(l_nlt_nle)};
-
-    DASH_LOG_TRACE_RANGE("local histogram: nlt", strided_iterator_t {
-        std::begin(l_nlt_nle), std::begin(l_nlt_nle), std::end(l_nlt_nle)}, y1);
-
-    strided_iterator_t x12{std::begin(l_nlt_nle),
-                           std::next(std::begin(l_nlt_nle)),
-                           std::end(l_nlt_nle)};
-    strided_iterator_t y12{
-        std::begin(l_nlt_nle), std::end(l_nlt_nle), std::end(l_nlt_nle)};
-
-    DASH_LOG_TRACE_RANGE("local histogram: nle", x12, y12);
-
-    // DASH_LOG_TRACE_RANGE("local histogram nle", l_nle.begin(),
-    // l_nle.end());
+    detail::trace_local_histo("local histogram", l_nlt_nle);
 
     detail::psort__global_histogram(
-        l_nlt_nle, valid_partitions, it_global_histo);
+        std::begin(l_nlt_nle),
+        std::next(
+            std::begin(l_nlt_nle),
+            (valid_partitions.back() + 1) * NLT_NLE_BLOCK),
+        it_global_histo);
 
     DASH_LOG_TRACE_RANGE(
         "global histogram",
@@ -1094,6 +1100,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   DASH_LOG_TRACE_VAR("partition borders found after N iterations", iter);
 
   trace.enter_state("6:final_local_histogram");
+
+  /* How many elements are less than P
+   * or less than equals P */
   auto const histograms = detail::psort__local_histogram(
       splitters,
       valid_partitions,
@@ -1103,40 +1112,12 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       sortable_hash);
   trace.exit_state("6:final_local_histogram");
 
-  /* How many elements are less than P
-   * or less than equals P */
-  // auto& l_nlt = histograms.first;
-  // auto& l_nle = histograms.second;
-
-  // DASH_ASSERT_EQ(
-  //    histograms.first.size(),
-  //    histograms.second.size(),
-  //    "length of histogram arrays does not match");
-
   DASH_LOG_TRACE_RANGE("final splitters", splitters.begin(), splitters.end());
-  // DASH_LOG_TRACE_RANGE("final histograms: l_nlt", l_nlt.begin(),
-  // l_nlt.end()); DASH_LOG_TRACE_RANGE("final histograms: l_nle",
-  // l_nle.begin(), l_nle.end());
-  using vector_t           = decltype(histograms);
-  using strided_iterator_t = detail::
-      StridedIterator<typename vector_t::const_iterator, NLT_NLE_BLOCK>;
 
-  strided_iterator_t x1{
-      std::begin(histograms), std::begin(histograms), std::end(histograms)};
-  strided_iterator_t y1{
-      std::begin(histograms), std::end(histograms), std::end(histograms)};
-
-  DASH_LOG_TRACE_RANGE("final histograms: nlt", x1, y1);
-
-  strided_iterator_t x12{std::begin(histograms),
-                         std::next(std::begin(histograms)),
-                         std::end(histograms)};
-  strided_iterator_t y12{
-      std::begin(histograms), std::end(histograms), std::end(histograms)};
-
-  DASH_LOG_TRACE_RANGE("final histograms: nle", x12, y12);
+  detail::trace_local_histo("final histograms", histograms);
 
   trace.enter_state("7:transpose_local_histograms (all-to-all)");
+
   if (n_l_elem > 0) {
     // TODO(kowalewski): minimize communication to copy only until the last
     // valid border
@@ -1144,26 +1125,26 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
      * Transpose (Shuffle) the final histograms to communicate
      * the partition distribution
      */
-    for (std::size_t idx = 0; idx < splitters.size() + 1; ++idx) {
-      auto const transposed_unit = idx;
 
+    dash::team_unit_t transposed_unit{0};
+    for (auto it = std::begin(histograms); it != std::end(histograms);
+         it += NLT_NLE_BLOCK, ++transposed_unit) {
+      auto const& nlt_val = *it;
+      auto const& nle_val = *std::next(it);
       if (transposed_unit != myid) {
         auto const offset = transposed_unit * g_partition_data.lsize() + myid;
         // We communicate only non-zero values
-        if (histograms[idx * 2] > 0) {
-          g_partition_data.async[offset + IDX_DIST(nunits)].set(
-              &(histograms[idx * 2]));
+        if (nlt_val > 0) {
+          g_partition_data.async[offset + IDX_DIST(nunits)].set(&(nlt_val));
         }
 
-        if (histograms[idx * 2 + 1] > 0) {
-          g_partition_data.async[offset + IDX_SUPP(nunits)].set(
-              &(histograms[idx * 2 + 1]));
+        if (nle_val > 0) {
+          g_partition_data.async[offset + IDX_SUPP(nunits)].set(&(nle_val));
         }
       }
       else {
-        g_partition_data.local[myid + IDX_DIST(nunits)] = histograms[idx * 2];
-        g_partition_data.local[myid + IDX_SUPP(nunits)] =
-            histograms[idx * 2 + 1];
+        g_partition_data.local[myid + IDX_DIST(nunits)] = nlt_val;
+        g_partition_data.local[myid + IDX_SUPP(nunits)] = nle_val;
       }
     }
     // complete outstanding requests...
