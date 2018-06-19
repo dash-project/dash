@@ -249,6 +249,7 @@ inline const std::vector<std::size_t> psort__local_histogram(
   return l_nlt_nle;
 }
 
+#if 0
 template <class LocalIter, class GlobIter>
 inline void psort__global_histogram(
     LocalIter local_histo_begin,
@@ -302,7 +303,31 @@ inline void psort__global_histogram(
   team.barrier();
   DASH_LOG_TRACE("psort__global_histogram >");
 }
+#endif
 
+template <class InputIt, class OutputIt>
+inline void psort__global_histogram(
+    InputIt     local_histo_begin,
+    InputIt     local_histo_end,
+    OutputIt    output_it,
+    dart_team_t dart_team_id)
+{
+  DASH_LOG_TRACE("< psort__global_histogram ");
+
+  auto const nels = std::distance(local_histo_begin, local_histo_end);
+
+  dart_allreduce(
+      &(*local_histo_begin),
+      &(*output_it),
+      nels,
+      dart_datatype<size_t>::value,
+      DART_OP_SUM,
+      dart_team_id);
+
+  DASH_LOG_TRACE("psort__global_histogram >");
+}
+
+#if 0
 template <typename ElementType, typename GlobIter>
 bool psort__validate_partitions(
     UnitInfo const&                 p_unit_info,
@@ -394,6 +419,52 @@ bool psort__validate_partitions(
     }
     else {
       if (l_nlt_nle[nlt_idx] >= acc_partition_count[peer_idx]) {
+        p_borders.upper_bound[border_idx] = splitters[border_idx];
+      }
+      else {
+        p_borders.lower_bound[border_idx] = splitters[border_idx];
+      }
+    }
+  }
+
+  // Exit condition: is there any non-stable partition
+  auto const nonstable_it = std::find(
+      p_borders.is_stable.cbegin(), p_borders.is_stable.cend(), false);
+
+  DASH_LOG_TRACE("psort__validate_partitions >");
+  // exit condition
+  return nonstable_it == p_borders.is_stable.cend();
+}
+#endif
+
+template <typename ElementType>
+bool psort__validate_partitions(
+    UnitInfo const&                 p_unit_info,
+    std::vector<ElementType> const& splitters,
+    std::vector<size_t> const&      valid_partitions,
+    PartitionBorder<ElementType>&   p_borders,
+    std::vector<size_t> const&      global_histo)
+{
+  DASH_LOG_TRACE("< psort__validate_partitions");
+
+  if (valid_partitions.empty()) {
+    return true;
+  }
+
+  auto const& acc_partition_count = p_unit_info.acc_partition_count;
+
+  for (auto const& border_idx : valid_partitions) {
+    auto const p_left  = p_borders.left_partition[border_idx];
+    auto const nlt_idx = p_left * NLT_NLE_BLOCK;
+
+    auto const peer_idx = p_left + 1;
+
+    if (global_histo[nlt_idx] < acc_partition_count[peer_idx] &&
+        acc_partition_count[peer_idx] <= global_histo[nlt_idx + 1]) {
+      p_borders.is_stable[border_idx] = true;
+    }
+    else {
+      if (global_histo[nlt_idx] >= acc_partition_count[peer_idx]) {
         p_borders.upper_bound[border_idx] = splitters[border_idx];
       }
       else {
@@ -963,7 +1034,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
   // implicit barrier...
-  array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
+  // array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
 
   // another implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
@@ -1015,8 +1086,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   bool done = false;
 
-  auto it_global_histo  = g_nlt_nle.begin();
-  auto tmp_global_histo = it_global_histo + NLT_NLE_BLOCK * nunits;
+  // auto it_global_histo  = g_nlt_nle.begin();
+  // auto tmp_global_histo = it_global_histo + NLT_NLE_BLOCK * nunits;
 
   // collect all valid splitters in a temporary vector
   std::vector<size_t> valid_partitions;
@@ -1054,6 +1125,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   size_t iter = 0;
 
+  std::vector<size_t> global_histo(nunits * NLT_NLE_BLOCK, 0);
+
   do {
     ++iter;
 
@@ -1074,26 +1147,30 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     detail::trace_local_histo("local histogram", l_nlt_nle);
 
+    // allreduce with implicit barrier
     detail::psort__global_histogram(
         std::begin(l_nlt_nle),
         std::next(
             std::begin(l_nlt_nle),
             (valid_partitions.back() + 1) * NLT_NLE_BLOCK),
-        it_global_histo);
+        std::begin(global_histo),
+        team.dart_id());
 
     DASH_LOG_TRACE_RANGE(
         "global histogram",
-        (it_global_histo + (myid * NLT_NLE_BLOCK)).local(),
-        (it_global_histo + (myid * NLT_NLE_BLOCK)).local() + NLT_NLE_BLOCK);
+        std::next(std::begin(global_histo), myid * NLT_NLE_BLOCK),
+        std::next(std::begin(global_histo), (myid + 1) * NLT_NLE_BLOCK));
 
     done = detail::psort__validate_partitions(
-        p_unit_info, splitters, valid_partitions, p_borders, it_global_histo);
+        p_unit_info, splitters, valid_partitions, p_borders, global_histo);
 
     // This swap eliminates a barrier as, otherwise, some units may be one
     // iteration ahead and modify shared data while the others are still not
     // done
-    std::swap(it_global_histo, tmp_global_histo);
+
+    // std::swap(it_global_histo, tmp_global_histo);
   } while (!done);
+
 
   trace.exit_state("5:find_global_partition_borders");
 
