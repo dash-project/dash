@@ -31,7 +31,6 @@ class Vector_iterator;
 
 namespace std {
 
-	// Ugly fix to be able to use std::copy on GlobPtr
 
 	template <class Vector>
 	struct iterator_traits<dash::Vector_iterator<Vector>> {
@@ -42,15 +41,16 @@ namespace std {
 		using iterator_category = std::random_access_iterator_tag;
 	};
 
-	template <class T, class mem_type>
-	struct iterator_traits<dash::GlobPtr<T, mem_type>> {
-		using self_type = iterator_traits<dash::GlobPtr<T, mem_type>>;
-		using value_type = T;
- 		using pointer = dash::GlobPtr<T, mem_type>;
-		using difference_type = decltype(std::declval<pointer>() - std::declval<pointer>());
-// 		using reference = typename Vector::reference;
-		using iterator_category = std::random_access_iterator_tag;
-	};
+	// Ugly fix to be able to use std::copy on GlobPtr
+// 	template <class T, class mem_type>
+// 	struct iterator_traits<dash::GlobPtr<T, mem_type>> {
+// 		using self_type = iterator_traits<dash::GlobPtr<T, mem_type>>;
+// 		using value_type = T;
+//  		using pointer = dash::GlobPtr<T, mem_type>;
+// 		using difference_type = decltype(std::declval<pointer>() - std::declval<pointer>());
+// // 		using reference = typename Vector::reference;
+// 		using iterator_category = std::random_access_iterator_tag;
+// 	};
 
 } // End of namespace std
 
@@ -321,7 +321,7 @@ void Vector<T, allocator>::balance() {
 	const auto i = _team.myid();
 
 	glob_mem_type tmp(cap, _team);
-	std::copy(begin() + i*s, begin()+(i+1)*s, tmp.begin() + i*cap);
+	std::copy(begin() + i*s, begin()+(i+1)*s, tmp.lbegin());
 // 	auto dest = tmp.begin() + i*cap;
 // 	auto gptr = static_cast<dart_gptr_t>(*(begin() + i*s));
 // 	dart_get_blocking(dest.local(), gptr, s, dart_datatype<T>::value, dart_datatype<T>::value);
@@ -406,29 +406,34 @@ void Vector<T, allocator>::reserve(size_type new_cap) {
 		const auto i = _team.myid();
 // 		if(_team.myid() == 0) std::cout << "copy data" << std::endl;
 // 		std::copy(_data.begin() + i*old_cap, _data.begin()+(i*old_cap+lsize()), tmp.begin() + i*new_cap);
-		auto dest = tmp.begin() + i*new_cap;
-		auto gptr = static_cast<dart_gptr_t>(_data.begin() + i*old_cap);
-		dart_get_blocking(dest.local(), gptr, lsize(), dart_datatype<T>::value, dart_datatype<T>::value);
+		std::copy(_data.lbegin(), _data.lbegin()+lsize(), tmp.lbegin());
+// 		auto dest = tmp.begin() + i*new_cap;
+// 		auto gptr = static_cast<dart_gptr_t>(_data.begin() + i*old_cap);
+// 		dart_get_blocking(dest.local(), gptr, lsize(), dart_datatype<T>::value, dart_datatype<T>::value);
 		_data = std::move(tmp);
 	}
 
+	_team.barrier();
 // 	if(_team.myid() == 0) std::cout << "reserved." << std::endl;
 }
 
 template <class T, template<class> class allocator>
 template< class InputIt >
 void Vector<T, allocator>::linsert(InputIt first, InputIt last) {
+	if(first == last) return;
+
 	const auto distance = std::distance(first,last);
-// 	if(_team.myid() == 0) std::cout << "lcapacity = " << lcapacity() << std::endl;
+// 	if(_team.myid() == 1) std::cout << "lcapacity = " << lcapacity() << std::endl;
 
 	const auto lastSize = dash::atomic::fetch_add(*(_local_sizes.begin()+_team.myid()), static_cast<size_type>(distance));
-// 	if(_team.myid() == 0) std::cout << "lastSize = " << lastSize << std::endl;
+// 	if(_team.myid() == 1) std::cout << "lastSize = " << lastSize << std::endl;
 
 	const auto direct_fill = std::min(static_cast<size_type>(distance), lcapacity() - lastSize);
-// 	if(_team.myid() == 0) std::cout << "direct_fill = " << direct_fill << std::endl;
+// 	if(_team.myid() == 1) std::cout << "direct_fill = " << direct_fill << std::endl;
 
 	const auto direct_fill_end = first + direct_fill;
 	std::copy(first, direct_fill_end, _data.lbegin() + lastSize);
+
 	if(direct_fill_end != last) {
 		dash::atomic::store(*(_local_sizes.begin()+_team.myid()), lcapacity());
 		local_queue.insert(local_queue.end(), direct_fill_end, last);
@@ -443,6 +448,8 @@ T clamp(const T value, const T lower, const T higher) {
 template <class T, template<class> class allocator>
 template< class InputIt >
 void Vector<T, allocator>::insert(InputIt first, InputIt last) {
+	if(first == last) return;
+
 	const auto distance = std::distance(first,last);
 // 	if(_team.myid() == 0) std::cout << "distance = " << distance << std::endl;
 // 	if(_team.myid() == 0) std::cout << "lcapacity = " << lcapacity() << std::endl;
@@ -454,22 +461,35 @@ void Vector<T, allocator>::insert(InputIt first, InputIt last) {
 // 	std::cout << "id("<< _team.myid() << ") "<< "direct_fill = " << direct_fill << std::endl;
 
 	const auto direct_fill_end = first + direct_fill;
+
 // 	std::copy(first, direct_fill_end, _data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+	auto gptr =_data.begin() + (lcapacity()*(_team.size()-1) + lastSize);
+	std::vector<value_type> buffer(first, direct_fill_end);
+
+	if(buffer.size() > 0) {
+		dart_put_blocking(
+			static_cast<dart_gptr_t>(gptr),
+			buffer.data(),
+			buffer.size(),
+			dart_datatype<T>::value,
+			dart_datatype<T>::value
+		);
+	}
 
 	// This is a unneccessary copy to get a void* from a (forward-)iterator. In order to prevent this,
 	// you have to either change the interface of dash::vector::insert() or dart_put_blocking() or
 	// specialise for every iterator type or write a conversion class from iterator to void* using
 	// type traits.
-	std::vector<T> buffer(first, first+direct_fill);
-
-	auto gptr = static_cast<dart_gptr_t>(_data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
-	dart_put_blocking(
-		gptr,
-		buffer.data(),
-		direct_fill,
-		dart_datatype<T>::value,
-		dart_datatype<T>::value
-	);
+// 	std::vector<T> buffer(first, first+direct_fill);
+//
+// 	auto gptr = static_cast<dart_gptr_t>(_data.begin() + (lcapacity()*(_team.size()-1) + lastSize));
+// 	dart_put_blocking(
+// 		gptr,
+// 		buffer.data(),
+// 		direct_fill,
+// 		dart_datatype<T>::value,
+// 		dart_datatype<T>::value
+// 	);
 
 	if(direct_fill_end != last) {
 		dash::atomic::store(*(_local_sizes.begin()+(_team.size()-1)), lcapacity());
