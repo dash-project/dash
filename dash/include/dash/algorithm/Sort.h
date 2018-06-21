@@ -249,62 +249,6 @@ inline const std::vector<std::size_t> psort__local_histogram(
   return l_nlt_nle;
 }
 
-#if 0
-template <class LocalIter, class GlobIter>
-inline void psort__global_histogram(
-    LocalIter local_histo_begin,
-    LocalIter local_histo_end,
-    GlobIter  it_nlt_nle)
-{
-  DASH_LOG_TRACE("< psort__global_histogram ");
-
-  auto const& team = it_nlt_nle.pattern().team();
-  auto const  myid = team.myid();
-
-  auto liter_begin = (it_nlt_nle + (myid.id * NLT_NLE_BLOCK)).local();
-
-  DASH_ASSERT_MSG(liter_begin, "pointer must not be NULL");
-
-  std::fill(liter_begin, liter_begin + NLT_NLE_BLOCK, 0);
-
-  team.barrier();
-
-  bool has_pending_op = false;
-
-  for (; local_histo_begin != local_histo_end;
-       local_histo_begin += NLT_NLE_BLOCK, it_nlt_nle += NLT_NLE_BLOCK) {
-    // we communicate only non-zero values
-    if (*local_histo_begin == 0 && *(std::next(local_histo_begin, 1)) == 0) {
-      continue;
-    }
-
-    DASH_ASSERT_RETURNS(
-        dart_accumulate(
-            // dart pointer to first element in target range
-            (it_nlt_nle).dart_gptr(),
-            // values
-            &(*local_histo_begin),
-            // nvalues
-            NLT_NLE_BLOCK,
-            // dart type
-            dash::dart_datatype<size_t>::value,
-            // dart op
-            dash::plus<size_t>().dart_operation()),
-        DART_OK);
-
-    has_pending_op = true;
-  }
-
-  // flush all outstanding dart_accumulate operations...
-  if (has_pending_op) {
-    DASH_ASSERT_RETURNS(dart_flush_all(it_nlt_nle.dart_gptr()), DART_OK);
-  }
-
-  team.barrier();
-  DASH_LOG_TRACE("psort__global_histogram >");
-}
-#endif
-
 template <class InputIt, class OutputIt>
 inline void psort__global_histogram(
     InputIt     local_histo_begin,
@@ -326,116 +270,6 @@ inline void psort__global_histogram(
 
   DASH_LOG_TRACE("psort__global_histogram >");
 }
-
-#if 0
-template <typename ElementType, typename GlobIter>
-bool psort__validate_partitions(
-    UnitInfo const&                 p_unit_info,
-    std::vector<ElementType> const& splitters,
-    std::vector<size_t> const&      valid_partitions,
-    PartitionBorder<ElementType>&   p_borders,
-    GlobIter                        it_g_nlt_nle)
-{
-  DASH_LOG_TRACE("< psort__validate_partitions");
-  using value_t = typename GlobIter::value_type;
-  using index_t = typename GlobIter::index_type;
-
-  if (valid_partitions.empty()) {
-    return true;
-  }
-
-  auto const nunits = it_g_nlt_nle.pattern().team().size();
-  auto const myid   = it_g_nlt_nle.pattern().team().myid();
-
-  //
-  // The first two elements are always 0
-  std::vector<value_t> l_nlt_nle(NLT_NLE_BLOCK * nunits, 0);
-  auto                 l_nlt_nle_data = l_nlt_nle.data();
-
-  // TODO(kowalewski): dash::copy does not work with BLOCKCYCLIC patterns.
-  // TODO(kowalewski): add unit test and create issue
-  //
-  // For this reason we explicitly use handles instead of dash::copy_async.
-  // Moreover it is faster since dash::copy makes a lot of pattern stuff and
-  // we definitely know what we are doing here.
-  std::vector<dart_handle_t> handles{};
-
-  std::transform(
-      p_unit_info.valid_remote_partitions.begin(),
-      p_unit_info.valid_remote_partitions.end(),
-      std::back_inserter(handles),
-      [it_g_nlt_nle, l_nlt_nle_data](std::size_t p) {
-        // All elements in input range are remote
-        index_t lidx      = p * NLT_NLE_BLOCK;
-        auto    src_begin = it_g_nlt_nle + lidx;
-
-        dart_handle_t handle;
-        dash::internal::get_handle(
-            src_begin.dart_gptr(),
-            l_nlt_nle_data + lidx,
-            NLT_NLE_BLOCK,
-            &handle);
-        return handle;
-      });
-
-  DASH_ASSERT_EQ(
-      handles.size(),
-      p_unit_info.valid_remote_partitions.size(),
-      "invalid size of handles vector");
-
-  auto const last_p   = p_unit_info.valid_remote_partitions.back();
-  auto       out_last = l_nlt_nle_data + last_p * NLT_NLE_BLOCK;
-
-  // copy local portion
-  index_t lidx      = myid * NLT_NLE_BLOCK;
-  auto    cpy_begin = it_g_nlt_nle + lidx;
-  auto    lbegin    = cpy_begin.local();
-  std::copy(lbegin, lbegin + NLT_NLE_BLOCK, l_nlt_nle_data + lidx);
-
-  // wait for all copies
-  if (!handles.empty()) {
-    if (dart_waitall_local(handles.data(), handles.size()) != DART_OK) {
-      DASH_LOG_ERROR(
-          "dash::detail::psort_validate_partitions [Future]",
-          "  dart_waitall_local failed");
-      DASH_THROW(
-          dash::exception::RuntimeError,
-          "dash::detail::psort_validate_partitions [Future]: "
-          "dart_waitall_local failed");
-    }
-  }
-
-  auto const& acc_partition_count = p_unit_info.acc_partition_count;
-
-  for (auto const& border_idx : valid_partitions) {
-    auto const p_left  = p_borders.left_partition[border_idx];
-    auto const nlt_idx = p_left * NLT_NLE_BLOCK;
-
-    auto const peer_idx = p_left + 1;
-
-    if (l_nlt_nle[nlt_idx] < acc_partition_count[peer_idx] &&
-        acc_partition_count[peer_idx] <= l_nlt_nle[nlt_idx + 1]) {
-      p_borders.is_stable[border_idx] = true;
-    }
-    else {
-      if (l_nlt_nle[nlt_idx] >= acc_partition_count[peer_idx]) {
-        p_borders.upper_bound[border_idx] = splitters[border_idx];
-      }
-      else {
-        p_borders.lower_bound[border_idx] = splitters[border_idx];
-      }
-    }
-  }
-
-  // Exit condition: is there any non-stable partition
-  auto const nonstable_it = std::find(
-      p_borders.is_stable.cbegin(), p_borders.is_stable.cend(), false);
-
-  DASH_LOG_TRACE("psort__validate_partitions >");
-  // exit condition
-  return nonstable_it == p_borders.is_stable.cend();
-}
-#endif
 
 template <typename ElementType>
 bool psort__validate_partitions(
@@ -796,12 +630,9 @@ inline void psort__init_partition_borders(
   DASH_LOG_TRACE("psort__init_partition_borders >");
 }
 
-template <class Iter, class PatternT, class SortableHash>
+template <class Iter, class SortableHash>
 inline auto find_global_min_max(
-    Iter            lbegin,
-    Iter            lend,
-    PatternT const& pattern,
-    SortableHash    sortable_hash)
+    Iter lbegin, Iter lend, dart_team_t teamid, SortableHash sortable_hash)
     -> std::pair<
         typename std::decay<typename dash::functional::closure_traits<
             SortableHash>::result_type>::type,
@@ -814,12 +645,12 @@ inline auto find_global_min_max(
 
   auto const n_l_elem = std::distance(lbegin, lend);
 
-  auto const lmin = (n_l_elem > 0) ? sortable_hash(*lbegin)
-                                   : std::numeric_limits<mapped_type>::max();
-  auto const lmax = (n_l_elem > 0) ? sortable_hash(*(std::prev(lend)))
-                                   : std::numeric_limits<mapped_type>::min();
-
-  std::array<mapped_type, 2> min_max_in{lmin, lmax};
+  std::array<mapped_type, 2> min_max_in{
+      // local minimum
+      (n_l_elem > 0) ? sortable_hash(*lbegin)
+                     : std::numeric_limits<mapped_type>::max(),
+      (n_l_elem > 0) ? sortable_hash(*(std::prev(lend)))
+                     : std::numeric_limits<mapped_type>::min()};
   std::array<mapped_type, 2> min_max_out{};
 
   DASH_ASSERT_RETURNS(
@@ -829,12 +660,14 @@ inline auto find_global_min_max(
           2,                                        // buffer size
           dash::dart_datatype<mapped_type>::value,  // data type
           DART_OP_MINMAX,                           // operation
-          dash::Team::All().dart_id()               // team
+          teamid                                    // team
           ),
       DART_OK);
 
   return std::make_pair(std::get<0>(min_max_out), std::get<1>(min_max_out));
-}
+}  // namespace dash
+
+#ifdef DASH_ENABLE_TRACE_LOGGING
 
 template <
     class Iterator,
@@ -859,10 +692,11 @@ public:
   {
   }
 
-  StridedIterator(const StridedIterator& other) = default;
-  StridedIterator(StridedIterator&& other)      = default;
+  StridedIterator(const StridedIterator& other)     = default;
+  StridedIterator(StridedIterator&& other) noexcept = default;
   StridedIterator& operator=(StridedIterator const& other) = default;
-  StridedIterator& operator=(StridedIterator&& other) = default;
+  StridedIterator& operator=(StridedIterator&& other) noexcept = default;
+  ~StridedIterator()                                           = default;
 
   StridedIterator operator++()
   {
@@ -927,6 +761,8 @@ private:
   Iterator m_iter{};
   Iterator m_last{};
 };
+
+#endif
 
 inline void trace_local_histo(
     std::string&& ctx, std::vector<size_t> const& histograms)
@@ -1027,9 +863,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::size_t gsize = nunits * NLT_NLE_BLOCK * 2;
 
   // implicit barrier...
-  // array_t g_nlt_nle(gsize, dash::BLOCKCYCLIC(NLT_NLE_BLOCK), team);
-
-  // another implicit barrier...
   array_t g_partition_data(nunits * nunits * 3, dash::BLOCKED, team);
   std::uninitialized_fill(
       g_partition_data.lbegin(), g_partition_data.lend(), 0);
@@ -1041,8 +874,8 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   // Temporary local buffer (sorted);
   std::vector<value_type> const lcopy(lbegin, lend);
 
-  auto min_max = detail::find_global_min_max(
-      std::begin(lcopy), std::end(lcopy), pattern, sortable_hash);
+  auto const min_max = detail::find_global_min_max(
+      std::begin(lcopy), std::end(lcopy), team.dart_id(), sortable_hash);
 
   trace.exit_state("3:find_global_min_max");
 
