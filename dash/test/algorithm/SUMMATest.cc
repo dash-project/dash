@@ -1,13 +1,12 @@
 
 #include "SUMMATest.h"
 
-#include <dash/algorithm/SUMMA.h>
 #include <dash/Matrix.h>
 #include <dash/Meta.h>
+#include <dash/algorithm/SUMMA.h>
 
-#include <sstream>
 #include <iomanip>
-
+#include <sstream>
 
 #define SKIP_TEST_IF_NO_SUMMA()           \
   auto conf = dash::util::DashConfig;     \
@@ -161,7 +160,7 @@ TEST_F(SUMMATest, Deduction)
   dash::barrier();
 
   // Verify multiplication result (A x id = A):
-  if (false && dash::myid().id == 0) {
+  if (false) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
     for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
@@ -260,7 +259,7 @@ TEST_F(SUMMATest, SeqTilePatternMatrix)
   dash::barrier();
 
   // Verify multiplication result (A x id = A):
-  if (false && dash::myid().id == 0) {
+  if (false) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
     for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {

@@ -1,14 +1,13 @@
 
 #include "STLAlgorithmTest.h"
 
-#include <dash/Meta.h>
 #include <dash/Array.h>
+#include <dash/Meta.h>
 #include <dash/Pair.h>
 
 #include <algorithm>
-#include <vector>
 #include <utility>
-
+#include <vector>
 
 TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
   typedef dash::Pair<dart_unit_t, int> element_t;

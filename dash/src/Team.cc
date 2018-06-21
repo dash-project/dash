@@ -70,6 +70,7 @@ Team::Team(
   if (DART_TEAM_NULL != id &&
       DART_TEAM_ALL != id) {
     Team::register_team(this);
+    init_team();
   }
 }
 

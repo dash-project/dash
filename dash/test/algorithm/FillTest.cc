@@ -2,8 +2,8 @@
 #include "FillTest.h"
 
 #include <dash/Array.h>
-#include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/algorithm/LocalRange.h>
 
 #include <array>
 

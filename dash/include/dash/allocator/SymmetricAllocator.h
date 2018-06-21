@@ -5,7 +5,6 @@
 
 #include <dash/Types.h>
 #include <dash/Team.h>
-#include <dash/GlobPtr.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/internal/StreamConversion.h>
@@ -23,7 +22,7 @@ namespace allocator {
  * Encapsulates a memory allocation and deallocation strategy of global
  * memory regions distributed across local memory of units in a specified
  * team.
- * 
+ *
  * \note This allocator allocates a symmetric amount of memory on each node.
  *
  * Satisfied STL concepts:
@@ -175,7 +174,7 @@ public:
   /**
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
-   * 
+   *
    * \note As allocation is symmetric, each unit has to allocate
    *       an equal number of local elements.
    *
@@ -205,7 +204,7 @@ public:
    * local memory of all units in the team.
    *
    * \note collective operation
-   * 
+   *
    * \see DashAllocatorConcept
    */
   void deallocate(pointer gptr)

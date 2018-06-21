@@ -19,6 +19,46 @@
 #include <dash/dart/if/dart_util.h>
 
 
+/*****************************************************************/
+/* MPI operations                                                */
+/*****************************************************************/
+
+DART_INTERNAL
+dart_ret_t dart__mpi__op_init();
+
+DART_INTERNAL
+MPI_Op dart__mpi__op_custom(dart_operation_t op, dart_datatype_t type);
+
+DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op, dart_datatype_t type)
+{
+  switch (dart_op) {
+    case DART_OP_MIN     : return MPI_MIN;
+    case DART_OP_MAX     : return MPI_MAX;
+    case DART_OP_SUM     : return MPI_SUM;
+    case DART_OP_PROD    : return MPI_PROD;
+    case DART_OP_BAND    : return MPI_BAND;
+    case DART_OP_LAND    : return MPI_LAND;
+    case DART_OP_BOR     : return MPI_BOR;
+    case DART_OP_LOR     : return MPI_LOR;
+    case DART_OP_BXOR    : return MPI_BXOR;
+    case DART_OP_LXOR    : return MPI_LXOR;
+    case DART_OP_REPLACE : return MPI_REPLACE;
+    case DART_OP_NO_OP   : return MPI_NO_OP;
+    case DART_OP_MINMAX  : return dart__mpi__op_custom(DART_OP_MINMAX, type);
+    default              : return (MPI_Op)(-1);
+  }
+}
+
+DART_INTERNAL
+const char* dart__mpi__op_name(dart_operation_t op);
+
+DART_INTERNAL
+dart_ret_t dart__mpi__op_fini();
+
+/*****************************************************************/
+/* MPI datatypes                                                 */
+/*****************************************************************/
+
 /**
  * The maximum number of elements of a certain type to be
  * transfered in one chunk.
@@ -72,30 +112,11 @@ typedef struct dart_datatype_struct {
 DART_INTERNAL
 extern dart_datatype_struct_t __dart_base_types[DART_TYPE_LAST];
 
-
 dart_ret_t
 dart__mpi__datatype_init() DART_INTERNAL;
 
 dart_ret_t
 dart__mpi__datatype_fini() DART_INTERNAL;
-
-DART_INLINE MPI_Op dart__mpi__op(dart_operation_t dart_op) {
-  switch (dart_op) {
-    case DART_OP_MIN     : return MPI_MIN;
-    case DART_OP_MAX     : return MPI_MAX;
-    case DART_OP_SUM     : return MPI_SUM;
-    case DART_OP_PROD    : return MPI_PROD;
-    case DART_OP_BAND    : return MPI_BAND;
-    case DART_OP_LAND    : return MPI_LAND;
-    case DART_OP_BOR     : return MPI_BOR;
-    case DART_OP_LOR     : return MPI_LOR;
-    case DART_OP_BXOR    : return MPI_BXOR;
-    case DART_OP_LXOR    : return MPI_LXOR;
-    case DART_OP_REPLACE : return MPI_REPLACE;
-    case DART_OP_NO_OP   : return MPI_NO_OP;
-    default              : return (MPI_Op)(-1);
-  }
-}
 
 DART_INLINE
 dart_datatype_struct_t * dart__mpi__datatype_struct(

@@ -371,7 +371,13 @@ TEST_F(CoarrayTest, Comutex){
   dash::Coarray<int> arr;
 
   std::random_device rd;
-  std::default_random_engine dre(rd());
+#ifndef DEBUG
+  unsigned int seed = rd();
+#else
+  // avoid non-deterministic code coverage changes
+  unsigned int seed = 42;
+#endif
+  std::default_random_engine dre(seed);
   std::uniform_int_distribution<int> uniform_dist(0, dash::size()-1);
 
   arr = 0;

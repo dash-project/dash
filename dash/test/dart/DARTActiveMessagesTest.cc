@@ -69,7 +69,8 @@ TEST_F(DARTActiveMessagesTest, Neighbor)
   ret = dart_amsg_process_blocking(q, dash::Team::All().dart_id());
   ASSERT_EQ_U(ret, DART_OK);
 
-  ASSERT_EQ_U(num_messages, 1);
+  uint64_t _num_messages = num_messages;
+  ASSERT_EQ_U(_num_messages, 1);
 
   ASSERT_EQ_U(dart_amsg_closeq(q), DART_OK);
 }
@@ -142,7 +143,8 @@ TEST_F(DARTActiveMessagesTest, AllToOneBlock)
   ret = dart_amsg_process_blocking(q, dash::Team::All().dart_id());
   ASSERT_EQ_U(ret, DART_OK);
   if (dash::myid() == 0) {
-    ASSERT_EQ_U(num_messages, (dash::size() - 1));
+    uint64_t _num_messages = num_messages;
+    ASSERT_EQ_U(_num_messages, (dash::size() - 1));
   }
 
   ASSERT_EQ_U(dart_amsg_closeq(q), DART_OK);
@@ -179,7 +181,8 @@ TEST_F(DARTActiveMessagesTest, Overload)
   ret = dart_amsg_process_blocking(q, dash::Team::All().dart_id());
   ASSERT_EQ_U(ret, DART_OK);
   if (dash::myid() == 0) {
-    ASSERT_EQ_U(num_messages, ((dash::size() - 1)*200));
+    uint64_t _num_messages = num_messages;
+    ASSERT_EQ_U(_num_messages, ((dash::size() - 1)*200));
   }
 
   ASSERT_EQ_U(dart_amsg_closeq(q), DART_OK);

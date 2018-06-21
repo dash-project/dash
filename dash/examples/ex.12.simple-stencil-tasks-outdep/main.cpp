@@ -26,7 +26,7 @@
 #include <dash/algorithm/Fill.h>
 #include <dash/util/Timer.h>
 #include <dash/tasks/Tasks.h>
-#include <dash/tasks/ParallelFor.h>
+#include <dash/tasks/Taskloop.h>
 
 #include <fstream>
 #include <string>

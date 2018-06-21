@@ -50,3 +50,26 @@ TEST_F(DARTCollectiveTest, Sendrecv) {
     ASSERT_EQ(recv, data[partner]);
   }
 }
+
+
+TEST_F(DARTCollectiveTest, MinMax) {
+
+  using elem_t = int;
+  elem_t lmin = dash::myid();
+  elem_t lmax = dash::myid() + dash::size();
+
+  std::array<elem_t, 2> min_max_in{lmin, lmax};
+  std::array<elem_t, 2> min_max_out{};
+  dart_allreduce(
+      &min_max_in,                        // send buffer
+      &min_max_out,                       // receive buffer
+      2,                                  // buffer size
+      dash::dart_datatype<elem_t>::value,  // data type
+      DART_OP_MINMAX,                     // operation
+      dash::Team::All().dart_id()         // team
+      );
+
+  ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MAX], 2*dash::size()-1);
+  ASSERT_EQ_U(min_max_out[DART_OP_MINMAX_MIN], 0);
+
+}

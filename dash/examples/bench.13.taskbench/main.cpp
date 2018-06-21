@@ -101,7 +101,7 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_barrier();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::parallel_for(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, 1,
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -142,7 +142,7 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_barrier();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::parallel_for(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, 1,
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -182,7 +182,7 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 
   Timer t;
   //for (size_t i = 1; i <= num_tasks; ++i) {
-    dash::tasks::parallel_for(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, 1,
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;

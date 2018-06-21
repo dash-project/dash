@@ -160,6 +160,10 @@ dart_ret_t do_init()
     return DART_ERR_OTHER;
   }
 
+  if (dart__mpi__op_init() != DART_OK) {
+    return DART_ERR_OTHER;
+  }
+
   dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
 
   /* Create a global translation table for all
@@ -353,6 +357,8 @@ dart_ret_t dart_exit()
   MPI_Comm_free(&dart_comm_world);
 
   dart__mpi__datatype_fini();
+
+  dart__mpi__op_fini();
 
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid.id);

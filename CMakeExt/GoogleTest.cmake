@@ -1,7 +1,6 @@
 find_package(Threads REQUIRED)
-include(ExternalProject)
 
-set (GTEST_GIT_TAG "be6ee26a9b5b814c3e173c6e5e97c385fbdc1fb0")
+set (GTEST_GIT_TAG "HEAD")
 
 if (BUILD_TESTS)
 
@@ -106,52 +105,12 @@ if (BUILD_TESTS)
 
     if (git_res EQUAL 0)
       # BUILD_BYPRODUCTS not avalable in CMAKE < 3.2.0
-      # TODO: do we still need to set BUILD_BYPRODUCTS?
-      if("${CMAKE_VERSION}" VERSION_LESS 3.2.0)
-        ExternalProject_Add(
-          GTestExternal
-          SOURCE_DIR ${GTEST_SUBMOD}
-          PREFIX "${GTEST_PREFIX}"
-          CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
-          INSTALL_COMMAND ""
-          # Wrap configure and build steps in a script to log output
-          LOG_CONFIGURE ON
-          LOG_BUILD ON
-        )
-      else()
-        ExternalProject_Add(
-          GTestExternal
-          SOURCE_DIR ${GTEST_SUBMOD}
-          PREFIX "${GTEST_PREFIX}"
-          CMAKE_ARGS "-DCMAKE_C_COMPILER:string=${CMAKE_C_COMPILER};-DCMAKE_CXX_COMPILER:string=${CMAKE_CXX_COMPILER}"
-          INSTALL_COMMAND ""
-          # Necessary for ninja build
-          BUILD_BYPRODUCTS ${GTEST_LIBRARY}
-          # Wrap configure and build steps in a script to log output
-          LOG_CONFIGURE ON
-          LOG_BUILD ON
-        )
-      endif()
-
-      add_library(GTest IMPORTED STATIC GLOBAL)
-      set_target_properties(
-        GTest
-        PROPERTIES
-        IMPORTED_LOCATION                 "${GTEST_LIBRARY}"
-        IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}")
-      add_dependencies(GTest GTestExternal)
-
-      add_library(GTestMain IMPORTED STATIC GLOBAL)
-      set_target_properties(
-        GTestMain
-        PROPERTIES
-        IMPORTED_LOCATION                 "${GTEST_MAINLIB}"
-        IMPORTED_LINK_INTERFACE_LIBRARIES "${GTEST_LIBRARY};${CMAKE_THREAD_LIBS_INIT}")
-      add_dependencies(GTestMain GTestExternal)
+      add_subdirectory(../vendor/googletest/googletest ${PROJECT_BINARY_DIR}/testing)
+      # Gtest infects the build with Werr flag
+      remove_definitions(-Werror)
 
       set (GTEST_FOUND 1)
       set (GTEST_FOUND 1 PARENT_SCOPE)
-
     else ()
       message(WARNING "GoogleTest: Failed to update submodule, disabling tests\n"
                       "            GIT returned ${git_res}\n"

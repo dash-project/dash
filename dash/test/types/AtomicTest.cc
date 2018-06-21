@@ -398,7 +398,7 @@ TEST_F(AtomicTest, AtomicInterface){
   using value_t = int;
   using atom_t  = dash::Atomic<value_t>;
   using array_t = dash::Array<atom_t>;
-  size_t num_elem = std::max(static_cast<ssize_t>(10), dash::size());
+  size_t num_elem = std::max(static_cast<size_t>(10), dash::size());
 
   array_t array(num_elem);
 
@@ -519,6 +519,7 @@ TEST_F(AtomicTest, AtomicSignal){
 
   array_t array(dash::size());
   dash::fill(array.begin(), array.end(), 0);
+  array.barrier();
 
   if (dash::myid() != 0) {
     // send the signal
