@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <mpi.h>
 
 using std::cout;
 using std::endl;
@@ -35,15 +36,29 @@ enum experiment_t{
   ARRAYDOUBLE,
   DARTSTRUCT,
   DARTDOUBLE,
-  DARTLAMBDA
+  DARTLAMBDA,
+  MPIDOUBLE
 };
 
-std::array<const char*, 5> testcase_str {{
+#ifdef HAVE_ASSERT
+#include <cassert>
+#define ASSERT_EQ(_e, _a) do {  \
+  assert((_e) == (_a));         \
+} while (0)
+#else
+#define ASSERT_EQ(_e, _a) do {  \
+  dash__unused(_e);             \
+  dash__unused(_a);             \
+} while (0)
+#endif
+
+std::array<const char*, 6> testcase_str {{
                           "accumulate.arraystruct",
                           "accumulate.arraydouble",
                           "accumulate.dartstruct",
                           "accumulate.dartdouble",
-                          "accumulate.dartlambda"
+                          "accumulate.dartlambda",
+                          "accumulate.mpidouble"
                           }};
 
 
@@ -162,12 +177,13 @@ int main(int argc, char** argv)
   print_measurement_header();
 
   int          round = 0;
-  std::array<experiment_t, 5> testcases{{
+  std::array<experiment_t, 6> testcases{{
     ARRAYSTRUCT,
     ARRAYDOUBLE,
     DARTSTRUCT,
     DARTDOUBLE,
-    DARTLAMBDA
+    DARTLAMBDA,
+    MPIDOUBLE
   }};
 
   while(round < params.rounds) {
@@ -215,25 +231,29 @@ measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
       double out = accumulate_array(&in, std::next(&in), 0.0,
                                     dash::plus<double>());
       if (dash::myid() == 0) {
-        assert((int)out == (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
+        ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
       }
     }
     else if (testcase == DARTSTRUCT) {
       minmax_t in{lmin, lmax};
       minmax_t init{0.0, 0.0};
       minmax_t out = dash::accumulate(&in, std::next(&in), init, true);
-      assert((int)out.min == (dash::size()-1)*(dash::size())/2);
-      assert((int)out.max == dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
-
+      ASSERT_EQ((int)out.min, (dash::size()-1)*(dash::size())/2);
+      ASSERT_EQ((int)out.max, dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     } else if (testcase == DARTDOUBLE) {
       double in = lmin + lmax;
       double out = dash::accumulate(&in, std::next(&in), 0.0, true);
-      assert((int)out == (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
+      ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     } else if (testcase == DARTLAMBDA) {
       double in = lmin + lmax;
       double out = dash::accumulate(&in, std::next(&in), 0.0,
                                     [](double a, double b){ return a + b; });
-      assert((int)out == (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
+      ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
+    } else if (testcase == MPIDOUBLE) {
+      double in = lmin + lmax;
+      double out;
+      MPI_Allreduce(&in, &out, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+      ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     }
   }
 
