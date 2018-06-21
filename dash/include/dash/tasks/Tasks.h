@@ -950,6 +950,18 @@ namespace internal {
     dart_task_complete();
   }
 
+  template<typename T=int>
+  size_t
+  numthreads() {
+    return dart_task_num_threads();
+  }
+
+  template<typename T=int>
+  size_t
+  threadnum() {
+    return dart_task_thread_num();
+  }
+
 } // namespace tasks
 
 } // namespace dash
