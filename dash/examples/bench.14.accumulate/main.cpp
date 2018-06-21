@@ -7,7 +7,9 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#ifdef MPI_IMPL_ID
 #include <mpi.h>
+#endif
 
 using std::cout;
 using std::endl;
@@ -177,6 +179,7 @@ int main(int argc, char** argv)
   print_measurement_header();
 
   int          round = 0;
+#ifdef MPI_IMPL_ID
   std::array<experiment_t, 6> testcases{{
     ARRAYSTRUCT,
     ARRAYDOUBLE,
@@ -185,6 +188,15 @@ int main(int argc, char** argv)
     DARTLAMBDA,
     MPIDOUBLE
   }};
+#else
+  std::array<experiment_t, 5> testcases{{
+    ARRAYSTRUCT,
+    ARRAYDOUBLE,
+    DARTSTRUCT,
+    DARTDOUBLE,
+    DARTLAMBDA
+  }};
+#endif
 
   while(round < params.rounds) {
     for(auto testcase : testcases){
@@ -249,12 +261,15 @@ measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
       double out = dash::accumulate(&in, std::next(&in), 0.0,
                                     [](double a, double b){ return a + b; });
       ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
-    } else if (testcase == MPIDOUBLE) {
+    }
+#ifdef MPI_IMPL_ID
+    else if (testcase == MPIDOUBLE) {
       double in = lmin + lmax;
       double out;
       MPI_Allreduce(&in, &out, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
       ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     }
+#endif
   }
 
   mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
