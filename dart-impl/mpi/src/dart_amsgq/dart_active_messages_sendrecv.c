@@ -327,8 +327,10 @@ dart_amsg_sendrevc_process_blocking(
       }
     }
     if (!send_flag) {
+      dart__base__mutex_lock(&amsgq->send_mutex);
       MPI_Testall(amsgq->send_tailpos, amsgq->send_reqs,
                   &send_flag, MPI_STATUSES_IGNORE);
+      dart__base__mutex_unlock(&amsgq->send_mutex);
       if (send_flag) {
         DART_LOG_DEBUG("MPI_Testall: all %d sent active messages completed!",
                        amsgq->send_tailpos);

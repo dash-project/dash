@@ -523,9 +523,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobStaticMem.at", lunit);
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, lunit);
+    gptr.addr_or_offs.offset += local_index * sizeof(value_type);
     // Apply local offset to global pointer:
     pointer res_gptr(*this, gptr);
-    res_gptr += local_index;
     DASH_LOG_DEBUG("GlobStaticMem.at (+g_unit) >", res_gptr);
     return res_gptr;
   }

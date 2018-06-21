@@ -9,9 +9,8 @@
 #  TCMALLOC_FOUND              System has tcmalloc libraries and headers
 #  TCMALLOC_LIBRARIES          The tcmalloc library
 
-message(STATUS "Searching for tcmalloc library in path " ${TCMALLOC_PREFIX})
-
 set(TCMALLOC_PREFIX $ENV{TCMALLOC_PREFIX})
+message(STATUS "Searching for tcmalloc library in path " ${TCMALLOC_PREFIX})
 
 find_library(
   TCMALLOC_LIBRARIES

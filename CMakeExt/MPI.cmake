@@ -139,6 +139,7 @@ if (NOT DEFINED MPI_IMPL_ID)
 
   message(STATUS "Detected MPI implementation: ${MPI_IMPL_ID}")
   message(STATUS "Detected MPI C compiler: ${MPI_C_COMPILER}")
+  message(STATUS "Detected MPI C libraries: ${MPI_C_LIBRARIES}")
 
   check_mpi_compile(${CMAKE_SOURCE_DIR}/CMakeExt/Code/test_mpi_support.c HAVE_MPI3)
 

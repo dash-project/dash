@@ -89,18 +89,19 @@ benchmark_task_remotedep_creation(size_t num_tasks)
 }
 #endif
 
+template<bool RootOnly, bool UseInDep=true>
 void
 benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
 {
-  dash::Array<int> array(dash::size()*num_deps);
+  dash::Array<double> array(dash::size()*num_deps);
   int target = (dash::myid() + 1) % dash::size();
 
   Timer t;
 
   dash::tasks::async_barrier();
 
-  //for (size_t i = 1; i <= num_tasks; ++i) {
-    dash::tasks::taskloop(0UL, num_tasks, 1,
+  if (!RootOnly || dash::myid() == 0) {
+    dash::tasks::parallel_for(0UL, num_tasks, 1,
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -110,7 +111,88 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
         int to,
         dash::tasks::DependencyVectorInserter inserter) {
         for (int d = 0; d < num_deps; d++) {
+          if (UseInDep) {
+            *inserter = dash::tasks::in(array[target*num_deps + d]);
+          } else {
+            *inserter = dash::tasks::out(array[target*num_deps + d]);
+          }
+        }
+      }
+    );
+  }
+
+  dash::tasks::complete();
+  if (dash::myid() == 0) {
+    std::cout << "remotedeps:" << num_deps
+              << ":" << (RootOnly ? "root" : "all") << ":"
+              << t.Elapsed() / num_tasks
+              << "us" << std::endl;
+  }
+}
+
+template<bool RootOnly>
+void
+benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
+{
+  dash::Array<double> array(dash::size()*num_deps);
+  int target = (dash::myid() + 1) % dash::size();
+
+  Timer t;
+
+  dash::tasks::async_barrier();
+
+  if (!RootOnly || dash::myid() == 0) {
+    dash::tasks::parallel_for(0UL, num_tasks, 1,
+      [](int from, int to){
+        // nothing to do
+        //std::cout << "task " << from << std::endl;
+      },
+      [=, &array](
+        int from,
+        int to,
+        dash::tasks::DependencyVectorInserter inserter) {
+        int t = (dash::myid() + 1) % dash::size();
+        for (int d = 0; d < num_deps; d++) {
           *inserter = dash::tasks::in(array[target*num_deps + d]);
+
+          t = (t+1) % dash::size(); 
+          if (t == dash::myid()) t = (t+1) % dash::size();
+        }
+      }
+    );
+  }
+
+  dash::tasks::complete();
+  if (dash::myid() == 0) {
+    std::cout << "spreadremotedeps:" << num_deps
+              << ":" << (RootOnly ? "root" : "all") << ":"
+              << t.Elapsed() / num_tasks
+              << "us" << std::endl;
+  }
+}
+
+
+void
+benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
+{
+  dash::Array<double> array(dash::size()*num_deps);
+  int target = (dash::myid() + 1) % dash::size();
+
+  double *tmp = new double[num_deps];
+
+  Timer t;
+  //for (size_t i = 1; i <= num_tasks; ++i) {
+    dash::tasks::parallel_for(0UL, num_tasks, 1,
+      [](int from, int to){
+        // nothing to do
+        //std::cout << "task " << from << std::endl;
+      },
+      [=, &array](
+        int from,
+        int to,
+        dash::tasks::DependencyVectorInserter inserter) {
+        for (int d = 0; d < num_deps; d++) {
+          *inserter = dash::tasks::out(&tmp[d]);
         }
       }
     );
@@ -118,12 +200,14 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
 
   dash::tasks::complete();
   if (dash::myid() == 0) {
-    std::cout << "avg task creation/execution with " << num_deps
-              << " dependencies: "
+    std::cout << "localdeps:" << num_deps
+              << ":"
               << t.Elapsed() / num_tasks
               << "us" << std::endl;
   }
+  delete[] tmp;
 }
+
 
 void
 benchmark_task_yield(size_t num_yields)
@@ -165,10 +249,36 @@ int main(int argc, char** argv)
   benchmark_task_yield(params.num_yield_tasks);
 
   if (dash::size() > 1) {
-    for (int i = 1; i <= 8; i*=2) {
-      benchmark_task_remotedep_creation(params.num_create_tasks, i);
+    for (int i = 1; i <= 32; i*=2) {
+      benchmark_task_localdep_creation(params.num_create_tasks, i);
     }
   }
+
+  if (dash::size() > 1) {
+    for (int i = 1; i <= 32; i*=2) {
+      benchmark_task_spreadremotedep_creation<true>(params.num_create_tasks, i);
+    }
+  }
+
+
+  if (dash::size() > 1) {
+    for (int i = 1; i <= 32; i*=2) {
+      benchmark_task_spreadremotedep_creation<false>(params.num_create_tasks, i);
+    }
+  }
+
+  if (dash::size() > 1) {
+    for (int i = 1; i <= 32; i*=2) {
+      benchmark_task_remotedep_creation<true>(params.num_create_tasks, i);
+    }
+  }
+
+  if (dash::size() > 1) {
+    for (int i = 1; i <= 32; i*=2) {
+      benchmark_task_remotedep_creation<false>(params.num_create_tasks, i);
+    }
+  }
+
 
   dash::finalize();
 }
