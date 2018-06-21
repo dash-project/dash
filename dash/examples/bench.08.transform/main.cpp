@@ -333,7 +333,7 @@ void print_measurement_record(
     return;
   }
 
-  std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+  std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
   double mkps        = measurement.mkeys_per_s;
   double time_s      = measurement.time_s;
   double time_min_us = measurement.time_min_us;

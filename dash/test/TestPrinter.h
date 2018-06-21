@@ -1,4 +1,4 @@
-#ifdef MPI_IMPL_ID
+#ifdef DASH_MPI_IMPL_ID
 
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
@@ -156,4 +156,4 @@ class TestPrinter : public EmptyTestEventListener {
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
 
-#endif // MPI_IMPL_ID
+#endif // DASH_MPI_IMPL_ID
