@@ -30,6 +30,23 @@ typedef struct measurement_t {
   double      time_total_s;
 } measurement;
 
+enum experiment_t{
+  ARRAYSTRUCT = 0,
+  ARRAYDOUBLE,
+  DARTSTRUCT,
+  DARTDOUBLE,
+  DARTLAMBDA
+};
+
+std::array<const char*, 5> testcase_str {{
+                          "accumulate.arraystruct",
+                          "accumulate.arraydouble",
+                          "accumulate.dartstruct",
+                          "accumulate.dartdouble",
+                          "accumulate.dartlambda"
+                          }};
+
+
 void print_measurement_header();
 void print_measurement_record(
   const bench_cfg_params & cfg_params,
@@ -45,7 +62,7 @@ void print_params(
 
 measurement evaluate(
               int reps,
-              const std::string& testcase,
+              experiment_t     testcase,
               benchmark_params params);
 
 template<typename ValueType, typename BinaryOperation>
@@ -144,18 +161,16 @@ int main(int argc, char** argv)
   print_params(bench_params, params);
   print_measurement_header();
 
-  int     multiplier = 1;
   int          round = 0;
-  std::array<std::string, 5> testcases {{
-                            "accumulate.arraystruct",
-                            "accumulate.arraydouble",
-                            "accumulate.dartstruct",
-                            "accumulate.dartdouble",
-                            "accumulate.dartlambda"
-                            }};
+  std::array<experiment_t, 5> testcases{{
+    ARRAYSTRUCT,
+    ARRAYDOUBLE,
+    DARTSTRUCT,
+    DARTDOUBLE,
+    DARTLAMBDA
+  }};
 
   while(round < params.rounds) {
-    auto time_start = Timer::Now();
     for(auto testcase : testcases){
       res = evaluate(params.reps, testcase, params);
       print_measurement_record(bench_cfg, res, params);
@@ -171,7 +186,7 @@ int main(int argc, char** argv)
   return 0;
 }
 
-measurement evaluate(int reps, const std::string& testcase, benchmark_params params)
+measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
 {
   measurement mes;
 
@@ -184,7 +199,7 @@ measurement evaluate(int reps, const std::string& testcase, benchmark_params par
   auto ts_tot_start = Timer::Now();
 
   for (int i = 0; i < reps; i++) {
-    if (testcase == "accumulate.arraystruct") {
+    if (testcase == ARRAYSTRUCT) {
       minmax_t in{lmin, lmax};
       minmax_t init{0.0, 0.0};
       minmax_t out = accumulate_array(&in, std::next(&in), init,
@@ -195,7 +210,7 @@ measurement evaluate(int reps, const std::string& testcase, benchmark_params par
                                 - ((dash::size()-1)*(dash::size()))/2);
       }
     }
-    else if (testcase == "accumulate.arraydouble") {
+    else if (testcase == ARRAYDOUBLE) {
       double in = lmin + lmax;
       double out = accumulate_array(&in, std::next(&in), 0.0,
                                     dash::plus<double>());
@@ -203,18 +218,18 @@ measurement evaluate(int reps, const std::string& testcase, benchmark_params par
         assert((int)out == (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
       }
     }
-    else if (testcase == "accumulate.dartstruct") {
+    else if (testcase == DARTSTRUCT) {
       minmax_t in{lmin, lmax};
       minmax_t init{0.0, 0.0};
       minmax_t out = dash::accumulate(&in, std::next(&in), init, true);
       assert((int)out.min == (dash::size()-1)*(dash::size())/2);
       assert((int)out.max == dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
 
-    } else if (testcase == "accumulate.dartdouble") {
+    } else if (testcase == DARTDOUBLE) {
       double in = lmin + lmax;
       double out = dash::accumulate(&in, std::next(&in), 0.0, true);
       assert((int)out == (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
-    } else if (testcase == "accumulate.dartlambda") {
+    } else if (testcase == DARTLAMBDA) {
       double in = lmin + lmax;
       double out = dash::accumulate(&in, std::next(&in), 0.0,
                                     [](double a, double b){ return a + b; });
@@ -223,7 +238,7 @@ measurement evaluate(int reps, const std::string& testcase, benchmark_params par
   }
 
   mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
-  mes.testcase       = testcase;
+  mes.testcase       = testcase_str[testcase];
   return mes;
 }
 
