@@ -222,7 +222,7 @@ measurement evaluate(int reps, const std::string& testcase, benchmark_params par
     }
   }
 
-  mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (1000 * 1000);
+  mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
   mes.testcase       = testcase;
   return mes;
 }

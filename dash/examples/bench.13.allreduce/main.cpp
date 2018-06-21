@@ -104,7 +104,6 @@ int main(int argc, char** argv)
                             }};
 
   while(round < params.rounds) {
-    auto time_start = Timer::Now();
     for(auto testcase : testcases){
       res = evaluate(params.reps, testcase, params);
       print_measurement_record(bench_cfg, res, params);
@@ -231,7 +230,7 @@ measurement evaluate(int reps, std::string testcase, benchmark_params params)
     }
   }
 
-  mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (1000 * 1000);
+  mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (double)reps / 1E6;
   mes.testcase       = testcase;
   return mes;
 }
