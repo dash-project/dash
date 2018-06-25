@@ -912,9 +912,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   bool done = false;
 
-  // auto it_global_histo  = g_nlt_nle.begin();
-  // auto tmp_global_histo = it_global_histo + NLT_NLE_BLOCK * nunits;
-
   // collect all valid splitters in a temporary vector
   std::vector<size_t> valid_partitions;
 
@@ -989,12 +986,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     done = detail::psort__validate_partitions(
         p_unit_info, splitters, valid_partitions, p_borders, global_histo);
-
-    // This swap eliminates a barrier as, otherwise, some units may be one
-    // iteration ahead and modify shared data while the others are still not
-    // done
-
-    // std::swap(it_global_histo, tmp_global_histo);
   } while (!done);
 
   trace.exit_state("5:find_global_partition_borders");
