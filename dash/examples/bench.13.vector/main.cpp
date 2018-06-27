@@ -3,6 +3,34 @@
 
 #include <libdash.h>
 
+template <template<class> container_t>
+void nbody(unsigned int body_count, unsigned int step_count) {
+	struct vec3 {
+		double x,y,z;
+	};
+
+	struct body_t {
+		vec3 pos;
+		double mass;
+	};
+
+	container_t<body_t> bodies;
+	container_t<vec3> forces;
+
+	for(unsigned int i = 0; i < body_count) {
+		bodys.lpush_back(body_t());
+		forces.lpush_back(vec3());
+	}
+
+	bodys.barrier();
+
+	for(auto foce : forces.lbegin()) {
+		for(auto body : bodies) {
+
+		}
+	}
+}
+
 
 int main(int argc, char* argv[]) {
 	dash::init(&argc, &argv);

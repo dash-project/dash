@@ -34,7 +34,7 @@ namespace std {
 
 	template <class Vector>
 	struct iterator_traits<dash::Vector_iterator<Vector>> {
-		using value_type = typename Vector::value_type;
+		using value_type = typename dash::Vector_iterator<Vector>::value_type;
 		using pointer = typename Vector::pointer;
 		using reference = typename Vector::reference;
 		using difference_type = typename Vector::index_type;
@@ -58,7 +58,9 @@ namespace dash {
 
 template <class Vector>
 struct Vector_iterator {
+
 	using index_type = dash::default_index_t;
+	using value_type = typename Vector::value_type;
 
 	Vector_iterator(Vector& vec, index_type index) :
 		_vec(vec),
@@ -82,6 +84,53 @@ struct Vector_iterator {
 
 	index_type _index;
 	Vector& _vec;
+
+	Vector& globmem() {
+		return _vec;
+	}
+
+	index_type pos() const{
+		return _index;
+	};
+
+	struct pattern_type {
+
+		const Vector_iterator<Vector>& _iterator;
+
+		using index_type = typename Vector::index_type;
+		using size_type = typename Vector::size_type;
+		using local_pointer = typename Vector::local_pointer;
+
+		size_type local_size() {
+			return _iterator._vec.lsize();
+		}
+
+		index_type lbegin() {
+			return  _iterator._vec._team.myid() *  _iterator._vec.lcapacity();
+		}
+
+		index_type lend() {
+			return lbegin() +  _iterator._vec.lsize();
+		}
+
+		index_type coords(index_type global_offset) const {
+			return global_offset;
+		}
+
+		index_type at(index_type global_offset) {
+			return global_offset - lbegin();
+		}
+
+
+	};
+
+	pattern_type pattern() const {
+		return pattern_type { *this };
+	}
+
+	struct has_view {
+		static constexpr bool value = false;
+	};
 };
 
 enum struct vector_strategy_t {
@@ -537,6 +586,17 @@ void Vector<T, allocator>::push_back(const T& value,  vector_strategy_t strategy
 // 		std::cout << "delayed" << std::endl;
 	}
 }
+
+// template<class T>
+// LocalRange<typename Vector<T>::value_type>
+// local_range(
+//   /// Iterator to the initial position in the global sequence
+//   Vector_iterator<Vector<T>> & first,
+//   /// Iterator to the final position in the global sequence
+//   Vector_iterator<Vector<T>> & last)
+// {
+// 	return LocalRange<typename Vector<T>::value_type>(first._vec.lbegin(), first._vec.lend());
+// }
 
 
 } // End of namespace dash
