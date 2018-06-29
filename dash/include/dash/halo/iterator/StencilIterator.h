@@ -500,30 +500,6 @@ private:
     return false;
   }
 
-  /*void set_view(const ViewSpec_t& view_tmp) {
-    if(Scope == StencilViewScope::BOUNDARY) {
-      const auto& bnd_elems = _haloblock.boundary_elements();
-      _bnd_elements.reserve(bnd_elems.size());
-      const auto& view_offs = view_tmp.offsets();
-      for(const auto& region : bnd_elems) {
-        auto off = region.offsets();
-        for(int d = 0; d < NumDimensions; ++d)
-          off[d] -= view_offs[d];
-
-        _bnd_elements.push_back(ViewSpec_t(off, region.extents()));
-      }
-
-      _view = ViewSpec_t(view_tmp.extents());
-    } else {
-      const auto& view_offsets = _haloblock.view().offsets();
-      auto        off          = view_tmp.offsets();
-      for(int d = 0; d < NumDimensions; ++d)
-        off[d] -= view_offsets[d];
-
-      _view = ViewSpec_t(off, view_tmp.extents());
-    }
-  }*/
-
   void next_element() {
     const auto& coord_fastest_dim = _coords[FastestDimension];
 
