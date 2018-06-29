@@ -10,15 +10,12 @@ namespace halo {
 namespace internal {
 
 // binary operation to replace values
-template<typename T>
+template <typename T>
 struct replace {
-  constexpr T operator()(const T &lhs, const T &rhs) const
-  {
-    return rhs;
-  }
+  constexpr T operator()(const T& lhs, const T& rhs) const { return rhs; }
 };
 
-} // internal
+}  // namespace internal
 
 // Forward declaration
 template <typename ElementT, typename PatternT, typename StencilSpecT>
@@ -85,9 +82,10 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  template<typename BinaryFunc = internal::replace<ElementT>>
-  void set_values_at( const ElementCoords_t& coords, ElementT value,
-      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) {
+  template <typename BinaryFunc = internal::replace<ElementT>>
+  void set_values_at(const ElementCoords_t& coords, ElementT value,
+                     ElementT   coefficient_center,
+                     BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
     *center = op(*center, coefficient_center * value);
@@ -111,38 +109,38 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  template<typename BinaryFunc = std::plus<ElementT>>
-  ElementT get_value_at( const ElementCoords_t& coords,
-      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) const {
+  template <typename BinaryFunc = std::plus<ElementT>>
+  ElementT get_value_at(const ElementCoords_t& coords,
+                        ElementT               coefficient_center,
+                        BinaryFunc             op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
     ElementT value = *center * coefficient_center;
 
     for(auto i = 0; i < NumStencilPoints; ++i) {
-      auto& stencil_point_value =
-        center[_stencil_op->_stencil_offsets[i]]; value = op(value,
-          _stencil_op->_stencil_spec[i].coefficient() * stencil_point_value);
+      auto& stencil_point_value = center[_stencil_op->_stencil_offsets[i]];
+      value = op(value, _stencil_op->_stencil_spec[i].coefficient()
+                          * stencil_point_value);
     }
 
     return value;
   }
 
-  template<typename Op>
+  template <typename Op>
   void update(ElementT* begin_out, Op operation) {
     update(begin(), end(), begin_out, operation);
   }
 
-  template<typename Op>
+  template <typename Op>
   void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
-
     if(end == this->end())
       end -= 1;
 
     auto& begin_coords = begin.coords();
-    auto& end_coords = end.coords();
+    auto& end_coords   = end.coords();
 
-    auto center = _stencil_op->_local_memory;
+    auto center  = _stencil_op->_local_memory;
     auto offsets = _stencil_op->set_dimension_offsets();
-    auto offset = 0;
+    auto offset  = 0;
     for(dim_t d = 0; d < NumDimensions; ++d) {
       offset += offsets[d] * begin_coords[d];
     }
@@ -150,28 +148,38 @@ public:
     auto center_dst = begin_dst + offset;
 
     if(NumDimensions == 2) {
-      for(int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0], center_dst += offsets[0], offset += offsets[0]) {
-        auto center_i = center;
+      for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
+              center += offsets[0], center_dst += offsets[0],
+              offset += offsets[0]) {
+        auto center_i     = center;
         auto center_dst_i = center_dst;
-        auto offset_i = offset;
-        for(int j = begin_coords[1]; j <= end_coords[1]; ++j, ++center_i, ++center_dst_i, ++offset_i) {
-          operation(center_i, center_dst_i, offset_i, _stencil_op->_stencil_offsets);
+        auto offset_i     = offset;
+        for(int j = begin_coords[1]; j <= end_coords[1];
+            ++j, ++center_i, ++center_dst_i, ++offset_i) {
+          operation(center_i, center_dst_i, offset_i,
+                    _stencil_op->_stencil_offsets);
         }
       }
       return;
     }
 
     if(NumDimensions == 3) {
-      for(int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0], center_dst += offsets[0], offset += offsets[0]) {
-        auto center_i = center;
+      for(int i = begin_coords[0]; i <= end_coords[0]; ++i,
+              center += offsets[0], center_dst += offsets[0],
+              offset += offsets[0]) {
+        auto center_i     = center;
         auto center_dst_i = center_dst;
-        auto offset_i = offset;
-        for(int j = begin_coords[1]; j <= end_coords[1]; ++j, center_i += offsets[1], center_dst_i += offsets[1], offset_i +=offsets[1]) {
-          auto center_j = center_i;
+        auto offset_i     = offset;
+        for(int j = begin_coords[1]; j <= end_coords[1]; ++j,
+                center_i += offsets[1], center_dst_i += offsets[1],
+                offset_i += offsets[1]) {
+          auto center_j     = center_i;
           auto center_dst_j = center_dst_i;
-          auto offset_j = offset_i;
-          for(int k = begin_coords[2]; k <= end_coords[2]; ++k, ++center_j, ++center_dst_j, ++offset_j) {
-            operation(center_j, center_dst_j, offset_j, _stencil_op->_stencil_offsets);
+          auto offset_j     = offset_i;
+          for(int k = begin_coords[2]; k <= end_coords[2];
+              ++k, ++center_j, ++center_dst_j, ++offset_j) {
+            operation(center_j, center_dst_j, offset_j,
+                      _stencil_op->_stencil_offsets);
           }
         }
       }
@@ -179,40 +187,42 @@ public:
       return;
     }
 
-    for (int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0], center_dst += offsets[0], offset += offsets[0]) {
-      Loop<1,Op>()(_stencil_op->_stencil_offsets, offsets, begin_coords, end_coords, center, center_dst, offset, operation);
+    for(int i = begin_coords[0]; i <= end_coords[0]; ++i, center += offsets[0],
+            center_dst += offsets[0], offset += offsets[0]) {
+      Loop<1, Op>()(_stencil_op->_stencil_offsets, offsets, begin_coords,
+                    end_coords, center, center_dst, offset, operation);
     }
   }
 
 private:
   template <dim_t dim, typename Op>
   struct Loop {
-
-    template<typename OffsetT>
+    template <typename OffsetT>
     constexpr void operator()(const StencilOffsets_t& stencil_offs,
                               const StencilOffsets_t& dim_offs,
-                              const ElementCoords_t& begin,
-                              const ElementCoords_t& end,
-                              ElementT* center, ElementT* center_dst,
-                              OffsetT offset, Op op) {
-      for (int i = begin[dim]; i <= end[dim]; ++i, center += dim_offs[dim], center_dst += dim_offs[dim], offset += dim_offs[dim]) {
-        Loop<dim+1, Op>()(stencil_offs, dim_offs, begin, end, center, center_dst, offset, op);
+                              const ElementCoords_t&  begin,
+                              const ElementCoords_t& end, ElementT* center,
+                              ElementT* center_dst, OffsetT offset, Op op) {
+      for(int i = begin[dim]; i <= end[dim]; ++i, center += dim_offs[dim],
+              center_dst += dim_offs[dim], offset += dim_offs[dim]) {
+        Loop<dim + 1, Op>()(stencil_offs, dim_offs, begin, end, center,
+                            center_dst, offset, op);
       }
     }
   };
 
   template <typename Op>
   struct Loop<NumDimensions - 1, Op> {
-    template<typename OffsetT>
+    template <typename OffsetT>
     constexpr void operator()(const StencilOffsets_t& stencil_offs,
                               const StencilOffsets_t& dim_offs,
-                              const ElementCoords_t& begin,
-                              const ElementCoords_t& end,
-                              ElementT* center, ElementT* center_dst,
-                              OffsetT offset, Op op) {
-        for (int i = begin[NumDimensions-1]; i <= end[NumDimensions-1]; ++i, ++center, ++center_dst, ++offset) {
-            op(center, center_dst, offset, stencil_offs);
-        }
+                              const ElementCoords_t&  begin,
+                              const ElementCoords_t& end, ElementT* center,
+                              ElementT* center_dst, OffsetT offset, Op op) {
+      for(int i = begin[NumDimensions - 1]; i <= end[NumDimensions - 1];
+          ++i, ++center, ++center_dst, ++offset) {
+        op(center, center_dst, offset, stencil_offs);
+      }
     }
   };
 
@@ -295,9 +305,10 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: replace
    */
-  template<typename BinaryFunc = internal::replace<ElementT>>
-  void set_values_at( const ElementCoords_t& coords, ElementT value,
-      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) {
+  template <typename BinaryFunc = internal::replace<ElementT>>
+  void set_values_at(const ElementCoords_t& coords, ElementT value,
+                     ElementT   coefficient_center,
+                     BinaryFunc op = BinaryFunc()) {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
 
     *center = op(*center, coefficient_center * value);
@@ -359,30 +370,32 @@ public:
    * \param coefficient for center
    * \param op operation to use (e.g. std::plus). default: std::plus
    */
-  template<typename BinaryFunc = std::plus<ElementT>>
-  ElementT get_value_at( const ElementCoords_t& coords,
-      ElementT coefficient_center, BinaryFunc op = BinaryFunc()) const {
+  template <typename BinaryFunc = std::plus<ElementT>>
+  ElementT get_value_at(const ElementCoords_t& coords,
+                        ElementT               coefficient_center,
+                        BinaryFunc             op = BinaryFunc()) const {
     auto* center = _stencil_op->_local_memory + _stencil_op->get_offset(coords);
-    ElementT value = *center * coefficient_center;
-    auto& stencil_spec = _stencil_op->_stencil_spec;
+    ElementT value        = *center * coefficient_center;
+    auto&    stencil_spec = _stencil_op->_stencil_spec;
     for(auto i = 0; i < NumStencilPoints; ++i) {
-      bool halo = false;
+      bool halo           = false;
       auto coords_stencil = coords;
 
       for(auto d = 0; d < NumDimensions; ++d) {
         coords_stencil[d] += stencil_spec[i][d];
-        if(coords_stencil[d] < 0 ||
-           coords_stencil[d] >= _stencil_op->_view_local->extent(d))
+        if(coords_stencil[d] < 0
+           || coords_stencil[d] >= _stencil_op->_view_local->extent(d))
           halo = true;
       }
 
       if(halo) {
         auto& halo_memory = *_stencil_op->_halo_memory;
-        auto index = _stencil_op->_halo_block->index_at(*(_stencil_op->_view_local), coords_stencil);
+        auto  index       = _stencil_op->_halo_block->index_at(
+          *(_stencil_op->_view_local), coords_stencil);
         auto halomem_pos = halo_memory.first_element_at(index);
 
         halo_memory.to_halo_mem_coords(index, coords_stencil);
-        auto offset = halo_memory.offset(index,coords_stencil);
+        auto offset = halo_memory.offset(index, coords_stencil);
         value = op(value, stencil_spec[i].coefficient() * halomem_pos[offset]);
       } else {
         auto stencil_point_value = center[_stencil_op->_stencil_offsets[i]];
@@ -393,13 +406,14 @@ public:
     return value;
   }
 
-  template<typename Op>
-  void update(const iterator& begin, const iterator& end, ElementT* begin_out, Op operation) {
-    for (auto it = begin; it != end; ++it) {
+  template <typename Op>
+  void update(const iterator& begin, const iterator& end, ElementT* begin_out,
+              Op operation) {
+    for(auto it = begin; it != end; ++it) {
       begin_out[it.lpos()] = operation(it);
     }
   }
-  template<typename Op>
+  template <typename Op>
   void update(ElementT* begin_dst, Op operation) {
     update(begin(), end(), begin_dst, operation);
   }
@@ -447,8 +461,8 @@ private:
   static constexpr auto NumDimensions    = PatternT::ndim();
   static constexpr auto MemoryArrange    = PatternT::memory_order();
 
-  using pattern_size_t        = typename PatternT::size_type;
-  using pattern_index_t       = typename PatternT::index_type;
+  using pattern_size_t  = typename PatternT::size_type;
+  using pattern_index_t = typename PatternT::index_type;
 
   template <typename _T, typename _P, typename _S>
   friend class StencilOperatorInner;
@@ -471,16 +485,17 @@ public:
   using const_iterator_bnd   = const iterator;
 
   using signed_pattern_size_t = typename iterator::signed_pattern_size_t;
-  using StencilOffsets_t = typename iterator::StencilOffsets_t;
-  using HaloBlock_t      = HaloBlock<ElementT, PatternT>;
-  using HaloMemory_t     = HaloMemory<HaloBlock_t>;
-  using ViewSpec_t       = ViewSpec<NumDimensions, pattern_index_t>;
-  using ElementCoords_t  = std::array<pattern_index_t, NumDimensions>;
+  using StencilOffsets_t      = typename iterator::StencilOffsets_t;
+  using HaloBlock_t           = HaloBlock<ElementT, PatternT>;
+  using HaloMemory_t          = HaloMemory<HaloBlock_t>;
+  using ViewSpec_t            = ViewSpec<NumDimensions, pattern_index_t>;
+  using ElementCoords_t       = std::array<pattern_index_t, NumDimensions>;
 
   using StencilSpecViews_t = StencilSpecificViews<HaloBlock_t, StencilSpecT>;
 
   using region_index_t  = typename RegionSpec<NumDimensions>::region_index_t;
   using stencil_index_t = typename StencilSpecT::stencil_index_t;
+
 public:
   /**
    * Constructor that takes a \ref HaloBlock, a \ref HaloMemory,
@@ -617,18 +632,18 @@ private:
   }
 
   StencilOffsets_t set_dimension_offsets() {
-    StencilOffsets_t dim_offs;
+    StencilOffsets_t      dim_offs;
     signed_pattern_size_t offset = 0;
     if(MemoryArrange == ROW_MAJOR) {
       dim_offs[NumDimensions - 1] = 1;
       for(auto d = NumDimensions - 1; d > 0;) {
         --d;
-        dim_offs[d] = dim_offs[d+1] * _view_local->extent(d+1);
+        dim_offs[d] = dim_offs[d + 1] * _view_local->extent(d + 1);
       }
     } else {
       dim_offs[0] = 1;
       for(auto d = 1; d < NumDimensions; ++d)
-        dim_offs[d] = dim_offs[d-1] * _view_local->extent(d-1);
+        dim_offs[d] = dim_offs[d - 1] * _view_local->extent(d - 1);
     }
 
     return dim_offs;
