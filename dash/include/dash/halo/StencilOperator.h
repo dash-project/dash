@@ -127,12 +127,12 @@ public:
   }
 
   template<typename Op>
-  void calculate(ElementT* begin_out, Op operation) {
-    calculate(begin(), end(), begin_out, operation);
+  void update(ElementT* begin_out, Op operation) {
+    update(begin(), end(), begin_out, operation);
   }
 
   template<typename Op>
-  void calculate(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
+  void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
 
     if(end == this->end())
       end -= 1;
@@ -394,11 +394,14 @@ public:
   }
 
   template<typename Op>
-  void calculate(ElementT* begin_out, Op operation) {
-    auto end = this->end();
-    for (auto it = this->begin(); it != end; ++it) {
+  void update(const iterator& begin, const iterator& end, ElementT* begin_out, Op operation) {
+    for (auto it = begin; it != end; ++it) {
       begin_out[it.lpos()] = operation(it);
     }
+  }
+  template<typename Op>
+  void update(ElementT* begin_dst, Op operation) {
+    update(begin(), end(), begin_dst, operation);
   }
 
 private:
