@@ -7,7 +7,7 @@
 #include <libdash.h>
 #include <iostream>
 
-#ifdef MPI_IMPL_ID
+#ifdef DASH_MPI_IMPL_ID
   #include <mpi.h>
   #define MPI_SUPPORT
 #endif

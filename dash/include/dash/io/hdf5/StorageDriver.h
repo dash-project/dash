@@ -5,7 +5,7 @@
 
 #ifdef DASH_ENABLE_HDF5
 
-#ifndef MPI_IMPL_ID
+#ifndef DASH_MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
