@@ -60,15 +60,19 @@ namespace internal {
  */
 
 template <
+  class LocalInputIter,
   class ValueType,
-  class BinaryOperation>
+  class BinaryOperation,
+  typename = typename std::enable_if<
+                        !dash::detail::is_global_iterator<LocalInputIter>::value
+                      >::type>
 ValueType accumulate(
-  const ValueType * in_first,
-  const ValueType * in_last,
-  const ValueType & init,
-  BinaryOperation   binary_op,
-  bool              non_empty = true,
-  dash::Team      & team = dash::Team::All())
+  const LocalInputIter   in_first,
+  const LocalInputIter   in_last,
+  const ValueType      & init,
+  BinaryOperation        binary_op,
+  bool                   non_empty = true,
+  dash::Team           & team = dash::Team::All())
 {
   using local_result_t = struct dash::internal::local_result<ValueType>;
   auto myid        = team.myid();
@@ -129,13 +133,17 @@ ValueType accumulate(
  * \ingroup  DashAlgorithms
  */
 template <
-  class ValueType >
+  class LocalInputIter,
+  class ValueType,
+  typename = typename std::enable_if<
+                        !dash::detail::is_global_iterator<LocalInputIter>::value
+                      >::type>
 ValueType accumulate(
-  const ValueType * in_first,
-  const ValueType * in_last,
-  const ValueType & init,
-  bool              non_empty = false,
-  dash::Team      & team = dash::Team::All())
+  const LocalInputIter   in_first,
+  const LocalInputIter   in_last,
+  const ValueType      & init,
+  bool                   non_empty = false,
+  dash::Team           & team = dash::Team::All())
 {
   return dash::accumulate(
             in_first,

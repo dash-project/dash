@@ -128,8 +128,6 @@ TEST_F(AccumulateTest, StringConcatOperaton) {
 
 
 TEST_F(AccumulateTest, LocalPredefined) {
-  const size_t num_elem_local = 100;
-  size_t num_elem_total       = _dash_size * num_elem_local;
   int value = 2;
 
   // perform a reduction similar to MPI_Allreduce
@@ -137,5 +135,16 @@ TEST_F(AccumulateTest, LocalPredefined) {
 
 
   ASSERT_EQ_U(dash::size()*value + 1, result);
+}
 
+TEST_F(AccumulateTest, LocalStdIterator) {
+  std::list<int> list;
+  list.push_back(1*dash::myid());
+  list.push_back(2*dash::myid());
+  list.push_back(3*dash::myid());
+
+  auto result = dash::accumulate(list.begin(), list.end(),
+                                 1, dash::plus<int>(), true);
+
+  ASSERT_EQ_U(((dash::size()-1)*(dash::size())/2) * (1 + 2 + 3)  + 1, result);
 }
