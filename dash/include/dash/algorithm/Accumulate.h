@@ -97,7 +97,8 @@ ValueType accumulate(
                                      binary_op);
     l_result.valid = true;
   }
-  dart_operation_t dop = dash::dart_reduce_operation<BinaryOperation>::value;
+  dart_operation_t dop =
+                  dash::internal::dart_reduce_operation<BinaryOperation>::value;
   dart_datatype_t  dtype = dash::dart_storage<ValueType>::dtype;
 
   if (!non_empty || dop == DART_OP_UNDEFINED || dtype == DART_TYPE_UNDEFINED)

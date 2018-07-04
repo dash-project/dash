@@ -56,6 +56,39 @@ public:
   }
 };
 
+/**
+ * Query the DART operation for an arbitrary binary operations.
+ * Overload for operations that cannot be used in DART collectives, e.g.,
+ * arbitrary functions and \c OpKind::NOOP (such as \c dash::first,
+ * \c dash::second)
+ */
+template<typename BinaryOperation, typename = void>
+struct dart_reduce_operation
+  : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
+{ };
+
+/**
+ * Query the DART operation for an arbitrary binary operation.
+ * Overload for operations that can be used in DART collective operations.
+ */
+template<>
+template<typename BinaryOperation>
+struct dart_reduce_operation<BinaryOperation,
+        typename std::enable_if<
+          // no-ops cannot be used in DART collectives
+          BinaryOperation::op_kind() != dash::internal::OpKind::NOOP &&
+          // only pre-defined operations can be used in DART collectives,
+          // they are derived from dash::internal::ReduceOperation
+          std::is_base_of<
+            dash::internal::ReduceOperation<
+              typename BinaryOperation::value_type,
+              BinaryOperation::dart_operation(),
+              BinaryOperation::op_kind(), true>,
+            BinaryOperation>::value>::type>
+  : public std::integral_constant<dart_operation_t,
+                                  BinaryOperation::dart_operation()>
+{ };
+
 } // namespace internal
 
 #ifdef DOXYGEN
@@ -80,34 +113,6 @@ struct dart_operation
 {
   dart_operation_t value;
 }
-#else // DOXYGEN
-/**
- * Query the DART operation for an arbitrary binary operations.
- * Overload for non-DART operations.
- */
-template<typename BinaryOperation, typename = void>
-struct dart_reduce_operation
-  : public std::integral_constant<dart_operation_t, DART_OP_UNDEFINED>
-{ };
-
-/**
- * Query the DART operation for an arbitrary binary operation.
- * Overload for DART operations.
- */
-template<>
-template<typename BinaryOperation>
-struct dart_reduce_operation<BinaryOperation,
-        typename std::enable_if<
-          BinaryOperation::op_kind() != dash::internal::OpKind::NOOP &&
-          std::is_base_of<
-            dash::internal::ReduceOperation<
-              typename BinaryOperation::value_type,
-              BinaryOperation::dart_operation(),
-              BinaryOperation::op_kind(), true>,
-            BinaryOperation>::value>::type>
-  : public std::integral_constant<dart_operation_t,
-                                  BinaryOperation::dart_operation()>
-{ };
 #endif // DOXYGEN
 
 /**

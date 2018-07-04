@@ -55,12 +55,15 @@ TEST_F(DARTTypesTest, DARTOperation)
   } point_t;
   auto lambda = [](int x, int y){ return x+y; };
   static_assert(
-    dash::dart_reduce_operation<dash::plus<int>>::value == DART_OP_SUM,
+    dash::internal::dart_reduce_operation<dash::plus<int>>::value
+      == DART_OP_SUM,
     "dash::plus<int> should yield DART_OP_SUM");
   static_assert(
-    dash::dart_reduce_operation<dash::plus<point_t>>::value == DART_OP_UNDEFINED,
-    "dash::plus<int> should yield DART_OP_UNDEFINED");
+    dash::internal::dart_reduce_operation<dash::plus<point_t>>::value
+      == DART_OP_UNDEFINED,
+    "dash::plus<point_t> should yield DART_OP_UNDEFINED");
   static_assert(
-    dash::dart_reduce_operation<decltype(lambda)>::value == DART_OP_UNDEFINED,
+    dash::internal::dart_reduce_operation<decltype(lambda)>::value
+      == DART_OP_UNDEFINED,
     "dash::plus<decltype(lambda)> should yield DART_OP_UNDEFINED");
 }
