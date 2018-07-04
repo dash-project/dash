@@ -2,6 +2,7 @@
 #define DASH__ALGORITHM__ACCUMULATE_H__
 
 #include <dash/iterator/GlobIter.h>
+#include <dash/iterator/IteratorTraits.h>
 
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
@@ -167,8 +168,8 @@ template <
   class ValueType,
   class BinaryOperation = dash::plus<ValueType>,
   typename = typename std::enable_if<
-              std::is_same<decltype(std::declval<GlobInputIt>().team()),
-                           dash::Team&>::value>::type>
+                        dash::detail::is_global_iterator<GlobInputIt>::value
+                      >::type>
 ValueType accumulate(
         GlobInputIt   in_first,
         GlobInputIt   in_last,
@@ -181,7 +182,13 @@ ValueType accumulate(
   auto l_last      = index_range.end;
 
   // TODO: can we figure out whether or not units are empty?
-  return dash::accumulate(l_first, l_last, init, binary_op, false, team);
+  static constexpr bool units_non_empty = false;
+  return dash::accumulate(l_first,
+                          l_last,
+                          init,
+                          binary_op,
+                          units_non_empty,
+                          team);
 }
 
 } // namespace dash
