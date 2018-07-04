@@ -42,19 +42,29 @@ namespace internal {
 
 
 /**
- * Accumulate values in each process' range \c [first, last) using the
- * given binary reduce function \c op, which should be a commutative operation.
+ * Accumulate values in each process' range [\ref in_first, \ref in_last) using
+ * the provided binary reduce function \c binary_op, which must be commutative
+ * and linear.
+ *
+ * The iteration order is defined by the data distribution and the reduction
+ * follows a two-step process: each unit first accumulates its local elements
+ * in local iteration using \ref binary_op order before combining the results
+ * across units.
  *
  * Collective operation.
  *
- * Note: For equivalent of semantics of \c MPI_Accumulate, see
- * \c dash::transform.
+ * \note: For equivalent of semantics of \c MPI_Accumulate, see
+ * \ref dash::transform.
  *
- * Semantics:
- *
- *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
- *
- * \see      dash::transform
+ * \param in_first  Local iterator describing the beginning of the range to
+ *                  accumulate.
+ * \param in_last   Local iterator describing the end of the range to accumualte
+ * \param init      The initial element to use in the accumulation.
+ * \param binary_op The binary operation to apply to accumulate two elements
+ *                  (default: using \c operator+)
+ * \param non_empty Whether all units are guaranteed to provide a non-empty local
+ *                  range (default \c false).
+ * \param team      The team to use for the collective operation.
  *
  * \ingroup  DashAlgorithms
  */
@@ -121,14 +131,21 @@ ValueType accumulate(
  * Accumulate values across the local ranges \c[in_first,in_last) of each
  * process as the sum of all values in the range.
  *
- * Note: For equivalent of semantics of \c MPI_Accumulate, see
+ * The iteration order is defined by the data distribution and the reduction
+ * follows a two-step process: each unit first accumulates its local elements
+ * in local iteration using \ref binary_op order before combining the results
+ * across units.
+ *
+ * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
  *
- * Semantics:
- *
- *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
- *
- * \see      dash::transform
+ * \param in_first  Local pointer describing the beginning of the range to
+ *                  accumulate.
+ * \param in_last   Local pointer describing the end of the range to accumualte
+ * \param init      The initial element to use in the accumulation.
+ * \param non_empty Whether all units are guaranteed to provide a non-empty local
+ *                  range (default \c false).
+ * \param team      The team to use for the collective operation.
  *
  * \ingroup  DashAlgorithms
  */
@@ -155,19 +172,25 @@ ValueType accumulate(
 }
 
 /**
- * Accumulate values in range \c [first, last) using the given binary
- * reduce function \c op, which should be commutative operation.
+ * Accumulate values in the global range [\ref in_first, \ref in_last) using
+ * the provided binary reduce function \c binary_op, which must be commutative
+ * and linear.
+ *
+ * The iteration order is defined by the data distribution and the reduction
+ * follows a two-step process: each unit first accumulates its local elements
+ * in local iteration using \ref binary_op order before combining the results
+ * across units.
  *
  * Collective operation.
  *
- * Note: For equivalent of semantics of \c MPI_Accumulate, see
- * \c dash::transform.
+ * \param in_first  Global iterator describing the beginning of the range to
+ *                  accumulate.
+ * \param in_last   Global iterator describing the end of the range to accumualte
+ * \param init      The initial element to use in the accumulation.
+ * \param binary_op The associative, commutative binary operation to to apply.
  *
- * Semantics:
- *
- *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
- *
- * \see      dash::transform
+ * \note: For equivalent of semantics of \c MPI_Accumulate, see
+ * \ref dash::transform.
  *
  * \ingroup  DashAlgorithms
  */
