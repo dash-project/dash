@@ -716,12 +716,7 @@ namespace internal {
     throw(dash::tasks::internal::BcastCancellationSignal());
   }
 
-  /**
-   * Create an asynchronous task that will execute \c f with priority \c prio
-   * after all dependencies specified in \c deps have been satisfied.
-   *
-   * \note This function is a cancellation point.
-   */
+namespace internal{
   template<class TaskFunc, typename DepContainer>
   void
   async(
@@ -735,6 +730,15 @@ namespace internal {
                      deps.data(), deps.size(), prio);
   }
 
+  template<class TaskFunc, typename DepContainer>
+  void
+  async(
+    TaskFunc            f,
+    DepContainer&&      deps) {
+    internal::async(f, DART_PRIO_LOW, std::forward<DepContainer>(deps));
+  }
+} // namespace internal
+
   /**
    * Create an asynchronous task that will execute \c f with priority \c prio
    * without any dependencies.
@@ -747,7 +751,7 @@ namespace internal {
     TaskFunc         f,
     dart_task_prio_t prio){
     std::array<dart_task_dep_t, 0> deps;
-    async(f, prio, deps);
+    internal::async(f, prio, deps);
   }
 
   /**
@@ -768,7 +772,7 @@ namespace internal {
       static_cast<dart_task_dep_t>(dep),
       static_cast<dart_task_dep_t>(args)...
     }});
-    async(f, prio, deps);
+    internal::async(f, prio, deps);
   }
 
 
@@ -778,16 +782,16 @@ namespace internal {
    *
    * \note This function is a cancellation point.
    */
-  template<class TaskFunc>
+  template<class TaskFunc, typename DependencyGeneratorFunc>
   void
   async(
-    TaskFunc                f,
-    dart_task_prio_t        prio,
-    DependencyGenerator     dependency_generator)
+    TaskFunc                  f,
+    dart_task_prio_t          prio,
+    DependencyGeneratorFunc   dependency_generator)
   {
     DependencyVector deps;
     dependency_generator(std::inserter(deps, deps.begin()));
-    async(f, prio, deps);
+    internal::async(f, prio, deps);
   }
 
   /**

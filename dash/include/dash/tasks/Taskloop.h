@@ -55,7 +55,7 @@ namespace tasks{
       if (to > end) to = end;
       auto dep_inserter = std::inserter(deps, deps.begin());
       depedency_generator(from, to, dep_inserter);
-      dash::tasks::async(
+      dash::tasks::internal::async(
         [=](){
           f(from, to);
         },
