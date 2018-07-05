@@ -953,13 +953,13 @@ namespace internal {
   template<typename T=int>
   size_t
   numthreads() {
-    return dart_task_num_threads();
+    return dart_task_num_threads ? dart_task_num_threads() : 1;
   }
 
   template<typename T=int>
   size_t
   threadnum() {
-    return dart_task_thread_num();
+    return dart_task_thread_num ? dart_task_thread_num() : 0;
   }
 
 } // namespace tasks
