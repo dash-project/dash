@@ -749,13 +749,15 @@ void* thread_main(void *data)
 static
 void dart_thread_finalize(dart_thread_t *thread)
 {
-  thread->thread_id = -1;
-  thread->current_task = NULL;
-  thread->ctxlist = NULL;
+  if (thread != NULL) {
+    thread->thread_id = -1;
+    thread->current_task = NULL;
+    thread->ctxlist = NULL;
 
 #ifdef DART_TASK_THREADLOCAL_Q
-  dart_tasking_taskqueue_finalize(&thread->queue);
+    dart_tasking_taskqueue_finalize(&thread->queue);
 #endif // DART_TASK_THREADLOCAL_Q
+  }
 }
 
 static void
