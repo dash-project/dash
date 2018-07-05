@@ -1068,7 +1068,13 @@ dart__tasking__task_complete()
     if (task_free_list == NULL) {
       task_free_list = task_recycle_list;
     } else {
-      task_free_list->next = task_recycle_list;
+      dart_task_t *elem = task_free_list;
+      if (elem != NULL) {
+        // walk to the end of the list
+        while (elem->next != NULL) elem = elem->next;
+      }
+      // add the recycled elements to the end of the list
+      elem->next = task_recycle_list;
     }
     task_recycle_list = NULL;
     pthread_mutex_unlock(&task_recycle_mutex);
@@ -1094,15 +1100,13 @@ dart__tasking__taskref_free(dart_taskref_t *tr)
 
   // free the task if already destroyed
   dart__base__mutex_lock(&(*tr)->mutex);
+  (*tr)->has_ref = false;
   if ((*tr)->state == DART_TASK_FINISHED && (*tr)->has_ref) {
     dart__base__mutex_unlock(&(*tr)->mutex);
     dart__tasking__destroy_task(*tr);
     *tr = DART_TASK_NULL;
     return DART_OK;
   }
-
-  // the task is unfinished, just mark it as free'able
-  (*tr)->has_ref = false;
 
   dart__base__mutex_unlock(&(*tr)->mutex);
 
