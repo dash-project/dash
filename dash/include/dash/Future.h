@@ -38,7 +38,6 @@ public:
 public:
 
   Future()
-  : _ready(false)
   { }
 
   Future(ResultT & result)
@@ -110,6 +109,11 @@ public:
     wait();
     DASH_LOG_TRACE_VAR("Future.get >", _value);
     return _value;
+  }
+
+  bool valid()
+  {
+    return (_ready || _get_func != nullptr);
   }
 
 }; // class Future
