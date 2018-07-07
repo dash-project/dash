@@ -253,7 +253,7 @@ void print_measurement_record(
   const benchmark_params & params)
 {
   if (dash::myid() == 0) {
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+    std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
     auto mes = measurement;
         cout << std::right
          << std::setw(5) << dash::size() << ","

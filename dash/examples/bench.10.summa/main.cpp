@@ -12,8 +12,8 @@
 #include <omp.h>
 #endif
 
-#ifndef MPI_IMPL_ID
-#define MPI_IMPL_ID unknown
+#ifndef DASH_MPI_IMPL_ID
+#define DASH_MPI_IMPL_ID unknown
 #endif
 
 #ifdef DASH_ENABLE_PLASMA
@@ -375,7 +375,7 @@ void perform_test(
     std::ostringstream team_ss;
     team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
     std::string team_extents = team_ss.str();
-    std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
+    std::string mpi_impl     = dash__toxstr(DASH_MPI_IMPL_ID);
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);

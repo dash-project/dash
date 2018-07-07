@@ -88,6 +88,25 @@ namespace dash
    * \ingroup DashLib
    */
   void   barrier();
-}
+
+  /**
+   * Immediately abort the application run.
+   *
+   * \sa dash::finalize
+   * \ingroup DashLib
+   */
+  [[noreturn]]
+  void   abort();
+
+  /**
+   * Immediately abort the application run with the return value \c errorcode.
+   *
+   * \sa dash::finalize
+   * \ingroup DashLib
+   */
+  [[noreturn]]
+  void   abort(int errorcode);
+
+} // namespace dash
 
 #endif // DASH__INIT_H_
