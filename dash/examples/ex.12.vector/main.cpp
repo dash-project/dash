@@ -82,6 +82,8 @@ int main(int argc, char* argv[])
 		vec.lpush_back(1337);
 		print_vector(vec, size -1);
 	}
+
+
 		if(myid == 0) {
 		std::cout << "dash::vector lpush_back with no capacity" << std::endl;
 	}
@@ -105,6 +107,9 @@ int main(int argc, char* argv[])
 		dash::Vector<int> vec;
 		vec.reserve(team.size());
 		vec.push_back(myid);
+		vec.push_back(42);
+		vec.push_back(1337);
+
 		print_vector(vec, 0);
 	}
 
@@ -112,12 +117,14 @@ int main(int argc, char* argv[])
 		if(myid == 0) std::cout << "dash::vector push_back with no capacity" << std::endl;
 		dash::Vector<int> vec;
 		vec.push_back(myid);
-		print_vector(vec, 0);
+		vec.push_back(42);
+		vec.push_back(1337);
+ 		print_vector(vec, 0);
 
 		std::cout << "local_size = " << vec.lsize() << std::endl;
 		if(myid == 0) std::cout << "dash::vector::balance()" << std::endl;
 		vec.balance();
-		std::cout << "local_size = " << vec.lsize() << std::endl;
+// 		std::cout << "local_size = " << vec.lsize() << std::endl;
 		print_vector(vec, 0);
 	}
 
@@ -134,7 +141,6 @@ int main(int argc, char* argv[])
 		}
 		team.barrier();
 	}
-
 
 	{
 		std::vector<int> queue(5, myid);
@@ -199,6 +205,7 @@ int main(int argc, char* argv[])
 	}
 
 
+
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(int elements = 1000; elements < 10000000; elements *= 10) {
@@ -218,7 +225,7 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "push_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "push_back(cached) elements: " << elements << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 		}
 	}
@@ -251,7 +258,7 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "balance(vector, uneven) elements: " << size << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "balance(vector, uneven) elements: " << size << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 
 		}
@@ -302,7 +309,7 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "push_back(list) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "push_back(list) elements: " << elements << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 		}
 	}
@@ -326,7 +333,7 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "fill(vector) elements: " << list.size() << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "fill(vector) elements: " << list.size() << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 		}
 	}
@@ -348,7 +355,7 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "fill(Array) elements: " << list.size() << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "fill(Array) elements: " << list.size() << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 		}
 	}
@@ -379,14 +386,13 @@ int main(int argc, char* argv[])
 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			}
 			if(myid == 0) {
-				std::cout << "fill(vector, uneven) elements: " << list.size() << "; time " << duration.count()/total_runs << "us" << std::endl;
+				std::cout << "fill(vector, uneven) elements: " << list.size() << "; time " << duration.count()/total_runs << " us" << std::endl;
 			}
 
 		}
 	}
 
-
 	team.barrier();
 
-  dash::finalize();
+dash::finalize();
 }

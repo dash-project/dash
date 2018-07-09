@@ -61,36 +61,104 @@ struct Vector_iterator {
 
 	using index_type = dash::default_index_t;
 	using value_type = typename Vector::value_type;
+	using size_type = typename Vector::size_type;
+	using global_unit_type = decltype(dash::myid());
+
+	struct position_index_t {
+		global_unit_t position;
+		index_type local_index;
+	};
+
+	Vector& _vec;
+	position_index_t _index;
+	size_type _local_size;
+
+
+
+
+	position_index_t get_postion_index(index_type global_index) const {
+		position_index_t index { static_cast<global_unit_type>(0), 0 };
+// 		std::cout << "globabl index = " << global_index << std::endl;
+		bool finished = false;
+		for(auto unit = static_cast<global_unit_type >(0); unit < _vec._team.size(); unit++) {
+// 			std::cout << "unit = " << unit << std::endl;
+			auto local_size = dash::atomic::load(*(_vec._local_sizes.begin()+unit));
+// 			std::cout << "local_size(" << unit << ")=" << local_size << " global_index(" << global_index <<")" <<std::endl;
+			if(global_index >= local_size) {
+				index.position = unit+1;
+				global_index -= local_size;
+			} else {
+				finished = true;
+				break;
+			}
+		}
+
+		if(finished) {
+			index.local_index = global_index;
+		} else {
+// 			std::cout << "not finished" << std::endl;
+		}
+// 		std::cout << "pos = " << index.position << " index = " << index.local_index << std::endl;
+
+		return index;
+	}
+
+	index_type get_global_index(const position_index_t& position_index) const {
+		index_type global_index = 0;
+		for(index_type i = 0; i < position_index.position; ++i) {
+			global_index += dash::atomic::load(*(_vec._local_sizes.begin()+i));
+		}
+
+		global_index += position_index.local_index;
+
+		return global_index;
+	}
 
 	Vector_iterator(Vector& vec, index_type index) :
 		_vec(vec),
-		_index(index)
+		_index(get_postion_index(index)),
+		_local_size(_index.position < _vec._team.size() ? dash::atomic::load(*(_vec._local_sizes.begin()+_index.position)) : 0)
 	{
+// 		std::cout << "Vector_iterator(" << index << ") " << _index.position << " " << _index.local_index << std::endl;
 	}
 
 	typename Vector::reference operator*() {
-		auto local_elemtes = _vec.capacity() / _vec._team.size();
-		typename Vector::index_type i = 0;
-		auto local_index = _index;
-		typename Vector::size_type local_size = 0;
-		do {
-			local_index -= local_size;
-			local_size = *(_vec._local_sizes.begin()+i);
-			i++;
-		} while(local_index >= local_size);
-
-		return *(_vec._data.begin() + (i-1)* local_elemtes + local_index);
+		auto lcapacity = _vec.lcapacity();
+// 		std::cout << "op*" << std::endl;
+		typename Vector::reference result = *(_vec._data.begin() + _index.position * lcapacity + _index.local_index);
+// 		std::cout << "end op*" << std::endl;
+		return result;
 	}
 
-	index_type _index;
-	Vector& _vec;
+	void checkIndex() {
+		if(_index.local_index >= _local_size) {
+// 			std::cout << "checkIndex Failed" << std::endl;
+			++_index.position;
+			_index.local_index = 0;
+			if(_index.position < _vec._team.size()) {
+				_local_size = dash::atomic::load(*(_vec._local_sizes.begin() + _index.position));
+				checkIndex();
+			}
+		}
+	}
+
+	Vector_iterator& operator++() {
+// 		std::cout << "op++" << std::endl;
+
+		_index.local_index++;
+		checkIndex();
+// 		std::cout << "op++ pos = " << _index.position << " _index = " << _index.local_index << std::endl;
+// 		std::cout << "end op++" << std::endl;
+
+		return *this;
+	}
 
 	Vector& globmem() {
 		return _vec;
 	}
 
 	index_type pos() const{
-		return _index;
+		return get_global_index(_index);
 	};
 
 	struct pattern_type {
@@ -133,39 +201,43 @@ struct Vector_iterator {
 	};
 };
 
+
+template <class Vector>
+Vector_iterator<Vector> operator+(const Vector_iterator<Vector>& lhs, typename Vector_iterator<Vector>::index_type rhs) {
+	const auto global_index = lhs.get_global_index(lhs._index);
+	return Vector_iterator<Vector>(lhs._vec, global_index + rhs);
+}
+
+template <class Vector>
+typename Vector_iterator<Vector>::index_type operator-(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
+	const auto global_index_lhs = lhs.get_global_index(lhs._index);
+	const auto global_index_rhs = rhs.get_global_index(rhs._index);
+
+	return global_index_lhs - global_index_rhs;
+}
+
+// template <class Vector>
+// Vector_iterator<Vector>& operator++(Vector_iterator<Vector>& lhs) {
+// 	lhs._index++;
+// 	return lhs;
+// }
+
+
+template <class Vector>
+bool operator==(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
+	return lhs._index.position == rhs._index.position && lhs._index.local_index == rhs._index.local_index;
+}
+
+template <class Vector>
+bool operator!=(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
+	return !(lhs == rhs);
+}
+
 enum struct vector_strategy_t {
 	CACHE,
 	HYBRID,
 	WRITE_THROUGH
 };
-
-template <class Vector>
-Vector_iterator<Vector> operator+(const Vector_iterator<Vector>& lhs, typename Vector_iterator<Vector>::index_type rhs) {
-	return Vector_iterator<Vector>(lhs._vec, lhs._index + rhs);
-}
-
-template <class Vector>
-typename Vector_iterator<Vector>::index_type operator-(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
-	return lhs._index - rhs._index;
-	return lhs._index - rhs._index;
-}
-
-template <class Vector>
-Vector_iterator<Vector>& operator++(Vector_iterator<Vector>& lhs) {
-	lhs._index++;
-	return lhs;
-}
-
-template <class Vector>
-bool operator==(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
-	return lhs._index == rhs._index;
-}
-
-template <class Vector>
-bool operator!=(const Vector_iterator<Vector>& lhs, const Vector_iterator<Vector>& rhs) {
-	return lhs._index != rhs._index;
-}
-
 
 template <class T, template<class> class allocator>
 class Vector {
@@ -248,6 +320,7 @@ public:
 // 	void clear();
 // 	void resize(size_type count, const_reference value = value_type());
 //
+
 // 	iterator insert(const_iterator pos, const T& value );
 // 	iterator insert(const_iterator pos, T&& value );
 // 	void insert(const_iterator pos, size_type count, const T& value );
@@ -256,7 +329,11 @@ public:
 // 	template< class InputIt >
 // 	iterator insert(const_iterator pos, InputIt first, InputIt last );
 // 	iterator insert(const_iterator pos, std::initializer_list<T> ilist );
-//
+	template< class InputIt >
+	void linsert(InputIt first, InputIt last);
+	template< class InputIt >
+	void insert(InputIt first, InputIt last);
+
 // 	template <class... Args>
 // 	iterator emplace(const_iterator pos, Args&&... args);
 // 	iterator erase(iterator pos);
@@ -264,10 +341,7 @@ public:
 // 	iterator erase(iterator first, iterator last);
 // 	iterator erase(const_iterator first, const_iterator last);
 //
-	template< class InputIt >
-	void linsert(InputIt first, InputIt last);
-	template< class InputIt >
-	void insert(InputIt first, InputIt last);
+
 
 	void lpush_back(const T& value, vector_strategy_t strategy = vector_strategy_t::HYBRID);
 	void push_back(const T& value, vector_strategy_t strategy = vector_strategy_t::HYBRID);

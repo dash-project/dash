@@ -71,9 +71,9 @@
 #include<dash/Array.h>
 #include<dash/Matrix.h>
 #include<dash/Coarray.h>
-#include<dash/Vector.h>
 
 // Dynamic containers:
+#include<dash/Vector.h>
 #include<dash/List.h>
 #include<dash/UnorderedMap.h>
 
