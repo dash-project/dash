@@ -205,20 +205,20 @@ int main(int argc, char* argv[])
 	}
 
 
+	constexpr size_t max_elements = 10'000'000'000;
+	constexpr size_t max_runs = 100;
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(int elements = 1000; elements < 10000000; elements *= 10) {
-			const auto total_runs = 10000000 / elements;
+		for(size_t elements = 1000; elements < 1000000000; elements *= 10) {
+			const auto total_runs = 100;
 
 			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
 				dash::Vector<int> vec;
 				auto begin = std::chrono::high_resolution_clock::now();
-				for(int i = 0; i < elements; i++) {
-					if(myid == 0) {
-						vec.push_back(i, dash::vector_strategy_t::CACHE);
-					}
+				for(int i = 0; i < elements / team.size(); i++) {
+					vec.push_back(i, dash::vector_strategy_t::CACHE);
 				}
 				vec.commit();
 				auto end = std::chrono::high_resolution_clock::now();
@@ -233,10 +233,32 @@ int main(int argc, char* argv[])
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
+		for(size_t elements = 1000; elements < 100000000; elements *= 10) {
+			const auto total_runs = 10;
+
+			std::chrono::microseconds duration(0);
+			for(int runs = 0; runs < total_runs; runs++) {
+				dash::Vector<int> vec;
+				auto begin = std::chrono::high_resolution_clock::now();
+				for(int i = 0; i < elements / team.size(); i++) {
+					vec.push_back(i, dash::vector_strategy_t::HYBRID);
+				}
+				vec.commit();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "push_back(hybrid) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
+			}
+		}
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
 		auto dist = poly_distribution(team.size(), 0.3);
 
 		for(int elements = 1000; elements < 10000000; elements *= 10) {
-			const auto total_runs = 10000000 / elements;
+			const auto total_runs = 5;
 
 			std::chrono::microseconds duration(0);
 
@@ -264,39 +286,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
-// 	if(myid == 0) std::cout << "timing" << std::endl;
-// 	{
-// 		for(int elements = 1000; elements < 10000000; elements *= 10) {
-// 			const auto total_runs = 10000000 / elements;
-//
-// 			std::chrono::microseconds duration(0);
-// 			for(int runs = 0; runs < total_runs; runs++) {
-// 				dash::Vector<int> vec;
-// 				auto begin = std::chrono::high_resolution_clock::now();
-// 				for(int i = 0; i < elements; i++) {
-// 					if(myid == 0) {
-// 						vec.push_back(i, dash::vector_strategy_t::HYBRID);
-// 					}
-// 				}
-// 				vec.commit();
-// 				auto end = std::chrono::high_resolution_clock::now();
-// 				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-// 			}
-// 			if(myid == 0) {
-// 				std::cout << "push_back(hybrid) elements: " << elements << "; time " << duration.count()/total_runs << "us" << std::endl;
-// 			}
-// 		}
-// 	}
-
-	constexpr size_t max_elements = 10'000'000'000;
-	constexpr size_t max_runs = 100;
-
-
+	/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(int elements = 1000; elements < 10000000; elements *= 10) {
-			const auto total_runs = 10000000 / elements;
+		for(size_t elements = 1000; elements < max_elements; elements *= 10) {
+			const auto total_runs = max_runs;
 
 			std::chrono::microseconds duration(0);
 			for(int runs = 0; runs < total_runs; runs++) {
@@ -316,7 +310,6 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
-
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
@@ -394,7 +387,7 @@ int main(int argc, char* argv[])
 
 		}
 	}
-
+	*/
 	team.barrier();
 
 dash::finalize();
