@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(size_t elements = 1; elements < 100000000; elements *= 10) {
+		for(size_t elements = 1; elements < 10000000; elements *= 10) {
 			const auto total_runs = 100;
 
 			std::chrono::microseconds duration(0);
@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
-		for(size_t elements = 1; elements < 10000000; elements *= 10) {
+		for(size_t elements = 1; elements < 1000000; elements *= 10) {
 			const auto total_runs = 100;
 
 			std::chrono::microseconds duration(0);
@@ -257,7 +257,7 @@ int main(int argc, char* argv[])
 	{
 		auto dist = poly_distribution(team.size(), 0.3);
 
-		for(int elements = 1; elements < 10000000; elements *= 10) {
+		for(int elements = 1; elements < 1000000; elements *= 10) {
 			const auto total_runs = 100;
 
 			std::chrono::microseconds duration(0);
