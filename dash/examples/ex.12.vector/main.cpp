@@ -208,6 +208,8 @@ int main(int argc, char* argv[])
 	constexpr size_t max_elements = 10'000'000'000;
 	constexpr size_t max_runs = 100;
 
+	/*
+
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1; elements < 100000000; elements *= 10) {
@@ -286,7 +288,6 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		for(size_t elements = 1000; elements < max_elements; elements *= 10) {
@@ -310,6 +311,8 @@ int main(int argc, char* argv[])
 			}
 		}
 	}
+
+	*/
 
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
@@ -356,7 +359,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-
+/*
 	if(myid == 0) std::cout << "timing" << std::endl;
 	{
 		auto dist = poly_distribution(team.size(), 0.3);
@@ -388,7 +391,56 @@ int main(int argc, char* argv[])
 		}
 	}
 	*/
+
+		if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(size_t elements = 1000; elements < max_elements; elements *= 10) {
+			const auto total_runs = max_runs;
+
+			std::chrono::microseconds duration(0);
+
+			dash::Vector<int> list(elements/team.size());
+			for(int runs = 0; runs < total_runs; runs++) {
+				size = list.size();
+				auto begin = std::chrono::high_resolution_clock::now();
+				std::fill(list.lbegin(), list.lend(), 0);
+
+				list.barrier();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "std::fill(vector) elements: " << list.size() << "; time " << duration.count()/total_runs << " us" << std::endl;
+			}
+		}
+	}
+
+	if(myid == 0) std::cout << "timing" << std::endl;
+	{
+		for(size_t elements = 1000; elements < max_elements; elements *= 10) {
+			const auto total_runs = max_runs;
+
+			std::chrono::microseconds duration(0);
+
+			dash::Array<int> list(elements);
+			for(int runs = 0; runs < total_runs; runs++) {
+				auto begin = std::chrono::high_resolution_clock::now();
+				std::fill(list.lbegin(), list.lend(), 0);
+
+				list.barrier();
+				auto end = std::chrono::high_resolution_clock::now();
+				duration += std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			}
+			if(myid == 0) {
+				std::cout << "std::fill(Array) elements: " << list.size() << "; time " << duration.count()/total_runs << " us" << std::endl;
+			}
+		}
+	}
+
+
 	team.barrier();
 
-dash::finalize();
+	dash::finalize();
+
+	return 0;
 }
