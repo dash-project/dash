@@ -197,7 +197,7 @@ inline void psort__global_histogram(
 }
 
 template <typename ElementType>
-bool psort__validate_partitions(
+inline bool psort__validate_partitions(
     UnitInfo const&                 p_unit_info,
     std::vector<ElementType> const& splitters,
     std::vector<size_t> const&      valid_partitions,
@@ -265,7 +265,8 @@ inline void psort__calc_final_partition_dist(
   auto my_deficit = acc_partition_count[myid + 1] - n_my_elements;
 
   // If there is a deficit, look how much unit j can supply
-  for (auto unit = dash::team_unit_t{0}; unit < nunits && my_deficit > 0; ++unit) {
+  for (auto unit = dash::team_unit_t{0}; unit < nunits && my_deficit > 0;
+       ++unit) {
     auto const supply_unit = *(supp_begin + unit) - *(dist_begin + unit);
 
     DASH_ASSERT_GE(supply_unit, 0, "invalid supply of target unit");
@@ -283,22 +284,37 @@ inline void psort__calc_final_partition_dist(
   DASH_LOG_TRACE("psort__calc_final_partition_dist >");
 }
 
-template <typename LocalArrayT, typename ElementType>
+template <typename ElementType, typename InputIt, typename OutputIt>
 inline void psort__calc_send_count(
     PartitionBorder<ElementType> const& p_borders,
     std::vector<size_t> const&          valid_partitions,
-    LocalArrayT&                        partition_dist)
+    InputIt                             target_count,
+    OutputIt                            send_count)
 {
-  using value_t = typename LocalArrayT::value_type;
+  using value_t = typename std::iterator_traits<InputIt>::value_type;
+
+  static_assert(
+      std::is_same<
+          value_t,
+          typename std::iterator_traits<OutputIt>::value_type>::value,
+      "value types must be equal");
+
   DASH_LOG_TRACE("< psort__calc_send_count");
 
-  auto const           nunits = partition_dist.pattern().team().size();
-  std::vector<value_t> tmp_target_count(nunits + 1);
+  // The number of units is the number of splitters + 1
+  auto const           nunits = p_borders.lower_bound.size() + 1;
+  std::vector<value_t> tmp_target_count;
+  tmp_target_count.reserve(nunits + 1);
+  tmp_target_count.emplace_back(0);
 
-  tmp_target_count[0] = 0;
 
-  auto l_target_count = &(partition_dist[IDX_TARGET_COUNT(nunits)]);
-  auto l_send_count   = &(partition_dist[IDX_SEND_COUNT(nunits)]);
+  std::copy(
+      target_count,
+      std::next(target_count, nunits),
+      // we copy to index 1 since tmp_target_count[0] == 0
+      std::back_inserter(tmp_target_count));
+
+  auto tmp_target_count_begin = std::next(std::begin(tmp_target_count));
 
   auto const last_skipped = p_borders.is_skipped.cend();
   auto       it_skipped =
@@ -320,21 +336,21 @@ inline void psort__calc_send_count(
 
     auto const p_left         = p_borders.left_partition[*it_valid];
     auto const n_contig_skips = *it_valid - p_left;
+
     std::fill_n(
-        l_target_count + p_left + 1, n_contig_skips, l_target_count[p_left]);
+        std::next(tmp_target_count_begin, p_left + 1),
+        n_contig_skips,
+        *std::next(tmp_target_count_begin, p_left));
 
     std::advance(it_skipped, n_contig_skips);
     std::advance(it_valid, 1);
   }
 
-  std::copy(
-      l_target_count, l_target_count + nunits, tmp_target_count.begin() + 1);
-
   std::transform(
       tmp_target_count.begin() + 1,
       tmp_target_count.end(),
       tmp_target_count.begin(),
-      l_send_count,
+      send_count,
       std::minus<value_t>());
 
   DASH_LOG_TRACE("psort__calc_send_count >");
@@ -350,7 +366,7 @@ inline void psort__calc_target_displs(
   auto const nunits = g_partition_data.team().size();
   auto const myid   = g_partition_data.team().myid();
 
-  auto l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
+  auto * l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
 
   if (0 == myid) {
     // Unit 0 always writes to target offset 0

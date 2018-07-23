@@ -264,7 +264,9 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
     // allreduce with implicit barrier
     detail::psort__global_histogram(
+        // first partition
         std::begin(l_nlt_nle),
+        // iterator past last valid partition
         std::next(
             std::begin(l_nlt_nle),
             (valid_partitions.back() + 1) * NLT_NLE_BLOCK),
@@ -422,24 +424,19 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   std::vector<std::size_t> l_send_displs(nunits, 0);
 
   if (n_l_elem > 0) {
+    auto const* l_target_count =
+        &(g_partition_data.local[IDX_TARGET_COUNT(nunits)]);
+    auto* l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
+
     detail::psort__calc_send_count(
-        p_borders, valid_partitions, g_partition_data.local);
+        p_borders, valid_partitions, l_target_count, l_send_count);
 
-    // Obtain the final send displs which is just an exclusive scan based on
-    // the send count
-    auto l_send_count = &(g_partition_data.local[IDX_SEND_COUNT(nunits)]);
-    std::copy(l_send_count, l_send_count + nunits, std::begin(l_send_displs));
-
+    // exclusive scan using partial sum
     std::partial_sum(
-        std::begin(l_send_displs),
-        std::end(l_send_displs),
-        std::begin(l_send_displs),
+        l_send_count,
+        std::next(l_send_count, nunits - 1),
+        std::next(std::begin(l_send_displs)),
         std::plus<size_t>());
-
-    // Shift by 1 and fill leading element with 0 to obtain the exclusive
-    // scan character
-    l_send_displs.insert(std::begin(l_send_displs), 0);
-    l_send_displs.pop_back();
   }
   else {
     std::fill(
@@ -471,21 +468,39 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   DASH_LOG_TRACE_RANGE(
       "send count",
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits)),
-      std::next(g_partition_data.lbegin(), IDX_DIST(nunits) + nunits));
+      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
+      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits) + nunits));
 
   DASH_LOG_TRACE_RANGE(
       "send displs", l_send_displs.begin(), l_send_displs.end());
 
   trace.exit_state("13:calc_final_send_count");
 
-  trace.enter_state("14:barrier");
-  team.barrier();
-  trace.exit_state("14:barrier");
+  trace.enter_state("14:calc_recv_count (all-to-all)");
+
+  std::vector<size_t> recv_count(nunits, 0);
+
+  dart_alltoall(
+      // send buffer
+      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
+      // receive buffer
+      recv_count.data(),
+      // we send / receive 1 element to / from each process
+      1,
+      // dtype
+      dash::dart_datatype<size_t>::value,
+      // teamid
+      team.dart_id());
+
+  DASH_LOG_TRACE_RANGE(
+      "recv count", std::begin(recv_count), std::end(recv_count));
+
+  trace.exit_state("14:calc_recv_count (all-to-all)");
 
   trace.enter_state("15:calc_final_target_displs");
 
   if (n_l_elem > 0) {
+    // exclusive scan
     detail::psort__calc_target_displs(
         p_borders, valid_partitions, g_partition_data);
   }
@@ -522,16 +537,13 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
     std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
 
-    iter_type it_copy{};
-    if (unit == unit_at_begin) {
-      it_copy = begin;
-    }
-    else {
-      // The array passed to global_index is 0 initialized
-      auto gidx =
-          pattern.global_index(static_cast<dash::team_unit_t>(unit), {});
-      it_copy = iter_type{&(begin.globmem()), pattern, gidx};
-    }
+    iter_type it_copy =
+        (unit == unit_at_begin)
+            ? begin
+            : iter_type{&(begin.globmem()),
+                        pattern,
+                        pattern.global_index(
+                            static_cast<dash::team_unit_t>(unit), {})};
 
     auto&& fut = dash::copy_async(
         &(*(lcopy.begin() + send_disp)),
@@ -561,9 +573,57 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   team.barrier();
   trace.exit_state("18:barrier");
 
-  trace.enter_state("19:final_local_sort");
-  std::sort(lbegin, lend, sort_comp);
-  trace.exit_state("19:final_local_sort");
+  trace.enter_state("19:merge_local_sequences");
+
+  // merging sorted sequences
+  auto nsequences = nunits;
+  // number of merge steps in the tree
+  auto const depth = static_cast<size_t>(std::ceil(std::log2(nsequences)));
+
+  // calculate the prefix sum among all receive counts to find the offsets for
+  // merging
+  std::vector<size_t> recv_count_psum;
+  recv_count_psum.reserve(nsequences + 1);
+  recv_count_psum.emplace_back(0);
+
+  std::partial_sum(
+      std::begin(recv_count),
+      std::end(recv_count),
+      std::back_inserter(recv_count_psum));
+
+  DASH_LOG_TRACE_RANGE(
+      "recv count prefix sum",
+      std::begin(recv_count_psum),
+      std::end(recv_count_psum));
+
+  for (std::size_t d = 0; d < depth; ++d) {
+    // distance between first and mid iterator while merging
+    auto const step = std::size_t(0x1) << d;
+    // distance between first and last iterator while merging
+    auto const dist = step << 1;
+    // number of merges
+    auto const nmerges = nsequences >> 1;
+
+    // These merges are independent from each other and are candidates for
+    // shared memory parallelism
+    for (std::size_t m = 0; m < nmerges; ++m) {
+      auto first = std::next(lbegin, recv_count_psum[m * dist]);
+      auto mid   = std::next(lbegin, recv_count_psum[m * dist + step]);
+      // sometimes we have a lonely merge in the end, so we have to guarantee
+      // that we do not access out of bounds
+      auto last = std::next(
+          lbegin,
+          recv_count_psum[std::min(
+              m * dist + dist, recv_count_psum.size() - 1)]);
+
+      std::inplace_merge(first, mid, last);
+    }
+
+    nsequences -= nmerges;
+  }
+
+  trace.exit_state("19:merge_local_sequences");
+
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
   trace.enter_state("20:final_barrier");
@@ -583,7 +643,7 @@ struct identity_t : std::unary_function<T, T> {
 }  // namespace detail
 
 template <class GlobRandomIt>
-void sort(GlobRandomIt begin, GlobRandomIt end)
+inline void sort(GlobRandomIt begin, GlobRandomIt end)
 {
   using value_t = typename std::remove_cv<
       typename dash::iterator_traits<GlobRandomIt>::value_type>::type;
