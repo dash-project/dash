@@ -63,7 +63,7 @@ dart_ret_t dart__mpi__op_fini();
  * The maximum number of elements of a certain type to be
  * transfered in one chunk.
  */
-#define MAX_CONTIG_ELEMENTS INT_MAX
+#define MAX_CONTIG_ELEMENTS (INT_MAX)
 
 typedef enum {
   DART_KIND_BASIC = 0,

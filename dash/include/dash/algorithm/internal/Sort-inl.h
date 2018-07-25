@@ -212,6 +212,42 @@ inline bool psort__validate_partitions(
 
   auto const& acc_partition_count = p_unit_info.acc_partition_count;
 
+  // This validates if all partititions have been correctly determined. The
+  // example below shows 4 units where unit 1 is empty (capacity 0). Thus
+  // we have only two valid partitions, i.e. partition borders 1 and 2,
+  // respectively. Partition 0 is skipped because the bounding unit on the
+  // right-hand side is empty. For partition one, the bounding unit is unit 0,
+  // one the right hand side it is 2.
+  //
+  // The right hand side unit is always (partition index + 1), the unit on
+  // the left hand side is calculated at the beginning of dash::sort (@see
+  // psort__init_partition_borders) and stored in a vector for lookup.
+  //
+  // Given this information the validation checks the following constraints
+  //
+  // - The number of elements in the global histrogram less than the
+  //   partitition value must be smaller than the "accumulated" partition size
+  // - The "accumulated" partition size must be less than or equal the number
+  //   of elements which less than or equal the partition value
+  //
+  // If either of these two constraints cannot be satisfied we have to move
+  // the upper or lower bound of the partition value, respectively.
+
+  //                    -------|-------|-------|-------
+  //   Partition Index     u0  |  u1   |   u2  |   u3
+  //                    -------|-------|-------|-------
+  //    Partition Size     10  |  0    |   10  |   10
+  //                       ^           ^    ^
+  //                       |           |    |
+  //                       -------Partition--
+  //                       |      Border 1  |
+  //               Left Unit           |    Right Unit
+  //                       |           |    |
+  //                       |           |    |
+  //                    -------|-------|-------|-------
+  // Acc Partition Count   10  |  10   |   20  |  30
+  //
+
   for (auto const& border_idx : valid_partitions) {
     auto const p_left  = p_borders.left_partition[border_idx];
     auto const nlt_idx = p_left * NLT_NLE_BLOCK;
@@ -307,7 +343,6 @@ inline void psort__calc_send_count(
   tmp_target_count.reserve(nunits + 1);
   tmp_target_count.emplace_back(0);
 
-
   std::copy(
       target_count,
       std::next(target_count, nunits),
@@ -366,7 +401,7 @@ inline void psort__calc_target_displs(
   auto const nunits = g_partition_data.team().size();
   auto const myid   = g_partition_data.team().myid();
 
-  auto * l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
+  auto* l_target_displs = &(g_partition_data.local[IDX_TARGET_DISP(nunits)]);
 
   if (0 == myid) {
     // Unit 0 always writes to target offset 0
@@ -377,14 +412,29 @@ inline void psort__calc_target_displs(
 
   auto const u_blocksize = g_partition_data.lsize();
 
+  // What this algorithm does is basically an exclusive can over all send
+  // counts across all participating units to find the target displacements of
+  // a unit for all partitions. More precisely, each unit has to know the
+  // starting offset in each partition where the elements should be copied to.
+  //
+  // Note: The one-sided approach here is
+  // probably not the most efficient way. Something like dart_exscan should be
+  // more efficient in large scale scenarios
+
   for (auto const& border_idx : valid_partitions) {
     auto const   left_u  = p_borders.left_partition[border_idx];
     auto const   right_u = border_idx + 1;
     size_t const val =
         (left_u == myid)
-            ? g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
-            : g_partition_data
-                  [left_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
+            ?
+            /* if we are the bounding unit on the left-hand side we can access
+             * the value in local memory */
+            g_partition_data.local[left_u + IDX_SEND_COUNT(nunits)]
+            :
+            /* Otherwise we have to read the send count remotely from the
+             * corresponding offset at the unit's memory */
+            g_partition_data
+                [left_u * u_blocksize + myid + IDX_SEND_COUNT(nunits)];
     target_displs[right_u] = val + target_displs[left_u];
 
     if (right_u == myid) {

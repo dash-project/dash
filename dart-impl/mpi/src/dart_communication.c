@@ -2208,7 +2208,7 @@ dart_ret_t dart_alltoall(
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
   if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
-    DART_LOG_ERROR("dart_allreduce ! failed: nelem (%zu) > INT_MAX", nelem);
+    DART_LOG_ERROR("dart_alltoall ! failed: nelem (%zu) > INT_MAX", nelem);
     return DART_ERR_INVAL;
   }
 

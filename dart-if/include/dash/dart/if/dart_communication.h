@@ -194,8 +194,9 @@ dart_ret_t dart_allreduce(
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
  * \param nelem   Number of elements sent by each process and received from each unit.
+ *                The value of this parameter must not execeed INT_MAX.
  * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
- * \param team The team to participate in the allreduce.
+ * \param team    The team to participate in the allreduce.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *

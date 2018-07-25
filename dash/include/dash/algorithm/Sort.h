@@ -480,6 +480,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   std::vector<size_t> recv_count(nunits, 0);
 
+  DASH_ASSERT_RETURNS(
   dart_alltoall(
       // send buffer
       std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
@@ -490,7 +491,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
       // dtype
       dash::dart_datatype<size_t>::value,
       // teamid
-      team.dart_id());
+      team.dart_id()), DART_OK);
 
   DASH_LOG_TRACE_RANGE(
       "recv count", std::begin(recv_count), std::end(recv_count));
@@ -500,7 +501,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   trace.enter_state("15:calc_final_target_displs");
 
   if (n_l_elem > 0) {
-    // exclusive scan
     detail::psort__calc_target_displs(
         p_borders, valid_partitions, g_partition_data);
   }
@@ -537,13 +537,22 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   for (auto const& unit : p_unit_info.valid_remote_partitions) {
     std::tie(send_count, send_disp, target_disp) = get_send_info(unit);
 
+    // Get a global iterator to the first local element of a unit within the
+    // range to be sorted [begin, end)
+    //
     iter_type it_copy =
         (unit == unit_at_begin)
-            ? begin
-            : iter_type{&(begin.globmem()),
-                        pattern,
-                        pattern.global_index(
-                            static_cast<dash::team_unit_t>(unit), {})};
+            ?
+            /* If we are the unit at the beginning of the global range simply
+               return begin */
+            begin
+            :
+            /* Otherwise construct an global iterator pointing the first local
+               element from the correspoding unit */
+            iter_type{&(begin.globmem()),
+                      pattern,
+                      pattern.global_index(
+                          static_cast<dash::team_unit_t>(unit), {})};
 
     auto&& fut = dash::copy_async(
         &(*(lcopy.begin() + send_disp)),
