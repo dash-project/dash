@@ -124,6 +124,10 @@ dart_ret_t dart_hwinfo(
   }
 
   gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE);
+  for(int i = 0; i < DART_LOCALITY_HOST_MAX_SIZE; ++i) {
+    if(hw.host[i] == '.')
+      hw.host[i] = '\0';
+  }
 
 #ifdef DART_ENABLE_LIKWID
   DART_LOG_TRACE("dart_hwinfo: using likwid");

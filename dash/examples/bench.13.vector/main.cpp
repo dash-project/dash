@@ -1,3 +1,7 @@
+int main() {
+	return 0;
+}
+/*
 #include <chrono>
 #include <iostream>
 
@@ -76,3 +80,4 @@ int main(int argc, char* argv[]) {
 	dash::finalize();
 	return 0;
 }
+*/
