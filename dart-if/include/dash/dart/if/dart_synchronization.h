@@ -117,7 +117,7 @@ dart_ret_t dart_lock_release(
  * \threadsafe_none
  * \ingroup DartInitialization
  */
-dart_ret_t dart_lock_initialized(
+bool dart_lock_initialized(
     struct dart_lock_struct const *lock) DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
