@@ -1,7 +1,6 @@
 #ifndef DASH__ALGORITHM__EQUAL_H__
 #define DASH__ALGORITHM__EQUAL_H__
 
-#include <dash/Array.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>
