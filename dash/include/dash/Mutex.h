@@ -73,6 +73,8 @@ public:
    * Collective initialization of the DART lock.
    *
    * This function is not thread-safe
+   *
+   * @return True if lock was successfully initialized, False otherwise
    */
   bool init();
 
