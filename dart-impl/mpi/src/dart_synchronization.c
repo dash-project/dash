@@ -408,6 +408,9 @@ dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
   return DART_OK;
 }
 
-
-
-
+dart_ret_t dart_lock_initialized(struct dart_lock_struct const * lock)
+{
+  return lock &&
+    !DART_GPTR_ISNULL(lock->gptr_tail) &&
+         !DART_GPTR_ISNULL(lock->gptr_list);
+}

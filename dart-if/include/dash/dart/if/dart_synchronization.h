@@ -108,6 +108,17 @@ dart_ret_t dart_lock_try_acquire(
 dart_ret_t dart_lock_release(
   dart_lock_t   lock)   DART_NOTHROW;
 
+/**
+ * Whether the lock has been properly initialized.
+ *
+ * \return true if the DART lock is properly initialized
+ *         false  otherwise.
+ *
+ * \threadsafe_none
+ * \ingroup DartInitialization
+ */
+dart_ret_t dart_lock_initialized(
+    struct dart_lock_struct const *lock) DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
@@ -118,4 +129,3 @@ dart_ret_t dart_lock_release(
 #endif
 
 #endif /* DART_SYNCHRONIZATION_H_INCLUDED */
-
