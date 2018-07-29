@@ -22,6 +22,7 @@ bool Mutex::init() {
         DASH_LOG_ERROR(
             "Failed to initialize DART lock! "
             "(dart_team_lock_init failed)");
+        return false;
     }
 
     _mutex.reset(m);
