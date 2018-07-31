@@ -94,17 +94,14 @@ Team::split(
 
   size_t num_split = 0;
 
-  for (unsigned i = 0; i < num_parts; i++) {
-    DASH_ASSERT_RETURNS(
-      dart_group_create(&sub_groups[i]),
-      DART_OK);
-  }
-
   DASH_ASSERT_RETURNS(
     dart_team_get_group(_dartid, &group),
     DART_OK);
   DASH_ASSERT_RETURNS(
     dart_group_split(group, num_parts, &num_split, sub_groups),
+    DART_OK);
+  DASH_ASSERT_RETURNS(
+    dart_group_destroy(&group),
     DART_OK);
   dart_team_t oldteam = _dartid;
   // Create a child Team for every part with parent set to

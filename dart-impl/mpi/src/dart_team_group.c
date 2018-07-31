@@ -662,6 +662,7 @@ dart_ret_t dart_team_destroy(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(*teamid);
   if (team_data == NULL) {
+    DART_LOG_ERROR("Found invalid or unknown team %d\n", *teamid);
     return DART_ERR_INVAL;
   }
 
@@ -680,7 +681,12 @@ dart_ret_t dart_team_destroy(
   /* -- Release the communicator associated with teamid -- */
   MPI_Comm_free(&comm);
 
+  dart_segment_fini(&team_data->segdata);
+
   dart_adapt_teamlist_dealloc(*teamid);
+
+  dart__mpi__destroylocks(team_data->allocated_locks);
+  team_data->allocated_locks = NULL;
 
   DART_LOG_DEBUG("dart_team_destroy > teamid:%d", *teamid);
 

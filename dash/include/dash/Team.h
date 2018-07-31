@@ -181,7 +181,9 @@ public:
     }
 
     if (_group != DART_GROUP_NULL) {
-      dart_group_destroy(&_group);
+      DASH_ASSERT_RETURNS(
+        dart_group_destroy(&_group),
+        DART_OK);
       _group = DART_GROUP_NULL;
     }
 
@@ -195,6 +197,13 @@ public:
     }
 
     free();
+
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      DASH_ASSERT_RETURNS(
+        dart_team_destroy(&_dartid),
+        DART_OK);
+    }
   }
 
   /**
