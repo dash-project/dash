@@ -97,7 +97,7 @@ public:
 private:
   dash::Team const* _team{nullptr};
   std::unique_ptr<std::remove_pointer<dart_lock_t>::type, DestroyDARTLock>
-      _mutex{nullptr};
+      _mutex{DART_LOCK_NULL};
 };  // class Mutex
 
 }  // namespace dash

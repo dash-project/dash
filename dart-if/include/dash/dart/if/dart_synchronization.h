@@ -29,6 +29,11 @@ extern "C" {
  */
 typedef struct dart_lock_struct *dart_lock_t;
 
+/**
+ * Null value for \ref dart_lock_t to reset a DART lock instance. The lock
+ * has to be initialized using \ref dart_team_lock_init.
+ */
+#define DART_LOCK_NULL ((dart_lock_t)NULL)
 
 /**
  * Collective operation to initialize the \c lock object.

@@ -53,7 +53,7 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   dart_gptr_t gptr_list;
   dart_team_unit_t unitid;
 
-  *lock = NULL;
+  *lock = DART_LOCK_NULL;
 
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
@@ -404,7 +404,7 @@ dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
   dart__base__mutex_destroy(&(*lock)->mutex);
   DART_LOG_DEBUG("dart_team_lock_free: done in team %d", teamid);
   free(*lock);
-  *lock = NULL;
+  *lock = DART_LOCK_NULL;
   return DART_OK;
 }
 
