@@ -18,6 +18,7 @@
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_group_priv.h>
+#include <dash/dart/mpi/dart_synchronization_priv.h>
 
 #include <limits.h>
 
@@ -590,11 +591,9 @@ dart_ret_t dart_team_create(
     return DART_ERR_INVAL;
   }
 
-
   if (group->mpi_group == MPI_GROUP_NULL) {
     return DART_OK;
   }
-
 
   dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
   if (parent_team_data == NULL) {
@@ -633,6 +632,8 @@ dart_ret_t dart_team_create(
     MPI_Comm_rank(team_data->comm, &rank);
     team_data->unitid = rank;
     MPI_Comm_size(team_data->comm, &team_data->size);
+
+    team_data->allocated_locks = NULL;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);

@@ -18,7 +18,6 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
-#include <dash/dart/mpi/dart_synchronization_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
@@ -293,8 +292,6 @@ dart_ret_t dart_exit()
                    unitid.id);
     return DART_ERR_OTHER;
   }
-
-  dart__mpi__destroylocks();
 
   dart_segment_info_t *seginfo = dart_segment_get_info(&team_data->segdata, 0);
 
