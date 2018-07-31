@@ -34,7 +34,7 @@ private:
   struct DestroyDARTLock {
     void operator()(dart_lock_t lock)
     {
-      if (nullptr != lock) {
+      if (DART_LOCK_NULL != lock && dart_initialized()) {
         auto ret = dart_team_lock_destroy(&lock);
 
         if (ret != DART_OK) {

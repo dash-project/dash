@@ -17,6 +17,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_synchronization_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
@@ -38,6 +39,10 @@ struct dart_lock_struct
    */
   dart_gptr_t  gptr_list;
   /**
+   * Pointer to the next element a the list.
+   */
+  struct dart_lock_struct *next;
+  /**
    * Local mutex to ensure mutual exclusion between threads.
    */
   dart_mutex_t mutex;
@@ -45,6 +50,8 @@ struct dart_lock_struct
   /** Whether this unit has acquired the lock. */
   int32_t is_acquired;
 };
+
+static struct dart_lock_struct *allocated_locks = NULL;
 
 dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 {
@@ -121,6 +128,10 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
   DART_ASSERT_RETURNS(
     dart__base__mutex_init_recursive(&(*lock)->mutex),
     DART_OK);
+
+  // register the lock
+  (*lock)->next   = allocated_locks;
+  allocated_locks = (*lock);
 
   DART_LOG_DEBUG("dart_team_lock_init: INIT - done");
 
@@ -384,6 +395,22 @@ dart_ret_t dart_team_lock_destroy(dart_lock_t* lock)
 
   dart_team_myid(teamid, &unitid);
 
+  // remove the lock from the list
+  struct dart_lock_struct *prev = NULL, *elem = allocated_locks;
+  while (elem != NULL) {
+    if (elem == *lock) {
+      break;
+    }
+    prev = elem;
+    elem = elem->next;
+  }
+  DART_ASSERT_MSG(elem != NULL, "Unknown lock!");
+
+  if (prev == NULL) {
+    allocated_locks = allocated_locks->next;
+  } else {
+    prev->next = elem->next;
+  }
 
   /* Unit 0 is the process holding the gptr_tail by default. */
   if (unitid.id == 0) {
@@ -413,4 +440,15 @@ bool dart_lock_initialized(struct dart_lock_struct const * lock)
   return lock &&
     !DART_GPTR_ISNULL(lock->gptr_tail) &&
          !DART_GPTR_ISNULL(lock->gptr_list);
+}
+
+dart_ret_t dart__mpi__destroylocks()
+{
+  struct dart_lock_struct *elem = allocated_locks;
+  while (elem != NULL) {
+    dart_team_lock_destroy(&elem);
+    elem = elem->next;
+  }
+  allocated_locks = NULL;
+  return DART_OK;
 }
