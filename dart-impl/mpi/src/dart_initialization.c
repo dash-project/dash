@@ -12,8 +12,10 @@
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_team_group.h>
 
+#include <dash/dart/base/env.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_mpi_env.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
@@ -29,7 +31,16 @@ static int _dart_initialized = 0;
 static
 dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 {
-  dart_localpool = dart_buddy_new(DART_LOCAL_ALLOC_SIZE);
+  ssize_t local_alloc_size = dart__base__env__size(
+                              DART_MEMALLOC_POOLSIZE_ENVSTR,
+                              DART_LOCAL_ALLOC_SIZE);
+  if (local_alloc_size <= 0) {
+    DART_LOG_ERROR("Failed to parse local memory pool size: %zi "
+                   "(must be positive non-zero)",
+                   local_alloc_size);
+    DART_ASSERT(local_alloc_size > 0);
+  }
+  dart_localpool = dart_buddy_new(local_alloc_size);
   MPI_Win dart_sharedmem_win_local_alloc;
   char* *dart_sharedmem_local_baseptr_set = NULL;
 
@@ -41,14 +52,14 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
 
   if (sharedmem_comm != MPI_COMM_NULL) {
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)",
-                   DART_LOCAL_ALLOC_SIZE);
+                   local_alloc_size);
     MPI_Info win_info;
     MPI_Info_create(&win_info);
     MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
     /* Reserve a free shared memory block for non-collective
      * global memory allocation. */
     int ret = MPI_Win_allocate_shared(
-                DART_LOCAL_ALLOC_SIZE,
+                local_alloc_size,
                 sizeof(char),
                 win_info,
                 sharedmem_comm,
@@ -92,7 +103,7 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
   }
 #else
   MPI_Alloc_mem(
-    DART_LOCAL_ALLOC_SIZE,
+    local_alloc_size,
     MPI_INFO_NULL,
     &dart_mempool_localalloc);
 #endif
@@ -103,7 +114,7 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
    * Return in dart_win_local_alloc. */
   MPI_Win_create(
     dart_mempool_localalloc,
-    DART_LOCAL_ALLOC_SIZE,
+    local_alloc_size,
     sizeof(char),
     MPI_INFO_NULL,
     DART_COMM_WORLD,
@@ -121,7 +132,7 @@ dart_ret_t create_local_alloc(dart_team_data_t *team_data)
                                 &team_data->segdata, DART_SEGMENT_LOCAL_ALLOC);
   segment->flags       = 1;
   segment->segid       = 0;
-  segment->size        = DART_LOCAL_ALLOC_SIZE;
+  segment->size        = local_alloc_size;
   segment->baseptr     = dart_sharedmem_local_baseptr_set;
   segment->win         = dart_win_local_alloc;
   segment->shmwin      = dart_sharedmem_win_local_alloc;
