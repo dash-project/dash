@@ -11,6 +11,7 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/env.h>
 
 
 /* Width of unit id field in log messages in number of characters */
@@ -58,27 +59,25 @@ static const char *loglevel_names[DART_LOGLEVEL_NUM_LEVEL] = {
     "TRACE"
 };
 
+static const struct dart_env_str2int env_vals[] = {
+  {"ERROR", DART_LOGLEVEL_ERROR},
+  {"WARN",  DART_LOGLEVEL_WARN},
+  {"INFO",  DART_LOGLEVEL_INFO},
+  {"DEBUG", DART_LOGLEVEL_DEBUG},
+  {"TRACE", DART_LOGLEVEL_TRACE},
+  {NULL, -1}
+};
+
 static
 enum dart__base__logging_loglevel
-env_loglevel()
+dart__logging__log_level()
 {
   static enum dart__base__logging_loglevel level = DART_LOGLEVEL_TRACE;
-  static int log_level_parsed = 0;
-  if (!log_level_parsed) {
-    const char *envstr = getenv(DART_LOGLEVEL_ENVSTR);
-    if (envstr) {
-      if (strcmp(envstr, "ERROR") == 0) {
-        level = DART_LOGLEVEL_ERROR;
-      } else if (strcmp(envstr, "WARN") == 0) {
-        level = DART_LOGLEVEL_WARN;
-      } else if (strcmp(envstr, "INFO") == 0) {
-        level = DART_LOGLEVEL_INFO;
-      } else if (strcmp(envstr, "DEBUG") == 0) {
-        level = DART_LOGLEVEL_DEBUG;
-      } else if (strcmp(envstr, "TRACE") == 0) {
-        level = DART_LOGLEVEL_TRACE;
-      }
-    }
+  static int parsed = 0;
+  if (!parsed) {
+    parsed = 1;
+    level  = dart__base__env__str2int(DART_LOGLEVEL_ENVSTR, env_vals,
+                                      DART_LOGLEVEL_TRACE);
   }
 
   return level;
@@ -109,7 +108,7 @@ dart__base__log_message(
   ...
 )
 {
-  if (level > env_loglevel() ||
+  if (level > dart__logging__log_level() ||
       level > DART_LOGLEVEL_TRACE) {
     return;
   }
