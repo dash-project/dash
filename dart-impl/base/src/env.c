@@ -66,11 +66,11 @@ dart__base__env__number(const char *env, int fallback)
 
 ssize_t dart__base__env__size(const char *env, ssize_t fallback)
 {
-  size_t res = fallback;
+  ssize_t res = fallback;
   const char *envstr = getenv(env);
   if (envstr != NULL) {
     char *endptr;
-    if (sizeof(size_t) == sizeof(long long int)) {
+    if (sizeof(ssize_t) == sizeof(long long int)) {
       res = strtoll(envstr, &endptr, 10);
     } else {
       res = strtol(envstr, &endptr, 10);
@@ -80,10 +80,13 @@ ssize_t dart__base__env__size(const char *env, ssize_t fallback)
       // check for B, K, M, or G suffix
       switch(*endptr) {
       case 'G':
+      case 'g':
         res *= 1024; /* fall-through */
       case 'M':
+      case 'm':
         res *= 1024; /* fall-through */
       case 'K':
+      case 'k':
         res *= 1024; /* fall-through */
       case 'B':
         break;
