@@ -21,6 +21,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_mpi_env.h>
 
 #include <stdio.h>
 #include <mpi.h>
@@ -136,9 +137,16 @@ dart_ret_t dart_memalloc(
   gptr->teamid  = DART_TEAM_ALL;      /* Locally allocated gptr belong to the global team. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
   if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
-    DART_LOG_ERROR("dart_memalloc: Out of bounds "
-                   "(dart_buddy_alloc %zu bytes): global memory exhausted",
-                   nbytes);
+    dart_team_data_t *team_data = dart_adapt_teamlist_get(DART_TEAM_ALL);
+    dart_segment_info_t *seginfo = dart_segment_get_info(
+                                      &(team_data->segdata), DART_SEGMENT_LOCAL);
+    DART_LOG_ERROR("dart_memalloc: failed to allocate %zu bytes: "
+                   "global memory exhausted! "
+                   "Consider increasing the pool size using environment variable "
+                   "'%s' (currently %zu)",
+                   nbytes,
+                   DART_MEMALLOC_POOLSIZE_ENVSTR,
+                   seginfo->size);
     *gptr = DART_GPTR_NULL;
     return DART_ERR_OTHER;
   }
