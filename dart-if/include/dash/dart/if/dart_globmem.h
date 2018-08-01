@@ -258,6 +258,89 @@ dart_ret_t dart_gptr_setflags(
   uint16_t      flags) DART_NOTHROW;
 
 /**
+ * DART allocator used for non-collective global memory allocations using
+ * \ref dart_allocator_alloc similar to \ref dart_memalloc.
+ * An instance of the allocator has to be created using \c dart_allocator_new
+ * before allocating memory using \ref dart_allocator_alloc, which can then
+ * be shared with other units in the same team. The memory has to be free'd
+ * using \ref dart_allocator_free by the unit that allocated it.
+ * The allocator should be destroyed after all allocations have been free'd
+ * using \ref dart_allocator_destroy.
+ */
+typedef struct dart_allocator_struct * dart_allocator_t;
+
+/**
+ * Create a new allocator for non-collective global memory allocations.
+ * This operation is collective among the units in \c team.
+ *
+ * \param pool_size The size of the local memory pool from which global memory
+ *                  is allocated in \ref dart_allocator_alloc.
+ * \param team      The team describing the group of units.
+ * \param[out] new_allocator Pointer the newly created allocator.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_allocator_new(
+  size_t             pool_size,
+  dart_team_t        team,
+  dart_allocator_t * new_allocator);
+
+/**
+ * Allocate global memory from a DART allocator instance created using
+ * \ref dart_allocator_new. The operation is not a collective operation but only
+ * involves the local unit. The resulting \ref dart_gptr_t can be communicated
+ * to other units for global memory access.
+ *
+ * \param nelem     The number elements to be allocated.
+ * \param dtype     The type of elements to be allocated.
+ * \param gptr      Pointer to the resulting \ref dart_gptr_t.
+ * \param allocator The allocator from which memory is allocated.
+ *
+ * \return \c DART_OK on success, \ref DART_ERR_NOMEM if the memory pool is
+ *         exhausted, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_allocator_alloc(
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_gptr_t      * gptr,
+  dart_allocator_t   allocator);
+
+/**
+ * Free memory allocated through \ref dart_allocator_alloc.
+ *
+ * \param gptr      Pointer to the \ref dart_gptr_t, will be reset to
+ *                  \c DART_GPTR_NULL.
+ * \param allocator The allocator from which the memory was allocated.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_allocator_free(
+  dart_gptr_t      * gptr,
+  dart_allocator_t   allocator);
+
+/**
+ * Destroy an allocator created through \ref dart_allocator_new. This is a
+ * collective operation.
+ *
+ * \param allocator The allocator to be destroyed.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_data{team}
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_allocator_destroy(dart_allocator_t *allocator);
+
+/**
  * Allocates memory for \c nelem elements of type \c dtype in the global
  * address space of the calling unit and returns a global pointer to it.
  * This is *not* a collective function.

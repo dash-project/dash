@@ -169,3 +169,42 @@ TEST_F(DARTMemAllocTest, SegmentReuseTest)
     DART_OK,
     dart_team_memfree(gptr2));
 }
+
+
+TEST_F(DARTMemAllocTest, AllocatorTest)
+{
+  dart_allocator_t allocator;
+  dart_gptr_t gptr;
+
+  // collectively create a new allocator
+  dart_allocator_new(1024, DART_TEAM_ALL, &allocator);
+  //ASSERT_NE_U(allocator, NULL);
+
+  // allocate some local memory on a single unit and distribute the result
+  if (dash::myid() == 0) {
+    dart_allocator_alloc(16, DART_TYPE_INT, &gptr, allocator);
+  }
+  dash::dart_storage<dart_gptr_t> ds_gptr(1);
+  dart_bcast(&gptr, ds_gptr.nelem, ds_gptr.dtype, 0, DART_TEAM_ALL);
+  int myid = dash::myid();
+
+  // write to my position on unit 0
+  gptr.addr_or_offs.offset += dash::myid() * sizeof(int);
+  dart_put_blocking(gptr, &myid, 1, DART_TYPE_INT, DART_TYPE_INT);
+  dash::barrier();
+
+  // check the result
+  if (dash::myid() == 0) {
+    dart_gptr_t gptr_it = gptr;
+    for (int i = 0; i < dash::size(); ++i) {
+      int val;
+      dart_get_blocking(&val, gptr_it, 1, DART_TYPE_INT, DART_TYPE_INT);
+      ASSERT_EQ_U(i, val);
+      gptr_it.addr_or_offs.offset += sizeof(int);
+    }
+    // free the allocated memory
+    dart_allocator_free(&gptr, allocator);
+  }
+  // collectively destroy the allocator
+  dart_allocator_destroy(&allocator);
+}
