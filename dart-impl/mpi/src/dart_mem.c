@@ -213,33 +213,35 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
 	}
 
   dart__base__mutex_lock(&self->mutex);
-	for (;;) {
-		switch (self->tree[index]) {
-		case NODE_USED:
-			if (offset != left){
-				assert (offset == left);
-			  dart__base__mutex_unlock(&self->mutex);
-				return -1;
-			}
-			_combine(self, index);
-		  dart__base__mutex_unlock(&self->mutex);
-			return 0;
-		case NODE_UNUSED:
-			assert (0);
-		  dart__base__mutex_unlock(&self->mutex);
-			return -1;
-		default:
-			length /= 2;
-			if (offset < left + length) {
-				index = index * 2 + 1;
-			}
-			else {
-				left += length;
-				index = index * 2 + 2;
-			}
-			break;
-		}
-	}
+  for (;;) {
+    switch (self->tree[index]) {
+    case NODE_USED:
+      if (offset != left){
+        assert (offset == left);
+        dart__base__mutex_unlock(&self->mutex);
+        return -1;
+      }
+      _combine(self, index);
+      dart__base__mutex_unlock(&self->mutex);
+      return 0;
+    case NODE_UNUSED:
+      DART_LOG_ERROR("Invalid offset %lX in dart_buddy_free(alloc:%p)!",
+                    offset, self);
+      assert (0);
+      dart__base__mutex_unlock(&self->mutex);
+      return -1;
+    default:
+      length /= 2;
+      if (offset < left + length) {
+        index = index * 2 + 1;
+      }
+      else {
+        left += length;
+        index = index * 2 + 2;
+      }
+      break;
+    }
+  }
 
   dart__base__mutex_unlock(&self->mutex);
   // TODO: is this ever reached?
