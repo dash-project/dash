@@ -2239,7 +2239,7 @@ dart_ret_t dart_alltoall(
 
   MPI_Comm comm = team_data->comm;
 
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
 
   CHECK_MPI_RET(
       MPI_Alltoall(
