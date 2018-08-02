@@ -15,7 +15,7 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_active_messages_priv.h>
 
-#define DART_AMSGQ_ATOMICS 1
+//#define DART_AMSGQ_ATOMICS 1
 
 struct dart_amsgq_impl_data {
   /// window holding the tail ptr
