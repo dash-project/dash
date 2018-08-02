@@ -258,7 +258,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)
-            dash::tasks::yield(5);
+            dash::tasks::yield(-1);
 #else
           dart_get_blocking(
             up_row,
@@ -308,7 +308,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
             &handle);
           int32_t flag = 0;
           while (dart_test_local(&handle, &flag) == DART_OK && !flag)
-            dash::tasks::yield(5);
+            dash::tasks::yield(-1);
 
           //dart_flush(data_old[local_end_gidx[0] + 1].begin().dart_gptr());
 #else
