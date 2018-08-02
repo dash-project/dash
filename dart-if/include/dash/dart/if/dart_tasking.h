@@ -81,7 +81,7 @@ dart_task_thread_num() __attribute__((weak));
  * Returns the number of worker threads.
  */
 int
-dart_task_num_threads();
+dart_task_num_threads() __attribute__((weak));
 
 
 /**

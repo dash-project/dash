@@ -53,6 +53,14 @@ static void compute_boundary_range(
   ValueT           dt,
   ValueT           k)
 {
+#ifdef DEBUG
+  for (auto it = begin; it != end; ++it) {
+    for (int i = 0; i < 4; ++i) {
+      std::cout << i << "=" << it.value_at(i)<< ", ";
+    }
+    std::cout << std::endl;
+  }
+#endif
   for (auto it = begin; it != end; ++it) {
     auto core = *it;
     double dtheta =
@@ -215,7 +223,7 @@ int main(int argc, char *argv[])
     auto& new_matrix = new_halo->matrix();
 
     // Update Halos asynchroniously
-    //current_halo->update_async();
+    //current_halo->update();
 
     // manually start transfers of halos
     // halo region coordinate run from (0,0) at top left to (2,2) at bottom right
@@ -247,6 +255,7 @@ int main(int argc, char *argv[])
       }
     }
 
+#pragma omp taskwait
     // Wait until all Halo updates ready
     //current_halo->wait();
     //dart_waitall(handles.data(), handles.size());
@@ -258,54 +267,90 @@ int main(int argc, char *argv[])
     // upper boundary
     auto up_it      = current_op->bbegin();
     auto up_it_bend = up_it + bnd_elems[0].size();
-#pragma omp task shared(halo_block)
+
+    int regions[9];
+
+#pragma omp task depend(out: regions[1])
+{
+    current_halo->update_async_at(1);
+    while (!current_halo->test(1)) {
+#pragma omp taskyield
+    }
+}
+
+#pragma omp task depend(out: regions[3])
+{
+    current_halo->update_async_at(3);
+    while (!current_halo->test(3)) {
+#pragma omp taskyield
+    }
+}
+
+#pragma omp task depend(out: regions[5])
+{
+    current_halo->update_async_at(5);
+    while (!current_halo->test(5)) {
+#pragma omp taskyield
+    }
+}
+
+#pragma omp task depend(out: regions[7])
+{
+    current_halo->update_async_at(7);
+    while (!current_halo->test(7)) {
+#pragma omp taskyield
+    }
+}
+
+
+#pragma omp task shared(halo_block) depend(in: regions[1], regions[3], regions[5])
 {
     // we need to transfer halo region 1  here
     //dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
     //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(1));
     //wait_yield(handle, 1);
-    current_halo->update_at(1);
+    //current_halo->update_at(1);
     compute_boundary_range(up_it, up_it_bend, new_begin, dx, dy, dt, k);
 }
 
     // lower boundary (follows upper boundary iteration)
     auto down_it      = up_it_bend;
     auto down_it_bend = down_it + bnd_elems[1].size();
-#pragma omp task shared(halo_block)
+#pragma omp task shared(halo_block) depend(in: regions[1], regions[3], regions[7])
 {
     // we need to transfer halo region 7 here
     //dart_handle_t handle[3] = {DART_HANDLE_NULL, DART_HANDLE_NULL, DART_HANDLE_NULL};
     //handle[0] = update_halo_async(*current_halo, halo_block.halo_region(7));
     //wait_yield(handle, 1);
-    current_halo->update_at(7);
+    //current_halo->update_at(7);
     compute_boundary_range(down_it, down_it_bend, new_begin, dx, dy, dt, k);
 }
 
     // left boundary (follows lower boundary iteration)
     auto left_it      = down_it_bend;
     auto left_it_bend = left_it + bnd_elems[2].size();
-#pragma omp task shared(halo_block, current_halo)
+#pragma omp task shared(halo_block) depend(in: regions[3])
 {
     // TODO: we need to transfer halo region 3 here
     //dart_handle_t handle;
     //handle = update_halo_async(*current_halo, halo_block.halo_region(3));
     //wait_yield(&handle, 1);
 
-    current_halo->update_at(3);
+    //current_halo->update_at(3);
     compute_boundary_range(left_it, left_it_bend, new_begin, dx, dy, dt, k);
 }
 
     // right boundary (follows lower boundary iteration)
     auto right_it      = left_it_bend;
     auto right_it_bend = right_it + bnd_elems[3].size();
-#pragma omp task shared(halo_block)
+#pragma omp task shared(halo_block) depend(in: regions[5])
 {
     // TODO: we need to transfer halo region 5 here
     //dart_handle_t handle;
     //handle = update_halo_async(*current_halo, halo_block.halo_region(5));
     //wait_yield(&handle, 1);
 
-    current_halo->update_at(5);
+    //current_halo->update_at(5);
     compute_boundary_range(right_it, right_it_bend, new_begin, dx, dy, dt, k);
 }
 

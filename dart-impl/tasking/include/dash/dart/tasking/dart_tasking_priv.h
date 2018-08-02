@@ -28,11 +28,15 @@ typedef enum {
   DART_TASK_ROOT     = -1, // special state assigned to the root task
   DART_TASK_FINISHED =  0, // comparison with 0
   DART_TASK_NASCENT,
+  // active task states begin here
+  // NOTE: check IS_ACTIVE_TASK macro if you make changes here!!
   DART_TASK_CREATED,
+  DART_TASK_QUEUED,
   DART_TASK_DUMMY,         // the task is a dummy for a remote task
   DART_TASK_RUNNING,
   DART_TASK_SUSPENDED,     // the task is suspended but runnable
   DART_TASK_BLOCKED,       // the task is blocked waiting for a handle
+  // active task states end here
   DART_TASK_DESTROYED,
   DART_TASK_CANCELLED
 } dart_task_state_t;
@@ -43,11 +47,8 @@ typedef enum {
 } dart_yield_target_t;
 
 #define IS_ACTIVE_TASK(task) \
-  ((task)->state == DART_TASK_RUNNING   || \
-   (task)->state == DART_TASK_CREATED   || \
-   (task)->state == DART_TASK_SUSPENDED || \
-   (task)->state == DART_TASK_BLOCKED   || \
-   (task)->state == DART_TASK_DUMMY)
+  ((task)->state >= DART_TASK_CREATED   && \
+   (task)->state <= DART_TASK_BLOCKED)
 
 
 typedef
@@ -182,7 +183,7 @@ dart_ret_t
 dart__tasking__task_test(dart_taskref_t *tr, int *flag) DART_INTERNAL;
 
 dart_ret_t
-dart__tasking__task_complete() DART_INTERNAL;
+dart__tasking__task_complete() /*DART_INTERNAL*/;
 
 dart_taskref_t
 dart__tasking__current_task() DART_INTERNAL;

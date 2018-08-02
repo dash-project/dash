@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 #include <dash/dart/base/mutex.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
@@ -102,6 +103,8 @@ dart_amsg_singlewin_trysend(
   uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
   uint64_t remote_offset = 0;
 
+  DART_ASSERT_MSG(target.id != amsgq->my_rank, "Cannot send message to self!");
+
   dart__base__mutex_lock(&amsgq->send_mutex);
 
   dart_myid(&unitid);
@@ -144,6 +147,7 @@ dart_amsg_singlewin_trysend(
                    "unit %i (%lu but expected < %lu)",
                    target.id, remote_offset, amsgq->size);
     dart__base__mutex_unlock(&amsgq->send_mutex);
+    MPI_Win_unlock(target.id, amsgq->win);
     return DART_ERR_INVAL;
   }
 

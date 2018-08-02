@@ -25,7 +25,7 @@
 #include <dash/algorithm/Fill.h>
 #include <dash/util/Timer.h>
 #include <dash/tasks/Tasks.h>
-#include <dash/tasks/ParallelFor.h>
+#include <dash/tasks/Taskloop.h>
 
 #include <fstream>
 #include <string>
@@ -157,7 +157,7 @@ void smooth(Array_t & data_old, Array_t & data_new){
     if (rows_per_task == 0) rows_per_task = 1;
 //    std::cout << "rows_per_task: " << rows_per_task << std::endl;
     // Inner rows
-    dash::tasks::parallel_for(1L, lext_x-1, rows_per_task,
+    dash::tasks::taskloop(1L, lext_x-1, rows_per_task,
         [=, &data_old, &data_new](index_t from, index_t to) {
           //std::cout << "Iterating from " << from << " to " << to << std::endl;
 //         Extrae_eventandcounters(1000, 1);

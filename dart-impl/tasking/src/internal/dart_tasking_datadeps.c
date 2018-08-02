@@ -119,7 +119,7 @@ static inline bool release_remote_dep_counter(dart_task_t *task) {
   DART_ASSERT_MSG(num_remote_deps >= 0 && num_local_deps >= 0,
                   "Dependency counter underflow detected in task %p [%d,%d]!",
                   task, num_local_deps, num_remote_deps);
-  DART_LOG_DEBUG("release_local_dep_counter : Task %p has %d local and %d "
+  DART_LOG_DEBUG("release_remote_dep_counter : Task %p has %d local and %d "
                  "remote unresolved dependencies left", task, num_local_deps,
                  num_remote_deps);
   if (num_remote_deps == 0) {
@@ -1115,10 +1115,15 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   dart_task_t *succ;
   while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
     DART_LOG_TRACE("  Releasing task %p", succ);
+
+    dart__base__mutex_lock(&task->mutex);
     bool runnable = release_local_dep_counter(succ);
+    dart_task_state_t state = succ->state;
+    dart__base__mutex_unlock(&task->mutex);
+    DART_LOG_TRACE("  Task %p: state %d runnable %i", succ, state, runnable);
 
     if (runnable) {
-      if (succ->state == DART_TASK_CREATED) {
+      if (state == DART_TASK_CREATED) {
         dart__tasking__enqueue_runnable(succ);
       } else if (succ->state == DART_TASK_DUMMY) {
         dart_tasking_datadeps_release_dummy_task(succ);

@@ -168,6 +168,7 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
   return DART_OK;
 }
 
+#ifdef DART_MPI_ENABLE_DYNAMIC_WINDOWS
 static dart_ret_t
 dart_team_memalloc_aligned_dynamic(
   dart_team_t       teamid,
@@ -377,6 +378,8 @@ dart_team_memalloc_aligned_dynamic(
   return DART_OK;
 }
 
+#else // DART_MPI_ENABLE_DYNAMIC_WINDOWS
+
 static dart_ret_t
 dart_team_memalloc_aligned_full(
   dart_team_t       teamid,
@@ -389,7 +392,6 @@ dart_team_memalloc_aligned_full(
   dart_unit_t gptr_unitid = 0; // the team-local ID 0 has the beginning
   int         dtype_size  = dart__mpi__datatype_sizeof(dtype);
   MPI_Aint    nbytes      = nelem * dtype_size;
-  size_t      team_size;
   *gptr = DART_GPTR_NULL;
 
   DART_LOG_TRACE(
@@ -401,8 +403,6 @@ dart_team_memalloc_aligned_full(
     DART_LOG_ERROR("dart_team_memalloc_aligned_full ! Unknown team %i", teamid);
     return DART_ERR_INVAL;
   }
-
-  MPI_Comm  comm = team_data->comm;
 
   dart_segment_info_t *segment = dart_segment_alloc(
                                 &team_data->segdata, DART_SEGMENT_ALLOC);
@@ -445,6 +445,7 @@ dart_team_memalloc_aligned_full(
 
   return DART_OK;
 }
+#endif // DART_MPI_ENABLE_DYNAMIC_WINDOWS
 
 dart_ret_t
 dart_team_memalloc_aligned(
@@ -536,8 +537,8 @@ dart_ret_t dart_team_memfree(
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG("dart_team_memfree: collective free, team unit id: %2d "
-                 "offset:%"PRIu64" gptr_unitid:%d across team %d",
-                 unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+                 "offset:%"PRIu64", segid=%d, baseptr=%p, gptr_unitid:%d across team %d",
+                 unitid.id, gptr.addr_or_offs.offset, segid, sub_mem, gptr.unitid, teamid);
   /* Remove the related correspondence relation record from the related
    * translation table. */
   if (dart_segment_free(&team_data->segdata, segid) != DART_OK) {

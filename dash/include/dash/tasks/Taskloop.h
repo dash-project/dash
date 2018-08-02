@@ -15,7 +15,7 @@ namespace tasks{
    */
   template<class InputIter, typename RangeFunc>
   void
-  parallel_for(
+  taskloop(
     InputIter begin,
     InputIter end,
     size_t chunk_size,
@@ -38,12 +38,12 @@ namespace tasks{
 
   template<class InputIter, typename RangeFunc, typename DepGeneratorFunc>
   void
-  parallel_for(
+  taskloop(
     InputIter begin,
     InputIter end,
     size_t chunk_size,
     RangeFunc f,
-    DepGeneratorFunc depdency_generator)
+    DepGeneratorFunc depedency_generator)
   {
     // TODO: extend this to handle GlobIter!
     if (chunk_size == 0) chunk_size = 1;
@@ -54,8 +54,8 @@ namespace tasks{
       InputIter to = from + chunk_size;
       if (to > end) to = end;
       auto dep_inserter = std::inserter(deps, deps.begin());
-      depdency_generator(from, to, dep_inserter);
-      dash::tasks::async(
+      depedency_generator(from, to, dep_inserter);
+      dash::tasks::internal::async(
         [=](){
           f(from, to);
         },
@@ -68,15 +68,26 @@ namespace tasks{
 
   template<class InputIter, typename RangeFunc>
   void
-  parallel_for(
+  taskloop(
     InputIter begin,
     InputIter end,
     RangeFunc f)
   {
-    parallel_for(begin, end,
+    taskloop(begin, end,
                  dash::distance(begin, end) / dart_task_num_threads(), f);
   }
 
+  template<class InputIter, typename RangeFunc, typename DepGeneratorFunc>
+  void
+  taskloop(
+    InputIter        begin,
+    InputIter        end,
+    RangeFunc        f,
+    DepGeneratorFunc depedency_generator)
+  {
+    taskloop(begin, end, dash::distance(begin, end) / dart_task_num_threads(),
+             f, depedency_generator);
+  }
 } // namespace tasks
 } // namespace dash
 

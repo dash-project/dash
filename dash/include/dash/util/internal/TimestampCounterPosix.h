@@ -96,9 +96,8 @@ public:
 public:
 
   inline TimestampCounterPosix()
-  {
-    value = static_cast<counter_t>(ArchCycleCount());
-  }
+  : value(static_cast<counter_t>(ArchCycleCount()))
+  { }
 
   inline TimestampCounterPosix(
     const TimestampCounterPosix & other)
