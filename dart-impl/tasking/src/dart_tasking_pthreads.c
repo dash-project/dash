@@ -903,7 +903,14 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 #else
     dart_taskqueue_t *q = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
-    dart_tasking_taskqueue_push(q, task);
+
+    dart__base__mutex_lock(&task->mutex);
+    // the task might have been queued in the mean-time
+    if (task->state == DART_TASK_CREATED) {
+      dart_tasking_taskqueue_push(q, task);
+      task->state = DART_TASK_QUEUED;
+    }
+    dart__base__mutex_unlock(&task->mutex);
     // wakeup a thread to execute this task
     wakeup_thread_single();
   }
@@ -925,7 +932,7 @@ dart__tasking__create_task(
   }
 
   // start threads upon first task creation
-  if (dart__likely(!threads_running)) {
+  if (dart__unlikely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -936,8 +943,12 @@ dart__tasking__create_task(
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
+  dart__base__mutex_lock(&task->mutex);
   task->state = DART_TASK_CREATED;
-  if (dart_tasking_datadeps_is_runnable(task)) {
+  bool is_runnable = dart_tasking_datadeps_is_runnable(task);
+  dart__base__mutex_unlock(&task->mutex);
+  DART_LOG_TRACE("  Task %p created: runnable %i", task, is_runnable);
+  if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
 
@@ -961,7 +972,7 @@ dart__tasking__create_task_handle(
   }
 
   // start threads upon first task creation
-  if (dart__likely(!threads_running)) {
+  if (dart__unlikely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -971,10 +982,11 @@ dart__tasking__create_task_handle(
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
-  dart_tasking_datadeps_handle_task(task, deps, ndeps);
-
+  dart__base__mutex_lock(&task->mutex);
   task->state = DART_TASK_CREATED;
-  if (dart_tasking_datadeps_is_runnable(task)) {
+  bool is_runnable = dart_tasking_datadeps_is_runnable(task);
+  dart__base__mutex_unlock(&task->mutex);
+  if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
 
