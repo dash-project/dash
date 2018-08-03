@@ -128,23 +128,28 @@ public:
           dash::exception::RuntimeError, "runtime not properly initialized");
     }
 
+    if (!(DART_GPTR_ISNULL(_dart_gptr))) {
+      DASH_LOG_ERROR("Shared scalar is already initialized");
+      return false;
+    }
+
     // Shared value is only allocated at unit 0:
     if (_team->myid() == _owner) {
       DASH_LOG_DEBUG(
-          "Shared.Shared(value,team,owner)",
+          "Shared.init(value,team,owner)",
           "allocating shared value in local memory");
       _globmem          = std::make_unique<GlobMem_t>(1, *_team);
       _dart_gptr        = _globmem->begin().dart_gptr();
       auto       lbegin = _globmem->lbegin();
       auto const lend   = _globmem->lend();
 
-      DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
+      DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", val);
       std::uninitialized_fill(lbegin, lend, val);
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);
     dart_bcast(&_dart_gptr, ds.nelem, ds.dtype, _owner, _team->dart_id());
-    DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
+    DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", _dart_gptr);
 
     return !(DART_GPTR_ISNULL(_dart_gptr));
   }
