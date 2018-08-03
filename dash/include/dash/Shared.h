@@ -87,7 +87,7 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
     if (dash::is_initialized()) {
-      init(val);
+      DASH_ASSERT_RETURNS(init(val), true);
     }
   }
 
