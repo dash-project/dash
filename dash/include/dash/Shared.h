@@ -94,12 +94,7 @@ public:
   /**
    * Destructor, frees shared memory.
    */
-  ~Shared()
-  {
-    DASH_LOG_DEBUG("Shared.~Shared()");
-    _globmem.reset();
-    DASH_LOG_DEBUG("Shared.~Shared >");
-  }
+  ~Shared() = default;
 
   /**
    * Copy-constructor: DELETED
