@@ -1,6 +1,9 @@
 #ifndef DASH__SHARED_H_
 #define DASH__SHARED_H_
 
+#include <memory>
+#include <dash/std/memory.h>
+
 #include <dash/dart/if/dart_types.h>
 
 #include <dash/memory/GlobStaticMem.h>
@@ -9,7 +12,6 @@
 
 #include <dash/iterator/GlobIter.h>
 
-#include <memory>
 
 
 namespace dash {
@@ -48,10 +50,10 @@ private:
   friend void swap(Shared<T_> & a, Shared<T_> & b);
 
 private:
-  dash::Team                   * _team       = nullptr;
-  team_unit_t                    _owner;
-  std::shared_ptr<GlobMem_t>     _globmem    = nullptr;
-  dart_gptr_t                    _dart_gptr  = DART_GPTR_NULL;
+  dash::Team*                _team{nullptr};
+  team_unit_t                _owner{DART_UNDEFINED_UNIT_ID};
+  std::unique_ptr<GlobMem_t> _globmem{nullptr};
+  dart_gptr_t                _dart_gptr{DART_GPTR_NULL};
 
 public:
   /**
@@ -84,27 +86,9 @@ public:
       _dart_gptr(DART_GPTR_NULL)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
-    // Shared value is only allocated at unit 0:
-    if (_team->myid() == _owner) {
-      DASH_LOG_DEBUG("Shared.Shared(value,team,owner)",
-                     "allocating shared value in local memory");
-      _globmem   = std::make_shared<GlobMem_t>(1, team);
-      _dart_gptr = _globmem->begin().dart_gptr();
-      auto lbegin = _globmem->lbegin();
-      auto const lend = _globmem->lend();
-
-      DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
-      std::uninitialized_fill(lbegin, lend, val);
+    if (dash::is_initialized()) {
+      init(val);
     }
-    // Broadcast global pointer of shared value at unit 0 to all units:
-    dash::dart_storage<dart_gptr_t> ds(1);
-    dart_bcast(
-      &_dart_gptr,
-      ds.nelem,
-      ds.dtype,
-      _owner,
-      _team->dart_id());
-    DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
   }
 
   /**
@@ -118,9 +102,9 @@ public:
   }
 
   /**
-   * Copy-constructor.
+   * Copy-constructor: DELETED
    */
-  Shared(const self_t & other) = default;
+  Shared(const self_t & other) = delete;
 
   /**
    * Move-constructor. Transfers ownership from other instance.
@@ -128,14 +112,42 @@ public:
   Shared(self_t && other) = default;
 
   /**
-   * Assignment operator.
+   * Assignment operator: DELETED
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(const self_t & other) = delete;
 
   /**
    * Move-assignment operator.
    */
   self_t & operator=(self_t && other) = default;
+
+  bool init(value_type val = value_type{})
+  {
+    if (!dash::is_initialized()) {
+      DASH_THROW(
+          dash::exception::RuntimeError, "runtime not properly initialized");
+    }
+
+    // Shared value is only allocated at unit 0:
+    if (_team->myid() == _owner) {
+      DASH_LOG_DEBUG(
+          "Shared.Shared(value,team,owner)",
+          "allocating shared value in local memory");
+      _globmem          = std::make_unique<GlobMem_t>(1, *_team);
+      _dart_gptr        = _globmem->begin().dart_gptr();
+      auto       lbegin = _globmem->lbegin();
+      auto const lend   = _globmem->lend();
+
+      DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
+      std::uninitialized_fill(lbegin, lend, val);
+    }
+    // Broadcast global pointer of shared value at unit 0 to all units:
+    dash::dart_storage<dart_gptr_t> ds(1);
+    dart_bcast(&_dart_gptr, ds.nelem, ds.dtype, _owner, _team->dart_id());
+    DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
+
+    return !(DART_GPTR_ISNULL(_dart_gptr));
+  }
 
   /**
    * Set the value of the shared element.
@@ -211,11 +223,10 @@ void swap(
   dash::Shared<T> & a,
   dash::Shared<T> & b)
 {
-  using std::swap;
-  swap(a._team,       b._team);
-  swap(a._owner,      b._owner);
-  swap(a._globmem,    b._globmem);
-  swap(a._dart_gptr,  b._dart_gptr);
+  ::std::swap(a._team,       b._team);
+  ::std::swap(a._owner,      b._owner);
+  ::std::swap(a._globmem,    b._globmem);
+  ::std::swap(a._dart_gptr,  b._dart_gptr);
 }
 
 } // namespace dash
