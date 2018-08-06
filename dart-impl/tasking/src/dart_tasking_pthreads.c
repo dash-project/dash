@@ -95,14 +95,14 @@ static dart_task_t root_task = {
     .prev = NULL,
     .fn   = NULL,
     .data = NULL,
-    .data_size = 0,
     .unresolved_deps = 0,
     .successor = NULL,
     .parent = NULL,
     .remote_successor = NULL,
     .local_deps = NULL,
     .num_children = 0,
-    .state  = DART_TASK_ROOT};
+    .state  = DART_TASK_ROOT,
+    .data_allocated = false};
 
 static void
 destroy_threadpool(bool print_stats);
@@ -493,12 +493,12 @@ dart_task_t * create_task(
   }
 
   if (data_size) {
-    task->data_size  = data_size;
-    task->data       = malloc(data_size);
+    task->data_allocated = true;
+    task->data           = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
-    task->data       = data;
-    task->data_size  = 0;
+    task->data           = data;
+    task->data_allocated = false;
   }
   task->fn           = fn;
   task->num_children = 0;
@@ -535,11 +535,12 @@ void remote_progress(dart_thread_t *thread, bool force)
 void dart__tasking__destroy_task(dart_task_t *task)
 {
   if (task->data_size) {
+  if (task->data_allocated) {
     free(task->data);
   }
   // reset some of the fields
   task->data             = NULL;
-  task->data_size        = 0;
+  task->data_allocated   = false;
   task->fn               = NULL;
   task->parent           = NULL;
   task->prev             = NULL;
