@@ -74,14 +74,16 @@ struct dart_task_data {
   int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
   struct task_list          *successor;       // the list of tasks that depend on this task
   struct dart_task_data     *parent;          // the task that created this task
+  struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
+  // TODO: pack using pahole, move all execution-specific fields into context
+  context_t                 *taskctx;         // context to start/resume task
   struct dart_dephash_elem  *remote_successor;
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
+  dart_wait_handle_t        *wait_handle;
   dart_mutex_t               mutex;
   dart_taskphase_t           phase;
-  context_t                 *taskctx;         // context to start/resume task
   int                        delay;           // delay in case this task yields
   int                        num_children;
-  dart_wait_handle_t        *wait_handle;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
