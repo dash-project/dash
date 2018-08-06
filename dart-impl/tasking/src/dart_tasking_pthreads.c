@@ -490,7 +490,9 @@ dart_task_t * create_task(
       DART_STACK_POP(task_free_list, task);
     }
     pthread_mutex_unlock(&task_free_mutex);
-  } else {
+  }
+
+  if (task == NULL) {
     task = allocate_task();
   }
 
