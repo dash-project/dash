@@ -62,9 +62,8 @@ static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // task life-cycle lists
-static dart_task_t *task_recycle_list     = NULL;
 static dart_task_t *task_free_list        = NULL;
-static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t task_free_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t **thread_pool;
 
@@ -95,14 +94,15 @@ static dart_task_t root_task = {
     .prev = NULL,
     .fn   = NULL,
     .data = NULL,
-    .data_size = 0,
     .unresolved_deps = 0,
     .successor = NULL,
     .parent = NULL,
+    .recycle_tasks = NULL,
     .remote_successor = NULL,
     .local_deps = NULL,
     .num_children = 0,
-    .state  = DART_TASK_ROOT};
+    .state  = DART_TASK_ROOT,
+    .data_allocated = false};
 
 static void
 destroy_threadpool(bool print_stats);
@@ -483,22 +483,22 @@ dart_task_t * create_task(
 {
   dart_task_t *task = NULL;
   if (task_free_list != NULL) {
-    pthread_mutex_lock(&task_recycle_mutex);
+    pthread_mutex_lock(&task_free_mutex);
     if (task_free_list != NULL) {
       DART_STACK_POP(task_free_list, task);
     }
-    pthread_mutex_unlock(&task_recycle_mutex);
+    pthread_mutex_unlock(&task_free_mutex);
   } else {
     task = allocate_task();
   }
 
   if (data_size) {
-    task->data_size  = data_size;
-    task->data       = malloc(data_size);
+    task->data_allocated = true;
+    task->data           = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
-    task->data       = data;
-    task->data_size  = 0;
+    task->data           = data;
+    task->data_allocated = false;
   }
   task->fn           = fn;
   task->num_children = 0;
@@ -512,6 +512,7 @@ dart_task_t * create_task(
   task->local_deps   = NULL;
   task->prev         = NULL;
   task->successor    = NULL;
+  task->recycle_tasks = NULL;
   task->prio         = prio;
   task->taskctx      = NULL;
   task->unresolved_deps = 0;
@@ -534,12 +535,13 @@ void remote_progress(dart_thread_t *thread, bool force)
 
 void dart__tasking__destroy_task(dart_task_t *task)
 {
-  if (task->data_size) {
+  dart_task_t *parent = task->parent;
+  if (task->data_allocated) {
     free(task->data);
   }
   // reset some of the fields
   task->data             = NULL;
-  task->data_size        = 0;
+  task->data_allocated   = false;
   task->fn               = NULL;
   task->parent           = NULL;
   task->prev             = NULL;
@@ -551,9 +553,9 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   dart_tasking_datadeps_reset(task);
 
-  pthread_mutex_lock(&task_recycle_mutex);
-  DART_STACK_PUSH(task_recycle_list, task);
-  pthread_mutex_unlock(&task_recycle_mutex);
+  dart__base__mutex_lock(&parent->mutex);
+  DART_STACK_PUSH(parent->recycle_tasks, task);
+  dart__base__mutex_unlock(&parent->mutex);
 }
 
 /**
@@ -1067,18 +1069,13 @@ dart__tasking__task_complete()
   // restore context (in case we're called from within another task)
   thread->retctx = tmpctx;
 
+  // destroyed child tasks can now be re-used
   dart__tasking__check_cancellation(thread);
-
-  // 3) clean up if this was the root task and thus no other tasks are running
-  if (thread->current_task == &(root_task)) {
-    if (entry_phase > DART_PHASE_FIRST) {
-      // wait for all units to finish their tasks
-      dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
-    }
+  if (thread->current_task->recycle_tasks){
     // recycled tasks can now be used again
-    pthread_mutex_lock(&task_recycle_mutex);
+    pthread_mutex_lock(&task_free_mutex);
     if (task_free_list == NULL) {
-      task_free_list = task_recycle_list;
+      task_free_list = thread->current_task->recycle_tasks;
     } else {
       dart_task_t *elem = task_free_list;
       if (elem != NULL) {
@@ -1086,10 +1083,18 @@ dart__tasking__task_complete()
         while (elem->next != NULL) elem = elem->next;
       }
       // add the recycled elements to the end of the list
-      elem->next = task_recycle_list;
+      elem->next = thread->current_task->recycle_tasks;
     }
-    task_recycle_list = NULL;
-    pthread_mutex_unlock(&task_recycle_mutex);
+    thread->current_task->recycle_tasks = NULL;
+    pthread_mutex_unlock(&task_free_mutex);
+  }
+
+  // 3) clean up if this was the root task and thus no other tasks are running
+  if (thread->current_task == &(root_task)) {
+    if (entry_phase > DART_PHASE_FIRST) {
+      // wait for all units to finish their tasks
+      dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
+    }
     // reset the runnable phase
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // disable remote polling of worker threads
@@ -1299,8 +1304,6 @@ dart__tasking__fini()
   dart__tasking__ayudame_fini();
 #endif // DART_ENABLE_AYUDAME
 
-  free_tasklist(task_recycle_list);
-  task_recycle_list = NULL;
   free_tasklist(task_free_list);
   task_free_list = NULL;
   if (threads_running) {
@@ -1315,6 +1318,8 @@ dart__tasking__fini()
 #endif
 
   dart__task__wait_fini();
+
+  dart_tasking_tasklist_fini();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
