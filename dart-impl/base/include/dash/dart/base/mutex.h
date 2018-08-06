@@ -16,7 +16,7 @@
 
 #ifdef DART_HAVE_PTHREADS
 #include <pthread.h>
-#define DART_MUTEX_INITIALIZER { PTHREAD_MUTEX_INITIALIZER }
+#define DART_MUTEX_INITIALIZER { .mutex = PTHREAD_MUTEX_INITIALIZER }
 #else
 #define DART_MUTEX_INITIALIZER { 0 }
 #endif
@@ -24,7 +24,7 @@
 typedef struct dart_mutex {
 #ifdef DART_HAVE_PTHREADS
 pthread_mutex_t mutex;
-#else 
+#else
 // required since C99 does not allow empty structs
 // TODO: this could be used for correctness checking
 char __dummy;

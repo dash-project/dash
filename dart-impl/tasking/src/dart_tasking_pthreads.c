@@ -469,7 +469,9 @@ static
 dart_task_t * allocate_task()
 {
   dart_task_t *task = malloc(sizeof(dart_task_t));
-  dart__base__mutex_init(&task->mutex);
+  //dart__base__mutex_init(&task->mutex);
+  static dart_mutex_t tmp = DART_MUTEX_INITIALIZER;
+  task->mutex = tmp;
 
   return task;
 }
