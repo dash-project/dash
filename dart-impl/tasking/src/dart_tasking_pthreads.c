@@ -1066,11 +1066,16 @@ dart__tasking__task_complete()
   while (DART_FETCH32(&(task->num_children)) > 0) {
     dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
-    remote_progress(thread, (next == NULL));
+    if (next == NULL) {
+      remote_progress(thread, true);
+    }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // c) check whether blocked tasks are ready
-    dart__task__wait_progress();
+    if (next == NULL || thread->thread_id == 0) {
+      dart__task__wait_progress();
+      next = next_task(thread);
+    }
     // d) process our tasks
     handle_task(next, thread);
   }
