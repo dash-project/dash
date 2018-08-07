@@ -144,6 +144,9 @@ struct dart_wait_handle_s {
 };
 
 dart_ret_t
+dart__tasking__init_early() DART_INTERNAL;
+
+dart_ret_t
 dart__tasking__init() DART_INTERNAL;
 
 int

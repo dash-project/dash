@@ -218,6 +218,11 @@ dart_ret_t dart_init(
     DART_LOG_ERROR("dart_init(): DART is already initialized");
     return DART_ERR_OTHER;
   }
+
+  // first thing: initialize general data structures of the tasking subsystem
+  if (dart_tasking_init_early)
+    dart_tasking_init_early();
+
   DART_LOG_DEBUG("dart_init()");
 
   int mpi_initialized;
@@ -245,6 +250,11 @@ dart_ret_t dart_init_thread(
     DART_LOG_ERROR("dart_init(): DART is already initialized");
     return DART_ERR_OTHER;
   }
+
+  // first thing: initialize general data structures of the tasking subsystem
+  if (dart_tasking_init_early)
+    dart_tasking_init_early();
+
   DART_LOG_DEBUG("dart_init()");
 
   int mpi_initialized;

@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
+#include <errno.h>
 
 #define CLOCK_TIME_USEC(ts) \
   ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
@@ -468,6 +469,7 @@ dart_task_t * next_task(dart_thread_t *thread)
 static
 dart_task_t * allocate_task()
 {
+  errno = 0;
   dart_task_t *task = malloc(sizeof(dart_task_t));
   //dart__base__mutex_init(&task->mutex);
   static dart_mutex_t tmp = DART_MUTEX_INITIALIZER;
@@ -495,6 +497,8 @@ dart_task_t * create_task(
   if (task == NULL) {
     task = allocate_task();
   }
+
+  DART_ASSERT_MSG(task != NULL, "Failed to allocate new task: errno=%d: %s!", errno, strerror(errno));
 
   if (data_size) {
     task->data_allocated = true;
@@ -662,17 +666,22 @@ void* thread_main(void *data)
 {
   DART_ASSERT(data != NULL);
   struct thread_init_data* tid = (struct thread_init_data*)data;
+  int threadid    = tid->threadid;
 
-  DART_LOG_INFO("Thread %d starting up", tid->threadid);
+  // allocate a temporary thread to get the per-thread logging right
+  dart_thread_t *thread = malloc(sizeof(dart_thread_t));
+  thread->thread_id = tid->threadid;
+  pthread_setspecific(tpd_key, thread);
 
   if (bind_threads) {
     dart__tasking__affinity_set(tid->pthread, tid->threadid);
   }
 
-  dart_thread_t *thread = malloc(sizeof(dart_thread_t));
+  pthread_setspecific(tpd_key, NULL);
+  free(thread);
+  thread = malloc(sizeof(dart_thread_t));
 
   // populate the thread-private data
-  int threadid    = tid->threadid;
   dart_thread_init(thread, threadid);
   thread->pthread = tid->pthread;
   free(tid);
@@ -818,12 +827,21 @@ init_threadpool(int num_threads)
 }
 
 dart_ret_t
+dart__tasking__init_early()
+{
+  pthread_key_create(&tpd_key, NULL);
+  return DART_OK;
+}
+
+dart_ret_t
 dart__tasking__init()
 {
   if (initialized) {
     DART_LOG_ERROR("DART tasking subsystem can only be initialized once!");
     return DART_ERR_INVAL;
   }
+
+  DART_LOG_DEBUG("Initializing tasking subsystem");
 
   thread_idle_method = dart__base__env__str2int(DART_THREAD_IDLE_ENVSTR,
                                                 thread_idle_env,
@@ -845,8 +863,6 @@ dart__tasking__init()
 
   // set up the active message queue
   dart_tasking_datadeps_init();
-
-  pthread_key_create(&tpd_key, NULL);
 
   bind_threads = dart__base__env__bool(DART_THREAD_AFFINITY_ENVSTR, false);
 
@@ -873,7 +889,9 @@ int
 dart__tasking__thread_num()
 {
   dart_thread_t *t = get_current_thread();
-  return (dart__likely(t) ? t->thread_id : 0);
+  int thread_num = (dart__likely(t) ? t->thread_id : 0);
+  //printf("thread_num=%d (thread=%p)\n", thread_num, t);
+  return thread_num;
 }
 
 int

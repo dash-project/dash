@@ -5,6 +5,15 @@
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 
+/**
+ * \brief Initialize some early data structures, i.e., managing the tread-id
+ */
+dart_ret_t
+dart_tasking_init_early()
+{
+  return dart__tasking__init_early();
+}
+
 
 /**
  * \brief Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.

@@ -28,6 +28,7 @@
 /* Maximum length of a single log message in number of characters */
 #define MAX_MESSAGE_LENGTH 256;
 
+
 static const struct dart_env_str2int env_vals[] = {
   {"ERROR", DART_LOGLEVEL_ERROR},
   {"WARN",  DART_LOGLEVEL_WARN},
@@ -57,7 +58,10 @@ dart__logging__log_level()
 }
 
 
-static dart_mutex_t logmutex = DART_MUTEX_INITIALIZER;
+static dart_mutex_t   logmutex = DART_MUTEX_INITIALIZER;
+static pthread_key_t  tls; // thread-local storage
+static int            initialized = 0;
+static const char    *filename_base = NULL;
 
 const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES] = {
   39, // default
@@ -95,6 +99,57 @@ const char * dart_base_logging_basename(const char *path) {
     return base ? base+1 : path;
 }
 
+static void
+close_logfile(void* ptr)
+{
+  FILE *file = (FILE*)ptr;
+  fclose(file);
+}
+
+static void
+make_tls()
+{
+  filename_base = dart__base__env__string("DART_LOG_FILE");
+  if (filename_base) {
+    (void) pthread_key_create(&tls, &close_logfile);
+  }
+  initialized = 1;
+}
+
+static FILE * get_logfile()
+{
+  static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+  (void) pthread_once(&key_once, &make_tls);
+  if (initialized == 0)
+  {
+    // wait for the initialization to finish
+    while (initialized == 0) {}
+  }
+
+  FILE *res = DART_LOG_OUTPUT_TARGET;
+
+  if (filename_base) {
+    FILE* file = pthread_getspecific(tls);
+    if (!file) {
+      dart_global_unit_t guid;
+      dart_myid(&guid);
+      if (guid.id >= 0) {
+        char filename[512];
+        int thread_num = dart_task_thread_num ? dart_task_thread_num() : 0;
+        snprintf(filename, 512, "%s.%d.%d.log", filename_base,
+                guid.id, thread_num);
+        fprintf(DART_LOG_OUTPUT_TARGET, "Opening log file '%s': %d.%d\n", filename, guid.id, thread_num);
+        file = fopen(filename, "w");
+        pthread_setspecific(tls, file);
+      } else {
+        file = DART_LOG_OUTPUT_TARGET;
+      }
+    }
+    res = file;
+  }
+  return res;
+}
+
 static inline
 double dart_base_logging_timestamp_ms()
 {
@@ -127,9 +182,11 @@ dart__base__log_message(
 //  }
   dart_global_unit_t unit_id;
   dart_myid(&unit_id);
+  FILE *file = get_logfile();
   // avoid inter-thread log interference
-  dart__base__mutex_lock(&logmutex);
-  fprintf(DART_LOG_OUTPUT_TARGET,
+  if (file == DART_LOG_OUTPUT_TARGET)
+    dart__base__mutex_lock(&logmutex);
+  fprintf(file,
     "[ %*d:%-2d %.5s ] [ %.3f ] %-*s:%-*d %.3s DART: %s\n",
     UNIT_WIDTH, unit_id.id,
     dart_task_thread_num ? dart_task_thread_num() : 0,
@@ -140,5 +197,6 @@ dart__base__log_message(
     (level < DART_LOGLEVEL_INFO) ? "!!!" : "",
     msg_buf);
   va_end(argp);
-  dart__base__mutex_unlock(&logmutex);
+  if (file == DART_LOG_OUTPUT_TARGET)
+    dart__base__mutex_unlock(&logmutex);
 }
