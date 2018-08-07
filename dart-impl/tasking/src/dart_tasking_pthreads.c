@@ -609,22 +609,24 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
       dart_tasking_datadeps_release_local_task(task);
 
-      // let the parent know that we are done
-      int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
-      DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
-
       // release the context
       dart__tasking__context_release(task->taskctx);
       task->taskctx = NULL;
 
       bool has_ref = task->has_ref;
+      dart_task_t *parent = task->parent;
 
       // clean up
       if (!has_ref){
         // only destroy the task if there are no references outside
         // referenced tasks will be destroyed in task_wait/task_freeref
+        // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
       }
+
+      // let the parent know that we are done
+      int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
+      DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
 
     }
     // return to previous task
