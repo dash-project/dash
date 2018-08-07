@@ -1116,16 +1116,16 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
     DART_LOG_TRACE("  Releasing task %p", succ);
 
-    dart__base__mutex_lock(&task->mutex);
+    dart__base__mutex_lock(&succ->mutex);
     bool runnable = release_local_dep_counter(succ);
     dart_task_state_t state = succ->state;
-    dart__base__mutex_unlock(&task->mutex);
+    dart__base__mutex_unlock(&succ->mutex);
     DART_LOG_TRACE("  Task %p: state %d runnable %i", succ, state, runnable);
 
     if (runnable) {
       if (state == DART_TASK_CREATED) {
         dart__tasking__enqueue_runnable(succ);
-      } else if (succ->state == DART_TASK_DUMMY) {
+      } else if (state == DART_TASK_DUMMY) {
         dart_tasking_datadeps_release_dummy_task(succ);
       }
     }
