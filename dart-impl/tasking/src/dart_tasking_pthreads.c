@@ -1074,7 +1074,8 @@ dart__tasking__task_complete()
     // c) check whether blocked tasks are ready
     if (next == NULL || thread->thread_id == 0) {
       dart__task__wait_progress();
-      next = next_task(thread);
+      if (next == NULL)
+        next = next_task(thread);
     }
     // d) process our tasks
     handle_task(next, thread);
