@@ -229,7 +229,7 @@ dart_amsg_sendrecv_trysend(
 }
 
 static dart_ret_t
-amsg_process_sendrecv_internal(
+amsg_sendrecv_process_internal(
   struct dart_amsgq_impl_data* amsgq,
   bool                         blocking,
   bool                         has_lock)
@@ -305,7 +305,7 @@ static
 dart_ret_t
 dart_amsg_sendrecv_process(struct dart_amsgq_impl_data* amsgq)
 {
-  return amsg_process_sendrecv_internal(amsgq, false, false);
+  return amsg_sendrecv_process_internal(amsgq, false, false);
 }
 
 static
@@ -327,7 +327,7 @@ dart_amsg_sendrevc_process_blocking(
   int         barrier_flag = 0;
   int         send_flag = 0;
   do {
-    amsg_process_sendrecv_internal(amsgq, true, true);
+    amsg_sendrecv_process_internal(amsgq, true, true);
     if (req != MPI_REQUEST_NULL) {
       MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
       if (barrier_flag) {
@@ -351,7 +351,7 @@ dart_amsg_sendrevc_process_blocking(
   // if Issend is broken we need another round of synchronization
   MPI_Barrier(team_data->comm);
 #endif
-  amsg_process_sendrecv_internal(amsgq, true, true);
+  amsg_sendrecv_process_internal(amsgq, true, true);
   // final synchronization
   // TODO: I don't think this is needed here!
   //MPI_Barrier(team_data->comm);
