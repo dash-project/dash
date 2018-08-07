@@ -1143,10 +1143,14 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart_task_t *local_task)
 {
   // release the task if it is runnable
+  dart__base__mutex_lock(&local_task->mutex);
   bool runnable = release_remote_dep_counter(local_task);
+  dart_task_state_t state = local_task->state;
+  dart__base__mutex_unlock(&local_task->mutex);
+
   if (runnable) {
     // enqueue as runnable
-    if (local_task->state == DART_TASK_DUMMY) {
+    if (state == DART_TASK_DUMMY) {
       if (local_task->remote_task != NULL) {
         dart_tasking_datadeps_release_dummy_task(local_task);
       } else {
@@ -1156,6 +1160,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         free(local_task);
       }
     } else {
+      DART_ASSERT(state == DART_TASK_CREATED);
       dart__tasking__enqueue_runnable(local_task);
     }
   }

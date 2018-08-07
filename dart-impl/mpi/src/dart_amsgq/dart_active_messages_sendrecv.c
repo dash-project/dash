@@ -231,19 +231,22 @@ dart_amsg_sendrecv_trysend(
 static dart_ret_t
 amsg_process_sendrecv_internal(
   struct dart_amsgq_impl_data* amsgq,
-  bool                         blocking)
+  bool                         blocking,
+  bool                         has_lock)
 {
   uint64_t num_msg;
 
   DART_ASSERT(amsgq != NULL);
 
-  if (!blocking) {
-    dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
-    if (ret != DART_OK) {
-      return DART_ERR_AGAIN;
+  if (!has_lock) {
+    if (!blocking) {
+      dart_ret_t ret = dart__base__mutex_trylock(&amsgq->processing_mutex);
+      if (ret != DART_OK) {
+        return DART_ERR_AGAIN;
+      }
+    } else {
+      dart__base__mutex_lock(&amsgq->processing_mutex);
     }
-  } else {
-    dart__base__mutex_lock(&amsgq->processing_mutex);
   }
 #if 0
   // process outgoing messages if necessary
@@ -291,7 +294,10 @@ amsg_process_sendrecv_internal(
 
     // repeat until we do not find messages anymore
   } while (blocking && num_msg > 0);
-  dart__base__mutex_unlock(&amsgq->processing_mutex);
+
+  if (!has_lock) {
+    dart__base__mutex_unlock(&amsgq->processing_mutex);
+  }
   return DART_OK;
 }
 
@@ -299,7 +305,7 @@ static
 dart_ret_t
 dart_amsg_sendrecv_process(struct dart_amsgq_impl_data* amsgq)
 {
-  return amsg_process_sendrecv_internal(amsgq, false);
+  return amsg_process_sendrecv_internal(amsgq, false, false);
 }
 
 static
@@ -316,10 +322,12 @@ dart_amsg_sendrevc_process_blocking(
     return DART_ERR_INVAL;
   }
 
+  dart__base__mutex_lock(&amsgq->processing_mutex);
+
   int         barrier_flag = 0;
   int         send_flag = 0;
   do {
-    amsg_process_sendrecv_internal(amsgq, true);
+    amsg_process_sendrecv_internal(amsgq, true, true);
     if (req != MPI_REQUEST_NULL) {
       MPI_Test(&req, &barrier_flag, MPI_STATUS_IGNORE);
       if (barrier_flag) {
@@ -343,10 +351,12 @@ dart_amsg_sendrevc_process_blocking(
   // if Issend is broken we need another round of synchronization
   MPI_Barrier(team_data->comm);
 #endif
-  amsg_process_sendrecv_internal(amsgq, true);
+  amsg_process_sendrecv_internal(amsgq, true, true);
   // final synchronization
   // TODO: I don't think this is needed here!
   //MPI_Barrier(team_data->comm);
+
+  dart__base__mutex_unlock(&amsgq->processing_mutex);
   return DART_OK;
 }
 
