@@ -1034,17 +1034,20 @@ dart__tasking__task_complete()
   dart_thread_t *thread = get_current_thread();
 
   DART_ASSERT_MSG(
-    (thread->current_task != &(root_task) || thread->thread_id == 0),
+    !(thread->current_task == &(root_task) && thread->thread_id != 0),
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
-  dart_taskphase_t entry_phase = dart__tasking__phase_current();
 
-  if (thread->current_task == &(root_task) &&
-      entry_phase > DART_PHASE_FIRST) {
-    dart__tasking__perform_matching(thread, DART_PHASE_ANY);
-    // enable worker threads to poll for remote messages
-    worker_poll_remote = true;
+  dart_taskphase_t entry_phase;
+
+  if (thread->current_task == &(root_task)) {
+    entry_phase = dart__tasking__phase_current();
+    if (entry_phase > DART_PHASE_FIRST) {
+      dart__tasking__perform_matching(thread, DART_PHASE_ANY);
+      // enable worker threads to poll for remote messages
+      worker_poll_remote = true;
+    }
   }
 
   // 1) wake up all threads (might later be done earlier)
