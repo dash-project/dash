@@ -18,6 +18,7 @@
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <dash/dart/tasking/dart_tasking_extrae.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -182,7 +183,9 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
+  EXTRAE_ENTER(EVENT_TASK);
   invoke_taskfn(task);
+  EXTRAE_EXIT(EVENT_TASK);
   // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
@@ -253,7 +256,9 @@ dart__tasking__yield(int delay)
     } else {
       current_task->state  = DART_TASK_BLOCKED;
     }
+    EXTRAE_ENTER(EVENT_TASK);
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
+    EXTRAE_EXIT(EVENT_TASK);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
   } else {
@@ -704,6 +709,13 @@ void* thread_main(void *data)
 
     // process the next task
     dart_task_t *task = next_task(thread);
+
+    if (!in_idle && task == NULL) {
+      EXTRAE_ENTER(EVENT_IDLE);
+    }
+    if (in_idle && task != NULL) {
+      EXTRAE_EXIT(EVENT_IDLE);
+    }
     handle_task(task, thread);
 
     // look for incoming remote tasks and responses
@@ -835,6 +847,14 @@ dart__tasking__init()
   DART_LOG_INFO("Using %i threads", num_threads);
 
   DART_LOG_TRACE("root_task: %p", &root_task);
+
+#ifdef USE_EXTRAE
+  if (Extrae_define_event_type) {
+    unsigned nvalues = 3;
+    Extrae_define_event_type(&et, "Thread State", &nvalues, ev, extrae_names);
+  }
+#endif
+
 
   dart__tasking__context_init();
 
