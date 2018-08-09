@@ -88,7 +88,7 @@ static void reduce_max_fn(
     if (inoutvec[i] > *cutoff) {
       inoutvec[i] = *cutoff;
     }
-    if (invec[i] > inoutvec[i] && invec[i] < *cutoff) {
+    if (invec[i] > inoutvec[i] && invec[i] <= *cutoff) {
       inoutvec[i] = invec[i];
     }
   }
