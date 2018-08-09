@@ -32,7 +32,7 @@ void
 dart__tasking__cancel_task(dart_task_t *task)
 {
   task->state = DART_TASK_CANCELLED;
-  dart_tasking_datadeps_release_local_task(task);
+  dart_tasking_datadeps_release_local_task(task, dart__tasking__current_thread());
   DART_DEC_AND_FETCH32(&task->parent->num_children);
   dart__tasking__destroy_task(task);
 }

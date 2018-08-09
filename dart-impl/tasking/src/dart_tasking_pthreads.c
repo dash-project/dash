@@ -18,6 +18,7 @@
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <dash/dart/tasking/dart_tasking_extrae.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -182,7 +183,9 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
+  EXTRAE_ENTER(EVENT_TASK);
   invoke_taskfn(task);
+  EXTRAE_EXIT(EVENT_TASK);
   // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
@@ -253,7 +256,9 @@ dart__tasking__yield(int delay)
     } else {
       current_task->state  = DART_TASK_BLOCKED;
     }
+    EXTRAE_ENTER(EVENT_TASK);
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
+    EXTRAE_EXIT(EVENT_TASK);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
   } else {
@@ -600,6 +605,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // the task may have changed once we get back here
       task = get_current_task();
 
+      DART_ASSERT(task != &root_task);
+
       // we need to lock the task shortly here before releasing datadeps
       // to allow for atomic check and update
       // of remote successors in dart_tasking_datadeps_handle_remote_task
@@ -607,7 +614,7 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       task->state = DART_TASK_FINISHED;
       dart__base__mutex_unlock(&(task->mutex));
 
-      dart_tasking_datadeps_release_local_task(task);
+      dart_tasking_datadeps_release_local_task(task, thread);
 
       // release the context
       dart__tasking__context_release(task->taskctx);
@@ -704,6 +711,13 @@ void* thread_main(void *data)
 
     // process the next task
     dart_task_t *task = next_task(thread);
+
+    if (!in_idle && task == NULL) {
+      EXTRAE_ENTER(EVENT_IDLE);
+    }
+    if (in_idle && task != NULL) {
+      EXTRAE_EXIT(EVENT_IDLE);
+    }
     handle_task(task, thread);
 
     // look for incoming remote tasks and responses
@@ -836,6 +850,14 @@ dart__tasking__init()
 
   DART_LOG_TRACE("root_task: %p", &root_task);
 
+#ifdef USE_EXTRAE
+  if (Extrae_define_event_type) {
+    unsigned nvalues = 3;
+    Extrae_define_event_type(&et, "Thread State", &nvalues, ev, extrae_names);
+  }
+#endif
+
+
   dart__tasking__context_init();
 
 #ifndef DART_TASK_THREADLOCAL_Q
@@ -892,33 +914,44 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
+  bool queuable = false;
+  if (task->state == DART_TASK_CREATED)
+  {
+    dart__base__mutex_lock(&task->mutex);
+    if (task->state == DART_TASK_CREATED) {
+      task->state = DART_TASK_QUEUED;
+      queuable = true;
+    }
+    dart__base__mutex_unlock(&task->mutex);
+  }
+
+  // make sure we don't queue the task if are not allowed to
+  if (!queuable) return;
+
   bool enqueued = false;
   // check whether the task has to be deferred
   if (!dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
-      DART_LOG_TRACE("Deferring release of task %p in phase %d",
-                     task, task->phase);
+      DART_LOG_TRACE("Deferring release of task %p in phase %d (q=%p, s=%zu)",
+                     task, task->phase,
+                     &local_deferred_tasks,
+                     local_deferred_tasks.num_elem);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
       enqueued = true;
     }
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
+
   if (!enqueued){
+    // the task might have been queued in the mean-time
 #ifdef DART_TASK_THREADLOCAL_Q
     dart_thread_t *thread = get_current_thread();
     dart_taskqueue_t *q = &thread->queue;
 #else
     dart_taskqueue_t *q = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
-
-    dart__base__mutex_lock(&task->mutex);
-    // the task might have been queued in the mean-time
-    if (task->state == DART_TASK_CREATED) {
-      dart_tasking_taskqueue_push(q, task);
-      task->state = DART_TASK_QUEUED;
-    }
-    dart__base__mutex_unlock(&task->mutex);
+    dart_tasking_taskqueue_push(q, task);
     // wakeup a thread to execute this task
     wakeup_thread_single();
   }

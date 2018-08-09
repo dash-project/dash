@@ -1,16 +1,23 @@
+#define _GNU_SOURCE
+
 #include <dash/dart/base/logging.h>
 
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 
-#ifdef DART_ENABLE_HWLOC
-#include <hwloc.h>
 #include <dash/dart/base/env.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 
+
 #include <stdio.h>
+#include <stdlib.h>
+
+static bool             print_binding = false;
+
+#ifdef DART_ENABLE_HWLOC
+#include <hwloc.h>
+
 
 static hwloc_topology_t topology;
-static bool             print_binding = false;
 static hwloc_cpuset_t   ccpuset;
 
 void
@@ -84,17 +91,55 @@ dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
   hwloc_bitmap_free(cpuset);
 }
 
+
 #else // DART_ENABLE_HWLOC
 
+/*
 void
 dart__tasking__affinity_init()
 {
 
 }
+*/
+
+static cpu_set_t set;
+
+#include <sched.h>
+#include <pthread.h>
 
 void
-dart__tasking__affinity_fini()
+dart__tasking__affinity_init()
 {
+  CPU_ZERO(&set);
+  sched_getaffinity(getpid(), sizeof(set), &set);
+
+#ifdef DART_ENABLE_LOGGING
+  // force printing of binding if logging is enabled
+  print_binding = true;
+#else
+  print_binding = dart__base__env__bool(
+                    DART_THREAD_AFFINITY_VERBOSE_ENVSTR, false);
+#endif // DART_ENABLE_LOGGING
+
+  if (print_binding) {
+    int count = 0;
+    int num_cpus = CPU_COUNT(&set);
+    size_t len = num_cpus * 8;
+    char* buf = malloc(sizeof(char) * len);
+    int pos = 0;
+    unsigned int entry = 0;
+    while (count < num_cpus)
+    {
+      while (!CPU_ISSET(entry, &set)) ++entry;
+      pos += snprintf(buf+pos, len - pos, "%d, ", entry);
+      if (pos >= len) break;
+      ++entry;
+      ++count;
+    }
+    if (pos > 2) buf[pos-2] = '\0';
+    DART_LOG_INFO_ALWAYS("Allocated CPU set (size %d): {%s}", num_cpus, buf);
+    free(buf);
+  }
 
 }
 
@@ -102,9 +147,36 @@ dart__tasking__affinity_fini()
 void
 dart__tasking__affinity_set(pthread_t pthread, int dart_thread_id)
 {
-  if (dart_thread_id == 0) {
-    DART_LOG_INFO("Not pinning threads due to missing hwloc support!");
+  cpu_set_t cpuset;
+  CPU_ZERO(&cpuset);
+  int num_cpus = CPU_COUNT(&set);
+  unsigned int entry = 0;
+  int count = 0;
+
+  do {
+    if (CPU_ISSET(entry, &set))
+    {
+      if (count == dart_thread_id) break;
+      count++;
+    }
+    entry = (entry+1) % CPU_SETSIZE;
+  } while (1);
+
+  if (print_binding)
+  {
+    DART_LOG_INFO_ALWAYS("Binding thread %d to CPU %d", dart_thread_id, entry);
   }
+
+  CPU_SET(entry, &cpuset);
+
+  pthread_setaffinity_np(pthread, sizeof(cpu_set_t), &cpuset);
+}
+
+
+void
+dart__tasking__affinity_fini()
+{
+ // nothing to do
 }
 
 #endif // DART_ENABLE_HWLOC
