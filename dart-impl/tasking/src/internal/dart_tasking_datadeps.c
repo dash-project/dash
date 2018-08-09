@@ -300,22 +300,27 @@ dart_tasking_datadeps_handle_defered_local(
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_taskqueue_t *target_queue = &thread->queue;
 #else
+  dart__unused(thread);
   dart_taskqueue_t *target_queue = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_lock(target_queue);
 
-  DART_LOG_TRACE("Releasing %zu deferred local tasks", local_deferred_tasks.num_elem);
+  DART_LOG_TRACE("Releasing %zu deferred local tasks from queue %p",
+                 local_deferred_tasks.num_elem, &local_deferred_tasks);
 
   dart_task_t *task;
   while (
     (task = dart_tasking_taskqueue_pop_unsafe(&local_deferred_tasks)) != NULL)
   {
-    // enqueue the task if if has gained no additional remote dependecies
+    // enqueue the task if it has gained no additional remote dependecies
     // since it's deferrement
     // Note: if the task has gained dependencies we drop the reference
     //       here because it will be released through a dependency release later.
     if (dart_tasking_datadeps_is_runnable(task)){
+      DART_LOG_TRACE("Releasing deferred task %p\n", task);
       dart_tasking_taskqueue_push_unsafe(target_queue, task);
+    } else {
+      task->state = DART_TASK_CREATED;
     }
   }
 
@@ -583,6 +588,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       if (num_deps == 0) {
         // we have to remove the task from the defered_local_task queue
         dart_tasking_taskqueue_remove(&local_deferred_tasks, local_task);
+        local_task->state = DART_TASK_CREATED;
       }
 
       prev = local;
@@ -1092,6 +1098,7 @@ dart_ret_t dart_tasking_datadeps_release_remote_outdep(
   dep.type   = DART_DEP_DIRECT;
   dep.gptr   = DART_GPTR_NULL;
   dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
+  // no need for locking here as remote dependencies are never processed in parallel
   DART_STACK_PUSH(local_task->remote_successor, rs);
 
   // release the dependency (potentially enqueuing the task)
@@ -1104,7 +1111,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_outdep(
  * Release remote and local dependencies of a local task
  */
 dart_ret_t dart_tasking_datadeps_release_local_task(
-    dart_task_t   *task)
+    dart_task_t   *task,
+    dart_thread_t *thread)
 {
   if (task->state != DART_TASK_CANCELLED)
     release_remote_dependencies(task);
@@ -1116,15 +1124,20 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
   while ((succ = dart_tasking_tasklist_pop(&task->successor)) != NULL) {
     DART_LOG_TRACE("  Releasing task %p", succ);
 
-    dart__base__mutex_lock(&succ->mutex);
     bool runnable = release_local_dep_counter(succ);
     dart_task_state_t state = succ->state;
-    dart__base__mutex_unlock(&succ->mutex);
     DART_LOG_TRACE("  Task %p: state %d runnable %i", succ, state, runnable);
 
     if (runnable) {
       if (state == DART_TASK_CREATED) {
-        dart__tasking__enqueue_runnable(succ);
+        /*if (thread->next_task == NULL &&
+            dart__tasking__phase_is_runnable(task->phase)) {
+          // short-cut and avoid enqueuing the task
+          thread->next_task = succ;
+        } else */
+        {
+          dart__tasking__enqueue_runnable(succ);
+        }
       } else if (state == DART_TASK_DUMMY) {
         dart_tasking_datadeps_release_dummy_task(succ);
       }
@@ -1143,10 +1156,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
   dart_task_t *local_task)
 {
   // release the task if it is runnable
-  dart__base__mutex_lock(&local_task->mutex);
   bool runnable = release_remote_dep_counter(local_task);
   dart_task_state_t state = local_task->state;
-  dart__base__mutex_unlock(&local_task->mutex);
 
   if (runnable) {
     // enqueue as runnable
@@ -1155,7 +1166,8 @@ dart_ret_t dart_tasking_datadeps_release_remote_dep(
         dart_tasking_datadeps_release_dummy_task(local_task);
       } else {
         // immediately release dependencies of a dummy task
-        dart_tasking_datadeps_release_local_task(local_task);
+        dart_tasking_datadeps_release_local_task(local_task,
+                                                 dart__tasking__current_thread());
         // dummy is not needed anymore so we can free it
         free(local_task);
       }

@@ -91,7 +91,9 @@ dart_ret_t dart_tasking_datadeps_end_phase(uint64_t phase) DART_INTERNAL;
  * asks into the runnable queue of \c thread.
  */
 dart_ret_t
-dart_tasking_datadeps_release_local_task(dart_task_t   *task) DART_INTERNAL;
+dart_tasking_datadeps_release_local_task(
+  dart_task_t   *task,
+  dart_thread_t *thread) DART_INTERNAL;
 
 /**
  * Release a remote dependency of the \c local_task.
