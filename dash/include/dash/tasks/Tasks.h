@@ -122,6 +122,23 @@ namespace internal {
       throw;
     }
   }
+
+  template<typename FuncT>
+  void
+  invoke_task_action_void(void *data)
+  {
+    try{
+      FuncT& f = *static_cast<FuncT*>(data);
+      f();
+    } catch (const BaseCancellationSignal& cs) {
+      // nothing to be done, the cancellation is triggered by the d'tor
+    } catch (...) {
+      DASH_LOG_ERROR(
+        "An unhandled exception is escaping one of your tasks, "
+        "your application will thus abort.");
+      throw;
+    }
+  }
 } // namespace internal
 
 
@@ -724,10 +741,16 @@ namespace internal{
     dart_task_prio_t    prio,
     DepContainer&&      deps) {
     if (dart_task_should_abort()) abort_task();
-    dart_task_create(
-      &dash::tasks::internal::invoke_task_action<void>,
-      new dash::tasks::internal::TaskData<void>(f), 0,
-                     deps.data(), deps.size(), prio);
+    if (std::is_trivially_copyable<TaskFunc>::value) {
+      dart_task_create(
+        &dash::tasks::internal::invoke_task_action_void<TaskFunc>,
+        &f, sizeof(f), deps.data(), deps.size(), prio);
+    } else {
+      dart_task_create(
+        &dash::tasks::internal::invoke_task_action<void>,
+        new dash::tasks::internal::TaskData<void>(f), 0,
+                      deps.data(), deps.size(), prio);
+    }
   }
 
   template<class TaskFunc, typename DepContainer>
