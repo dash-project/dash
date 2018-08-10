@@ -19,6 +19,7 @@
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 #include <dash/dart/tasking/dart_tasking_extrae.h>
+#include <dash/dart/tasking/dart_tasking_craypat.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,6 +28,16 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
+
+#define EVENT_ENTER(_ev) do {\
+  EXTRAE_ENTER(_ev);         \
+  CRAYPAT_ENTER(_ev); \
+} while (0)
+
+#define EVENT_EXIT(_ev) do {\
+  EXTRAE_EXIT(_ev);         \
+  CRAYPAT_EXIT(_ev); \
+} while (0)
 
 #define CLOCK_TIME_USEC(ts) \
   ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
@@ -183,9 +194,9 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
-  EXTRAE_ENTER(EVENT_TASK);
+  EVENT_ENTER(EVENT_TASK);
   invoke_taskfn(task);
-  EXTRAE_EXIT(EVENT_TASK);
+  EVENT_EXIT(EVENT_TASK);
   // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
@@ -256,9 +267,9 @@ dart__tasking__yield(int delay)
     } else {
       current_task->state  = DART_TASK_BLOCKED;
     }
-    EXTRAE_ENTER(EVENT_TASK);
+    EVENT_ENTER(EVENT_TASK);
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
-    EXTRAE_EXIT(EVENT_TASK);
+    EVENT_EXIT(EVENT_TASK);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
   } else {
@@ -713,10 +724,10 @@ void* thread_main(void *data)
     dart_task_t *task = next_task(thread);
 
     if (!in_idle && task == NULL) {
-      EXTRAE_ENTER(EVENT_IDLE);
+      EVENT_ENTER(EVENT_IDLE);
     }
     if (in_idle && task != NULL) {
-      EXTRAE_EXIT(EVENT_IDLE);
+      EVENT_EXIT(EVENT_IDLE);
     }
     handle_task(task, thread);
 
