@@ -199,10 +199,18 @@ public:
     return const_reference(m_dart_gptr);
   }
 
+  /**
+   * Native pointer to the starting address of the local memory of
+   * the unit that initialized this dash::Shared instance.
+   */
   constexpr value_type const * local() const noexcept {
     return (m_team->myid() == m_owner) ? m_globmem->lbegin() : nullptr;
   }
 
+  /**
+   * Native pointer to the starting address of the local memory of
+   * the unit that initialized this dash::Shared instance.
+   */
   value_type * local() noexcept {
     return (m_team->myid() == m_owner) ? m_globmem->lbegin() : nullptr;
   }
