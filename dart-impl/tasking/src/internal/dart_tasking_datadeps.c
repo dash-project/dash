@@ -11,7 +11,8 @@
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
 
-#define DART_DEPHASH_SIZE 1023
+//#define DART_DEPHASH_SIZE 1023
+#define DART_DEPHASH_SIZE 127
 
 // if we have support for TCmalloc we don't have to manage memory on our own
 #if !defined(DART_ENABLE_TCMALLOC)
@@ -72,6 +73,9 @@ release_remote_dependencies(dart_task_t *task);
 
 static void
 dephash_recycle_elem(dart_dephash_elem_t *elem);
+
+static void
+dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem);
 
 static dart_ret_t
 dart_tasking_datadeps_match_delayed_local_datadep(
@@ -152,17 +156,35 @@ free_dephash_list(dart_dephash_elem_t *list)
   }
 }
 
+static void
+free_dephash_list_unsafe(dart_dephash_elem_t *list)
+{
+  dart_dephash_elem_t *elem = list;
+  while (elem != NULL) {
+    dart_dephash_elem_t *tmp = elem->next;
+    dephash_recycle_elem_unsafe(elem);
+    elem = tmp;
+  }
+}
+
+
 dart_ret_t dart_tasking_datadeps_reset(dart_task_t *task)
 {
   if (task == NULL || task->local_deps == NULL) return DART_OK;
 
+#ifdef USE_FREELIST
+  dart__base__mutex_lock(&local_deps_mutex);
+#endif
   for (int i = 0; i < DART_DEPHASH_SIZE; ++i) {
     dart_dephash_elem_t *elem = task->local_deps[i];
-    free_dephash_list(elem);
+    free_dephash_list_unsafe(elem);
   }
   free(task->local_deps);
   task->local_deps = NULL;
-  free_dephash_list(task->remote_successor);
+  free_dephash_list_unsafe(task->remote_successor);
+#ifdef USE_FREELIST
+  dart__base__mutex_unlock(&local_deps_mutex);
+#endif
   task->remote_successor = NULL;
   task->unresolved_deps  = 0;
   task->unresolved_remote_deps = 0;
@@ -239,6 +261,22 @@ static void dephash_recycle_elem(dart_dephash_elem_t *elem)
     dart__base__mutex_lock(&local_deps_mutex);
     DART_STACK_PUSH(freelist_head, elem);
     dart__base__mutex_unlock(&local_deps_mutex);
+#else
+    free(elem);
+#endif // USE_FREELIST
+  }
+}
+
+/**
+ * Deallocate an element
+ */
+static void dephash_recycle_elem_unsafe(dart_dephash_elem_t *elem)
+{
+  if (elem != NULL) {
+    //memset(elem, 0, sizeof(*elem));
+#ifdef USE_FREELIST
+    elem->next = NULL;
+    DART_STACK_PUSH(freelist_head, elem);
 #else
     free(elem);
 #endif // USE_FREELIST

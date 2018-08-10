@@ -19,6 +19,7 @@
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
 #include <dash/dart/tasking/dart_tasking_extrae.h>
+#include <dash/dart/tasking/dart_tasking_craypat.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -27,6 +28,16 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
+
+#define EVENT_ENTER(_ev) do {\
+  EXTRAE_ENTER(_ev);         \
+  CRAYPAT_ENTER(_ev); \
+} while (0)
+
+#define EVENT_EXIT(_ev) do {\
+  EXTRAE_EXIT(_ev);         \
+  CRAYPAT_EXIT(_ev); \
+} while (0)
 
 #define CLOCK_TIME_USEC(ts) \
   ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
@@ -183,9 +194,9 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
-  EXTRAE_ENTER(EVENT_TASK);
+  EVENT_ENTER(EVENT_TASK);
   invoke_taskfn(task);
-  EXTRAE_EXIT(EVENT_TASK);
+  EVENT_EXIT(EVENT_TASK);
   // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
@@ -256,9 +267,9 @@ dart__tasking__yield(int delay)
     } else {
       current_task->state  = DART_TASK_BLOCKED;
     }
-    EXTRAE_ENTER(EVENT_TASK);
+    EVENT_ENTER(EVENT_TASK);
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
-    EXTRAE_EXIT(EVENT_TASK);
+    EVENT_EXIT(EVENT_TASK);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
   } else {
@@ -713,10 +724,10 @@ void* thread_main(void *data)
     dart_task_t *task = next_task(thread);
 
     if (!in_idle && task == NULL) {
-      EXTRAE_ENTER(EVENT_IDLE);
+      EVENT_ENTER(EVENT_IDLE);
     }
     if (in_idle && task != NULL) {
-      EXTRAE_EXIT(EVENT_IDLE);
+      EVENT_EXIT(EVENT_IDLE);
     }
     handle_task(task, thread);
 
@@ -930,7 +941,8 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 
   bool enqueued = false;
   // check whether the task has to be deferred
-  if (!dart__tasking__phase_is_runnable(task->phase)) {
+  if (task->parent == &root_task &&
+      !dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
       DART_LOG_TRACE("Deferring release of task %p in phase %d (q=%p, s=%zu)",
@@ -1059,7 +1071,7 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
 dart_ret_t
 dart__tasking__task_complete()
 {
-  if (!threads_running) {
+  if (dart__unlikely(!threads_running)) {
     // threads are not running --> nothing to be done here
     return DART_OK;
   }
@@ -1071,10 +1083,13 @@ dart__tasking__task_complete()
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
+  DART_LOG_TRACE("Waiting for child tasks of %p to complete", thread->current_task);
 
   dart_taskphase_t entry_phase;
 
-  if (thread->current_task == &(root_task)) {
+  bool is_root_task = thread->current_task == &(root_task);
+
+  if (is_root_task) {
     entry_phase = dart__tasking__phase_current();
     if (entry_phase > DART_PHASE_FIRST) {
       dart__tasking__perform_matching(thread, DART_PHASE_ANY);
@@ -1084,7 +1099,9 @@ dart__tasking__task_complete()
   }
 
   // 1) wake up all threads (might later be done earlier)
-  pthread_cond_broadcast(&task_avail_cond);
+  if (thread_idle_method == DART_THREAD_IDLE_WAIT) {
+    pthread_cond_broadcast(&task_avail_cond);
+  }
 
 
   // 2) start processing ourselves
@@ -1093,14 +1110,20 @@ dart__tasking__task_complete()
   DART_LOG_DEBUG("dart__tasking__task_complete: waiting for children of task %p", task);
 
   // save context
-  context_t tmpctx  = thread->retctx;
+  // TODO is this really necessary?
+  context_t tmpctx;
+  bool restore_ctx = false;
+  if (task->num_children) {
+    tmpctx = thread->retctx;
+    restore_ctx = true;
+  }
 
   // main task processing routine
-  while (DART_FETCH32(&(task->num_children)) > 0) {
+  while (task->num_children > 0) {
     dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
     if (next == NULL) {
-      remote_progress(thread, true);
+      remote_progress(thread, (thread->thread_id == 0));
     }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
@@ -1112,10 +1135,14 @@ dart__tasking__task_complete()
     }
     // d) process our tasks
     handle_task(next, thread);
+    // e) requery the thread as it might have changed
+    thread = get_current_thread();
   }
 
-  // restore context (in case we're called from within another task)
-  thread->retctx = tmpctx;
+  if (restore_ctx) {
+    // restore context (in case we're called from within another task and switched threads)
+    thread->retctx = tmpctx;
+  }
 
   // destroyed child tasks can now be re-used
   dart__tasking__check_cancellation(thread);
@@ -1138,7 +1165,7 @@ dart__tasking__task_complete()
   }
 
   // 3) clean up if this was the root task and thus no other tasks are running
-  if (thread->current_task == &(root_task)) {
+  if (is_root_task) {
     if (entry_phase > DART_PHASE_FIRST) {
       // wait for all units to finish their tasks
       dart_tasking_remote_progress_blocking(DART_TEAM_ALL);

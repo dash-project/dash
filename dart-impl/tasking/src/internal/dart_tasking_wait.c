@@ -98,7 +98,8 @@ dart__task__wait_handle(dart_handle_t *handles, size_t num_handle)
 void
 dart__task__wait_progress()
 {
-  if (dart_tasking_taskqueue_trylock(&handle_list_tmp) == DART_OK) {
+  if (handle_list.num_elem > 0 &&
+      dart_tasking_taskqueue_trylock(&handle_list_tmp) == DART_OK) {
     dart_task_t *task;
     // check each task from the handle_list and put it into a temporary
     // list if necessary
