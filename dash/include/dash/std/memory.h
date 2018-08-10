@@ -1,11 +1,11 @@
 #ifndef DASH__STD__MEMORY_H__INCLUDED
 #define DASH__STD__MEMORY_H__INCLUDED
 
+#if (__cplusplus < 201402L)
+
 #include <memory>
 #include <type_traits>
 #include <utility>
-
-#if (__cplusplus < 201402L)
 
 namespace std {
 template <typename T, typename... Args>
