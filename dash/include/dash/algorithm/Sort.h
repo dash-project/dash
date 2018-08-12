@@ -88,7 +88,6 @@ template <class GlobRandomIt, class SortableHash>
 void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 {
   using iter_type    = GlobRandomIt;
-  using pattern_type = typename iter_type::pattern_type;
   using value_type   = typename iter_type::value_type;
   using mapped_type =
       typename std::decay<typename dash::functional::closure_traits<
