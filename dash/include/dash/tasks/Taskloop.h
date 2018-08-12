@@ -8,6 +8,13 @@
 namespace dash{
 namespace tasks{
 
+  struct num_chunks {
+    explicit num_chunks(size_t nc) : n{nc}
+    { }
+
+    size_t n;
+  };
+
   /**
    * Create a bunch of tasks operating on the input range but do not wait
    * for their completion.
@@ -85,8 +92,34 @@ namespace tasks{
     RangeFunc        f,
     DepGeneratorFunc depedency_generator)
   {
-    taskloop(begin, end, dash::distance(begin, end) / dart_task_num_threads(),
-             f, depedency_generator);
+    size_t chunk_size =
+        std::ceil(((float)dash::distance(begin, end)) / dart_task_num_threads());
+    taskloop(begin, end, chunk_size, f, depedency_generator);
+  }
+
+  template<class InputIter, typename RangeFunc>
+  void
+  taskloop(
+    InputIter begin,
+    InputIter end,
+    dash::tasks::num_chunks nc,
+    RangeFunc f)
+  {
+    size_t chunk_size = std::ceil(((float)dash::distance(begin, end)) / nc.n);
+    taskloop(begin, end, chunk_size, f);
+  }
+
+  template<class InputIter, typename RangeFunc, typename DepGeneratorFunc>
+  void
+  taskloop(
+    InputIter        begin,
+    InputIter        end,
+    dash::tasks::num_chunks nc,
+    RangeFunc        f,
+    DepGeneratorFunc depedency_generator)
+  {
+    size_t chunk_size = std::ceil(((float)dash::distance(begin, end)) / nc.n);
+    taskloop(begin, end, chunk_size, f, depedency_generator);
   }
 } // namespace tasks
 } // namespace dash
