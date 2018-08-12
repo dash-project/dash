@@ -136,6 +136,7 @@ typedef struct {
   int                     last_steal_thread;
   dart_yield_target_t     yield_target;
   double                  last_progress_ts;  // the timestamp of the last remote progress call
+  dart_task_t           * next_task;         // short-cut on the next task to execute
 } dart_thread_t;
 
 struct dart_wait_handle_s {
@@ -207,7 +208,8 @@ dart__tasking__yield(int delay) DART_INTERNAL;
  */
 
 void
-dart__tasking__enqueue_runnable(dart_task_t *task) DART_INTERNAL;
+dart__tasking__enqueue_runnable(
+  dart_task_t   *task) DART_INTERNAL;
 
 void
 dart__tasking__destroy_task(dart_task_t *task) DART_INTERNAL;

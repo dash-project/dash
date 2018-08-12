@@ -1168,11 +1168,26 @@ dart_ret_t dart_tasking_datadeps_release_local_task(
 
     if (runnable) {
       if (state == DART_TASK_CREATED) {
-        /*if (thread->next_task == NULL &&
-            dart__tasking__phase_is_runnable(task->phase)) {
+        if (dart__tasking__phase_is_runnable(succ->phase)) {
           // short-cut and avoid enqueuing the task
-          thread->next_task = succ;
-        } else */
+          // NOTE: we take the last available task as this is likely the task that
+          //       is next in the chain (the list is a stack)
+          if (thread->next_task != NULL) {
+            thread->next_task->state = DART_TASK_CREATED;
+            dart__tasking__enqueue_runnable(thread->next_task);
+            thread->next_task = NULL;
+          }
+          dart__base__mutex_lock(&succ->mutex);
+          // check that we can actually enqueue the task
+          if (succ->state == DART_TASK_CREATED) {
+            succ->state = DART_TASK_QUEUED;
+            thread->next_task = succ;
+            DART_LOG_TRACE("Short-cutting task %p", succ);
+          } else {
+            DART_LOG_TRACE("Ignoring runnable task with state %d", succ->state);
+          }
+          dart__base__mutex_unlock(&succ->mutex);
+        } else
         {
           dart__tasking__enqueue_runnable(succ);
         }
