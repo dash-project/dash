@@ -1114,6 +1114,8 @@ dart__tasking__task_complete()
       // enable worker threads to poll for remote messages
       worker_poll_remote = true;
     }
+  } else {
+    EXTRAE_EXIT(EVENT_TASK);
   }
 
   // 1) wake up all threads (might later be done earlier)
@@ -1194,7 +1196,10 @@ dart__tasking__task_complete()
     worker_poll_remote = false;
     // reset the phase counter
     dart__tasking__phase_reset();
+  } else {
+    EXTRAE_ENTER(EVENT_TASK);
   }
+
   dart_tasking_datadeps_reset(thread->current_task);
 
 
