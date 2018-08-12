@@ -163,6 +163,7 @@ dart_tasking_taskqueue_move_unsafe(
  * Use in combination with the \c *_unsafe variants of the taskqueue operations.
  *
  * \sa dart__base__mutex_lock
+ * \sa dart_tasking_taskqueue_unlock
  */
 DART_INLINE
 dart_ret_t
@@ -177,6 +178,7 @@ dart_tasking_taskqueue_lock(dart_taskqueue_t *tq)
  * Use in combination with the \c *_unsafe variants of the taskqueue operations.
  *
  * \sa dart__base__mutex_trylock
+ * \sa dart_tasking_taskqueue_unlock
  */
 DART_INLINE
 dart_ret_t
@@ -189,12 +191,28 @@ dart_tasking_taskqueue_trylock(dart_taskqueue_t *tq)
  * Unlock the task queue.
  *
  * \sa dart__base__mutex_unlock
+ * \sa dart_tasking_taskqueue_trylock
+ * \sa dart_tasking_taskqueue_lock
+ *
  */
 DART_INLINE
 dart_ret_t
 dart_tasking_taskqueue_unlock(dart_taskqueue_t *tq)
 {
   return dart__base__mutex_unlock(&tq->mutex);
+}
+
+/**
+ * Check whether the taskqueue contains a task of the given priority (or higher).
+ */
+DART_INLINE
+bool
+dart_tasking_taskqueue_has_prio_task(
+  dart_taskqueue_t *tq,
+  dart_task_prio_t  prio)
+{
+  return (tq->highprio.head != NULL &&
+          (prio == DART_PRIO_LOW && tq->lowprio.head  != NULL));
 }
 
 

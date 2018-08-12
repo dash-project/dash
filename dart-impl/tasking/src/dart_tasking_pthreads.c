@@ -456,6 +456,23 @@ dart_task_t * next_task(dart_thread_t *thread)
 {
   // stop processing tasks if they are cancelled
   if (dart__tasking__cancellation_requested()) return NULL;
+  if (thread->next_task != NULL) {
+    // check for high-priority tasks and execute them first
+    dart_task_t *task = thread->next_task;
+#ifdef DART_TASK_THREADLOCAL_Q
+    dart_taskqueue_t *tq = &thread->task_queue;
+#else
+    dart_taskqueue_t *tq = &task_queue;
+#endif
+    if (task->prio == DART_PRIO_LOW &&
+        dart_tasking_taskqueue_has_prio_task(tq, DART_PRIO_HIGH)) {
+      task->state = DART_TASK_CREATED;
+      dart__tasking__enqueue_runnable(task);
+      task = dart_tasking_taskqueue_pop(tq);
+    }
+    thread->next_task = NULL;
+    return task;
+  }
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
   if (task == NULL) {
@@ -662,6 +679,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
   thread->yield_target = DART_YIELD_TARGET_YIELD;
+  thread->next_task    = NULL;
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
