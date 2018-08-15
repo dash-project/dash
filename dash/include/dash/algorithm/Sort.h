@@ -82,6 +82,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash hash);
 
 #else
 
+#define __DASH_SORT__FINAL_STEP_BY_MERGE (0)
+#define __DASH_SORT__FINAL_STEP_BY_SORT (1)
+#define __DASH_SORT__FINAL_STEP_STRATEGY (__DASH_SORT__FINAL_STEP_BY_MERGE)
+
 #include <dash/algorithm/internal/Sort-inl.h>
 
 template <class GlobRandomIt, class SortableHash>
@@ -581,6 +585,27 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   team.barrier();
   trace.exit_state("18:barrier");
 
+  /* NOTE: While merging locally sorted sequences is faster than another
+   * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
+   * temporary buffer internally which is also documented on cppreference. If
+   * the allocation of this buffer fails, a less efficient merge method is
+   * used. However, in Linux, the allocation nevers fails since the
+   * implementation simply allocates memory using malloc and the kernel follows
+   * the optimistic strategy. This is ugly and can lead to a segmentation fault
+   * later if no physical pages are available to map the allocated
+   * virtual memory.
+   *
+   *
+   * std::sort does not suffer from this problem and may be a more safe
+   * variant, especially if the user wants to utilize the fully available
+   * memory capacity on its own.
+   */
+
+#if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
+  trace.enter_state("19:final_local_sort");
+  std::sort(lbegin, lend);
+  trace.exit_state("19:final_local_sort");
+#else
   trace.enter_state("19:merge_local_sequences");
 
   // merging sorted sequences
@@ -631,6 +656,7 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
   }
 
   trace.exit_state("19:merge_local_sequences");
+#endif
 
   DASH_LOG_TRACE_RANGE("finally sorted range", lbegin, lend);
 
