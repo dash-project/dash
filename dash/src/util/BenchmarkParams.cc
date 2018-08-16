@@ -89,7 +89,7 @@ void BenchmarkParams::print_header()
   print_param("date",   date_cstr);
   print_section_end();
 
-#ifdef MPI_IMPL_ID
+#ifdef DASH_MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
 
   std::ostringstream mpi_ss;
@@ -120,8 +120,8 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("DASH Configuration");
-#ifdef MPI_IMPL_ID
-  print_param("MPI implementation", dash__toxstr(MPI_IMPL_ID));
+#ifdef DASH_MPI_IMPL_ID
+  print_param("MPI implementation", dash__toxstr(DASH_MPI_IMPL_ID));
 #endif
 #ifdef DASH_ENV_HOST_SYSTEM_ID
   print_param("Host system identifier", dash__toxstr(DASH_ENV_HOST_SYSTEM_ID));

@@ -176,8 +176,8 @@ void perform_test(const benchmark_params & params)
     double mb_total      = bytes_total / 1024 / 1024;
     double mb_unit       = mb_total / nunits;
     double updates_m     = (double)(num_updates * 1.0e-9);
-#ifdef MPI_IMPL_ID
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+#ifdef DASH_MPI_IMPL_ID
+    std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
 #else
     std::string mpi_impl = "-";
 #endif

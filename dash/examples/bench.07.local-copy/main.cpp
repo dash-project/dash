@@ -511,7 +511,7 @@ void print_measurement_record(
   const benchmark_params & params)
 {
   if (dash::myid() == 0) {
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+    std::string mpi_impl = dash__toxstr(DASH_MPI_IMPL_ID);
     size_t block_n     = size / dash::size();
     size_t g_size_kb   = (size * sizeof(ElementType)) / 1024;
     size_t block_kb    = (block_n * sizeof(ElementType)) / 1024;

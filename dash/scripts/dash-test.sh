@@ -40,13 +40,15 @@ fi
 
 if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
-  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/shmem/dash-test-shmem"
+  TEST_BINARY="$BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
 #  if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
 #   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
 #  fi
   RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
-  TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash-test-mpi"
+  TEST_BINARY="$BIN_PATH/dash-test-mpi"
+elif [ $DART_IMPL = "mpi-coverage" ]; then
+  RUN_CMD="make coverage -C ${BIN_PATH}/.."
 else
   usage
 fi
@@ -64,20 +66,29 @@ run_suite()
   if [ $NCORES -lt $NUNITS ]; then
     return 0
   fi
-  BIND_CMD=""
+  # run coverage tests only with 4 units, as baked in cmake-configure
+  if [ $DART_IMPL = "mpi-coverage" ] && [ $NUNITS -ne 4 ]; then
+    return 0
+  fi
   MAX_RANK=$((NUNITS - 1))
-# if [ `which numactl` ]; then
-#   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
-# fi
   export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
-  echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
-    tee -a $LOGFILE
-  RAW_OUT="$(eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1)"
-  TEST_RET=$?
-  echo $RAW_OUT | nocolor | \
-    tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#'
+  if [ $DART_IMPL = "mpi-coverage" ]; then
+    echo "[[ RUN    ]] ${RUN_CMD}" | tee -a $LOGFILE
+    set +x
+    OUTPUT="$($RUN_CMD 2>&1)"
+    TEST_RET=$?
+    echo "$OUTPUT" | tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#' | grep -v 'DEBUG'
+   else
+    echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${TEST_BINARY}" | \
+      tee -a $LOGFILE
+    OUTPUT="$($RUN_CMD -n $1 $TEST_BINARY 2>&1)"
+    TEST_RET=$?
+    echo "$OUTPUT"  | \
+      tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#' | grep -v ' DEBUG '
+  fi
+
   # Cannot use exit code as dartrun-shmem seems to always return 0
   NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`
   # Failure is logged by every unit, divide reported failures by number of

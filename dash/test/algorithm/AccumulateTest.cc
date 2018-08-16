@@ -136,3 +136,25 @@ TEST_F(AccumulateTest, StringConcatOperaton)
     ASSERT_STREQ("1-2-3-4", result.c_str());
   }
 }
+
+TEST_F(AccumulateTest, LocalPredefined) {
+  int value = 2;
+
+  // perform a reduction similar to MPI_Allreduce
+  auto result = dash::accumulate(&value, std::next(&value), 1, dash::plus<int>(), true);
+
+
+  ASSERT_EQ_U(dash::size()*value + 1, result);
+}
+
+TEST_F(AccumulateTest, LocalStdIterator) {
+  std::list<int> list;
+  list.push_back(1*dash::myid());
+  list.push_back(2*dash::myid());
+  list.push_back(3*dash::myid());
+
+  auto result = dash::accumulate(list.begin(), list.end(),
+                                 1, dash::plus<int>(), true);
+
+  ASSERT_EQ_U(((dash::size()-1)*(dash::size())/2) * (1 + 2 + 3)  + 1, result);
+}

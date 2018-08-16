@@ -19,8 +19,7 @@ option(BUILD_TESTS
 option(INSTALL_TESTS
        "Whether tests should be installed" off)
 option(BUILD_COVERAGE_TESTS
-       "Whether tests are built with code coverage (lcov) support.
-        Implies BUILD_TESTS. Requires GCC." off)
+       "Whether tests are built with code coverage (lcov) support. Implies BUILD_TESTS. Requires GCC." off)
 option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
@@ -94,9 +93,9 @@ if (BUILD_COVERAGE_TESTS)
   # This has to be done globally as otherwise linking might fail
   append_coverage_compiler_flags()
 
-  set(BUILD_TESTS TRUE CACHE BOOLEAN
-      "Whether tests are built with code coverage (lcov) support.
-       Implies BUILD_TESTS. Requires GCC." on)
+  set(BUILD_TESTS ON CACHE BOOL
+    "Whether tests are built with code coverage (lcov) support.
+    Implies BUILD_TESTS. Requires GCC.")
 endif()
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CMakeEnvCheck.cmake)
@@ -239,7 +238,6 @@ message(EMPH "Build shared libraries:   (BUILD_SHARED_LIBS)              "
 
 message(INFO "Build tests:              (BUILD_TESTS)                    "
         ${BUILD_TESTS})
-
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_DEV_COMPILER_WARNINGS)   "
