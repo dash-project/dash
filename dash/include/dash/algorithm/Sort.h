@@ -479,27 +479,10 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.exit_state("13:calc_final_send_count");
 
-  trace.enter_state("14:calc_recv_count (all-to-all)");
+  trace.enter_state("14:barrier");
+  team.barrier();
+  trace.exit_state("14:barrier");
 
-  std::vector<size_t> recv_count(nunits, 0);
-
-  DASH_ASSERT_RETURNS(
-  dart_alltoall(
-      // send buffer
-      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
-      // receive buffer
-      recv_count.data(),
-      // we send / receive 1 element to / from each process
-      1,
-      // dtype
-      dash::dart_datatype<size_t>::value,
-      // teamid
-      team.dart_id()), DART_OK);
-
-  DASH_LOG_TRACE_RANGE(
-      "recv count", std::begin(recv_count), std::end(recv_count));
-
-  trace.exit_state("14:calc_recv_count (all-to-all)");
 
   trace.enter_state("15:calc_final_target_displs");
 
@@ -581,10 +564,6 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
 
   trace.exit_state("17:exchange_data (all-to-all)");
 
-  trace.enter_state("18:barrier");
-  team.barrier();
-  trace.exit_state("18:barrier");
-
   /* NOTE: While merging locally sorted sequences is faster than another
    * heavy-weight sort it comes at a cost. std::inplace_merge allocates a
    * temporary buffer internally which is also documented on cppreference. If
@@ -602,10 +581,36 @@ void sort(GlobRandomIt begin, GlobRandomIt end, SortableHash sortable_hash)
    */
 
 #if (__DASH_SORT__FINAL_STEP_STRATEGY == __DASH_SORT__FINAL_STEP_BY_SORT)
+  trace.enter_state("18:barrier");
+  team.barrier();
+  trace.exit_state("18:barrier");
+
   trace.enter_state("19:final_local_sort");
   std::sort(lbegin, lend);
   trace.exit_state("19:final_local_sort");
 #else
+  trace.enter_state("18:calc_recv_count (all-to-all)");
+
+  std::vector<size_t> recv_count(nunits, 0);
+
+  DASH_ASSERT_RETURNS(
+  dart_alltoall(
+      // send buffer
+      std::next(g_partition_data.lbegin(), IDX_SEND_COUNT(nunits)),
+      // receive buffer
+      recv_count.data(),
+      // we send / receive 1 element to / from each process
+      1,
+      // dtype
+      dash::dart_datatype<size_t>::value,
+      // teamid
+      team.dart_id()), DART_OK);
+
+  DASH_LOG_TRACE_RANGE(
+      "recv count", std::begin(recv_count), std::end(recv_count));
+
+  trace.exit_state("18:calc_recv_count (all-to-all)");
+
   trace.enter_state("19:merge_local_sequences");
 
   // merging sorted sequences
