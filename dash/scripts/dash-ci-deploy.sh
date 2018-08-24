@@ -254,8 +254,8 @@ mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake $BASEPATH $BUILD_SETTINGS | nocolor && \
  await_confirm && \
- make -j $MAKE_PROCS VERBOSE=1 $MAKE_TARGET
+ make -j $MAKE_PROCS VERBOSE=1 $MAKE_TARGET || exit 1
  if echo "$BUILD_TYPE" | grep "Coverage"; then
    cp -a ./ $INSTALL_PATH
  fi) && \
-exit_message
+exit_message || exit 1
