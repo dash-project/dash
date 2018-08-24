@@ -125,11 +125,26 @@ public:
     return value;
   }
 
+  /**
+   * Updates all inner elements using a userdefined stencil operation.
+   *
+   * \param begin_dst Pointer to the beginning of the destination memory
+   * \param operation User definied operation for updating all inner elements
+  */
   template <typename Op>
-  void update(ElementT* begin_out, Op operation) {
+  void update(ElementT* begin_dst, Op operation) {
     update(begin(), end(), begin_out, operation);
   }
 
+  /**
+   * Updates all inner elements within a user defined range using a userdefined
+   * stencil operation.
+   *
+   * \param begin Iterator to the beginnning inner data element
+   * \param end Iterator to the last inner data element
+   * \param begin_dst Pointer to the beginning of the destination memory
+   * \param operation User definied operation for updating all inner elements
+  */
   template <typename Op>
   void update(iterator begin, iterator end, ElementT* begin_dst, Op operation) {
     if(end == this->end())
@@ -406,16 +421,33 @@ public:
     return value;
   }
 
+  /**
+   * Updates all boundary elements using a userdefined stencil operation.
+   *
+   * \param begin_dst Pointer to the beginning of the destination memory
+   * \param operation User definied operation for updating all boundary elements
+  */
+  template <typename Op>
+  void update(ElementT* begin_dst, Op operation) {
+    update(begin(), end(), begin_dst, operation);
+  }
+
+
+  /**
+   * Updates all boundary elements within a user defined range using a userdefined
+   * stencil operation.
+   *
+   * \param begin Iterator to the beginnning boundary data element
+   * \param end Iterator to the last boundary data element
+   * \param begin_dst Pointer to the beginning of the destination memory
+   * \param operation User definied operation for updating all inner elements
+  */
   template <typename Op>
   void update(const iterator& begin, const iterator& end, ElementT* begin_out,
               Op operation) {
     for(auto it = begin; it != end; ++it) {
       begin_out[it.lpos()] = operation(it);
     }
-  }
-  template <typename Op>
-  void update(ElementT* begin_dst, Op operation) {
-    update(begin(), end(), begin_dst, operation);
   }
 
 private:

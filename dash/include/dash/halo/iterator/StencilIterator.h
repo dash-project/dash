@@ -420,21 +420,30 @@ public:
   Self_t operator--(int) {
     Self_t result = *this;
     --_idx;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return result;
   }
 
   Self_t& operator+=(pattern_index_t n) {
     _idx += n;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return *this;
   }
 
   Self_t& operator-=(pattern_index_t n) {
     _idx -= n;
-    set_coords();
+    if(_idx < _size) {
+      _coords = set_coords(_idx);
+      set_offsets();
+    }
 
     return *this;
   }
@@ -597,7 +606,10 @@ private:
         _coords = set_coords(_idx);
     }
 
-    // setup center point offset
+    set_offsets();
+  }
+
+  void set_offsets() {// setup center point offset
     if(MemoryArrange == ROW_MAJOR) {
       _offset = _coords[0];
       for(dim_t d = 1; d < NumDimensions; ++d)
@@ -653,6 +665,8 @@ private:
 
   ElementCoords_t set_coords(pattern_index_t idx) {
     if(Scope == StencilViewScope::BOUNDARY) {
+      _region_bound = 0;
+      _region_number = 0;
       auto local_idx = idx;
       for(const auto& region : _boundary_views) {
         _region_bound += region.size();
