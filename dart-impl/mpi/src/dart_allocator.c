@@ -21,6 +21,7 @@ dart_allocator_new(
 {
   int ret;
 
+  // dart_buddy_new will round up to next power of 2
   struct dart_buddy * buddy_allocator = dart_buddy_new(pool_size);
   if (buddy_allocator == NULL) {
     return DART_ERR_INVAL;
@@ -57,16 +58,16 @@ dart_allocator_alloc(
   dart_gptr_t      * gptr,
   dart_allocator_t   allocator)
 {
-  size_t      nbytes = nelem * dart__mpi__datatype_sizeof(dtype);
+  size_t      nbytes   = nelem * dart__mpi__datatype_sizeof(dtype);
   dart_gptr_t res_gptr = allocator->base_gptr;
-  gptr->addr_or_offs.offset += dart_buddy_alloc(allocator->buddy_allocator,
-                                                nbytes);
-  if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
-    DART_LOG_ERROR("dart_allocator_alloc(%zu): allocator %p out of memory",
-                   nbytes, allocator);
+  ssize_t     offset   = dart_buddy_alloc(allocator->buddy_allocator, nbytes);
+  if (offset < 0) {
+    DART_LOG_WARN("dart_allocator_alloc(%zu): allocator %p out of memory",
+                  nbytes, allocator);
     *gptr = DART_GPTR_NULL;
-    return DART_ERR_OTHER;
+    return DART_ERR_NOMEM;
   }
+  res_gptr.addr_or_offs.offset += offset;
   *gptr = res_gptr;
   DART_LOG_DEBUG("dart_memalloc: local alloc nbytes:%lu offset:%"PRIu64"",
                  nbytes, gptr->addr_or_offs.offset);
@@ -85,13 +86,13 @@ dart_allocator_free(
   }
   dart_gptr_t g = *gptr;
   if (gptr->segid != alloc->base_gptr.segid) {
-    DART_LOG_ERROR("dart_memfree: invalid segment id:%d or team id:%d",
-                   g.segid, g.teamid);
+    DART_LOG_ERROR("dart_allocator_free: invalid segment id:%d (expected %d)",
+                   g.segid, alloc->base_gptr.segid);
     return DART_ERR_INVAL;
   }
   uint64_t offset = gptr->addr_or_offs.offset - allocator->base_gptr.addr_or_offs.offset;
   if (dart_buddy_free(alloc->buddy_allocator, offset) == -1) {
-    DART_LOG_ERROR("dart_memfree: invalid local global pointer: "
+    DART_LOG_ERROR("dart_allocator_free: invalid local global pointer: "
                    "invalid offset: %"PRIu64"",
                    g.addr_or_offs.offset);
     return DART_ERR_INVAL;

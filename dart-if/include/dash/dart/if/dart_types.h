@@ -38,6 +38,8 @@ typedef enum
   DART_ERR_NOTFOUND =   3,
   /** DART has not been initialized */
   DART_ERR_NOTINIT  =   4,
+  /** DART has not been initialized */
+  DART_ERR_NOMEM    =   5,
   /** Unspecified error */
   DART_ERR_OTHER    = 999
 } dart_ret_t;
