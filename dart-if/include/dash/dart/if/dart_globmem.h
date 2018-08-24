@@ -318,7 +318,8 @@ dart_ret_t dart_allocator_alloc(
   dart_allocator_t   allocator);
 
 /**
- * Free memory allocated through \ref dart_allocator_alloc.
+ * Free memory allocated through \ref dart_allocator_alloc. This call is only
+ * valid on the unit that allocated the memory.
  *
  * \param gptr      Pointer to the \ref dart_gptr_t, will be reset to
  *                  \c DART_GPTR_NULL.
