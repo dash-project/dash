@@ -171,18 +171,24 @@ TEST_F(DARTMemAllocTest, SegmentReuseTest)
 }
 
 
-TEST_F(DARTMemAllocTest, AllocatorTest)
+TEST_F(DARTMemAllocTest, AllocatorSimpleTest)
 {
   dart_allocator_t allocator;
   dart_gptr_t gptr;
+  constexpr size_t allocator_size = 1024;
 
   // collectively create a new allocator
-  dart_allocator_new(1024, DART_TEAM_ALL, &allocator);
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_new(allocator_size, DART_TEAM_ALL, &allocator));
   //ASSERT_NE_U(allocator, NULL);
 
   // allocate some local memory on a single unit and distribute the result
   if (dash::myid() == 0) {
-    dart_allocator_alloc(16, DART_TYPE_INT, &gptr, allocator);
+    ASSERT_EQ_U(
+      DART_OK,
+      dart_allocator_alloc(dash::size(), DART_TYPE_INT, &gptr, allocator));
+    ASSERT_NE_U(DART_GPTR_NULL, gptr);
   }
   dash::dart_storage<dart_gptr_t> ds_gptr(1);
   dart_bcast(&gptr, ds_gptr.nelem, ds_gptr.dtype, 0, DART_TEAM_ALL);
@@ -190,7 +196,9 @@ TEST_F(DARTMemAllocTest, AllocatorTest)
 
   // write to my position on unit 0
   gptr.addr_or_offs.offset += dash::myid() * sizeof(int);
-  dart_put_blocking(gptr, &myid, 1, DART_TYPE_INT, DART_TYPE_INT);
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_put_blocking(gptr, &myid, 1, DART_TYPE_INT, DART_TYPE_INT));
   dash::barrier();
 
   // check the result
@@ -198,13 +206,98 @@ TEST_F(DARTMemAllocTest, AllocatorTest)
     dart_gptr_t gptr_it = gptr;
     for (int i = 0; i < dash::size(); ++i) {
       int val;
-      dart_get_blocking(&val, gptr_it, 1, DART_TYPE_INT, DART_TYPE_INT);
+      ASSERT_EQ_U(
+        DART_OK,
+        dart_get_blocking(&val, gptr_it, 1, DART_TYPE_INT, DART_TYPE_INT));
       ASSERT_EQ_U(i, val);
       gptr_it.addr_or_offs.offset += sizeof(int);
     }
     // free the allocated memory
-    dart_allocator_free(&gptr, allocator);
+    ASSERT_EQ_U(
+      DART_OK,
+      dart_allocator_free(&gptr, allocator));
   }
+
   // collectively destroy the allocator
-  dart_allocator_destroy(&allocator);
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_destroy(&allocator));
+}
+
+
+TEST_F(DARTMemAllocTest, AllocatorFullAllocationTest)
+{
+  dart_allocator_t allocator;
+  dart_gptr_t gptr;
+  constexpr size_t allocator_size = 1024;
+
+  // collectively create a new allocator
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_new(allocator_size*sizeof(int), DART_TEAM_ALL, &allocator));
+  //ASSERT_NE_U(allocator, NULL);
+
+  // allocate some local memory on a single unit and distribute the result
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(
+      DART_OK,
+      dart_allocator_alloc(allocator_size, DART_TYPE_INT, &gptr, allocator));
+    ASSERT_NE_U(DART_GPTR_NULL, gptr);
+    ASSERT_EQ_U(
+      DART_OK,
+      dart_allocator_free(&gptr, allocator));
+  }
+
+  // collectively destroy the allocator
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_destroy(&allocator));
+}
+
+TEST_F(DARTMemAllocTest, AllocatorFullChunksTest)
+{
+  dart_allocator_t allocator;
+  constexpr size_t allocator_size  = 1024;
+  constexpr size_t allocation_size = 8;
+
+  // collectively create a new allocator
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_new(allocator_size*sizeof(int), DART_TEAM_ALL, &allocator));
+  //ASSERT_NE_U(allocator, NULL);
+
+  // allocate some local memory on a single unit and distribute the result
+  if (dash::myid() == 0) {
+    size_t num_allocs = allocator_size / allocation_size;
+    std::vector<dart_gptr_t> gptrs;
+    gptrs.reserve(num_allocs);
+    // exhaust all memory through chunks
+    for (size_t i = 0; i < num_allocs; ++i) {
+      dart_gptr_t gptr;
+      std::cout << "Allocation " << i << std::endl;
+      ASSERT_EQ_U(
+        DART_OK,
+        dart_allocator_alloc(allocation_size, DART_TYPE_INT, &gptr, allocator));
+      ASSERT_NE_U(DART_GPTR_NULL, gptr);
+      gptrs.push_back(gptr);
+    }
+    // try allocate one more chunk
+    dart_gptr_t tmp_gptr;
+    ASSERT_EQ_U(
+      DART_ERR_NOMEM,
+      dart_allocator_alloc(allocation_size, DART_TYPE_INT, &tmp_gptr, allocator));
+    ASSERT_EQ_U(DART_GPTR_NULL, tmp_gptr);
+
+    // free all allocated chunks
+    for (auto &gptr : gptrs) {
+      ASSERT_EQ_U(
+        DART_OK,
+        dart_allocator_free(&gptr, allocator));
+    }
+  }
+
+  // collectively destroy the allocator
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_allocator_destroy(&allocator));
 }
