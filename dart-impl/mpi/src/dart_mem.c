@@ -81,106 +81,112 @@ dart_buddy_delete(struct dart_buddy * self) {
 
 static inline size_t
 next_pow_of_2(size_t x) {
-	if (is_pow_of_2(x))
-		return x;
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	x |= x >> 8;
-	x |= x >> 16;
+  if (is_pow_of_2(x))
+    return x;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  x |= x >> 32;
   if (sizeof(size_t) > 4) {
     /* to avoid compiler warning on 32-bit targets */
-	  x |= x >> (8 * sizeof(size_t) / 2);
+    x |= x >> (8 * sizeof(size_t) / 2);
   }
-	return x + 1;
+  return x + 1;
 }
 
 static inline size_t
 _index_offset(int index, int level, int max_level) {
-	return (((index + 1) - (1 << level))
-	              << (max_level - level)) * DART_MEM_ALIGN_BYTES;
+  return (((index + 1) - (1 << level))
+                << (max_level - level)) * DART_MEM_ALIGN_BYTES;
 }
 
 static void
 _mark_parent(struct dart_buddy * self, int index) {
-	for (;;) {
-		int buddy = index - 1 + (index & 1) * 2;
-		if (buddy > 0 && (self->tree[buddy] == NODE_USED ||
+  for (;;) {
+    int buddy = index - 1 + (index & 1) * 2;
+    if (buddy > 0 && (self->tree[buddy] == NODE_USED ||
         self->tree[buddy] == NODE_FULL)) {
-			index = (index + 1) / 2 - 1;
-			self->tree[index] = NODE_FULL;
-		}
-		else {
-			return;
-		}
-	}
+      index = (index + 1) / 2 - 1;
+      self->tree[index] = NODE_FULL;
+    }
+    else {
+      return;
+    }
+  }
 }
 
-size_t
+ssize_t
 dart_buddy_alloc(struct dart_buddy * self, size_t s) {
   // honor the alignment
   int size = (s >> DART_MEM_ALIGN_BITS);
   if ((size<<DART_MEM_ALIGN_BITS) < s) ++size;
   size = (int)next_pow_of_2(size);
-	int length = 1 << self->level;
+  int length = 1 << self->level;
 
-	if (size > length)
-		return -1;
+  if (size > length) {
+    DART_LOG_ERROR("Allocation size larger than total allocator size (%zu > %d)",
+                   s, length<<DART_MEM_ALIGN_BITS);
+    return -1;
+  }
 
-	int index = 0;
-	int level = 0;
+  int index = 0;
+  int level = 0;
 
-	dart__base__mutex_lock(&self->mutex);
+  dart__base__mutex_lock(&self->mutex);
 
-	while (index >= 0) {
-		if (size == length) {
-			if (self->tree[index] == NODE_UNUSED) {
-				self->tree[index] = NODE_USED;
-				_mark_parent(self, index);
-			  dart__base__mutex_unlock(&self->mutex);
-				return _index_offset(index, level, self->level);
-			}
-		}
-		else {
-			// size < length
-			switch (self->tree[index]) {
-			case NODE_USED:
-			case NODE_FULL:
-				break;
-			case NODE_UNUSED:
-				// split first
-				self->tree[index] = NODE_SPLIT;
-				self->tree[index * 2 + 1] = NODE_UNUSED;
-				self->tree[index * 2 + 2] = NODE_UNUSED;
-				// intentional fall-through (?)
-			default:
-				index = index * 2 + 1;
-				length /= 2;
-				level++;
-				continue;
-			}
-		}
-		if (index & 1) {
-			++index;
-			continue;
-		}
-		for (;;) {
-			level--;
-			length *= 2;
-			index = (index + 1) / 2 - 1;
-			if (index < 0) {
-			  dart__base__mutex_unlock(&self->mutex);
-			  return -1;
-			}
-			if (index & 1) {
-				++index;
-				break;
-			}
-		}
-	}
+  while (index >= 0) {
+    if (size == length) {
+      if (self->tree[index] == NODE_UNUSED) {
+        self->tree[index] = NODE_USED;
+        _mark_parent(self, index);
+        dart__base__mutex_unlock(&self->mutex);
+        return _index_offset(index, level, self->level);
+      }
+    }
+    else {
+      // size < length
+      switch (self->tree[index]) {
+      case NODE_USED:
+      case NODE_FULL:
+        break;
+      case NODE_UNUSED:
+        // split first
+        self->tree[index] = NODE_SPLIT;
+        self->tree[index * 2 + 1] = NODE_UNUSED;
+        self->tree[index * 2 + 2] = NODE_UNUSED;
+        // intentional fall-through (?)
+      default:
+        index = index * 2 + 1;
+        length /= 2;
+        level++;
+        continue;
+      }
+    }
+    if (index & 1) {
+      ++index;
+      continue;
+    }
+    for (;;) {
+      level--;
+      length *= 2;
+      index = (index + 1) / 2 - 1;
+      if (index < 0) {
+        dart__base__mutex_unlock(&self->mutex);
+        return -1;
+      }
+      if (index & 1) {
+        ++index;
+        break;
+      }
+    }
+  }
 
   dart__base__mutex_unlock(&self->mutex);
-	return -1;
+  DART_LOG_ERROR(
+    "Allocation larger than remaining available allocator memory (%zu)", s);
+  return -1;
 }
 
 static void
@@ -227,7 +233,7 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
     case NODE_UNUSED:
       DART_LOG_ERROR("Invalid offset %lX in dart_buddy_free(alloc:%p)!",
                     offset, self);
-      assert (0);
+      dart_abort(DART_EXIT_ABORT);
       dart__base__mutex_unlock(&self->mutex);
       return -1;
     default:
@@ -244,8 +250,11 @@ int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
   }
 
   dart__base__mutex_unlock(&self->mutex);
+
   // TODO: is this ever reached?
-	return -1;
+  DART_LOG_ERROR("Failed to free buddy allocation!");
+  dart_abort(DART_EXIT_ABORT);
+  return -1;
 }
 
 int buddy_size(struct dart_buddy * self, uint64_t offset)
@@ -278,7 +287,10 @@ int buddy_size(struct dart_buddy * self, uint64_t offset)
 	}
 
   // TODO: is this ever reached?
-	return -1;
+  DART_LOG_ERROR("Failed to free buddy allocation!");
+  dart_abort(DART_EXIT_ABORT);
+
+  return -1;
 }
 
 static void
