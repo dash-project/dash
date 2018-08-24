@@ -272,9 +272,15 @@ typedef struct dart_allocator_struct * dart_allocator_t;
 /**
  * Create a new allocator for non-collective global memory allocations.
  * This operation is collective among the units in \c team.
+ * The \c pool_size should be a power of 2 and will be scaled up to the next
+ * larger power of 2 if that is not the case.
  *
- * \param pool_size The size of the local memory pool from which global memory
- *                  is allocated in \ref dart_allocator_alloc.
+ * \note The allocator uses a simple buddy allocator in the background. For
+ *       mixed-size allocations, the resulting fragmentation may lead to a
+ *       lower net availability of the underlying memory pool.
+ *
+ * \param pool_size The size (in Bytes) of the local memory pool from which
+ *                  global memory is allocated in \ref dart_allocator_alloc.
  * \param team      The team describing the group of units.
  * \param[out] new_allocator Pointer the newly created allocator.
  *
