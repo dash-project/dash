@@ -268,11 +268,11 @@ dart__mpi__get_basic(
     CHECK_MPI_RET(
         dart__mpi__get(dest_ptr,
           remainder,
-          dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.mpi_type,
           team_unit_id.id,
           offset,
           remainder,
-          dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.mpi_type,
           win, reqs, num_reqs),
         "MPI_Get");
   }
@@ -388,11 +388,11 @@ dart__mpi__put_basic(
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
           nchunks,
-          dart__mpi__datatype_struct(dtype)->basic.max_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.max_type,
           team_unit_id.id,
           offset,
           nchunks,
-          dart__mpi__datatype_struct(dtype)->basic.max_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.max_type,
           win,
           reqs, num_reqs),
         "MPI_Put");
@@ -406,11 +406,11 @@ dart__mpi__put_basic(
     CHECK_MPI_RET(
         dart__mpi__put(src_ptr,
           remainder,
-          dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.mpi_type,
           team_unit_id.id,
           offset,
           remainder,
-          dart__mpi__datatype_struct(dtype)->basic.mpi_type,
+          dart__mpi__datatype_struct(dtype)->contiguous.mpi_type,
           win,
           reqs, num_reqs),
         "MPI_Put");
@@ -517,8 +517,8 @@ dart_ret_t dart_get(
   dart_ret_t ret = DART_OK;
 
   // leave complex data type handling to MPI
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast-path for basic types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__get_basic(team_data, team_unit_id, seginfo, dest,
@@ -565,8 +565,8 @@ dart_ret_t dart_put(
 
   dart_ret_t ret = DART_OK;
 
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast path for basic data types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__put_basic(team_data, team_unit_id, seginfo, src,
@@ -594,9 +594,13 @@ dart_ret_t dart_accumulate(
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
-  CHECK_IS_BASICTYPE(dtype);
-  MPI_Op      mpi_op = dart__mpi__op(op);
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in dart_accumulate!");
+    return DART_ERR_INVAL;
+  }
 
+  CHECK_IS_BASICTYPE(dtype);
+  MPI_Op      mpi_op = dart__mpi__op(op, dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -648,7 +652,7 @@ dart_ret_t dart_accumulate(
     DART_LOG_TRACE("dart_accumulate:  MPI_Accumulate (src %p, size %zu)",
         src_ptr, remainder);
 
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
         MPI_Accumulate(
           src_ptr,
@@ -680,8 +684,14 @@ dart_ret_t dart_accumulate_blocking_local(
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in "
+                   "dart_accumulate_blocking_local!");
+    return DART_ERR_INVAL;
+  }
+
   CHECK_IS_BASICTYPE(dtype);
-  MPI_Op      mpi_op = dart__mpi__op(op);
+  MPI_Op      mpi_op = dart__mpi__op(op, dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -737,7 +747,7 @@ dart_ret_t dart_accumulate_blocking_local(
     DART_LOG_TRACE("dart_accumulate:  MPI_Raccumulate (src %p, size %zu)",
         src_ptr, remainder);
 
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
         MPI_Raccumulate(
           src_ptr,
@@ -774,9 +784,14 @@ dart_ret_t dart_fetch_and_op(
   int16_t     seg_id = gptr.segid;
   dart_team_t teamid = gptr.teamid;
 
+  if (dart__unlikely(op > DART_OP_LAST)) {
+    DART_LOG_ERROR("Custom reduction operators not allowed in dart_fetch_and_op!");
+    return DART_ERR_INVAL;
+  }
+
   CHECK_IS_BASICTYPE(dtype);
-  mpi_dtype          = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
-  mpi_op             = dart__mpi__op(op);
+  mpi_dtype          = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
+  mpi_op             = dart__mpi__op(op, dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -835,7 +850,7 @@ dart_ret_t dart_compare_and_swap(
         "only valid on integral types");
     return DART_ERR_INVAL;
   }
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(gptr.teamid);
   if (team_data == NULL) {
@@ -922,8 +937,8 @@ dart_ret_t dart_get_handle(
   dart_ret_t ret = DART_OK;
 
   // leave complex data type handling to MPI
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast-path for basic types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__get_basic(team_data, team_unit_id, seginfo, dest,
@@ -991,8 +1006,8 @@ dart_ret_t dart_put_handle(
 
   dart_ret_t ret = DART_OK;
 
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast path for basic data types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__put_basic(team_data, team_unit_id, seginfo, src,
@@ -1065,8 +1080,8 @@ dart_ret_t dart_put_blocking(
   dart_ret_t ret = DART_OK;
   bool needs_flush = false;
 
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast path for basic data types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__put_basic(team_data, team_unit_id, seginfo, src,
@@ -1132,8 +1147,8 @@ dart_ret_t dart_get_blocking(
   uint8_t     num_reqs = 0;
 
   // leave complex data type handling to MPI
-  if (dart__mpi__datatype_isbasic(src_type) &&
-      dart__mpi__datatype_isbasic(dst_type)) {
+  if (dart__mpi__datatype_iscontiguous(src_type) &&
+      dart__mpi__datatype_iscontiguous(dst_type)) {
     // fast-path for basic types
     CHECK_EQUAL_BASETYPE(src_type, dst_type);
     ret = dart__mpi__get_basic(team_data, team_unit_id, seginfo, dest,
@@ -1876,7 +1891,7 @@ dart_ret_t dart_bcast(
   }
 
   if (remainder > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
       MPI_Bcast(src_ptr, remainder, mpi_dtype, root.id, comm),
       "MPI_Bcast");
@@ -1895,7 +1910,7 @@ dart_ret_t dart_scatter(
   dart_team_unit_t    root,
   dart_team_t         teamid)
 {
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -1931,7 +1946,7 @@ dart_ret_t dart_scatter(
   }
 
   if (remainder > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
       MPI_Scatter(
           send_ptr,
@@ -1959,7 +1974,7 @@ dart_ret_t dart_gather(
   DART_LOG_TRACE("dart_gather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
 
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -1995,7 +2010,7 @@ dart_ret_t dart_gather(
   }
 
   if (remainder > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
       MPI_Gather(
           send_ptr,
@@ -2022,7 +2037,7 @@ dart_ret_t dart_allgather(
   DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
 
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
   if (dart__unlikely(team_data == NULL)) {
@@ -2059,7 +2074,7 @@ dart_ret_t dart_allgather(
   }
 
   if (remainder > 0) {
-    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+    MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
     CHECK_MPI_RET(
       MPI_Allgather(
           send_ptr,
@@ -2089,7 +2104,7 @@ dart_ret_t dart_allgatherv(
   DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
 
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -2130,7 +2145,7 @@ dart_ret_t dart_allgatherv(
     irecvdispls[i]  = recvdispls[i];
   }
 
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
   if (MPI_Allgatherv(
            sendbuf,
            nsendelem,
@@ -2162,10 +2177,10 @@ dart_ret_t dart_allreduce(
   dart_team_t        team)
 {
 
-  CHECK_IS_BASICTYPE(dtype);
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
 
-  MPI_Op       mpi_op    = dart__mpi__op(op);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -2203,9 +2218,9 @@ dart_ret_t dart_reduce(
   dart_team_t         team)
 {
   MPI_Comm     comm;
-  CHECK_IS_BASICTYPE(dtype);
-  MPI_Op       mpi_op    = dart__mpi__op(op);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
+  MPI_Op       mpi_op    = dart__mpi__op(op, dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__op_type(op, dtype);
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -2244,8 +2259,8 @@ dart_ret_t dart_send(
   dart_global_unit_t   unit)
 {
   MPI_Comm comm;
-  CHECK_IS_BASICTYPE(dtype);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
   dart_team_t team = DART_TEAM_ALL;
 
   /*
@@ -2286,8 +2301,8 @@ dart_ret_t dart_recv(
   dart_global_unit_t    unit)
 {
   MPI_Comm comm;
-  CHECK_IS_BASICTYPE(dtype);
-  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->basic.mpi_type;
+  CHECK_IS_CONTIGUOUSTYPE(dtype);
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
   dart_team_t team = DART_TEAM_ALL;
 
   /*
@@ -2334,12 +2349,12 @@ dart_ret_t dart_sendrecv(
   dart_global_unit_t   src)
 {
   MPI_Comm comm;
-  CHECK_IS_BASICTYPE(send_dtype);
-  CHECK_IS_BASICTYPE(recv_dtype);
+  CHECK_IS_CONTIGUOUSTYPE(send_dtype);
+  CHECK_IS_CONTIGUOUSTYPE(recv_dtype);
   MPI_Datatype mpi_send_dtype =
-                        dart__mpi__datatype_struct(send_dtype)->basic.mpi_type;
+                    dart__mpi__datatype_struct(send_dtype)->contiguous.mpi_type;
   MPI_Datatype mpi_recv_dtype =
-                        dart__mpi__datatype_struct(recv_dtype)->basic.mpi_type;
+                    dart__mpi__datatype_struct(recv_dtype)->contiguous.mpi_type;
   dart_team_t team = DART_TEAM_ALL;
 
   /*

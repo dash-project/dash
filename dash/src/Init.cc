@@ -126,3 +126,12 @@ size_t dash::size()
   return dash::Team::All().size();
 }
 
+void dash::abort()
+{
+  dart_abort(DART_EXIT_ABORT);
+}
+
+void dash::abort(int errorcode)
+{
+  dart_abort(errorcode);
+}
