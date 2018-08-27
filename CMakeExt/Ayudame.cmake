@@ -2,25 +2,33 @@
 #
 # Variables defined by this module:
 #
-#  AYUDAME_FOUND              System has NANOS libraries and headers
-#  AYUDAME_LIBRARIES          The NANOS library
-#  AYUDAME_INCLUDE_DIRS       The location of NANOS headers
+#  AYUDAME_FOUND              System has AYUDAME libraries and headers
+#  AYUDAME_LIBRARIES          The AYUDAME library
+#  AYUDAME_INCLUDE_DIRS       The location of AYUDAME headers
 
+if (ENABLE_AYUDAME)
+
+if (NOT AYUDAME_PREFIX AND NOT $ENV{AYUDAME_ROOT} STREQUAL "")
+  set(AYUDAME_PREFIX $ENV{AYUDAME_ROOT})
+endif()
+
+message(STATUS "Searching for Ayudame in ${AYUDAME_PREFIX}")
 
 find_path(
   AYUDAME_PREFIX
-  NAMES include/ayudame.h
+  NAMES include/ayu_events.h
+  HINTS ${AYUDAME_PREFIX}
 )
 
 find_library(
   AYUDAME_LIBRARIES
-  NAMES ayudame
+  NAMES ayu_events
   HINTS ${AYUDAME_PREFIX}/lib/
 )
 
 find_path(
   AYUDAME_INCLUDE_DIRS
-  NAMES ayudame.h
+  NAMES ayu_events.h
   HINTS ${AYUDAME_PREFIX}/include/
 )
 
@@ -38,9 +46,11 @@ mark_as_advanced(
 )
 
 if (AYUDAME_FOUND)
-  if (NOT $ENV{AYUDAME_LIB} STREQUAL "")
-    set(AYUDAME_LIBRARIES "$ENV{AYUDAME_LIB}")
-  endif()
   message(STATUS "Ayudame includes:  " ${AYUDAME_INCLUDE_DIRS})
   message(STATUS "Ayudame libraries: " ${AYUDAME_LIBRARIES})
+else()
+  message(STATUS "Ayudame not found!")
 endif()
+
+
+endif (ENABLE_AYUDAME)
