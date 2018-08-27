@@ -739,17 +739,18 @@ namespace internal{
   async(
     TaskFunc            f,
     dart_task_prio_t    prio,
-    DepContainer&&      deps) {
+    DepContainer&&      deps,
+    const char         *name = nullptr) {
     if (dart_task_should_abort()) abort_task();
     if (std::is_trivially_copyable<TaskFunc>::value) {
       dart_task_create(
         &dash::tasks::internal::invoke_task_action_void<TaskFunc>,
-        &f, sizeof(f), deps.data(), deps.size(), prio);
+        &f, sizeof(f), deps.data(), deps.size(), prio, name);
     } else {
       dart_task_create(
         &dash::tasks::internal::invoke_task_action<void>,
         new dash::tasks::internal::TaskData<void>(f), 0,
-                      deps.data(), deps.size(), prio);
+                      deps.data(), deps.size(), prio, name);
     }
   }
 
@@ -757,8 +758,9 @@ namespace internal{
   void
   async(
     TaskFunc            f,
-    DepContainer&&      deps) {
-    internal::async(f, DART_PRIO_LOW, std::forward<DepContainer>(deps));
+    DepContainer&&      deps,
+    const char         *name = nullptr) {
+    internal::async(f, DART_PRIO_LOW, std::forward<DepContainer>(deps), name);
   }
 } // namespace internal
 
@@ -828,6 +830,84 @@ namespace internal{
   async(TaskFunc f, Args&&... args){
     async(f, DART_PRIO_LOW, std::forward<Args>(args)...);
   }
+
+
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * without any dependencies.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc>
+  void
+  async(
+    const char*      name,
+    TaskFunc         f,
+    dart_task_prio_t prio){
+    std::array<dart_task_dep_t, 0> deps;
+    internal::async(f, prio, deps, name);
+  }
+
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  async(
+    const char*             name,
+    TaskFunc                f,
+    dart_task_prio_t        prio,
+    TaskDependency          dep,
+    Args&&...               args){
+    std::array<dart_task_dep_t, sizeof...(args)+1> deps(
+    {{
+      static_cast<dart_task_dep_t>(dep),
+      static_cast<dart_task_dep_t>(args)...
+    }});
+    internal::async(f, prio, deps, name);
+  }
+
+
+  /**
+   * Create an asynchronous task that will execute \c f with priority \c prio
+   * after all specified dependencies have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename DependencyGeneratorFunc>
+  void
+  async(
+    const char*               name,
+    TaskFunc                  f,
+    dart_task_prio_t          prio,
+    DependencyGeneratorFunc   dependency_generator)
+  {
+    DependencyVector deps;
+    dependency_generator(std::inserter(deps, deps.begin()));
+    internal::async(f, prio, deps, name);
+  }
+
+  /**
+   * Create an asynchronous task that will execute \c f with normal priority
+   * after all dependencies specified in \c deps have been satisfied.
+   *
+   * \note This function is a cancellation point.
+   */
+  template<class TaskFunc, typename ... Args>
+  void
+  async(
+    const char* name,
+    TaskFunc    f,
+    Args&&...   args){
+    async(name, f, DART_PRIO_LOW, std::forward<Args>(args)...);
+  }
+
+#define SLOC_(__file, __delim, __line) __file # __delim # __line
+#define SLOC(__file, __line)  SLOC_(__file, :, __line)
+#define ASYNC(...) async(SLOC(__FILE__, __LINE__), __VA_ARGS__)
 
   /**
    * Return a handle to an asynchronous task that will execute \c f with

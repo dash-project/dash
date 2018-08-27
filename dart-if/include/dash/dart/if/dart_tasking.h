@@ -102,7 +102,8 @@ dart_task_create(
         size_t           data_size,
   const dart_task_dep_t *deps,
         size_t           ndeps,
-        dart_task_prio_t prio);
+        dart_task_prio_t prio,
+  const char            *descr);
 
 /**
  * Free a task reference obtained from \c dart_task_create_handle without

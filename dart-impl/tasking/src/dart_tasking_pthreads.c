@@ -148,10 +148,12 @@ static void
 invoke_taskfn(dart_task_t *task)
 {
   DART_ASSERT(task->fn != NULL);
-  DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p)", task, task->fn, task->data);
+  DART_LOG_DEBUG("Invoking task %p (fn:%p data:%p descr:'%s')",
+                 task, task->fn, task->data, task->descr);
   if (setjmp(task->taskctx->cancel_return) == 0) {
     task->fn(task->data);
-    DART_LOG_DEBUG("Done with task %p (fn:%p data:%p)", task, task->fn, task->data);
+    DART_LOG_DEBUG("Done with task %p (fn:%p data:%p descr:'%s')",
+                   task, task->fn, task->data, task->descr);
   } else {
     // we got here through longjmp, the task is cancelled
     task->state = DART_TASK_CANCELLED;
@@ -221,6 +223,7 @@ void invoke_task(dart_task_t *task, dart_thread_t *thread)
   } else {
     // store current thread's context and jump into new task
     dart__tasking__context_swap(&thread->retctx, task->taskctx);
+    DART_LOG_TRACE("Returning from task %p ('%s')", task, task->descr);
   }
 }
 
@@ -304,8 +307,8 @@ dart__tasking__yield(int delay)
       next->state = DART_TASK_RUNNING;
       dart__base__mutex_unlock(&(next->mutex));
       // here we leave this task
-      DART_LOG_TRACE("Yield: yielding from task %p to next task %p",
-                      current_task, next);
+      DART_LOG_TRACE("Yield: yielding from task %p ('%s') to next task %p ('%s')",
+                      current_task, current_task->descr, next, next->descr);
       invoke_task(next, thread);
       // upon return into this task we may have to requeue the previous task
       check_requeue = true;
@@ -514,7 +517,8 @@ dart_task_t * create_task(
   void (*fn) (void *),
   void             *data,
   size_t            data_size,
-  dart_task_prio_t  prio)
+  dart_task_prio_t  prio,
+  const char       *descr)
 {
   dart_task_t *task = NULL;
   if (task_free_list != NULL) {
@@ -556,6 +560,13 @@ dart_task_t * create_task(
   task->unresolved_remote_deps = 0;
   task->wait_handle  = NULL;
 
+  // if descr is an absolute path (as with __FILE__) we only use the basename
+  if (descr && descr[0] == '/') {
+    const char *descr_base = strrchr(descr, '/');
+    task->descr            = descr_base+1;
+  } else {
+    task->descr = descr;
+  }
   return task;
 }
 
@@ -587,6 +598,7 @@ void dart__tasking__destroy_task(dart_task_t *task)
   task->state            = DART_TASK_DESTROYED;
   task->phase            = DART_PHASE_ANY;
   task->has_ref          = false;
+  task->descr            = NULL;
 
   dart_tasking_datadeps_reset(task);
 
@@ -618,6 +630,10 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 
     // we're coming back into this task here
     dart_task_t *prev_task = dart_task_current_task();
+
+    DART_LOG_TRACE("Returned from invoke_task(%p, %p): prev_task=%p",
+                   task, thread, prev_task);
+
     if (prev_task->state == DART_TASK_BLOCKED) {
       // we came back here because there were no other tasks to yield from
       // the blocked task so we have to make sure this task is enqueued as
@@ -709,6 +725,8 @@ void* thread_main(void *data)
 
   dart_thread_t *thread = malloc(sizeof(dart_thread_t));
 
+  DART_LOG_DEBUG("Thread %d: %p", tid->threadid, thread);
+
   // populate the thread-private data
   int threadid    = tid->threadid;
   dart_thread_init(thread, threadid);
@@ -749,11 +767,14 @@ void* thread_main(void *data)
     }
     handle_task(task, thread);
 
+    //DART_LOG_TRACE("thread_main: finished processing task %p", task);
+
     // look for incoming remote tasks and responses
     // NOTE: only the first worker thread does the polling
     //       if polling is enabled or we have no runnable tasks anymore
 
     if ((task == NULL || worker_poll_remote) && threadid == 1) {
+      //DART_LOG_TRACE("worker polling for remote messages");
       remote_progress(thread, (task == NULL));
       dart__task__wait_progress();
       // wait for 100us to reduce pressure on master thread
@@ -994,7 +1015,8 @@ dart__tasking__create_task(
           size_t           data_size,
     const dart_task_dep_t *deps,
           size_t           ndeps,
-          dart_task_prio_t prio)
+          dart_task_prio_t prio,
+    const char            *descr)
 {
   if (dart__tasking__cancellation_requested()) {
     DART_LOG_DEBUG("dart__tasking__create_task: Ignoring task creation while "
@@ -1007,7 +1029,9 @@ dart__tasking__create_task(
     start_threads(num_threads);
   }
 
-  dart_task_t *task = create_task(fn, data, data_size, prio);
+  // TODO: add hash table to handle task descriptions
+
+  dart_task_t *task = create_task(fn, data, data_size, prio, descr);
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
@@ -1018,7 +1042,8 @@ dart__tasking__create_task(
   task->state = DART_TASK_CREATED;
   bool is_runnable = dart_tasking_datadeps_is_runnable(task);
   dart__base__mutex_unlock(&task->mutex);
-  DART_LOG_TRACE("  Task %p created: runnable %i", task, is_runnable);
+  DART_LOG_TRACE("  Task %p ('%s') created: runnable %i",
+                 task, task->descr, is_runnable);
   if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
@@ -1047,7 +1072,7 @@ dart__tasking__create_task_handle(
     start_threads(num_threads);
   }
 
-  dart_task_t *task = create_task(fn, data, data_size, prio);
+  dart_task_t *task = create_task(fn, data, data_size, prio, NULL);
   task->has_ref = true;
 
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
