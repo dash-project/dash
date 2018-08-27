@@ -560,6 +560,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
     dummy_task->state = DART_TASK_DUMMY;
     dummy_task->remote_task = rdep->task.remote; // use the data pointer to store the remote task
     dummy_task->origin      = rdep->origin;
+    dummy_task->descr       = "DUMMY (OUTDEP)";
     dart__base__mutex_init(&dummy_task->mutex);
     DART_LOG_TRACE(
       "Allocated dummy task %p (ph:%d) for remote out dep on %p from task %p at unit %d",

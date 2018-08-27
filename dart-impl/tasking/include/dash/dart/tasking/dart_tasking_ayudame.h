@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#ifdef HAVE_AYUDAME
+#ifdef HAVE_AYUDAME2
 
 void dart__tasking__ayudame_init();
 

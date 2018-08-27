@@ -144,7 +144,7 @@ dart_tasking_copyin_create_task_sendrecv(
   DART_LOG_TRACE("Copyin: creating task to recv from unit %d with tag %d in phase %d",
                  arg.unit, tag, dep->phase);
   dart_task_create(&dart_tasking_copyin_recv_taskfn, &arg, sizeof(arg),
-                   &out_dep, 1, DART_PRIO_HIGH);
+                   &out_dep, 1, DART_PRIO_HIGH, "COPYIN (RECV)");
 
   return DART_OK;
 }
@@ -175,7 +175,7 @@ dart_tasking_copyin_create_task_get(
   arg.unit      = 0; // not needed
 
   return dart_task_create(&dart_tasking_copyin_get_taskfn, &arg, sizeof(arg),
-                   deps, 2, DART_PRIO_HIGH);
+                   deps, 2, DART_PRIO_HIGH, "COPYIN (GET)");
 }
 
 dart_ret_t
@@ -245,7 +245,7 @@ dart_tasking_copyin_create_delayed_tasks()
     DART_LOG_TRACE("Copyin: creating task to send to unit %d with tag %d",
                   ct->arg.unit, ct->arg.tag);
     dart_task_create(&dart_tasking_copyin_send_taskfn, &ct->arg, sizeof(ct->arg),
-                     &ct->in_dep, 1, DART_PRIO_HIGH);
+                     &ct->in_dep, 1, DART_PRIO_HIGH, "COPYIN (SEND)");
     free(ct);
   }
   dart__base__mutex_unlock(&delayed_tasks_mtx);

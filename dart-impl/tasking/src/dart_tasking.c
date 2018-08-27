@@ -52,13 +52,14 @@ dart_task_create(
         size_t           data_size,
   const dart_task_dep_t *deps,
         size_t           ndeps,
-        dart_task_prio_t prio)
+        dart_task_prio_t prio,
+  const char            *descr)
 {
   return dart__tasking__create_task(
                   fn, data,
                   data_size,
                   deps, ndeps,
-                  prio);
+                  prio, descr);
 }
 
 /**
