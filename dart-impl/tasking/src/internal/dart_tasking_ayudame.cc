@@ -1,7 +1,7 @@
 
 #include <map>
 
-#ifdef DART_ENABLE_AYUDAME
+#ifdef DART_ENABLE_AYUDAME2
 
 #include <ayudame.h>
 #include <pthread.h>
@@ -104,4 +104,4 @@ void dart__tasking__ayudame_add_dependency(void *srctask, void *dsttask)
   }
 }
 
-#endif // DART_ENABLE_AYUDAME
+#endif // DART_ENABLE_AYUDAME2
