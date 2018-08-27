@@ -133,7 +133,7 @@ public:
   */
   template <typename Op>
   void update(ElementT* begin_dst, Op operation) {
-    update(begin(), end(), begin_out, operation);
+    update(begin(), end(), begin_dst, operation);
   }
 
   /**
