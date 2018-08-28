@@ -292,9 +292,10 @@ public:
     _boundary_views(boundary_views),
     _local_memory(local_memory),
     _local_layout(view_local.extents()), _idx(idx) {
-    pattern_index_t _size = 0;
+    _size = 0;
     for(const auto& view : boundary_views)
       _size += view.size();
+
     if(_idx < _size)
       set_coords();
 
@@ -315,7 +316,8 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  Self_t& operator=(const Self_t& other) = default;
+  //Self_t& operator=(const Self_t& other) = default;
+  Self_t& operator=(const Self_t& other) = delete;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
@@ -449,14 +451,14 @@ public:
   }
 
   Self_t operator+(pattern_index_t n) const {
-    Self_t res{ *this };
+    auto res( *this );
     res += n;
 
     return res;
   }
 
   Self_t operator-(pattern_index_t n) const {
-    Self_t res{ *this };
+    auto res( *this );
     res -= n;
 
     return res;
