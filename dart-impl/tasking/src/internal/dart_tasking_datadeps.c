@@ -135,6 +135,17 @@ static inline bool release_remote_dep_counter(dart_task_t *task) {
   return (num_local_deps == 0 && num_remote_deps == 0);
 }
 
+static inline void instrument_task_dependency(
+  dart_task_t *first,
+  dart_task_t *last,
+  dart_gptr_t  gptr)
+{
+  // TODO: insert call to ayudame here
+  //       gptr.addr_or_offs.addr contains the memory address of the dependency
+  //       if this addr is NULL, it is a direct task dependency, please use
+  //       AYU_UNKNOWN_MEMADDR in that case
+}
+
 /**
  * Initialize the data dependency management system.
  */
@@ -688,6 +699,7 @@ dart_tasking_datadeps_handle_local_direct(
                      "(successor: %p, state: %i | num_deps: %i)",
                      task, deptask,
                      deptask->successor, deptask->state, unresolved_deps);
+      instrument_task_dependency(deptask, task, DART_GPTR_NULL);
     }
     dart__base__mutex_unlock(&(deptask->mutex));
   }
@@ -836,6 +848,7 @@ dart_tasking_datadeps_match_local_datadep(
                           elem_task->successor,
                           elem_task->state, unresolved_deps);
             dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+            instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
           }
         }
         dart__base__mutex_unlock(&(elem_task->mutex));
@@ -914,6 +927,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
                         elem_task->state, unresolved_deps);
 
           dart_tasking_tasklist_prepend(&(elem_task->successor), task);
+          instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
         }
         dart__base__mutex_unlock(&(elem_task->mutex));
 
@@ -931,6 +945,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
                         next_out_task->successor,
                         next_out_task->state, unresolved_deps);
           dart_tasking_tasklist_prepend(&(task->successor), next_out_task);
+          instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
           dart__base__mutex_unlock(&(next_out_task->mutex));
           // no need to add this dependency to the hash table
         } else {
