@@ -615,7 +615,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
 {
   if (task != NULL)
   {
-    DART_LOG_INFO("Thread %i executing task %p", thread->thread_id, task);
+    DART_LOG_INFO("Thread %i executing task %p ('%s')",
+                  thread->thread_id, task, task->descr);
 
     dart_task_t *current_task = get_current_task();
 
