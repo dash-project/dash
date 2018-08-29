@@ -139,6 +139,23 @@ namespace internal {
       throw;
     }
   }
+
+  template<typename T>
+  struct is_range
+  {
+  private:
+    // fall-back
+    template<typename>
+    static constexpr std::false_type test(...);
+
+    // test for T::begin
+    template<typename U=T>
+    static decltype(std::begin(std::declval<U>()), std::true_type{}) test(int);
+
+  public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+  };
+
 } // namespace internal
 
 
@@ -461,7 +478,7 @@ namespace internal {
   auto
   in(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
-    -> typename std::enable_if<!std::is_function<decltype(T::begin)>::value,
+    -> typename std::enable_if<!internal::is_range<T>::value,
                                TaskDependency>::type
   {
     return dash::tasks::in(const_cast<const T*>(&lref), phase);
@@ -662,7 +679,7 @@ namespace internal {
   auto
   out(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
-    -> typename std::enable_if<!std::is_function<decltype(T::begin)>::value,
+    -> typename std::enable_if<!internal::is_range<T>::value,
                                TaskDependency>::type {
     return dash::tasks::out(const_cast<const T*>(&lref), phase);
   }
