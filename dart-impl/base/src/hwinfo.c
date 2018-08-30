@@ -123,7 +123,7 @@ dart_ret_t dart_hwinfo(
     hw.max_shmem_mbps = 1235;
   }
 
-  gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE);
+  gethostname(hw.host, DART_LOCALITY_HOST_MAX_SIZE-1);
 
 #ifdef DART_ENABLE_LIKWID
   DART_LOG_TRACE("dart_hwinfo: using likwid");
