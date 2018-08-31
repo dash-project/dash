@@ -1,5 +1,8 @@
 /**
  * \file dash/dart/base/internal/unit_locality.c
+ * NOTE:
+ * This file is a copy of the mpi-implementation
+ *
  */
 
 #include <dash/dart/base/macro.h>
@@ -278,4 +281,3 @@ dart_ret_t dart__base__unit_locality__init(
   DART_LOG_TRACE("dart__base__unit_locality__init >");
   return DART_OK;
 }
-

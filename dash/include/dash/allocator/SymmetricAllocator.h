@@ -247,6 +247,7 @@ private:
       dart_barrier(_team_id),
       DART_OK);
     DASH_LOG_DEBUG("SymmetricAllocator.deallocate", "dart_team_memfree");
+    printf(">>>>> deallocate id for dart_memfree: %d <<<<<\n",gptr);
     DASH_ASSERT_RETURNS(
       dart_team_memfree(gptr),
       DART_OK);

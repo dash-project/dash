@@ -21,7 +21,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
   // Copy all elements contained in a single, continuous block.
   const int num_elem_per_unit = 20;
   size_t num_elem_total       = _dash_size * num_elem_per_unit;
-
+  dash::Team::All().barrier();
+  
   dash::Array<int> array(num_elem_total, dash::BLOCKED);
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]

@@ -7,9 +7,17 @@
 #include <libdash.h>
 #include <iostream>
 
+#define DASH_GASPI_IMPL_ID
+
 #ifdef DASH_MPI_IMPL_ID
   #include <mpi.h>
   #define MPI_SUPPORT
+#endif
+
+// GASPI include
+#ifdef DASH_GASPI_IMPL_ID
+  #include </opt/GPI2/include/GASPI.h>
+  #define GASPI_SUPPORT
 #endif
 
 using ::testing::UnitTest;
@@ -20,6 +28,7 @@ char ** TESTENV::argv;
 
 int main(int argc, char * argv[])
 {
+  //printf("Bginning of test_main\n");
   char hostname[100];
   int team_myid = -1;
   int team_size = -1;
@@ -31,6 +40,7 @@ int main(int argc, char * argv[])
 
   // Init MPI
 #ifdef MPI_SUPPORT
+printf("FOOBAR SUCKERS");
 #ifdef DASH_ENABLE_THREADSUPPORT
   int thread_required = MPI_THREAD_MULTIPLE;
   int thread_provided; // ignored here
@@ -47,8 +57,35 @@ int main(int argc, char * argv[])
   }
 
 #endif
+
+// Init GASPI
+gaspi_rank_t gaspi_team_size, gaspi_myid;
+#ifdef GASPI_SUPPORT
+
+gaspi_proc_init(GASPI_BLOCK);
+
+gaspi_proc_rank(&gaspi_myid);
+gaspi_proc_num(&gaspi_team_size);
+
+// only unit 0 writes xml file
+  if(team_myid != 0){
+    ::testing::GTEST_FLAG(output) = "";
+  }
+#endif
+
   // Init GoogleTest (strips gtest arguments from argv)
   ::testing::InitGoogleTest(&argc, argv);
+
+#ifdef GASPI_SUPPORT
+bool loop = 1;
+if(0==gaspi_myid)
+{
+  while( loop ){}
+}
+gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK);
+#endif
+
+//dash::barrier();
 #ifdef MPI_SUPPORT
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
@@ -79,5 +116,14 @@ int main(int argc, char * argv[])
   }
   MPI_Finalize();
 #endif
-  return ret;
+
+//Gaspi finalize
+#ifdef GASPI_SUPPORT
+  if(dash::is_initialized()) {
+    dash::finalize();
+  }
+  gaspi_proc_term(GASPI_BLOCK);
+#endif
+
+return ret;
 }

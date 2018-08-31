@@ -5,20 +5,26 @@
 #include <algorithm>
 
 TEST_F(StlAlgoTest, CompilerADLTest){
+  //printf(">>>>>>> STLAlgoTest mit CompilerADLTest in rank %d <<<<< \n", dash::myid());
   dash::Array<int> arr(dash::size());
   arr.local[0] = dash::myid();
   arr.barrier();
-
+  //printf(">>>>>>> after 1st barrier and init of id_array in rank %d <<<<< \n", dash::myid());
   if(dash::myid() == 0){
     auto refbeg = *(arr.begin());
     auto refend = *(arr.end()-1);
+    //printf(">>>>>>> after init of refbeg und refend in rank %d <<<<< \n", dash::myid());
     {
     using std::swap;
     using std::iter_swap;
     refbeg.swap(refend);
+    //printf(">>>>>>> after refbeg.swap(refend) in rank %d <<<<< \n", dash::myid());
     swap(refbeg, refend);
+    //printf(">>>>>>> after swap(refbeg, refend) in rank %d <<<<< \n", dash::myid());
     swap(*(arr.begin()), *(arr.end()-1));
+    //printf(">>>>>>> after swap(*(arr.begin()), *(arr.end()-1)) in rank %d <<<<< \n", dash::myid());
     iter_swap(arr.begin(), arr.end()-1);
+    //printf(">>>>>>> after iter_swap(arr.begin(), arr.end()-1) in rank %d <<<<< \n", dash::myid());
     }
     // without ADL
     {
@@ -37,13 +43,17 @@ TEST_F(StlAlgoTest, CompilerADLTest){
     ::std::iter_swap(arr.begin(), arr.end()-1);
     }
   }
+    //printf(">>>>>>>>>>>>> END OF StlAlgoTest mit CompilerADLTest in rank %d <<<<< \n", dash::myid());
+  
 }
 
 TEST_F(StlAlgoTest, Swap) {
+  //printf(">>>>>>> STLAlgoTest mit Swap in rank %d <<<<< \n", dash::myid());
   using std::swap;
   dash::Array<int> arr(dash::size());
   arr.local[0] = dash::myid();
   arr.barrier();
+  //printf("After 1st swap barrier");
 
   if(dash::myid() == 0){
     auto refbeg = *(arr.begin());
@@ -59,6 +69,7 @@ TEST_F(StlAlgoTest, Swap) {
 }
 
 TEST_F(StlAlgoTest, IterSwap) {
+  //printf(">>>>>>> STLAlgoTest mit IterSwap in rank %d <<<<< \n", dash::myid());
   dash::Array<int> arr(dash::size());
   arr.local[0] = dash::myid();
   arr.barrier();
@@ -74,6 +85,7 @@ TEST_F(StlAlgoTest, IterSwap) {
 }
 
 TEST_F(StlAlgoTest, Sort) {
+  //printf(">>>>>>> STLAlgoTest mit Sort in rank %d <<<<< \n", dash::myid());
   // do not use that in production as this is inefficient as hell!
   dash::Array<int> arr(dash::size());
   // init array in reverse order [n-1,n-2,...,0]

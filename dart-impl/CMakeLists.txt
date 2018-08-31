@@ -42,3 +42,9 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(shmem)
 endif()
+
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";gaspi;")
+  set(DART_IMPLEMENTATION_GASPI_ENABLED ON
+      CACHE BOOL INTERNAL FORCE)
+  add_subdirectory(gaspi)
+endif()
