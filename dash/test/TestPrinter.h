@@ -1,12 +1,24 @@
-#ifdef DASH_MPI_IMPL_ID
+
+// Temporary Workaround for using messages with GASPI
+#define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
+#define TEST_SUM     "\033[0;32m[==========] \033[m"
+#define TEST_SUCCESS "\033[0;32m[  PASSED  ] \033[m"
+#define TEST_SKIPPED "\033[0;33m[  SKIPPED ] \033[m"
+#define TEST_FAILURE "\033[0;31m[  FAILED  ] \033[m"
+#define TEST_ERROR   "\033[0;31m[  ERROR   ] \033[m"
+#define TEST_OK      "\033[0;32m[      OK  ] \033[m"
+#define TEST_RUN "\033[0;32m[  RUN     ] \033[m"
+// ==================================================
+
+#ifdef MPI_IMPL_ID
 
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
 #include <gtest/gtest.h>
 
-#include <iostream>
 #include <list>
+#include <iostream>
 
 #include <mpi.h>
 
@@ -31,10 +43,10 @@ using ::testing::TestResult;
 
 class TestPrinter : public EmptyTestEventListener {
   private:
-    int                    _myid{};
-    int                    _size{};
-    bool                   _testcase_passed = true;
-    std::list<std::string> _failed_tests;
+  int  _myid;
+  int  _size;
+  bool _testcase_passed = true;
+  std::list<std::string> _failed_tests;
 
   public:
   TestPrinter() {
@@ -44,16 +56,16 @@ class TestPrinter : public EmptyTestEventListener {
 
   private:
   // Called before any test activity starts.
-    void OnTestProgramStart(const UnitTest& unit_test) override
-    {
-      if (_myid == 0) {
-        std::cout << TEST_NEUTRAL << unit_test.total_test_case_count()
-                  << " tests will be run." << std::endl;
-      }
+  virtual void OnTestProgramStart(const UnitTest& unit_test) {
+    if(_myid == 0){
+      std::cout << TEST_NEUTRAL
+              << unit_test.total_test_case_count()
+              << " tests will be run."
+              << std::endl;
+    }
   }
 
-  void OnTestCaseStart(const TestCase& test_case) override
-  {
+  virtual void OnTestCaseStart(const TestCase& test_case){
     if(_myid == 0){
       std::cout << TEST_NEUTRAL
               << "run "
@@ -67,8 +79,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after a failed assertion or a SUCCEED() invocation.
-  void OnTestPartResult(const TestPartResult& test_part_result) override
-  {
+  virtual void OnTestPartResult(const TestPartResult& test_part_result) {
     if(test_part_result.failed()){
       std::cout << TEST_ERROR 
                 << "[UNIT " << _myid << "]" << " in "
@@ -80,8 +91,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after all test activities have ended.
-  void OnTestProgramEnd(const UnitTest& unit_test) override
-  {
+  virtual void OnTestProgramEnd(const UnitTest& unit_test) {
     MPI_Barrier(MPI_COMM_WORLD);
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
@@ -105,7 +115,7 @@ class TestPrinter : public EmptyTestEventListener {
                 << unit_test.failed_test_count()
                 << " tests, listed below"
                 << std::endl;
-        for (const auto& el : _failed_tests) {
+        for(auto el : _failed_tests){
           std::cout << el << std::endl;
         }
       }
@@ -113,8 +123,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called before a test starts.
-  void OnTestStart(const TestInfo& test_info) override
-  {
+  virtual void OnTestStart(const TestInfo& test_info) {
     if(_myid == 0){
       std::cout << TEST_RUN
                 << test_info.test_case_name() << "."
@@ -123,8 +132,7 @@ class TestPrinter : public EmptyTestEventListener {
   }
 
   // Called after a test ends.
-  void OnTestEnd(const TestInfo& test_info) override
-  {
+  virtual void OnTestEnd(const TestInfo& test_info) {
     int success_units = 0;
     bool passed       = test_info.result()->Passed();
     int unit_passed   = passed ? 1 : 0; 
@@ -156,4 +164,4 @@ class TestPrinter : public EmptyTestEventListener {
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
 
-#endif // DASH_MPI_IMPL_ID
+#endif // MPI_IMPL_ID
