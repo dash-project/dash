@@ -18,6 +18,8 @@
 #include <dash/dart/tasking/dart_tasking_affinity.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <dash/dart/tasking/dart_tasking_extrae.h>
+#include <dash/dart/tasking/dart_tasking_craypat.h>
 
 #include <stdlib.h>
 #include <pthread.h>
@@ -26,7 +28,16 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
-#include <ayu_events.h>
+
+#define EVENT_ENTER(_ev) do {\
+  EXTRAE_ENTER(_ev);         \
+  CRAYPAT_ENTER(_ev); \
+} while (0)
+
+#define EVENT_EXIT(_ev) do {\
+  EXTRAE_EXIT(_ev);         \
+  CRAYPAT_EXIT(_ev); \
+} while (0)
 
 #define CLOCK_TIME_USEC(ts) \
   ((ts).tv_sec*1E6 + (ts).tv_nsec/1E3)
@@ -63,9 +74,8 @@ static pthread_cond_t  task_avail_cond   = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // task life-cycle lists
-static dart_task_t *task_recycle_list     = NULL;
 static dart_task_t *task_free_list        = NULL;
-static pthread_mutex_t task_recycle_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t task_free_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static dart_thread_t **thread_pool;
 
@@ -96,14 +106,15 @@ static dart_task_t root_task = {
     .prev = NULL,
     .fn   = NULL,
     .data = NULL,
-    .data_size = 0,
     .unresolved_deps = 0,
     .successor = NULL,
     .parent = NULL,
+    .recycle_tasks = NULL,
     .remote_successor = NULL,
     .local_deps = NULL,
     .num_children = 0,
-    .state  = DART_TASK_ROOT};
+    .state  = DART_TASK_ROOT,
+    .data_allocated = false};
 
 static void
 destroy_threadpool(bool print_stats);
@@ -185,7 +196,9 @@ void wrap_task(dart_task_t *task)
   // update current task
   set_current_task(task);
   // invoke the new task
+  EVENT_ENTER(EVENT_TASK);
   invoke_taskfn(task);
+  EVENT_EXIT(EVENT_TASK);
   // return into the current thread's main context
   // this is not necessarily the thread that originally invoked the task
   dart_thread_t *thread = get_current_thread();
@@ -257,7 +270,9 @@ dart__tasking__yield(int delay)
     } else {
       current_task->state  = DART_TASK_BLOCKED;
     }
+    EVENT_ENTER(EVENT_TASK);
     dart__tasking__context_swap(current_task->taskctx, &thread->retctx);
+    EVENT_EXIT(EVENT_TASK);
     // upon return into this task we may have to requeue the previous task
     check_requeue = true;
   } else {
@@ -444,6 +459,23 @@ dart_task_t * next_task(dart_thread_t *thread)
 {
   // stop processing tasks if they are cancelled
   if (dart__tasking__cancellation_requested()) return NULL;
+  if (thread->next_task != NULL) {
+    // check for high-priority tasks and execute them first
+    dart_task_t *task = thread->next_task;
+#ifdef DART_TASK_THREADLOCAL_Q
+    dart_taskqueue_t *tq = &thread->task_queue;
+#else
+    dart_taskqueue_t *tq = &task_queue;
+#endif
+    if (task->prio == DART_PRIO_LOW &&
+        dart_tasking_taskqueue_has_prio_task(tq, DART_PRIO_HIGH)) {
+      task->state = DART_TASK_CREATED;
+      dart__tasking__enqueue_runnable(task);
+      task = dart_tasking_taskqueue_pop(tq);
+    }
+    thread->next_task = NULL;
+    return task;
+  }
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_task_t *task = dart_tasking_taskqueue_pop(&thread->queue);
   if (task == NULL) {
@@ -473,7 +505,9 @@ static
 dart_task_t * allocate_task()
 {
   dart_task_t *task = malloc(sizeof(dart_task_t));
-  dart__base__mutex_init(&task->mutex);
+  //dart__base__mutex_init(&task->mutex);
+  static dart_mutex_t tmp = DART_MUTEX_INITIALIZER;
+  task->mutex = tmp;
 
   return task;
 }
@@ -488,22 +522,24 @@ dart_task_t * create_task(
 {
   dart_task_t *task = NULL;
   if (task_free_list != NULL) {
-    pthread_mutex_lock(&task_recycle_mutex);
+    pthread_mutex_lock(&task_free_mutex);
     if (task_free_list != NULL) {
       DART_STACK_POP(task_free_list, task);
     }
-    pthread_mutex_unlock(&task_recycle_mutex);
-  } else {
+    pthread_mutex_unlock(&task_free_mutex);
+  }
+
+  if (task == NULL) {
     task = allocate_task();
   }
 
   if (data_size) {
-    task->data_size  = data_size;
-    task->data       = malloc(data_size);
+    task->data_allocated = true;
+    task->data           = malloc(data_size);
     memcpy(task->data, data, data_size);
   } else {
-    task->data       = data;
-    task->data_size  = 0;
+    task->data           = data;
+    task->data_allocated = false;
   }
   task->fn           = fn;
   task->num_children = 0;
@@ -517,6 +553,7 @@ dart_task_t * create_task(
   task->local_deps   = NULL;
   task->prev         = NULL;
   task->successor    = NULL;
+  task->recycle_tasks = NULL;
   task->prio         = prio;
   task->taskctx      = NULL;
   task->unresolved_deps = 0;
@@ -546,12 +583,13 @@ void remote_progress(dart_thread_t *thread, bool force)
 
 void dart__tasking__destroy_task(dart_task_t *task)
 {
-  if (task->data_size) {
+  dart_task_t *parent = task->parent;
+  if (task->data_allocated) {
     free(task->data);
   }
   // reset some of the fields
   task->data             = NULL;
-  task->data_size        = 0;
+  task->data_allocated   = false;
   task->fn               = NULL;
   task->parent           = NULL;
   task->prev             = NULL;
@@ -564,9 +602,9 @@ void dart__tasking__destroy_task(dart_task_t *task)
 
   dart_tasking_datadeps_reset(task);
 
-  pthread_mutex_lock(&task_recycle_mutex);
-  DART_STACK_PUSH(task_recycle_list, task);
-  pthread_mutex_unlock(&task_recycle_mutex);
+  dart__base__mutex_lock(&parent->mutex);
+  DART_STACK_PUSH(parent->recycle_tasks, task);
+  dart__base__mutex_unlock(&parent->mutex);
 }
 
 /**
@@ -612,6 +650,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       // the task may have changed once we get back here
       task = get_current_task();
 
+      DART_ASSERT(task != &root_task);
+
       // we need to lock the task shortly here before releasing datadeps
       // to allow for atomic check and update
       // of remote successors in dart_tasking_datadeps_handle_remote_task
@@ -619,24 +659,26 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       task->state = DART_TASK_FINISHED;
       dart__base__mutex_unlock(&(task->mutex));
 
-      dart_tasking_datadeps_release_local_task(task);
-
-      // let the parent know that we are done
-      int32_t nc = DART_DEC_AND_FETCH32(&task->parent->num_children);
-      DART_LOG_DEBUG("Parent %p has %i children left\n", task->parent, nc);
+      dart_tasking_datadeps_release_local_task(task, thread);
 
       // release the context
       dart__tasking__context_release(task->taskctx);
       task->taskctx = NULL;
 
       bool has_ref = task->has_ref;
+      dart_task_t *parent = task->parent;
 
       // clean up
       if (!has_ref){
         // only destroy the task if there are no references outside
         // referenced tasks will be destroyed in task_wait/task_freeref
+        // TODO: this needs some more thoughts!
         dart__tasking__destroy_task(task);
       }
+
+      // let the parent know that we are done
+      int32_t nc = DART_DEC_AND_FETCH32(&parent->num_children);
+      DART_LOG_DEBUG("Parent %p has %i children left\n", parent, nc);
 
     }
     // return to previous task
@@ -654,6 +696,7 @@ void dart_thread_init(dart_thread_t *thread, int threadnum)
   thread->ctxlist   = NULL;
   thread->last_steal_thread = 0;
   thread->yield_target = DART_YIELD_TARGET_YIELD;
+  thread->next_task    = NULL;
 #ifdef DART_TASK_THREADLOCAL_Q
   dart_tasking_taskqueue_init(&thread->queue);
   DART_LOG_TRACE("Thread %i (%p) has task queue %p",
@@ -716,6 +759,13 @@ void* thread_main(void *data)
 
     // process the next task
     dart_task_t *task = next_task(thread);
+
+    if (!in_idle && task == NULL) {
+      EVENT_ENTER(EVENT_IDLE);
+    }
+    if (in_idle && task != NULL) {
+      EVENT_EXIT(EVENT_IDLE);
+    }
     handle_task(task, thread);
 
     //DART_LOG_TRACE("thread_main: finished processing task %p", task);
@@ -772,13 +822,15 @@ void* thread_main(void *data)
 static
 void dart_thread_finalize(dart_thread_t *thread)
 {
-  thread->thread_id = -1;
-  thread->current_task = NULL;
-  thread->ctxlist = NULL;
+  if (thread != NULL) {
+    thread->thread_id = -1;
+    thread->current_task = NULL;
+    thread->ctxlist = NULL;
 
 #ifdef DART_TASK_THREADLOCAL_Q
-  dart_tasking_taskqueue_finalize(&thread->queue);
+    dart_tasking_taskqueue_finalize(&thread->queue);
 #endif // DART_TASK_THREADLOCAL_Q
+  }
 }
 
 static void
@@ -849,6 +901,14 @@ dart__tasking__init()
 
   DART_LOG_TRACE("root_task: %p", &root_task);
 
+#ifdef USE_EXTRAE
+  if (Extrae_define_event_type) {
+    unsigned nvalues = 3;
+    Extrae_define_event_type(&et, "Thread State", &nvalues, ev, extrae_names);
+  }
+#endif
+
+
   dart__tasking__context_init();
 
 #ifndef DART_TASK_THREADLOCAL_Q
@@ -905,19 +965,38 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
     return;
   }
 
+  bool queuable = false;
+  if (task->state == DART_TASK_CREATED)
+  {
+    dart__base__mutex_lock(&task->mutex);
+    if (task->state == DART_TASK_CREATED) {
+      task->state = DART_TASK_QUEUED;
+      queuable = true;
+    }
+    dart__base__mutex_unlock(&task->mutex);
+  }
+
+  // make sure we don't queue the task if are not allowed to
+  if (!queuable) return;
+
   bool enqueued = false;
   // check whether the task has to be deferred
-  if (!dart__tasking__phase_is_runnable(task->phase)) {
+  if (task->parent == &root_task &&
+      !dart__tasking__phase_is_runnable(task->phase)) {
     dart_tasking_taskqueue_lock(&local_deferred_tasks);
     if (!dart__tasking__phase_is_runnable(task->phase)) {
-      DART_LOG_TRACE("Deferring release of task %p in phase %d",
-                     task, task->phase);
+      DART_LOG_TRACE("Deferring release of task %p in phase %d (q=%p, s=%zu)",
+                     task, task->phase,
+                     &local_deferred_tasks,
+                     local_deferred_tasks.num_elem);
       dart_tasking_taskqueue_push_unsafe(&local_deferred_tasks, task);
       enqueued = true;
     }
     dart_tasking_taskqueue_unlock(&local_deferred_tasks);
   }
+
   if (!enqueued){
+    // the task might have been queued in the mean-time
 #ifdef DART_TASK_THREADLOCAL_Q
     dart_thread_t *thread = get_current_thread();
     dart_taskqueue_t *q = &thread->queue;
@@ -947,7 +1026,7 @@ dart__tasking__create_task(
   }
 
   // start threads upon first task creation
-  if (dart__likely(!threads_running)) {
+  if (dart__unlikely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -960,6 +1039,7 @@ dart__tasking__create_task(
 
   dart_tasking_datadeps_handle_task(task, deps, ndeps);
 
+  dart__base__mutex_lock(&task->mutex);
   task->state = DART_TASK_CREATED;
   bool is_runnable = dart_tasking_datadeps_is_runnable(task);
   dart__base__mutex_unlock(&task->mutex);
@@ -989,7 +1069,7 @@ dart__tasking__create_task_handle(
   }
 
   // start threads upon first task creation
-  if (dart__likely(!threads_running)) {
+  if (dart__unlikely(!threads_running)) {
     start_threads(num_threads);
   }
 
@@ -999,10 +1079,11 @@ dart__tasking__create_task_handle(
   int32_t nc = DART_INC_AND_FETCH32(&task->parent->num_children);
   DART_LOG_DEBUG("Parent %p now has %i children", task->parent, nc);
 
-  dart_tasking_datadeps_handle_task(task, deps, ndeps);
-
+  dart__base__mutex_lock(&task->mutex);
   task->state = DART_TASK_CREATED;
-  if (dart_tasking_datadeps_is_runnable(task)) {
+  bool is_runnable = dart_tasking_datadeps_is_runnable(task);
+  dart__base__mutex_unlock(&task->mutex);
+  if (is_runnable) {
     dart__tasking__enqueue_runnable(task);
   }
 
@@ -1034,7 +1115,7 @@ dart__tasking__perform_matching(dart_thread_t *thread, dart_taskphase_t phase)
 dart_ret_t
 dart__tasking__task_complete()
 {
-  if (!threads_running) {
+  if (dart__unlikely(!threads_running)) {
     // threads are not running --> nothing to be done here
     return DART_OK;
   }
@@ -1042,21 +1123,31 @@ dart__tasking__task_complete()
   dart_thread_t *thread = get_current_thread();
 
   DART_ASSERT_MSG(
-    (thread->current_task != &(root_task) || thread->thread_id == 0),
+    !(thread->current_task == &(root_task) && thread->thread_id != 0),
     "Calling dart__tasking__task_complete() on ROOT task "
     "only valid on MASTER thread!");
 
-  dart_taskphase_t entry_phase = dart__tasking__phase_current();
+  DART_LOG_TRACE("Waiting for child tasks of %p to complete", thread->current_task);
 
-  if (thread->current_task == &(root_task) &&
-      entry_phase > DART_PHASE_FIRST) {
-    dart__tasking__perform_matching(thread, DART_PHASE_ANY);
-    // enable worker threads to poll for remote messages
-    worker_poll_remote = true;
+  dart_taskphase_t entry_phase;
+
+  bool is_root_task = thread->current_task == &(root_task);
+
+  if (is_root_task) {
+    entry_phase = dart__tasking__phase_current();
+    if (entry_phase > DART_PHASE_FIRST) {
+      dart__tasking__perform_matching(thread, DART_PHASE_ANY);
+      // enable worker threads to poll for remote messages
+      worker_poll_remote = true;
+    }
+  } else {
+    EXTRAE_EXIT(EVENT_TASK);
   }
 
   // 1) wake up all threads (might later be done earlier)
-  pthread_cond_broadcast(&task_avail_cond);
+  if (thread_idle_method == DART_THREAD_IDLE_WAIT) {
+    pthread_cond_broadcast(&task_avail_cond);
+  }
 
 
   // 2) start processing ourselves
@@ -1065,48 +1156,76 @@ dart__tasking__task_complete()
   DART_LOG_DEBUG("dart__tasking__task_complete: waiting for children of task %p", task);
 
   // save context
-  context_t tmpctx  = thread->retctx;
+  // TODO is this really necessary?
+  context_t tmpctx;
+  bool restore_ctx = false;
+  if (task->num_children) {
+    tmpctx = thread->retctx;
+    restore_ctx = true;
+  }
 
   // main task processing routine
-  while (DART_FETCH32(&(task->num_children)) > 0) {
+  while (task->num_children > 0) {
     dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
-    remote_progress(thread, (next == NULL));
+    if (next == NULL) {
+      remote_progress(thread, (thread->thread_id == 0));
+    }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // c) check whether blocked tasks are ready
-    dart__task__wait_progress();
+    if (next == NULL || thread->thread_id == 0) {
+      dart__task__wait_progress();
+      if (next == NULL)
+        next = next_task(thread);
+    }
     // d) process our tasks
     handle_task(next, thread);
+    // e) requery the thread as it might have changed
+    thread = get_current_thread();
   }
 
-  // restore context (in case we're called from within another task)
-  thread->retctx = tmpctx;
+  if (restore_ctx) {
+    // restore context (in case we're called from within another task and switched threads)
+    thread->retctx = tmpctx;
+  }
 
+  // destroyed child tasks can now be re-used
   dart__tasking__check_cancellation(thread);
+  if (thread->current_task->recycle_tasks){
+    // recycled tasks can now be used again
+    pthread_mutex_lock(&task_free_mutex);
+    if (task_free_list == NULL) {
+      task_free_list = thread->current_task->recycle_tasks;
+    } else {
+      dart_task_t *elem = task_free_list;
+      if (elem != NULL) {
+        // walk to the end of the list
+        while (elem->next != NULL) elem = elem->next;
+      }
+      // add the recycled elements to the end of the list
+      elem->next = thread->current_task->recycle_tasks;
+    }
+    thread->current_task->recycle_tasks = NULL;
+    pthread_mutex_unlock(&task_free_mutex);
+  }
 
   // 3) clean up if this was the root task and thus no other tasks are running
-  if (thread->current_task == &(root_task)) {
+  if (is_root_task) {
     if (entry_phase > DART_PHASE_FIRST) {
       // wait for all units to finish their tasks
       dart_tasking_remote_progress_blocking(DART_TEAM_ALL);
     }
-    // recycled tasks can now be used again
-    pthread_mutex_lock(&task_recycle_mutex);
-    if (task_free_list == NULL) {
-      task_free_list = task_recycle_list;
-    } else {
-      task_free_list->next = task_recycle_list;
-    }
-    task_recycle_list = NULL;
-    pthread_mutex_unlock(&task_recycle_mutex);
     // reset the runnable phase
     dart__tasking__phase_set_runnable(DART_PHASE_FIRST);
     // disable remote polling of worker threads
     worker_poll_remote = false;
     // reset the phase counter
     dart__tasking__phase_reset();
+  } else {
+    EXTRAE_ENTER(EVENT_TASK);
   }
+
   dart_tasking_datadeps_reset(thread->current_task);
 
 
@@ -1122,15 +1241,13 @@ dart__tasking__taskref_free(dart_taskref_t *tr)
 
   // free the task if already destroyed
   dart__base__mutex_lock(&(*tr)->mutex);
+  (*tr)->has_ref = false;
   if ((*tr)->state == DART_TASK_FINISHED && (*tr)->has_ref) {
     dart__base__mutex_unlock(&(*tr)->mutex);
     dart__tasking__destroy_task(*tr);
     *tr = DART_TASK_NULL;
     return DART_OK;
   }
-
-  // the task is unfinished, just mark it as free'able
-  (*tr)->has_ref = false;
 
   dart__base__mutex_unlock(&(*tr)->mutex);
 
@@ -1311,8 +1428,6 @@ dart__tasking__fini()
   dart__tasking__ayudame_fini();
 #endif // DART_ENABLE_AYUDAME
 
-  free_tasklist(task_recycle_list);
-  task_recycle_list = NULL;
   free_tasklist(task_free_list);
   task_free_list = NULL;
   if (threads_running) {
@@ -1327,6 +1442,8 @@ dart__tasking__fini()
 #endif
 
   dart__task__wait_fini();
+
+  dart_tasking_tasklist_fini();
 
   initialized = false;
   DART_LOG_DEBUG("dart__tasking__fini(): Finished with tear-down");
