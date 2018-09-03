@@ -4,7 +4,10 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_cancellation.h>
 #include <dash/dart/tasking/dart_tasking_wait.h>
+#include <ayu_events.h>
 
+
+#define AYU_RT_DASH   123 
 
 /**
  * \brief Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
@@ -12,7 +15,10 @@
 dart_ret_t
 dart_tasking_init()
 {
-  return dart__tasking__init();
+  ayu_event_preinit(AYU_RT_DASH);
+  dart_ret_t dartObject = dart__tasking__init();
+  ayu_event_init(dart__tasking__num_threads());
+  return dartObject;
 }
 
 /**
@@ -54,11 +60,22 @@ dart_task_create(
         size_t           ndeps,
         dart_task_prio_t prio)
 {
-  return dart__tasking__create_task(
+  char _func_name[] = "dart_task_create";
+  uint64_t _func_id = (uint64_t) _func_name;
+  uint64_t _scope_id = omp_get_thread_num(); 
+  uint64_t _task_id = (uint64_t) dart_task_create;
+
+  dart_ret_t dartObject = dart__tasking__create_task(
                   fn, data,
                   data_size,
                   deps, ndeps,
                   prio);
+  ayu_event_addtask(_task_id, _func_id, prio, _scope_id);
+  for(int i=0; i<ndeps; i++)
+  {
+    ayu_event_adddependency(_task_id, _task_id, data[i], AYU_UNKNOWN_MEMADDR);
+  }
+  return dartObject;
 }
 
 /**
