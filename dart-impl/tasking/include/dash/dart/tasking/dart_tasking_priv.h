@@ -80,6 +80,7 @@ struct dart_task_data {
   struct dart_dephash_elem  *remote_successor;
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
   dart_wait_handle_t        *wait_handle;
+  const char                *descr;           // the description of the task
   dart_mutex_t               mutex;
   dart_taskphase_t           phase;
   int                        delay;           // delay in case this task yields
@@ -163,7 +164,8 @@ dart__tasking__create_task(
         size_t           data_size,
   const dart_task_dep_t *deps,
         size_t           ndeps,
-        dart_task_prio_t prio) DART_INTERNAL;
+        dart_task_prio_t prio,
+  const char            *descr) DART_INTERNAL;
 
 
 dart_ret_t

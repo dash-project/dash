@@ -58,7 +58,8 @@ dart_task_create(
         size_t           data_size,
   const dart_task_dep_t *deps,
         size_t           ndeps,
-        dart_task_prio_t prio)
+        dart_task_prio_t prio,
+  const char            *descr)
 {
   char _func_name[] = "dart_task_create";
   uint64_t _func_id = (uint64_t) _func_name;
@@ -69,13 +70,7 @@ dart_task_create(
                   fn, data,
                   data_size,
                   deps, ndeps,
-                  prio);
-  ayu_event_addtask(_task_id, _func_id, prio, _scope_id);
-  for(int i=0; i<ndeps; i++)
-  {
-    ayu_event_adddependency(_task_id, _task_id, data[i], AYU_UNKNOWN_MEMADDR);
-  }
-  return dartObject;
+                  prio, descr);
 }
 
 /**
