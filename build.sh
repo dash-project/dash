@@ -87,9 +87,10 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=ON \
                         -DENABLE_VALGRIND=OFF \
                         -DENABLE_TCMALLOC=ON \
+                        -DENABLE_AYUDAME=ON \
                         \
-                        -DBUILD_EXAMPLES=ON \
-                        -DBUILD_TESTS=ON \
+                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_TESTS=OFF \
                         -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \

@@ -28,6 +28,9 @@
 #include <errno.h>
 #include <setjmp.h>
 #include <time.h>
+#include <ayu_events.h>
+
+#define AYU_RT_DASH   123 
 
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
@@ -567,6 +570,11 @@ dart_task_t * create_task(
   } else {
     task->descr = descr;
   }
+
+  uint64_t scope_id = dart__tasking__thread_num();
+  ayu_event_registerfunction((uint64_t)task->descr, task->descr);
+  ayu_event_addtask((uint64_t)task, (uint64_t)task->descr, prio, scope_id);
+
   return task;
 }
 
@@ -605,6 +613,8 @@ void dart__tasking__destroy_task(dart_task_t *task)
   dart__base__mutex_lock(&parent->mutex);
   DART_STACK_PUSH(parent->recycle_tasks, task);
   dart__base__mutex_unlock(&parent->mutex);
+
+  ayu_event_removetask((uint64_t)task);
 }
 
 /**
@@ -626,8 +636,12 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->state = DART_TASK_RUNNING;
     dart__base__mutex_unlock(&(task->mutex));
 
+    ayu_event_runtask((uint64_t) task);
+
     // start execution, change to another task in between
     invoke_task(task, thread);
+
+    ayu_event_postruntask((uint64_t) task);
 
     // we're coming back into this task here
     dart_task_t *prev_task = dart_task_current_task();
@@ -940,6 +954,9 @@ dart__tasking__init()
   dart__task__wait_init();
 
   initialized = true;
+
+  ayu_event_preinit(AYU_RT_DASH);
+  ayu_event_init(dart__tasking__num_threads());
 
   return DART_OK;
 }
