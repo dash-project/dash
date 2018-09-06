@@ -793,7 +793,7 @@ namespace internal{
     TaskFunc            f,
     DepContainer&&      deps,
     const char         *name = nullptr) {
-    internal::async(f, DART_PRIO_LOW, std::forward<DepContainer>(deps), name);
+    internal::async(f, DART_PRIO_PARENT, std::forward<DepContainer>(deps), name);
   }
 } // namespace internal
 
@@ -861,7 +861,7 @@ namespace internal{
   template<class TaskFunc, typename ... Args>
   void
   async(TaskFunc f, Args&&... args){
-    async(f, DART_PRIO_LOW, std::forward<Args>(args)...);
+    async(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
   }
 
 
@@ -935,7 +935,7 @@ namespace internal{
     const char* name,
     TaskFunc    f,
     Args&&...   args){
-    async(name, f, DART_PRIO_LOW, std::forward<Args>(args)...);
+    async(name, f, DART_PRIO_PARENT, std::forward<Args>(args)...);
   }
 
 #define SLOC_(__file, __delim, __line) __file # __delim # __line
@@ -1025,7 +1025,7 @@ namespace internal{
     TaskFunc  f,
     Args&&... args) -> TaskHandle<decltype(f())>
   {
-    return async_handle(f, DART_PRIO_LOW, std::forward<Args>(args)...);
+    return async_handle(f, DART_PRIO_PARENT, std::forward<Args>(args)...);
   }
 
   /**
@@ -1039,7 +1039,7 @@ namespace internal{
   async_handle(
     TaskFunc             f,
     DependencyGenerator  dependency_generator,
-    dart_task_prio_t     prio = DART_PRIO_LOW) -> TaskHandle<decltype(f())>
+    dart_task_prio_t     prio = DART_PRIO_PARENT) -> TaskHandle<decltype(f())>
   {
     DependencyVector deps;
     dependency_generator(std::inserter(deps, deps.begin()));
