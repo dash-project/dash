@@ -119,8 +119,7 @@ struct task_deque{
 
 typedef struct dart_taskqueue {
   size_t              num_elem;
-  struct task_deque   lowprio;
-  struct task_deque   highprio;
+  struct task_deque   queues[__DART_PRIO_COUNT];
   dart_mutex_t        mutex;
 } dart_taskqueue_t;
 

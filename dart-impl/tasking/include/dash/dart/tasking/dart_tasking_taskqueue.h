@@ -134,7 +134,7 @@ DART_INLINE
 int
 dart_tasking_taskqueue_isempty(const dart_taskqueue_t *tq)
 {
-  return (tq->lowprio.head == NULL && tq->highprio.head);
+  return (tq->num_elem == 0);
 }
 
 /**
@@ -211,8 +211,10 @@ dart_tasking_taskqueue_has_prio_task(
   dart_taskqueue_t *tq,
   dart_task_prio_t  prio)
 {
-  return (tq->highprio.head != NULL &&
-          (prio == DART_PRIO_LOW && tq->lowprio.head  != NULL));
+  for (int i = prio; i >= DART_PRIO_HIGH; --i) {
+    if (tq->queues[i].head != NULL) return true;
+  }
+  return false;
 }
 
 

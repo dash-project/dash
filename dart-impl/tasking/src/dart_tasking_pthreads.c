@@ -102,19 +102,20 @@ static struct timespec thread_idle_sleeptime;
 
 // a dummy task that serves as a root task for all other tasks
 static dart_task_t root_task = {
-    .next = NULL,
-    .prev = NULL,
-    .fn   = NULL,
-    .data = NULL,
-    .unresolved_deps = 0,
-    .successor = NULL,
-    .parent = NULL,
-    .recycle_tasks = NULL,
+    .next             = NULL,
+    .prev             = NULL,
+    .fn               = NULL,
+    .data             = NULL,
+    .unresolved_deps  = 0,
+    .successor        = NULL,
+    .parent           = NULL,
+    .recycle_tasks    = NULL,
     .remote_successor = NULL,
-    .local_deps = NULL,
-    .num_children = 0,
-    .state  = DART_TASK_ROOT,
-    .data_allocated = false};
+    .local_deps       = NULL,
+    .prio             = DART_PRIO_DEFAULT,
+    .num_children     = 0,
+    .state            = DART_TASK_ROOT,
+    .data_allocated   = false};
 
 static void
 destroy_threadpool(bool print_stats);
@@ -548,17 +549,17 @@ dart_task_t * create_task(
   task->phase        = task->parent->state == DART_TASK_ROOT ?
                                                 dart__tasking__phase_current()
                                                 : DART_PHASE_ANY;
-  task->has_ref      = false;
+  task->has_ref       = false;
   task->remote_successor = NULL;
-  task->local_deps   = NULL;
-  task->prev         = NULL;
-  task->successor    = NULL;
+  task->local_deps    = NULL;
+  task->prev          = NULL;
+  task->successor     = NULL;
   task->recycle_tasks = NULL;
-  task->prio         = prio;
-  task->taskctx      = NULL;
+  task->prio          = (prio == DART_PRIO_PARENT) ? task->parent->prio : prio;
+  task->taskctx       = NULL;
   task->unresolved_deps = 0;
   task->unresolved_remote_deps = 0;
-  task->wait_handle  = NULL;
+  task->wait_handle   = NULL;
 
   // if descr is an absolute path (as with __FILE__) we only use the basename
   if (descr && descr[0] == '/') {
