@@ -30,7 +30,9 @@
 #include <time.h>
 #include <ayu_events.h>
 
-#define AYU_RT_DASH   123 
+#ifndef AYU_RT_DART
+#define AYU_RT_DART   10
+#endif
 
 #define EVENT_ENTER(_ev) do {\
   EXTRAE_ENTER(_ev);         \
@@ -955,7 +957,7 @@ dart__tasking__init()
 
   initialized = true;
 
-  ayu_event_preinit(AYU_RT_DASH);
+  ayu_event_preinit(AYU_RT_DART);
   ayu_event_init(dart__tasking__num_threads());
 
   return DART_OK;
@@ -1467,5 +1469,3 @@ dart__tasking__fini()
 
   return DART_OK;
 }
-
-
