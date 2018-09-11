@@ -130,6 +130,9 @@ namespace internal {
     try{
       FuncT& f = *static_cast<FuncT*>(data);
       f();
+      // we have to call the destructor on the function object, the memory
+      // will be free'd by the runtime
+      f.~FuncT();
     } catch (const BaseCancellationSignal& cs) {
       // nothing to be done, the cancellation is triggered by the d'tor
     } catch (...) {
