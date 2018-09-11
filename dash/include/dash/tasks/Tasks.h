@@ -463,6 +463,7 @@ namespace internal {
     return TaskDependency(globref.dart_gptr(), DART_DEP_IN, phase);
   }
 
+#if 0
   /**
    * Create an input dependency using the global memory range \c globref.
    *
@@ -486,9 +487,13 @@ namespace internal {
   in(const T* lptr, int32_t phase = DART_PHASE_TASK) {
     return TaskDependency(lptr, DART_DEP_IN, phase);
   }
+#endif
 
   /**
-   * Create an input dependency using the local memory pointer \c lptr.
+   * Create an input dependency using the local memory reference \c lptr.
+   *
+   * \note The value referenced by \c lref is never accessed but it is non-const
+   *       to prohibit temporary values.
    *
    * \sa TaskDependency
    */
@@ -497,10 +502,10 @@ namespace internal {
   auto
   in(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
-    -> typename std::enable_if<!(internal::is_range<T>::value || internal::has_gptr<T>::value || std::is_pointer<T>::value),
+    -> typename std::enable_if<!(internal::has_gptr<T>::value),
                                TaskDependency>::type
   {
-    return dash::tasks::in(const_cast<const T*>(&lref), phase);
+    return TaskDependency(&lref, DART_DEP_IN, phase);
   }
 
   /**
@@ -662,6 +667,7 @@ namespace internal {
     return TaskDependency(globref.dart_gptr(), DART_DEP_OUT, phase);
   }
 
+#if 0
   /**
    * Create an output dependency using the global memory range \c globref.
    *
@@ -687,20 +693,24 @@ namespace internal {
   out(const T* lptr, int32_t phase = DART_PHASE_TASK) {
     return TaskDependency(lptr, DART_DEP_OUT, phase);
   }
+#endif
 
   /**
    * Create an output dependency using the local memory pointer \c lptr.
+   *
+   * \note The value referenced by \c lref is never accessed but it is non-const
+   *       to prohibit temporary values.
    *
    * \sa TaskDependency
    */
   template<typename T>
   constexpr
   auto
-  out(const T& lref, int32_t phase = DART_PHASE_TASK)
+  out(T& lref, int32_t phase = DART_PHASE_TASK)
     // exclude range types covered above
-    -> typename std::enable_if<!(internal::is_range<T>::value || internal::has_gptr<T>::value || std::is_pointer<T>::value),
+    -> typename std::enable_if<!(internal::has_gptr<T>::value),
                                TaskDependency>::type {
-    return dash::tasks::out(const_cast<const T*>(&lref), phase);
+    return TaskDependency(&lref, DART_DEP_OUT, phase);
   }
 
 
