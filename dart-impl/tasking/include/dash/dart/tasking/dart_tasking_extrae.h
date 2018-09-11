@@ -18,7 +18,7 @@ void Extrae_event (extrae_type_t type, extrae_value_t value) __attribute__((weak
 void Extrae_fini (void) __attribute__((weak));
 void Extrae_define_event_type (extrae_type_t *type, char *type_description, unsigned *nvalues, extrae_value_t *values, char **values_description) __attribute__((weak));
 
-static extrae_type_t et;
+static extrae_type_t et = 0;
 static extrae_value_t ev[] = {0, 10, 20};
 static char *extrae_names[] = {"NONE", "COMPUTE", "IDLE"};
 
