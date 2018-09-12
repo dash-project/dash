@@ -575,7 +575,8 @@ dart_task_t * create_task(
 
   uint64_t scope_id = dart__tasking__thread_num();
   ayu_event_registerfunction((uint64_t)task->descr, task->descr);
-  ayu_event_addtask((uint64_t)task, (uint64_t)task->descr, prio, scope_id);
+  ayu_event_addtask(dart__tasking__ayudame_make_globalunique(task),
+                    (uint64_t)task->descr, prio, scope_id);
 
   return task;
 }
@@ -616,7 +617,7 @@ void dart__tasking__destroy_task(dart_task_t *task)
   DART_STACK_PUSH(parent->recycle_tasks, task);
   dart__base__mutex_unlock(&parent->mutex);
 
-  ayu_event_removetask((uint64_t)task);
+  ayu_event_removetask(dart__tasking__ayudame_make_globalunique(task));
 }
 
 /**
@@ -638,12 +639,10 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->state = DART_TASK_RUNNING;
     dart__base__mutex_unlock(&(task->mutex));
 
-    ayu_event_runtask((uint64_t) task);
+    ayu_event_runtask(dart__tasking__ayudame_make_globalunique(task));
 
     // start execution, change to another task in between
     invoke_task(task, thread);
-
-    ayu_event_postruntask((uint64_t) task);
 
     // we're coming back into this task here
     dart_task_t *prev_task = dart_task_current_task();
@@ -667,6 +666,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       task = get_current_task();
 
       DART_ASSERT(task != &root_task);
+
+      ayu_event_postruntask(dart__tasking__ayudame_make_globalunique(task));
 
       // we need to lock the task shortly here before releasing datadeps
       // to allow for atomic check and update

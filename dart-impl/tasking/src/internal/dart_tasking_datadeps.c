@@ -10,6 +10,7 @@
 #include <dash/dart/tasking/dart_tasking_remote.h>
 #include <dash/dart/tasking/dart_tasking_taskqueue.h>
 #include <dash/dart/tasking/dart_tasking_copyin.h>
+#include <dash/dart/tasking/dart_tasking_ayudame.h>
 #include <ayu_events.h>
 
 //#define DART_DEPHASH_SIZE 1023
@@ -146,9 +147,15 @@ static inline void instrument_task_dependency(
   //       if this addr is NULL, it is a direct task dependency, please use
   //       AYU_UNKNOWN_MEMADDR in that case
   if(gptr.addr_or_offs.addr == NULL)
-    ayu_event_adddependency((uint64_t) last, (uint64_t) first, (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
+    ayu_event_adddependency(
+      dart__tasking__ayudame_make_globalunique(last),
+      dart__tasking__ayudame_make_globalunique(first),
+      (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
   else
-    ayu_event_adddependency((uint64_t) last, (uint64_t) first, (uint64_t) gptr.addr_or_offs.offset, AYU_UNKNOWN_MEMADDR);
+    ayu_event_adddependency(
+      dart__tasking__ayudame_make_globalunique(last),
+      dart__tasking__ayudame_make_globalunique(first),
+      (uint64_t) gptr.addr_or_offs.offset, AYU_UNKNOWN_MEMADDR);
 }
 
 /**
