@@ -278,6 +278,9 @@ dart__tasking__yield(int delay)
     check_requeue = true;
   } else {
 
+    if (next == NULL) {
+      next = next_task(thread);
+    }
     // progress
     remote_progress(thread, (next == NULL));
     if (next == NULL) {
