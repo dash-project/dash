@@ -1463,7 +1463,7 @@ public:
 
 private:
   template <typename _Iter>
-  void construct_at_end(_Iter begin, _Iter end) noexcept
+  void construct_at_end(_Iter begin, _Iter end)
   {
     if (m_lsize == 0) return;
 
@@ -1477,7 +1477,7 @@ private:
     }
   }
 
-  void construct_at_end(size_type nl) noexcept
+  void construct_at_end(size_type nl)
   {
     if (nl == 0) return;
 

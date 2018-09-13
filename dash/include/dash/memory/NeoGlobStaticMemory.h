@@ -210,10 +210,10 @@ private:
   std::vector<size_type>     m_local_sizes{};
   // Uniform Initialization does not work in G++ 4.9.x
   // This is why we have to use C-Style Initializer Initialization
-  dart_gptr_t                m_begin = DART_GPTR_NULL;
-  local_pointer              m_lbegin{nullptr};
-  local_pointer              m_lend{nullptr};
-  mutable size_type          m_size{std::numeric_limits<size_type>::max()};
+  dart_gptr_t       m_begin = DART_GPTR_NULL;
+  local_pointer     m_lbegin{nullptr};
+  local_pointer     m_lend{nullptr};
+  mutable size_type m_size{std::numeric_limits<size_type>::max()};
 
 private:
   void do_allocate(size_type nels);
@@ -339,19 +339,22 @@ inline void MemorySpace<
   DASH_ASSERT_MSG(
       !DART_GPTR_ISNULL(m_begin), "global memory allocation failed");
 
-  DASH_ASSERT_RETURNS(
-      dart_allgather(
-          // source buffer
-          &nels,
-          // target buffer
-          m_local_sizes.data(),
-          // nels
-          1,
-          // dart type
-          dash::dart_datatype<size_type>::value,
-          // dart teamk
-          m_team->dart_id()),
-      DART_OK);
+  // TODO rko: Maybe there is a way to separate this
+  if (!std::is_same<SynchronizationPolicy, synchronization_single>::value) {
+    DASH_ASSERT_RETURNS(
+        dart_allgather(
+            // source buffer
+            &nels,
+            // target buffer
+            m_local_sizes.data(),
+            // nels
+            1,
+            // dart type
+            dash::dart_datatype<size_type>::value,
+            // dart teamk
+            m_team->dart_id()),
+        DART_OK);
+  }
 
   m_lbegin = static_cast<local_pointer>(alloc_rec.first);
   m_lend   = std::next(m_lbegin, nels);
@@ -388,6 +391,18 @@ inline void MemorySpace<
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
 
   if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
+    // TODO rko: Maybe there is a way to separate this
+    if (!std::is_same<SynchronizationPolicy, synchronization_single>::value) {
+      // We have to wait for the other since dart_team_memfree is
+      // non-collective This is required for symmetric allocation policy as
+      // the memory may be detached while other units are still operting on
+      // the unit's global memory
+      DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
+    }
+    auto const sz = m_team->size();
+    auto const uid = m_team->myid();
+    DASH_LOG_TRACE_VAR("MemorySpace.do_deallocate()", sz);
+    DASH_LOG_TRACE_VAR("MemorySpace.do_deallocate()", uid);
     m_allocation_policy.deallocate_segment(
         m_begin,
         static_cast<LocalMemorySpaceBase<

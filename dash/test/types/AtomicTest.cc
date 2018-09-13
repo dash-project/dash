@@ -219,6 +219,7 @@ TEST_F(AtomicTest, PunnedTypeFetchOp)
   value_t           val_zero = { 0x00, 0x00 };
   dash::team_unit_t owner(dash::size() - 1);
 
+  static_assert(std::is_standard_layout<value_t>::value, "must be true");
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
   if (dash::myid() == 0) {

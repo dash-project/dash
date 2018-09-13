@@ -126,7 +126,6 @@ public:
 
     res->deallocate(lptr, nels * sizeof(ElementType), alignof(ElementType));
 
-    DASH_ASSERT_RETURNS(dart_barrier(gptr.teamid), DART_OK);
     DASH_LOG_DEBUG("GlobalAllocationPolicy.do_global_deallocate >");
     return true;
   }
@@ -203,15 +202,58 @@ public:
       return true;
     }
 
-    // We have to wait for the other since dart_team_memfree is non-collective
-    // This is required for symmetric allocation policy as the memory may be
-    // detached while other units are still operting on the unit's global
-    // memory
-    DASH_ASSERT_RETURNS(dart_barrier(gptr.teamid), DART_OK);
-
     auto ret = dart_team_memfree(gptr) == DART_OK;
 
     return ret;
+  }
+};
+
+template <class ElementType, class LMemSpaceTag>
+class GlobalAllocationPolicy<
+    ElementType,
+    allocation_static,
+    synchronization_single,
+    LMemSpaceTag> {
+  using memory_space_tag = memory_space_host_tag;
+
+  static_assert(
+      std::is_same<LMemSpaceTag, memory_space_host_tag>::value,
+      "only HostSpace is supported");
+
+public:
+  std::pair<void*, dart_gptr_t> allocate_segment(
+      dart_team_t /*unused*/,
+      LocalMemorySpaceBase<memory_space_tag>* /* unused */,
+      std::size_t nels)
+  {
+    dart_gptr_t gptr;
+    void*       addr;
+
+    if (nels > 0) {
+      dash::dart_storage<ElementType> ds(nels);
+      auto const ret = dart_memalloc(ds.nelem, ds.dtype, &gptr);
+      if (ret != DART_OK) {
+        DASH_LOG_ERROR(
+            "LocalAllocationPolicy.do_global_allocate",
+            "cannot allocate local memory",
+            ret);
+        throw std::bad_alloc{};
+      }
+      dart_gptr_getaddr(gptr, &addr);
+      DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
+
+      return std::make_pair(addr, gptr);
+    }
+
+    return std::make_pair(nullptr, DART_GPTR_NULL);
+  }
+  bool deallocate_segment(
+      dart_gptr_t gptr,
+      LocalMemorySpaceBase<LMemSpaceTag>* /* unused */,
+      void* /* unused */,
+      size_t /* unused */)
+  {
+    return dart_memfree(gptr) == DART_OK;
   }
 };
 

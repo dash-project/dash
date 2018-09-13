@@ -39,13 +39,13 @@ public:
   typedef typename reference::value_type             value_type;
 
 private:
-  typedef dash::GlobStaticMem<
-      value_type,
-      dash::HostSpace,
-      //The noncollective policy ensures that global memory is allocated only
-      //by the owner and not the collectively across the team
-      dash::global_allocation_policy::non_collective>
-      GlobMem_t;
+
+  using GlobMem_t = dash::MemorySpace<
+    memory_domain_global,
+    value_type,
+    allocation_static,
+    synchronization_single,
+    dash::HostSpace>;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);

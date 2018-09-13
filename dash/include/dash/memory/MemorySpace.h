@@ -23,7 +23,7 @@ using GlobStaticMem = ::dash::MemorySpace<
 ///////////////////////////////////////////////////////////////////////////////
 //
 
-// TODO rko: maybe there is a better way insteaf of all these specializations?
+// TODO rko: maybe there is a better way instead of all these specializations?
 
 namespace detail {
 template <class, class>
