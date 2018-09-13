@@ -45,7 +45,10 @@ num_level(size_t size)
   unsigned int level = 1;
   size_t shifter = 0x02;
 
-  if(size > 0x8000000000000000) {
+  /* Check that most significan bit is not 1 because that means:
+   *   a) You are requesting for sure more memory than available
+   *   b) It will make the level calculation code to dead-lock */
+  if(size > ((size_t)1 << (sizeof(size_t)*8 - 1))) {
     return 0xFFFFFFFF;
   }
   
