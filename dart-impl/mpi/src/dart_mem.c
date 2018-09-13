@@ -45,7 +45,7 @@ num_level(size_t size)
   unsigned int level = 1;
   size_t shifter = 0x02;
 
-  if(size > (9223372036854775808U)) {
+  if(size > 0x8000000000000000) {
     return 0xFFFFFFFF;
   }
   
