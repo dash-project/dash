@@ -39,11 +39,18 @@ struct dart_buddy {
 char* dart_mempool_localalloc;
 struct dart_buddy  *  dart_localpool;
 
-static inline int
+static inline unsigned int
 num_level(size_t size)
 {
-  unsigned int level  = 1;
-  while ((((unsigned int) 1) << level) < size) {
+  unsigned int level = 1;
+  size_t shifter = 0x02;
+
+  if(size > (9223372036854775808U)) {
+    return 0xFFFFFFFF;
+  }
+  
+  while (shifter < size) {
+    shifter <<= 1;
     level++;
   }
   return level;
