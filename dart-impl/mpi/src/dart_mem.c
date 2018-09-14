@@ -69,8 +69,9 @@ dart_buddy_new(size_t size)
 {
   DART_ASSERT(is_pow_of_2(size));
   unsigned int level  = num_level(size) - DART_MEM_ALIGN_BITS;
-  // do not shift more than 31 bit
-  if(level > sizeof(unsigned int) * 8){
+  /* Modern CPUs are able to use 48-bits virtual addresses,
+   * this allows to address up to 256 TiB of memory */
+  if(level > 48) {
     DART_LOG_ERROR("Level of buddy allocator invalid");
     return NULL;
   }
