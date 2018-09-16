@@ -6,7 +6,6 @@
 #include <dash/Matrix.h>
 #include <dash/Pattern.h>
 #include <dash/halo/StencilOperator.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <type_traits>
 #include <vector>

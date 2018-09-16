@@ -7,8 +7,6 @@
 #include <dash/Atomic.h>
 #include <dash/coarray/CoEventRef.h>
 
-#include <dash/memory/GlobStaticMem.h>
-
 namespace dash {
 namespace coarray {
 

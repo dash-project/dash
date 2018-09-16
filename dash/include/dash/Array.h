@@ -9,7 +9,6 @@
 #include <dash/memory/MemorySpace.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
-#include <dash/Shared.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
 

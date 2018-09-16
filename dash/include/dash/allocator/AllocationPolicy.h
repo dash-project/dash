@@ -56,15 +56,13 @@ struct AttachDetachPolicy {
 };
 
 template <
-    class ElementType,
     class AllocationPolicy,
     class SynchronizationPolicy,
     class LMemSpaceTag>
 class GlobalAllocationPolicy;
 
-template <class ElementType, class LMemSpaceTag>
+template <class LMemSpaceTag>
 class GlobalAllocationPolicy<
-    ElementType,
     allocation_static,
     synchronization_collective,
     LMemSpaceTag> : AttachDetachPolicy {
@@ -77,16 +75,17 @@ public:
   std::pair<void*, dart_gptr_t> allocate_segment(
       dart_team_t                             teamid,
       LocalMemorySpaceBase<memory_space_tag>* res,
-      std::size_t                             nels)
+      std::size_t                             nbytes,
+      std::size_t                             alignment)
   {
     DASH_LOG_DEBUG(
         "GlobalAllocationPolicy.do_global_allocate(nlocal)",
         "number of local values:",
-        nels);
+        nbytes);
 
-    auto lp = res->allocate(nels * sizeof(ElementType), alignof(ElementType));
+    auto lp = res->allocate(nbytes, alignment);
 
-    if (!lp && nels > 0) {
+    if (!lp && nbytes > 0) {
       throw std::bad_alloc{};
     }
 
@@ -94,10 +93,10 @@ public:
         "GlobalAllocationPolicy.do_global_allocate(nlocal)", lp);
 
     auto gptr = AttachDetachPolicy::do_global_attach(
-        teamid, lp, nels * sizeof(ElementType));
+        teamid, lp, nbytes);
 
     if (DART_GPTR_ISNULL(gptr)) {
-      res->deallocate(lp, nels * sizeof(ElementType), alignof(ElementType));
+      res->deallocate(lp, nbytes, alignment);
       throw std::bad_alloc{};
     }
 
@@ -115,25 +114,25 @@ public:
       dart_gptr_t                             gptr,
       LocalMemorySpaceBase<memory_space_tag>* res,
       void*                                   lptr,
-      size_t                                  nels)
+      size_t                                  nbytes,
+      size_t                                  alignment)
   {
     DASH_LOG_DEBUG("< GlobalAllocationPolicy.do_global_deallocate");
     DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", gptr);
     DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", lptr);
-    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", nels);
+    DASH_LOG_DEBUG_VAR("GlobalAllocationPolicy.do_global_deallocate", nbytes);
 
     DASH_ASSERT_RETURNS(AttachDetachPolicy::do_global_detach(gptr), true);
 
-    res->deallocate(lptr, nels * sizeof(ElementType), alignof(ElementType));
+    res->deallocate(lptr, nbytes, alignment);
 
     DASH_LOG_DEBUG("GlobalAllocationPolicy.do_global_deallocate >");
     return true;
   }
 };
 
-template <class ElementType>
+template <>
 class GlobalAllocationPolicy<
-    ElementType,
     allocation_static,
     synchronization_collective,
     memory_space_host_tag> {
@@ -146,22 +145,23 @@ public:
   std::pair<void*, dart_gptr_t> allocate_segment(
       dart_team_t teamid,
       LocalMemorySpaceBase<memory_space_tag>* /* res */,
-      std::size_t nels)
+      std::size_t nbytes,
+      std::size_t /*alignment*/)
   {
     DASH_LOG_DEBUG(
         "GlobalAllocationPolicy.do_global_allocate(nlocal)",
         "number of local values:",
-        nels);
+        nbytes);
 
     dart_gptr_t gptr;
 
-    dash::dart_storage<ElementType> ds(nels);
+    dash::dart_storage<uint8_t> ds(nbytes);
     if (dart_team_memalloc_aligned(teamid, ds.nelem, ds.dtype, &gptr) !=
         DART_OK) {
       DASH_LOG_ERROR(
           "GlobalAllocationPolicy.do_global_allocate(nlocal)",
           "cannot allocate global memory segment",
-          nels);
+          nbytes);
       gptr = DART_GPTR_NULL;
     }
 
@@ -191,7 +191,8 @@ public:
       dart_gptr_t gptr,
       LocalMemorySpaceBase<memory_space_tag>* /* unused */,
       void* /* unused */,
-      size_t /* unused */)
+      size_t /* unused */,
+      size_t /*unused*/)
   {
     DASH_LOG_TRACE(
         "GlobalAllocationPolicy.do_global_deallocate",
@@ -207,103 +208,6 @@ public:
     return ret;
   }
 };
-
-template <class ElementType, class LMemSpaceTag>
-class GlobalAllocationPolicy<
-    ElementType,
-    allocation_static,
-    synchronization_single,
-    LMemSpaceTag> {
-  using memory_space_tag = memory_space_host_tag;
-
-  static_assert(
-      std::is_same<LMemSpaceTag, memory_space_host_tag>::value,
-      "only HostSpace is supported");
-
-public:
-  std::pair<void*, dart_gptr_t> allocate_segment(
-      dart_team_t /*unused*/,
-      LocalMemorySpaceBase<memory_space_tag>* /* unused */,
-      std::size_t nels)
-  {
-    dart_gptr_t gptr;
-    void*       addr;
-
-    if (nels > 0) {
-      dash::dart_storage<ElementType> ds(nels);
-      auto const ret = dart_memalloc(ds.nelem, ds.dtype, &gptr);
-      if (ret != DART_OK) {
-        DASH_LOG_ERROR(
-            "LocalAllocationPolicy.do_global_allocate",
-            "cannot allocate local memory",
-            ret);
-        throw std::bad_alloc{};
-      }
-      dart_gptr_getaddr(gptr, &addr);
-      DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
-
-      return std::make_pair(addr, gptr);
-    }
-
-    return std::make_pair(nullptr, DART_GPTR_NULL);
-  }
-  bool deallocate_segment(
-      dart_gptr_t gptr,
-      LocalMemorySpaceBase<LMemSpaceTag>* /* unused */,
-      void* /* unused */,
-      size_t /* unused */)
-  {
-    return dart_memfree(gptr) == DART_OK;
-  }
-};
-
-template <
-    class T,
-    class U,
-    class AllocationPolicy,
-    class SynchronizationPolicy,
-    class LMemSpaceTag>
-constexpr bool operator==(
-    GlobalAllocationPolicy<
-        T,
-        AllocationPolicy,
-        SynchronizationPolicy,
-        LMemSpaceTag> const& lhs,
-    GlobalAllocationPolicy<
-        U,
-        AllocationPolicy,
-        SynchronizationPolicy,
-        LMemSpaceTag> const& rhs)
-{
-  // Two allocation policies are equal if both value types have an equal
-  // length in bytes and the implementatation strategies are equal as well
-  // (enforced by the type information)
-  return sizeof(T) == sizeof(U);
-}
-
-template <
-    class T,
-    class U,
-    class AllocationPolicy,
-    class SynchronizationPolicy,
-    class LMemSpaceTag>
-constexpr bool operator!=(
-    GlobalAllocationPolicy<
-        T,
-        AllocationPolicy,
-        SynchronizationPolicy,
-        LMemSpaceTag> const& lhs,
-    GlobalAllocationPolicy<
-        U,
-        AllocationPolicy,
-        SynchronizationPolicy,
-        LMemSpaceTag> const& rhs)
-{
-  // Two allocation policies are equal if both value types have an equal
-  // length in bytes and the implementatation strategies are equal as well
-  // (enforced by the type information)
-  return !(lhs == rhs);
-}
 
 namespace detail {
 

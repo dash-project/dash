@@ -223,10 +223,6 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
-    int wait = 0;
-    while (wait)
-      ;
-
   using elem_t    = int;
   auto * default_memspace = dash::get_default_global_memory_space();
   using memory_space_t = std::remove_pointer<decltype(default_memspace)>::type;

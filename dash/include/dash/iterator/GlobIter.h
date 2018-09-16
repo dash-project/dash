@@ -4,7 +4,6 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <functional>
 #include <sstream>

@@ -2,7 +2,6 @@
 #define DASH__HALO__HALO_H__
 
 #include <dash/iterator/GlobIter.h>
-#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/util/FunctionalExpr.h>

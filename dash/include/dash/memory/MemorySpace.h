@@ -5,7 +5,7 @@
 #include <dash/memory/HostSpace.h>
 
 #include <dash/memory/GlobLocalMemoryPool.h>
-#include <dash/memory/NeoGlobStaticMemory.h>
+#include <dash/memory/GlobStaticMem.h>
 
 #include <dash/GlobPtr.h>
 

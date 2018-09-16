@@ -1,19 +1,11 @@
-#ifndef DASH__GLOB_STATIC_HEAP_H__INCLUDED
-#define DASH__GLOB_STATIC_HEAP_H__INCLUDED
+#ifndef DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
+#define DASH__MEMORY__GLOB_STATIC_MEMORY_H__INCLUDED
 
-#include <dash/dart/if/dart.h>
+#include <dash/Exception.h>
+#include <dash/allocator/AllocationPolicy.h>
+#include <dash/memory/MemorySpaceBase.h>
 
-#include <dash/Types.h>
-#include <dash/GlobPtr.h>
-#include <dash/Allocator.h>
-#include <dash/Team.h>
-#include <dash/Onesided.h>
-
-#include <dash/memory/MemorySpace.h>
-
-#include <dash/internal/Logging.h>
-
-namespace dash {
+#include <numeric>
 
 /**
  * \defgroup  DashGlobalMemoryConcept  Global Memory Concept
@@ -66,7 +58,12 @@ namespace dash {
  * \}
  */
 
-#if 0
+namespace dash {
+
+/// Forward declarations
+template <class MSpaceDomainCategory, class MSpaceTypeCategory>
+inline MemorySpace<MSpaceDomainCategory, MSpaceTypeCategory>*
+get_default_memory_space();
 
 /**
  * Global memory with address space of static size.
@@ -78,320 +75,169 @@ namespace dash {
  *
  * \concept{DashMemorySpaceConcept}
  */
-template <
-    /// Type of elements maintained in the global memory space
-    typename ElementType,
-    typename LocalMemorySpace,
-    global_allocation_policy AllocationPolicy =
-        global_allocation_policy::collective,
-    template <class> class LocalAlloc = allocator::DefaultAllocator>
-class GlobStaticMem {
-  typedef GlobStaticMem<ElementType, LocalMemorySpace, AllocationPolicy>
-      self_t;
 
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+class MemorySpace<
+    /// global memory space
+    memory_domain_global,
+    /// Element Type
+    ElementType,
+    /// We are allowed to allocate only once
+    allocation_static,
+    /// either collective or single synchronization policy
+    SynchronizationPolicy,
+    /// The local memory space
+    LMemSpace>
+  : GlobalMemorySpaceBase<
+        ElementType,
+        allocation_static,
+        SynchronizationPolicy,
+        LMemSpace> {
   static_assert(
-      AllocationPolicy == global_allocation_policy::non_collective ||
-          AllocationPolicy == global_allocation_policy::collective,
-      "GlobStaticMem supports only collective or non_collective allocation "
-      "policies");
+      std::is_same<synchronization_collective, SynchronizationPolicy>::value,
+      "the generic implementation assumes collective synchronization policy");
 
-  using memory_traits = dash::memory_space_traits<LocalMemorySpace>;
+  static constexpr size_t max_align = alignof(max_align_t);
 
-  using allocator_traits = dash::allocator_traits<dash::SymmetricAllocator<
-      typename std::remove_const<ElementType>::type,
-      AllocationPolicy,
-      LocalMemorySpace,
-      LocalAlloc>>;
+  using memory_traits = dash::memory_space_traits<LMemSpace>;
 
-  using local_allocator_traits =
-      std::allocator_traits<typename allocator_traits::local_allocator>;
+  using base_t = GlobalMemorySpaceBase<
+      ElementType,
+      allocation_static,
+      SynchronizationPolicy,
+      LMemSpace>;
 
-public:
-  using value_type = typename std::decay<ElementType>::type;
-
-  using allocator_type = typename allocator_traits::allocator_type;
-
-  typedef typename allocator_traits::size_type       size_type;
-  typedef typename allocator_traits::difference_type difference_type;
-  typedef typename allocator_traits::difference_type index_type;
-
-  typedef GlobPtr<      value_type, self_t>                       pointer;
-  typedef GlobPtr<const value_type, self_t>                 const_pointer;
-  typedef GlobPtr<      void,       self_t>                  void_pointer;
-  typedef GlobPtr<const void,       self_t>            const_void_pointer;
-
-  typedef typename allocator_traits::local_pointer       local_pointer;
-  typedef typename allocator_traits::const_local_pointer const_local_pointer;
-
-  typedef LocalMemorySpace                           local_memory_space_t;
-
-private:
-  allocator_type      _allocator;
-  dart_gptr_t         _begptr = DART_GPTR_NULL;
-  dash::Team const *  _team   = nullptr;
-  size_type           _nlelem = 0;
-  local_pointer       _lbegin = nullptr;
-  local_pointer       _lend   = nullptr;
+  using global_allocation_strategy = dash::allocator::GlobalAllocationPolicy<
+      typename base_t::memory_space_allocation_policy,
+      typename base_t::memory_space_synchronization_policy,
+      typename memory_traits::memory_space_type_category>;
 
 public:
-  /**
-   * Constructor, collectively allocates the given number of elements in
-   * local memory of every unit in a team.
-   *
-   * \note Must not lead to implicit barrier:
-   *       Synchronization depends on underlying allocator.
-   *       For example, \c dash::LocalAllocator is used in \c dash::Shared
-   *       and only called at owner unit.
-   */
-  explicit GlobStaticMem(
-    /// Number of local elements to allocate in global memory space
-    size_type   n_local_elem,
-    /// Team containing all units operating on the global memory region
-    Team      & team = dash::Team::All())
-  : _allocator(team),
-    _team(&team),
-    _nlelem(n_local_elem)
+  using value_type      = typename base_t::value_type;
+  using size_type       = typename base_t::size_type;
+  using index_type      = typename base_t::index_type;
+  using difference_type = typename base_t::difference_type;
+
+  using memory_space_domain_category =
+      typename base_t::memory_space_domain_category;
+  using memory_space_type_category =
+      typename base_t::local_memory_space_type_category;
+  using memory_space_allocation_policy      = allocation_static;
+  using memory_space_synchronization_policy = synchronization_collective;
+  using memory_space_layout_tag             = memory_space_contiguous;
+
+  // TODO rko: Move this to base class
+  using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
+
+  using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
+  using const_pointer       = dash::GlobPtr<const value_type, MemorySpace>;
+  using local_pointer       = value_type*;
+  using const_local_pointer = value_type const*;
+
+public:
+  MemorySpace() = delete;
+
+  explicit MemorySpace(
+      size_type nels, dash::Team const& team = dash::Team::All());
+  MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team);
+  ~MemorySpace() override;
+
+  MemorySpace(const MemorySpace&) = delete;
+  MemorySpace(MemorySpace&&);
+
+  MemorySpace& operator=(const MemorySpace&) = delete;
+  MemorySpace& operator                      =(MemorySpace&&);
+
+  size_type size() const noexcept;
+
+  size_type local_size(dash::team_unit_t uid) const noexcept
   {
-    DASH_LOG_TRACE("GlobStaticMem(nlocal,team)",
-                   "number of local values:", _nlelem,
-                   "team size:",              team.size());
-    _begptr = allocator_traits::allocate(_allocator, _nlelem);
-
-    if (DART_GPTR_ISNULL(_begptr)) {
-      DASH_THROW(dash::exception::RuntimeError, "Out of Memory");
-    }
-
-
-    //Get local begin of the allocated global range _begptr
-    update_lbegin();
-    _lend = _lbegin + _nlelem;
-
-    if (AllocationPolicy == global_allocation_policy::collective) {
-      //TODO: Gather local sizes...
-    }
-
-    DASH_LOG_TRACE("GlobStaticMem(nlocal,team) >");
+    return m_local_sizes.at(uid);
   }
 
-  /**
-   * Destructor, collectively frees underlying global memory.
-   */
-  ~GlobStaticMem()
+  local_pointer lbegin() noexcept
   {
-    DASH_LOG_TRACE_VAR("GlobStaticMem.~GlobStaticMem()", _begptr);
-    // check if has been moved away
-    // NOTE: We do not need an explicit barrier here as the synchronization
-    // policy of the underlying allocator handles this
-    if(!DART_GPTR_ISNULL(_begptr)){
-      allocator_traits::deallocate(
-          _allocator, _begptr, _nlelem);
-      _begptr = DART_GPTR_NULL;
-    }
-    DASH_LOG_TRACE("GlobStaticMem.~GlobStaticMem >");
+    return m_lbegin;
   }
-
-  /**
-   * Copy constructor.
-   */
-  GlobStaticMem(const self_t & other)
-    = delete;
-
-  /**
-   * Move constructor
-   *
-   * \TODO make move constructor defaultable by using RAII
-   */
-  GlobStaticMem(self_t && other)
-  : _allocator(std::move(other._allocator)),
-    _begptr(other._begptr),
-    _team(other._team),
-    _nlelem(other._nlelem),
-    _lbegin(other._lbegin),
-    _lend(other._lend)
+  const_local_pointer lbegin() const noexcept
   {
-    // avoid deallocation of underlying memory
-    // in the dead hull
-    other._begptr = DART_GPTR_NULL;
-    other._lbegin = nullptr;
-    other._lend   = nullptr;
+    return m_lbegin;
   }
 
-  /**
-   * Copy-assignment operator.
-   *
-   */
-  self_t & operator=(const self_t & rhs)
-    = delete;
-
-  /**
-   * Move-assignment operator.
-   *
-   * \TODO make move constructor defaultable by using RAII
-   */
-  self_t & operator=(self_t && other) {
-    // deallocate old memory
-    if(!DART_GPTR_ISNULL(_begptr)){
-      allocator_traits::deallocate(_allocator, _begptr, _nlelem);
-    }
-
-    _allocator = std::move(other._allocator);
-    _begptr    = other._begptr;
-    _team      = other._team;
-    _nlelem    = other._nlelem;
-    _lbegin    = other._lbegin;
-    _lend      = other._lend;
-
-    // avoid deallocation of underlying memory
-    // in the dead hull
-    other._begptr = DART_GPTR_NULL;
-    other._lbegin = nullptr;
-    other._lend   = nullptr;
-
-    return *this;
-  }
-
-  /**
-   * Equality comparison operator.
-   */
-  inline bool operator==(const self_t & rhs) const noexcept
+  local_pointer lend() noexcept
   {
-    return (_begptr == rhs._begptr &&
-            _team   == rhs._team   &&
-            _nlelem == rhs._nlelem &&
-            _lbegin == rhs._lbegin &&
-            _lend   == rhs._lend);
+    return m_lend;
   }
 
-  /**
-   * Inequality comparison operator.
-   */
-  constexpr bool operator!=(const self_t & rhs) const noexcept
+  const_local_pointer lend() const noexcept
   {
-    return !(*this == rhs);
+    return m_lend;
   }
 
-  /**
-   * Total number of elements in the global memory space.
-   */
-  constexpr size_type size() const noexcept
+  pointer begin() noexcept
   {
-    return _nlelem * _team->size();
+    return pointer(*this, m_begin);
   }
-
-  constexpr size_type local_size(dash::team_unit_t) const noexcept
+  const_pointer begin() const noexcept
   {
-    // TODO this only holds if all units allocate the same number of elements
-    return _nlelem;
+    return const_pointer(*this, m_begin);
   }
 
-  constexpr size_type local_size() const noexcept
+  pointer end() noexcept
   {
-    return _nlelem;
-  }
+    auto soon_to_be_end = m_begin;
+    // unitId points one past the last unit
+    dart_gptr_setunit(&soon_to_be_end, m_team->size());
+    // reset local offset to 0
+    soon_to_be_end.addr_or_offs.offset = 0;
 
-  /**
-   * The team containing all units accessing the global memory space.
-   *
-   * \return  A reference to the Team containing the units associated with
-   *          the global dynamic memory space.
-   */
-  constexpr dash::Team const & team() const noexcept
+    return pointer(*this, soon_to_be_end);
+  }
+  const_pointer end() const noexcept
   {
-    return (_team != nullptr) ? *_team : dash::Team::Null();
+    auto soon_to_be_end = m_begin;
+    // unitId points one past the last unit
+    dart_gptr_setunit(&soon_to_be_end, m_team->size());
+    // reset local offset to 0
+    soon_to_be_end.addr_or_offs.offset = 0;
+
+    return const_pointer(*this, soon_to_be_end);
   }
 
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  constexpr const_pointer begin() const noexcept
+  pointer allocate(size_type nels, size_type alignment = alignof(value_type))
   {
-    return const_pointer(*this, _begptr);
+    return do_allocate(nels * sizeof(value_type), alignment);
   }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
-  inline pointer begin() noexcept
+  void deallocate(
+      pointer gptr,
+      size_type /*nels*/,
+      size_type alignment = alignof(value_type))
   {
-    return pointer(*this, _begptr);
+    DASH_ASSERT_MSG(
+        DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin),
+        "invalid pointer to deallocate");
+
+    do_deallocate(
+        gptr,
+        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
+        alignment);
   }
 
-  /**
-   * Native pointer of the initial address of the local memory of
-   * the unit that initialized this GlobStaticMem instance.
-   */
-  constexpr const_local_pointer lbegin() const noexcept
+  dash::Team const& team() const noexcept
   {
-    return _lbegin;
+    return *m_team;
   }
 
-  /**
-   * Native pointer of the initial address of the local memory of
-   * the unit that initialized this GlobStaticMem instance.
-   */
-  inline local_pointer lbegin() noexcept
-  {
-    return _lbegin;
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
-   * the unit that initialized this GlobStaticMem instance.
-   */
-  constexpr const_local_pointer lend() const noexcept
-  {
-    return _lend;
-  }
-
-  /**
-   * Native pointer of the initial address of the local memory of
-   * the unit that initialized this GlobStaticMem instance.
-   */
-  inline local_pointer lend() noexcept
-  {
-    return _lend;
-  }
-
-  /**
-   * Write value to global memory at given offset.
-   *
-   * \see  dash::put_value
-   */
-  template<typename ValueType = value_type>
-  inline void put_value(
-    const ValueType & newval,
-    index_type        global_index)
-  {
-    DASH_LOG_TRACE("GlobStaticMem.put_value(val, gidx = %d)", global_index);
-    dash::put_value(newval,
-                    GlobPtr<ValueType, self_t>(
-                      *this, _begptr
-                    ) + global_index);
-  }
-
-  /**
-   * Read value from global memory at given offset.
-   *
-   * \see  dash::get_value
-   */
-  template<typename ValueType = value_type>
-  inline void get_value(
-    ValueType  * ptr,
-    index_type   global_index) const
-  {
-    DASH_LOG_TRACE("GlobStaticMem.get_value(val, gidx = %d)", global_index);
-    dash::get_value(ptr,
-                    GlobPtr<ValueType, self_t>(
-                      *this, _begptr
-                    ) + global_index);
-  }
-
-  /**
-   * Synchronize all units associated with this global memory instance.
-   */
   void barrier() const
   {
-    _team->barrier();
+    m_team->barrier();
+  }
+
+  allocator_type get_allocator() const
+  {
+    // We copy construct an allocator based on the underlying resource of this
+    // allocator
+    return allocator_type{m_allocator.resource()};
   }
 
   /**
@@ -399,7 +245,7 @@ public:
    */
   void flush() noexcept
   {
-    dart_flush_all(_begptr);
+    dart_flush_all(m_begin);
   }
 
   /**
@@ -407,8 +253,8 @@ public:
    */
   void flush(dash::team_unit_t target) noexcept
   {
-    dart_gptr_t gptr = _begptr;
-    gptr.unitid = target.id;
+    dart_gptr_t gptr = m_begin;
+    gptr.unitid      = target.id;
     dart_flush(gptr);
   }
 
@@ -417,7 +263,7 @@ public:
    */
   void flush_local() noexcept
   {
-    dart_flush_local_all(_begptr);
+    dart_flush_local_all(m_begin);
   }
 
   /**
@@ -426,112 +272,335 @@ public:
    */
   void flush_local(dash::team_unit_t target) noexcept
   {
-    dart_gptr_t gptr = _begptr;
-    gptr.unitid = target.id;
+    dart_gptr_t gptr = m_begin;
+    gptr.unitid      = target.id;
     dart_flush_local(gptr);
   }
-
 
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
    */
-  template<typename IndexType>
+  template <typename IndexType>
   pointer at(
-    /// The unit id
-    team_unit_t unit,
-    /// The unit's local address offset
-    IndexType   local_index) const
+      /// The unit id
+      team_unit_t unit,
+      /// The unit's local address offset
+      IndexType local_index) const
   {
-    DASH_LOG_DEBUG("GlobStaticMem.at(unit,l_idx)", unit, local_index);
-    if (_team->size() == 0 || DART_GPTR_ISNULL(_begptr)) {
-      DASH_LOG_DEBUG("GlobStaticMem.at(unit,l_idx) >",
-                     "global memory not allocated");
+    DASH_LOG_DEBUG("MemorySpace.at(unit,l_idx)", unit, local_index);
+    if (m_team->size() == 0 || DART_GPTR_ISNULL(m_begin)) {
+      DASH_LOG_DEBUG(
+          "MemorySpace.at(unit,l_idx) >", "global memory not allocated");
       return pointer(nullptr);
     }
     // Initialize with global pointer to start address:
-    dart_gptr_t gptr = _begptr;
+    dart_gptr_t gptr = m_begin;
     // Resolve global unit id
-    DASH_LOG_TRACE_VAR("GlobStaticMem.at (=g_begptr)", gptr);
-    DASH_LOG_TRACE_VAR("GlobStaticMem.at", gptr.unitid);
+    DASH_LOG_TRACE_VAR("MemorySpace.at (=g_begptr)", gptr);
+    DASH_LOG_TRACE_VAR("MemorySpace.at", gptr.unitid);
     team_unit_t lunit{gptr.unitid};
-    DASH_LOG_TRACE_VAR("GlobStaticMem.at", lunit);
-    lunit = (lunit + unit) % _team->size();
-    DASH_LOG_TRACE_VAR("GlobStaticMem.at", lunit);
+    DASH_ASSERT_EQ(gptr.unitid, 0, "invalid global begin pointer");
+    DASH_ASSERT_RANGE(
+        0, lunit.id, m_team->size() - 1, "invalid global begin pointer");
+    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
+    // lunit = (lunit + unit) % _team->size();
+    lunit = lunit + unit;
+
+    DASH_LOG_TRACE_VAR("MemorySpace.at", lunit);
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, lunit);
     // increment locally only
     gptr.addr_or_offs.offset += local_index * sizeof(value_type);
     // Apply local offset to global pointer:
     pointer res_gptr(*this, gptr);
-    DASH_LOG_DEBUG("GlobStaticMem.at (+g_unit) >", res_gptr);
+    DASH_LOG_DEBUG("MemorySpace.at (+g_unit) >", res_gptr);
     return res_gptr;
   }
 
-  allocator_type get_allocator() const noexcept {
-    return this->_allocator;
-  }
+private:
+  dash::Team const*          m_team{};
+  allocator_type             m_allocator{};
+  global_allocation_strategy m_allocation_policy{};
+  std::vector<size_type>     m_local_sizes{};
+  // Uniform Initialization does not work in G++ 4.9.x
+  // This is why we have to use C-Style Initializer Initialization
+  dart_gptr_t       m_begin = DART_GPTR_NULL;
+  local_pointer     m_lbegin{nullptr};
+  local_pointer     m_lend{nullptr};
+  mutable size_type m_size{std::numeric_limits<size_type>::max()};
 
 private:
-  /**
-   * Native pointer of the initial address of the local memory of
-   * a unit.
-   * \param team_unit_id id of unit in \c dash::Team::All()
-   */
-  void update_lbegin()
-  {
-    void *addr;
-    dart_gptr_t gptr = _begptr;
-    DASH_LOG_TRACE_VAR("GlobStaticMem.update_lbegin",
-                       pointer(*this, gptr));
-    // TODO rko: Temporary workaround for #549 until this issue is clarified
-    if (AllocationPolicy == global_allocation_policy::collective) {
-
-      DASH_ASSERT_RETURNS(
-          dart_gptr_setunit(&gptr, _team->myid().id), DART_OK);
-    }
-
-    DASH_ASSERT_RETURNS(dart_gptr_getaddr(gptr, &addr), DART_OK);
-    DASH_LOG_TRACE_VAR("GlobStaticMem.update_lbegin >", addr);
-    _lbegin = static_cast<local_pointer>(addr);
-  }
+  pointer do_allocate(size_type nbytes, size_type alignment);
+  void    do_deallocate(pointer gptr, size_type nbytes, size_type alignment);
 };
 
-/**
- * Allocate elements in the specified memory space.
- *
- * \returns  Global pointer to the beginning of the allocated memory region.
- *
- * \concept{DashMemorySpaceConcept}
- */
-template<
-  typename T,
-  class    MemSpaceT >
-GlobPtr<T, MemSpaceT> memalloc(const MemSpaceT & mspace, size_t nelem)
+///////////// Implementation ///////////////////
+//
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::MemorySpace(size_type nels, dash::Team const& team)
+  : m_team(&team)
+  , m_allocator(get_default_memory_space<
+                memory_domain_local,
+                typename memory_traits::memory_space_type_category>())
+  , m_local_sizes(team.size())
 {
-  dart_gptr_t gptr;
-  dash::dart_storage<T> ds(nelem);
-  if (dart_memalloc(ds.nelem, ds.dtype, &gptr) != DART_OK) {
-    return GlobPtr<T, MemSpaceT>(nullptr);
+  DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
+
+  do_allocate(nels * sizeof(value_type), alignof(value_type));
+
+  DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::
+    MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team)
+  : m_team(&team)
+  , m_allocator(
+        r ? r
+          : get_default_memory_space<
+                memory_domain_local,
+                typename memory_traits::memory_space_type_category>())
+  , m_local_sizes(team.size())
+{
+  DASH_LOG_DEBUG("< MemorySpace.MemorySpace");
+
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", nels);
+  DASH_LOG_DEBUG_VAR("MemorySpace.MemorySpace", team);
+
+  do_allocate(nels * sizeof(value_type), alignof(value_type));
+
+  DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::MemorySpace(MemorySpace&& other)
+  : m_team(std::move(other.m_team))
+  , m_allocator(std::move(other.m_allocator))
+  , m_allocation_policy(std::move(other.m_allocation_policy))
+  , m_local_sizes(std::move(other.m_local_sizes))
+  , m_begin(std::move(other.m_begin))
+  , m_lbegin(std::move(other.m_lbegin))
+  , m_lend(std::move(other.m_lend))
+{
+  other.m_team   = &dash::Team::Null();
+  other.m_begin  = DART_GPTR_NULL;
+  other.m_lbegin = nullptr;
+  other.m_lend   = nullptr;
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>&
+                MemorySpace<
+                    memory_domain_global,
+                    ElementType,
+                    allocation_static,
+                    SynchronizationPolicy,
+                    LMemSpace>::operator=(MemorySpace&& other)
+{
+  // deallocate own memory
+  if (!DART_GPTR_ISNULL(m_begin)) {
+    do_deallocate(
+        begin(),
+        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
+        alignof(value_type));
   }
-  return GlobPtr<T, MemSpaceT>(mspace, gptr);
+  // and swap..
+  std::swap(m_team, other.m_team);
+  std::swap(m_allocator, other.m_allocator);
+  std::swap(m_allocation_policy, other.m_allocation_policy);
+  std::swap(m_local_sizes, other.m_local_sizes);
+  std::swap(m_begin, other.m_begin);
+  std::swap(m_lbegin, other.m_lbegin);
+  std::swap(m_lend, other.m_lend);
+
+  return *this;
 }
 
-/**
- * Deallocate segment in global memory space referenced by the specified
- * global pointer.
- *
- * \concept{DashMemorySpaceConcept}
- */
-template<class GlobPtrT>
-void memfree(GlobPtrT gptr)
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline typename MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::pointer
+MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
 {
-  dart_memfree(gptr.dart_gptr());
+  if (!DART_GPTR_ISNULL(m_begin)) {
+    DASH_THROW(
+        dash::exception::RuntimeError,
+        "only one allocated segment is allowed");
+  }
+
+  auto alloc_rec = m_allocation_policy.allocate_segment(
+      m_team->dart_id(),
+      static_cast<LocalMemorySpaceBase<
+          typename memory_traits::memory_space_type_category>*>(
+          m_allocator.resource()),
+      nbytes,
+      alignment);
+
+  m_begin = alloc_rec.second;
+
+  DASH_ASSERT_MSG(
+      !DART_GPTR_ISNULL(m_begin), "global memory allocation failed");
+
+  auto const nels = nbytes / sizeof(value_type);
+
+  DASH_ASSERT_RETURNS(
+      dart_allgather(
+          // source buffer
+          &nels,
+          // target buffer
+          m_local_sizes.data(),
+          // nels
+          1,
+          // dart type
+          dash::dart_datatype<size_type>::value,
+          // dart team
+          m_team->dart_id()),
+      DART_OK);
+
+  m_lbegin = static_cast<local_pointer>(alloc_rec.first);
+  m_lend   = std::next(m_lbegin, nels);
 }
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::~MemorySpace()
+{
+  DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
+
+  if (!DART_GPTR_ISNULL(m_begin)) {
+    do_deallocate(
+        begin(),
+        m_local_sizes.at(m_team->myid()) * sizeof(value_type),
+        alignof(value_type));
+  }
+
+  DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline void MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::
+    do_deallocate(pointer gptr, size_type nbytes, size_type alignment)
+{
+  DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
+
+  DASH_ASSERT_MSG(
+      DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin), "Invalid global pointer to deallocate");
+
+  DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lbegin);
+  DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lend);
+  DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_begin);
+  DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
+
+  if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
+    DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
+
+    m_allocation_policy.deallocate_segment(
+        m_begin,
+        static_cast<LocalMemorySpaceBase<
+            typename memory_traits::memory_space_type_category>*>(
+            m_allocator.resource()),
+        m_lbegin,
+        nbytes,
+        alignment);
+  }
+
+  m_begin  = DART_GPTR_NULL;
+  m_lbegin = nullptr;
+  m_lend   = nullptr;
+  m_local_sizes.clear();
+
+  DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline typename MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::size_type
+MemorySpace<
+    memory_domain_global,
+    ElementType,
+    allocation_static,
+    SynchronizationPolicy,
+    LMemSpace>::size() const noexcept
+{
+  if (m_size == std::numeric_limits<size_type>::max()) {
+    m_size = std::accumulate(
+        std::begin(m_local_sizes),
+        std::end(m_local_sizes),
+        0,
+        std::plus<size_type>());
+  }
+  return m_size;
+}
+
+template <class ElementType, class LMemSpace, class SynchronizationPolicy>
+inline bool operator==(
+    MemorySpace<
+        memory_domain_global,
+        ElementType,
+        allocation_static,
+        SynchronizationPolicy,
+        LMemSpace> const& lhs,
+    MemorySpace<
+        memory_domain_global,
+        ElementType,
+        allocation_static,
+        SynchronizationPolicy,
+        LMemSpace> const& rhs) noexcept
+{
+  // Two global memory spaces are equal if we have equal teams (obvious, DART
+  // requires that), equal allocation policies and equal allocators (as
+  // defined by the cpp17 polymorphic resource concept)
+
+  return &lhs == &rhs ||
+         (*(lhs.m_team) == *(rhs.m_team) &&
+          lhs.m_allocation_policy == rhs.m_allocation_policy &&
+          lhs.m_allocator == rhs.m_allocator);
+}
+
+}  // namespace dash
+
 #endif
-
-} // namespace dash
-
-#include <dash/memory/GlobUnitMem.h>
-
-#endif // DASH__GLOB_STATIC_HEAP_H__INCLUDED

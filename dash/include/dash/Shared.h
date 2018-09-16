@@ -4,7 +4,6 @@
 #include <dash/dart/if/dart_types.h>
 
 #include <dash/GlobRef.h>
-#include <dash/Allocator.h>
 #include <dash/memory/MemorySpace.h>
 
 #include <dash/iterator/GlobIter.h>

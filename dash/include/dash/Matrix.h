@@ -6,8 +6,6 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/memory/GlobStaticMem.h>
-#include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Meta.h>
 
@@ -16,6 +14,8 @@
 #include <dash/matrix/MatrixRefView.h>
 #include <dash/matrix/MatrixRef.h>
 #include <dash/matrix/LocalMatrixRef.h>
+
+#include <dash/memory/MemorySpace.h>
 
 #include <type_traits>
 
