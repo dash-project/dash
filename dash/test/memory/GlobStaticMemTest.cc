@@ -1,4 +1,3 @@
-
 #include "GlobStaticMemTest.h"
 
 #include <dash/memory/GlobStaticMem.h>
@@ -6,8 +5,15 @@
 
 TEST_F(GlobStaticMemTest, GlobalRandomAccess)
 {
-  auto globmem_local_elements = { 1, 2, 3 };
-  auto globmem = dash::experimental::GlobStaticMem<int, dash::HostSpace>(globmem_local_elements.size());
+  if (dash::myid() == 0) {
+    int wait = 0;
+    while (wait)
+
+      ;
+  }
+  auto globmem_local_elements = {1, 2, 3};
+  auto globmem                = dash::GlobStaticMem<int, dash::HostSpace>(
+      globmem_local_elements.size());
 
   std::uninitialized_copy(
       std::begin(globmem_local_elements),
@@ -29,7 +35,7 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
     DASH_LOG_DEBUG_VAR("GlobStaticMemTest", gend);
 
     // Test distance in global memory over multiple unit spaces:
-    EXPECT_EQ(gend  - gbegin, globmem.size());
+    EXPECT_EQ(gend - gbegin, globmem.size());
     EXPECT_EQ(glast - gbegin, globmem.size() - 1);
 
     // Iterate entire global memory space, including end pointer:
@@ -41,15 +47,19 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
         EXPECT_EQ((g % 3) + 1, gvalue);
         EXPECT_EQ(*gbegin, globmem.begin()[g]);
       }
-      EXPECT_EQ( gbegin, globmem.begin() + g);
+      EXPECT_EQ(gbegin, globmem.begin() + g);
 
-      EXPECT_EQ( (globmem.size() - g), dash::distance(gbegin, gend));
-      EXPECT_EQ(-(globmem.size() - g), dash::distance(gend,   gbegin));
-      EXPECT_EQ(gend   - gbegin,       dash::distance(gbegin, gend));
-      EXPECT_EQ(gbegin - gend,         dash::distance(gend,   gbegin));
+      EXPECT_EQ((globmem.size() - g), dash::distance(gbegin, gend));
+      EXPECT_EQ(-(globmem.size() - g), dash::distance(gend, gbegin));
+      EXPECT_EQ(gend - gbegin, dash::distance(gbegin, gend));
+      EXPECT_EQ(gbegin - gend, dash::distance(gend, gbegin));
 
-      if (g % 2 == 0) { ++gbegin; }
-      else            { gbegin++; }
+      if (g % 2 == 0) {
+        ++gbegin;
+      }
+      else {
+        gbegin++;
+      }
     }
   }
 
@@ -69,28 +79,32 @@ TEST_F(GlobStaticMemTest, GlobalRandomAccess)
       }
       EXPECT_EQ(gend, globmem.begin() + g);
 
-      EXPECT_EQ(gend   - gbegin, dash::distance(gbegin, gend));
-      EXPECT_EQ(gbegin - gend,   dash::distance(gend,   gbegin));
+      EXPECT_EQ(gend - gbegin, dash::distance(gbegin, gend));
+      EXPECT_EQ(gbegin - gend, dash::distance(gend, gbegin));
 
-      if (g % 2 == 0) { --gend; }
-      else            { gend--; }
+      if (g % 2 == 0) {
+        --gend;
+      }
+      else {
+        gend--;
+      }
     }
   }
 }
 
 TEST_F(GlobStaticMemTest, LocalBegin)
 {
-  auto   target_local_elements = { 1, 2, 3, 4 };
+  auto target_local_elements = {1, 2, 3, 4};
 
-  if(!dash::Team::All().is_leaf()){
+  if (!dash::Team::All().is_leaf()) {
     SKIP_TEST_MSG("Team is already split");
   }
 
-  auto & sub_team = dash::size() < 4
-                    ? dash::Team::All()
-                    : dash::Team::All().split(2);
+  auto& sub_team =
+      dash::size() < 4 ? dash::Team::All() : dash::Team::All().split(2);
 
-  auto   target = dash::experimental::GlobStaticMem<int, dash::HostSpace>(target_local_elements.size(), sub_team);
+  auto target = dash::GlobStaticMem<int, dash::HostSpace>(
+      target_local_elements.size(), sub_team);
 
   std::uninitialized_copy(
       std::begin(target_local_elements),
@@ -105,8 +119,9 @@ TEST_F(GlobStaticMemTest, LocalBegin)
   EXPECT_NE_U(target.lbegin(), nullptr);
 }
 
-TEST_F(GlobStaticMemTest, MoveSemantics){
-  using memory_t = dash::experimental::GlobStaticMem<int, dash::HostSpace>;
+TEST_F(GlobStaticMemTest, MoveSemantics)
+{
+  using memory_t = dash::GlobStaticMem<int, dash::HostSpace>;
   // move construction
   {
     memory_t memory_a(10);
@@ -115,11 +130,11 @@ TEST_F(GlobStaticMemTest, MoveSemantics){
     dash::barrier();
 
     memory_t memory_b(std::move(memory_a));
-    int value = *(memory_b.lbegin());
+    int      value = *(memory_b.lbegin());
     ASSERT_EQ_U(value, 5);
   }
   dash::barrier();
-  //move assignment
+  // move assignment
   {
     memory_t memory_a(10);
     {
@@ -127,7 +142,7 @@ TEST_F(GlobStaticMemTest, MoveSemantics){
 
       *(memory_a.lbegin()) = 1;
       *(memory_b.lbegin()) = 2;
-      memory_a = std::move(memory_b);
+      memory_a             = std::move(memory_b);
       // leave scope of memory_b
     }
     ASSERT_EQ_U(*(memory_a.lbegin()), 2);
@@ -147,8 +162,9 @@ TEST_F(GlobStaticMemTest, MoveSemantics){
   }
 }
 
-TEST_F(GlobStaticMemTest, HBWSpaceTest){
-  using memory_t = dash::experimental::GlobStaticMem<int, dash::HBWSpace>;
+TEST_F(GlobStaticMemTest, HBWSpaceTest)
+{
+  using memory_t = dash::GlobStaticMem<int, dash::HBWSpace>;
 
   memory_t memory{10};
   std::uninitialized_fill(memory.lbegin(), memory.lend(), dash::myid());

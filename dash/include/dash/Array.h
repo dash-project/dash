@@ -664,7 +664,7 @@ public:
   typedef typename std::make_unsigned<IndexType>::type                 size_type;
   typedef typename std::make_unsigned<IndexType>::type           difference_type;
 
-  typedef dash::experimental::GlobStaticMem<value_type, LocalMemSpaceT>          glob_mem_type;
+  typedef dash::GlobStaticMem<value_type, LocalMemSpaceT>          glob_mem_type;
 
   typedef GlobIter<      value_type, PatternType, glob_mem_type>        iterator;
   typedef GlobIter<const value_type, PatternType, glob_mem_type>  const_iterator;

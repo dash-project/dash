@@ -2,7 +2,7 @@
 
 namespace dash {
 
-template<>
+template <>
 MemorySpace<memory_domain_local, memory_space_host_tag>*
 get_default_memory_space<memory_domain_local, memory_space_host_tag>()
 {
@@ -10,12 +10,32 @@ get_default_memory_space<memory_domain_local, memory_space_host_tag>()
   return &host_space_singleton;
 }
 
-template<>
+template <>
 MemorySpace<memory_domain_local, memory_space_hbw_tag>*
 get_default_memory_space<memory_domain_local, memory_space_hbw_tag>()
 {
   static HBWSpace hbw_space_singleton;
   return &hbw_space_singleton;
+}
+
+MemorySpace<
+    memory_domain_global,
+    uint8_t,
+    allocation_static,
+    synchronization_independent,
+    dash::HostSpace>*
+get_default_global_memory_space()
+{
+  using memory_t = MemorySpace<
+      memory_domain_global,
+      uint8_t,
+      allocation_static,
+      synchronization_independent,
+      dash::HostSpace>;
+
+  static memory_t globmem{0, dash::Team::All()};
+
+  return &globmem;
 }
 
 }  // namespace dash

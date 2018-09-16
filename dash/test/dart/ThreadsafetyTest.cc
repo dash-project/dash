@@ -10,6 +10,7 @@
 #include <dash/Algorithm.h>
 #include <dash/Dimensional.h>
 #include <dash/allocator/EpochSynchronizedAllocator.h>
+#include <dash/memory/MemorySpace.h>
 #include <dash/util/TeamLocality.h>
 
 #include <mpi.h>
@@ -222,9 +223,22 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
+    int wait = 0;
+    while (wait)
+      ;
 
   using elem_t    = int;
-  using pointer_t = dash::GlobPtr< elem_t, dash::GlobUnitMem<elem_t> >;
+  auto * default_memspace = dash::get_default_global_memory_space();
+  using memory_space_t = std::remove_pointer<decltype(default_memspace)>::type;
+
+  static_assert(std::is_same<memory_space_t, dash::MemorySpace<
+    dash::memory_domain_global,
+    uint8_t,
+    dash::allocation_static,
+    dash::synchronization_independent,
+    dash::HostSpace>>::value, "must be true");
+
+  using pointer_t = dash::GlobPtr<elem_t, memory_space_t>;
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
@@ -274,7 +288,7 @@ TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
       arr.barrier();
       ASSERT_EQ_U(static_cast<elem_t>(ptr[thread_id][0]), thread_id);
       arr.barrier();
-      dash::memfree(ptr[thread_id]);
+      dash::memfree(ptr[thread_id], elem_per_thread);
     }
   }
 #endif //!defined(DASH_ENABLE_OPENMP)

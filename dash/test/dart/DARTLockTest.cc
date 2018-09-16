@@ -202,11 +202,6 @@ TEST_F(DARTLockTest, TeamLockUnlock) {
     SKIP_TEST_MSG("requires at least 4 units");
   }
 
-  if (dash::myid() == 2) {
-    int wait = 1;
-    while(wait);
-  }
-
   auto& team = dash::Team::All().split(2);
 
   dash::Shared<value_t> shared(dash::team_unit_t(0), team);

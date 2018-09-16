@@ -31,6 +31,10 @@ class MemorySpace<
         allocation_static,
         SynchronizationPolicy,
         LMemSpace> {
+  static_assert(
+      std::is_same<synchronization_collective, SynchronizationPolicy>::value,
+      "the generic implementation assumes collective synchronization policy");
+
   using memory_traits = dash::memory_space_traits<LMemSpace>;
 
   using base_t = GlobalMemorySpaceBase<
@@ -51,6 +55,14 @@ public:
   using size_type       = typename base_t::size_type;
   using index_type      = typename base_t::index_type;
   using difference_type = typename base_t::difference_type;
+
+  using memory_space_domain_category =
+      typename base_t::memory_space_domain_category;
+  using memory_space_type_category =
+      typename base_t::local_memory_space_type_category;
+  using memory_space_allocation_policy      = allocation_static;
+  using memory_space_synchronization_policy = synchronization_collective;
+  using memory_space_layout_tag             = memory_space_contiguous;
 
   // TODO rko: Move this to base class
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
@@ -108,6 +120,28 @@ public:
   {
     return const_pointer(*this, m_begin);
   }
+
+  pointer end() noexcept
+  {
+    auto soon_to_be_end = m_begin;
+    // unitId points one past the last unit
+    dart_gptr_setunit(&soon_to_be_end, m_team->size());
+    // reset local offset to 0
+    soon_to_be_end.addr_or_offs.offset = 0;
+
+    return pointer(*this, soon_to_be_end);
+  }
+  const_pointer end() const noexcept
+  {
+    auto soon_to_be_end = m_begin;
+    // unitId points one past the last unit
+    dart_gptr_setunit(&soon_to_be_end, m_team->size());
+    // reset local offset to 0
+    soon_to_be_end.addr_or_offs.offset = 0;
+
+    return const_pointer(*this, soon_to_be_end);
+  }
+
   dash::Team const& team() const noexcept
   {
     return *m_team;
@@ -339,22 +373,19 @@ inline void MemorySpace<
   DASH_ASSERT_MSG(
       !DART_GPTR_ISNULL(m_begin), "global memory allocation failed");
 
-  // TODO rko: Maybe there is a way to separate this
-  if (!std::is_same<SynchronizationPolicy, synchronization_single>::value) {
-    DASH_ASSERT_RETURNS(
-        dart_allgather(
-            // source buffer
-            &nels,
-            // target buffer
-            m_local_sizes.data(),
-            // nels
-            1,
-            // dart type
-            dash::dart_datatype<size_type>::value,
-            // dart teamk
-            m_team->dart_id()),
-        DART_OK);
-  }
+  DASH_ASSERT_RETURNS(
+      dart_allgather(
+          // source buffer
+          &nels,
+          // target buffer
+          m_local_sizes.data(),
+          // nels
+          1,
+          // dart type
+          dash::dart_datatype<size_type>::value,
+          // dart teamk
+          m_team->dart_id()),
+      DART_OK);
 
   m_lbegin = static_cast<local_pointer>(alloc_rec.first);
   m_lend   = std::next(m_lbegin, nels);
@@ -391,18 +422,8 @@ inline void MemorySpace<
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_local_sizes.size());
 
   if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(m_begin)) {
-    // TODO rko: Maybe there is a way to separate this
-    if (!std::is_same<SynchronizationPolicy, synchronization_single>::value) {
-      // We have to wait for the other since dart_team_memfree is
-      // non-collective This is required for symmetric allocation policy as
-      // the memory may be detached while other units are still operting on
-      // the unit's global memory
-      DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
-    }
-    auto const sz = m_team->size();
-    auto const uid = m_team->myid();
-    DASH_LOG_TRACE_VAR("MemorySpace.do_deallocate()", sz);
-    DASH_LOG_TRACE_VAR("MemorySpace.do_deallocate()", uid);
+    DASH_ASSERT_RETURNS(dart_barrier(m_team->dart_id()), DART_OK);
+
     m_allocation_policy.deallocate_segment(
         m_begin,
         static_cast<LocalMemorySpaceBase<

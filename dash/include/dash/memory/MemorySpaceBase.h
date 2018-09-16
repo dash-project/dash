@@ -6,7 +6,10 @@
 #include <cstddef>
 #include <memory>
 
+
 #include <cpp17/polymorphic_allocator.h>
+
+#include <dash/dart/if/dart_globmem.h>
 
 #include <dash/Meta.h>
 #include <dash/Team.h>
@@ -73,6 +76,58 @@ struct memory_space_cuda_tag {
 struct memory_space_pmem_tag {
 };
 
+/// Allocation Policy
+
+struct allocation_static {
+  // Participating units allocate on construction. Acquired memory is never
+  // reclaimed upon destruction
+  //
+  // Methods:
+  //  - allocate
+  //  - deallocate
+};
+
+struct allocation_dynamic {
+  // Participating units allocate local segments independent and subsequently
+  // attach it to global memory.
+  //
+  // Methods:
+  //  - allocate_local
+  //  - deallocate_local
+  //  - attach
+  //  - detach
+};
+
+
+struct memory_space_noncontiguous {};
+
+struct memory_space_contiguous{};
+
+/// Synchronization Policy
+
+struct synchronization_collective {
+  // All allocations in memory are collective...
+  //
+  // => Requires that global memory allocation is always collective
+};
+
+struct synchronization_independent {
+  // Units allocate global memory independent from each other. Requires a
+  // synchronization mechanism to agree on a global memory state.
+  // See GlobHeapMem as an example.
+  //
+  // => Should support both point-to-point and collective synchronization
+  // within the team
+};
+
+struct synchronization_single {
+  // Only a single unit participates in global memory memory allocation. It
+  // may then broadcast the global pointer to other units in the team.
+  //
+  // => See dash::Shared as an example.
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // MEMORY SPACE TRAITS
 ///////////////////////////////////////////////////////////////////////////////
@@ -98,6 +153,7 @@ using memspace_traits_is_local =
 
 DASH__META__DEFINE_TRAIT__HAS_TYPE(void_pointer);
 DASH__META__DEFINE_TRAIT__HAS_TYPE(const_void_pointer);
+DASH__META__DEFINE_TRAIT__HAS_TYPE(memory_space_layout_tag);
 
 template <class _Ms, bool = has_type_void_pointer<_Ms>::value>
 struct memspace_traits_void_pointer_type {
@@ -125,6 +181,16 @@ struct memspace_traits_const_void_pointer_type<_Ms, false> {
       const void*>::type type;
 };
 
+template <class _Ms, bool = has_type_memory_space_layout_tag<_Ms>::value>
+struct memspace_traits_layout_tag {
+  typedef typename _Ms::memory_space_layout_tag type;
+};
+
+template <class _Ms>
+struct memspace_traits_layout_tag<_Ms, false> {
+  typedef memory_space_noncontiguous type;
+};
+
 }  // namespace details
 
 template <class MemSpace>
@@ -144,6 +210,12 @@ struct memory_space_traits {
    */
   using memory_space_domain_category =
       typename MemSpace::memory_space_domain_category;
+
+  /**
+   * May be contiguous or noncontiguous
+   */
+  using memory_space_layout_tag =
+      typename details::memspace_traits_layout_tag<MemSpace>::type;
 
   /**
    * Whether the memory space type is specified for global address space.
@@ -183,52 +255,6 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 // GLOBAL MEMORY SPACE
 ///////////////////////////////////////////////////////////////////////////////
-
-/// Allocation Policy
-
-struct allocation_static {
-  // Participating units allocate on construction. Acquired memory is never
-  // reclaimed upon destruction
-  //
-  // Methods:
-  //  - allocate
-  //  - deallocate
-};
-
-struct allocation_dynamic {
-  // Participating units allocate local segments independent and subsequently
-  // attach it to global memory.
-  //
-  // Methods:
-  //  - allocate_local
-  //  - deallocate_local
-  //  - attach
-  //  - detach
-};
-
-/// Synchronization Policy
-
-struct synchronization_collective {
-  // All allocations in memory are collective...
-  //
-  // => Requires that global memory allocation is always collective
-};
-
-struct synchronization_independent {
-  // Units allocate global memory independent from each other. Requires a
-  // synchronization mechanism to agree on a global memory state.
-  // See GlobHeapMem as an example.
-  //
-  // => Should support both point-to-point and collective synchronization
-  // within the team
-};
-
-struct synchronization_single {
-  // Only a single unit participates in global memory memory allocation. It
-  // may then broadcast the global pointer to other units in the team.
-  //
-  // => See dash::Shared as an example.
-};
 
 template <
     /// Value Type to allocate

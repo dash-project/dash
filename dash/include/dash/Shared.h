@@ -3,9 +3,9 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/memory/GlobStaticMem.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
+#include <dash/memory/MemorySpace.h>
 
 #include <dash/iterator/GlobIter.h>
 
@@ -44,7 +44,7 @@ private:
     memory_domain_global,
     value_type,
     allocation_static,
-    synchronization_single,
+    synchronization_independent,
     dash::HostSpace>;
 
   template<typename T_>
@@ -76,28 +76,30 @@ public:
    * The element is initialized with the given value.
    */
   Shared(
-    /// The value to initialize the element with
-    const value_type & val,
-    /// Unit id of the shared value's owner.
-    team_unit_t   owner = team_unit_t(0),
-    /// Team containing all units accessing the element in shared memory
-    Team     &    team  = dash::Team::All())
-    : _team(&team),
-      _owner(owner),
-      _dart_gptr(DART_GPTR_NULL)
+      /// The value to initialize the element with
+      const value_type& val,
+      /// Unit id of the shared value's owner.
+      team_unit_t owner = team_unit_t(0),
+      /// Team containing all units accessing the element in shared memory
+      Team& team = dash::Team::All())
+    : _team(&team)
+    , _owner(owner)
+    , _globmem(std::make_shared<GlobMem_t>(0, team))
+    , _dart_gptr(DART_GPTR_NULL)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
     // Shared value is only allocated at unit 0:
     if (_team->myid() == _owner) {
       DASH_LOG_DEBUG("Shared.Shared(value,team,owner)",
                      "allocating shared value in local memory");
-      _globmem   = std::make_shared<GlobMem_t>(1, team);
-      _dart_gptr = _globmem->begin().dart_gptr();
-      auto lbegin = _globmem->lbegin();
-      auto const lend = _globmem->lend();
+      auto ptr = _globmem->allocate(1);
+      auto lbegin = ptr.local();
+      auto const lend = std::next(lbegin);
 
       DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
       std::uninitialized_fill(lbegin, lend, val);
+
+      _dart_gptr = ptr.dart_gptr();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);

@@ -473,6 +473,8 @@ dash::gptrdiff_t distance(
          ) / sizeof(value_type);
 }
 
+#if 0
+
 /**
  * Allocate elements in the active unit's shared global memory space.
  *
@@ -492,6 +494,8 @@ GlobPtr<T, MemSpaceT> memalloc(size_t nelem)
   }
   return GlobPtr<T, MemSpaceT>(MemSpaceT(gptr, nelem), gptr);
 }
+
+#endif
 
 } // namespace dash
 

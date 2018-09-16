@@ -1,4 +1,4 @@
-
+#if 0
 #include "SymmetricAllocatorTest.h"
 
 #include <dash/GlobPtr.h>
@@ -119,3 +119,4 @@ TEST_F(SymmetricAllocatorTest, MoveCtor)
 
   target_new.deallocate(gptr.dart_gptr(), 5);
 }
+#endif

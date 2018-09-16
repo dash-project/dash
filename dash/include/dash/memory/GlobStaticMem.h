@@ -66,6 +66,8 @@ namespace dash {
  * \}
  */
 
+#if 0
+
 /**
  * Global memory with address space of static size.
  *
@@ -526,6 +528,7 @@ void memfree(GlobPtrT gptr)
 {
   dart_memfree(gptr.dart_gptr());
 }
+#endif
 
 } // namespace dash
 
