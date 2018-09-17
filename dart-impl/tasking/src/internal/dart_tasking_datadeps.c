@@ -21,6 +21,9 @@
 #define USE_FREELIST
 #endif // DART_ENABLE_TCMALLOC
 
+
+static const char *dummy_name = "DUMMY_TASK";
+
 /**
  * Management of task data dependencies using a hash map that maps pointers to tasks.
  * The hash map implementation is taken from dart_segment.
@@ -463,6 +466,10 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
 
           if (!IS_ACTIVE_TASK(local_task)) {
             dart__base__mutex_unlock(&local_task->mutex);
+            ayu_event_adddependency(
+              dart__tasking__ayudame_make_globalunique_unit(rdep->task.local, rdep->origin),
+              dart__tasking__ayudame_make_globalunique(local_task),
+              (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
             DART_LOG_INFO("Task %p matching remote task %p already finished",
                           local_task, rdep->task.local);
 
@@ -511,6 +518,10 @@ dart_tasking_datadeps_handle_defered_remote_indeps()
                      candidate, rdep->task.remote, origin.id);
       DART_STACK_PUSH(candidate->remote_successor, rdep);
       dart__base__mutex_unlock(&(candidate->mutex));
+      ayu_event_adddependency(
+        dart__tasking__ayudame_make_globalunique_unit(rdep->task.local, rdep->origin),
+        dart__tasking__ayudame_make_globalunique(candidate),
+        (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
     } else {
       // the remote dependency cannot be served --> send release
       DART_LOG_DEBUG("Releasing remote task %p from unit %i, "
@@ -585,6 +596,14 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
     dummy_task->origin      = rdep->origin;
     dummy_task->descr       = "DUMMY (OUTDEP)";
     dart__base__mutex_init(&dummy_task->mutex);
+    //ayu_event_registerfunction((uint64_t)dummy_name, dummy_name);
+    ayu_event_addtask(
+      dart__tasking__ayudame_make_globalunique(dummy_task),
+      (uint64_t)0, DART_PRIO_LOW, 0);
+    ayu_event_adddependency(
+      dart__tasking__ayudame_make_globalunique(dummy_task),
+      dart__tasking__ayudame_make_globalunique_unit(rdep->task.local, rdep->origin),
+      (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
     DART_LOG_TRACE(
       "Allocated dummy task %p (ph:%d) for remote out dep on %p from task %p at unit %d",
       dummy_task, phase, rdep->taskdep.gptr.addr_or_offs.addr, rdep->task.remote, rdep->origin.id);
@@ -604,6 +623,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
         dart__base__mutex_lock(&(local_task->mutex));
         dart_tasking_tasklist_prepend(&(local_task->successor), dummy_task);
         dart__base__mutex_unlock(&(local_task->mutex));
+        instrument_task_dependency(local_task, dummy_task, DART_GPTR_NULL);
         // ... and stop on the first output dependency
         if (rdep->taskdep.type == DART_DEP_OUT) break;
       }
@@ -646,6 +666,7 @@ dart_tasking_datadeps_handle_defered_remote_outdeps()
       DART_LOG_TRACE("Making local task %p (ph:%d) a successor of dummy task %p",
                      local_task, local->taskdep.phase, dummy_task);
       dart_tasking_tasklist_prepend(&(dummy_task->successor), local_task);
+      instrument_task_dependency(dummy_task, local_task, DART_GPTR_NULL);
 
       if (num_deps == 0) {
         // we have to remove the task from the defered_local_task queue
@@ -737,7 +758,7 @@ dart_tasking_datadeps_handle_copyin(
   int iter = 0;
   DART_LOG_TRACE("Handling copyin dep (unit %d, phase %d)",
                  dep->copyin.gptr.unitid, dep->phase);
-
+  // TODO: add instrumentation!
   do {
     // check whether this is the first task with copyin
     if (task->parent->local_deps != NULL) {
@@ -957,7 +978,7 @@ dart_tasking_datadeps_match_delayed_local_datadep(
                         next_out_task->successor,
                         next_out_task->state, unresolved_deps);
           dart_tasking_tasklist_prepend(&(task->successor), next_out_task);
-          instrument_task_dependency(elem_task, task, elem->taskdep.gptr);
+          instrument_task_dependency(task, next_out_task, elem->taskdep.gptr);
           dart__base__mutex_unlock(&(next_out_task->mutex));
           // no need to add this dependency to the hash table
         } else {
@@ -1138,6 +1159,11 @@ dart_ret_t dart_tasking_datadeps_handle_remote_direct(
     if (IS_ACTIVE_TASK(local_task)) {
       dart_dephash_elem_t *rs = dephash_allocate_elem(&dep, remote_task, origin);
       DART_STACK_PUSH(local_task->remote_successor, rs);
+
+      ayu_event_adddependency(
+        dart__tasking__ayudame_make_globalunique_unit(remote_task.local, origin),
+        dart__tasking__ayudame_make_globalunique(local_task),
+        (uint64_t) AYU_UNKNOWN_MEMADDR, AYU_UNKNOWN_MEMADDR);
       enqueued = true;
     }
     dart__base__mutex_unlock(&(local_task->mutex));
