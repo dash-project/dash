@@ -574,7 +574,11 @@ dart_task_t * create_task(
   }
 
   uint64_t scope_id = dart__tasking__thread_num();
-  ayu_event_registerfunction((uint64_t)task->descr, task->descr);
+  if (task->descr) {
+    ayu_event_registerfunction((uint64_t)task->descr, task->descr);
+  } else {
+    ayu_event_registerfunction((uint64_t)task->descr, "UNKNOWN");
+  }
   ayu_event_addtask(dart__tasking__ayudame_make_globalunique(task),
                     (uint64_t)task->descr, prio, scope_id);
 
@@ -639,7 +643,12 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
     task->state = DART_TASK_RUNNING;
     dart__base__mutex_unlock(&(task->mutex));
 
-    ayu_event_runtask(dart__tasking__ayudame_make_globalunique(task));
+    dart_global_unit_t myid;
+    dart_myid(&myid);
+    ayu_event_preruntask(
+      dart__tasking__ayudame_make_globalunique_unit(task, myid), myid.id);
+    ayu_event_runtask(
+      dart__tasking__ayudame_make_globalunique_unit(task, myid));
 
     // start execution, change to another task in between
     invoke_task(task, thread);
@@ -1023,6 +1032,11 @@ dart__tasking__enqueue_runnable(dart_task_t *task)
 #else
     dart_taskqueue_t *q = &task_queue;
 #endif // DART_TASK_THREADLOCAL_Q
+
+    dart_global_unit_t myid;
+    dart_myid(&myid);
+    ayu_event_addtasktoqueue(
+      dart__tasking__ayudame_make_globalunique(task), myid.id);
     dart_tasking_taskqueue_push(q, task);
     // wakeup a thread to execute this task
     wakeup_thread_single();
