@@ -136,6 +136,8 @@ std::ostream & operator<<(
   return operator<<(os, ss.str());
 }
 
+#if 0
+
 TEST_F(AtomicTest, PunnedType)
 {
   typedef struct container<short> value_t;
@@ -143,6 +145,8 @@ TEST_F(AtomicTest, PunnedType)
   value_t           val_init = { -1, 10 };
   value_t           val_exch = {  1, 20 };
   dash::team_unit_t owner(dash::size() - 1);
+
+  static_assert(dash::is_atomic_compatible<value_t>::value, "must be true");
 
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
@@ -219,7 +223,7 @@ TEST_F(AtomicTest, PunnedTypeFetchOp)
   value_t           val_zero = { 0x00, 0x00 };
   dash::team_unit_t owner(dash::size() - 1);
 
-  static_assert(std::is_standard_layout<value_t>::value, "must be true");
+  static_assert(std::is_standard_layout<value_t>::value, "invalid type for dash::Atomic");
   dash::Shared< dash::Atomic<value_t> > shared(owner);
 
   if (dash::myid() == 0) {
@@ -243,6 +247,8 @@ TEST_F(AtomicTest, PunnedTypeFetchOp)
                   prev_val == val_init);
   }
 }
+
+#endif
 
 TEST_F(AtomicTest, ArrayElements)
 {

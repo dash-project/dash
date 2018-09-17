@@ -18,20 +18,11 @@ get_default_memory_space<memory_domain_local, memory_space_hbw_tag>()
   return &hbw_space_singleton;
 }
 
-MemorySpace<
-    memory_domain_global,
-    uint8_t,
-    allocation_static,
-    synchronization_independent,
-    dash::HostSpace>*
-get_default_global_memory_space()
+template <>
+MemorySpace<memory_domain_global, memory_space_host_tag> *
+get_default_memory_space<memory_domain_global, memory_space_host_tag>()
 {
-  using memory_t = MemorySpace<
-      memory_domain_global,
-      uint8_t,
-      allocation_static,
-      synchronization_independent,
-      dash::HostSpace>;
+  using memory_t = dash::GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
 
   static memory_t globmem{0, dash::Team::All()};
 

@@ -11,14 +11,6 @@
 
 namespace dash {
 
-template <class ElementType, class LMemSpace>
-using GlobStaticMem = ::dash::MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_collective,
-    LMemSpace>;
-
 ///////////////////////////////////////////////////////////////////////////////
 // HELPER FUNCTIONS
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,52 +44,45 @@ template <>
 MemorySpace<memory_domain_local, memory_space_hbw_tag>*
 get_default_memory_space<memory_domain_local, memory_space_hbw_tag>();
 
-MemorySpace<
-    memory_domain_global,
-    uint8_t,
-    allocation_static,
-    synchronization_independent,
-    dash::HostSpace>*
-get_default_global_memory_space();
+template <>
+MemorySpace<memory_domain_global, memory_space_host_tag>*
+get_default_memory_space<memory_domain_global, memory_space_host_tag>();
 
 template <typename T>
-GlobPtr<
-    T,
-    MemorySpace<
-        memory_domain_global,
-        uint8_t,
-        allocation_static,
-        synchronization_independent,
-        dash::HostSpace> >
-memalloc(size_t nelem)
+GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
+    size_t nelem)
 {
-  auto* mspace   = get_default_global_memory_space();
-  using memory_t = std::remove_pointer<decltype(mspace)>::type;
-  auto ptr       = mspace->allocate(nelem * sizeof(T));
+  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
+
+  auto* mspace = dynamic_cast<memory_t*>(get_default_memory_space<
+                                         memory_domain_global,
+                                         memory_space_host_tag>());
+
+  DASH_ASSERT_MSG(mspace, "invalid default memory space");
+
+  auto ptr = mspace->allocate(nelem * sizeof(T), alignof(T));
+
   return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
 }
 
 template <class T>
-void memfree(GlobPtr<
-             T,
-             MemorySpace<
-                 memory_domain_global,
-                 uint8_t,
-                 allocation_static,
-                 synchronization_independent,
-                 dash::HostSpace> > gptr, size_t nels)
+void memfree(
+    GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> gptr,
+    size_t                                                    nels)
 {
-  auto * default_mem = get_default_global_memory_space();
+  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
 
-  auto freeptr = dash::GlobPtr < uint8_t,
-       MemorySpace<
-           memory_domain_global,
-           uint8_t,
-           allocation_static,
-           synchronization_independent,
-           dash::HostSpace>>{*default_mem, gptr.dart_gptr()};
+  auto* mspace = dynamic_cast<memory_t*>(get_default_memory_space<
+                                         memory_domain_global,
+                                         memory_space_host_tag>());
 
-  get_default_global_memory_space()->deallocate(freeptr, nels * sizeof(T));
+  DASH_ASSERT_MSG(mspace, "invalid default memory space");
+
+  auto freeptr =
+      dash::GlobPtr<uint8_t, GlobLocalMemoryPool<uint8_t, dash::HostSpace>>{
+          *mspace, gptr.dart_gptr()};
+
+  mspace->deallocate(freeptr, nels * sizeof(T), alignof(T));
 }
 
 }  // namespace dash

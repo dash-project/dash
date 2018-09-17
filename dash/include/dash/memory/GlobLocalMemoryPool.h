@@ -14,87 +14,65 @@ get_default_memory_space();
 
 class HostSpace;
 
-MemorySpace<
-    memory_domain_global,
-    uint8_t,
-    allocation_static,
-    synchronization_independent,
-    dash::HostSpace>*
-get_default_global_memory_space();
-
 template <class ElementType, class LMemSpace>
-class MemorySpace<
-    /// global memory space
-    memory_domain_global,
-    /// Element Type
-    ElementType,
-    /// We are allowed to allocate only once
-    // TODO: rename this to memory_noncontiguous
-    allocation_static,
-    /// either collective or single synchronization policy
-    synchronization_independent,
-    /// The local memory space
-    LMemSpace>
-  : GlobalMemorySpaceBase<
-        ElementType,
-        allocation_static,
-        synchronization_independent,
-        LMemSpace> {
+class GlobLocalMemoryPool : public MemorySpace<
+                                memory_domain_global,
+                                typename dash::memory_space_traits<
+                                    LMemSpace>::memory_space_type_category> {
   static_assert(
       std::is_same<LMemSpace, dash::HostSpace>::value,
       "currently we support only dash::HostSpace for local memory "
       "allocation");
 
-  using memory_traits = dash::memory_space_traits<LMemSpace>;
+  using local_memory_traits = dash::memory_space_traits<LMemSpace>;
 
-  using base_t = GlobalMemorySpaceBase<
-      ElementType,
-      allocation_static,
-      synchronization_independent,
-      LMemSpace>;
+  using base_t = MemorySpace<
+      memory_domain_global,
+      typename local_memory_traits::memory_space_type_category>;
 
 public:
+  //inherit parent typedefs
+  using memory_space_domain_category = memory_domain_global;
+  using memory_space_type_category =
+      typename base_t::memory_space_type_category;
+
   using value_type      = typename std::remove_cv<ElementType>::type;
   using size_type       = dash::default_size_t;
   using index_type      = dash::default_index_t;
   using difference_type = index_type;
 
-  using memory_space_domain_category = memory_domain_global;
-  using memory_space_type_category =
-      typename memory_traits::memory_space_type_category;
   using memory_space_allocation_policy      = allocation_static;
   using memory_space_synchronization_policy = synchronization_independent;
   using memory_space_layout_tag             = memory_space_noncontiguous;
 
   // We use a polymorhic allocator to obtain memory from the
-  // local_memory_resource
+  // local memory space
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
-  using local_memory_resource = LMemSpace;
 
-  using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
-  using const_pointer       = dash::GlobPtr<const value_type, MemorySpace>;
-  using local_pointer       = value_type*;
+  using pointer       = dash::GlobPtr<value_type, GlobLocalMemoryPool>;
+  using const_pointer = dash::GlobPtr<const value_type, GlobLocalMemoryPool>;
+  using local_pointer = value_type*;
   using const_local_pointer = value_type const*;
 
 public:
-  MemorySpace() = delete;
+  GlobLocalMemoryPool() = delete;
 
-  explicit MemorySpace(
+  explicit GlobLocalMemoryPool(
       size_type         pool_capacity = 0,
       dash::Team const& team          = dash::Team::All());
 
-  MemorySpace(
+  GlobLocalMemoryPool(
       LMemSpace*        r,
       size_type         pool_capacity = 0,
       dash::Team const& team          = dash::Team::All());
 
-  ~MemorySpace() override;
+  ~GlobLocalMemoryPool() override;
 
-  MemorySpace(const MemorySpace&) = delete;
-  MemorySpace(MemorySpace&&)      = default;
+  GlobLocalMemoryPool(const GlobLocalMemoryPool&) = delete;
+  GlobLocalMemoryPool(GlobLocalMemoryPool&&)      = default;
 
-  MemorySpace& operator=(const MemorySpace&) = delete;
-  MemorySpace& operator                      =(MemorySpace&&);
+  GlobLocalMemoryPool& operator=(const GlobLocalMemoryPool&) = delete;
+  GlobLocalMemoryPool& operator=(GlobLocalMemoryPool&&);
 
   size_type size() const DASH_ASSERT_NOEXCEPT
   {
@@ -123,13 +101,14 @@ public:
     return allocator_type{m_allocator.resource()};
   }
 
-  pointer allocate(size_type nels)
+  pointer allocate(size_type nels, size_type alignment = alignof(value_type))
   {
-    return do_allocate(nels * sizeof(value_type));
+    return do_allocate(nels * sizeof(value_type), alignment);
   }
-  void deallocate(pointer gptr, size_type nels)
+  void deallocate(
+      pointer gptr, size_type nels, size_type alignment = alignof(value_type))
   {
-    return do_deallocate(gptr, nels);
+    return do_deallocate(gptr, nels * sizeof(value_type), alignment);
   }
   void release();
 
@@ -185,35 +164,23 @@ private:
   size_type         m_capacity{};
   allocator_type    m_allocator{};
 
-  std::vector<dart_gptr_t> m_segments;
-
 private:
-  pointer do_allocate(size_type nels);
-  void    do_deallocate(pointer gptr, size_type nels);
+  pointer do_allocate(size_type nbytes, size_type alignment);
+  void    do_deallocate(pointer gptr, size_type nbytes, size_type alignment);
 };
 
 ///////////// Implementation ///////////////////
 //
 template <class ElementType, class LMemSpace>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::MemorySpace(size_type local_capacity, dash::Team const& team)
-  : MemorySpace(nullptr, local_capacity, team)
+inline GlobLocalMemoryPool<ElementType, LMemSpace>::GlobLocalMemoryPool(
+    size_type local_capacity, dash::Team const& team)
+  : GlobLocalMemoryPool(nullptr, local_capacity, team)
 {
 }
 
 template <class ElementType, class LMemSpace>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::
-    MemorySpace(
-        LMemSpace* r, size_type local_capacity, dash::Team const& team)
+inline GlobLocalMemoryPool<ElementType, LMemSpace>::GlobLocalMemoryPool(
+    LMemSpace* r, size_type local_capacity, dash::Team const& team)
   : m_team(&team)
   , m_size(0)
   , m_capacity(
@@ -223,24 +190,15 @@ inline MemorySpace<
         r ? r
           : get_default_memory_space<
                 memory_domain_local,
-                typename memory_traits::memory_space_type_category>())
+                typename local_memory_traits::memory_space_type_category>())
 {
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
 template <class ElementType, class LMemSpace>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>&
-                MemorySpace<
-                    memory_domain_global,
-                    ElementType,
-                    allocation_static,
-                    synchronization_independent,
-                    LMemSpace>::operator=(MemorySpace&& other)
+inline GlobLocalMemoryPool<ElementType, LMemSpace>&
+GlobLocalMemoryPool<ElementType, LMemSpace>::operator=(
+    GlobLocalMemoryPool&& other)
 {
   // deallocate own memory
   release();
@@ -255,18 +213,9 @@ inline MemorySpace<
 }
 
 template <class ElementType, class LMemSpace>
-inline typename MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::pointer
-MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::do_allocate(size_type nbytes)
+inline typename GlobLocalMemoryPool<ElementType, LMemSpace>::pointer
+GlobLocalMemoryPool<ElementType, LMemSpace>::do_allocate(
+    size_type nbytes, size_type alignment)
 {
   DASH_LOG_TRACE(
       "MemorySpace.do_allocate",
@@ -305,12 +254,7 @@ MemorySpace<
 }
 
 template <class ElementType, class LMemSpace>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::~MemorySpace()
+GlobLocalMemoryPool<ElementType, LMemSpace>::~GlobLocalMemoryPool()
 {
   DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
 
@@ -320,12 +264,8 @@ inline MemorySpace<
 }
 
 template <class ElementType, class LMemSpace>
-inline void MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::do_deallocate(pointer gptr, size_type nels)
+inline void GlobLocalMemoryPool<ElementType, LMemSpace>::do_deallocate(
+    pointer gptr, size_type nbytes, size_type alignment)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
@@ -337,14 +277,44 @@ inline void MemorySpace<
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
 template <class ElementType, class LMemSpace>
-inline void MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    synchronization_independent,
-    LMemSpace>::release()
+inline void GlobLocalMemoryPool<ElementType, LMemSpace>::release()
 {
+  // This is not required since DART manages the raw memory
+  // TODO: Fix this and support various memory spaces
 }
+
+#if 0
+
+template <typename T>
+GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
+    size_t nelem)
+{
+  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
+
+  auto* mspace =
+      get_default_memory_space<memory_domain_global, memory_space_host_tag>();
+
+  auto ptr       = (dynamic_cast<memory_t *>(mspace))->allocate(nelem * sizeof(T), alignof(T));
+
+  return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
+}
+
+template <class T>
+void memfree(
+    GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> gptr,
+    size_t                                                    nels)
+{
+  //auto* default_mem =
+  //    get_default_memory_space<memory_domain_global, dash::HostSpace>();
+
+  //auto freeptr =
+  //    dash::GlobPtr<uint8_t, GlobLocalMemoryPool<uint8_t, dash::HostSpace>>{
+  //        *default_mem, gptr.dart_gptr()};
+
+  //default_mem->->deallocate(
+  //    freeptr, nels * sizeof(T), alignof(T));
+}
+#endif
 
 }  // namespace dash
 

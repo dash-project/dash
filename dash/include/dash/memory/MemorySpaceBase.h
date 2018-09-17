@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <memory>
 
-
 #include <cpp17/polymorphic_allocator.h>
 
 #include <dash/dart/if/dart_globmem.h>
@@ -98,10 +97,11 @@ struct allocation_dynamic {
   //  - detach
 };
 
+struct memory_space_noncontiguous {
+};
 
-struct memory_space_noncontiguous {};
-
-struct memory_space_contiguous{};
+struct memory_space_contiguous {
+};
 
 /// Synchronization Policy
 
@@ -126,7 +126,6 @@ struct synchronization_single {
   //
   // => See dash::Shared as an example.
 };
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // MEMORY SPACE TRAITS
@@ -257,55 +256,15 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 
 template <
-    /// Value Type to allocate
-    class ValueType,
-    /// whether memory is static or dynamic
-    class AllocationPolicy,
-    /// collective, independent or single
-    class SynchronizationPolicy,
     /// HostSpace, HBWSpace, DeviceSpace, NVMSpace
-    class LMemSpace>
+    class MemoryType>
 class GlobalMemorySpaceBase {
-  static_assert(
-      memory_space_traits<LMemSpace>::is_local::value,
-      "LMemSpace must be a local memory space");
-
-  static_assert(
-      dash::is_container_compatible<ValueType>::value,
-      "ValueType not supported in global memory");
-
 public:
   /// Memory Traits
-  using memory_space_domain_category        = memory_domain_global;
-  using memory_space_synchronization_policy = SynchronizationPolicy;
-  using memory_space_allocation_policy      = AllocationPolicy;
-
-  using local_memory_space_type_category =
-      typename memory_space_traits<LMemSpace>::memory_space_type_category;
-
-  // TODO rko: Clarify how should really obtain the correct element type.
-  // Maybe it is decay, maybe we should also verify that is not an array (i.e.
-  // std::is_array?)
-  using value_type       = typename std::remove_cv<ValueType>::type;
-  using const_value_type = typename std::add_const<value_type>::type;
-
-  using size_type       = dash::default_size_t;
-  using difference_type = dash::default_index_t;
-  using index_type      = difference_type;
-
+  using memory_space_domain_category = memory_domain_global;
+  using memory_space_type_category   = MemoryType;
 public:
-  virtual ~GlobalMemorySpaceBase();
-
-  // TODO rko: implement this and provide it in memory traits
-#if 0
-  using pointer = ...
-  using const_pointer = ...
-  using void_pointer =
-  using const_void_pointer =
-#endif
-
-  // using pointer       = dash::GlobPtr<ValueType, self_t>;
-  // using const_pointer = dash::GlobPtr<const ValueType, self_t>;
+  virtual ~GlobalMemorySpaceBase() = default;
 
 public:
   GlobalMemorySpaceBase()                             = default;
@@ -314,19 +273,6 @@ public:
   GlobalMemorySpaceBase& operator=(const GlobalMemorySpaceBase&) = default;
   GlobalMemorySpaceBase& operator=(GlobalMemorySpaceBase&&) = default;
 };
-
-template <
-    class ValueType,
-    class AllocationPolicy,
-    class SynchronizationPolicy,
-    class LMemSpace>
-GlobalMemorySpaceBase<
-    ValueType,
-    AllocationPolicy,
-    SynchronizationPolicy,
-    LMemSpace>::~GlobalMemorySpaceBase()
-{
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // MEMORY SPACE
@@ -345,23 +291,6 @@ template <class... Args>
 class MemorySpace<memory_domain_global, Args...>
   : public GlobalMemorySpaceBase<Args...> {
 };
-
-template <class MemoryDomain, class... Args>
-inline bool operator==(
-    MemorySpace<MemoryDomain, Args...> const& lhs,
-    MemorySpace<MemoryDomain, Args...> const& rhs)
-{
-  return &lhs == &rhs || lhs.is_equal(rhs);
-}
-
-template <class MemoryDomain, class... Args>
-inline bool operator!=(
-    MemorySpace<MemoryDomain, Args...> const& lhs,
-    MemorySpace<MemoryDomain, Args...> const& rhs)
-{
-  return !(lhs == rhs);
-}
-
 }  // namespace dash
 
 #endif  // DASH__MEMORY__MEMORY_SPACE_H__INCLUDED

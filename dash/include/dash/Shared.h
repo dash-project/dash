@@ -10,7 +10,6 @@
 
 #include <memory>
 
-
 namespace dash {
 
 /**
@@ -18,56 +17,50 @@ namespace dash {
  *
  * \tparam  ElementType  The type of the shared value.
  */
-template<typename ElementType>
+template <typename ElementType>
 class Shared {
 private:
-  typedef Shared<ElementType>   self_t;
-  typedef ElementType           element_t;
+  typedef Shared<ElementType> self_t;
+  typedef ElementType         element_t;
 
 public:
-  typedef size_t                                      size_type;
-  typedef size_t                                difference_type;
+  typedef size_t size_type;
+  typedef size_t difference_type;
 
-  typedef GlobRef<      element_t>                    reference;
-  typedef GlobRef<const element_t>              const_reference;
+  typedef GlobRef<element_t>       reference;
+  typedef GlobRef<const element_t> const_reference;
 
   // Note: For dash::Shared<dash::Atomic<T>>, reference type is
   //       dash::GlobRef<dash::Atomic<T>> with value_type T.
   //
   //       See definition of dash::GlobRef in dash/atomic/GlobAtomicRef.h.
-  typedef typename reference::value_type             value_type;
+  typedef typename reference::value_type value_type;
 
 private:
+  using GlobMem_t = dash::GlobLocalMemoryPool<ElementType, dash::HostSpace>;
 
-  using GlobMem_t = dash::MemorySpace<
-    memory_domain_global,
-    value_type,
-    allocation_static,
-    synchronization_independent,
-    dash::HostSpace>;
-
-  template<typename T_>
-  friend void swap(Shared<T_> & a, Shared<T_> & b);
+  template <typename T_>
+  friend void swap(Shared<T_>& a, Shared<T_>& b);
 
 private:
-  dash::Team                   * _team       = nullptr;
-  team_unit_t                    _owner;
-  std::shared_ptr<GlobMem_t>     _globmem    = nullptr;
-  dart_gptr_t                    _dart_gptr  = DART_GPTR_NULL;
+  dash::Team*                _team = nullptr;
+  team_unit_t                _owner;
+  std::shared_ptr<GlobMem_t> _globmem   = nullptr;
+  dart_gptr_t                _dart_gptr = DART_GPTR_NULL;
 
 public:
   /**
    * Constructor, allocates shared value at single unit in specified team.
    */
   Shared(
-    /// Unit id of the shared value's owner.
-    team_unit_t   owner = team_unit_t(0),
-    /// Team containing all units accessing the element in shared memory
-    Team     &    team  = dash::Team::All())
+      /// Unit id of the shared value's owner.
+      team_unit_t owner = team_unit_t(0),
+      /// Team containing all units accessing the element in shared memory
+      Team& team = dash::Team::All())
     : Shared(value_type{}, owner, team)
   {
-    DASH_LOG_TRACE("Shared.Shared(team,owner) >",
-                   "finished delegating constructor");
+    DASH_LOG_TRACE(
+        "Shared.Shared(team,owner) >", "finished delegating constructor");
   }
 
   /**
@@ -89,25 +82,26 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
     // Shared value is only allocated at unit 0:
     if (_team->myid() == _owner) {
-      DASH_LOG_DEBUG("Shared.Shared(value,team,owner)",
-                     "allocating shared value in local memory");
-      auto ptr = _globmem->allocate(1);
-      auto lbegin = ptr.local();
-      auto const lend = std::next(lbegin);
+      DASH_LOG_DEBUG(
+          "Shared.Shared(value,team,owner)",
+          "allocating shared value in local memory");
+      auto       ptr    = _globmem->allocate(1);
+      auto       laddr = ptr.local();
 
       DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
-      std::uninitialized_fill(lbegin, lend, val);
 
+      //get the underlying allocator for local memory space
+      auto local_alloc         = _globmem->get_allocator();
+      using allocator_traits = std::allocator_traits<decltype(local_alloc)>;
+
+      //copy construct based on val
+      allocator_traits::construct(local_alloc, laddr, val);
       _dart_gptr = ptr.dart_gptr();
     }
+
     // Broadcast global pointer of shared value at unit 0 to all units:
     dash::dart_storage<dart_gptr_t> ds(1);
-    dart_bcast(
-      &_dart_gptr,
-      ds.nelem,
-      ds.dtype,
-      _owner,
-      _team->dart_id());
+    dart_bcast(&_dart_gptr, ds.nelem, ds.dtype, _owner, _team->dart_id());
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", _dart_gptr);
   }
 
@@ -124,31 +118,31 @@ public:
   /**
    * Copy-constructor.
    */
-  Shared(const self_t & other) = default;
+  Shared(const self_t& other) = default;
 
   /**
    * Move-constructor. Transfers ownership from other instance.
    */
-  Shared(self_t && other) = default;
+  Shared(self_t&& other) = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t& operator=(const self_t& other) = default;
 
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(self_t && other) = default;
+  self_t& operator=(self_t&& other) = default;
 
   /**
    * Set the value of the shared element.
    */
-  void set(const value_type & val)
+  void set(const value_type& val)
   {
     DASH_LOG_DEBUG_VAR("Shared.set()", val);
-    DASH_LOG_DEBUG_VAR("Shared.set",   _owner);
-    DASH_LOG_DEBUG_VAR("Shared.set",   _dart_gptr);
+    DASH_LOG_DEBUG_VAR("Shared.set", _owner);
+    DASH_LOG_DEBUG_VAR("Shared.set", _dart_gptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_dart_gptr));
     this->get().set(val);
     DASH_LOG_DEBUG("Shared.set >");
@@ -184,9 +178,7 @@ public:
   void flush()
   {
     DASH_ASSERT(!DART_GPTR_ISNULL(_dart_gptr));
-    DASH_ASSERT_RETURNS(
-      dart_flush(_dart_gptr),
-      DART_OK);
+    DASH_ASSERT_RETURNS(dart_flush(_dart_gptr), DART_OK);
   }
 
   /**
@@ -207,21 +199,18 @@ public:
   {
     return _dart_gptr;
   }
-
 };
 
-template<typename T>
-void swap(
-  dash::Shared<T> & a,
-  dash::Shared<T> & b)
+template <typename T>
+void swap(dash::Shared<T>& a, dash::Shared<T>& b)
 {
   using std::swap;
-  swap(a._team,       b._team);
-  swap(a._owner,      b._owner);
-  swap(a._globmem,    b._globmem);
-  swap(a._dart_gptr,  b._dart_gptr);
+  swap(a._team, b._team);
+  swap(a._owner, b._owner);
+  swap(a._globmem, b._globmem);
+  swap(a._dart_gptr, b._dart_gptr);
 }
 
-} // namespace dash
+}  // namespace dash
 
-#endif // DASH__SHARED_H_
+#endif  // DASH__SHARED_H_

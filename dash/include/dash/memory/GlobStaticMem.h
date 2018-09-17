@@ -34,26 +34,42 @@
  *
  * \par Types
  *
- * Type Name            | Description                                            |
- * -------------------- | ------------------------------------------------------ |
- * \c GlobalRAI         | Random access iterator on global address space         |
- * \c LocalRAI          | Random access iterator on a single local address space |
+ * Type Name            | Description |
+ * -------------------- |
+ * ------------------------------------------------------ | \c GlobalRAI |
+ * Random access iterator on global address space         | \c LocalRAI |
+ * Random access iterator on a single local address space |
  *
  *
  * \par Methods
  *
- * Return Type          | Method             | Parameters                         | Description                                                                                                |
- * -------------------- | ------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
- * <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp;                             | Global pointer to the initial address of the global memory space                                           |
- * <tt>GlobalRAI</tt>   | <tt>end</tt>       | &nbsp;                             | Global pointer past the final element in the global memory space                                           |
- * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | &nbsp;                             | Local pointer to the initial address in the local segment of the global memory space                       |
- * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt>                    | Local pointer to the initial address in the local segment at unit \c u of the global memory space          |
- * <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;                             | Local pointer past the final element in the local segment of the global memory space                       |
- * <tt>LocalRAI</tt>    | <tt>lend</tt>      | <tt>unit u</tt>                    | Local pointer past the final element in the local segment at unit \c u of the global memory space          |
- * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt>                | Global pointer to the element at canonical global offset \c gidx in the global memory space                |
- * <tt>void</tt>        | <tt>put_value</tt> | <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c v_in to address in global memory at canonical global offset \c gidx |
- * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index gidx</tt> | Loads value from address in global memory at canonical global offset \c gidx into local address \c v_out   |
- * <tt>void</tt>        | <tt>barrier</tt>   | &nbsp;                             | Blocking synchronization of all units associated with the global memory instance                           |
+ * Return Type          | Method             | Parameters | Description |
+ * -------------------- | ------------------ |
+ * ---------------------------------- |
+ * ----------------------------------------------------------------------------------------------------------
+ * | <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp; | Global pointer to
+ * the initial address of the global memory space | <tt>GlobalRAI</tt>   |
+ * <tt>end</tt>       | &nbsp;                             | Global pointer
+ * past the final element in the global memory space | <tt>LocalRAI</tt>    |
+ * <tt>lbegin</tt>    | &nbsp;                             | Local pointer to
+ * the initial address in the local segment of the global memory space |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt> | Local pointer
+ * to the initial address in the local segment at unit \c u of the global
+ * memory space          | <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;
+ * | Local pointer past the final element in the local segment of the global
+ * memory space                       | <tt>LocalRAI</tt>    | <tt>lend</tt>
+ * | <tt>unit u</tt>                    | Local pointer past the final element
+ * in the local segment at unit \c u of the global memory space          |
+ * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt> | Global
+ * pointer to the element at canonical global offset \c gidx in the global
+ * memory space                | <tt>void</tt>        | <tt>put_value</tt> |
+ * <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c
+ * v_in to address in global memory at canonical global offset \c gidx |
+ * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index
+ * gidx</tt> | Loads value from address in global memory at canonical global
+ * offset \c gidx into local address \c v_out   | <tt>void</tt>        |
+ * <tt>barrier</tt>   | &nbsp;                             | Blocking
+ * synchronization of all units associated with the global memory instance |
  *
  * \}
  */
@@ -76,52 +92,41 @@ get_default_memory_space();
  * \concept{DashMemorySpaceConcept}
  */
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-class MemorySpace<
-    /// global memory space
-    memory_domain_global,
-    /// Element Type
-    ElementType,
-    /// We are allowed to allocate only once
-    allocation_static,
-    /// either collective or single synchronization policy
-    SynchronizationPolicy,
-    /// The local memory space
-    LMemSpace>
-  : GlobalMemorySpaceBase<
-        ElementType,
-        allocation_static,
-        SynchronizationPolicy,
-        LMemSpace> {
-  static_assert(
-      std::is_same<synchronization_collective, SynchronizationPolicy>::value,
-      "the generic implementation assumes collective synchronization policy");
-
+template <class ElementType, class LMemSpace>
+class GlobStaticMem : public MemorySpace<
+                          /// global memory space
+                          memory_domain_global,
+                          /// The local memory space
+                          typename dash::memory_space_traits<
+                              LMemSpace>::memory_space_type_category> {
   static constexpr size_t max_align = alignof(max_align_t);
 
   using memory_traits = dash::memory_space_traits<LMemSpace>;
 
-  using base_t = GlobalMemorySpaceBase<
-      ElementType,
-      allocation_static,
-      SynchronizationPolicy,
-      LMemSpace>;
+  using base_t = MemorySpace<
+      /// global memory space
+      memory_domain_global,
+      /// The local memory space
+      typename memory_traits::memory_space_type_category>;
 
   using global_allocation_strategy = dash::allocator::GlobalAllocationPolicy<
-      typename base_t::memory_space_allocation_policy,
-      typename base_t::memory_space_synchronization_policy,
+      allocation_static,
+      synchronization_collective,
       typename memory_traits::memory_space_type_category>;
 
 public:
-  using value_type      = typename base_t::value_type;
-  using size_type       = typename base_t::size_type;
-  using index_type      = typename base_t::index_type;
-  using difference_type = typename base_t::difference_type;
-
   using memory_space_domain_category =
       typename base_t::memory_space_domain_category;
   using memory_space_type_category =
-      typename base_t::local_memory_space_type_category;
+      typename base_t::memory_space_type_category;
+
+  using value_type = typename std::remove_cv<
+      typename std::remove_reference<ElementType>::type>::type;
+
+  using size_type       = dash::default_size_t;
+  using index_type      = dash::default_index_t;
+  using difference_type = index_type;
+
   using memory_space_allocation_policy      = allocation_static;
   using memory_space_synchronization_policy = synchronization_collective;
   using memory_space_layout_tag             = memory_space_contiguous;
@@ -129,24 +134,24 @@ public:
   // TODO rko: Move this to base class
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
-  using pointer = dash::GlobPtr<typename base_t::value_type, MemorySpace>;
-  using const_pointer       = dash::GlobPtr<const value_type, MemorySpace>;
+  using pointer             = dash::GlobPtr<value_type, GlobStaticMem>;
+  using const_pointer       = dash::GlobPtr<const value_type, GlobStaticMem>;
   using local_pointer       = value_type*;
   using const_local_pointer = value_type const*;
 
 public:
-  MemorySpace() = delete;
+  GlobStaticMem() = delete;
 
-  explicit MemorySpace(
+  explicit GlobStaticMem(
       size_type nels, dash::Team const& team = dash::Team::All());
-  MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team);
-  ~MemorySpace() override;
+  GlobStaticMem(size_type nels, LMemSpace* r, dash::Team const& team);
+  ~GlobStaticMem() override;
 
-  MemorySpace(const MemorySpace&) = delete;
-  MemorySpace(MemorySpace&&);
+  GlobStaticMem(const GlobStaticMem&) = delete;
+  GlobStaticMem(GlobStaticMem&&);
 
-  MemorySpace& operator=(const MemorySpace&) = delete;
-  MemorySpace& operator                      =(MemorySpace&&);
+  GlobStaticMem& operator=(const GlobStaticMem&) = delete;
+  GlobStaticMem& operator                        =(GlobStaticMem&&);
 
   size_type size() const noexcept;
 
@@ -337,13 +342,9 @@ private:
 
 ///////////// Implementation ///////////////////
 //
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::MemorySpace(size_type nels, dash::Team const& team)
+template <class ElementType, class LMemSpace>
+inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
+    size_type nels, dash::Team const& team)
   : m_team(&team)
   , m_allocator(get_default_memory_space<
                 memory_domain_local,
@@ -359,14 +360,9 @@ inline MemorySpace<
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::
-    MemorySpace(size_type nels, LMemSpace* r, dash::Team const& team)
+template <class ElementType, class LMemSpace>
+inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
+    size_type nels, LMemSpace* r, dash::Team const& team)
   : m_team(&team)
   , m_allocator(
         r ? r
@@ -385,13 +381,9 @@ inline MemorySpace<
   DASH_LOG_DEBUG("MemorySpace.MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::MemorySpace(MemorySpace&& other)
+template <class ElementType, class LMemSpace>
+inline GlobStaticMem<ElementType, LMemSpace>::GlobStaticMem(
+    GlobStaticMem&& other)
   : m_team(std::move(other.m_team))
   , m_allocator(std::move(other.m_allocator))
   , m_allocation_policy(std::move(other.m_allocation_policy))
@@ -406,19 +398,9 @@ inline MemorySpace<
   other.m_lend   = nullptr;
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>&
-                MemorySpace<
-                    memory_domain_global,
-                    ElementType,
-                    allocation_static,
-                    SynchronizationPolicy,
-                    LMemSpace>::operator=(MemorySpace&& other)
+template <class ElementType, class LMemSpace>
+inline GlobStaticMem<ElementType, LMemSpace>&
+GlobStaticMem<ElementType, LMemSpace>::operator=(GlobStaticMem&& other)
 {
   // deallocate own memory
   if (!DART_GPTR_ISNULL(m_begin)) {
@@ -439,19 +421,10 @@ inline MemorySpace<
   return *this;
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::pointer
-MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::do_allocate(size_type nbytes, size_type alignment)
+template <class ElementType, class LMemSpace>
+inline typename GlobStaticMem<ElementType, LMemSpace>::pointer
+GlobStaticMem<ElementType, LMemSpace>::do_allocate(
+    size_type nbytes, size_type alignment)
 {
   if (!DART_GPTR_ISNULL(m_begin)) {
     DASH_THROW(
@@ -490,15 +463,12 @@ MemorySpace<
 
   m_lbegin = static_cast<local_pointer>(alloc_rec.first);
   m_lend   = std::next(m_lbegin, nels);
+
+  return pointer(*this, m_begin);
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::~MemorySpace()
+template <class ElementType, class LMemSpace>
+inline GlobStaticMem<ElementType, LMemSpace>::~GlobStaticMem()
 {
   DASH_LOG_DEBUG("< MemorySpace.~MemorySpace");
 
@@ -512,19 +482,15 @@ inline MemorySpace<
   DASH_LOG_DEBUG("MemorySpace.~MemorySpace >");
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline void MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::
-    do_deallocate(pointer gptr, size_type nbytes, size_type alignment)
+template <class ElementType, class LMemSpace>
+inline void GlobStaticMem<ElementType, LMemSpace>::do_deallocate(
+    pointer gptr, size_type nbytes, size_type alignment)
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
   DASH_ASSERT_MSG(
-      DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin), "Invalid global pointer to deallocate");
+      DART_GPTR_EQUAL(gptr.dart_gptr(), m_begin),
+      "Invalid global pointer to deallocate");
 
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lbegin);
   DASH_LOG_DEBUG_VAR("GlobStaticMemory.do_deallocate", m_lend);
@@ -552,19 +518,9 @@ inline void MemorySpace<
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
 }
 
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline typename MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::size_type
-MemorySpace<
-    memory_domain_global,
-    ElementType,
-    allocation_static,
-    SynchronizationPolicy,
-    LMemSpace>::size() const noexcept
+template <class ElementType, class LMemSpace>
+inline typename GlobStaticMem<ElementType, LMemSpace>::size_type
+GlobStaticMem<ElementType, LMemSpace>::size() const noexcept
 {
   if (m_size == std::numeric_limits<size_type>::max()) {
     m_size = std::accumulate(
@@ -575,6 +531,8 @@ MemorySpace<
   }
   return m_size;
 }
+
+#if 0
 
 template <class ElementType, class LMemSpace, class SynchronizationPolicy>
 inline bool operator==(
@@ -600,6 +558,8 @@ inline bool operator==(
           lhs.m_allocation_policy == rhs.m_allocation_policy &&
           lhs.m_allocator == rhs.m_allocator);
 }
+
+#endif
 
 }  // namespace dash
 

@@ -224,17 +224,7 @@ TEST_F(ThreadsafetyTest, ConcurrentAttach) {
 
 TEST_F(ThreadsafetyTest, ConcurrentMemAlloc) {
   using elem_t    = int;
-  auto * default_memspace = dash::get_default_global_memory_space();
-  using memory_space_t = std::remove_pointer<decltype(default_memspace)>::type;
-
-  static_assert(std::is_same<memory_space_t, dash::MemorySpace<
-    dash::memory_domain_global,
-    uint8_t,
-    dash::allocation_static,
-    dash::synchronization_independent,
-    dash::HostSpace>>::value, "must be true");
-
-  using pointer_t = dash::GlobPtr<elem_t, memory_space_t>;
+  using pointer_t = decltype(dash::memalloc<elem_t>(size_t{}));
 
   if (!dash::is_multithreaded()) {
     SKIP_TEST_MSG("requires support for multi-threading");
