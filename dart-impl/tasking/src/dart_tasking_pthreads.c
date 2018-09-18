@@ -645,7 +645,8 @@ void handle_task(dart_task_t *task, dart_thread_t *thread)
       DART_ASSERT(prev_task->state == DART_TASK_RUNNING);
       if (!dart__tasking__cancellation_requested()) {
         // Implicit wait for child tasks
-        dart__tasking__task_complete();
+        // TODO: really necessary? Can we transfer child ownership to parent->parent?
+        //dart__tasking__task_complete();
       }
 
       // the task may have changed once we get back here
@@ -773,9 +774,13 @@ void* thread_main(void *data)
       //DART_LOG_TRACE("worker polling for remote messages");
       remote_progress(thread, (task == NULL));
       dart__task__wait_progress();
+      // try again to get a task
+      task = next_task(thread);
       // wait for 100us to reduce pressure on master thread
       if (task == NULL) {
         nanosleep(&sleeptime, NULL);
+      } else {
+        handle_task(task, thread);
       }
     } else if (task == NULL) {
       struct timespec curr_ts;
@@ -1167,13 +1172,13 @@ dart__tasking__task_complete()
   while (task->num_children > 0) {
     dart_task_t *next = next_task(thread);
     // a) look for incoming remote tasks and responses
-    if (next == NULL) {
-      remote_progress(thread, (thread->thread_id == 0));
+    if (next == NULL /*&& is_root_task*/) {
+      remote_progress(thread, is_root_task);
     }
     // b) check cancellation
     dart__tasking__check_cancellation(thread);
     // c) check whether blocked tasks are ready
-    if (next == NULL || thread->thread_id == 0) {
+    if (next == NULL /*|| thread->thread_id == 0*/) {
       dart__task__wait_progress();
       if (next == NULL)
         next = next_task(thread);
