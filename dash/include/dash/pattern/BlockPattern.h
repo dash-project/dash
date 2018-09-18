@@ -695,8 +695,6 @@ public:
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
     DASH_LOG_TRACE_VAR("BlockPattern.local_index()", global_coords);
-    // Local offset of the element within all of the unit's local
-    // elements:
     auto unit = unit_at(global_coords);
     DASH_LOG_TRACE_VAR("BlockPattern.local_index", unit);
     // Global coords to local coords:
@@ -874,8 +872,6 @@ public:
   IndexType at(
     const std::array<IndexType, NumDimensions> & global_coords) const
   {
-    // Local offset of the element within all of the unit's local
-    // elements:
     auto unit = unit_at(global_coords);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords =
