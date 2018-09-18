@@ -6,14 +6,15 @@
 #include <dash/internal/Logging.h>
 
 #include <dash/memory/MemorySpaceBase.h>
+#include <dash/memory/RawDartPointer.h>
 
-#include <dash/Pattern.h>
 #include <dash/Exception.h>
 #include <dash/Init.h>
+#include <dash/Pattern.h>
 
 #include <cstddef>
-#include <sstream>
 #include <iostream>
+#include <sstream>
 
 std::ostream &operator<<(std::ostream &os, const dart_gptr_t &dartptr);
 
@@ -24,30 +25,27 @@ bool operator!=(const dart_gptr_t &lhs, const dart_gptr_t &rhs);
 namespace dash {
 
 namespace internal {
-  static bool is_local(dart_gptr_t gptr) {
-    dart_team_unit_t luid;
-    DASH_ASSERT_RETURNS(
-      dart_team_myid(gptr.teamid, &luid),
-      DART_OK);
-    return gptr.unitid == luid.id;
-  }
+static bool is_local(dart_gptr_t gptr)
+{
+  dart_team_unit_t luid;
+  DASH_ASSERT_RETURNS(dart_team_myid(gptr.teamid, &luid), DART_OK);
+  return gptr.unitid == luid.id;
 }
-
+}  // namespace internal
 
 // Forward-declarations
-template <typename T>                  class GlobRef;
+template <typename T>
+class GlobRef;
 
-template <typename T, class MemSpaceT> class GlobConstPtr;
+template <typename T, class MemSpaceT>
+class GlobConstPtr;
 
-template <class T, class MemSpaceT> class GlobPtr;
+template <class T, class MemSpaceT>
+class GlobPtr;
 
-template <typename T1,
-          typename T2,
-          class    MemSpaceT1,
-          class    MemSpaceT2 >
+template <class T, class MemSpaceT>
 dash::gptrdiff_t distance(
-  const GlobPtr<T1, MemSpaceT1> & gbegin,
-  const GlobPtr<T2, MemSpaceT2> & gend);
+    const GlobPtr<T, MemSpaceT> &gbegin, const GlobPtr<T, MemSpaceT> &gend);
 
 /**
  * Pointer in global memory space with random access arithmetics.
@@ -56,14 +54,10 @@ dash::gptrdiff_t distance(
  *
  * \concept{DashMemorySpaceConcept}
  */
-template<
-  typename ElementType,
-  class    GlobMemT
->
-class GlobPtr
-{
+template <typename ElementType, class GlobMemT>
+class GlobPtr {
 private:
-  typedef GlobPtr<ElementType, GlobMemT>                self_t;
+  typedef GlobPtr<ElementType, GlobMemT> self_t;
 
 public:
   typedef ElementType                          value_type;
@@ -75,7 +69,7 @@ public:
   /**
    * Rebind to a different type of pointer
    */
-  template<typename T>
+  template <typename T>
   using rebind = dash::GlobPtr<T, GlobMemT>;
 
 public:
@@ -83,21 +77,16 @@ public:
   friend class GlobPtr;
 
   template <typename T, class MemSpaceT>
-  friend std::ostream & operator<<(
-    std::ostream                & os,
-    const GlobPtr<T, MemSpaceT> & gptr);
+  friend std::ostream &operator<<(
+      std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr);
 
-  template <typename T1,
-            typename T2,
-            class    MemSpaceT1,
-            class    MemSpaceT2 >
-  friend dash::gptrdiff_t dash::distance(
-    const GlobPtr<T1, MemSpaceT1> & gptr_begin,
-    const GlobPtr<T2, MemSpaceT2> & gptr_end);
+  template <class T, class MemSpaceT>
+  friend dash::gptrdiff_t distance(
+      const GlobPtr<T, MemSpaceT> &gbegin, const GlobPtr<T, MemSpaceT> &gend);
 
 private:
   // Raw global pointer used to initialize this pointer instance
-  dart_gptr_t _rbegin_gptr{DART_GPTR_NULL};
+  RawDartPointer _rbegin_gptr{DART_GPTR_NULL};
   // Memory space refernced by this global pointer
   const GlobMemT *_mem_space{nullptr};
 
@@ -108,15 +97,16 @@ protected:
    * Allows to instantiate GlobPtr without a valid memory
    * space reference.
    */
-  GlobPtr(
-    const GlobMemT * mem_space,
-    dart_gptr_t         gptr,
-    index_type          rindex = 0)
-  : _rbegin_gptr(gptr)
-  , _mem_space(mem_space)
+  GlobPtr(const GlobMemT *mem_space, dart_gptr_t gptr, index_type rindex = 0)
+    : _rbegin_gptr(gptr)
+    , _mem_space(mem_space)
   {
-    if (rindex < 0) { decrement(-rindex); }
-    if (rindex > 0) { increment(rindex); }
+    if (rindex < 0) {
+      decrement(-rindex);
+    }
+    if (rindex > 0) {
+      increment(rindex);
+    }
   }
 
 public:
@@ -126,67 +116,49 @@ public:
   constexpr GlobPtr() = default;
 
   /**
-   * Constructor, specifies underlying global address.
+   * C, specifies unerlying global address.
    */
-  GlobPtr(
-    const GlobMemT & mem_space,
-    dart_gptr_t         gptr)
-  : _rbegin_gptr(gptr)
-  , _mem_space(&mem_space)
-  { }
-
-  /**
-   * Constructor, specifies underlying global address.
-   */
-  GlobPtr(
-    GlobMemT && mem_space,
-    dart_gptr_t    gptr)
-  : _rbegin_gptr(gptr)
-  , _mem_space(nullptr)
+  GlobPtr(const GlobMemT &mem_space, dart_gptr_t gptr)
+    : _rbegin_gptr(gptr)
+    , _mem_space(&mem_space)
   {
-    // No need to bind temporary as value type member:
-    // The memory space instance can only be passed as temporary if
-    // it is not the owner of its referenced memory range.
-    // For a use case, see dash::memalloc in dash/memory/GlobUnitMem.h.
-    //
-    // We could introduce `GlobSharedPtr` which could act as owners of
-    // their referenced resource, corresponding to `std::shared_ptr`.
   }
 
   /**
    * Constructor for conversion of std::nullptr_t.
    */
   explicit constexpr GlobPtr(std::nullptr_t)
-  : _rbegin_gptr(DART_GPTR_NULL)
-  , _mem_space(nullptr)
-  { }
+    : _rbegin_gptr(DART_GPTR_NULL)
+    , _mem_space(nullptr)
+  {
+  }
 
   /**
    * Copy constructor.
    */
-  constexpr GlobPtr(const self_t & other)      = default;
-
+  constexpr GlobPtr(const self_t &other) = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)       = default;
+  self_t &operator=(const self_t &rhs) = default;
 
-  //TODO: we allow this only if both memory compares equal
+  // TODO: we allow this only if both memory compares equal
   /**
    * Copy constructor.
    */
   template <typename T, class MemSpaceT>
-  constexpr GlobPtr(const GlobPtr<T, MemSpaceT> & other)
-  : _rbegin_gptr(other._rbegin_gptr)
-  , _mem_space(reinterpret_cast<const GlobMemT *>(other._mem_space))
-  { }
+  constexpr GlobPtr(const GlobPtr<T, MemSpaceT> &other)
+    : _rbegin_gptr(other._rbegin_gptr)
+    , _mem_space(reinterpret_cast<const GlobMemT *>(other._mem_space))
+  {
+  }
 
   /**
    * Assignment operator.
    */
   template <typename T, class MemSpaceT>
-  self_t & operator=(const GlobPtr<T, MemSpaceT> & other)
+  self_t &operator=(const GlobPtr<T, MemSpaceT> &other)
   {
     _rbegin_gptr = other._rbegin_gptr;
     _mem_space   = reinterpret_cast<const GlobMemT *>(other._mem_space);
@@ -196,19 +168,20 @@ public:
   /**
    * Move constructor.
    */
-  constexpr GlobPtr(self_t && other)           = default;
+  constexpr GlobPtr(self_t &&other) = default;
 
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(self_t && rhs)            = default;
+  self_t &operator=(self_t &&rhs) = default;
 
   /**
    * Converts pointer to its referenced native pointer or
    * \c nullptr if the \c GlobPtr does not point to a local
    * address.
    */
-  explicit operator value_type*() const noexcept {
+  explicit operator value_type *() const noexcept
+  {
     return local();
   }
 
@@ -219,7 +192,8 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  explicit operator value_type*() noexcept {
+  explicit operator value_type *() noexcept
+  {
     return local();
   }
 
@@ -231,10 +205,16 @@ public:
     return _rbegin_gptr;
   }
 
+  constexpr RawDartPointer raw() const noexcept
+  {
+    return _rbegin_gptr;
+  }
+
   /**
    * Converts global pointer to global const pointer.
    */
-  explicit constexpr operator GlobConstPtr<value_type, GlobMemT>() const noexcept
+  explicit constexpr operator GlobConstPtr<value_type, GlobMemT>() const
+      noexcept
   {
     return GlobConstPtr<value_type, GlobMemT>(_rbegin_gptr);
   }
@@ -250,7 +230,7 @@ public:
   /**
    * Pointer offset difference operator.
    */
-  constexpr index_type operator-(const self_t & rhs) const noexcept
+  constexpr index_type operator-(const self_t &rhs) const noexcept
   {
     return dash::distance(rhs, *this);
   }
@@ -258,7 +238,7 @@ public:
   /**
    * Prefix increment operator.
    */
-  self_t & operator++()
+  self_t &operator++()
   {
     increment(1);
     return *this;
@@ -287,11 +267,12 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t & operator+=(index_type n)
+  self_t &operator+=(index_type n)
   {
     if (n >= 0) {
       increment(n);
-    } else {
+    }
+    else {
       decrement(-n);
     }
     return *this;
@@ -300,7 +281,7 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--()
+  self_t &operator--()
   {
     decrement(1);
     return *this;
@@ -329,11 +310,12 @@ public:
   /**
    * Pointer decrement operator.
    */
-  self_t & operator-=(index_type n)
+  self_t &operator-=(index_type n)
   {
     if (n >= 0) {
       decrement(n);
-    } else {
+    }
+    else {
       increment(-n);
     }
     return *this;
@@ -343,16 +325,16 @@ public:
    * Equality comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator==(const GlobPtrT & other) const noexcept
+  constexpr bool operator==(const GlobPtrT &other) const noexcept
   {
-    return DART_GPTR_EQUAL(_rbegin_gptr, other._rbegin_gptr);
+    return _rbegin_gptr == other._rbegin_gptr;
   }
 
   /**
    * Inequality comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator!=(const GlobPtrT & other) const noexcept
+  constexpr bool operator!=(const GlobPtrT &other) const noexcept
   {
     return !(*this == other);
   }
@@ -361,7 +343,7 @@ public:
    * Less comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator<(const GlobPtrT & other) const noexcept
+  constexpr bool operator<(const GlobPtrT &other) const noexcept
   {
     return (other - *this) > 0;
   }
@@ -370,7 +352,7 @@ public:
    * Less-equal comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator<=(const GlobPtrT & other) const noexcept
+  constexpr bool operator<=(const GlobPtrT &other) const noexcept
   {
     return !(*this > other);
   }
@@ -379,7 +361,7 @@ public:
    * Greater comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator>(const GlobPtrT & other) const noexcept
+  constexpr bool operator>(const GlobPtrT &other) const noexcept
   {
     return (*this - other) > 0;
   }
@@ -388,7 +370,7 @@ public:
    * Greater-equal comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator>=(const GlobPtrT & other) const noexcept
+  constexpr bool operator>=(const GlobPtrT &other) const noexcept
   {
     return (*this - other) >= 0;
   }
@@ -432,7 +414,8 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  value_type * local() {
+  value_type *local()
+  {
     void *addr = 0;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
       return static_cast<value_type*>(addr);
@@ -447,10 +430,11 @@ public:
    *           GlobPtr instance, or \c nullptr if the referenced element
    *           is not local to the calling unit.
    */
-  const value_type * local() const {
+  const value_type *local() const
+  {
     void *addr = 0;
     if (dart_gptr_getaddr(_rbegin_gptr, &addr) == DART_OK) {
-      return static_cast<const value_type*>(addr);
+      return static_cast<const value_type *>(addr);
     }
     return nullptr;
   }
@@ -458,23 +442,26 @@ public:
   /**
    * Set the global pointer's associated unit.
    */
-  void set_unit(team_unit_t unit_id) {
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&_rbegin_gptr, unit_id),
-      DART_OK);
+  void set_unit(team_unit_t unit_id)
+  {
+    //DASH_ASSERT_RETURNS(dart_gptr_setunit(&_rbegin_gptr, unit_id), DART_OK);
+    _rbegin_gptr.unitid(unit_id);
   }
 
   /**
    * Check whether the global pointer is in the local
    * address space the pointer's associated unit.
    */
-  bool is_local() const {
+  bool is_local() const
+  {
     return dash::internal::is_local(_rbegin_gptr);
   }
 
-  constexpr explicit operator bool() const noexcept {
-    return !DART_GPTR_ISNULL(_rbegin_gptr);
+  constexpr explicit operator bool() const noexcept
+  {
+    return static_cast<bool>(_rbegin_gptr);
   }
+
 private:
   void do_increment(size_type offs, memory_space_noncontiguous)
   {
@@ -486,25 +473,25 @@ private:
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid;
+    auto current_uid = _rbegin_gptr.unitid();
 
     // current local size
     auto lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
+    auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
 
     // unit at global end points to (last_unit + 1, 0)
-    auto const unit_end = _mem_space->end()._rbegin_gptr.unitid;
+    auto const unit_end = _mem_space->end()._rbegin_gptr.unitid();
 
     if (offs + ptr_offset < lsize) {
       // Case A: Pointer position still in same unit space:
-      _rbegin_gptr.addr_or_offs.offset += (offs * sizeof(value_type));
+      _rbegin_gptr.inc_offset(offs * sizeof(value_type));
     }
     else if (++current_uid >= unit_end) {
       // We are iterating beyond the end
-      _rbegin_gptr.addr_or_offs.offset = 0;
-      _rbegin_gptr.unitid              = current_uid;
+      _rbegin_gptr.offset(0);
+      _rbegin_gptr.unitid(current_uid);
     }
     else {
       // Case B: jump across units and find the correct local offset
@@ -513,14 +500,13 @@ private:
       offs -= (lsize - ptr_offset);
 
       // first iter
-      //++current_uid;
-      lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
+      lsize = _mem_space->local_size(current_uid);
 
       // Skip units until we have ther the correct one or the last valid unit.
       while (offs >= lsize && current_uid < (unit_end - 1)) {
         offs -= lsize;
         ++current_uid;
-        lsize = _mem_space->local_size(dart_team_unit_t{current_uid});
+        lsize = _mem_space->local_size(current_uid);
       }
 
       if (offs >= lsize && current_uid == unit_end - 1) {
@@ -540,8 +526,8 @@ private:
             current_uid, unit_end, "current_uid must equal unit_end");
       }
 
-      _rbegin_gptr.addr_or_offs.offset = (offs * sizeof(value_type));
-      _rbegin_gptr.unitid              = current_uid;
+      _rbegin_gptr.offset(offs * sizeof(value_type));
+      _rbegin_gptr.unitid(current_uid);
     }
   }
   void increment(size_type offs)
@@ -551,28 +537,30 @@ private:
         offs, typename memory_space_traits::memory_space_layout_tag{});
   }
 
-  void do_decrement(size_type offs, memory_space_contiguous) {
+  void do_decrement(size_type offs, memory_space_contiguous)
+  {
     if (_mem_space == nullptr || *this <= _mem_space->begin()) {
       return;
     }
 
-    auto current_uid = _rbegin_gptr.unitid;
+    auto current_uid = _rbegin_gptr.unitid();
 
     // current local offset
-    auto ptr_offset = _rbegin_gptr.addr_or_offs.offset / sizeof(value_type);
+    auto ptr_offset = _rbegin_gptr.offset() / sizeof(value_type);
 
     // unit at global begin
-    auto const unit_begin = _mem_space->begin()._rbegin_gptr.unitid;
+    auto const unit_begin = _mem_space->begin()._rbegin_gptr.unitid();
 
     if (ptr_offset >= offs) {
       // Case A: Pointer position still in same unit space
-      _rbegin_gptr.addr_or_offs.offset -= (offs * sizeof(value_type));
+      _rbegin_gptr.dec_offset(offs * sizeof(value_type));
     }
     else if (--current_uid < unit_begin) {
       // We iterate beyond the begin
-      _rbegin_gptr.addr_or_offs.offset = 0;
-      _rbegin_gptr.unitid              = DART_UNDEFINED_UNIT_ID;
-    } else {
+      _rbegin_gptr.offset(0);
+      _rbegin_gptr.unitid(DART_UNDEFINED_TEAM_UNIT_ID);
+    }
+    else {
       // Case B: jump across units and find the correct local offset
 
       // substract remaining local capacity
@@ -605,38 +593,37 @@ private:
         offs = lsize - offs;
       }
 
-      _rbegin_gptr.addr_or_offs.offset = (offs * sizeof(value_type));
-      _rbegin_gptr.unitid              = current_uid;
+      _rbegin_gptr.offset(offs * sizeof(value_type));
+      _rbegin_gptr.unitid(current_uid);
     }
   }
 
-  void do_decrement(size_type offs, memory_space_noncontiguous) {
-
+  void do_decrement(size_type offs, memory_space_noncontiguous)
+  {
   }
 
-  void decrement(size_type offs) {
+  void decrement(size_type offs)
+  {
     using memory_space_traits = dash::memory_space_traits<GlobMemT>;
     do_decrement(
         offs, typename memory_space_traits::memory_space_layout_tag{});
   }
 };
 
-template<typename T, class MemSpaceT>
-std::ostream & operator<<(
-  std::ostream                & os,
-  const GlobPtr<T, MemSpaceT> & gptr)
+template <typename T, class MemSpaceT>
+std::ostream &operator<<(std::ostream &os, const GlobPtr<T, MemSpaceT> &gptr)
 {
   std::ostringstream ss;
-  char buf[100];
-  sprintf(buf,
-          "u%06X|f%02X|s%04X|t%04X|o%016lX",
-          gptr._rbegin_gptr.unitid,
-          gptr._rbegin_gptr.flags,
-          gptr._rbegin_gptr.segid,
-          gptr._rbegin_gptr.teamid,
-          gptr._rbegin_gptr.addr_or_offs.offset);
-  ss << "dash::GlobPtr<" << typeid(T).name() << ">("
-     << buf << ")";
+  char               buf[100];
+  sprintf(
+      buf,
+      "u%06X|f%02X|s%04X|t%04X|o%016lX",
+      gptr._rbegin_gptr.unitid().id,
+      gptr._rbegin_gptr.flags(),
+      gptr._rbegin_gptr.segid(),
+      gptr._rbegin_gptr.teamid(),
+      gptr._rbegin_gptr.offset());
+  ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
 
@@ -655,39 +642,40 @@ std::ostream & operator<<(
  *       memory space tagged as unit-scope address space
  *       (see GlobUnitMem).
  */
-template<typename T, class MemSpaceT>
-class GlobConstPtr
-: GlobPtr<T, MemSpaceT> // NOTE: non-public subclassing
+template <typename T, class MemSpaceT>
+class GlobConstPtr : GlobPtr<T, MemSpaceT>  // NOTE: non-public subclassing
 {
   typedef GlobConstPtr<T, MemSpaceT> self_t;
   typedef GlobPtr<T, MemSpaceT>      base_t;
- public:
-  typedef T                                            value_type;
-  typedef typename base_t::const_type                  const_type;
-  typedef typename base_t::index_type                  index_type;
-  typedef typename base_t::gptrdiff_t                  gptrdiff_t;
+
+public:
+  typedef T                           value_type;
+  typedef typename base_t::const_type const_type;
+  typedef typename base_t::index_type index_type;
+  typedef typename base_t::gptrdiff_t gptrdiff_t;
 
   template <typename T_, class _MemSpaceT>
-  friend std::ostream & operator<<(
-    std::ostream           & os,
-    const GlobConstPtr<T_, _MemSpaceT> & gptr);
+  friend std::ostream &operator<<(
+      std::ostream &os, const GlobConstPtr<T_, _MemSpaceT> &gptr);
 
- public:
+public:
   /**
    * Default constructor.
    *
    * Pointer arithmetics are undefined for the created instance.
    */
   constexpr GlobConstPtr()
-  : base_t(nullptr, DART_GPTR_NULL)
-  { }
+    : base_t(nullptr, DART_GPTR_NULL)
+  {
+  }
 
   /**
    * Constructor for conversion of std::nullptr_t.
    */
   explicit constexpr GlobConstPtr(std::nullptr_t p)
-  : base_t(nullptr, DART_GPTR_NULL)
-  { }
+    : base_t(nullptr, DART_GPTR_NULL)
+  {
+  }
 
   /**
    * Constructor, wraps underlying global address without coupling
@@ -696,39 +684,42 @@ class GlobConstPtr
    * Pointer arithmetics are undefined for the created instance.
    */
   explicit constexpr GlobConstPtr(dart_gptr_t gptr)
-  : base_t(nullptr, gptr)
-  { }
+    : base_t(nullptr, gptr)
+  {
+  }
 
   /**
    * Copy constructor.
    */
-  constexpr GlobConstPtr(const self_t & other) = default;
+  constexpr GlobConstPtr(const self_t &other) = default;
 
   /**
    * Move constructor.
    */
-  constexpr GlobConstPtr(self_t && other)      = default;
+  constexpr GlobConstPtr(self_t &&other) = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs)       = default;
+  self_t &operator=(const self_t &rhs) = default;
 
   /**
    * Move-assignment operator.
    */
-  self_t & operator=(self_t && rhs)            = default;
+  self_t &operator=(self_t &&rhs) = default;
 
-
-  value_type * local() {
+  value_type *local()
+  {
     return base_t::local();
   }
 
-  const value_type * local() const {
+  const value_type *local() const
+  {
     return base_t::local();
   }
 
-  bool is_local() const {
+  bool is_local() const
+  {
     return base_t::is_local();
   }
 
@@ -747,7 +738,8 @@ class GlobConstPtr
     return local();
   }
 
-  explicit operator value_type*() {
+  explicit operator value_type *()
+  {
     return local();
   }
 
@@ -765,7 +757,7 @@ class GlobConstPtr
    * Equality comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator==(const GlobPtrT & other) const noexcept
+  constexpr bool operator==(const GlobPtrT &other) const noexcept
   {
     return base_t::operator==(other);
   }
@@ -774,7 +766,7 @@ class GlobConstPtr
    * Inequality comparison operator.
    */
   template <class GlobPtrT>
-  constexpr bool operator!=(const GlobPtrT & other) const noexcept
+  constexpr bool operator!=(const GlobPtrT &other) const noexcept
   {
     return base_t::operator!=(other);
   }
@@ -787,7 +779,7 @@ class GlobConstPtr
    * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
-  constexpr bool operator<(const GlobPtrT & other) const noexcept
+  constexpr bool operator<(const GlobPtrT &other) const noexcept
   {
     return base_t::operator<(other);
   }
@@ -800,7 +792,7 @@ class GlobConstPtr
    * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
-  constexpr bool operator<=(const GlobPtrT & other) const noexcept
+  constexpr bool operator<=(const GlobPtrT &other) const noexcept
   {
     return base_t::operator<=(other);
   }
@@ -813,7 +805,7 @@ class GlobConstPtr
    * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
-  constexpr bool operator>(const GlobPtrT & other) const noexcept
+  constexpr bool operator>(const GlobPtrT &other) const noexcept
   {
     return base_t::operator>(other);
   }
@@ -826,31 +818,31 @@ class GlobConstPtr
    * This method is only provided to comply to the pointer concept.
    */
   template <class GlobPtrT>
-  constexpr bool operator>=(const GlobPtrT & other) const noexcept
+  constexpr bool operator>=(const GlobPtrT &other) const noexcept
   {
     return base_t::operator>=(other);
   }
 };
 
-template<typename T, class MemSpaceT>
-std::ostream & operator<<(
-  std::ostream          & os,
-  const GlobConstPtr<T, MemSpaceT> & gptr)
+template <typename T, class MemSpaceT>
+std::ostream &operator<<(
+    std::ostream &os, const GlobConstPtr<T, MemSpaceT> &gptr)
 {
   std::ostringstream ss;
-  char buf[100];
-  sprintf(buf,
-          "u%06X|f%02X|s%04X|t%04X|o%016lX",
-          gptr.dart_gptr().unitid,
-          gptr.dart_gptr().flags,
-          gptr.dart_gptr().segid,
-          gptr.dart_gptr().teamid,
-          gptr.dart_gptr().addr_or_offs.offset);
+  char               buf[100];
+  sprintf(
+      buf,
+      "u%06X|f%02X|s%04X|t%04X|o%016lX",
+      gptr.dart_gptr().unitid,
+      gptr.dart_gptr().flags,
+      gptr.dart_gptr().segid,
+      gptr.dart_gptr().teamid,
+      gptr.dart_gptr().addr_or_offs.offset);
   ss << "dash::GlobConstPtr<" << typeid(T).name() << ">(" << buf << ")";
   return operator<<(os, ss.str());
 }
 
-#endif // DOXYGEN
+#endif  // DOXYGEN
 
 /**
  * Specialization of \c dash::distance for \c dash::GlobPtr as default
@@ -872,50 +864,51 @@ std::ostream & operator<<(
  *
  * \concept{DashMemorySpaceConcept}
  */
-template <typename T1,
-          typename T2,
-          class    MemSpaceT1,
-          class    MemSpaceT2 >
+template <class T, class MemSpaceT>
 dash::gptrdiff_t distance(
-  // First global pointer in range
-  const GlobPtr<T1, MemSpaceT1> & gbegin,
-  // Final global pointer in range
-  const GlobPtr<T2, MemSpaceT2> & gend) {
+    // First global pointer in range
+    const GlobPtr<T, MemSpaceT> &gbegin,
+    // Final global pointer in range
+    const GlobPtr<T, MemSpaceT> &gend)
+{
   using index_type = dash::gptrdiff_t;
   using val_type_b = typename std::decay<decltype(gbegin)>::type::value_type;
   using val_type_e = typename std::decay<decltype(gend)>::type::value_type;
   using value_type = val_type_b;
 
   static_assert(
-    sizeof(val_type_b) == sizeof(val_type_e),
-    "value types of global pointers are not compatible for dash::distance");
+      sizeof(val_type_b) == sizeof(val_type_e),
+      "value types of global pointers are not compatible for dash::distance");
 
   // Both pointers in same unit space:
-  if (gbegin._rbegin_gptr.unitid == gend._rbegin_gptr.unitid ||
+  if (gbegin._rbegin_gptr.unitid() == gend._rbegin_gptr.unitid() ||
       gbegin._mem_space == nullptr) {
     auto offset_end =
-        static_cast<dash::gptrdiff_t>(gend._rbegin_gptr.addr_or_offs.offset);
+        static_cast<dash::gptrdiff_t>(gend._rbegin_gptr.offset());
     auto offset_begin =
-        static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.addr_or_offs.offset);
+        static_cast<dash::gptrdiff_t>(gbegin._rbegin_gptr.offset());
 
     return (offset_end - offset_begin) / sizeof(value_type);
   }
   // If unit of begin pointer is after unit of end pointer,
   // return negative distance with swapped argument order:
-  if (gbegin._rbegin_gptr.unitid > gend._rbegin_gptr.unitid) {
+  if (gbegin._rbegin_gptr.unitid() > gend._rbegin_gptr.unitid()) {
     return -(dash::distance(gend, gbegin));
   }
   // Pointers span multiple unit spaces, accumulate sizes of
   // local unit memory ranges in the pointer range:
-  index_type dist = gbegin._mem_space->local_size(
-                      dart_team_unit_t { gbegin.dart_gptr().unitid })
-                    - (gbegin.dart_gptr().addr_or_offs.offset
-                        / sizeof(value_type))
-                    + (gend.dart_gptr().addr_or_offs.offset
-                        / sizeof(value_type));
-  for (int u = gbegin.dart_gptr().unitid+1;
-           u < gend.dart_gptr().unitid; ++u) {
-    dist += gend._mem_space->local_size(dart_team_unit_t { u });
+  index_type dist =
+      gbegin._mem_space->local_size(gbegin._rbegin_gptr.unitid()) -
+      (gbegin._rbegin_gptr.offset() / sizeof(value_type)) +
+      (gend._rbegin_gptr.offset() / sizeof(value_type));
+
+  for (auto u = ++gbegin._rbegin_gptr.unitid();
+       u < gend._rbegin_gptr.unitid();
+       ++u) {
+    static_assert(
+        std::is_same<dash::team_unit_t, decltype(u)>::value, "wrong type");
+
+    dist += gend._mem_space->local_size(u);
   }
   return dist;
 }
@@ -930,18 +923,18 @@ dash::gptrdiff_t distance(
  *
  * \concept{DashMemorySpaceConcept}
  */
-template<typename ElementType, class MemSpaceT>
+template <typename ElementType, class MemSpaceT>
 dash::default_index_t distance(
-  /// Global pointer to the initial position in the global range
-  dart_gptr_t first,
-  /// Global pointer to the final position in the global range
-  dart_gptr_t last)
+    /// Global pointer to the initial position in the global range
+    dart_gptr_t first,
+    /// Global pointer to the final position in the global range
+    dart_gptr_t last)
 {
   GlobPtr<ElementType, MemSpaceT> gptr_first(first);
   GlobPtr<ElementType, MemSpaceT> gptr_last(last);
   return gptr_last - gptr_first;
 }
 
-} // namespace dash
+}  // namespace dash
 
-#endif // DASH__GLOB_PTR_H_
+#endif  // DASH__GLOB_PTR_H_

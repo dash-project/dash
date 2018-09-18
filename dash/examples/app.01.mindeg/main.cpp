@@ -13,6 +13,8 @@ using std::cout;
 using std::cin;
 using std::endl;
 
+using memalloc_ptr_t = decltype(dash::memalloc<int>(size_t{}));
+
 struct node_t {
   /// 1-based
   int id;
@@ -21,7 +23,7 @@ struct node_t {
   int elim_step;
   int adj_sz;
   /// neighbors of this node
-  dash::GlobPtr<int, dash::GlobStaticMem<int, dash::HostSpace>> adj;
+  memalloc_ptr_t adj;
 };
 
 bool operator<(const node_t & x, const node_t & y)
@@ -286,7 +288,6 @@ int read_mtx(const std::string & fname,
   // allocate memory of adjacency list in parallel
   for (size_t i = 0; i < nodes.lsize(); ++i) {
     nodes.local[i].adj = dash::memalloc<int>(
-                           nodes.globmem(),
                            nodes.local[i].adj_sz);
   }
 

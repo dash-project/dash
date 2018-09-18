@@ -186,7 +186,6 @@ TEST_F(SharedTest, CompositeValue)
                       static_cast<short>(1 + dash::myid()) };
   value_t  exp_val  { 'a', 'b', 'c', 'd',
                       static_cast<short>(dash::size()) };
-
   shared = shared_t(init_val);
   shared.barrier();
 

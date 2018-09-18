@@ -1,4 +1,5 @@
 #include <dash/GlobPtr.h>
+#include <dash/memory/RawDartPointer.h>
 
 std::ostream & operator<<(
   std::ostream      & os,

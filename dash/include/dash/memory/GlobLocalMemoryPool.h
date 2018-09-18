@@ -4,6 +4,7 @@
 #include <dash/Exception.h>
 #include <dash/allocator/AllocationPolicy.h>
 #include <dash/memory/MemorySpaceBase.h>
+#include <dash/memory/RawDartPointer.h>
 
 namespace dash {
 
@@ -31,7 +32,7 @@ class GlobLocalMemoryPool : public MemorySpace<
       typename local_memory_traits::memory_space_type_category>;
 
 public:
-  //inherit parent typedefs
+  // inherit parent typedefs
   using memory_space_domain_category = memory_domain_global;
   using memory_space_type_category =
       typename base_t::memory_space_type_category;
@@ -49,10 +50,15 @@ public:
   // local memory space
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
+#if 0
   using pointer       = dash::GlobPtr<value_type, GlobLocalMemoryPool>;
   using const_pointer = dash::GlobPtr<const value_type, GlobLocalMemoryPool>;
   using local_pointer = value_type*;
   using const_local_pointer = value_type const*;
+#endif
+
+  using pointer       = dash::RawDartPointer;
+  using const_pointer = dash::RawDartPointer;
 
 public:
   GlobLocalMemoryPool() = delete;
@@ -117,9 +123,8 @@ public:
    */
   void flush(pointer gptr) DASH_ASSERT_NOEXCEPT
   {
-    DASH_ASSERT_MSG(
-        !DART_GPTR_ISNULL(gptr.dart_gptr()), "cannot flush DART_GPTR_NULL");
-    dart_flush_all(gptr.dart_gptr());
+    DASH_ASSERT_MSG(gptr, "cannot flush DART_GPTR_NULL");
+    dart_flush_all(gptr);
   }
 
   /**
@@ -127,11 +132,9 @@ public:
    */
   void flush(pointer gptr, dash::team_unit_t target) DASH_ASSERT_NOEXCEPT
   {
-    DASH_ASSERT_MSG(
-        !DART_GPTR_ISNULL(gptr.dart_gptr()), "cannot flush DART_GPTR_NULL");
-    auto dart_gptr   = gptr.dart_gptr();
-    dart_gptr.unitid = target.id;
-    dart_flush(dart_gptr);
+    DASH_ASSERT_MSG(gptr, "cannot flush DART_GPTR_NULL");
+    gptr.unitid(target);
+    dart_flush(gptr);
   }
 
   /**
@@ -139,9 +142,8 @@ public:
    */
   void flush_local(pointer gptr) DASH_ASSERT_NOEXCEPT
   {
-    DASH_ASSERT_MSG(
-        !DART_GPTR_ISNULL(gptr.dart_gptr()), "cannot flush DART_GPTR_NULL");
-    dart_flush_local_all(gptr.dart_gptr());
+    DASH_ASSERT_MSG(gptr, "cannot flush DART_GPTR_NULL");
+    dart_flush_local_all(gptr);
   }
 
   /**
@@ -151,18 +153,18 @@ public:
   void flush_local(pointer gptr, dash::team_unit_t target)
       DASH_ASSERT_NOEXCEPT
   {
-    DASH_ASSERT_MSG(
-        !DART_GPTR_ISNULL(gptr.dart_gptr()), "cannot flush DART_GPTR_NULL");
-    auto dart_gptr   = gptr.dart_gptr();
-    dart_gptr.unitid = target.id;
-    dart_flush_local(dart_gptr);
+    DASH_ASSERT_MSG(gptr, "cannot flush DART_GPTR_NULL");
+    gptr.unitid(target);
+    dart_flush(gptr);
+    dart_flush_local(gptr);
   }
 
 private:
-  dash::Team const* m_team{};
-  size_type         m_size{};
-  size_type         m_capacity{};
-  allocator_type    m_allocator{};
+  dash::Team const*                       m_team{};
+  size_type                               m_size{};
+  size_type                               m_capacity{};
+  allocator_type                          m_allocator{};
+  std::vector<std::pair<pointer, size_t>> m_segments;
 
 private:
   pointer do_allocate(size_type nbytes, size_type alignment);
@@ -232,7 +234,6 @@ GlobLocalMemoryPool<ElementType, LMemSpace>::do_allocate(
   }
 
   dart_gptr_t gptr;
-  void*       addr;
 
   if (nbytes > 0) {
     dash::dart_storage<uint8_t> ds(nbytes);
@@ -244,13 +245,13 @@ GlobLocalMemoryPool<ElementType, LMemSpace>::do_allocate(
           ret);
       throw std::bad_alloc{};
     }
-    dart_gptr_getaddr(gptr, &addr);
     DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
 
-    return pointer(*this, gptr);
+    m_segments.emplace_back(std::make_pair(pointer{gptr}, nbytes));
+    return m_segments.back().first;
   }
 
-  return pointer(*this, DART_GPTR_NULL);
+  return pointer{DART_GPTR_NULL};
 }
 
 template <class ElementType, class LMemSpace>
@@ -269,9 +270,12 @@ inline void GlobLocalMemoryPool<ElementType, LMemSpace>::do_deallocate(
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
-  auto const dart_gptr = gptr.dart_gptr();
-  if (*m_team != dash::Team::Null() && !DART_GPTR_ISNULL(dart_gptr)) {
-    DASH_ASSERT_RETURNS(dart_memfree(dart_gptr), DART_OK);
+  if (!dash::is_initialized()) {
+    return;
+  }
+
+  if (*m_team != dash::Team::Null() && gptr) {
+    DASH_ASSERT_RETURNS(dart_memfree(gptr), DART_OK);
   }
 
   DASH_LOG_DEBUG("MemorySpace.do_deallocate >");
@@ -279,42 +283,12 @@ inline void GlobLocalMemoryPool<ElementType, LMemSpace>::do_deallocate(
 template <class ElementType, class LMemSpace>
 inline void GlobLocalMemoryPool<ElementType, LMemSpace>::release()
 {
-  // This is not required since DART manages the raw memory
-  // TODO: Fix this and support various memory spaces
+  for (auto& rec : m_segments) {
+    do_deallocate(rec.first, rec.second, alignof(std::max_align_t));
+  }
+
+  m_segments.clear();
 }
-
-#if 0
-
-template <typename T>
-GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
-    size_t nelem)
-{
-  using memory_t = GlobLocalMemoryPool<uint8_t, dash::HostSpace>;
-
-  auto* mspace =
-      get_default_memory_space<memory_domain_global, memory_space_host_tag>();
-
-  auto ptr       = (dynamic_cast<memory_t *>(mspace))->allocate(nelem * sizeof(T), alignof(T));
-
-  return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
-}
-
-template <class T>
-void memfree(
-    GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> gptr,
-    size_t                                                    nels)
-{
-  //auto* default_mem =
-  //    get_default_memory_space<memory_domain_global, dash::HostSpace>();
-
-  //auto freeptr =
-  //    dash::GlobPtr<uint8_t, GlobLocalMemoryPool<uint8_t, dash::HostSpace>>{
-  //        *default_mem, gptr.dart_gptr()};
-
-  //default_mem->->deallocate(
-  //    freeptr, nels * sizeof(T), alignof(T));
-}
-#endif
 
 }  // namespace dash
 

@@ -62,7 +62,7 @@ GlobPtr<T, GlobLocalMemoryPool<uint8_t, dash::HostSpace>> memalloc(
 
   auto ptr = mspace->allocate(nelem * sizeof(T), alignof(T));
 
-  return dash::GlobPtr<T, memory_t>(*mspace, ptr.dart_gptr());
+  return dash::GlobPtr<T, memory_t>(*mspace, ptr);
 }
 
 template <class T>
@@ -78,11 +78,7 @@ void memfree(
 
   DASH_ASSERT_MSG(mspace, "invalid default memory space");
 
-  auto freeptr =
-      dash::GlobPtr<uint8_t, GlobLocalMemoryPool<uint8_t, dash::HostSpace>>{
-          *mspace, gptr.dart_gptr()};
-
-  mspace->deallocate(freeptr, nels * sizeof(T), alignof(T));
+  mspace->deallocate(gptr.raw(), nels * sizeof(T), alignof(T));
 }
 
 }  // namespace dash
