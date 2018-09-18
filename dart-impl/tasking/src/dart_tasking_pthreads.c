@@ -761,12 +761,6 @@ void* thread_main(void *data)
     // process the next task
     dart_task_t *task = next_task(thread);
 
-    if (!in_idle && task == NULL) {
-      EVENT_ENTER(EVENT_IDLE);
-    }
-    if (in_idle && task != NULL) {
-      EVENT_EXIT(EVENT_IDLE);
-    }
     handle_task(task, thread);
 
     //DART_LOG_TRACE("thread_main: finished processing task %p", task);
@@ -939,6 +933,10 @@ dart__tasking__init()
 #endif // DART_ENABLE_AYUDAME
 
   dart__task__wait_init();
+
+#ifdef CRAYPAT
+  PAT_record(PAT_STATE_ON);
+#endif
 
   initialized = true;
 
