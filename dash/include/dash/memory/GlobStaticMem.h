@@ -7,6 +7,8 @@
 
 #include <numeric>
 
+// clang-format off
+
 /**
  * \defgroup  DashGlobalMemoryConcept  Global Memory Concept
  * Concept of distributed global memory space shared by units in a specified
@@ -34,45 +36,31 @@
  *
  * \par Types
  *
- * Type Name            | Description |
- * -------------------- |
- * ------------------------------------------------------ | \c GlobalRAI |
- * Random access iterator on global address space         | \c LocalRAI |
- * Random access iterator on a single local address space |
+ * Type Name            | Description                                            |
+ * -------------------- | ------------------------------------------------------ |
+ * \c GlobalRAI         | Random access iterator on global address space         |
+ * \c LocalRAI          | Random access iterator on a single local address space |
  *
  *
  * \par Methods
  *
- * Return Type          | Method             | Parameters | Description |
- * -------------------- | ------------------ |
- * ---------------------------------- |
- * ----------------------------------------------------------------------------------------------------------
- * | <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp; | Global pointer to
- * the initial address of the global memory space | <tt>GlobalRAI</tt>   |
- * <tt>end</tt>       | &nbsp;                             | Global pointer
- * past the final element in the global memory space | <tt>LocalRAI</tt>    |
- * <tt>lbegin</tt>    | &nbsp;                             | Local pointer to
- * the initial address in the local segment of the global memory space |
- * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt> | Local pointer
- * to the initial address in the local segment at unit \c u of the global
- * memory space          | <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;
- * | Local pointer past the final element in the local segment of the global
- * memory space                       | <tt>LocalRAI</tt>    | <tt>lend</tt>
- * | <tt>unit u</tt>                    | Local pointer past the final element
- * in the local segment at unit \c u of the global memory space          |
- * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt> | Global
- * pointer to the element at canonical global offset \c gidx in the global
- * memory space                | <tt>void</tt>        | <tt>put_value</tt> |
- * <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c
- * v_in to address in global memory at canonical global offset \c gidx |
- * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index
- * gidx</tt> | Loads value from address in global memory at canonical global
- * offset \c gidx into local address \c v_out   | <tt>void</tt>        |
- * <tt>barrier</tt>   | &nbsp;                             | Blocking
- * synchronization of all units associated with the global memory instance |
+ * Return Type          | Method             | Parameters                         | Description                                                                                                |
+ * -------------------- | ------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp;                             | Global pointer to the initial address of the global memory space                                           |
+ * <tt>GlobalRAI</tt>   | <tt>end</tt>       | &nbsp;                             | Global pointer past the final element in the global memory space                                           |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | &nbsp;                             | Local pointer to the initial address in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt>                    | Local pointer to the initial address in the local segment at unit \c u of the global memory space          |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;                             | Local pointer past the final element in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | <tt>unit u</tt>                    | Local pointer past the final element in the local segment at unit \c u of the global memory space          |
+ * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt>                | Global pointer to the element at canonical global offset \c gidx in the global memory space                |
+ * <tt>void</tt>        | <tt>put_value</tt> | <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c v_in to address in global memory at canonical global offset \c gidx |
+ * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index gidx</tt> | Loads value from address in global memory at canonical global offset \c gidx into local address \c v_out   |
+ * <tt>void</tt>        | <tt>barrier</tt>   | &nbsp;                             | Blocking synchronization of all units associated with the global memory instance                           |
  *
  * \}
  */
+
+// clang-format on
 
 namespace dash {
 
@@ -131,7 +119,6 @@ public:
   using memory_space_synchronization_policy = synchronization_collective;
   using memory_space_layout_tag             = memory_space_contiguous;
 
-  // TODO rko: Move this to base class
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
   using pointer             = dash::GlobPtr<value_type, GlobStaticMem>;
@@ -531,35 +518,6 @@ GlobStaticMem<ElementType, LMemSpace>::size() const noexcept
   }
   return m_size;
 }
-
-#if 0
-
-template <class ElementType, class LMemSpace, class SynchronizationPolicy>
-inline bool operator==(
-    MemorySpace<
-        memory_domain_global,
-        ElementType,
-        allocation_static,
-        SynchronizationPolicy,
-        LMemSpace> const& lhs,
-    MemorySpace<
-        memory_domain_global,
-        ElementType,
-        allocation_static,
-        SynchronizationPolicy,
-        LMemSpace> const& rhs) noexcept
-{
-  // Two global memory spaces are equal if we have equal teams (obvious, DART
-  // requires that), equal allocation policies and equal allocators (as
-  // defined by the cpp17 polymorphic resource concept)
-
-  return &lhs == &rhs ||
-         (*(lhs.m_team) == *(rhs.m_team) &&
-          lhs.m_allocation_policy == rhs.m_allocation_policy &&
-          lhs.m_allocator == rhs.m_allocator);
-}
-
-#endif
 
 }  // namespace dash
 
