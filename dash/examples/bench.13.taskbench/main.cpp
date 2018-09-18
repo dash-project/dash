@@ -101,7 +101,7 @@ benchmark_task_remotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_barrier();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::taskloop(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -142,7 +142,7 @@ benchmark_task_spreadremotedep_creation(size_t num_tasks, int num_deps)
   dash::tasks::async_barrier();
 
   if (!RootOnly || dash::myid() == 0) {
-    dash::tasks::taskloop(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -182,7 +182,7 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 
   Timer t;
   //for (size_t i = 1; i <= num_tasks; ++i) {
-    dash::tasks::taskloop(0UL, num_tasks, 1,
+    dash::tasks::taskloop(0UL, num_tasks, dash::tasks::chunk_size(1),
       [](int from, int to){
         // nothing to do
         //std::cout << "task " << from << std::endl;
@@ -192,7 +192,7 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
         int to,
         dash::tasks::DependencyVectorInserter inserter) {
         for (int d = 0; d < num_deps; d++) {
-          *inserter = dash::tasks::out(&tmp[d]);
+          *inserter = dash::tasks::out(tmp[d]);
         }
       }
     );
@@ -212,8 +212,8 @@ benchmark_task_localdep_creation(size_t num_tasks, int num_deps)
 void
 benchmark_task_yield(size_t num_yields)
 {
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW);
-  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
+  dart_task_create(&yielding_task, &num_yields, sizeof(num_yields), NULL, 0, DART_PRIO_LOW, NULL);
   Timer t;
   dart_task_complete();
   dash::barrier();

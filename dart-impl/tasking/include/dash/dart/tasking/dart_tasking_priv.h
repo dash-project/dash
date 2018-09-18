@@ -1,6 +1,5 @@
 #ifndef DART__BASE__INTERNAL__TASKING_H__
 #define DART__BASE__INTERNAL__TASKING_H__
-
 #include <stdbool.h>
 #include <pthread.h>
 #include <dash/dart/if/dart_active_messages.h>
@@ -8,6 +7,8 @@
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/mutex.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/atomic.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/tasking/dart_tasking_context.h>
 #include <dash/dart/tasking/dart_tasking_phase.h>
 #include <dash/dart/tasking/dart_tasking_envstr.h>
@@ -58,6 +59,14 @@ struct dart_wait_handle_s dart_wait_handle_t;
 struct dart_task_data {
   struct dart_task_data     *next;            // next entry in a task list/queue
   struct dart_task_data     *prev;            // previous entry in a task list/queue
+  int32_t                    unresolved_deps; // the number of unresolved task dependencies
+  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
+  dart_taskphase_t           phase;
+#ifdef DART_TASK_USE_PTHREAD_MUTEX
+  dart_mutex_t               mutex;
+#else
+  int32_t                    lock;
+#endif
   union {
     // used for dummy tasks
     struct {
@@ -70,8 +79,6 @@ struct dart_task_data {
       void                  *data;            // the data to be passed to the action
     };
   };
-  int32_t                    unresolved_deps; // the number of unresolved task dependencies
-  int32_t                    unresolved_remote_deps; // the number of unresolved remote task dependencies
   struct task_list          *successor;       // the list of tasks that depend on this task
   struct dart_task_data     *parent;          // the task that created this task
   struct dart_task_data     *recycle_tasks;   // list of destroyed child tasks
@@ -81,10 +88,8 @@ struct dart_task_data {
   struct dart_dephash_elem **local_deps;      // hashmap containing dependencies of child tasks
   dart_wait_handle_t        *wait_handle;
   const char                *descr;           // the description of the task
-  dart_mutex_t               mutex;
-  dart_taskphase_t           phase;
+  int32_t                    num_children;
   int                        delay;           // delay in case this task yields
-  int                        num_children;
   bool                       has_ref;
   bool                       data_allocated;  // whether the data was allocated and copied
   int8_t                     state;           // one of dart_task_state_t, single byte sufficient
@@ -229,5 +234,41 @@ dart__tasking__is_root_task(dart_task_t *task)
 {
   return task->state == DART_TASK_ROOT;
 }
+
+
+int pthread_yield(void);
+
+DART_INLINE
+void
+task_lock(dart_task_t *task)
+{
+#ifdef DART_TASK_USE_PTHREAD_MUTEX
+  dart__base__mutex_lock(&task->mutex);
+#else
+  int32_t cnt = 0;
+  // fast path: try to lock for a while before yielding
+  while (0 != DART_COMPARE_AND_SWAP32(&task->lock, 0, 1) && cnt < 1024)
+  { }
+
+  // slow path: yield the thread while trying
+  while (0 != DART_COMPARE_AND_SWAP32(&task->lock, 0, 1)) {
+    pthread_yield();
+  }
+#endif
+}
+
+DART_INLINE
+void
+task_unlock(dart_task_t *task)
+{
+#ifdef DART_TASK_USE_PTHREAD_MUTEX
+  dart__base__mutex_unlock(&task->mutex);
+#else
+  int32_t ret = DART_COMPARE_AND_SWAP32(&task->lock, 1, 0);
+  dart__unused(ret);
+  DART_ASSERT_MSG(ret == 1, "Failed to unlock task that is not locked!");
+#endif
+}
+
 
 #endif /* DART__BASE__INTERNAL__TASKING_H__ */
