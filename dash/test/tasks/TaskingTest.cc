@@ -87,7 +87,7 @@ TEST_F(TaskingTest, LocalDeps)
         ++array[dash::myid()];
       },
       // we can also use local pointer instead of gptr
-      dash::tasks::out(&array.local[0])
+      dash::tasks::out(array.local[0])
       //dash::tasks::out(array[dash::myid()])
     );
   }

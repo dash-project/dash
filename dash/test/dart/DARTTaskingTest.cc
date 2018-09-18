@@ -81,9 +81,10 @@ static void testfn_nested_deps(void *data) {
         &testfn_assign,      // action to call
         &td,                 // argument to pass
         sizeof(td),          // size of the tasks's data (if to be copied)
-      dep,                   // dependency
-      1,                     // number of dependencies
-      DART_PRIO_LOW)
+        dep,                 // dependency
+        1,                   // number of dependencies
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -179,7 +180,8 @@ TEST_F(DARTTaskingTest, BulkAtomicIncrement)
         sizeof(td),          // size of the tasks's data (if to be copied)
         NULL,                // dependency
         0,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -208,7 +210,8 @@ TEST_F(DARTTaskingTest, Yield)
         sizeof(td),          // size of the tasks's data (if to be copied)
         NULL,                // dependency
         0,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -292,7 +295,8 @@ TEST_F(DARTTaskingTest, LocalOutDependency)
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
         1,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -336,7 +340,8 @@ TEST_F(DARTTaskingTest, LocalInOutDependencies)
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
         2,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -379,7 +384,8 @@ TEST_F(DARTTaskingTest, SameLocalInOutDependency)
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
         2,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -417,7 +423,8 @@ TEST_F(DARTTaskingTest, InOutDependency)
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                // dependency
         1,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -437,7 +444,7 @@ TEST_F(DARTTaskingTest, NestedTaskDeps)
   for (int i = 0; i < dart_task_num_threads()*10; ++i) {
     ASSERT_EQ(
       DART_OK,
-      dart_task_create(&testfn_nested_deps, NULL, 0, NULL, 0, DART_PRIO_HIGH)
+      dart_task_create(&testfn_nested_deps, NULL, 0, NULL, 0, DART_PRIO_HIGH, NULL)
     );
   }
 
@@ -475,7 +482,8 @@ TEST_F(DARTTaskingTest, CancelLocal)
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
         1,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW, 
+        NULL)
     );
   }
 
@@ -515,7 +523,8 @@ TEST_F(DARTTaskingTest, CancelBcast)
         sizeof(td),          // size of the tasks's data (if to be copied)
         &dep,                // dependency
         1,                    // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
   }
 
@@ -579,7 +588,8 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDep)
         sizeof(td),          // size of the tasks's data (if to be copied)
         dep,                 // dependency
         3,                   // number of dependencies
-        DART_PRIO_LOW)
+        DART_PRIO_LOW,
+        NULL)
     );
     dart_task_phase_advance();
   }
@@ -649,7 +659,8 @@ TEST_F(DARTTaskingTest, CancelBcastGlobalInDepRoot)
           sizeof(td),          // size of the tasks's data (if to be copied)
           dep,                 // dependency
           2,                   // number of dependencies
-          DART_PRIO_LOW)
+          DART_PRIO_LOW,
+          NULL)
       );
     }
     dart_task_phase_advance();
@@ -751,8 +762,8 @@ TEST_F(DARTTaskingTest, NeighborRemoteOutDep)
         ASSERT_EQ_U(lneighbor*10000 + i, (int)matrix.local(0, 0));
         ASSERT_EQ_U(rneighbor*10000 + i, (int)matrix.local(0, 1));
       },
-      dash::tasks::in(&matrix.local(0, 0)),
-      dash::tasks::in(&matrix.local(0, 1))
+      dash::tasks::in(matrix.local(0, 0)),
+      dash::tasks::in(matrix.local(0, 1))
     );
     dash::tasks::async_barrier();
   }

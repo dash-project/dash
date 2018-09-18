@@ -166,7 +166,7 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
     if (rows_per_task == 0) rows_per_task = 1;
 //    std::cout << "rows_per_task: " << rows_per_task << std::endl;
     // Inner rows
-    dash::tasks::taskloop(1L, lext_x-1, rows_per_task,
+    dash::tasks::taskloop(1L, lext_x-1, dash::tasks::chunk_size(rows_per_task),
         [=, &data_old, &data_new](index_t from, index_t to) {
           //std::cout << "Iterating from " << from << " to " << to << std::endl;
 //         Extrae_eventandcounters(1000, 1);
@@ -197,17 +197,17 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
         {
           size_t chunk_size = to - from;
 
-          *inserter = dash::tasks::in(data_old.local.row(from).lbegin());
-          *inserter = dash::tasks::out(data_new.local.row(from).lbegin());
+          *inserter = dash::tasks::in(data_old.local.row(from).lbegin()[0]);
+          *inserter = dash::tasks::out(data_new.local.row(from).lbegin()[0]);
           if ((from < chunk_size)) {
             // upper row is the local border row
-            *inserter = dash::tasks::in(data_old.local.row(from-1).lbegin());
+            *inserter = dash::tasks::in(data_old.local.row(from-1).lbegin()[0]);
           } else {
             // upper row is another chunk
-            *inserter = dash::tasks::in(data_old.local.row(from-chunk_size).lbegin());
+            *inserter = dash::tasks::in(data_old.local.row(from-chunk_size).lbegin()[0]);
           }
           // no difference for lower row: `to` always refers to the row after the chunk
-          *inserter = dash::tasks::in(data_old.local.row(to).lbegin());
+          *inserter = dash::tasks::in(data_old.local.row(to).lbegin()[0]);
         }
     );
 
@@ -226,7 +226,7 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
         },
         DART_PRIO_HIGH,
         //dash::tasks::in(data_old.local.row(0).lbegin()),
-        dash::tasks::in(data_new.local.row(0).lbegin()),
+        dash::tasks::in(data_new.local.row(0).lbegin()[0]),
         dash::tasks::out(halo_new(dash::myid() - 1, 1, 0))
       );
     }
@@ -269,9 +269,9 @@ void smooth(Array_t & data_old, Array_t & data_new, Halo_t & halo_new){
         },
         DART_PRIO_HIGH,
         dash::tasks::in(halo_new(dash::myid(), 0, 0)),
-        dash::tasks::in(data_old.local.row(1).lbegin()),
-        dash::tasks::in(data_old.local.row(0).lbegin()),
-        dash::tasks::out(data_new.local.row(0).lbegin())
+        dash::tasks::in(data_old.local.row(1).lbegin()[0]),
+        dash::tasks::in(data_old.local.row(0).lbegin()[0]),
+        dash::tasks::out(data_new.local.row(0).lbegin()[0])
       );
 
     }
