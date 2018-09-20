@@ -296,7 +296,6 @@ dart_ret_t dart_group_locality_split(
  * The default team consisting of all units
  * that run the application.
  *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 #define DART_TEAM_ALL   ((dart_team_t)0)
@@ -315,7 +314,7 @@ dart_ret_t dart_group_locality_split(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{teamid}
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_get_group(
@@ -364,7 +363,7 @@ dart_ret_t dart_team_get_group(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{teamid}
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_create(
@@ -379,7 +378,7 @@ dart_ret_t dart_team_create(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe_data{teamid}
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_destroy(
@@ -393,11 +392,11 @@ dart_ret_t dart_team_destroy(
  * \param[out] newteam  The target team to duplicate to.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- * \threadsafe_none
+ * \threadsafe_data{teamid}
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_clone(
-  dart_team_t   team,
+  dart_team_t   teamid,
   dart_team_t * newteam) DART_NOTHROW;
 
 /**
@@ -439,7 +438,7 @@ dart_ret_t dart_team_clone(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_myid(
@@ -454,7 +453,7 @@ dart_ret_t dart_team_myid(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_size(
@@ -468,7 +467,7 @@ dart_ret_t dart_team_size(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_myid(dart_global_unit_t *myid) DART_NOTHROW;
@@ -480,7 +479,7 @@ dart_ret_t dart_myid(dart_global_unit_t *myid) DART_NOTHROW;
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_size(size_t *size) DART_NOTHROW;
@@ -496,7 +495,7 @@ dart_ret_t dart_size(size_t *size) DART_NOTHROW;
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_l2g(
@@ -514,7 +513,7 @@ dart_ret_t dart_team_unit_l2g(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
- * \threadsafe_none
+ * \threadsafe
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_g2l(

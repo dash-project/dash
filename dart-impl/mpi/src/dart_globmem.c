@@ -34,6 +34,30 @@
  */
 MPI_Win dart_win_local_alloc;
 
+dart_ret_t dart_gptr_setunit(
+  dart_gptr_t      * gptr,
+  dart_team_unit_t   unit)
+{
+  dart_ret_t ret = DART_OK;
+  if (gptr->segid == DART_SEGMENT_LOCAL) {
+    dart_global_unit_t guid;
+    dart_myid(&guid);
+    if (guid.id != gptr->unitid) {
+      DART_LOG_ERROR("Cannot change unit ID on locally allocated pointer!");
+      ret = DART_ERR_INVAL;
+    } else if (guid.id != unit.id) {
+      DART_LOG_ERROR("Cannot set remote unit ID on locally allocated pointer!");
+      ret = DART_ERR_INVAL;
+    } else {
+      gptr->unitid = unit.id;
+    }
+  } else {
+    gptr->unitid = unit.id;
+  }
+  return ret;
+}
+
+
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
   int16_t segid = gptr.segid;
