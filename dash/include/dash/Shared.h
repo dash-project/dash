@@ -201,7 +201,8 @@ public:
 
   /**
    * Native pointer to the starting address of the local memory of
-   * the unit that initialized this dash::Shared instance.
+   * the unit that initialized this dash::Shared instance. For other units
+   * it returns a nullptr
    */
   constexpr value_type const * local() const noexcept {
     return (m_team->myid() == m_owner) ? m_globmem->lbegin() : nullptr;
