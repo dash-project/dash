@@ -169,3 +169,23 @@ TEST_F(DARTMemAllocTest, SegmentReuseTest)
     DART_OK,
     dart_team_memfree(gptr2));
 }
+
+TEST_F(DARTMemAllocTest, MemAllocTeamSplit) {
+  if (dash::size() < 4) {
+    SKIP_TEST_MSG("requires at least 4 units");
+  }
+
+  auto& team = dash::Team::All().split(2);
+
+  dart_gptr_t gptr;
+  void *laddr;
+
+  auto const worldId = dash::Team::All().myid();
+
+  if (team.myid() == 0 && worldId > 0) {
+    ASSERT_EQ_U(DART_OK, dart_memalloc(3, DART_TYPE_INT, &gptr));
+    ASSERT_EQ_U(DART_OK, dart_gptr_setunit(&gptr, 0));
+    ASSERT_EQ_U(DART_OK, dart_gptr_getaddr(gptr, &laddr));
+    ASSERT_NE_U(nullptr, laddr);
+  }
+}
