@@ -21,7 +21,7 @@ find_package(OpenMP)
 
 # set minimum requirements here
 set (DART_C_STD_PREFERED "99")
-set (DASH_CXX_STD_PREFERED "11")
+set (DASH_CXX_STD_PREFERED "14")
 
 # Used in CI Scripts to force a particular CXX version
 if("$ENV{DART_FORCE_C_STD}")
@@ -44,13 +44,13 @@ if("$ENV{DASH_FORCE_CXX_STD}")
   set(DASH_CXX_STD_PREFERED "$ENV{DASH_FORCE_CXX_STD}")
 
 # Check if compiler provides c++14
-elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
-  include(CheckCXXCompilerFlag)
-  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-  if(COMPILER_SUPPORTS_CXX14)
-    set (DASH_CXX_STD_PREFERED "14")
-    message(STATUS "Compile with CXX 14")
-  endif()
+#elseif(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+#  include(CheckCXXCompilerFlag)
+#  CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+#  if(COMPILER_SUPPORTS_CXX14)
+#    set (DASH_CXX_STD_PREFERED "14")
+#    message(STATUS "Compile with CXX 14")
+#  endif()
 endif()
 
 # Configure Compiler Warnings
@@ -164,14 +164,17 @@ if(OPENMP_FOUND)
   set (CXX_OMP_FLAG ${OpenMP_CXX_FLAGS})
 endif()
 
+
+# See https://en.cppreference.com/w/cpp/compiler_support for 
+# minimum versions
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++${DASH_CXX_STD_PREFERED}"
        CACHE STRING "C++ compiler std flag")
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.8.0")
-    message(FATAL_ERROR "Insufficient Clang version (< 3.8.0)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.4.0")
+    message(FATAL_ERROR "Insufficient Clang version (< 3.4.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
@@ -183,8 +186,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
   endif()
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8.1")
-    message(FATAL_ERROR "Insufficient GCC version (< 4.8.1)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0.0")
+    message(FATAL_ERROR "Insufficient GCC version (< 5.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
@@ -199,8 +202,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   endif()
 
 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "15.0.0")
-    message(FATAL_ERROR "Insufficient Intel compiler version (< 15.0.0)")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "17.0.0")
+    message(FATAL_ERROR "Insufficient Intel compiler version (< 17.0.0)")
   endif()
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
