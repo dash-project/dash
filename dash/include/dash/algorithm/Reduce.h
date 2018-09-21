@@ -77,14 +77,14 @@ template <
   typename = typename std::enable_if<
                         !dash::detail::is_global_iterator<LocalInputIter>::value
                       >::type>
-auto reduce(
+typename std::iterator_traits<LocalInputIter>::value_type
+reduce(
   LocalInputIter    in_first,
   LocalInputIter    in_last,
   InitType          init,
   BinaryOperation   binary_op = BinaryOperation(),
   bool              non_empty = true,
   dash::Team      & team = dash::Team::All())
-  -> typename std::iterator_traits<LocalInputIter>::value_type
 {
   using value_t    = typename std::iterator_traits<LocalInputIter>::value_type;
   using local_result_t = struct dash::internal::local_result<value_t>;
@@ -159,13 +159,13 @@ template <
   typename = typename std::enable_if<
                         !dash::detail::is_global_iterator<LocalInputIter>::value
                       >::type>
-auto reduce(
+typename std::iterator_traits<LocalInputIter>::value_type
+reduce(
   LocalInputIter  in_first,
   LocalInputIter  in_last,
   InitType        init = InitType{},
   bool            non_empty = false,
   dash::Team    & team = dash::Team::All())
-  -> typename std::iterator_traits<LocalInputIter>::value_type
 {
   using value_t = typename std::iterator_traits<LocalInputIter>::value_type;
   return dash::reduce(
@@ -208,12 +208,12 @@ template <
   typename = typename std::enable_if<
                         dash::detail::is_global_iterator<GlobInputIt>::value
                       >::type>
-auto reduce(
+typename dash::iterator_traits<GlobInputIt>::value_type
+reduce(
   GlobInputIt     in_first,
   GlobInputIt     in_last,
   InitType        init = InitType{},
   BinaryOperation binary_op = BinaryOperation())
-  -> typename dash::iterator_traits<GlobInputIt>::value_type
 {
   auto & team      = in_first.team();
   auto index_range = dash::local_range(in_first, in_last);
