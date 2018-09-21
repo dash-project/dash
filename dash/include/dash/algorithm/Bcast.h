@@ -37,12 +37,7 @@ bcast(
     DART_OK);
 }
 
-template<class LocalInputIter, class IterTag
-  /*,typename =
-    typename std::enable_if<
-              !std::is_same<
-                IterTag,
-                typename std::random_access_iterator_tag>::value>::type*/>
+template<class LocalInputIter, class IterTag>
 void
 bcast(
   LocalInputIter    in_first,
@@ -69,13 +64,12 @@ bcast(
 } // namespace internal
 
 /**
- * Broadcast the range of elements [\c in_first, \c in_last)
+ * Broadcast the local range of elements [\c in_first, \c in_last)
  * from unit \c root to all other units in \c team.
  *
  * If the range is not contiguous, a local copy of the data is created and
  * later copied into the range on all unit except for \c root.
- * On these units, the range should either be allocated or an insert iterator
- * should be provided.
+ * The range has to have the same size on all units.
  *
  * This operation overwrites the values in the range on all units except for
  * \c root.
@@ -131,7 +125,7 @@ ValueType bcast(dash::Shared<ValueType>& shared)
   ValueType res;
   auto& team  = shared.team();
   auto  owner = shared.owner();
-  ValueType *ptr = (team.myid() == owner) ? shared.local() : &res;
+  ValueType *ptr = (team.myid() == owner) ? shared.local() : std::addressof(res);
   dash::bcast(ptr,
               std::next(ptr),
               owner,
