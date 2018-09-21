@@ -39,11 +39,21 @@ struct dart_buddy {
 char* dart_mempool_localalloc;
 struct dart_buddy  *  dart_localpool;
 
-static inline int
+static inline unsigned int
 num_level(size_t size)
 {
-  unsigned int level  = 1;
-  while ((((unsigned int) 1) << level) < size) {
+  unsigned int level = 1;
+  size_t shifter = 0x02;
+
+  /* Check that most significan bit is not 1 because that means:
+   *   a) You are requesting for sure more memory than available
+   *   b) It will make the level calculation code to dead-lock */
+  if(size > ((size_t)1 << (sizeof(size_t)*8 - 1))) {
+    return 0xFFFFFFFF;
+  }
+  
+  while (shifter < size) {
+    shifter <<= 1;
     level++;
   }
   return level;
@@ -59,8 +69,9 @@ dart_buddy_new(size_t size)
 {
   DART_ASSERT(is_pow_of_2(size));
   unsigned int level  = num_level(size) - DART_MEM_ALIGN_BITS;
-  // do not shift more than 31 bit
-  if(level > sizeof(unsigned int) * 8){
+  /* Modern CPUs are able to use 48-bits virtual addresses,
+   * this allows to address up to 256 TiB of memory */
+  if(level > 48) {
     DART_LOG_ERROR("Level of buddy allocator invalid");
     return NULL;
   }
