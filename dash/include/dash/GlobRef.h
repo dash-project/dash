@@ -71,6 +71,8 @@ public:
    */
   GlobRef() = delete;
 
+  GlobRef(const GlobRef & other) = delete;
+
   /**
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
@@ -144,6 +146,9 @@ public:
    */
   const self_t & operator=(const self_t & other) const
   {
+    if (DART_GPTR_EQUAL(_gptr, other._gptr)) {
+      return *this;
+    }
     set(static_cast<T>(other));
     return *this;
   }
