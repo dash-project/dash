@@ -46,9 +46,9 @@ namespace internal {
  * the provided binary reduce function \c binary_op, which must be commutative
  * and linear.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
- * in local iteration using \ref binary_op order before combining the results
+ * The iteration order is undefined and the reduction follows a two-step
+ * process: each unit first reduces its local elements
+ * in local iteration using \ref binary_op before combining the results
  * across units.
  *
  * Collective operation.
@@ -57,11 +57,11 @@ namespace internal {
  * \ref dash::transform.
  *
  * \param in_first  Local iterator describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Local iterator describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
- * \param binary_op The binary operation to apply to accumulate two elements
- *                  (default: using \c operator+)
+ * \param binary_op The binary operation to apply to reduce two elements
+ *                  (default: using \ref dash::plus)
  * \param non_empty Whether all units are guaranteed to provide a non-empty local
  *                  range (default \c false).
  * \param team      The team to use for the collective operation.
@@ -135,16 +135,16 @@ reduce(
  * Accumulate values across the local ranges \c[in_first,in_last) of each
  * process as the sum of all values in the range.
  *
- * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
- * in local iteration using \ref binary_op order before combining the results
+ * The iteration order is undefined and the reduction follows a two-step
+ * process: each unit first reduces its local elements
+ * in local iteration using \ref dash::plus before combining the results
  * across units.
  *
  * \note: For equivalent of semantics of \c MPI_Accumulate, see
  * \ref dash::transform.
  *
  * \param in_first  Local pointer describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Local pointer describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
  * \param non_empty Whether all units are guaranteed to provide a non-empty local
@@ -183,14 +183,14 @@ reduce(
  * and linear.
  *
  * The iteration order is defined by the data distribution and the reduction
- * follows a two-step process: each unit first accumulates its local elements
+ * follows a two-step process: each unit first reduces its local elements
  * in local iteration using \ref binary_op order before combining the results
  * across units.
  *
  * Collective operation.
  *
  * \param in_first  Global iterator describing the beginning of the range to
- *                  accumulate.
+ *                  reduce.
  * \param in_last   Global iterator describing the end of the range to accumualte
  * \param init      The initial element to use in the accumulation.
  * \param binary_op The associative, commutative binary operation to to apply.
