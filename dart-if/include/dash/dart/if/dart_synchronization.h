@@ -29,6 +29,11 @@ extern "C" {
  */
 typedef struct dart_lock_struct *dart_lock_t;
 
+/**
+ * Null value for \ref dart_lock_t to reset a DART lock instance. The lock
+ * has to be initialized using \ref dart_team_lock_init.
+ */
+#define DART_LOCK_NULL ((dart_lock_t)NULL)
 
 /**
  * Collective operation to initialize the \c lock object.
@@ -108,6 +113,17 @@ dart_ret_t dart_lock_try_acquire(
 dart_ret_t dart_lock_release(
   dart_lock_t   lock)   DART_NOTHROW;
 
+/**
+ * Whether the lock has been properly initialized.
+ *
+ * \return true if the DART lock is properly initialized
+ *         false  otherwise.
+ *
+ * \threadsafe_none
+ * \ingroup DartInitialization
+ */
+bool dart_lock_initialized(
+    struct dart_lock_struct const *lock) DART_NOTHROW;
 
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
@@ -118,4 +134,3 @@ dart_ret_t dart_lock_release(
 #endif
 
 #endif /* DART_SYNCHRONIZATION_H_INCLUDED */
-
