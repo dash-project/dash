@@ -1,8 +1,8 @@
 #ifndef DASH__SHARED_H_
 #define DASH__SHARED_H_
 
-#include <dash/std/memory.h>
 #include <memory>
+#include <dash/std/memory.h>
 
 #include <dash/dart/if/dart_types.h>
 
@@ -81,7 +81,6 @@ public:
     , m_globmem(std::make_unique<GlobMem_t>(0, team))
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner)()", owner);
-
     if (dash::is_initialized()) {
       DASH_ASSERT_RETURNS(init(val), true);
     }

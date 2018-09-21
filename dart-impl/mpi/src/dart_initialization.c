@@ -20,7 +20,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
-#define DART_LOCAL_ALLOC_SIZE (1024*1024*16)
+#define DART_LOCAL_ALLOC_SIZE (1024UL*1024*16)
 
 /* Point to the base address of memory region for local allocation. */
 static int _init_by_dart = 0;

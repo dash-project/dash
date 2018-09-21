@@ -514,6 +514,15 @@ TEST_F(AtomicTest, MutexInterface){
   }
 }
 
+dash::Mutex mx_delayed;
+
+TEST_F(AtomicTest, MutexInterfaceDelayed){
+  ASSERT_TRUE_U(mx_delayed.init());
+  {
+    std::lock_guard<dash::Mutex> lg(mx_delayed);
+    LOG_MESSAGE("thread %d acquired lock", dash::Team::All().myid().id);
+  }
+}
 
 TEST_F(AtomicTest, AtomicSignal){
   using value_t = int;
