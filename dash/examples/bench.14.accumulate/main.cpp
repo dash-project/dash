@@ -55,12 +55,12 @@ enum experiment_t{
 #endif
 
 std::array<const char*, 6> testcase_str {{
-                          "accumulate.arraystruct",
-                          "accumulate.arraydouble",
-                          "accumulate.dartstruct",
-                          "accumulate.dartdouble",
-                          "accumulate.dartlambda",
-                          "accumulate.mpidouble"
+                          "reduce.arraystruct",
+                          "reduce.arraydouble",
+                          "reduce.dartstruct",
+                          "reduce.dartdouble",
+                          "reduce.dartlambda",
+                          "reduce.mpidouble"
                           }};
 
 
@@ -83,7 +83,7 @@ measurement evaluate(
               benchmark_params params);
 
 template<typename ValueType, typename BinaryOperation>
-ValueType accumulate_array(
+ValueType reduce_array(
   const ValueType* l_first,
   const ValueType* l_last,
   const ValueType  init,
@@ -168,7 +168,7 @@ int main(int argc, char** argv)
 
   measurement res;
 
-  dash::util::BenchmarkParams bench_params("bench.14.accumulate");
+  dash::util::BenchmarkParams bench_params("bench.14.reduce");
   bench_params.print_header();
   bench_params.print_pinning();
 
@@ -230,7 +230,7 @@ measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
     if (testcase == ARRAYSTRUCT) {
       minmax_t in{lmin, lmax};
       minmax_t init{0.0, 0.0};
-      minmax_t out = accumulate_array(&in, std::next(&in), init,
+      minmax_t out = reduce_array(&in, std::next(&in), init,
                                       dash::plus<minmax_t>());
       if (dash::myid() == 0) {
         assert((int)out.min == (dash::size()-1)*(dash::size())/2);
@@ -240,7 +240,7 @@ measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
     }
     else if (testcase == ARRAYDOUBLE) {
       double in = lmin + lmax;
-      double out = accumulate_array(&in, std::next(&in), 0.0,
+      double out = reduce_array(&in, std::next(&in), 0.0,
                                     dash::plus<double>());
       if (dash::myid() == 0) {
         ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
@@ -249,17 +249,17 @@ measurement evaluate(int reps, experiment_t testcase, benchmark_params params)
     else if (testcase == DARTSTRUCT) {
       minmax_t in{lmin, lmax};
       minmax_t init{0.0, 0.0};
-      minmax_t out = dash::accumulate(&in, std::next(&in), init, true);
+      minmax_t out = dash::reduce(&in, std::next(&in), init, true);
       ASSERT_EQ((int)out.min, (dash::size()-1)*(dash::size())/2);
       ASSERT_EQ((int)out.max, dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     } else if (testcase == DARTDOUBLE) {
       double in = lmin + lmax;
-      double out = dash::accumulate(&in, std::next(&in), 0.0, true);
+      double out = dash::reduce(&in, std::next(&in), 0.0, true);
       ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     } else if (testcase == DARTLAMBDA) {
       double in = lmin + lmax;
-      double out = dash::accumulate(&in, std::next(&in), 0.0,
-                                    [](double a, double b){ return a + b; });
+      double out = dash::reduce(&in, std::next(&in), 0.0,
+                                [](double a, double b){ return a + b; });
       ASSERT_EQ((int)out, (dash::size()-1)*(dash::size())/2 + dash::size()*1000 - ((dash::size()-1)*(dash::size()))/2);
     }
 #ifdef MPI_IMPL_ID
