@@ -217,6 +217,20 @@ public:
   }
 
   /**
+   * The unit owning the memory in the global address space.
+   */
+  dash::team_unit_t owner() const noexcept {
+    return m_owner;
+  }
+
+  /**
+   * The \ref dash::Team that created this shared object.
+   */
+  dash::Team& team() const noexcept {
+    return *m_team;
+  }
+
+  /**
    * Flush global memory of shared value.
    */
   void flush()
