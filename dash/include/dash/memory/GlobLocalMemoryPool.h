@@ -270,7 +270,7 @@ inline void GlobLocalMemoryPool<ElementType, LMemSpace>::do_deallocate(
 {
   DASH_LOG_DEBUG("< MemorySpace.do_deallocate");
 
-  if (!dash::is_initialized()) {
+  if (!dart_initialized()) {
     return;
   }
 
