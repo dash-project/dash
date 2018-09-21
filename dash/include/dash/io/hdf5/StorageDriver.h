@@ -13,6 +13,7 @@
 #include <dash/Init.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <dash/Shared.h>
 
 #include <sys/stat.h>
 
