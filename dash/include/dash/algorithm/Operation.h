@@ -71,7 +71,6 @@ struct dart_reduce_operation
  * Query the DART operation for an arbitrary binary operation.
  * Overload for operations that can be used in DART collective operations.
  */
-template<>
 template<typename BinaryOperation>
 struct dart_reduce_operation<BinaryOperation,
         typename std::enable_if<
