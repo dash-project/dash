@@ -18,6 +18,7 @@
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_group_priv.h>
+#include <dash/dart/mpi/dart_synchronization_priv.h>
 
 #include <limits.h>
 
@@ -590,11 +591,9 @@ dart_ret_t dart_team_create(
     return DART_ERR_INVAL;
   }
 
-
   if (group->mpi_group == MPI_GROUP_NULL) {
     return DART_OK;
   }
-
 
   dart_team_data_t *parent_team_data = dart_adapt_teamlist_get(teamid);
   if (parent_team_data == NULL) {
@@ -634,6 +633,8 @@ dart_ret_t dart_team_create(
     team_data->unitid = rank;
     MPI_Comm_size(team_data->comm, &team_data->size);
 
+    team_data->allocated_locks = NULL;
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);
 #endif
@@ -661,6 +662,7 @@ dart_ret_t dart_team_destroy(
 
   dart_team_data_t *team_data = dart_adapt_teamlist_get(*teamid);
   if (team_data == NULL) {
+    DART_LOG_ERROR("Found invalid or unknown team %d\n", *teamid);
     return DART_ERR_INVAL;
   }
 
@@ -679,7 +681,12 @@ dart_ret_t dart_team_destroy(
   /* -- Release the communicator associated with teamid -- */
   MPI_Comm_free(&comm);
 
+  dart_segment_fini(&team_data->segdata);
+
   dart_adapt_teamlist_dealloc(*teamid);
+
+  dart__mpi__destroylocks(team_data->allocated_locks);
+  team_data->allocated_locks = NULL;
 
   DART_LOG_DEBUG("dart_team_destroy > teamid:%d", *teamid);
 
