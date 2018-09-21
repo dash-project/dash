@@ -274,3 +274,32 @@ TEST_F(SharedTest, AtomicMinMax)
   EXPECT_EQ_U(0, min);
   EXPECT_EQ_U(std::numeric_limits<value_t>::max(), max);
 }
+
+
+dash::Shared<int32_t> shared_delayed{};
+
+TEST_F(SharedTest, DelayedAllocation)
+{
+  EXPECT_TRUE_U(shared_delayed.init(100));
+
+  if (dash::myid() == 0) {
+    EXPECT_TRUE_U(shared_delayed.local());
+    EXPECT_EQ_U(100, *shared_delayed.local());
+  } else {
+    EXPECT_FALSE_U(shared_delayed.local());
+  }
+
+  auto val = shared_delayed.get();
+  EXPECT_EQ_U(100, val);
+
+  shared_delayed.barrier();
+
+  if (dash::myid() == 0) {
+    *shared_delayed.local() = 1000;
+  }
+
+  shared_delayed.barrier();
+
+  val = shared_delayed.get();
+  EXPECT_EQ_U(1000, val);
+}
