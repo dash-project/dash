@@ -86,12 +86,11 @@ public:
     }
   }
 
-  template <class T>
-  T * local(T *&address)
+  void * local()
   {
     void *addr = 0;
     if (dart_gptr_getaddr(m_dart_gptr, &addr) == DART_OK) {
-      return static_cast<T*>(addr);
+      return addr;
     }
     return nullptr;
   }

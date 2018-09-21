@@ -50,13 +50,6 @@ public:
   // local memory space
   using allocator_type = cpp17::pmr::polymorphic_allocator<ElementType>;
 
-#if 0
-  using pointer       = dash::GlobPtr<value_type, GlobLocalMemoryPool>;
-  using const_pointer = dash::GlobPtr<const value_type, GlobLocalMemoryPool>;
-  using local_pointer = value_type*;
-  using const_local_pointer = value_type const*;
-#endif
-
   using pointer       = dash::RawDartPointer;
   using const_pointer = dash::RawDartPointer;
 

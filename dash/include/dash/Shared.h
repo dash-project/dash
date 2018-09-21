@@ -48,7 +48,7 @@ private:
   dash::Team*                m_team{nullptr};
   team_unit_t                m_owner{DART_UNDEFINED_UNIT_ID};
   std::unique_ptr<GlobMem_t> m_globmem{nullptr};
-  pointer_t                  m_dart_gptr{};
+  pointer_t                  m_glob_pointer{};
 
 public:
   /**
@@ -128,7 +128,7 @@ public:
           dash::exception::RuntimeError, "runtime not properly initialized");
     }
 
-    if (m_dart_gptr) {
+    if (m_glob_pointer) {
       DASH_LOG_ERROR("Shared scalar is already initialized");
       return false;
     }
@@ -146,8 +146,7 @@ public:
 
       bcast = ptr_alloc;
 
-      element_t * tmp = 0;
-      auto* laddr = ptr_alloc.local(tmp);
+      auto* laddr = static_cast<element_t *>(ptr_alloc.local());
 
       DASH_LOG_DEBUG_VAR("Shared.Shared(value,team,owner) >", val);
 
@@ -167,12 +166,12 @@ public:
             &bcast, ds.nelem, ds.dtype, m_owner, m_team->dart_id()),
         DART_OK);
 
-    m_dart_gptr = pointer_t(*m_globmem, bcast);
+    m_glob_pointer = pointer_t(*m_globmem, bcast);
 
 
-    DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", m_dart_gptr);
+    DASH_LOG_DEBUG_VAR("Shared.init(value,team,owner) >", m_glob_pointer);
 
-    return static_cast<bool>(m_dart_gptr);
+    return static_cast<bool>(m_glob_pointer);
   }
 
   /**
@@ -182,8 +181,8 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Shared.set()", val);
     DASH_LOG_DEBUG_VAR("Shared.set",   m_owner);
-    DASH_LOG_DEBUG_VAR("Shared.set",   m_dart_gptr);
-    DASH_ASSERT(static_cast<bool>(m_dart_gptr));
+    DASH_LOG_DEBUG_VAR("Shared.set",   m_glob_pointer);
+    DASH_ASSERT(static_cast<bool>(m_glob_pointer));
     this->get().set(val);
     DASH_LOG_DEBUG("Shared.set >");
   }
@@ -195,9 +194,9 @@ public:
   {
     DASH_LOG_DEBUG("Shared.cget()");
     DASH_LOG_DEBUG_VAR("Shared.cget", m_owner);
-    DASH_LOG_DEBUG_VAR("Shared.get", m_dart_gptr);
-    DASH_ASSERT(static_cast<bool>(m_dart_gptr));
-    return reference(m_dart_gptr.dart_gptr());
+    DASH_LOG_DEBUG_VAR("Shared.get", m_glob_pointer);
+    DASH_ASSERT(static_cast<bool>(m_glob_pointer));
+    return reference(m_glob_pointer.dart_gptr());
   }
 
   /**
@@ -207,9 +206,9 @@ public:
   {
     DASH_LOG_DEBUG("Shared.get()");
     DASH_LOG_DEBUG_VAR("Shared.get", m_owner);
-    DASH_LOG_DEBUG_VAR("Shared.get", m_dart_gptr);
-    DASH_ASSERT(static_cast<bool>(m_dart_gptr));
-    return const_reference(m_dart_gptr.dart_gptr());
+    DASH_LOG_DEBUG_VAR("Shared.get", m_glob_pointer);
+    DASH_ASSERT(m_glob_pointer);
+    return const_reference(m_glob_pointer.dart_gptr());
   }
 
   /**
@@ -217,7 +216,7 @@ public:
    * the unit that initialized this dash::Shared instance.
    */
   constexpr value_type const * local() const noexcept {
-    return (m_team->myid() == m_owner) ? m_dart_gptr.local() : nullptr;
+    return (m_team->myid() == m_owner) ? m_glob_pointer.local() : nullptr;
   }
 
   /**
@@ -225,7 +224,7 @@ public:
    * the unit that initialized this dash::Shared instance.
    */
   value_type * local() noexcept {
-    return (m_team->myid() == m_owner) ? m_dart_gptr.local() : nullptr;
+    return (m_team->myid() == m_owner) ? m_glob_pointer.local() : nullptr;
   }
 
   /**
@@ -233,9 +232,9 @@ public:
    */
   void flush()
   {
-    DASH_ASSERT(static_cast<bool>(m_dart_gptr));
+    DASH_ASSERT(static_cast<bool>(m_glob_pointer));
     DASH_ASSERT_RETURNS(
-      dart_flush(m_dart_gptr.raw()),
+      dart_flush(m_glob_pointer.raw()),
       DART_OK);
   }
 
@@ -255,17 +254,17 @@ public:
    */
   inline dart_gptr_t dart_gptr() const noexcept
   {
-    return m_dart_gptr;
+    return m_glob_pointer;
   }
 };
 
 template <typename T>
 void swap(dash::Shared<T>& a, dash::Shared<T>& b)
 {
-  ::std::swap(a.m_team,       b.m_team);
-  ::std::swap(a.m_owner,      b.m_owner);
-  ::std::swap(a.m_globmem,    b.m_globmem);
-  ::std::swap(a.m_dart_gptr,  b.m_dart_gptr);
+  ::std::swap(a.m_team, b.m_team);
+  ::std::swap(a.m_owner, b.m_owner);
+  ::std::swap(a.m_globmem, b.m_globmem);
+  ::std::swap(a.m_glob_pointer, b.m_glob_pointer);
 }
 
 }  // namespace dash
