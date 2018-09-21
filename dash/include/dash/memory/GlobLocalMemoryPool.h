@@ -284,7 +284,7 @@ template <class ElementType, class LMemSpace>
 inline void GlobLocalMemoryPool<ElementType, LMemSpace>::release()
 {
   for (auto& rec : m_segments) {
-    do_deallocate(rec.first, rec.second, alignof(std::max_align_t));
+    do_deallocate(rec.first, rec.second, alignof(dash::max_align_t));
   }
 
   m_segments.clear();
