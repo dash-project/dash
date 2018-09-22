@@ -2208,6 +2208,54 @@ dart_ret_t dart_allreduce(
   return DART_OK;
 }
 
+dart_ret_t dart_alltoall(
+    const void *    sendbuf,
+    void *          recvbuf,
+    size_t          nelem,
+    dart_datatype_t dtype,
+    dart_team_t     teamid)
+{
+  DART_LOG_TRACE("dart_alltoall() team:%d nelem:%" PRIu64 "", teamid, nelem);
+
+  CHECK_IS_BASICTYPE(dtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (dart__unlikely(nelem > MAX_CONTIG_ELEMENTS)) {
+    DART_LOG_ERROR("dart_alltoall ! failed: nelem (%zu) > INT_MAX", nelem);
+    return DART_ERR_INVAL;
+  }
+
+  dart_team_data_t *team_data = dart_adapt_teamlist_get(teamid);
+  if (dart__unlikely(team_data == NULL)) {
+    DART_LOG_ERROR("dart_alltoall ! unknown teamid %d", teamid);
+    return DART_ERR_INVAL;
+  }
+
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
+  }
+
+  MPI_Comm comm = team_data->comm;
+
+  MPI_Datatype mpi_dtype = dart__mpi__datatype_struct(dtype)->contiguous.mpi_type;
+
+  CHECK_MPI_RET(
+      MPI_Alltoall(
+          sendbuf,
+          nelem,
+          mpi_dtype,
+          recvbuf,
+          nelem,
+          mpi_dtype,
+          comm),
+      "MPI_Alltoall");
+
+  DART_LOG_TRACE("dart_alltoall > team:%d nelem:%" PRIu64 "", teamid, nelem);
+  return DART_OK;
+}
+
 dart_ret_t dart_reduce(
   const void        * sendbuf,
   void              * recvbuf,
