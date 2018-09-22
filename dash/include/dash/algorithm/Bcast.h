@@ -67,8 +67,9 @@ bcast(
  * Broadcast the local range of elements [\c in_first, \c in_last)
  * from unit \c root to all other units in \c team.
  *
- * If the range is not contiguous, a local copy of the data is created and
- * later copied into the range on all unit except for \c root.
+ * If the range is not contiguous, a local copy of the data is created,
+ * broadcast, and copied into the range on all unit except for \c root.
+ *
  * The range has to have the same size on all units.
  *
  * This operation overwrites the values in the range on all units except for
