@@ -7,7 +7,7 @@
 #include <dash/Team.h>
 #include <dash/Shared.h>
 #include <dash/algorithm/LocalRange.h>
-#include <dash/algorithm/Operation.h>
+#include <dash/coarray/Utils.h>
 
 #include <iterator>
 #include <vector>
@@ -132,6 +132,24 @@ ValueType bcast(dash::Shared<ValueType>& shared)
               shared.team());
 
   return *ptr;
+}
+
+/**
+ * Broadcasts the value on \c root to all other members of this co_array.
+ * This is a wrapper for \ref dash::coarray::cobroadcast.
+ *
+ * Collective operation.
+ *
+ * \sa dash::coarray::cobroadcast
+ *
+ * \param coarr  coarray which should be broadcasted
+ * \param master the value of this unit will be broadcastet
+ *
+ * \ingroup  DashAlgorithms
+ */
+template<typename T>
+void bcast(Coarray<T> & coarr, const team_unit_t & root){
+  dash::coarray::cobroadcast(coarr, root);
 }
 
 } // namespace dash
