@@ -19,7 +19,7 @@ TEST_F(BcastTest, Shared) {
   using value_t = point_t;
   dash::Shared<point_t> shared({xval, yval});
 
-  auto res = dash::bcast(shared);
+  auto res = dash::broadcast(shared);
 
   ASSERT_EQ_U(res.x, xval);
   ASSERT_EQ_U(res.y, yval);
@@ -43,7 +43,7 @@ TEST_F(BcastTest, Vector) {
 
   std::iota(vec.begin(), vec.end(), point_t{dash::myid(), 1000+dash::myid()});
 
-  dash::bcast(vec.begin(), vec.end(),
+  dash::broadcast(vec.begin(), vec.end(),
               dash::team_unit_t{static_cast<int>(dash::size())-1});
 
   for (int i = 0; i < num_elem_per_unit; ++i) {
@@ -71,7 +71,7 @@ TEST_F(BcastTest, List) {
 
   std::iota(list.begin(), list.end(), point_t{dash::myid(), 1000+dash::myid()});
 
-  dash::bcast(list.begin(), list.end(),
+  dash::broadcast(list.begin(), list.end(),
               dash::team_unit_t{static_cast<int>(dash::size())-1});
 
   int cnt = 0;

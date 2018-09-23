@@ -20,7 +20,7 @@ namespace internal {
 
 template<class LocalInputIter>
 void
-bcast(
+broadcast(
   LocalInputIter    in_first,
   LocalInputIter    in_last,
   dash::team_unit_t root,
@@ -39,7 +39,7 @@ bcast(
 
 template<class LocalInputIter, class IterTag>
 void
-bcast(
+broadcast(
   LocalInputIter    in_first,
   LocalInputIter    in_last,
   dash::team_unit_t root,
@@ -52,7 +52,7 @@ bcast(
   std::vector<value_t> tmp(in_first, in_last);
 
   // broadcast
-  dash::internal::bcast(tmp.begin(), tmp.end(), root, team,
+  dash::internal::broadcast(tmp.begin(), tmp.end(), root, team,
     std::random_access_iterator_tag{});
 
   // copy back into non-contiguous memory
@@ -92,13 +92,13 @@ template <
                         !dash::detail::is_global_iterator<LocalInputIter>::value
                       >::type>
 void
-bcast(
+broadcast(
   LocalInputIter    in_first,
   LocalInputIter    in_last,
   dash::team_unit_t root,
   dash::Team      & team = dash::Team::All())
 {
-  dash::internal::bcast(
+  dash::internal::broadcast(
     in_first, in_last, root, team,
     typename std::iterator_traits<LocalInputIter>::iterator_category());
 }
@@ -121,16 +121,16 @@ bcast(
  * \ingroup  DashAlgorithms
  */
 template <class ValueType>
-ValueType bcast(dash::Shared<ValueType>& shared)
+ValueType broadcast(dash::Shared<ValueType>& shared)
 {
   ValueType res;
   auto& team  = shared.team();
   auto  owner = shared.owner();
   ValueType *ptr = (team.myid() == owner) ? shared.local() : std::addressof(res);
-  dash::bcast(ptr,
-              std::next(ptr),
-              owner,
-              shared.team());
+  dash::broadcast(ptr,
+                  std::next(ptr),
+                  owner,
+                  shared.team());
 
   return *ptr;
 }
@@ -149,7 +149,7 @@ ValueType bcast(dash::Shared<ValueType>& shared)
  * \ingroup  DashAlgorithms
  */
 template<typename T>
-void bcast(Coarray<T> & coarr, const team_unit_t & root){
+void broadcast(Coarray<T> & coarr, const team_unit_t & root){
   dash::coarray::cobroadcast(coarr, root);
 }
 
